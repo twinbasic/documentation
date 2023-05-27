@@ -6,10 +6,10 @@ Check back soon. The site is under active construction, please don't enter witho
 {% assign mydocs = site.samples | group_by: 'category' %}
 {% for cat in mydocs %}
 <h3>{{ cat.name | capitalize }}</h3>
-    <ul>
-      {% assign items = cat.items | sort: 'order' %}
-      {% for item in items %}
-        <li><a href="{{ item.url }}">{{ item.title }}</a></li>
-      {% endfor %}
-    </ul>
+<ul>
+  {% assign items = cat.items | sort: 'order' %}
+  {% for item in items %}
+    <li><a href="{{ item.url }}">{{ item.title }}</a></li>
+  {% endfor %}
+</ul>
 {% endfor %}
