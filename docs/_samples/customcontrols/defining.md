@@ -1,3 +1,9 @@
+---
+Title: Defining a custom control
+category: customcontrols
+order: 2
+---
+
 # Defining a CustomControl
 A CustomControl is simply an ordinary twinBASIC class, with a few extra attributes and requirements.
 

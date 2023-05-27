@@ -1,3 +1,9 @@
+---
+Title: Painting custom controls
+category: customcontrols
+order: 3
+---
+
 # Painting / drawing to your control
 ### The ICustomControl.Paint method
 This is by far the most important method of a CustomControl.  It tells the form engine exactly how you want it to render your control.

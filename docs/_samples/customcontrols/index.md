@@ -1,3 +1,9 @@
+---
+Title: Introduction
+category: customcontrols
+order: 1
+---
+
 ### Introduction
 
 twinBASIC now offers experimental support for CustomControls.  CustomControls are implemented using the BASIC language, allowing implementers to design controls directly from the twinBASIC environment.

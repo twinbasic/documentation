@@ -1,3 +1,9 @@
+---
+Title: Property Sheets and Serialization
+category: customcontrols
+order: 5
+---
+
 # Property Sheet & Object Serialization
 The form designer property sheet will pickup any **_public_** custom properties (fields) that you expose via your CustomControl class.  For example, adding a field `Public MyField As Long` will then automatically show up in the control property sheet in the form designer:
 
