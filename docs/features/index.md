@@ -1,1 +1,1 @@
-This is tB samples main page.
+This is tB features main page.
