@@ -1,10 +1,10 @@
 # Work in progress...
 Check back soon.
 
-<h3>Table of Contents</h3>
+<h2>Table of Contents</h2>
 {% assign mydocs = site.samples | group_by: 'category' %}
 {% for cat in mydocs %}
-<h2>{{ cat.name | capitalize }}</h2>
+<h3>{{ cat.name | capitalize }}</h3>
     <ul>
       {% assign items = cat.items | sort: 'order' %}
       {% for item in items %}
