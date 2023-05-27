@@ -1,7 +1,8 @@
 # Work in progress...
-Check back soon.
+Check back soon. The site is under active construction, please don't enter without a hard hat.
 
 <h2>Table of Contents</h2>
+
 {% assign mydocs = site.samples | group_by: 'category' %}
 {% for cat in mydocs %}
 <h3>{{ cat.name | capitalize }}</h3>
