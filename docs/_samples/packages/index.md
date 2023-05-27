@@ -1,5 +1,5 @@
 ---
-Title: What's a package?
+title: What's a package?
 category: package
 order: 1
 ---

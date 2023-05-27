@@ -1,5 +1,5 @@
 ---
-Title: Creating a TWINPACK package
+title: Creating a TWINPACK package
 category: package
 order: 1
 ---

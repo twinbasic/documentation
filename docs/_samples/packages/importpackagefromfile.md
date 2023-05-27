@@ -1,5 +1,5 @@
 ---
-Title: Importing a package from a TWINPACK file
+title: Importing a package from a TWINPACK file
 category: package
 order: 3
 ---

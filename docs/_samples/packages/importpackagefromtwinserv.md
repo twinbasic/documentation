@@ -1,5 +1,5 @@
 ---
-Title: Import a package from TWINSERV
+title: Import a package from TWINSERV
 category: package
 order: 4
 ---

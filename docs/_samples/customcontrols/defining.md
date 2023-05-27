@@ -1,5 +1,5 @@
 ---
-Title: Defining a custom control
+title: Defining a custom control
 category: customcontrols
 order: 2
 ---

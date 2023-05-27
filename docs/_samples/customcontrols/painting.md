@@ -1,5 +1,5 @@
 ---
-Title: Painting custom controls
+title: Painting custom controls
 category: customcontrols
 order: 3
 ---

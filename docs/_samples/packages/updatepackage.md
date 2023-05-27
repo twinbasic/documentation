@@ -1,5 +1,5 @@
 ---
-Title: Updating a package
+title: Updating a package
 category: package
 order: 5
 ---

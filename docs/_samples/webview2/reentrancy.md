@@ -1,3 +1,9 @@
+---
+title: Information about re-entrancy
+category: webview2
+order: 3
+---
+
 ## Information about re-entrancy
 
 The WebView2 API is very particular about not allowing for re-entrancy from its events (see <a href="https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/threading-model">Threading model for WebView2 apps</a>).  This means that when we process events such as `NavigationCompleted` we are ordinarily prohibited from doing anything with the WebView2 object model before returning from that event.  So for example, you couldn't navigate to a new URL from within the `NavigivationCompleted` event itself.   
