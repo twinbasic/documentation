@@ -1,3 +1,9 @@
+---
+Title: Import a package from TWINSERV
+category: package
+order: 4
+---
+
 ### Importing a package from TWINSERV
 
 Open the project from which you want to use a package, open the `Settings` file within it and navigate to the References section.   Select the 'TWINPACK PACKAGES' button, and all packages that are on the server should be shown:

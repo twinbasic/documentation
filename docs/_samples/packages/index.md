@@ -1,3 +1,9 @@
+---
+Title: What's a package?
+category: package
+order: 1
+---
+
 ### What's a package?
 
 In twinBASIC, a *package* is a collection of components that you can reference from another twinBASIC project.  The components can be modules, classes or interfaces.

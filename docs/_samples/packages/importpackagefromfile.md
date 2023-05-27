@@ -1,3 +1,9 @@
+---
+Title: Importing a package from a TWINPACK file
+category: package
+order: 3
+---
+
 ### Importing a package from a TWINPACK file
 
 To import a package directly from a TWINPACK file (instead of using TWINSERV), follow these steps.

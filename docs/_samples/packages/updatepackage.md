@@ -1,3 +1,9 @@
+---
+Title: Updating a package
+category: package
+order: 5
+---
+
 ### Updating a package
 
 #### NOTE: at the moment, the twinBASIC VS Code extension does not notify you about package updates that are available on TWINSERV.  This feature is planned, and will be available soon.

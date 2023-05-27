@@ -1,3 +1,9 @@
+---
+Title: Creating a TWINPACK package
+category: package
+order: 1
+---
+
 ### Creating a TWINPACK package
 
 To create a new TWINPACK package, navigate to the twinBASIC activity panel and choose the option labelled 'Package':
