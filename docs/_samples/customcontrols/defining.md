@@ -10,7 +10,8 @@ A CustomControl is simply an ordinary twinBASIC class, with a few extra attribut
 
 _**TIP: It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.**_
 
-![CustomControl attribute](https://www.twinbasic.com/images/wiki/ccSampleProject.png)
+![CustomControl attribute]()
+{% include lazyload.html image_src="ccSampleProject.png" image_title="CustomControl Sample Project" %}
 
 ***
 ### CustomControl() attribute
