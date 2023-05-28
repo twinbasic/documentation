@@ -13,7 +13,7 @@ _**TIP: It is highly advisable to look at and experiment with the sample project
 
 ***
 ### CustomControl() attribute
-![CustomControl attribute](https://www.twinbasic.com/images/wiki/ccCustomControlAttribute.png)
+{% include lazyload.html image_src="ccCustomControlAttribute.png" image_alt="CustomControl attribute" image_title="CustomControl attribute" %}
 
 This is a required attribute for all CustomControls.  You must provide the relative path to an image file within your project that can be used to identify your control in the form designer toolbox.  We recommend that you put the image file in the Miscellaneous folder in your project.
 
