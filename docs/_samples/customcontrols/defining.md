@@ -7,6 +7,8 @@ order: 2
 # Defining a CustomControl
 A CustomControl is simply an ordinary twinBASIC class, with a few extra attributes and requirements.
 
+{% include toc.html content=page.content %}
+
 _**TIP: It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.**_
 
 {% include lazyload.html image_src="ccSampleProject.png" image_title="CustomControl Sample Project" %}
