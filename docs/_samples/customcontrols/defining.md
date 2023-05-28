@@ -47,9 +47,11 @@ This is an optional attribute, but it is usually advisable to set this attribute
 All CustomControls *must* implement CustomControls.ICustomControl.  This interface currently has 3 methods that you must implement:
 
     Sub Initialize(ByVal Context As CustomControlContext)
+
 This method is called when your control is attached to a form.  You must store the provided Context object in a class field as it offers a `Repaint()` method for informing the form engine that something in your control has changed and needs to be repainted.
 
     Sub Destroy()
+
 This method is called when your control is detached from a form.  This allows an opportunity to break circular references so that your object instance can be destructed properly.   The implementation for this can often be left empty provided you don't create circular references in objects.
 
     Sub Paint(ByVal Canvas As Canvas)
@@ -76,4 +78,5 @@ Note that the form designer works with pixel values which are not DPI-scaled.  S
 CustomControls *must* offer a serialization constructor:
 
     Public Sub New(Serializer As SerializationInfo)
+	
 The passed in Serializer object offers a `Deserialize()` method that you call in order to load the properties that have been set for your control via the form designer.  See [Property Sheet & Object Serialization](propertysheetandserialization.html) for further information.
