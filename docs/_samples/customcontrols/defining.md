@@ -2,6 +2,7 @@
 title: Defining a custom control
 category: customcontrols
 order: 2
+layout: default
 ---
 
 # Defining a CustomControl
