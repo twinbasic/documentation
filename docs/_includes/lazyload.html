@@ -4,9 +4,8 @@
 
 {% if include.image_src %}
   {% if include.image_alt == empty %}
-    {% assign include.image_alt = include.image_title %}
+  {% assign include.image_alt = include.image_title %}
   {% endif %}
-
   <!-- If javascript is not on. -->
   <noscript><img src="{{include.image_src}}" alt="{{include.image_alt}}" title="{{include.image_title}}" /></noscript>
 
