@@ -1,3 +1,7 @@
+{% comment %}
+    See: https://ranvir.xyz/blog/lazy-loading-your-images-in-jekyll-blog-improving-page-speed/
+{% endcomment %}
+
 {% if include.image_src %}
   {% if include.image_alt == empty %}
     {% assign include.image_alt = include.image_title %}
