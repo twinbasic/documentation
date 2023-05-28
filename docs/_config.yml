@@ -1,6 +1,7 @@
 url: twinbasic.github.io
 baseurl: /
 remote_theme: pages-themes/slate@v0.2.0
+markdown: redcarpet
 defaults:
   - scope:
       path: ""
