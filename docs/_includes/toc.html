@@ -2,7 +2,7 @@
 See: https://ranvir.xyz/blog/creating-table-of-content-in-jekyll-blog-without-plugin/
 {% endcomment %}
 
-{% if include.skip_toc %}
+
  {% assign content = include.content %}
   {% assign h2_open_start = content | split: "<h2" %}
   {% assign final_h2_texts = '' | split: '' %}
@@ -14,7 +14,7 @@ See: https://ranvir.xyz/blog/creating-table-of-content-in-jekyll-blog-without-pl
    {% assign h2_text_start = h2_possible_open | split: ">" %}
    {% assign h2_text = h2_text_start[1] | split: "</h2" | first %}
    {% assign final_h2_texts = final_h2_texts | push: h2_text %}
-	
+   
    {% assign h2_id = h2_text_start[0] | split: '"' | last %}
    {% assign final_h2_ids = final_h2_ids | push: h2_id %}
    {% endif %}
@@ -27,7 +27,6 @@ See: https://ranvir.xyz/blog/creating-table-of-content-in-jekyll-blog-without-pl
  <a href="#{{ final_h2_ids[index] }}">{{ forloop.index }}. {{ h2_text }}</a><br />
  {% endfor %}
 </div>
- {% endif %}
 <style type="text/css">
  div#table-of-content {
   margin: 2em 0 !important;
@@ -40,4 +39,4 @@ See: https://ranvir.xyz/blog/creating-table-of-content-in-jekyll-blog-without-pl
   box-shadow: 0 1px 1px rgba(63,166,63,0.25);
 }
 </style>
-{% endif %}
+ {% endif %}
