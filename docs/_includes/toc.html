@@ -20,7 +20,6 @@ See: https://ranvir.xyz/blog/creating-table-of-content-in-jekyll-blog-without-pl
    {% endif %}
   {% endfor %}
   
- {% if final_h2_ids.size > 0 %}
 <div id="table-of-content">
  {% for h2_text in final_h2_texts %}
   {% assign index = forloop.index | minus: 1 %}
@@ -39,4 +38,3 @@ See: https://ranvir.xyz/blog/creating-table-of-content-in-jekyll-blog-without-pl
   box-shadow: 0 1px 1px rgba(63,166,63,0.25);
 }
 </style>
- {% endif %}
