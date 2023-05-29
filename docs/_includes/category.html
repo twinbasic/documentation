@@ -1,0 +1,39 @@
+---
+layout: default
+---
+
+<div class="overlay"></div>
+ <div class="container">
+  <div class="row">
+  <div class="col-lg-8 col-md-10 mx-auto">
+   <div class="page-heading">
+   <h1>{{ page.title }}</h1>
+   {% if page.description %}
+   <span class="subheading">{{ page.description }}</span>
+   {% endif %}
+   </div>
+  </div>
+ </div>
+</div>
+
+<div class="container">
+ <div class="row">
+  <div class="col-lg-8 col-md-10 mx-auto">
+   <h2>{{page.category_name}} Posts</h2>
+   {% if site.categories[page.category_name] %}
+   {% for post in site.categories[page.category_name] %}
+   <div class="card">
+   <a href="{{ site.baseurl }}{{ post.url }}" class="container">
+   <h4><strong>{{post.title}}</strong></h4>
+   <p><strong>{{ post.subtitle }}</strong></p>
+   <p>{{ post.excerpt | strip_html | truncatewords: 60 }}</p>
+   </a>
+   </div>
+   {% endfor %}
+   {% else %}
+   <br />
+   <p>No posts for this category.</p>
+   {% endif %}
+  </div>
+ </div>
+</div>
