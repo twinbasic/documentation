@@ -3,12 +3,9 @@
 {% endcomment %}
 
 {% if include.image_src %}
-  {% unless include.image_alt.size > 0 %}
-  {% assign include.image_alt = include.image_title %}
-  {% endunless %}
   <!-- If javascript is not on. -->
-  <noscript><img src="{{include.image_src}}" alt="{{include.image_alt}}" title="{{include.image_title}}" /></noscript>
+  <noscript><img src="{{include.image_src}}" alt="{{include.image_title}}" title="{{include.image_title}}" /></noscript>
 
   <!-- If javascript is present. -->
-  <img data-src="{{include.image_src}}" alt="{{include.image_alt}}" title="{{include.image_title}}" class="blur-up lazyload" />
+  <img data-src="{{include.image_src}}" alt="{{include.image_title}}" title="{{include.image_title}}" class="blur-up lazyload" />
 {% endif %}
