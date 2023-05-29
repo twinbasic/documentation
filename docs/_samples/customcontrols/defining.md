@@ -9,6 +9,9 @@ order: 2
 A CustomControl is simply an ordinary twinBASIC class, with a few extra attributes and requirements.
 
 {% include toc.html content=page.content %}
+{% raw %}
+{% page.content %}
+{% endraw %}
 
 _**TIP: It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.**_
 
