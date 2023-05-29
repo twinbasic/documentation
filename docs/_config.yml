@@ -2,6 +2,8 @@ url: twinbasic.github.io
 baseurl: /
 remote_theme: pages-themes/slate@v0.2.0
 markdown: redcarpet
+redcarpet:
+    extensions: ["no_intra_emphasis", "tables", "autolink", "strikethrough", "with_toc_data", "disable_indented_code_blocks"]
 defaults:
   - scope:
       path: ""

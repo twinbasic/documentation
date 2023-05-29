@@ -3,7 +3,7 @@
 {% endcomment %}
 
 {% if include.image_src %}
-  {% if include.image_alt == empty %}
+  {% unless include.image_alt.size > 0 %}
   {% assign include.image_alt = include.image_title %}
   {% endif %}
   <!-- If javascript is not on. -->
