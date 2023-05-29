@@ -5,6 +5,7 @@ order: 2
 ---
 
 # Defining a CustomControl
+
 A CustomControl is simply an ordinary twinBASIC class, with a few extra attributes and requirements.
 
 {% include toc.html content=page.content skip_toc=page.skip_toc %}
@@ -14,6 +15,7 @@ _**TIP: It is highly advisable to look at and experiment with the sample project
 {% include lazyload.html image_src="ccSampleProject.png" image_title="CustomControl Sample Project" %}
 
 ***
+
 ## CustomControl() attribute
 
 {% include lazyload.html image_src="ccCustomControlAttribute.png" image_title="CustomControl attribute" %}
@@ -23,23 +25,27 @@ This is a required attribute for all CustomControls.  You must provide the relat
 {% include lazyload.html image_src="ccGridButtonImage.png" image_title="CustomControl GridImage Folder" %}
 
 ***
+
 ##  ClassId() attribute
 
 {% include lazyload.html image_src="ccClassIdAttribute.png" image_title="CustomControl ClassId Attribute" %}
 
 This is a required attribute for all CustomControls.  You must provide a unique CLSID (GUID) in order for the form engine to work with your control. 
 
-### TIP:  if you enter ` [ ClassId () ] ` twinBASIC helps you out - just press the 'insert a randomly generated GUID' text:
+_**TIP:  if you enter ` [ ClassId () ] ` twinBASIC helps you out - just press the 'insert a randomly generated GUID' text:**_
 
 {% include lazyload.html image_src="ccClassIdInsert.png" image_title="CustomControl ClassId auto-generate" %}
 
 ***
+
 ##  COMCreatable() attribute
 
 {% include lazyload.html image_src="ccCOMCreatable.png" image_title="CustomControl COMCreatable attribute" %}
 
 This is an optional attribute, but it is usually advisable to set this attribute to False, as you don't need to instantiate CustomControls from external COM environments.
+
 ***
+
 ## Must implement ICustomControl
 
 {% include lazyload.html image_src="ccICustomControl.png" image_title="CustomControl ICustomControl interface" %}
@@ -56,8 +62,11 @@ This method is called when your control is detached from a form.  This allows an
 
     Sub Paint(ByVal Canvas As Canvas)
 This is the most interesting part for a CustomControl.  As such, it gets its own section, see [Painting / drawing to your control](painting.html)
+
 ***
+
 ## Minimum set of properties
+
 As twinBASIC doesn't yet support inheritance, you must expose a set of common properties (class fields) for all CustomControls:
 
     Public Name As String
@@ -75,6 +84,7 @@ Note that the form designer works with pixel values which are not DPI-scaled.  S
 ***
 
 ## Must have a serialization constructor
+
 CustomControls *must* offer a serialization constructor:
 
     Public Sub New(Serializer As SerializationInfo)
