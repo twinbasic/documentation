@@ -1,6 +1,6 @@
 ---
 title: Importing a package from a TWINPACK file
-category: package
+category: packages
 order: 3
 ---
 

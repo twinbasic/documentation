@@ -1,6 +1,6 @@
 ---
 title: What's a package?
-category: package
+category: packages
 order: 1
 ---
 

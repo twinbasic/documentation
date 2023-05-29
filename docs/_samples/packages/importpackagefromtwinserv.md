@@ -1,6 +1,6 @@
 ---
 title: Import a package from TWINSERV
-category: package
+category: packages
 order: 4
 ---
 

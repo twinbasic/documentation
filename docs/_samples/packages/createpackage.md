@@ -1,6 +1,6 @@
 ---
 title: Creating a TWINPACK package
-category: package
+category: packages
 order: 1
 ---
 

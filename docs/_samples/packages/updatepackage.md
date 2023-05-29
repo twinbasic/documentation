@@ -1,6 +1,6 @@
 ---
 title: Updating a package
-category: package
+category: packages
 order: 5
 ---
 
