@@ -1,0 +1,17 @@
+[
+  {
+	"category": "customcontrols",
+	"title": "Custom Controls",
+	"description": "Using custom controls in twinBASIC"
+  },
+  {
+	"category": "packages",
+	"title": "Packages",
+	"description": "Using packages in twinBASIC and TWINPACK server."
+  },
+  {
+	"category": "webview2",
+	"title": "WebView2",
+	"description": "Using WebView2 as a control in twinBASIC"
+  }
+]

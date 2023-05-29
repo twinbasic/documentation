@@ -5,7 +5,12 @@ Check back soon. The site is under active construction, please don't enter witho
 
 {% assign mydocs = site.samples | group_by: 'category' %}
 {% for cat in mydocs %}
-<h3>{{ cat.name | capitalize }}</h3>
+{% assign catdata = site.data.meta.categories | where:"category", cat.name | first %}
+{% if catdata %}
+<h3>{{ catdata.title  }}</h3>
+{% else %}
+<h3>{{ cat.name }}</h3>
+{% endif %}
 <ul>
   {% assign items = cat.items | sort: 'order' %}
   {% for item in items %}
