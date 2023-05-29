@@ -4,7 +4,7 @@ See: https://ranvir.xyz/blog/creating-table-of-content-in-jekyll-blog-without-pl
 
 {% if include.skip_toc %}
  {% assign content = include.content %}
-  {% assign h2_open_start = content | split: "<h2" %}
+  {% assign h2_open_start = {{ content | markdownify }} | split: "\n## " %}
   {% assign final_h2_texts = '' | split: '' %}
   {% assign final_h2_ids = '' | split: '' %}
 

@@ -11,8 +11,9 @@
 
 {% seo %}
     {% include head-custom.html %}
-	<script src="/lazysizes.min.js" async=""></script>
+	<script src="/assets/lazysizes.min.js" async=""></script>
     <link rel="icon" type="image/png" href="/images/twinBASICIconTransparent.png">
+	<link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
   </head>
 
   <body>
@@ -37,9 +38,10 @@
     </div>
 
     <!-- MAIN CONTENT -->
+    {% include breadcrumbs.html %}
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-{{ content }}
+        {{ content }}
       </section>
     </div>
 
