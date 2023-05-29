@@ -8,6 +8,7 @@ Check back soon. The site is under active construction, please don't enter witho
 {% assign catdata = site.data.meta.categories | where:"category", cat.name | first %}
 {% if catdata %}
 <h3>{{ catdata.title  }}</h3>
+<p>{{ catdata.description }}</p>
 {% else %}
 <h3>{{ cat.name }}</h3>
 {% endif %}
