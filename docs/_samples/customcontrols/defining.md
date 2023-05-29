@@ -8,7 +8,7 @@ order: 2
 
 A CustomControl is simply an ordinary twinBASIC class, with a few extra attributes and requirements.
 
-{:toc}
+{% include toc.html content=page.content skip_toc=page.skip_toc%}
 
 _**TIP: It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.**_
 
