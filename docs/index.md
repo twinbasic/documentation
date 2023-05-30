@@ -19,3 +19,30 @@ Check back soon. The site is under active construction, please don't enter witho
   {% endfor %}
 </ul>
 {% endfor %}
+
+<ul>
+{% assign mydocs = site.samples | group_by: 'category' %}
+{% for cat in mydocs %}
+<li>
+{% assign catdata = site.data.meta.categories | where:"category", cat.name | first %}
+ <details>
+{% if catdata %}
+  <summary>{{ catdata.title }}
+   <p>{{ catdata.description }}</p>
+  </summary>
+{% else %}
+  <summary>{{ cat.name }}</summary>
+{% endif %}
+{% assign items = cat.items | sort: 'order' %}
+  <ul>
+{% for item in items %}
+   <li>
+   <details>
+   <summary><a href="{{ item.url }}">{{ item.title }}</a></summary>
+   </details>
+   </li>
+{% endfor %}
+  </ul>
+</li>
+{% endfor %}
+</ul>
