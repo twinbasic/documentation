@@ -43,6 +43,7 @@ Check back soon. The site is under active construction, please don't enter witho
    </li>
 {% endfor %}
   </ul>
+ </details>
 </li>
 {% endfor %}
 </ul>
