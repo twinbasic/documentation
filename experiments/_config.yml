@@ -1,0 +1,21 @@
+url: twinbasic.github.io
+title: twinBASIC Documentation
+baseurl: /
+remote_theme: pages-themes/slate@v0.2.0
+markdown: redcarpet
+redcarpet:
+    extensions: ["no_intra_emphasis", "tables", "autolink", "strikethrough", "with_toc_data", "disable_indented_code_blocks"]
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+plugins:
+- jekyll-remote-theme
+collections:
+  intro:
+    output: true
+  features:
+    output: true
+  samples:
+    output: true

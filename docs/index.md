@@ -1,49 +1,50 @@
-# Work in progress...
-Check back soon. The site is under active construction, please don't enter without a hard hat.
+---
+# Feel free to add content and custom Front Matter to this file.
+# To modify the layout, see https://jekyllrb.com/docs/themes/#overriding-theme-defaults
 
-<h2>Table of Contents</h2>
+layout: home
+title: Welcome
+nav_order: 1
+permalink: /
+---
 
-{% assign mydocs = site.samples | group_by: 'category' %}
-{% for cat in mydocs %}
-{% assign catdata = site.data.meta.categories | where:"category", cat.name | first %}
-{% if catdata %}
-<h3>{{ catdata.title  }}</h3>
-<p>{{ catdata.description }}</p>
-{% else %}
-<h3>{{ cat.name }}</h3>
-{% endif %}
-<ul>
-  {% assign items = cat.items | sort: 'order' %}
-  {% for item in items %}
-    <li><a href="{{ item.url }}">{{ item.title }}</a></li>
-  {% endfor %}
-</ul>
-{% endfor %}
+# Welcome to twinBASIC
 
-<ul>
-{% assign mydocs = site.samples | group_by: 'category' %}
-{% for cat in mydocs %}
-<li>
-{% assign catdata = site.data.meta.categories | where:"category", cat.name | first %}
- <details>
-{% if catdata %}
-  <summary>{{ catdata.title }}
-   <p>{{ catdata.description }}</p>
-  </summary>
-{% else %}
-  <summary>{{ cat.name }}</summary>
-{% endif %}
-{% assign items = cat.items | sort: 'order' %}
-  <ul>
-{% for item in items %}
-   <li>
-   <details>
-   <summary><a href="{{ item.url }}">{{ item.title }}</a></summary>
-   </details>
-   </li>
-{% endfor %}
-  </ul>
- </details>
-</li>
-{% endfor %}
-</ul>
+## Frequently Asked Questions (FAQ)
+
+1. [twinBASIC FAQ](FAQ)
+
+## ActiveX
+1. [HOW TO: Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/) _[by Mike Wolfe @nolongerset]_
+2. [HOW TO: Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/) _[by Mike Wolfe @nolongerset]_
+
+## CustomControls
+1. [Introduction](CustomControls/Introduction)
+2. [Defining a CustomControl](CustomControls/Defining)
+3. [Property sheet and object serialization](CustomControls/Properties)
+4. [Painting / drawing to your control](CustomControls/Painting)
+5. [Notes about the form designer](CustomControls/Notes)
+
+## Packages
+1. [What is a package?](Packages/What-Is)
+2. [Creating a TWINPACK package](Packages/Creating-TWINPACK)
+3. [Importing a package from TWINSERV](Packages/Importing-TWINSERV)
+4. [Importing a package from a TWINPACK file](Packages/Importing-TWINPACK)
+5. [Updating a package](Packages/Updating)
+
+## WebView2
+1. [Getting Started](WebView2/Getting-Started)
+2. [Customize the UserDataFolder](WebView2/Customize-UserDataFolder)
+3. [Information about re-entrancy](WebView2/Re-entrancy)
+
+## Language and IDE Features
+1. [Overview of features new to twinBASIC](Features/Overview) (compared to VBx)
+2. [Control anchoring and docking ‐ Automatic size and position management](Features/Anchoring-Docking)
+3. [Windowless vs. Windowed Controls in VBx and twinBASIC](Features/Windowless)
+
+## Reference Section
+
+<!--
+1. [The twinBASIC language core](Reference/Language-Core) describes the statements, procedures and functions that make the core of the language and act as building blocks that all other functionality is built upon
+-->
+2. [List of available compiler constants](Reference/Compiler-Constants)
