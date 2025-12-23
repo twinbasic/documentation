@@ -37,11 +37,13 @@ permalink: /Features/Windowless/
 
 ---
 
-<sup>1</sup>: [IAccessibleWindowlessSite Interface on Microsoft Learn](https://learn.microsoft.com/en-us/windows/win32/api/oleacc/nn-oleacc-iaccessiblewindowlesssite)
+<sup>1</sup> [IAccessibleWindowlessSite Interface on Microsoft Learn](https://learn.microsoft.com/en-us/windows/win32/api/oleacc/nn-oleacc-iaccessiblewindowlesssite)
 
-<sup>2</sup>: Originally reported in [twinBASIC GitHub Issue #1310 – Windowless Anchor Resizing Bug](https://github.com/twinbasic/twinbasic/issues/1310). Fixed in BETA 162.  
-<sup>3</sup>: Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN – Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-resources)  
-<sup>4</sup>: Background on Z-order rendering and Windows control layering: [Windows Controls - Z-order](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#z-order)
+<sup>2</sup> Originally reported in [twinBASIC GitHub Issue #1310 – Windowless Anchor Resizing Bug](https://github.com/twinbasic/twinbasic/issues/1310). Fixed in BETA 162.
+
+<sup>3</sup> Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN – Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-resources)
+
+<sup>4</sup> Background on Z-order rendering and Windows control layering: [Windows Controls - Z-order](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#z-order)
 
 ---
 
@@ -121,7 +123,7 @@ permalink: /Features/Windowless/
 
 #### Code Snippet for twinBASIC
 
-```vba
+``` vb
 ' Example: Printing a Mixed-Control Form in twinBASIC
 Dim bmp As StdPicture
 Set bmp = CreateCompatibleBitmap(Me.Width, Me.Height)
@@ -137,7 +139,7 @@ Next
 Me.DrawToDC bmp.Canvas
 
 ' Send to printer 
-Printer.Canvas.DrawImage bmp, 0, 0`
+Printer.Canvas.DrawImage bmp, 0, 0
 Printer.EndDoc
 ```
 ---

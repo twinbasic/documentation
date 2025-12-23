@@ -9,13 +9,13 @@ permalink: /Packages/Creating-TWINPACK/
 
 To create a new TWINPACK package, navigate to the twinBASIC New Project dialog, and under the 'Samples' tab, choose the option labelled 'Package':
 
-![image](https://github.com/user-attachments/assets/6ad7a172-0e1b-4276-ac89-042681552507)
+![image](Images/6ad7a172-0e1b-4276-ac89-042681552507.png)
 <br>
 <br>
 
 Once you've created the project, you should find the extra 'PACKAGE PUBLISHING' panel as a popup:
 
-![image](https://github.com/user-attachments/assets/9eeffbcf-d73e-4a92-bce5-811ed60aba98)
+![image](Images/9eeffbcf-d73e-4a92-bce5-811ed60aba98.png)
 <br>
 <br>
 
@@ -36,14 +36,14 @@ You can now create components (Class, Module, Interface) in your project as norm
 
 Use this option if you want to just create a local TWINPACK file that you can use in other projects.  For this, the build process is the same as any ordinary twinBASIC build... just hit the Build button in the TWINBASIC toolbar:
 
-![image](https://github.com/user-attachments/assets/4d90f313-35d5-426d-8fc3-852ca03382fa)
+![image](Images/4d90f313-35d5-426d-8fc3-852ca03382fa.png)
 <br>
 <br>
-![image](https://github.com/user-attachments/assets/8d74d820-9907-4e76-ac42-71d0233187f1)
+![image](Images/8d74d820-9907-4e76-ac42-71d0233187f1.png)
 
 You'll see the build output notification in the `DEBUG CONSOLE`, as seen above.
 
-Job done.  See [Importing a package from a TWINPACK file](Packages---Importing-a-package-from-a-TWINPACK-file) for referencing and using the TWINPACK file in other twinBASIC projects.
+Job done.  See [Importing a package from a TWINPACK file](../Importing-TWINPACK) for referencing and using the TWINPACK file in other twinBASIC projects.
 
 <br>
 
@@ -51,7 +51,7 @@ Job done.  See [Importing a package from a TWINPACK file](Packages---Importing-a
 
 If you're publishing your package onto TWINSERV, you don't need to create the TWINPACK file manually.  Just use the 'PUBLISH THIS PACKAGE' button:
 
-<img src="https://twinbasic.com/images/wiki/packPublishButton.png" alt="Create Package" width="45%">
+![Create Package](Images/packPublishButton.png){:style="width:45%; height:auto;"}
 <br>
 <br>
 
@@ -59,19 +59,20 @@ If you're publishing your package onto TWINSERV, you don't need to create the TW
 
 You will then be prompted to confirm the package details:
 
-<img src="https://twinbasic.com/images/wiki/packPublishPackage1.png" alt="Create Package" width="65%">
+![Create Package](Images/packPublishPackage1.png){:style="width:65%; height:auto;"}
 <br>
 <br>
 
 After pressing `YES`, the package will be uploaded to TWINSERV.   Check the `DEBUG CONSOLE` for completion notices:
 
-<img src="https://twinbasic.com/images/wiki/packPublishComplete1.png" alt="Create Package" width="85%">
+![Create Package](Images/packPublishComplete1.png){:style="width:85%; height:auto;"}
+
 <br>
 <br>
 
  If the package got uploaded successfully, it should be available via TWINSERV within a few moments.   If you've created a `PUBLIC` package, others will be able to see and download it at this point.
 
-See [Importing a package from TWINSERV](Packages---Importing-a-package-from-TWINSERV) for referencing and using the uploaded packages.
+See [Importing a package from TWINSERV](../Importing-TWINSERV) for referencing and using the uploaded packages.
 
 <br>
 <br>
@@ -80,7 +81,7 @@ See [Importing a package from TWINSERV](Packages---Importing-a-package-from-TWIN
 
 When you create a new package project, you'll see two additional files created for you in the project filesystem:
 
-<img src="https://twinbasic.com/images/wiki/packLicenceFiles.png" alt="Create Package" width="55%">
+![Create Package](Images/packLicenceFiles.png){:style="width:55%; height:auto;"}
 <br>
 <br>
 

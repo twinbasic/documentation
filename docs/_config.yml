@@ -7,12 +7,36 @@ markdown: kramdown
 kramdown:
   parse_block_html: true
   parse_span_html: true
+  input: GFM
+  #syntax_highlighter: rouge
 
 #remote_theme: pages-themes/slate@v0.2.0
 remote_theme: just-the-docs/just-the-docs@v0.10.1
 
+highlighter: rouge
+
 plugins:
 - jekyll-remote-theme    
+
+defaults:
+  - scope:
+      path: "*/Images"
+    values:
+      image: true
+
+callouts:
+  tip:
+    title: 💡 Tip
+    color: green
+  important:
+    title: Important
+    color: purple
+  note:
+    title: Note
+    color: blue
+  warning:
+    title: warning
+    color: red
 
 #defaults:
 #  - scope:

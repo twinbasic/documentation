@@ -27,7 +27,7 @@ Many new attributes enable the powerful additional language features twinBASIC p
 twinBASIC can compile native 64bit executables in addition to 32bit. The syntax is compatible with VBA7 for this: the `LongPtr` data type and the standard to mark APIs `PtrSafe`, e.g.:\
 `Public Declare PtrSafe Sub foo Lib "bar" (ByVal hWnd As LongPtr)`
 
-> [!IMPORTANT]
+{: .important }
 > There is a lot more required to get most 32bit apps to work properly as 64bit. Only some `Long` variables are to be changed, and this is determined by their C/C++ data types, of which there are many. Examples that need to be `LongPtr` include handles like `HWND, HBITMAP, HICON,` and `HANDLE`; pointers like `void*, PVOID, ULONG_PTR, DWORD_PTR,` and `LPWSTR/PWSTR/LPCWSTR/WCHAR*` when passed as `Long`; and the `SIZE_T` type found in CopyMemory and memory allocation functions. While the `PtrSafe` keyword is not mandatory, these changes still must be made.\
 > Additionally, any code working with memory pointers must account for the fact all the types mentioned (and the many more not), as well as v-table entries, are now either 4 or 8 bytes, when most programmers have traditionally hard coded 4 bytes. There are also UDT alignment issues more frequently. This is all very complex and you should seek resources and advice when moving to 64bit (though remember, 32bit is still supported so this isn't a requirement). For common Windows APIs and COM interfaces, a community-developed package is available that provides 64bit compatible definitions: [Windows Development Library for twinBASIC (WinDevLib)](https://github.com/fafalone/WinDevLib).
 
@@ -44,7 +44,7 @@ twinBASIC can compile native 64bit executables in addition to 32bit. The syntax 
 ### Defining interfaces
 twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the `Class` or `Module` statement, and will always have a project-wide scope. the The generic form for this is as follows:
 
-```vba
+```
 [InterfaceId ("00000000-0000-0000-0000-000000000000")]
 *<attributes>*
 Interface <name> Extends <base-interface>
@@ -79,7 +79,8 @@ Available attributes for methods currently include:
 * `[DispId(number)]` - Defines a dispatch ID associated with the method.
 
 #### Example 
-```vba
+
+```
 [InterfaceId("E7064791-0E4A-425B-8C8F-08802AAFEE61")]
 [Description("Defines the IFoo interface")]
 [OleAutomation(False)]
@@ -96,7 +97,7 @@ End Interface
 ### Defining coclasses
 In addition to interfaces, twinBASIC also allows defining coclasses -- creatable classes that implement one or more defined interfaces. Like interfaces, these too must be in .twin files and not legacy .bas/.cls files, and must appear prior to the `Class` or `Module` statement. The generic form is:
 
-```vba
+```
 [CoClassId("00000000-0000-0000-0000-000000000000")]
 *<attributes>*
 CoClass <name>
@@ -105,6 +106,7 @@ CoClass <name>
     *<additional Interface items>*
 End CoClass
 ```
+
 Each coclass must specify at least one interface but may have several more. It can optionally mark an interface as default or a source. It is typical and highly recommended that an interface be marked with `[Default]` attribute and in cases where it has events to also specify `[Default, Source]` to indicate the default interface used for events. Each represents a contract that the class will provide an implementation of the given interface. Note that at this time, twinBASIC does not yet support defining `dispinterface` interfaces (aka, dispatch-only interface) the usual form of source interfaces for events.
 
 The attributes available for coclasses are as follows:
@@ -115,7 +117,8 @@ The attributes available for coclasses are as follows:
 * `[CoClassCustomConstructor("fully qualified path to factory method")]` - Allows custom logic for creating and returning a new instance of the coclass' implementation.
 
 #### Example
-```vba
+
+```
 [CoClassId("52112FA1-FBE4-11CA-B5DD-0020AFE7292D")]
 CoClass Foo
    [Default] Interface IFoo
@@ -125,7 +128,8 @@ End CoClass
 Where `IFoo` and `IBar` are interface defined with the `Interface` syntax described earlier.
 
 For custom constructor, you should provide a method on a module to create the instance. Here's an example of how this can be achieved.
-```vba
+
+```
 [InterfaceId("016BC30A-A8E0-4AAF-93AE-13BD838A149E"))]
 Public Interface IFoo
     Sub Foo()
@@ -186,25 +190,25 @@ End Module
 
 * If you have an interface multiple others extend from, you can write multiple implementations, or specify one implementation for all. For example: 
 
-    ```vba
-    IOleWindow_GetWindow() As LongPtr _
-      Implements IOleWindow.GetWindow, IShellBrowser.GetWindow, IShellView2.GetWindow
-    ```
+  ``` vb
+  IOleWindow_GetWindow() As LongPtr _
+    Implements IOleWindow.GetWindow, IShellBrowser.GetWindow, IShellView2.GetWindow
+  ```
 
 * `Implements` allowed on interfaces with 'As Any' parameters: In VBx, you'd get an error if you attempted to use any interface containing a member with an `As Any` argument. With twinBASIC, this is allowed if you substitute `As LongPtr` for `As Any`, for example:
 
-    ```vba
-    Interface IFoo Extends IUnknown
-        Sub Bar(ppv As Any)
-    End Interface
+  ``` vb
+  Interface IFoo Extends IUnknown
+      Sub Bar(ppv As Any)
+  End Interface
     
-    Class MyClass
-    Implements IFoo
+  Class MyClass
+  Implements IFoo
     
-    Private Sub IFoo_Bar(ppv As LongPtr) Implements IFoo.Bar
+  Private Sub IFoo_Bar(ppv As LongPtr) Implements IFoo.Bar
     
-    End Sub
-    ```
+  End Sub
+  ```
 
 ### `Implements Via` for basic inheritance and `Inherits` for complete inheritance and full Object-Oriented Programming (OOP)
 
@@ -212,7 +216,7 @@ End Module
 
 tB allows simple inheritance among classes. For example, if you have class cVehicle which implements IVehicle containing method Honk, you could create child classes like cCar or cTruck, which inherit the methods of the original, so you could call cCar.Honk without writing a separate implementation. Here's what this looks like as code:
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/b0724fe2-636d-47db-a8fc-531a585ddaf9)
+![image](Images/b0724fe2-636d-47db-a8fc-531a585ddaf9.png)
 
 You can see that the Honk method is only implemented by the parent class, then called from the child class when you click the CodeLens button to run the sub in place from the IDE.
 
@@ -222,7 +226,7 @@ This is a more robust option for full inheritance and OOP. It supports `Protecte
 
 Starting with a base class,
 
-```vba
+``` vb
 Private Class Animal
     Protected _name As String
     Protected _dob As Date  ' date of birth
@@ -266,7 +270,7 @@ End Class
 
 others can inherit:
 
-```vba
+``` vb
 ' ===== Derived: Dog =====
 Private Class Dog
     Inherits Animal
@@ -326,7 +330,7 @@ There is native support for calling a function by pointer, by way of `Delegate` 
 
 The syntax looks like this:
 
-```vba
+``` vb
     Private Delegate Function Delegate1 (ByVal A As Long, ByVal B As Long) As Long
     
     Private Sub Command1_Click()
@@ -341,7 +345,7 @@ The syntax looks like this:
 
 The delegate type can also be used in interface/API declarations and as members of a User-defined type, for example, the `ChooseColor` API:
 
-```vba
+``` vb
 Public Delegate Function CCHookProc (ByVal hwnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
 Public Type CHOOSECOLOR
     lStructSize As Long
@@ -358,11 +362,11 @@ End Type
 
 If you already have code assigning a `Long`/`LongPtr` to the `lpfnHook` member, it will continue to work normally, but now you can also have the type safety benefits of setting it to a method matching the Delegate:
 
-```vba
+``` vb
 Dim tCC As CHOOSECOLOR
 tCC.lpfnHook = AddressOf ChooseColorHookProc
 
-...
+'...
 
 Public Function ChooseColorHookProc(ByVal hwnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
 
@@ -374,7 +378,7 @@ End Function
 
 tB allows you to use properly compiled .lib and .obj files as statically linked libraries, using declares similar to DLLs, only referring a lib/obj file in your Miscellaneous files folder of your project. Once the file is in the project, it's set up with this syntax outside of declares, example from the sqlite sample:
 
-```vba
+``` vb
 #If Win64 Then
     Import Library "/Miscellaneous/sqlite3_64.obj" As SQLITE3 Link "stdlib", "kernel32"
 #Else
@@ -383,12 +387,12 @@ tB allows you to use properly compiled .lib and .obj files as statically linked 
 
 Generically:
 
-    Import Libary "Relative resource path" As NAMESPACE Link "dependency1", "dependency2", ...
+    Import Libary "Relative resource path" As NAMESPACE Link "dependency1", "dependency2", '...
 ```
 
 After that, you can use NAMESPACE in place of a DLL name, inside class/module declares:
 
-```vba
+``` vb
 ' Compiled sqlite-amalgamation-3440200 (v3.44.2) 
 '   using cmdline (MSVC):  cl /c /Gw /Gy /GS- /DSQLITE_OMIT_SEH sqlite3.c
 #If Win64 Then
@@ -401,10 +405,10 @@ Module MainModule
     
     Declare PtrSafe Function sqlite3_open CDecl Lib SQLITE3 (ByVal filename As String, ByRef ppDb As LongPtr) As Long
     Declare PtrSafe Function sqlite3_exec CDecl Lib SQLITE3 (ByVal pDb As LongPtr, ByVal sql As String, ByVal exec_callback As LongPtr, ByVal udp As LongPtr, ByRef errmsg As LongPtr) As Long
-...
+'...
 ```
 
->[!NOTE]
+{: .note }
 >StdCall names will be mangled with argument sizes, e.g. `int myfunc(int x, short y);` would be `myfunc@6`. It therefore may be better to use `CDecl`.
 
 A documentation page will be dedicated to more fully explaining this in the future; for now if you need help with it, visit the tB Discord or Discussions section of the GitHub repository and ask.
@@ -415,7 +419,7 @@ Raw bytecode can be inserted into a binary with tB's `Emit()` function. To suppo
 
 For example, the following is an implementation of the InterlockedIncrement compiler intrinsic that replaces the API in Microsoft C/C++ (adds one to `Addend` and returns the result, as an atomic operation which isn't guaranteed with regular code):
 
-```vba
+``` vb
 Public Function InlineInterlockedIncrement CDecl Naked(Addend As Long) As Long
 #If Win64 Then
     Emit(&Hb8, &H01, &H00, &H00, &H00) ' mov    eax,0x1
@@ -436,7 +440,7 @@ End Function
 ## Type Inference
 
 Variables can now be declared `As Any` and their type will be inferred, similar to C++'s `auto`.\
-`Dim x As Any = 5&' would result in x being a `Long`. 
+`Dim x As Any = 5&` would result in x being a `Long`. 
 
 This is only for the `Dim` statement; arguments cannot be `As Any` except in API declarations.
 
@@ -445,17 +449,17 @@ This is only for the `Dim` statement; arguments cannot be `As Any` except in API
 
 * `vbNullPtr` - Allows passing null pointers to UDT members of APIs/interfaces. The equivalent behavior in VBx is to declare them `As Any` and then pass `ByVal 0` at call sites.
 
-    **Example**
-    ```vba
-    Type Foo
-       bar As Long
-    End Type
-    Public Declare PtrSafe Function MyFunc Lib "MyDLL" (pFoo As Foo) As Long
-    
-    Private Sub CallMyFunc()
-        Dim ret As Long = MyFunc(vbNullPtr)
-    End Sub
-    ```
+  **Example**
+  ``` vb
+  Type Foo
+     bar As Long
+  End Type
+  Public Declare PtrSafe Function MyFunc Lib "MyDLL" (pFoo As Foo) As Long
+  
+  Private Sub CallMyFunc()
+      Dim ret As Long = MyFunc(vbNullPtr)
+  End Sub
+  ```
 
 Additionally, while not strictly new syntax, twinBASIC also adds support for `ByVal Nothing`, to override a `ByRef <interface>` argument and pass a null pointer there.
 
@@ -472,13 +476,11 @@ Additionally, while not strictly new syntax, twinBASIC also adds support for `By
 
 ## New literals notation
 
-### Binary literals<br>
+### Binary literals
 In addition to `&H` for hexadecimal literals and `&O` for octal notation, twinBASIC also provides `&B` for binary notation. For example, `Dim b As Long = &B010110` is valid syntax, and b = 22.
 
 ### Digit grouping
-The &H, &O, and &B literals can all be grouped using an underscore, for example, grouping a `Long` by it's constituent binary byte groups: `&B10110101_10100011_10000011_01101110`, or grouping a `LongLong` as two `Long` groups: `&H01234567_89ABCDEF`.
-
-
+The `&H`, `&O`, and `&B` literals can all be grouped using an underscore, for example, grouping a `Long` by it's constituent binary byte groups: `&B10110101_10100011_10000011_01101110`, or grouping a `LongLong` as two `Long` groups: `&H01234567_89ABCDEF`.
 
 ## Thread safety/multithreading support
 While there's no native language syntax yet (planned), you can call `CreateThread` directly with no hacks. Previously, VBx and other BASIC languages typically required elaborate workarounds to be able to use `CreateThread` for anything but some specialized, extremely simple things. In twinBASIC, you can call it and all other threading APIs without any special steps, other than of course the careful management of doing threading at a low level like this. 
@@ -487,40 +489,40 @@ While there's no native language syntax yet (planned), you can call `CreateThrea
 
 In a new Standard EXE project, add a CommandButton and TextBox to your form:
 
-```vba
-    Private Declare PtrSafe Function GetCurrentThreadId Lib "kernel32" () As Long
+``` vb
+Private Declare PtrSafe Function GetCurrentThreadId Lib "kernel32" () As Long
 
-    Private Declare PtrSafe Function CreateThread Lib "kernel32" ( _
-                            ByRef lpThreadAttributes As Any, _
-                            ByVal dwStackSize As Long, _
-                            ByVal lpStartAddress As LongPtr, _
-                            ByRef lpParameter As Any, _
-                            ByVal dwCreationFlags As Long, _
-                            ByRef lpThreadId As Long) As LongPtr
+Private Declare PtrSafe Function CreateThread Lib "kernel32" ( _
+                        ByRef lpThreadAttributes As Any, _
+                        ByVal dwStackSize As Long, _
+                        ByVal lpStartAddress As LongPtr, _
+                        ByRef lpParameter As Any, _
+                        ByVal dwCreationFlags As Long, _
+                        ByRef lpThreadId As Long) As LongPtr
 
-    Private Declare PtrSafe Function WaitForSingleObject Lib "kernel32" ( _
-                            ByVal hHandle As LongPtr, _
-                            ByVal dwMilliseconds As Long) As Long
+Private Declare PtrSafe Function WaitForSingleObject Lib "kernel32" ( _
+                        ByVal hHandle As LongPtr, _
+                        ByVal dwMilliseconds As Long) As Long
 
  
     
-    Private Const INFINITE = -1&
+Private Const INFINITE = -1&
     
-    Private Sub Command1_Click() Handles Command1.Click
-        Dim lTID As Long
-        Dim lCurTID As Long
-        Dim hThreadNew As LongPtr
-        lCurTID = GetCurrentThreadId()
-        hThreadNew = CreateThread(ByVal 0, 0, AddressOf TestThread, ByVal 0, 0, lTID)
-        Text1.Text = "Thread " & lCurTID & " is waiting on thread " & lTID
-        Dim hr As Long
-        hr = WaitForSingleObject(hThreadNew, 30000&) 'Wait 30s as a default. You can use INFINITE instead if you never want to time out.
-        Text1.Text = "Wait end code " & CStr(hr)
-    End Sub
+Private Sub Command1_Click() Handles Command1.Click
+    Dim lTID As Long
+    Dim lCurTID As Long
+    Dim hThreadNew As LongPtr
+    lCurTID = GetCurrentThreadId()
+    hThreadNew = CreateThread(ByVal 0, 0, AddressOf TestThread, ByVal 0, 0, lTID)
+    Text1.Text = "Thread " & lCurTID & " is waiting on thread " & lTID
+    Dim hr As Long
+    hr = WaitForSingleObject(hThreadNew, 30000&) 'Wait 30s as a default. You can use INFINITE instead if you never want to time out.
+    Text1.Text = "Wait end code " & CStr(hr)
+End Sub
 
-    Public Sub TestThread()
-        MsgBox "Hello thread"
-    End Sub
+Public Sub TestThread()
+    MsgBox "Hello thread"
+End Sub
 ```
 Under a single-threaded code, if you called `TestThread` before updating `Text1.Text`, the text wouldn't update until you clicked ok on the message box. But here, the message box in launched in a separate thread, so execution continues and updates the text, after which we manually choose to wait for the message box thread to exit.
 
@@ -528,7 +530,7 @@ Under a single-threaded code, if you called `TestThread` before updating `Text1.
 ## Improvements to `AddressOf` 
 `AddressOf` can be now be used on class/form/usercontrol members, including from outside the class by specifying the instance. Also, no need for `FARPROC`-type functions, you can use it like `Ptr = AddressOf Func`. So if you have class `CFoo` with member function `bar`, the following is valid:
 
-```vba
+``` vb
 Dim foo1 As New CFoo
 Dim lpfn As LongPtr = AddressOf foo1.bar
 ```
@@ -540,7 +542,7 @@ The `CType(Of <type>)` operator specifies an explicit intent to cast one type to
 
 Consider the following UDTs:
 
-```vba
+``` vb
 Private Type foo
     a As Long
     b As Long
@@ -556,7 +558,7 @@ End Type
 
 The following codes examples work to manipulate the pointers:
 
-```vba
+``` vb
 Sub call1()
     Dim f As foo
     test1 VarPtr(f)
@@ -572,7 +574,7 @@ End Sub
 
 This will print `1  2`.
 
-```vba
+``` vb
 Sub call2()
     Dim f As foo, b As bar
     b.pfoo = VarPtr(f)
@@ -588,7 +590,7 @@ End Sub
 ```
 This will print `3  4`
 
-```vba
+``` vb
 Sub call3()
     Dim f As foo, b As bar, z As fizz
     f.pfizz = VarPtr(z)
@@ -607,14 +609,14 @@ Free standing use and nesting is also allowed; the above will print `4`. While t
 
 In both APIs and local methods, any argument taking a user-defined type can instead be passed a `ByVal LongPtr`, with the new special constant `vbNullPtr` used for a null pointer:
 
-```vba
+``` vb
 Public Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
 
-hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal vbNullPtr, ...)
+hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal vbNullPtr, '...)
 '---or---
 Dim pSec As SECURITY_ATTRIBUTES
 Dim lPtr As LongPtr = VarPtr(pSec)
-hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal lPtr, ...)
+hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal lPtr, '...)
 ```
 
 
@@ -628,7 +630,7 @@ twinBASIC supports overloading in two ways:
 ### Overloading by type of argument
 The following Subs are valid together in a module/class/etc:
 
-```vba
+``` vb
 Sub foo(bar As Integer)
 '...
 End Sub
@@ -646,7 +648,7 @@ The compiler will automatically pick which one is called by the data type.
 ### Overloading by number of arguments
 In addition to the above, you could also add the following:
 
-```vba
+``` vb
 Sub Foo(bar1 As Integer)
 '...
 End Sub
@@ -661,21 +663,20 @@ You can now set initial values for variables inline, without needing a line-cont
 
 **Examples**
 
-`Dim i As Long = 1`
-
-`Dim foo As Boolean = bar()`
-
-`Dim arr As Variant = Array(1, 2, 3)`
-
-`Dim strArr(2) As String = Array("a", "b", "c")`
-
-`Dim cMC As cMyClass = New cMyClass(customConstructorArgs)`
+``` vb
+Dim i As Long = 1
+Dim foo As Boolean = bar()
+Dim arr As Variant = Array(1, 2, 3)
+Dim strArr(2) As String = Array("a", "b", "c")
+Dim cMC As cMyClass = New cMyClass(customConstructorArgs)
+```
 
 ## Inline variable declaration for `For`
 You now no longer need a separate `Dim` statement for counter variables:
-```vba
+
+``` vb
 For i As Long = 0 To 10
-    ...
+    '...
 Next
 ```
 is now valid syntax. You can use any type, not just `Long`.
@@ -683,16 +684,16 @@ is now valid syntax. You can use any type, not just `Long`.
 ## Generics
 Generics have basic support in methods and classes.
 
-```vba
+``` vb
 Public Function TCast(Of T)(ByRef Expression As T) As T
-Return Expression
+    Return Expression
 End Function
 ```
 Which could be used e.g. to return a `Date` typed variable with `TCast(Of Date)("2021-01-01")`
 
 A Class generic allows the type in methods throughout the class. The following example shows this to make a generic List class:
 
-```vba
+```
 [COMCreatable(False)]
 Class List(Of T)    
     Private src() As T
@@ -712,7 +713,7 @@ End Class
 
 This could then be used as follows:
 
-```vba
+``` vb
 Private Sub TestListGenericClass()
     Dim names As List(Of String) = New List(Of String)(Array("John", "Smith", "Kane", "Tessa", "Yoland", "Royce", "Samuel"))
     Dim s As String = names(0)
@@ -723,28 +724,31 @@ End Sub
 ## Enhancements to API/method declarations
 ### `DeclareWide` 
 The `DeclareWide` keyword, in place of `Declare`, disables ANSI<->Unicode conversion for API calls. This applies both directly to arguments, and to String arguments inside a UDT. For example, the following are equivalent in functionality:
-```
+
+``` vb
 Public Declare PtrSafe Sub FooW Lib "some.dll" (ByVal bar As LongPtr)
 Public DeclareWide PtrSafe Sub Foo Lib "some.dll" Alias "FooW" (ByVal bar As String)
 ```
 Both represent a fully Unicode operation, but the allows direct use of the `String` datatype without requiring the use of `StrPtr` to prevent conversion. 
 
-> [!WARNING]
+{: .warning }
 > This does **not** change the underlying data types-- the `String` type is a `BSTR`, not an `LPWSTR`, so in the event an API returns a pre-allocated `LPWSTR`, rather than filling a buffer you have created, it will not provide a valid `String` type. This would be the case where an API parameter is given as `[out] LPWSTR *arg`.
 
 ### `CDecl` support
 The cdecl calling convention is supported both for API declares and methods in your code. This includes DLL exports in standard DLLs. Examples:
 
-`Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong`
+``` vb
+Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong`
+```
 
-```vba
+```
 [ DllExport ]
 Public Function MyExportedFunction CDecl(foo As Long, Bar As Long) As Long
 ```
 
 Support for callbacks using `CDecl` is also available. You would pass a delegate that includes `CDecl` as the definition in the prototype. Here is an example code that performs a quicksort using the [`qsort` function](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-wsprintfw):
 
-```vba
+``` vb
 Private Delegate Function LongComparator CDecl ( _
     ByRef a As Long, _
     ByRef b As Long _
@@ -786,7 +790,8 @@ End Function
 With `cdecl` calling convention fully supported, twinBASIC can also handle variadic functions. In C/C++, those functions contain an ellipsis `...` as part of their arguments. This is represented in tB As `{ByRef | ByVal} ParamArray ... As Any()`. Note that `ByRef` or `ByVal` must be explicitly marked; implicit `ByRef` is not allowed.
 
 Using the [given C/C++ prototype](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-wsprintfw):
-```cpp
+
+``` cpp
 int WINAPIV wsprintfW(
   [out] LPWSTR  unnamedParam1,
   [in]  LPCWSTR unnamedParam2,
@@ -795,7 +800,8 @@ int WINAPIV wsprintfW(
 ```
 
 The twinBASIC declaration and function using it can be written as shown:
-```vba
+
+``` vb
 Private DeclareWide PtrSafe Function wsprintfW CDecl _
 Lib "user32" ( _
   ByVal buf As String, _
@@ -815,13 +821,11 @@ For functions which contain the `va_list` type as part of their arguments the Pa
 ### `[PreserveSig]`
 The `[PreserveSig]` attribute was described earlier for COM methods, but it can also be used on API declares. For APIs, the default is `True`. So therefore, you can specify `False` in order to rewrite the last parameter as a return. Example:
 
-```vba
+``` vb
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" (ppshf As IShellFolder) As Long
 ```
-
 can be rewritten as
-
-```vba
+```
 [PreserveSig(False)] 
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder`
 ```
@@ -838,7 +842,7 @@ The following new statements are available for controlling the procession of loo
 ## `Return` syntax for functions.
 You can now combine assigning a return value and exiting a function into a single statement like many other languages allow. This is accomplished with the `Return` keyword:
 
-```vba
+``` vb
 Private Function Foo() As Long
 Dim i As Long = 1
 If i Then
@@ -847,7 +851,8 @@ End If
 End Function
 ```
 this is the equivalent of
-```vba
+
+``` vb
 Private Function Foo() As Long
 Dim i As Long = 1
 If i Then
@@ -867,9 +872,9 @@ For events events on Forms, UserControls, and event-raising objects, you can def
 ### `Implements` for interfaces
 Similar to the above, for forms/UCs/classes that use `Implements`, you can use `Sub Bar() Implements IFoo.Bar`. Note that you can specify more than one implemented method; for more information, see the Enhancements to Implements subsection of the Interfaces and Coclasses section detailing the new in-language syntax for defining these.
 
->[!NOTE]
->These are opt-in and optional\
->For compatibility, twinBASIC will always continue to support the traditional syntax for event handling and Implements, and you're not required to use this new syntax (or *any* of the additions described in this article). Whether or not automatically created prototypes use this syntax is controlled via IDE Options: "IDE: Use new handles/implements syntax".
+{: .note }
+> These are opt-in and optional\
+> For compatibility, twinBASIC will always continue to support the traditional syntax for event handling and Implements, and you're not required to use this new syntax (or *any* of the additions described in this article). Whether or not automatically created prototypes use this syntax is controlled via IDE Options: "IDE: Use new handles/implements syntax".
 
 ## Enhancements to user-defined types (UDTs)
 
@@ -877,41 +882,41 @@ Similar to the above, for forms/UCs/classes that use `Implements`, you can use `
 
 You can now place methods inside UDTs, as well as API declarations. With APIs, if the first parameter is named `Me` and is the same type as the UDT, it's treated as an implicit member call,
 
-```vba
+``` vb
 Type HWND
    Value As LongPtr ' the raw HWND
    Public DeclareWide PtrSafe Function BringWindowToTop Lib "user32" (ByVal Me As HWND) As Long
 End Type
-...
+'...
 myHwnd.BringWindowToTop()
 ```
 
 There's also associated events, including a constructor and destructor that make it possible to create lightweight objects, like a C++ class;
-```vba
-    Type myType
-        a As Long
-    
-        Private Sub Type_Initialize()
-            ' NOTE: currently you can only access the UDT members using the "Me." prefix
-        End Sub
-        
-        Private Sub Type_Assignment(ByVal RHS As Variant)    ' TIP: You can change the RHS type, and you can define multiple assignment functions
-            ' NOTE: currently you can only access the UDT members using the "Me." prefix
-        End Sub
-        
-        Private Function Type_Conversion() As Variant ' TIP: you can change the return type here, and you can define multiple conversion functions
-            ' NOTE: currently you can only access the UDT members using the "Me." prefix
-        End Function
-        
-        Private Function Type_DebugView() As String
-            ' NOTE: currently you can only access the UDT members using the "Me." prefix
-        End Function
-        
-        Private Sub Type_Terminate()
-            ' NOTE: currently you can only access the UDT members using the "Me." prefix
-        End Sub
-    
-    End Type
+``` vb
+Type myType
+    a As Long
+
+    Private Sub Type_Initialize()
+        ' NOTE: currently you can only access the UDT members using the "Me." prefix
+    End Sub
+
+    Private Sub Type_Assignment(ByVal RHS As Variant)    ' TIP: You can change the RHS type, and you can define multiple assignment functions
+        ' NOTE: currently you can only access the UDT members using the "Me." prefix
+    End Sub
+
+    Private Function Type_Conversion() As Variant ' TIP: you can change the return type here, and you can define multiple conversion functions
+        ' NOTE: currently you can only access the UDT members using the "Me." prefix
+    End Function
+
+    Private Function Type_DebugView() As String
+        ' NOTE: currently you can only access the UDT members using the "Me." prefix
+    End Function
+
+    Private Sub Type_Terminate()
+        ' NOTE: currently you can only access the UDT members using the "Me." prefix
+    End Sub
+
+End Type
 ```
 
 UDTs of these types are still stack allocated structs that can be used with standard Win32 APIs.
@@ -919,7 +924,7 @@ UDTs of these types are still stack allocated structs that can be used with stan
 
 ### Custom UDT packing
 If you've done extensive work with the Windows API, every so often you'll come across user-defined types that have an extraneous member added called pad, padding, reserved, etc, that doesn't appear in the documentation for that type. This is the result of the UDT applying packing rules different from the default. By default, UDTs have hidden spacing bytes that make their largest sized member appear at a multiple of it's size, and making the entire UDT be a multiple of that size. Consider the following UDT:
-```vba
+``` vb
 Private Type MyUDT
     x As Integer
     y As Long
@@ -930,7 +935,7 @@ Private t As MyUDT
 If you ask for `Len(t)`, you get 8-- the sum of 2x2-byte Integers and 1 4-byte Long. But if you ask for `LenB(t)`, you get 12. This is because the largest size type is 4, so that's the packing alignment number. Each Long must appear at a multiple of 4 bytes, so 2 byte of hidden padding is inserted between x and y. You can see this for yourself by checking `VarPtr(t.y) - VarPtr(t)`. This gives you the starting offset of `y`-- which is 4, not 2 like you'd get if it immediately followed `x`. Finally, with the hidden 2 bytes, we're now up to 10 bytes. But the total UDT size must be a multiple of 4, so 2 more hidden bytes are added on the end.\
 Some API UDTs will look like `MyUDT` is correct, but you'll see it defined in VBx as 2 Longs-- which gets the required 8 bytes, with some special handling for the first member. If you refer back to the original C/C++ header, you'll find, for this situation, something like `#include <pshpack1.h>` or `#pragma pack(push,1)` somewhere before the UDT. This manually alters the packing rule to insert no hidden bytes anywhere.\
 In twinBASIC, instead of two Longs and having to worry about getting the first one right when it's not an Integer, you can use the original definition with:
-```vba
+```
 [PackingAlignment(1)]
 Private Type MyUDT
     x As Integer
@@ -956,7 +961,7 @@ a comment until:
 ## Destructuring assignment support for arrays
 This feature allows you to assign the contents of an array to multiple variables in a single line:
 
-```vba
+``` vb
     Dim a As Long, b As Long, c As Long
     Dim d(2) As Long
     d(0) = 1
@@ -968,7 +973,7 @@ This feature allows you to assign the contents of an array to multiple variables
 
 This would print `1   2   3`. You could also assign multiple variables at once like this and get the same result:
 
-```vba
+``` vb
     Dim a As Long, b As Long, c As Long
     Array(a, b, c) = Array(1, 2, 3)
     Debug.Print a, b, c
@@ -976,11 +981,11 @@ This would print `1   2   3`. You could also assign multiple variables at once l
 
 You can now also do assignments like this:
 
-```vba
-        Dim a As Long = 9
-        Dim b As Long = 7
-        Dim c() As Long = Array(a, b)
-        Debug.Print c(1), UBound(c)
+``` vb
+    Dim a As Long = 9
+    Dim b As Long = 7
+    Dim c() As Long = Array(a, b)
+    Debug.Print c(1), UBound(c)
 ```
 
 Which prints `7    1`.
@@ -994,7 +999,7 @@ More importantly, you can now **set** the `HRESULT` in interface implementations
 ## Module-level definitions not limited to top
 It's now possible to insert module-level code in between methods or properties. Where previously all `Declare` statements, `Enum`, `Type`, etc had to appear prior to the first `Sub/Function/Property`, the following would now be valid:
 
-```vba
+``` vb
 Private Const foo = "foo"
 Sub SomeMethod()
 '...
@@ -1021,7 +1026,7 @@ twinBASIC imposes no artificial limitations on those, number of controls on a fo
 ## Parameterized class constructors.
 Classes now support a `New` sub with ability to add arguments, called as the class is constructed prior to the `Class_Initialize` event. For example a class can have:
 
-```vba
+```
 [ComCreatable(False)]
 Class MyClass
 Private MyClassVar As Long
@@ -1042,7 +1047,7 @@ In a class, module-level variables can be declared as `ReadOnly`, e.g. `Private 
 ## Exported Functions and Variables
 It's possible to export a function or variable from standard modules, including with CDecl, e.g.
 
-```vba
+```
 [DllExport]
 Public Const MyExportedSymbol As Long = &H00000001
 
@@ -1100,8 +1105,8 @@ The following attributes are also available but haven't been described above:
 * `[DllStackCheck(False)]` attribute for DLL Declares giving minor codegen size reduction on 32-bit API calls.
 * `[Debuggable(False)]` attribute turns of breakpoints and stepping for the method or module.
 * `[PopulateFrom()]` to populate enums via JSON
-* `[Flags]` - Calculate implicit enum values as a flag set (powers of 2). (Note: To prevent confusion, once an explicit value is used, all remaining values after it must also be explicit)  
-![image](https://github.com/user-attachments/assets/4c4d2582-5c79-43bc-bd77-26cdfa49ed7f)
+* `[Flags]` - Calculate implicit enum values as a flag set (powers of 2). (Note: To prevent confusion, once an explicit value is used, all remaining values after it must also be explicit)\
+![image](Images/4c4d2582-5c79-43bc-bd77-26cdfa49ed7f.png)
 
 
 
@@ -1119,7 +1124,7 @@ The `Open` statement supports Unicode through the use of a new `Encoding` keywor
 
 Usage example:
 
-```vba
+``` vb
 Open "C:\MyFile.txt" For Input Encoding utf-8 As #1
 ```
 
@@ -1187,7 +1192,7 @@ This sets an alpha blending level for the entire form. Like transparency, this i
 
 The following image shows a Form with a `TransparencyKey` of Red, using a Shape control to define the transparent area, while also specifying 75% `Opacity` for the entire form:
 
-![image alt ><](https://github.com/twinbasic/documentation/assets/7834493/85f25aa2-abc8-4d42-8510-078f8ee4a324)
+![image alt ><](Images/85f25aa2-abc8-4d42-8510-078f8ee4a324.png)
 
 ## Additional Form features
 
@@ -1199,9 +1204,7 @@ In addition to the above, forms have:
 * Control anchoring: control x/y/cx/cy can made relative, so they're automatically moved/resized with the Form. For example if you put a TextBox in the bottom right, then check the Right and Bottom anchors (in addition to Top and Left), the bottom right will size with the form on resize. This saves a lot of boiler-plate sizing code. 
 * Control docking: Controls can be fixed along one of the sides of the Form (or container), or made to fill the whole Form/container. Multiple controls can be combined and mixed/matched in docking positions.
 
-For more information on Control Anchoring and Control Docking, see the Wiki entry [Control Anchoring and Docking ‐ Automatic size and position management](Features---Control-anchoring-and-docking).
-
-
+For more information on Control Anchoring and Control Docking, see the Wiki entry [Control Anchoring and Docking ‐ Automatic size and position management](../Anchoring-Docking).
 
 ## Unicode support
 All tB-implemented controls support Unicode, both in the code editor and when displayed.
@@ -1250,18 +1253,18 @@ Additionally, the original OCX controls provided by Microsoft will work fine; ho
 ## New Controls
 
 ### QR Code Control
-![image](https://github.com/user-attachments/assets/54ed49d8-b434-45e3-9e63-a1fe75cdf814)
+![image](Images/54ed49d8-b434-45e3-9e63-a1fe75cdf814.png)
 
 Easily display custom QR codes with a native control.
 
 ### Multiframe Control
-![image-15](https://github.com/user-attachments/assets/4ad9c774-b31d-47d3-9963-6d99ac4f37bb)
+![image-15](Images/4ad9c774-b31d-47d3-9963-6d99ac4f37bb.png)
 
 This control allows you to create a number of frames within it with their size specified as a percentage, such that as the control is resized the frames within expand proportionally. For details and a video demonstration, Mike Wolfe's twinBASIC Weekly Update [covered it when released](https://nolongerset.com/twinbasic-update-april-29-2025/#experimental-multi-frame-control).\
 Combined with anchors and docking, this allows designing highly functional and complex layouts visually, without writing any code to handling resizing.
 
 ### CheckMark Control
-![image](https://github.com/user-attachments/assets/5fc60b7b-4f54-445c-8504-451019b7ec55)
+![image](Images/5fc60b7b-4f54-445c-8504-451019b7ec55.png)
 
 Primarily intended for reports but available in Forms and UserControls as well, the CheckMark control provides a scalable check component where this is fixed to a single size in a normal CheckBox control.
 
@@ -1281,7 +1284,7 @@ Under the hood, a Boolean is a 2-byte type. With memory APIs, or when receiving 
 
 Bugs result from using Strings and Variants after they have been freed. It may not be noticed immediately if the memory has not been overwritten, but it's sometimes hard to detect and can cause issues like a String displaying it's previous value or garbage. This debugging option detects use-after-free, and replaces the data with a special symbol indicating the problem. Below shows an example where the ListView ColumnHeader text had been set by previously-freed string and detected by this feature:
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/021f6cbf-acce-445d-ade7-3fcad0af4927)
+![image](Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png)
 
 Previously, it had shown the same text for every column-- but only under certain circumstances, leading to the issue being overlooking for a long time. 
 
@@ -1304,7 +1307,7 @@ Address-space layout randomization (ASLR)
 ## Debug Trace Logger
 New to the debugging experience is a powerful trace logging feature that can automatically create detailed logs to either the debug console or a file. Messages can be output to the new system with `Debug.TracePrint`. The logger works both when running from the IDE and in compiled executables.
 
-![image](https://github.com/user-attachments/assets/4fc2bf99-2bec-4943-837d-21038d791574)
+![image](Images/4fc2bf99-2bec-4943-837d-21038d791574.png)
 
 ## Compiler Warnings
 
@@ -1320,7 +1323,7 @@ When you use `ReDim myArray(1)`, the `myArray` variable is created for you, when
 This feature is discouraged for it making code difficult to read and prone to difficult to debug errors.
 
 The full list can be found in your project's Settings page:\
-![image](https://github.com/twinbasic/documentation/assets/7834493/017bd6f8-4b35-43a9-b6be-84cba69daf64)
+![image](Images/017bd6f8-4b35-43a9-b6be-84cba69daf64.png)
 
 ### Adjusting warnings
 Each warning has the ability to set them to ignore or turn them into an error both project-wide via the Settings page, and per-module/class, and per-procedure with `[IgnoreWarnings(TB___)]`, `[EnforceWarnings(TB____)]`, and `[EnforceErrors(TB____)]` attributes, where the underscores are replaced with the **full** number, e.g. `[IgnoreWarnings(TB0001)]`; the leading zeroes must be included.
@@ -1338,7 +1341,7 @@ When assigning a member of one Enum to a variabled typed as another, such as `Di
 **TB0020: Suspicious interface conversion**\
 If a declared coclass doesn't explicitly name an interface as supported, converting to it will trigger this warning, e.g.
 
-```vba
+``` vb
 Dim myPic As StdPicture
 Dim myFont As StdFont
 Set myFont = myPic
@@ -1353,7 +1356,7 @@ Triggered by assigning a numeric literal to a variabled typed as an Enum, such a
 
 The CodeLens feature allows running Subs and Functions, with no arguments and in modules (but not classes/Forms/UserControls) right from the editor without starting the full program. It has robust access to your code; it can access constants, call other functions both instrinsic and user-define, call APIs, and print to the Debug Console.\
 Methods eligible to run with CodeLens (when enabled), have a bar above them that you can click to run:\
-![image](https://github.com/twinbasic/documentation/assets/7834493/351d0147-cad3-4e16-89e5-0a9e43496740)
+![image](Images/351d0147-cad3-4e16-89e5-0a9e43496740.png)
 
 
 ## Modern IDE features
@@ -1394,40 +1397,40 @@ While the twinBASIC IDE still has a lot of work planned, it already includes a n
 
 * On the Form Designer, control with `Visible = False` are faded to visually indicate this. Also, pressing and holding Control shows the tab index of each tab stop.
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/014a1d28-30af-4a4d-8b9b-83ab6084f00a)\
-[Full size](https://www.twinbasic.com/images/fafaloneIDEscreenshot1.png)
+![image](Images/014a1d28-30af-4a4d-8b9b-83ab6084f00a.png)\
+[Full size](Images/fafaloneIDEscreenshot1.png)
 
 * New code structure based Project Explorer:\
-![image](https://github.com/twinbasic/documentation/assets/7834493/9a5c50d5-a9f8-44a7-96f7-ae84548bd7ef)
+![image](Images/9a5c50d5-a9f8-44a7-96f7-ae84548bd7ef.png)
 
 The classic file-based view is still used by default, you can activate the new view with a toggle button:\
-![image](https://github.com/twinbasic/documentation/assets/7834493/b000d3aa-3689-4d94-88e3-bca44f8b7de6)
+![image](Images/b000d3aa-3689-4d94-88e3-bca44f8b7de6.png)
 
 
 ## Package Server
 
 Code can be grouped as a package, and published to an online server. You can have Private packages, visible only to you, or Public packages, visible to everyone.
 
-![image](https://github.com/user-attachments/assets/5951dab6-738e-4b63-83c4-3331ec6d36b9)
+![image](Images/5951dab6-738e-4b63-83c4-3331ec6d36b9.png)
 
-For more information, see the following Wiki entries:
+For more information, see the following pages:
 
-[twinBASIC Packages What is a package](Packages---What-is-a-package)
+[What is a package](/Packages/What-Is)
 
-[twinBASIC Packages Creating a TWINPACK package](Packages---Creating-a-TWINPACK-package)
+[Creating a TWINPACK package](/Packages/Creating-TWINPACK)
 
-[twinBASIC Packages Importing a package from a TWINPACK file](Packages---Importing-a-package-from-a-TWINPACK-file)
+[Importing a package from a TWINPACK file](/Packages/Importing-TWINPACK)
 
-[twinBASIC Packages Importing a package from TWINSERV](Packages---Importing-a-package-from-TWINSERV)
+[Importing a package from TWINSERV](/Packages/Importing-TWINSERV)
 
-[twinBASIC Packages Updating a package](Packages---Updating-a-package)
+[Updating a package](/Packages/Updating)
 
 ## View Forms and Packages as JSON
 Project forms and packages are stored as JSON format data, and you can view this by right-click in Project Explorer and selecting 'View as JSON'. This is particularly interesting for packages as it exposes the entire code in a much more easily parsed format.
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/22660f54-ff5d-4b21-93d3-39715f1f35ed)
+![image](Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png)
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/a6525b1d-ac22-4303-ae27-7984c20eba0c)
+![image](Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png)
 
 
 ---

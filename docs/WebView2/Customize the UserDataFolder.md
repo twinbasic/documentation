@@ -13,7 +13,8 @@ This default behaviour is not always appropriate. &nbsp;For example, if you're c
 
 It is HIGHLY recommended that you override the default behaviour, and instead provide a path that is considered to be safe to use for storing such data.  To override the UserDataFolder path at runtime, handle the Create event of the WebView2 control. &nbsp;See the example in `Sample 9.  ActiveX Control WebView2 + Monaco` here, where we use the `%APPDATA%\Local` system path:
 
-<img src="https://twinbasic.com/images/wiki/tbWebView2CreateEvent.png" alt="Create Package" width="80%">
+![Create Package](Images/tbWebView2CreateEvent.png){:style="width:80%; height:auto;"}
+
 <br>
 <br>
 

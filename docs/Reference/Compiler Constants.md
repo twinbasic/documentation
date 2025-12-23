@@ -55,7 +55,7 @@ This is a guide to the built in compiler constants in twinBASIC. It includes the
 
 Usage of these follows the standard syntax of using a hashtag before the standard `If/Else/ElseIf` conditionals. For example, to differentiate between 32bit and 64bit VBA vs 64bit twinBASIC, 
 
-```vb6
+``` vb
 #If VBA7 Then
     'We're in either VBA7 or twinBASIC
     #If Win64 Then
@@ -83,7 +83,7 @@ Usage of these follows the standard syntax of using a hashtag before the standar
 
 Or more simply, to determine whether to use `PtrSafe` then `DeclareWide` or other tB features:
 
-```vb6
+``` vb
 #If VBA7 Then
     #If TWINBASIC Then
         'PtrSafe DeclareWide declares, if desired, also inline comments and `[ TypeHint() ]`, and function attributes.
@@ -95,7 +95,7 @@ Or more simply, to determine whether to use `PtrSafe` then `DeclareWide` or othe
 #End If
 ```
 
->[!IMPORTANT]
+{: .important }
 >Reminder: Compiler Constants are not `Boolean` values, so you shouuldn't use syntax like `#If Not Win64 Then` as the result may not be desired, for instance that example evaluates to `True` for both 32bit and 64bit modes when you likely used it expecting `False` under 64bit in order to use 32bit-only code.\
 If you wish to treat these as `Boolean`, you can use the `CBool()` function, e.g. `#If Not CBool(Win64) Then`.
 
@@ -104,10 +104,10 @@ If you wish to treat these as `Boolean`, you can use the `CBool()` function, e.g
 The tB editor has the helpful feature of showing you in real time which compiler constants are active. Code in `#If` blocks is inactive and will appear grayed out if it will not execute under current settings. Note that unlike VBx, inactive code is not evaluated for errors.
 
 For example, in 32bit mode:\
-![image](https://i.imgur.com/oHpCiV1.png)
+![image](Images/oHpCiV1.png)
 
 Then switching to 64bit mode:\
-![image](https://i.imgur.com/TYizrRW.png)
+![image](Images/TYizrRW.png)
 
 
 ---

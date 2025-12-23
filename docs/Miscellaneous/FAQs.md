@@ -150,7 +150,7 @@ The twinBASIC IDE is supported on Windows 7 through Windows 11. The installation
 
 WebView2 is required. This is normally preinstalled on newer versions of Windows, and is installed along with Edge if you've installed that browser. You can also obtain it from [Microsoft's website](https://developer.microsoft.com/en-us/microsoft-edge/webview2?form=MA13LH#download-section). Select the Standalone Evergreen x86 version:
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/94490c87-fafe-4d5b-ae39-d3cedba1c21d)
+![image](Images/94490c87-fafe-4d5b-ae39-d3cedba1c21d.png)
 
 
 </details>
@@ -165,10 +165,9 @@ This issue is sometimes encountered on Windows 7. To be used on Windows 7, the O
 <details markdown=block>
 <a id="how-do-i-install-twinbasic" />
 <summary markdown=span><b>How do I install twinBASIC?</b></summary>
-
 tB does not require a full installation process, you need only extract the ZIP file. Download the latest version from the [Releases page](https://github.com/twinbasic/twinbasic/releases), named `twinBASIC_IDE_BETA_xxx.zip` (where xxx is a version number; click on 'Assets' to expand the file list if it's not already visible).
 
-<img width="921" height="170" alt="image" src="https://github.com/user-attachments/assets/ac019c1a-dcef-4964-a730-bc5b86c644ba" />
+![img](Images/ac019c1a-dcef-4964-a730-bc5b86c644ba.png)
 
 Download the zip and extract it to an **empty** folder. Do not simply overwrite a previous version; either delete everything in the folder or use a different one. Odd errors have been known to occur otherwise.  It will run from this folder; some settings will be placed in AppData. 
 
@@ -202,35 +201,33 @@ Anyone who has ever tested their own programs against a wide variety of AV engin
 
 The easiest way is through the import wizard. When you first start the twinBASIC IDE, you're presented with the New Project dialog- this contains an 'Import from VBP' option:
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2)
+![image](Images/7e1cb69c-6db3-4f3f-aea1-c1fae25938a2.png)
 
 You can import individual files, from VB projects or any type, through the Import option on the Add menu, under Project or by right clicking the desired folder in the Project Explorer pane:
 
-<img width="677" height="608" alt="image" src="https://github.com/user-attachments/assets/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4" />
+![img](Images/2b32ab8c-fabc-4f42-9e6b-06e85574eaf4.png){:style="width:80%; height:auto;"}
 
 **NOTE:** You can select .bas/.cls files individually, but to import Forms, UserControls, Property Pages, and Resource Files you must currently select the .vbp file they're associated with. You'll then be shown a list of files you can import (with their new twinBASIC extensions .tbform/.twin etc-- make sure to import both, e.g. for Form1.frm you'll see Form1.frm.tbform and Form1.frm.twin:
 
-<img width="413" height="441" alt="image" src="https://github.com/user-attachments/assets/16833fae-4bd7-418f-bb16-691a611a5b01" />
-
-
+![img](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:style="width:50%; height:auto;"}
 </details>
 
 <details markdown=block>
 <summary markdown=span><b>Why do I see a lot of errors saying my variables are unrecognized?</b></summary>
 
-![image](https://github.com/user-attachments/assets/e409ea37-96ad-44c5-8017-3699ef04b53d)
+![image](Images/e409ea37-96ad-44c5-8017-3699ef04b53d.png)
 
 While use is strongly recommended and considered a best practice, twinBASIC **does not** require `Option Explicit`. If you're seeing these errors, you may have overlooked a new feature of twinBASIC: automatically enabling `Option Explicit` project-wide. When you import a VB6 project, or create a new one, a small dialog pops up:
 
-![image](https://github.com/user-attachments/assets/05306a72-4ff6-427d-8970-969ef0c582e6)
+![image](Images/05306a72-4ff6-427d-8970-969ef0c582e6.png)
 
 If you leave "Option Explicit ON" checked, that means it will be enforced project-wide, regardless of whether `Option Explicit` is used in the form/module/etc itself. If you uncheck it, you won't get any errors for it, just a warning: "This variable has been auto-declared by the compiler due to Option Explicit being OFF". If you want, you can disable that warning in Project Settings:
 
-![image](https://github.com/user-attachments/assets/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f)
+![image](Images/2a1c71fd-f81c-4bd3-b61a-0f2979e8961f.png)
 
 For an existing project, the Project Scope Option Explicit can be turned on or off from Project Settings, under "Project: Option Explicit On":
 
-![image](https://github.com/user-attachments/assets/01009879-fdbc-4a8e-8683-353aab6193df)
+![image](Images/01009879-fdbc-4a8e-8683-353aab6193df.png)
 
 </details>
 
@@ -239,7 +236,7 @@ For an existing project, the Project Scope Option Explicit can be turned on or o
 
 Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has its own powerful addin infrastructure based on modern web technologies. See Samples 10 through 16 in the 'Samples' tab of the New Project dialog:
 
-![image](https://github.com/user-attachments/assets/0e24eb5c-c9af-49a9-a908-03968b211554) 
+![image](Images/0e24eb5c-c9af-49a9-a908-03968b211554.png) 
 
 twinBASIC supports **creating** addins for VBA. It's currently the only tool that supports creating these addins for 64bit Office using a language with 100% compatible syntax. See Sample 4 and Sample 5. 
 
@@ -250,7 +247,7 @@ twinBASIC supports **creating** addins for VBA. It's currently the only tool tha
 
 Currently tB does not have a dedicated resource editor; instead, resources are managed through the Project Explorer. In the tree, you'll see a Resources folder; by default, it will include ICON in a Standard EXE, and MANIFEST, if you've chosen to enable Visual Styles:
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/71ddde83-a091-47e3-b5b8-681954b0639d)
+![image](Images/71ddde83-a091-47e3-b5b8-681954b0639d.png)
 
 You can create additional folders here, using their standard names. For example a BITMAP group could be added, then used with `LoadResImage`. Unlike its predecessor, tB does not restrict the type of resources: you can create any type of folder you want, and import binary data into it. For example, some community projects have inserted `UIFILE` resources for Ribbon controls and `DIALOG` resources for property sheets. Resources can be imported by right-clicking the folder you want them in, and selecting Add->Import file... from the menu.
 
@@ -260,7 +257,7 @@ If you're importing a project, the resources in a linked .res file will be impor
 
 String table resources are currently treated specially; they're edited in the IDE as JSON. If you import from VBP with a .res, string resources will be automatically converted. If you right click the 'Resources' folder, and go to the 'Add' submenu, at the bottom, you'll find "Add resource: String table" that adds one populated with example strings:
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/97cc8655-7a8b-47f3-b52c-eb1ddfce662f)
+![image](Images/97cc8655-7a8b-47f3-b52c-eb1ddfce662f.png)
 
 #### Group names
 
@@ -291,7 +288,7 @@ Imported projects use the icon of the Form chosen in Settings. This can be modif
 If you don't set that option, or your project contains no Forms, the icon can be managed manually through the Resources folder.  
 If you're not already familiar with using resources in twinBASIC, see the FAQ entry right above this one. In this scenario, the icon used for your application in Explorer is the one in the Resources\ICON folder that comes first alphabetically. If you do not have an ICON folder in your project, you can create one by right-clicking the Resources folder and selecting Add->Add folder.
 
-![image](https://github.com/twinbasic/documentation/assets/7834493/8611d12a-d7a6-48cc-9544-cb27c5299aa5)
+![image](Images/8611d12a-d7a6-48cc-9544-cb27c5299aa5.png)
 
 In the above picture, MyOwnIcon.ico would be used by Explorer and other apps to represent your .exe, as it comes before twinBASIC.ico alphabetically. 
 
