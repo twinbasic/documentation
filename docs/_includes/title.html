@@ -1,0 +1,8 @@
+{% if site.logo %}
+  <div class="site-logo" role="img" aria-label="{{ site.title }}"></div>
+  {% if site.logo_with_title %}
+    {{ site.title }}
+  {% endif %}
+{% else %}
+  {{ site.title }}
+{% endif %}
