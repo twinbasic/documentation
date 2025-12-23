@@ -14,6 +14,10 @@ permalink: /
 
 1. [twinBASIC FAQ](FAQ)
 
+## Wiki
+
+The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplements this documentation with bleeding-edge community  content.
+
 ## ActiveX
 1. [HOW TO: Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/) _[by Mike Wolfe @nolongerset]_
 2. [HOW TO: Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/) _[by Mike Wolfe @nolongerset]_
