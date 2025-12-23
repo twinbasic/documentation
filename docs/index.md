@@ -48,7 +48,7 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 
 ## Reference Section
 
-<!--
-1. [The twinBASIC language core](Reference/Language-Core) describes the statements, procedures and functions that make the core of the language and act as building blocks that all other functionality is built upon
--->
-2. [List of available compiler constants](Reference/Compiler-Constants)
+1. [Categorical List](Reference/Categories) of the core language statements, procedures, functions and properties
+2. [Statements](Reference/Statements), listed alphabetically
+3. [Procedures and Functions](Reference/Procedures-and-Functions) of the core language, listed alphabetically
+4. [List of available compiler constants](Reference/Compiler-Constants)
