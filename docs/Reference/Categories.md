@@ -5,17 +5,16 @@ nav_order: 1
 permalink: /Reference/Categories/
 ---
 
-This chapter describes the global statements, procedures, functions and properties that form the core of the twinBASIC language.
+This chapter lists the global statements and procedures that form the core of the twinBASIC language.
 
 {: .warning }
-
-> Work in Progress
+> Work in Progress Below
 
 # Categorical List
 
 ## Compiler Control
 
-* [Option](#option) - configure a compiler option
+* [Option](../../tB/Core/Option) - configure a compiler option
 * [#If ... Then ... Else](##if-...-then-...-else) - enable or disable compilation of enclosed code
 
 ## Declarations and Definitions
@@ -84,7 +83,7 @@ Statements:
 
 - [Open](#open), [Close](#close) - open/close a file for I/O operations
 - [Get](#get), [Put](#put) - read/write data from an open random access file
-- [Line Input](#line-input), [Print](#print) - read a line from an open text file, write text to a file
+- [Line Input](#line-input), [Print](#print) - read/write a line from/to an open text file
 - [Input](#input), [Write](#write) - read/write data from an open sequential access file
 - [Seek](#seek) - change the current access position in an open file
 - [Lock](#lock), [Unlock](#unlock) - lock/unlock a range of records in an open file
@@ -106,12 +105,8 @@ Procedures:
 Procedures:
 
 * [Load](#load), [Unload](#unload) - load/unload a form or control into memory
-* [SaveSetting](#savesetting) - store a string value to the system registry
+* [GetSetting](#getsetting), [SaveSetting](#savesetting) - retrieve/store a string value from/to the system registry
 * [DeleteSetting](#deletesetting) - remove value from the system registry
-
-Functions:
-
-* [GetSetting](#getsetting) - retrieve a string value from the system registry
 
 ## Events and Interaction
 
@@ -126,26 +121,22 @@ See also
 Procedures:
 
 * [AppActivate](#appactivate) - change the focus to, or activate, a named window
-
 * [Beep](#beep) - sound a system beep
 * [SendKeys](#sendkeys) - send keystrokes to the active window
 
 ## Mathematics
 
-Functions:
-
-* [Atn](#atn), [Cos](#cos), [Sin](#sin), [Tan](#tan) - trigonometric functions
-* [Sqr](#sqr) - take a square root
-* [Exp](#exp) - calculate an exponential with base $e$
-* [Log](#log) - calculate the natural (base $e$) logarithm of a number
-* [Sgn](#sgn) - return the sign of a number
-* [Abs](#abs) - returns the absolute value of a number
-* [Round](#round) - round the number to a given number of decimal places
-* [Rnd](#rnd) - generate a random number in the range [0.0, 1.0)
-
 Procedures:
 
-* [Randomize](#randomize) - seed the random number generator
+* [Atn](/tB/Core/Math#atn), [Cos](/tB/Core/Math#cos), [Sin](/tB/Core/Math#sin), [Tan](#/tb/Core/Math#tan) - trigonometric functions
+* [Sqr](/tB/Core/Math#sqr) - take a square root
+* [Exp](/tB/Core/Math#exp) - calculate an exponential with base $e$
+* [Log](/tB/Core/Math#log) - calculate the natural (base $e$) logarithm of a number
+* [Sgn](/tB/Core/Math#sgn) - return the sign of a number
+* [Abs](/tB/Core/Math#abs) - returns the absolute value of a number
+* [Round](/tB/Core/Math#round) - round the number to a given number of decimal places
+* [Rnd](/tB/Core/Math#rnd) - generate a random number in the range [0.0, 1.0)
+* [Randomize](/tB/Core/Math#randomize) - seed the random number generator
 
 ## String Handling
 
@@ -153,73 +144,70 @@ Statements that modify strings:
 
 * [Mid =](#mid-=), [MidB =](#midb-=) - assign to or replace characters or wide/narrow string sections
 
-Functions that check properties of strings:
+Procedures that check properties of strings:
 
-* [Len\$, Len, LenB\$, LenB](#len$,-len,-lenb$,-lenb) - returns the length of a string
-* [Asc, AscB, AscW](#asc,-ascb,-ascw) - returns the character code of the first letter in a string
-* [StrComp](#strcomp) - compares two strings
-* [InStr$, InStrB, InStr](#instr\$,-instrb,-instr) - finds the position of a given substring in a string
+* [Len\$, Len, LenB\$, LenB](/tB/Core/Strings#len-len-lenb-lenb) - the length of a string
+* [Asc, AscB, AscW](/tB/Core/Strings#asc-ascb-ascw) - returns the character code of the first letter in a string
+* [StrComp](/tB/Core/Strings#strcomp) - compares two strings
+* [InStr$, InStrB, InStr](/tB/Core/Strings#instr-instrb-instr) - finds the position of a given substring in a string
 
-Functions that return new strings:
+Procedures that create strings:
 
-* [Chr\$, Chr, ChrB\$, Chr, ChrW\$, ChrW](#chr$,-chr,-chrb$,-chrb,-chrw$,-chrw) - returns the character having a given code
-* [Space$, Space](#space$,-space) - return a string of spaces
-* [String\$, String](#string$,-string) - return a string of specified characters
+* [Chr\$, Chr, ChrB\$, ChrB, ChrW\$, ChrW](/tB/Core/Strings#chr-chr-chrb-chrb-chrw-chrw) - returns the character having a given code
+* [Space$, Space](/tB/Core/Strings#space-space) - return a string of spaces
+* [String\$, String](/tB/Core/Strings#string-string) - return a string of specified characters
 
-Functions that return modified strings:
+Procedures that return modified strings:
 
-* [Left\$, Left, LeftB$, LeftB](#left$,-left,-leftb$,-leftb) - extract a left substring of a string
-* [Mid$, Mid, MidB\$, MidB](#mid$,-mid,-midb$,-midb)- extract a substring of a string
-* [Right\$, Right, RightB\$, RightB](#right$,-right,-rightb$,-rightb) - extract a right substring of a string
-* [LTrim\$, LTrim, RTrim\$, RTrim](#ltrim$,-ltrim,-rtrim$,-rtrim) - removes leading/trailing spaces from a string
-* [Trim$, Trim](#trim$,-trim) - removes leading and trailing spaces from a string
-* [StrReverse](#strreverse) - reverses the order of characters of a string
-* [LCase\$, LCase, RCase\$, RCase](#lcase$,-lcase,-rcase$,-rcase) - capitalizes or lowercases a string
-* [StrConv](#strconv) - converts the string to a specified format
-* [Join](#join) - concatenates a string array using a given delimiter
-* [Split](#split) - splits a string into a string array
-* [Replace](#replace) - replaces substrings in a string
-* [Filter](#filter) - filters a string array into a subset according to criteria
-* [InStrRev](#instrrev) - filters a string array into a subset according to criteria
-* [Format\$, Format](#format$,-format) - format a numeric expression in a specific way
-* [FormatNumber](#formatnumber) - formats an expression as a numeric string
-* [FormatPercent](#formatpercent) - formats an expression as a percent string
+* [Left\$, Left, LeftB$, LeftB](/tB/Core/Strings#left-left-leftb-leftb) - extract a left substring of a string
+* [Mid$, Mid, MidB\$, MidB](/tB/Core/Strings#mid-mid-midb-midb)- extract a substring of a string
+* [Right\$, Right, RightB\$, RightB](/tB/Core/Strings#right-right-rightb-rightb) - extract a right substring of a string
+* [LTrim\$, LTrim, RTrim\$, RTrim](/tB/Core/Strings#ltrim-ltrim-rtrim-rtrim) - removes leading/trailing spaces from a string
+* [Trim$, Trim](/tB/Core/Strings#trim-trim) - removes leading and trailing spaces from a string
+* [StrReverse](/tB/Core/Strings#strreverse) - reverses the order of characters of a string
+* [LCase\$, LCase, RCase\$, RCase](/tB/Core/Strings#lcase-lcase-rcase-rcase) - capitalizes or lowercases a string
+* [StrConv](/tB/Core/Strings#strconv) - converts the string to a specified format
+* [Join](/tB/Core/Strings#join) - concatenates a string array using a given delimiter
+* [Split](/tB/Core/Strings#split) - splits a string into a string array
+* [Replace](/tB/Core/Strings#replace) - replaces substrings in a string
+* [Filter](/tB/Core/Strings#filter) - filters a string array into a subset according to criteria
+* [InStrRev](/tB/Core/Strings#instrrev) - filters a string array into a subset according to criteria
+* [Format\$, Format](/tB/Core/Strings#format-format) - format a numeric expression in a specific way
+* [FormatNumber](/tB/Core/Strings#formatnumber) - formats an expression as a numeric string
+* [FormatPercent](/tB/Core/Strings#formatpercent) - formats an expression as a percent string
 
 See also:
 
-* [FormatCurrency](#formatcurrency) - format an expression as a currency string
-* [FormatDateTime](#formatdatetime) - formats an expression as a date/time string
+* [FormatCurrency](/tB/Core/Strings#formatcurrency) - format an expression as a currency string
+* [FormatDateTime](/tB/Core/Strings#formatdatetime) - formats an expression as a date/time string
 
 ## Date and Time
 
-Properties:
+Procedures:
 
 * [Date](#date), [Time](#time) - set the current date and time
-
-Functions:
-
-* [FormatDateTime](#formatdatetime) - formats an expression as a date/time string
-* [MonthName](#monthname) - returns the name of the specified month
-* [WeekdayName](#weekdayname) - returns the name of the specified day of the week
+* [FormatDateTime](/tB/Core/Strings#formatdatetime) - formats an expression as a date/time string
+* [MonthName](/tB/Core/Strings#monthname) - returns the name of the specified month
+* [WeekdayName](/tB/Core/Strings#weekdayname) - returns the name of the specified day of the week
 
 ## Financial
 
-Functions:
+Procedures:
 
-* [DDB](#ddb) - depreciation of an asset via the Double-Declining Balance method
-* [FV](#fv) - future value of an investment with constant deposits and interest
-* [Pmt](#pmt) - payment for a loan with constant payments and interest
-* [IPmt](#ipmt) - interest payment for a loan with constant payments and interest
-* [PPmt](#ppmt) - principal payment for a loan with constant payments and interest 
-* [SYD](#syd) - sum-of-years' digits depreciation of an asset
-* [SLN](#sln) - straight-line depreciation of an asset in one period
-* [PV](#pv) - present value of investment
-* [IRR]($irr) - internal rate of return for a series of cash flows
-* [MIRR](#mirr) - modified internal rate of return for a series of cash flow
-* [Rate](#rate) - interest rate per period of an annuity
-* [NPV](#npv) - net present value of an investment
-* [NPer](#nper) - number of periods for an investment with constant deposits and interest
-* [FormatCurrency](#formatcurrency) - format an expression as a currency string
+* [DDB](/tB/Core/Financial#ddb) - depreciation of an asset via the Double-Declining Balance method
+* [FV](/tB/Core/Financial#fv) - future value of an investment with constant deposits and interest
+* [Pmt](/tB/Core/Financial#pmt) - payment for a loan with constant payments and interest
+* [IPmt](/tB/Core/Financial#ipmt) - interest payment for a loan with constant payments and interest
+* [PPmt](/tB/Core/Financial#ppmt) - principal payment for a loan with constant payments and interest 
+* [SYD](/tB/Core/Financial#syd) - sum-of-years' digits depreciation of an asset
+* [SLN](/tB/Core/Financial#sln) - straight-line depreciation of an asset in one period
+* [PV](/tB/Core/Financial#pv) - present value of investment
+* [IRR](/tB/Core/Financial#irr) - internal rate of return for a series of cash flows
+* [MIRR](/tB/Core/Financial#mirr) - modified internal rate of return for a series of cash flow
+* [Rate](/tB/Core/Financial#rate) - interest rate per period of an annuity
+* [NPV](/tB/Core/Financial#npv) - net present value of an investment
+* [NPer](/tB/Core/Financial#nper) - number of periods for an investment with constant deposits and interest
+* [FormatCurrency](/tB/Core/Strings#formatcurrency) - format an expression as a currency string
 
 ## Deprecated
 
@@ -227,77 +215,4 @@ Statements:
 
 * [DefBool, DefByte, DefInt, DefLng, DefCur, DefSng, DefDbl, DefDec, DefDate, DefStr, DefObj, DefVar](#defbool-through-defvar) - used to give implicit types to single-letter variables
 * [Error](#error) - raise an error
-
-# List By Module
-
-## Financial
-
-* [DDB](#ddb) - depreciation of an asset via the Double-Declining Balance method
-* [FV](#fv) - future value of an investment with constant deposits and interest
-* [Pmt](#pmt) - payment for a loan with constant payments and interest
-* [IPmt](#ipmt) - interest payment for a loan with constant payments and interest
-* [PPmt](#ppmt) - principal payment for a loan with constant payments and interest 
-* [SYD](#syd) - sum-of-years' digits depreciation of an asset
-* [SLN](#sln) - straight-line depreciation of an asset in one period
-* [PV](#pv) - present value of investment
-* [IRR]($irr) - internal rate of return for a series of cash flows
-* [MIRR](#mirr) - modified internal rate of return for a series of cash flow
-* [Rate](#rate) - interest rate per period of an annuity
-* [NPV](#npv) - net present value of an investment
-* [NPer](#nper) - number of periods for an investment with constant deposits and interest
-
-## Math
-
-Functions:
-
-* [Atn](#atn), [Cos](#cos), [Sin](#sin), [Tan](#tan) - trigonometric functions
-* [Sqr](#sqr) - take a square root
-* [Exp](#exp) - calculate an exponential with base $e$
-* [Log](#log) - calculate the natural (base $e$) logarithm of a number
-* [Sgn](#sgn) - return the sign of a number
-* [Abs](#abs) - returns the absolute value of a number
-* [Round](#round) - round the number to a given number of decimal places
-* [Rnd](#rnd) - generate a random number in the range [0.0, 1.0)
-
-Procedures:
-
-* [Randomize](#randomize) - seed the random number generator
-
-## Strings
-
-Functions that check properties of strings:
-
-* [Len\$, Len, LenB\$, LenB](#len$,-len,-lenb$,-lenb) - returns the length of a string
-* [Asc, AscB, AscW](#asc,-ascb,-ascw) - returns the character code of the first letter in a string
-* [StrComp](#strcomp) - compares two strings
-* [InStr$, InStrB, InStr](#instr\$,-instrb,-instr) - finds the position of a given substring in a string
-
-Functions that return new strings:
-
-* [Chr\$, Chr, ChrB\$, Chr, ChrW\$, ChrW](#chr$,-chr,-chrb$,-chrb,-chrw$,-chrw) - returns the character having a given code
-* [Space$, Space](#space$,-space) - return a string of spaces
-* [String\$, String](#string$,-string) - return a string of specified characters
-
-Functions that return modified strings:
-
-* [Left\$, Left, LeftB$, LeftB](#left$,-left,-leftb$,-leftb) - extract a left substring of a string
-* [Mid$, Mid, MidB\$, MidB](#mid$,-mid,-midb$,-midb)- extract a substring of a string
-* [Right\$, Right, RightB\$, RightB](#right$,-right,-rightb$,-rightb) - extract a right substring of a string
-* [LTrim\$, LTrim, RTrim\$, RTrim](#ltrim$,-ltrim,-rtrim$,-rtrim) - removes leading/trailing spaces from a string
-* [Trim$, Trim](#trim$,-trim) - removes leading and trailing spaces from a string
-* [StrReverse](#strreverse) - reverses the order of characters of a string
-* [LCase\$, LCase, RCase\$, RCase](#lcase$,-lcase,-rcase$,-rcase) - capitalizes or lowercases a string
-* [StrConv](#strconv) - converts the string to a specified format
-* [Join](#join) - concatenates a string array using a given delimiter
-* [Split](#split) - splits a string into a string array
-* [Replace](#replace) - replaces substrings in a string
-* [Filter](#filter) - filters a string array into a subset according to criteria
-* [InStrRev](#instrrev) - filters a string array into a subset according to criteria
-* [Format\$, Format](#format$,-format) - format a numeric expression in a specific way
-* [FormatCurrency](#formatcurrency) - format an expression as a currency string
-* [FormatDateTime](#formatdatetime) - formats an expression as a date/time string
-* [FormatNumber](#formatnumber) - formats an expression as a numeric string
-* [FormatPercent](#formatpercent) - formats an expression as a percent string
-* [MonthName](#monthname) - returns the name of the specified month
-* [WeekdayName](#weekdayname) - returns the name of the specified day of the week
 

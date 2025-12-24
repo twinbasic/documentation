@@ -1,0 +1,1 @@
+<sub>License: [CC-BY-4.0](https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE) Code license: [MIT](https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE-CODE) Attribution: [VBA-Docs](https://github.com/MicrosoftDocs/VBA-Docs/tree/main)</sub>

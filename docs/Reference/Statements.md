@@ -15,114 +15,114 @@ These statements are built into the language itself. They are understood by the 
 
 ## Alphabetical List
 
-### Call
+* Call
 
-### Class
+* Class
 
-### Close
+* Close
 
-### Const
+* Const
 
-### Continue
+* Continue
 
-### Declare
+* Declare
 
-### Dim
+* Dim
 
-### Do ... Loop
+* Do ... Loop
 
-### End
+* End
 
-### Enum
+* Enum
 
-### Erase
+* Erase
 
-### Event
+* Event
 
-### Exit
+* Exit
 
-### For ... Next
+* For ... Next
 
-### Function
+* Function
 
-### Get
+* Get
 
-### GoSub ... Return
+* GoSub ... Return
 
-### GoTo
+* GoTo
 
-### If ... Then ... Else
+* If ... Then ... Else
 
-### Input
+* Input
 
-### Implements
+* Implements
 
-### Let
+* Let
 
-### Line Input
+* Line Input
 
-### Lock
+* Lock
 
-### LSet
+* LSet
 
-### Mid =
+* Mid =
 
-### MidB =
+* MidB =
 
-### Module
+* Module
 
-### On Error
+* On Error
 
-### On ... GoTo, On .. GoSub
+* On ... GoTo, On .. GoSub
 
-### Open
+* Open
 
-### Option
+* [Option](../../tB/Core/Option) - configure a compiler option
 
-### Print
+* Print
 
-### Private
+* Private
 
-### Property
+* Property
 
-### Public
+* Public
 
-### Put
+* Put
 
-### RaiseEvent
+* RaiseEvent
 
-### ReDim
+* ReDim
 
-### Resume
+* Resume
 
-### RSet 
+* RSet 
 
-### Seek
+* Seek
 
-### Select Case
+* Select Case
 
-### Set
+* Set
 
-### Static
+* Static
 
-### Stop
+* Stop
 
-### Sub
+* Sub
 
-### Unlock
+* Unlock
 
-### While ... Wend
+* While ... Wend
 
-### With
+* With
 
-### Write
+* Write
 
-### #If ... Then ... Else
+* #If ... Then ... Else
 
 ---
 
 ## Deprecated
 
-### DefBool through DefVar
+* DefBool through DefVar
 
-### Error
+* Error
