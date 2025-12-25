@@ -1,4 +1,5 @@
-name: Deploy Jekyll with GitHub Pages dependencies preinstalled
+name: Deploy Jekyll site to Pages
+# Starting point: https://github.com/actions/starter-workflows/blob/main/pages/jekyll.yml
 
 on:
   push:
@@ -26,19 +27,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      #- name: Setup Pages
-      #  uses: actions/configure-pages@v5
       - name: Set up Ruby and install gems
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.4'
           bundler-cache: true
           working-directory: ./docs
+          cache-version: 0 # Increment this number if you need to re-download cached gems
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
       - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./docs
-          destination: ./docs/_site
+        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        working-directory: ./docs
+        env:
+          JEKYLL_ENV: production
+          PAGES_REPO_NWO: "${{ github.repository }}"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
