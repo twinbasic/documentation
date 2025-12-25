@@ -4,7 +4,7 @@ parent: Reference Section
 permalink: /tB/Modules/
 ---
 
-{: .warning }
+> [!WARNING]
 > Work in Progress
 
 # Core Modules

@@ -95,8 +95,8 @@ Or more simply, to determine whether to use `PtrSafe` then `DeclareWide` or othe
 #End If
 ```
 
-{: .important }
->Reminder: Compiler Constants are not `Boolean` values, so you shouuldn't use syntax like `#If Not Win64 Then` as the result may not be desired, for instance that example evaluates to `True` for both 32bit and 64bit modes when you likely used it expecting `False` under 64bit in order to use 32bit-only code.\
+> [!IMPORTANT]
+> Reminder: Compiler Constants are not `Boolean` values, so you shouuldn't use syntax like `#If Not Win64 Then` as the result may not be desired, for instance that example evaluates to `True` for both 32bit and 64bit modes when you likely used it expecting `False` under 64bit in order to use 32bit-only code.\
 If you wish to treat these as `Boolean`, you can use the `CBool()` function, e.g. `#If Not CBool(Win64) Then`.
 
 # Appearance

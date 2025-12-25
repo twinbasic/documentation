@@ -42,8 +42,7 @@ Procedures that return modified strings:
 * [MonthName](#monthname) - returns the name of the specified month
 * [WeekdayName](#weekdayname) - returns the name of the specified day of the week
 
-{: .warning }
-
+> [!WARNING]
 > Work in Progress Below
 
 ## Len\$, Len, LenB\$, LenB

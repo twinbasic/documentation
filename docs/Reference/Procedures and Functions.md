@@ -7,8 +7,7 @@ permalink: /Reference/Procedures-and-Functions/
 
 # Procedures and Functions
 
-{: .warning }
-
+> [!WARNING]
 > Work in Progress
 
 ## A

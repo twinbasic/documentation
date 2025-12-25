@@ -27,7 +27,7 @@ Many new attributes enable the powerful additional language features twinBASIC p
 twinBASIC can compile native 64bit executables in addition to 32bit. The syntax is compatible with VBA7 for this: the `LongPtr` data type and the standard to mark APIs `PtrSafe`, e.g.:\
 `Public Declare PtrSafe Sub foo Lib "bar" (ByVal hWnd As LongPtr)`
 
-{: .important }
+> [!IMPORTANT]
 > There is a lot more required to get most 32bit apps to work properly as 64bit. Only some `Long` variables are to be changed, and this is determined by their C/C++ data types, of which there are many. Examples that need to be `LongPtr` include handles like `HWND, HBITMAP, HICON,` and `HANDLE`; pointers like `void*, PVOID, ULONG_PTR, DWORD_PTR,` and `LPWSTR/PWSTR/LPCWSTR/WCHAR*` when passed as `Long`; and the `SIZE_T` type found in CopyMemory and memory allocation functions. While the `PtrSafe` keyword is not mandatory, these changes still must be made.\
 > Additionally, any code working with memory pointers must account for the fact all the types mentioned (and the many more not), as well as v-table entries, are now either 4 or 8 bytes, when most programmers have traditionally hard coded 4 bytes. There are also UDT alignment issues more frequently. This is all very complex and you should seek resources and advice when moving to 64bit (though remember, 32bit is still supported so this isn't a requirement). For common Windows APIs and COM interfaces, a community-developed package is available that provides 64bit compatible definitions: [Windows Development Library for twinBASIC (WinDevLib)](https://github.com/fafalone/WinDevLib).
 
@@ -408,8 +408,8 @@ Module MainModule
 '...
 ```
 
-{: .note }
->StdCall names will be mangled with argument sizes, e.g. `int myfunc(int x, short y);` would be `myfunc@6`. It therefore may be better to use `CDecl`.
+> [!NOTE]
+> StdCall names will be mangled with argument sizes, e.g. `int myfunc(int x, short y);` would be `myfunc@6`. It therefore may be better to use `CDecl`.
 
 A documentation page will be dedicated to more fully explaining this in the future; for now if you need help with it, visit the tB Discord or Discussions section of the GitHub repository and ask.
 
@@ -731,7 +731,7 @@ Public DeclareWide PtrSafe Sub Foo Lib "some.dll" Alias "FooW" (ByVal bar As Str
 ```
 Both represent a fully Unicode operation, but the allows direct use of the `String` datatype without requiring the use of `StrPtr` to prevent conversion. 
 
-{: .warning }
+> [!WARNING]
 > This does **not** change the underlying data types-- the `String` type is a `BSTR`, not an `LPWSTR`, so in the event an API returns a pre-allocated `LPWSTR`, rather than filling a buffer you have created, it will not provide a valid `String` type. This would be the case where an API parameter is given as `[out] LPWSTR *arg`.
 
 ### `CDecl` support
@@ -872,7 +872,7 @@ For events events on Forms, UserControls, and event-raising objects, you can def
 ### `Implements` for interfaces
 Similar to the above, for forms/UCs/classes that use `Implements`, you can use `Sub Bar() Implements IFoo.Bar`. Note that you can specify more than one implemented method; for more information, see the Enhancements to Implements subsection of the Interfaces and Coclasses section detailing the new in-language syntax for defining these.
 
-{: .note }
+> [!NOTE]
 > These are opt-in and optional\
 > For compatibility, twinBASIC will always continue to support the traditional syntax for event handling and Implements, and you're not required to use this new syntax (or *any* of the additions described in this article). Whether or not automatically created prototypes use this syntax is controlled via IDE Options: "IDE: Use new handles/implements syntax".
 

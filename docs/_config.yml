@@ -21,19 +21,12 @@ defaults:
     values:
       image: true
 
+# GitHub-style admonitions are supported, but we may wish to add custom
+# callouts below.
 callouts:
-  tip:
-    title: 💡 Tip
-    color: green
-  important:
-    title: Important
-    color: purple
-  note:
-    title: Note
-    color: blue
-  warning:
-    title: warning
-    color: red
+  #tip:
+  #  title: 💡 Tip
+  #  color: green
 
 #defaults:
 #  - scope:

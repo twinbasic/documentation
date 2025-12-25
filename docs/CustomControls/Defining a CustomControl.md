@@ -7,7 +7,7 @@ permalink: /CustomControls/Defining/
 # Defining a CustomControl
 A CustomControl is simply an ordinary twinBASIC class, with a few extra attributes and requirements.
 
-{: .tip}
+> [!TIP]
 > It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.
 
 ![Custom Control Sample Project](Images/ccSampleProject.png)
@@ -26,7 +26,7 @@ This is a required attribute for all CustomControls.  You must provide the relat
 
 This is a required attribute for all CustomControls.  You must provide a unique CLSID (GUID) in order for the form engine to work with your control. 
 
-{: .tip }
+> [!TIP]
 > If you enter `[ ClassId () ]` twinBASIC helps you out - just press the 'insert a randomly generated GUID' text:
 
 ![CustomControl ClassId auto-generate](Images/ccClassIdInsert.png)

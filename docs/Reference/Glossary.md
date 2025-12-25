@@ -4,7 +4,7 @@ parent: Reference Section
 permalink: /tB/Gloss/
 ---
 
-{: .warning }
+> [!WARNING]
 > Work in Progress
 
 ## class

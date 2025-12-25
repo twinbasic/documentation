@@ -20,8 +20,7 @@ permalink: /tB/Modules/Financial/
 * [NPV](#npv) - net present value of an investment
 * [NPer](#nper) - number of periods for an investment with constant deposits and interest
 
-{: .warning }
-
+> [!WARNING]
 > Work in Progress Below
 
 ## DDB
