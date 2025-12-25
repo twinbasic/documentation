@@ -9,8 +9,7 @@ permalink: /Reference/Statements/
 
 These statements are built into the language itself. They are understood by the compiler, and are not explicitly declared nor defined in the visible runtime library.
 
-{: .warning }
-
+> [!WARNING]
 > Work in Progress
 
 ## Alphabetical List

@@ -10,7 +10,7 @@ permalink: /CustomControls/Painting/
 ### The ICustomControl.Paint method
 This is by far the most important method of a CustomControl.  It tells the form engine exactly how you want it to render your control.
 
-{: .tip }
+> [!TIP]
 > It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.
 
 ``` vb

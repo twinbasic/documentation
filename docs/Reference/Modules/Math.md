@@ -17,8 +17,7 @@ permalink: /tB/Modules/Math/
 
 * [Randomize](#randomize) - seed the random number generator
 
-{: .warning }
-
+> [!WARNING]
 > Work in Progress Below
 
 ## Atn

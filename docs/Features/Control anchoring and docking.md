@@ -48,7 +48,7 @@ If we remove the Bottom anchor from the TextBox, but not the Frame, the Frame wi
 
 Using these 4 points you can automatically maintain a relative size, position, or both, without having to manually code any of it.
 
-{: .tip }
+> [!TIP]
 > Reminder, twinBASIC also adds `MinWidth`, `MinHeight`, `MaxWidth`, and `MaxHeight` properties to a Form, so those can also be automatically managed in combination with control anchors. You may want to set a minimum size so that controls do not disappear.
 
 # Docking
@@ -71,6 +71,6 @@ As the end of the last section suggests, it's possible to dock more than one con
 
 ![image](Images/80185a8d-2952-415f-bc02-ec3ddea89568.png)
 
-{: .tip }
+> [!TIP]
 > The order of two (or more) controls docked in the same position is determined by which was set first. Currently they can't be dragged to rearranged, but you can set the Dock property back to none, and re-do them in the desired order.
 

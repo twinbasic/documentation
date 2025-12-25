@@ -22,8 +22,7 @@ Because the default base is **0**, the **Option Base** statement is never requir
 
 If used, the statement must appear in a [module](/tB/Gloss#module) or [class](/tB/Gloss#class) before any procedures, functions, or properties. **Option Base** can appear only once in a module and must precede array [declarations](/tB/Gloss#declaration) that include dimensions.
 
-{: .note }
-
+> [!NOTE]
 > The **To** clause in the [**Dim**](/tB/Core/Dim), [**Private**](/tB/Core/Private), [**Public**](/tB/Core/Public), [**ReDim**](/tB/Core/ReDim), and [**Static**](/tB/Core/Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](/tB/Core/ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](/tB/Core/ParamArray) (or the [**Array**](/tB/VBA/Array) function, when qualified with the name of its type library, for example [**VBA.Array**](/tB/VBA/Array)).
 
 The **Option Base** statement only affects the lower bound of arrays in the module where the statement is located.
@@ -85,8 +84,7 @@ When **Option Explicit** appears in a module, you must explicitly declare all va
 
 If you don't use the **Option Explicit** statement, and when the [**Option Explicit On**](/tB/IDE/Project/Settings#option-explicit-on) project setting is changed to its non-default value of *No*, all undeclared variables are of **Variant** type unless the default type is otherwise specified with a [**Def**_type_](/tB/Core/Deftype) statement.
 
-{: .note }
-
+> [!NOTE]
 > The **Option Explicit On** project setting is *Yes* by default in new projects.
 >
 > Use **Option Explicit** to avoid incorrectly typing the name of an existing variable or to avoid confusion in code where the [scope](/tB/Gloss#scope) of the variable is not clear.
@@ -155,8 +153,7 @@ If used, the **Option Private** statement must appear at [module level](/tb/Glos
 
 When a module contains **Option Private Module**, the public parts, for example, [variables](/tb/Gloss#variable), [objects](/tb/Gloss#object), and [user-defined types](/tb/Gloss#user-defined-type) declared at the module level, are still available within the [project](/tb/Gloss#project) containing the module, but they are not available to other applications or projects.
 
-{: .note }
-
+> [!NOTE]
 > **Option Private** is a more verbose way of making modules or classes private to the package. An equivalent effect in a less verbose fashion is obtained with [**Private**](/tB/Core/Private) statement as follows:
 >
 > ``` vb

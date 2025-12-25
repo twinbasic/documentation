@@ -73,10 +73,12 @@ Events that you define in your class will be exposed in the Events property shee
 
 At the moment, the form-designer doesn't yet support code-behind-forms, so this feature is not yet complete.
 
-***
-## Tips
-- If you make changes to your CustomControl class, such as exposing new properties or changing how a control is drawn, these changes will get reflected immediately to any open form designers.  Form designers will show a 'resync' button when you return to them, once pressed the changes will be apparent.
 
-- The serialization happens via JSON when running in the IDE, but via a binary format when running in a compiled DLL/EXE.  The `SerializationInfo` object that is passed to your serialization constructor is a different implementation when running in the IDE, but this should be transparent to you as a CustomControl implementer.
+> [!TIP]
+> If you make changes to your CustomControl class, such as exposing new properties or changing how a control is drawn, these changes will get reflected immediately to any open form designers.  Form designers will show a 'resync' button when you return to them, once pressed the changes will be apparent.
 
-- When making changes or updates to a CustomControl always consider backwards compatibility.  For example, if you rename an exposed property, the old property values stored via the property sheet won't be deserialized to your new property.
+> [!TIP]
+> The serialization happens via JSON when running in the IDE, but via a binary format when running in a compiled DLL/EXE.  The `SerializationInfo` object that is passed to your serialization constructor is a different implementation when running in the IDE, but this should be transparent to you as a CustomControl implementer.
+
+> [!TIP]
+> When making changes or updates to a CustomControl always consider backwards compatibility.  For example, if you rename an exposed property, the old property values stored via the property sheet won't be deserialized to your new property.

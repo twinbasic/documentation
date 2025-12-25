@@ -19,4 +19,5 @@ If you pass `True` to the `UseDeferredInvoke` parameter of the `AddObject` call,
 
 If you pass `False` to the `UseDeferredInvoke` parameter of the `AddObject` call, then calls that come in to your class instance from javascript will be treated **synchronously** and so you can return a value to be consumed by javascript, but you MUST ensure that you don't cause re-entrancy, so you MUST NOT make calls back into the WebView2 control methods and properties.  Be warned: if you do make calls back into the WebView2 control when you're not using `UseDeferredInvoke`, then you will cause deadlocks leading to your application becoming unstable and sometimes lingering in the task manager after shutdown.
 
-Note that it is perfectly acceptable to add two separate objects, one for asynchronous event handling (using `UseDeferredInvoke:=True`) and another for synchronous properties (using `UseDeferredInvoke:=False`). 
+> [!NOTE]
+> It is perfectly acceptable to add two separate objects, one for asynchronous event handling (using `UseDeferredInvoke:=True`) and another for synchronous properties (using `UseDeferredInvoke:=False`). 
