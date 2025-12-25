@@ -24,6 +24,7 @@ group :jekyll_plugins do
   gem "jekyll-optional-front-matter"
   gem "jekyll-github-metadata"
   gem "jekyll-default-layout"
+  gem "jekyll-gfm-admonitions"
 end
 
 platforms :windows do
