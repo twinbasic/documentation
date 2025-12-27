@@ -59,7 +59,7 @@ Public CoClass Foo
 End CoClass
 ```
 
-For an overview of coclasses in tB, see [Defining coclasses](/Reference/Overview/#defining-coclasses).
+For an overview of coclasses in tB, see [Defining coclasses](/Features/Overview/#defining-coclasses).
 
 ## CoClassId(String)
 
