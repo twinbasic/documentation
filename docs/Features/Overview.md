@@ -18,9 +18,18 @@ This page is intended to list and briefly describe all new features that twinBAS
 * [Design Experience and Compiler Features](#design-experience-and-compiler-features)
 
 # Attributes
-Attributes have two major functions: they can act as instructions to compiler to influence how code is generated, or to annotate an element (Forms, Modules, Classes, Types, Enums, Declares, Subs/Functions, etc). Previously in VBx, these attributes, such as procedure description, hidden, default member, and others, were set via hidden text the IDE's editor didn't show you, configured via the Procedure Attributes dialog or some other places. In tB, these are all visible in the code editor. The legacy ones from VBx are supported for compatibility, but new attributes utilize the following syntax:\
-`[Attribute]` or `[Attribute(value)]`\
-Many new attributes enable the powerful additional language features twinBASIC provides, so some of the following items have their associated attributes included in their description, then general/miscellaneous ones will be described later on.
+Attributes have two major functions: 
+
+* they can act as instructions to compiler to influence how code is generated, or 
+
+* to annotate Forms, Modules, Classes, Types, Enums, Declares, and [procedures](/tB/Gloss/#procedure) i.e. Subs/Functions/Properties. 
+
+Previously in VBx, these attributes, such as procedure description, hidden, default member, and others, were set via hidden text the IDE's editor didn't show you, configured via the Procedure Attributes dialog or some other places. In tB, these are all visible in the code editor. The legacy ones from VBx are supported for compatibility, but new attributes utilize the following syntax:\
+    `[Attribute]` or `[Attribute(value)]`
+
+Many new attributes enable the powerful additional language features twinBASIC provides, so some of the following items have their associated attributes included in their description. 
+
+See also [the comprehensive reference for attributes][/tB/Core/Attributes].
 
 # 64bit Compilation
 
@@ -68,7 +77,7 @@ Available attributes for interfaces currently include:
 
 * `[ComImport]` - Specifies that an interface is an import from an external COM library, for instance, the Windows shell.
 
-* `[COMExtensible(True/False)]` - Specifies whether new members added at runtime can be called by name through an interface implementing IDispatch. This attribute is set to **False** by default.
+* `[ComExtensible(True/False)]` - Specifies whether new members added at runtime can be called by name through an interface implementing IDispatch. This attribute is set to **False** by default.
 
 Available attributes for methods currently include:
 
@@ -1089,29 +1098,7 @@ While modern applications use `HKEY_CURRENT_USER`, for VBx compatibility compone
 ## Registration at build time is optional
 tB provides the Project: Register DLL after build option so you can disable automatic registration, if for example you wanted to move the file first.
 
-# Misc Attributes
-The following attributes are also available but haven't been described above:
 
-* `[Description("text")]` attribute for APIs, UDTs , and Consts that are shown in popups when you hover over uses of them and in VBx object browser. Additionally, this attribute can be used for `Module` or `Class` to describe the module/class itself, and if a class represents a creatable control, it will often be used in component lists to describe the control, as it's exported as the `helpstring` attribute at the class level too.
-* `[RunAfterBuild]` attribute-- you can specify a function that runs after your exe is built (there's `App.LastBuildPath` to know where it is if you're e.g. signing the exe).
-* Per-class/module and Per-procedure `[IntegerOverflowChecks(False)]`, `[FloatingPointErrorChecks(False)]` and `[ArrayBoundsChecks(False)]` attributes to disable those checks on performance-critical routines while leaving them generally in place.
-* Constant function folding. You can specify a `[ConstantFoldable]` attribute for functions where when called with non-variable input, will be computed at compile time, rather than runtime. For example, a function to converted string literals to ANSI. The result would never change, so the resulting ANSI string is stored, rather than recomputing every run.
-* `[Unimplemented]` attribute for methods allows showing a compiler warning about it being unimplemented wherever it's called. You can upgrade it to error too.
-* `[SetDllDirectory(True/False)]` attribute to allow an explicitly loaded DLL to load it's own dependencies from it's load path. Also has the effect of allowing searching the app path for the DLLs in the base app's declare statements. It can be used per-declare or within a module.
-* `[EnumId("GUID")]` specifies a GUID to be associated with an enum in type libraries.
-* `[TypeHint()]` attribute allows populating Intellisense with an enum for types other than `Long`.
-* `[CompileIf(condition)]` method attribute for more advanced control over conditional compilation.
-* `[DebugOnly]` for a Sub/Function will exclude calls to it from the build.
-* `[DllStackCheck(False)]` attribute for DLL Declares giving minor codegen size reduction on 32-bit API calls.
-* `[Debuggable(False)]` attribute turns of breakpoints and stepping for the method or module.
-* `[PopulateFrom()]` to populate enums via JSON
-* `[Flags]` - Calculate implicit enum values as a flag set (powers of 2). (Note: To prevent confusion, once an explicit value is used, all remaining values after it must also be explicit)\
-![image](Images/4c4d2582-5c79-43bc-bd77-26cdfa49ed7f.png)
-
-
-
-
-Note that you can also use VBx attributes with the new syntax; `[PredeclaredId]`, `[Hidden]`, `[Restricted]` \etc.
 
 # Standard Library Enhancements
 
