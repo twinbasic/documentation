@@ -43,6 +43,10 @@ jobs:
         env:
           JEKYLL_ENV: production
           PAGES_REPO_NWO: "${{ github.repository }}"
+      - name: Run HTML Proofer
+        run: bundle exec htmlproofer ./_site --disable-external --swap-urls "^${{ steps.pages.outputs.base_path }}/:/"
+        # --log-level :debug 
+        working-directory: ./docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
