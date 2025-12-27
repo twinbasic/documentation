@@ -1,7 +1,7 @@
 ---
 title: Frequently Asked Questions
 nav_order: 2
-permalink: /FAQ/
+permalink: /FAQ
 ---
 
 # twinBASIC Frequently Asked Questions
@@ -30,7 +30,7 @@ twinBASIC is the work of Wayne Phillips, who operates the company [Everything Ac
 <summary markdown=span><b>Where can I get twinBASIC?</b></summary>
 {: #where-to-get }
 
-The latest version can be downloaded from the [Releases section](https://github.com/twinbasic/twinbasic/releases) of the [main twinBASIC GitHub repository](https://github.com/twinbasic/twinbasic). See [How do I install twinBASIC](#how-do-i-install-twinbasic) for more information on installation.
+The latest version can be downloaded from the [Releases section](https://github.com/twinbasic/twinbasic/releases) of the [main twinBASIC GitHub repository](https://github.com/twinbasic/twinbasic). See [How do I install twinBASIC](#installation) for more information on installation.
 
 </details>
 
@@ -78,7 +78,6 @@ twinBASIC GitHub: [Main section](https://github.com/twinbasic/twinbasic) \| [Iss
 </details>
 
 <details markdown=block>
-<a id="is-twinbasic-open-source" />
 <summary markdown=span><b>Is twinBASIC Open Source?</b></summary>
 {: #open-source }
 
@@ -93,7 +92,7 @@ While open source models are possible in the future, at this time the compiler i
 There are 3 editions of twinBASIC: The Community Edition is FREE. A splash screen is placed on compiled 64bit binaries and certain features like advanced optimized compilation and future cross-platform compilation are unavailable, but there are no restrictions on core language features or royalties imposed. To get those features, subscriptions are available for the Professional and Ultimate editions. For more details, including current pricing for Professional and Ultimate editions, [see this page](https://twinbasic.com/preorder.html).
 
 > [!NOTE]
-> You can change the subscription level at any time and the community edition is always available. There will be no lockout (see [the previous statement regarding escrow](#is-twinbasic-open-source)) so you will always have the ability to develop, test and compile. 
+> You can change the subscription level at any time and the community edition is always available. There will be no lockout (see [the previous statement regarding escrow](#open-source)) so you will always have the ability to develop, test and compile. 
 
 </details>
 
@@ -136,7 +135,6 @@ Other than those special cases, it's exceedingly rare for projects to depend on 
 </details>
 
 <details markdown=block>
-<a id="how-do-i-report-bugs-or-other-problems" />
 <summary markdown=span><b>How do I report bugs or other problems?</b></summary>
 {: #bug-reporting }
 
@@ -175,12 +173,11 @@ WebView2 is required. This is normally preinstalled on newer versions of Windows
 <summary markdown=span><b>twinBASIC won't run; says there's an invalid entry point.</b></summary>
 {: #invalid-entry-point }
 
-This issue is sometimes encountered on Windows 7. To be used on Windows 7, the OS must be fully updated; this error results from one or more missing updates. Run Windows Update to make sure you have all recent updates installed. If you still have problems, you can drop by the Discord or submit an issue on GitHub (see [`How do I report bugs or other problems?`](#how-do-i-report-bugs-or-other-problems))
+This issue is sometimes encountered on Windows 7. To be used on Windows 7, the OS must be fully updated; this error results from one or more missing updates. Run Windows Update to make sure you have all recent updates installed. If you still have problems, you can drop by the Discord or submit an issue on GitHub (see [`How do I report bugs or other problems?`](#bug-reporting))
 
 </details>
 
 <details markdown=block>
-<a id="how-do-i-install-twinbasic" />
 <summary markdown=span><b>How do I install twinBASIC?</b></summary>
 {: #installation }
 

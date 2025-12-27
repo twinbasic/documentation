@@ -27,7 +27,7 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 2. [Defining a CustomControl](CustomControls/Defining)
 3. [Property sheet and object serialization](CustomControls/Properties)
 4. [Painting / drawing to your control](CustomControls/Painting)
-5. [Notes about the form designer](CustomControls/Notes)
+5. [Notes about the form designer](CustomControls/Form Designer)
 
 ## Packages
 1. [What is a package?](Packages/What-Is)
@@ -52,9 +52,9 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 2. [Statements](Reference/Statements), listed alphabetically
 3. [Procedures and Functions](Reference/Procedures-and-Functions) of the core language, listed alphabetically
 4. [List of available compiler constants](Reference/Compiler-Constants)
-5. [Glossary](/tB/Core/Gloss) - a glossary of commonly used technical terms
-6. [Modules](tB/Core/Modules) - a list of core modules and their contents
+5. [Glossary](tB/Gloss) - a glossary of commonly used technical terms
+6. [Modules](tB/Modules) - a list of core modules and their contents
 
 ## twinBASIC IDE
 
-1. [Project Settings](/tB/IDE/Project/Settings)
+1. [Project Settings](tB/IDE/Project/Settings)

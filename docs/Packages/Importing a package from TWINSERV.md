@@ -2,7 +2,7 @@
 title: Importing a Package from TWINSERV
 parent: Packages
 nav_order: 3
-permalink: /Packages/Importing-TWINSERV/
+permalink: /Packages/Importing-TWINSERV
 ---
 
 # Importing a package from TWINSERV

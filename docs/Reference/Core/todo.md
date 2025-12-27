@@ -1,0 +1,75 @@
+---
+title: TODO List for /tb/Core
+nav_exclude: true
+redirect_from:
+  - /tB/Core/Topic-Preprocessor
+  - /tB/Core/AppActivate
+  - /tB/Core/Beep
+  - /tB/Core/Call
+  - /tB/Core/Class
+  - /tB/Core/Close
+  - /tB/Core/CoClass
+  - /tB/Core/Const
+  - /tB/Core/Continue
+  - /tB/Core/Declare
+  - /tB/Core/Deftype
+  - /tB/Core/DeleteSetting
+  - /tB/Core/Dim
+  - /tB/Core/Do-Loop
+  - /tB/Core/End
+  - /tB/Core/Enum
+  - /tB/Core/Erase
+  - /tB/Core/Event
+  - /tB/Core/Exit
+  - /tB/Core/For-Next
+  - /tB/Core/Function
+  - /tB/Core/Get
+  - /tB/Core/GetSetting
+  - /tB/Core/GoSub-Return
+  - /tB/Core/Goto
+  - /tB/Core/If-Then-Else
+  - /tB/Core/Implements
+  - /tB/Core/Input
+  - /tB/Core/Interface
+  - /tB/Core/Is
+  - /tB/Core/LBound
+  - /tB/Core/Let
+  - /tB/Core/Line-Input
+  - /tB/Core/Load
+  - /tB/Core/Lock
+  - /tB/Core/LSet
+  - /tB/Core/Module
+  - /tB/Core/New
+  - /tB/Core/On-Error
+  - /tB/Core/On-GoSub
+  - /tB/Core/On-GoTo
+  - /tB/Core/Open
+  - /tB/Core/ParamArray
+  - /tB/Core/Print
+  - /tB/Core/Private
+  - /tB/Core/Property
+  - /tB/Core/Public
+  - /tB/Core/Put
+  - /tB/Core/RaiseEvent
+  - /tB/Core/ReDim
+  - /tB/Core/Resume
+  - /tB/Core/RSet
+  - /tB/Core/SaveSetting
+  - /tB/Core/Seek
+  - /tB/Core/Select-Case
+  - /tB/Core/SendKeys
+  - /tB/Core/Set
+  - /tB/Core/Static
+  - /tB/Core/Sub
+  - /tB/Core/Stop
+  - /tB/Core/Type
+  - /tB/Core/Unload
+  - /tB/Core/Unlock
+  - /tB/Core/While-Wend
+  - /tB/Core/With
+  - /tB/Core/Write
+---
+
+> [!WARNING]
+>
+> Pardon, we have not documented this statement or procedure yet.

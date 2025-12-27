@@ -1,7 +1,7 @@
 ---
 title: Modules
 parent: Reference Section
-permalink: /tB/Modules/
+permalink: /tB/Modules
 ---
 
 > [!WARNING]

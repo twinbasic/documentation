@@ -2,7 +2,7 @@
 title: Updating a Package
 parent: Packages
 nav_order: 5
-permalink: /Packages/Updating/
+permalink: /Packages/Updating
 ---
 
 # Updating a package

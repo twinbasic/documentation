@@ -2,7 +2,7 @@
 title: Customize the UserDataFolder 
 parent: WebView2
 nav_order: 2
-permalink: /WebView2/Customize-UserDataFolder/
+permalink: /WebView2/Customize-UserDataFolder
 ---
 
 # Customize the UserDataFolder 

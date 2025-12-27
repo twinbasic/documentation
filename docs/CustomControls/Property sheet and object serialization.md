@@ -2,7 +2,7 @@
 title: Property Sheet and Object Serialization
 parent: CustomControls
 nav_order: 3
-permalink: /CustomControls/Properties/
+permalink: /CustomControls/Properties
 ---
 # Property Sheet and Object Serialization
 The form designer property sheet will pickup any **_public_** custom properties (fields) that you expose via your CustomControl class.  For example, adding a field `Public MyField As Long` will then automatically show up in the control property sheet in the form designer:

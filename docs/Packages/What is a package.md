@@ -2,7 +2,7 @@
 title: What is a Package
 parent: Packages
 nav_order: 1
-permalink: /Packages/What-Is/
+permalink: /Packages/What-Is
 ---
 
 # What is a package?

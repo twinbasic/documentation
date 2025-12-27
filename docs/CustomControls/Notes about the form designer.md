@@ -2,7 +2,7 @@
 title: Notes About the Form Designer
 parent: CustomControls
 nav_order: 5
-permalink: /CustomControls/Notes/
+permalink: /CustomControls/Form Designer
 ---
 
 # Notes About the Form Designer

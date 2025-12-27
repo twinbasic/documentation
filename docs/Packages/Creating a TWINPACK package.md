@@ -2,7 +2,7 @@
 title: Creating a TWINPACK Package
 parent: Packages
 nav_order: 2
-permalink: /Packages/Creating-TWINPACK/
+permalink: /Packages/Creating-TWINPACK
 ---
 
 # Creating a TWINPACK package
@@ -43,7 +43,7 @@ Use this option if you want to just create a local TWINPACK file that you can us
 
 You'll see the build output notification in the `DEBUG CONSOLE`, as seen above.
 
-Job done.  See [Importing a package from a TWINPACK file](../Importing-TWINPACK) for referencing and using the TWINPACK file in other twinBASIC projects.
+Job done.  See [Importing a package from a TWINPACK file](Importing-TWINPACK) for referencing and using the TWINPACK file in other twinBASIC projects.
 
 <br>
 
@@ -72,7 +72,7 @@ After pressing `YES`, the package will be uploaded to TWINSERV.   Check the `DEB
 
  If the package got uploaded successfully, it should be available via TWINSERV within a few moments.   If you've created a `PUBLIC` package, others will be able to see and download it at this point.
 
-See [Importing a package from TWINSERV](../Importing-TWINSERV) for referencing and using the uploaded packages.
+See [Importing a package from TWINSERV](Importing-TWINSERV) for referencing and using the uploaded packages.
 
 <br>
 <br>
