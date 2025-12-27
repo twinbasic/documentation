@@ -68,7 +68,7 @@ Available attributes for interfaces currently include:
 
 * `[ComImport]` - Specifies that an interface is an import from an external COM library, for instance, the Windows shell.
 
-* `[COMExtensible(True/False)]` - Specifies whether new members added at runtime can be called by name through an interface implementing IDispatch. This attribute is set to **False** by default.
+* `[ComExtensible(True/False)]` - Specifies whether new members added at runtime can be called by name through an interface implementing IDispatch. This attribute is set to **False** by default.
 
 Available attributes for methods currently include:
 
@@ -1096,8 +1096,8 @@ The following attributes are also available but haven't been described above:
 * `[RunAfterBuild]` attribute-- you can specify a function that runs after your exe is built (there's `App.LastBuildPath` to know where it is if you're e.g. signing the exe).
 * Per-class/module and Per-procedure `[IntegerOverflowChecks(False)]`, `[FloatingPointErrorChecks(False)]` and `[ArrayBoundsChecks(False)]` attributes to disable those checks on performance-critical routines while leaving them generally in place.
 * Constant function folding. You can specify a `[ConstantFoldable]` attribute for functions where when called with non-variable input, will be computed at compile time, rather than runtime. For example, a function to converted string literals to ANSI. The result would never change, so the resulting ANSI string is stored, rather than recomputing every run.
-* `[Unimplemented]` attribute for methods allows showing a compiler warning about it being unimplemented wherever it's called. You can upgrade it to error too.
-* `[SetDllDirectory(True/False)]` attribute to allow an explicitly loaded DLL to load it's own dependencies from it's load path. Also has the effect of allowing searching the app path for the DLLs in the base app's declare statements. It can be used per-declare or within a module.
+* `[Unimplemented]` attribute for methods allows showing a compiler warning about it being unimplemented wherever it's called. You can upgrade it to an error too.
+* `[SetDllDirectory(True/False)]` attribute to allow an explicitly loaded DLL to load its own dependencies from it's load path. Also has the effect of allowing searching the app path for the DLLs in the base app's declare statements. It can be used per-declare or within a module.
 * `[EnumId("GUID")]` specifies a GUID to be associated with an enum in type libraries.
 * `[TypeHint()]` attribute allows populating Intellisense with an enum for types other than `Long`.
 * `[CompileIf(condition)]` method attribute for more advanced control over conditional compilation.
