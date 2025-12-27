@@ -2,7 +2,7 @@
 title: Introduction
 parent: CustomControls
 nav_order: 1
-permalink: /CustomControls/Introduction/
+permalink: /CustomControls/Introduction
 ---
 
 ### Introduction

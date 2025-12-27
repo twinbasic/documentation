@@ -2,7 +2,7 @@
 title: Defining a CustomControl
 parent: CustomControls
 nav_order: 2
-permalink: /CustomControls/Defining/
+permalink: /CustomControls/Defining
 ---
 # Defining a CustomControl
 A CustomControl is simply an ordinary twinBASIC class, with a few extra attributes and requirements.
@@ -46,7 +46,7 @@ All CustomControls *must* implement CustomControls.ICustomControl.  This interfa
 ``` vb
 Sub Initialize(ByVal Context As CustomControlContext)
 ```
-    
+
 This method is called when your control is attached to a form.  You must store the provided Context object in a class field as it offers a `Repaint()` method for informing the form engine that something in your control has changed and needs to be repainted.
 
 ``` vb
@@ -59,7 +59,7 @@ This method is called when your control is detached from a form.  This allows an
 Sub Paint(ByVal Canvas As Canvas)
 ```
 
-This is the most interesting part for a CustomControl.  As such, it gets its own section, see [Painting / drawing to your control](../Painting/)
+This is the most interesting part for a CustomControl.  As such, it gets its own section, see [Painting / drawing to your control](/CustomControls/Painting)
 
 ***
 ## Minimum set of properties
@@ -78,7 +78,7 @@ Public Visible As Boolean
 
 The form designer and the form engine work with these properties, so it is important to include them in your CustomControl class.
 
-Note that the form designer works with pixel values which are not DPI-scaled.  So the Left/Top/Width/Height properties of your control do not reflect DPI scaling.  For example, if your control has a width of 50 pixels, then at DPI 150%, then the actual drawing width is 75 pixels ( see [Painting / drawing to your control](CustomControls/Painting/)).
+Note that the form designer works with pixel values which are not DPI-scaled.  So the Left/Top/Width/Height properties of your control do not reflect DPI scaling.  For example, if your control has a width of 50 pixels, then at DPI 150%, then the actual drawing width is 75 pixels ( see [Painting / drawing to your control](/CustomControls/Painting)).
 
 ***
 ## Must have a serialization constructor
@@ -88,4 +88,4 @@ CustomControls *must* offer a serialization constructor:
 Public Sub New(Serializer As SerializationInfo)
 ```
 
-The passed in Serializer object offers a `Deserialize()` method that you call in order to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](CustomControls/Properties/) for further information.
+The passed in Serializer object offers a `Deserialize()` method that you call in order to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](/CustomControls/Properties) for further information.

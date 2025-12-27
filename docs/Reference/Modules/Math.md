@@ -1,7 +1,7 @@
 ---
 title: Math Module
 parent: Modules
-permalink: /tB/Modules/Math/
+permalink: /tB/Modules/Math
 ---
 
 # Math module

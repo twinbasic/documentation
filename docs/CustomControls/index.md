@@ -1,7 +1,7 @@
 ---
 title: CustomControls
 nav_order: 3
-permalink: /CustomControls/
+permalink: /CustomControls
 ---
 
 # CustomControls

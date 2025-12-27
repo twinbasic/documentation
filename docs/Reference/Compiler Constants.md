@@ -2,7 +2,7 @@
 title: Compiler Constants
 parent: Reference Section
 nav_order: 4
-permalink: /Reference/Compiler-Constants/
+permalink: /Reference/Compiler-Constants
 ---
 
 This is a guide to the built in compiler constants in twinBASIC. It includes the constants listed for VBA in its documentation even if they're not defined, as an undefined compiler constant can always be used, but will be 0.

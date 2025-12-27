@@ -1,7 +1,7 @@
 ---
 title: Project Settings
 parent: IDE
-permalink: /tB/IDE/Project/Settings/
+permalink: /tB/IDE/Project/Settings
 ---
 
 # Project Settings

@@ -2,7 +2,7 @@
 title: Windowless Controls vs. Windowed Controls
 parent: Features
 nav_order: 3
-permalink: /Features/Windowless/
+permalink: /Features/Windowless
 ---
 
 # Windowless Controls vs. Normal (Windowed) Controls

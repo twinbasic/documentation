@@ -2,7 +2,7 @@
 title: Overview
 parent: Features
 nav_order: 1
-permalink: /Features/Overview/
+permalink: /Features/Overview
 ---
 
 # Overview
@@ -1191,7 +1191,7 @@ In addition to the above, forms have:
 * Control anchoring: control x/y/cx/cy can made relative, so they're automatically moved/resized with the Form. For example if you put a TextBox in the bottom right, then check the Right and Bottom anchors (in addition to Top and Left), the bottom right will size with the form on resize. This saves a lot of boiler-plate sizing code. 
 * Control docking: Controls can be fixed along one of the sides of the Form (or container), or made to fill the whole Form/container. Multiple controls can be combined and mixed/matched in docking positions.
 
-For more information on Control Anchoring and Control Docking, see the Wiki entry [Control Anchoring and Docking ‐ Automatic size and position management](../Anchoring-Docking).
+For more information on Control Anchoring and Control Docking, see the Wiki entry [Control Anchoring and Docking ‐ Automatic size and position management](Anchoring-Docking).
 
 ## Unicode support
 All tB-implemented controls support Unicode, both in the code editor and when displayed.
@@ -1213,7 +1213,7 @@ tB will eventually replace all built in controls that you're used to, for now th
 
 ### Alternatives for unimplemented controls
 
-The best option is Krool's VBCCR and VBFlexGrid projects. These are now available [from the Package Server](Packages---Importing-a-package-from-TWINSERV) in x64-compatible form, and are also DPI aware and support Visual Styles. 
+The best option is Krool's VBCCR and VBFlexGrid projects. These are now available [from the Package Server](../Packages/Importing-TWINSERV/) in x64-compatible form, and are also DPI aware and support Visual Styles. 
 
 Additionally, the original OCX controls provided by Microsoft will work fine; however, they're mostly 32-bit only. The x64 version of `MSComCtl.ocx` doesn't come with Windows and isn't legally redistributable but if you have Office 64bit, it works in tB.
 

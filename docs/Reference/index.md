@@ -1,7 +1,7 @@
 ---
 title: Reference Section
 nav_order: 7
-permalink: /Reference/
+permalink: /Reference
 ---
 
 # Reference Section

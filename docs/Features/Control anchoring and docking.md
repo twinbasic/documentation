@@ -2,7 +2,7 @@
 title: Control Anchoring and Docking
 parent: Features
 nav_order: 2
-permalink: /Features/Anchoring-Docking/
+permalink: /Features/Anchoring-Docking
 ---
 
 # Anchoring

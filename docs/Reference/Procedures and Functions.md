@@ -2,7 +2,7 @@
 title: Procedures and Functions
 parent: Reference Section
 nav_order: 3
-permalink: /Reference/Procedures-and-Functions/
+permalink: /Reference/Procedures-and-Functions
 ---
 
 # Procedures and Functions

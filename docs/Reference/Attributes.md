@@ -1,7 +1,7 @@
 ---
 title: Attributes
 parent: Reference Section
-permalink: /tB/Core/Attributes/
+permalink: /tB/Core/Attributes
 ---
 
 # Attributes
@@ -83,7 +83,7 @@ End CoClass
 
 The methods are [procedures](/tB/Gloss/#procedure).
 
-For an overview of coclasses in tB, see [Defining coclasses](/tB/Features/Overview#defining-coclasses).
+For an overview of coclasses in tB, see [Defining coclasses](/Features/Overview#defining-coclasses).
 
 ## ComCreatable(Bool)
 
@@ -91,7 +91,7 @@ For an overview of coclasses in tB, see [Defining coclasses](/tB/Features/Overvi
 
 Syntax: **[ComCreatable(True** \| **False)]**
 
-Applicable to:  [**CoClass**](/tb/Core/CoClass)
+Applicable to:  [**CoClass**](/tB/Core/CoClass)
 
 Indicates that this coclass can be created with the [**New**](/tB/Core/New) keyword. This attribute is is **True** by default. 
 
@@ -152,7 +152,7 @@ Excludes calls to this procedure from the Build. They are only available when ru
 
 Syntax: **[Description("** arbitrary text **")]**
 
-Applicable to: [**Class**](/tB/Core/Class), [**CoClass**](/tb/Core/CoClass), [**Const**](/tB/Core/Const), [**Declare** (API declaration)](/tb/Core/Declare), [**Interface**](/tB/Core/Interface), [**Module**](/tB/Core/Module), [**Type** (UDT)](/tB/Core/Type)
+Applicable to: [**Class**](/tB/Core/Class), [**CoClass**](/tB/Core/CoClass), [**Const**](/tB/Core/Const), [**Declare** (API declaration)](/tB/Core/Declare), [**Interface**](/tB/Core/Interface), [**Module**](/tB/Core/Module), [**Type** (UDT)](/tB/Core/Type)
 
 Provides a description in information popups in the IDE, and is exported as a `helpstring` attribute in the type library (if applicable).
 
@@ -185,7 +185,7 @@ Public Const MyExportedSymbol As Long = &H00000001
 
 Syntax: **DllStackCheck( True** \| **False)**
 
-Applicable to: [**Declare** (API declaration)](/tb/Core/Declare)
+Applicable to: [**Declare** (API declaration)](/tB/Core/Declare)
 
 Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Has no effect on other platforms.
 
@@ -226,7 +226,7 @@ Disables floating point error checks. Used on performance-critical routines. The
 
 Syntax: **[Hidden]**
 
-Applicable to: [**CoClass**](/tb/Core/CoClass), [**Interface**](/tB/Core/Interface)
+Applicable to: [**CoClass**](/tB/Core/CoClass), [**Interface**](/tB/Core/Interface)
 
 Hides the interface or coclass from certain Intellisense and other lists.
 
@@ -264,7 +264,7 @@ End Interface
 
 The methods are [procedures](/tB/Gloss/#procedure).
 
-For an overview of interfaces in tB, see [Defining interfaces](/tB/Features/Overview#defining-interfaces).
+For an overview of interfaces in tB, see [Defining interfaces](/Features/Overview#defining-interfaces).
 
 ## OleAutomation(Bool)
 

@@ -1,7 +1,7 @@
 ---
 title: Option
 parent: Statements
-permalink: /tB/Core/Option/
+permalink: /tB/Core/Option
 ---
 # Option
 {: .no_toc}
@@ -23,7 +23,7 @@ Because the default base is **0**, the **Option Base** statement is never requir
 If used, the statement must appear in a [module](/tB/Gloss#module) or [class](/tB/Gloss#class) before any procedures, functions, or properties. **Option Base** can appear only once in a module and must precede array [declarations](/tB/Gloss#declaration) that include dimensions.
 
 > [!NOTE]
-> The **To** clause in the [**Dim**](/tB/Core/Dim), [**Private**](/tB/Core/Private), [**Public**](/tB/Core/Public), [**ReDim**](/tB/Core/ReDim), and [**Static**](/tB/Core/Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](/tB/Core/ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](/tB/Core/ParamArray) (or the [**Array**](/tB/VBA/Array) function, when qualified with the name of its type library, for example [**VBA.Array**](/tB/VBA/Array)).
+> The **To** clause in the [**Dim**](/tB/Core/Dim), [**Private**](/tB/Core/Private), [**Public**](/tB/Core/Public), [**ReDim**](/tB/Core/ReDim), and [**Static**](/tB/Core/Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](/tB/Core/ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](/tB/Core/ParamArray) (or the [**Array**](/tB/Modules/VBA/Array) function, when qualified with the name of its type library, for example [**VBA.Array**](/tB/Modules/VBA/Array)).
 
 The **Option Base** statement only affects the lower bound of arrays in the module where the statement is located.
 
@@ -74,7 +74,7 @@ End Class
 
 Syntax: **Option Explicit**
 
-Used at the [module level](/tB/Gloss#module-level) to force explicit declaration of all [variables](/tB/Gloss#variable) in that [module](/tb/Gloss#module).
+Used at the [module level](/tB/Gloss#module-level) to force explicit declaration of all [variables](/tB/Gloss#variable) in that [module](/tB/Gloss#module).
 
 If used, the **Option Explicit** statement must appear in a module before any [procedures](/tB/Gloss#procedure).
 
@@ -147,11 +147,11 @@ End Module
 
 Syntax: **Option Private Module**
 
-When used in applications that reference multiple [packages](/tb/Gloss#package), **Option Private Module** prevents a [module's](/tB/Gloss#module) or [class's](/tB/Gloss#class) contents from being referenced outside its package.
+When used in applications that reference multiple [packages](/tB/Gloss#package), **Option Private Module** prevents a [module's](/tB/Gloss#module) or [class's](/tB/Gloss#class) contents from being referenced outside its package.
 
-If used, the **Option Private** statement must appear at [module level](/tb/Gloss#module-level) or [class level](/tb/Gloss#class-level), before any [procedures](/tb/Gloss#procedure).
+If used, the **Option Private** statement must appear at [module level](/tB/Gloss#module-level) or [class level](/tB/Gloss#class-level), before any [procedures](/tB/Gloss#procedure).
 
-When a module contains **Option Private Module**, the public parts, for example, [variables](/tb/Gloss#variable), [objects](/tb/Gloss#object), and [user-defined types](/tb/Gloss#user-defined-type) declared at the module level, are still available within the [project](/tb/Gloss#project) containing the module, but they are not available to other applications or projects.
+When a module contains **Option Private Module**, the public parts, for example, [variables](/tB/Gloss#variable), [objects](/tB/Gloss#object), and [user-defined types](/tB/Gloss#user-defined-type) declared at the module level, are still available within the [project](/tB/Gloss#project) containing the module, but they are not available to other applications or projects.
 
 > [!NOTE]
 > **Option Private** is a more verbose way of making modules or classes private to the package. An equivalent effect in a less verbose fashion is obtained with [**Private**](/tB/Core/Private) statement as follows:

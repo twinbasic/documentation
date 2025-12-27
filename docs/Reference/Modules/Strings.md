@@ -1,7 +1,7 @@
 ---
 title: Strings Module
 parent: Modules
-permalink: /tB/Modules/Strings/
+permalink: /tB/Modules/Strings
 ---
 
 # Strings module

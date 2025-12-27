@@ -1,6 +1,6 @@
 ---
 title: IDE
-permalink: /tB/IDE/
+permalink: /tB/IDE
 ---
 
 # The twinBASIC IDE
