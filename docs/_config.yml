@@ -1,7 +1,7 @@
 title: twinBASIC Documentation
 logo: favicon.png
 logo_with_title: true
-baseurl: /
+url: "https://docs.twinbasic.com"
 
 # note: redcarpet is not supported on github pages
 markdown: kramdown
