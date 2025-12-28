@@ -31,7 +31,7 @@ redirect_from:
   - /tB/Core/Get
   - /tB/Core/GetSetting
   - /tB/Core/GoSub-Return
-  - /tB/Core/Goto
+  - /tB/Core/GoTo
   - /tB/Core/If-Then-Else
   - /tB/Core/Implements
   - /tB/Core/Input

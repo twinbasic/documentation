@@ -41,7 +41,7 @@ Statements:
 * [Exit](../tB/Core/Exit) - exit a loop, procedure, function or property
 * [Select Case](../tB/Core/Select-Case) - execute a code block selected by an expression
 * [With](../tB/Core/With) - bring a variable or expression into scope
-* [Goto](../tB/Core/Goto), [GoSub ... Return](../tB/Core/GoSub-Return) - transfer execution to another location
+* [Goto](../tB/Core/GoTo), [GoSub ... Return](../tB/Core/GoSub-Return) - transfer execution to another location
 * [Resume](../tB/Core/Resume) - resumes execution after an error has been caught
 * [On Error](../tB/Core/On-Error) - specifies what to do when an error occurs
 * [On ... GoTo](../tB/Core/On-GoTo), [On ... GoSub](../tB/Core/On-GoSub) - transfer execution to a location selected by an expression
