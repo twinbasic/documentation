@@ -16,21 +16,21 @@ Configures a compiler option.
 
 Syntax: **Option Base** { **0** \| **1** }
 
-Used at the [module level](/tB/Gloss#module-level) to declare the default lower bound for array subscripts.
+Used at the [module level](../Gloss#module-level) to declare the default lower bound for array subscripts.
 
 Because the default base is **0**, the **Option Base** statement is never required.
 
-If used, the statement must appear in a [module](/tB/Gloss#module) or [class](/tB/Gloss#class) before any procedures, functions, or properties. **Option Base** can appear only once in a module and must precede array [declarations](/tB/Gloss#declaration) that include dimensions.
+If used, the statement must appear in a [module](../Gloss#module) or [class](../Gloss#class) before any procedures, functions, or properties. **Option Base** can appear only once in a module and must precede array [declarations](../Gloss#declaration) that include dimensions.
 
 > [!NOTE]
-> The **To** clause in the [**Dim**](/tB/Core/Dim), [**Private**](/tB/Core/Private), [**Public**](/tB/Core/Public), [**ReDim**](/tB/Core/ReDim), and [**Static**](/tB/Core/Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](/tB/Core/ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](/tB/Core/ParamArray) (or the [**Array**](/tB/Modules/VBA/Array) function, when qualified with the name of its type library, for example [**VBA.Array**](/tB/Modules/VBA/Array)).
+> The **To** clause in the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](ParamArray) (or the [**Array**](../Modules/VBA/Array) function, when qualified with the name of its type library, for example [**VBA.Array**](../Modules/VBA/Array)).
 
 The **Option Base** statement only affects the lower bound of arrays in the module where the statement is located.
 
 ### Example of use at module level
 {: .no_toc}
 
-This example uses the **Option Base** statement to override the default base array subscript value of 0. The [**LBound**](/tB/Core/LBound) function returns the smallest available subscript for the indicated dimension of an array. The **Option Base** statement is used at the module level only.
+This example uses the **Option Base** statement to override the default base array subscript value of 0. The [**LBound**](LBound) function returns the smallest available subscript for the indicated dimension of an array. The **Option Base** statement is used at the module level only.
 
 ```vb
 Module MyModule
@@ -74,20 +74,20 @@ End Class
 
 Syntax: **Option Explicit**
 
-Used at the [module level](/tB/Gloss#module-level) to force explicit declaration of all [variables](/tB/Gloss#variable) in that [module](/tB/Gloss#module).
+Used at the [module level](../Gloss#module-level) to force explicit declaration of all [variables](../Gloss#variable) in that [module](../Gloss#module).
 
-If used, the **Option Explicit** statement must appear in a module before any [procedures](/tB/Gloss#procedure).
+If used, the **Option Explicit** statement must appear in a module before any [procedures](../Gloss#procedure).
 
 This option makes it mandatory to require variable declarations. There is no complementary option to make the declarations optional.
 
-When **Option Explicit** appears in a module, you must explicitly declare all variables by using the  [**Dim**](/tB/Core/Dim), [**Private**](/tB/Core/Private), [**Public**](/tB/Core/Public), [**ReDim**](/tB/Core/ReDim), and [**Static**](/tB/Core/Static) **Static** statements. If you attempt to use an undeclared variable name, an error occurs at [compile time](/tB/Gloss#compile-time).
+When **Option Explicit** appears in a module, you must explicitly declare all variables by using the  [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) **Static** statements. If you attempt to use an undeclared variable name, an error occurs at [compile time](../Gloss#compile-time).
 
-If you don't use the **Option Explicit** statement, and when the [**Option Explicit On**](/tB/IDE/Project/Settings#option-explicit-on) project setting is changed to its non-default value of *No*, all undeclared variables are of **Variant** type unless the default type is otherwise specified with a [**Def**_type_](/tB/Core/Deftype) statement.
+If you don't use the **Option Explicit** statement, and when the [**Option Explicit On**](../IDE/Project/Settings#option-explicit-on) project setting is changed to its non-default value of *No*, all undeclared variables are of **Variant** type unless the default type is otherwise specified with a [**Def**_type_](Deftype) statement.
 
 > [!NOTE]
 > The **Option Explicit On** project setting is *Yes* by default in new projects.
 >
-> Use **Option Explicit** to avoid incorrectly typing the name of an existing variable or to avoid confusion in code where the [scope](/tB/Gloss#scope) of the variable is not clear.
+> Use **Option Explicit** to avoid incorrectly typing the name of an existing variable or to avoid confusion in code where the [scope](../Gloss#scope) of the variable is not clear.
 
 ### Example of use at module level
 {: .no_toc }
@@ -108,17 +108,17 @@ End Module
 
 Syntax: **Option Compare** { **Binary** \| **Text** \| **Database** }
 
-If used, the **Option Compare** statement must appear in a [module](/tB/Gloss#module) before any [procedures](/tB/Gloss#procedure).
+If used, the **Option Compare** statement must appear in a [module](../Gloss#module) before any [procedures](../Gloss#procedure).
 
-The **Option Compare** statement specifies the [string comparison](/tB/Gloss#string-comparison) method (**Binary**, **Text**, or** Database**) for a module. If a module doesn't include an **Option Compare** statement, the default text comparison method is **Binary**.
+The **Option Compare** statement specifies the [string comparison](../Gloss#string-comparison) method (**Binary**, **Text**, or** Database**) for a module. If a module doesn't include an **Option Compare** statement, the default text comparison method is **Binary**.
 
-* **Option Compare Binary** results in string comparisons based on a [sort order](/tB/Gloss#sort-order) derived from the internal binary representations of the characters. In Microsoft Windows, sort order is determined by the code page. A typical binary sort order is shown in the following example:
+* **Option Compare Binary** results in string comparisons based on a [sort order](../Gloss#sort-order) derived from the internal binary representations of the characters. In Microsoft Windows, sort order is determined by the code page. A typical binary sort order is shown in the following example:
 
   ```
   A < B < E < Z < a < b < e < z < À < Ê < Ø < à < ê < ø 
   ```
 
-* **Option Compare Text** results in string comparisons based on a case-insensitive text sort order determined by your system's [locale](/tB/Gloss#locale). When the same characters are sorted by using **Option Compare Text**, the following text sort order is produced:
+* **Option Compare Text** results in string comparisons based on a case-insensitive text sort order determined by your system's [locale](../Gloss#locale). When the same characters are sorted by using **Option Compare Text**, the following text sort order is produced:
 
   ```
   (A=a) < ( À=à) < (B=b) < (E=e) < (Ê=ê) < (Z=z) < (Ø=ø) 
@@ -147,14 +147,14 @@ End Module
 
 Syntax: **Option Private Module**
 
-When used in applications that reference multiple [packages](/tB/Gloss#package), **Option Private Module** prevents a [module's](/tB/Gloss#module) or [class's](/tB/Gloss#class) contents from being referenced outside its package.
+When used in applications that reference multiple [packages](../Gloss#package), **Option Private Module** prevents a [module's](../Gloss#module) or [class's](../Gloss#class) contents from being referenced outside its package.
 
-If used, the **Option Private** statement must appear at [module level](/tB/Gloss#module-level) or [class level](/tB/Gloss#class-level), before any [procedures](/tB/Gloss#procedure).
+If used, the **Option Private** statement must appear at [module level](../Gloss#module-level) or [class level](../Gloss#class-level), before any [procedures](../Gloss#procedure).
 
-When a module contains **Option Private Module**, the public parts, for example, [variables](/tB/Gloss#variable), [objects](/tB/Gloss#object), and [user-defined types](/tB/Gloss#user-defined-type) declared at the module level, are still available within the [project](/tB/Gloss#project) containing the module, but they are not available to other applications or projects.
+When a module contains **Option Private Module**, the public parts, for example, [variables](../Gloss#variable), [objects](../Gloss#object), and [user-defined types](../Gloss#user-defined-type) declared at the module level, are still available within the [project](../Gloss#project) containing the module, but they are not available to other applications or projects.
 
 > [!NOTE]
-> **Option Private** is a more verbose way of making modules or classes private to the package. An equivalent effect in a less verbose fashion is obtained with [**Private**](/tB/Core/Private) statement as follows:
+> **Option Private** is a more verbose way of making modules or classes private to the package. An equivalent effect in a less verbose fashion is obtained with [**Private**](Private) statement as follows:
 >
 > ``` vb
 > Private Module MyModule

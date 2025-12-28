@@ -6,11 +6,14 @@ redirect_from:
   - /tB/Core/AppActivate
   - /tB/Core/Beep
   - /tB/Core/Call
+  - /tB/Core/ChDir
+  - /tB/Core/ChDrive
   - /tB/Core/Class
   - /tB/Core/Close
   - /tB/Core/CoClass
   - /tB/Core/Const
   - /tB/Core/Continue
+  - /tB/Core/Date
   - /tB/Core/Declare
   - /tB/Core/Deftype
   - /tB/Core/DeleteSetting
@@ -19,8 +22,10 @@ redirect_from:
   - /tB/Core/End
   - /tB/Core/Enum
   - /tB/Core/Erase
+  - /tB/Core/Error
   - /tB/Core/Event
   - /tB/Core/Exit
+  - /tB/Core/FileCopy
   - /tB/Core/For-Next
   - /tB/Core/Function
   - /tB/Core/Get
@@ -32,13 +37,18 @@ redirect_from:
   - /tB/Core/Input
   - /tB/Core/Interface
   - /tB/Core/Is
+  - /tB/Core/Kill
   - /tB/Core/LBound
   - /tB/Core/Let
   - /tB/Core/Line-Input
   - /tB/Core/Load
   - /tB/Core/Lock
   - /tB/Core/LSet
+  - /tB/Core/Mid-equals
+  - /tB/Core/MidB-equals
+  - /tB/Core/MkDir
   - /tB/Core/Module
+  - /tB/Core/Name
   - /tB/Core/New
   - /tB/Core/On-Error
   - /tB/Core/On-GoSub
@@ -52,20 +62,26 @@ redirect_from:
   - /tB/Core/Put
   - /tB/Core/RaiseEvent
   - /tB/Core/ReDim
+  - /tB/Core/Reset
   - /tB/Core/Resume
+  - /tB/Core/RmDir
   - /tB/Core/RSet
+  - /tB/Core/SavePicture
   - /tB/Core/SaveSetting
   - /tB/Core/Seek
   - /tB/Core/Select-Case
   - /tB/Core/SendKeys
   - /tB/Core/Set
+  - /tB/Core/SetAttr
   - /tB/Core/Static
   - /tB/Core/Sub
   - /tB/Core/Stop
+  - /tB/Core/Time
   - /tB/Core/Type
   - /tB/Core/Unload
   - /tB/Core/Unlock
   - /tB/Core/While-Wend
+  - /tB/Core/Width
   - /tB/Core/With
   - /tB/Core/Write
 ---

@@ -25,7 +25,7 @@ The period during which source code is translated to executable code.
 
 ## constant
 
-A named item that retains a constant value throughout the execution of a program. A constant can be a string or numeric literal, another constant, or any combination that includes arithmetic or logical operators except [**Is**](/tB/Core/Is) and exponentiation. Each host application can define its own set of constants. Additional constants can be defined by the user with the [**Const**](/tB/Core/Const) statement. Use constants anywhere in your code in place of actual values.
+A named item that retains a constant value throughout the execution of a program. A constant can be a string or numeric literal, another constant, or any combination that includes arithmetic or logical operators except [**Is**](Core/Is) and exponentiation. Each host application can define its own set of constants. Additional constants can be defined by the user with the [**Const**](Core/Const) statement. Use constants anywhere in your code in place of actual values.
 
 ## declaration
 
@@ -59,7 +59,7 @@ A combination of code and data that can be treated as a unit, for example, a con
 
 ## procedure
 
-A named sequence of statements executed as a unit. For example, [**Function**](/tB/Core/Function), [**Property**](/tB/Core/Property), and [**Sub**](/tB/Core/Sub) are types of procedures. A procedure name is always defined at module level. All executable code must be contained in a procedure. Procedures can't be nested within other procedures.
+A named sequence of statements executed as a unit. For example, [**Function**](Core/Function), [**Property**](Core/Property), and [**Sub**](Core/Sub) are types of procedures. A procedure name is always defined at module level. All executable code must be contained in a procedure. Procedures can't be nested within other procedures.
 
 ## project
 
@@ -67,7 +67,7 @@ A set of modules.
 
 ## scope
 
-Defines the visibility of a variable, procedure, or object. For example, a variable declared as [**Public**](/tB/Core/Public) is visible to all procedures in all modules in a directly referencing project unless [**Option Private Module**](/tB/Core/Option#Private) is in effect. When **Option Private Module** is in effect, the module itself is private and therefore not visible to referencing projects. Variables declared in a procedure are visible only within the procedure and lose their value between calls unless they are declared [**Static**](/tB/Core/Static).
+Defines the visibility of a variable, procedure, or object. For example, a variable declared as [**Public**](Core/Public) is visible to all procedures in all modules in a directly referencing project unless [**Option Private Module**](Core/Option#Private) is in effect. When **Option Private Module** is in effect, the module itself is private and therefore not visible to referencing projects. Variables declared in a procedure are visible only within the procedure and lose their value between calls unless they are declared [**Static**](Core/Static).
 
 ## sort order
 
@@ -75,7 +75,7 @@ A sequencing principle used to order data, for example, alphabetic, numeric, asc
 
 ## string comparison
 
-A comparison of two sequences of characters. Use [**Option Compare**](/tB/Core/Option#Compare) to specify binary or text comparison. In English-U.S., binary comparisons are case sensitive; text comparisons are not.
+A comparison of two sequences of characters. Use [**Option Compare**](Core/Option#Compare) to specify binary or text comparison. In English-U.S., binary comparisons are case sensitive; text comparisons are not.
 
 ## user-defined type
 

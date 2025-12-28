@@ -76,7 +76,7 @@ These statements are built into the language itself. They are understood by the 
 
 * Open
 
-* [Option](/tB/Core/Option) - configure a compiler option
+* [Option](../tB/Core/Option) - configure a compiler option
 
 * Print
 

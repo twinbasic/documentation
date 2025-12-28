@@ -9,7 +9,7 @@ permalink: /tB/Core/Attributes
 Attributes have two major functions: 
 
 - they can act as instructions to compiler to influence how code is generated, or 
-- to annotate Forms, Modules, Classes, Types, Enums, Declares, and [procedures](/tB/Gloss#procedure) i.e. Subs/Functions/Properties. 
+- to annotate Forms, Modules, Classes, Types, Enums, Declares, and [procedures](../Gloss#procedure) i.e. Subs/Functions/Properties. 
 
 Previously in VBx, these attributes, such as the procedure description, hidden, default member, and others, were set via hidden text the IDE's editor didn't show you, configured via the Procedure Attributes dialog or some other places. In tB, these are all visible in the code editor. The legacy ones from VBx are supported for compatibility, but new attributes utilize the following syntax:   
 `[Attribute]` or `[Attribute(value)]`
@@ -24,7 +24,7 @@ The available attributes are listed below in alphabetic order. Not every attribu
 
 Syntax: **[AppObject]**
 
-Applicable to: [**CoClass**](/tB/Core/CoClass)
+Applicable to: [**CoClass**](CoClass)
 
 Indicates the class is part of the global namespace. You should not include this attribute without a full understanding of the meaning.
 
@@ -34,7 +34,7 @@ Indicates the class is part of the global namespace. You should not include this
 
 Syntax: **ArrayBoundsChecks( True** \| **False)**
 
-Applicable to: [**Class**](/tB/Core/Class), [**Module**](/tB/Core/Module), [procedure](/tB/Gloss/#procedure)
+Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
 Disables array element access bounds checking. Used on performance-critical routines. The default value is **True**.
 
@@ -44,7 +44,7 @@ Disables array element access bounds checking. Used on performance-critical rout
 
 Syntax: **[CoClassCustomConstructor("** fully qualified path to factory method **")]**
 
-Applicable to: [**CoClass**](/tB/Core/CoClass)
+Applicable to: [**CoClass**](CoClass)
 
 Allows custom logic for creating and returning a new instance of the coclass' implementation.
 
@@ -59,7 +59,7 @@ Public CoClass Foo
 End CoClass
 ```
 
-For an overview of coclasses in tB, see [Defining coclasses](/Features/Overview/#defining-coclasses).
+For an overview of coclasses in tB, see [Defining coclasses](../../Features/Overview#defining-coclasses).
 
 ## CoClassId(String)
 
@@ -67,7 +67,7 @@ For an overview of coclasses in tB, see [Defining coclasses](/Features/Overview/
 
 Syntax: **[CoClassId("**00000000-0000-0000-0000-000000000000**")]**
 
-Applicable to: [**CoClass**](/tB/Core/CoClass)
+Applicable to: [**CoClass**](CoClass)
 
 In addition to interfaces, twinBASIC also allows defining coclasses -- creatable classes that implement one or more defined interfaces. Like interfaces, these too must be in .twin files and not legacy .bas/.cls files, and must appear prior to the `Class` or `Module` statement. The generic form is:
 
@@ -81,9 +81,9 @@ CoClass <name>
 End CoClass
 ```
 
-The methods are [procedures](/tB/Gloss/#procedure).
+The methods are [procedures](../Gloss#procedure).
 
-For an overview of coclasses in tB, see [Defining coclasses](/Features/Overview#defining-coclasses).
+For an overview of coclasses in tB, see [Defining coclasses](../../Features/Overview#defining-coclasses).
 
 ## ComCreatable(Bool)
 
@@ -91,9 +91,9 @@ For an overview of coclasses in tB, see [Defining coclasses](/Features/Overview#
 
 Syntax: **[ComCreatable(True** \| **False)]**
 
-Applicable to:  [**CoClass**](/tB/Core/CoClass)
+Applicable to:  [**CoClass**](CoClass)
 
-Indicates that this coclass can be created with the [**New**](/tB/Core/New) keyword. This attribute is is **True** by default. 
+Indicates that this coclass can be created with the [**New**](New) keyword. This attribute is is **True** by default. 
 
 ## ComExtensible(Bool)
 
@@ -101,7 +101,7 @@ Indicates that this coclass can be created with the [**New**](/tB/Core/New) keyw
 
 Syntax: **[ComExtensible(True** \| **False)]**
 
-Applicable to: [**Interface**](/tB/Core/Interface), [procedure in an Interface](/tB/Gloss/#procedure)
+Applicable to: [**Interface**](Interface), [procedure in an Interface](../Gloss#procedure)
 
 Specifies whether new members added at runtime can be called by name through an interface implementing **IDispatch**. This attribute is set to **False** by default.
 
@@ -109,7 +109,7 @@ Specifies whether new members added at runtime can be called by name through an 
 
 Syntax: **[ComImport]**
 
-Applicable to: [**Interface**](/tB/Core/Interface)
+Applicable to: [**Interface**](Interface)
 
 Specifies that an interface is an import from an external COM library, for instance, the Windows shell.
 
@@ -117,7 +117,7 @@ Specifies that an interface is an import from an external COM library, for insta
 
 Syntax: **[CompileIf(** condition **)]**
 
-Applicable to: [procedure definitions](/tB/Gloss/#procedure)
+Applicable to: [procedure definitions](../Gloss#procedure)
 
 Controls the conditional compilation of a procedure definition. Has no default value.
 
@@ -125,7 +125,7 @@ Controls the conditional compilation of a procedure definition. Has no default v
 
 Syntax: **[ConstantFoldable]**
 
-Applicable to: [**Function**](/tB/Core/Function)
+Applicable to: [**Function**](Function)
 
 Specify this attribute for functions where when called with non-variable input, will be computed at compile time, rather than runtime. For example, a function to converted string literals to ANSI. The result would never change, so the resulting ANSI string is stored, rather than recomputing every run. Such functions are also called *pure functions*, because their output only depends on the arguments, and not on the state of the program.
 
@@ -135,7 +135,7 @@ Specify this attribute for functions where when called with non-variable input, 
 
 Syntax: **[Debuggable(True** \| **False)]**
 
-Applicable to: [**Module**](/tB/Core/Module), [procedure in a Class or Module](/tB/Gloss/#procedure)
+Applicable to: [**Module**](Module), [procedure in a Class or Module](../Gloss#procedure)
 
 When false, turns of breakpoints and stepping for the method or module. The default value is **True**.
 
@@ -143,7 +143,7 @@ When false, turns of breakpoints and stepping for the method or module. The defa
 
 Syntax: **[DebugOnly]**
 
-Applicable to: [procedure definitions](/tB/Gloss/#procedure)
+Applicable to: [procedure definitions](../Gloss#procedure)
 
 Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging.
 
@@ -152,7 +152,7 @@ Excludes calls to this procedure from the Build. They are only available when ru
 
 Syntax: **[Description("** arbitrary text **")]**
 
-Applicable to: [**Class**](/tB/Core/Class), [**CoClass**](/tB/Core/CoClass), [**Const**](/tB/Core/Const), [**Declare** (API declaration)](/tB/Core/Declare), [**Interface**](/tB/Core/Interface), [**Module**](/tB/Core/Module), [**Type** (UDT)](/tB/Core/Type)
+Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Const**](Const), [**Declare** (API declaration)](Declare), [**Interface**](Interface), [**Module**](Module), [**Type** (UDT)](Type)
 
 Provides a description in information popups in the IDE, and is exported as a `helpstring` attribute in the type library (if applicable).
 
@@ -162,7 +162,7 @@ Provides a description in information popups in the IDE, and is exported as a `h
 
 Syntax: **[DispId(** 123 **)]**
 
-Applicable to: [procedure in an Interface](/tB/Gloss/#procedure)
+Applicable to: [procedure in an Interface](../Gloss#procedure)
 
 Defines a dispatch ID associated with the procedure.
 
@@ -170,7 +170,7 @@ Defines a dispatch ID associated with the procedure.
 
 Syntax: **[DllExport]**
 
-Applicable to: [procedures](/tB/Gloss/#procedure) and variables in a module.
+Applicable to: [procedures](../Gloss#procedure) and variables in a module.
 
 It's possible to export a function or variable from standard modules. Example:
 
@@ -185,7 +185,7 @@ Public Const MyExportedSymbol As Long = &H00000001
 
 Syntax: **DllStackCheck( True** \| **False)**
 
-Applicable to: [**Declare** (API declaration)](/tB/Core/Declare)
+Applicable to: [**Declare** (API declaration)](Declare)
 
 Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Has no effect on other platforms.
 
@@ -195,7 +195,7 @@ Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Ha
 
 Syntax: **[EnumId("** 00000000-0000-0000-0000-000000000000 **")]**
 
-Applicable to: [**Enum**](/tB/Core/Enum)
+Applicable to: [**Enum**](Enum)
 
 Specifies a GUID to be associated with an enum in type libraries.
 
@@ -203,7 +203,7 @@ Specifies a GUID to be associated with an enum in type libraries.
 
 Syntax: **[Flags]**
 
-Applicable to: [**Enum**](/tB/Core/Enum)
+Applicable to: [**Enum**](Enum)
 
 Calculate implicit enum values as a flag set (powers of 2).
 
@@ -218,7 +218,7 @@ Calculate implicit enum values as a flag set (powers of 2).
 
 Syntax: **FloatingPointErrorChecks( True** \| **False)**
 
-Applicable to: [**Class**](/tB/Core/Class), [**Module**](/tB/Core/Module), [procedure](/tB/Gloss/#procedure)
+Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
 Disables floating point error checks. Used on performance-critical routines. The default value is **True**.
 
@@ -226,7 +226,7 @@ Disables floating point error checks. Used on performance-critical routines. The
 
 Syntax: **[Hidden]**
 
-Applicable to: [**CoClass**](/tB/Core/CoClass), [**Interface**](/tB/Core/Interface)
+Applicable to: [**CoClass**](CoClass), [**Interface**](Interface)
 
 Hides the interface or coclass from certain Intellisense and other lists.
 
@@ -236,7 +236,7 @@ Hides the interface or coclass from certain Intellisense and other lists.
 
 Syntax: **IntegerOverflowChecks( True** \| **False)**
 
-Applicable to: [**Class**](/tB/Core/Class), [**Module**](/tB/Core/Module), [procedure](/tB/Gloss/#procedure)
+Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
 
 Disables integer overflow checks. Used on performance-critical routines. The default value is **True**.
 
@@ -246,9 +246,9 @@ Disables integer overflow checks. Used on performance-critical routines. The def
 
 Syntax: **[InterfaceId("**00000000-0000-0000-0000-000000000000**")]**
 
-Applicable to: [**Interface**](/tB/Core/Interface)
+Applicable to: [**Interface**](Interface)
 
-twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the [**Class**](/tB/Core/Class) or [**Module**](/tB/Core/Module) statement, and will always have a project-wide scope. the The generic form for is as follows:
+twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the [**Class**](Class) or [**Module**](Module) statement, and will always have a project-wide scope. the The generic form for is as follows:
 
 ``` vb
 [InterfaceId ("00000000-0000-0000-0000-000000000000")]
@@ -262,9 +262,9 @@ Interface <name> Extends <base-interface>
 End Interface
 ```
 
-The methods are [procedures](/tB/Gloss/#procedure).
+The methods are [procedures](../Gloss#procedure).
 
-For an overview of interfaces in tB, see [Defining interfaces](/Features/Overview#defining-interfaces).
+For an overview of interfaces in tB, see [Defining interfaces](../../Features/Overview#defining-interfaces).
 
 ## OleAutomation(Bool)
 
@@ -272,7 +272,7 @@ For an overview of interfaces in tB, see [Defining interfaces](/Features/Overvie
 
 Syntax:  **[OleAutomation(True** \| **False)]**
 
-Applicable to: [**Interface**](/tB/Core/Interface)
+Applicable to: [**Interface**](Interface)
 
 Controls whether this attribute is applied in the typelibrary. This attribute is set to **True** by default.
 
@@ -282,7 +282,7 @@ Controls whether this attribute is applied in the typelibrary. This attribute is
 
 Syntax: **[PopulateFrom("json", "**internal path to .json**", "** table field **", "** name field **", "** value field **" )]**
 
-Applicable to: [**Enum**](/tB/Core/Enum)
+Applicable to: [**Enum**](Enum)
 
 Populates an **Enum** with values from a json file bundled with the project.
 
@@ -325,7 +325,7 @@ End Enum
 
 Syntax: **[PredeclaredId]**
 
-Applicable to: [**Class**](/tB/Core/Class)
+Applicable to: [**Class**](Class)
 
 When set, a global instance of the class is created when the application starts.
 
@@ -337,7 +337,7 @@ This attribute is equivalent to the `VB_PredeclaredId` attribute in VBx .cls fil
 
 Syntax: **[PreserveSig** [ **(** **True** \| **False** **)** ] **]**
 
-Applicable to: Method in an [Interface](/tB/Core/Interface), [API Declarations](/tB/Core/Declare).
+Applicable to: Method in an [Interface](Interface), [API Declarations](Declare).
 
 Default value: **False** in an Interface, **True** in an API Declare.
 
@@ -360,7 +360,7 @@ Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFol
 
 Syntax: **[Restricted]**
 
-Applicable to: [**Interface**](/tB/Core/Interface)
+Applicable to: [**Interface**](Interface)
 
 Restricts the interface methods from being called in most contexts.
 
@@ -372,7 +372,7 @@ This is attribute has the same function as the [**restricted** MIDL attribute][M
 
 Syntax: **[RunAfterBuild]**
 
-Applicable to: [**Function**](/tB/Core/Function), [**Sub**](/tB/Core/Sub)
+Applicable to: [**Function**](Function), [**Sub**](Sub)
 
 Specifies a function that runs after your exe is built. Tthere's `App.LastBuildPath` to know where it is if you're e.g. signing the executable.
 
@@ -382,7 +382,7 @@ Specifies a function that runs after your exe is built. Tthere's `App.LastBuildP
 
 Syntax: **[SetDllDirectory( True** \| **False)]**
 
-Applicable to: [**Declare** (API declaration)](/tB/Core/Declare), [**Module**](/tB/Core/Module)
+Applicable to: [**Declare** (API declaration)](Declare), [**Module**](Module)
 
 Allows an explicitly loaded DLL to load its own dependencies from it's load path. Also has the effect of allowing searching the app path for the DLLs in the base app's declare statements. It can be used per-declare or within a module.
 
@@ -392,7 +392,7 @@ Allows an explicitly loaded DLL to load its own dependencies from it's load path
 
 Syntax: **[TypeHint(** an enum type **)]**
 
-Applicable to: [procedure](/tB/Gloss/#procedure) parameters
+Applicable to: [procedure](../Gloss#procedure) parameters
 
 Allows populating Intellisense with an enum for types other than **Long**.
 
@@ -400,7 +400,7 @@ Allows populating Intellisense with an enum for types other than **Long**.
 
 Syntax: **[Unimplemented]**
 
-Applicable to: [procedure](/tB/Gloss/#procedure) definitions
+Applicable to: [procedure](../Gloss#procedure) definitions
 
 Makes the compiler issue a warning about the procedure being unimplemented wherever it's called. You can upgrade it to an error too.
 
