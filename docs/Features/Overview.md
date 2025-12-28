@@ -22,7 +22,7 @@ Attributes have two major functions:
 
 * they can act as instructions to compiler to influence how code is generated, or 
 
-* to annotate Forms, Modules, Classes, Types, Enums, Declares, and [procedures](/tB/Gloss/#procedure) i.e. Subs/Functions/Properties. 
+* to annotate Forms, Modules, Classes, Types, Enums, Declares, and [procedures](../tB/Gloss#procedure) i.e. Subs/Functions/Properties. 
 
 Previously in VBx, these attributes, such as procedure description, hidden, default member, and others, were set via hidden text the IDE's editor didn't show you, configured via the Procedure Attributes dialog or some other places. In tB, these are all visible in the code editor. The legacy ones from VBx are supported for compatibility, but new attributes utilize the following syntax:\
     `[Attribute]` or `[Attribute(value)]`
@@ -1402,15 +1402,15 @@ Code can be grouped as a package, and published to an online server. You can hav
 
 For more information, see the following pages:
 
-[What is a package](/Packages/What-Is)
+[What is a package](../Packages/What-Is)
 
-[Creating a TWINPACK package](/Packages/Creating-TWINPACK)
+[Creating a TWINPACK package](../Packages/Creating-TWINPACK)
 
-[Importing a package from a TWINPACK file](/Packages/Importing-TWINPACK)
+[Importing a package from a TWINPACK file](../Packages/Importing-TWINPACK)
 
-[Importing a package from TWINSERV](/Packages/Importing-TWINSERV)
+[Importing a package from TWINSERV](../Packages/Importing-TWINSERV)
 
-[Updating a package](/Packages/Updating)
+[Updating a package](../Packages/Updating)
 
 ## View Forms and Packages as JSON
 Project forms and packages are stored as JSON format data, and you can view this by right-click in Project Explorer and selecting 'View as JSON'. This is particularly interesting for packages as it exposes the entire code in a much more easily parsed format.

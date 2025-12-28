@@ -37,8 +37,14 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
+      - name: Write secondary config if available
+        run: |
+          echo "${{ vars.JEKYLL_SITE_CONFIG }}" > _site_config.yml
+          echo "SITE_CONFIG=_site_config.yml" >> "$GITHUB_ENV"
+        if: ${{ vars.JEKYLL_SITE_CONFIG != '' }}
+        working-directory: ./docs
       - name: Build with Jekyll
-        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        run: bundle exec jekyll build --config _config.yml,$SITE_CONFIG --baseurl "${{ steps.pages.outputs.base_path }}"
         working-directory: ./docs
         env:
           JEKYLL_ENV: production

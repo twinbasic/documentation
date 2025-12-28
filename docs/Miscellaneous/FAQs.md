@@ -60,7 +60,7 @@ Yes, see the [twinBASIC Roadmap](https://github.com/twinbasic/twinbasic/issues/3
 
 **Many!** It has 64bit compilation (using VBA7x64 compatible syntax), generics, overloading, multithreading (API-only right now, built in syntax coming soon), inheritance, ability to define interfaces and coclasses in your project using BASIC-style syntax, Unicode support in all controls and the editor (.twin files only), support for modern image formats, numerous enhancements to *Implements*, ability to create standard DLLs and kernel mode drivers, ability to set UDT packing alignment, and dozens of others, all available *right now*, with many more planned in the future.
 
-For a full list of all the new features available right now, see the Wiki article [Overview of features new to twinBASIC](/Features).
+For a full list of all the new features available right now, see the Wiki article [Overview of features new to twinBASIC](Features).
 
 </details>
 
