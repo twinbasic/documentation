@@ -194,8 +194,38 @@ or, on Windows only
 
    Otherwise, a maintainer will do it for you. You may wish to mention an outstanding request on [#docs][hash-docs] channel, although the [#github-docs][hash-github-docs] channel provides automated notifications of pull requests. So, normally a maintainer will get a notification of a new pull request, and will merge it or comment with a request for changes/improvements.
 
+## Editing Screenshots
+
+One way of editing screenshots is to use an integrated vector/pixel software like [Affinity][af]<sup>1</sup>. A possible workflow is:
+
+1. <kbd>PrtSc</kbd> to capture the screenshot.
+
+2. In Affinity, <kbd>Ctrl-Alt-Shift-N</kbd> (File, New from Clipboard) to get the entire screenshot into the program.
+
+3. Use the Vector Crop tool (from the Vector studio) to crop the screenshot down to the relevant part.
+
+   ![img](Images/af-vector-studio.png) ![img](Images/af-vector-crop-tool.png)
+
+4. Select the cropped image, and copy <kbd>Ctrl-C</kbd> to clipboard.
+
+5. Create a new file from clipboard again to open a document with just the cropped screenshot in it  <kbd>Ctrl-Alt-Shift-N</kbd> (File, New from Clipboard).
+
+6. Close the file you opened in #2.
+
+7. Add arrow and labels as needed. Those can be copy-pasted from other `.af` files in this repository.
+
+8. Export to PNG <kbd>Ctrl-Alt-Shift-W</kbd> (File, Export, Export...).
+
+>  [!NOTE]
+> It is a convention to put the `.af` ("source") files in the `_Images` folder, and the exported `.png` files in the `Images` folder. Only the latter is published to the website. The former is only to preserve sources for easy editing/updates.
+
+---
+
+<sup>1</sup> Affinity is a free-as-in-beer software that combines the functionality of a vector editor, a bitmap editor, and a publishing layout editor. To download, a Canva account is required. The accounts are free.
 
 
+
+[af]: https://www.affinity.studio/download
 
 [docs-pr]: https://github.com/twinbasic/documentation/compare
 [docs-repo]: https://github.com/twinbasic/documentation
