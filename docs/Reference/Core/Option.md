@@ -11,7 +11,7 @@ Configures a compiler option.
 * TOC
 {:toc}
 
-## Option Base statement
+## Option Base
 {: #Base }
 
 Syntax: **Option Base** { **0** \| **1** }
