@@ -188,11 +188,23 @@ or, on Windows only
 
    ![img](Images/create-pull-request.png)
 
-6. If you're a maintainer, you can merge the pull request yourself.
+   A maintainer will merge the pull request into the documentation repository. You may wish to mention an outstanding request on [#docs][hash-docs] channel, although the [#github-docs][hash-github-docs] channel provides automated notifications of pull requests. Normally, a maintainer will get a notification of a new pull request via Discord, and will merge it or comment with a request for changes/improvements.
+
+   **The steps below are done by maintainers**
+
+6. Review, then merge the pull request or comment with required changes.
 
    ![img](Images/merge-pull-request.png)
 
-   Otherwise, a maintainer will do it for you. You may wish to mention an outstanding request on [#docs][hash-docs] channel, although the [#github-docs][hash-github-docs] channel provides automated notifications of pull requests. So, normally a maintainer will get a notification of a new pull request, and will merge it or comment with a request for changes/improvements.
+   ![img](Images/confirm-merge.png)
+
+7. Select the **Deploy Jekyll site to Pages** action.
+   ![img](Images/choose-workflow.png){:width="75%"}
+
+8. Manually run the build and deployment workflow, as it doesn't start automatically.
+   ![img](Images/run-workflow.png){:width="50%"}
+
+   
 
 ## Editing Screenshots
 
