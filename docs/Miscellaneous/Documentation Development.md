@@ -134,7 +134,7 @@ These are modules within VBA and VBRUN:
   - [ParentControls](../tB/Modules/ParentControls)
   - [PropertyBag](../tB/Modules/PropertyBag)
 
-## Documentation Development Environment
+## Development Environment
 
 The documentation is built (renderd to html) using [Jekyll][jekyllrb].
 
@@ -172,7 +172,34 @@ or, on Windows only
 
     check.bat
 
+## Deploying to docs.twinbasic.com
+
+1. Push your changes to your Github fork of the [documentation repository][docs-repo].
+
+2. [Open a new pull request in the documentation repository][docs-pr].
+
+3. Click **compare across forks**.
+
+4. Select your repository and branch to merge from.
+
+   ![img](Images/compare-changes.png)
+
+5. Create the pull request.
+
+   ![img](Images/create-pull-request.png)
+
+6. If you're a maintainer, you can merge the pull request yourself.
+
+   ![img](Images/merge-pull-request.png)
+
+   Otherwise, a maintainer will do it for you. You may wish to mention an outstanding request on [#docs][hash-docs] channel, although the [#github-docs][hash-github-docs] channel provides automated notifications of pull requests. So, normally a maintainer will get a notification of a new pull request, and will merge it or comment with a request for changes/improvements.
 
 
+
+
+[docs-pr]: https://github.com/twinbasic/documentation/compare
 [docs-repo]: https://github.com/twinbasic/documentation
+[hash-docs]: https://discord.com/channels/927638153546829845/1021635324809596988
+[hash-github-docs]: https://discord.com/channels/927638153546829845/1111554338221989908
 [jekyllrb]: https://jekyllrb.com/
+
