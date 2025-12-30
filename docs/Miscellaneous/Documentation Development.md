@@ -71,6 +71,44 @@ These are modules within VBA and VBRUN:
   - [ParentControls](../tB/Modules/ParentControls)
   - [PropertyBag](../tB/Modules/PropertyBag)
 
+### /tB/Core/Attributes#\<attribute\>
+
+> [!NOTE]
+>
+> All non-alphabetic characters are removed from the links. All attribute names are in lowercase in the links. I.e. `ArrayBoundsChecks(Bool)` is referenced as `/tB/Core/Attributes#arrayboundschecksbool`. 
+
+- [AppObject](../tB/Core/Attributes#appobject)
+- [ArrayBoundsChecks(Bool)](../tB/Core/Attributes#arrayboundschecksbool)
+- [CoClassCustomConstructor(String)](../tB/Core/Attributes#coclasscustomconstructorstring)
+- [CoClassId(String)](../tB/Core/Attributes#coclassidstring)
+- [ComCreatable(Bool)](../tB/Core/Attributes#comcreatablebool)
+- [ComExtensible(Bool)](../tB/Core/Attributes#comextensiblebool)
+- [ComImport](../tB/Core/Attributes#comimport)
+- [CompileIf(Bool)](../tB/Core/Attributes#compileifbool)
+- [ConstantFoldable](../tB/Core/Attributes#constantfoldable)
+- [Debuggable(Bool)](../tB/Core/Attributes#debuggablebool)
+- [DebugOnly](../tB/Core/Attributes#debugonly)
+- [Description(String)](../tB/Core/Attributes#description)
+- [DispId(Integer)](../tB/Core/Attributes#dispidinteger)
+- [DllExport](../tB/Core/Attributes#dllexport)
+- [DllStackCheck(Bool)](../tB/Core/Attributes#dllstackcheckbool)
+- [EnumId(String)](../tB/Core/Attributes#enumidstring)
+- [Flags](../tB/Core/Attributes#flags)
+- [FloatingPointErrorChecks(Bool)](../tB/Core/Attributes#floatingpointerrorchecksbool)
+- [Hidden](../tB/Core/Attributes#hidden)
+- [IntegerOverflowChecks(Bool)](../tB/Core/Attributes#integeroverflowchecksbool)
+- [InterfaceId(String)](../tB/Core/Attributes#interfaceidstring)
+- [OleAutomation(Bool)](../tB/Core/Attributes#oleautomationbool)
+- [PopulateFrom(…)](../tB/Core/Attributes#populatefrom)
+- [PredeclaredID](../tB/Core/Attributes#predeclaredid)
+- [PreserveSig(Bool)](../tB/Core/Attributes#preservesigbool)
+- [Restricted](../tB/Core/Attributes#restricted)
+- [RunAfterBuild](../tB/Core/Attributes#runafterbuild)
+- [SetDllDirectory(Bool)](../tB/Core/Attributes#setdlldirectorybool)
+- [TypeHint(EnumType)](../tB/Core/Attributes#typehintenumtype)
+- [Unimplemented](../tB/Core/Attributes#unimplemented)
+
+
 ## Development Environment
 
 The documentation is built (renderd to html) using [Jekyll][jekyllrb].
