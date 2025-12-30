@@ -5,6 +5,7 @@ permalink: /tB/Core/Attributes
 ---
 
 # Attributes
+{: .no_toc }
 
 Attributes have two major functions: 
 
@@ -17,8 +18,9 @@ Previously in VBx, these attributes, such as the procedure description, hidden, 
 ---
 
 The available attributes are listed below in alphabetic order. Not every attribute applies to every language element. The applicability of each attribute is given below its syntax.
-
+* TOC
 {:toc}
+---
 
 ## AppObject
 
