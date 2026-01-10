@@ -38,3 +38,14 @@ twinBASIC supports a number of controls out of the box. See associated pages for
 - Data
 - OLE
 - MultiFrame
+
+## Common Controls
+
+- DTPicker
+- ImageList
+- ListView
+- MonthView
+- ProgressBar
+- Slider
+- TreeView
+- UpDown
