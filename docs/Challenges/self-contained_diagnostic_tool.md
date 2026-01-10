@@ -5,9 +5,9 @@ nav_order: 1
 permalink: /Challenges/1
 ---
 
-# 📣 twinBASIC Monthly Challenge #1
+# twinBASIC Monthly Challenge #1
 
-## 🛠️ Self-Contained Diagnostic Tool
+## Self-Contained Diagnostic Tool
 
 Build a **self-contained Windows diagnostic tool** using **twinBASIC**.
 
@@ -15,12 +15,12 @@ Your tool should report **useful information about the system it is running on**
 
 There is **no single correct output** - different approaches and interpretations are expected.
 
-## 🎁 Prize
+## Prize
 
 - £100 twinBASIC account credit
 - (non-transferable, no cash alternative, can only be used towards future twinBASIC licences)
 
-## ✅ Requirements
+## Requirements
 
 - Built using **twinBASIC**
 - Submission must be a **single** `.twinproj` **file**
@@ -31,7 +31,7 @@ There is **no single correct output** - different approaches and interpretations
   (Built-in twinBASIC packages and built-in OS / WinAPI features only)
 - Output may be **console or GUI**
 
-## 📊 Diagnostic content
+## Diagnostic content
 
 Report information from **at least three distinct categories**.
 
@@ -48,7 +48,7 @@ Examples:
 - Network configuration
 - Installed runtimes (e.g. .NET)
 
-## 🏆 Judging
+## Judging
 
 Entries will be judged across multiple categories, including:
 
@@ -67,7 +67,7 @@ Bonus points may be awarded for:
 
 Winner selected at the **sole discretion of the twinBASIC team**.
 
-## ⏰ Deadline
+## Deadline
 
 Saturday 31st January 2026
 
