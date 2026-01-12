@@ -64,11 +64,12 @@ callouts:
 # For copy button on code
 enable_copy_code_button: true
 
-# By default, consuming the theme as a gem leaves mermaid disabled; it is opt-in
-mermaid:
-  # Version of mermaid library
-  # Pick an available version from https://cdn.jsdelivr.net/npm/mermaid/
-  version: "9.1.6"
+# Waiting until it's needed.
+# # By default, consuming the theme as a gem leaves mermaid disabled; it is opt-in
+# mermaid:
+#   # Version of mermaid library
+#   # Pick an available version from https://cdn.jsdelivr.net/npm/mermaid/
+#   version: "9.1.6"
 
 # Aux links for the upper right navigation
 aux_links:
