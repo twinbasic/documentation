@@ -6,3 +6,5 @@ permalink: /Controls/CheckBox
 ---
 
 # CheckBox
+
+![CheckBox](Images/CheckBox.png "CheckBox")

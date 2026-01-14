@@ -6,3 +6,5 @@ permalink: /Controls/ComboBox
 ---
 
 # ComboBox
+
+![ComboBox](Images/ComboBox.png "ComboBox")

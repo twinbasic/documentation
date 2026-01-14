@@ -6,3 +6,5 @@ permalink: /Controls/MultiFrame
 ---
 
 # MultiFrame
+
+![MultiFrame](Images/MultiFrame.png "MultiFrame")

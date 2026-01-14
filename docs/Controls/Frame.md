@@ -6,3 +6,5 @@ permalink: /Controls/Frame
 ---
 
 # Frame
+
+![Frame](Images/Frame.png "Frame")

@@ -6,9 +6,6 @@ permalink: /Controls
 
 # Controls
 
-<!-- - [Common](/Controls/Common/) -->
-<!-- - [ActiveX](/Controls/ActiveX/) -->
-
 > [!WARNING]
 >
 > Pardon, we have not fully documented all the controls yet.

@@ -6,3 +6,5 @@ permalink: /Controls/TextBox
 ---
 
 # TextBox
+
+![TextBox](Images/TextBox.png "TextBox")

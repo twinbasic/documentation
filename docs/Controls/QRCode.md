@@ -7,6 +7,8 @@ permalink: /Controls/QRCode
 
 # QRCode
 
+![QRCode](Images/QRCode.png "QRCode")
+
 ## QR Code Control
 
 From [Features | Overview - New Controls](/Features/Overview#new-controls)

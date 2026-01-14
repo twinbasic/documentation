@@ -6,3 +6,5 @@ permalink: /Controls/Line
 ---
 
 # Line
+
+![Line](Images/Line.png "Line")

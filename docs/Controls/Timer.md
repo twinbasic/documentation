@@ -6,3 +6,5 @@ permalink: /Controls/Timer
 ---
 
 # Timer
+
+![Timer](Images/Timer.png "Timer")

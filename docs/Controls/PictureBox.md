@@ -6,3 +6,5 @@ permalink: /Controls/PictureBox
 ---
 
 # PictureBox
+
+![PictureBox](Images/PictureBox.png "PictureBox")

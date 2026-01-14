@@ -6,3 +6,5 @@ permalink: /Controls/Data
 ---
 
 # Data
+
+![Data](Images/Data.png "Data")

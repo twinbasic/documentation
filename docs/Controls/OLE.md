@@ -6,3 +6,5 @@ permalink: /Controls/OLE
 ---
 
 # OLE
+
+![OLE](Images/OLE.png "OLE")

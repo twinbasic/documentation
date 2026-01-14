@@ -6,3 +6,5 @@ permalink: /Controls/VScrollBar
 ---
 
 # VScrollBar
+
+![VScrollBar](Images/VScrollBar.png "VScrollBar")

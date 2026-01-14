@@ -6,3 +6,5 @@ permalink: /Controls/Image
 ---
 
 # Image
+
+![Image](Images/Image.png "Image")

@@ -7,6 +7,8 @@ permalink: /Controls/CheckMark
 
 # CheckMark
 
+![CheckMark](Images/CheckMark.png "CheckMark")
+
 ## CheckMark Control
 
 From [Features | Overview - New Controls](/Features/Overview#new-controls)

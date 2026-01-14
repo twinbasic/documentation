@@ -6,3 +6,5 @@ permalink: /Controls/Shape
 ---
 
 # Shape
+
+![Shape](Images/Shape.png "Shape")

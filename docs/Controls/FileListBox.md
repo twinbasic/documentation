@@ -6,3 +6,5 @@ permalink: /Controls/FileListBox
 ---
 
 # FileListBox
+
+![FileListBox](Images/FileListBox.png "FileListBox")
