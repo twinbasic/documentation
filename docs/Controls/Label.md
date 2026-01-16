@@ -11,6 +11,8 @@ permalink: /Controls/Label
 
 Displays descriptive text.
 
+Represents the text label for a control and provides support for access keys.
+
 ## Definition
 
 ## Examples
@@ -65,5 +67,8 @@ Displays descriptive text.
 
 <!-- [vb6]:  "" -->
 [vba]: https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/label-control  "Label control"
-<!-- [tb]:  "" -->
 [net]: https://learn.microsoft.com/en-us/dotnet/api/system.windows.forms.label?view=windowsdesktop-10.0 "Label Class"
+[net]: https://learn.microsoft.com/en-us/dotnet/api/system.windows.controls.label?view=windowsdesktop-10.0 "Label Class"
+<!-- [tb]:  "" -->
+
+{% include VBA-Attribution.md %}

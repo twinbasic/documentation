@@ -9,6 +9,17 @@ permalink: /Controls/QRCode
 
 ![QRCode](Images/QRCode.png "QRCode")
 
+_Description_
+
+<!-- | VB6 | VBA        | .NET       |
+| --- | ---------- | ---------- |
+|     | [vba][vba] | [net][net] | -->
+
+<!-- [vb6]:  "" -->
+<!-- [vba]:  "" -->
+<!-- [net]:  "" -->
+<!-- [tb]:  "" -->
+
 ## QR Code Control
 
 From [Features | Overview - New Controls](/Features/Overview#new-controls)
