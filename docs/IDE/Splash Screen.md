@@ -5,4 +5,6 @@ parent: IDE
 permalink: /tB/IDE/Project/Splash
 ---
 
+# Splash Screen
+
 ![Splash Screen](Images/Splash_Screen.png "Splash Screen")
