@@ -1162,7 +1162,7 @@ In addition to the new datatype-related and component name functions already des
 * `CallByDispId(Object, DispId, CallType, Arguments)` - Similar to `CallByName()`, but uses the dispatch id instead of method name.
 * `RaiseEventByName(Object, Name, Args)` - Invokes an event on class, using arguments specified as a single `Variant` containing an array.
 * `RaiseEventByName2(Object, Name, Arg1, Arg2, ...)` - Invokes an event on class, using arguments specified as a ParamArray.
-* `PictureToByteArray(StdPicture)` - Converts a picture to a byte array; Globals.LoadPicture supports loading from byte arrays.
+* `PictureToByteArray(StdPicture)` - Converts a picture to a byte array; Global.LoadPicture supports loading from byte arrays.
 * `CreateGUID()` - Returns a string with a freshly generated GUID.
 * `AllocMem(size)` and `FreeMem` - allocate and free memory from the process heap.
 * `Int3Breakpoint` - Inserts a true breakpoint helpful for attached external debuggers.
