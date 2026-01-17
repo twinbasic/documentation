@@ -48,7 +48,9 @@ twinBASIC can compile native 64bit executables in addition to 32bit. The syntax 
 * `Decimal` In twinBASIC, `Decimal` is implementented as a full, regular data type, in addition to use within a `Variant`. This is a 16-byte (128 bits) type which holds a 12-byte (96 bits) integer with variable decimal point scaling and sign bit information. Values range from -79,228,162,514,264,337,593,543,950,335 to 79,228,162,514,264,337,593,543,950,335.
 * All of the datatype management features also exist for these types: `DefDec`/`DefLngLng`/`DefLongPtr`, `CDec`/`CLngLng`/`CLongPtr`, and `vbDecimal`/`vbLongLong`/`vbLongPtr` constants for type checking.
 
-## Interfaces and coclasses
+## Interfaces, coclasses, and aliases
+
+twinBASIC supports these features as native language syntax where in VBx they were only supported via Type Libraries.
 
 ### Defining interfaces
 twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the `Class` or `Module` statement, and will always have a project-wide scope. the The generic form for this is as follows:
@@ -193,6 +195,35 @@ Public Module Test
     End Sub
 End Module
 ```
+
+### Defining Aliases
+
+An alias is an alternative name for a User-Defined Type, intrinsic type, or interface. This is similar to C/C++'s `typedef` statement. These can then be used in place of the original type and will be treated as if the original was used (would not be a type mismatch).
+
+`[Public|Private] Alias AltName As OrigName`
+
+#### Example
+
+With intrinsic types, or if you have a type such as 
+
+```vb
+Public Type POINT
+    x As Long
+    y As Long
+End Type
+```
+You can create aliases:
+
+```vb
+Public Alias POINTAPI As POINT
+
+Public Alias CBoolean As Byte
+
+Public Alias KAFFINITY As LongPtr
+```
+
+Like interfaces and coclasses, these must be placed in a .twin file, outside of `Module` and `Class` blocks. You can create aliases of other aliases. The optional `Public` and `Private` modifiers determine whether the alias is exported to the Type Library of an ActiveX DLL or Control. A `Private` alias would result in usage of it being replaced with the original type.
+
 
 ### Enhancements to `Implements`
 * `Implements` in twinBASIC is allowed on inherited interfaces-- for instance, if you have `Interface IFoo2 Extends IFoo`, you then use `Implements IFoo2` in a class, where in VBx this would not be allowed. You'll need to provide methods for all inherited interfaces (besides `IDispatch` and `IUnknown`). The class will mark all interfaces as available-- you don't need a separate statement for `IFoo`, it will be passed through `Set` statements (and their underlying `QueryInterface` calls) automatically.
