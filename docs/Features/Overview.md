@@ -1468,4 +1468,4 @@ Project forms and packages are stored as JSON format data, and you can view this
 
 # Many more to come!
 
-This list has covered all new features at the present time. There's many more planned, including built-in multithreading syntax, unsigned variable types, native support for aliases (currently supported in type libraries only), full inheritance, and more! If there's a feature you'd like to see, please feel welcome to make a feature request by [posting an issue in the main twinBASIC GitHub repository](https://github.com/twinbasic/twinbasic/issues).
+This list has covered all new features at the present time. There's many more planned, including built-in multithreading syntax, unsigned variable types, cross-platform compilation, and more! If there's a feature you'd like to see, please feel welcome to make a feature request by [posting an issue in the main twinBASIC GitHub repository](https://github.com/twinbasic/twinbasic/issues).
