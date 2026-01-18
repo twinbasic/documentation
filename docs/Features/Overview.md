@@ -29,7 +29,7 @@ Previously in VBx, these attributes, such as procedure description, hidden, defa
 
 Many new attributes enable the powerful additional language features twinBASIC provides, so some of the following items have their associated attributes included in their description. 
 
-See also [the comprehensive reference for attributes][/tB/Core/Attributes].
+See also [the comprehensive reference for attributes](../tB/Core/Attributes).
 
 # 64bit Compilation
 
