@@ -1,8 +1,8 @@
 ---
 title: Auto Save
-parent: AddIns
-nav_order: 2
-permalink: /tB/IDE/AddIns/AutoSave
+parent: Community Add Ins
+# nav_order: 
+permalink: /tB/IDE/AddIns/Community/AutoSave
 ---
 
 ## Auto Save
@@ -11,7 +11,7 @@ AutoSave addin for twinBasic, provides automatic saving with the ability to choo
 
 > Latest Release: [v3.1.5.0](https://github.com/sokinkeso/AutoSaveAddin/releases/tag/v3.1.5.0)
 
-Developer: Community
+Developer: @sokinkeso (Community)
 
 ![Auto Save](Images/AutoSave.png "Auto Save")
 
