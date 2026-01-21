@@ -1,7 +1,7 @@
 ---
 title: Menu
 parent: IDE
-# nav_order: 2
+# nav_order: 1
 permalink: /tB/IDE/Project/Menu
 ---
 
@@ -9,7 +9,7 @@ permalink: /tB/IDE/Project/Menu
 
 ![Menu](Images/Menu.png "Menu")
 
-- File
+- [File](/tB/IDE/Project/Menu/File)
 - Edit
 - View
 - Project
@@ -19,7 +19,7 @@ permalink: /tB/IDE/Project/Menu
 - Tools
 - Add-Ins
 - Window
-- Help
+- [Help](/tB/IDE/Project/Menu/Help)
 
 > [!NOTE]
 >

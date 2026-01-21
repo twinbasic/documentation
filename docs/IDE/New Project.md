@@ -9,7 +9,7 @@ permalink: /tB/IDE/Project/New
 
 ![New / Open Project](Images/New_Project.png "New / Open Project")
 
-![File (Menu)](Images/Menu_File.png "File (Menu)")
+![File (Menu)](Menu/Images/Menu_File.png "File (Menu)")
 
 Shortcut: <kbd>CTRL</kbd> + <kbd>N</kbd>
 
