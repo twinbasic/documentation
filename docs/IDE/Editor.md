@@ -11,14 +11,28 @@ permalink: /tB/IDE/Project/Editor
 
 ## Options
 
-![Editor Options (Icon)](Images/Editor_Options_Icon.png "Editor Options (Icon)")
+- Show Code Folding
+  - never 
+  - *when hovering*
+  - always
 
-![Editor Options](Images/Editor_Options.png "Editor Options")
+- Render Whitespace
+  - all
+  - *none*
+  - boundary
+  - selection
+  - trailing
 
-- Show Code Folding (when hovering)
-- Render Whitespace (none)
-- Font Size (13px)
-- Show Navigation Bar (above)
+- Font Size
+  - 8px
+  - ...
+  - *13px*
+  - ...
+  - 30px
+- Show Navigation Bar
+  - above
+  - below
+  - none
 - ✔ Show Indent Guides
 - ✔ Show Line Numbers
 - Code Hints Always Visible
@@ -26,64 +40,10 @@ permalink: /tB/IDE/Project/Editor
 - ✔ Show MiniMap
 - Show Advanced Info On Hover
 - Show Single Row Of Tabs
-- ✔ Auto Pretify Code
+- ✔ Auto Prettify Code
 - ✔ Show CodeLens Run Procedure
 
-### Show Code Folding
-
-![Editor Options Show Code Folding](Images/Editor_Options_ShowCodeFolding.png "Editor Options Show Code Folding")
-
-- never 
-- when hovering
-- always
-
-### Render Whitespace
-
-![Editor Options Render Whitespace](Images/Editor_Options_RenderWhitespace.png "Editor Options Render Whitespace")
-
-- all
-- none
-- boundary
-- selection
-- trailing
-
-### Font Size
-
-![Editor Options Font Size](Images/Editor_Options_FontSize.png "Editor Options Font Size")
-
-- 8px
-- ...
-- 30px
-
-Show Navigation Bar (above)
-
-![Editor Options Show Navigation Bar](Images/Editor_Options_ShowNavigationBar.png "Editor Options Show Navigation Bar")
-
-- above
-- below
-- none
-
-### Show Indent Guides
-
-### Show Line Numbers
-
-### Code Hints Always Visible
-
-### Sticky Scroll
-
-### Show MiniMap
-
-### Show Advanced Info On Hover
-
-### Show Single Row Of Tabs
-
-### Auto Pretify Code
-
-### Show CodeLens Run Procedure
-
 ## Tabs List
-
-![Editor Tabs List](Images/Editor_TabsList.png "Editor Tabs List")
 
 When a file is open in the _Editor_ it will be listed in the _Tabs List_ and you can jump between them here. 
 
