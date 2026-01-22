@@ -129,7 +129,6 @@ These are modules within VBA and VBRUN:
 - [UserDefinedTypeIsAnAlias](../tB/Core/Attributes#userdefinedtypeisanalias)
 - [WindowsControl](../tB/Core/Attributes#windowscontrol)
 
-
 ## Development Environment
 
 The documentation is built (renderd to html) using [Jekyll][jekyllrb].
@@ -146,9 +145,29 @@ The documentation is built (renderd to html) using [Jekyll][jekyllrb].
 
 4. **Go to the `/docs` folder in the cloned working tree.** Building, serving, and other documentation operations are all done in this folder, *not* in the repository root.
 
+### Building
+
 To build the documentation, i.e. render it from `.md` files to the `_site` folder:
 
     bundle exec jekyll build
+
+or, on Windows only:
+
+    build.bat
+
+### Checking Link Integrity
+
+Before checking link integrity, the documentation must be built. This can be done by ad-hoc by [building](#building),  or continuously in the background by [building and serving](#building-and-local-serving).
+
+To check that none of the internal links in the most recent documentation build are broken:
+
+    bundle exec htmlproofer ./_site --disable-external --no-enforce-https
+
+or, on Windows only
+
+    check.bat
+
+### Building and Local Serving
 
 To build and serve the documentation from http://localhost:4000:
 
@@ -158,15 +177,7 @@ or, on Windows only:
 
     serve.bat
 
-The documentation server detects changes in the filesystem and automatically regenerates the html files as needed. The server does *not* follow changes in `_config.yml`. If you change the configuration, the server has to be restarted. Interrupt the server by pressing **^C** repeatedly.
-
-To check that none of the internal links in the documentation are broken:
-
-    bundle exec htmlproofer ./_site --disable-external --no-enforce-https
-
-or, on Windows only
-
-    check.bat
+The documentation server detects changes in the filesystem and automatically regenerates the html files as needed. The server does *not* follow changes in `_config.yml`. If you change the configuration, the server has to be restarted. Interrupt the server by pressing <kbd>Ctrl</kbd><kbd>C</kbd> repeatedly.
 
 ## Deploying to docs.twinbasic.com
 
