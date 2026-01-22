@@ -1,6 +1,7 @@
 ---
 title: Project Settings
 parent: IDE
+# nav_order: 1
 permalink: /tB/IDE/Project/Settings
 ---
 
