@@ -9,4 +9,4 @@ permalink: /tB/IDE/Project/Editor/Form
 
 ![tbForm](Images/tbForm.png "tbForm")
 
-See [Toolbox](/tB/IDE/Project/Toolbox) for [Controls](/Controls) available to use.
+See [Toolbox](../Toolbox) for [Controls](../../../Controls) available to use.

@@ -17,7 +17,7 @@ Contains
 
 ![tbReport](Images/tbReport.png "tbReport")
 
-Only certain [Controls](/Controls) are available to a Report.
+Only certain [Controls](../../../Controls) are available to a Report.
 
 - Pointer
 - Label

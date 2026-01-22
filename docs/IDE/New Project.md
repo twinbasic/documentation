@@ -24,36 +24,36 @@ Shortcut: <kbd>CTRL</kbd> + <kbd>N</kbd>
 - Import from VBP...
 - Import from folder...
 
-Browse | Open | Cancel
+Browse \| Open \| Cancel
 
 # Samples
 
 ![Samples](Images/New_Project_Samples.png "Samples")
 
-- Sample 0. Reports (Experimental)
-- Sample 1. WebView2 Examples
-- Sample 2. GetIPAddress
-- Sample 3. MyCodeLibrary
-- Sample 4. MyVBEAddin (NEW with ToolWindow)
-- Sample 5. MyCOMAddin
-- Sample 6. CustomControls
-- Sample 7. Package
-- Sample 8. FilePropertyViewer (CustomControls)
-- Sample 9. ActiveX Control WebView2 + Monaco
-- Sample 10. twinBASIC IDE Addin
-- Sample 11. twinBASIC IDE Addin (Chart)
-- Sample 12. twinBASIC IDE Addin (Monaco)
-- Sample 13. twinBASIC IDE Addin (ListView)
-- Sample 14. twinBASIC IDE Addin (VirutalListView)
-- Sample 15. twinBASIC IDE Addin (Global Search)
-- Sample 16. twinBASIC IDE Addin (TODO Widgets demo)
-- Sample 17. Static Library Example (SQLITE3)
-- Sample 18. Static Library Example (libdeflate)
-- Sample 19. MDI Forms
-- Sample 20. TreeView + ListView + ImageList
-- Sample 21. Windows Service Simple Example
-- Sample 22. Windows Service Complex Example (inc Event Logging and IPC)
-- Sample 23. OOP Inheritance Example (Animals)
+0. Reports (Experimental)
+1. WebView2 Examples
+2. GetIPAddress
+3. MyCodeLibrary
+4. MyVBEAddin (NEW with ToolWindow)
+5. MyCOMAddin
+6. CustomControls
+7. Package
+8. FilePropertyViewer (CustomControls)
+9. ActiveX Control WebView2 + Monaco
+10. twinBASIC IDE Addin
+11. twinBASIC IDE Addin (Chart)
+12. twinBASIC IDE Addin (Monaco)
+13. twinBASIC IDE Addin (ListView)
+14. twinBASIC IDE Addin (VirutalListView)
+15. twinBASIC IDE Addin (Global Search)
+16. twinBASIC IDE Addin (TODO Widgets demo)
+17. Static Library Example (SQLITE3)
+18. Static Library Example (libdeflate)
+19. MDI Forms
+20. TreeView + ListView + ImageList
+21. Windows Service Simple Example
+22. Windows Service Complex Example (inc Event Logging and IPC)
+23. OOP Inheritance Example (Animals)
 
 # Recent
 

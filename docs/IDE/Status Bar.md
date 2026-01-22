@@ -43,7 +43,7 @@ DEBUGGER: Disconnected / OPERATIONAL
 
 ## Links
 
-![Links](images/Links.png "Links")
+![Links](Images/Links.png "Links")
 
 - https://ko-fi.com/twinbasic
 - https://discord.com/invite/UaW9GgKKuE

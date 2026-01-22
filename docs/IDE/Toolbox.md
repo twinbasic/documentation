@@ -7,7 +7,7 @@ permalink: /tB/IDE/Project/Toolbox
 
 # Toolbox
 
-<!-- See [Controls](/Controls) -->
+See [Controls](../../Controls)
 
 <!-- ![Toolbox](../Controls/Images/toolbox.png "Toolbox") -->
 
@@ -17,4 +17,4 @@ permalink: /tB/IDE/Project/Toolbox
 
 The "GoTo COM References" button takes you to **Project Settings** and filters by "project.references".
 
-See [Project Settings](/tB/IDE/Project/Settings) for more info.
+See [Project Settings](Settings) for more info.
