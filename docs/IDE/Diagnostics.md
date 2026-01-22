@@ -7,11 +7,15 @@ permalink: /tB/IDE/Project/Diagnostics
 
 # Diagnostics
 
-![Diagnostics](Images/Diagnostics.png "Diagnostics")
+![Diagnostics](Images/Diagnostics.png)
 
-![Diagnostics Toggles](Images/Diagnostics_Toggles.png "Diagnostics Toggles")
+![Diagnostics](Images/Diagnostics_Toggles.png)
 
-> Total _x_ Count -> click to toggle on/off
+![Diagnostics](Images/Diagnostics_Totals.png)
+
+
+
+## Categories
 
 - 🟥 Error
 - 🟨 Warning
