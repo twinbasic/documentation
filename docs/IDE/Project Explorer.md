@@ -26,19 +26,14 @@ When a Project is open contextual icons will appear.
 
 ![Project Explorer Header](Images/ProjectExplorer_Header.png "Project Explorer Header")
 
-## Project Settings
+## ![](Images/Settings.png) Project Settings
 
-![Settings](Images/Settings.png "Settings")
+- [Info](Settings)
 
-- [Info](/tB/IDE/Project/Settings)
+## ![](Images/Toggle.png) Toggle file view (<kbd>CTRL</kbd> + <kbd>R</kbd>)
 
-## Toggle file view (<kbd>CTRL</kbd> + <kbd>R</kbd>)
 
-![Toggle](Images/Toggle.png "Toggle")
-
-## Add...
-
-![Add](Images/Add.png "Add")
+## ![](Images/Add.png) Add...
 
 Same as Right-Click
 
@@ -51,73 +46,78 @@ Same as Right-Click
 ![Right-Click Add](Images/RightClick-Add.png "Right-Click Add")
 
 - ![Folder](Images/Folder.png "Folder") Add Folder
-- ![](Images/tb-Green.png "") Add Windows Form
-- ![](Images/tb-Green.png "") Add Windows MDI Form
-- ![](Images/tb-Green.png "") Add Windows UserControl
-- ![](Images/tb-Green.png "") Add Windows PropertyPage
-- ![](Images/tb-Green.png "") Add Windows Report
-- ---
-- ![](Images/tb-Green.png "") Add CustomControls Form
-- ---
-- ![Module](Images/tb-Red.png "Module") Add Module (.TWIN supporting Unicode)
-- ![Class](Images/tb-Red.png "Class") Add Class (.TWIN supporting Unicode)
-- ---
-- ![Module](Images/tb-Blue.png "Module (BAS)") Add Module (.BAS)
-- ![Class](Images/tb-Orange.png "Class (CLS)") Add Class (.CLS)
-- ---
+- ![](Images/tB-Green.png) Add Windows Form
+- ![](Images/tB-Green.png) Add Windows MDI Form
+- ![](Images/tB-Green.png) Add Windows UserControl
+- ![](Images/tB-Green.png) Add Windows PropertyPage
+- ![](Images/tB-Green.png) Add Windows Report
+
+---
+
+- ![](Images/tB-Green.png) Add CustomControls Form
+
+---
+
+- ![Module](Images/tB-Red.png "Module") Add Module (.TWIN supporting Unicode)
+- ![Class](Images/tB-Red.png "Class") Add Class (.TWIN supporting Unicode)
+
+---
+
+- ![Module](Images/tB-Blue.png "Module (BAS)") Add Module (.BAS)
+- ![Class](Images/tB-Orange.png "Class (CLS)") Add Class (.CLS)
+
+---
+
 - ![File](Images/File-Green.png "File") Add Other File
-- ---
+
+---
+
 - ![File](Images/File-Green.png "File") Import
-- ---
+
+---
+
 - Add Resource: Visual Styles Manifest
 - Add Resource: String Table
 - Add Resource: MESSAGETABLE
 
-## Folder
+## ![](Images/Folder.png) Folder
+{: #folder }
 
-![Folder](Images/Folder.png "Folder")
+## ![](Images/tB-Green.png) Windows Form
+{: #windows-form }
 
-## Windows Form
+[tbForm](Editor/Form)
 
-- ![](Images/tb-Green.png "") [tbForm](/tB/IDE/Project/Editor/Form)
+## ![](Images/tB-Green.png) Windows MDI Form
+{: #windows-mdi-form }
 
-## Windows MDI Form
+## ![](Images/UserControl.png) Windows UserControl
+{: #windows-usercontrol }
 
-![](Images/tb-Green.png "")
+## ![](Images/tB-Green.png) Windows PropertyPage
+{: #windows-propertypage }
 
-## Windows UserControl
+## ![](Images/tB-Green.png) Windows Report
+{: #windows-report }
 
-![UserControl](Images/UserControl.png "UserControl")
+[tbReport](Editor/Report)
 
-## Windows PropertyPage
-
-![](Images/tb-Green.png "")
-
-## Windows Report
-
-- ![](Images/tb-Green.png "") [tbReport](/tB/IDE/Project/Editor/Report)
-
-## CustomControls Forms
-
-![](Images/tb-Green.png "")
+## ![](Images/tB-Green.png) CustomControls Forms
+{: #customcontrols-forms }
 
 ![Add CustomControls Form Popup](Images/RightClick-Add-CustomControlsForm-Popup.png "Add CustomControls Form Popup")
 
-## Module
+## ![](Images/tB-Red.png) Module
+{: #module }
 
-![Module](Images/tb-Red.png "Module")
+## ![](Images/tB-Red.png) Class
+{: #class }
 
-## Class
+## ![](Images/File-Green.png) Other File
+{: #other-file }
 
-![Class](Images/tb-Red.png "Class")
-
-## Other File
-
-![File](Images/File-Green.png "File")
-
-## Import
-
-![File](Images/File-Green.png "File")
+## ![](Images/File-Green.png) Import
+{: #import }
 
 ## Resource: Visual Styles Manifest
 
