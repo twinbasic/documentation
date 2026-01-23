@@ -30,7 +30,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Do ... Loop](../tB/Core/Do-Loop) -- repeats a block of statements while a condition is **True** or until a condition becomes **True**
 
-* [End](../tB/Core/End)
+* [End](../tB/Core/End) -- ends a procedure or block
 
 * [Enum](../tB/Core/Enum)
 
