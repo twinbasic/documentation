@@ -1,12 +1,13 @@
 ---
 title: Access DevCon Videos
-# nav_order: 2
+parent: Videos
 permalink: /Videos/AccessDevCon
 ---
 
 # Access DevCon - Videos
+To learn more about the conference: [https://www.donkarl.com/devcon][2].
 
-**Access DevCon 2025 - twinBASIC Update**
+### Access DevCon 2025 - twinBASIC Update
 
 26 Apr 2025
 
@@ -16,11 +17,15 @@ permalink: /Videos/AccessDevCon
     referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
 </iframe>
 
-Access MVP Mike Wolfe presents a twinBASIC project update. For the slide deck and more information see: https://nolongerset.com/devcon-2025 .  To learn more about the conference: https://www.donkarl.com/devcon
+Access MVP Mike Wolfe presents a twinBASIC project update. 
+- For the slide deck and more information see: [https://nolongerset.com/devcon-2025][1].
+
+[1]: https://nolongerset.com/devcon-2025
+[2]: https://www.donkarl.com/devcon
 
 ---
 
-**Access DevCon 2024 - twinBASIC**
+### Access DevCon 2024 - twinBASIC
 
 Add-In creation with twinBASIC
 
@@ -32,13 +37,14 @@ Add-In creation with twinBASIC
     referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
 </iframe>
 
-Mike Wolfe presents a twinBASIC project update and how to create add-ins for Access with twinBASIC. For more information see: https://nolongerset.com/tag/twinbasic-weekly-update/
+Mike Wolfe presents a twinBASIC project update and how to create add-ins for Access with twinBASIC. 
+- For more information see: [https://nolongerset.com/tag/twinbasic-weekly-update/][3].
 
-To learn more about the conference: https://www.donkarl.com/devcon
+[3]: https://nolongerset.com/tag/twinbasic-weekly-update/
 
 ---
 
-**Access DevCon 2023 - twinBASIC Update**
+### Access DevCon 2023 - twinBASIC Update
 
 8 May 2023
 
@@ -48,16 +54,14 @@ To learn more about the conference: https://www.donkarl.com/devcon
     referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
 </iframe>
 
-Mike Wolfe presents a session on twinBASIC covering a brief project overwiew, progress, roadmap, demos and Access integration plans. For more information see: 
+Mike Wolfe presents a session on twinBASIC covering a brief project overwiew, progress, roadmap, demos and Access integration plans. 
+- For more information see [https://nolongerset.com/tag/twinbasic][5].
 
-- https://www.twinbasic.com
-- https://nolongerset.com/tag/twinbasic
-
-To learn more about the conference: https://www.donkarl.com/devcon
+[5]: https://nolongerset.com/tag/twinbasic
 
 ---
 
-**Access DevCon 2022 - twinBASIC Update**
+### Access DevCon 2022 - twinBASIC Update
 
 12 May 2022
 
@@ -67,15 +71,12 @@ To learn more about the conference: https://www.donkarl.com/devcon
     referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
 </iframe>
 
-Mike Wolfe presents the current state of twinBASIC focussing on the practical use and usefullness for Access developers. For more information:
-
-- https://www.twinbasic.com
-- https://nolongerset.com/tag/twinbasic
-- https://www.donkarl.com/devcon
+Mike Wolfe presents the current state of twinBASIC focussing on the practical use and usefullness for Access developers.
+- For more information, see [https://nolongerset.com/tag/twinbasic][5]
 
 ---
 
-**Access DevCon 2021 - twinBasic**
+### Access DevCon 2021 - twinBasic
 
 12 May 2021
 
@@ -86,4 +87,3 @@ Mike Wolfe presents the current state of twinBASIC focussing on the practical us
 </iframe>
 
 Mike Wolfe presents: The world premier of twinBasic, a new flavour of VB(A).
-For more information go to https://www.donkarl.com/devcon

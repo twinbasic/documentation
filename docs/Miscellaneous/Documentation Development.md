@@ -22,7 +22,7 @@ The stable, or machine-accessible part of the documentation tree is rooted on th
 - [Call](../tB/Core/Call), [ChDir](../tB/Core/ChDir), [ChDrive](../tB/Core/ChDrive), [Class](../tB/Core/Class), [Close](../tB/Core/Close), [CoClass](../tB/Core/CoClass), [Const](../tB/Core/Const), [Continue](../tB/Core/Continue)
 - [Date](../tB/Core/Date), [Declare](../tB/Core/Declare), [Deftype](../tB/Core/Deftype), [DeleteSetting](../tB/Core/DeleteSetting), [Dim](../tB/Core/Dim), [Do-Loop](../tB/Core/Do-Loop)
 - [End](../tB/Core/End), [Enum](../tB/Core/Enum), [Erase](../tB/Core/Erase), [Error](../tB/Core/Error), [Event](../tB/Core/Event), [Exit](../tB/Core/Exit)
-- [FileCopy](../tB/Core/FileCopy), [For-Next](/tB/Core/For-Next), [Function](../tB/Core/Function)
+- [FileCopy](../tB/Core/FileCopy), [For-Next](/tB/Core/For-Next), [For-Each-Next](../tB/Core/For-Each-Next), [Function](../tB/Core/Function)
 - [Get](../tB/Core/Get), [GetSetting](../tB/Core/GetSetting), [GoSub-Return](../tB/Core/GoSub-Return), [GoTo](../tB/Core/GoTo)
 - [If-Then-Else](../tB/Core/If-Then-Else), [Implements](../tB/Core/Implements), [Input](../tB/Core/Input), [Interface](../tB/Core/Interface), [Is](../tB/Core/Is)
 - [Kill](../tB/Core/Kill)
@@ -30,14 +30,18 @@ The stable, or machine-accessible part of the documentation tree is rooted on th
 - [Mid-equals](../tB/Core/Mid-equals) for `Mid(...) = ...` , [MidB-equals](../tB/Core/MidB-equals) for `MidB(...) = ...`, [MkDir](../tB/Core/MkDir), [Module](../tB/Core/Module)
 - [Name](../tB/Core/Name), [New](../tB/Core/New)
 - [Option](../tB/Core/Option), [On-Error](../tB/Core/On-Error), [On-GoSub](../tB/Core/On-GoSub), [On-GoTo](../tB/Core/On-GoTo), [Open](../tB/Core/Open)
-- [ParamArray](../tB/Core/ParamArray), [Print](../tB/Core/Print), [Private](../tB/Core/Private), [Property](../tB/Core/Property), [Public](../tB/Core/Public), [Put](../tB/Core/Put)
+- [ParamArray](../tB/Core/ParamArray), [Print](../tB/Core/Print), [Private](../tB/Core/Private), [Property](../tB/Core/Property), [Protected](../tB/Core/Protected), [Public](../tB/Core/Public), [Put](../tB/Core/Put)
 - [RaiseEvent](../tB/Core/RaiseEvent), [ReDim](../tB/Core/ReDim), [Reset](../tB/Core/Reset), [Resume](../tB/Core/Resume), [RmDir](../tB/Core/RmDir), [RSet](../tB/Core/RSet)
 - [SavePicture](../tB/Core/SavePicture), [SaveSetting](../tB/Core/SaveSetting), [Seek](../tB/Core/Seek), [Select-Case](../tB/Core/Select-Case), [SendKeys](../tB/Core/SendKeys), [Set](../tB/Core/Set), [SetAttr](../tB/Core/SetAttr), [Static](../tB/Core/Static), [Sub](../tB/Core/Sub), [Stop](../tB/Core/Stop)
 - [Time](../tB/Core/Time), [Type](../tB/Core/Type)
 - [Unload](../tB/Core/Unload), [Unlock](../tB/Core/Unlock)
 - [While-Wend](../tB/Core/While-Wend), [Width](../tB/Core/Width), [With](../tB/Core/With), [Write](../tB/Core/Write)
 
-### /tB/Modules/\<ModuleName\>
+### /tB/Modules/\<ModuleName\>#\<procedure\>
+
+Within each module, unless indicated otherwise, the procedures and statements are internal links, e.g. [**LenB**: /tB/Modules/Strings#lenb](../tB/Modules/Strings#lenb). The `$`-suffixed versions have reference links ending with `-1`, e.g. [**LenB$**: /tB/Modules/Strings#lenb-1](../tB/Modules/Strings#lenb-1).
+
+Similarly, when the procedures and statements are stand-alone pages, e.g. [**Date$**: /tB/Modules/DateTime/Date#date-1](../tB/Modules/DateTime/Date#date-1), the `$`-suffixed version has a reference link ending with `-1`.
 
 These are modules within VBA and VBRUN:
 
