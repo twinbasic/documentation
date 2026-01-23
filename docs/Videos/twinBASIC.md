@@ -1,12 +1,12 @@
 ---
 title: tB Videos
-# nav_order: 1
+parent: Videos
 permalink: /Videos/tB
 ---
 
 # Videos
 
-**twinBASIC For Applications (Proof Of Concept)**
+### twinBASIC For Applications (Proof Of Concept)
 
 22 Jul 2024
 
@@ -20,11 +20,13 @@ Introducing "twinBASIC for applications" – the game-changing drop-in replaceme
 
 We posted this video on X last month but forgot to post it also on YT, so here you go :)
 
-For more info: https://www.reddit.com/r/vba/comments/1dg0lse/the_next_evolution_of_vba_might_be_on_the_horizon/
+For more info: [https://www.reddit.com/r/vba/comments/1dg0lse/the_next_evolution_of_vba_might_be_on_the_horizon/][1]
+
+[1]: https://www.reddit.com/r/vba/comments/1dg0lse/the_next_evolution_of_vba_might_be_on_the_horizon/
 
 ----
 
-**twinBASIC: CustomControls and form designer sneek peek!**
+### twinBASIC: CustomControls and form designer sneek peek!
 
 3 Oct 2021
 
@@ -38,7 +40,7 @@ A quick look at the twinBASIC form designer coming to twinBASIC very soon.   We 
 
 ---
 
-**twinBASIC Preview - Quick Setup Guide (UPDATED JUNE 2021)**
+### twinBASIC Preview - Quick Setup Guide (UPDATED JUNE 2021)
 
 29 Jun 2021
 
@@ -52,7 +54,7 @@ twinBASIC Preview 1 is out now on the VS Code marketplace.  This setup guide wil
 
 ---
 
-**twinBASIC Preview - Quick Setup Guide (OLD VERSION)**
+### twinBASIC Preview - Quick Setup Guide (OLD VERSION)
 
 10 Apr 2021
 
@@ -61,14 +63,18 @@ twinBASIC Preview 1 is out now on the VS Code marketplace.  This setup guide wil
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
     referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
 </iframe>
+>  [!WARNING]
+> This video is out of date
 
-! This video is out of date !   A lot has changed since the first release of twinBASIC, so please watch the new version of this video instead: https://www.youtube.com/watch?v=ZzpyZWiCnzo
+A lot has changed since the first release of twinBASIC, so please watch the new version of this video instead: [https://www.youtube.com/watch?v=ZzpyZWiCnzo][2].
 
 twinBASIC Preview 1 is out now on the VS Code marketplace.  This setup guide will show you how to very quickly install it and start using it.  Enjoy!
 
+[2]: https://www.youtube.com/watch?v=ZzpyZWiCnzo
+
 ---
 
-**twinBASIC - New Compiler Features (part 3)**
+### twinBASIC - New Compiler Features (part 3)
 
 29 Jan 2021
 
@@ -82,7 +88,7 @@ Today we're looking at some more compiler features;  DeclareWide support (for by
 
 ---
 
-**twinBASIC - New Compiler Features (part 2)**
+### twinBASIC - New Compiler Features (part 2)
 
 14 Jan 2021
 
@@ -96,7 +102,7 @@ Today we're looking at some more compiler features, in particular: CurrentCompon
 
 ---
 
-**twinBASIC - Remote debugging applications (sneak peek)**
+### twinBASIC - Remote debugging applications (sneak peek)
 
 30 Dec 2020
 
@@ -110,7 +116,7 @@ A little teaser video that demonstrates how easy it is to edit and debug twinBAS
 
 ---
 
-**twinBASIC - New Compiler Features (part 1)**
+### twinBASIC - New Compiler Features (part 1)
 
 22 Dec 2020
 
@@ -120,11 +126,11 @@ A little teaser video that demonstrates how easy it is to edit and debug twinBAS
     referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
 </iframe>
 
-Today we're looking at some of the new compiler features offered by twinBASIC.  We look at unicode support, 64-bit support, new operators, new datatypes, assignment operators, short-circuiting operators.
+Today we're looking at some of the new compiler features offered by twinBASIC. We look at unicode support, 64-bit support, new operators, new datatypes, assignment operators, short-circuiting operators.
 
 ---
 
-**twinBASIC - Debugging in action (32-bit and 64-bit)**
+### twinBASIC - Debugging in action (32-bit and 64-bit)
 
 20 Dec 2020
 
@@ -134,11 +140,11 @@ Today we're looking at some of the new compiler features offered by twinBASIC.  
     referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
 </iframe>
 
-Today we show off some of the debugging features available in twinBASIC.   We feature the debug console, breakpoints, error breaking, live call stack, variables info panel, and the watch window.  We also touch on 64-bit support, showing how to switch seamlessly between them.
+Today we show off some of the debugging features available in twinBASIC. We feature the debug console, breakpoints, error breaking, live call stack, variables info panel, and the watch window.  We also touch on 64-bit support, showing how to switch seamlessly between them.
 
 ---
 
-**twinBASIC - Introduction**
+### twinBASIC - Introduction
 
 18 Dec 2020
 
