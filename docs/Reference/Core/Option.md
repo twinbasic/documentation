@@ -4,7 +4,7 @@ parent: Statements
 permalink: /tB/Core/Option
 ---
 # Option
-{: .no_toc}
+{: .no_toc }
 
 Configures a compiler option.
 
@@ -27,8 +27,14 @@ If used, the statement must appear in a [module](../Gloss#module) or [class](../
 
 The **Option Base** statement only affects the lower bound of arrays in the module where the statement is located.
 
+### See Also
+{: .no_toc }
+
+- [**Dim**](Dim) and [**ReDim**](ReDim) statements
+- [**LBound**](LBound) and [**UBound**](UBound) functions
+
 ### Example of use at module level
-{: .no_toc}
+{: .no_toc }
 
 This example uses the **Option Base** statement to override the default base array subscript value of 0. The [**LBound**](LBound) function returns the smallest available subscript for the indicated dimension of an array. The **Option Base** statement is used at the module level only.
 
@@ -89,6 +95,11 @@ If you don't use the **Option Explicit** statement, and when the [**Option Expli
 >
 > Use **Option Explicit** to avoid incorrectly typing the name of an existing variable or to avoid confusion in code where the [scope](../Gloss#scope) of the variable is not clear.
 
+### See Also
+{: .no_toc }
+
+- [**Const**](Const), [**Dim**](Dim), and [**Static**](Static) statements
+
 ### Example of use at module level
 {: .no_toc }
 
@@ -124,6 +135,11 @@ The **Option Compare** statement specifies the [string comparison](../Gloss#stri
   (A=a) < ( À=à) < (B=b) < (E=e) < (Ê=ê) < (Z=z) < (Ø=ø) 
   ```
 * **Option Compare Database** has no effect in twinBASIC. When used within Microsoft Access, it results in string comparisons based on the sort order determined by the locale ID of the database where the string comparisons occur.
+
+### See Also
+{: .no_toc }
+
+- [**InStr\$**](../Modules/Strings#instr-1), [**InStr**](../Modules/Strings#instr), [**InStrB**](../Modules/Strings#instrb), and [**InStrRev**](../Modules/Strings#instrrev) functions.
 
 ### Example
 {: .no_toc }
