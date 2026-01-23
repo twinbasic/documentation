@@ -4,7 +4,6 @@ nav_exclude: true
 redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
-  - /tB/Core/Date
   - /tB/Core/Declare
   - /tB/Core/Deftype
   - /tB/Core/DeleteSetting

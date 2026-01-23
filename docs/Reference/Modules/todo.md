@@ -6,7 +6,9 @@ redirect_from:
   - /tB/Modules/Compilation
   - /tB/Modules/Constants
   - /tB/Modules/Conversion
-  - /tB/Modules/DateTime
+  - /tB/Modules/DateTime/Calendar
+  - /tB/Modules/DateTime/Time
+  - /tB/Modules/DateTime/Now
   - /tB/Modules/ErrObject
   - /tB/Modules/ExpressionService
   - /tB/Modules/FileSystem/CurDir

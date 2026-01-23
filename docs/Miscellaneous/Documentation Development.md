@@ -39,7 +39,9 @@ The stable, or machine-accessible part of the documentation tree is rooted on th
 
 ### /tB/Modules/\<ModuleName\>#\<procedure\>
 
-Within each module, the procedures are internal links, e.g. [**LenB**: /tB/Modules/Strings#lenb](../tB/Modules/Strings#lenb). The `$`-suffixed versions have links ending with `-1`, e.g. [**LenB$**: /tB/Modules/Strings#lenb-1](../tB/Modules/Strings#lenb-1).
+Within each module, unless indicated otherwise, the procedures and statements are internal links, e.g. [**LenB**: /tB/Modules/Strings#lenb](../tB/Modules/Strings#lenb). The `$`-suffixed versions have reference links ending with `-1`, e.g. [**LenB$**: /tB/Modules/Strings#lenb-1](../tB/Modules/Strings#lenb-1).
+
+Similarly, when the procedures and statements are stand-alone pages, e.g. [**Date$**: /tB/Modules/DateTime/Date#date-1](../tB/Modules/DateTime/Date#date-1), the `$`-suffixed version has a reference link ending with `-1`.
 
 These are modules within VBA and VBRUN:
 
