@@ -24,7 +24,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Continue](../tB/Core/Continue) -- immediately begins the next iteration of the enclosing loop
 
-* [Declare](../tB/Core/Declare)
+* [Declare](../tB/Core/Declare) -- declares references to external procedures in a dynamic-link library (DLL)
 
 * [Dim](../tB/Core/Dim)
 
