@@ -36,6 +36,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [Erase](../tB/Core/Erase) -- reinitializes the elements of fixed-size arrays, or releases dynamic-array storage space
 
+* [Error](../tB/Core/Error) -- simulates the occurrence of an error
+
 * [Event](../tB/Core/Event)
 
 * [Exit](../tB/Core/Exit)
