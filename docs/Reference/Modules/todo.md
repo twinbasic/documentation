@@ -9,7 +9,6 @@ redirect_from:
   - /tB/Modules/DateTime
   - /tB/Modules/ErrObject
   - /tB/Modules/ExpressionService
-  - /tB/Modules/FileSystem/ChDrive
   - /tB/Modules/FileSystem/CurDir
   - /tB/Modules/FileSystem/Dir
   - /tB/Modules/FileSystem/MkDir

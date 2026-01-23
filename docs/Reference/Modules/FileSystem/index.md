@@ -8,11 +8,11 @@ has_toc: false
 # FileSystem module
 
 - [ChDir](ChDir) -- changes the current directory or folder
+- [ChDrive](ChDrive) -- changes the current drive
 
 > [!WARNING]
 > Work in Progress Below
 
-- [ChDrive](ChDrive)
 - [CurDir](CurDir)
 - [Dir](Dir)
 - [MkDir](MkDir)

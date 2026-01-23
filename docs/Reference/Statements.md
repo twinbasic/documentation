@@ -20,9 +20,9 @@ These statements are built into the language itself. They are understood by the 
 
 * [Close](../tB/Core/Close) -- concludes input/output (I/O) to a file opened using the **Open** statement
 
-* [Const](../tB/Core/Const)
+* [Const](../tB/Core/Const) -- declares constants for use in place of literal values
 
-* [Continue](../tB/Core/Continue)
+* [Continue](../tB/Core/Continue) -- immediately begins the next iteration of the enclosing loop
 
 * [Declare](../tB/Core/Declare)
 

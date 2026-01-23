@@ -3,10 +3,7 @@ title: TODO List for /tb/Core
 nav_exclude: true
 redirect_from:
   - /tB/Core/Topic-Preprocessor
-  - /tB/Core/ChDrive
   - /tB/Core/CoClass
-  - /tB/Core/Const
-  - /tB/Core/Continue
   - /tB/Core/Date
   - /tB/Core/Declare
   - /tB/Core/Deftype
