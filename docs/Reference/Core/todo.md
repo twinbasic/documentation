@@ -5,7 +5,6 @@ redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
   - /tB/Core/Deftype
-  - /tB/Core/Do-Loop
   - /tB/Core/End
   - /tB/Core/Enum
   - /tB/Core/Erase

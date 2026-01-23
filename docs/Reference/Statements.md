@@ -28,7 +28,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Dim](../tB/Core/Dim) -- declares variables and allocates storage space
 
-* [Do ... Loop](../tB/Core/Do-Loop)
+* [Do ... Loop](../tB/Core/Do-Loop) -- repeats a block of statements while a condition is **True** or until a condition becomes **True**
 
 * [End](../tB/Core/End)
 
