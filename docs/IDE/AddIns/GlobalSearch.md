@@ -1,6 +1,6 @@
 ---
 title: Global Search
-parent: AddIns
+parent: Add Ins
 nav_order: 1
 permalink: /tB/IDE/AddIns/GlobalSearch
 ---
@@ -9,11 +9,13 @@ permalink: /tB/IDE/AddIns/GlobalSearch
 
 This AddIn is supplied with the twinBASIC IDE.
 
-> Latest Release: v1.0.0.0
+Latest Release
+: v1.0.0.0
 
-Developer: twinBASIC
+Developer
+: twinBASIC
 
-The global search add in will contain a [Toolbar](/tB/IDE/Project/Toolbar) item.
+The global search add in will contain a [Toolbar](../Project/Toolbar) item.
 
 ![Global Search (Toolbar)](Images/Toolbar_GlobalSearch.png "Global Search (Toolbar)")
 
@@ -30,11 +32,8 @@ Type a search term i.e. Button1 into the text field and a list of matches will b
 
 ![Global Search](Images/GlobalSearch_2.png "Global Search")
 
-
 ## Download
 
-- https://github.com/twinbasic/twinbasic/releases
+This add-in is bundled with twinBASIC. You can download it from [https://github.com/twinbasic/twinbasic/releases][tB]
 
-## Links
-
-- https://github.com/twinbasic/twinbasic
+[tB]: https://github.com/twinbasic/twinbasic/releases

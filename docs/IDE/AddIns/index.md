@@ -1,6 +1,6 @@
 ---
 title: Add Ins
-# nav_order: 
+parent: IDE
 permalink: /tB/IDE/AddIns/
 ---
 
