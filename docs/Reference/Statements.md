@@ -46,7 +46,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [For Each...Next](../tB/Core/For-Each-Next) -- repeats a group of statements for each element in an array or collection
 
-* [Function](../tB/Core/Function)
+* [Function](../tB/Core/Function) -- declares the name, arguments, and code that form the body of a **Function** procedure
 
 * [Get](../tB/Core/Get)
 
@@ -97,6 +97,8 @@ These statements are built into the language itself. They are understood by the 
 * [ReDim](../tB/Core/ReDim)
 
 * [Resume](../tB/Core/Resume)
+
+* [Return](../tB/Core/Return)
 
 * [RSet](../tB/Core/RSet)
 

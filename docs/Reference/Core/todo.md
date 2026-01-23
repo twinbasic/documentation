@@ -5,7 +5,6 @@ redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
   - /tB/Core/Deftype
-  - /tB/Core/Function
   - /tB/Core/Get
   - /tB/Core/GoSub-Return
   - /tB/Core/GoTo
@@ -42,6 +41,7 @@ redirect_from:
   - /tB/Core/ReDim
   - /tB/Core/Reset
   - /tB/Core/Resume
+  - /tB/Core/Return
   - /tB/Core/RmDir
   - /tB/Core/RSet
   - /tB/Core/SavePicture
