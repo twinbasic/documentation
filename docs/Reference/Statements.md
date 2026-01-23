@@ -40,7 +40,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Event](../tB/Core/Event) -- declares a user-defined event
 
-* [Exit](../tB/Core/Exit)
+* [Exit](../tB/Core/Exit) -- exits a block of **Do…Loop**, **For…Next**, **Function**, **Sub**, or **Property** code
 
 * [For ... Next](../tB/Core/For-Next)
 
