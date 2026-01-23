@@ -42,7 +42,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Exit](../tB/Core/Exit) -- exits a block of **Do…Loop**, **For…Next**, **Function**, **Sub**, or **Property** code
 
-* [For ... Next](../tB/Core/For-Next)
+* [For ... Next](../tB/Core/For-Next) -- repeats a group of statements while the loop counter approaches its final value
 
 * [Function](../tB/Core/Function)
 
