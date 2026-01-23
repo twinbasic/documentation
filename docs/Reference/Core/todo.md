@@ -5,7 +5,6 @@ redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
   - /tB/Core/Deftype
-  - /tB/Core/FileCopy
   - /tB/Core/For-Next
   - /tB/Core/Function
   - /tB/Core/Get

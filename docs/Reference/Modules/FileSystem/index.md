@@ -9,6 +9,7 @@ has_toc: false
 
 - [ChDir](ChDir) -- changes the current directory or folder
 - [ChDrive](ChDrive) -- changes the current drive
+- [FileCopy](FileCopy) -- copies a file
 
 > [!WARNING]
 > Work in Progress Below
