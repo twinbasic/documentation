@@ -3,11 +3,7 @@ title: TODO List for /tb/Core
 nav_exclude: true
 redirect_from:
   - /tB/Core/Topic-Preprocessor
-  - /tB/Core/AppActivate
-  - /tB/Core/Beep
-  - /tB/Core/ChDir
   - /tB/Core/ChDrive
-  - /tB/Core/Close
   - /tB/Core/CoClass
   - /tB/Core/Const
   - /tB/Core/Continue

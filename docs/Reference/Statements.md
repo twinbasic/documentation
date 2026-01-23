@@ -18,7 +18,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Class](../tB/Core/Class) -- define a class
 
-* [Close](../tB/Core/Close)
+* [Close](../tB/Core/Close) -- concludes input/output (I/O) to a file opened using the **Open** statement
 
 * [Const](../tB/Core/Const)
 

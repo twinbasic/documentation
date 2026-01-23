@@ -9,9 +9,14 @@ redirect_from:
   - /tB/Modules/DateTime
   - /tB/Modules/ErrObject
   - /tB/Modules/ExpressionService
-  - /tB/Modules/FileSystem
+  - /tB/Modules/FileSystem/ChDrive
+  - /tB/Modules/FileSystem/CurDir
+  - /tB/Modules/FileSystem/Dir
+  - /tB/Modules/FileSystem/MkDir
+  - /tB/Modules/FileSystem/RmDir
   - /tB/Modules/Information
-  - /tB/Modules/Interaction
+  - /tB/Modules/Interaction/Shell
+  - /tB/Modules/Interaction/SendKeys
   - /tB/Modules/TextEncodingConstants
   - /tB/Modules/_HiddenModule
   - /tB/Modules/AmbientProperties
