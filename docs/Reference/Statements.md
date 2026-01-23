@@ -44,6 +44,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [For ... Next](../tB/Core/For-Next) -- repeats a group of statements while the loop counter approaches its final value
 
+* [For Each...Next](../tB/Core/For-Each-Next) -- repeats a group of statements for each element in an array or collection
+
 * [Function](../tB/Core/Function)
 
 * [Get](../tB/Core/Get)

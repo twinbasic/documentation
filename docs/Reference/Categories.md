@@ -35,7 +35,7 @@ This chapter lists the global statements and procedures that form the core of th
 Statements:
 
 * [Call](../tB/Core/Call) - invokes a procedure or function
-* [Do ... Loop](../tB/Core/Do-Loop), [For ... Next](../tB/Core/For-Next), [While ... Wend](../tB/Core/While-Wend) - loops
+* [Do ... Loop](../tB/Core/Do-Loop), [For ... Next](../tB/Core/For-Next), [For Each ... Next](../tB/Core/For-Each-Next), [While ... Wend](../tB/Core/While-Wend) - loops
 * [If ... Then ... Else](../tB/Core/If-Then-Else) - execute code conditionally
 * [Continue](../tB/Core/Continue) - skip to the next iteration of the loop
 * [Exit](../tB/Core/Exit) - exit a loop, procedure, function or property
