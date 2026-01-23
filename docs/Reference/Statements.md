@@ -38,7 +38,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Error](../tB/Core/Error) -- simulates the occurrence of an error
 
-* [Event](../tB/Core/Event)
+* [Event](../tB/Core/Event) -- declares a user-defined event
 
 * [Exit](../tB/Core/Exit)
 
