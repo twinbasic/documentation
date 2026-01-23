@@ -142,7 +142,7 @@ Applicable to: [**Interface**](Interface)
 
 Syntax: **[COMCreatable** [ **( True** \| **False )** ] **]**
 
-Applicable to:  [**CoClass**](CoClass)
+Applicable to:  [**Class**](Class), [**CoClass**](CoClass)
 
 Indicates that this coclass can be created with the [**New**](New) keyword.
 
@@ -360,9 +360,9 @@ Applicable to: [**Class**](Class)
 
 Syntax: **[Hidden** [ **(** **True** \| **False** **)** ] **]**
 
-Applicable to: [**CoClass**](CoClass), [**Interface**](Interface)
+Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Interface**](Interface)
 
-Hides the interface or coclass from certain Intellisense and other lists.
+Hides the interface or class from certain Intellisense and other lists.
 
 ## IdeButton  (String)
 
