@@ -14,9 +14,9 @@ These statements are built into the language itself. They are understood by the 
 
 ## Alphabetical List
 
-* [Call](../tB/Core/Call)
+* [Call](../tB/Core/Call) -- transfer control to a procedure
 
-* [Class](../tB/Core/Class)
+* [Class](../tB/Core/Class) -- define a class
 
 * [Close](../tB/Core/Close)
 
@@ -76,7 +76,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Open](../tB/Core/Open)
 
-* [Option](../tB/Core/Option) - configure a compiler option
+* [Option](../tB/Core/Option) -- configure a compiler option
 
 * [Print](../tB/Core/Print)
 

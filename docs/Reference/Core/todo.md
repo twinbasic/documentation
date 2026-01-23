@@ -5,10 +5,8 @@ redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/AppActivate
   - /tB/Core/Beep
-  - /tB/Core/Call
   - /tB/Core/ChDir
   - /tB/Core/ChDrive
-  - /tB/Core/Class
   - /tB/Core/Close
   - /tB/Core/CoClass
   - /tB/Core/Const
@@ -58,6 +56,7 @@ redirect_from:
   - /tB/Core/Print
   - /tB/Core/Private
   - /tB/Core/Property
+  - /tB/Core/Protected
   - /tB/Core/Public
   - /tB/Core/Put
   - /tB/Core/RaiseEvent
@@ -78,6 +77,7 @@ redirect_from:
   - /tB/Core/Stop
   - /tB/Core/Time
   - /tB/Core/Type
+  - /tB/Core/UBound
   - /tB/Core/Unload
   - /tB/Core/Unlock
   - /tB/Core/While-Wend
