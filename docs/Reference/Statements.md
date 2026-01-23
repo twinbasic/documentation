@@ -32,7 +32,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [End](../tB/Core/End) -- ends a procedure or block
 
-* [Enum](../tB/Core/Enum)
+* [Enum](../tB/Core/Enum) -- declares a type for an enumeration
 
 * [Erase](../tB/Core/Erase)
 

@@ -5,7 +5,6 @@ redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
   - /tB/Core/Deftype
-  - /tB/Core/Enum
   - /tB/Core/Erase
   - /tB/Core/Error
   - /tB/Core/Event
