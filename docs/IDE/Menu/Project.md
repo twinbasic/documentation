@@ -6,3 +6,5 @@ permalink: /tB/IDE/Project/Menu/Project
 ---
 
 # Project Menu
+
+![Project Menu](Images/Menu_Project.png "Project Menu")

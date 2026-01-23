@@ -6,3 +6,5 @@ permalink: /tB/IDE/Project/Menu/Edit
 ---
 
 # Edit Menu
+
+![Edit Menu](Images/Menu_Edit.png "Edit Menu")
