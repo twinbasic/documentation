@@ -26,7 +26,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Declare](../tB/Core/Declare) -- declares references to external procedures in a dynamic-link library (DLL)
 
-* [Dim](../tB/Core/Dim)
+* [Dim](../tB/Core/Dim) -- declares variables and allocates storage space
 
 * [Do ... Loop](../tB/Core/Do-Loop)
 
