@@ -5,7 +5,6 @@ redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
   - /tB/Core/Deftype
-  - /tB/Core/DeleteSetting
   - /tB/Core/Dim
   - /tB/Core/Do-Loop
   - /tB/Core/End
@@ -18,7 +17,6 @@ redirect_from:
   - /tB/Core/For-Next
   - /tB/Core/Function
   - /tB/Core/Get
-  - /tB/Core/GetSetting
   - /tB/Core/GoSub-Return
   - /tB/Core/GoTo
   - /tB/Core/If-Then-Else
@@ -57,7 +55,6 @@ redirect_from:
   - /tB/Core/RmDir
   - /tB/Core/RSet
   - /tB/Core/SavePicture
-  - /tB/Core/SaveSetting
   - /tB/Core/Seek
   - /tB/Core/Select-Case
   - /tB/Core/SendKeys
