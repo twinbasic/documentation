@@ -1,7 +1,7 @@
 ---
 title: Add Ins
 # nav_order: 
-permalink: /tB/IDE/AddIns
+permalink: /tB/IDE/AddIns/
 ---
 
 # Add Ins
