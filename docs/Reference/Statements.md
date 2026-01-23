@@ -34,7 +34,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Enum](../tB/Core/Enum) -- declares a type for an enumeration
 
-* [Erase](../tB/Core/Erase)
+* [Erase](../tB/Core/Erase) -- reinitializes the elements of fixed-size arrays, or releases dynamic-array storage space
 
 * [Event](../tB/Core/Event)
 
