@@ -19,6 +19,10 @@ defaults:
       path: "*/Images"
     values:
       image: true
+  - scope:
+      path: "assets/css"
+    values:
+      render_with_liquid: true      
 
 # GitHub-style admonitions are supported, but we may wish to add custom
 # callouts below.
