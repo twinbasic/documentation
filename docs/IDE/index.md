@@ -6,3 +6,4 @@ permalink: /tB/IDE
 
 # The twinBASIC IDE
 
+![IDE](Images/IDE.png "IDE")

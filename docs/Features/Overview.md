@@ -29,7 +29,7 @@ Previously in VBx, these attributes, such as procedure description, hidden, defa
 
 Many new attributes enable the powerful additional language features twinBASIC provides, so some of the following items have their associated attributes included in their description. 
 
-See also [the comprehensive reference for attributes][/tB/Core/Attributes].
+See also [the comprehensive reference for attributes](../tB/Core/Attributes).
 
 # 64bit Compilation
 
@@ -48,7 +48,9 @@ twinBASIC can compile native 64bit executables in addition to 32bit. The syntax 
 * `Decimal` In twinBASIC, `Decimal` is implementented as a full, regular data type, in addition to use within a `Variant`. This is a 16-byte (128 bits) type which holds a 12-byte (96 bits) integer with variable decimal point scaling and sign bit information. Values range from -79,228,162,514,264,337,593,543,950,335 to 79,228,162,514,264,337,593,543,950,335.
 * All of the datatype management features also exist for these types: `DefDec`/`DefLngLng`/`DefLongPtr`, `CDec`/`CLngLng`/`CLongPtr`, and `vbDecimal`/`vbLongLong`/`vbLongPtr` constants for type checking.
 
-## Interfaces and coclasses
+## Interfaces, coclasses, and aliases
+
+twinBASIC supports these features as native language syntax where in VBx they were only supported via Type Libraries.
 
 ### Defining interfaces
 twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the `Class` or `Module` statement, and will always have a project-wide scope. the The generic form for this is as follows:
@@ -193,6 +195,35 @@ Public Module Test
     End Sub
 End Module
 ```
+
+### Defining Aliases
+
+An alias is an alternative name for a User-Defined Type, intrinsic type, or interface. This is similar to C/C++'s `typedef` statement. These can then be used in place of the original type and will be treated as if the original was used (would not be a type mismatch).
+
+`[Public|Private] Alias AltName As OrigName`
+
+#### Example
+
+With intrinsic types, or if you have a type such as 
+
+```vb
+Public Type POINT
+    x As Long
+    y As Long
+End Type
+```
+You can create aliases:
+
+```vb
+Public Alias POINTAPI As POINT
+
+Public Alias CBoolean As Byte
+
+Public Alias KAFFINITY As LongPtr
+```
+
+Like interfaces and coclasses, these must be placed in a .twin file, outside of `Module` and `Class` blocks. You can create aliases of other aliases. The optional `Public` and `Private` modifiers determine whether the alias is exported to the Type Library of an ActiveX DLL or Control. A `Private` alias would result in usage of it being replaced with the original type.
+
 
 ### Enhancements to `Implements`
 * `Implements` in twinBASIC is allowed on inherited interfaces-- for instance, if you have `Interface IFoo2 Extends IFoo`, you then use `Implements IFoo2` in a class, where in VBx this would not be allowed. You'll need to provide methods for all inherited interfaces (besides `IDispatch` and `IUnknown`). The class will mark all interfaces as available-- you don't need a separate statement for `IFoo`, it will be passed through `Set` statements (and their underlying `QueryInterface` calls) automatically.
@@ -795,6 +826,19 @@ Private Function Comparator CDecl( _
 End Function
 ```
 
+### Support for passing User-Defined Types ByVal
+
+Simple UDTs can now be passed ByVal in APIs, interfaces, and any other method. In VBx this previously required workarounds like passing each argument separately.
+
+```vb
+Public Declare PtrSafe Function LBItemFromPt Lib "comctl32" (ByVal hLB As LongPtr, ByVal PXY As POINT, ByVal bAutoScroll As BOOL) As Long
+
+Interface IDropTarget Extends stdole.IUnknown
+    Sub DragEnter(ByVal pDataObject As IDataObject, ByVal grfKeyState As KeyStateMouse, ByVal pt As POINT, pdwEffect As DROPEFFECTS)
+```
+
+and so on. For this feature, a "simple" UDT is one that does not have members that are reference counted or are otherwise managed in the background, so may not contain interface, String, or Variant types. They may contain other UDTs.
+
 ### Variadic Arguments support
 With `cdecl` calling convention fully supported, twinBASIC can also handle variadic functions. In C/C++, those functions contain an ellipsis `...` as part of their arguments. This is represented in tB As `{ByRef | ByVal} ParamArray ... As Any()`. Note that `ByRef` or `ByVal` must be explicitly marked; implicit `ByRef` is not allowed.
 
@@ -1131,7 +1175,7 @@ In addition to the new datatype-related and component name functions already des
 * `CallByDispId(Object, DispId, CallType, Arguments)` - Similar to `CallByName()`, but uses the dispatch id instead of method name.
 * `RaiseEventByName(Object, Name, Args)` - Invokes an event on class, using arguments specified as a single `Variant` containing an array.
 * `RaiseEventByName2(Object, Name, Arg1, Arg2, ...)` - Invokes an event on class, using arguments specified as a ParamArray.
-* `PictureToByteArray(StdPicture)` - Converts a picture to a byte array; Globals.LoadPicture supports loading from byte arrays.
+* `PictureToByteArray(StdPicture)` - Converts a picture to a byte array; Global.LoadPicture supports loading from byte arrays.
 * `CreateGUID()` - Returns a string with a freshly generated GUID.
 * `AllocMem(size)` and `FreeMem` - allocate and free memory from the process heap.
 * `Int3Breakpoint` - Inserts a true breakpoint helpful for attached external debuggers.
@@ -1424,4 +1468,4 @@ Project forms and packages are stored as JSON format data, and you can view this
 
 # Many more to come!
 
-This list has covered all new features at the present time. There's many more planned, including built-in multithreading syntax, unsigned variable types, native support for aliases (currently supported in type libraries only), full inheritance, and more! If there's a feature you'd like to see, please feel welcome to make a feature request by [posting an issue in the main twinBASIC GitHub repository](https://github.com/twinbasic/twinbasic/issues).
+This list has covered all new features at the present time. There's many more planned, including built-in multithreading syntax, unsigned variable types, cross-platform compilation, and more! If there's a feature you'd like to see, please feel welcome to make a feature request by [posting an issue in the main twinBASIC GitHub repository](https://github.com/twinbasic/twinbasic/issues).

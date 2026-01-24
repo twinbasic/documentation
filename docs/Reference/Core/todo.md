@@ -3,33 +3,9 @@ title: TODO List for /tb/Core
 nav_exclude: true
 redirect_from:
   - /tB/Core/Topic-Preprocessor
-  - /tB/Core/AppActivate
-  - /tB/Core/Beep
-  - /tB/Core/Call
-  - /tB/Core/ChDir
-  - /tB/Core/ChDrive
-  - /tB/Core/Class
-  - /tB/Core/Close
   - /tB/Core/CoClass
-  - /tB/Core/Const
-  - /tB/Core/Continue
-  - /tB/Core/Date
-  - /tB/Core/Declare
   - /tB/Core/Deftype
-  - /tB/Core/DeleteSetting
-  - /tB/Core/Dim
-  - /tB/Core/Do-Loop
-  - /tB/Core/End
-  - /tB/Core/Enum
-  - /tB/Core/Erase
-  - /tB/Core/Error
-  - /tB/Core/Event
-  - /tB/Core/Exit
-  - /tB/Core/FileCopy
-  - /tB/Core/For-Next
-  - /tB/Core/Function
   - /tB/Core/Get
-  - /tB/Core/GetSetting
   - /tB/Core/GoSub-Return
   - /tB/Core/GoTo
   - /tB/Core/If-Then-Else
@@ -58,16 +34,17 @@ redirect_from:
   - /tB/Core/Print
   - /tB/Core/Private
   - /tB/Core/Property
+  - /tB/Core/Protected
   - /tB/Core/Public
   - /tB/Core/Put
   - /tB/Core/RaiseEvent
   - /tB/Core/ReDim
   - /tB/Core/Reset
   - /tB/Core/Resume
+  - /tB/Core/Return
   - /tB/Core/RmDir
   - /tB/Core/RSet
   - /tB/Core/SavePicture
-  - /tB/Core/SaveSetting
   - /tB/Core/Seek
   - /tB/Core/Select-Case
   - /tB/Core/SendKeys
@@ -78,6 +55,7 @@ redirect_from:
   - /tB/Core/Stop
   - /tB/Core/Time
   - /tB/Core/Type
+  - /tB/Core/UBound
   - /tB/Core/Unload
   - /tB/Core/Unlock
   - /tB/Core/While-Wend

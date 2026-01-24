@@ -22,7 +22,7 @@ The stable, or machine-accessible part of the documentation tree is rooted on th
 - [Call](../tB/Core/Call), [ChDir](../tB/Core/ChDir), [ChDrive](../tB/Core/ChDrive), [Class](../tB/Core/Class), [Close](../tB/Core/Close), [CoClass](../tB/Core/CoClass), [Const](../tB/Core/Const), [Continue](../tB/Core/Continue)
 - [Date](../tB/Core/Date), [Declare](../tB/Core/Declare), [Deftype](../tB/Core/Deftype), [DeleteSetting](../tB/Core/DeleteSetting), [Dim](../tB/Core/Dim), [Do-Loop](../tB/Core/Do-Loop)
 - [End](../tB/Core/End), [Enum](../tB/Core/Enum), [Erase](../tB/Core/Erase), [Error](../tB/Core/Error), [Event](../tB/Core/Event), [Exit](../tB/Core/Exit)
-- [FileCopy](../tB/Core/FileCopy), [For-Next](/tB/Core/For-Next), [Function](../tB/Core/Function)
+- [FileCopy](../tB/Core/FileCopy), [For-Next](/tB/Core/For-Next), [For-Each-Next](../tB/Core/For-Each-Next), [Function](../tB/Core/Function)
 - [Get](../tB/Core/Get), [GetSetting](../tB/Core/GetSetting), [GoSub-Return](../tB/Core/GoSub-Return), [GoTo](../tB/Core/GoTo)
 - [If-Then-Else](../tB/Core/If-Then-Else), [Implements](../tB/Core/Implements), [Input](../tB/Core/Input), [Interface](../tB/Core/Interface), [Is](../tB/Core/Is)
 - [Kill](../tB/Core/Kill)
@@ -30,14 +30,18 @@ The stable, or machine-accessible part of the documentation tree is rooted on th
 - [Mid-equals](../tB/Core/Mid-equals) for `Mid(...) = ...` , [MidB-equals](../tB/Core/MidB-equals) for `MidB(...) = ...`, [MkDir](../tB/Core/MkDir), [Module](../tB/Core/Module)
 - [Name](../tB/Core/Name), [New](../tB/Core/New)
 - [Option](../tB/Core/Option), [On-Error](../tB/Core/On-Error), [On-GoSub](../tB/Core/On-GoSub), [On-GoTo](../tB/Core/On-GoTo), [Open](../tB/Core/Open)
-- [ParamArray](../tB/Core/ParamArray), [Print](../tB/Core/Print), [Private](../tB/Core/Private), [Property](../tB/Core/Property), [Public](../tB/Core/Public), [Put](../tB/Core/Put)
+- [ParamArray](../tB/Core/ParamArray), [Print](../tB/Core/Print), [Private](../tB/Core/Private), [Property](../tB/Core/Property), [Protected](../tB/Core/Protected), [Public](../tB/Core/Public), [Put](../tB/Core/Put)
 - [RaiseEvent](../tB/Core/RaiseEvent), [ReDim](../tB/Core/ReDim), [Reset](../tB/Core/Reset), [Resume](../tB/Core/Resume), [RmDir](../tB/Core/RmDir), [RSet](../tB/Core/RSet)
 - [SavePicture](../tB/Core/SavePicture), [SaveSetting](../tB/Core/SaveSetting), [Seek](../tB/Core/Seek), [Select-Case](../tB/Core/Select-Case), [SendKeys](../tB/Core/SendKeys), [Set](../tB/Core/Set), [SetAttr](../tB/Core/SetAttr), [Static](../tB/Core/Static), [Sub](../tB/Core/Sub), [Stop](../tB/Core/Stop)
 - [Time](../tB/Core/Time), [Type](../tB/Core/Type)
 - [Unload](../tB/Core/Unload), [Unlock](../tB/Core/Unlock)
 - [While-Wend](../tB/Core/While-Wend), [Width](../tB/Core/Width), [With](../tB/Core/With), [Write](../tB/Core/Write)
 
-### /tB/Modules/\<ModuleName\>
+### /tB/Modules/\<ModuleName\>#\<procedure\>
+
+Within each module, unless indicated otherwise, the procedures and statements are internal links, e.g. [**LenB**: /tB/Modules/Strings#lenb](../tB/Modules/Strings#lenb). The `$`-suffixed versions have reference links ending with `-1`, e.g. [**LenB$**: /tB/Modules/Strings#lenb-1](../tB/Modules/Strings#lenb-1).
+
+Similarly, when the procedures and statements are stand-alone pages, e.g. [**Date$**: /tB/Modules/DateTime/Date#date-1](../tB/Modules/DateTime/Date#date-1), the `$`-suffixed version has a reference link ending with `-1`.
 
 These are modules within VBA and VBRUN:
 
@@ -75,49 +79,65 @@ These are modules within VBA and VBRUN:
 
 > [!NOTE]
 >
-> All non-alphabetic characters are removed from the links. All attribute names are in lowercase in the links. I.e. `ArrayBoundsChecks(Bool)` is referenced as `/tB/Core/Attributes#arrayboundschecksbool`. 
+> All non-alphabetic characters, as well as parameters, are removed from the links. All attribute names are in lowercase in the links. E.g. `ArrayBoundsChecks(Bool)` is referenced as `/tB/Core/Attributes#arrayboundschecks`. 
 
 - [AppObject](../tB/Core/Attributes#appobject)
-- [ArrayBoundsChecks(Bool)](../tB/Core/Attributes#arrayboundschecksbool)
-- [CoClassCustomConstructor(String)](../tB/Core/Attributes#coclasscustomconstructorstring)
-- [CoClassId(String)](../tB/Core/Attributes#coclassidstring)
-- [ComCreatable(Bool)](../tB/Core/Attributes#comcreatablebool)
-- [ComExtensible(Bool)](../tB/Core/Attributes#comextensiblebool)
+- [ArrayBoundsChecks](../tB/Core/Attributes#arrayboundschecks)
+- [BindOnlyIfNoArguments](../tB/Core/Attributes#bindonlyifnoarguments)
+- [BindOnlyIfStringSuffix](../tB/Core/Attributes#bindonlyifstringsuffix)
+- [ClassId](../tB/Core/Attributes#classid)
+- [CoClassCustomConstructor](../tB/Core/Attributes#coclasscustomconstructor)
+- [CoClassId](../tB/Core/Attributes#coclassid)
+- [COMControl](../tB/Core/Attributes#comcontrol)
+- [COMCreatable](../tB/Core/Attributes#comcreatable)
+- [COMExtensible](../tB/Core/Attributes#comextensible)
 - [ComImport](../tB/Core/Attributes#comimport)
-- [CompileIf(Bool)](../tB/Core/Attributes#compileifbool)
+- [CompileIf](../tB/Core/Attributes#compileif)
+- [CompilerOptions](../tB/Core/Attributes#compileroptions)
 - [ConstantFoldable](../tB/Core/Attributes#constantfoldable)
-- [Debuggable(Bool)](../tB/Core/Attributes#debuggablebool)
+- [ConstantFoldableNumericsOnly](../tB/Core/Attributes#constantfoldablenumericsonly)
+- [Debuggable](../tB/Core/Attributes#debuggable)
 - [DebugOnly](../tB/Core/Attributes#debugonly)
-- [Description(String)](../tB/Core/Attributes#description)
-- [DispId(Integer)](../tB/Core/Attributes#dispidinteger)
+- [Description](../tB/Core/Attributes#description)
+- [DispId](../tB/Core/Attributes#dispid)
 - [DllExport](../tB/Core/Attributes#dllexport)
-- [DllStackCheck(Bool)](../tB/Core/Attributes#dllstackcheckbool)
-- [EnumId(String)](../tB/Core/Attributes#enumidstring)
+- [DLLStackCheck](../tB/Core/Attributes#dllstackcheck)
+- [EnforceErrors](../tB/Core/Attributes#enforceerrors)
+- [EnforceWarnings](../tB/Core/Attributes#enforcewarnings)
+- [EnumId](../tB/Core/Attributes#enumid)
+- [EventInterfaceId](../tB/Core/Attributes#eventinterfaceid)
+- [EventsUseDispInterface](../tB/Core/Attributes#eventsusedispinterface)
 - [Flags](../tB/Core/Attributes#flags)
-- [FloatingPointErrorChecks(Bool)](../tB/Core/Attributes#floatingpointerrorchecksbool)
+- [FloatingPointErrorChecks](../tB/Core/Attributes#floatingpointerrorchecks)
+- [FormDesignerId](../tB/Core/Attributes#formdesignerid)
 - [Hidden](../tB/Core/Attributes#hidden)
-- [IntegerOverflowChecks(Bool)](../tB/Core/Attributes#integeroverflowchecksbool)
-- [InterfaceId(String)](../tB/Core/Attributes#interfaceidstring)
-- [OleAutomation(Bool)](../tB/Core/Attributes#oleautomationbool)
-- [PopulateFrom(…)](../tB/Core/Attributes#populatefrom)
+- [IdeButton](../tB/Core/Attributes#idebutton)
+- [IntegerOverflowChecks](../tB/Core/Attributes#integeroverflowchecks)
+- [InterfaceId](../tB/Core/Attributes#interfaceid)
+- [MustBeQualified](../tB/Core/Attributes#mustbequalified)
+- [OleAutomation](../tB/Core/Attributes#oleautomation)
+- [PackingAlignment](../tB/Core/Attributes#packingalignment)
+- [PopulateFrom](../tB/Core/Attributes#populatefrom)
 - [PredeclaredID](../tB/Core/Attributes#predeclaredid)
-- [PreserveSig(Bool)](../tB/Core/Attributes#preservesigbool)
+- [PreserveSig](../tB/Core/Attributes#preservesig)
 - [Restricted](../tB/Core/Attributes#restricted)
 - [RunAfterBuild](../tB/Core/Attributes#runafterbuild)
-- [SetDllDirectory(Bool)](../tB/Core/Attributes#setdlldirectorybool)
-- [TypeHint(EnumType)](../tB/Core/Attributes#typehintenumtype)
+- [Serialize](../tB/Core/Attributes#serialize)
+- [SetDllDirectory](../tB/Core/Attributes#setdlldirectory)
+- [SimplerByVals](../tB/Core/Attributes#simplerbyvals)
+- [TestCase](../tB/Core/Attributes#testcase)
+- [TestFixture](../tB/Core/Attributes#testfixture)
+- [TypeHint](../tB/Core/Attributes#typehint)
 - [Unimplemented](../tB/Core/Attributes#unimplemented)
-
+- [UseGetLastError](../tB/Core/Attributes#usegetlasterror)
+- [UserDefinedTypeIsAnAlias](../tB/Core/Attributes#userdefinedtypeisanalias)
+- [WindowsControl](../tB/Core/Attributes#windowscontrol)
 
 ## Development Environment
 
 The documentation is built (renderd to html) using [Jekyll][jekyllrb].
 
-1. Ensure that Jekyll and Ruby are installed.
-
-   - [Installing Jekyll via RubyInstaller on Windows](https://jekyllrb.com/docs/installation/windows/#installation-via-rubyinstaller)
-
-   Also ensure that Jekyll is in the PATH. To adjust the path on Windows, press <kbd>⊞ R</kbd>, type `SystemPropertiesAdvanced ` <kbd> Enter</kbd>, and click the **Environment Variables...** button. ![img](Images/environment-variables.png)
+1. Ensure that the necessary [requirements](#requirements) and [additional requirements](#additional-requirements) are met.
 
 2. Fork [https://github.com/twinbasic/documentation][docs-repo] to your own GitHub account if you plan on making any changes or for convenience. This can be skipped if you just want to build the documentation without changes.
 
@@ -125,9 +145,37 @@ The documentation is built (renderd to html) using [Jekyll][jekyllrb].
 
 4. **Go to the `/docs` folder in the cloned working tree.** Building, serving, and other documentation operations are all done in this folder, *not* in the repository root.
 
+### Requirements
+
+ Jekyll and Ruby must be installed.
+
+- [Installing Jekyll via RubyInstaller on Windows](https://jekyllrb.com/docs/installation/windows/#installation-via-rubyinstaller)
+
+Also ensure that Jekyll is in the PATH. To adjust the path on Windows, press <kbd>⊞ R</kbd>, type `SystemPropertiesAdvanced ` <kbd> Enter</kbd>, and click the **Environment Variables...** button. ![img](Images/environment-variables.png)
+
+### Building
+
 To build the documentation, i.e. render it from `.md` files to the `_site` folder:
 
     bundle exec jekyll build
+
+or, on Windows only:
+
+    build.bat
+
+### Checking Link Integrity
+
+Before checking link integrity, the documentation must be built. This can be done by ad-hoc by [building](#building),  or continuously in the background by [building and serving](#building-and-local-serving).
+
+To check that none of the internal links in the most recent documentation build are broken:
+
+    bundle exec htmlproofer ./_site --disable-external --no-enforce-https
+
+or, on Windows only
+
+    check.bat
+
+### Building and Local Serving
 
 To build and serve the documentation from http://localhost:4000:
 
@@ -137,15 +185,33 @@ or, on Windows only:
 
     serve.bat
 
-The documentation server detects changes in the filesystem and automatically regenerates the html files as needed. The server does *not* follow changes in `_config.yml`. If you change the configuration, the server has to be restarted. Interrupt the server by pressing **^C** repeatedly.
+The documentation server detects changes in the filesystem and automatically regenerates the html files as needed. The server does *not* follow changes in `_config.yml`. If you change the configuration, the server has to be restarted. Interrupt the server by pressing <kbd>Ctrl</kbd><kbd>C</kbd> repeatedly.
 
-To check that none of the internal links in the documentation are broken:
+### Mermaid Diagrams
 
-    bundle exec htmlproofer ./_site --disable-external --no-enforce-https
+Mermaid diagrams are supported within the **{% mermaid %\}** ...  **{% endmermaid %\}** tags, e.g.
 
-or, on Windows only
+```
+{% mermaid %}
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+{% endmermaid %}
+```
 
-    check.bat
+For ease of use, the diagrams are processed off-line during the Jekyll build/serve. The diagrams are extracted, rendered, and saved into `assets/images`. They are a part of the repository, and any new diagrams that appear in `assets/images` should be added in git. [mermaid-cli](https://github.com/mermaid-js/mermaid-cli) is used for rendering.
+
+#### Additional Requirements
+
+To render new or changed diagrams, the following should be available:
+
+- [nodejs](https://nodejs.org/en/download)
+- [mermaid-cli](https://github.com/mermaid-js/mermaid-cli)
+  ```
+  npm install -g @mermaid-js/mermaid-cli
+  ```
 
 ## Deploying to docs.twinbasic.com
 
