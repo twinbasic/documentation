@@ -137,17 +137,21 @@ These are modules within VBA and VBRUN:
 
 The documentation is built (renderd to html) using [Jekyll][jekyllrb].
 
-1. Ensure that Jekyll and Ruby are installed.
-
-   - [Installing Jekyll via RubyInstaller on Windows](https://jekyllrb.com/docs/installation/windows/#installation-via-rubyinstaller)
-
-   Also ensure that Jekyll is in the PATH. To adjust the path on Windows, press <kbd>⊞ R</kbd>, type `SystemPropertiesAdvanced ` <kbd> Enter</kbd>, and click the **Environment Variables...** button. ![img](Images/environment-variables.png)
+1. Ensure that the necessary [requirements](#requirements) and [additional requirements](#additional-requirements) are met.
 
 2. Fork [https://github.com/twinbasic/documentation][docs-repo] to your own GitHub account if you plan on making any changes or for convenience. This can be skipped if you just want to build the documentation without changes.
 
 3. Clone either your fork in #2, or the [documentation repository itself][docs-repo].
 
 4. **Go to the `/docs` folder in the cloned working tree.** Building, serving, and other documentation operations are all done in this folder, *not* in the repository root.
+
+### Requirements
+
+ Jekyll and Ruby must be installed.
+
+- [Installing Jekyll via RubyInstaller on Windows](https://jekyllrb.com/docs/installation/windows/#installation-via-rubyinstaller)
+
+Also ensure that Jekyll is in the PATH. To adjust the path on Windows, press <kbd>⊞ R</kbd>, type `SystemPropertiesAdvanced ` <kbd> Enter</kbd>, and click the **Environment Variables...** button. ![img](Images/environment-variables.png)
 
 ### Building
 
@@ -182,6 +186,32 @@ or, on Windows only:
     serve.bat
 
 The documentation server detects changes in the filesystem and automatically regenerates the html files as needed. The server does *not* follow changes in `_config.yml`. If you change the configuration, the server has to be restarted. Interrupt the server by pressing <kbd>Ctrl</kbd><kbd>C</kbd> repeatedly.
+
+### Mermaid Diagrams
+
+Mermaid diagrams are supported within the **{% mermaid %\}** ...  **{% endmermaid %\}** tags, e.g.
+
+```
+{% mermaid %}
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+{% endmermaid %}
+```
+
+For ease of use, the diagrams are processed off-line during the Jekyll build/serve. The diagrams are extracted, rendered, and saved into `assets/images`. They are a part of the repository, and any new diagrams that appear in `assets/images` should be added in git. [mermaid-cli](https://github.com/mermaid-js/mermaid-cli) is used for rendering.
+
+#### Additional Requirements
+
+To render new or changed diagrams, the following should be available:
+
+- [nodejs](https://nodejs.org/en/download)
+- [mermaid-cli](https://github.com/mermaid-js/mermaid-cli)
+  ```
+  npm install -g @mermaid-js/mermaid-cli
+  ```
 
 ## Deploying to docs.twinbasic.com
 

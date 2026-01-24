@@ -12,85 +12,74 @@ permalink: /Reference/Procedures-and-Functions
 
 ## A
 
-### AppActivate 
-
-### Asc, AscB, AscW
+- [AppActivate](../tB/Core/AppActivate) -- activates an application window
+- Asc, AscB, AscW
 
 ## B
 
-### Beep
+- [Beep](../tB/Core/Beep) -- sounds a tone through the computer’s speaker
 
 ## C
 
-### ChDir
-
-### ChDrive
-
-### Chr\$, Chr, ChrB\$, ChrB, ChrW\$, ChrW
+- [Calendar](../tB/Core/Calendar)
+- [ChDir](../tB/Core/ChDir) -- changes the current directory or folder
+- [ChDrive](../tB/Core/ChDrive) -- changes the current drive
+- [CurDir](../tB/Core/CurDir)
+- Chr\$, Chr, ChrB\$, ChrB, ChrW\$, ChrW
 
 ## D
 
-### Date
-
-### DeleteSetting
+- [Date](../tB/Core/Date) -- sets or returns the current system date
+- [DeleteSetting](../tB/Core/DeleteSetting) -- deletes a section or key setting from an application’s entry in the Windows registry
+- [Dir](../tB/Core/Dir)
 
 ## E
 
 ## F
 
-### FileCopy
-
-### Filter
-
-### Format$, Format
-
-### FormatCurrency
-
-### FormatDateTime
-
-### FormatNumber
-
-### FormatPercent
+- [FileCopy](../tB/Core/FileCopy) -- copies a file
+- Filter
+- Format$, Format
+- FormatCurrency
+- FormatDateTime
+- FormatNumber
+- FormatPercent
 
 ## G
 
-### GetSetting
+- [GetSetting](../tB/Core/GetSetting) -- returns a string key setting value from an application’s entry in the Windows registry
 
 ## H
 
 ## I
 
-### InStr$, InStrB, InStr
-
-### InStrRev
+- InStr$, InStrB, InStr
+- InStrRev
 
 ## J
 
-### Join
+- Join
 
 ## K
 
-### Kill
+- Kill
 
 ## L
 
-### LCase\$, LCase, UCase\$, UCase
-
-### Left\$, Left, LeftB$, LeftB
-
-### Load
-
-### LTrim\$, LTrim, RTrim\$, RTrim
+- LCase\$, LCase, UCase\$, UCase
+- Left\$, Left, LeftB$, LeftB
+- Load
+- LTrim\$, LTrim, RTrim\$, RTrim
 
 ## M
 
-### Mid$, Mid, MidB\$, MidB
-
-### MkDir
+- Mid$, Mid, MidB\$, MidB
+- [MkDir](../tB/Core/MkDir)
 
 ## N
 
-### Name
+- Name
+- [Now](../tB/Core/Now)
 
 ## P
 
@@ -98,51 +87,39 @@ permalink: /Reference/Procedures-and-Functions
 
 ## R
 
-### Randomize
-
-### Reset
-
-### Right\$, Right, RightB\$, RightB
-
-### RmDir
-
-### Rnd
+- Randomize
+- Reset
+- Right\$, Right, RightB\$, RightB
+- [RmDir](../tB/Core/RmDir)
+- Rnd
 
 ## S
 
-### SavePicture
-
-### SaveSetting
-
-### SendKeys
-
-### SetAttr
-
-### Space\$, Space
-
-### StrComp
-
-### StrConv
-
-### String\$, String
-
-### StrReverse
+- SavePicture
+- [SaveSetting](../tB/Core/SaveSetting) -- saves or creates an application entry in the application’s entry in the Windows registry
+- [SendKeys](../tB/Core/SendKeys)
+- SetAttr
+- [Shell](../tB/Core/Shell)
+- Space\$, Space
+- StrComp
+- StrConv
+- String\$, String
+- StrReverse
 
 ## T
 
-### Time
-
-### Trim\$, Trim
+- [Time](../tB/Core/Time)
+- Trim\$, Trim
 
 ## U
 
-### Unload
+- Unload
 
 ## V
 
 ## W
 
-### Width
+- Width
 
 ## X
 
