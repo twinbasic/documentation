@@ -49,9 +49,36 @@ module JekyllLocalDiagram
     end
 end
 
-require 'block/plantuml-block'
-require 'block/mermaid-block'
-require 'block/mathjax-block'
-require 'block/bpmn-block'
-require 'block/raw-block'
+module JekyllLocalDiagram
+  class MathJaxBlock < JekyllLocalDiagramBlock
+    def initialize(tag_name, markup, tokens)
+      super
+      @ext = 'tex'
+      @blockclass = 'mathjax'
+    end
+
+    def build_cmd(input, output)
+      "tex2svg \"#{File.read(input)}\"> #{output}"
+    end
+  end
+end
+
+Liquid::Template.register_tag('mathjax', JekyllLocalDiagram::MathJaxBlock)
+
+module JekyllLocalDiagram
+  class MermaidBlock < JekyllLocalDiagram::JekyllLocalDiagramBlock
+    def initialize(tag_name, markup, tokens)
+      super
+      @ext = 'mmd'
+      @blockclass = 'mermaid'
+      @puppetercfg = File.join(File.expand_path(File.join(File.dirname(__FILE__), '..')), '/cfg/puppeteer.json')
+    end
+
+    def build_cmd(input, output)
+      "mmdc -i #{input} -o #{output} -p #{@puppetercfg}"
+    end
+  end
+end
+
+Liquid::Template.register_tag('mermaid', JekyllLocalDiagram::MermaidBlock)
 
