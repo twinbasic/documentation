@@ -22,10 +22,10 @@ module JekyllLocalDiagram
             mimetype = 'svg+xml'
             imgfile = "#{name}.#{type}"
             imgpath = File.join(site.source, path)
-            if !File.exists?(File.join(imgpath, imgfile))
+            if !File.exist?(File.join(imgpath, imgfile))
               txtfile = File.join(imgpath, "#{name}.#{@ext}")
               img = File.join(imgpath, imgfile)
-              if File.exists?(img)
+              if File.exist?(img)
                 @logger.debug("File #{imgfile} already exists (#{File.size(img)} bytes)")
               else
                 FileUtils.mkdir_p(imgpath)
