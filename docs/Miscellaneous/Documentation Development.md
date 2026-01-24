@@ -189,16 +189,16 @@ The documentation server detects changes in the filesystem and automatically reg
 
 ### Mermaid Diagrams
 
-Mermaid diagrams are supported within the **{% mermaid %\}** ...  **{% endmermaid %\}** tags, e.g.
+Mermaid diagrams are supported within the `{% raw %}{% mermaid %} ... {% endmermaid %}{% endraw %}` tags, e.g.
 
 ```
-{% mermaid %}
+{% raw %}{% mermaid %}
 graph TD;
     A-->B;
     A-->C;
     B-->D;
     C-->D;
-{% endmermaid %}
+{% endmermaid %}{% endraw %}
 ```
 
 For ease of use, the diagrams are processed off-line during the Jekyll build/serve. The diagrams are extracted, rendered, and saved into `assets/images`. They are a part of the repository, and any new diagrams that appear in `assets/images` should be added in git. [mermaid-cli](https://github.com/mermaid-js/mermaid-cli) is used for rendering.
