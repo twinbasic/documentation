@@ -8,3 +8,10 @@ permalink: /tB/IDE/Project/Menu/Window
 # Window Menu
 
 ![Window Menu](Images/Menu_Window.png "Window Menu")
+
+- Panel Layouts
+- Panel Features
+- Keyboard Shortcuts
+---
+- Theme
+- Language
