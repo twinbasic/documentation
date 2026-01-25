@@ -17,4 +17,10 @@ See [Controls](../../Controls)
 
 The "GoTo COM References" button takes you to **Project Settings** and filters by "project.references".
 
+![Library References - Project Settings](Images/ProjectSettings_LibraryReferences.png "Library References - Project Settings")
+
+Click on the _Available COM References_ tab.
+
+![Available COM References - Project Settings](Images/ProjectSettings_AvailableCOMReferences.png "Available COM References - Project Settings")
+
 See [Project Settings](Settings) for more info.
