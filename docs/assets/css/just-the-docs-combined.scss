@@ -1,0 +1,36 @@
+---
+---
+{% include css/just-the-docs.scss.liquid color_scheme="light" %}
+
+span {
+  color: $link-color;
+}
+
+html.dark-mode {
+  $color-scheme: dark;
+  {% include css/just-the-docs.scss.liquid color_scheme="dark" %}
+  
+  div.highlighter-rouge div.highlight {
+	line-height: 1;
+  }
+  
+  span {
+    color: $link-color;
+  }
+  
+  /* just-the-docs-switchable-src.css */
+  
+  .site-footer {
+	color: #959396;
+  }
+  
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  #toctitle {
+    font-weight: 500;
+  }
+}
