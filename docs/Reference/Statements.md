@@ -2,6 +2,7 @@
 title: Statements
 parent: Reference Section
 nav_order: 2
+has_toc: false
 permalink: /Reference/Statements
 ---
 
@@ -14,35 +15,39 @@ These statements are built into the language itself. They are understood by the 
 
 ## Alphabetical List
 
-* [Call](../tB/Core/Call)
+* [Call](../tB/Core/Call) -- transfer control to a procedure
 
-* [Class](../tB/Core/Class)
+* [Class](../tB/Core/Class) -- define a class
 
-* [Close](../tB/Core/Close)
+* [Close](../tB/Core/Close) -- concludes input/output (I/O) to a file opened using the **Open** statement
 
-* [Const](../tB/Core/Const)
+* [Const](../tB/Core/Const) -- declares constants for use in place of literal values
 
-* [Continue](../tB/Core/Continue)
+* [Continue](../tB/Core/Continue) -- immediately begins the next iteration of the enclosing loop
 
-* [Declare](../tB/Core/Declare)
+* [Declare](../tB/Core/Declare) -- declares references to external procedures in a dynamic-link library (DLL)
 
-* [Dim](../tB/Core/Dim)
+* [Dim](../tB/Core/Dim) -- declares variables and allocates storage space
 
-* [Do ... Loop](../tB/Core/Do-Loop)
+* [Do ... Loop](../tB/Core/Do-Loop) -- repeats a block of statements while a condition is **True** or until a condition becomes **True**
 
-* [End](../tB/Core/End)
+* [End](../tB/Core/End) -- ends a procedure or block
 
-* [Enum](../tB/Core/Enum)
+* [Enum](../tB/Core/Enum) -- declares a type for an enumeration
 
-* [Erase](../tB/Core/Erase)
+* [Erase](../tB/Core/Erase) -- reinitializes the elements of fixed-size arrays, or releases dynamic-array storage space
 
-* [Event](../tB/Core/Event)
+* [Error](../tB/Core/Error) -- simulates the occurrence of an error
 
-* [Exit](../tB/Core/Exit)
+* [Event](../tB/Core/Event) -- declares a user-defined event
 
-* [For ... Next](../tB/Core/For-Next)
+* [Exit](../tB/Core/Exit) -- exits a block of **Do…Loop**, **For…Next**, **Function**, **Sub**, or **Property** code
 
-* [Function](../tB/Core/Function)
+* [For ... Next](../tB/Core/For-Next) -- repeats a group of statements while the loop counter approaches its final value
+
+* [For Each...Next](../tB/Core/For-Each-Next) -- repeats a group of statements for each element in an array or collection
+
+* [Function](../tB/Core/Function) -- declares the name, arguments, and code that form the body of a **Function** procedure
 
 * [Get](../tB/Core/Get)
 
@@ -76,7 +81,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Open](../tB/Core/Open)
 
-* [Option](../tB/Core/Option) - configure a compiler option
+* [Option](../tB/Core/Option) -- configure a compiler option
 
 * [Print](../tB/Core/Print)
 
@@ -93,6 +98,8 @@ These statements are built into the language itself. They are understood by the 
 * [ReDim](../tB/Core/ReDim)
 
 * [Resume](../tB/Core/Resume)
+
+* [Return](../tB/Core/Return)
 
 * [RSet](../tB/Core/RSet)
 
