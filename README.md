@@ -7,11 +7,16 @@ General user documentation for twinBASIC
 
 This repository is the home for general user documentation for everything to do with twinBASIC.  
 
-**If you would like to quickly contribute**, feel free to [create a new page on the Wiki][create] for new topics, or edit an existing [wiki page][wiki].
+**If you would like to quickly contribute**, feel free to:
+
+- [submit a Pull Request](https://github.com/twinbasic/documentation/compare),
+
+- or [create a new page on the Wiki][create] for new topics, or for additions to the documentation.
 
 > [!note]
 >
->  The Wiki is a "realtime extension" of the documentation, and allows quick contributions from the community. Anyone with an established GitHub account can contribute there.
+> The Wiki is a "realtime extension" of the documentation, and allows quick contributions from the community. Anyone with an established GitHub account can contribute there.
+> Wiki contents are meant to be a *temporary* place for content before it's migrated to the documentation by the team.
 >
 > Keep this in mind: Never run untrusted code from the web, and use CAUTION when following any wiki content.
 
