@@ -27,6 +27,14 @@ Listed below are the project settings, in the same order as they appear in the P
 
 ## Library References
 
+![Library References - Project Settings](Images/ProjectSettings_LibraryReferences.png "Library References - Project Settings")
+
+![Available COM References - Project Settings](Images/ProjectSettings_AvailableCOMReferences.png "Available COM References - Project Settings")
+
+See [Packages](../Packages/index.md)
+
+![432410211-d9f1e4d9-1805-47e5-93aa-251151b4e914](../Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png)
+
 ## Compiler Warnings
 
 ## Project ID

@@ -1,7 +1,7 @@
 ---
 title: Help
 parent: Menu
-# nav_order: 
+nav_order: 11
 permalink: /tB/IDE/Project/Menu/Help
 ---
 

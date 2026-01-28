@@ -9,18 +9,14 @@ permalink: /tB/IDE/Project/Menu
 
 ![Menu](Images/Menu.png "Menu")
 
-- [File](/tB/IDE/Project/Menu/File)
-- Edit
-- View
-- Project
-- Format
-- Debug
-- Run
-- Tools
-- Add-Ins
-- Window
-- [Help](/tB/IDE/Project/Menu/Help)
-
-> [!NOTE]
->
->  TODO: Add each Menu item.
+- [File](File)
+- [Edit](Edit)
+- [View](View)
+- [Project](Project)
+- [Format](Format)
+- [Debug](Debug)
+- [Run](Run)
+- [Tools](Tools)
+- [Add-Ins](Add-Ins)
+- [Window](Window)
+- [Help](Help)
