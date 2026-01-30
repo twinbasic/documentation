@@ -1,0 +1,14 @@
+---
+title: Run
+parent: Menu
+nav_order: 7
+permalink: /tB/IDE/Project/Menu/Run
+---
+
+# Run Menu
+
+![Run Menu](Images/Menu_Run.png "Run Menu")
+
+- Start <kbd>F5</kbd>
+- Break <kbd>CTRL</kbd> + <kbd>BREAK</kbd>
+- End
