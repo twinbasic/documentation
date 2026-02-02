@@ -96,7 +96,7 @@ Public CoClass Foo
 End CoClass
 ```
 
-For an overview of coclasses in tB, see [Defining coclasses](../../Features/Language/Interfaces-Coclasses#defining-coclasses).
+For an overview of coclasses in tB, see [Defining coclasses](../../Features/Language/Interfaces-CoClasses#defining-coclasses).
 
 ## CoClassId  (String)
 {: #coclassid }
@@ -119,7 +119,7 @@ End CoClass
 
 The methods are [procedures](../Gloss#procedure).
 
-For an overview of coclasses in tB, see [Defining coclasses](../../Features/Language/Interfaces-Coclasses#defining-coclasses).
+For an overview of coclasses in tB, see [Defining coclasses](../../Features/Language/Interfaces-CoClasses#defining-coclasses).
 
 ## COMControl  (optional Bool)
 {: #comcontrol }
@@ -378,7 +378,7 @@ End Interface
 
 The methods are [procedures](../Gloss#procedure).
 
-For an overview of interfaces in tB, see [Defining interfaces](../../Features/Language/Interfaces-Coclasses.html#defining-interfaces).
+For an overview of interfaces in tB, see [Defining interfaces](../../Features/Language/Interfaces-CoClasses.html#defining-interfaces).
 
 ## MustBeQualified  (optional Bool)
 {: #mustbequalified }
