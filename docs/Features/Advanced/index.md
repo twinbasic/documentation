@@ -2,7 +2,7 @@
 title: Advanced Features
 parent: Features
 nav_order: 6
-has_children: true
+permalink: /Features/Advanced
 ---
 
 # Advanced Features

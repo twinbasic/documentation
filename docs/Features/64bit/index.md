@@ -2,6 +2,7 @@
 title: 64bit Compilation
 parent: Features
 nav_order: 8
+permalink: /Features/64bit
 ---
 
 # 64bit Compilation

@@ -2,7 +2,7 @@
 title: Language Syntax
 parent: Features
 nav_order: 2
-has_children: true
+permalink: /Features/Syntax
 ---
 
 # Language Syntax

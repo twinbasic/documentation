@@ -2,7 +2,7 @@
 title: GUI Components
 parent: Features
 nav_order: 5
-has_children: true
+permalink: /Features/GUI-Components
 ---
 
 # GUI Components

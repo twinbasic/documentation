@@ -2,7 +2,7 @@
 title: Standard Library
 parent: Features
 nav_order: 4
-has_children: true
+permalink: /Features/Standard-Library
 ---
 
 # Standard Library Enhancements

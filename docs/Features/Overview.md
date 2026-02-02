@@ -11,13 +11,13 @@ This page provides a high-level overview of all new features that twinBASIC brin
 
 ## Feature Categories
 
-### [Attributes](Attributes/)
+### [Attributes](Attributes)
 Attributes allow you to annotate Forms, Modules, Classes, Types, Enums, Declares, and procedures with compiler instructions and metadata. These are now visible directly in your code editor.
 
-### [64bit Compilation](64bit/)
+### [64bit Compilation](64bit)
 twinBASIC can compile native 64bit executables in addition to 32bit, using the `LongPtr` data type and `PtrSafe` keyword for API declarations.
 
-### [Language Syntax](Language/)
+### [Language Syntax](Syntax)
 twinBASIC introduces numerous language enhancements including:
 - New data types (LongPtr, LongLong, Decimal)
 - Native interface and coclass definitions
@@ -27,14 +27,14 @@ twinBASIC introduces numerous language enhancements including:
 - Type inference and pointer functionality
 - UDT enhancements with methods and events
 
-### [Project Configuration](Project-Configuration/)
+### [Project Configuration](Project)
 twinBASIC offers various project types and configuration options:
 - Standard DLLs, Console applications, Services, and Kernel drivers
 - Compiler options for optimization and security
 - Entry point override and IAT placement
 - Registration options for ActiveX projects
 
-### [Standard Library](Standard-Library/)
+### [Standard Library](Standard-Library)
 Enhancements to the standard library include:
 - Full Unicode support throughout
 - File I/O with multiple encoding options
@@ -42,7 +42,7 @@ Enhancements to the standard library include:
 - Direct COM error handling access
 - Destructuring assignment for arrays
 
-### [GUI Components](GUI-Components/)
+### [GUI Components](GUI-Components)
 Modernized GUI components featuring:
 - Enhanced forms with transparency and alpha blending
 - Control anchoring and docking
@@ -50,7 +50,7 @@ Modernized GUI components featuring:
 - 64-bit support and DPI awareness
 - New controls (QR Code, Multiframe, CheckMark)
 
-### [Advanced Features](Advanced/)
+### [Advanced Features](Advanced)
 Advanced programming capabilities:
 - Multithreading support via direct API calls
 - Direct assembly insertion with `Emit()`
@@ -58,7 +58,7 @@ Advanced programming capabilities:
 - Enhanced API declarations (CDecl, variadic args, ByVal UDTs)
 - Parameterized constructors and class exports
 
-### [Compiler and IDE Features](Compiler-Features/)
+### [Compiler and IDE Features](Compiler-IDE)
 Improved development experience:
 - Compiler warnings and strict mode
 - Debug trace logger and stale pointer detection

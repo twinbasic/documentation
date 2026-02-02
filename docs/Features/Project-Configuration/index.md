@@ -2,7 +2,7 @@
 title: Project Configuration
 parent: Features
 nav_order: 3
-has_children: true
+permalink: /Features/Project
 ---
 
 # Project Configuration

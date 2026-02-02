@@ -2,7 +2,7 @@
 title: Compiler and IDE Features
 parent: Features
 nav_order: 7
-has_children: true
+permalink: /Features/Compiler-IDE
 ---
 
 # Design Experience and Compiler Features
