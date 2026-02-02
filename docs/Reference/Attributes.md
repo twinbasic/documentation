@@ -96,7 +96,7 @@ Public CoClass Foo
 End CoClass
 ```
 
-For an overview of coclasses in tB, see [Defining coclasses](../../Features/Overview#defining-coclasses).
+For an overview of coclasses in tB, see [Defining coclasses](../../Features/Language/Interfaces-CoClasses#defining-coclasses).
 
 ## CoClassId  (String)
 {: #coclassid }
@@ -119,7 +119,7 @@ End CoClass
 
 The methods are [procedures](../Gloss#procedure).
 
-For an overview of coclasses in tB, see [Defining coclasses](../../Features/Overview#defining-coclasses).
+For an overview of coclasses in tB, see [Defining coclasses](../../Features/Language/Interfaces-CoClasses#defining-coclasses).
 
 ## COMControl  (optional Bool)
 {: #comcontrol }
@@ -378,7 +378,7 @@ End Interface
 
 The methods are [procedures](../Gloss#procedure).
 
-For an overview of interfaces in tB, see [Defining interfaces](../../Features/Overview#defining-interfaces).
+For an overview of interfaces in tB, see [Defining interfaces](../../Features/Language/Interfaces-CoClasses.html#defining-interfaces).
 
 ## MustBeQualified  (optional Bool)
 {: #mustbequalified }
@@ -402,6 +402,26 @@ Controls whether this attribute is applied in the typelibrary. This attribute is
 Syntax:  **[PackingAlignment( 1** \| **2** \| **4** \| **8** \| **16** \| **32** \| **64 )]**
 
 Applicable to: [**Type** (UDT)](Type)
+
+twinBASIC normally aligns objects naturally within UDTs, e.g. an 8-byte object is aligned at the 8-byte boundary relative to the beginning of the UDT. This can leave gaps between UDT fields. A tighter packing can be achieved with a smaller **PackingAlignment**:
+
+```vb
+[PackingAlignment(2)]
+Private Type MyUDT
+    x As Integer
+    y As Long
+    z As Integer
+End Type
+Private t As MyUDT
+Debug.Assert Len(t) = 8 And LenB(t) = 8
+```
+
+You'll now find that both `Len(t)` and `LenB(t)` are 8.
+
+> [!NOTE]
+> Alignment, not packing alignment, is not set this way. Specifying 16 would not get you a 16-byte structure for `t`. twinBASIC does not currently have an equivalent for `__declspec_align(n)`, but such a feature is planned. This is rare outside kernel mode programming.
+
+For introduction to this feature, see [Custom UDT Packing](../../Features/Language/UDTs#custom-udt-packing).
 
 ## PopulateFrom  (...)
 {: #populatefrom }
