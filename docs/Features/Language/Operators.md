@@ -2,6 +2,7 @@
 title: Operators
 parent: Language Syntax
 nav_order: 7
+permalink: /Features/Language/Operators
 ---
 
 # New Operators

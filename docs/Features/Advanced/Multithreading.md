@@ -2,6 +2,7 @@
 title: Multithreading
 parent: Advanced Features
 nav_order: 1
+permalink: /Features/Advanced/Multithreading
 ---
 
 # Thread Safety / Multithreading Support

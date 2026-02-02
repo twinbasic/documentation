@@ -2,7 +2,9 @@
 title: Control Anchoring and Docking
 parent: GUI Components
 nav_order: 2
-permalink: /Features/Anchoring-Docking
+permalink: /Features/GUI-Components/Anchoring-Docking
+redirect_from:
+  - /Features/Anchoring-Docking
 ---
 
 # Anchoring

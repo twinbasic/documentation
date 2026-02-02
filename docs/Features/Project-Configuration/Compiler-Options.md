@@ -2,6 +2,7 @@
 title: Compiler Options
 parent: Project Configuration
 nav_order: 2
+permalink: /Features/Project-Configuration/Compiler-Options
 ---
 
 # Compiler Options

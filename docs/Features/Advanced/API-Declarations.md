@@ -2,6 +2,7 @@
 title: Enhanced API Declarations
 parent: Advanced Features
 nav_order: 4
+permalink: /Features/Advanced/API-Declarations
 ---
 
 # Enhancements to API and Method Declarations

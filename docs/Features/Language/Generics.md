@@ -2,6 +2,7 @@
 title: Generics
 parent: Language Syntax
 nav_order: 5
+permalink: /Features/Language/Generics
 ---
 
 # Generics

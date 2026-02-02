@@ -2,6 +2,7 @@
 title: Class Features
 parent: Advanced Features
 nav_order: 5
+permalink: /Features/Advanced/Classes-and-Modules
 ---
 
 # Class and Module Enhancements

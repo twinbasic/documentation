@@ -1,7 +1,8 @@
 ---
-title: Modern Controls
+title: Control Modernization
 parent: GUI Components
 nav_order: 4
+permalink: /Features/GUI-Components/Modernization
 ---
 
 # Control Modernization

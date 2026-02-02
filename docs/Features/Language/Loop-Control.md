@@ -2,6 +2,7 @@
 title: Loop Control
 parent: Language Syntax
 nav_order: 12
+permalink: /Features/Language/Loop-Control
 ---
 
 # Loop Control

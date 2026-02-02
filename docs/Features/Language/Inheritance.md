@@ -2,13 +2,48 @@
 title: Inheritance
 parent: Language Syntax
 nav_order: 3
+permalink: /Features/Language/Inheritance
 ---
 
 # Inheritance: Implements Via and Inherits
 
 twinBASIC provides two mechanisms for inheritance to support both simple and complete object-oriented programming patterns.
 
-## `Implements Via` for Basic Inheritance
+## Enhancements to **Implements**
+
+`Implements` in twinBASIC has several enhancements:
+
+### Inherited Interfaces
+
+`Implements` in twinBASIC is allowed on inherited interfaces -- for instance, if you have `Interface IFoo2 Extends IFoo`, you then use `Implements IFoo2` in a class, where in VBx this would not be allowed. You'll need to provide methods for all inherited interfaces (besides `IDispatch` and `IUnknown`). The class will mark all interfaces as available-- you don't need a separate statement for `IFoo`, it will be passed through `Set` statements (and their underlying `QueryInterface` calls) automatically.
+
+### Multiple Implementations
+
+If you have an interface that multiple others extend from, you can write multiple implementations, or specify one implementation for all. For example:
+
+```vb
+IOleWindow_GetWindow() As LongPtr _
+    Implements IOleWindow.GetWindow, IShellBrowser.GetWindow, IShellView2.GetWindow
+```
+
+### 'As Any' Parameters in Interfaces
+
+`Implements` is allowed on interfaces with 'As Any' parameters: In VBx, you'd get an error if you attempted to use any interface containing a member with an `As Any` argument. With twinBASIC, this is allowed if you substitute `As LongPtr` for `As Any`, for example:
+
+```vb
+Interface IFoo Extends IUnknown
+    Sub Bar(ppv As Any)
+End Interface
+
+Class MyClass
+    Implements IFoo
+
+    Private Sub IFoo_Bar(ppv As LongPtr) Implements IFoo.Bar
+
+    End Sub
+```
+
+## **Implements Via** for Basic Inheritance
 
 tB allows simple inheritance among classes. For example, if you have class cVehicle which implements IVehicle containing method Honk, you could create child classes like cCar or cTruck, which inherit the methods of the original, so you could call cCar.Honk without writing a separate implementation.
 
@@ -16,7 +51,7 @@ tB allows simple inheritance among classes. For example, if you have class cVehi
 
 You can see that the Honk method is only implemented by the parent class, then called from the child class when you click the CodeLens button to run the sub in place from the IDE.
 
-## `Inherits` for Complete OOP
+## **Inherits** for Complete OOP
 
 This is a more robust option for full inheritance and OOP. It supports `Protected` methods and variables that are accessible to derived classes but not outside callers, `Overridable` and `Overrides` syntax, multiple inheritance, and explicit base class constructors.
 

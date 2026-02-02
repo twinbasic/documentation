@@ -2,6 +2,7 @@
 title: UDT Enhancements
 parent: Language Syntax
 nav_order: 11
+permalink: /Features/Language/UDTs
 ---
 
 # Enhancements to User-Defined Types (UDTs)

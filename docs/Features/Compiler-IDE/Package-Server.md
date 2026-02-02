@@ -2,6 +2,7 @@
 title: Package Server
 parent: Compiler and IDE Features
 nav_order: 5
+permalink: /Features/Compiler-IDE/Package-Server
 ---
 
 # Package Server
@@ -12,8 +13,8 @@ Code can be grouped as a package, and published to an online server. You can hav
 
 For more information, see the following pages:
 
-- [What is a package](../../Packages/What-Is)
-- [Creating a TWINPACK package](../../Packages/Creating-TWINPACK)
-- [Importing a package from a TWINPACK file](../../Packages/Importing-TWINPACK)
-- [Importing a package from TWINSERV](../../Packages/Importing-TWINSERV)
-- [Updating a package](../../Packages/Updating)
+- [What is a package](../Packages/)
+- [Creating a TWINPACK package](../Packages/Creating-TWINPACK)
+- [Importing a package from a TWINPACK file](../Packages/Importing-TWINPACK)
+- [Importing a package from TWINSERV](../Packages/Importing-TWINSERV)
+- [Updating a package](../Packages/Updating)

@@ -29,22 +29,22 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 4. [Painting / drawing to your control](CustomControls/Painting)
 5. [Notes about the form designer](CustomControls/Form Designer)
 
-## Packages
-1. [What is a package?](Packages/What-Is)
-2. [Creating a TWINPACK package](Packages/Creating-TWINPACK)
-3. [Importing a package from TWINSERV](Packages/Importing-TWINSERV)
-4. [Importing a package from a TWINPACK file](Packages/Importing-TWINPACK)
-5. [Updating a package](Packages/Updating)
-
 ## WebView2
 1. [Getting Started](WebView2/Getting-Started)
 2. [Customize the UserDataFolder](WebView2/Customize-UserDataFolder)
 3. [Information about re-entrancy](WebView2/Re-entrancy)
 
 ## Language and IDE Features
-1. [Overview of features new to twinBASIC](Features/Overview) (compared to VBx)
-2. [Control anchoring and docking ‐ Automatic size and position management](Features/Anchoring-Docking)
-3. [Windowless vs. Windowed Controls in VBx and twinBASIC](Features/Windowless)
+1. [Overview of features new to twinBASIC](Features) (compared to VBx)
+2. [Attributes](Features/Attributes)
+3. [Language Syntax](Features/Language)
+4. [Project Configuration](Features/Project-Configuration)
+5. [Standard Library](Features/Standard-Library)
+6. [GUI Components](Features/GUI-Components)
+7. [Packages](Features/Packages)
+8. [Advanced Features](Features/Advanced)
+9. [Compiler and IDE Features](Features/Compiler-IDE)
+10. [64bit Compilation](Features/64bit)
 
 ## Reference Section
 

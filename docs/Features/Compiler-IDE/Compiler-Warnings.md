@@ -2,6 +2,7 @@
 title: Compiler Warnings
 parent: Compiler and IDE Features
 nav_order: 1
+permalink: /Features/Compiler-IDE/Compiler-Warnings
 ---
 
 # Compiler Warnings

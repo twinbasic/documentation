@@ -1,10 +1,11 @@
 ---
-title: Method Handler Syntax
+title: Handler Method Syntax
 parent: Language Syntax
 nav_order: 15
+permalink: /Features/Language/Handlers
 ---
 
-# New Class Member Handler Syntax
+# New Handler Class Member Syntax
 
 You can now separate the name of method from the class member it applies to.
 

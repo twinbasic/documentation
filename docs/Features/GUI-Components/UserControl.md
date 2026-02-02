@@ -2,6 +2,7 @@
 title: UserControl Enhancements
 parent: GUI Components
 nav_order: 7
+permalink: /Features/GUI-Components/UserControl
 ---
 
 # UserControl Enhancements

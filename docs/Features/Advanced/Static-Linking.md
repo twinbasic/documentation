@@ -2,6 +2,7 @@
 title: Static Linking
 parent: Advanced Features
 nav_order: 3
+permalink: /Features/Advanced/Static-Linking
 ---
 
 # Static Linking of OBJ and LIB Files

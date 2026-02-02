@@ -2,6 +2,7 @@
 title: Data Types
 parent: Language Syntax
 nav_order: 1
+permalink: /Features/Language/Data-Types
 ---
 
 # New Data Types

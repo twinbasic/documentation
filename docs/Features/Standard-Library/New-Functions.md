@@ -2,6 +2,7 @@
 title: New Functions
 parent: Standard Library
 nav_order: 3
+permalink: /Features/Standard-Library/New-Functions
 ---
 
 # New Built-in Functions
@@ -95,14 +96,3 @@ Debug.Print c(1), UBound(c)
 ```
 
 Which prints `7    1`.
-
-## Block and Inline Comments
-
-You can now use `/* */` syntax. For example, `Sub Foo(bar As Long /* out */)` or:
-
-```c
-/*
-Everything here is
-a comment until:
-*/
-```

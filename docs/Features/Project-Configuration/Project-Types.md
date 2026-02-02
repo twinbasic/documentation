@@ -2,6 +2,7 @@
 title: Project Types
 parent: Project Configuration
 nav_order: 1
+permalink: /Features/Project-Configuration/Project-Types
 ---
 
 # Project Types

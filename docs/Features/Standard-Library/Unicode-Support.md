@@ -2,6 +2,7 @@
 title: Unicode Support
 parent: Standard Library
 nav_order: 1
+permalink: /Features/Standard-Library/Unicode-Support
 ---
 
 # Unicode Support

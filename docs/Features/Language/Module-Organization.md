@@ -2,6 +2,7 @@
 title: Module Organization
 parent: Language Syntax
 nav_order: 16
+permalink: /Features/Language/Module-Organization
 ---
 
 # Module-Level Code Organization

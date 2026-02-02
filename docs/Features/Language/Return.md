@@ -2,6 +2,7 @@
 title: Return Syntax
 parent: Language Syntax
 nav_order: 13
+permalink: /Features/Language/Return
 ---
 
 # Return Syntax for Functions

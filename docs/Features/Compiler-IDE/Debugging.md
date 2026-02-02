@@ -2,6 +2,7 @@
 title: Debugging
 parent: Compiler and IDE Features
 nav_order: 2
+permalink: /Features/Compiler-IDE/Debugging
 ---
 
 # Debugging Features

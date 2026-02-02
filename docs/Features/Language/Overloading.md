@@ -2,6 +2,7 @@
 title: Overloading
 parent: Language Syntax
 nav_order: 6
+permalink: /Features/Language/Overloading
 ---
 
 # Overloading

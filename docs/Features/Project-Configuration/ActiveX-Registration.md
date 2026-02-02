@@ -1,10 +1,11 @@
 ---
-title: Registration Options
+title: ActiveX Registration
 parent: Project Configuration
 nav_order: 3
+permalink: /Features/Project-Configuration/ActiveX-Registration
 ---
 
-# Registration Options
+# ActiveX Registration Options
 
 ## Registration Location
 

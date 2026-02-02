@@ -2,6 +2,7 @@
 title: New Controls
 parent: GUI Components
 nav_order: 5
+permalink: /Features/GUI-Components/New
 ---
 
 # New Controls

@@ -2,6 +2,7 @@
 title: Type Inference
 parent: Language Syntax
 nav_order: 9
+permalink: /Features/Language/Type-Inference
 ---
 
 # Type Inference

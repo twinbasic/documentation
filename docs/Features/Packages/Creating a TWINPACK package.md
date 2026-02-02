@@ -1,8 +1,10 @@
 ---
 title: Creating a TWINPACK Package
 parent: Packages
-nav_order: 2
-permalink: /Packages/Creating-TWINPACK
+nav_order: 1
+permalink: /Features/Packages/Creating-TWINPACK
+redirect_from:
+  - /Packages/Creating-TWINPACK
 ---
 
 # Creating a TWINPACK package

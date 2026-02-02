@@ -2,6 +2,7 @@
 title: Direct Assembly Insertion
 parent: Advanced Features
 nav_order: 2
+permalink: /Features/Advanced/Assembly
 ---
 
 # Emit() and Naked Functions

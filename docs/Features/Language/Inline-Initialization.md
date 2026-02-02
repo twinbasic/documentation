@@ -2,6 +2,7 @@
 title: Inline Variable Initialization
 parent: Language Syntax
 nav_order: 14
+permalink: /Features/Language/Inline-Initialization
 ---
 
 # Inline Variable Initialization

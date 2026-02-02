@@ -2,6 +2,7 @@
 title: Literals
 parent: Language Syntax
 nav_order: 8
+permalink: /Features/Language/Literals
 ---
 
 # New Literals Notation

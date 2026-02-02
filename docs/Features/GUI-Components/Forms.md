@@ -2,6 +2,7 @@
 title: Forms
 parent: GUI Components
 nav_order: 1
+permalink: /Features/GUI-Components/Forms
 ---
 
 # Form Features

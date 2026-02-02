@@ -1,8 +1,8 @@
 ---
 title: Advanced Features
 parent: Features
-nav_order: 6
-permalink: /Features/Advanced
+nav_order: 7
+permalink: /Features/Advanced/
 has_toc: false
 ---
 
@@ -12,8 +12,8 @@ Advanced twinBASIC features for low-level programming and system integration.
 
 ## Topics
 
-- [Multithreading](Multithreading.md) - Thread safety and multithreading support
-- [Assembly](Assembly.md) - Direct assembly insertion with Emit()
-- [Static Linking](Static-Linking.md) - Static linking of OBJ and LIB files
-- [API Declarations](API-Declarations.md) - Enhanced API and method declarations
-- [Class Features](Class-Features.md) - Parameterized constructors, ReadOnly, and exports
+- [Multithreading](Multithreading) - Thread safety and multithreading support
+- [Assembly](Assembly) - Direct assembly insertion with Emit()
+- [Static Linking](Static-Linking) - Static linking of OBJ and LIB files
+- [API Declarations](API-Declarations) - Enhanced API and method declarations
+- [Class and Module Features](Classes-and-Modules) - Parameterized constructors, ReadOnly, and exports

@@ -2,6 +2,7 @@
 title: Enhanced Pointer Functionality
 parent: Language Syntax
 nav_order: 10
+permalink: /Features/Language/Pointers
 ---
 
 # Enhanced Pointer Functionality

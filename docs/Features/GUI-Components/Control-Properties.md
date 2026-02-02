@@ -1,10 +1,11 @@
 ---
-title: Control Properties
+title: Control Property Enhancements
 parent: GUI Components
 nav_order: 6
+permalink: /Features/GUI-Components/Control-Properties
 ---
 
-# Misc Additional Control Properties and Enhancements
+# Control Property Enhancements
 
 ## TextBox Enhancements
 
@@ -18,6 +19,6 @@ nav_order: 6
 - `Label.Angle` property (in degrees, rotates the label text)
 - `Label.BorderCustom` property (has suboptions to set size, padding and color of borders independently for each side).
 
-## Timer Enhancement
+## Timer Enhancements
 
 `Timer.Interval` can now be set to any positive `Long` instead of being limited to 65,535.

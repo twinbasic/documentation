@@ -2,6 +2,7 @@
 title: Modern IDE Features
 parent: Compiler and IDE Features
 nav_order: 4
+permalink: /Features/Compiler-IDE/IDE-Features
 ---
 
 # Modern IDE Features
