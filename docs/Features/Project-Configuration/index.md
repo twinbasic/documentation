@@ -3,6 +3,7 @@ title: Project Configuration
 parent: Features
 nav_order: 3
 permalink: /Features/Project
+has_toc: false
 ---
 
 # Project Configuration

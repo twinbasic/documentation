@@ -3,6 +3,7 @@ title: GUI Components
 parent: Features
 nav_order: 5
 permalink: /Features/GUI-Components
+has_toc: false
 ---
 
 # GUI Components

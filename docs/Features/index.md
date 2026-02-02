@@ -2,6 +2,7 @@
 title: Features
 nav_order: 6
 permalink: /Features
+has_toc: false
 ---
 
 # Features

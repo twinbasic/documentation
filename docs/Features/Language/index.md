@@ -3,6 +3,7 @@ title: Language Syntax
 parent: Features
 nav_order: 2
 permalink: /Features/Syntax
+has_toc: false
 ---
 
 # Language Syntax

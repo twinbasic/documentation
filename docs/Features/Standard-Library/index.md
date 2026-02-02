@@ -3,6 +3,7 @@ title: Standard Library
 parent: Features
 nav_order: 4
 permalink: /Features/Standard-Library
+has_toc: false
 ---
 
 # Standard Library Enhancements

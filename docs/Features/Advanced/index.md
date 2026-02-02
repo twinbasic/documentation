@@ -3,6 +3,7 @@ title: Advanced Features
 parent: Features
 nav_order: 6
 permalink: /Features/Advanced
+has_toc: false
 ---
 
 # Advanced Features

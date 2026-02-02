@@ -3,6 +3,7 @@ title: Compiler and IDE Features
 parent: Features
 nav_order: 7
 permalink: /Features/Compiler-IDE
+has_toc: false
 ---
 
 # Design Experience and Compiler Features
