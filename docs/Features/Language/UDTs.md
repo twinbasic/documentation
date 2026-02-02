@@ -7,7 +7,7 @@ permalink: /Features/Language/UDTs
 
 # Enhancements to User-Defined Types (UDTs)
 
-## Procedures and Events
+## Procedures, Constructors, Destructors, and Operators
 
 You can now place methods inside UDTs, as well as API declarations. With APIs, if the first parameter is named `Me` and is the same type as the UDT, it's treated as an implicit member call:
 
@@ -20,7 +20,7 @@ End Type
 myHwnd.BringWindowToTop()
 ```
 
-There's also associated events, including a constructor and destructor that make it possible to create lightweight objects, like a C++ class:
+There is also a constructor (**Type_Initialize**), and destructor (**Type_Terminate**), assignment operator (**Type_Assignment**), type conversion operator (**Type_Conversion**), and debugger string operator (**Type_DebugView**). These make it possible to create lightweight objects, like a C++ class:
 
 ```vb
 Type myType
@@ -70,21 +70,23 @@ If you ask for `Len(t)`, you get 8-- the sum of 2x2-byte Integers and 1 4-byte L
 
 Some API UDTs will look like `MyUDT` is correct, but you'll see it defined in VBx as 2 Longs-- which gets the required 8 bytes, with some special handling for the first member. If you refer back to the original C/C++ header, you'll find, for this situation, something like `#include <pshpack1.h>` or `#pragma pack(push,1)` somewhere before the UDT. This manually alters the packing rule to insert no hidden bytes anywhere.
 
-### Using [PackingAlignment] Attribute
+### [PackingAlignment] Attribute
 
-In twinBASIC, instead of two Longs and having to worry about getting the first one right when it's not an Integer, you can use the original definition with:
+twinBASIC normally aligns objects naturally within UDTs, e.g. an 8-byte object is aligned at the 8-byte boundary relative to the beginning of the UDT. This can leave gaps between UDT fields. A tighter packing can be achieved with a smaller **PackingAlignment**:
 
 ```vb
-[PackingAlignment(1)]
+[PackingAlignment(2)]
 Private Type MyUDT
     x As Integer
     y As Long
     z As Integer
 End Type
 Private t As MyUDT
+Debug.Assert Len(t) = 8 And LenB(t) = 8
 ```
 
 You'll now find that both `Len(t)` and `LenB(t)` are 8.
 
 > [!NOTE]
-> Alignment, not packing alignment, is not set this way-- specifying 16 would not get you a 16-byte structure for `t`. twinBASIC does not currently have an equivalent for `__declspec_align(n)`, but such a feature is planned. This is very, very rare outside kernel mode programming.
+> 
+> Alignment, not packing alignment, is not set this way. Specifying 16 would not get you a 16-byte structure for `t`. twinBASIC does not currently have an equivalent for `__declspec_align(n)`, but such a feature is planned. This is rare outside kernel mode programming.

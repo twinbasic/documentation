@@ -5,9 +5,9 @@ nav_order: 13
 permalink: /Features/Language/Return
 ---
 
-# Return Syntax for Functions
+# Return Syntax
 
-You can now combine assigning a return value and exiting a function into a single statement like many other languages allow. This is accomplished with the `Return` keyword:
+You can now combine assigning a return value and exiting a procedure into a single statement like many other languages allow. This is accomplished with the `Return` keyword:
 
 ```vb
 Private Function Foo() As Long
@@ -30,4 +30,6 @@ Private Function Foo() As Long
 End Function
 ```
 
-`Return` can be used for objects as well. It is currently only valid with a value specified and within a function; you cannot use `Return` without anything after it in a sub.
+`Return` can be used to return objects as well. It is currently only valid with a value specified and within a function; you cannot use `Return` without anything after it in a sub.
+
+`Return` can be used in function procedures, function method procedures, and property getter procedures.

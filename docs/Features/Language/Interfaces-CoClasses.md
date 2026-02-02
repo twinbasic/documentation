@@ -1,11 +1,11 @@
 ---
-title: Interfaces and Coclasses
+title: Interfaces and CoClasses
 parent: Language Syntax
 nav_order: 2
 permalink: /Features/Language/Interfaces-CoClasses
 ---
 
-# Interfaces, Coclasses, and Aliases
+# Interfaces, CoClasses, and Aliases
 
 twinBASIC supports these features as native language syntax where in VBx they were only supported via Type Libraries.
 
@@ -57,7 +57,7 @@ End Interface
 ```
 (Where MyEnum is a standard `Enum ... End Enum` block.)
 
-## Defining Coclasses
+## Defining CoClasses
 
 In addition to interfaces, twinBASIC also allows defining coclasses -- creatable classes that implement one or more defined interfaces. Like interfaces, these too must be in .twin files and not legacy .bas/.cls files, and must appear prior to the `Class` or `Module` statement. The generic form is:
 
@@ -92,7 +92,7 @@ End CoClass
 ```
 Where `IFoo` and `IBar` are interfaces defined with the `Interface` syntax described earlier.
 
-### Custom Constructor Example
+## Custom Constructor Example
 
 ```vb
 [InterfaceId("016BC30A-A8E0-4AAF-93AE-13BD838A149E")]

@@ -5,9 +5,9 @@ nav_order: 3
 permalink: /Features/Language/Inheritance
 ---
 
-# Inheritance: Implements Via and Inherits
+# Inheritance
 
-twinBASIC provides two mechanisms for inheritance to support both simple and complete object-oriented programming patterns.
+twinBASIC provides several mechanisms for inheritance to support both simple and complete object-oriented programming patterns: **Implements**, **Implements Via** and **Inherits**.
 
 ## Enhancements to **Implements**
 

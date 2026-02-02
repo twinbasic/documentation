@@ -2,7 +2,7 @@
 title: Attributes
 parent: Features
 nav_order: 1
-permalink: /Features/Attributes
+permalink: /Features/Attributes-Intro
 ---
 
 # Attributes

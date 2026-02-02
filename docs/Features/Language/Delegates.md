@@ -1,11 +1,11 @@
 ---
-title: Delegates
+title: Delegate Types
 parent: Language Syntax
 nav_order: 4
 permalink: /Features/Language/Delegates
 ---
 
-# Delegate Types for Call By Pointer
+# Delegate Types for Indirect Calls
 
 There is native support for calling a function by pointer, by way of `Delegate` syntax. A delegate in twinBASIC is a function pointer type that's compatible with LongPtr. `AddressOf` returns a delegate type, that's also backwards compatible with `LongPtr`.
 

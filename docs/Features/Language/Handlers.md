@@ -15,7 +15,7 @@ For events on Forms, UserControls, and event-raising objects, you can define any
 
 ## Implements for Interfaces
 
-Similar to the above, for forms/UCs/classes that use `Implements`, you can use `Sub Bar() Implements IFoo.Bar`. Note that you can specify more than one implemented method; for more information, see the [Enhancements to Implements section](Interfaces-Coclasses.md).
+Similar to the above, for forms/UCs/classes that use `Implements`, you can use `Sub Bar() Implements IFoo.Bar`. Note that you can specify more than one implemented method; for more information, see the [Enhancements to Implements section](Interfaces-CoClasses).
 
 > [!NOTE]
 > These are opt-in and optional. For compatibility, twinBASIC will always continue to support the traditional syntax for event handling and Implements, and you're not required to use this new syntax (or *any* of the additions described in this article). Whether or not automatically created prototypes use this syntax is controlled via IDE Options: "IDE: Use new handles/implements syntax".

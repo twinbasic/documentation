@@ -36,7 +36,7 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 
 ## Language and IDE Features
 1. [Overview of features new to twinBASIC](Features) (compared to VBx)
-2. [Attributes](Features/Attributes)
+2. [Attributes](Features/Attributes-Intro)
 3. [Language Syntax](Features/Language)
 4. [Project Configuration](Features/Project-Configuration)
 5. [Standard Library](Features/Standard-Library)

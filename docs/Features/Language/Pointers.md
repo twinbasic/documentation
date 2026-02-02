@@ -9,7 +9,28 @@ permalink: /Features/Language/Pointers
 
 twinBASIC provides several enhancements for working with pointers.
 
-## CType(Of )
+## ByVal Nothing
+
+Additionally, while not strictly new syntax, twinBASIC also adds support for `ByVal Nothing`, to override a `ByRef <interface>` argument and pass a null pointer there.
+
+## vbNullPtr
+
+Allows passing null pointers to UDT members of APIs/interfaces. The equivalent behavior in VBx is to declare them `As Any` and then pass `ByVal 0` at call sites.
+
+### Example
+
+```vb
+Type Foo
+   bar As Long
+End Type
+Public Declare PtrSafe Function MyFunc Lib "MyDLL" (pFoo As Foo) As Long
+
+Private Sub CallMyFunc()
+    Dim ret As Long = MyFunc(vbNullPtr)
+End Sub
+```
+
+## CType(Of \<type\>)
 
 The `CType(Of <type>)` operator specifies an explicit intent to cast one type to another. This can be used for casting `LongPtr` (or `Long` on 32bit/`LongLong` on 64bit) to a custom user-defined type, with or without making a copy of it, depending on the usage. This allows not just for casting directly without a `CopyMemory` call, but also, setting the members of a UDT represented only by a pointer, without copying memory back and forth.
 
@@ -98,7 +119,7 @@ Dim lPtr As LongPtr = VarPtr(pSec)
 hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal lPtr, '...)
 ```
 
-## Len/LenB(Of <type>) Support
+## Len/LenB(Of \<type\>) Support
 
 The classic `Len` and `LenB` functions can now be used to directly get the length/size of a type, both intrinsic and user-defined, without needing have declared a variable of that type. For instance, to know the pointer size, you can use `LenB(Of LongPtr)`.
 
@@ -110,3 +131,4 @@ The classic `Len` and `LenB` functions can now be used to directly get the lengt
 Dim foo1 As New CFoo
 Dim lpfn As LongPtr = AddressOf foo1.bar
 ```
+

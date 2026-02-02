@@ -16,7 +16,7 @@ twinBASIC introduces numerous enhancements to VBx language syntax, including new
 - [Data Types](Data-Types) - New data types (**LongPtr**, **LongLong**, **Decimal**)
 - [Interfaces and Coclasses](Interfaces-CoClasses) - Native interface and coclass definitions
 - [Inheritance](Inheritance) - **Implements Via** and **Inherits** keywords
-- [Delegates](Delegates) - Function pointers and delegate types
+- [Delegates](Delegates) - Function pointers, also called delegates
 - [Generics](Generics) - Generic type support
 - [Overloading](Overloading) - Method overloading capabilities
 - [Operators](Operators) - New operators and syntax
@@ -25,7 +25,7 @@ twinBASIC introduces numerous enhancements to VBx language syntax, including new
 - [Pointers](Pointers) - Enhanced pointer functionality
 - [UDT Enhancements](UDTs) - User-defined type improvements
 - [Loop Control](Loop-Control) - **Continue ...** and **Exit While**
-- [Return Syntax](Return) - Modern return statement
+- [Return Syntax](Return) - Modern **Return** statement
 - [Inline Initialization](Inline-Initialization) - Variable initialization
 - [Handler Methods](Handlers) - **Handles** and **Implements** syntax
 - [Module Organization](Module-Organization) - Code placement flexibility

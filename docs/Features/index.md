@@ -15,7 +15,7 @@ For detailed documentation on each feature, navigate to the specific category li
 
 ## Categories
 
-### [Attributes](Attributes)
+### [Attributes](Attributes-Intro)
 
 Attributes allow you to annotate Forms, Modules, Classes, Types, Enums, Declares, and procedures with compiler instructions and metadata. These are now visible directly in your code editor.
 
