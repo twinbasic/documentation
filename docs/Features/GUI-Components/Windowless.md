@@ -1,8 +1,10 @@
 ---
 title: Windowless Controls vs. Windowed Controls
-parent: Features
+parent: GUI Components
 nav_order: 3
-permalink: /Features/Windowless
+permalink: /Features/GUI-Components/Windowless
+redirect-from:
+  - /Features/Windowless
 ---
 
 # Windowless Controls vs. Normal (Windowed) Controls

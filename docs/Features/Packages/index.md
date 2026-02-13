@@ -1,11 +1,14 @@
 ---
-title: What is a Package
-parent: Packages
-nav_order: 1
-permalink: /Packages/What-Is
+title: Packages
+parent: Features
+nav_order: 6
+permalink: /Features/Packages/
+redirect_from:
+  - /Packages
+  - /Packages/What-Is
 ---
 
-# What is a package?
+# Packages
 
 In twinBASIC, a *package* is a collection of components that you can reference from another twinBASIC project.  The components can be modules, classes or interfaces.
 
