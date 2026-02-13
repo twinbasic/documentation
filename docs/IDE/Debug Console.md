@@ -2,7 +2,7 @@
 title: Debug Console
 parent: IDE
 # nav_order: 2
-permalink: /tB/IDE/Project/Debug Console
+permalink: /tB/IDE/Project/DebugConsole
 ---
 
 # Debug Console
