@@ -1,8 +1,10 @@
 ---
 title: Updating a Package
 parent: Packages
-nav_order: 5
-permalink: /Packages/Updating
+nav_order: 4
+permalink: /Features/Packages/Updating
+redirect_from:
+  - /Packages/Updating
 ---
 
 # Updating a package

@@ -1,8 +1,10 @@
 ---
 title: Importing a Package from a TWINPACK File
 parent: Packages
-nav_order: 4
-permalink: /Packages/Importing-TWINPACK
+nav_order: 3
+permalink: /Features/Packages/Importing-TWINPACK
+redirect_from:
+  - /Packages/Importing-TWINPACK
 ---
 
 # Importing a package from a TWINPACK file

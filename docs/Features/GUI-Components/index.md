@@ -1,0 +1,22 @@
+---
+title: GUI Components
+parent: Features
+nav_order: 5
+permalink: /Features/GUI-Components/
+has_toc: false
+---
+
+# GUI Components
+
+twinBASIC modernizes GUI components with enhanced forms, improved controls, and new control types.
+
+## Topics
+
+- [Forms](Forms) - Form enhancements and features
+- [Anchoring and Docking](Anchoring-Docking) - Automatic size and position management
+- [Windowless Controls](Windowless) - Windowless vs windowed controls
+- [Modern Controls](Modernization) - Control modernization and 64-bit support
+- [New Controls](New) - QR Code, Multiframe, and CheckMark controls
+- [Control Properties](Control-Properties) - Additional control properties and enhancements
+- [UserControl Enhancements](UserControl) - UserControl improvements
+
