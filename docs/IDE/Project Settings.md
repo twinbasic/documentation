@@ -33,7 +33,7 @@ Listed below are the project settings, in the same order as they appear in the P
 
 See [Packages](../Packages/index.md)
 
-![432410211-d9f1e4d9-1805-47e5-93aa-251151b4e914](../Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png)
+![432410211-d9f1e4d9-1805-47e5-93aa-251151b4e914](../Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png)
 
 ## Compiler Warnings
 
