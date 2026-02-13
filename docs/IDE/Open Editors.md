@@ -2,7 +2,7 @@
 title: Open Editors
 parent: IDE
 # nav_order: 
-permalink: /tB/IDE/Project/Open Editors
+permalink: /tB/IDE/Project/OpenEditors
 ---
 
 # Open Editors

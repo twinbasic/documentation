@@ -2,7 +2,7 @@
 title: Status Bar
 parent: IDE
 # nav_order: 2
-permalink: /tB/IDE/Project/Status Bar
+permalink: /tB/IDE/Project/StatusBar
 ---
 
 # Status Bar

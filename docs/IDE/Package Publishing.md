@@ -2,7 +2,7 @@
 title: Package Publishing
 parent: IDE
 # nav_order: 
-permalink: /tB/IDE/Project/Package Publishing
+permalink: /tB/IDE/Project/PackagePublishing
 ---
 
 # Package Publishing
