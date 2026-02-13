@@ -63,25 +63,25 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 
 ## twinBASIC IDE
 
-1. [Call Stack](tB/IDE/Project/Call Stack)
-2. [Debug Console](tB/IDE/Project/Debug Console)
+1. [Call Stack](tB/IDE/Project/CallStack)
+2. [Debug Console](tB/IDE/Project/DebugConsole)
 3. [Diagnostics](tB/IDE/Project/Diagnostics)
 4. [Editor](tB/IDE/Project/Editor)
-5. [Menu](tB/IDE/Project/Menu)
+5. [Menu](tB/IDE/Project/Menu/)
 6. [New Project](tB/IDE/Project/New)
 7. [Project Explorer](tB/IDE/Project/Explorer)
 8. [Project Settings](tB/IDE/Project/Settings)
 9. [Properties Pane](tB/IDE/Project/Properties)
 10. [Splash Screen](tB/IDE/Project/Splash)
-11. [Status Bar](tB/IDE/Project/Status Bar)
+11. [Status Bar](tB/IDE/Project/StatusBar)
 12. [Toolbar](tB/IDE/Project/Toolbar)
 13. [Toolbox](tB/IDE/Project/Toolbox)
 14. [Variables](tB/IDE/Project/Variables)
 15. [tbForm](tB/IDE/Project/Editor/Form)
 16. [tbReport](tB/IDE/Project/Editor/Report)
+17. [Add Ins](tB/IDE/Project/AddIns/)
 
 ## twinBASIC Videos
 
-[Access DevCon Videoes](Videos/AccessDevCon)
-
-[A series of videos introducing twinBASIC](Videos/tB)
+- [Access DevCon Videoes](Videos/AccessDevCon)
+- [A series of videos introducing twinBASIC](Videos/tB)
