@@ -79,7 +79,7 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 14. [Variables](tB/IDE/Project/Variables)
 15. [tbForm](tB/IDE/Project/Editor/Form)
 16. [tbReport](tB/IDE/Project/Editor/Report)
-17. [Add Ins](tB/IDE/Project/AddIns/)
+17. [Add Ins](tB/IDE/AddIns/)
 
 ## twinBASIC Videos
 
