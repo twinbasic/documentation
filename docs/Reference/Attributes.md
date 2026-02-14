@@ -76,6 +76,14 @@ Applicable to:  [**Class**](Class)
 
 Assigns a COM CLSID to a class. For details, [see this COM documentation page](https://learn.microsoft.com/en-us/windows/win32/com/com-class-objects-and-clsids).
 
+## ClassInterface
+
+twinBASIC doesn't supports this attribute directly. It supports its values under different names. See:
+
+* [DualInterface](#dualinterface)
+* [DispInterface](#dispinterface)
+
+
 ## CoClassCustomConstructor  (String)
 {: #coclasscustomconstructor }
 
@@ -267,7 +275,18 @@ Syntax: **[DispId(** 123 **)]**
 
 Applicable to: [procedure in an Interface](../Gloss#procedure)
 
-Defines a dispatch ID associated with the procedure.
+Defines a dispatch ID associated with the procedure when exposed via **IDispatch**.
+
+## DispInterface
+
+Syntax: **[DispInterface]**
+
+Applicable to: [**Interface**](Interface) in a **Library**
+
+> [!NOTE]
+> This attribute is generated in the **Library** modules that twinBASIC generates for COM references in a project. It cannot be manually created.
+
+Indicates that the interface exposes methods via **IDispatch** late-binding. This is the default. Note that [**DualInterface**](#dualinterface) can also be specified, giving much improved performance over that of **IDispatch**-based interfaces.
 
 ## DllExport  (optional Bool)
 {: #dllexport }
@@ -291,6 +310,18 @@ Syntax: **[DLLStackCheck** [ **( True** \| **False)** ] **]**
 Applicable to: [**Declare** (API declaration)](Declare)
 
 Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Has no effect on other platforms.
+
+## DualInterface
+
+Syntax: **[DualInterface]**
+
+Applicable to: [**Interface**](Interface) in a **Library**
+
+> [!NOTE]
+>
+> This attribute is generated in the **Library** modules that twinBASIC generates for COM references in a project. It cannot be manually created.
+
+Indicates that the interface exposes methods through the OLE VTable binding. The latter has much improved performance over that of **IDispatch**-based interfaces.
 
 ## EnforceErrors  (optional Bool)
 {: #enforceerrors }
