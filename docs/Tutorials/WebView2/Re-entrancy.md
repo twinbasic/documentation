@@ -2,7 +2,9 @@
 title: Re-entrancy
 parent: WebView2
 nav_order: 3
-permalink: /WebView2/Re-entrancy
+permalink: /Tutorials/WebView2/Re-entrancy
+redirect_from:
+  - /WebView2/Re-entrancy
 ---
 
 # Re-entrancy

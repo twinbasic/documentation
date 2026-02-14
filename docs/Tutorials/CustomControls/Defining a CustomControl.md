@@ -2,7 +2,9 @@
 title: Defining a CustomControl
 parent: CustomControls
 nav_order: 2
-permalink: /CustomControls/Defining
+permalink: /Tutorials/CustomControls/Defining
+redirect_from:
+  - /CustomControls/Defining
 ---
 # Defining a CustomControl
 A CustomControl is simply an ordinary twinBASIC class, with a few extra attributes and requirements.
