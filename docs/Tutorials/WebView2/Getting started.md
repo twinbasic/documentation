@@ -2,7 +2,9 @@
 title: Getting Started
 parent: WebView2
 nav_order: 1
-permalink: /WebView2/Getting-Started
+permalink: /Tutorials/WebView2/Getting-Started
+redirect_from:
+  - /WebView2/Getting-Started
 ---
 
 # Getting Started
