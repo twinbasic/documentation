@@ -402,10 +402,12 @@ Syntax: **[IdeButton("** caption **")]**
 
 Applicable to: [procedure](../Gloss#procedure) definition in a module.
 
-## IgnoreWarnings  (optional Bool)
+## IgnoreWarnings  (String List)
 {: #ignorewarnings }
 
-Syntax: **[IgnoreWarnings** [ **( True** \| **False )** ] **]**
+Syntax: **[IgnoreWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
+
+Disables certain warnings. The list of strings should enumerate the warnings that are to be suppressed.
 
 ## IntegerOverflowChecks  (optional Bool)
 {: #integeroverflowchecks }
