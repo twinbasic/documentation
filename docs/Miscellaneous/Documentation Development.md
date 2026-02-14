@@ -98,6 +98,7 @@ These are modules within VBA and VBRUN:
 - [ConstantFoldableNumericsOnly](../tB/Core/Attributes#constantfoldablenumericsonly)
 - [Debuggable](../tB/Core/Attributes#debuggable)
 - [DebugOnly](../tB/Core/Attributes#debugonly)
+- [DefaultMember](../tB/Core/Attributes#defaultmember)
 - [Description](../tB/Core/Attributes#description)
 - [DispId](../tB/Core/Attributes#dispid)
 - [DllExport](../tB/Core/Attributes#dllexport)

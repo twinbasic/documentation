@@ -221,6 +221,36 @@ Applicable to: [procedure definitions](../Gloss#procedure)
 
 Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging.
 
+## DefaultMember (optional Bool)
+
+{: #defaultmember }
+
+Syntax: **[DefaultMember** [ **(** **True** \| **False** **)** ] **]**
+
+Applicable to: [procedure in a **Class**](../Gloss#procedure)
+
+Default members are accessed under the instance of the object itself, without specifying their name. For example, a class that offers indexable elements may have an **Item** property that is the default member:
+
+```vb
+Class MyCollection
+    [DefaultMember]
+    Property Get Item(ByVal index&) As String
+        ' ...
+    End Property
+        
+    [DefaultMember]
+    Property Let Item(ByVal index&, ByVal value$)
+        ' ...
+    End Property
+End Class
+
+Sub Example()
+    Dim coll As New MyCollection
+    Debug.Print "Item #3: ", coll(3)   ' Property Get Item is invoked
+    coll(4) = "Item 4"                 ' Property Let Item is invoked
+End Sub
+```
+
 ## Description  (String) 
 {: #description }
 
