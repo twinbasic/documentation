@@ -76,6 +76,14 @@ Applicable to:  [**Class**](Class)
 
 Assigns a COM CLSID to a class. For details, [see this COM documentation page](https://learn.microsoft.com/en-us/windows/win32/com/com-class-objects-and-clsids).
 
+## ClassInterface
+
+twinBASIC doesn't supports this attribute directly. It supports its values under different names. See:
+
+* [DualInterface](#dualinterface)
+* [DispInterface](#dispinterface)
+
+
 ## CoClassCustomConstructor  (String)
 {: #coclasscustomconstructor }
 
@@ -208,7 +216,7 @@ Applicable to: [**Class**](Class)
 
 Syntax: **[Debuggable** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Module**](Module), [procedure in a Class or Module](../Gloss#procedure)
+Applicable to: [**Module**](Module), [procedure in a **Class** or **Module**](../Gloss#procedure)
 
 When false, turns of breakpoints and stepping for the method or module. The default value is **True**.
 
@@ -220,6 +228,36 @@ Syntax: **[DebugOnly** [ **( True** \| **False )** ] **]**
 Applicable to: [procedure definitions](../Gloss#procedure)
 
 Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging.
+
+## DefaultMember (optional Bool)
+
+{: #defaultmember }
+
+Syntax: **[DefaultMember** [ **(** **True** \| **False** **)** ] **]**
+
+Applicable to: [procedure in a **Class**](../Gloss#procedure)
+
+Default members are accessed under the instance of the object itself, without specifying their name. For example, a class that offers indexable elements may have an **Item** property that is the default member:
+
+```vb
+Class MyCollection
+    [DefaultMember]
+    Property Get Item(ByVal index&) As String
+        ' ...
+    End Property
+        
+    [DefaultMember]
+    Property Let Item(ByVal index&, ByVal value$)
+        ' ...
+    End Property
+End Class
+
+Sub Example()
+    Dim coll As New MyCollection
+    Debug.Print "Item #3: ", coll(3)   ' Property Get Item is invoked
+    coll(4) = "Item 4"                 ' Property Let Item is invoked
+End Sub
+```
 
 ## Description  (String) 
 {: #description }
@@ -237,7 +275,18 @@ Syntax: **[DispId(** 123 **)]**
 
 Applicable to: [procedure in an Interface](../Gloss#procedure)
 
-Defines a dispatch ID associated with the procedure.
+Defines a dispatch ID associated with the procedure when exposed via **IDispatch**.
+
+## DispInterface
+
+Syntax: **[DispInterface]**
+
+Applicable to: [**Interface**](Interface) in a **Library**
+
+> [!NOTE]
+> This attribute is generated in the **Library** modules that twinBASIC generates for COM references in a project. It cannot be manually created.
+
+Indicates that the interface exposes methods via **IDispatch** late-binding. This is the default. Note that [**DualInterface**](#dualinterface) can also be specified, giving much improved performance over that of **IDispatch**-based interfaces.
 
 ## DllExport  (optional Bool)
 {: #dllexport }
@@ -261,6 +310,18 @@ Syntax: **[DLLStackCheck** [ **( True** \| **False)** ] **]**
 Applicable to: [**Declare** (API declaration)](Declare)
 
 Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Has no effect on other platforms.
+
+## DualInterface
+
+Syntax: **[DualInterface]**
+
+Applicable to: [**Interface**](Interface) in a **Library**
+
+> [!NOTE]
+>
+> This attribute is generated in the **Library** modules that twinBASIC generates for COM references in a project. It cannot be manually created.
+
+Indicates that the interface exposes methods through the OLE VTable binding. The latter has much improved performance over that of **IDispatch**-based interfaces.
 
 ## EnforceErrors  (optional Bool)
 {: #enforceerrors }
@@ -341,10 +402,12 @@ Syntax: **[IdeButton("** caption **")]**
 
 Applicable to: [procedure](../Gloss#procedure) definition in a module.
 
-## IgnoreWarnings  (optional Bool)
+## IgnoreWarnings  (String List)
 {: #ignorewarnings }
 
-Syntax: **[IgnoreWarnings** [ **( True** \| **False )** ] **]**
+Syntax: **[IgnoreWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
+
+Disables certain warnings. The list of strings should enumerate the warnings that are to be suppressed.
 
 ## IntegerOverflowChecks  (optional Bool)
 {: #integeroverflowchecks }
