@@ -216,7 +216,7 @@ Applicable to: [**Class**](Class)
 
 Syntax: **[Debuggable** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Module**](Module), [procedure in a Class or Module](../Gloss#procedure)
+Applicable to: [**Module**](Module), [procedure in a **Class** or **Module**](../Gloss#procedure)
 
 When false, turns of breakpoints and stepping for the method or module. The default value is **True**.
 
