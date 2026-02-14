@@ -25,8 +25,9 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 
 ## Tutorials
 
-1. [CustomControls](Tutorials/CustomControls)
-2. [WebView2](Tutorials/WebView2)
+1. [Arrays](Tutorials/Arrays)
+2. [CustomControls](Tutorials/CustomControls)
+3. [WebView2](Tutorials/WebView2)
 
 ## Language and IDE Features
 1. [Overview of features new to twinBASIC](Features) (compared to VBx)
