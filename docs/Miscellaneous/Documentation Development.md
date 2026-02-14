@@ -87,7 +87,7 @@ These are modules within VBA and VBRUN:
 - [Debuggable](../tB/Core/Attributes#debuggable), [DebugOnly](../tB/Core/Attributes#debugonly), [DefaultMember](../tB/Core/Attributes#defaultmember), [Description](../tB/Core/Attributes#description), [DispId](../tB/Core/Attributes#dispid), [DispInterface](../tB/Core/Attributes#dispinterface), [DllExport](../tB/Core/Attributes#dllexport), [DLLStackCheck](../tB/Core/Attributes#dllstackcheck), [DualInterface](../tB/Core/Attributes#dualinterface)
 - [EnforceErrors](../tB/Core/Attributes#enforceerrors), [EnforceWarnings](../tB/Core/Attributes#enforcewarnings), [EnumId](../tB/Core/Attributes#enumid), [EventInterfaceId](../tB/Core/Attributes#eventinterfaceid), [EventsUseDispInterface](../tB/Core/Attributes#eventsusedispinterface)
 - [Flags](../tB/Core/Attributes#flags), [FloatingPointErrorChecks](../tB/Core/Attributes#floatingpointerrorchecks), [FormDesignerId](../tB/Core/Attributes#formdesignerid), [Hidden](../tB/Core/Attributes#hidden)
-- [IdeButton](../tB/Core/Attributes#idebutton), [IntegerOverflowChecks](../tB/Core/Attributes#integeroverflowchecks), [InterfaceId](../tB/Core/Attributes#interfaceid)
+- [IdeButton](../tB/Core/Attributes#idebutton), [IgnoreWarnings](../tB/Core/Attributes#ignorewarnings), [IntegerOverflowChecks](../tB/Core/Attributes#integeroverflowchecks), [InterfaceId](../tB/Core/Attributes#interfaceid)
 - [MustBeQualified](../tB/Core/Attributes#mustbequalified)
 - [OleAutomation](../tB/Core/Attributes#oleautomation)
 - [PackingAlignment](../tB/Core/Attributes#packingalignment), [PopulateFrom](../tB/Core/Attributes#populatefrom), [PredeclaredID](../tB/Core/Attributes#predeclaredid), [PreserveSig](../tB/Core/Attributes#preservesig)
