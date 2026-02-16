@@ -230,6 +230,50 @@ html {
   position: relative !important;
   max-width: none !important;
   overflow: visible !important;
+  padding: 0 !important;
+}
+
+/* Override search input styles */
+.search-modal .search .search-input {
+  position: relative !important;
+  width: 100%;
+  height: auto !important;
+  padding: 0.75rem 1rem 0.75rem 2.75rem !important;
+  font-size: 1rem;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: #212529;
+  transition: none !important;
+}
+
+.search-modal .search .search-input:focus {
+  border-color: #0050d0;
+  box-shadow: 0 0 0 4px rgba(0, 80, 208, 0.1);
+}
+
+.search-modal .search .search-input::placeholder {
+  color: #adb5bd;
+}
+
+/* Override search label styles */
+.search-modal .search .search-label {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  color: #6c757d;
+  pointer-events: none;
+  padding: 0 !important;
+  transition: none !important;
+  height: auto !important;
+}
+
+.search-modal .search .search-label .search-icon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .search-modal .search #search-results {
@@ -248,18 +292,18 @@ html {
 /* Modal close button */
 .search-modal-close {
   position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
+  top: 1.25rem;
+  right: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border: none;
   background: transparent;
   color: #6c757d;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: all 0.2s ease;
   z-index: 10;
 }
@@ -294,6 +338,25 @@ html.dark-mode .search-modal-overlay {
 html.dark-mode .search-modal {
   background: #1a1a1a;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+html.dark-mode .search-modal .search .search-input {
+  background: #2d2d2d;
+  border-color: #404040;
+  color: #e0e0e0;
+}
+
+html.dark-mode .search-modal .search .search-input:focus {
+  border-color: #7dd3fc;
+  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.1);
+}
+
+html.dark-mode .search-modal .search .search-input::placeholder {
+  color: #666;
+}
+
+html.dark-mode .search-modal .search .search-label {
+  color: #a0a0a0;
 }
 
 html.dark-mode .search-modal-close {

@@ -180,10 +180,9 @@
       return;
     }
 
-    // Find aux-nav to place button next to it
-    const auxNav = mainHeader.querySelector('.aux-nav');
-    if (!auxNav) {
-      // If no aux-nav, try to find the header nav
+    // Find nav element
+    const nav = mainHeader.querySelector('nav');
+    if (!nav) {
       setTimeout(createSearchButton, 200);
       return;
     }
@@ -210,8 +209,8 @@
     searchButton.addEventListener('click', openModal);
     buttonWrapper.appendChild(searchButton);
 
-    // Insert button wrapper before aux-nav
-    auxNav.parentNode.insertBefore(buttonWrapper, auxNav);
+    // Insert button wrapper after nav
+    nav.parentNode.insertBefore(buttonWrapper, nav.nextSibling);
   }
 
   // Initialize
