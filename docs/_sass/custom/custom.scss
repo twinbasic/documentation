@@ -376,6 +376,40 @@ html.dark-mode .search-modal-close:hover {
   color: #fff !important;
 }
 
+/* Dark mode scrollbar styles */
+html.dark-mode {
+  /* WebKit browsers (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #404040;
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #505050;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: #1a1a1a;
+  }
+}
+
+/* Firefox scrollbar styles */
+@supports (scrollbar-width: thin) {
+  html.dark-mode {
+    scrollbar-color: #404040 #1a1a1a;
+    scrollbar-width: thin;
+  }
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .search-modal {
