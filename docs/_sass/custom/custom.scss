@@ -51,35 +51,35 @@
 }
 
 .page-toc-link.active {
-  color: #0050d0;
+  color: #0050d0 !important;
   font-weight: 500;
   border-left: 2px solid #0050d0;
   padding-left: 0.5rem;
 }
 
 /* Dark mode support */
-.dark-mode .page-toc {
-  background-color: #1a1a1a;
-  border-color: #333;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+html.dark-mode .page-toc {
+  background-color: #1a1a1a !important;
+  border-color: #333 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
-.dark-mode .page-toc-heading {
-  color: #e0e0e0;
-  border-color: #333;
+html.dark-mode .page-toc-heading {
+  color: #e0e0e0 !important;
+  border-color: #333 !important;
 }
 
-.dark-mode .page-toc-link {
-  color: #a0a0a0;
+html.dark-mode .page-toc-link {
+  color: #a0a0a0 !important;
 }
 
-.dark-mode .page-toc-link:hover {
-  color: #7dd3fc;
+html.dark-mode .page-toc-link:hover {
+  color: #7dd3fc !important;
 }
 
-.dark-mode .page-toc-link.active {
-  color: #7dd3fc;
-  border-color: #7dd3fc;
+html.dark-mode .page-toc-link.active {
+  color: #7dd3fc !important;
+  border-color: #7dd3fc !important;
 }
 
 /* Responsive - hide TOC on smaller screens */
