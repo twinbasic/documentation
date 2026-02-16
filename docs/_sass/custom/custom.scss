@@ -314,58 +314,66 @@ html {
 }
 
 /* Dark mode */
+html.dark-mode .search-modal-trigger-wrapper {
+  background: transparent;
+}
+
 html.dark-mode .search-modal-trigger {
-  background: #2d2d2d;
-  border-color: #404040;
-  color: #e0e0e0;
+  background: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #e0e0e0 !important;
 }
 
 html.dark-mode .search-modal-trigger:hover {
-  background: #3d3d3d;
-  border-color: #505050;
+  background: #3d3d3d !important;
+  border-color: #505050 !important;
 }
 
 html.dark-mode .search-modal-shortcut {
-  background: #2d2d2d;
-  border-color: #404040;
-  color: #a0a0a0;
+  background: #1a1a1a !important;
+  border-color: #404040 !important;
+  color: #a0a0a0 !important;
 }
 
 html.dark-mode .search-modal-overlay {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.7) !important;
 }
 
 html.dark-mode .search-modal {
-  background: #1a1a1a;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  background: #1a1a1a !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
 }
 
 html.dark-mode .search-modal .search .search-input {
-  background: #2d2d2d;
-  border-color: #404040;
-  color: #e0e0e0;
+  background: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #e0e0e0 !important;
 }
 
 html.dark-mode .search-modal .search .search-input:focus {
-  border-color: #7dd3fc;
-  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.1);
+  border-color: #7dd3fc !important;
+  box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.1) !important;
 }
 
 html.dark-mode .search-modal .search .search-input::placeholder {
-  color: #666;
+  color: #666 !important;
 }
 
 html.dark-mode .search-modal .search .search-label {
-  color: #a0a0a0;
+  color: #a0a0a0 !important;
+}
+
+html.dark-mode .search-modal .search #search-results {
+  background: transparent !important;
 }
 
 html.dark-mode .search-modal-close {
-  color: #a0a0a0;
+  color: #a0a0a0 !important;
 }
 
 html.dark-mode .search-modal-close:hover {
-  background: #2d2d2d;
-  color: #fff;
+  background: #2d2d2d !important;
+  color: #fff !important;
 }
 
 /* Responsive */
