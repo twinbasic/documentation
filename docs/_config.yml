@@ -68,6 +68,9 @@ callouts:
 # For copy button on code
 enable_copy_code_button: true
 
+# Configure heading anchor links
+heading_anchors: true
+
 # Waiting until it's needed.
 # # By default, consuming the theme as a gem leaves mermaid disabled; it is opt-in
 # mermaid:

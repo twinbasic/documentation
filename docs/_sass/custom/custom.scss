@@ -1,3 +1,96 @@
 .site-logo {
   padding-right: 3rem;
 }
+
+/* Page TOC (Table of Contents) */
+.page-toc {
+  position: fixed;
+  right: 2rem;
+  top: 6rem;
+  width: 250px;
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+  background-color: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-size: 0.875rem;
+  z-index: 10;
+}
+
+.page-toc-heading {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #333;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.page-toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.page-toc-item {
+  margin: 0.25rem 0;
+}
+
+.page-toc-link {
+  display: block;
+  color: #666;
+  text-decoration: none;
+  padding: 0.25rem 0;
+  transition: color 0.2s ease;
+}
+
+.page-toc-link:hover {
+  color: #0050d0;
+}
+
+.page-toc-link.active {
+  color: #0050d0;
+  font-weight: 500;
+  border-left: 2px solid #0050d0;
+  padding-left: 0.5rem;
+}
+
+/* Dark mode support */
+.dark-mode .page-toc {
+  background-color: #1a1a1a;
+  border-color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .page-toc-heading {
+  color: #e0e0e0;
+  border-color: #333;
+}
+
+.dark-mode .page-toc-link {
+  color: #a0a0a0;
+}
+
+.dark-mode .page-toc-link:hover {
+  color: #7dd3fc;
+}
+
+.dark-mode .page-toc-link.active {
+  color: #7dd3fc;
+  border-color: #7dd3fc;
+}
+
+/* Responsive - hide TOC on smaller screens */
+@media screen and (max-width: 1280px) {
+  .page-toc {
+    display: none;
+  }
+}
+
+/* Smooth scrolling for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
