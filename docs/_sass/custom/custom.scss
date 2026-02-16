@@ -2,6 +2,36 @@
   padding-right: 3rem;
 }
 
+/* Hide the original search container in main header */
+#main-header .search {
+  display: none;
+}
+
+/* Show search container in modal */
+.search-modal .search {
+  display: flex !important;
+}
+
+/* Style the compact search trigger button */
+.search-modal-trigger-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+#main-header .search-modal-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  color: #495057;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
 /* Page TOC (Table of Contents) */
 .page-toc {
   position: fixed;
@@ -92,5 +122,203 @@ html.dark-mode .page-toc-link.active {
 /* Smooth scrolling for anchor links */
 html {
   scroll-behavior: smooth;
+}
+
+/* Search Modal Styles */
+.search-modal-trigger-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.search-modal-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  color: #495057;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-modal-trigger:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.search-modal-trigger svg {
+  flex-shrink: 0;
+}
+
+.search-modal-shortcut {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+/* Modal Overlay */
+.search-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99998;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.search-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Modal Container */
+.search-modal {
+  position: fixed;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  width: 90%;
+  max-width: 700px;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  z-index: 99999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.search-modal.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Native search component in modal */
+.search-modal .search {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: auto !important;
+  padding: 1rem !important;
+}
+
+/* Show search components when in modal */
+.search-modal .search .search-input-wrap {
+  display: flex !important;
+  width: 100%;
+  flex-shrink: 0;
+  height: auto !important;
+  position: relative !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+.search-modal .search #search-results {
+  display: block !important;
+  flex: 1;
+  overflow-y: auto;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  width: auto !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+/* Modal close button */
+.search-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #6c757d;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.search-modal-close:hover {
+  background: #f8f9fa;
+  color: #212529;
+}
+
+/* Dark mode */
+html.dark-mode .search-modal-trigger {
+  background: #2d2d2d;
+  border-color: #404040;
+  color: #e0e0e0;
+}
+
+html.dark-mode .search-modal-trigger:hover {
+  background: #3d3d3d;
+  border-color: #505050;
+}
+
+html.dark-mode .search-modal-shortcut {
+  background: #2d2d2d;
+  border-color: #404040;
+  color: #a0a0a0;
+}
+
+html.dark-mode .search-modal-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+html.dark-mode .search-modal {
+  background: #1a1a1a;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+html.dark-mode .search-modal-close {
+  color: #a0a0a0;
+}
+
+html.dark-mode .search-modal-close:hover {
+  background: #2d2d2d;
+  color: #fff;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .search-modal {
+    top: 5%;
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  .search-modal-trigger {
+    padding: 0.375rem 0.75rem;
+  }
+
+  .search-modal-shortcut {
+    display: none;
+  }
 }
 
