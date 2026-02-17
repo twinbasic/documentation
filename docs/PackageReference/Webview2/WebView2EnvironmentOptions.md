@@ -71,7 +71,7 @@ End Sub
 
 - Place user data folder in application data directory
 - Use independent subfolder for each instance to avoid locking issues
-- Refer to [Customize the UserDataFolder](./Customize-the-UserDataFolder.md) for more information
+- Ensure the folder path is not too long, otherwise creation may fail
 
 ---
 

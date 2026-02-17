@@ -725,7 +725,6 @@ End Sub
 
 - Read [WebView2 Control](./WebView2.md) to learn all properties, methods, and events
 - Read [Environment Options](./WebView2EnvironmentOptions.md) to configure WebView2 environment
-- Read [Enumeration Types](./Enumerations.md) to learn all enumeration values
+- Read [Enumeration Types](./WebView2-Enumerations.md) to learn all enumeration values
 - Read [Deferred Callback](./DeferredCallback.md) to understand how to handle re-entrancy problems
-- Read [Re-entrancy Issues](./Re-entrancy.md) for detailed explanation of re-entrancy problems
 

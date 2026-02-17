@@ -27,7 +27,7 @@ permalink: /PackageReference/Webview2/
 | [WebView2 Properties](./WebView2-Properties.md)| Detailed description of all properties |
 | [WebView2 Methods](./WebView2-Methods.md)       | Detailed description of all methods |
 | [Environment Options](./WebView2EnvironmentOptions.md) | Configure WebView2 environment parameters |
-| [Enumeration Types](./Enumerations.md)          | All enumeration type definitions |
+| [Enumeration Types](./WebView2-Enumerations.md)          | All enumeration type definitions |
 
 ### HTTP Related
 

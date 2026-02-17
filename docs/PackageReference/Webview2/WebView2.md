@@ -319,7 +319,7 @@ End Sub
 - [WebView2 Properties Detailed Documentation](./WebView2-Properties.md)
 - [WebView2 Methods Detailed Documentation](./WebView2-Methods.md)
 - [WebView2 Environment Options](./WebView2EnvironmentOptions.md)
-- [Enumeration Types](./Enumerations.md)
+- [Enumeration Types](./WebView2-Enumerations.md)
 - [Deferred Callback Mechanism](./DeferredCallback.md)
 - [Quick Start Guide](./Getting-started.md)
 

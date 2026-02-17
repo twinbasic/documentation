@@ -198,7 +198,7 @@ Public Sub AddObject(ByVal ObjName As String, ByVal Object As Object, ByVal UseD
 | `False` | Direct invocation, can return values to JavaScript, but may cause reentrancy issues                    |
 | `True`  | Deferred invocation, avoids reentrancy issues, returns values to JavaScript via Promise asynchronously |
 
-See [Deferred Callback Mechanism](./DeferredCallback.md#addobject-deferred-invocation) for detailed comparison and use cases of both modes.
+See [Deferred Callback Mechanism](./DeferredCallback.md#deferred-invocation-for-addobject) for detailed comparison and use cases of both modes.
 
 **Example:**
 

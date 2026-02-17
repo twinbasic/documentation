@@ -39,7 +39,7 @@ twinBASIC WebView2 package provides complete Microsoft Edge WebView2 control int
 
 | Document                             | Description                                 |
 | ------------------------------------ | ------------------------------------------- |
-| [Enumeration Types](./Enumerations.md)| All enumeration type definitions and descriptions |
+| [Enumeration Types](./WebView2-Enumerations.md)| All enumeration type definitions and descriptions |
 | [Deferred Callback](./DeferredCallback.md) | Deferred event and callback mechanism (re-entrancy issues) |
 
 ## Quick Navigation
@@ -61,7 +61,7 @@ Dim result As Variant
 result = WebView21.JsRun("document.title")
 ```
 
-→ Refer to [WebView2 Control - JavaScript Interaction](./WebView2.md#javascript-interaction-methods)
+→ Refer to [WebView2 Control - JavaScript Interaction](./WebView2.md#javascript-interaction)
 
 #### Communicate Between Twinbasic and JavaScript
 
@@ -73,7 +73,7 @@ WebView21.PostWebMessage "Hello!"
 window.chrome.webview.postMessage("Hello from JS");
 ```
 
-→ Refer to [WebView2 Control - Message Passing](./WebView2.md#message-passing-methods)
+→ Refer to [WebView2 Control - Message Passing](./WebView2.md#javascript-interaction)
 
 #### Intercept HTTP Requests
 
@@ -86,7 +86,7 @@ Private Sub WebView21_WebResourceRequested(ByVal Request As WebView2Request, _
 End Sub
 ```
 
-→ Refer to [WebView2 Control - Web Resource Interception](./WebView2.md#web-resource-interception-methods)
+→ Refer to [WebView2 Control - Web Resource Interception](./WebView2.md#resource-management)
 
 #### Customize Right-Click Menu
 
@@ -104,7 +104,7 @@ End Sub
 WebView21.PrintToPdf "C:\output.pdf"
 ```
 
-→ Refer to [WebView2 Control - Advanced Features](./WebView2.md#advanced-features-methods)
+→ Refer to [WebView2 Control - Advanced Features](./WebView2.md#advanced-features)
 
 #### Configure Environment Options
 
