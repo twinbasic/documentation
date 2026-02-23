@@ -1,31 +1,25 @@
----
-title: Deferred Callback
-parent: WebView2 Package
-nav_order: 16
----
-
 # Deferred Callback Mechanism
 
-The WebView2 package provides a deferred event and callback mechanism to solve re-entrancy problems during event handling. When you need to call WebView2 control methods within an event handler, using the deferred mechanism can avoid potential deadlocks and crashes.
+The WebView2 package provides deferred event and callback mechanisms to address re-entrancy issues during event processing. When you need to call WebView2 control methods within event handlers, using the deferred mechanism can prevent potential deadlocks and crashes.
 
 ## Overview
 
 ### What is the Re-entrancy Problem?
 
-Re-entrancy refers to calling a method of the same object again during an event handler, causing recursive code execution. In WebView2, some event handlers may need to call WebView2 control methods, and direct calls can lead to:
+Re-entrancy occurs when, during the processing of one event, a method on the same object is called again, causing code to execute recursively. In WebView2, certain event handlers may need to call WebView2 control methods; direct calls can lead to:
 
 - Deadlocks
 - Crashes
 - Unexpected behavior
-- Call stack overflow
+- Stack overflow
 
 ### How the Deferred Mechanism Works
 
-The deferred mechanism works in the following ways:
+The deferred mechanism operates as follows:
 
-1. **Deferred Execution**: Postpone event handling until after the current message loop completes
-2. **Message Queue**: Use Windows message queue to schedule deferred execution
-3. **Asynchronous Processing**: Avoid calling WebView2 methods directly in event handling context
+1. **Deferred Execution**: Event processing is postponed until the current message loop completes
+2. **Message Queue**: Windows message queue is used to schedule deferred execution
+3. **Asynchronous Processing**: Avoids calling WebView2 methods directly within the event handling context
 
 ## WebView2 Control Related
 
@@ -37,20 +31,20 @@ Public UseDeferredEvents As Boolean = True
 
 Controls whether to use deferred event mode. Default value is `True`.
 
-| Value   | Description                                                |
-| ------- | ---------------------------------------------------------- |
-| `True`  | Use deferred event mode (recommended)                       |
-| `False` | Use synchronous event mode (may cause re-entrancy problems) |
+| Value   | Description                              |
+| ------- | ---------------------------------------- |
+| `True`  | Use deferred event mode (recommended)    |
+| `False` | Use synchronous event mode (may cause re-entrancy issues) |
 
 **Example:**
 
 ```vb
 Private Sub Form_Load()
-    ' Note: All WebView21 member operations must be done after WebView21_Ready()
+    ' Note: All member operations on WebView21 must be performed after WebView21_Ready()
 End Sub
 
 Private Sub WebView21_Ready()
-    ' Recommended to use deferred event mode
+    ' It is recommended to use deferred event mode
     WebView21.UseDeferredEvents = True
 End Sub
 ```
@@ -59,24 +53,24 @@ End Sub
 
 The following events support deferred mode:
 
-| Event                  | Description                    |
-| ---------------------- | ------------------------------- |
-| `PermissionRequested`  | Permission request event        |
-| `NavigationComplete`   | Navigation complete event       |
-| `SourceChanged`        | Source changed event            |
-| `DocumentTitleChanged` | Document title changed event    |
-| `ProcessFailed`        | Process failed event            |
-| `DOMContentLoaded`     | DOM load complete event        |
-| `ScriptDialogOpening`  | Script dialog opening event     |
-| `DownloadStarting`     | Download starting event        |
-| `WebResourceRequested` | Web resource request event     |
-| `NewWindowRequested`   | New window request event       |
-| `Ready`                | WebView2 ready event           |
-| `SuspendCompleted`     | Suspend complete event         |
-| `SuspendFailed`        | Suspend failed event            |
-| `PrintToPdfCompleted`  | PDF print complete event        |
-| `PrintToPdfFailed`     | PDF print failed event          |
-| `JsAsyncResult`        | JS async result event           |
+| Event                   | Description                  |
+| ----------------------- | ---------------------------- |
+| `PermissionRequested`   | Permission request event     |
+| `NavigationComplete`    | Navigation complete event    |
+| `SourceChanged`         | Source changed event         |
+| `DocumentTitleChanged`  | Document title changed event |
+| `ProcessFailed`         | Process failed event         |
+| `DOMContentLoaded`      | DOM content loaded event     |
+| `ScriptDialogOpening`   | Script dialog opening event  |
+| `DownloadStarting`      | Download starting event      |
+| `WebResourceRequested`  | Web resource requested event |
+| `NewWindowRequested`    | New window requested event   |
+| `Ready`                 | WebView2 ready event         |
+| `SuspendCompleted`      | Suspend completed event      |
+| `SuspendFailed`         | Suspend failed event         |
+| `PrintToPdfCompleted`   | PDF print completed event    |
+| `PrintToPdfFailed`      | PDF print failed event       |
+| `JsAsyncResult`         | JS async result event        |
 
 ## Deferred Invocation for AddObject
 
@@ -87,12 +81,16 @@ Public Sub AddObject(ByVal ObjName As String, ByVal Object As Object, _
                     ByVal UseDeferredInvoke As Boolean = False)
 ```
 
-The `UseDeferredInvoke` parameter of the `AddObject` method controls the behavior when JavaScript calls VB objects.
+The `UseDeferredInvoke` parameter of the `AddObject` method controls the behavior when JavaScript calls Twinbasic objects.
 
-| Value   | Description                                                                     |
-| ------- | ------------------------------------------------------------------------------- |
-| `False` | Direct invocation, can return value to JavaScript, but may cause re-entrancy problems |
-| `True`  | Deferred invocation, avoids re-entrancy problems, returns value to JavaScript asynchronously via Promise |
+| Value   | Description                                                  |
+| ------- | ------------------------------------------------------------ |
+| `False` | Direct invocation, returns a Promise. JS can use `await` or `.then()` to get the Twinbasic function return value, but may cause re-entrancy issues |
+| `True`  | Deferred invocation, executed via message queue scheduling, avoids re-entrancy issues, but JS **cannot get** the function return value |
+
+> **Note on default value differences**:
+> - `UseDeferredEvents` (event deferred) defaults to `True` — event handlers often need to call WebView2 methods, deferred mode avoids re-entrancy deadlocks, **safety first**
+> - `UseDeferredInvoke` (JS call deferred) defaults to `False` — JS calls usually need return values, direct invocation is more convenient, **convenience first**
 
 ### Direct Invocation Mode (UseDeferredInvoke = False)
 
@@ -109,35 +107,42 @@ End Sub
 
 ```javascript
 // JavaScript side
-var result = window.chrome.webview.hostObjects.tbObjectInst.GetValue();
-console.log(result); // Output: Hello from Twinbasic
+// Returns a Promise, use await to get the return value
+async function callTwinbasic() {
+    const result = await window.chrome.webview.hostObjects.tbObjectInst.GetValue();
+    console.log(result); // Output: Hello from Twinbasic
+}
+
+// Or use .then()
+window.chrome.webview.hostObjects.tbObjectInst.GetValue()
+    .then(result => console.log(result));
 ```
 
 **Advantages:**
 
-- Can return value to JavaScript
-- Simple and direct invocation
+- Can return values to JavaScript via Promise
+- Supports await/async syntax
 
 **Disadvantages:**
 
-- May cause re-entrancy problems
-- Cannot call WebView2 methods during invocation
+- May cause re-entrancy issues
+- Cannot call WebView2 methods during the call process
 
-**Use Cases:**
+**Usage Scenarios:**
 
-- Only need to return simple data
-- No need to access WebView2 during invocation
+- Need to get return values from Twinbasic functions
+- Do not need to access WebView2 during the call process
 
 ### Deferred Invocation Mode (UseDeferredInvoke = True)
 
 ```vb
 ' Twinbasic side
-Public Function ProcessData(ByVal data As String) As String
+Public Sub ProcessData(ByVal data As String)
     Debug.Print "Processing data: " & data
     ' Can safely call WebView2 methods here
-    WebView21.PostWebMessage "Processing complete: " & data
-    ProcessData = "Processing result: " & data
-End Function
+    WebView21.PostWebMessage "Processing completed: " & data
+    ' Note: JS side cannot get the return value
+End Sub
 
 Private Sub WebView21_Ready()
     WebView21.AddObject "tbObjectInst", Me, True  ' Deferred invocation
@@ -146,47 +151,32 @@ End Sub
 
 ```javascript
 // JavaScript side
-// Returns a Promise object, you can get the return value via .then()
-window.chrome.webview.hostObjects.tbObjectInst
-  .ProcessData("test data")
-  .then(function (result) {
-    console.log("VB return value:", result); // Output: Processing result: test data
-  })
-  .catch(function (error) {
-    console.error("Invocation error:", error);
-  });
+// Calls will be deferred, cannot get return value
+window.chrome.webview.hostObjects.tbObjectInst.ProcessData("test data");
 
-// Use async/await syntax
-async function callVB() {
-  try {
-    const result =
-      await window.chrome.webview.hostObjects.tbObjectInst.ProcessData(
-        "test data",
-      );
-    console.log(result);
-  } catch (error) {
-    console.error(error);
-  }
+// Using async/await only waits for the call to complete, result is undefined
+async function callTwinbasic() {
+    const result = await window.chrome.webview.hostObjects.tbObjectInst.ProcessData("test data");
+    console.log(result); // Output: undefined
 }
 ```
 
 **Advantages:**
 
-- Avoids re-entrancy problems
-- Can call WebView2 methods in the method
-- More safe and stable
-- Returns value to JavaScript asynchronously via Promise
+- Avoids re-entrancy issues
+- Can safely call WebView2 methods within the method
+- Safer and more stable
 
 **Disadvantages:**
 
-- Invocation is asynchronous, need to use Promise or async/await
-- Slightly more latency compared to direct invocation
+- JS side **cannot get** the function return value
+- Calls are queued in the message queue for deferred execution
 
-**Use Cases:**
+**Usage Scenarios:**
 
-- Need to call WebView2 in the method
-- Can accept asynchronous return values
-- Handle complex interaction logic
+- Need to call WebView2 within the method
+- Do not need to return values to JavaScript
+- Handling event notifications and other one-way calls
 
 ## Internal Classes
 
@@ -194,7 +184,7 @@ async function callVB() {
 
 **Class ID:** `383FCA6A-9D0B-4F03-B4D1-F040D7588B91`
 
-Internal class for deferred callbacks, implements the `IScheduledCallback` interface.
+Internal class for deferred callbacks, implementing the `IScheduledCallback` interface.
 
 **Constructor:**
 
@@ -217,7 +207,7 @@ Public Sub New(ByVal Control As IDeferredCallback, _
 
 **Class ID:** `9B92FD8E-1F85-494F-BA97-02E2DDED0AD2`
 
-Internal class for deferred event raising, implements the `IScheduledCallback` interface.
+Internal class for deferred event raising, implementing the `IScheduledCallback` interface.
 
 **Constructor:**
 
@@ -246,7 +236,7 @@ End Interface
 
 ## Usage Examples
 
-### Example 1: Execute JavaScript After Navigation Completes
+### Example 1: Execute JavaScript After Navigation Complete
 
 ```vb
 Private Sub WebView21_NavigationComplete(ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long)
@@ -271,7 +261,7 @@ Private Sub WebView21_PermissionRequested(ByVal IsUserInitiated As Boolean, _
     Select Case PermissionKind
         Case wv2Geolocation
             ' Show dialog to ask user
-            If MsgBox("Allow access to location?", vbYesNo) = vbYes Then
+            If MsgBox("Allow access to location information?", vbYesNo) = vbYes Then
                 State = wv2StateAllow
                 ' Can safely log in deferred mode
                 WebView21.PostWebMessage "Geolocation permission granted"
@@ -295,10 +285,10 @@ Private Sub WebView21_ScriptDialogOpening(ByVal ScriptDialogKind As wv2ScriptDia
         Case wv2DialogAlert
             ' Custom Alert dialog
             Accept = True
-            MsgBox Message, vbInformation, "Web Page Notification"
+            MsgBox Message, vbInformation, "Web Page Alert"
 
             ' Can safely log in deferred mode
-            WebView21.PostWebMessage "Showing Alert: " & Message
+            WebView21.PostWebMessage "Show Alert: " & Message
 
         Case wv2DialogConfirm
             ' Custom Confirm dialog
@@ -319,12 +309,12 @@ Private Sub WebView21_ScriptDialogOpening(ByVal ScriptDialogKind As wv2ScriptDia
 End Sub
 ```
 
-### Example 4: Mixed Use of Deferred and Non-Deferred Invocations
+### Example 4: Mixed Use of Deferred and Non-Deferred Calls
 
 ```vb
 Public Class Form1
     Public Function GetConfigValue(ByVal key As String) As String
-        ' This method needs to return value, use non-deferred invocation
+        ' This method needs to return a value, use non-deferred invocation (UseDeferredInvoke = False)
         Select Case key
             Case "version"
                 GetConfigValue = "1.0"
@@ -333,48 +323,39 @@ Public Class Form1
         End Select
     End Function
 
-    Public Function HandleEvent(ByVal eventData As String) As String
-        ' This method uses deferred invocation, returns value to JavaScript asynchronously via Promise
-        Debug.Print "Event: " & eventData
+    Public Sub HandleEvent(ByVal eventData As String)
+        ' This method does not need to return a value, use deferred invocation (UseDeferredInvoke = True)
         ' Can safely call WebView2 methods
-        WebView21.PostWebMessage "Event processed"
-        HandleEvent = "Processing complete: " & eventData
-    End Function
+        Debug.Print "Event: " & eventData
+        WebView21.PostWebMessage "Event handled: " & eventData
+        ' Note: JS side cannot get return value
+    End Sub
 
     Private Sub WebView21_Ready()
-        ' Add two objects using different invocation modes
-        WebView21.AddObject "config", Me, False      ' Non-deferred invocation
-        WebView21.AddObject "handler", Me, True      ' Deferred invocation
+        ' Add two objects with different invocation modes
+        WebView21.AddObject "config", Me, False      ' Non-deferred invocation, can get return value
+        WebView21.AddObject "handler", Me, True      ' Deferred invocation, cannot get return value
     End Sub
 End Class
 ```
 
 ```javascript
 // JavaScript side
-// config object needs to return value, use non-deferred invocation (synchronous)
-var version =
-  window.chrome.webview.hostObjects.config.GetConfigValue("version");
-console.log(version); // Output: 1.0
+// config object needs return value, use non-deferred invocation (UseDeferredInvoke = False)
+// Returns Promise, use await to get return value
+async function getConfig() {
+    const version = await window.chrome.webview.hostObjects.config.GetConfigValue("version");
+    console.log(version); // Output: 1.0
+}
 
-// handler object uses deferred invocation, get return value asynchronously via Promise
-window.chrome.webview.hostObjects.handler
-  .HandleEvent("button_click")
-  .then(function (result) {
-    console.log("Processing result:", result); // Output: Processing complete: button_click
-  })
-  .catch(function (error) {
-    console.error("Invocation error:", error);
-  });
+// handler object uses deferred invocation (UseDeferredInvoke = True)
+// Cannot get return value
+window.chrome.webview.hostObjects.handler.HandleEvent("button_click");
 
-// Use async/await syntax
+// Even using await, return value is undefined
 async function callHandler() {
-  try {
-    const result =
-      await window.chrome.webview.hostObjects.handler.HandleEvent("submit");
-    console.log(result);
-  } catch (error) {
-    console.error(error);
-  }
+    const result = await window.chrome.webview.hostObjects.handler.HandleEvent("submit");
+    console.log(result); // Output: undefined
 }
 ```
 
@@ -384,7 +365,7 @@ async function callHandler() {
 Private Sub WebView21_WebResourceRequested(ByVal Request As WebView2Request, _
     ByVal Response As WebView2Response)
 
-    ' Intercept specific request
+    ' Intercept specific requests
     If InStr(Request.Uri, "/api/data") > 0 Then
         ' Build custom response
         Response.StatusCode = 200
@@ -404,7 +385,7 @@ End Sub
 
 ```vb
 Private Sub Form_Load()
-    ' Note: All WebView21 member operations must be done after WebView21_Ready()
+    ' Note: All member operations on WebView21 must be performed after WebView21_Ready()
 End Sub
 
 Private Sub WebView21_Ready()
@@ -415,10 +396,12 @@ End Sub
 ### 2. Choose AddObject Mode Based on Requirements
 
 ```vb
-' When need to return value
+' When return value is needed (UseDeferredInvoke = False)
+' JS can get Twinbasic function return value via await/.then()
 WebView21.AddObject "dataProvider", dataProvider, False
 
-' When don't need to return value
+' When return value is not needed (UseDeferredInvoke = True)
+' Can safely call WebView2 methods, but JS cannot get return value
 WebView21.AddObject "eventHandler", eventHandler, True
 ```
 
@@ -427,8 +410,8 @@ WebView21.AddObject "eventHandler", eventHandler, True
 ```vb
 Private Sub WebView21_NavigationComplete(ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long)
     If IsSuccess Then
-        ' Don't perform time-consuming operations in event handler
-        ' Use deferred invocation or async processing
+        ' Do not perform time-consuming operations in event handlers
+        ' Use deferred calls or asynchronous processing
         WebView21.JsRunAsync "initPage", FunctionAddress(OnPageInitComplete)
     End If
 End Sub
@@ -456,18 +439,18 @@ End Sub
 
 ## Notes
 
-1. **Default Setting**: `UseDeferredEvents` defaults to `True`, which is the recommended setting.
+1. **Default Settings**: `UseDeferredEvents` defaults to `True`, which is the recommended setting.
 
-2. **Performance Impact**: Deferred events introduce a slight delay, but it's negligible for most applications.
+2. **Performance Impact**: Deferred events introduce slight delays, but are negligible for most applications.
 
-3. **Asynchronous Return Values**: Deferred object methods return values to JavaScript asynchronously via Promise, need to use `.then()` or `await` syntax to get them.
+3. **Return Value Retrieval**: When `UseDeferredInvoke = False`, JS calls return a Promise, and the Twinbasic function return value can be obtained via `await` or `.then()`; when `UseDeferredInvoke = True`, JS side **cannot get** the function return value.
 
-4. **Asynchronous Nature**: Deferred invocations are asynchronous, pay attention to execution order.
+4. **Asynchronous Nature**: Deferred calls are asynchronous, so execution order needs attention.
 
-5. **Debugging Difficulty**: Deferred invocations increase debugging complexity, need to carefully track execution flow.
+5. **Debugging Difficulty**: Deferred calls add complexity to debugging, requiring careful tracking of execution flow.
 
 6. **Memory Leaks**: Ensure proper cleanup of object references to avoid memory leaks.
 
-7. **Thread Safety**: Deferred invocations execute in the main thread's message queue, no need to worry about thread safety issues.
+7. **Thread Safety**: Deferred calls execute in the main thread's message queue, so thread safety is not a concern.
 
 8. **Event Order**: Deferred events execute after the current event handling completes, which may affect expected event order.
