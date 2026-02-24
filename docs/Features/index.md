@@ -2,6 +2,8 @@
 title: Features
 nav_order: 6
 permalink: /Features/
+redirect_from: 
+  - /Features/Overview
 has_toc: false
 ---
 
