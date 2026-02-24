@@ -2,12 +2,15 @@
   padding-right: 3rem;
 }
 
-/* Dark mode scrollbar styles */
 html.dark-mode {
-  /* WebKit browsers (Chrome, Safari, Edge) */
+  /*
+   * SCROLLBAR STYLING
+   */
+ 
+  /* LEGACY (-2025) */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 15.5px;
+    height: 15.5px;
   }
 
   ::-webkit-scrollbar-track {
@@ -16,23 +19,21 @@ html.dark-mode {
 
   ::-webkit-scrollbar-thumb {
     background: #404040;
-    border-radius: 5px;
+    border-radius: 5.5px;
+    border-left: 3.75px solid #1a1a1a;
+    border-right: 3.75px solid #1a1a1a;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #505050;
+    background: #909090;
   }
 
   ::-webkit-scrollbar-corner {
     background: #1a1a1a;
   }
-}
 
-/* Firefox scrollbar styles */
-@supports (scrollbar-width: thin) {
-  html.dark-mode {
+  /* MODERN (2025-) */
+  @supports(scrollbar-color: #404040 #1a1a1a) {
     scrollbar-color: #404040 #1a1a1a;
-    scrollbar-width: thin;
   }
 }
-
