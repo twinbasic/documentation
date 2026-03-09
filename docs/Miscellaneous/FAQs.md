@@ -201,7 +201,25 @@ The IDE is quite small, it's currently only a 25MB download, about 80MB extracte
 <summary markdown=span><b>Where is twinBASIC IDE data stored?</b></summary>
 {: #ide-data-storage }
 
-In addition to the directory you extract the IDE to, twinBASIC creates a folder in `%APPDATA%\Local\twinBASIC` and stores some settings in the Registry under `HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE`.
+In addition to the directory you extract the IDE to, twinBASIC stores files and settings in several locations:
+
+- `%APPDATA%\Local\twinBASIC`
+
+- `%APPDATA%\Local\twinBASIC_Admin`
+
+- `%APPDATA%\Local\twinBASIC_WebPanel`
+
+- `%APPDATA%\Local\twinBASIC_WebPanel_Admin`
+
+  (WebView2 user folders, this is for the IDE itself and not directly related to files/settings you interact with. Some of these folders may not exist.)
+
+- `%APPDATA%\Roaming\twinBASIC`
+  
+  (storage of themes, linked packages, and other files that you want to keep when deleting previous installs)
+  
+- and in the registry under `HKEY_CURRENT_USER\Software\VB and VBA Program Settings\twinBASIC_IDE`
+
+  (current IDE configuration info; recent project list, panel layouts, license info, selected theme, keyboard shortcuts, etc)
 
 </details>
 
