@@ -19,20 +19,15 @@ permalink: /
 The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplements this documentation with bleeding-edge community  content.
 
 ## ActiveX
+
 1. [HOW TO: Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/) _[by Mike Wolfe @nolongerset]_
 2. [HOW TO: Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/) _[by Mike Wolfe @nolongerset]_
 
-## CustomControls
-1. [Introduction](CustomControls/Introduction)
-2. [Defining a CustomControl](CustomControls/Defining)
-3. [Property sheet and object serialization](CustomControls/Properties)
-4. [Painting / drawing to your control](CustomControls/Painting)
-5. [Notes about the form designer](CustomControls/Form Designer)
+## Tutorials
 
-## WebView2
-1. [Getting Started](WebView2/Getting-Started)
-2. [Customize the UserDataFolder](WebView2/Customize-UserDataFolder)
-3. [Information about re-entrancy](WebView2/Re-entrancy)
+1. [Arrays](Tutorials/Arrays)
+2. [CustomControls](Tutorials/CustomControls)
+3. [WebView2](Tutorials/WebView2)
 
 ## Language and IDE Features
 1. [Overview of features new to twinBASIC](Features) (compared to VBx)

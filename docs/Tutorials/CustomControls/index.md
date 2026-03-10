@@ -1,15 +1,18 @@
 ---
-title: Introduction
-parent: CustomControls
-nav_order: 1
-permalink: /CustomControls/Introduction
+title: CustomControls
+parent: Tutorials
+permalink: /Tutorials/CustomControls
+redirect_from:
+  - /CustomControls
+  - /CustomControls/Introduction
 ---
 
-### Introduction
+# CustomControls
 
 twinBASIC now offers experimental support for CustomControls.  CustomControls are implemented using the BASIC language, allowing implementers to design controls directly from the twinBASIC environment.
 
 A few highlights;   
+
 - completely custom drawn controls, with no external or third-party dependencies (tiny footprint)
 - support 32-bit RGBA for full alpha-transparency
 - support high-DPI modes (per-monitor), requiring little thought whilst designing new controls

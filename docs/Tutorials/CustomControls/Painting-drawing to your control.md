@@ -2,7 +2,9 @@
 title: Painting / Drawing to Your Control
 parent: CustomControls
 nav_order: 4
-permalink: /CustomControls/Painting
+permalink: /Tutorials/CustomControls/Painting
+redirect_from:
+  - /CustomControls/Painting
 ---
 
 # Painting / Drawing to Your Control
