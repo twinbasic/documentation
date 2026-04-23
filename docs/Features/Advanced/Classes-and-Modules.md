@@ -55,3 +55,16 @@ Public Function MyCDeclExport CDecl(ByVal arg As Long)
 ```
 
 This is primarily used to create Standard DLLs (see [Project Types](../Project-Configuration/Project-Types.md)), but this functionality is also available in Standard EXE and other compiled project types.
+
+## Create classes without `IDispatch`
+
+By default, the compiler creates a default implementation of `IDispatch` in all VBx/twinBASIC classes. This allows late-binding and other features. Sometimes however you want a more limited class that only implements `IUnknown`. This is possible in twinBASIC via the `NotDispatchable` keyword, used like this:
+
+```vb
+NotDispatchable Class MyClass
+'...
+End Class
+```
+
+With the above, `MyClass` will not implement `IDispatch`. This means it will not be available for late-binding-- i.e. you cannot use it with a variable declared `As Object`. If you attempt to `Set` an `Object` (or `IDispatch`) variable to such a class, it will raise an `E_NOINTERFACE` error.
+
