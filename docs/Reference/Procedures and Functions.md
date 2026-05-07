@@ -41,18 +41,25 @@ permalink: /Reference/Procedures-and-Functions
 
 ## E
 
+- [EOF](../tB/Modules/FileSystem/EOF) -- returns whether the end of a file has been reached
+
 ## F
 
+- [FileAttr](../tB/Modules/FileSystem/FileAttr) -- returns the file mode for files opened with the **Open** statement
 - [FileCopy](../tB/Core/FileCopy) -- copies a file
+- [FileDateTime](../tB/Modules/FileSystem/FileDateTime) -- returns the date and time when a file was created or last modified
+- [FileLen](../tB/Modules/FileSystem/FileLen) -- returns the length of a file in bytes
 - Filter
 - Format$, Format
 - FormatCurrency
 - FormatDateTime
 - FormatNumber
 - FormatPercent
+- [FreeFile](../tB/Modules/FileSystem/FreeFile) -- returns the next file number available for use by the **Open** statement
 
 ## G
 
+- [GetAttr](../tB/Modules/FileSystem/GetAttr) -- returns the attributes of a file or directory
 - [GetSetting](../tB/Core/GetSetting) -- returns a string key setting value from an application’s entry in the Windows registry
 
 ## H
@@ -77,6 +84,8 @@ permalink: /Reference/Procedures-and-Functions
 - LCase\$, LCase, UCase\$, UCase
 - Left\$, Left, LeftB$, LeftB
 - Load
+- [Loc](../tB/Modules/FileSystem/Loc) -- returns the current read/write position within an open file
+- [LOF](../tB/Modules/FileSystem/LOF) -- returns the size, in bytes, of an open file
 - LTrim\$, LTrim, RTrim\$, RTrim
 
 ## M
@@ -98,7 +107,7 @@ permalink: /Reference/Procedures-and-Functions
 ## R
 
 - Randomize
-- Reset
+- [Reset](../tB/Modules/FileSystem/Reset) -- closes all disk files opened by using the **Open** statement
 - Right\$, Right, RightB\$, RightB
 - [RmDir](../tB/Core/RmDir) -- removes an existing directory or folder
 - Rnd
@@ -108,8 +117,9 @@ permalink: /Reference/Procedures-and-Functions
 - SavePicture
 - [SaveSetting](../tB/Core/SaveSetting) -- saves or creates an application entry in the application’s entry in the Windows registry
 - [Second](../tB/Modules/DateTime/Second) -- returns the second of the minute from a time value
+- [Seek](../tB/Modules/FileSystem/Seek) -- returns or sets the read/write position within an open file
 - [SendKeys](../tB/Core/SendKeys)
-- SetAttr
+- [SetAttr](../tB/Modules/FileSystem/SetAttr) -- sets attribute information for a file
 - [Shell](../tB/Core/Shell)
 - Space\$, Space
 - StrComp
