@@ -51,20 +51,14 @@ redirect_from:
   - /tB/Core/Static
   - /tB/Core/Sub
   - /tB/Core/Stop
-  - /tB/Core/Time
-  - /tB/Core/Timer
-  - /tB/Core/TimeSerial
-  - /tB/Core/TimeValue
   - /tB/Core/Type
   - /tB/Core/UBound
   - /tB/Core/Unload
   - /tB/Core/Unlock
-  - /tB/Core/Weekday
   - /tB/Core/While-Wend
   - /tB/Core/Width
   - /tB/Core/With
   - /tB/Core/Write
-  - /tB/Core/Year
 ---
 
 > [!WARNING]

@@ -20,12 +20,9 @@ has_toc: false
 - [Month](Month) -- returns the month of the year from a date value
 - [Now](Now) -- returns the current system date and time
 - [Second](Second) -- returns the second of the minute from a time value
-
-> [!WARNING]
-> Work in Progress Below
-- [Time](Time)
-- [Timer](Timer)
-- [TimeSerial](TimeSerial)
-- [TimeValue](TimeValue)
-- [Weekday](Weekday)
-- [Year](Year)
+- [Time](Time) -- sets or returns the current system time
+- [Timer](Timer) -- returns the number of seconds elapsed since midnight
+- [TimeSerial](TimeSerial) -- returns a time for a specific hour, minute, and second
+- [TimeValue](TimeValue) -- converts a string to a time
+- [Weekday](Weekday) -- returns the day of the week from a date value
+- [Year](Year) -- returns the year from a date value

@@ -119,7 +119,10 @@ permalink: /Reference/Procedures-and-Functions
 
 ## T
 
-- [Time](../tB/Core/Time)
+- [Time](../tB/Core/Time) -- sets or returns the current system time
+- [Timer](../tB/Modules/DateTime/Timer) -- returns the number of seconds elapsed since midnight
+- [TimeSerial](../tB/Modules/DateTime/TimeSerial) -- returns a time for a specific hour, minute, and second
+- [TimeValue](../tB/Modules/DateTime/TimeValue) -- converts a string to a time
 - Trim\$, Trim
 
 ## U
@@ -130,10 +133,13 @@ permalink: /Reference/Procedures-and-Functions
 
 ## W
 
+- [Weekday](../tB/Modules/DateTime/Weekday) -- returns the day of the week from a date value
 - Width
 
 ## X
 
 ## Y
+
+- [Year](../tB/Modules/DateTime/Year) -- returns the year from a date value
 
 ## Z
