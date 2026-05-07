@@ -21,7 +21,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## C
 
-- [Calendar](../tB/Core/Calendar)
+- [Calendar](../tB/Modules/DateTime/Calendar) -- returns or sets the calendar type (Gregorian or Hijri)
 - [ChDir](../tB/Core/ChDir) -- changes the current directory or folder
 - [ChDrive](../tB/Core/ChDrive) -- changes the current drive
 - [CurDir](../tB/Core/CurDir) -- returns the current path
