@@ -27,7 +27,7 @@ With files opened for **Binary** access, an attempt to read through the file by 
 
 This example uses the **EOF** function to detect the end of a file. This example assumes that `MYFILE` is a text file with a few lines of text.
 
-```vb
+```tb
 Dim InputData
 Open "MYFILE" For Input As #1    ' Open file for input.
 Do While Not EOF(1)    ' Check for end of file.

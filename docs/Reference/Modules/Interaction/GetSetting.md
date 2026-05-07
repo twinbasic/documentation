@@ -37,7 +37,7 @@ The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB 
 
 This example first uses the [**SaveSetting**](SaveSetting) statement to make entries in the Windows registry for the application specified as *appname*, and then uses the **GetSetting** function to display one of the settings. Because the *default* argument is specified, some value is guaranteed to be returned. Note that *section* names can't be retrieved with **GetSetting**. Finally, the [**DeleteSetting**](DeleteSetting) statement removes all the application's entries.
 
-```vb
+```tb
 ' Variant to hold 2-dimensional array returned by GetSetting.
 Dim MySettings As Variant
 ' Place some settings in the registry.

@@ -19,7 +19,7 @@ Syntax: **Hour** ( *time* )
 
 This example uses the **Hour** function to obtain the hour from a specified time.
 
-```vb
+```tb
 Dim MyTime, MyHour
 MyTime = #4:35:17 PM#    ' Assign a time.
 MyHour = Hour(MyTime)    ' MyHour contains 16.

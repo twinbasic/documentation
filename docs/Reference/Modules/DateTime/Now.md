@@ -16,7 +16,7 @@ Syntax: **Now** [ **()** ]
 
 This example uses the **Now** function to return the current system date and time.
 
-```vb
+```tb
 Dim Today
 Today = Now           ' Assign current system date and time.
 Debug.Print Today     ' Prints e.g. 5/7/2026 2:30:15 PM

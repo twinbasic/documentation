@@ -13,7 +13,7 @@ There is native support for calling a function by pointer, by way of `Delegate` 
 
 The syntax looks like this:
 
-```vb
+```tb
 Private Delegate Function Delegate1 (ByVal A As Long, ByVal B As Long) As Long
 
 Private Sub Command1_Click()
@@ -30,7 +30,7 @@ End Function
 
 The delegate type can also be used in interface/API declarations and as members of a User-defined type. For example, the `ChooseColor` API:
 
-```vb
+```tb
 Public Delegate Function CCHookProc (ByVal hwnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
 
 Public Type CHOOSECOLOR
@@ -48,7 +48,7 @@ End Type
 
 If you already have code assigning a `Long`/`LongPtr` to the `lpfnHook` member, it will continue to work normally, but now you can also have the type safety benefits of setting it to a method matching the Delegate:
 
-```vb
+```tb
 Dim tCC As CHOOSECOLOR
 tCC.lpfnHook = AddressOf ChooseColorHookProc
 

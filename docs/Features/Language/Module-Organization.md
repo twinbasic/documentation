@@ -9,7 +9,7 @@ permalink: /Features/Language/Module-Organization
 
 It's now possible to insert module-level code in between methods or properties. Where previously all `Declare` statements, `Enum`, `Type`, etc had to appear prior to the first `Sub/Function/Property`, the following would now be valid:
 
-```vb
+```tb
 Private Const foo = "foo"
 Sub SomeMethod()
 '...

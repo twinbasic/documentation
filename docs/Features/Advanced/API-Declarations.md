@@ -13,7 +13,7 @@ twinBASIC provides several enhancements to API and method declarations to make w
 
 The `DeclareWide` keyword, in place of `Declare`, disables ANSI<->Unicode conversion for API calls. This applies both directly to arguments, and to String arguments inside a UDT. For example, the following are equivalent in functionality:
 
-```vb
+```tb
 Public Declare PtrSafe Sub FooW Lib "some.dll" (ByVal bar As LongPtr)
 Public DeclareWide PtrSafe Sub Foo Lib "some.dll" Alias "FooW" (ByVal bar As String)
 ```
@@ -29,11 +29,11 @@ The cdecl calling convention is supported both for API declares and methods in y
 
 ### Examples
 
-```vb
+```tb
 Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong`
 ```
 
-```
+```tb
 [ DllExport ]
 Public Function MyExportedFunction CDecl(foo As Long, Bar As Long) As Long
 ```
@@ -42,7 +42,7 @@ Public Function MyExportedFunction CDecl(foo As Long, Bar As Long) As Long
 
 Support for callbacks using `CDecl` is also available. You would pass a delegate that includes `CDecl` as the definition in the prototype. Here is an example code that performs a quicksort using the [`qsort` function](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-wsprintfw):
 
-```vb
+```tb
 Private Delegate Function LongComparator CDecl ( _
     ByRef a As Long, _
     ByRef b As Long _
@@ -84,7 +84,7 @@ End Function
 
 Simple UDTs can now be passed ByVal in APIs, interfaces, and any other method. In VBx this previously required workarounds like passing each argument separately.
 
-```vb
+```tb
 Public Declare PtrSafe Function LBItemFromPt Lib "comctl32" (ByVal hLB As LongPtr, ByVal PXY As POINT, ByVal bAutoScroll As BOOL) As Long
 
 Interface IDropTarget Extends stdole.IUnknown
@@ -111,7 +111,7 @@ int WINAPIV wsprintfW(
 
 The twinBASIC declaration and function using it can be written as shown:
 
-```vb
+```tb
 Private DeclareWide PtrSafe Function wsprintfW CDecl _
 Lib "user32" ( _
   ByVal buf As String, _
@@ -136,13 +136,13 @@ The `[PreserveSig]` attribute was described earlier for COM methods, but it can 
 
 ### Example
 
-```vb
+```tb
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" (ppshf As IShellFolder) As Long
 ```
 
 can be rewritten as:
 
-```vb
+```tb
 [PreserveSig(False)]
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder`
 ```

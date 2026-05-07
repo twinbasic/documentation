@@ -27,7 +27,7 @@ An error occurs if you try to use **RmDir** on a directory or folder containing 
 
 This example uses the **RmDir** statement to remove an existing directory or folder.
 
-```vb
+```tb
 ' Assume that MYDIR is an empty directory or folder.
 RmDir "MYDIR"   ' Remove MYDIR.
 ```

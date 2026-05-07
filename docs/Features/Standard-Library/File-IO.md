@@ -10,7 +10,7 @@ The `Open` statement supports Unicode through the use of a new `Encoding` keywor
 
 ## Usage Example
 
-```vb
+```tb
 Open "C:\MyFile.txt" For Input Encoding utf-8 As #1
 ```
 

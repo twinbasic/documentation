@@ -18,7 +18,7 @@ The frequency and duration of the beep depend on your hardware and system  softw
 
 This example uses the **Beep** statement to sound three consecutive tones  through the computer's speaker.
 
-```vb
+```tb
 Dim I%
 For I = 1 To 3   ' Loop 3 times.
    Beep          ' Sound a tone.

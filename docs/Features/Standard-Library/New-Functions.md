@@ -68,7 +68,7 @@ More importantly, you can now **set** the `HRESULT` in interface implementations
 
 This feature allows you to assign the contents of an array to multiple variables in a single line:
 
-```vb
+```tb
 Dim a As Long, b As Long, c As Long
 Dim d(2) As Long
 d(0) = 1
@@ -80,7 +80,7 @@ Debug.Print a, b, c
 
 This would print `1   2   3`. You could also assign multiple variables at once like this and get the same result:
 
-```vb
+```tb
 Dim a As Long, b As Long, c As Long
 Array(a, b, c) = Array(1, 2, 3)
 Debug.Print a, b, c
@@ -88,7 +88,7 @@ Debug.Print a, b, c
 
 You can now also do assignments like this:
 
-```vb
+```tb
 Dim a As Long = 9
 Dim b As Long = 7
 Dim c() As Long = Array(a, b)

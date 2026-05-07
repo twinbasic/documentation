@@ -15,14 +15,14 @@ This is by far the most important method of a CustomControl.  It tells the form 
 > [!TIP]
 > It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.
 
-``` vb
+```tb
 Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas)  _
     Implements ICustomControl.Paint
 ```
 
 You are passed a Canvas object that offers the following methods:
 
-```
+```tb
 Canvas.Width As Long    [Property-Get]
 Canvas.Height As Long   [Property-Get]
 Canvas.Dpi As Long      [Property-Get]
@@ -42,7 +42,7 @@ The `Canvas.AddElement` method is used for adding elements to your control.  An 
 ### AddElement(ElementDescriptor)
 The AddElement method takes a single argument; an ElementDescriptor.  ElementDescriptor is a UDT that defines exactly how the element will be drawn and how it reacts to events like mouse clicks.
 
-``` vb
+```tb
 Public Type ElementDescriptor
    OnClick As LongPtr               ' event function callback pointer
    OnDblClick As LongPtr            ' event function callback pointer
@@ -82,7 +82,7 @@ End Type
 
 - You can use class-based event handlers by simply using the `AddressOf MyEvent` which is now possible to use even on class members.  You can see this used frequently in the samples, such as WaynesGrid.    All mouse events have the following format:   
 
-``` vb
+```tb
 Class MyCustomControl
     '...
     Private Sub MyClickEvent(ByRef EventInfo As MouseEvent)

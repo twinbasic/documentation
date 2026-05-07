@@ -13,7 +13,7 @@ Using the [Fusion](Fusion) feature, it is also possible to use both 32bit and 64
 
 ## Example Syntax
 
-```vb
+```tb
 Public Declare PtrSafe Sub foo Lib "bar" (ByVal hWnd As LongPtr)
 ```
 

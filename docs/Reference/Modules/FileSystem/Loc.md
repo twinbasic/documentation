@@ -29,7 +29,7 @@ The return value depends on the file access mode:
 
 This example uses the **Loc** function to return the current read/write position within an open file. This example assumes that `TESTFILE` is a text file with a few lines of sample data.
 
-```vb
+```tb
 Dim MyLocation, MyLine
 Open "TESTFILE" For Binary As #1    ' Open file.
 Do While MyLocation < LOF(1)    ' Loop until end of file.

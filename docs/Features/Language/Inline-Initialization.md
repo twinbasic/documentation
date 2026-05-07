@@ -11,7 +11,7 @@ You can now set initial values for variables inline, without needing a line-cont
 
 ## Examples
 
-```vb
+```tb
 Dim i As Long = 1
 Dim foo As Boolean = bar()
 Dim arr As Variant = Array(1, 2, 3)
@@ -23,7 +23,7 @@ Dim cMC As cMyClass = New cMyClass(customConstructorArgs)
 
 You now no longer need a separate `Dim` statement for counter variables:
 
-```vb
+```tb
 For i As Long = 0 To 10
     '...
 Next

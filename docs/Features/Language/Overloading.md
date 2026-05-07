@@ -13,7 +13,7 @@ twinBASIC supports overloading in two ways:
 
 The following Subs are valid together in a module/class/etc:
 
-```vb
+```tb
 Sub foo(bar As Integer)
 '...
 End Sub
@@ -33,7 +33,7 @@ The compiler will automatically pick which one is called by the data type.
 
 In addition to the above, you could also add the following:
 
-```vb
+```tb
 Sub Foo(bar1 As Integer)
 '...
 End Sub

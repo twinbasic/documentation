@@ -13,15 +13,15 @@ twinBASIC supports these features as native language syntax where in VBx they we
 
 twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the `Class` or `Module` statement, and will always have a project-wide scope. The generic form for this is as follows:
 
-```
+```tb
 [InterfaceId ("00000000-0000-0000-0000-000000000000")]
-*<attributes>*
-Interface <name> Extends <base-interface>
-    *<attributes>*
-    <method 1>
-    *<attributes>*
-    <method 2>
-    ...
+'*<attributes>*
+Interface name Extends base_interface
+    '*<attributes>*
+    '<method 1>
+    '*<attributes>*
+    '<method 2>
+    '...
 End Interface
 ```
 
@@ -44,7 +44,7 @@ Methods can be any of the following: `Sub`, `Function`, `Property Get`, `Propert
 
 ### Example
 
-```
+```tb
 [InterfaceId("E7064791-0E4A-425B-8C8F-08802AAFEE61")]
 [Description("Defines the IFoo interface")]
 [OleAutomation(False)]
@@ -61,13 +61,13 @@ End Interface
 
 In addition to interfaces, twinBASIC also allows defining coclasses -- creatable classes that implement one or more defined interfaces. Like interfaces, these too must be in .twin files and not legacy .bas/.cls files, and must appear prior to the `Class` or `Module` statement. The generic form is:
 
-```
+```tb
 [CoClassId("00000000-0000-0000-0000-000000000000")]
-*<attributes>*
-CoClass <name>
-    [Default] Interface <interface name>
-    *[Default, Source] Interface <event interface name>*
-    *<additional Interface items>*
+'<attributes>
+CoClass name
+    [Default] Interface interface_name
+    [Default, Source] Interface event_interface_name
+    'additional Interface items>
 End CoClass
 ```
 
@@ -83,7 +83,7 @@ Each coclass must specify at least one interface but may have several more. It c
 
 ### Example
 
-```
+```tb
 [CoClassId("52112FA1-FBE4-11CA-B5DD-0020AFE7292D")]
 CoClass Foo
    [Default] Interface IFoo
@@ -94,7 +94,7 @@ Where `IFoo` and `IBar` are interfaces defined with the `Interface` syntax descr
 
 ## Custom Constructor Example
 
-```vb
+```tb
 [InterfaceId("016BC30A-A8E0-4AAF-93AE-13BD838A149E")]
 Public Interface IFoo
     Sub Foo()
@@ -149,3 +149,4 @@ Public Module Test
     End Sub
 End Module
 ```
+

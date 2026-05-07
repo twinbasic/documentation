@@ -25,7 +25,7 @@ drive
 
 This example uses the **ChDrive** statement to change the current drive. 
 
-```vb
+```tb
 ChDrive "D"   ' Make "D" the current drive.
 ```
 

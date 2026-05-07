@@ -46,7 +46,7 @@ Performing a file-write operation after a **Seek** operation beyond the end of a
 
 This example assumes that `TESTFILE` contains records of the user-defined type `Record`.
 
-```vb
+```tb
 Type Record    ' Define user-defined type.
     ID As Integer
     Name As String * 20
@@ -55,7 +55,7 @@ End Type
 
 For files opened in **Random** mode, the **Seek** function returns the number of the next record.
 
-```vb
+```tb
 Dim MyRecord As Record
 Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
 Do While Not EOF(1)    ' Loop until end of file.
@@ -67,7 +67,7 @@ Close #1    ' Close file.
 
 The **Seek** statement can set the record position. This example reads records in reverse order.
 
-```vb
+```tb
 Dim MyRecord As Record, MaxSize, RecordNumber
 Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
 MaxSize = LOF(1) \ Len(MyRecord)    ' Get number of records in file.
@@ -80,7 +80,7 @@ Close #1    ' Close file.
 
 For files opened in modes other than **Random**, **Seek** returns or sets the byte position.
 
-```vb
+```tb
 Dim MyChar
 Open "TESTFILE" For Input As #1    ' Open file for reading.
 Do While Not EOF(1)    ' Loop until end of file.

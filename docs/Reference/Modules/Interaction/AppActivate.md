@@ -38,7 +38,7 @@ In determining which application to activate, *title* is compared  to the title 
 This example illustrates various uses of the **AppActivate** statement to  activate an application window. The **Shell** statements assume the  applications are in the paths specified. 
 <!-- On the Macintosh, the default drive name is "HD" and portions of the pathname are separated by colons instead of backslashes. -->
 
-```vb
+```tb
 Dim MyAppID, ReturnValue
 AppActivate "Microsoft Word"   ' Activate Microsoft 
                                ' Word.

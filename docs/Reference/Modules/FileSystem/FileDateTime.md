@@ -19,7 +19,7 @@ Syntax: **FileDateTime(** *pathname* **)**
 
 This example uses the **FileDateTime** function to determine the date and time a file was created or last modified. The format of the date and time displayed is based on the locale settings of your system.
 
-```vb
+```tb
 Dim MyStamp
 ' Assume TESTFILE was last modified on February 12, 1993 at 4:35:47 PM.
 ' Assume English/U.S. locale settings.

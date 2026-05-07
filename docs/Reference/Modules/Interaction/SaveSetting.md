@@ -37,7 +37,7 @@ The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB 
 
 The following example first uses the **SaveSetting** statement to make entries in the Windows registry for the application, and then uses the [**DeleteSetting**](DeleteSetting) statement to remove them.
 
-```vb
+```tb
 ' Place some settings in the registry. 
 SaveSetting appname := "MyApp", section := "Startup", _ 
  key := "Top", setting := 75 

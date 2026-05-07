@@ -24,7 +24,7 @@ If you try to use the **FileCopy** statement on a file that is currently open, a
 
 This example uses the **FileCopy** statement to copy one file to another. For the purposes of this example, assume that the file contains some data.
 
-```vb
+```tb
 Dim SourceFile, DestinationFile 
 SourceFile = "SRCFILE" ' Define source file name. 
 DestinationFile = "DESTFILE" ' Define target file name. 

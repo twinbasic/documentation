@@ -112,7 +112,7 @@ To return a value from a function, assign the value to the function name, or pro
 
 The following example shows how to assign a return value to a function. In this case, **False** is assigned to the name to indicate that some value was not found.
 
-```vb
+```tb
 Function BinarySearch(...) As Boolean 
   '... 
   ' Value not found. Return a value of False. 
@@ -136,7 +136,7 @@ Visual Basic may rearrange arithmetic expressions to increase internal efficienc
 
 This example uses the **Function** statement to declare the name, arguments, and code that form the body of a **Function** procedure. The last example uses hard-typed, initialized **Optional** arguments.
 
-```vb
+```tb
 ' The following user-defined function returns the square root of the 
 ' argument passed to it. 
 Function CalculateSquareRoot(NumberArg As Double) As Double 
@@ -150,7 +150,7 @@ End Function
 
 Using the **ParamArray** keyword enables a function to accept a variable number of arguments. In the following definition, it is passed by value.
 
-```vb
+```tb
 Function CalcSum(ByVal FirstArg As Integer, ParamArray OtherArgs()) 
   Dim ReturnValue 
   ' If the function is invoked as follows: 
@@ -163,7 +163,7 @@ End Function
 
 **Optional** arguments can have default values and types other than **Variant**.
 
-```vb
+```tb
 ' If a function's arguments are defined as follows: 
 Function MyFunc(MyStr As String,Optional MyArg1 As _
  Integer = 5,Optional MyArg2 = "Dolly") 
