@@ -146,49 +146,49 @@ Statements that modify strings:
 
 Procedures that check properties of strings:
 
-* [Len\$](../tB/Modules/Strings#len-1), [Len](../tB/Modules/Strings#len), [LenB\$](../tB/Modules/Strings#lenb-1), [LenB](../tB/Modules/Strings#lenb) - the length of a string
-* [Asc](../tB/Modules/Strings#asc), [AscB](../tB/Modules/Strings#ascb), [AscW](../tB/Modules/Strings#ascw) - returns the character code of the first letter in a string
-* [StrComp](../tB/Modules/Strings#strcomp) - compares two strings
-* [InStr$](../tB/Modules/Strings#instr-1), [InStrB](../tB/Modules/Strings#instrb), [InStr](../tB/Modules/Strings#instr) - finds the position of a given substring in a string
+* [Len](../tB/Modules/Strings/Len), [LenB](../tB/Modules/Strings/Len) - the length of a string
+* [Asc](../tB/Modules/Strings/Asc), [AscB](../tB/Modules/Strings/Asc), [AscW](../tB/Modules/Strings/Asc) - returns the character code of the first letter in a string
+* [StrComp](../tB/Modules/Strings/StrComp) - compares two strings
+* [InStr$](../tB/Modules/Strings/InStr), [InStrB](../tB/Modules/Strings/InStr), [InStr](../tB/Modules/Strings/InStr) - finds the position of a given substring in a string
 
 Procedures that create strings:
 
-* [Chr\$](../tB/Modules/Strings#chr-1), [Chr](../tB/Modules/Strings#chr), [ChrB\$](../tB/Modules/Strings#chrb-1), [ChrB](../tB/Modules/Strings#chrb), [ChrW\$](../tB/Modules/Strings#chrw-1), [ChrW](../tB/Modules/Strings#chrw) - returns the character having a given code
-* [Space$](../tB/Modules/Strings#space-1), [Space](../tB/Modules/Strings#space) - return a string of spaces
-* [String\$](../tB/Modules/Strings#string-1), [String](../tB/Modules/Strings#string) - return a string of specified characters
+* [Chr\$](../tB/Modules/Strings/Chr), [Chr](../tB/Modules/Strings/Chr), [ChrB\$](../tB/Modules/Strings/Chr), [ChrB](../tB/Modules/Strings/Chr), [ChrW\$](../tB/Modules/Strings/Chr), [ChrW](../tB/Modules/Strings/Chr) - returns the character having a given code
+* [Space$](../tB/Modules/Strings/Space), [Space](../tB/Modules/Strings/Space) - return a string of spaces
+* [String\$](../tB/Modules/Strings/String), [String](../tB/Modules/Strings/String) - return a string of specified characters
 
 Procedures that return modified strings:
 
-* [Left\$](../tB/Modules/Strings#left-1), [Left](../tB/Modules/Strings#left), [LeftB$](../tB/Modules/Strings#leftb-1), [LeftB](../tB/Modules/Strings#leftb) - extract a left substring of a string
-* [Mid$](../tB/Modules/Strings#mid-1), [Mid](../tB/Modules/Strings#mid), [MidB\$](../tB/Modules/Strings#midb-1), [MidB](../tB/Modules/Strings#midb)- extract a substring of a string
-* [Right\$](../tB/Modules/Strings#right-1), [Right](../tB/Modules/Strings#right), [RightB\$](../tB/Modules/Strings#rightb-1), [RightB](../tB/Modules/Strings#rightb) - extract a right substring of a string
-* [LTrim\$](../tB/Modules/Strings#ltrim-1), [LTrim](../tB/Modules/Strings#ltrim), [RTrim\$](../tB/Modules/Strings#rtrim-1), [RTrim](../tB/Modules/Strings#rtrim) - removes leading/trailing spaces from a string
-* [Trim$](../tB/Modules/Strings#trim-1), [Trim](../tB/Modules/Strings#trim) - removes leading and trailing spaces from a string
-* [StrReverse](../tB/Modules/Strings#strreverse) - reverses the order of characters of a string
-* [LCase\$](../tB/Modules/Strings#lcase-1), [LCase](../tB/Modules/Strings#lcase), [RCase\$](../tB/Modules/Strings#rcase-1), [RCase](../tB/Modules/Strings#rcase) - capitalizes or lowercases a string
-* [StrConv](../tB/Modules/Strings#strconv) - converts the string to a specified format
-* [Join](../tB/Modules/Strings#join) - concatenates a string array using a given delimiter
-* [Split](../tB/Modules/Strings#split) - splits a string into a string array
-* [Replace](../tB/Modules/Strings#replace) - replaces substrings in a string
-* [Filter](../tB/Modules/Strings#filter) - filters a string array into a subset according to criteria
-* [InStrRev](../tB/Modules/Strings#instrrev) - filters a string array into a subset according to criteria
-* [Format\$](../tB/Modules/Strings#format-1), [Format](../tB/Modules/Strings#format) - format a numeric expression in a specific way
-* [FormatNumber](../tB/Modules/Strings#formatnumber) - formats an expression as a numeric string
-* [FormatPercent](../tB/Modules/Strings#formatpercent) - formats an expression as a percent string
+* [Left\$](../tB/Modules/Strings/Left), [Left](../tB/Modules/Strings/Left), [LeftB$](../tB/Modules/Strings/Left), [LeftB](../tB/Modules/Strings/Left) - extract a left substring of a string
+* [Mid$](../tB/Modules/Strings/Mid), [Mid](../tB/Modules/Strings/Mid), [MidB\$](../tB/Modules/Strings/Mid), [MidB](../tB/Modules/Strings/Mid) - extract a substring of a string
+* [Right\$](../tB/Modules/Strings/Right), [Right](../tB/Modules/Strings/Right), [RightB\$](../tB/Modules/Strings/Right), [RightB](../tB/Modules/Strings/Right) - extract a right substring of a string
+* [LTrim\$](../tB/Modules/Strings/LTrim), [LTrim](../tB/Modules/Strings/LTrim), [RTrim\$](../tB/Modules/Strings/RTrim), [RTrim](../tB/Modules/Strings/RTrim) - removes leading/trailing spaces from a string
+* [Trim$](../tB/Modules/Strings/Trim), [Trim](../tB/Modules/Strings/Trim) - removes leading and trailing spaces from a string
+* [StrReverse](../tB/Modules/Strings/StrReverse) - reverses the order of characters of a string
+* [LCase\$](../tB/Modules/Strings/LCase), [LCase](../tB/Modules/Strings/LCase), [UCase\$](../tB/Modules/Strings/UCase), [UCase](../tB/Modules/Strings/UCase) - capitalizes or lowercases a string
+* [StrConv](../tB/Modules/Strings/StrConv) - converts the string to a specified format
+* [Join](../tB/Modules/Strings/Join) - concatenates a string array using a given delimiter
+* [Split](../tB/Modules/Strings/Split) - splits a string into a string array
+* [Replace](../tB/Modules/Strings/Replace) - replaces substrings in a string
+* [Filter](../tB/Modules/Strings/Filter) - filters a string array into a subset according to criteria
+* [InStrRev](../tB/Modules/Strings/InStrRev) - returns the position of a given substring in a string, searching from the end
+* [Format\$](../tB/Modules/Strings/Format), [Format](../tB/Modules/Strings/Format) - format a numeric expression in a specific way
+* [FormatNumber](../tB/Modules/Strings/FormatNumber) - formats an expression as a numeric string
+* [FormatPercent](../tB/Modules/Strings/FormatPercent) - formats an expression as a percent string
 
 See also:
 
-* [FormatCurrency](../tB/Modules/Strings#formatcurrency) - format an expression as a currency string
-* [FormatDateTime](../tB/Modules/Strings#formatdatetime) - formats an expression as a date/time string
+* [FormatCurrency](../tB/Modules/Strings/FormatCurrency) - format an expression as a currency string
+* [FormatDateTime](../tB/Modules/Strings/FormatDateTime) - formats an expression as a date/time string
 
 ## Date and Time
 
 Procedures:
 
 * [Date](../tB/Core/Date), [Time](../tB/Core/Time) - set the current date and time
-* [FormatDateTime](../tB/Modules/Strings#formatdatetime) - formats an expression as a date/time string
-* [MonthName](../tB/Modules/Strings#monthname) - returns the name of the specified month
-* [WeekdayName](../tB/Modules/Strings#weekdayname) - returns the name of the specified day of the week
+* [FormatDateTime](../tB/Modules/Strings/FormatDateTime) - formats an expression as a date/time string
+* [MonthName](../tB/Modules/Strings/MonthName) - returns the name of the specified month
+* [WeekdayName](../tB/Modules/Strings/WeekdayName) - returns the name of the specified day of the week
 
 ## Financial
 
@@ -207,7 +207,7 @@ Procedures:
 * [Rate](../tB/Modules/Financial/Rate) - interest rate per period of an annuity
 * [NPV](../tB/Modules/Financial/NPV) - net present value of an investment
 * [NPer](../tB/Modules/Financial/NPer) - number of periods for an investment with constant deposits and interest
-* [FormatCurrency](../tB/Modules/Strings#formatcurrency) - format an expression as a currency string
+* [FormatCurrency](../tB/Modules/Strings/FormatCurrency) - format an expression as a currency string
 
 ## Deprecated
 

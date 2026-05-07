@@ -109,6 +109,6 @@ Date$ = MyDate               ' Change the system date.
 ### See Also
 
 - [Time](Time) property
-- [Format](../Strings#format) and [Now](Now) functions
+- [Format](../Strings/Format) and [Now](Now) functions
 
 {% include VBA-Attribution.md %}
