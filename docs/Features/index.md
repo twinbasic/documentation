@@ -86,6 +86,10 @@ Improved development experience:
 - Modern IDE with themes, code folding, and more
 - Package server for code sharing
 
+### [Fusion](Fusion)
+
+Fusion enables 64-bit applications to host 32-bit ActiveX controls (and vice versa) by transparently bridging them through an out-of-process host executable using IPC-based communication.
+
 ### [64bit Compilation](64bit)
 
 twinBASIC can compile native 64bit executables in addition to 32bit, using the **LongPtr** data type and **PtrSafe** keyword for API declarations.

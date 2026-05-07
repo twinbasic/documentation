@@ -1,3 +1,8 @@
+---
+title: Fusion
+parent: Features
+permalink: /Features/Fusion
+---
 ## Introduction
 
 **Fusion** is a twinBASIC feature that enables 64-bit applications to host certain 32-bit ActiveX controls by transparently bridging them through an out-of-process helper executable.
