@@ -36,6 +36,7 @@ permalink: /Reference/Procedures-and-Functions
 - [DateSerial](../tB/Modules/DateTime/DateSerial) -- returns a date for a specified year, month, and day
 - [DateValue](../tB/Modules/DateTime/DateValue) -- converts a string to a date
 - [Day](../tB/Modules/DateTime/Day) -- returns the day of the month from a date value
+- [DDB](../tB/Modules/Financial/DDB) -- returns the depreciation of an asset via the double-declining balance method
 - [DeleteSetting](../tB/Core/DeleteSetting) -- deletes a section or key setting from an application’s entry in the Windows registry
 - [Dir](../tB/Core/Dir) -- returns the name of a file, directory, folder, or volume label that matches a pattern
 
@@ -56,6 +57,7 @@ permalink: /Reference/Procedures-and-Functions
 - FormatNumber
 - FormatPercent
 - [FreeFile](../tB/Modules/FileSystem/FreeFile) -- returns the next file number available for use by the **Open** statement
+- [FV](../tB/Modules/Financial/FV) -- returns the future value of an annuity based on periodic fixed payments and a fixed interest rate
 
 ## G
 
@@ -70,6 +72,8 @@ permalink: /Reference/Procedures-and-Functions
 
 - InStr$, InStrB, InStr
 - InStrRev
+- [IPmt](../tB/Modules/Financial/IPmt) -- returns the interest payment for a given period of an annuity
+- [IRR](../tB/Modules/Financial/IRR) -- returns the internal rate of return for a series of periodic cash flows
 
 ## J
 
@@ -92,21 +96,29 @@ permalink: /Reference/Procedures-and-Functions
 
 - Mid$, Mid, MidB\$, MidB
 - [Minute](../tB/Modules/DateTime/Minute) -- returns the minute of the hour from a time value
+- [MIRR](../tB/Modules/Financial/MIRR) -- returns the modified internal rate of return for a series of periodic cash flows
 - [MkDir](../tB/Core/MkDir) -- creates a new directory or folder
 - [Month](../tB/Modules/DateTime/Month) -- returns the month of the year from a date value
 
 ## N
 
 - Name
+- [NPer](../tB/Modules/Financial/NPer) -- returns the number of periods for an annuity based on periodic fixed payments and a fixed interest rate
+- [NPV](../tB/Modules/Financial/NPV) -- returns the net present value of an investment based on a series of periodic cash flows and a discount rate
 - [Now](../tB/Core/Now) -- returns the current system date and time
 
 ## P
+
+- [Pmt](../tB/Modules/Financial/Pmt) -- returns the payment for an annuity based on periodic fixed payments and a fixed interest rate
+- [PPmt](../tB/Modules/Financial/PPmt) -- returns the principal payment for a given period of an annuity
+- [PV](../tB/Modules/Financial/PV) -- returns the present value of an annuity based on periodic fixed payments and a fixed interest rate
 
 ## Q
 
 ## R
 
 - Randomize
+- [Rate](../tB/Modules/Financial/Rate) -- returns the interest rate per period for an annuity
 - [Reset](../tB/Modules/FileSystem/Reset) -- closes all disk files opened by using the **Open** statement
 - Right\$, Right, RightB\$, RightB
 - [RmDir](../tB/Core/RmDir) -- removes an existing directory or folder
@@ -121,11 +133,13 @@ permalink: /Reference/Procedures-and-Functions
 - [SendKeys](../tB/Core/SendKeys)
 - [SetAttr](../tB/Modules/FileSystem/SetAttr) -- sets attribute information for a file
 - [Shell](../tB/Core/Shell)
+- [SLN](../tB/Modules/Financial/SLN) -- returns the straight-line depreciation of an asset for a single period
 - Space\$, Space
 - StrComp
 - StrConv
 - String\$, String
 - StrReverse
+- [SYD](../tB/Modules/Financial/SYD) -- returns the sum-of-years' digits depreciation of an asset for a specified period
 
 ## T
 

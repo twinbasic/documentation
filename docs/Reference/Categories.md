@@ -194,19 +194,19 @@ Procedures:
 
 Procedures:
 
-* [DDB](../tB/Modules/Financial#ddb) - depreciation of an asset via the Double-Declining Balance method
-* [FV](../tB/Modules/Financial#fv) - future value of an investment with constant deposits and interest
-* [Pmt](../tB/Modules/Financial#pmt) - payment for a loan with constant payments and interest
-* [IPmt](../tB/Modules/Financial#ipmt) - interest payment for a loan with constant payments and interest
-* [PPmt](../tB/Modules/Financial#ppmt) - principal payment for a loan with constant payments and interest 
-* [SYD](../tB/Modules/Financial#syd) - sum-of-years' digits depreciation of an asset
-* [SLN](../tB/Modules/Financial#sln) - straight-line depreciation of an asset in one period
-* [PV](../tB/Modules/Financial#pv) - present value of investment
-* [IRR](../tB/Modules/Financial#irr) - internal rate of return for a series of cash flows
-* [MIRR](../tB/Modules/Financial#mirr) - modified internal rate of return for a series of cash flow
-* [Rate](../tB/Modules/Financial#rate) - interest rate per period of an annuity
-* [NPV](../tB/Modules/Financial#npv) - net present value of an investment
-* [NPer](../tB/Modules/Financial#nper) - number of periods for an investment with constant deposits and interest
+* [DDB](../tB/Modules/Financial/DDB) - depreciation of an asset via the Double-Declining Balance method
+* [FV](../tB/Modules/Financial/FV) - future value of an investment with constant deposits and interest
+* [Pmt](../tB/Modules/Financial/Pmt) - payment for a loan with constant payments and interest
+* [IPmt](../tB/Modules/Financial/IPmt) - interest payment for a loan with constant payments and interest
+* [PPmt](../tB/Modules/Financial/PPmt) - principal payment for a loan with constant payments and interest 
+* [SYD](../tB/Modules/Financial/SYD) - sum-of-years' digits depreciation of an asset
+* [SLN](../tB/Modules/Financial/SLN) - straight-line depreciation of an asset in one period
+* [PV](../tB/Modules/Financial/PV) - present value of investment
+* [IRR](../tB/Modules/Financial/IRR) - internal rate of return for a series of cash flows
+* [MIRR](../tB/Modules/Financial/MIRR) - modified internal rate of return for a series of cash flow
+* [Rate](../tB/Modules/Financial/Rate) - interest rate per period of an annuity
+* [NPV](../tB/Modules/Financial/NPV) - net present value of an investment
+* [NPer](../tB/Modules/Financial/NPer) - number of periods for an investment with constant deposits and interest
 * [FormatCurrency](../tB/Modules/Strings#formatcurrency) - format an expression as a currency string
 
 ## Deprecated
