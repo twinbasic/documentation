@@ -4,8 +4,15 @@ nav_exclude: true
 redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
+  - /tB/Core/CurDir$
   - /tB/Core/Deftype
+  - /tB/Core/EOF
+  - /tB/Core/FileAttr
+  - /tB/Core/FileDateTime
+  - /tB/Core/FileLen
+  - /tB/Core/FreeFile
   - /tB/Core/Get
+  - /tB/Core/GetAttr
   - /tB/Core/GoSub-Return
   - /tB/Core/GoTo
   - /tB/Core/If-Then-Else
@@ -18,7 +25,9 @@ redirect_from:
   - /tB/Core/Let
   - /tB/Core/Line-Input
   - /tB/Core/Load
+  - /tB/Core/Loc
   - /tB/Core/Lock
+  - /tB/Core/LOF
   - /tB/Core/LSet
   - /tB/Core/Mid-equals
   - /tB/Core/MidB-equals

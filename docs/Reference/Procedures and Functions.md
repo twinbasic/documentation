@@ -41,18 +41,25 @@ permalink: /Reference/Procedures-and-Functions
 
 ## E
 
+- EOF
+
 ## F
 
+- FileAttr
 - [FileCopy](../tB/Core/FileCopy) -- copies a file
+- FileDateTime
+- FileLen
 - Filter
 - Format$, Format
 - FormatCurrency
 - FormatDateTime
 - FormatNumber
 - FormatPercent
+- FreeFile
 
 ## G
 
+- GetAttr
 - [GetSetting](../tB/Core/GetSetting) -- returns a string key setting value from an application’s entry in the Windows registry
 
 ## H
@@ -77,6 +84,8 @@ permalink: /Reference/Procedures-and-Functions
 - LCase\$, LCase, UCase\$, UCase
 - Left\$, Left, LeftB$, LeftB
 - Load
+- Loc
+- LOF
 - LTrim\$, LTrim, RTrim\$, RTrim
 
 ## M
@@ -108,6 +117,7 @@ permalink: /Reference/Procedures-and-Functions
 - SavePicture
 - [SaveSetting](../tB/Core/SaveSetting) -- saves or creates an application entry in the application’s entry in the Windows registry
 - [Second](../tB/Modules/DateTime/Second) -- returns the second of the minute from a time value
+- Seek
 - [SendKeys](../tB/Core/SendKeys)
 - SetAttr
 - [Shell](../tB/Core/Shell)
