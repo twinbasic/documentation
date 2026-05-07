@@ -4,10 +4,17 @@ nav_exclude: true
 redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
+  - /tB/Core/DateAdd
+  - /tB/Core/DateDiff
+  - /tB/Core/DatePart
+  - /tB/Core/DateSerial
+  - /tB/Core/DateValue
+  - /tB/Core/Day
   - /tB/Core/Deftype
   - /tB/Core/Get
   - /tB/Core/GoSub-Return
   - /tB/Core/GoTo
+  - /tB/Core/Hour
   - /tB/Core/If-Then-Else
   - /tB/Core/Implements
   - /tB/Core/Input
@@ -22,7 +29,9 @@ redirect_from:
   - /tB/Core/LSet
   - /tB/Core/Mid-equals
   - /tB/Core/MidB-equals
+  - /tB/Core/Minute
   - /tB/Core/Module
+  - /tB/Core/Month
   - /tB/Core/Name
   - /tB/Core/New
   - /tB/Core/On-Error
@@ -43,6 +52,7 @@ redirect_from:
   - /tB/Core/Return
   - /tB/Core/RSet
   - /tB/Core/SavePicture
+  - /tB/Core/Second
   - /tB/Core/Seek
   - /tB/Core/Select-Case
   - /tB/Core/SendKeys
@@ -52,14 +62,19 @@ redirect_from:
   - /tB/Core/Sub
   - /tB/Core/Stop
   - /tB/Core/Time
+  - /tB/Core/Timer
+  - /tB/Core/TimeSerial
+  - /tB/Core/TimeValue
   - /tB/Core/Type
   - /tB/Core/UBound
   - /tB/Core/Unload
   - /tB/Core/Unlock
+  - /tB/Core/Weekday
   - /tB/Core/While-Wend
   - /tB/Core/Width
   - /tB/Core/With
   - /tB/Core/Write
+  - /tB/Core/Year
 ---
 
 > [!WARNING]

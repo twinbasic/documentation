@@ -7,7 +7,22 @@ redirect_from:
   - /tB/Modules/Constants
   - /tB/Modules/Conversion
   - /tB/Core/Time
+  - /tB/Modules/DateTime/DateAdd
+  - /tB/Modules/DateTime/DateDiff
+  - /tB/Modules/DateTime/DatePart
+  - /tB/Modules/DateTime/DateSerial
+  - /tB/Modules/DateTime/DateValue
+  - /tB/Modules/DateTime/Day
+  - /tB/Modules/DateTime/Hour
+  - /tB/Modules/DateTime/Minute
+  - /tB/Modules/DateTime/Month
+  - /tB/Modules/DateTime/Second
   - /tB/Modules/DateTime/Time
+  - /tB/Modules/DateTime/Timer
+  - /tB/Modules/DateTime/TimeSerial
+  - /tB/Modules/DateTime/TimeValue
+  - /tB/Modules/DateTime/Weekday
+  - /tB/Modules/DateTime/Year
   - /tB/Modules/ErrObject
   - /tB/Modules/ExpressionService
   - /tB/Modules/Information
