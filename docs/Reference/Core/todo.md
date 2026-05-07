@@ -13,7 +13,7 @@ redirect_from:
   - /tB/Core/Input
   - /tB/Core/Interface
   - /tB/Core/Is
-  - /tB/Core/Kill
+
   - /tB/Core/LBound
   - /tB/Core/Let
   - /tB/Core/Line-Input

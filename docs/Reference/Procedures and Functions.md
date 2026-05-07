@@ -62,7 +62,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## K
 
-- Kill
+- [Kill](../tB/Core/Kill) -- deletes files from a disk
 
 ## L
 
