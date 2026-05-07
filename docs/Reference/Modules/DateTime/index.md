@@ -14,15 +14,15 @@ has_toc: false
 - [DatePart](DatePart) -- returns a specified part of a given date
 - [DateSerial](DateSerial) -- returns a date for a specified year, month, and day
 - [DateValue](DateValue) -- converts a string to a date
+- [Day](Day) -- returns the day of the month from a date value
+- [Hour](Hour) -- returns the hour of the day from a time value
+- [Minute](Minute) -- returns the minute of the hour from a time value
+- [Month](Month) -- returns the month of the year from a date value
 - [Now](Now) -- returns the current system date and time
+- [Second](Second) -- returns the second of the minute from a time value
 
 > [!WARNING]
 > Work in Progress Below
-- [Day](Day)
-- [Hour](Hour)
-- [Minute](Minute)
-- [Month](Month)
-- [Second](Second)
 - [Time](Time)
 - [Timer](Timer)
 - [TimeSerial](TimeSerial)

@@ -35,6 +35,7 @@ permalink: /Reference/Procedures-and-Functions
 - [DatePart](../tB/Modules/DateTime/DatePart) -- returns a specified part of a given date
 - [DateSerial](../tB/Modules/DateTime/DateSerial) -- returns a date for a specified year, month, and day
 - [DateValue](../tB/Modules/DateTime/DateValue) -- converts a string to a date
+- [Day](../tB/Modules/DateTime/Day) -- returns the day of the month from a date value
 - [DeleteSetting](../tB/Core/DeleteSetting) -- deletes a section or key setting from an application’s entry in the Windows registry
 - [Dir](../tB/Core/Dir) -- returns the name of a file, directory, folder, or volume label that matches a pattern
 
@@ -55,6 +56,8 @@ permalink: /Reference/Procedures-and-Functions
 - [GetSetting](../tB/Core/GetSetting) -- returns a string key setting value from an application’s entry in the Windows registry
 
 ## H
+
+- [Hour](../tB/Modules/DateTime/Hour) -- returns the hour of the day from a time value
 
 ## I
 
@@ -79,7 +82,9 @@ permalink: /Reference/Procedures-and-Functions
 ## M
 
 - Mid$, Mid, MidB\$, MidB
+- [Minute](../tB/Modules/DateTime/Minute) -- returns the minute of the hour from a time value
 - [MkDir](../tB/Core/MkDir) -- creates a new directory or folder
+- [Month](../tB/Modules/DateTime/Month) -- returns the month of the year from a date value
 
 ## N
 
@@ -102,6 +107,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - SavePicture
 - [SaveSetting](../tB/Core/SaveSetting) -- saves or creates an application entry in the application’s entry in the Windows registry
+- [Second](../tB/Modules/DateTime/Second) -- returns the second of the minute from a time value
 - [SendKeys](../tB/Core/SendKeys)
 - SetAttr
 - [Shell](../tB/Core/Shell)
