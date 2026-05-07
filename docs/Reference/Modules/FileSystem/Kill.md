@@ -1,7 +1,9 @@
 ---
 title: Kill
-parent: Statements
-permalink: /tB/Core/Kill
+parent: FileSystem Module
+permalink: /tB/Modules/FileSystem/Kill
+redirect_from:
+-  /tB/Core/Kill
 ---
 # Kill
 {: .no_toc }
@@ -18,7 +20,7 @@ Syntax: **Kill** *pathname*
 An error occurs if you try to use **Kill** to delete an open file.
 
 > [!NOTE]
-> To delete directories, use the [**RmDir**](../Modules/FileSystem/RmDir) statement.
+> To delete directories, use the [**RmDir**](RmDir) statement.
 
 ### Example
 
@@ -34,7 +36,7 @@ Kill "*.TXT"
 
 ### See Also
 
-- [Dir](../Modules/FileSystem/Dir) function
-- [RmDir](../Modules/FileSystem/RmDir), [MkDir](../Modules/FileSystem/MkDir) statements
+- [Dir](Dir) function
+- [RmDir](RmDir), [MkDir](MkDir) statements
 
 {% include VBA-Attribution.md %}

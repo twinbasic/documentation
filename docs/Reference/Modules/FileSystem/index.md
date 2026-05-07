@@ -17,6 +17,7 @@ has_toc: false
 - [FileLen](FileLen) -- returns the length of a file in bytes
 - [FreeFile](FreeFile) -- returns the next file number available for use by the **Open** statement
 - [GetAttr](GetAttr) -- returns the attributes of a file or directory
+- [Kill](Kill) -- deletes files from a disk
 - [Loc](Loc) -- returns the current read/write position within an open file
 - [LOF](LOF) -- returns the size, in bytes, of an open file
 - [MkDir](MkDir) -- creates a new directory or folder
