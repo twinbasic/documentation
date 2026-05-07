@@ -139,7 +139,7 @@ The **Option Compare** statement specifies the [string comparison](../Gloss#stri
 ### See Also
 {: .no_toc }
 
-- [**InStr\$**](../Modules/Strings#instr-1), [**InStr**](../Modules/Strings#instr), [**InStrB**](../Modules/Strings#instrb), and [**InStrRev**](../Modules/Strings#instrrev) functions.
+- [**InStr\$**](../Modules/Strings/InStr), [**InStr**](../Modules/Strings/InStr), [**InStrB**](../Modules/Strings/InStr), and [**InStrRev**](../Modules/Strings/InStrRev) functions.
 
 ### Example
 {: .no_toc }

@@ -14,7 +14,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Abs](../tB/Modules/Math/Abs) -- returns the absolute value of a number
 - [AppActivate](../tB/Core/AppActivate) -- activates an application window
-- Asc, AscB, AscW
+- [Asc, AscB, AscW](../tB/Modules/Strings/Asc) -- returns the character code of the first letter in a string
 - [Atn](../tB/Modules/Math/Atn) -- returns the arctangent of a number
 
 ## B
@@ -27,7 +27,7 @@ permalink: /Reference/Procedures-and-Functions
 - [ChDir](../tB/Core/ChDir) -- changes the current directory or folder
 - [ChDrive](../tB/Core/ChDrive) -- changes the current drive
 - [CurDir](../tB/Core/CurDir) -- returns the current path
-- Chr\$, Chr, ChrB\$, ChrB, ChrW\$, ChrW
+- [Chr$, Chr, ChrB$, ChrB, ChrW$, ChrW](../tB/Modules/Strings/Chr) -- returns the character associated with a given character code
 - [Cos](../tB/Modules/Math/Cos) -- returns the cosine of an angle
 
 ## D
@@ -54,12 +54,12 @@ permalink: /Reference/Procedures-and-Functions
 - [FileCopy](../tB/Core/FileCopy) -- copies a file
 - [FileDateTime](../tB/Modules/FileSystem/FileDateTime) -- returns the date and time when a file was created or last modified
 - [FileLen](../tB/Modules/FileSystem/FileLen) -- returns the length of a file in bytes
-- Filter
-- Format$, Format
-- FormatCurrency
-- FormatDateTime
-- FormatNumber
-- FormatPercent
+- [Filter](../tB/Modules/Strings/Filter) -- filters a string array into a subset according to criteria
+- [Format$, Format](../tB/Modules/Strings/Format) -- formats an expression according to instructions contained in a format expression
+- [FormatCurrency](../tB/Modules/Strings/FormatCurrency) -- formats an expression as a currency value
+- [FormatDateTime](../tB/Modules/Strings/FormatDateTime) -- formats an expression as a date or time
+- [FormatNumber](../tB/Modules/Strings/FormatNumber) -- formats an expression as a number
+- [FormatPercent](../tB/Modules/Strings/FormatPercent) -- formats an expression as a percentage
 - [FreeFile](../tB/Modules/FileSystem/FreeFile) -- returns the next file number available for use by the **Open** statement
 - [FV](../tB/Modules/Financial/FV) -- returns the future value of an annuity based on periodic fixed payments and a fixed interest rate
 
@@ -74,14 +74,14 @@ permalink: /Reference/Procedures-and-Functions
 
 ## I
 
-- InStr$, InStrB, InStr
-- InStrRev
+- [InStr$, InStrB, InStr](../tB/Modules/Strings/InStr) -- returns the position of one string within another
+- [InStrRev](../tB/Modules/Strings/InStrRev) -- returns the position of one string within another, searching from the end
 - [IPmt](../tB/Modules/Financial/IPmt) -- returns the interest payment for a given period of an annuity
 - [IRR](../tB/Modules/Financial/IRR) -- returns the internal rate of return for a series of periodic cash flows
 
 ## J
 
-- Join
+- [Join](../tB/Modules/Strings/Join) -- concatenates a string array using a given delimiter
 
 ## K
 
@@ -89,21 +89,23 @@ permalink: /Reference/Procedures-and-Functions
 
 ## L
 
-- LCase\$, LCase, UCase\$, UCase
-- Left\$, Left, LeftB$, LeftB
+- [LCase$, LCase](../tB/Modules/Strings/LCase) -- returns a string converted to lowercase
+- [Left$, Left, LeftB$, LeftB](../tB/Modules/Strings/Left) -- returns the leftmost characters from a string
+- [Len, LenB](../tB/Modules/Strings/Len) -- returns the length of a string, or the storage size of a variable
 - Load
 - [Loc](../tB/Modules/FileSystem/Loc) -- returns the current read/write position within an open file
 - [LOF](../tB/Modules/FileSystem/LOF) -- returns the size, in bytes, of an open file
 - [Log](../tB/Modules/Math/Log) -- returns the natural (base *e*) logarithm of a number
-- LTrim\$, LTrim, RTrim\$, RTrim
+- [LTrim$, LTrim](../tB/Modules/Strings/LTrim) -- removes leading spaces from a string
 
 ## M
 
-- Mid$, Mid, MidB\$, MidB
+- [Mid$, Mid, MidB$, MidB](../tB/Modules/Strings/Mid) -- returns a substring of a string
 - [Minute](../tB/Modules/DateTime/Minute) -- returns the minute of the hour from a time value
 - [MIRR](../tB/Modules/Financial/MIRR) -- returns the modified internal rate of return for a series of periodic cash flows
 - [MkDir](../tB/Core/MkDir) -- creates a new directory or folder
 - [Month](../tB/Modules/DateTime/Month) -- returns the month of the year from a date value
+- [MonthName](../tB/Modules/Strings/MonthName) -- returns the name of the specified month
 
 ## N
 
@@ -124,11 +126,13 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
 - [Rate](../tB/Modules/Financial/Rate) -- returns the interest rate per period for an annuity
+- [Replace](../tB/Modules/Strings/Replace) -- replaces a substring within a string with another substring
 - [Reset](../tB/Modules/FileSystem/Reset) -- closes all disk files opened by using the **Open** statement
-- Right\$, Right, RightB\$, RightB
+- [Right$, Right, RightB$, RightB](../tB/Modules/Strings/Right) -- returns the rightmost characters from a string
 - [RmDir](../tB/Core/RmDir) -- removes an existing directory or folder
 - [Rnd](../tB/Modules/Math/Rnd) -- returns a pseudo-random number in the range [0.0, 1.0)
 - [Round](../tB/Modules/Math/Round) -- rounds a number to a specified number of decimal places
+- [RTrim$, RTrim](../tB/Modules/Strings/RTrim) -- removes trailing spaces from a string
 
 ## S
 
@@ -142,12 +146,13 @@ permalink: /Reference/Procedures-and-Functions
 - [Shell](../tB/Core/Shell)
 - [Sin](../tB/Modules/Math/Sin) -- returns the sine of an angle
 - [SLN](../tB/Modules/Financial/SLN) -- returns the straight-line depreciation of an asset for a single period
-- Space\$, Space
+- [Space$, Space](../tB/Modules/Strings/Space) -- returns a string of spaces
+- [Split](../tB/Modules/Strings/Split) -- splits a string into a string array
 - [Sqr](../tB/Modules/Math/Sqr) -- returns the square root of a number
-- StrComp
-- StrConv
-- String\$, String
-- StrReverse
+- [StrComp](../tB/Modules/Strings/StrComp) -- compares two strings
+- [StrConv](../tB/Modules/Strings/StrConv) -- converts a string to a specified format
+- [String$, String](../tB/Modules/Strings/String) -- returns a string of repeating characters
+- [StrReverse](../tB/Modules/Strings/StrReverse) -- reverses the order of characters in a string
 - [SYD](../tB/Modules/Financial/SYD) -- returns the sum-of-years' digits depreciation of an asset for a specified period
 
 ## T
@@ -157,10 +162,11 @@ permalink: /Reference/Procedures-and-Functions
 - [Timer](../tB/Modules/DateTime/Timer) -- returns the number of seconds elapsed since midnight
 - [TimeSerial](../tB/Modules/DateTime/TimeSerial) -- returns a time for a specific hour, minute, and second
 - [TimeValue](../tB/Modules/DateTime/TimeValue) -- converts a string to a time
-- Trim\$, Trim
+- [Trim$, Trim](../tB/Modules/Strings/Trim) -- removes leading and trailing spaces from a string
 
 ## U
 
+- [UCase$, UCase](../tB/Modules/Strings/UCase) -- returns a string converted to uppercase
 - Unload
 
 ## V
@@ -168,6 +174,7 @@ permalink: /Reference/Procedures-and-Functions
 ## W
 
 - [Weekday](../tB/Modules/DateTime/Weekday) -- returns the day of the week from a date value
+- [WeekdayName](../tB/Modules/Strings/WeekdayName) -- returns the name of the specified day of the week
 - Width
 
 ## X
