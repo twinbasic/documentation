@@ -13,7 +13,6 @@ redirect_from:
   - /tB/Core/SendKeys
   - /tB/Modules/Interaction/Shell
   - /tB/Modules/Interaction/SendKeys
-  - /tB/Modules/FileSystem/CurDir$
   - /tB/Modules/FileSystem/EOF
   - /tB/Modules/FileSystem/FileAttr
   - /tB/Modules/FileSystem/FileDateTime

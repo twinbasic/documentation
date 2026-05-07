@@ -4,7 +4,6 @@ nav_exclude: true
 redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
-  - /tB/Core/CurDir$
   - /tB/Core/Deftype
   - /tB/Core/EOF
   - /tB/Core/FileAttr
