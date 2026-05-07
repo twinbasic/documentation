@@ -24,7 +24,7 @@ permalink: /Reference/Procedures-and-Functions
 - [Calendar](../tB/Core/Calendar)
 - [ChDir](../tB/Core/ChDir) -- changes the current directory or folder
 - [ChDrive](../tB/Core/ChDrive) -- changes the current drive
-- [CurDir](../tB/Core/CurDir)
+- [CurDir](../tB/Core/CurDir) -- returns the current path
 - Chr\$, Chr, ChrB\$, ChrB, ChrW\$, ChrW
 
 ## D

@@ -14,8 +14,6 @@ redirect_from:
   - /tB/Modules/DateTime/Now
   - /tB/Modules/ErrObject
   - /tB/Modules/ExpressionService
-  - /tB/Core/CurDir
-  - /tB/Modules/FileSystem/CurDir
   - /tB/Modules/Information
   - /tB/Core/Shell
   - /tB/Core/SendKeys
