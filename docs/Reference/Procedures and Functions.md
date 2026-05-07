@@ -30,6 +30,11 @@ permalink: /Reference/Procedures-and-Functions
 ## D
 
 - [Date](../tB/Core/Date) -- sets or returns the current system date
+- [DateAdd](../tB/Modules/DateTime/DateAdd) -- adds a time interval to a date
+- [DateDiff](../tB/Modules/DateTime/DateDiff) -- returns the number of time intervals between two dates
+- [DatePart](../tB/Modules/DateTime/DatePart) -- returns a specified part of a given date
+- [DateSerial](../tB/Modules/DateTime/DateSerial) -- returns a date for a specified year, month, and day
+- [DateValue](../tB/Modules/DateTime/DateValue) -- converts a string to a date
 - [DeleteSetting](../tB/Core/DeleteSetting) -- deletes a section or key setting from an application’s entry in the Windows registry
 - [Dir](../tB/Core/Dir) -- returns the name of a file, directory, folder, or volume label that matches a pattern
 

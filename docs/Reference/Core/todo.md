@@ -4,11 +4,6 @@ nav_exclude: true
 redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
-  - /tB/Core/DateAdd
-  - /tB/Core/DateDiff
-  - /tB/Core/DatePart
-  - /tB/Core/DateSerial
-  - /tB/Core/DateValue
   - /tB/Core/Day
   - /tB/Core/Deftype
   - /tB/Core/Get
