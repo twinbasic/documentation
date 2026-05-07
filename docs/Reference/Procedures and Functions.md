@@ -79,7 +79,7 @@ permalink: /Reference/Procedures-and-Functions
 ## N
 
 - Name
-- [Now](../tB/Core/Now)
+- [Now](../tB/Core/Now) -- returns the current system date and time
 
 ## P
 

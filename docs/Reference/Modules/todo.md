@@ -7,9 +7,7 @@ redirect_from:
   - /tB/Modules/Constants
   - /tB/Modules/Conversion
   - /tB/Core/Time
-  - /tB/Core/Now
   - /tB/Modules/DateTime/Time
-  - /tB/Modules/DateTime/Now
   - /tB/Modules/ErrObject
   - /tB/Modules/ExpressionService
   - /tB/Modules/Information
