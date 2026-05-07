@@ -5,7 +5,6 @@ redirect_from:
   - /tB/Core/Topic-Preprocessor
   - /tB/Core/CoClass
   - /tB/Core/Deftype
-  - /tB/Core/EOF
   - /tB/Core/FileAttr
   - /tB/Core/FileDateTime
   - /tB/Core/FileLen
@@ -26,7 +25,6 @@ redirect_from:
   - /tB/Core/Load
   - /tB/Core/Loc
   - /tB/Core/Lock
-  - /tB/Core/LOF
   - /tB/Core/LSet
   - /tB/Core/Mid-equals
   - /tB/Core/MidB-equals

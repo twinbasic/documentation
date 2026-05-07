@@ -41,7 +41,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## E
 
-- EOF
+- [EOF](../tB/Modules/FileSystem/EOF) -- returns whether the end of a file has been reached
 
 ## F
 
@@ -85,7 +85,7 @@ permalink: /Reference/Procedures-and-Functions
 - Left\$, Left, LeftB$, LeftB
 - Load
 - Loc
-- LOF
+- [LOF](../tB/Modules/FileSystem/LOF) -- returns the size, in bytes, of an open file
 - LTrim\$, LTrim, RTrim\$, RTrim
 
 ## M
