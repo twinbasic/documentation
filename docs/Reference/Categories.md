@@ -128,15 +128,15 @@ Procedures:
 
 Procedures:
 
-* [Atn](../tB/Modules/Math#atn), [Cos](../tB/Modules/Math#cos), [Sin](../tB/Modules/Math#sin), [Tan](../tB/Modules/Math#tan) - trigonometric functions
-* [Sqr](../tB/Modules/Math#sqr) - take a square root
-* [Exp](../tB/Modules/Math#exp) - calculate an exponential with base $e$
-* [Log](../tB/Modules/Math#log) - calculate the natural (base $e$) logarithm of a number
-* [Sgn](../tB/Modules/Math#sgn) - return the sign of a number
-* [Abs](../tB/Modules/Math#abs) - returns the absolute value of a number
-* [Round](../tB/Modules/Math#round) - round the number to a given number of decimal places
-* [Rnd](../tB/Modules/Math#rnd) - generate a random number in the range [0.0, 1.0)
-* [Randomize](../tB/Modules/Math#randomize) - seed the random number generator
+* [Atn](../tB/Modules/Math/Atn), [Cos](../tB/Modules/Math/Cos), [Sin](../tB/Modules/Math/Sin), [Tan](../tB/Modules/Math/Tan) - trigonometric functions
+* [Sqr](../tB/Modules/Math/Sqr) - take a square root
+* [Exp](../tB/Modules/Math/Exp) - calculate an exponential with base $e$
+* [Log](../tB/Modules/Math/Log) - calculate the natural (base $e$) logarithm of a number
+* [Sgn](../tB/Modules/Math/Sgn) - return the sign of a number
+* [Abs](../tB/Modules/Math/Abs) - returns the absolute value of a number
+* [Round](../tB/Modules/Math/Round) - round the number to a given number of decimal places
+* [Rnd](../tB/Modules/Math/Rnd) - generate a random number in the range [0.0, 1.0)
+* [Randomize](../tB/Modules/Math/Randomize) - seed the random number generator
 
 ## String Handling
 

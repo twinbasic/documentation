@@ -97,6 +97,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [RaiseEvent](../tB/Core/RaiseEvent)
 
+* [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
+
 * [ReDim](../tB/Core/ReDim)
 
 * [Resume](../tB/Core/Resume)
