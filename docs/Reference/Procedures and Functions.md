@@ -31,7 +31,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Date](../tB/Core/Date) -- sets or returns the current system date
 - [DeleteSetting](../tB/Core/DeleteSetting) -- deletes a section or key setting from an application’s entry in the Windows registry
-- [Dir](../tB/Core/Dir)
+- [Dir](../tB/Core/Dir) -- returns the name of a file, directory, folder, or volume label that matches a pattern
 
 ## E
 
@@ -74,7 +74,7 @@ permalink: /Reference/Procedures-and-Functions
 ## M
 
 - Mid$, Mid, MidB\$, MidB
-- [MkDir](../tB/Core/MkDir)
+- [MkDir](../tB/Core/MkDir) -- creates a new directory or folder
 
 ## N
 
@@ -90,7 +90,7 @@ permalink: /Reference/Procedures-and-Functions
 - Randomize
 - Reset
 - Right\$, Right, RightB\$, RightB
-- [RmDir](../tB/Core/RmDir)
+- [RmDir](../tB/Core/RmDir) -- removes an existing directory or folder
 - Rnd
 
 ## S

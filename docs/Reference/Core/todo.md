@@ -22,7 +22,6 @@ redirect_from:
   - /tB/Core/LSet
   - /tB/Core/Mid-equals
   - /tB/Core/MidB-equals
-  - /tB/Core/MkDir
   - /tB/Core/Module
   - /tB/Core/Name
   - /tB/Core/New
@@ -42,7 +41,6 @@ redirect_from:
   - /tB/Core/Reset
   - /tB/Core/Resume
   - /tB/Core/Return
-  - /tB/Core/RmDir
   - /tB/Core/RSet
   - /tB/Core/SavePicture
   - /tB/Core/Seek
