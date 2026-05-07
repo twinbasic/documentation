@@ -17,7 +17,11 @@ has_toc: false
 - [FileLen](FileLen) -- returns the length of a file in bytes
 - [FreeFile](FreeFile) -- returns the next file number available for use by the **Open** statement
 - [GetAttr](GetAttr) -- returns the attributes of a file or directory
+- [Loc](Loc) -- returns the current read/write position within an open file
 - [LOF](LOF) -- returns the size, in bytes, of an open file
 - [MkDir](MkDir) -- creates a new directory or folder
 - [CurDir](CurDir) -- returns the current path
+- [Reset](Reset) -- closes all disk files opened by using the **Open** statement
 - [RmDir](RmDir) -- removes an existing directory or folder
+- [Seek](Seek) -- returns or sets the read/write position within an open file
+- [SetAttr](SetAttr) -- sets attribute information for a file

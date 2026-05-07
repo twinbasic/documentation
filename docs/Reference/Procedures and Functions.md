@@ -84,7 +84,7 @@ permalink: /Reference/Procedures-and-Functions
 - LCase\$, LCase, UCase\$, UCase
 - Left\$, Left, LeftB$, LeftB
 - Load
-- Loc
+- [Loc](../tB/Modules/FileSystem/Loc) -- returns the current read/write position within an open file
 - [LOF](../tB/Modules/FileSystem/LOF) -- returns the size, in bytes, of an open file
 - LTrim\$, LTrim, RTrim\$, RTrim
 
@@ -107,7 +107,7 @@ permalink: /Reference/Procedures-and-Functions
 ## R
 
 - Randomize
-- Reset
+- [Reset](../tB/Modules/FileSystem/Reset) -- closes all disk files opened by using the **Open** statement
 - Right\$, Right, RightB\$, RightB
 - [RmDir](../tB/Core/RmDir) -- removes an existing directory or folder
 - Rnd
@@ -117,9 +117,9 @@ permalink: /Reference/Procedures-and-Functions
 - SavePicture
 - [SaveSetting](../tB/Core/SaveSetting) -- saves or creates an application entry in the application’s entry in the Windows registry
 - [Second](../tB/Modules/DateTime/Second) -- returns the second of the minute from a time value
-- Seek
+- [Seek](../tB/Modules/FileSystem/Seek) -- returns or sets the read/write position within an open file
 - [SendKeys](../tB/Core/SendKeys)
-- SetAttr
+- [SetAttr](../tB/Modules/FileSystem/SetAttr) -- sets attribute information for a file
 - [Shell](../tB/Core/Shell)
 - Space\$, Space
 - StrComp
