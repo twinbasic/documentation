@@ -61,6 +61,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [Implements](../tB/Core/Implements)
 
+* [Kill](../tB/Core/Kill) -- deletes files from a disk
+
 * [Let](../tB/Core/Let)
 
 * [Line Input](../tB/Core/Line-Input)

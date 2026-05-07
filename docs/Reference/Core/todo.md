@@ -13,7 +13,7 @@ redirect_from:
   - /tB/Core/Input
   - /tB/Core/Interface
   - /tB/Core/Is
-  - /tB/Core/Kill
+
   - /tB/Core/LBound
   - /tB/Core/Let
   - /tB/Core/Line-Input
@@ -22,7 +22,6 @@ redirect_from:
   - /tB/Core/LSet
   - /tB/Core/Mid-equals
   - /tB/Core/MidB-equals
-  - /tB/Core/MkDir
   - /tB/Core/Module
   - /tB/Core/Name
   - /tB/Core/New
@@ -42,7 +41,6 @@ redirect_from:
   - /tB/Core/Reset
   - /tB/Core/Resume
   - /tB/Core/Return
-  - /tB/Core/RmDir
   - /tB/Core/RSet
   - /tB/Core/SavePicture
   - /tB/Core/Seek
@@ -53,7 +51,6 @@ redirect_from:
   - /tB/Core/Static
   - /tB/Core/Sub
   - /tB/Core/Stop
-  - /tB/Core/Time
   - /tB/Core/Type
   - /tB/Core/UBound
   - /tB/Core/Unload
