@@ -45,21 +45,21 @@ permalink: /Reference/Procedures-and-Functions
 
 ## F
 
-- FileAttr
+- [FileAttr](../tB/Modules/FileSystem/FileAttr) -- returns the file mode for files opened with the **Open** statement
 - [FileCopy](../tB/Core/FileCopy) -- copies a file
-- FileDateTime
-- FileLen
+- [FileDateTime](../tB/Modules/FileSystem/FileDateTime) -- returns the date and time when a file was created or last modified
+- [FileLen](../tB/Modules/FileSystem/FileLen) -- returns the length of a file in bytes
 - Filter
 - Format$, Format
 - FormatCurrency
 - FormatDateTime
 - FormatNumber
 - FormatPercent
-- FreeFile
+- [FreeFile](../tB/Modules/FileSystem/FreeFile) -- returns the next file number available for use by the **Open** statement
 
 ## G
 
-- GetAttr
+- [GetAttr](../tB/Modules/FileSystem/GetAttr) -- returns the attributes of a file or directory
 - [GetSetting](../tB/Core/GetSetting) -- returns a string key setting value from an application’s entry in the Windows registry
 
 ## H
