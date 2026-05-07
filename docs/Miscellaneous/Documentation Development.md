@@ -13,7 +13,7 @@ This chapter covers the consumption of the documentation, e.g. in an IDE, as wel
 {:toc}
 ## Permanent Links
 
-The stable, or machine-accessible part of the documentation tree is rooted on the `/tB/` prefix. The URLs with this prefix, as well as the internal links (e.g. [`docs.twinbasic.com/tB/Modules/Math#round`](../tB/Modules/Math#round)), are stable.
+The stable, or machine-accessible part of the documentation tree is rooted on the `/tB/` prefix. The URLs with this prefix, as well as the internal links (e.g. [`docs.twinbasic.com/tB/Modules/Math/Round`](../tB/Modules/Math/Round)), are stable.
 
 ### /tB/Core/\<Statement\>
 

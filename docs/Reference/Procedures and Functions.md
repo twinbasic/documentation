@@ -12,8 +12,10 @@ permalink: /Reference/Procedures-and-Functions
 
 ## A
 
+- [Abs](../tB/Modules/Math/Abs) -- returns the absolute value of a number
 - [AppActivate](../tB/Core/AppActivate) -- activates an application window
 - Asc, AscB, AscW
+- [Atn](../tB/Modules/Math/Atn) -- returns the arctangent of a number
 
 ## B
 
@@ -26,6 +28,7 @@ permalink: /Reference/Procedures-and-Functions
 - [ChDrive](../tB/Core/ChDrive) -- changes the current drive
 - [CurDir](../tB/Core/CurDir) -- returns the current path
 - Chr\$, Chr, ChrB\$, ChrB, ChrW\$, ChrW
+- [Cos](../tB/Modules/Math/Cos) -- returns the cosine of an angle
 
 ## D
 
@@ -43,6 +46,7 @@ permalink: /Reference/Procedures-and-Functions
 ## E
 
 - [EOF](../tB/Modules/FileSystem/EOF) -- returns whether the end of a file has been reached
+- [Exp](../tB/Modules/Math/Exp) -- returns *e* (the base of natural logarithms) raised to a power
 
 ## F
 
@@ -90,6 +94,7 @@ permalink: /Reference/Procedures-and-Functions
 - Load
 - [Loc](../tB/Modules/FileSystem/Loc) -- returns the current read/write position within an open file
 - [LOF](../tB/Modules/FileSystem/LOF) -- returns the size, in bytes, of an open file
+- [Log](../tB/Modules/Math/Log) -- returns the natural (base *e*) logarithm of a number
 - LTrim\$, LTrim, RTrim\$, RTrim
 
 ## M
@@ -117,12 +122,13 @@ permalink: /Reference/Procedures-and-Functions
 
 ## R
 
-- Randomize
+- [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
 - [Rate](../tB/Modules/Financial/Rate) -- returns the interest rate per period for an annuity
 - [Reset](../tB/Modules/FileSystem/Reset) -- closes all disk files opened by using the **Open** statement
 - Right\$, Right, RightB\$, RightB
 - [RmDir](../tB/Core/RmDir) -- removes an existing directory or folder
-- Rnd
+- [Rnd](../tB/Modules/Math/Rnd) -- returns a pseudo-random number in the range [0.0, 1.0)
+- [Round](../tB/Modules/Math/Round) -- rounds a number to a specified number of decimal places
 
 ## S
 
@@ -132,9 +138,12 @@ permalink: /Reference/Procedures-and-Functions
 - [Seek](../tB/Modules/FileSystem/Seek) -- returns or sets the read/write position within an open file
 - [SendKeys](../tB/Core/SendKeys)
 - [SetAttr](../tB/Modules/FileSystem/SetAttr) -- sets attribute information for a file
+- [Sgn](../tB/Modules/Math/Sgn) -- returns a value indicating the sign of a number
 - [Shell](../tB/Core/Shell)
+- [Sin](../tB/Modules/Math/Sin) -- returns the sine of an angle
 - [SLN](../tB/Modules/Financial/SLN) -- returns the straight-line depreciation of an asset for a single period
 - Space\$, Space
+- [Sqr](../tB/Modules/Math/Sqr) -- returns the square root of a number
 - StrComp
 - StrConv
 - String\$, String
@@ -143,6 +152,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## T
 
+- [Tan](../tB/Modules/Math/Tan) -- returns the tangent of an angle
 - [Time](../tB/Core/Time) -- sets or returns the current system time
 - [Timer](../tB/Modules/DateTime/Timer) -- returns the number of seconds elapsed since midnight
 - [TimeSerial](../tB/Modules/DateTime/TimeSerial) -- returns a time for a specific hour, minute, and second
