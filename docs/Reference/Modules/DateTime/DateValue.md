@@ -27,7 +27,7 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 
 This example uses the **DateValue** function to convert a string to a date. You can also use date literals to directly assign a date to a **Variant** or **Date** variable (for example, `MyDate = #2/12/69#`).
 
-```vb
+```tb
 Dim MyDate
 MyDate = DateValue("February 12, 1969")    ' Returns a date.
 ```

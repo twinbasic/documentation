@@ -125,7 +125,7 @@ redirect-from:
 
 #### Code Snippet for twinBASIC
 
-``` vb
+```tb
 ' Example: Printing a Mixed-Control Form in twinBASIC
 Dim bmp As StdPicture
 Set bmp = CreateCompatibleBitmap(Me.Width, Me.Height)

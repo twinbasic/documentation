@@ -9,7 +9,7 @@ permalink: /Features/Language/Return
 
 You can now combine assigning a return value and exiting a procedure into a single statement like many other languages allow. This is accomplished with the `Return` keyword:
 
-```vb
+```tb
 Private Function Foo() As Long
     Dim i As Long = 1
     If i Then
@@ -20,7 +20,7 @@ End Function
 
 This is the equivalent of:
 
-```vb
+```tb
 Private Function Foo() As Long
     Dim i As Long = 1
     If i Then

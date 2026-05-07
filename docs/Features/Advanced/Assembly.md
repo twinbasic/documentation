@@ -13,7 +13,7 @@ Raw bytecode can be inserted into a binary with tB's `Emit()` function. To suppo
 
 For example, the following is an implementation of the InterlockedIncrement compiler intrinsic that replaces the API in Microsoft C/C++ (adds one to `Addend` and returns the result, as an atomic operation which isn't guaranteed with regular code):
 
-```vb
+```tb
 Public Function InlineInterlockedIncrement CDecl Naked(Addend As Long) As Long
     #If Win64 Then
         Emit(&Hb8, &H01, &H00, &H00, &H00) ' mov    eax,0x1

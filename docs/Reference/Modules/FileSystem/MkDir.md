@@ -24,7 +24,7 @@ Syntax: **MkDir** *path*
 
 This example uses the **MkDir** statement to create a directory or folder. If the drive is not specified, the new directory or folder is created on the current drive.
 
-```vb
+```tb
 MkDir "MYDIR"   ' Make new directory or folder.
 ```
 

@@ -31,7 +31,7 @@ Do not confuse **Exit** statements with **End** statements. **Exit** does not de
 
 This example uses the **Exit** statement to exit a **For...Next** loop, a **Do...Loop**, and a **Sub** procedure.
 
-```vb
+```tb
 Sub ExitStatementDemo() 
   Dim I%, MyNum% 
   Do ' Set up infinite loop. 

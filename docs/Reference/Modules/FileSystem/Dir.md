@@ -49,7 +49,7 @@ You can change to a new *pathname* without retrieving all of the file names that
 
 This example uses the **Dir** function to check whether certain files and directories exist, and to enumerate files in a folder.
 
-```vb
+```tb
 Dim MyFile, MyPath, MyName
 
 ' Returns "WIN.INI" (on Microsoft Windows) if it exists.

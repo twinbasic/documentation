@@ -45,19 +45,19 @@ This is an optional attribute, but it is usually advisable to set this attribute
 
 All CustomControls *must* implement CustomControls.ICustomControl.  This interface currently has 3 methods that you must implement:
 
-``` vb
+```tb
 Sub Initialize(ByVal Context As CustomControlContext)
 ```
 
 This method is called when your control is attached to a form.  You must store the provided Context object in a class field as it offers a `Repaint()` method for informing the form engine that something in your control has changed and needs to be repainted.
 
-``` vb
+```tb
 Sub Destroy()
 ```
 
 This method is called when your control is detached from a form.  This allows an opportunity to break circular references so that your object instance can be destructed properly.   The implementation for this can often be left empty provided you don't create circular references in objects.
 
-``` vb
+```tb
 Sub Paint(ByVal Canvas As Canvas)
 ```
 
@@ -67,7 +67,7 @@ This is the most interesting part for a CustomControl.  As such, it gets its own
 ## Minimum set of properties
 As twinBASIC doesn't yet support inheritance, you must expose a set of common properties (class fields) for all CustomControls:
 
-``` vb
+```tb
 Public Name As String
 Public Left As CustomControls.PixelCount
 Public Top As CustomControls.PixelCount
@@ -86,7 +86,7 @@ Note that the form designer works with pixel values which are not DPI-scaled.  S
 ## Must have a serialization constructor
 CustomControls *must* offer a serialization constructor:
 
-``` vb
+```tb
 Public Sub New(Serializer As SerializationInfo)
 ```
 

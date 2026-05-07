@@ -30,7 +30,7 @@ Syntax: **Date** [ **()** ]
 
 This example uses the **Date** property to return the current system date.
 
-```vb
+```tb
 Dim MyDate as Variant
 MyDate = Date   ' MyDate contains the current system date.
 ```
@@ -54,7 +54,7 @@ date
 
 This example uses the **Date** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of your code.
 
-```vb
+```tb
 Dim MyDate As Date
 MyDate = #February 12, 1985#  ' Assign a date to a variable.
 Date= MyDate                  ' Change system date. 
@@ -76,7 +76,7 @@ Syntax: **Date$** [ **()** ]
 
 This example uses the **Date** property to return the current system date as a string.
 
-```vb
+```tb
 Dim MyDate$
 MyDate = Date$  ' MyDate contains the current system date.
 ```
@@ -100,7 +100,7 @@ date
 
 This example uses the **Date$** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of your code.
 
-```vb
+```tb
 Dim MyDate$
 MyDate = "02-12-1985"        ' Assign a date to a variable.
 Date$ = MyDate               ' Change the system date. 

@@ -24,7 +24,7 @@ Syntax: **CurDir** [ **(** *drive* **)** ]
 
 This example uses the **CurDir** function to return the current path.
 
-```vb
+```tb
 ' Assume current path on C drive is "C:\WINDOWS\SYSTEM".
 ' Assume current path on D drive is "D:\EXCEL".
 ' Assume C is the current drive.
@@ -48,7 +48,7 @@ Syntax: **CurDir$** [ **(** *drive* **)** ]
 
 This example uses the **CurDir$** function to return the current path.
 
-```vb
+```tb
 ' Assume current path on C drive is "C:\WINDOWS\SYSTEM".
 ' Assume current path on D drive is "D:\EXCEL".
 ' Assume C is the current drive.

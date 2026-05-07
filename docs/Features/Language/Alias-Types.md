@@ -15,7 +15,7 @@ An alias is an alternative name for a User-Defined Type, intrinsic type, or inte
 
 With intrinsic types, or if you have a type such as:
 
-```vb
+```tb
 Public Type POINT
     x As Long
     y As Long
@@ -24,7 +24,7 @@ End Type
 
 You can create aliases:
 
-```vb
+```tb
 Public Alias POINTAPI As POINT
 
 Public Alias CBoolean As Byte

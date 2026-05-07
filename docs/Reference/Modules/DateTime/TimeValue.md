@@ -23,7 +23,7 @@ If the *time* argument contains date information, **TimeValue** doesn't return i
 
 This example uses the **TimeValue** function to convert a string to a time. You can also use date literals to directly assign a time to a **Variant** or **Date** variable (for example, `MyTime = #4:35:17 PM#`).
 
-```vb
+```tb
 Dim MyTime
 MyTime = TimeValue("4:35:17 PM")    ' Return a time.
 ```

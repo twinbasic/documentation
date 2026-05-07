@@ -53,7 +53,7 @@ In the invocation, the *type-argument-list*, i.e. **(Of** *type-arg* ... **)**, 
 
 Type variables that correspond to types that could be deduced from the call argument types must form a trailer of the *type-variable-list*:  
 
-```vb
+```tb
 Sub MySub1(Of T, U, V)(argu As U, argv As V): End Sub
 MySub1(Of Long)(33%, 42%)                ' Valid: deduced U, V = Integer
 MySub1(Of Long, Single)(33%, 42%)        ' Valid: provided U = Single, deduced V = Integer
@@ -63,7 +63,7 @@ MySub1(Of Long, , Double)(33%, 42%)      ' Invalid: omitted deduced type must be
 
 Thus, to suppress deduction, put the type variable in the type list *before* the non-deducible type parameters:
 
-```vb
+```tb
 ' T must be provided, it won't be deduced
 Function MyFn1(Of T, U)(argu As T) As U: End Function
 MyFn1(Of Single, String)(10%)   ' Valid: provided T = Single, U = String
@@ -74,7 +74,7 @@ MyFn1(Of, String)(10%)          ' Invalid: T is not trailing so it can't be omit
 
 Only the unused type variables may have their arguments omitted at positions *after the first* in the *type-variable-list*.:
 
-```vb
+```tb
 Sub MySub2(Of T, U, V)(argt As T, argv As V): End Sub
 Sub MySub3(Of U, V)(argv As V): End Sub
 
@@ -88,7 +88,7 @@ MySub3(Of, Single)(22%)             ' Invalid: unused U can't be omitted as it's
 
 In this example, the invocations of the generic **First** and **Last** subs don't need to explicitly provide type argument values using the  *type-argument-list*, i.e. **(Of** ... **)**, since they can be deduced from the argument types.
 
-```vb
+```tb
 Public Function First(Of T)(Array() As T) As T
     If IsArrayInitialized(Array) Then Return Array(LBound(Array))
 End Function
@@ -106,7 +106,7 @@ End Sub
 
 Without the generic syntax, the procedure would have had to be written for every type *T* it's used on. In the example below, that would be `T=String` and `T=Integer`:
 
-```vb
+```tb
 Public Function First(Array() As String) As String
     If IsArrayInitialized(Array) Then Return Array(LBound(Array))
 End Function
@@ -131,7 +131,7 @@ There are two common cases when a type variable might not appear in the *paramet
 
 The example below illustrates those possibilities:
 
-```vb
+```tb
 Public Function Caster(Of R, U, T)(value As T) As R
     Dim intermediate As U = CType(Of U)(value)
     Return CType(Of R)(intermediate)
@@ -186,7 +186,7 @@ The type variables (*type-var*) introduce identifiers of arbitrary types that ca
 
 ### Example of  correct and incorrect instantiation
 
-```vb
+```tb
 Class MyClass(Of T, U)
     Function DumpT%(value As T): Debug.Print value: End Function
     Function DumpU%(value As U): Debug.Print value: End Function
@@ -211,7 +211,7 @@ A generic class enables substitution of type variables with type arguments provi
 
 In the example below, two class types are instantiated: **MyClass**(**Integer**) and **MyClass**(**String**). This happens at compile time. No instances of **MyClass** are created at runtime, since both variables default to **Nothing**:
 
-```vb
+```tb
 Class MyClass(Of T) ' ...
 
 Sub Test()
@@ -225,7 +225,7 @@ End Sub
 
 A Class generic allows the type in methods throughout the class. The following example shows this to make a generic List class:
 
-```vb
+```tb
 [COMCreatable(False)]
 Class List(Of T)
     Private mData() As T
@@ -251,7 +251,7 @@ End Sub
 
 While generic UDTs don't support member procedures yet in twinBASIC, the data members are supported:
 
-```vb
+```tb
 Type ListU(Of T)
     value() As T
 End Type

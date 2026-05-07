@@ -35,7 +35,7 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied valu
 
 This example uses the **DateSerial** function to return the date for the specified year, month, and day.
 
-```vb
+```tb
 Dim MyDate
 MyDate = DateSerial(1969, 2, 12)    ' Returns February 12, 1969.
 ```

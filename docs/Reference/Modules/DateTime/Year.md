@@ -22,7 +22,7 @@ Syntax: **Year** ( *date* )
 
 This example uses the **Year** function to obtain the year from a specified date.
 
-```vb
+```tb
 Dim MyDate, MyYear
 MyDate = #February 12, 1969#    ' Assign a date.
 MyYear = Year(MyDate)    ' MyYear contains 1969.

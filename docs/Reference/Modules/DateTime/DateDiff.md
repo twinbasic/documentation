@@ -77,7 +77,7 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 
 This example uses the **DateDiff** function to display the number of days between a given date and today.
 
-```vb
+```tb
 Dim TheDate As Date
 Dim Msg As String
 TheDate = InputBox("Enter a date")

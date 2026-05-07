@@ -28,7 +28,7 @@ While
 
 This example uses **Continue For** to skip processing of certain characters of the string.
 
-```vb
+```tb
 Dim i%, ch$, text$
 For i = 1 To 10
     ch = Mid$(text, i, 1)

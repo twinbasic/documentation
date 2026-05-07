@@ -38,7 +38,7 @@ Syntax:
 
 Enumeration variables are variables declared with an **Enum** type. Both variables and parameters can be declared with an **Enum** type. The elements of the **Enum** type are initialized to constant values within the **Enum** statement. The assigned values can't be modified at run time and can include both positive and negative numbers. For example:
 
-```vb
+```tb
 Enum SecurityLevel 
  IllegalEntry = -1 
  SecurityLevel1 = 0 
@@ -56,7 +56,7 @@ You can't use an **Enum** type as the target in a **With** block.
 
 The following example shows the **Enum** statement used to define a collection of named constants. In this case, the constants are colors you might choose to design data entry forms for a database.
 
-```vb
+```tb
 Public Enum InterfaceColors 
  icMistyRose = &HE1E4FF& 
  icSlateGray = &H908070& 

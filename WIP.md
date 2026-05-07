@@ -61,7 +61,7 @@ Syntax: **<Symbol>** [ *args* ]
 
 This example...
 
-```vb
+```tb
 ' code
 ```
 
@@ -75,7 +75,7 @@ This example...
 Formatting conventions:
 
 - `**...**` for keywords/literal tokens; `*...*` for placeholders/arguments.
-- Code blocks use ` ```vb `.
+- Code blocks use ` ```tb ` (the twinBASIC lexer registered in `docs/_plugins/twinbasic.rb`).
 - Parameter lists use the kramdown `term` + `: definition` indentation pattern (NOT the MS-style markdown table).
 - Don't drop the `{% include VBA-Attribution.md %}` line unless the page is fully original content.
 

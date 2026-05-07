@@ -155,7 +155,7 @@ The documentation server detects changes in the filesystem and automatically reg
 
 Mermaid diagrams are supported within the `{% raw %}{% mermaid %} ... {% endmermaid %}{% endraw %}` tags, e.g.
 
-```
+```tb
 {% raw %}{% mermaid %}
 graph TD;
     A-->B;
@@ -173,7 +173,7 @@ To render new or changed diagrams, the following should be available:
 
 - [nodejs](https://nodejs.org/en/download)
 - [mermaid-cli](https://github.com/mermaid-js/mermaid-cli)
-  ```
+  ```tb
   npm install -g @mermaid-js/mermaid-cli
   ```
 

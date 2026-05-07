@@ -25,7 +25,7 @@ To specify a time, such as 11:59:59, the range of numbers for each **TimeSerial*
 
 The following example uses expressions instead of absolute time numbers. The **TimeSerial** function returns a time for 15 minutes before (`-15`) six hours before noon (`12 - 6`), or 5:45:00 A.M.
 
-```vb
+```tb
 TimeSerial(12 - 6, -15, 0)
 ```
 
@@ -35,7 +35,7 @@ When any argument exceeds the normal range for that argument, it increments to t
 
 This example uses the **TimeSerial** function to return a time for the specified hour, minute, and second.
 
-```vb
+```tb
 Dim MyTime
 MyTime = TimeSerial(16, 35, 17)    ' Serial representation of 4:35:17 PM.
 ```

@@ -19,7 +19,7 @@ Allows passing null pointers to UDT members of APIs/interfaces. The equivalent b
 
 ### Example
 
-```vb
+```tb
 Type Foo
    bar As Long
 End Type
@@ -38,7 +38,7 @@ The `CType(Of <type>)` operator specifies an explicit intent to cast one type to
 
 Consider the following UDTs:
 
-```vb
+```tb
 Private Type foo
     a As Long
     b As Long
@@ -54,7 +54,7 @@ End Type
 
 The following code examples work to manipulate the pointers:
 
-```vb
+```tb
 Sub call1()
     Dim f As foo
     test1 VarPtr(f)
@@ -71,7 +71,7 @@ End Sub
 
 This will print `1  2`.
 
-```vb
+```tb
 Sub call2()
     Dim f As foo, b As bar
     b.pfoo = VarPtr(f)
@@ -89,7 +89,7 @@ End Sub
 
 This will print `3  4`.
 
-```vb
+```tb
 Sub call3()
     Dim f As foo, b As bar, z As fizz
     f.pfizz = VarPtr(z)
@@ -109,7 +109,7 @@ This will print `4`. Free standing use and nesting is also allowed; the above wi
 
 In both APIs and local methods, any argument taking a user-defined type can instead be passed a `ByVal LongPtr`, with the new special constant `vbNullPtr` used for a null pointer:
 
-```vb
+```tb
 Public Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
 
 hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal vbNullPtr, '...)
@@ -127,7 +127,7 @@ The classic `Len` and `LenB` functions can now be used to directly get the lengt
 
 `AddressOf` can be now be used on class/form/usercontrol members, including from outside the class by specifying the instance. Also, no need for `FARPROC`-type functions, you can use it like `Ptr = AddressOf Func`. So if you have class `CFoo` with member function `bar`, the following is valid:
 
-```vb
+```tb
 Dim foo1 As New CFoo
 Dim lpfn As LongPtr = AddressOf foo1.bar
 ```
