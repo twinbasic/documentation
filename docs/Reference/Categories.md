@@ -45,6 +45,13 @@ Statements:
 * [On ... GoTo](../tB/Core/On-GoTo), [On ... GoSub](../tB/Core/On-GoSub) - transfer execution to a location selected by an expression
 * [Stop](../tB/Core/Stop) - interrupt execution
 
+Inline conditional functions — expression-level alternatives to the **If...Then...Else** and **Select Case** statements above:
+
+* [If](../tB/Modules/Interaction/If) - evaluate an expression and return one of two values; only the chosen branch is evaluated (twinBASIC addition)
+* [IIf](../tB/Modules/Interaction/IIf) - evaluate an expression and return one of two values; both branches are always evaluated
+* [Choose](../tB/Modules/Interaction/Choose) - return one value from a list, selected by 1-based index
+* [Switch](../tB/Modules/Interaction/Switch) - return the value paired with the first **True** condition in a list of (condition, value) pairs
+
 See also: 
 
 * [End](../tB/Core/End) - terminate execution.
@@ -132,24 +139,57 @@ Procedures:
 Procedures:
 
 * [Load](../tB/Core/Load), [Unload](../tB/Core/Unload) - load/unload a form or control into memory
-* [GetSetting](../tB/Core/GetSetting), [SaveSetting](../tB/Core/SaveSetting) - retrieve/store a string value from/to the system registry
-* [DeleteSetting](../tB/Core/DeleteSetting) - remove value from the system registry
+* [GetSetting](../tB/Modules/Interaction/GetSetting), [SaveSetting](../tB/Modules/Interaction/SaveSetting) - retrieve/store a string value from/to the system registry
+* [GetAllSettings](../tB/Modules/Interaction/GetAllSettings) - retrieve every key/value pair in a section of an application's registry entry
+* [DeleteSetting](../tB/Modules/Interaction/DeleteSetting) - remove value from the system registry
 
-## Events and Interaction
+## Events
 
 Statements:
 
 * [RaiseEvent](../tB/Core/RaiseEvent) - raise an event that may be handled by event handlers
 
+Procedures:
+
+* [RaiseEventByName](../tB/Modules/Interaction/RaiseEventByName) - raise an event by name on an object, taking arguments as a **Variant** array
+* [RaiseEventByName2](../tB/Modules/Interaction/RaiseEventByName2) - raise an event by name on an object, taking a variable-length argument list
+
 See also
 
 * [Event](../tB/Core/Event) - declare an event
 
+## User Dialogs
+
 Procedures:
 
-* [AppActivate](../tB/Core/AppActivate) - change the focus to, or activate, a named window
-* [Beep](../tB/Core/Beep) - sound a system beep
-* [SendKeys](../tB/Core/SendKeys) - send keystrokes to the active window
+* [MsgBox](../tB/Modules/Interaction/MsgBox) - display a modal message dialog and return the button the user clicked
+* [InputBox](../tB/Modules/Interaction/InputBox) - prompt the user for a line of text and return what was entered
+* [Beep](../tB/Modules/Interaction/Beep) - sound a system beep
+
+## Process Control
+
+Procedures:
+
+* [Shell](../tB/Modules/Interaction/Shell) - run another program asynchronously and return its task ID
+* [AppActivate](../tB/Modules/Interaction/AppActivate) - change the focus to, or activate, a named window
+* [SendKeys](../tB/Modules/Interaction/SendKeys) - send keystrokes to the active window
+* [DoEvents](../tB/Modules/Interaction/DoEvents) - yield control to the message loop so pending events can be processed
+
+## COM and Automation
+
+Procedures:
+
+* [CreateObject](../tB/Modules/Interaction/CreateObject) - create a new instance of a COM/Automation object
+* [GetObject](../tB/Modules/Interaction/GetObject) - obtain a reference to an Automation object loaded from a file or already running
+* [CallByName](../tB/Modules/Interaction/CallByName) - invoke a method or property on an object dynamically by name
+* [CallByDispId](../tB/Modules/Interaction/CallByDispId) - invoke a method or property on an object dynamically by IDispatch dispatch ID (twinBASIC addition)
+
+## Command Line and Environment
+
+Procedures:
+
+* [Command$, Command](../tB/Modules/Interaction/Command) - return the command-line arguments passed to the program
+* [Environ$, Environ](../tB/Modules/Interaction/Environ) - return the value of a process environment variable
 
 ## Colours
 
@@ -174,6 +214,7 @@ Procedures:
 * [Round](../tB/Modules/Math/Round) - round the number to a given number of decimal places
 * [Rnd](../tB/Modules/Math/Rnd) - generate a random number in the range [0.0, 1.0)
 * [Randomize](../tB/Modules/Math/Randomize) - seed the random number generator
+* [Partition](../tB/Modules/Interaction/Partition) - return a string label identifying which of a series of equal-width numeric ranges a value falls into (histogram-style bucketing)
 
 See also:
 
