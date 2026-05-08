@@ -2,7 +2,6 @@
 title: General TODO List for /tB/Modules/
 nav_exclude: true
 redirect_from:
-  - /tB/Modules/Compilation
   - /tB/Modules/Constants
   - /tB/Modules/Conversion
   - /tB/Modules/ErrObject

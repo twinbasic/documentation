@@ -190,6 +190,18 @@ Procedures:
 * [MonthName](../tB/Modules/Strings/MonthName) - returns the name of the specified month
 * [WeekdayName](../tB/Modules/Strings/WeekdayName) - returns the name of the specified day of the week
 
+## Introspection
+
+Procedures:
+
+* [CurrentProjectName](../tB/Modules/Compilation/CurrentProjectName) - returns the name of the current project
+* [CurrentComponentName](../tB/Modules/Compilation/CurrentComponentName) - returns the name of the current component (module or class)
+* [CurrentComponentCLSID](../tB/Modules/Compilation/CurrentComponentCLSID) - returns the Class ID (CLSID) of the current class
+* [CurrentProcedureName](../tB/Modules/Compilation/CurrentProcedureName) - returns the name of the procedure in which the function is called
+* [CurrentSourceFile](../tB/Modules/Compilation/CurrentSourceFile) - returns the full path of the current source file
+* [ProcessorArchitecture](../tB/Modules/Compilation/ProcessorArchitecture) - returns the processor architecture of the running application
+* [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) - returns the twinBASIC compiler version number
+
 ## Financial
 
 Procedures:
