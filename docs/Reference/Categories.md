@@ -42,14 +42,26 @@ Statements:
 * [Select Case](../tB/Core/Select-Case) - execute a code block selected by an expression
 * [With](../tB/Core/With) - bring a variable or expression into scope
 * [Goto](../tB/Core/GoTo), [GoSub ... Return](../tB/Core/GoSub-Return) - transfer execution to another location
-* [Resume](../tB/Core/Resume) - resumes execution after an error has been caught
-* [On Error](../tB/Core/On-Error) - specifies what to do when an error occurs
 * [On ... GoTo](../tB/Core/On-GoTo), [On ... GoSub](../tB/Core/On-GoSub) - transfer execution to a location selected by an expression
 * [Stop](../tB/Core/Stop) - interrupt execution
 
 See also: 
 
 * [End](../tB/Core/End) - terminate execution.
+* [On Error](../tB/Core/On-Error), [Resume](../tB/Core/Resume) - flow control for run-time errors (see [Error Handling](#error-handling))
+
+## Error Handling
+
+Statements:
+
+* [On Error](../tB/Core/On-Error) - specifies what to do when an error occurs
+* [Resume](../tB/Core/Resume) - resumes execution after an error has been caught
+* [Error](../tB/Core/Error) statement - simulates the occurrence of an error (legacy; prefer **Err.Raise**)
+
+Procedures:
+
+* [Error$, Error](../tB/Modules/Conversion/Error) function - returns the error message that corresponds to a given error number
+* [CVErr](../tB/Modules/Conversion/CVErr) - wraps a numeric expression in a **Variant** of subtype **Error**
 
 ## Variable Declaration
 
@@ -99,6 +111,7 @@ Procedures:
 * [FileCopy](../tB/Core/FileCopy) - copy a file on disk
 * [Kill](../tB/Core/Kill) - delete a file from disk
 * [SavePicture](../tB/Core/SavePicture) - write a `Picture` or `Image` to a disk file
+* [MacID](../tB/Modules/Conversion/MacID) - convert a 4-character Mac file-type code (legacy)
 
 ## State Management
 
@@ -138,6 +151,44 @@ Procedures:
 * [Rnd](../tB/Modules/Math/Rnd) - generate a random number in the range [0.0, 1.0)
 * [Randomize](../tB/Modules/Math/Randomize) - seed the random number generator
 
+See also:
+
+* [Fix](../tB/Modules/Conversion/Fix), [Int](../tB/Modules/Conversion/Int) - extract the integer portion of a number
+* [CInt](../tB/Modules/Conversion/CInt), [CLng](../tB/Modules/Conversion/CLng), [CLngLng](../tB/Modules/Conversion/CLngLng), [CLngPtr](../tB/Modules/Conversion/CLngPtr) - coerce to integer types (rounds half-to-even)
+
+## Type Conversion
+
+Procedures that coerce an expression to a specific type:
+
+* [CBool](../tB/Modules/Conversion/CBool), [CByte](../tB/Modules/Conversion/CByte), [CCur](../tB/Modules/Conversion/CCur), [CDbl](../tB/Modules/Conversion/CDbl), [CDec](../tB/Modules/Conversion/CDec), [CInt](../tB/Modules/Conversion/CInt), [CLng](../tB/Modules/Conversion/CLng), [CLngLng](../tB/Modules/Conversion/CLngLng), [CLngPtr](../tB/Modules/Conversion/CLngPtr), [CSng](../tB/Modules/Conversion/CSng) - coerce to a specific numeric type
+* [CStr](../tB/Modules/Conversion/CStr) - coerce to **String** (locale-aware; preferred over [Str](../tB/Modules/Conversion/Str))
+* [CVar](../tB/Modules/Conversion/CVar) - coerce to **Variant**
+* [CDate](../tB/Modules/Conversion/CDate) - coerce to **Date**; [CVDate](../tB/Modules/Conversion/CVDate) returns a **Variant** of subtype **Date** (legacy)
+* [CType](../tB/Modules/Conversion/CType) - explicit cast operator with a caller-supplied target type (twinBASIC extension)
+
+Procedures that convert between numbers and strings:
+
+* [Hex$, Hex](../tB/Modules/Conversion/Hex) - hexadecimal string representation of a number
+* [Oct$, Oct](../tB/Modules/Conversion/Oct) - octal string representation of a number
+* [Str$, Str](../tB/Modules/Conversion/Str) - decimal string representation of a number
+* [Val](../tB/Modules/Conversion/Val) - parse a string into a **Double**
+* [ValDec](../tB/Modules/Conversion/ValDec) - parse a string into a **Decimal**
+
+Procedures that extract the integer portion of a number:
+
+* [Fix](../tB/Modules/Conversion/Fix) - truncates toward zero
+* [Int](../tB/Modules/Conversion/Int) - rounds toward negative infinity
+
+Other:
+
+* [Nz](../tB/Modules/Conversion/Nz) - replace **Null** with a default value
+
+See also:
+
+* [Format$, Format](../tB/Modules/Strings/Format) - locale-aware number formatting
+* [FormatNumber](../tB/Modules/Strings/FormatNumber), [FormatPercent](../tB/Modules/Strings/FormatPercent), [FormatCurrency](../tB/Modules/Strings/FormatCurrency), [FormatDateTime](../tB/Modules/Strings/FormatDateTime) - typed formatters
+* [CVErr](../tB/Modules/Conversion/CVErr), [Error$, Error](../tB/Modules/Conversion/Error) function - error helpers (see [Error Handling](#error-handling))
+
 ## String Handling
 
 Statements that modify strings:
@@ -176,6 +227,15 @@ Procedures that return modified strings:
 * [FormatNumber](../tB/Modules/Strings/FormatNumber) - formats an expression as a numeric string
 * [FormatPercent](../tB/Modules/Strings/FormatPercent) - formats an expression as a percent string
 
+Procedures that convert between numbers and strings:
+
+* [CStr](../tB/Modules/Conversion/CStr) - coerce a value to **String** (locale-aware)
+* [Hex$, Hex](../tB/Modules/Conversion/Hex) - hexadecimal string representation of a number
+* [Oct$, Oct](../tB/Modules/Conversion/Oct) - octal string representation of a number
+* [Str$, Str](../tB/Modules/Conversion/Str) - decimal string representation of a number
+* [Val](../tB/Modules/Conversion/Val) - parse a string into a **Double**
+* [ValDec](../tB/Modules/Conversion/ValDec) - parse a string into a **Decimal**
+
 See also:
 
 * [FormatCurrency](../tB/Modules/Strings/FormatCurrency) - format an expression as a currency string
@@ -189,6 +249,10 @@ Procedures:
 * [FormatDateTime](../tB/Modules/Strings/FormatDateTime) - formats an expression as a date/time string
 * [MonthName](../tB/Modules/Strings/MonthName) - returns the name of the specified month
 * [WeekdayName](../tB/Modules/Strings/WeekdayName) - returns the name of the specified day of the week
+
+See also:
+
+* [CDate](../tB/Modules/Conversion/CDate), [CVDate](../tB/Modules/Conversion/CVDate) - coerce an expression to **Date** or **Variant** (subtype **Date**)
 
 ## Introspection
 
@@ -226,5 +290,4 @@ Procedures:
 Statements:
 
 * [DefBool, DefByte, DefInt, DefLng, DefCur, DefSng, DefDbl, DefDec, DefDate, DefStr, DefObj, DefVar](../tB/Core/Deftype) - used to give implicit types to single-letter variables
-* [Error](../tB/Core/Error) - raise an error
 

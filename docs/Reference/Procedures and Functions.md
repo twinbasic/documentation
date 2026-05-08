@@ -24,17 +24,33 @@ permalink: /Reference/Procedures-and-Functions
 ## C
 
 - [Calendar](../tB/Modules/DateTime/Calendar) -- returns or sets the calendar type (Gregorian or Hijri)
+- [CBool](../tB/Modules/Conversion/CBool) -- coerces an expression to a **Boolean**
+- [CByte](../tB/Modules/Conversion/CByte) -- coerces an expression to a **Byte**
+- [CCur](../tB/Modules/Conversion/CCur) -- coerces an expression to a **Currency**
+- [CDate](../tB/Modules/Conversion/CDate) -- coerces an expression to a **Date**
+- [CDbl](../tB/Modules/Conversion/CDbl) -- coerces an expression to a **Double**
+- [CDec](../tB/Modules/Conversion/CDec) -- coerces an expression to a **Decimal**
 - [ChDir](../tB/Core/ChDir) -- changes the current directory or folder
 - [ChDrive](../tB/Core/ChDrive) -- changes the current drive
 - [CurDir](../tB/Core/CurDir) -- returns the current path
 - [Chr$, Chr, ChrB$, ChrB, ChrW$, ChrW](../tB/Modules/Strings/Chr) -- returns the character associated with a given character code
+- [CInt](../tB/Modules/Conversion/CInt) -- coerces an expression to an **Integer**
+- [CLng](../tB/Modules/Conversion/CLng) -- coerces an expression to a **Long**
+- [CLngLng](../tB/Modules/Conversion/CLngLng) -- coerces an expression to a **LongLong**
+- [CLngPtr](../tB/Modules/Conversion/CLngPtr) -- coerces an expression to a **LongPtr**
 - [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) -- returns the twinBASIC compiler version number
 - [Cos](../tB/Modules/Math/Cos) -- returns the cosine of an angle
+- [CSng](../tB/Modules/Conversion/CSng) -- coerces an expression to a **Single**
+- [CStr](../tB/Modules/Conversion/CStr) -- coerces an expression to a **String**
+- [CType](../tB/Modules/Conversion/CType) -- generic type conversion supporting the **CType(Of *type*)** cast operator
 - [CurrentComponentCLSID](../tB/Modules/Compilation/CurrentComponentCLSID) -- returns the Class ID (CLSID) of the current class
 - [CurrentComponentName](../tB/Modules/Compilation/CurrentComponentName) -- returns the name of the current component (module or class)
 - [CurrentProcedureName](../tB/Modules/Compilation/CurrentProcedureName) -- returns the name of the procedure in which the function is called
 - [CurrentProjectName](../tB/Modules/Compilation/CurrentProjectName) -- returns the name of the current project
 - [CurrentSourceFile](../tB/Modules/Compilation/CurrentSourceFile) -- returns the full path of the current source file
+- [CVar](../tB/Modules/Conversion/CVar) -- coerces an expression to a **Variant**
+- [CVDate](../tB/Modules/Conversion/CVDate) -- coerces an expression to a **Variant** of subtype **Date**
+- [CVErr](../tB/Modules/Conversion/CVErr) -- coerces a numeric expression to a **Variant** of subtype **Error**
 
 ## D
 
@@ -52,6 +68,7 @@ permalink: /Reference/Procedures-and-Functions
 ## E
 
 - [EOF](../tB/Modules/FileSystem/EOF) -- returns whether the end of a file has been reached
+- [Error$, Error](../tB/Modules/Conversion/Error) -- returns the error message that corresponds to a given error number
 - [Exp](../tB/Modules/Math/Exp) -- returns *e* (the base of natural logarithms) raised to a power
 
 ## F
@@ -61,6 +78,7 @@ permalink: /Reference/Procedures-and-Functions
 - [FileDateTime](../tB/Modules/FileSystem/FileDateTime) -- returns the date and time when a file was created or last modified
 - [FileLen](../tB/Modules/FileSystem/FileLen) -- returns the length of a file in bytes
 - [Filter](../tB/Modules/Strings/Filter) -- filters a string array into a subset according to criteria
+- [Fix](../tB/Modules/Conversion/Fix) -- returns the integer portion of a number, truncating toward zero
 - [Format$, Format](../tB/Modules/Strings/Format) -- formats an expression according to instructions contained in a format expression
 - [FormatCurrency](../tB/Modules/Strings/FormatCurrency) -- formats an expression as a currency value
 - [FormatDateTime](../tB/Modules/Strings/FormatDateTime) -- formats an expression as a date or time
@@ -76,12 +94,14 @@ permalink: /Reference/Procedures-and-Functions
 
 ## H
 
+- [Hex$, Hex](../tB/Modules/Conversion/Hex) -- returns a string representing the hexadecimal value of a number
 - [Hour](../tB/Modules/DateTime/Hour) -- returns the hour of the day from a time value
 
 ## I
 
 - [InStr$, InStrB, InStr](../tB/Modules/Strings/InStr) -- returns the position of one string within another
 - [InStrRev](../tB/Modules/Strings/InStrRev) -- returns the position of one string within another, searching from the end
+- [Int](../tB/Modules/Conversion/Int) -- returns the integer portion of a number, rounding toward negative infinity
 - [IPmt](../tB/Modules/Financial/IPmt) -- returns the interest payment for a given period of an annuity
 - [IRR](../tB/Modules/Financial/IRR) -- returns the internal rate of return for a series of periodic cash flows
 
@@ -106,6 +126,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## M
 
+- [MacID](../tB/Modules/Conversion/MacID) -- on the Macintosh, converts a 4-character constant to a value usable by **Dir**, **Kill**, **Shell**, or **AppActivate**
 - [Mid$, Mid, MidB$, MidB](../tB/Modules/Strings/Mid) -- returns a substring of a string
 - [Minute](../tB/Modules/DateTime/Minute) -- returns the minute of the hour from a time value
 - [MIRR](../tB/Modules/Financial/MIRR) -- returns the modified internal rate of return for a series of periodic cash flows
@@ -119,6 +140,11 @@ permalink: /Reference/Procedures-and-Functions
 - [NPer](../tB/Modules/Financial/NPer) -- returns the number of periods for an annuity based on periodic fixed payments and a fixed interest rate
 - [NPV](../tB/Modules/Financial/NPV) -- returns the net present value of an investment based on a series of periodic cash flows and a discount rate
 - [Now](../tB/Core/Now) -- returns the current system date and time
+- [Nz](../tB/Modules/Conversion/Nz) -- replaces a **Null** value with a specified replacement value
+
+## O
+
+- [Oct$, Oct](../tB/Modules/Conversion/Oct) -- returns a string representing the octal value of a number
 
 ## P
 
@@ -156,6 +182,7 @@ permalink: /Reference/Procedures-and-Functions
 - [Space$, Space](../tB/Modules/Strings/Space) -- returns a string of spaces
 - [Split](../tB/Modules/Strings/Split) -- splits a string into a string array
 - [Sqr](../tB/Modules/Math/Sqr) -- returns the square root of a number
+- [Str$, Str](../tB/Modules/Conversion/Str) -- returns the string representation of a number
 - [StrComp](../tB/Modules/Strings/StrComp) -- compares two strings
 - [StrConv](../tB/Modules/Strings/StrConv) -- converts a string to a specified format
 - [String$, String](../tB/Modules/Strings/String) -- returns a string of repeating characters
@@ -177,6 +204,9 @@ permalink: /Reference/Procedures-and-Functions
 - Unload
 
 ## V
+
+- [Val](../tB/Modules/Conversion/Val) -- parses a string into a **Double**
+- [ValDec](../tB/Modules/Conversion/ValDec) -- parses a string into a **Decimal**
 
 ## W
 
