@@ -13,17 +13,19 @@ permalink: /Reference/Procedures-and-Functions
 ## A
 
 - [Abs](../tB/Modules/Math/Abs) -- returns the absolute value of a number
-- [AppActivate](../tB/Core/AppActivate) -- activates an application window
+- [AppActivate](../tB/Modules/Interaction/AppActivate) -- activates an application window
 - [Asc, AscB, AscW](../tB/Modules/Strings/Asc) -- returns the character code of the first letter in a string
 - [Atn](../tB/Modules/Math/Atn) -- returns the arctangent of a number
 
 ## B
 
-- [Beep](../tB/Core/Beep) -- sounds a tone through the computer’s speaker
+- [Beep](../tB/Modules/Interaction/Beep) -- sounds a tone through the computer’s speaker
 
 ## C
 
 - [Calendar](../tB/Modules/DateTime/Calendar) -- returns or sets the calendar type (Gregorian or Hijri)
+- [CallByDispId](../tB/Modules/Interaction/CallByDispId) -- invokes a method or property on an object dynamically by IDispatch dispatch ID
+- [CallByName](../tB/Modules/Interaction/CallByName) -- invokes a method or property on an object dynamically by name
 - [CBool](../tB/Modules/Conversion/CBool) -- coerces an expression to a **Boolean**
 - [CByte](../tB/Modules/Conversion/CByte) -- coerces an expression to a **Byte**
 - [CCur](../tB/Modules/Conversion/CCur) -- coerces an expression to a **Currency**
@@ -33,13 +35,16 @@ permalink: /Reference/Procedures-and-Functions
 - [ChDir](../tB/Core/ChDir) -- changes the current directory or folder
 - [ChDrive](../tB/Core/ChDrive) -- changes the current drive
 - [CurDir](../tB/Core/CurDir) -- returns the current path
+- [Choose](../tB/Modules/Interaction/Choose) -- returns one value from a list, selected by 1-based index
 - [Chr$, Chr, ChrB$, ChrB, ChrW$, ChrW](../tB/Modules/Strings/Chr) -- returns the character associated with a given character code
 - [CInt](../tB/Modules/Conversion/CInt) -- coerces an expression to an **Integer**
 - [CLng](../tB/Modules/Conversion/CLng) -- coerces an expression to a **Long**
 - [CLngLng](../tB/Modules/Conversion/CLngLng) -- coerces an expression to a **LongLong**
 - [CLngPtr](../tB/Modules/Conversion/CLngPtr) -- coerces an expression to a **LongPtr**
+- [Command$, Command](../tB/Modules/Interaction/Command) -- returns the command-line arguments passed to the program
 - [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) -- returns the twinBASIC compiler version number
 - [Cos](../tB/Modules/Math/Cos) -- returns the cosine of an angle
+- [CreateObject](../tB/Modules/Interaction/CreateObject) -- creates a new instance of a COM/Automation object
 - [CSng](../tB/Modules/Conversion/CSng) -- coerces an expression to a **Single**
 - [CStr](../tB/Modules/Conversion/CStr) -- coerces an expression to a **String**
 - [CType](../tB/Modules/Conversion/CType) -- generic type conversion supporting the **CType(Of *type*)** cast operator
@@ -62,11 +67,13 @@ permalink: /Reference/Procedures-and-Functions
 - [DateValue](../tB/Modules/DateTime/DateValue) -- converts a string to a date
 - [Day](../tB/Modules/DateTime/Day) -- returns the day of the month from a date value
 - [DDB](../tB/Modules/Financial/DDB) -- returns the depreciation of an asset via the double-declining balance method
-- [DeleteSetting](../tB/Core/DeleteSetting) -- deletes a section or key setting from an application’s entry in the Windows registry
+- [DeleteSetting](../tB/Modules/Interaction/DeleteSetting) -- deletes a section or key setting from an application’s entry in the Windows registry
 - [Dir](../tB/Core/Dir) -- returns the name of a file, directory, folder, or volume label that matches a pattern
+- [DoEvents](../tB/Modules/Interaction/DoEvents) -- yields control to the message loop so pending events can be processed
 
 ## E
 
+- [Environ$, Environ](../tB/Modules/Interaction/Environ) -- returns the value of a process environment variable
 - [EOF](../tB/Modules/FileSystem/EOF) -- returns whether the end of a file has been reached
 - [Erl](../tB/Modules/Information/Erl) -- returns the line number where the most recent run-time error occurred
 - [Err](../tB/Modules/Information/Err) -- returns the **ErrObject** describing the current run-time error state
@@ -91,8 +98,10 @@ permalink: /Reference/Procedures-and-Functions
 
 ## G
 
+- [GetAllSettings](../tB/Modules/Interaction/GetAllSettings) -- returns every key/value pair in a section of an application's registry entry
 - [GetAttr](../tB/Modules/FileSystem/GetAttr) -- returns the attributes of a file or directory
-- [GetSetting](../tB/Core/GetSetting) -- returns a string key setting value from an application’s entry in the Windows registry
+- [GetObject](../tB/Modules/Interaction/GetObject) -- returns a reference to an Automation object loaded from a file or already running
+- [GetSetting](../tB/Modules/Interaction/GetSetting) -- returns a string key setting value from an application’s entry in the Windows registry
 
 ## H
 
@@ -101,7 +110,10 @@ permalink: /Reference/Procedures-and-Functions
 
 ## I
 
+- [If](../tB/Modules/Interaction/If) -- evaluates an expression and returns one of two values, with short-circuit evaluation
+- [IIf](../tB/Modules/Interaction/IIf) -- evaluates an expression and returns one of two values; both branches are always evaluated
 - [IMEStatus](../tB/Modules/Information/IMEStatus) -- returns the status of the Input Method Editor
+- [InputBox](../tB/Modules/Interaction/InputBox) -- prompts the user for a line of text and returns what was entered
 - [InStr$, InStrB, InStr](../tB/Modules/Strings/InStr) -- returns the position of one string within another
 - [InStrRev](../tB/Modules/Strings/InStrRev) -- returns the position of one string within another, searching from the end
 - [Int](../tB/Modules/Conversion/Int) -- returns the integer portion of a number, rounding toward negative infinity
@@ -146,6 +158,7 @@ permalink: /Reference/Procedures-and-Functions
 - [MkDir](../tB/Core/MkDir) -- creates a new directory or folder
 - [Month](../tB/Modules/DateTime/Month) -- returns the month of the year from a date value
 - [MonthName](../tB/Modules/Strings/MonthName) -- returns the name of the specified month
+- [MsgBox](../tB/Modules/Interaction/MsgBox) -- displays a modal message dialog and returns the button the user clicked
 
 ## N
 
@@ -161,6 +174,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## P
 
+- [Partition](../tB/Modules/Interaction/Partition) -- returns a string identifying the range a number falls into
 - [Pmt](../tB/Modules/Financial/Pmt) -- returns the payment for an annuity based on periodic fixed payments and a fixed interest rate
 - [PPmt](../tB/Modules/Financial/PPmt) -- returns the principal payment for a given period of an annuity
 - [ProcessorArchitecture](../tB/Modules/Compilation/ProcessorArchitecture) -- returns the processor architecture of the running application
@@ -172,6 +186,8 @@ permalink: /Reference/Procedures-and-Functions
 
 ## R
 
+- [RaiseEventByName](../tB/Modules/Interaction/RaiseEventByName) -- raises an event by name on an object, taking arguments as a **Variant** array
+- [RaiseEventByName2](../tB/Modules/Interaction/RaiseEventByName2) -- raises an event by name on an object, taking a variable-length argument list
 - [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
 - [Rate](../tB/Modules/Financial/Rate) -- returns the interest rate per period for an annuity
 - [Replace](../tB/Modules/Strings/Replace) -- replaces a substring within a string with another substring
@@ -191,13 +207,13 @@ permalink: /Reference/Procedures-and-Functions
 ## S
 
 - SavePicture
-- [SaveSetting](../tB/Core/SaveSetting) -- saves or creates an application entry in the application’s entry in the Windows registry
+- [SaveSetting](../tB/Modules/Interaction/SaveSetting) -- saves or creates an application entry in the application’s entry in the Windows registry
 - [Second](../tB/Modules/DateTime/Second) -- returns the second of the minute from a time value
 - [Seek](../tB/Modules/FileSystem/Seek) -- returns or sets the read/write position within an open file
-- [SendKeys](../tB/Core/SendKeys)
+- [SendKeys](../tB/Modules/Interaction/SendKeys) -- sends keystrokes to the active window
 - [SetAttr](../tB/Modules/FileSystem/SetAttr) -- sets attribute information for a file
 - [Sgn](../tB/Modules/Math/Sgn) -- returns a value indicating the sign of a number
-- [Shell](../tB/Core/Shell)
+- [Shell](../tB/Modules/Interaction/Shell) -- runs another program asynchronously and returns its task ID
 - [Sin](../tB/Modules/Math/Sin) -- returns the sine of an angle
 - [SLN](../tB/Modules/Financial/SLN) -- returns the straight-line depreciation of an asset for a single period
 - [Space$, Space](../tB/Modules/Strings/Space) -- returns a string of spaces
@@ -208,6 +224,7 @@ permalink: /Reference/Procedures-and-Functions
 - [StrConv](../tB/Modules/Strings/StrConv) -- converts a string to a specified format
 - [String$, String](../tB/Modules/Strings/String) -- returns a string of repeating characters
 - [StrReverse](../tB/Modules/Strings/StrReverse) -- reverses the order of characters in a string
+- [Switch](../tB/Modules/Interaction/Switch) -- returns the value paired with the first **True** condition in a list of (condition, value) pairs
 - [SYD](../tB/Modules/Financial/SYD) -- returns the sum-of-years' digits depreciation of an asset for a specified period
 
 ## T

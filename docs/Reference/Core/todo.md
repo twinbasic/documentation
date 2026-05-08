@@ -42,7 +42,6 @@ redirect_from:
   - /tB/Core/RSet
   - /tB/Core/SavePicture
   - /tB/Core/Select-Case
-  - /tB/Core/SendKeys
   - /tB/Core/Set
   - /tB/Core/Static
   - /tB/Core/Sub
