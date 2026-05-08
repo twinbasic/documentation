@@ -28,7 +28,13 @@ permalink: /Reference/Procedures-and-Functions
 - [ChDrive](../tB/Core/ChDrive) -- changes the current drive
 - [CurDir](../tB/Core/CurDir) -- returns the current path
 - [Chr$, Chr, ChrB$, ChrB, ChrW$, ChrW](../tB/Modules/Strings/Chr) -- returns the character associated with a given character code
+- [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) -- returns the twinBASIC compiler version number
 - [Cos](../tB/Modules/Math/Cos) -- returns the cosine of an angle
+- [CurrentComponentCLSID](../tB/Modules/Compilation/CurrentComponentCLSID) -- returns the Class ID (CLSID) of the current class
+- [CurrentComponentName](../tB/Modules/Compilation/CurrentComponentName) -- returns the name of the current component (module or class)
+- [CurrentProcedureName](../tB/Modules/Compilation/CurrentProcedureName) -- returns the name of the procedure in which the function is called
+- [CurrentProjectName](../tB/Modules/Compilation/CurrentProjectName) -- returns the name of the current project
+- [CurrentSourceFile](../tB/Modules/Compilation/CurrentSourceFile) -- returns the full path of the current source file
 
 ## D
 
@@ -118,6 +124,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Pmt](../tB/Modules/Financial/Pmt) -- returns the payment for an annuity based on periodic fixed payments and a fixed interest rate
 - [PPmt](../tB/Modules/Financial/PPmt) -- returns the principal payment for a given period of an annuity
+- [ProcessorArchitecture](../tB/Modules/Compilation/ProcessorArchitecture) -- returns the processor architecture of the running application
 - [PV](../tB/Modules/Financial/PV) -- returns the present value of an annuity based on periodic fixed payments and a fixed interest rate
 
 ## Q
