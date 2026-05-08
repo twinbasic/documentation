@@ -13,7 +13,9 @@ permalink: /Reference/Procedures-and-Functions
 ## A
 
 - [Abs](../tB/Modules/Math/Abs) -- returns the absolute value of a number
+- [AllocMem](../tB/Modules/HiddenModule/AllocMem) -- allocates a block of native memory and returns its address
 - [AppActivate](../tB/Modules/Interaction/AppActivate) -- activates an application window
+- [Array](../tB/Modules/HiddenModule/Array) -- creates a **Variant** array from a comma-separated list of values, or destructures one when used on the left of an assignment
 - [Asc, AscB, AscW](../tB/Modules/Strings/Asc) -- returns the character code of the first letter in a string
 - [Atn](../tB/Modules/Math/Atn) -- returns the arctangent of a number
 
@@ -43,8 +45,11 @@ permalink: /Reference/Procedures-and-Functions
 - [CLngPtr](../tB/Modules/Conversion/CLngPtr) -- coerces an expression to a **LongPtr**
 - [Command$, Command](../tB/Modules/Interaction/Command) -- returns the command-line arguments passed to the program
 - [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) -- returns the twinBASIC compiler version number
+- [ConvertIconToBitmap](../tB/Modules/HiddenModule/ConvertIconToBitmap) -- converts an icon picture to a bitmap picture
 - [Cos](../tB/Modules/Math/Cos) -- returns the cosine of an angle
+- [CreateGUID](../tB/Modules/HiddenModule/CreateGUID) -- generates a fresh GUID and returns it as a registry-formatted string
 - [CreateObject](../tB/Modules/Interaction/CreateObject) -- creates a new instance of a COM/Automation object
+- [CreateStdPictureFromHandle](../tB/Modules/HiddenModule/CreateStdPictureFromHandle) -- wraps a GDI bitmap or icon handle in an **stdole.StdPicture**
 - [CSng](../tB/Modules/Conversion/CSng) -- coerces an expression to a **Single**
 - [CStr](../tB/Modules/Conversion/CStr) -- coerces an expression to a **String**
 - [CType](../tB/Modules/Conversion/CType) -- generic type conversion supporting the **CType(Of *type*)** cast operator
@@ -73,11 +78,14 @@ permalink: /Reference/Procedures-and-Functions
 
 ## E
 
+- [Emit](../tB/Modules/HiddenModule/Emit) -- injects custom **Byte** values into the codegen stream of the enclosing procedure
+- [EmitAny](../tB/Modules/HiddenModule/EmitAny) -- injects custom typed values into the codegen stream of the enclosing procedure
 - [Environ$, Environ](../tB/Modules/Interaction/Environ) -- returns the value of a process environment variable
 - [EOF](../tB/Modules/FileSystem/EOF) -- returns whether the end of a file has been reached
 - [Erl](../tB/Modules/Information/Erl) -- returns the line number where the most recent run-time error occurred
 - [Err](../tB/Modules/Information/Err) -- returns the **ErrObject** describing the current run-time error state
 - [Error$, Error](../tB/Modules/Conversion/Error) -- returns the error message that corresponds to a given error number
+- [Eval](../tB/Modules/HiddenModule/Eval) -- compiles and evaluates a twinBASIC expression supplied as a string
 - [Exp](../tB/Modules/Math/Exp) -- returns *e* (the base of natural logarithms) raised to a power
 
 ## F
@@ -94,12 +102,18 @@ permalink: /Reference/Procedures-and-Functions
 - [FormatNumber](../tB/Modules/Strings/FormatNumber) -- formats an expression as a number
 - [FormatPercent](../tB/Modules/Strings/FormatPercent) -- formats an expression as a percentage
 - [FreeFile](../tB/Modules/FileSystem/FreeFile) -- returns the next file number available for use by the **Open** statement
+- [FreeMem](../tB/Modules/HiddenModule/FreeMem) -- frees memory allocated with **AllocMem**
 - [FV](../tB/Modules/Financial/FV) -- returns the future value of an annuity based on periodic fixed payments and a fixed interest rate
 
 ## G
 
 - [GetAllSettings](../tB/Modules/Interaction/GetAllSettings) -- returns every key/value pair in a section of an application's registry entry
 - [GetAttr](../tB/Modules/FileSystem/GetAttr) -- returns the attributes of a file or directory
+- [GetMem1](../tB/Modules/HiddenModule/GetMem1) -- reads one byte from a memory address into a **Byte** variable
+- [GetMem2](../tB/Modules/HiddenModule/GetMem2) -- reads two bytes from a memory address into an **Integer** variable
+- [GetMem4](../tB/Modules/HiddenModule/GetMem4) -- reads four bytes from a memory address into a **Long** variable
+- [GetMem8](../tB/Modules/HiddenModule/GetMem8) -- reads eight bytes from a memory address into a **Currency** variable
+- [GetMemPtr](../tB/Modules/HiddenModule/GetMemPtr) -- reads a pointer-sized value from a memory address into a **LongPtr** variable
 - [GetObject](../tB/Modules/Interaction/GetObject) -- returns a reference to an Automation object loaded from a file or already running
 - [GetSetting](../tB/Modules/Interaction/GetSetting) -- returns a string key setting value from an application’s entry in the Windows registry
 
@@ -113,6 +127,8 @@ permalink: /Reference/Procedures-and-Functions
 - [If](../tB/Modules/Interaction/If) -- evaluates an expression and returns one of two values, with short-circuit evaluation
 - [IIf](../tB/Modules/Interaction/IIf) -- evaluates an expression and returns one of two values; both branches are always evaluated
 - [IMEStatus](../tB/Modules/Information/IMEStatus) -- returns the status of the Input Method Editor
+- [Input, Input$](../tB/Modules/HiddenModule/Input) -- reads a fixed number of characters from an open sequential file
+- [InputB, InputB$](../tB/Modules/HiddenModule/InputB) -- reads a fixed number of bytes from an open sequential file
 - [InputBox](../tB/Modules/Interaction/InputBox) -- prompts the user for a line of text and returns what was entered
 - [InStr$, InStrB, InStr](../tB/Modules/Strings/InStr) -- returns the position of one string within another
 - [InStrRev](../tB/Modules/Strings/InStrRev) -- returns the position of one string within another, searching from the end
@@ -170,14 +186,21 @@ permalink: /Reference/Procedures-and-Functions
 
 ## O
 
+- [ObjPtr](../tB/Modules/HiddenModule/ObjPtr) -- returns the COM-identity address of an object
 - [Oct$, Oct](../tB/Modules/Conversion/Oct) -- returns a string representing the octal value of a number
 
 ## P
 
 - [Partition](../tB/Modules/Interaction/Partition) -- returns a string identifying the range a number falls into
+- [PictureToByteArray](../tB/Modules/HiddenModule/PictureToByteArray) -- serialises an **IPicture** into a **Byte** array
 - [Pmt](../tB/Modules/Financial/Pmt) -- returns the payment for an annuity based on periodic fixed payments and a fixed interest rate
 - [PPmt](../tB/Modules/Financial/PPmt) -- returns the principal payment for a given period of an annuity
 - [ProcessorArchitecture](../tB/Modules/Compilation/ProcessorArchitecture) -- returns the processor architecture of the running application
+- [PutMem1](../tB/Modules/HiddenModule/PutMem1) -- writes one byte to a memory address
+- [PutMem2](../tB/Modules/HiddenModule/PutMem2) -- writes two bytes to a memory address
+- [PutMem4](../tB/Modules/HiddenModule/PutMem4) -- writes four bytes to a memory address
+- [PutMem8](../tB/Modules/HiddenModule/PutMem8) -- writes eight bytes to a memory address
+- [PutMemPtr](../tB/Modules/HiddenModule/PutMemPtr) -- writes a pointer-sized value to a memory address
 - [PV](../tB/Modules/Financial/PV) -- returns the present value of an annuity based on periodic fixed payments and a fixed interest rate
 
 ## Q
@@ -223,6 +246,7 @@ permalink: /Reference/Procedures-and-Functions
 - [StrComp](../tB/Modules/Strings/StrComp) -- compares two strings
 - [StrConv](../tB/Modules/Strings/StrConv) -- converts a string to a specified format
 - [String$, String](../tB/Modules/Strings/String) -- returns a string of repeating characters
+- [StrPtr](../tB/Modules/HiddenModule/StrPtr) -- returns the address of the underlying buffer of a **String**
 - [StrReverse](../tB/Modules/Strings/StrReverse) -- reverses the order of characters in a string
 - [Switch](../tB/Modules/Interaction/Switch) -- returns the value paired with the first **True** condition in a list of (condition, value) pairs
 - [SYD](../tB/Modules/Financial/SYD) -- returns the sum-of-years' digits depreciation of an asset for a specified period
@@ -248,13 +272,20 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Val](../tB/Modules/Conversion/Val) -- parses a string into a **Double**
 - [ValDec](../tB/Modules/Conversion/ValDec) -- parses a string into a **Decimal**
+- [VarPtr](../tB/Modules/HiddenModule/VarPtr) -- returns the address of a variable
 - [VarType](../tB/Modules/Information/VarType) -- returns the **VbVarType** enumeration value identifying a variable's subtype
+- [vbaCastObj](../tB/Modules/HiddenModule/vbaCastObj) -- returns an object reinterpreted as another COM interface
+- [vbaCopyBytes](../tB/Modules/HiddenModule/vbaCopyBytes) -- copies a block of bytes from one address to another
+- [vbaCopyBytesZero](../tB/Modules/HiddenModule/vbaCopyBytesZero) -- copies a block of bytes from one address to another, then zeros the source
+- [vbaObjAddref](../tB/Modules/HiddenModule/vbaObjAddref) -- increments the COM reference count of an object at a given address
+- [vbaObjSet](../tB/Modules/HiddenModule/vbaObjSet) -- assigns an object pointer to an object variable, releasing any prior reference
+- [vbaObjSetAddref](../tB/Modules/HiddenModule/vbaObjSetAddref) -- assigns an object pointer to an object variable, adding a reference and releasing any prior reference
 
 ## W
 
 - [Weekday](../tB/Modules/DateTime/Weekday) -- returns the day of the week from a date value
 - [WeekdayName](../tB/Modules/Strings/WeekdayName) -- returns the name of the specified day of the week
-- Width
+- [Width](../tB/Modules/HiddenModule/Width) -- sets the line width for a sequential output file
 
 ## X
 

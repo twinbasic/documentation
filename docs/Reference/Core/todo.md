@@ -50,7 +50,6 @@ redirect_from:
   - /tB/Core/Unload
   - /tB/Core/Unlock
   - /tB/Core/While-Wend
-  - /tB/Core/Width
   - /tB/Core/With
   - /tB/Core/Write
 ---

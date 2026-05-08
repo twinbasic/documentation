@@ -71,6 +71,7 @@ Procedures:
 * [Erl](../tB/Modules/Information/Erl) - returns the line number where the most recent run-time error occurred
 * [Error$, Error](../tB/Modules/Conversion/Error) function - returns the error message that corresponds to a given error number
 * [CVErr](../tB/Modules/Conversion/CVErr) - wraps a numeric expression in a **Variant** of subtype **Error**
+* [SetThreadGlobalErrorTrap](../tB/Modules/HiddenModule/SetThreadGlobalErrorTrap) - register a callback that fires when an unhandled run-time error escapes the active error handler chain on the calling thread
 
 ## Variable Declaration
 
@@ -108,7 +109,8 @@ Procedures:
 See also:
 
 * [Dim](../tB/Core/Dim) - allocate a scalar or array variable
-* [Array](../tB/Modules/VBA/Array), [Filter](../tB/Modules/Strings/Filter), [Join](../tB/Modules/Strings/Join), [Split](../tB/Modules/Strings/Split) - array helpers in the **VBA** and **Strings** modules
+* [Array](../tB/Modules/HiddenModule/Array), [Filter](../tB/Modules/Strings/Filter), [Join](../tB/Modules/Strings/Join), [Split](../tB/Modules/Strings/Split) - array helpers
+* [vbaAryMove](../tB/Modules/HiddenModule/vbaAryMove), [vbaRefVarAry](../tB/Modules/HiddenModule/vbaRefVarAry) - low-level **Variant**-array helpers (see [Memory and Pointers](#memory-and-pointers))
 
 ## File I/O
 
@@ -124,7 +126,9 @@ Statements:
 Procedures:
 
 * [Reset](../tB/Core/Reset) - close all open disk files
-* [Width](../tB/Core/Width) - set the limit for line lengths when printing
+* [Width](../tB/Modules/HiddenModule/Width) - set the limit for line lengths when printing
+* [Input, Input$](../tB/Modules/HiddenModule/Input) - read a fixed number of characters from a sequential file
+* [InputB, InputB$](../tB/Modules/HiddenModule/InputB) - read a fixed number of bytes from a sequential file
 * [ChDir](../tB/Core/ChDir), [ChDrive](../tB/Core/ChDrive) - change the current working directory and disk drive
 * [MkDir](../tB/Core/MkDir), [RmDir](../tB/Core/RmDir) - create/remove a directory on disk
 * [Name](../tB/Core/Name) - rename a file or directory on disk
@@ -153,10 +157,12 @@ Procedures:
 
 * [RaiseEventByName](../tB/Modules/Interaction/RaiseEventByName) - raise an event by name on an object, taking arguments as a **Variant** array
 * [RaiseEventByName2](../tB/Modules/Interaction/RaiseEventByName2) - raise an event by name on an object, taking a variable-length argument list
+* [RuntimeCreateGetMessageHook](../tB/Modules/HiddenModule/RuntimeCreateGetMessageHook) - create an **IGetMessageHook** for filtering Windows messages destined for a window and (optionally) its descendants
 
 See also
 
 * [Event](../tB/Core/Event) - declare an event
+* [IGetMessageHook interface](../tB/Modules/HiddenModule/#igetmessagehook-interface) - subscribe a callback to a Windows message type, then start/stop delivery
 
 ## User Dialogs
 
@@ -183,6 +189,14 @@ Procedures:
 * [GetObject](../tB/Modules/Interaction/GetObject) - obtain a reference to an Automation object loaded from a file or already running
 * [CallByName](../tB/Modules/Interaction/CallByName) - invoke a method or property on an object dynamically by name
 * [CallByDispId](../tB/Modules/Interaction/CallByDispId) - invoke a method or property on an object dynamically by IDispatch dispatch ID (twinBASIC addition)
+* [CreateGUID](../tB/Modules/HiddenModule/CreateGUID) - generate a fresh GUID and return it as a registry-formatted string
+* [vbaCastObj](../tB/Modules/HiddenModule/vbaCastObj) - reinterpret an object as another COM interface (a typed `QueryInterface`)
+* [vbaObjSet](../tB/Modules/HiddenModule/vbaObjSet), [vbaObjSetAddref](../tB/Modules/HiddenModule/vbaObjSetAddref) - assign a raw object pointer to an **Object** variable, with or without addref
+* [vbaObjAddref](../tB/Modules/HiddenModule/vbaObjAddref) - increment the COM reference count of the object at a given address
+
+See also:
+
+* [ObjPtr](../tB/Modules/HiddenModule/ObjPtr) - return the COM-identity address of an object (see [Memory and Pointers](#memory-and-pointers))
 
 ## Command Line and Environment
 
@@ -351,10 +365,66 @@ Procedures:
 * [CurrentSourceFile](../tB/Modules/Compilation/CurrentSourceFile) - returns the full path of the current source file
 * [ProcessorArchitecture](../tB/Modules/Compilation/ProcessorArchitecture) - returns the processor architecture of the running application
 * [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) - returns the twinBASIC compiler version number
+* [GetDeclaredTypeProgId](../tB/Modules/HiddenModule/GetDeclaredTypeProgId), [GetDeclaredTypeClsid](../tB/Modules/HiddenModule/GetDeclaredTypeClsid), [GetDeclaredTypeIid](../tB/Modules/HiddenModule/GetDeclaredTypeIid), [GetDeclaredTypeEventIid](../tB/Modules/HiddenModule/GetDeclaredTypeEventIid) - return the COM ProgID/CLSID/IID/event IID of a declared type, resolved at compile time
+* [GetDeclaredMinEnumValue](../tB/Modules/HiddenModule/GetDeclaredMinEnumValue), [GetDeclaredMaxEnumValue](../tB/Modules/HiddenModule/GetDeclaredMaxEnumValue) - return the smallest/largest value of a declared enumeration, resolved at compile time
 
 See also:
 
 * [IMEStatus](../tB/Modules/Information/IMEStatus) - the current Input Method Editor mode (East Asian Windows only)
+
+## Memory and Pointers
+
+Procedures:
+
+* [ObjPtr](../tB/Modules/HiddenModule/ObjPtr) - return the COM-identity address of an object
+* [StrPtr](../tB/Modules/HiddenModule/StrPtr) - return the address of the underlying buffer of a **String**
+* [VarPtr](../tB/Modules/HiddenModule/VarPtr) - return the address of a variable
+* [AllocMem](../tB/Modules/HiddenModule/AllocMem), [FreeMem](../tB/Modules/HiddenModule/FreeMem) - allocate/release native memory blocks
+* [GetMem1](../tB/Modules/HiddenModule/GetMem1), [GetMem2](../tB/Modules/HiddenModule/GetMem2), [GetMem4](../tB/Modules/HiddenModule/GetMem4), [GetMem8](../tB/Modules/HiddenModule/GetMem8), [GetMemPtr](../tB/Modules/HiddenModule/GetMemPtr) - read N bytes from a memory address into a typed variable
+* [PutMem1](../tB/Modules/HiddenModule/PutMem1), [PutMem2](../tB/Modules/HiddenModule/PutMem2), [PutMem4](../tB/Modules/HiddenModule/PutMem4), [PutMem8](../tB/Modules/HiddenModule/PutMem8), [PutMemPtr](../tB/Modules/HiddenModule/PutMemPtr) - write a typed value of N bytes to a memory address
+* [vbaCopyBytes](../tB/Modules/HiddenModule/vbaCopyBytes), [vbaCopyBytesZero](../tB/Modules/HiddenModule/vbaCopyBytesZero) - copy a block of bytes; the *Zero* form clears the source after the copy
+
+See also:
+
+* [vbaAryMove](../tB/Modules/HiddenModule/vbaAryMove), [vbaRefVarAry](../tB/Modules/HiddenModule/vbaRefVarAry) - low-level **Variant**-array helpers (see [Arrays](#arrays))
+* [vbaObjSet](../tB/Modules/HiddenModule/vbaObjSet), [vbaObjSetAddref](../tB/Modules/HiddenModule/vbaObjSetAddref), [vbaObjAddref](../tB/Modules/HiddenModule/vbaObjAddref) - object-pointer assignment and refcounting (see [COM and Automation](#com-and-automation))
+
+## Threading and Atomics
+
+Procedures:
+
+* [InterlockedExchangePointer](../tB/Modules/HiddenModule/InterlockedExchangePointer) - atomically exchange a pointer-sized value
+* [InterlockedCompareExchangePointer](../tB/Modules/HiddenModule/InterlockedCompareExchangePointer) - atomically compare-and-swap a pointer-sized value
+* [InterlockedCompareExchange32](../tB/Modules/HiddenModule/InterlockedCompareExchange32), [InterlockedCompareExchange64](../tB/Modules/HiddenModule/InterlockedCompareExchange64) - atomic 32-bit / 64-bit compare-and-swap
+* [InterlockedIncrement32](../tB/Modules/HiddenModule/InterlockedIncrement32), [InterlockedDecrement32](../tB/Modules/HiddenModule/InterlockedDecrement32) - atomic 32-bit increment / decrement
+
+See also:
+
+* [SetThreadGlobalErrorTrap](../tB/Modules/HiddenModule/SetThreadGlobalErrorTrap) - per-thread error trap (see [Error Handling](#error-handling))
+
+## Inline Assembly and Codegen
+
+Procedures:
+
+* [Emit](../tB/Modules/HiddenModule/Emit) - inject custom **Byte** values into the codegen of the enclosing procedure
+* [EmitAny](../tB/Modules/HiddenModule/EmitAny) - inject custom typed values into the codegen of the enclosing procedure (size inferred from each value's data type)
+* [StackOffset](../tB/Modules/HiddenModule/StackOffset) - return the stack-frame offset of a variable, resolved at compile time
+* [StackArgsSize](../tB/Modules/HiddenModule/StackArgsSize) - return the total size of stack-passed arguments to the enclosing procedure
+* [UnprotectedAccess](../tB/Modules/HiddenModule/UnprotectedAccess) - return an object reference that bypasses access checks on private members
+
+See also:
+
+* [Direct Assembly Insertion](../Features/Advanced/Assembly) - the `Naked` modifier and worked examples
+
+## Expression Evaluation
+
+Procedures:
+
+* [Eval](../tB/Modules/HiddenModule/Eval) - compile and evaluate a twinBASIC expression supplied as a string
+
+See also:
+
+* [ExpressionService module](../tB/Modules/ExpressionService/) - the underlying engine, when more control over binders or compiled-expression reuse is needed
 
 ## Financial
 
