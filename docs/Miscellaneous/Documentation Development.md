@@ -58,7 +58,7 @@ These are modules within VBA and VBRUN:
   - [Math](../tB/Modules/Math)
   - [Strings](../tB/Modules/Strings)
   - [TextEncodingConstants](../tB/Modules/TextEncodingConstants)
-  - Internal [_HiddenModule](../tB/Modules/_HiddenModule)
+  - Internal [_HiddenModule](../tB/Modules/HiddenModule)
 - VBRUN
   - [AmbientProperties](../tB/Modules/AmbientProperties)
   - [AsyncProperty](../tB/Modules/AsyncProperty)
