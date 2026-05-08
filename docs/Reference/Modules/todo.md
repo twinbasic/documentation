@@ -2,7 +2,6 @@
 title: General TODO List for /tB/Modules/
 nav_exclude: true
 redirect_from:
-  - /tB/Modules/Information
   - /tB/Core/Shell
   - /tB/Core/SendKeys
   - /tB/Modules/Interaction/Shell

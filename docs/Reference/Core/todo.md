@@ -14,7 +14,6 @@ redirect_from:
   - /tB/Core/Interface
   - /tB/Core/Is
 
-  - /tB/Core/LBound
   - /tB/Core/Let
   - /tB/Core/Line-Input
   - /tB/Core/Load
@@ -49,7 +48,6 @@ redirect_from:
   - /tB/Core/Sub
   - /tB/Core/Stop
   - /tB/Core/Type
-  - /tB/Core/UBound
   - /tB/Core/Unload
   - /tB/Core/Unlock
   - /tB/Core/While-Wend

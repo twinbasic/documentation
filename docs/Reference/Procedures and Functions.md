@@ -68,6 +68,8 @@ permalink: /Reference/Procedures-and-Functions
 ## E
 
 - [EOF](../tB/Modules/FileSystem/EOF) -- returns whether the end of a file has been reached
+- [Erl](../tB/Modules/Information/Erl) -- returns the line number where the most recent run-time error occurred
+- [Err](../tB/Modules/Information/Err) -- returns the **ErrObject** describing the current run-time error state
 - [Error$, Error](../tB/Modules/Conversion/Error) -- returns the error message that corresponds to a given error number
 - [Exp](../tB/Modules/Math/Exp) -- returns *e* (the base of natural logarithms) raised to a power
 
@@ -99,11 +101,21 @@ permalink: /Reference/Procedures-and-Functions
 
 ## I
 
+- [IMEStatus](../tB/Modules/Information/IMEStatus) -- returns the status of the Input Method Editor
 - [InStr$, InStrB, InStr](../tB/Modules/Strings/InStr) -- returns the position of one string within another
 - [InStrRev](../tB/Modules/Strings/InStrRev) -- returns the position of one string within another, searching from the end
 - [Int](../tB/Modules/Conversion/Int) -- returns the integer portion of a number, rounding toward negative infinity
 - [IPmt](../tB/Modules/Financial/IPmt) -- returns the interest payment for a given period of an annuity
 - [IRR](../tB/Modules/Financial/IRR) -- returns the internal rate of return for a series of periodic cash flows
+- [IsArray](../tB/Modules/Information/IsArray) -- returns whether a variable is an array
+- [IsArrayInitialized](../tB/Modules/Information/IsArrayInitialized) -- returns whether an array has been dimensioned
+- [IsDate](../tB/Modules/Information/IsDate) -- returns whether an expression can be evaluated as a date
+- [IsEmpty](../tB/Modules/Information/IsEmpty) -- returns whether a **Variant** is uninitialised
+- [IsError](../tB/Modules/Information/IsError) -- returns whether an expression is an error subtype
+- [IsMissing](../tB/Modules/Information/IsMissing) -- returns whether an optional argument was supplied
+- [IsNull](../tB/Modules/Information/IsNull) -- returns whether a variable contains a **Null** value
+- [IsNumeric](../tB/Modules/Information/IsNumeric) -- returns whether an expression can be evaluated as a number
+- [IsObject](../tB/Modules/Information/IsObject) -- returns whether a variable refers to an object
 
 ## J
 
@@ -115,6 +127,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## L
 
+- [LBound](../tB/Modules/Information/LBound) -- returns the smallest valid subscript for a dimension of an array
 - [LCase$, LCase](../tB/Modules/Strings/LCase) -- returns a string converted to lowercase
 - [Left$, Left, LeftB$, LeftB](../tB/Modules/Strings/Left) -- returns the leftmost characters from a string
 - [Len, LenB](../tB/Modules/Strings/Len) -- returns the length of a string, or the storage size of a variable
@@ -155,12 +168,20 @@ permalink: /Reference/Procedures-and-Functions
 
 ## Q
 
+- [QBColor](../tB/Modules/Information/QBColor) -- returns the RGB colour value for a QuickBASIC colour index
+
 ## R
 
 - [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
 - [Rate](../tB/Modules/Financial/Rate) -- returns the interest rate per period for an annuity
 - [Replace](../tB/Modules/Strings/Replace) -- replaces a substring within a string with another substring
 - [Reset](../tB/Modules/FileSystem/Reset) -- closes all disk files opened by using the **Open** statement
+- [RGB](../tB/Modules/Information/RGB) -- builds an RGB colour value from red, green, and blue components
+- [RGBA](../tB/Modules/Information/RGBA) -- builds an RGBA colour value from red, green, blue, and alpha components
+- [RGBA_A](../tB/Modules/Information/RGBA_A) -- returns the alpha component of an RGBA colour value
+- [RGB_B](../tB/Modules/Information/RGB_B) -- returns the blue component of an RGB colour value
+- [RGB_G](../tB/Modules/Information/RGB_G) -- returns the green component of an RGB colour value
+- [RGB_R](../tB/Modules/Information/RGB_R) -- returns the red component of an RGB colour value
 - [Right$, Right, RightB$, RightB](../tB/Modules/Strings/Right) -- returns the rightmost characters from a string
 - [RmDir](../tB/Core/RmDir) -- removes an existing directory or folder
 - [Rnd](../tB/Modules/Math/Rnd) -- returns a pseudo-random number in the range [0.0, 1.0)
@@ -196,10 +217,13 @@ permalink: /Reference/Procedures-and-Functions
 - [Timer](../tB/Modules/DateTime/Timer) -- returns the number of seconds elapsed since midnight
 - [TimeSerial](../tB/Modules/DateTime/TimeSerial) -- returns a time for a specific hour, minute, and second
 - [TimeValue](../tB/Modules/DateTime/TimeValue) -- converts a string to a time
+- [TranslateColor](../tB/Modules/Information/TranslateColor) -- translates an OLE colour value to a plain RGB colour value
 - [Trim$, Trim](../tB/Modules/Strings/Trim) -- removes leading and trailing spaces from a string
+- [TypeName](../tB/Modules/Information/TypeName) -- returns the name of a variable's data type as a **String**
 
 ## U
 
+- [UBound](../tB/Modules/Information/UBound) -- returns the largest valid subscript for a dimension of an array
 - [UCase$, UCase](../tB/Modules/Strings/UCase) -- returns a string converted to uppercase
 - Unload
 
@@ -207,6 +231,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Val](../tB/Modules/Conversion/Val) -- parses a string into a **Double**
 - [ValDec](../tB/Modules/Conversion/ValDec) -- parses a string into a **Decimal**
+- [VarType](../tB/Modules/Information/VarType) -- returns the **VbVarType** enumeration value identifying a variable's subtype
 
 ## W
 
