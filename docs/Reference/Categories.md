@@ -60,6 +60,8 @@ Statements:
 
 Procedures:
 
+* [Err](../tB/Modules/Information/Err) - returns the **ErrObject** describing the current run-time error state
+* [Erl](../tB/Modules/Information/Erl) - returns the line number where the most recent run-time error occurred
 * [Error$, Error](../tB/Modules/Conversion/Error) function - returns the error message that corresponds to a given error number
 * [CVErr](../tB/Modules/Conversion/CVErr) - wraps a numeric expression in a **Variant** of subtype **Error**
 
@@ -73,21 +75,33 @@ Statements:
 * [Private](../tB/Core/Private) - declare a private variable in a class or module
 * [Static](../tB/Core/Static) - declare a a variable of static duration
 
-See also:
-
-* [Erase](../tB/Core/Erase) - clear/fill an array
-* [ReDim](../tB/Core/ReDim) - change the size of an array
-
 ## Variable Assignment and Modification
 
 Statements:
 
 - [Let](../tB/Core/Let) - sets the value of a variable
 - [Set](../tB/Core/Set) - changes the object referred by the variable
-- [Erase](../tB/Core/Erase) - fills a fixed-size array with default values, or invalidates a dynamic array
 - [LSet](../tB/Core/LSet) - assigns a user-defined type, or left-aligns a string
 - [RSet](../tB/Core/RSet) - right-aligns a string
-- [ReDim](../tB/Core/ReDim) - change the size of a dynamically-sized array,
+
+## Arrays
+
+Statements:
+
+* [ReDim](../tB/Core/ReDim) - allocate or change the size of a dynamically-sized array
+* [Erase](../tB/Core/Erase) - fill a fixed-size array with default values, or invalidate a dynamic array
+
+Procedures:
+
+* [LBound](../tB/Modules/Information/LBound) - smallest valid subscript for an array dimension
+* [UBound](../tB/Modules/Information/UBound) - largest valid subscript for an array dimension
+* [IsArray](../tB/Modules/Information/IsArray) - returns whether a variable is an array
+* [IsArrayInitialized](../tB/Modules/Information/IsArrayInitialized) - returns whether an array has been dimensioned
+
+See also:
+
+* [Dim](../tB/Core/Dim) - allocate a scalar or array variable
+* [Array](../tB/Modules/VBA/Array), [Filter](../tB/Modules/Strings/Filter), [Join](../tB/Modules/Strings/Join), [Split](../tB/Modules/Strings/Split) - array helpers in the **VBA** and **Strings** modules
 
 ## File I/O
 
@@ -136,6 +150,16 @@ Procedures:
 * [AppActivate](../tB/Core/AppActivate) - change the focus to, or activate, a named window
 * [Beep](../tB/Core/Beep) - sound a system beep
 * [SendKeys](../tB/Core/SendKeys) - send keystrokes to the active window
+
+## Colours
+
+Procedures:
+
+* [RGB](../tB/Modules/Information/RGB) - build an RGB colour value from red, green, and blue components
+* [RGBA](../tB/Modules/Information/RGBA) - build an RGBA colour value from red, green, blue, and alpha components
+* [RGB_R](../tB/Modules/Information/RGB_R), [RGB_G](../tB/Modules/Information/RGB_G), [RGB_B](../tB/Modules/Information/RGB_B), [RGBA_A](../tB/Modules/Information/RGBA_A) - extract individual colour components
+* [QBColor](../tB/Modules/Information/QBColor) - return the RGB colour value for a QuickBASIC colour index
+* [TranslateColor](../tB/Modules/Information/TranslateColor) - translate an OLE colour value to a plain RGB colour value
 
 ## Mathematics
 
@@ -188,6 +212,27 @@ See also:
 * [Format$, Format](../tB/Modules/Strings/Format) - locale-aware number formatting
 * [FormatNumber](../tB/Modules/Strings/FormatNumber), [FormatPercent](../tB/Modules/Strings/FormatPercent), [FormatCurrency](../tB/Modules/Strings/FormatCurrency), [FormatDateTime](../tB/Modules/Strings/FormatDateTime) - typed formatters
 * [CVErr](../tB/Modules/Conversion/CVErr), [Error$, Error](../tB/Modules/Conversion/Error) function - error helpers (see [Error Handling](#error-handling))
+
+## Type Inspection
+
+Procedures that name or identify a variable's subtype:
+
+* [VarType](../tB/Modules/Information/VarType) - returns the **VbVarType** code identifying a variable's subtype
+* [TypeName](../tB/Modules/Information/TypeName) - returns the name of a variable's data type as a **String**
+
+Procedures that test a value's state or subtype:
+
+* [IsDate](../tB/Modules/Information/IsDate) - returns whether an expression can be evaluated as a date
+* [IsEmpty](../tB/Modules/Information/IsEmpty) - returns whether a **Variant** is uninitialised
+* [IsError](../tB/Modules/Information/IsError) - returns whether an expression is an error subtype
+* [IsMissing](../tB/Modules/Information/IsMissing) - returns whether an optional argument was supplied
+* [IsNull](../tB/Modules/Information/IsNull) - returns whether a variable contains a **Null** value
+* [IsNumeric](../tB/Modules/Information/IsNumeric) - returns whether an expression can be evaluated as a number
+* [IsObject](../tB/Modules/Information/IsObject) - returns whether a variable refers to an object
+
+See also:
+
+* [IsArray](../tB/Modules/Information/IsArray), [IsArrayInitialized](../tB/Modules/Information/IsArrayInitialized) - in [Arrays](#arrays)
 
 ## String Handling
 
@@ -265,6 +310,10 @@ Procedures:
 * [CurrentSourceFile](../tB/Modules/Compilation/CurrentSourceFile) - returns the full path of the current source file
 * [ProcessorArchitecture](../tB/Modules/Compilation/ProcessorArchitecture) - returns the processor architecture of the running application
 * [CompilerVersion](../tB/Modules/Compilation/CompilerVersion) - returns the twinBASIC compiler version number
+
+See also:
+
+* [IMEStatus](../tB/Modules/Information/IMEStatus) - the current Input Method Editor mode (East Asian Windows only)
 
 ## Financial
 
