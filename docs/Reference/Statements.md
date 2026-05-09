@@ -62,10 +62,6 @@ These statements are built into the language itself. They are understood by the 
 
 * [Interface](../tB/Core/Interface) -- (twinBASIC) defines a COM interface using twinBASIC syntax
 
-* [Is](../tB/Core/Is) -- compares two object references for identity
-
-* [IsNot](../tB/Core/IsNot) -- the logical inverse of **Is**; compares two object references for non-identity
-
 * [Kill](../tB/Core/Kill) -- deletes files from a disk
 
 * [Let](../tB/Core/Let) -- assigns the value of an expression to a variable or property

@@ -1,6 +1,7 @@
 ---
 title: Is
-parent: Statements
+parent: Operators
+grand_parent: Reference Section
 permalink: /tB/Core/Is
 ---
 # Is
