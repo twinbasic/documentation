@@ -1,6 +1,6 @@
 ---
 title: ErrObject Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/ErrObject/
 has_toc: false
 ---

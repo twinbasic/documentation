@@ -1,6 +1,6 @@
 ---
 title: Collection Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Collection/
 has_toc: false
 ---

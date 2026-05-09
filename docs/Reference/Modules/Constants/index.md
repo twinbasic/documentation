@@ -1,6 +1,6 @@
 ---
 title: Constants Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Constants/
 has_toc: false
 ---

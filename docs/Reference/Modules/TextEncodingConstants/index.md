@@ -1,6 +1,6 @@
 ---
 title: TextEncodingConstants Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/TextEncodingConstants/
 has_toc: false
 ---

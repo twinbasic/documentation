@@ -1,6 +1,6 @@
 ---
 title: Conversion Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Conversion/
 has_toc: false
 ---

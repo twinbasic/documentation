@@ -1,6 +1,6 @@
 ---
 title: ExpressionService Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/ExpressionService/
 has_toc: false
 ---

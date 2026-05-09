@@ -1,9 +1,11 @@
 ---
-title: Modules
+title: VBA Modules
 parent: Reference Section
-permalink: /tB/Modules
+permalink: /tB/Packages/VBA
+redirect_from:
+  - /tB/Modules
 ---
 
-# Core VBA Modules
+# VBA Modules
 
 These modules are in the VBA built-in package.

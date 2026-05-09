@@ -1,6 +1,6 @@
 ---
 title: Math Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Math/
 has_toc: false
 ---
