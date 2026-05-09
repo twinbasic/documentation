@@ -4,7 +4,6 @@ parent: Reference Section
 permalink: /tB/Modules
 ---
 
-> [!WARNING]
-> Work in Progress
+# Core VBA Modules
 
-# Core Modules
+These modules are in the VBA built-in package.
