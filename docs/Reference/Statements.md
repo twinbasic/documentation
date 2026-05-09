@@ -10,9 +10,6 @@ permalink: /Reference/Statements
 
 These statements are built into the language itself. They are understood by the compiler, and are not explicitly declared nor defined in the visible runtime library.
 
-> [!WARNING]
-> Work in Progress
-
 ## Alphabetical List
 
 * [Call](../tB/Core/Call) -- transfer control to a procedure
@@ -127,7 +124,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [SavePicture](../tB/Core/SavePicture) -- saves a graphic from a **Picture** or **Image** to a file
 
-* [Seek](../tB/Core/Seek)
+* [Seek](../tB/Core/Seek) -- sets the read/write position within a file opened by using the **Open** statement
 
 * [Select Case](../tB/Core/Select-Case) -- executes one of several groups of statements, depending on the value of an expression
 
@@ -156,5 +153,3 @@ These statements are built into the language itself. They are understood by the 
 ## Deprecated
 
 * [DefBool through DefVar](../tB/Core/Deftype) -- set the default data type for variables whose names start with given letters; superseded by explicit **As** *type* declarations
-
-* [Error](../tB/Core/Error)
