@@ -16,13 +16,16 @@ This chapter lists the global statements and procedures that form the core of th
 
 * [Option](../tB/Core/Option) - configure a compiler option
 * [#If ... Then ... Else](../tB/Core/Topic-Preprocessor) - enable or disable compilation of enclosed code
+* [#Const](../tB/Core/Topic-Preprocessor) - define a module-private conditional compiler constant
 
 ## Declarations and Definitions
 
 * [Class](../tB/Core/Class), [Module](../tB/Core/Module) - define a class or module
+* [Interface](../tB/Core/Interface), [CoClass](../tB/Core/CoClass) - (twinBASIC) define a COM interface or coclass using twinBASIC syntax
 * [Sub](../tB/Core/Sub) - define a procedure
 * [Function](../tB/Core/Function) - define a function
 * [Property](../tB/Core/Property) - define a property
+* [ParamArray](../tB/Core/ParamArray) - declare a procedure's final parameter as a variadic argument list
 * [Enum](../tB/Core/Enum) - define an enumeration type with associated constants
 * [Type](../tB/Core/Type) - declare a user-defined data type (UDT)/a structure
 * [Declare](../tB/Core/Declare) - declare an external/library procedure or function
@@ -39,6 +42,7 @@ Statements:
 * [If ... Then ... Else](../tB/Core/If-Then-Else) - execute code conditionally
 * [Continue](../tB/Core/Continue) - skip to the next iteration of the loop
 * [Exit](../tB/Core/Exit) - exit a loop, procedure, function or property
+* [Return](../tB/Core/Return) - return from a **GoSub** subroutine, or (twinBASIC) return a value and exit from a **Function** or **Property Get**
 * [Select Case](../tB/Core/Select-Case) - execute a code block selected by an expression
 * [With](../tB/Core/With) - bring a variable or expression into scope
 * [Goto](../tB/Core/GoTo), [GoSub ... Return](../tB/Core/GoSub-Return) - transfer execution to another location
@@ -81,6 +85,7 @@ Statements:
 * [Const](../tB/Core/Const) - declare a constant
 * [Public](../tB/Core/Public) - declare a public variable in a class or module
 * [Private](../tB/Core/Private) - declare a private variable in a class or module
+* [Protected](../tB/Core/Protected) - (twinBASIC) declare a class member accessible within the class and its derived classes
 * [Static](../tB/Core/Static) - declare a a variable of static duration
 
 ## Variable Assignment and Modification
@@ -89,8 +94,14 @@ Statements:
 
 - [Let](../tB/Core/Let) - sets the value of a variable
 - [Set](../tB/Core/Set) - changes the object referred by the variable
+- [New](../tB/Core/New) - create a new instance of a class
 - [LSet](../tB/Core/LSet) - assigns a user-defined type, or left-aligns a string
 - [RSet](../tB/Core/RSet) - right-aligns a string
+
+Operators:
+
+- [Is](../tB/Core/Is) - compares two object references for identity
+- [IsNot](../tB/Core/IsNot) - (twinBASIC) the logical inverse of **Is**
 
 ## Arrays
 
