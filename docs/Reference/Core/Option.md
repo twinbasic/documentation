@@ -23,7 +23,7 @@ Because the default base is **0**, the **Option Base** statement is never requir
 If used, the statement must appear in a [module](../Gloss#module) or [class](../Gloss#class) before any procedures, functions, or properties. **Option Base** can appear only once in a module and must precede array [declarations](../Gloss#declaration) that include dimensions.
 
 > [!NOTE]
-> The **To** clause in the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](ParamArray) (or the [**Array**](../Modules/VBA/Array) function, when qualified with the name of its type library, for example [**VBA.Array**](../Modules/VBA/Array)).
+> The **To** clause in the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](ParamArray) (or the [**Array**](../../tB/Core/Array) function).
 
 The **Option Base** statement only affects the lower bound of arrays in the module where the statement is located.
 
