@@ -10,14 +10,13 @@ permalink: /Reference/Statements
 
 These statements are built into the language itself. They are understood by the compiler, and are not explicitly declared nor defined in the visible runtime library.
 
-> [!WARNING]
-> Work in Progress
-
 ## Alphabetical List
 
 * [Call](../tB/Core/Call) -- transfer control to a procedure
 
 * [Class](../tB/Core/Class) -- define a class
+
+* [CoClass](../tB/Core/CoClass) -- (twinBASIC) defines a creatable COM class as the contract for one or more **Interface** blocks
 
 * [Close](../tB/Core/Close) -- concludes input/output (I/O) to a file opened using the **Open** statement
 
@@ -49,90 +48,108 @@ These statements are built into the language itself. They are understood by the 
 
 * [Function](../tB/Core/Function) -- declares the name, arguments, and code that form the body of a **Function** procedure
 
-* [Get](../tB/Core/Get)
+* [Get](../tB/Core/Get) -- reads data from an open disk file into a variable
 
-* [GoSub ... Return](../tB/Core/GoSub-Return)
+* [GoSub ... Return](../tB/Core/GoSub-Return) -- branches to and returns from a subroutine within a procedure
 
-* [GoTo](../tB/Core/GoTo)
+* [GoTo](../tB/Core/GoTo) -- branches unconditionally to a specified line within a procedure
 
-* [If ... Then ... Else](../tB/Core/If-Then-Else)
+* [If ... Then ... Else](../tB/Core/If-Then-Else) -- conditionally executes a group of statements, depending on the value of an expression
 
-* [Input](../tB/Core/Input)
+* [Input #](../tB/Core/Input) -- reads data from an open sequential file and assigns it to variables
 
-* [Implements](../tB/Core/Implements)
+* [Implements](../tB/Core/Implements) -- specifies an interface or class that will be implemented in the class in which it appears
+
+* [Interface](../tB/Core/Interface) -- (twinBASIC) defines a COM interface using twinBASIC syntax
+
+* [Is](../tB/Core/Is) -- compares two object references for identity
+
+* [IsNot](../tB/Core/IsNot) -- the logical inverse of **Is**; compares two object references for non-identity
 
 * [Kill](../tB/Core/Kill) -- deletes files from a disk
 
-* [Let](../tB/Core/Let)
+* [Let](../tB/Core/Let) -- assigns the value of an expression to a variable or property
 
-* [Line Input](../tB/Core/Line-Input)
+* [Line Input #](../tB/Core/Line-Input) -- reads a single line from an open sequential file into a string variable
 
-* [Lock](../tB/Core/Lock)
+* [Load](../tB/Core/Load) -- loads an object (typically a form) into memory without showing it
 
-* [LSet](../tB/Core/LSet)
+* [Lock](../tB/Core/Lock), [Unlock](../tB/Core/Unlock) -- control access by other processes to all or part of an open file
 
-* [Mid =](../tB/Core/Mid-equals)
+* [LSet](../tB/Core/LSet) -- left-aligns a string within a string variable, or copies one user-defined-type variable into another
 
-* [MidB =](../tB/Core/MidB-equals)
+* [Mid =](../tB/Core/Mid-equals) -- replaces a specified number of characters within a string variable
 
-* [Module](../tB/Core/Module)
+* [MidB =](../tB/Core/MidB-equals) -- byte-positioned form of **Mid =**
 
-* [On Error](../tB/Core/On-Error)
+* [Module](../tB/Core/Module) -- defines a module: a non-instantiable container for procedures, constants, types, and module-level variables
 
-* [On ... GoTo](../tB/Core/On-GoTo), [On .. GoSub](../tB/Core/On-GoSub)
+* [Name](../tB/Core/Name) -- renames a disk file, directory, or folder
 
-* [Open](../tB/Core/Open)
+* [New](../tB/Core/New) -- creates a new instance of a class
+
+* [On Error](../tB/Core/On-Error) -- enables an error-handling routine and specifies its location, or disables error handling
+
+* [On ... GoTo](../tB/Core/On-GoTo), [On ... GoSub](../tB/Core/On-GoSub) -- branch to one of several lines based on the value of an expression
+
+* [Open](../tB/Core/Open) -- enables input/output (I/O) to a file
 
 * [Option](../tB/Core/Option) -- configure a compiler option
 
-* [Print](../tB/Core/Print)
+* [ParamArray](../tB/Core/ParamArray) -- declares the final parameter of a procedure as an arbitrary-arity list of arguments
 
-* [Private](../tB/Core/Private)
+* [Print #](../tB/Core/Print) -- writes display-formatted data to a sequential file
 
-* [Property](../tB/Core/Property)
+* [Private](../tB/Core/Private) -- declares module-level variables accessible only within the declaring module
 
-* [Public](../tB/Core/Public)
+* [Property](../tB/Core/Property) -- declares the **Get**, **Let**, or **Set** procedures that form the body of a property
 
-* [Put](../tB/Core/Put)
+* [Protected](../tB/Core/Protected) -- (twinBASIC) declares a class member accessible within the class and its derived classes
 
-* [RaiseEvent](../tB/Core/RaiseEvent)
+* [Public](../tB/Core/Public) -- declares module-level variables accessible to all procedures in all modules
+
+* [Put](../tB/Core/Put) -- writes data from a variable to a disk file
+
+* [RaiseEvent](../tB/Core/RaiseEvent) -- fires an event declared at the module level within a class, form, or document
 
 * [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
 
-* [ReDim](../tB/Core/ReDim)
+* [ReDim](../tB/Core/ReDim) -- reallocates storage space for a dynamic array
 
-* [Resume](../tB/Core/Resume)
+* [Resume](../tB/Core/Resume) -- resumes execution after an error-handling routine is finished
 
-* [Return](../tB/Core/Return)
+* [Return](../tB/Core/Return) -- returns from a **GoSub** subroutine, or (twinBASIC) exits a procedure with an optional value
 
-* [RSet](../tB/Core/RSet)
+* [RSet](../tB/Core/RSet) -- right-aligns a string within a string variable
 
-* [Seek](../tB/Core/Seek)
+* [SavePicture](../tB/Core/SavePicture) -- saves a graphic from a **Picture** or **Image** to a file
 
-* [Select Case](../tB/Core/Select-Case)
+* [Seek](../tB/Core/Seek) -- sets the read/write position within a file opened by using the **Open** statement
 
-* [Set](../tB/Core/Set)
+* [Select Case](../tB/Core/Select-Case) -- executes one of several groups of statements, depending on the value of an expression
 
-* [Static](../tB/Core/Static)
+* [Set](../tB/Core/Set) -- assigns an object reference to a variable or property
 
-* [Stop](../tB/Core/Stop)
+* [Static](../tB/Core/Static) -- declares procedure-local variables whose values are preserved between calls
 
-* [Sub](../tB/Core/Sub)
+* [Stop](../tB/Core/Stop) -- suspends execution
 
-* [Unlock](../tB/Core/Unlock)
+* [Sub](../tB/Core/Sub) -- declares the name, arguments, and code that form the body of a **Sub** procedure
 
-* [While ... Wend](../tB/Core/While-Wend)
+* [Type](../tB/Core/Type) -- defines a user-defined data type containing one or more elements
 
-* [With](../tB/Core/With)
+* [Unload](../tB/Core/Unload) -- removes an object (typically a form) from memory
 
-* [Write](../tB/Core/Write)
+* [While ... Wend](../tB/Core/While-Wend) -- executes a series of statements as long as a given condition is **True**
 
-* [#If ... Then ... Else](../tB/Core/Topic-Preprocessor)
+* [With](../tB/Core/With) -- executes a series of statements on a single object or a user-defined type
+
+* [Write #](../tB/Core/Write) -- writes raw, delimited data to a sequential file (paired with [**Input #**](../tB/Core/Input))
+
+* [#If ... Then ... Else](../tB/Core/Topic-Preprocessor), [#Const](../tB/Core/Topic-Preprocessor) -- compiler directives that conditionally include code blocks at compile time
 
 ---
 
 ## Deprecated
 
-* [DefBool through DefVar](../tB/Core/Deftype)
-
-* [Error](../tB/Core/Error)
+* [DefBool through DefVar](../tB/Core/Deftype) -- set the default data type for variables whose names start with given letters; superseded by explicit **As** *type* declarations

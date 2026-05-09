@@ -11,7 +11,7 @@ The `Open` statement supports Unicode through the use of a new `Encoding` keywor
 ## Usage Example
 
 ```tb
-Open "C:\MyFile.txt" For Input Encoding utf-8 As #1
+Open "C:\MyFile.txt" For Input Encoding utf_8 As #1
 ```
 
 ## Supported Encodings
