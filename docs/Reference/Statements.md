@@ -61,9 +61,13 @@ These statements are built into the language itself. They are understood by the 
 
 * [Implements](../tB/Core/Implements)
 
+* [Is](../tB/Core/Is) -- compares two object references for identity
+
+* [IsNot](../tB/Core/IsNot) -- the logical inverse of **Is**; compares two object references for non-identity
+
 * [Kill](../tB/Core/Kill) -- deletes files from a disk
 
-* [Let](../tB/Core/Let)
+* [Let](../tB/Core/Let) -- assigns the value of an expression to a variable or property
 
 * [Line Input](../tB/Core/Line-Input)
 
@@ -76,6 +80,8 @@ These statements are built into the language itself. They are understood by the 
 * [MidB =](../tB/Core/MidB-equals)
 
 * [Module](../tB/Core/Module)
+
+* [New](../tB/Core/New) -- creates a new instance of a class
 
 * [On Error](../tB/Core/On-Error)
 
@@ -101,7 +107,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
 
-* [ReDim](../tB/Core/ReDim)
+* [ReDim](../tB/Core/ReDim) -- reallocates storage space for a dynamic array
 
 * [Resume](../tB/Core/Resume)
 
@@ -113,13 +119,15 @@ These statements are built into the language itself. They are understood by the 
 
 * [Select Case](../tB/Core/Select-Case) -- executes one of several groups of statements, depending on the value of an expression
 
-* [Set](../tB/Core/Set)
+* [Set](../tB/Core/Set) -- assigns an object reference to a variable or property
 
 * [Static](../tB/Core/Static) -- declares procedure-local variables whose values are preserved between calls
 
 * [Stop](../tB/Core/Stop) -- suspends execution
 
 * [Sub](../tB/Core/Sub) -- declares the name, arguments, and code that form the body of a **Sub** procedure
+
+* [Type](../tB/Core/Type) -- defines a user-defined data type containing one or more elements
 
 * [Unlock](../tB/Core/Unlock)
 

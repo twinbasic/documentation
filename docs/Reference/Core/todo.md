@@ -11,9 +11,7 @@ redirect_from:
   - /tB/Core/Implements
   - /tB/Core/Input
   - /tB/Core/Interface
-  - /tB/Core/Is
 
-  - /tB/Core/Let
   - /tB/Core/Line-Input
   - /tB/Core/Load
   - /tB/Core/Lock
@@ -22,7 +20,6 @@ redirect_from:
   - /tB/Core/MidB-equals
   - /tB/Core/Module
   - /tB/Core/Name
-  - /tB/Core/New
   - /tB/Core/On-Error
   - /tB/Core/On-GoSub
   - /tB/Core/On-GoTo
@@ -31,13 +28,10 @@ redirect_from:
   - /tB/Core/Protected
   - /tB/Core/Put
   - /tB/Core/RaiseEvent
-  - /tB/Core/ReDim
   - /tB/Core/Resume
   - /tB/Core/Return
   - /tB/Core/RSet
   - /tB/Core/SavePicture
-  - /tB/Core/Set
-  - /tB/Core/Type
   - /tB/Core/Unload
   - /tB/Core/Unlock
   - /tB/Core/Write
