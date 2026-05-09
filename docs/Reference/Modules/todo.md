@@ -2,7 +2,6 @@
 title: General TODO List for /tB/Modules/
 nav_exclude: true
 redirect_from:
-  - /tB/Modules/AmbientProperties
   - /tB/Modules/AsyncProperty
   - /tB/Modules/ContainedControls
   - /tB/Modules/DataMembers
