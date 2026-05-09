@@ -29,7 +29,7 @@ The *compare* argument settings are:
 >
 > **KeyCompareMode** is a twinBASIC extension; the classic VBA **Collection** object always uses case-insensitive comparison and does not expose this property.
 
-The default comparison mode is **vbBinaryCompare**. Changing the comparison mode rehashes the existing keys, so for large collections it is most efficient to set **KeyCompareMode** before adding items.
+The default comparison mode is **vbTextCompare**. Changing the comparison mode rehashes the existing keys, so for large collections it is most efficient to set **KeyCompareMode** before adding items.
 
 ### Example
 
