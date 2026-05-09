@@ -1,6 +1,7 @@
 ---
 title: IsNot
-parent: Statements
+parent: Operators
+grand_parent: Reference Section
 permalink: /tB/Core/IsNot
 ---
 # IsNot
