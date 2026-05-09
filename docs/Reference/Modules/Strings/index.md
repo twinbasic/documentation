@@ -1,6 +1,6 @@
 ---
 title: Strings Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Strings/
 has_toc: false
 ---

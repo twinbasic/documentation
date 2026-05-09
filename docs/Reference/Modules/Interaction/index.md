@@ -1,6 +1,6 @@
 ---
 title: Interaction Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Interaction/
 has_toc: false
 ---

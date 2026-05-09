@@ -1,6 +1,6 @@
 ---
 title: Compilation Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Compilation/
 has_toc: false
 ---

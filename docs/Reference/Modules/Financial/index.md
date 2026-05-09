@@ -1,6 +1,6 @@
 ---
 title: Financial Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Financial/
 has_toc: false
 ---

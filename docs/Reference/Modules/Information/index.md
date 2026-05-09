@@ -1,6 +1,6 @@
 ---
 title: Information Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/Information/
 has_toc: false
 ---

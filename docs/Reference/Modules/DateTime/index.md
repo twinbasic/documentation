@@ -1,6 +1,6 @@
 ---
 title: DateTime Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/DateTime/
 has_toc: false
 ---

@@ -1,6 +1,6 @@
 ---
 title: (Default) Module
-parent: Modules
+parent: VBA Modules
 permalink: /tB/Modules/HiddenModule/
 redirect_from:
   - /tB/Modules/_HiddenModule
