@@ -159,7 +159,7 @@ permalink: /Reference/Procedures-and-Functions
 - [LCase$, LCase](../tB/Modules/Strings/LCase) -- returns a string converted to lowercase
 - [Left$, Left, LeftB$, LeftB](../tB/Modules/Strings/Left) -- returns the leftmost characters from a string
 - [Len, LenB](../tB/Modules/Strings/Len) -- returns the length of a string, or the storage size of a variable
-- Load
+- [Load](../tB/Core/Load) -- loads an object (typically a form) into memory without showing it
 - [Loc](../tB/Modules/FileSystem/Loc) -- returns the current read/write position within an open file
 - [LOF](../tB/Modules/FileSystem/LOF) -- returns the size, in bytes, of an open file
 - [Log](../tB/Modules/Math/Log) -- returns the natural (base *e*) logarithm of a number
@@ -178,7 +178,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## N
 
-- Name
+- [Name](../tB/Core/Name) -- renames a disk file, directory, or folder
 - [NPer](../tB/Modules/Financial/NPer) -- returns the number of periods for an annuity based on periodic fixed payments and a fixed interest rate
 - [NPV](../tB/Modules/Financial/NPV) -- returns the net present value of an investment based on a series of periodic cash flows and a discount rate
 - [Now](../tB/Core/Now) -- returns the current system date and time
@@ -229,7 +229,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## S
 
-- SavePicture
+- [SavePicture](../tB/Core/SavePicture) -- saves a graphic from a **Picture** or **Image** to a file
 - [SaveSetting](../tB/Modules/Interaction/SaveSetting) -- saves or creates an application entry in the application’s entry in the Windows registry
 - [Second](../tB/Modules/DateTime/Second) -- returns the second of the minute from a time value
 - [Seek](../tB/Modules/FileSystem/Seek) -- returns or sets the read/write position within an open file
@@ -266,7 +266,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [UBound](../tB/Modules/Information/UBound) -- returns the largest valid subscript for a dimension of an array
 - [UCase$, UCase](../tB/Modules/Strings/UCase) -- returns a string converted to uppercase
-- Unload
+- [Unload](../tB/Core/Unload) -- removes an object (typically a form) from memory
 
 ## V
 

@@ -2,6 +2,8 @@
 title: Array
 parent: (Default) Module
 permalink: /tB/Modules/HiddenModule/Array
+redirect_from:
+  - /tB/Core/Array
 ---
 # Array
 {: .no_toc }

@@ -28,7 +28,7 @@ For an array `Dim A(1 To 100, 0 To 3, -3 To 4)`, **LBound** returns:
 | `LBound(A, 2)` | 0 |
 | `LBound(A, 3)` | -3 |
 
-The default lower bound for any dimension is either 0 or 1, depending on the **Option Base** setting. Arrays created with the [**Array**](../VBA/Array) function are zero-based regardless of **Option Base**. Arrays whose dimensions are set with the **To** clause in **Dim**, **Private**, **Public**, **ReDim**, or **Static** can have any integer lower bound.
+The default lower bound for any dimension is either 0 or 1, depending on the **Option Base** setting. Arrays created with the [**Array**](../../Core/Array) function are zero-based regardless of **Option Base**. Arrays whose dimensions are set with the **To** clause in **Dim**, **Private**, **Public**, **ReDim**, or **Static** can have any integer lower bound.
 
 ### Example
 
