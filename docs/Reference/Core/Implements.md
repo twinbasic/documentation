@@ -9,13 +9,15 @@ permalink: /tB/Core/Implements
 Specifies an interface or class that will be implemented in the [class](Class) in which it appears.
 
 Syntax:
-> **Implements** *InterfaceName* \| *ClassName*
+> **Implements** { *InterfaceName* \| *ClassName* } [ **,** { *InterfaceName* \| *ClassName* } ]…
 
 *InterfaceName*
 : The name of an interface — either an [**Interface**](Interface) block defined in twinBASIC, or an interface in a referenced type library — whose members will be implemented by the corresponding members in the class.
 
 *ClassName*
 : The name of a class whose default interface will be implemented.
+
+A single **Implements** statement can list several interfaces or classes separated by commas; this is equivalent to writing one **Implements** statement per name. Classic VBA requires a separate statement for each.
 
 An *interface* is a collection of prototypes representing the members (methods and properties) that the interface encapsulates; that is, it contains only the declarations for the member procedures. A *class* provides an implementation of all the methods and properties of one or more interfaces. Classes provide the code used when each function is called by a controller of the class. All classes implement at least one interface, which is considered the default interface of the class. Any member that isn't explicitly a member of an implemented interface is implicitly a member of the default interface.
 
@@ -29,6 +31,7 @@ The **Implements** statement can't appear in a standard module — it is valid o
 
 twinBASIC extends classic VBA's **Implements** in several ways. See [Inheritance](../../Features/Language/Inheritance) for the full discussion; the headline differences:
 
+- **Comma-separated list** — one **Implements** statement can name multiple interfaces or classes, e.g. `Implements IFoo, IBar, IBaz`. Classic VBA requires a separate **Implements** statement for each.
 - **Inherited interfaces** — `Implements` works directly on a derived interface (e.g. `Implements IFoo2` where `Interface IFoo2 Extends IFoo`). The class need not name `IFoo` separately; `QueryInterface` for the base is satisfied automatically. Classic VBA does not support implementing derived interfaces.
 - **Multiple-implementation form** — a single member can implement methods on several interfaces at once via `Implements <iface1>.<member>, <iface2>.<member>, …` after the procedure header. This is useful when several interfaces declare the same member and you want one body to satisfy all of them.
 - **`As Any` parameters** — interfaces declared with `As Any` parameters can be implemented (substituting `As LongPtr` for `As Any` in the implementing class). Classic VBA rejects this.
