@@ -55,7 +55,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [GoTo](../tB/Core/GoTo)
 
-* [If ... Then ... Else](../tB/Core/If-Then-Else)
+* [If ... Then ... Else](../tB/Core/If-Then-Else) -- conditionally executes a group of statements, depending on the value of an expression
 
 * [Input](../tB/Core/Input)
 
@@ -109,21 +109,21 @@ These statements are built into the language itself. They are understood by the 
 
 * [Seek](../tB/Core/Seek)
 
-* [Select Case](../tB/Core/Select-Case)
+* [Select Case](../tB/Core/Select-Case) -- executes one of several groups of statements, depending on the value of an expression
 
 * [Set](../tB/Core/Set)
 
 * [Static](../tB/Core/Static)
 
-* [Stop](../tB/Core/Stop)
+* [Stop](../tB/Core/Stop) -- suspends execution
 
 * [Sub](../tB/Core/Sub)
 
 * [Unlock](../tB/Core/Unlock)
 
-* [While ... Wend](../tB/Core/While-Wend)
+* [While ... Wend](../tB/Core/While-Wend) -- executes a series of statements as long as a given condition is **True**
 
-* [With](../tB/Core/With)
+* [With](../tB/Core/With) -- executes a series of statements on a single object or a user-defined type
 
 * [Write](../tB/Core/Write)
 

@@ -8,7 +8,6 @@ redirect_from:
   - /tB/Core/Get
   - /tB/Core/GoSub-Return
   - /tB/Core/GoTo
-  - /tB/Core/If-Then-Else
   - /tB/Core/Implements
   - /tB/Core/Input
   - /tB/Core/Interface
@@ -41,16 +40,12 @@ redirect_from:
   - /tB/Core/Return
   - /tB/Core/RSet
   - /tB/Core/SavePicture
-  - /tB/Core/Select-Case
   - /tB/Core/Set
   - /tB/Core/Static
   - /tB/Core/Sub
-  - /tB/Core/Stop
   - /tB/Core/Type
   - /tB/Core/Unload
   - /tB/Core/Unlock
-  - /tB/Core/While-Wend
-  - /tB/Core/With
   - /tB/Core/Write
 ---
 
