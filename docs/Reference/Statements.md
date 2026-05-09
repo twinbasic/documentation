@@ -85,13 +85,15 @@ These statements are built into the language itself. They are understood by the 
 
 * [Option](../tB/Core/Option) -- configure a compiler option
 
+* [ParamArray](../tB/Core/ParamArray) -- declares the final parameter of a procedure as an arbitrary-arity list of arguments
+
 * [Print](../tB/Core/Print)
 
-* [Private](../tB/Core/Private)
+* [Private](../tB/Core/Private) -- declares module-level variables accessible only within the declaring module
 
-* [Property](../tB/Core/Property)
+* [Property](../tB/Core/Property) -- declares the **Get**, **Let**, or **Set** procedures that form the body of a property
 
-* [Public](../tB/Core/Public)
+* [Public](../tB/Core/Public) -- declares module-level variables accessible to all procedures in all modules
 
 * [Put](../tB/Core/Put)
 
@@ -113,11 +115,11 @@ These statements are built into the language itself. They are understood by the 
 
 * [Set](../tB/Core/Set)
 
-* [Static](../tB/Core/Static)
+* [Static](../tB/Core/Static) -- declares procedure-local variables whose values are preserved between calls
 
 * [Stop](../tB/Core/Stop) -- suspends execution
 
-* [Sub](../tB/Core/Sub)
+* [Sub](../tB/Core/Sub) -- declares the name, arguments, and code that form the body of a **Sub** procedure
 
 * [Unlock](../tB/Core/Unlock)
 
