@@ -49,7 +49,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Function](../tB/Core/Function) -- declares the name, arguments, and code that form the body of a **Function** procedure
 
-* [Get](../tB/Core/Get)
+* [Get](../tB/Core/Get) -- reads data from an open disk file into a variable
 
 * [GoSub ... Return](../tB/Core/GoSub-Return)
 
@@ -57,7 +57,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [If ... Then ... Else](../tB/Core/If-Then-Else) -- conditionally executes a group of statements, depending on the value of an expression
 
-* [Input](../tB/Core/Input)
+* [Input #](../tB/Core/Input) -- reads data from an open sequential file and assigns it to variables
 
 * [Implements](../tB/Core/Implements)
 
@@ -69,17 +69,19 @@ These statements are built into the language itself. They are understood by the 
 
 * [Let](../tB/Core/Let) -- assigns the value of an expression to a variable or property
 
-* [Line Input](../tB/Core/Line-Input)
+* [Line Input #](../tB/Core/Line-Input) -- reads a single line from an open sequential file into a string variable
 
-* [Lock](../tB/Core/Lock)
+* [Lock](../tB/Core/Lock), [Unlock](../tB/Core/Unlock) -- control access by other processes to all or part of an open file
 
-* [LSet](../tB/Core/LSet)
+* [LSet](../tB/Core/LSet) -- left-aligns a string within a string variable, or copies one user-defined-type variable into another
 
-* [Mid =](../tB/Core/Mid-equals)
+* [Mid =](../tB/Core/Mid-equals) -- replaces a specified number of characters within a string variable
 
-* [MidB =](../tB/Core/MidB-equals)
+* [MidB =](../tB/Core/MidB-equals) -- byte-positioned form of **Mid =**
 
 * [Module](../tB/Core/Module)
+
+* [Name](../tB/Core/Name) -- renames a disk file, directory, or folder
 
 * [New](../tB/Core/New) -- creates a new instance of a class
 
@@ -87,13 +89,13 @@ These statements are built into the language itself. They are understood by the 
 
 * [On ... GoTo](../tB/Core/On-GoTo), [On .. GoSub](../tB/Core/On-GoSub)
 
-* [Open](../tB/Core/Open)
+* [Open](../tB/Core/Open) -- enables input/output (I/O) to a file
 
 * [Option](../tB/Core/Option) -- configure a compiler option
 
 * [ParamArray](../tB/Core/ParamArray) -- declares the final parameter of a procedure as an arbitrary-arity list of arguments
 
-* [Print](../tB/Core/Print)
+* [Print #](../tB/Core/Print) -- writes display-formatted data to a sequential file
 
 * [Private](../tB/Core/Private) -- declares module-level variables accessible only within the declaring module
 
@@ -101,7 +103,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Public](../tB/Core/Public) -- declares module-level variables accessible to all procedures in all modules
 
-* [Put](../tB/Core/Put)
+* [Put](../tB/Core/Put) -- writes data from a variable to a disk file
 
 * [RaiseEvent](../tB/Core/RaiseEvent)
 
@@ -113,7 +115,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Return](../tB/Core/Return)
 
-* [RSet](../tB/Core/RSet)
+* [RSet](../tB/Core/RSet) -- right-aligns a string within a string variable
 
 * [Seek](../tB/Core/Seek)
 
@@ -129,13 +131,11 @@ These statements are built into the language itself. They are understood by the 
 
 * [Type](../tB/Core/Type) -- defines a user-defined data type containing one or more elements
 
-* [Unlock](../tB/Core/Unlock)
-
 * [While ... Wend](../tB/Core/While-Wend) -- executes a series of statements as long as a given condition is **True**
 
 * [With](../tB/Core/With) -- executes a series of statements on a single object or a user-defined type
 
-* [Write](../tB/Core/Write)
+* [Write #](../tB/Core/Write) -- writes raw, delimited data to a sequential file (paired with [**Input #**](../tB/Core/Input))
 
 * [#If ... Then ... Else](../tB/Core/Topic-Preprocessor)
 
