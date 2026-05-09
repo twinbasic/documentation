@@ -22,21 +22,21 @@ Syntax:
   > &nbsp;&nbsp;&nbsp;&nbsp; [ [ **Let** ] *name* **=** *expression* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ **Set** *name* **=** *expression* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ **Return** *expression* ] ...  
-  > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** \| **Return** ] ...  
+  > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > **End Property**
 
 - > [ *attributes* ]  
   > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Property Let** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *value* **)**  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
-  > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** \| **Return** ] ...  
+  > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > **End Property**
 
 - > [ *attributes* ]  
   > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Property Set** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *reference* **)**  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
-  > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** \| **Return** ] ...  
+  > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > **End Property**
 
@@ -80,10 +80,10 @@ Syntax:
 : In **Property Set**, the variable containing the object reference used on the right side of the object reference assignment. *reference* cannot be **Optional**.
 
 **[Exit Property](Exit)**
-: *optional*  Immediately returns from the **Property** procedure.
+: *optional*  Immediately returns from the **Property** procedure without setting a return value. Valid in **Property Get**, **Property Let**, and **Property Set**.
 
-**[Return](Return)**
-: *optional*  Immediately returns from the **Property** procedure. In **Property Get**, an *expression* may be supplied as the return value.
+**[Return](Return)** *expression*
+: *optional*  Valid only in a **Property Get** procedure. Immediately returns from the procedure with *expression* as the property's value. The *expression* is required in this form; a bare **Return** is reserved for the [**GoSub...Return**](GoSub-Return) construct and does not exit a **Property** procedure.
 
 ### *arglist*
 
@@ -118,7 +118,7 @@ The **Friend** keyword can only be used in class modules. However, **Friend** pr
 
 All executable code must be in procedures. You can't define a **Property** procedure inside another **[Property](Property)**, **[Sub](Sub)**, or **[Function](Function)** procedure.
 
-The **[Exit Property](Exit)** and **[Return](Return)** statements cause an immediate exit from a **Property** procedure. Program execution continues with the statement following the statement that called the **Property** procedure. Any number of **Exit Property** and **Return** statements can appear anywhere in a **Property** procedure.
+The **[Exit Property](Exit)** statement, and the **[Return](Return)** *expression* statement (in **Property Get** only), cause an immediate exit from a **Property** procedure. Program execution continues with the statement following the statement that called the **Property** procedure. Any number of these statements can appear anywhere in a **Property** procedure.
 
 Like **Sub** and **Function** procedures, a **Property** procedure is a separate procedure that can take arguments, perform a series of statements, and change the values of its arguments. A **Property Get** procedure can be used on the right side of an expression in the same way as a **Function** or a property name. A **Property Let** procedure can only be used on the left side of a property assignment expression or [**Let**](Let) statement. A **Property Set** procedure can only be used on the left side of an object reference assignment or **[Set](Set)** statement.
 

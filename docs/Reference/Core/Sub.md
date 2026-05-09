@@ -12,7 +12,7 @@ Syntax:
 > [ *attributes* ]  
 > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Sub** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ]  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
-> &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Sub** \| **Return** ] ...  
+> &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Sub** ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
 > **End Sub**
 
@@ -44,10 +44,7 @@ Syntax:
 : *optional*  Any group of statements to be executed within the **Sub** procedure.
 
 **[Exit Sub](Exit)**
-: *optional*  Immediately returns from the **Sub** procedure.
-
-**[Return](Return)**
-: *optional*  Immediately returns from the **Sub** procedure.
+: *optional*  Immediately returns from the **Sub** procedure. (A bare [**Return**](Return) statement does *not* exit a **Sub** — it is reserved for the [**GoSub...Return**](GoSub-Return) construct.)
 
 ### *arglist*
 
@@ -86,7 +83,7 @@ The **Friend** keyword can only be used in class modules. However, **Friend** pr
 
 All executable code must be in procedures. You can't define a **Sub** procedure inside another **[Sub](Sub)**, **[Function](Function)**, or **[Property](Property)** procedure.
 
-The **[Exit Sub](Exit)** and **[Return](Return)** statements cause an immediate exit from a **Sub** procedure. Program execution continues with the statement following the statement that called the **Sub** procedure. Any number of **Exit Sub** and **Return** statements can appear anywhere in a **Sub** procedure.
+The **[Exit Sub](Exit)** statement causes an immediate exit from a **Sub** procedure. Program execution continues with the statement following the statement that called the **Sub** procedure. Any number of **Exit Sub** statements can appear anywhere in a **Sub** procedure.
 
 Like a **Function** procedure, a **Sub** procedure is a separate procedure that can take arguments, perform a series of statements, and change the value of its arguments. However, unlike a **Function** procedure, which returns a value, a **Sub** procedure can't be used in an expression.
 
@@ -97,7 +94,7 @@ Variables used in **Sub** procedures fall into two categories: those that are ex
 A procedure can use a variable that is not explicitly declared in the procedure, but a naming conflict can occur if anything you defined at the module level has the same name. If your procedure refers to an undeclared variable that has the same name as another procedure, constant, or variable, it is assumed that your procedure is referring to that module-level name. To avoid this kind of conflict, explicitly declare variables. Use an **[Option Explicit](Option#Explicit)** statement to force explicit declaration of variables.
 
 > [!NOTE]
-> You can't use **GoSub**, **GoTo**, or **Return** to enter or exit a **Sub** procedure. (Inside a **Sub**, **Return** ends the procedure.)
+> You can't use **GoSub**, **GoTo**, or **Return** to enter or exit a **Sub** procedure. Use [**Exit Sub**](Exit) to leave a **Sub** early.
 
 ### Example
 

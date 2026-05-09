@@ -15,7 +15,7 @@ Syntax:
 > &nbsp;&nbsp;&nbsp;&nbsp; [ [ **Let** ] *name* **=** *expression* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ **Set** *name* **=** *expression* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ **Return** *expression* ] ...  
-> &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Function** | **Return** ] ...  
+> &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Function** ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
 > **End Function**
 
@@ -56,11 +56,11 @@ Syntax:
 **[Set](Set)**
 : *optional* Assigns an object-type return value of the **Function** without exiting the function.
 
-**[Return](Return)**
-: *optional* Immediately returns from the function. If an *expression* is provided, its value is used as the return value of the **Function**.
+**[Return](Return)** *expression*
+: *optional* Immediately returns from the function with *expression* as the return value. The *expression* is required in this form; a bare **Return** is reserved for the [**GoSub...Return**](GoSub-Return) construct and does not exit a **Function**.
 
 **[Exit Function](Exit)**
-: *optional* Immediately returns from the function.
+: *optional* Immediately returns from the function without setting a return value. Use this to leave a function early when no value needs to be returned (the function will yield its default return value: 0 for numeric types, `""` for strings, **Empty** for **Variant**, **Nothing** for object references).
 
 *expression*
 : *optional* Return value of the **Function**.
@@ -102,7 +102,7 @@ The **Friend** keyword can only be used in class modules. However, **Friend** pr
 
 All executable code must be in procedures. You can't define a **Function** procedure inside another **Function**, **[Sub](Sub)**, or **[Property](Property)** procedure.
 
-The **[Exit Function](Exit)** and **[Return](Return)** statements cause an immediate exit from a **Function** procedure. Program execution continues with the statement following the statement that called the **Function** procedure. Any number of **Exit Function** and **Return**  statements can appear anywhere in a **Function** procedure.
+The **[Exit Function](Exit)** statement and the **[Return](Return)** *expression* statement both cause an immediate exit from a **Function** procedure. Program execution continues with the statement following the statement that called the **Function** procedure. Any number of these statements can appear anywhere in a **Function** procedure. Use **Exit Function** when you've already assigned the return value (or want the default), and **Return** *expression* when you want to set the return value and exit in a single step.
 
 Like a **Sub** procedure, a **Function** procedure is a separate procedure that can take arguments, perform a series of statements, and change the values of its arguments. However, unlike a **Sub** procedure, you can use a **Function** procedure on the right side of an expression in the same way you use any intrinsic function, such as **Sqr**, **Cos**, or **Chr**, when you want to use the value returned by the function.
 

@@ -51,9 +51,9 @@ These statements are built into the language itself. They are understood by the 
 
 * [Get](../tB/Core/Get) -- reads data from an open disk file into a variable
 
-* [GoSub ... Return](../tB/Core/GoSub-Return)
+* [GoSub ... Return](../tB/Core/GoSub-Return) -- branches to and returns from a subroutine within a procedure
 
-* [GoTo](../tB/Core/GoTo)
+* [GoTo](../tB/Core/GoTo) -- branches unconditionally to a specified line within a procedure
 
 * [If ... Then ... Else](../tB/Core/If-Then-Else) -- conditionally executes a group of statements, depending on the value of an expression
 
@@ -85,9 +85,9 @@ These statements are built into the language itself. They are understood by the 
 
 * [New](../tB/Core/New) -- creates a new instance of a class
 
-* [On Error](../tB/Core/On-Error)
+* [On Error](../tB/Core/On-Error) -- enables an error-handling routine and specifies its location, or disables error handling
 
-* [On ... GoTo](../tB/Core/On-GoTo), [On .. GoSub](../tB/Core/On-GoSub)
+* [On ... GoTo](../tB/Core/On-GoTo), [On ... GoSub](../tB/Core/On-GoSub) -- branch to one of several lines based on the value of an expression
 
 * [Open](../tB/Core/Open) -- enables input/output (I/O) to a file
 
@@ -111,9 +111,9 @@ These statements are built into the language itself. They are understood by the 
 
 * [ReDim](../tB/Core/ReDim) -- reallocates storage space for a dynamic array
 
-* [Resume](../tB/Core/Resume)
+* [Resume](../tB/Core/Resume) -- resumes execution after an error-handling routine is finished
 
-* [Return](../tB/Core/Return)
+* [Return](../tB/Core/Return) -- returns from a **GoSub** subroutine, or (twinBASIC) exits a procedure with an optional value
 
 * [RSet](../tB/Core/RSet) -- right-aligns a string within a string variable
 
