@@ -19,6 +19,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [Class](../tB/Core/Class) -- define a class
 
+* [CoClass](../tB/Core/CoClass) -- (twinBASIC) defines a creatable COM class as the contract for one or more **Interface** blocks
+
 * [Close](../tB/Core/Close) -- concludes input/output (I/O) to a file opened using the **Open** statement
 
 * [Const](../tB/Core/Const) -- declares constants for use in place of literal values
@@ -59,7 +61,9 @@ These statements are built into the language itself. They are understood by the 
 
 * [Input #](../tB/Core/Input) -- reads data from an open sequential file and assigns it to variables
 
-* [Implements](../tB/Core/Implements)
+* [Implements](../tB/Core/Implements) -- specifies an interface or class that will be implemented in the class in which it appears
+
+* [Interface](../tB/Core/Interface) -- (twinBASIC) defines a COM interface using twinBASIC syntax
 
 * [Is](../tB/Core/Is) -- compares two object references for identity
 
@@ -79,7 +83,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [MidB =](../tB/Core/MidB-equals) -- byte-positioned form of **Mid =**
 
-* [Module](../tB/Core/Module)
+* [Module](../tB/Core/Module) -- defines a module: a non-instantiable container for procedures, constants, types, and module-level variables
 
 * [Name](../tB/Core/Name) -- renames a disk file, directory, or folder
 
@@ -101,11 +105,13 @@ These statements are built into the language itself. They are understood by the 
 
 * [Property](../tB/Core/Property) -- declares the **Get**, **Let**, or **Set** procedures that form the body of a property
 
+* [Protected](../tB/Core/Protected) -- (twinBASIC) declares a class member accessible within the class and its derived classes
+
 * [Public](../tB/Core/Public) -- declares module-level variables accessible to all procedures in all modules
 
 * [Put](../tB/Core/Put) -- writes data from a variable to a disk file
 
-* [RaiseEvent](../tB/Core/RaiseEvent)
+* [RaiseEvent](../tB/Core/RaiseEvent) -- fires an event declared at the module level within a class, form, or document
 
 * [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
 
