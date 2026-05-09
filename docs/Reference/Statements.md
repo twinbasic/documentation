@@ -75,6 +75,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [Line Input #](../tB/Core/Line-Input) -- reads a single line from an open sequential file into a string variable
 
+* [Load](../tB/Core/Load) -- loads an object (typically a form) into memory without showing it
+
 * [Lock](../tB/Core/Lock), [Unlock](../tB/Core/Unlock) -- control access by other processes to all or part of an open file
 
 * [LSet](../tB/Core/LSet) -- left-aligns a string within a string variable, or copies one user-defined-type variable into another
@@ -123,6 +125,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [RSet](../tB/Core/RSet) -- right-aligns a string within a string variable
 
+* [SavePicture](../tB/Core/SavePicture) -- saves a graphic from a **Picture** or **Image** to a file
+
 * [Seek](../tB/Core/Seek)
 
 * [Select Case](../tB/Core/Select-Case) -- executes one of several groups of statements, depending on the value of an expression
@@ -137,18 +141,20 @@ These statements are built into the language itself. They are understood by the 
 
 * [Type](../tB/Core/Type) -- defines a user-defined data type containing one or more elements
 
+* [Unload](../tB/Core/Unload) -- removes an object (typically a form) from memory
+
 * [While ... Wend](../tB/Core/While-Wend) -- executes a series of statements as long as a given condition is **True**
 
 * [With](../tB/Core/With) -- executes a series of statements on a single object or a user-defined type
 
 * [Write #](../tB/Core/Write) -- writes raw, delimited data to a sequential file (paired with [**Input #**](../tB/Core/Input))
 
-* [#If ... Then ... Else](../tB/Core/Topic-Preprocessor)
+* [#If ... Then ... Else](../tB/Core/Topic-Preprocessor), [#Const](../tB/Core/Topic-Preprocessor) -- compiler directives that conditionally include code blocks at compile time
 
 ---
 
 ## Deprecated
 
-* [DefBool through DefVar](../tB/Core/Deftype)
+* [DefBool through DefVar](../tB/Core/Deftype) -- set the default data type for variables whose names start with given letters; superseded by explicit **As** *type* declarations
 
 * [Error](../tB/Core/Error)

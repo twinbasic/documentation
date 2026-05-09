@@ -1,15 +1,8 @@
 ---
 title: TODO List for /tb/Core
 nav_exclude: true
-redirect_from:
-  - /tB/Core/Topic-Preprocessor
-  - /tB/Core/Deftype
-
-  - /tB/Core/Load
-  - /tB/Core/SavePicture
-  - /tB/Core/Unload
 ---
 
-> [!WARNING]
+> [!NOTE]
 >
-> Pardon, we have not documented this statement or procedure yet.
+> All entries in `/tB/Core/` are now documented; this stub is retained as a place to add new entries.
