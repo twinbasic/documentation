@@ -1,6 +1,7 @@
 ---
 title: Attributes
 parent: Reference Section
+nav_order: 6
 permalink: /tB/Core/Attributes
 ---
 

@@ -1,6 +1,7 @@
 ---
 title: Glossary
 parent: Reference Section
+nav_order: 99
 permalink: /tB/Gloss
 ---
 
