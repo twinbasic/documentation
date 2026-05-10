@@ -4,10 +4,12 @@ nav_exclude: true
 redirect_from:
   - /tB/Packages/VB/DriveListBox
   - /tB/Packages/VB/Label
+  - /tB/Packages/VB/ListBox
   - /tB/Packages/VB/MDIForm
   - /tB/Packages/VB/Menu
   - /tB/Packages/VB/OptionButton
   - /tB/Packages/VB/Printer
+  - /tB/Packages/VB/VScrollBar
 ---
 
 > [!WARNING]
