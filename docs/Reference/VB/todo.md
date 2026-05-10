@@ -8,6 +8,7 @@ redirect_from:
   - /tB/Packages/VB/MDIForm
   - /tB/Packages/VB/Menu
   - /tB/Packages/VB/OptionButton
+  - /tB/Packages/VB/PictureBox
   - /tB/Packages/VB/Printer
   - /tB/Packages/VB/VScrollBar
 ---
