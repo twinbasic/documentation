@@ -204,12 +204,12 @@ The mouse cursor shown when the pointer is over the frame (and not over a child 
 ### MultiFramePosition
 {: .no_toc }
 
-When the frame is hosted inside a **MultiFrame** layout container, the **Long** zero-based position of this frame in the **MultiFrame**'s ordered sequence. Default `-1` (no position assigned). Outside of a **MultiFrame** the value is ignored.
+When the frame is hosted inside a [**MultiFrame**](../MultiFrame) layout container, the **Long** zero-based position of this frame in the **MultiFrame**'s ordered sequence. Default `-1` (no position assigned). Outside of a **MultiFrame** the value is ignored.
 
 ### MultiFrameSize
 {: .no_toc }
 
-When the frame is hosted inside a **MultiFrame**, its size as a percentage of the **MultiFrame**'s usable extent (`0` for "share evenly"). **Double**. Outside of a **MultiFrame** the value is ignored.
+When the frame is hosted inside a [**MultiFrame**](../MultiFrame), its size as a percentage of the **MultiFrame**'s usable extent (`0` for "share evenly"). **Double**. Outside of a **MultiFrame** the value is ignored.
 
 ### Name
 {: .no_toc }
@@ -229,7 +229,7 @@ The frame's opacity as a percentage (0–100, default 100). Values outside the r
 ### OriginalMultiFramePosition
 {: .no_toc }
 
-The frame's [**MultiFramePosition**](#multiframeposition) at the moment the **MultiFrame** was last reflowed. **Long**, default `-1`. Used internally by the **MultiFrame** layout engine to compact positions after a frame is moved; not normally written from user code.
+The frame's [**MultiFramePosition**](#multiframeposition) at the moment the [**MultiFrame**](../MultiFrame) was last reflowed. **Long**, default `-1`. Used internally by the **MultiFrame** layout engine to compact positions after a frame is moved; not normally written from user code.
 
 ### Parent
 {: .no_toc }
