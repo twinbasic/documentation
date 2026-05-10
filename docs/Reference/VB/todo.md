@@ -3,7 +3,6 @@ title: General TODO List for /tB/Packages/VB/
 nav_exclude: true
 redirect_from:
   - /tB/Packages/VB/DriveListBox
-  - /tB/Packages/VB/Menu
   - /tB/Packages/VB/OptionButton
   - /tB/Packages/VB/PictureBox
   - /tB/Packages/VB/Printer
