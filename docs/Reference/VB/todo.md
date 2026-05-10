@@ -10,6 +10,7 @@ redirect_from:
   - /tB/Packages/VB/PictureBox
   - /tB/Packages/VB/Printer
   - /tB/Packages/VB/Report
+  - /tB/Packages/VB/Shape
   - /tB/Packages/VB/VScrollBar
 ---
 
