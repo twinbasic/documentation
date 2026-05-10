@@ -3,8 +3,6 @@ title: Form
 parent: VB Package
 permalink: /tB/Packages/VB/Form/
 has_toc: false
-redirect_from:
-  - /tB/Packages/VB/Form
 ---
 
 # Form class
