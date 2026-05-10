@@ -1,6 +1,7 @@
 ---
 title: File
 parent: Menu
+grand_parent: IDE
 nav_order: 1
 permalink: /tB/IDE/Project/Menu/File
 ---

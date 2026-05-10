@@ -1,6 +1,7 @@
 ---
 title: Format
 parent: Menu
+grand_parent: IDE
 nav_order: 5
 permalink: /tB/IDE/Project/Menu/Format
 ---
