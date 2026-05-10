@@ -1,7 +1,7 @@
 ---
 title: CheckBox
 parent: VB Package
-permalink: /tB/Packages/VB/CheckBox
+permalink: /tB/Packages/VB/CheckBox/
 has_toc: false
 ---
 
@@ -28,7 +28,7 @@ End Sub
 
 ## Three-state behaviour
 
-[**Value**](#value) is typed as [**CheckBoxConstants**](../VBRUN/Constants/CheckBoxConstants):
+[**Value**](#value) is typed as [**CheckBoxConstants**](../../VBRUN/Constants/CheckBoxConstants):
 
 | Constant         | Value | Meaning                                                |
 |------------------|-------|--------------------------------------------------------|
@@ -68,12 +68,12 @@ Specifies the side of the box on which the [**Caption**](#caption) text appears.
 Syntax: *object*.**Alignment** [ = *value* ]
 
 *value*
-: A member of [**AlignmentConstantsNoCenter**](../VBRUN/Constants/AlignmentConstantsNoCenter): **tbLeftJustify** (0, default — caption to the right of the box) or **tbRightJustify** (1 — caption to the left of the box).
+: A member of [**AlignmentConstantsNoCenter**](../../VBRUN/Constants/AlignmentConstantsNoCenter): **tbLeftJustify** (0, default — caption to the right of the box) or **tbRightJustify** (1 — caption to the left of the box).
 
 ### Appearance
 {: .no_toc }
 
-Determines how the control's border is drawn by the OS. A member of [**AppearanceConstants**](../VBRUN/Constants/AppearanceConstants): **vbAppearFlat** or **vbAppear3d** (default).
+Determines how the control's border is drawn by the OS. A member of [**AppearanceConstants**](../../VBRUN/Constants/AppearanceConstants): **vbAppearFlat** or **vbAppear3d** (default).
 
 ### BackColor
 {: .no_toc }
@@ -95,7 +95,7 @@ Determines whether the previously focused control's [**Validate**](#validate) ev
 ### ControlType
 {: .no_toc }
 
-A read-only [**ControlTypeConstants**](../VBRUN/Constants/ControlTypeConstants) value identifying this control as a check box. Always **vbCheckBox**.
+A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstants) value identifying this control as a check box. Always **vbCheckBox**.
 
 ### DataField
 {: .no_toc }
@@ -125,7 +125,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -181,7 +181,7 @@ A **StdPicture** used as the mouse cursor when [**MousePointer**](#mousepointer)
 ### MousePointer
 {: .no_toc }
 
-The mouse cursor shown when the pointer is over the control. A member of [**MousePointerConstants**](../VBRUN/Constants/MousePointerConstants).
+The mouse cursor shown when the pointer is over the control. A member of [**MousePointerConstants**](../../VBRUN/Constants/MousePointerConstants).
 
 ### Name
 {: .no_toc }
@@ -191,7 +191,7 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### OLEDropMode
 {: .no_toc }
 
-How the control responds to OLE drops. A restricted member of [**OLEDropConstants**](../VBRUN/Constants/OLEDropConstants): **vbOLEDropNone** or **vbOLEDropManual**. Automatic-drop mode is not supported on a CheckBox.
+How the control responds to OLE drops. A restricted member of [**OLEDropConstants**](../../VBRUN/Constants/OLEDropConstants): **vbOLEDropNone** or **vbOLEDropManual**. Automatic-drop mode is not supported on a CheckBox.
 
 ### Opacity
 {: .no_toc }
@@ -206,7 +206,7 @@ The number of pixels of empty space inserted between the picture and the caption
 ### Parent
 {: .no_toc }
 
-A reference to the [**Form**](Form) (or **UserControl**) that contains this control. Read-only.
+A reference to the [**Form**](../Form) (or **UserControl**) that contains this control. Read-only.
 
 ### Picture
 {: .no_toc }
@@ -216,7 +216,7 @@ A **StdPicture** drawn on the control when [**Style**](#style) is **vbButtonGrap
 ### PictureAlignment
 {: .no_toc }
 
-How [**Picture**](#picture) is positioned relative to the caption when [**Style**](#style) is **vbButtonGraphical**. A member of [**AlignConstants**](../VBRUN/Constants/AlignConstants): **vbAlignNone**, **vbAlignTop** (default), **vbAlignBottom**, **vbAlignLeft**, **vbAlignRight**.
+How [**Picture**](#picture) is positioned relative to the caption when [**Style**](#style) is **vbButtonGraphical**. A member of [**AlignConstants**](../../VBRUN/Constants/AlignConstants): **vbAlignNone**, **vbAlignTop** (default), **vbAlignBottom**, **vbAlignLeft**, **vbAlignRight**.
 
 ### PictureDpiScaling
 {: .no_toc }
@@ -232,7 +232,7 @@ When **True**, scales [**Picture**](#picture), [**DownPicture**](#downpicture), 
 ### Style
 {: .no_toc }
 
-Selects between the standard Win32 check-box appearance and an owner-drawn graphical button. A member of [**ButtonConstants**](../VBRUN/Constants/ButtonConstants): **vbButtonStandard** (0, default) or **vbButtonGraphical** (1). Changing **Style** at run time recreates the underlying window.
+Selects between the standard Win32 check-box appearance and an owner-drawn graphical button. A member of [**ButtonConstants**](../../VBRUN/Constants/ButtonConstants): **vbButtonStandard** (0, default) or **vbButtonGraphical** (1). Changing **Style** at run time recreates the underlying window.
 
 ### TabIndex
 {: .no_toc }
@@ -278,7 +278,7 @@ The current state of the check box. **Default property.**
 Syntax: *object*.**Value** [ = *value* ]
 
 *value*
-: A member of [**CheckBoxConstants**](../VBRUN/Constants/CheckBoxConstants): **vbUnchecked** (0), **vbChecked** (1), or **vbGrayed** (2). Negative numbers raise run-time error 380.
+: A member of [**CheckBoxConstants**](../../VBRUN/Constants/CheckBoxConstants): **vbUnchecked** (0), **vbChecked** (1), or **vbGrayed** (2). Negative numbers raise run-time error 380.
 
 Assigning a value that differs from the current one raises a [**Click**](#click) event.
 
@@ -312,7 +312,7 @@ Begins, completes, or cancels a manual drag-and-drop operation. Typically called
 Syntax: *object*.**Drag** [ *Action* ]
 
 *Action*
-: *optional* A member of [**DragConstants**](../VBRUN/Constants/DragConstants): **vbCancel** (0), **vbBeginDrag** (1, default), or **vbEndDrag** (2).
+: *optional* A member of [**DragConstants**](../../VBRUN/Constants/DragConstants): **vbCancel** (0), **vbBeginDrag** (1, default), or **vbEndDrag** (2).
 
 ### Move
 {: .no_toc }
@@ -363,7 +363,7 @@ Brings the control to the front or back of its sibling stack.
 Syntax: *object*.**ZOrder** [ *Position* ]
 
 *Position*
-: *optional* A member of [**ZOrderConstants**](../VBRUN/Constants/ZOrderConstants): **vbBringToFront** (0, default) or **vbSendToBack** (1).
+: *optional* A member of [**ZOrderConstants**](../../VBRUN/Constants/ZOrderConstants): **vbBringToFront** (0, default) or **vbSendToBack** (1).
 
 ## Events
 
