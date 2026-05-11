@@ -10,7 +10,7 @@ Declares the name, arguments, and code that form the body of a **Sub** procedure
 
 Syntax:
 > [ *attributes* ]  
-> [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Sub** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ]  
+> [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Sub** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ *binding-clause* ]  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Sub** ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
@@ -28,17 +28,30 @@ Syntax:
 **Friend**
 : *optional*  Used only in a class module. Indicates that the **Sub** procedure is visible throughout the project, but not visible to a controller of an instance of an object.
 
+**[Protected](Protected)**
+: *optional*  (twinBASIC) Used only in a class. Indicates that the **Sub** procedure is accessible from inside the declaring class and from classes that derive from it via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop), but not from outside callers.
+
 **[Static](Static)**
 : *optional*  Indicates that the **Sub** procedure's local variables are preserved between calls. The **Static** attribute doesn't affect variables that are declared outside the **Sub**, even if they are used in the procedure.
 
+**Overridable**
+: *optional*  (twinBASIC) Marks the **Sub** as an inheritance hook that classes derived via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop) may replace with an **Overrides** clause. Meaningful only on a member of a class that participates in an **Inherits** hierarchy.
+
 *name*
-: Name of the **Sub**; follows standard variable naming conventions.
+: Name of the **Sub**; follows standard variable naming conventions. The special name `New` declares an instance constructor — see [Inheritance](../../Features/Language/Inheritance) for chained construction with `*baseclass*.New(...)`.
 
 **Of** *typevars*
 : *optional*  One or more type variable names, following standard variable naming conventions. The names are separated by commas. Causes the procedure to be a generic **Sub**.
 
 *arglist*
 : *optional*  List of variables representing arguments that are passed to the **Sub** procedure when it is called. Multiple variables are separated by commas. See [*arglist*](#arglist) below for syntax.
+
+*binding-clause*
+: *optional*  (twinBASIC) One of three trailing clauses that bind this body to a member declared elsewhere:
+
+  - **Handles** *object*.*event* — wires this **Sub** up as a handler for the named event, replacing the traditional `Object_Event` naming convention. See [Handler Method Syntax](../../Features/Language/Handlers).
+  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] — provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list lets one body satisfy several interfaces' members at once. See [**Implements** statement](Implements).
+  - **Overrides** *base*.*member* — supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
 
 *statements*
 : *optional*  Any group of statements to be executed within the **Sub** procedure.
@@ -123,5 +136,10 @@ End Sub
 - [**Property** statement](Property)
 - [**Exit** statement](Exit)
 - [**Return** statement](Return)
+- [**Implements** statement](Implements)
+- [**Protected** statement](Protected)
+- [Handler Method Syntax](../../Features/Language/Handlers)
+- [Inheritance](../../Features/Language/Inheritance)
+- [Generics](../../Features/Language/Generics)
 
 {% include VBA-Attribution.md %}

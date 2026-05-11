@@ -17,7 +17,7 @@ A property is exposed to callers through up to three property procedures, all sh
 Syntax:
 
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Property Get** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ **As** *type* ]  
+  > [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Property Get** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ **As** *type* ] [ *binding-clause* ]  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ [ **Let** ] *name* **=** *expression* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ **Set** *name* **=** *expression* ] ...  
@@ -27,14 +27,14 @@ Syntax:
   > **End Property**
 
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Property Let** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *value* **)**  
+  > [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Property Let** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *value* **)** [ *binding-clause* ]  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > **End Property**
 
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Property Set** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *reference* **)**  
+  > [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Property Set** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *reference* **)** [ *binding-clause* ]  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
@@ -52,8 +52,14 @@ Syntax:
 **Friend**
 : *optional*  Used only in a class module. Indicates that the **Property** procedure is visible throughout the project, but not visible to a controller of an instance of an object.
 
+**[Protected](Protected)**
+: *optional*  (twinBASIC) Used only in a class. Indicates that the **Property** procedure is accessible from inside the declaring class and from classes that derive from it via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop), but not from outside callers. All three accessor forms of the same property (**Get**, **Let**, **Set**) should agree on the access modifier.
+
 **[Static](Static)**
 : *optional*  Indicates that the **Property** procedure's local variables are preserved between calls. The **Static** attribute doesn't affect variables that are declared outside the **Property** procedure, even if they are used in the procedure.
+
+**Overridable**
+: *optional*  (twinBASIC) Marks the **Property** as an inheritance hook that classes derived via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop) may replace with an **Overrides** clause. Meaningful only on a member of a class that participates in an **Inherits** hierarchy.
 
 *name*
 : Name of the **Property** procedure; follows standard variable naming conventions, except that the same name is shared by the matching **Property Get**, **Property Let**, and **Property Set** procedures in the same module.
@@ -78,6 +84,13 @@ Syntax:
 
 *reference*
 : In **Property Set**, the variable containing the object reference used on the right side of the object reference assignment. *reference* cannot be **Optional**.
+
+*binding-clause*
+: *optional*  (twinBASIC) One of three trailing clauses that bind this accessor to a member declared elsewhere:
+
+  - **Handles** *object*.*event* — wires the property up as a handler for the named event, replacing the traditional `Object_Event` naming convention. See [Handler Method Syntax](../../Features/Language/Handlers).
+  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] — provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list lets one body satisfy several interfaces' members at once. See [**Implements** statement](Implements).
+  - **Overrides** *base*.*member* — supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
 
 **[Exit Property](Exit)**
 : *optional*  Immediately returns from the **Property** procedure without setting a return value. Valid in **Property Get**, **Property Let**, and **Property Set**.
@@ -177,5 +190,10 @@ End Property
 - [**Set** statement](Set)
 - [**Exit** statement](Exit)
 - [**Return** statement](Return)
+- [**Implements** statement](Implements)
+- [**Protected** statement](Protected)
+- [Handler Method Syntax](../../Features/Language/Handlers)
+- [Inheritance](../../Features/Language/Inheritance)
+- [Generics](../../Features/Language/Generics)
 
 {% include VBA-Attribution.md %}
