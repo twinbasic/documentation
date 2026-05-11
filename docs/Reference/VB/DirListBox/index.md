@@ -33,7 +33,7 @@ End Sub
 
 The control is built around three closely-related properties:
 
-- [**Path**](#path) — the absolute path of the *current* directory. Set it from code (or by double-clicking an entry) to navigate the list. Defaults to [**App.Path**](../../AppGlobalClassProject/App#path) when the control is first created.
+- [**Path**](#path) — the absolute path of the *current* directory. Set it from code (or by double-clicking an entry) to navigate the list. Defaults to [**App.Path**](../App/#path) when the control is first created.
 - [**ListIndex**](#listindex) — which entry the user has *selected*. `-1` selects the current folder itself (the deepest of the ancestor entries); `0` and up select successive subdirectories. Selecting an entry is independent of navigating to it — the selection just moves the highlight.
 - [**PathSelected**](#pathselected) — the absolute path that would become **Path** if the selected entry were activated. For an ancestor entry it walks back up the tree; for a subdirectory it concatenates **Path** and the entry's name.
 
@@ -376,7 +376,7 @@ Syntax: *object*\_**GotFocus**( )
 ### Initialize
 {: .no_toc }
 
-Raised once, immediately after the underlying window is created and the initial path ([**App.Path**](../../AppGlobalClassProject/App#path)) has been loaded. New in twinBASIC — VB6 had no equivalent on this control.
+Raised once, immediately after the underlying window is created and the initial path ([**App.Path**](../App/#path)) has been loaded. New in twinBASIC — VB6 had no equivalent on this control.
 
 Syntax: *object*\_**Initialize**( )
 
