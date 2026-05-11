@@ -4,7 +4,6 @@ nav_exclude: true
 redirect_from:
   - /tB/Packages/VB/DriveListBox
   - /tB/Packages/VB/Printer
-  - /tB/Packages/VB/Shape
   - /tB/Packages/VB/VScrollBar
 ---
 
