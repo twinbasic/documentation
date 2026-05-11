@@ -36,7 +36,7 @@ End Sub
 
 ## Path and Pattern
 
-[**Path**](#path) is the directory whose files are listed. It defaults to [**App.Path**](../../AppGlobalClassProject/App#path) when the control is first created. Setting it from code reloads the list, raises [**PathChange**](#pathchange), and trims any trailing backslash (except for a drive root). Setting a bare drive specifier without a backslash — `"C:"` — is silently rejected; use `"C:\"`. Assigning a path that does not exist raises run-time error 76 (*Path not found*). [**PathWithBackslash**](#pathwithbackslash) returns the same value with a trailing backslash always present, which is convenient when concatenating with [**FileName**](#filename).
+[**Path**](#path) is the directory whose files are listed. It defaults to [**App.Path**](../App/#path) when the control is first created. Setting it from code reloads the list, raises [**PathChange**](#pathchange), and trims any trailing backslash (except for a drive root). Setting a bare drive specifier without a backslash — `"C:"` — is silently rejected; use `"C:\"`. Assigning a path that does not exist raises run-time error 76 (*Path not found*). [**PathWithBackslash**](#pathwithbackslash) returns the same value with a trailing backslash always present, which is convenient when concatenating with [**FileName**](#filename).
 
 [**Pattern**](#pattern) is one or more wildcard masks separated by semicolons (`"*.txt;*.doc"`). Each mask is matched case-insensitively using the **Like** operator; a file is shown if it matches *any* mask. The default is `"*.*"`. Setting **Pattern** reloads the list and raises [**PatternChange**](#patternchange) when the new value differs from the previous one.
 
@@ -240,7 +240,7 @@ A reference to the **Form** (or **UserControl**) that contains this control. Rea
 ### Path
 {: .no_toc }
 
-The directory whose files are listed. **String**. Defaults to [**App.Path**](../../AppGlobalClassProject/App#path) when the control is first created.
+The directory whose files are listed. **String**. Defaults to [**App.Path**](../App/#path) when the control is first created.
 
 Syntax: *object*.**Path** [ = *string* ]
 
@@ -468,7 +468,7 @@ Syntax: *object*\_**GotFocus**( )
 ### Initialize
 {: .no_toc }
 
-Raised once, immediately after the underlying window is created and the initial list of files has been loaded from [**App.Path**](../../AppGlobalClassProject/App#path). New in twinBASIC — VB6 had no equivalent on this control.
+Raised once, immediately after the underlying window is created and the initial list of files has been loaded from [**App.Path**](../App/#path). New in twinBASIC — VB6 had no equivalent on this control.
 
 Syntax: *object*\_**Initialize**( )
 
