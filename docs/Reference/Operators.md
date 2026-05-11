@@ -36,3 +36,7 @@ The right operand is evaluated only when the left operand does not already deter
 
 - [Is](../tB/Core/Is) -- compares two object references for identity
 - [IsNot](../tB/Core/IsNot) -- (twinBASIC) the logical inverse of **Is**
+
+## Function Pointers
+
+- [AddressOf](../tB/Core/AddressOf) -- produces a typed function-pointer to a procedure
