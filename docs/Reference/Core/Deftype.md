@@ -44,7 +44,7 @@ The statement name determines the data type:
 | **DefCur**    | **Currency** |
 | **DefSng**    | **Single** |
 | **DefDbl**    | **Double** |
-| **DefDec**    | **Decimal** (not currently supported) |
+| **DefDec**    | **Decimal** |
 | **DefDate**   | **Date** |
 | **DefStr**    | **String** |
 | **DefObj**    | **Object** |

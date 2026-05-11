@@ -17,7 +17,7 @@ A property is exposed to callers through up to three property procedures, all sh
 Syntax:
 
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Property Get** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ **As** *type* ]  
+  > [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Property Get** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ **As** *type* ] [ *binding-clause* ]  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ [ **Let** ] *name* **=** *expression* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ **Set** *name* **=** *expression* ] ...  
@@ -27,14 +27,14 @@ Syntax:
   > **End Property**
 
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Property Let** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *value* **)**  
+  > [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Property Let** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *value* **)** [ *binding-clause* ]  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > **End Property**
 
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Property Set** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *reference* **)**  
+  > [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Property Set** *name* [ **(** **Of** *typevars* **)** ] **(** [ *arglist* **,** ] *reference* **)** [ *binding-clause* ]  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Property** ] ...  
   > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
@@ -52,8 +52,14 @@ Syntax:
 **Friend**
 : *optional*  Used only in a class module. Indicates that the **Property** procedure is visible throughout the project, but not visible to a controller of an instance of an object.
 
+**[Protected](Protected)**
+: *optional*  (twinBASIC) Used only in a class. Indicates that the **Property** procedure is accessible from inside the declaring class and from classes that derive from it via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop), but not from outside callers. All three accessor forms of the same property (**Get**, **Let**, **Set**) should agree on the access modifier.
+
 **[Static](Static)**
 : *optional*  Indicates that the **Property** procedure's local variables are preserved between calls. The **Static** attribute doesn't affect variables that are declared outside the **Property** procedure, even if they are used in the procedure.
+
+**Overridable**
+: *optional*  (twinBASIC) Marks the **Property** as an inheritance hook that classes derived via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop) may replace with an **Overrides** clause. Meaningful only on a member of a class that participates in an **Inherits** hierarchy.
 
 *name*
 : Name of the **Property** procedure; follows standard variable naming conventions, except that the same name is shared by the matching **Property Get**, **Property Let**, and **Property Set** procedures in the same module.
@@ -65,7 +71,7 @@ Syntax:
 : List of variables representing arguments that are passed to the **Property** procedure when it is called. Multiple arguments are separated by commas. The name and data type of each argument in a **Property Let** or **Property Set** procedure must be the same as the corresponding argument in the matching **Property Get** procedure. See [*arglist*](#arglist) below for syntax. *arglist* is optional for **Property Get**; for **Property Let** and **Property Set** at least the *value*/*reference* parameter is required.
 
 **As** *type*
-: *optional*  Data type of the value returned by the **Property Get** procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal** (not currently supported), **Date**, **String** (except fixed length), **Object**, **Variant**, a user-defined type, or an array. The return *type* of a **Property Get** procedure must be the same data type as the *value* parameter of the corresponding **Property Let** procedure (if one exists), or compatible with the *reference* parameter of the corresponding **Property Set** procedure.
+: *optional*  Data type of the value returned by the **Property Get** procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (except fixed length), **Object**, **Variant**, a user-defined type, or an array. The return *type* of a **Property Get** procedure must be the same data type as the *value* parameter of the corresponding **Property Let** procedure (if one exists), or compatible with the *reference* parameter of the corresponding **Property Set** procedure.
 
 *statements*
 : *optional*  Any group of statements to be executed within the body of the **Property** procedure.
@@ -78,6 +84,13 @@ Syntax:
 
 *reference*
 : In **Property Set**, the variable containing the object reference used on the right side of the object reference assignment. *reference* cannot be **Optional**.
+
+*binding-clause*
+: *optional*  (twinBASIC) One of three trailing clauses that bind this accessor to a member declared elsewhere:
+
+  - **Handles** *object*.*event* [ **,** *object*.*event* … ] — wires the property up as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
+  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] — provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list lets one body satisfy several interfaces' members at once. See [**Implements** statement](Implements).
+  - **Overrides** *base*.*member* — supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
 
 **[Exit Property](Exit)**
 : *optional*  Immediately returns from the **Property** procedure without setting a return value. Valid in **Property Get**, **Property Let**, and **Property Set**.
@@ -106,7 +119,7 @@ Syntax: One or more of
 : Name of the variable representing the argument; follows standard variable naming conventions.
 
 *type*
-: *optional*  Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal** (not currently supported), **Date**, **String** (variable length only), **Object**, **Variant**, a specific object type, or the name of a generic type argument. If the parameter is not **Optional**, a user-defined type may also be specified.  
+: *optional*  Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (variable length only), **Object**, **Variant**, a specific object type, or the name of a generic type argument. If the parameter is not **Optional**, a user-defined type may also be specified.  
 If the name of a generic type parameter is used, it becomes bound to the concrete type of the argument passed to the procedure. The name binding has the scope of the body of the procedure.
 
 *defaultvalue*
@@ -177,5 +190,11 @@ End Property
 - [**Set** statement](Set)
 - [**Exit** statement](Exit)
 - [**Return** statement](Return)
+- [**Implements** statement](Implements)
+- [**Handles** statement](Handles)
+- [**Protected** statement](Protected)
+- [Handler Method Syntax](../../Features/Language/Handlers)
+- [Inheritance](../../Features/Language/Inheritance)
+- [Generics](../../Features/Language/Generics)
 
 {% include VBA-Attribution.md %}

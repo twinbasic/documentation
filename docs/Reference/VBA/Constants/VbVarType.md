@@ -51,7 +51,4 @@ Variant subtype codes returned by the **VarType** function. Most calls return a 
 | **vbUserDefinedType**{: #vbUserDefinedType } | 36 | **Variant** containing a user-defined type. |
 | **vbArray**{: #vbArray } | 8192 | Array. Always added to another value when returned. |
 
-> [!NOTE]
-> The **Decimal** subtype (**vbDecimal**) is reserved but not currently supported in twinBASIC. The constant is defined for source compatibility with VBA.
-
 {% include VBA-Attribution.md %}

@@ -12,6 +12,8 @@ These statements are built into the language itself. They are understood by the 
 
 ## Alphabetical List
 
+* [Alias](../tB/Core/Alias) -- (twinBASIC) declares an alternative name for an intrinsic type, user-defined type, or interface
+
 * [Call](../tB/Core/Call) -- transfer control to a procedure
 
 * [Class](../tB/Core/Class) -- define a class
@@ -25,6 +27,8 @@ These statements are built into the language itself. They are understood by the 
 * [Continue](../tB/Core/Continue) -- immediately begins the next iteration of the enclosing loop
 
 * [Declare](../tB/Core/Declare) -- declares references to external procedures in a dynamic-link library (DLL)
+
+* [Delegate](../tB/Core/Delegate) -- (twinBASIC) declares a function-pointer type — a named signature for indirect calls
 
 * [Dim](../tB/Core/Dim) -- declares variables and allocates storage space
 
@@ -53,6 +57,8 @@ These statements are built into the language itself. They are understood by the 
 * [GoSub ... Return](../tB/Core/GoSub-Return) -- branches to and returns from a subroutine within a procedure
 
 * [GoTo](../tB/Core/GoTo) -- branches unconditionally to a specified line within a procedure
+
+* [Handles](../tB/Core/Handles) -- (twinBASIC) binds a procedure as an event handler for one or more named events
 
 * [If ... Then ... Else](../tB/Core/If-Then-Else) -- conditionally executes a group of statements, depending on the value of an expression
 
