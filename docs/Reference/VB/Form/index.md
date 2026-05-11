@@ -71,7 +71,7 @@ dlgOptions.Show vbModal, Me      ' modal, owned by the calling form
 
 A **Form** is itself a graphics surface — code can draw lines, shapes, and text directly on it. The coordinate system is governed by [**ScaleMode**](#scalemode) (default **vbTwips** — the classic VB6 behaviour) and the [**ScaleLeft**](#scaleleft) / [**ScaleTop**](#scaletop) / [**ScaleWidth**](#scalewidth) / [**ScaleHeight**](#scaleheight) properties, which together describe the form's logical drawing rectangle. Setting **ScaleMode** to **vbUser** lets the four **Scale\*** properties define an arbitrary rectangle; the [**Scale**](#scale) method does this in a single call.
 
-The drawing primitives are [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and the **Print** statement (`Form1.Print "Hello"`) — all use [**ForeColor**](#forecolor), [**FillColor**](#fillcolor), [**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle) for their pen and fill, and the form's [**Font**](#font) for text. The current pen position is tracked by [**CurrentX**](#currentx) and [**CurrentY**](#currenty); [**TextWidth**](#textwidth) and [**TextHeight**](#textheight) measure a string in the current font. [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert single coordinates between scale modes.
+The drawing primitives are [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and the [**Print**](#print) statement (`Form1.Print "Hello"`) — all use [**ForeColor**](#forecolor), [**FillColor**](#fillcolor), [**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle) for their pen and fill, and the form's [**Font**](#font) for text. The current pen position is tracked by [**CurrentX**](#currentx) and [**CurrentY**](#currenty); [**TextWidth**](#textwidth) and [**TextHeight**](#textheight) measure a string in the current font. [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert single coordinates between scale modes.
 
 [**AutoRedraw**](#autoredraw) controls whether drawn output persists across paints: when **False** (default), the [**Paint**](#paint) event must redraw on every invalidation; when **True**, the form keeps an off-screen buffer that survives invalidations and the **Paint** event is suppressed. Setting [**Picture**](#picture) puts a bitmap behind the drawing layer; [**Image**](#image) returns the rendered combined surface as a **StdPicture**.
 
@@ -127,7 +127,7 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 
 Whether drawing performed on the form persists across invalidations. **Boolean**, default **False**.
 
-When **False**, drawing primitives — [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and **Print** — paint directly to the screen and the form must redraw them in its [**Paint**](#paint) event whenever the affected area is invalidated. When **True**, the form keeps an off-screen bitmap, drawing primitives paint into it (and immediately to the screen), the bitmap survives invalidations, and the **Paint** event is suppressed. Reading [**Image**](#image) returns this bitmap.
+When **False**, drawing primitives — [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and [**Print**](#print) — paint directly to the screen and the form must redraw them in its [**Paint**](#paint) event whenever the affected area is invalidated. When **True**, the form keeps an off-screen bitmap, drawing primitives paint into it (and immediately to the screen), the bitmap survives invalidations, and the **Paint** event is suppressed. Reading [**Image**](#image) returns this bitmap.
 
 ### BackColor
 {: .no_toc }
@@ -183,7 +183,7 @@ A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstant
 ### CurrentX
 {: .no_toc }
 
-The horizontal pen position, in [**ScaleMode**](#scalemode) units, used by drawing primitives that omit a starting coordinate (for example, **Print** and the rectangle form of [**Line**](#line)). **Double**.
+The horizontal pen position, in [**ScaleMode**](#scalemode) units, used by drawing primitives that omit a starting coordinate (for example, [**Print**](#print) and the rectangle form of [**Line**](#line)). **Double**.
 
 ### CurrentY
 {: .no_toc }
@@ -233,7 +233,7 @@ The fill pattern for closed shapes. A member of [**FillStyleConstants**](../../V
 ### Font
 {: .no_toc }
 
-The **StdFont** used by the **Print** statement and other text drawing on this form. The convenience properties **FontName**, **FontSize**, **FontBold**, **FontItalic**, **FontStrikethru**, and **FontUnderline** read or write the corresponding members of this object.
+The **StdFont** used by the [**Print**](#print) statement and other text drawing on this form. The convenience properties **FontName**, **FontSize**, **FontBold**, **FontItalic**, **FontStrikethru**, and **FontUnderline** read or write the corresponding members of this object.
 
 ### FontTransparent
 {: .no_toc }
@@ -243,7 +243,7 @@ When **True** (default), text drawn on the form has a transparent background, le
 ### ForeColor
 {: .no_toc }
 
-The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), and the text drawn by **Print**. **OLE_COLOR**.
+The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), and the text drawn by [**Print**](#print). **OLE_COLOR**.
 
 ### hDC
 {: .no_toc }
@@ -513,7 +513,7 @@ Syntax: *object*.**Circle** [ **Step** ] ( *X*, *Y* ), *Radius* [, [ *Color* ] [
 ### Cls
 {: .no_toc }
 
-Clears any drawing performed by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and **Print**, repaints [**BackColor**](#backcolor), and resets [**CurrentX**](#currentx) / [**CurrentY**](#currenty) to `0`. Does not affect the [**Picture**](#picture) backdrop or child controls.
+Clears any drawing performed by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and [**Print**](#print), repaints [**BackColor**](#backcolor), and resets [**CurrentX**](#currentx) / [**CurrentY**](#currenty) to `0`. Does not affect the [**Picture**](#picture) backdrop or child controls.
 
 Syntax: *object*.**Cls**
 
@@ -624,6 +624,22 @@ Syntax: *object*.**PopUpMenu** *Menu* [, *Flags* [, *X* [, *Y* [, *DefaultMenu* 
 > Reserved for compatibility with VB6; not currently implemented in twinBASIC. In VB6 this returns the **OLE_COLOR** of a single pixel of the drawing surface.
 
 Syntax: *object*.**Point**( *X*, *Y* )
+
+### Print
+{: .no_toc }
+
+Writes text to the form's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the VB6 **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and — when [**AutoRedraw**](#autoredraw) is **True** — is recorded into the persistent off-screen bitmap so it survives invalidations.
+
+Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
+
+A trailing `;` or `,` suppresses the newline so the next **Print** call continues on the same line; without a trailing separator, the pen advances to the start of the next line.
+
+```tb
+Me.CurrentX = 10 : Me.CurrentY = 10
+Me.Print "Name: "; sName, "Age: "; nAge      ' two fields, tab-separated
+Me.Print                                     ' blank line
+Me.Print "Total: " & Format$(Total, "0.00")
+```
 
 ### PrintForm
 {: .no_toc }

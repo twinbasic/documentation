@@ -1,6 +1,7 @@
 ---
 title: View
 parent: Menu
+grand_parent: IDE
 nav_order: 3
 permalink: /tB/IDE/Project/Menu/View
 ---

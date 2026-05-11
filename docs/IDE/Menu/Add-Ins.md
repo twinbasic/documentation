@@ -1,6 +1,7 @@
 ---
 title: Add-Ins
 parent: Menu
+grand_parent: IDE
 nav_order: 9
 permalink: /tB/IDE/Project/Menu/AddIns
 ---

@@ -1,6 +1,7 @@
 ---
 title: Run
 parent: Menu
+grand_parent: IDE
 nav_order: 7
 permalink: /tB/IDE/Project/Menu/Run
 ---
