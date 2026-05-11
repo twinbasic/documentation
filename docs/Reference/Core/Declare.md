@@ -65,7 +65,7 @@ Syntax:
 : *optional* List of variables representing arguments that are passed to the procedure when it is called.
 
 *type*
-: *optional* Data type of the value returned by a **Function** procedure; may be Byte, Boolean, Integer, Long, LongLong, LongPtr, Currency, Single, Double, Decimal (not currently supported), Date, String (variable length only), Variant, a user-defined type (UDT), or an object type. **LongLong** is a valid declared type only on 64-bit platforms.
+: *optional* Data type of the value returned by a **Function** procedure; may be Byte, Boolean, Integer, Long, LongLong, LongPtr, Currency, Single, Double, Decimal, Date, String (variable length only), Variant, a user-defined type (UDT), or an object type. **LongLong** is a valid declared type only on 64-bit platforms.
 
 ### arglist
 
@@ -92,7 +92,7 @@ Syntax: [ **Optional** ] [ **ByVal** \| **ByRef** ] [ **ParamArray** ] *varname*
 :  Required for array variables. Indicates that *varname* is an array.
 
 *type*
-: *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Currency**, **Single**, **Double**, **Decimal** (not currently supported), **Date**, **String** (variable length only), **Object**, **Variant**, a user-defined type (UDT), or an object type. (**LongLong** is a valid declared type only on 64-bit platforms.)
+: *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (variable length only), **Object**, **Variant**, a user-defined type (UDT), or an object type. (**LongLong** is a valid declared type only on 64-bit platforms.)
 
 If you include an argument list, the number and type of arguments are checked each time the procedure is called. The First sub in the following example takes one **Long** argument, wherease the Second sub takes no arguments:
 

@@ -31,7 +31,7 @@ Syntax:
 
 *type*
 
-: *optional* The data type of the constant; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal (not currently supported), Date, String, or Variant. Use a separate **As** *type* clause for each constant being declared.
+: *optional* The data type of the constant; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal, Date, String, or Variant. Use a separate **As** *type* clause for each constant being declared.
 
 *expression*
 

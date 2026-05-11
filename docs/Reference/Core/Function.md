@@ -51,7 +51,7 @@ Syntax:
 : *optional* List of variables representing arguments that are passed to the **Function** procedure when it is called. Multiple variables are separated by commas.
 
 **As** *type*
-: *optional* Data type of the value returned by the **Function** procedure; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal (not currently supported), Date, String (except fixed length), Object, Variant, or any user-defined type (UDT).
+: *optional* Data type of the value returned by the **Function** procedure; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal, Date, String (except fixed length), Object, Variant, or any user-defined type (UDT).
 
 *binding-clause*
 : *optional*  (twinBASIC) One of three trailing clauses that bind this body to a member declared elsewhere:
@@ -99,7 +99,7 @@ Syntax: One or more of
 : Name of the variable representing the argument; follows standard variable naming conventions.
 
 *type*
-: *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal** (not currently supported) **Date**, **String** (variable length only), **Object**, **Variant**, a specific object type, or the name of a generic type argument. If the parameter is not **Optional**, a user-defined type may also be specified.  
+: *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (variable length only), **Object**, **Variant**, a specific object type, or the name of a generic type argument. If the parameter is not **Optional**, a user-defined type may also be specified.  
 If the name of a generic type parameter is used, it becomes bound to the concrete type of the argument passed to the function. The name binding has the scope of the body of the function.
 
 *defaultvalue*

@@ -44,8 +44,6 @@ If an object is passed and has a default property, **VarType(*object*)** returns
 
 > [!NOTE]
 > twinBASIC also exposes a generic form, **VarType(Of *T*)**, which is useful for compile-time verification of generic type specifiers. The non-generic call uses special internal bindings and so may not behave like a regular function.
->
-> The **Decimal** subtype (`vbDecimal`) is reserved but not currently supported in twinBASIC; the constant is defined for source compatibility with VBA.
 
 ### Example
 

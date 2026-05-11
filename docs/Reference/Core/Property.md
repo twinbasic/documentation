@@ -71,7 +71,7 @@ Syntax:
 : List of variables representing arguments that are passed to the **Property** procedure when it is called. Multiple arguments are separated by commas. The name and data type of each argument in a **Property Let** or **Property Set** procedure must be the same as the corresponding argument in the matching **Property Get** procedure. See [*arglist*](#arglist) below for syntax. *arglist* is optional for **Property Get**; for **Property Let** and **Property Set** at least the *value*/*reference* parameter is required.
 
 **As** *type*
-: *optional*  Data type of the value returned by the **Property Get** procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal** (not currently supported), **Date**, **String** (except fixed length), **Object**, **Variant**, a user-defined type, or an array. The return *type* of a **Property Get** procedure must be the same data type as the *value* parameter of the corresponding **Property Let** procedure (if one exists), or compatible with the *reference* parameter of the corresponding **Property Set** procedure.
+: *optional*  Data type of the value returned by the **Property Get** procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (except fixed length), **Object**, **Variant**, a user-defined type, or an array. The return *type* of a **Property Get** procedure must be the same data type as the *value* parameter of the corresponding **Property Let** procedure (if one exists), or compatible with the *reference* parameter of the corresponding **Property Set** procedure.
 
 *statements*
 : *optional*  Any group of statements to be executed within the body of the **Property** procedure.
@@ -119,7 +119,7 @@ Syntax: One or more of
 : Name of the variable representing the argument; follows standard variable naming conventions.
 
 *type*
-: *optional*  Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal** (not currently supported), **Date**, **String** (variable length only), **Object**, **Variant**, a specific object type, or the name of a generic type argument. If the parameter is not **Optional**, a user-defined type may also be specified.  
+: *optional*  Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (variable length only), **Object**, **Variant**, a specific object type, or the name of a generic type argument. If the parameter is not **Optional**, a user-defined type may also be specified.  
 If the name of a generic type parameter is used, it becomes bound to the concrete type of the argument passed to the procedure. The name binding has the scope of the body of the procedure.
 
 *defaultvalue*
