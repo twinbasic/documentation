@@ -10,7 +10,9 @@ Used at the module level to declare references to external procedures in a dynam
 
 > [!NOTE]
 >
-> **Declare** statements with the PtrSafe keyword is the recommended syntax. **Declare** statements that include **PtrSafe** work correctly in twinBASIC and VBA version 7 development environment on both 32-bit and 64-bit platforms only after all data types in the **Declare** statement (parameters and return values) that need to store 64-bit quantities are updated to use LongLong for 64-bit integrals or LongPtr for pointers and handles. To ensure backwards compatibility with VBA version 6 and earlier, use the following construct:
+> **Declare** statements with the PtrSafe keyword is the recommended syntax. **Declare** statements that include **PtrSafe** work correctly in twinBASIC and VBA version 7 development environment on both 32-bit and 64-bit platforms only after all data types in the **Declare** statement (parameters and return values) that need to store 64-bit quantities are updated to use LongLong for 64-bit integrals or LongPtr for pointers and handles.
+
+To ensure backwards compatibility with VBA version 6 and earlier, use the following construct:
 
 ```tb
 #If VBA7 Then 
@@ -19,6 +21,7 @@ Declare PtrSafe Sub...
 Declare Sub... 
 #EndIf
 ```
+
 > [!NOTE]
 >
 > For code to run when built for 64-bit targets, all **Declare** statements must include the **PtrSafe** keyword, and all data types in the **Declare** statement (parameters and return values) that need to store 64-bit quantities must be updated to use **LongLong** for 64-bit integrals or **LongPtr** for pointers and handles.
