@@ -12,6 +12,8 @@ These statements are built into the language itself. They are understood by the 
 
 ## Alphabetical List
 
+* [Alias](../tB/Core/Alias) -- (twinBASIC) declares an alternative name for an intrinsic type, user-defined type, or interface
+
 * [Call](../tB/Core/Call) -- transfer control to a procedure
 
 * [Class](../tB/Core/Class) -- define a class
