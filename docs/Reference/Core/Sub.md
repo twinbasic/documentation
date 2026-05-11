@@ -49,7 +49,7 @@ Syntax:
 *binding-clause*
 : *optional*  (twinBASIC) One of three trailing clauses that bind this body to a member declared elsewhere:
 
-  - **Handles** *object*.*event* — wires this **Sub** up as a handler for the named event, replacing the traditional `Object_Event` naming convention. See [Handler Method Syntax](../../Features/Language/Handlers).
+  - **Handles** *object*.*event* [ **,** *object*.*event* … ] — wires this **Sub** up as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
   - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] — provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list lets one body satisfy several interfaces' members at once. See [**Implements** statement](Implements).
   - **Overrides** *base*.*member* — supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
 
@@ -137,6 +137,7 @@ End Sub
 - [**Exit** statement](Exit)
 - [**Return** statement](Return)
 - [**Implements** statement](Implements)
+- [**Handles** statement](Handles)
 - [**Protected** statement](Protected)
 - [Handler Method Syntax](../../Features/Language/Handlers)
 - [Inheritance](../../Features/Language/Inheritance)

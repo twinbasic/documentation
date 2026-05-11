@@ -58,6 +58,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [GoTo](../tB/Core/GoTo) -- branches unconditionally to a specified line within a procedure
 
+* [Handles](../tB/Core/Handles) -- (twinBASIC) binds a procedure as an event handler for one or more named events
+
 * [If ... Then ... Else](../tB/Core/If-Then-Else) -- conditionally executes a group of statements, depending on the value of an expression
 
 * [Input #](../tB/Core/Input) -- reads data from an open sequential file and assigns it to variables
