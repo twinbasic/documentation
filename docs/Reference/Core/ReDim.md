@@ -2,6 +2,7 @@
 title: ReDim
 parent: Statements
 permalink: /tB/Core/ReDim
+vba_attribution: true
 ---
 # ReDim
 {: .no_toc }
@@ -85,5 +86,3 @@ ReDim Preserve MyArray(15) ' Resize to 15 elements.
 - [**Public** statement](Public)
 - [**Static** statement](Static)
 - [**Erase** statement](Erase)
-
-{% include VBA-Attribution.md %}

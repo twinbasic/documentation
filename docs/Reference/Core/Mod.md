@@ -3,6 +3,7 @@ title: Mod
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/Mod
+vba_attribution: true
 ---
 # Mod operator
 {: .no_toc }
@@ -43,5 +44,3 @@ MyResult = 12.6 Mod 5   ' Returns 3.
 ### See Also
 
 - [Operators](../../Reference/Operators)
-
-{% include VBA-Attribution.md %}

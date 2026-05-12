@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/QBColor
 redirect_from:
 -  /tB/Core/QBColor
+vba_attribution: true
 ---
 # QBColor
 {: .no_toc }
@@ -44,5 +45,3 @@ End Sub
 
 - [RGB](RGB), [RGBA](RGBA) functions
 - [TranslateColor](TranslateColor) function
-
-{% include VBA-Attribution.md %}

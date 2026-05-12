@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/Switch
 redirect_from:
 -  /tB/Core/Switch
+vba_attribution: true
 ---
 # Switch
 {: .no_toc }
@@ -42,5 +43,3 @@ End Function
 - [Choose](Choose) function
 - [If](If) function
 - [IIf](IIf) function
-
-{% include VBA-Attribution.md %}

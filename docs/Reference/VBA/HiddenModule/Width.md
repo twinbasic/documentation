@@ -4,6 +4,7 @@ parent: (Default) Module
 permalink: /tB/Modules/HiddenModule/Width
 redirect_from:
 -  /tB/Core/Width
+vba_attribution: true
 ---
 # Width #
 {: .no_toc }
@@ -36,5 +37,3 @@ Close #1                             ' Close file.
 
 - [Open](../../Core/Open) statement
 - [Print #](../../Core/Print) statement
-
-{% include VBA-Attribution.md %}

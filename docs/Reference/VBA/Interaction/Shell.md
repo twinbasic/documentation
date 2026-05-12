@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/Shell
 redirect_from:
 -  /tB/Core/Shell
+vba_attribution: true
 ---
 # Shell
 {: .no_toc }
@@ -37,5 +38,3 @@ TaskId = Shell("C:\Windows\Notepad.exe", vbNormalFocus)
 - [AppActivate](AppActivate) statement
 - [SendKeys](SendKeys) statement
 - [VbAppWinStyle](../Constants/VbAppWinStyle) enumeration
-
-{% include VBA-Attribution.md %}

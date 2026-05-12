@@ -2,6 +2,7 @@
 title: IPmt
 parent: Financial Module
 permalink: /tB/Modules/Financial/IPmt
+vba_attribution: true
 ---
 # IPmt
 {: .no_toc }
@@ -61,5 +62,3 @@ MsgBox Msg    ' Display results.
 ### See Also
 
 - [Pmt](Pmt), [PPmt](PPmt), [Rate](Rate) functions
-
-{% include VBA-Attribution.md %}

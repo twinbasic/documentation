@@ -2,6 +2,7 @@
 title: Keys
 parent: Collection Module
 permalink: /tB/Modules/Collection/Keys
+vba_attribution: true
 ---
 # Keys
 {: .no_toc }
@@ -43,5 +44,3 @@ Next i
 - [Item](Item) method
 - [Items](Items) method
 - [Count](Count) property
-
-{% include VBA-Attribution.md %}

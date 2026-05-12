@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/AppActivate
 redirect_from:
 -  /tB/Core/AppActivate
+vba_attribution: true
 ---
 # AppActivate
 {: .no_toc }
@@ -53,5 +54,3 @@ ReturnValue = Shell("c:\EXCEL\EXCEL.EXE",1)   ' Run Microsoft Excel.
 AppActivate ReturnValue   ' Activate Microsoft 
                           ' Excel.
 ```
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Cos
 parent: Math Module
 permalink: /tB/Modules/Math/Cos
+vba_attribution: true
 ---
 # Cos
 {: .no_toc }
@@ -30,5 +31,3 @@ MySecant = 1 / Cos(MyAngle)    ' Calculate secant.
 ### See Also
 
 - [Atn](Atn), [Sin](Sin), [Tan](Tan) functions
-
-{% include VBA-Attribution.md %}

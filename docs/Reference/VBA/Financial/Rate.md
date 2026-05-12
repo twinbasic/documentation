@@ -2,6 +2,7 @@
 title: Rate
 parent: Financial Module
 permalink: /tB/Modules/Financial/Rate
+vba_attribution: true
 ---
 # Rate
 {: .no_toc }
@@ -57,5 +58,3 @@ MsgBox "Your interest rate is " & Format(CInt(APR), Fmt) & " percent."
 ### See Also
 
 - [FV](FV), [IRR](IRR), [NPer](NPer), [Pmt](Pmt), [PV](PV) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: RSet
 parent: Statements
 permalink: /tB/Core/RSet
+vba_attribution: true
 ---
 # RSet
 {: .no_toc }
@@ -37,5 +38,3 @@ RSet MyString = "Right->" ' MyString contains "   Right->".
 - [**LSet** statement](LSet)
 - [**Mid =** statement](Mid-equals)
 - [**Let** statement](Let)
-
-{% include VBA-Attribution.md %}

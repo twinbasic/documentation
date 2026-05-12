@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/MsgBox
 redirect_from:
 -  /tB/Core/MsgBox
+vba_attribution: true
 ---
 # MsgBox
 {: .no_toc }
@@ -59,5 +60,3 @@ End If
 - [InputBox](InputBox) function
 - [VbMsgBoxStyle](../Constants/VbMsgBoxStyle) enumeration
 - [VbMsgBoxResult](../Constants/VbMsgBoxResult) enumeration
-
-{% include VBA-Attribution.md %}

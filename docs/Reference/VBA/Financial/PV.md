@@ -2,6 +2,7 @@
 title: PV
 parent: Financial Module
 permalink: /tB/Modules/Financial/PV
+vba_attribution: true
 ---
 # PV
 {: .no_toc }
@@ -51,5 +52,3 @@ MsgBox "The present value is " & Format(PVal, Fmt) & "."
 ### See Also
 
 - [FV](FV), [NPer](NPer), [NPV](NPV), [Pmt](Pmt), [Rate](Rate) functions
-
-{% include VBA-Attribution.md %}

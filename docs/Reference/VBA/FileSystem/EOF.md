@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/EOF
 redirect_from:
 -  /tB/Core/EOF
+vba_attribution: true
 ---
 # EOF
 {: .no_toc }
@@ -40,5 +41,3 @@ Close #1    ' Close file.
 ### See Also
 
 - [LOF](LOF) function
-
-{% include VBA-Attribution.md %}

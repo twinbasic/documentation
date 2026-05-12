@@ -6,6 +6,7 @@ redirect_from:
 - /tB/Core/VbCalendar
 - /tB/Core/vbCalGreg
 - /tB/Core/vbCalHijri
+vba_attribution: true
 ---
 # VbCalendar
 {: .no_toc }
@@ -20,5 +21,3 @@ Calendar type values used by the [**Calendar**](../DateTime/Calendar) property.
 ### See Also
 
 - [Calendar](../DateTime/Calendar) property
-
-{% include VBA-Attribution.md %}

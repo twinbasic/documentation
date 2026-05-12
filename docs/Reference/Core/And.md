@@ -3,6 +3,7 @@ title: And
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/And
+vba_attribution: true
 ---
 # And operator
 {: .no_toc }
@@ -63,5 +64,3 @@ MyCheck = A And B                 ' Returns 8 (bitwise comparison).
 - [**Or** operator](Or)
 - [**Not** operator](Not)
 - [Operators](../../Reference/Operators)
-
-{% include VBA-Attribution.md %}

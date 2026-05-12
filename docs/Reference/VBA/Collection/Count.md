@@ -2,6 +2,7 @@
 title: Count
 parent: Collection Module
 permalink: /tB/Modules/Collection/Count
+vba_attribution: true
 ---
 # Count
 {: .no_toc }
@@ -33,5 +34,3 @@ Next
 - [Item](Item) method
 - [Remove](Remove) method
 - [Clear](Clear) method
-
-{% include VBA-Attribution.md %}

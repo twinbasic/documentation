@@ -2,6 +2,7 @@
 title: Let
 parent: Statements
 permalink: /tB/Core/Let
+vba_attribution: true
 ---
 # Let
 {: .no_toc }
@@ -52,5 +53,3 @@ MyInt = 5
 - [**Set** statement](Set)
 - [**LSet** statement](LSet)
 - [**Property** statement](Property)
-
-{% include VBA-Attribution.md %}

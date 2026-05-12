@@ -2,6 +2,7 @@
 title: NPer
 parent: Financial Module
 permalink: /tB/Modules/Financial/NPer
+vba_attribution: true
 ---
 # NPer
 {: .no_toc }
@@ -51,5 +52,3 @@ MsgBox "It will take you " & TotPmts & " months to pay off your loan."
 ### See Also
 
 - [FV](FV), [PV](PV), [Pmt](Pmt), [Rate](Rate) functions
-
-{% include VBA-Attribution.md %}

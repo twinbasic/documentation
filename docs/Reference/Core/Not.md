@@ -3,6 +3,7 @@ title: Not
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/Not
+vba_attribution: true
 ---
 # Not operator
 {: .no_toc }
@@ -52,5 +53,3 @@ MyCheck = Not A          ' Returns -11 (bitwise comparison).
 - [**Or** operator](Or)
 - [**IsNot** operator](IsNot)
 - [Operators](../../Reference/Operators)
-
-{% include VBA-Attribution.md %}

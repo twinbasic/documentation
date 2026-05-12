@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/TimeValue
 redirect_from:
 -  /tB/Core/TimeValue
+vba_attribution: true
 ---
 # TimeValue
 {: .no_toc }
@@ -31,5 +32,3 @@ MyTime = TimeValue("4:35:17 PM")    ' Return a time.
 ### See Also
 
 - [TimeSerial](TimeSerial) function
-
-{% include VBA-Attribution.md %}

@@ -10,6 +10,7 @@ redirect_from:
 - /tB/Core/vbMaximizedFocus
 - /tB/Core/vbNormalNoFocus
 - /tB/Core/vbMinimizedNoFocus
+vba_attribution: true
 ---
 # VbAppWinStyle
 {: .no_toc }
@@ -28,5 +29,3 @@ Window style values for the *windowstyle* argument of the [**Shell**](../Interac
 ### See Also
 
 - [Shell](../Interaction/Shell) function
-
-{% include VBA-Attribution.md %}

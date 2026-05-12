@@ -2,6 +2,7 @@
 title: Clear
 parent: ErrObject Module
 permalink: /tB/Modules/ErrObject/Clear
+vba_attribution: true
 ---
 # Clear
 {: .no_toc }
@@ -46,5 +47,3 @@ Loop
 - [Description](Description) property
 - [Source](Source) property
 - [Raise](Raise) method
-
-{% include VBA-Attribution.md %}

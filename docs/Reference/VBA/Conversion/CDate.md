@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CDate
 redirect_from:
 -  /tB/Core/CDate
+vba_attribution: true
 ---
 # CDate
 {: .no_toc }
@@ -39,5 +40,3 @@ MyShortTime = CDate(MyTime)              ' Convert to Date data type.
 ### See Also
 
 - [CVDate](CVDate), [DateValue](../DateTime/DateValue), [TimeValue](../DateTime/TimeValue) functions
-
-{% include VBA-Attribution.md %}

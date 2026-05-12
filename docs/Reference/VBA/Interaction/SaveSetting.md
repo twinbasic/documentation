@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/SaveSetting
 redirect_from:
 -  /tB/Core/SaveSetting
+vba_attribution: true
 ---
 
 # SaveSetting
@@ -45,5 +46,3 @@ SaveSetting "MyApp","Startup", "Left", 50
 ' Remove section and all its settings from registry. 
 DeleteSetting "MyApp", "Startup" 
 ```
-
-{% include VBA-Attribution.md %}

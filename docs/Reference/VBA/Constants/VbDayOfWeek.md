@@ -12,6 +12,7 @@ redirect_from:
 - /tB/Core/vbThursday
 - /tB/Core/vbFriday
 - /tB/Core/vbSaturday
+vba_attribution: true
 ---
 # VbDayOfWeek
 {: .no_toc }
@@ -28,5 +29,3 @@ Day-of-week constants used as the *firstdayofweek* argument and the return value
 | **vbThursday**{: #vbThursday } | 5 | Thursday. |
 | **vbFriday**{: #vbFriday } | 6 | Friday. |
 | **vbSaturday**{: #vbSaturday } | 7 | Saturday. |
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: PPmt
 parent: Financial Module
 permalink: /tB/Modules/Financial/PPmt
+vba_attribution: true
 ---
 # PPmt
 {: .no_toc }
@@ -75,5 +76,3 @@ End If
 ### See Also
 
 - [IPmt](IPmt), [Pmt](Pmt), [Rate](Rate) functions
-
-{% include VBA-Attribution.md %}

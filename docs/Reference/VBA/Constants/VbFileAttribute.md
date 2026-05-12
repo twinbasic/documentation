@@ -12,6 +12,7 @@ redirect_from:
 - /tB/Core/vbDirectory
 - /tB/Core/vbArchive
 - /tB/Core/vbAlias
+vba_attribution: true
 ---
 # VbFileAttribute
 {: .no_toc }
@@ -32,5 +33,3 @@ Attribute flags for files and directories used by [**Dir**](../FileSystem/Dir), 
 ### See Also
 
 - [Dir](../FileSystem/Dir), [GetAttr](../FileSystem/GetAttr), [SetAttr](../FileSystem/SetAttr)
-
-{% include VBA-Attribution.md %}

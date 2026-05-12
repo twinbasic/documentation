@@ -2,6 +2,7 @@
 title: Error
 parent: Statements
 permalink: /tB/Core/Error
+vba_attribution: true
 ---
 
 # Error
@@ -37,5 +38,3 @@ This example uses the **Error** statement to simulate error number 11.
 On Error Resume Next ' Defer error handling. 
 Error 11 ' Simulate the "Division by zero" error. 
 ```
-
-{% include VBA-Attribution.md %}

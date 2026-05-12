@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IsError
 redirect_from:
 -  /tB/Core/IsError
+vba_attribution: true
 ---
 # IsError
 {: .no_toc }
@@ -32,5 +33,3 @@ MyCheck = IsError(ReturnVal)          ' Returns True.
 
 - [CVErr](../Conversion/CVErr) function
 - [Err](Err) property
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Select Case
 parent: Statements
 permalink: /tB/Core/Select-Case
+vba_attribution: true
 ---
 
 # Select Case
@@ -82,5 +83,3 @@ End Select
 
 - [**If...Then...Else** statement](If-Then-Else)
 - [**Do...Loop** statement](Do-Loop)
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Function
 parent: Statements
 permalink: /tB/Core/Function
+vba_attribution: true
 ---
 # Function
 {: .no_toc }
@@ -188,4 +189,3 @@ Function MyFunc(MyStr As String,Optional MyArg1 As _
   RetVal = MyFunc(MyStr:="Hello ", MyArg1:=7)
 End Function
 ```
-{% include VBA-Attribution.md %}

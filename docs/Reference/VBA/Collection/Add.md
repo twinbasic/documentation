@@ -2,6 +2,7 @@
 title: Add
 parent: Collection Module
 permalink: /tB/Modules/Collection/Add
+vba_attribution: true
 ---
 # Add
 {: .no_toc }
@@ -67,5 +68,3 @@ Next
 - [Item](Item) method
 - [Remove](Remove) method
 - [Exists](Exists) method
-
-{% include VBA-Attribution.md %}

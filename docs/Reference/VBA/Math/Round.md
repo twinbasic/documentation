@@ -2,6 +2,7 @@
 title: Round
 parent: Math Module
 permalink: /tB/Modules/Math/Round
+vba_attribution: true
 ---
 # Round
 {: .no_toc }
@@ -28,5 +29,3 @@ Debug.Print Round(0.12355, 4)    ' 0.1236
 Debug.Print Round(0.12365, 4)    ' 0.1236
 Debug.Print Round(0.00005, 4)    ' 0
 ```
-
-{% include VBA-Attribution.md %}

@@ -9,6 +9,7 @@ redirect_from:
 - /tB/Core/vbShortDate
 - /tB/Core/vbLongTime
 - /tB/Core/vbShortTime
+vba_attribution: true
 ---
 # VbDateTimeFormat
 {: .no_toc }
@@ -26,5 +27,3 @@ Format codes for the [**FormatDateTime**](../Strings/FormatDateTime) function.
 ### See Also
 
 - [FormatDateTime](../Strings/FormatDateTime) function
-
-{% include VBA-Attribution.md %}

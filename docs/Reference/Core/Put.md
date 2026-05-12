@@ -2,6 +2,7 @@
 title: Put
 parent: Statements
 permalink: /tB/Core/Put
+vba_attribution: true
 ---
 # Put
 {: .no_toc }
@@ -95,5 +96,3 @@ Close #1 ' Close file.
 - [**Close** statement](Close)
 - [**Get** statement](Get)
 - [**Seek** function](../Modules/FileSystem/Seek)
-
-{% include VBA-Attribution.md %}

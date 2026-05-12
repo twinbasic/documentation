@@ -2,6 +2,7 @@
 title: Item
 parent: Collection Module
 permalink: /tB/Modules/Collection/Item
+vba_attribution: true
 ---
 # Item
 {: .no_toc }
@@ -49,5 +50,3 @@ Set SmithAdamBD = Birthdays("SmithAdam")
 - [Exists](Exists) method
 - [Items](Items) method
 - [Remove](Remove) method
-
-{% include VBA-Attribution.md %}

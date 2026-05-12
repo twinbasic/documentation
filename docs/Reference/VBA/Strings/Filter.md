@@ -2,6 +2,7 @@
 title: Filter
 parent: Strings Module
 permalink: /tB/Modules/Strings/Filter
+vba_attribution: true
 ---
 # Filter
 {: .no_toc }
@@ -35,5 +36,3 @@ The array returned by the **Filter** function contains only enough elements to c
 ### See Also
 
 - [Join](Join), [Split](Split) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: On Error
 parent: Statements
 permalink: /tB/Core/On-Error
+vba_attribution: true
 ---
 # On Error
 {: .no_toc }
@@ -106,5 +107,3 @@ End Sub
 - [**Error** statement](Error)
 - [**Exit** statement](Exit)
 - [**GoTo** statement](GoTo)
-
-{% include VBA-Attribution.md %}

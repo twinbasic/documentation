@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/Reset
 redirect_from:
 -  /tB/Core/Reset
+vba_attribution: true
 ---
 # Reset
 {: .no_toc }
@@ -30,5 +31,3 @@ Reset    ' Close files and write contents to disk.
 ### See Also
 
 - [Close](../../Core/Close) statement
-
-{% include VBA-Attribution.md %}

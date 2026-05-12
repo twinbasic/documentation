@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CDec
 redirect_from:
 -  /tB/Core/CDec
+vba_attribution: true
 ---
 # CDec
 {: .no_toc }
@@ -35,5 +36,3 @@ MyDecimal = CDec(MyCurr)             ' MyDecimal is a Decimal.
 ### See Also
 
 - [CCur](CCur), [CDbl](CDbl), [CSng](CSng), [ValDec](ValDec) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Number
 parent: ErrObject Module
 permalink: /tB/Modules/ErrObject/Number
+vba_attribution: true
 ---
 # Number
 {: .no_toc }
@@ -70,5 +71,3 @@ MsgBox msg, , "Object Error", Err.HelpFile, Err.HelpContext
 - [Source](Source) property
 - [Raise](Raise) method
 - [Clear](Clear) method
-
-{% include VBA-Attribution.md %}

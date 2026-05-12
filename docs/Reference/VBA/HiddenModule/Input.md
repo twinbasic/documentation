@@ -2,6 +2,7 @@
 title: Input, Input$
 parent: (Default) Module
 permalink: /tB/Modules/HiddenModule/Input
+vba_attribution: true
 ---
 # Input, Input$
 {: .no_toc }
@@ -46,5 +47,3 @@ Close #1                            ' Close file.
 - [InputB, InputB$](InputB) functions
 - [Open](../../Core/Open) statement
 - [EOF](../FileSystem/EOF), [LOF](../FileSystem/LOF), [Loc](../FileSystem/Loc) functions
-
-{% include VBA-Attribution.md %}

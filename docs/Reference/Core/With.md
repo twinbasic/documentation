@@ -2,6 +2,7 @@
 title: With
 parent: Statements
 permalink: /tB/Core/With
+vba_attribution: true
 ---
 
 # With
@@ -55,5 +56,3 @@ With MyObject
     End With
 End With
 ```
-
-{% include VBA-Attribution.md %}

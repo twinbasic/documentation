@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/CreateObject
 redirect_from:
 -  /tB/Core/CreateObject
+vba_attribution: true
 ---
 # CreateObject
 {: .no_toc }
@@ -47,5 +48,3 @@ Set XlApp = Nothing
 ### See Also
 
 - [GetObject](GetObject) function
-
-{% include VBA-Attribution.md %}

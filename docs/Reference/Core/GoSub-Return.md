@@ -2,6 +2,7 @@
 title: GoSub ... Return
 parent: Statements
 permalink: /tB/Core/GoSub-Return
+vba_attribution: true
 ---
 # GoSub ... Return
 {: .no_toc }
@@ -51,5 +52,3 @@ End Sub
 - [**GoTo** statement](GoTo)
 - [**On...GoSub** statement](On-GoSub)
 - [**Sub** statement](Sub)
-
-{% include VBA-Attribution.md %}

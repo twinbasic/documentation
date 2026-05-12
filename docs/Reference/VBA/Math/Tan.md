@@ -2,6 +2,7 @@
 title: Tan
 parent: Math Module
 permalink: /tB/Modules/Math/Tan
+vba_attribution: true
 ---
 # Tan
 {: .no_toc }
@@ -30,5 +31,3 @@ MyCotangent = 1 / Tan(MyAngle)    ' Calculate cotangent.
 ### See Also
 
 - [Atn](Atn), [Cos](Cos), [Sin](Sin) functions
-
-{% include VBA-Attribution.md %}

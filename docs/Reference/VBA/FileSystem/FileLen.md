@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/FileLen
 redirect_from:
 -  /tB/Core/FileLen
+vba_attribution: true
 ---
 # FileLen
 {: .no_toc }
@@ -33,5 +34,3 @@ MySize = FileLen("TESTFILE")    ' Returns file length (bytes).
 
 - [LOF](LOF) function
 - [FileDateTime](FileDateTime) function
-
-{% include VBA-Attribution.md %}

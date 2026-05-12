@@ -2,6 +2,7 @@
 title: Do...Loop
 parent: Statements
 permalink: /tB/Core/Do-Loop
+vba_attribution: true
 ---
 
 # Do...Loop
@@ -136,5 +137,3 @@ End Sub
 > [!NOTE]
 > 
 > To stop an endless loop, press ESC or CTRL+BREAK.
-
-{% include VBA-Attribution.md %}

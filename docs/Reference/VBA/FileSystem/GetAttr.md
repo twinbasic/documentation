@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/GetAttr
 redirect_from:
 -  /tB/Core/GetAttr
+vba_attribution: true
 ---
 # GetAttr
 {: .no_toc }
@@ -61,5 +62,3 @@ MyAttr = GetAttr("MYDIR")    ' Returns 16.
 ### See Also
 
 - [Dir](Dir) function
-
-{% include VBA-Attribution.md %}

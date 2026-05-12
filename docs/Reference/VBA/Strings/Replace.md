@@ -2,6 +2,7 @@
 title: Replace
 parent: Strings Module
 permalink: /tB/Modules/Strings/Replace
+vba_attribution: true
 ---
 # Replace
 {: .no_toc }
@@ -52,5 +53,3 @@ The return value of the **Replace** function is a string, with substitutions mad
 ### See Also
 
 - [InStr](InStr), [StrComp](StrComp) functions
-
-{% include VBA-Attribution.md %}

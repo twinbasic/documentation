@@ -2,6 +2,7 @@
 title: NPV
 parent: Financial Module
 permalink: /tB/Modules/Financial/NPV
+vba_attribution: true
 ---
 # NPV
 {: .no_toc }
@@ -49,5 +50,3 @@ MsgBox Msg    ' Display net present value.
 ### See Also
 
 - [IRR](IRR), [MIRR](MIRR), [PV](PV) functions
-
-{% include VBA-Attribution.md %}

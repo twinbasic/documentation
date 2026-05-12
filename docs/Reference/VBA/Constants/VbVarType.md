@@ -23,6 +23,7 @@ redirect_from:
 - /tB/Core/vbLongLong
 - /tB/Core/vbUserDefinedType
 - /tB/Core/vbArray
+vba_attribution: true
 ---
 # VbVarType
 {: .no_toc }
@@ -50,5 +51,3 @@ Variant subtype codes returned by the **VarType** function. Most calls return a 
 | **vbLongLong**{: #vbLongLong } | 20 | **LongLong** integer (64-bit only). |
 | **vbUserDefinedType**{: #vbUserDefinedType } | 36 | **Variant** containing a user-defined type. |
 | **vbArray**{: #vbArray } | 8192 | Array. Always added to another value when returned. |
-
-{% include VBA-Attribution.md %}

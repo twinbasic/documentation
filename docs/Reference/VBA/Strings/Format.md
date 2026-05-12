@@ -2,6 +2,7 @@
 title: Format
 parent: Strings Module
 permalink: /tB/Modules/Strings/Format
+vba_attribution: true
 ---
 # Format
 {: .no_toc }
@@ -256,5 +257,3 @@ The following table identifies characters you can use to create user-defined num
 ### See Also
 
 - [FormatCurrency](FormatCurrency), [FormatDateTime](FormatDateTime), [FormatNumber](FormatNumber), [FormatPercent](FormatPercent) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Abs
 parent: Math Module
 permalink: /tB/Modules/Math/Abs
+vba_attribution: true
 ---
 # Abs
 {: .no_toc }
@@ -28,5 +29,3 @@ MyNumber = Abs(-50.3)    ' Returns 50.3.
 ### See Also
 
 - [Sgn](Sgn) function
-
-{% include VBA-Attribution.md %}

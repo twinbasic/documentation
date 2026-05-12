@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IsNull
 redirect_from:
 -  /tB/Core/IsNull
+vba_attribution: true
 ---
 # IsNull
 {: .no_toc }
@@ -42,5 +43,3 @@ MyCheck = IsNull(MyVar)               ' True.
 
 - [IsEmpty](IsEmpty), [IsMissing](IsMissing) functions
 - [Nz](../Conversion/Nz) function
-
-{% include VBA-Attribution.md %}

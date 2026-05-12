@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/Nz
 redirect_from:
 -  /tB/Core/Nz
+vba_attribution: true
 ---
 # Nz
 {: .no_toc }
@@ -36,5 +37,3 @@ Dim customerName As Variant
 customerName = recordset.Fields("Name").Value
 MsgBox "Customer Name: " & Nz(customerName, "Unknown")
 ```
-
-{% include VBA-Attribution.md %}

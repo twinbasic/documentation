@@ -2,6 +2,7 @@
 title: Description
 parent: ErrObject Module
 permalink: /tB/Modules/ErrObject/Description
+vba_attribution: true
 ---
 # Description
 {: .no_toc }
@@ -34,5 +35,3 @@ Err.Description = "It was not possible to access an object necessary " _
 - [Source](Source) property
 - [Raise](Raise) method
 - [Clear](Clear) method
-
-{% include VBA-Attribution.md %}

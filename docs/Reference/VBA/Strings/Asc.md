@@ -2,6 +2,7 @@
 title: Asc
 parent: Strings Module
 permalink: /tB/Modules/Strings/Asc
+vba_attribution: true
 ---
 # Asc, AscB, AscW
 {: .no_toc }
@@ -38,5 +39,3 @@ MyNumber = Asc("Apple")    ' Returns 65.
 ### See Also
 
 - [Chr](Chr) function
-
-{% include VBA-Attribution.md %}

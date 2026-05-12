@@ -24,6 +24,7 @@ redirect_from:
 - /tB/Core/vbIMEModeAlpha
 - /tB/Core/vbIMEModeHangulFull
 - /tB/Core/vbIMEModeHangul
+vba_attribution: true
 ---
 # VbIMEStatus
 {: .no_toc }
@@ -45,5 +46,3 @@ The constants applicable to a given mode depend on the system locale. Values 4â€
 | **vbIMEAlphaSng**{: #vbIMEAlphaSng } / **vbIMEModeAlpha**{: #vbIMEModeAlpha } | 8 | Half-width Alphanumeric mode. |
 | **vbIMEModeHangulFull**{: #vbIMEModeHangulFull } | 9 | Full-width Hangul mode. |
 | **vbIMEModeHangul**{: #vbIMEModeHangul } | 10 | Half-width Hangul mode. |
-
-{% include VBA-Attribution.md %}

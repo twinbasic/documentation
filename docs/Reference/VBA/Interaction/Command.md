@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/Command
 redirect_from:
 -  /tB/Core/Command
+vba_attribution: true
 ---
 # Command, Command$
 {: .no_toc }
@@ -60,5 +61,3 @@ Function GetCommandLine(Optional MaxArgs As Variant) As Variant
     GetCommandLine = ArgArray()
 End Function
 ```
-
-{% include VBA-Attribution.md %}

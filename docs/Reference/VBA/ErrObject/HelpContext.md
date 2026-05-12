@@ -2,6 +2,7 @@
 title: HelpContext
 parent: ErrObject Module
 permalink: /tB/Modules/ErrObject/HelpContext
+vba_attribution: true
 ---
 # HelpContext
 {: .no_toc }
@@ -45,5 +46,3 @@ End If
 - [HelpFile](HelpFile) property
 - [Number](Number) property
 - [Raise](Raise) method
-
-{% include VBA-Attribution.md %}

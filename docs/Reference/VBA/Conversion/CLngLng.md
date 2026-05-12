@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CLngLng
 redirect_from:
 -  /tB/Core/CLngLng
+vba_attribution: true
 ---
 # CLngLng
 {: .no_toc }
@@ -40,5 +41,3 @@ MsgBox "The LongLong representation is: " & longLongValue
 ### See Also
 
 - [CBool](CBool), [CByte](CByte), [CInt](CInt), [CLng](CLng), [CLngPtr](CLngPtr), [CSng](CSng), [CStr](CStr), [CVar](CVar) functions
-
-{% include VBA-Attribution.md %}

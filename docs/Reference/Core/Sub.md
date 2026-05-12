@@ -2,6 +2,7 @@
 title: Sub
 parent: Statements
 permalink: /tB/Core/Sub
+vba_attribution: true
 ---
 # Sub
 {: .no_toc }
@@ -142,5 +143,3 @@ End Sub
 - [Handler Method Syntax](../../Features/Language/Handlers)
 - [Inheritance](../../Features/Language/Inheritance)
 - [Generics](../../Features/Language/Generics)
-
-{% include VBA-Attribution.md %}

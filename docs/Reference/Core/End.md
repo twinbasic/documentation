@@ -2,6 +2,7 @@
 title: End
 parent: Statements
 permalink: /tB/Core/End
+vba_attribution: true
 ---
 
 # End
@@ -58,5 +59,3 @@ Sub Form_Load
   End If
 End Sub
 ```
-
-{% include VBA-Attribution.md %}

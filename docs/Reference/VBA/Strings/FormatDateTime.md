@@ -2,6 +2,7 @@
 title: FormatDateTime
 parent: Strings Module
 permalink: /tB/Modules/Strings/FormatDateTime
+vba_attribution: true
 ---
 # FormatDateTime
 {: .no_toc }
@@ -29,5 +30,3 @@ The *namedFormat* argument has the following settings:
 ### See Also
 
 - [Format](Format), [MonthName](MonthName), [WeekdayName](WeekdayName) functions
-
-{% include VBA-Attribution.md %}

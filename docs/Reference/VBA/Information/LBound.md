@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/LBound
 redirect_from:
 -  /tB/Core/LBound
+vba_attribution: true
 ---
 # LBound
 {: .no_toc }
@@ -47,5 +48,3 @@ Lower = LBound(AnyArray)                   ' Returns 0 or 1, per Option Base.
 
 - [UBound](UBound) function
 - [IsArray](IsArray), [IsArrayInitialized](IsArrayInitialized) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: SYD
 parent: Financial Module
 permalink: /tB/Modules/Financial/SYD
+vba_attribution: true
 ---
 # SYD
 {: .no_toc }
@@ -55,5 +56,3 @@ MsgBox "The depreciation for year " & DepYear & " is " & Format(PDepr, Fmt) & ".
 ### See Also
 
 - [DDB](DDB), [SLN](SLN) functions
-
-{% include VBA-Attribution.md %}

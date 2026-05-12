@@ -2,6 +2,7 @@
 title: For Each...Next
 parent: Statements
 permalink: /tB/Core/For-Each-Next
+vba_attribution: true
 ---
 
 # For Each...Next
@@ -61,4 +62,3 @@ For Each MyObject In MyCollection    ' Iterate through each element.
   End If 
 Next
 ```
-{% include VBA-Attribution.md %}

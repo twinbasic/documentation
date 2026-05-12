@@ -2,6 +2,7 @@
 title: MIRR
 parent: Financial Module
 permalink: /tB/Modules/Financial/MIRR
+vba_attribution: true
 ---
 # MIRR
 {: .no_toc }
@@ -48,5 +49,3 @@ MsgBox Msg    ' Display internal return rate.
 ### See Also
 
 - [IRR](IRR), [NPV](NPV), [Rate](Rate) functions
-
-{% include VBA-Attribution.md %}

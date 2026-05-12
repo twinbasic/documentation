@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/Val
 redirect_from:
 -  /tB/Core/Val
+vba_attribution: true
 ---
 # Val
 {: .no_toc }
@@ -53,5 +54,3 @@ MyValue = Val("24 and 57")   ' Returns 24.
 ### See Also
 
 - [ValDec](ValDec), [CDbl](CDbl), [CDec](CDec), [Str](Str) functions
-
-{% include VBA-Attribution.md %}

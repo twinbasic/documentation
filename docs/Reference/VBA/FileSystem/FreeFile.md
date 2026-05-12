@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/FreeFile
 redirect_from:
 -  /tB/Core/FreeFile
+vba_attribution: true
 ---
 # FreeFile
 {: .no_toc }
@@ -30,5 +31,3 @@ For MyIndex = 1 To 5    ' Loop 5 times.
     Close #FileNumber    ' Close file.
 Next MyIndex
 ```
-
-{% include VBA-Attribution.md %}

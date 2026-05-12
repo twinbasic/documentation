@@ -2,6 +2,7 @@
 title: Option
 parent: Statements
 permalink: /tB/Core/Option
+vba_attribution: true
 ---
 # Option
 {: .no_toc }
@@ -192,5 +193,3 @@ Module MyModule
     Option Private Module ' Indicates that the module is private.
 End Module    
 ```
-
-{% include VBA-Attribution.md %}

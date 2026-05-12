@@ -2,6 +2,7 @@
 title: Close
 parent: Statements
 permalink: /tB/Core/Close
+vba_attribution: true
 ---
 
 # Close
@@ -44,5 +45,3 @@ Close #FileNumber(1), #FileNumber(2), #FileNumber(3)  ' Close the 3 open files.
 
 - [Open](Open) statement
 - [FreeFile](../Modules/FileSystem) function
-
-{% include VBA-Attribution.md %}

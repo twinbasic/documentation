@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IMEStatus
 redirect_from:
 -  /tB/Core/IMEStatus
+vba_attribution: true
 ---
 # IMEStatus
 {: .no_toc }
@@ -21,5 +22,3 @@ The return value is one of the [**VbIMEStatus**](../Constants/VbIMEStatus) const
 ### See Also
 
 - [VbIMEStatus](../Constants/VbIMEStatus) enumeration
-
-{% include VBA-Attribution.md %}

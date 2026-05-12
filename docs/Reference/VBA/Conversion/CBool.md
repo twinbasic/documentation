@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CBool
 redirect_from:
 -  /tB/Core/CBool
+vba_attribution: true
 ---
 # CBool
 {: .no_toc }
@@ -37,5 +38,3 @@ Check = CBool(A)         ' Check contains False.
 ### See Also
 
 - [CByte](CByte), [CInt](CInt), [CLng](CLng), [CDbl](CDbl), [CSng](CSng), [CStr](CStr), [CVar](CVar) functions
-
-{% include VBA-Attribution.md %}

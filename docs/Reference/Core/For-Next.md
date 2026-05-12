@@ -2,6 +2,7 @@
 title: For...Next
 parent: Statements
 permalink: /tB/Core/For-Next
+vba_attribution: true
 ---
 
 # For...Next
@@ -86,5 +87,3 @@ For Words = 10 To 1 Step -1 ' Set up 10 repetitions.
   MyString = MyString & " " ' Append a space. 
 Next Words 
 ```
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Open
 parent: Statements
 permalink: /tB/Core/Open
+vba_attribution: true
 ---
 # Open
 {: .no_toc }
@@ -114,5 +115,3 @@ Close #1
 - [**Lock** / **Unlock** statements](Lock)
 - [**FreeFile** function](../Modules/FileSystem/FreeFile)
 - [**TextEncodingConstants** module](../Modules/TextEncodingConstants/)
-
-{% include VBA-Attribution.md %}

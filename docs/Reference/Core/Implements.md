@@ -2,6 +2,7 @@
 title: Implements
 parent: Statements
 permalink: /tB/Core/Implements
+vba_attribution: true
 ---
 # Implements
 {: .no_toc }
@@ -105,5 +106,3 @@ End Property
 - [**Class** statement](Class)
 - [Inheritance](../../Features/Language/Inheritance)
 - [Interfaces and CoClasses](../../Features/Language/Interfaces-CoClasses)
-
-{% include VBA-Attribution.md %}

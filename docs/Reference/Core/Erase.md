@@ -2,6 +2,7 @@
 title: Erase
 parent: Statements
 permalink: /tB/Core/Erase
+vba_attribution: true
 ---
 
 # Erase
@@ -45,5 +46,3 @@ Erase StrFixArray                  ' Each element set to 0.
 Erase VarArray                     ' Each element set to Empty. 
 Erase DynamicArray                 ' Free memory used by array.
 ```
-
-{% include VBA-Attribution.md %}

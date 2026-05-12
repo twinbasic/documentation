@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CSng
 redirect_from:
 -  /tB/Core/CSng
+vba_attribution: true
 ---
 # CSng
 {: .no_toc }
@@ -34,5 +35,3 @@ MySingle2 = CSng(MyDouble2)              ' MySingle2 contains 75.34216.
 ### See Also
 
 - [CBool](CBool), [CByte](CByte), [CCur](CCur), [CDbl](CDbl), [CDec](CDec), [CInt](CInt), [CLng](CLng), [CStr](CStr), [CVar](CVar) functions
-
-{% include VBA-Attribution.md %}

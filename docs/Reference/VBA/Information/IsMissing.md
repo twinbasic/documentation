@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IsMissing
 redirect_from:
 -  /tB/Core/IsMissing
+vba_attribution: true
 ---
 # IsMissing
 {: .no_toc }
@@ -50,5 +51,3 @@ End Function
 ### See Also
 
 - [IsNull](IsNull), [IsEmpty](IsEmpty) functions
-
-{% include VBA-Attribution.md %}

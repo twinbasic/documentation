@@ -3,6 +3,7 @@ title: CheckBox
 parent: VB Package
 permalink: /tB/Packages/VB/CheckBox/
 has_toc: false
+vba_attribution: true
 ---
 
 # CheckBox class
@@ -492,5 +493,3 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 Raised when the focus is moving to another control whose [**CausesValidation**](#causesvalidation) is **True**. Setting *Cancel* to **True** keeps the focus on this control.
 
 Syntax: *object*\_**Validate**( *Cancel* **As Boolean** )
-
-{% include VBA-Attribution.md %}

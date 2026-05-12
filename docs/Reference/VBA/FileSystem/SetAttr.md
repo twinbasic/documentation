@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/SetAttr
 redirect_from:
 -  /tB/Core/SetAttr
+vba_attribution: true
 ---
 # SetAttr
 {: .no_toc }
@@ -44,5 +45,3 @@ SetAttr "TESTFILE", vbHidden + vbReadOnly    ' Set hidden and read-only attribut
 ### See Also
 
 - [GetAttr](GetAttr) function
-
-{% include VBA-Attribution.md %}

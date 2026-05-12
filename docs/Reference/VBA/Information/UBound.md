@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/UBound
 redirect_from:
 -  /tB/Core/UBound
+vba_attribution: true
 ---
 # UBound
 {: .no_toc }
@@ -45,5 +46,3 @@ Upper = UBound(AnyArray)                   ' Returns 10.
 
 - [LBound](LBound) function
 - [IsArray](IsArray), [IsArrayInitialized](IsArrayInitialized) functions
-
-{% include VBA-Attribution.md %}

@@ -13,6 +13,7 @@ redirect_from:
 - /tB/Core/vbNo
 - /tB/Core/vbTryAgain
 - /tB/Core/vbContinue
+vba_attribution: true
 ---
 # VbMsgBoxResult
 {: .no_toc }
@@ -34,5 +35,3 @@ Identifies the button that was pressed to close a **MsgBox** dialog.
 ### See Also
 
 - [VbMsgBoxStyle](VbMsgBoxStyle)
-
-{% include VBA-Attribution.md %}

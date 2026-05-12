@@ -2,6 +2,7 @@
 title: Lock, Unlock
 parent: Statements
 permalink: /tB/Core/Lock
+vba_attribution: true
 ---
 # Lock, Unlock
 {: .no_toc }
@@ -69,5 +70,3 @@ Close #1    ' Close file.
 - [**Close** statement](Close)
 - [**Get** statement](Get)
 - [**Put** statement](Put)
-
-{% include VBA-Attribution.md %}

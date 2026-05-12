@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CInt
 redirect_from:
 -  /tB/Core/CInt
+vba_attribution: true
 ---
 # CInt
 {: .no_toc }
@@ -35,5 +36,3 @@ MyInt = CInt(MyDouble)               ' MyInt contains 2346.
 
 - [CBool](CBool), [CByte](CByte), [CLng](CLng), [CLngLng](CLngLng), [CSng](CSng), [CStr](CStr), [CVar](CVar) functions
 - [Fix](Fix), [Int](Int) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Public
 parent: Statements
 permalink: /tB/Core/Public
+vba_attribution: true
 ---
 # Public
 {: .no_toc }
@@ -70,5 +71,3 @@ Public MyVar, YourVar, ThisVar As Integer
 - [**Static** statement](Static)
 - [**Option** statement](Option)
 - [**ReDim** statement](ReDim)
-
-{% include VBA-Attribution.md %}

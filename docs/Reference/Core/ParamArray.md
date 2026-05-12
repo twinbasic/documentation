@@ -2,6 +2,7 @@
 title: ParamArray
 parent: Statements
 permalink: /tB/Core/ParamArray
+vba_attribution: true
 ---
 # ParamArray
 {: .no_toc }
@@ -67,5 +68,3 @@ Debug.Print Concat(", ", "one", "two", "three")  ' "one, two, three"
 - [**Function** statement](Function)
 - [**Property** statement](Property)
 - [**Call** statement](Call)
-
-{% include VBA-Attribution.md %}

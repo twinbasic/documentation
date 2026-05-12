@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/Dir
 redirect_from:
 -  /tB/Core/Dir
+vba_attribution: true
 ---
 # Dir
 {: .no_toc }
@@ -80,5 +81,3 @@ Do While MyName <> ""                ' Start the loop.
     MyName = Dir                     ' Get next entry.
 Loop
 ```
-
-{% include VBA-Attribution.md %}

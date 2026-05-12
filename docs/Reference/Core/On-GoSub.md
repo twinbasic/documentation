@@ -2,6 +2,7 @@
 title: On...GoSub
 parent: Statements
 permalink: /tB/Core/On-GoSub
+vba_attribution: true
 ---
 # On...GoSub
 {: .no_toc }
@@ -20,5 +21,3 @@ When *expression* evaluates to *n*, control transfers to the *n*-th label in *de
 - [**On...GoTo** statement](On-GoTo)
 - [**GoSub...Return** statement](GoSub-Return)
 - [**Select Case** statement](Select-Case)
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Sin
 parent: Math Module
 permalink: /tB/Modules/Math/Sin
+vba_attribution: true
 ---
 # Sin
 {: .no_toc }
@@ -30,5 +31,3 @@ MyCosecant = 1 / Sin(MyAngle)    ' Calculate cosecant.
 ### See Also
 
 - [Atn](Atn), [Cos](Cos), [Tan](Tan) functions
-
-{% include VBA-Attribution.md %}

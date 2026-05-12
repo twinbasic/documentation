@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IsDate
 redirect_from:
 -  /tB/Core/IsDate
+vba_attribution: true
 ---
 # IsDate
 {: .no_toc }
@@ -41,5 +42,3 @@ MyCheck = IsDate(MyVar)               ' True.
 
 - [CDate](../Conversion/CDate) function
 - [DateValue](../DateTime/DateValue) function
-
-{% include VBA-Attribution.md %}

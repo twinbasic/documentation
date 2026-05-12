@@ -2,6 +2,7 @@
 title: Set
 parent: Statements
 permalink: /tB/Core/Set
+vba_attribution: true
 ---
 # Set
 {: .no_toc }
@@ -60,5 +61,3 @@ Set MyObject = Nothing    ' Release the object.
 - [**New** keyword](New)
 - [**Dim** statement](Dim)
 - [**Property** statement](Property)
-
-{% include VBA-Attribution.md %}

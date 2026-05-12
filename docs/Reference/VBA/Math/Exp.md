@@ -2,6 +2,7 @@
 title: Exp
 parent: Math Module
 permalink: /tB/Modules/Math/Exp
+vba_attribution: true
 ---
 # Exp
 {: .no_toc }
@@ -33,5 +34,3 @@ MyHSin = (Exp(MyAngle) - Exp(-1 * MyAngle)) / 2
 ### See Also
 
 - [Log](Log) function
-
-{% include VBA-Attribution.md %}

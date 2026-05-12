@@ -2,6 +2,7 @@
 title: Exit
 parent: Statements
 permalink: /tB/Core/Exit
+vba_attribution: true
 ---
 # Exit
 {: .no_toc }
@@ -49,4 +50,3 @@ Sub ExitStatementDemo()
   Loop 
 End Sub
 ```
-{% include VBA-Attribution.md %}

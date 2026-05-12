@@ -25,6 +25,7 @@ redirect_from:
 - /tB/Core/vbMsgBoxSetForeground
 - /tB/Core/vbMsgBoxRight
 - /tB/Core/vbMsgBoxRtlReading
+vba_attribution: true
 ---
 # VbMsgBoxStyle
 {: .no_toc }
@@ -80,5 +81,3 @@ Buttons, icons, default-button, modality, and other behaviour flags for the **Ms
 ### See Also
 
 - [VbMsgBoxResult](VbMsgBoxResult)
-
-{% include VBA-Attribution.md %}

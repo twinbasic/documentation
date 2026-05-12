@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/TypeName
 redirect_from:
 -  /tB/Core/TypeName
+vba_attribution: true
 ---
 # TypeName
 {: .no_toc }
@@ -58,5 +59,3 @@ MyType = TypeName(ArrayVar)           ' Returns "Integer()".
 ### See Also
 
 - [VarType](VarType) function
-
-{% include VBA-Attribution.md %}

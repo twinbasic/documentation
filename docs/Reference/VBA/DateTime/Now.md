@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Now
 redirect_from:
 -  /tB/Core/Now
+vba_attribution: true
 ---
 # Now
 {: .no_toc }
@@ -28,5 +29,3 @@ Debug.Print Hour(Today)    ' e.g. 14
 ### See Also
 
 - [Date](Date), [Time](Time) properties
-
-{% include VBA-Attribution.md %}

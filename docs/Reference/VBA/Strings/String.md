@@ -2,6 +2,7 @@
 title: String
 parent: Strings Module
 permalink: /tB/Modules/Strings/String
+vba_attribution: true
 ---
 # String
 {: .no_toc }
@@ -34,5 +35,3 @@ MyString = String(10, "ABC")    ' Returns "AAAAAAAAAA".
 ### See Also
 
 - [Space](Space) function
-
-{% include VBA-Attribution.md %}

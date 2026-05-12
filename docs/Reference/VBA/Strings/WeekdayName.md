@@ -2,6 +2,7 @@
 title: WeekdayName
 parent: Strings Module
 permalink: /tB/Modules/Strings/WeekdayName
+vba_attribution: true
 ---
 # WeekdayName
 {: .no_toc }
@@ -35,5 +36,3 @@ The *firstdayofweek* argument can have the following values:
 ### See Also
 
 - [FormatDateTime](FormatDateTime), [MonthName](MonthName) functions
-
-{% include VBA-Attribution.md %}

@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/CurDir
 redirect_from:
 -  /tB/Core/CurDir
+vba_attribution: true
 ---
 # CurDir
 {: .no_toc }
@@ -62,5 +63,3 @@ MyPath = CurDir$("D")  ' Returns "D:\EXCEL".
 
 - [ChDir](ChDir), [ChDrive](ChDrive) statements
 - [Dir](Dir) function
-
-{% include VBA-Attribution.md %}

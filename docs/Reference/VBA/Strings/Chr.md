@@ -2,6 +2,7 @@
 title: Chr
 parent: Strings Module
 permalink: /tB/Modules/Strings/Chr
+vba_attribution: true
 ---
 # Chr, ChrB, ChrW
 {: .no_toc }
@@ -43,5 +44,3 @@ MyChar = Chr(37)    ' Returns %.
 ### See Also
 
 - [Asc](Asc) function
-
-{% include VBA-Attribution.md %}

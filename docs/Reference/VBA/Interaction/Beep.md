@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/Beep
 redirect_from:
 -  /tB/Core/Beep
+vba_attribution: true
 ---
 # Beep
 {: .no_toc }
@@ -24,5 +25,3 @@ For I = 1 To 3   ' Loop 3 times.
    Beep          ' Sound a tone.
 Next I
 ```
-
-{% include VBA-Attribution.md %}

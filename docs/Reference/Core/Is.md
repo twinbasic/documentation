@@ -3,6 +3,7 @@ title: Is
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/Is
+vba_attribution: true
 ---
 # Is
 {: .no_toc }
@@ -72,5 +73,3 @@ MyCheck = MyObject Is ThatObject    ' Returns False.
 - [**Set** statement](Set)
 - [**If...Then...Else** statement](If-Then-Else)
 - [**Select Case** statement](Select-Case)
-
-{% include VBA-Attribution.md %}

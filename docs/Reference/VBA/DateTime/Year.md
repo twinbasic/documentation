@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Year
 redirect_from:
 -  /tB/Core/Year
+vba_attribution: true
 ---
 # Year
 {: .no_toc }
@@ -31,5 +32,3 @@ MyYear = Year(MyDate)    ' MyYear contains 1969.
 ### See Also
 
 - [Day](Day), [Month](Month), [DatePart](DatePart) functions
-
-{% include VBA-Attribution.md %}

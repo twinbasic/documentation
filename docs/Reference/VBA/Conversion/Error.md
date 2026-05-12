@@ -2,6 +2,7 @@
 title: Error function
 parent: Conversion Module
 permalink: /tB/Modules/Conversion/Error
+vba_attribution: true
 ---
 # Error, Error$
 {: .no_toc }
@@ -48,5 +49,3 @@ End Sub
 
 - [Error](../../Core/Error) statement
 - [CVErr](CVErr) function
-
-{% include VBA-Attribution.md %}

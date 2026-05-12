@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Date
 redirect_from:
 -  /tB/Core/Date
+vba_attribution: true
 ---
 # Date
 {: .no_toc }
@@ -110,5 +111,3 @@ Date$ = MyDate               ' Change the system date.
 
 - [Time](Time) property
 - [Format](../Strings/Format) and [Now](Now) functions
-
-{% include VBA-Attribution.md %}

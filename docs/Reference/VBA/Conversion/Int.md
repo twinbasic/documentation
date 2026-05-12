@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/Int
 redirect_from:
 -  /tB/Core/Int
+vba_attribution: true
 ---
 # Int
 {: .no_toc }
@@ -36,5 +37,3 @@ MyNumber = Int(-99.2)    ' Returns -100.
 ### See Also
 
 - [Fix](Fix), [CInt](CInt), [CLng](CLng) functions
-
-{% include VBA-Attribution.md %}

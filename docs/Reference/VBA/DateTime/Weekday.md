@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Weekday
 redirect_from:
 -  /tB/Core/Weekday
+vba_attribution: true
 ---
 # Weekday
 {: .no_toc }
@@ -59,5 +60,3 @@ MyWeekDay = Weekday(MyDate)     ' MyWeekDay contains 4 because
 ### See Also
 
 - [Day](Day), [Month](Month), [Year](Year) functions
-
-{% include VBA-Attribution.md %}
