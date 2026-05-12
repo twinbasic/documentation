@@ -2,6 +2,7 @@
 title: Stop
 parent: Statements
 permalink: /tB/Core/Stop
+vba_attribution: true
 ---
 
 # Stop
@@ -32,5 +33,3 @@ Next i
 ### See Also
 
 - [**End** statement](End)
-
-{% include VBA-Attribution.md %}

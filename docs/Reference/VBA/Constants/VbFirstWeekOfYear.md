@@ -8,6 +8,7 @@ redirect_from:
 - /tB/Core/vbFirstJan1
 - /tB/Core/vbFirstFourDays
 - /tB/Core/vbFirstFullWeek
+vba_attribution: true
 ---
 # VbFirstWeekOfYear
 {: .no_toc }
@@ -20,5 +21,3 @@ First-week-of-year selectors used as the *firstweekofyear* argument of date func
 | **vbFirstJan1**{: #vbFirstJan1 } | 1 | Start with the week in which January 1 occurs (default). |
 | **vbFirstFourDays**{: #vbFirstFourDays } | 2 | Start with the first week that has at least four days in the new year. |
 | **vbFirstFullWeek**{: #vbFirstFullWeek } | 3 | Start with the first full week of the year. |
-
-{% include VBA-Attribution.md %}

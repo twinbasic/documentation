@@ -2,6 +2,7 @@
 title: FormatNumber
 parent: Strings Module
 permalink: /tB/Modules/Strings/FormatNumber
+vba_attribution: true
 ---
 # FormatNumber
 {: .no_toc }
@@ -38,5 +39,3 @@ When one or more optional arguments are omitted, the values for omitted argument
 ### See Also
 
 - [Format](Format), [FormatCurrency](FormatCurrency), [FormatPercent](FormatPercent) functions
-
-{% include VBA-Attribution.md %}

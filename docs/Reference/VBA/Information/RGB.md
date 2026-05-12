@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/RGB
 redirect_from:
 -  /tB/Core/RGB
+vba_attribution: true
 ---
 # RGB
 {: .no_toc }
@@ -52,5 +53,3 @@ RGBValue = RGB(I, 64 + I, 128 + I)    ' Same as RGB(75, 139, 203).
 - [RGBA](RGBA) function
 - [RGB_R](RGB_R), [RGB_G](RGB_G), [RGB_B](RGB_B) functions
 - [QBColor](QBColor), [TranslateColor](TranslateColor) functions
-
-{% include VBA-Attribution.md %}

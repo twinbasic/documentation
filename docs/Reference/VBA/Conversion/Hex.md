@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/Hex
 redirect_from:
 -  /tB/Core/Hex
+vba_attribution: true
 ---
 # Hex, Hex$
 {: .no_toc }
@@ -42,5 +43,3 @@ MyHex = Hex(459)    ' Returns "1CB".
 ### See Also
 
 - [Oct](Oct), [Str](Str) functions
-
-{% include VBA-Attribution.md %}

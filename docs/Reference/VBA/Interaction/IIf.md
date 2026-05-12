@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/IIf
 redirect_from:
 -  /tB/Core/IIf
+vba_attribution: true
 ---
 # IIf
 {: .no_toc }
@@ -39,5 +40,3 @@ End Function
 - [If](If) function
 - [Choose](Choose) function
 - [Switch](Switch) function
-
-{% include VBA-Attribution.md %}

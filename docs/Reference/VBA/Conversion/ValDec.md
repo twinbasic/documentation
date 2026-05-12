@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/ValDec
 redirect_from:
 -  /tB/Core/ValDec
+vba_attribution: true
 ---
 # ValDec
 {: .no_toc }
@@ -37,5 +38,3 @@ MyDec = ValDec("123.4567890123456789")    ' Full precision retained.
 ### See Also
 
 - [Val](Val), [CDec](CDec), [CDbl](CDbl) functions
-
-{% include VBA-Attribution.md %}

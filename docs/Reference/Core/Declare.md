@@ -2,6 +2,7 @@
 title: Declare
 parent: Statements
 permalink: /tB/Core/Declare
+vba_attribution: true
 ---
 
 # Declare
@@ -132,5 +133,3 @@ Declare PtrSafe Function GetActiveWindow Lib "User32" () As LongPtr
      ' Code is NOT running in 32-bit or 64-bit twinBASIC or VBA7.
 #End If 
 ```
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: LSet
 parent: Statements
 permalink: /tB/Core/LSet
+vba_attribution: true
 ---
 # LSet
 {: .no_toc }
@@ -46,5 +47,3 @@ LSet MyString = "<-Left" ' MyString contains "<-Left    ".
 - [**RSet** statement](RSet)
 - [**Mid =** statement](Mid-equals)
 - [**Let** statement](Let)
-
-{% include VBA-Attribution.md %}

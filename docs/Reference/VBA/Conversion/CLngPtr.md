@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CLngPtr
 redirect_from:
 -  /tB/Core/CLngPtr
+vba_attribution: true
 ---
 # CLngPtr
 {: .no_toc }
@@ -34,5 +35,3 @@ MsgBox "LongPtr value of " & num & " is " & CLngPtr(num)
 ### See Also
 
 - [CBool](CBool), [CByte](CByte), [CInt](CInt), [CLng](CLng), [CLngLng](CLngLng), [CSng](CSng), [CStr](CStr), [CVar](CVar) functions
-
-{% include VBA-Attribution.md %}

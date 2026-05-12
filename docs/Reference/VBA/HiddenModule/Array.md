@@ -4,6 +4,7 @@ parent: (Default) Module
 permalink: /tB/Modules/HiddenModule/Array
 redirect_from:
   - /tB/Core/Array
+vba_attribution: true
 ---
 # Array
 {: .no_toc }
@@ -63,5 +64,3 @@ MyDay = MyWeek(2)        ' MyDay contains "Wed" with default Option Base 0,
 
 - [Option](../../Core/Option) statement
 - [LBound](../Information/LBound), [UBound](../Information/UBound) functions
-
-{% include VBA-Attribution.md %}

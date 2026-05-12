@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/Fix
 redirect_from:
 -  /tB/Core/Fix
+vba_attribution: true
 ---
 # Fix
 {: .no_toc }
@@ -38,5 +39,3 @@ MyNumber = Fix(-99.2)    ' Returns -99.
 ### See Also
 
 - [Int](Int), [CInt](CInt), [CLng](CLng) functions
-
-{% include VBA-Attribution.md %}

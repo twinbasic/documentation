@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Timer
 redirect_from:
 -  /tB/Core/Timer
+vba_attribution: true
 ---
 # Timer
 {: .no_toc }
@@ -30,5 +31,3 @@ Debug.Print "Elapsed: " & Finish - Start & " seconds"
 
 - [Time](Time) property
 - [Now](Now) function
-
-{% include VBA-Attribution.md %}

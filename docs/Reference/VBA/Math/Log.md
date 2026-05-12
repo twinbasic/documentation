@@ -2,6 +2,7 @@
 title: Log
 parent: Math Module
 permalink: /tB/Modules/Math/Log
+vba_attribution: true
 ---
 # Log
 {: .no_toc }
@@ -42,5 +43,3 @@ MyLog = Log(MyAngle + Sqr(MyAngle * MyAngle + 1))
 ### See Also
 
 - [Exp](Exp) function
-
-{% include VBA-Attribution.md %}

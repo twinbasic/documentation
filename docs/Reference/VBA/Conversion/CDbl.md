@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CDbl
 redirect_from:
 -  /tB/Core/CDbl
+vba_attribution: true
 ---
 # CDbl
 {: .no_toc }
@@ -32,5 +33,3 @@ MyDouble = CDbl(MyCurr * 8.2 * 0.01)         ' Convert result to a Double.
 ### See Also
 
 - [CCur](CCur), [CDec](CDec), [CInt](CInt), [CLng](CLng), [CSng](CSng), [CStr](CStr), [CVar](CVar) functions
-
-{% include VBA-Attribution.md %}

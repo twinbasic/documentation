@@ -2,6 +2,7 @@
 title: InStrRev
 parent: Strings Module
 permalink: /tB/Modules/Strings/InStrRev
+vba_attribution: true
 ---
 # InStrRev
 {: .no_toc }
@@ -50,5 +51,3 @@ The *compare* argument can have the following values:
 ### See Also
 
 - [InStr](InStr) function
-
-{% include VBA-Attribution.md %}

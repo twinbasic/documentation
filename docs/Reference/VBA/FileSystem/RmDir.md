@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/RmDir
 redirect_from:
 -  /tB/Core/RmDir
+vba_attribution: true
 ---
 # RmDir
 {: .no_toc }
@@ -31,5 +32,3 @@ This example uses the **RmDir** statement to remove an existing directory or fol
 ' Assume that MYDIR is an empty directory or folder.
 RmDir "MYDIR"   ' Remove MYDIR.
 ```
-
-{% include VBA-Attribution.md %}

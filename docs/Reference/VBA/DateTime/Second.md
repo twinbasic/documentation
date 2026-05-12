@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Second
 redirect_from:
 -  /tB/Core/Second
+vba_attribution: true
 ---
 # Second
 {: .no_toc }
@@ -28,5 +29,3 @@ MySecond = Second(MyTime)    ' MySecond contains 17.
 ### See Also
 
 - [Hour](Hour), [Minute](Minute), [DatePart](DatePart) functions
-
-{% include VBA-Attribution.md %}

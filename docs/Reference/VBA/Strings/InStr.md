@@ -2,6 +2,7 @@
 title: InStr
 parent: Strings Module
 permalink: /tB/Modules/Strings/InStr
+vba_attribution: true
 ---
 # InStr, InStrB
 {: .no_toc }
@@ -71,5 +72,3 @@ MyPos = InStr(1, SearchString, "W")    ' Returns 0.
 ### See Also
 
 - [InStrRev](InStrRev), [Replace](Replace), [StrComp](StrComp) functions
-
-{% include VBA-Attribution.md %}

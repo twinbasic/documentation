@@ -2,6 +2,7 @@
 title: Call
 parent: Statements
 permalink: /tB/Core/Call
+vba_attribution: true
 ---
 
 # Call
@@ -63,6 +64,3 @@ End Sub
 - [**Function** statement](Function)
 - [**Sub** statement](Sub)
 
-
-
-{% include VBA-Attribution.md %}

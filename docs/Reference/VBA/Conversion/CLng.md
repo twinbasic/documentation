@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CLng
 redirect_from:
 -  /tB/Core/CLng
+vba_attribution: true
 ---
 # CLng
 {: .no_toc }
@@ -34,5 +35,3 @@ MyLong2 = CLng(MyVal2)                   ' MyLong2 contains 25428.
 
 - [CBool](CBool), [CByte](CByte), [CInt](CInt), [CLngLng](CLngLng), [CLngPtr](CLngPtr), [CSng](CSng), [CStr](CStr), [CVar](CVar) functions
 - [Fix](Fix), [Int](Int) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Name
 parent: Statements
 permalink: /tB/Core/Name
+vba_attribution: true
 ---
 # Name
 {: .no_toc }
@@ -40,5 +41,3 @@ Name oldName As newName ' Move and rename file.
 - [**FileCopy** procedure](../Modules/FileSystem/FileCopy)
 - [**MkDir** statement](../Modules/FileSystem/MkDir)
 - [**RmDir** statement](../Modules/FileSystem/RmDir)
-
-{% include VBA-Attribution.md %}

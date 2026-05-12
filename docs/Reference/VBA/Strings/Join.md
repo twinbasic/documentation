@@ -2,6 +2,7 @@
 title: Join
 parent: Strings Module
 permalink: /tB/Modules/Strings/Join
+vba_attribution: true
 ---
 # Join
 {: .no_toc }
@@ -19,5 +20,3 @@ Syntax: **Join(** *sourcearray* [ **,** *delimiter* ] **)**
 ### See Also
 
 - [Filter](Filter), [Split](Split) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Sgn
 parent: Math Module
 permalink: /tB/Modules/Math/Sgn
+vba_attribution: true
 ---
 # Sgn
 {: .no_toc }
@@ -36,5 +37,3 @@ MySign = Sgn(MyVar3)    ' Returns 0.
 ### See Also
 
 - [Abs](Abs) function
-
-{% include VBA-Attribution.md %}

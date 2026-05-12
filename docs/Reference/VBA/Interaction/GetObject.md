@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/GetObject
 redirect_from:
 -  /tB/Core/GetObject
+vba_attribution: true
 ---
 # GetObject
 {: .no_toc }
@@ -73,5 +74,3 @@ Set MyXl = Nothing
 ### See Also
 
 - [CreateObject](CreateObject) function
-
-{% include VBA-Attribution.md %}

@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IsNumeric
 redirect_from:
 -  /tB/Core/IsNumeric
+vba_attribution: true
 ---
 # IsNumeric
 {: .no_toc }
@@ -41,5 +42,3 @@ MyCheck = IsNumeric(MyVar)            ' Returns False.
 - [CDbl](../Conversion/CDbl), [CDec](../Conversion/CDec) functions
 - [IsDate](IsDate) function
 - [Val](../Conversion/Val) function
-
-{% include VBA-Attribution.md %}

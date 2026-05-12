@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IsEmpty
 redirect_from:
 -  /tB/Core/IsEmpty
+vba_attribution: true
 ---
 # IsEmpty
 {: .no_toc }
@@ -36,5 +37,3 @@ MyCheck = IsEmpty(MyVar)              ' True.
 ### See Also
 
 - [IsNull](IsNull), [IsMissing](IsMissing) functions
-
-{% include VBA-Attribution.md %}

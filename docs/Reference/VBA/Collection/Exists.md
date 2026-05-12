@@ -2,6 +2,7 @@
 title: Exists
 parent: Collection Module
 permalink: /tB/Modules/Collection/Exists
+vba_attribution: true
 ---
 # Exists
 {: .no_toc }
@@ -44,5 +45,3 @@ End If
 - [Item](Item) method
 - [Keys](Keys) method
 - [KeyCompareMode](KeyCompareMode) property
-
-{% include VBA-Attribution.md %}

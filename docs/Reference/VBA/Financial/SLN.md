@@ -2,6 +2,7 @@
 title: SLN
 parent: Financial Module
 permalink: /tB/Modules/Financial/SLN
+vba_attribution: true
 ---
 # SLN
 {: .no_toc }
@@ -47,5 +48,3 @@ MsgBox "The depreciation is " & Format(PDepr, Fmt) & " per year."
 ### See Also
 
 - [DDB](DDB), [SYD](SYD) functions
-
-{% include VBA-Attribution.md %}

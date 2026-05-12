@@ -2,6 +2,7 @@
 title: '#If, #Const'
 parent: Statements
 permalink: /tB/Core/Topic-Preprocessor
+vba_attribution: true
 ---
 # #If...Then...#Else, #Const directives
 {: .no_toc }
@@ -83,5 +84,3 @@ End Sub
 - [**If...Then...Else** statement](If-Then-Else) — the runtime counterpart.
 - [**Const** statement](Const) — the runtime counterpart of **#Const**.
 - [Compiler Constants](../../Reference/Compiler-Constants) — the full list of built-in conditional constants.
-
-{% include VBA-Attribution.md %}

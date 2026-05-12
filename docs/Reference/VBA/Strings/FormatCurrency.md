@@ -2,6 +2,7 @@
 title: FormatCurrency
 parent: Strings Module
 permalink: /tB/Modules/Strings/FormatCurrency
+vba_attribution: true
 ---
 # FormatCurrency
 {: .no_toc }
@@ -38,5 +39,3 @@ When one or more optional arguments are omitted, the values for omitted argument
 ### See Also
 
 - [Format](Format), [FormatNumber](FormatNumber), [FormatPercent](FormatPercent) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Static
 parent: Statements
 permalink: /tB/Core/Static
+vba_attribution: true
 ---
 # Static
 {: .no_toc }
@@ -80,5 +81,3 @@ End Function
 - [**Public** statement](Public)
 - [**Sub** statement](Sub)
 - [**Function** statement](Function)
-
-{% include VBA-Attribution.md %}

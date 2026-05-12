@@ -2,6 +2,7 @@
 title: HelpFile
 parent: ErrObject Module
 permalink: /tB/Modules/ErrObject/HelpFile
+vba_attribution: true
 ---
 # HelpFile
 {: .no_toc }
@@ -40,5 +41,3 @@ MsgBox msg, , "Error: " & Err.Description, Err.HelpFile
 - [HelpContext](HelpContext) property
 - [Number](Number) property
 - [Raise](Raise) method
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Get
 parent: Statements
 permalink: /tB/Core/Get
+vba_attribution: true
 ---
 # Get
 {: .no_toc }
@@ -94,5 +95,3 @@ Close #1 ' Close file.
 - [**Close** statement](Close)
 - [**Put** statement](Put)
 - [**Seek** function](../Modules/FileSystem/Seek)
-
-{% include VBA-Attribution.md %}

@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CVErr
 redirect_from:
 -  /tB/Core/CVErr
+vba_attribution: true
 ---
 # CVErr
 {: .no_toc }
@@ -42,5 +43,3 @@ End Function
 ### See Also
 
 - [Error](Error) function
-
-{% include VBA-Attribution.md %}

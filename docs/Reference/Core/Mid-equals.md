@@ -2,6 +2,7 @@
 title: Mid =
 parent: Statements
 permalink: /tB/Core/Mid-equals
+vba_attribution: true
 ---
 # Mid = statement
 {: .no_toc }
@@ -50,5 +51,3 @@ Mid(MyString, 5, 3) = "duck" ' MyString = "The duc jumpe".
 - [**Mid** function](../Modules/Strings/Mid)
 - [**LSet** statement](LSet)
 - [**RSet** statement](RSet)
-
-{% include VBA-Attribution.md %}

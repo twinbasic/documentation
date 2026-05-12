@@ -2,6 +2,7 @@
 title: KeyCompareMode
 parent: Collection Module
 permalink: /tB/Modules/Collection/KeyCompareMode
+vba_attribution: true
 ---
 # KeyCompareMode
 {: .no_toc }
@@ -53,5 +54,3 @@ col2.Add "first", Key:="A"
 - [KeyCountHint](KeyCountHint) property
 - [StrComp](../Strings/StrComp) function
 - [Option Compare](../../Core/Option) statement
-
-{% include VBA-Attribution.md %}

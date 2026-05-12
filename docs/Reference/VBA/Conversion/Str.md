@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/Str
 redirect_from:
 -  /tB/Core/Str
+vba_attribution: true
 ---
 # Str, Str$
 {: .no_toc }
@@ -41,5 +42,3 @@ MyString = Str(459.001)     ' Returns " 459.001".
 ### See Also
 
 - [CStr](CStr), [Format](../Strings/Format), [Hex](Hex), [Oct](Oct), [Val](Val) functions
-
-{% include VBA-Attribution.md %}

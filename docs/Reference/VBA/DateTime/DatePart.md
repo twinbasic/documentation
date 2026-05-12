@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/DatePart
 redirect_from:
 -  /tB/Core/DatePart
+vba_attribution: true
 ---
 # DatePart
 {: .no_toc }
@@ -80,5 +81,3 @@ MsgBox "Quarter: " & DatePart("q", TheDate)
 ### See Also
 
 - [DateAdd](DateAdd), [DateDiff](DateDiff) functions
-
-{% include VBA-Attribution.md %}

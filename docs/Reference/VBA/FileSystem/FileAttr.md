@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/FileAttr
 redirect_from:
 -  /tB/Core/FileAttr
+vba_attribution: true
 ---
 # FileAttr
 {: .no_toc }
@@ -45,5 +46,3 @@ Close FileNum    ' Close file.
 ### See Also
 
 - [LOF](LOF), [EOF](EOF) functions
-
-{% include VBA-Attribution.md %}

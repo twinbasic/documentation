@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CVDate
 redirect_from:
 -  /tB/Core/CVDate
+vba_attribution: true
 ---
 # CVDate
 {: .no_toc }
@@ -30,5 +31,3 @@ MsgBox "Date value of " & dateString & " is " & CVDate(dateString)
 ### See Also
 
 - [CDate](CDate), [CVar](CVar), [CVErr](CVErr) functions
-
-{% include VBA-Attribution.md %}

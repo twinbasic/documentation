@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/Seek
 redirect_from:
 -  /tB/Core/Seek
+vba_attribution: true
 ---
 # Seek
 {: .no_toc }
@@ -95,5 +96,3 @@ Close #1    ' Close file.
 - [Loc](Loc) function
 - [LOF](LOF) function
 - [EOF](EOF) function
-
-{% include VBA-Attribution.md %}

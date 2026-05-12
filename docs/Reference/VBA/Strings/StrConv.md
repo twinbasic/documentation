@@ -2,6 +2,7 @@
 title: StrConv
 parent: Strings Module
 permalink: /tB/Modules/Strings/StrConv
+vba_attribution: true
 ---
 # StrConv
 {: .no_toc }
@@ -56,5 +57,3 @@ Next
 ### See Also
 
 - [Asc](Asc), [Chr](Chr), [LCase](LCase), [UCase](UCase) functions
-
-{% include VBA-Attribution.md %}

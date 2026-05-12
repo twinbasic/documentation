@@ -2,6 +2,7 @@
 title: KeyCountHint
 parent: Collection Module
 permalink: /tB/Modules/Collection/KeyCountHint
+vba_attribution: true
 ---
 # KeyCountHint
 {: .no_toc }
@@ -43,5 +44,3 @@ Next
 - [Add](Add) method
 - [Exists](Exists) method
 - [KeyCompareMode](KeyCompareMode) property
-
-{% include VBA-Attribution.md %}

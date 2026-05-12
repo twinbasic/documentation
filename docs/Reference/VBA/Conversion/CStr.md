@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CStr
 redirect_from:
 -  /tB/Core/CStr
+vba_attribution: true
 ---
 # CStr
 {: .no_toc }
@@ -42,5 +43,3 @@ MyString = CStr(MyDouble)                ' MyString contains "437.324".
 
 - [CBool](CBool), [CByte](CByte), [CCur](CCur), [CDbl](CDbl), [CInt](CInt), [CLng](CLng), [CSng](CSng), [CVar](CVar) functions
 - [Str](Str), [Format](../Strings/Format) functions
-
-{% include VBA-Attribution.md %}

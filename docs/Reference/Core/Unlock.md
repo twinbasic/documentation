@@ -2,6 +2,7 @@
 title: Unlock
 parent: Statements
 permalink: /tB/Core/Unlock
+vba_attribution: true
 ---
 # Unlock
 {: .no_toc }
@@ -23,5 +24,3 @@ The arguments to **Unlock** must match exactly the arguments of the correspondin
 - [**Lock** statement](Lock)
 - [**Open** statement](Open)
 - [**Close** statement](Close)
-
-{% include VBA-Attribution.md %}

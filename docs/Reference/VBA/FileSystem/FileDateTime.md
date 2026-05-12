@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/FileDateTime
 redirect_from:
 -  /tB/Core/FileDateTime
+vba_attribution: true
 ---
 # FileDateTime
 {: .no_toc }
@@ -29,5 +30,3 @@ MyStamp = FileDateTime("TESTFILE")    ' Returns "2/12/93 4:35:47 PM".
 ### See Also
 
 - [FileLen](FileLen), [GetAttr](GetAttr) functions
-
-{% include VBA-Attribution.md %}

@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/DateAdd
 redirect_from:
 -  /tB/Core/DateAdd
+vba_attribution: true
 ---
 # DateAdd
 {: .no_toc }
@@ -74,5 +75,3 @@ MsgBox "New date: " & DateAdd(IntervalType, Number, FirstDate)
 ### See Also
 
 - [DateDiff](DateDiff), [DatePart](DatePart) functions
-
-{% include VBA-Attribution.md %}

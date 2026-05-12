@@ -2,6 +2,7 @@
 title: Write #
 parent: Statements
 permalink: /tB/Core/Write
+vba_attribution: true
 ---
 # Write # statement
 {: .no_toc }
@@ -65,5 +66,3 @@ Close #1    ' Close file.
 - [**Input #** statement](Input)
 - [**Line Input #** statement](Line-Input)
 - [**Print #** statement](Print)
-
-{% include VBA-Attribution.md %}

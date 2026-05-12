@@ -2,6 +2,7 @@
 title: Len
 parent: Strings Module
 permalink: /tB/Modules/Strings/Len
+vba_attribution: true
 ---
 # Len, LenB
 {: .no_toc }
@@ -51,5 +52,3 @@ MyLen = Len(MyCur)           ' Returns 8.
 ### See Also
 
 - [Left](Left), [Mid](Mid), [Right](Right) functions
-
-{% include VBA-Attribution.md %}

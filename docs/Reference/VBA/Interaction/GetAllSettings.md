@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/GetAllSettings
 redirect_from:
 -  /tB/Core/GetAllSettings
+vba_attribution: true
 ---
 # GetAllSettings
 {: .no_toc }
@@ -47,5 +48,3 @@ DeleteSetting "MyApp", "Startup"
 - [DeleteSetting](DeleteSetting) statement
 - [GetSetting](GetSetting) function
 - [SaveSetting](SaveSetting) statement
-
-{% include VBA-Attribution.md %}

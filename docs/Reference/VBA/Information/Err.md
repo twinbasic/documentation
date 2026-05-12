@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/Err
 redirect_from:
 -  /tB/Core/Err
+vba_attribution: true
 ---
 # Err
 {: .no_toc }
@@ -42,5 +43,3 @@ End If
 - [ErrObject](../ErrObject) module
 - [Erl](Erl) function
 - [On Error](../../Core/On-Error) statement
-
-{% include VBA-Attribution.md %}

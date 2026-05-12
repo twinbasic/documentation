@@ -2,6 +2,7 @@
 title: Type
 parent: Statements
 permalink: /tB/Core/Type
+vba_attribution: true
 ---
 # Type
 {: .no_toc }
@@ -145,5 +146,3 @@ End Type
 - [**Class** statement](Class)
 - [UDT Enhancements](../../Features/Language/UDTs)
 - [Generics](../../Features/Language/Generics)
-
-{% include VBA-Attribution.md %}

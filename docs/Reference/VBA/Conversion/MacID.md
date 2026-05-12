@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/MacID
 redirect_from:
 -  /tB/Core/MacID
+vba_attribution: true
 ---
 # MacID
 {: .no_toc }
@@ -27,5 +28,3 @@ Dir("SomePath", MacID("TEXT"))
 
 > [!NOTE]
 > twinBASIC currently targets Windows. **MacID** is provided for source compatibility with VBA code originally written for the Macintosh; on Windows, the value it returns has no special meaning to the file-system or shell functions.
-
-{% include VBA-Attribution.md %}

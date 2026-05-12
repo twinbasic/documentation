@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/VarType
 redirect_from:
 -  /tB/Core/VarType
+vba_attribution: true
 ---
 # VarType
 {: .no_toc }
@@ -68,5 +69,3 @@ MyCheck = VarType(ArrayVar)           ' Returns 8204 — vbArray + vbVariant.
 
 - [TypeName](TypeName) function
 - [VbVarType](../Constants/VbVarType) enumeration
-
-{% include VBA-Attribution.md %}

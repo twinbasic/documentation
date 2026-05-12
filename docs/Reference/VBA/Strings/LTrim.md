@@ -2,6 +2,7 @@
 title: LTrim
 parent: Strings Module
 permalink: /tB/Modules/Strings/LTrim
+vba_attribution: true
 ---
 # LTrim
 {: .no_toc }
@@ -28,5 +29,3 @@ TrimString = LTrim(MyString)      ' TrimString = "<-Trim->  ".
 ### See Also
 
 - [RTrim](RTrim), [Trim](Trim) functions
-
-{% include VBA-Attribution.md %}

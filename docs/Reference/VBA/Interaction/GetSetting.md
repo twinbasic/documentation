@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/GetSetting
 redirect_from:
 -  /tB/Core/GetSetting
+vba_attribution: true
 ---
 
 # GetSetting
@@ -49,4 +50,3 @@ Debug.Print GetSetting(appname := "MyApp", section := "Startup", _
 
 DeleteSetting "MyApp", "Startup"
 ```
-{% include VBA-Attribution.md %}

@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/CallByName
 redirect_from:
 -  /tB/Core/CallByName
+vba_attribution: true
 ---
 # CallByName
 {: .no_toc }
@@ -40,5 +41,3 @@ CallByName Text1, "Move", vbMethod, 100, 100
 
 - [CallByDispId](CallByDispId) function
 - [VbCallType](../Constants/VbCallType) enumeration
-
-{% include VBA-Attribution.md %}

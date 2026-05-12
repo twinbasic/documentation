@@ -15,6 +15,7 @@ redirect_from:
 - /tB/Core/vbFromUnicode
 - /tB/Core/vbUTF8
 - /tB/Core/vbFromUTF8
+vba_attribution: true
 ---
 # VbStrConv
 {: .no_toc }
@@ -38,5 +39,3 @@ Conversion type flags for the [**StrConv**](../Strings/StrConv) function. Compat
 ### See Also
 
 - [StrConv](../Strings/StrConv) function
-
-{% include VBA-Attribution.md %}

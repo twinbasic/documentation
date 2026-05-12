@@ -2,6 +2,7 @@
 title: Enum
 parent: Statements
 permalink: /tB/Core/Enum
+vba_attribution: true
 ---
 
 # Enum
@@ -68,5 +69,3 @@ Public Enum InterfaceColors
  icFirebrick = &H2222B2& 
 End Enum
 ```
-
-{% include VBA-Attribution.md %}

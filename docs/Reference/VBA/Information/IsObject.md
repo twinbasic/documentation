@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IsObject
 redirect_from:
 -  /tB/Core/IsObject
+vba_attribution: true
 ---
 # IsObject
 {: .no_toc }
@@ -44,5 +45,3 @@ MyCheck = IsObject(Null)              ' Returns False.
 
 - [VarType](VarType), [TypeName](TypeName) functions
 - [IsArray](IsArray) function
-
-{% include VBA-Attribution.md %}

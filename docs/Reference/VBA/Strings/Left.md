@@ -2,6 +2,7 @@
 title: Left
 parent: Strings Module
 permalink: /tB/Modules/Strings/Left
+vba_attribution: true
 ---
 # Left, LeftB
 {: .no_toc }
@@ -41,5 +42,3 @@ MyStr = Left(AnyString, 20)  ' Returns "Hello World".
 ### See Also
 
 - [Len](Len), [Mid](Mid), [Right](Right) functions
-
-{% include VBA-Attribution.md %}

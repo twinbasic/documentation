@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/MkDir
 redirect_from:
 -  /tB/Core/MkDir
+vba_attribution: true
 ---
 # MkDir
 {: .no_toc }
@@ -27,5 +28,3 @@ This example uses the **MkDir** statement to create a directory or folder. If th
 ```tb
 MkDir "MYDIR"   ' Make new directory or folder.
 ```
-
-{% include VBA-Attribution.md %}

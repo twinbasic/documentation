@@ -2,6 +2,7 @@
 title: Input #
 parent: Statements
 permalink: /tB/Core/Input
+vba_attribution: true
 ---
 # Input # statement
 {: .no_toc }
@@ -67,5 +68,3 @@ Close #1    ' Close file.
 - [**Print #** statement](Print)
 - [**Input** function](../Modules/HiddenModule/Input)
 - [**EOF** function](../Modules/FileSystem/EOF)
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Mid
 parent: Strings Module
 permalink: /tB/Modules/Strings/Mid
+vba_attribution: true
 ---
 # Mid, MidB
 {: .no_toc }
@@ -48,5 +49,3 @@ MidWords = Mid(MyString, 5)         ' Returns "Function Demo".
 
 - [Left](Left), [Len](Len), [Right](Right) functions
 - [Mid =](../../Core/Mid-equals) statement
-
-{% include VBA-Attribution.md %}

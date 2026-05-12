@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/SendKeys
 redirect_from:
 -  /tB/Core/SendKeys
+vba_attribution: true
 ---
 # SendKeys
 {: .no_toc }
@@ -84,5 +85,3 @@ SendKeys "%{F4}", True
 
 - [AppActivate](AppActivate) statement
 - [Shell](Shell) function
-
-{% include VBA-Attribution.md %}

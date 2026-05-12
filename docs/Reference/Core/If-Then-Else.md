@@ -2,6 +2,7 @@
 title: If...Then...Else
 parent: Statements
 permalink: /tB/Core/If-Then-Else
+vba_attribution: true
 ---
 
 # If...Then...Else
@@ -98,5 +99,3 @@ End Sub
 
 - [**Select Case** statement](Select-Case)
 - [**#If...Then...Else** directive](Topic-Preprocessor)
-
-{% include VBA-Attribution.md %}

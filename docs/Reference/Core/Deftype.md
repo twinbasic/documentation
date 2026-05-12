@@ -2,6 +2,7 @@
 title: Deftype
 parent: Statements
 permalink: /tB/Core/Deftype
+vba_attribution: true
 ---
 # DefBool, DefByte, DefInt, DefLng, DefLngLng, DefLngPtr, DefCur, DefSng, DefDbl, DefDec, DefDate, DefStr, DefObj, DefVar
 {: .no_toc }
@@ -76,5 +77,3 @@ Dim TaxRate As Double   ' explicit declaration overrides the default
 - [**Dim** statement](Dim)
 - [**Option** statement](Option) (for **Option Explicit**)
 - [**Type** statement](Type)
-
-{% include VBA-Attribution.md %}

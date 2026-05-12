@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/Oct
 redirect_from:
 -  /tB/Core/Oct
+vba_attribution: true
 ---
 # Oct, Oct$
 {: .no_toc }
@@ -42,5 +43,3 @@ MyOct = Oct(459)    ' Returns "713".
 ### See Also
 
 - [Hex](Hex), [Str](Str) functions
-
-{% include VBA-Attribution.md %}

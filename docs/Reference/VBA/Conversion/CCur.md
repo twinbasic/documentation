@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CCur
 redirect_from:
 -  /tB/Core/CCur
+vba_attribution: true
 ---
 # CCur
 {: .no_toc }
@@ -36,5 +37,3 @@ MyCurr = CCur(MyDouble * 2)              ' Convert result of MyDouble * 2
 ### See Also
 
 - [CBool](CBool), [CByte](CByte), [CDbl](CDbl), [CDec](CDec), [CSng](CSng), [CStr](CStr), [CVar](CVar) functions
-
-{% include VBA-Attribution.md %}

@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/ChDrive
 redirect_from:
 -  /tB/Core/ChDrive
+vba_attribution: true
 ---
 # ChDrive
 {: .no_toc }
@@ -28,5 +29,3 @@ This example uses the **ChDrive** statement to change the current drive.
 ```tb
 ChDrive "D"   ' Make "D" the current drive.
 ```
-
-{% include VBA-Attribution.md %}

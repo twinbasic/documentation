@@ -2,6 +2,7 @@
 title: UCase
 parent: Strings Module
 permalink: /tB/Modules/Strings/UCase
+vba_attribution: true
 ---
 # UCase
 {: .no_toc }
@@ -30,5 +31,3 @@ UpperCase = UCase(LowerCase)      ' Returns "HELLO WORLD 1234".
 ### See Also
 
 - [LCase](LCase), [StrConv](StrConv) functions
-
-{% include VBA-Attribution.md %}

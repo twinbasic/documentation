@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/DateSerial
 redirect_from:
 -  /tB/Core/DateSerial
+vba_attribution: true
 ---
 # DateSerial
 {: .no_toc }
@@ -43,5 +44,3 @@ MyDate = DateSerial(1969, 2, 12)    ' Returns February 12, 1969.
 ### See Also
 
 - [DateValue](DateValue), [Day](Day), [Month](Month), [Year](Year) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: StrComp
 parent: Strings Module
 permalink: /tB/Modules/Strings/StrComp
+vba_attribution: true
 ---
 # StrComp
 {: .no_toc }
@@ -51,5 +52,3 @@ MyComp = StrComp(MyStr2, MyStr1)      ' Returns 1.
 ### See Also
 
 - [InStr](InStr) function
-
-{% include VBA-Attribution.md %}

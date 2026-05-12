@@ -2,6 +2,7 @@
 title: LastDllError
 parent: ErrObject Module
 permalink: /tB/Modules/ErrObject/LastDllError
+vba_attribution: true
 ---
 # LastDllError
 {: .no_toc }
@@ -43,5 +44,3 @@ End Sub
 
 - [LastHresult](LastHresult) property
 - [Number](Number) property
-
-{% include VBA-Attribution.md %}

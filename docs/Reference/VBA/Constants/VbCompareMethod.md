@@ -7,6 +7,7 @@ redirect_from:
 - /tB/Core/vbBinaryCompare
 - /tB/Core/vbTextCompare
 - /tB/Core/vbDatabaseCompare
+vba_attribution: true
 ---
 # VbCompareMethod
 {: .no_toc }
@@ -18,5 +19,3 @@ Text comparison modes used by string functions such as [**InStr**](../Strings/In
 | **vbBinaryCompare**{: #vbBinaryCompare } | 0 | Performs a binary comparison. |
 | **vbTextCompare**{: #vbTextCompare } | 1 | Performs a textual comparison. |
 | **vbDatabaseCompare**{: #vbDatabaseCompare } | 2 | For Microsoft Access (Windows only), performs a comparison based on information contained in the database. |
-
-{% include VBA-Attribution.md %}

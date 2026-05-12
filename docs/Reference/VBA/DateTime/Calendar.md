@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Calendar
 redirect_from:
 -  /tB/Core/Calendar
+vba_attribution: true
 ---
 # Calendar
 {: .no_toc }
@@ -33,5 +34,3 @@ Calendar = vbCalHijri
 ### See Also
 
 - [Date](Date) property
-
-{% include VBA-Attribution.md %}

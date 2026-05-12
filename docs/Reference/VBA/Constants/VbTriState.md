@@ -7,6 +7,7 @@ redirect_from:
 - /tB/Core/vbTrue
 - /tB/Core/vbFalse
 - /tB/Core/vbUseDefault
+vba_attribution: true
 ---
 # VbTriState
 {: .no_toc }
@@ -18,5 +19,3 @@ Three-state values used in place of **Boolean** arguments where a "use default" 
 | **vbTrue**{: #vbTrue } | -1 | True. |
 | **vbFalse**{: #vbFalse } | 0 | False. |
 | **vbUseDefault**{: #vbUseDefault } | -2 | Use the system default setting. |
-
-{% include VBA-Attribution.md %}

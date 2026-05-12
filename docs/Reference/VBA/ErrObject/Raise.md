@@ -2,6 +2,7 @@
 title: Raise
 parent: ErrObject Module
 permalink: /tB/Modules/ErrObject/Raise
+vba_attribution: true
 ---
 # Raise
 {: .no_toc }
@@ -54,5 +55,3 @@ End Function
 - [HelpContext](HelpContext) property
 - [Clear](Clear) method
 - [Error](../../Core/Error) statement
-
-{% include VBA-Attribution.md %}

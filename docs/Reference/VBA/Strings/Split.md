@@ -2,6 +2,7 @@
 title: Split
 parent: Strings Module
 permalink: /tB/Modules/Strings/Split
+vba_attribution: true
 ---
 # Split
 {: .no_toc }
@@ -75,5 +76,3 @@ Next i
 ### See Also
 
 - [Filter](Filter), [Join](Join) functions
-
-{% include VBA-Attribution.md %}

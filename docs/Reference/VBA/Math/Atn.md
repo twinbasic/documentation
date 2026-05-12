@@ -2,6 +2,7 @@
 title: Atn
 parent: Math Module
 permalink: /tB/Modules/Math/Atn
+vba_attribution: true
 ---
 # Atn
 {: .no_toc }
@@ -23,5 +24,3 @@ The range of the result is -pi/2 to pi/2 radians. To convert degrees to radians,
 ### See Also
 
 - [Cos](Cos), [Sin](Sin), [Tan](Tan) functions
-
-{% include VBA-Attribution.md %}

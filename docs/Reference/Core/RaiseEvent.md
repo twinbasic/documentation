@@ -2,6 +2,7 @@
 title: RaiseEvent
 parent: Statements
 permalink: /tB/Core/RaiseEvent
+vba_attribution: true
 ---
 # RaiseEvent
 {: .no_toc }
@@ -94,5 +95,3 @@ End Class
 - [**Event** statement](Event)
 - [**Class** statement](Class)
 - [**Implements** statement](Implements)
-
-{% include VBA-Attribution.md %}

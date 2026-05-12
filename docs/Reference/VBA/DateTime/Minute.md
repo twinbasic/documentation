@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Minute
 redirect_from:
 -  /tB/Core/Minute
+vba_attribution: true
 ---
 # Minute
 {: .no_toc }
@@ -28,5 +29,3 @@ MyMinute = Minute(MyTime)    ' MyMinute contains 35.
 ### See Also
 
 - [Hour](Hour), [Second](Second), [DatePart](DatePart) functions
-
-{% include VBA-Attribution.md %}

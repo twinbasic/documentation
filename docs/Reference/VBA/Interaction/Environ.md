@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/Environ
 redirect_from:
 -  /tB/Core/Environ
+vba_attribution: true
 ---
 # Environ, Environ$
 {: .no_toc }
@@ -49,5 +50,3 @@ If PathLen = 0 Then
     Debug.Print "No PATH environment variable exists."
 End If
 ```
-
-{% include VBA-Attribution.md %}

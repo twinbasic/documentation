@@ -2,6 +2,7 @@
 title: New
 parent: Statements
 permalink: /tB/Core/New
+vba_attribution: true
 ---
 # New
 {: .no_toc }
@@ -56,5 +57,3 @@ Next i
 - [**Set** statement](Set)
 - [**Dim** statement](Dim)
 - [**Class** statement](Class)
-
-{% include VBA-Attribution.md %}

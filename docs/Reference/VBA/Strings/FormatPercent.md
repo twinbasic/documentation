@@ -2,6 +2,7 @@
 title: FormatPercent
 parent: Strings Module
 permalink: /tB/Modules/Strings/FormatPercent
+vba_attribution: true
 ---
 # FormatPercent
 {: .no_toc }
@@ -38,5 +39,3 @@ When one or more optional arguments are omitted, the values for omitted argument
 ### See Also
 
 - [Format](Format), [FormatCurrency](FormatCurrency), [FormatNumber](FormatNumber) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Resume
 parent: Statements
 permalink: /tB/Core/Resume
+vba_attribution: true
 ---
 # Resume
 {: .no_toc }
@@ -50,5 +51,3 @@ End Sub
 - [**On Error** statement](On-Error)
 - [**Error** statement](Error)
 - [**GoTo** statement](GoTo)
-
-{% include VBA-Attribution.md %}

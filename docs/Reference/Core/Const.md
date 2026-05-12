@@ -2,6 +2,7 @@
 title: Const
 parent: Statements
 permalink: /tB/Core/Const
+vba_attribution: true
 ---
 
 # Const
@@ -68,5 +69,3 @@ Private Const MyInt As Integer = 5
 ' Declare multiple constants on same line. 
 Const MyStr = "Hello", MyDouble As Double = 3.4567 
 ```
-
-{% include VBA-Attribution.md %}

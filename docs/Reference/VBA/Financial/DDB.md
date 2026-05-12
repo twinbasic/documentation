@@ -2,6 +2,7 @@
 title: DDB
 parent: Financial Module
 permalink: /tB/Modules/Financial/DDB
+vba_attribution: true
 ---
 # DDB
 {: .no_toc }
@@ -65,5 +66,3 @@ Format(Depr, Fmt) & "."
 ### See Also
 
 - [SLN](SLN), [SYD](SYD) functions
-
-{% include VBA-Attribution.md %}

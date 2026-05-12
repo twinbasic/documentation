@@ -2,6 +2,7 @@
 title: Clear
 parent: Collection Module
 permalink: /tB/Modules/Collection/Clear
+vba_attribution: true
 ---
 # Clear
 {: .no_toc }
@@ -36,5 +37,3 @@ Debug.Print MyClasses.Count   ' Prints 0.
 
 - [Count](Count) property
 - [Remove](Remove) method
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Rnd
 parent: Math Module
 permalink: /tB/Modules/Math/Rnd
+vba_attribution: true
 ---
 # Rnd
 {: .no_toc }
@@ -51,5 +52,3 @@ MyValue = Int((6 * Rnd) + 1)    ' Generate random value between 1 and 6.
 ### See Also
 
 - [Randomize](Randomize) statement
-
-{% include VBA-Attribution.md %}

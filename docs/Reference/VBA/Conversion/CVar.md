@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CVar
 redirect_from:
 -  /tB/Core/CVar
+vba_attribution: true
 ---
 # CVar
 {: .no_toc }
@@ -31,5 +32,3 @@ MyVar = CVar(MyInt & 000)                ' MyVar contains the string "4534000".
 
 - [CBool](CBool), [CByte](CByte), [CCur](CCur), [CDate](CDate), [CDbl](CDbl), [CInt](CInt), [CLng](CLng), [CSng](CSng), [CStr](CStr) functions
 - [CVDate](CVDate), [CVErr](CVErr) functions
-
-{% include VBA-Attribution.md %}

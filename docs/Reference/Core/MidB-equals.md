@@ -2,6 +2,7 @@
 title: MidB =
 parent: Statements
 permalink: /tB/Core/MidB-equals
+vba_attribution: true
 ---
 # MidB = statement
 {: .no_toc }
@@ -33,5 +34,3 @@ The number of bytes replaced is always less than or equal to the number of bytes
 - [**MidB** function](../Modules/Strings/Mid)
 - [**LSet** statement](LSet)
 - [**RSet** statement](RSet)
-
-{% include VBA-Attribution.md %}

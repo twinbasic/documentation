@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Time
 redirect_from:
 -  /tB/Core/Time
+vba_attribution: true
 ---
 # Time
 {: .no_toc }
@@ -108,5 +109,3 @@ Time$ = MyTime           ' Set system time.
 
 - [Date](Date) property
 - [Now](Now) function
-
-{% include VBA-Attribution.md %}

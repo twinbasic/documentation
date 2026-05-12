@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/InputBox
 redirect_from:
 -  /tB/Core/InputBox
+vba_attribution: true
 ---
 # InputBox
 {: .no_toc }
@@ -77,5 +78,3 @@ MyValue = InputBox(Message, Title, Default, 100, 100)
 ### See Also
 
 - [MsgBox](MsgBox) function
-
-{% include VBA-Attribution.md %}

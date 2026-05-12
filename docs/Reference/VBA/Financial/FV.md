@@ -2,6 +2,7 @@
 title: FV
 parent: Financial Module
 permalink: /tB/Modules/Financial/FV
+vba_attribution: true
 ---
 # FV
 {: .no_toc }
@@ -53,5 +54,3 @@ MsgBox "Your savings will be worth " & Format(FVal, Fmt) & "."
 ### See Also
 
 - [PV](PV), [NPer](NPer), [Pmt](Pmt), [Rate](Rate) functions
-
-{% include VBA-Attribution.md %}

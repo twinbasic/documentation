@@ -2,6 +2,7 @@
 title: Return
 parent: Statements
 permalink: /tB/Core/Return
+vba_attribution: true
 ---
 # Return
 {: .no_toc }
@@ -66,5 +67,3 @@ End Sub
 - [**Sub** statement](Sub)
 - [**Function** statement](Function)
 - [**Property** statement](Property)
-
-{% include VBA-Attribution.md %}

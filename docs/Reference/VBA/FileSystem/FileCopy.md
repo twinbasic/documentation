@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/FileCopy
 redirect_from:
 -  /tB/Core/FileCopy
+vba_attribution: true
 ---
 
 # FileCopy
@@ -30,4 +31,3 @@ SourceFile = "SRCFILE" ' Define source file name.
 DestinationFile = "DESTFILE" ' Define target file name. 
 FileCopy SourceFile, DestinationFile ' Copy source to target. 
 ```
-{% include VBA-Attribution.md %}

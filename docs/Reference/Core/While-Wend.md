@@ -2,6 +2,7 @@
 title: While...Wend
 parent: Statements
 permalink: /tB/Core/While-Wend
+vba_attribution: true
 ---
 
 # While...Wend
@@ -52,5 +53,3 @@ Debug.Print Counter ' Prints 20 in the Immediate window.
 
 - [**Do...Loop** statement](Do-Loop)
 - [**For...Next** statement](For-Next)
-
-{% include VBA-Attribution.md %}

@@ -3,6 +3,7 @@ title: Glossary
 parent: Reference Section
 nav_order: 99
 permalink: /tB/Gloss
+vba_attribution: true
 ---
 
 > [!WARNING]
@@ -87,5 +88,3 @@ Any data type defined using the **Type** statement. User-defined data types can 
 A named storage location that can contain data that can be modified during program execution. Each variable has a name that uniquely identifies it within its scope. A data type can be specified or not.
 
 Variable names must begin with an alphabetic character, must be unique within the same scope, can't be longer than 255 characters, and can't contain an embedded period or type-declaration character.
-
-{% include VBA-Attribution.md %}

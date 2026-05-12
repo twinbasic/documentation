@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/DateDiff
 redirect_from:
 -  /tB/Core/DateDiff
+vba_attribution: true
 ---
 # DateDiff
 {: .no_toc }
@@ -88,5 +89,3 @@ MsgBox Msg
 ### See Also
 
 - [DateAdd](DateAdd), [DatePart](DatePart) functions
-
-{% include VBA-Attribution.md %}

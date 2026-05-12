@@ -2,6 +2,7 @@
 title: Property
 parent: Statements
 permalink: /tB/Core/Property
+vba_attribution: true
 ---
 # Property
 {: .no_toc }
@@ -196,5 +197,3 @@ End Property
 - [Handler Method Syntax](../../Features/Language/Handlers)
 - [Inheritance](../../Features/Language/Inheritance)
 - [Generics](../../Features/Language/Generics)
-
-{% include VBA-Attribution.md %}

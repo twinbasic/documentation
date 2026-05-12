@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/Partition
 redirect_from:
 -  /tB/Core/Partition
+vba_attribution: true
 ---
 # Partition
 {: .no_toc }
@@ -52,5 +53,3 @@ SELECT DISTINCTROW Partition([Freight], 0, 500, 50) AS Range,
 FROM Orders
 GROUP BY Partition([Freight], 0, 500, 50);
 ```
-
-{% include VBA-Attribution.md %}

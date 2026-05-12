@@ -4,6 +4,7 @@ parent: Conversion Module
 permalink: /tB/Modules/Conversion/CByte
 redirect_from:
 -  /tB/Core/CByte
+vba_attribution: true
 ---
 # CByte
 {: .no_toc }
@@ -30,5 +31,3 @@ MyByte = CByte(MyDouble)     ' MyByte contains 126.
 ### See Also
 
 - [CBool](CBool), [CInt](CInt), [CLng](CLng), [CDbl](CDbl), [CSng](CSng), [CStr](CStr), [CVar](CVar) functions
-
-{% include VBA-Attribution.md %}

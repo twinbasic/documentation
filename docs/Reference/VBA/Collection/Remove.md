@@ -2,6 +2,7 @@
 title: Remove
 parent: Collection Module
 permalink: /tB/Modules/Collection/Remove
+vba_attribution: true
 ---
 # Remove
 {: .no_toc }
@@ -45,5 +46,3 @@ To clear a collection in a single call, use the [**Clear**](Clear) method instea
 - [Clear](Clear) method
 - [Count](Count) property
 - [Item](Item) method
-
-{% include VBA-Attribution.md %}

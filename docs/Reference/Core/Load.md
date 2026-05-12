@@ -2,6 +2,7 @@
 title: Load
 parent: Statements
 permalink: /tB/Core/Load
+vba_attribution: true
 ---
 # Load
 {: .no_toc }
@@ -43,5 +44,3 @@ End Sub
 ### See Also
 
 - [**Unload** statement](Unload)
-
-{% include VBA-Attribution.md %}

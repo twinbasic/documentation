@@ -2,6 +2,7 @@
 title: Right
 parent: Strings Module
 permalink: /tB/Modules/Strings/Right
+vba_attribution: true
 ---
 # Right, RightB
 {: .no_toc }
@@ -41,5 +42,3 @@ MyStr = Right(AnyString, 20)   ' Returns "Hello World".
 ### See Also
 
 - [Left](Left), [Len](Len), [Mid](Mid) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Dim
 parent: Statements
 permalink: /tB/Core/Dim
+vba_attribution: true
 ---
 
 # Dim
@@ -93,5 +94,3 @@ Dim BirthDay(1 To 10)As Date
 ' MyArray is a dynamic array of variants. 
 Dim MyArray()
 ```
-
-{% include VBA-Attribution.md %}

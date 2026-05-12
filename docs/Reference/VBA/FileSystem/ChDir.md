@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/ChDir
 redirect_from:
 -  /tB/Core/ChDir
+vba_attribution: true
 ---
 # ChDir
 {: .no_toc }
@@ -55,5 +56,3 @@ ChDir "MYDIR"
 ' the default directory on drive "D:". "C:" remains the current drive.
 ChDir "D:\WINDOWS\SYSTEM"
 ```
-
-{% include VBA-Attribution.md %}

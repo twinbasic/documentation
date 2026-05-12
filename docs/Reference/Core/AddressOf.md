@@ -3,6 +3,7 @@ title: AddressOf
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/AddressOf
+vba_attribution: true
 ---
 # AddressOf operator
 {: .no_toc }
@@ -92,5 +93,3 @@ End Sub
 - [Enhanced Pointer Functionality](../../Features/Language/Pointers)
 - [API Declarations](../../Features/Advanced/API-Declarations)
 - [Operators](../../Reference/Operators)
-
-{% include VBA-Attribution.md %}

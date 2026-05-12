@@ -2,6 +2,7 @@
 title: MonthName
 parent: Strings Module
 permalink: /tB/Modules/Strings/MonthName
+vba_attribution: true
 ---
 # MonthName
 {: .no_toc }
@@ -19,5 +20,3 @@ Syntax: **MonthName(** *month* [ **,** *abbreviate* ] **)**
 ### See Also
 
 - [FormatDateTime](FormatDateTime), [WeekdayName](WeekdayName) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Line Input #
 parent: Statements
 permalink: /tB/Core/Line-Input
+vba_attribution: true
 ---
 # Line Input # statement
 {: .no_toc }
@@ -43,5 +44,3 @@ Close #1 ' Close file.
 - [**Print #** statement](Print)
 - [**Write #** statement](Write)
 - [**EOF** function](../Modules/FileSystem/EOF)
-
-{% include VBA-Attribution.md %}

@@ -4,6 +4,7 @@ parent: Information Module
 permalink: /tB/Modules/Information/IsArray
 redirect_from:
 -  /tB/Core/IsArray
+vba_attribution: true
 ---
 # IsArray
 {: .no_toc }
@@ -34,5 +35,3 @@ MyCheck = IsArray(YourArray)          ' Returns True.
 
 - [IsArrayInitialized](IsArrayInitialized) function
 - [LBound](LBound), [UBound](UBound) functions
-
-{% include VBA-Attribution.md %}

@@ -2,6 +2,7 @@
 title: Source
 parent: ErrObject Module
 permalink: /tB/Modules/ErrObject/Source
+vba_attribution: true
 ---
 # Source
 {: .no_toc }
@@ -43,5 +44,3 @@ Err.Raise Number:=vbObjectError + 894, Source:=myObjectID, _
 - [Description](Description) property
 - [Raise](Raise) method
 - [Clear](Clear) method
-
-{% include VBA-Attribution.md %}

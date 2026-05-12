@@ -4,6 +4,7 @@ parent: FileSystem Module
 permalink: /tB/Modules/FileSystem/Kill
 redirect_from:
 -  /tB/Core/Kill
+vba_attribution: true
 ---
 # Kill
 {: .no_toc }
@@ -38,5 +39,3 @@ Kill "*.TXT"
 
 - [Dir](Dir) function
 - [RmDir](RmDir), [MkDir](MkDir) statements
-
-{% include VBA-Attribution.md %}

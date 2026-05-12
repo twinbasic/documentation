@@ -2,6 +2,7 @@
 title: Space
 parent: Strings Module
 permalink: /tB/Modules/Strings/Space
+vba_attribution: true
 ---
 # Space
 {: .no_toc }
@@ -33,5 +34,3 @@ MyString = "Hello" & Space(10) & "World"
 ### See Also
 
 - [String](String) function
-
-{% include VBA-Attribution.md %}

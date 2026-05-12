@@ -2,6 +2,7 @@
 title: Pmt
 parent: Financial Module
 permalink: /tB/Modules/Financial/Pmt
+vba_attribution: true
 ---
 # Pmt
 {: .no_toc }
@@ -53,5 +54,3 @@ MsgBox "Your payment will be " & Format(Payment, Fmt) & " per month."
 ### See Also
 
 - [IPmt](IPmt), [PPmt](PPmt), [NPer](NPer), [Rate](Rate) functions
-
-{% include VBA-Attribution.md %}

@@ -4,6 +4,7 @@ parent: Interaction Module
 permalink: /tB/Modules/Interaction/DoEvents
 redirect_from:
 -  /tB/Core/DoEvents
+vba_attribution: true
 ---
 # DoEvents
 {: .no_toc }
@@ -37,5 +38,3 @@ Next I
 ### See Also
 
 - [SendKeys](SendKeys) statement
-
-{% include VBA-Attribution.md %}

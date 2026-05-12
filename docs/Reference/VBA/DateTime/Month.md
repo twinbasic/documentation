@@ -4,6 +4,7 @@ parent: DateTime Module
 permalink: /tB/Modules/DateTime/Month
 redirect_from:
 -  /tB/Core/Month
+vba_attribution: true
 ---
 # Month
 {: .no_toc }
@@ -31,5 +32,3 @@ MyMonth = Month(MyDate)    ' MyMonth contains 2.
 ### See Also
 
 - [Day](Day), [Year](Year), [DatePart](DatePart) functions
-
-{% include VBA-Attribution.md %}
