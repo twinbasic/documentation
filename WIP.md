@@ -22,7 +22,7 @@ Status:
 - `docs/Reference/VB/todo.md` — backlog tracker for the VB package; see [Backlog discovery](#backlog-discovery).
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
-- `docs/_includes/VBA-Attribution.md` — the attribution boilerplate include.
+- `docs/_includes/footer_custom.html` — overrides the theme's footer slot; renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
 
 ## VBA-Docs source (read-only)
 
@@ -48,7 +48,7 @@ The standard control classes have no VBA-Docs equivalent — they're documented 
 
 The `STANDARD/` folder is the primary backlog. The `BASE/` folder defines the inheritance chain (e.g. `BaseControlWindowlessNoFocus` → `BaseControlRectDockable` → `BaseControlRect` → `BaseControl`); read those alongside the leaf class to know which `Public` members are actually visible. Members marked `Protected` or hidden behind `[Unimplemented]` should be flagged with a `> [!NOTE]` callout.
 
-Used for: the VB package only. These pages are fully original content — **omit** the `{% include VBA-Attribution.md %}` line.
+Used for: the VB package only. These pages are fully original content — **omit** the `vba_attribution: true` frontmatter flag.
 
 ## Page template
 
@@ -75,6 +75,7 @@ parent: <Statements | Procedures and Functions | <Mod> Module | VB Package>
 permalink: /tB/Core/<Symbol>
 redirect_from:                          # only if relocated; e.g. moved from Core/ to a Module/
 -  /tB/Core/<Symbol>
+vba_attribution: true                   # omit for VB package pages (fully original content)
 ---
 # <Symbol>
 {: .no_toc }
@@ -99,8 +100,6 @@ This example...
 ### See Also
 
 - [Other](OtherSymbol)
-
-{% include VBA-Attribution.md %}
 ````
 
 Formatting conventions:
@@ -108,7 +107,7 @@ Formatting conventions:
 - `**...**` for keywords/literal tokens; `*...*` for placeholders/arguments.
 - Code blocks use ` ```tb ` (the twinBASIC lexer registered in `docs/_plugins/twinbasic.rb`).
 - Parameter lists use the kramdown `term` + `: definition` indentation pattern (NOT the MS-style markdown table).
-- Don't drop the `{% include VBA-Attribution.md %}` line unless the page is fully original content.
+- Set `vba_attribution: true` in the frontmatter on any page derived from VBA-Docs; omit it on fully original content (e.g. VB package pages). The flag drives an extra line in the site footer.
 
 ### Cross-section linking
 
@@ -166,7 +165,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - Walk the `Inherits` chain to enumerate the actually-public surface; private/protected helpers don't belong in user-facing docs.
    - List members alphabetically within Properties / Methods / Events sections (see `CheckBox.md`).
    - Members marked `[Unimplemented]` get a `> [!NOTE]` callout saying so.
-   - Omit `{% include VBA-Attribution.md %}` — these pages are fully original.
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original.
 5. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
 6. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page.
 7. **Remove the symbol's path from `docs/Reference/VB/todo.md`** `redirect_from:` array (VB controls only — VBA/VBRUN backlogs are closed).
