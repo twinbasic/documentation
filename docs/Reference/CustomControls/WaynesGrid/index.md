@@ -35,6 +35,28 @@ Private Sub Grid1_GetCellText( _
 End Sub
 ```
 
+The six [**CellRenderingOptions**](CellRenderingOptions) sub-objects ([**ColumnHeaderOptions**](#columnheaderoptions), [**RowHeaderOptions**](#rowheaderoptions), [**CellOptions**](#celloptions), [**HoverCellOptions**](#hovercelloptions), [**SelectedCellOptions**](#selectedcelloptions), [**MultiSelectCellOptions**](#multiselectcelloptions)) give the grid its visual personality. A typical setup gives headers a gradient, body cells left-aligned text with a small left-padding indent, and the selected cell a contrasting border:
+
+```tb
+With Grid1.ColumnHeaderOptions
+    .Fill.SetSimplePattern &HE0E0E0, &HC0C0C0, _
+            Pattern:=tbGradientNorthToSouth
+    .TextRendering.Font.Weight = tbBold
+    .TextRendering.Alignment = tbAlignMiddleCenter
+End With
+
+With Grid1.CellOptions
+    .Fill.ColorPoints.SetSolidColor vbWhite
+    .TextRendering.Alignment = tbAlignMiddleLeft
+    .TextRendering.Padding.Left = 10
+End With
+
+With Grid1.SelectedCellOptions
+    .Fill.ColorPoints.SetSolidColor &HFFEEDD                ' pale blue
+    .Borders.SetSimpleBorder StrokeSize:=2, ColorRGB:=vbBlue
+End With
+```
+
 * TOC
 {:toc}
 

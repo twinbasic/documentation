@@ -24,6 +24,26 @@ Private Sub Form_Load()
 End Sub
 ```
 
+[**Value**](#value) is just a **Long** property — assigning to it from outside the control moves the block and triggers a repaint. Combined with a [**WaynesTimer**](../WaynesTimer), the slider can animate itself across its range:
+
+```tb
+Private Sub Form_Load()
+    sldProgress.MinValue = 0
+    sldProgress.MaxValue = 100
+    sldProgress.Value = 0
+    Timer1.Interval = 50
+    Timer1.Enabled = True
+End Sub
+
+Private Sub Timer1_Timer()
+    If sldProgress.Value < sldProgress.MaxValue Then
+        sldProgress.Value = sldProgress.Value + 1
+    Else
+        Timer1.Enabled = False
+    End If
+End Sub
+```
+
 * TOC
 {:toc}
 

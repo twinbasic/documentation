@@ -22,6 +22,28 @@ Private Sub Form_Load()
 End Sub
 ```
 
+The three states are styled independently — a common pattern is to give the focused state a heavier border in an accent colour and brighten its fill, so the active field stands out from its siblings:
+
+```tb
+Private Sub Form_Load()
+    With txtName.NormalState
+        .BackgroundFill.ColorPoints.SetSolidColor vbWhite
+        .Borders.SetSimpleBorder StrokeSize:=1, ColorRGB:=&HC0C0C0
+        .Corners.SetAll tbCurve, 4
+        .TextRendering.Padding.Left = 6
+        .TextRendering.Padding.Right = 6
+    End With
+
+    With txtName.FocusedState
+        .BackgroundFill.ColorPoints.SetSolidColor vbWhite
+        .Borders.SetSimpleBorder StrokeSize:=2, ColorRGB:=&HC07014  ' accent blue
+        .Corners.SetAll tbCurve, 4
+        .TextRendering.Padding.Left = 6
+        .TextRendering.Padding.Right = 6
+    End With
+End Sub
+```
+
 * TOC
 {:toc}
 

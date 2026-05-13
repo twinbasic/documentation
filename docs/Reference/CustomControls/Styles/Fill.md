@@ -19,6 +19,18 @@ btnGo.HoverState.BackgroundFill.SetSimplePattern vbBlue, vbWhite, _
         Pattern:=tbGradientNorthToSouth
 ```
 
+For three or more colour stops, build [**FillColorPoint**](#fillcolorpoint-class) instances and pass them to [**SetColorPoints**](#setcolorpoints). The stops accept fully-opaque ARGB literals (`&HFF` alpha in the high byte) — see [**ColorRGBA**](../Enumerations/ColorRGBA) for the encoding:
+
+```tb
+With pnlHeader.BackgroundFill
+    .Pattern = tbGradientNorthToSouth
+    .ColorPoints.SetColorPoints _
+        New FillColorPoint(&HFFF3E58F, 0), _
+        New FillColorPoint(&HFF99CCFF, 50), _
+        New FillColorPoint(&HFF014C99, 100)
+End With
+```
+
 * TOC
 {:toc}
 
