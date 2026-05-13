@@ -1,6 +1,7 @@
 ---
 title: Getting Started
 parent: WebView2
+grand_parent: Tutorials
 nav_order: 1
 permalink: /Tutorials/WebView2/Getting-Started
 redirect_from:
@@ -40,7 +41,7 @@ There are lots of WebView2 properties and events to experiment with.
 ![Create Package](Images/tbWebView2Properties.png){:style="width:45%; height:auto;"}
 <br>
 <br>
-Note that toggling any property will show extra information at the bottom of the properties list to give you a little bit more information.  For further information on a particular property, try searching the official <a href="https://docs.microsoft.com/en-us/microsoft-edge/webview2/">WebView2 documentation</a>
+Note that toggling any property will show extra information at the bottom of the properties list to give you a little bit more information. For the full reference, see the [WebView2 control class](../../tB/Packages/WebView2Package/WebView2/); for the underlying browser feature, try searching the official <a href="https://docs.microsoft.com/en-us/microsoft-edge/webview2/">WebView2 documentation</a>
 
 ## Samples
 
