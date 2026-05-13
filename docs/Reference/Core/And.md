@@ -63,4 +63,7 @@ MyCheck = A And B                 ' Returns 8 (bitwise comparison).
 - [**AndAlso** operator](AndAlso)
 - [**Or** operator](Or)
 - [**Not** operator](Not)
+- [**Xor** operator](Xor)
+- [**Eqv** operator](Eqv)
+- [**Imp** operator](Imp)
 - [Operators](../../Reference/Operators)
