@@ -8,7 +8,7 @@ vba_attribution: true
 # Not operator
 {: .no_toc }
 
-Used to perform logical negation on an expression.
+Used to perform bitwise negation on an expression.
 
 Syntax:
 > *result* **=** **Not** *expression*
@@ -27,7 +27,7 @@ The following table illustrates how *result* is determined:
 | **False** | **True**  |
 | **Null**  | **Null**  |
 
-In addition, the **Not** operator inverts the bit values of its operand and sets the corresponding bit in *result* according to the following table:
+The **Not** operator inverts the bit values of its operand and sets the corresponding bit in *result* according to the following table:
 
 | If bit in *expression* is | Then bit in *result* is |
 |:-----:|:-----:|

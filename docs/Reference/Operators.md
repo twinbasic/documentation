@@ -31,18 +31,18 @@ Operators built into the twinBASIC language. They are understood by the compiler
 - [Is](../tB/Core/Is) -- compares two object references for identity
 - [IsNot](../tB/Core/IsNot) -- (twinBASIC) the logical inverse of **Is**
 
-## Logical and Bitwise
+## Bitwise
 
-Both operands are always evaluated.
+Both operands are always evaluated. Booleans are treated as integers: True = -1, False = 0.
 
-- [And](../tB/Core/And) -- logical or bitwise conjunction
-- [Or](../tB/Core/Or) -- logical or bitwise disjunction
-- [Not](../tB/Core/Not) -- logical or bitwise negation
-- [Xor](../tB/Core/Xor) -- logical or bitwise exclusive-or
-- [Eqv](../tB/Core/Eqv) -- logical or bitwise equivalence
-- [Imp](../tB/Core/Imp) -- logical or bitwise implication
+- [And](../tB/Core/And) -- bitwise conjunction
+- [Or](../tB/Core/Or) -- bitwise disjunction
+- [Not](../tB/Core/Not) -- bitwise negation
+- [Xor](../tB/Core/Xor) -- bitwise exclusive-or
+- [Eqv](../tB/Core/Eqv) -- bitwise equivalence
+- [Imp](../tB/Core/Imp) -- bitwise implication
 
-## Logical (Short-Circuit)
+## Logical Short-Circuit
 
 The right operand is evaluated only when the left operand does not already determine the result.
 

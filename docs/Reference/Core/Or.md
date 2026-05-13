@@ -8,7 +8,7 @@ vba_attribution: true
 # Or operator
 {: .no_toc }
 
-Used to perform a logical disjunction on two expressions.
+Used to perform a bitwise disjunction on two expressions.
 
 Syntax:
 > *result* **=** *expression1* **Or** *expression2*
@@ -33,7 +33,7 @@ If either or both expressions evaluate to **True**, *result* is **True**. The fo
 | **Null**  | **False** | **Null**  |
 | **Null**  | **Null**  | **Null**  |
 
-The **Or** operator also performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
+The **Or** operator performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
 
 | If bit in *expression1* is | And bit in *expression2* is | Then *result* is |
 |:-----:|:-----:|:-----:|

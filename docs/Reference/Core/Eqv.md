@@ -8,7 +8,7 @@ vba_attribution: true
 # Eqv operator
 {: .no_toc }
 
-Used to perform a logical equivalence on two expressions — the logical inverse of [**Xor**](Xor).
+Used to perform a bitwise equivalence on two expressions — the logical inverse of [**Xor**](Xor).
 
 Syntax:
 > *result* **=** *expression1* **Eqv** *expression2*
@@ -28,7 +28,7 @@ If either expression is **Null**, *result* is also **Null**. When neither expres
 | **False** | **True**  | **False** |
 | **False** | **False** | **True**  |
 
-The **Eqv** operator also performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
+The **Eqv** operator performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
 
 | If bit in *expression1* is | And bit in *expression2* is | The *result* is |
 |:-----:|:-----:|:-----:|

@@ -23,4 +23,5 @@ These packages are included in every project by default.
 These packages are built into twinBASIC and are always available, even offline. To use them, add them to Project → References (Ctrl-T) → Available Packages.
 
 - [Assert Package](Assert/) -- assertion functions for unit tests — three modules (**Exact**, **Strict**, **Permissive**) sharing the same fifteen-member API with different comparison strictness
+- [CustomControls Package](CustomControls/) -- owner-drawn `Waynes…` custom controls (button, form, frame, grid, label, slider, textbox, timer), the shared `Styles/` helpers that paint them, and the DESIGNER framework (interfaces, callback objects, **Canvas**, **SerializeInfo**) for authoring new custom controls
 - [WebView2 Package](WebView2/) -- the **WebView2** control wrapping the Microsoft Edge runtime, plus its surrounding wrapper objects (request / response / headers / environment options) and the `wv2…` enumerations
