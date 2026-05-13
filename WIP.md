@@ -4,13 +4,14 @@ Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source un
 
 ## Current Task
 
-Fill out reference documentation by adapting Microsoft VBA-Docs (CC-BY-4.0) for twinBASIC, and document the VB-package control classes from their `.twin` source. Always work from a primary source — never paraphrase from memory.
+Fill out reference documentation by adapting Microsoft VBA-Docs (CC-BY-4.0) for twinBASIC, and document the twinBASIC-specific packages (`VB`, `WebView2Package`, …) from their `.twin` source. Always work from a primary source — never paraphrase from memory.
 
 Status:
 
 - **VBA package** — done.
 - **VBRUN package** — done.
-- **VB package** (standard controls) — in progress; see [Backlog discovery](#backlog-discovery).
+- **VB package** — done.
+- **WebView2Package** — done.
 
 ## Where things live
 
@@ -20,6 +21,7 @@ Status:
 - `docs/Reference/VB/<Class>.md` — single-file class page (e.g. [`CheckBox.md`](docs/Reference/VB/CheckBox.md)).
 - `docs/Reference/VB/<Class>/index.md` — folder-style class page when sub-pages may follow (e.g. [`CheckMark/index.md`](docs/Reference/VB/CheckMark/index.md)).
 - `docs/Reference/VB/todo.md` — backlog tracker for the VB package; see [Backlog discovery](#backlog-discovery).
+- `docs/Reference/WebView2Package/` — WebView2 package: the **WebView2** control class plus its small wrapper classes (request / response / headers / environment options) and the `wv2…` enumerations.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - `docs/_includes/footer_custom.html` — overrides the theme's footer slot; renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
@@ -36,19 +38,67 @@ Common kinds: `-statement`, `-function`, `-property`, `-method`, `-object`, `-op
 
 Used for: Core statements/keywords, the VBA package, and the VBRUN package.
 
-## VB controls source (read-only)
+## TwinBASIC Package source (read-only)
 
-The standard control classes have no VBA-Docs equivalent — they're documented from the AGST-asm `.twin` source:
+All of twinbasic's package sources are at:
 
 ```
-..\AGST-asm\Source\Packages\VB\Sources\CONTROLS\STANDARD\<Class>.twin
-..\AGST-asm\Source\Packages\VB\Sources\CONTROLS\OTHER\<Class>.twin
-..\AGST-asm\Source\Packages\VB\Sources\BASE\Base*.twin
+..\tb-export\NewProject\Packages\VB\Sources\CONTROLS\STANDARD\<Class>.twin
+..\tb-export\NewProject\Packages\VB\Sources\CONTROLS\OTHER\<Class>.twin
+..\tb-export\NewProject\Packages\VB\Sources\BASE\Base*.twin
+..\tb-export\NewProject\Packages\VBA\Sources\
+..\tb-export\NewProject\Packages\VBRUN\Sources\
+..\tb-export\NewProject\Packages\WebView2Package\Sources\
+etc.
 ```
+
+### VB Controls
 
 The `STANDARD/` folder is the primary backlog. The `BASE/` folder defines the inheritance chain (e.g. `BaseControlWindowlessNoFocus` → `BaseControlRectDockable` → `BaseControlRect` → `BaseControl`); read those alongside the leaf class to know which `Public` members are actually visible. Members marked `Protected` or hidden behind `[Unimplemented]` should be flagged with a `> [!NOTE]` callout.
 
-Used for: the VB package only. These pages are fully original content — **omit** the `vba_attribution: true` frontmatter flag.
+These pages are fully original content — **omit** the `vba_attribution: true` frontmatter flag.
+
+### WebView2Package
+
+Layout of `..\tb-export\NewProject\Packages\WebView2Package\Sources\`:
+
+- `Classes/` — the implementation classes. Only a few are part of the user-facing surface; the rest are `Private` plumbing.
+- `Abstract/` — raw `ICoreWebView2*` COM interfaces. Every one is declared `Private Interface`; these are pure implementation detail and get **no documentation page**.
+- `Support/Enumerations.twin` — the `wv2…` enumerations, all in the `WebViewEnums` module.
+- `Support/Types.twin` — the `WebViewTypes` module; currently only `COREWEBVIEW2_PHYSICAL_KEY_STATUS`.
+- `Support/WebView2Misc.twin` — `Private Module`; helpers, no public surface.
+- `EventCallbacks/` — currently empty.
+
+Public user-facing surface (from `grep '^Public Class' Classes/*.twin` plus the top-level `WebView2` class which has no explicit modifier):
+
+| Class                       | Role                                                                                                  |
+|-----------------------------|-------------------------------------------------------------------------------------------------------|
+| `WebView2`                  | the control itself (`Inherits VB.BaseControlFocusableNoFont`, `[WindowsControl(...)]`)                |
+| `WebView2Header`            | one HTTP header (Name / Value); value type returned by header iteration                               |
+| `WebView2HeadersCollection` | enumerable wrapper used by `For Each` over request / response headers                                 |
+| `WebView2Request`           | request side of a `WebResourceRequested` event — Method, Uri, Headers, ContentBytes, ContentUTF8     |
+| `WebView2RequestHeaders`    | mutable request-header collection — `GetHeader`, `Contains`, `AppendHeader`, `RemoveHeader`, …       |
+| `WebView2Response`          | response side of a `WebResourceRequested` event — StatusCode, ReasonPhrase, Headers, ContentBytes…   |
+| `WebView2ResponseHeaders`   | mutable response-header collection                                                                    |
+
+`WebView2EnvironmentOptions` is declared `Private Class`, **but** the `WebView2` control exposes it via `Public EnvironmentOptions As WebView2EnvironmentOptions = New WebView2EnvironmentOptions`. Document it as a sub-page of the `WebView2` control class — its `Public` fields (`BrowserExecutableFolder`, `UserDataFolder`, `AdditionalBrowserArguments`, `Language`, `TargetCompatibleBrowserVersion`, `AllowSingleSignOnUsingOSPrimaryAccount`, `ExclusiveUserDataFolderAccess`, `EnableTrackingPrevention`) are user-set before / during the `Create` event.
+
+The other `Private Class` files (`WebView2DeferredCallback`, `WebView2DeferredRaiseEvent`, `WebView2DevToolsProtocolCallback`, `WebView2ExecuteScriptCompleteHandler`, `WebView2ExecuteScriptCompleteHandler2`) and their helper interfaces (`IDeferredCallback`, `IExecuteScriptCompleteCallback`) are deferral / callback plumbing — skip.
+
+The `WebView2` class itself is large (~1450 lines) and exposes Properties / Methods / Events plus the `EnvironmentOptions` member. Use the **folder-style** layout (`WebView2/index.md`) like `CheckBox/index.md` so the page can carry a TOC and the optional sub-pages (`WebView2/EnvironmentOptions.md`, etc.) sit beside it.
+
+Enumerations live in `Support/Enumerations.twin` (module `WebViewEnums`) and currently number ten: `wv2PermissionKind`, `wv2PermissionState`, `wv2ErrorStatus`, `wv2KeyEventKind`, `wv2WebResourceContext`, `wv2ProcessFailedKind`, `wv2ScriptDialogKind`, `wv2HostResourceAccessKind`, `wv2PrintOrientation`, `wv2DefaultDownloadCornerAlign`. Group them under `WebView2Package/Enumerations/` following the VBRUN `Constants/` precedent — one page per enum, with `AlignConstants.md` as the formatting model.
+
+`COREWEBVIEW2_PHYSICAL_KEY_STATUS` is a public `Type` in the `WebViewTypes` module; it surfaces through the `AcceleratorKeyPressed` event arguments. One page (`WebView2Package/Types/COREWEBVIEW2_PHYSICAL_KEY_STATUS.md`) is enough.
+
+The package is licensed **MIT** (copyright Wayne Phillips T/A iTech Masters, 2022) — independent of the CC-BY-4.0 VBA-Docs sources. These pages are fully original content; **omit** the `vba_attribution: true` flag, the same as VB-package pages.
+
+**Navigation title:** display the package as **`WebView2 Package`** (space-separated, dropping the doubled "Package"), even though the folder / URL segment and source-side symbol stay `WebView2Package`. So the index page carries `title: WebView2 Package` while keeping `permalink: /tB/Packages/WebView2Package/`, and every child page sets `parent: WebView2 Package` (matching the title, not the URL segment) — same split that VB / VBRUN already use (`title: VB Package` over `permalink: /tB/Packages/VB/`).
+
+Pre-existing `WebView2` references on the site to keep aligned:
+
+- [`docs/Tutorials/WebView2/`](docs/Tutorials/WebView2) — task-oriented tutorial; new reference pages should cross-link to it where useful, and vice versa.
+- [`docs/Reference/VBRUN/Constants/ControlTypeConstants.md`](docs/Reference/VBRUN/Constants/ControlTypeConstants.md) — already lists `vbWebView2 = 18`; the new `WebView2` reference page should link to that constant.
 
 ## Page template
 
@@ -119,29 +169,45 @@ The URL prefixes are *not* uniform across packages — VBA pages live one segmen
 - VBA module member → `/tB/Modules/<Mod>/<Symbol>` (legacy scheme retained)
 - VBRUN module member → `/tB/Packages/VBRUN/<Mod>/<Symbol>`
 - VB class → `/tB/Packages/VB/<Class>`, or `/tB/Packages/VB/<Class>/` for folder-style classes (one extra segment)
+- WebView2 class → `/tB/Packages/WebView2Package/<Class>` (or `/tB/Packages/WebView2Package/<Class>/` for folder-style — used by `WebView2/`)
+- WebView2 enumeration → `/tB/Packages/WebView2Package/Enumerations/<Enum>` (one segment deeper than a class, parallel to VBRUN's `Constants/<Enum>`)
 
 Common patterns:
 
-| From                              | To                                   | Link                                |
-|-----------------------------------|--------------------------------------|-------------------------------------|
-| any page                          | sibling in same URL folder           | `[Y](Y)`                            |
-| VBA `Modules/<Mod>/X`             | VBA `Modules/<OtherMod>/Y`           | `[Y](../<OtherMod>/Y)`              |
-| VBA `Modules/<Mod>/X`             | `Core/Y`                             | `[Y](../../Core/Y)`                 |
-| VBA `Modules/<Mod>/X`             | VBRUN `Packages/VBRUN/<Mod>/Y`       | `[Y](../../Packages/VBRUN/<Mod>/Y)` |
-| VBA `Modules/<Mod>/X`             | VB `Packages/VB/Y`                   | `[Y](../../Packages/VB/Y)`          |
-| VBRUN `Packages/VBRUN/<Mod>/X`    | VBRUN `Packages/VBRUN/<OtherMod>/Y`  | `[Y](../<OtherMod>/Y)`              |
-| VBRUN `Packages/VBRUN/<Mod>/X`    | `Core/Y`                             | `[Y](../../../Core/Y)`              |
-| VBRUN `Packages/VBRUN/<Mod>/X`    | VBA `Modules/<Mod>/Y`                | `[Y](../../../Modules/<Mod>/Y)`     |
-| VB `Packages/VB/X` (single-file)  | VB `Packages/VB/Y` (sibling)         | `[Y](Y)`                            |
-| VB `Packages/VB/X` (single-file)  | VBRUN `Packages/VBRUN/<Mod>/Y`       | `[Y](../VBRUN/<Mod>/Y)`             |
-| VB `Packages/VB/X` (single-file)  | `Core/Y`                             | `[Y](../../Core/Y)`                 |
-| VB `Packages/VB/<Class>/index`    | VB `Packages/VB/<OtherClass>`        | `[Y](../<OtherClass>)`              |
-| VB `Packages/VB/<Class>/index`    | VBRUN `Packages/VBRUN/<Mod>/Y`       | `[Y](../../VBRUN/<Mod>/Y)`          |
-| VB `Packages/VB/<Class>/index`    | `Core/Y`                             | `[Y](../../../Core/Y)`              |
-| `Core/X`                          | VBA `Modules/<Mod>/Y`                | `[Y](../Modules/<Mod>/Y)`           |
-| `Core/X`                          | VBRUN `Packages/VBRUN/<Mod>/Y`       | `[Y](../Packages/VBRUN/<Mod>/Y)`    |
-| `Core/X`                          | VB `Packages/VB/Y`                   | `[Y](../Packages/VB/Y)`             |
-| `Core/X`                          | `Core/Y` (sibling)                   | `[Y](Y)`                            |
+| From                                       | To                                          | Link                                       |
+|--------------------------------------------|---------------------------------------------|--------------------------------------------|
+| any page                                   | sibling in same URL folder                  | `[Y](Y)`                                   |
+| VBA `Modules/<Mod>/X`                      | VBA `Modules/<OtherMod>/Y`                  | `[Y](../<OtherMod>/Y)`                     |
+| VBA `Modules/<Mod>/X`                      | `Core/Y`                                    | `[Y](../../Core/Y)`                        |
+| VBA `Modules/<Mod>/X`                      | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../../Packages/VBRUN/<Mod>/Y)`        |
+| VBA `Modules/<Mod>/X`                      | VB `Packages/VB/Y`                          | `[Y](../../Packages/VB/Y)`                 |
+| VBA `Modules/<Mod>/X`                      | WebView2 `Packages/WebView2Package/Y`       | `[Y](../../Packages/WebView2Package/Y)`    |
+| VBRUN `Packages/VBRUN/<Mod>/X`             | VBRUN `Packages/VBRUN/<OtherMod>/Y`         | `[Y](../<OtherMod>/Y)`                     |
+| VBRUN `Packages/VBRUN/<Mod>/X`             | `Core/Y`                                    | `[Y](../../../Core/Y)`                     |
+| VBRUN `Packages/VBRUN/<Mod>/X`             | VBA `Modules/<Mod>/Y`                       | `[Y](../../../Modules/<Mod>/Y)`            |
+| VBRUN `Packages/VBRUN/<Mod>/X`             | WebView2 `Packages/WebView2Package/Y`       | `[Y](../../WebView2Package/Y)`             |
+| VB `Packages/VB/X` (single-file)           | VB `Packages/VB/Y` (sibling)                | `[Y](Y)`                                   |
+| VB `Packages/VB/X` (single-file)           | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../VBRUN/<Mod>/Y)`                    |
+| VB `Packages/VB/X` (single-file)           | `Core/Y`                                    | `[Y](../../Core/Y)`                        |
+| VB `Packages/VB/<Class>/index`             | VB `Packages/VB/<OtherClass>`               | `[Y](../<OtherClass>)`                     |
+| VB `Packages/VB/<Class>/index`             | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../../VBRUN/<Mod>/Y)`                 |
+| VB `Packages/VB/<Class>/index`             | `Core/Y`                                    | `[Y](../../../Core/Y)`                     |
+| WebView2 `Packages/WebView2Package/X` (single-file) | sibling `Packages/WebView2Package/Y` | `[Y](Y)`                                   |
+| WebView2 `Packages/WebView2Package/X` (single-file) | `Packages/WebView2Package/Enumerations/Y` | `[Y](Enumerations/Y)`                     |
+| WebView2 `Packages/WebView2Package/X` (single-file) | VBRUN `Packages/VBRUN/<Mod>/Y`       | `[Y](../VBRUN/<Mod>/Y)`                    |
+| WebView2 `Packages/WebView2Package/X` (single-file) | VB `Packages/VB/Y`                   | `[Y](../VB/Y)`                             |
+| WebView2 `Packages/WebView2Package/X` (single-file) | `Core/Y`                             | `[Y](../../Core/Y)`                        |
+| WebView2 `Packages/WebView2Package/<Class>/index`   | sibling `Packages/WebView2Package/Y` | `[Y](../Y)`                                |
+| WebView2 `Packages/WebView2Package/<Class>/index`   | `Packages/WebView2Package/Enumerations/Y` | `[Y](../Enumerations/Y)`                  |
+| WebView2 `Packages/WebView2Package/<Class>/index`   | VBRUN `Packages/VBRUN/<Mod>/Y`       | `[Y](../../VBRUN/<Mod>/Y)`                 |
+| WebView2 `Packages/WebView2Package/<Class>/index`   | `Core/Y`                             | `[Y](../../../Core/Y)`                     |
+| WebView2 `Packages/WebView2Package/Enumerations/X`  | sibling `Enumerations/Y`             | `[Y](Y)`                                   |
+| WebView2 `Packages/WebView2Package/Enumerations/X`  | `Packages/WebView2Package/<Class>` (single-file) | `[Y](../<Class>)`                |
+| `Core/X`                                   | VBA `Modules/<Mod>/Y`                       | `[Y](../Modules/<Mod>/Y)`                  |
+| `Core/X`                                   | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../Packages/VBRUN/<Mod>/Y)`           |
+| `Core/X`                                   | VB `Packages/VB/Y`                          | `[Y](../Packages/VB/Y)`                    |
+| `Core/X`                                   | WebView2 `Packages/WebView2Package/Y`       | `[Y](../Packages/WebView2Package/Y)`       |
+| `Core/X`                                   | `Core/Y` (sibling)                          | `[Y](Y)`                                   |
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
 
@@ -149,11 +215,15 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
 
 1. **Locate the source**:
    - Core / VBA / VBRUN symbols → `ls ../VBA-Docs/Language/Reference/User-Interface-Help/ | grep -i <name>`.
-   - VB control classes → `..\AGST-asm\Source\Packages\VB\Sources\CONTROLS\STANDARD\<Class>.twin` (and the relevant `BASE/Base*.twin` files for inherited members).
+   - VB control classes → `..\tb-export\NewProject\Packages\VB\Sources\CONTROLS\STANDARD\<Class>.twin` (and the relevant `BASE/Base*.twin` files for inherited members).
+   - WebView2Package items → `..\tb-export\NewProject\Packages\WebView2Package\Sources\Classes\<Class>.twin`, with enumerations in `Support\Enumerations.twin` and the one user-type in `Support\Types.twin`. Ignore everything under `Abstract\` (private COM interfaces).
 2. **Decide placement**:
    - Pure language keyword (parsed by the compiler, no runtime call) → `docs/Reference/Core/`.
    - Runtime function/property → `docs/Reference/<Package>/<Mod>/`. Add `redirect_from: /tB/Core/<name>` so legacy `tB/Core/<name>` links still work.
    - VB control class → `docs/Reference/VB/<Class>.md` for a single-file page, or `docs/Reference/VB/<Class>/index.md` if sub-pages are likely. No `Core/` redirect — these were never under `Core/`.
+   - WebView2 control / wrapper class → `docs/Reference/WebView2Package/<Class>.md` (single-file) or `docs/Reference/WebView2Package/<Class>/index.md` (folder-style; use this for the main `WebView2` class because of its size).
+   - WebView2 enumeration → `docs/Reference/WebView2Package/Enumerations/<Enum>.md`, mirroring `docs/Reference/VBRUN/Constants/`.
+   - WebView2 user-type → `docs/Reference/WebView2Package/Types/<Name>.md`.
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 3. **Adapt content** (VBA-Docs sources):
    - Strip MS frontmatter (`ms.assetid`, `f1_keywords`, `keywords`, `ms.date`, `ms.localizationpriority`).
@@ -166,11 +236,16 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - List members alphabetically within Properties / Methods / Events sections (see `CheckBox.md`).
    - Members marked `[Unimplemented]` get a `> [!NOTE]` callout saying so.
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original.
-5. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-6. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page.
-7. **Remove the symbol's path from `docs/Reference/VB/todo.md`** `redirect_from:` array (VB controls only — VBA/VBRUN backlogs are closed).
-8. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
-9. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
+5. **Adapt content** (WebView2Package `.twin` sources):
+   - For the `WebView2` control: same approach as VB controls — walk the `Inherits VB.BaseControlFocusableNoFont` chain (`..\tb-export\NewProject\Packages\VB\Sources\BASE\BaseControlFocusableNoFont.twin` and ancestors) to know which inherited members are visible. Document the `Public` properties / events declared on `WebView2` itself, plus its `Public Sub` / `Public Function` methods.
+   - For the wrapper classes (`WebView2Request`, …): they're flat — no inheritance to walk — so list every `Public` member in source order, grouped alphabetically into Properties / Methods. Many `Public` properties on `WebView2EnvironmentOptions` are bare fields, not `Property Get`/`Property Let` pairs; document them as properties of the corresponding type.
+   - The `[Description("…")]` attribute on each `Public Event` / `Public` field gives the user-visible one-liner from the IDE — use it as the basis for the page's description, then expand.
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the WebView2Package itself is MIT-licensed; CC-BY-4.0 doesn't apply).
+6. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+7. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2Package/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page.
+8. **Remove the symbol's path from `docs/Reference/VB/todo.md`** `redirect_from:` array (VB controls only — VBA/VBRUN backlogs are closed; WebView2Package has its own small backlog driven by the package's `Classes/`+`Support/` listing rather than a `todo.md`).
+9. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
+10. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
 ## twinBASIC deviations from VBA to flag
 
@@ -183,18 +258,6 @@ Add a `> [!NOTE]` callout or rewrite the affected section when source diverges. 
 - Mac-specific notes from VBA-Docs are typically irrelevant; trim.
 
 When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Reference/index.md` before assuming VBA semantics carry over.
-
-## Backlog discovery
-
-The remaining VB-package classes are tracked in [`docs/Reference/VB/todo.md`](docs/Reference/VB/todo.md) — each pending class appears as a `redirect_from:` entry pointing to its eventual canonical URL. To list what's still open:
-
-```sh
-grep -E "^\s*-\s+/tB/" docs/Reference/VB/todo.md
-```
-
-The full set of candidates is `..\AGST-asm\Source\Packages\VB\Sources\CONTROLS\STANDARD\*.twin` (plus `CONTROLS\OTHER\` for `ActiveXExtender` and `HwndBaseCtl`). Anything in those folders without a matching page under `docs/Reference/VB/` is undocumented; remove its entry from `todo.md` once its page lands.
-
-The VBA and VBRUN backlogs are closed — there is no `todo.md` under those folders and no further work is expected there. If a missing symbol surfaces, just create the page directly.
 
 ## Scripts and tooling
 
@@ -229,6 +292,6 @@ Favor concise one-line git commit messages.
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` (build output, gitignored).
 - Don't push or force-push without explicit user request.
-- Don't invent VBA semantics — read the source file in `../VBA-Docs/` first. For VB controls, read the `.twin` source under `..\AGST-asm\Source\Packages\VB\Sources\` first.
+- Don't invent semantics — read the source file in `../VBA-Docs/` first. For twinBASIC-specific packages not documented in VBA-Docs, read the `.twin` sources under `..\tb-export\NewProject\Packages\<package>\Sources\` first.
 - Don't add boilerplate sections (Remarks, See Also) if the source has nothing meaningful for them.
 - **Never add `Co-Authored-By:` (or any "Co-authored by" / "Generated with Claude" / similar) trailers to commit messages.** Repository policy. Plain commit messages only.
