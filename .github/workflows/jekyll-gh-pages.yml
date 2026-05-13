@@ -49,10 +49,22 @@ jobs:
         env:
           JEKYLL_ENV: production
           PAGES_REPO_NWO: "${{ github.repository }}"
-      - name: Run HTML Proofer
-        run: bundle exec htmlproofer ./_site --disable-external --swap-urls "^${{ steps.pages.outputs.base_path }}/:/"
-        # --log-level :debug 
-        working-directory: ./docs
+      - name: Run Lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # --remap matches the fully-resolved file URI (not the raw href), so the pattern
+          # must include the file:// scheme and --root-dir prefix. The (/|$) tail handles
+          # both `/twinBASIC-docs/page` and bare `/twinBASIC-docs` — lychee strips trailing
+          # slashes before remap, so we can't require one in the pattern.
+          args: >-
+            --offline --include-fragments
+            --fallback-extensions html
+            --index-files 'index.html,.'
+            --remap '^file://${{ github.workspace }}/docs/_site${{ steps.pages.outputs.base_path }}(/|$) file://${{ github.workspace }}/docs/_site/'
+            --root-dir ${{ github.workspace }}/docs/_site
+            ./_site
+          workingDirectory: ./docs
+          fail: true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
