@@ -1,13 +1,14 @@
 ---
-title: DataObject Module
+title: DataObject
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/DataObject/
 redirect_from:
   - /tB/Modules/DataObject
 has_toc: false
 ---
 
-# DataObject module
+# DataObject class
 
 A **DataObject** is a container for one piece of information held in one or more clipboard formats — the same payload represented as plain text, Unicode text, RTF, a bitmap, a list of file paths, and so on. The runtime hands a **DataObject** to clipboard and OLE drag-and-drop operations: the source side fills it with [**SetData**](SetData), and the destination side inspects what's available with [**GetFormat**](GetFormat) (or [**AvailableFormats**](AvailableFormats)) and pulls the bytes out with [**GetData**](GetData).
 

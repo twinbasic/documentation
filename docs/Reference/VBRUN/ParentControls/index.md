@@ -1,13 +1,14 @@
 ---
-title: ParentControls Module
+title: ParentControls
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/ParentControls/
 redirect_from:
   - /tB/Modules/ParentControls
 has_toc: false
 ---
 
-# ParentControls module
+# ParentControls class
 
 The **ParentControls** object is the collection of other controls that live in the same container as a **UserControl** — its siblings on the host form, frame, or page. It is reachable inside a **UserControl** through **UserControl.ParentControls** and lets the control discover and interact with the other controls around it without being given explicit references.
 

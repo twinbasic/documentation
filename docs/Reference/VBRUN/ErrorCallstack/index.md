@@ -1,13 +1,14 @@
 ---
-title: ErrorCallstack Module
+title: ErrorCallstack
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/ErrorCallstack/
 redirect_from:
   - /tB/Modules/ErrorCallstack
 has_toc: false
 ---
 
-# ErrorCallstack module
+# ErrorCallstack class
 
 An **ErrorCallstack** object is a snapshot of the chain of procedures that were active on the call stack at the moment a run-time error was raised — outermost frame first, innermost (the procedure that actually raised the error) last. Each frame is exposed as an [**ErrorStackFrame**](../ErrorStackFrame), describing one procedure by its project, module, and procedure names.
 
