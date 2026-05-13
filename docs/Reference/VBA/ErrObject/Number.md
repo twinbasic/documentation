@@ -1,6 +1,6 @@
 ---
 title: Number
-parent: ErrObject Module
+parent: ErrObject
 permalink: /tB/Modules/ErrObject/Number
 vba_attribution: true
 ---

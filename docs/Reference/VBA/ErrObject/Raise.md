@@ -1,6 +1,6 @@
 ---
 title: Raise
-parent: ErrObject Module
+parent: ErrObject
 permalink: /tB/Modules/ErrObject/Raise
 vba_attribution: true
 ---

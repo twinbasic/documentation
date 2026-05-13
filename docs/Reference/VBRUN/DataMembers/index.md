@@ -1,13 +1,14 @@
 ---
-title: DataMembers Module
+title: DataMembers
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/DataMembers/
 redirect_from:
   - /tB/Modules/DataMembers
 has_toc: false
 ---
 
-# DataMembers module
+# DataMembers class
 
 The **DataMembers** object is a collection of names that a data source class advertises at design time, so that a consumer binding to the data source can choose which member to bind to. Each entry is a **String** — the name of a data member the source can supply on request. The data source manages the list directly with [**Add**](#add), [**Remove**](#remove), and [**Clear**](#clear); the design-time environment reads it back through [**Count**](#count), [**Item**](#item), and **For Each** iteration to populate the data member picker.
 

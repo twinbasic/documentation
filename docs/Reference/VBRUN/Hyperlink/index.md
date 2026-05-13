@@ -1,13 +1,14 @@
 ---
-title: Hyperlink Module
+title: Hyperlink
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/Hyperlink/
 redirect_from:
   - /tB/Modules/Hyperlink
 has_toc: false
 ---
 
-# Hyperlink module
+# Hyperlink class
 
 The **Hyperlink** object lets a control or form ask its container to navigate to a target document, the way clicking a link in a browser would. It is used from a control's code through the host's **Hyperlink** property — for example **UserControl.Hyperlink** — and works in containers that participate in browser-style navigation (Internet Explorer, Office binders, and a handful of other hyperlink-aware hosts). When the host does not support hyperlink navigation, the runtime falls back to launching the system's default handler for the target.
 

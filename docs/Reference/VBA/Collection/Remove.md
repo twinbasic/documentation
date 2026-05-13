@@ -1,6 +1,6 @@
 ---
 title: Remove
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/Remove
 vba_attribution: true
 ---

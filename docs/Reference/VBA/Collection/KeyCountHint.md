@@ -1,6 +1,6 @@
 ---
 title: KeyCountHint
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/KeyCountHint
 vba_attribution: true
 ---

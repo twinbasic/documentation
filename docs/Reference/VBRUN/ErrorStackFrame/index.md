@@ -1,13 +1,14 @@
 ---
-title: ErrorStackFrame Module
+title: ErrorStackFrame
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/ErrorStackFrame/
 redirect_from:
   - /tB/Modules/ErrorStackFrame
 has_toc: false
 ---
 
-# ErrorStackFrame module
+# ErrorStackFrame class
 
 An **ErrorStackFrame** describes one procedure that was active on the call stack at the moment a run-time error was raised — the project it belongs to, the module that contains it, and its own name. Frames are produced by walking an [**ErrorCallstack**](../ErrorCallstack) snapshot, which in turn is reachable from the [**Callstack**](../ErrorContext#callstack) property of an [**ErrorContext**](../ErrorContext). Every property is read-only.
 

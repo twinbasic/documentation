@@ -1,13 +1,14 @@
 ---
-title: ErrorContext Module
+title: ErrorContext
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/ErrorContext/
 redirect_from:
   - /tB/Modules/ErrorContext
 has_toc: false
 ---
 
-# ErrorContext module
+# ErrorContext class
 
 An **ErrorContext** object captures everything the runtime knows about a run-time error: its identity ([**Number**](#number), [**Description**](#description), [**Source**](#source)), its help references ([**HelpFile**](#helpfile), [**HelpContext**](#helpcontext)), the operating-system error code at the time it was raised ([**LastDLLError**](#lastdllerror)), the [**State**](#state) of the error-handling machinery, and a snapshot of the [**Callstack**](#callstack) from the moment of the failure. It is twinBASIC's structured counterpart to the simpler [**Err**](../../../Modules/ErrObject) object.
 

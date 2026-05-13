@@ -1,13 +1,14 @@
 ---
-title: PropertyBag Module
+title: PropertyBag
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/PropertyBag/
 redirect_from:
   - /tB/Modules/PropertyBag
 has_toc: false
 ---
 
-# PropertyBag module
+# PropertyBag class
 
 A **PropertyBag** is a small key/value store designed for persisting an object's state across sessions. Each entry is a name and a **Variant** value; reading and writing entries is symmetric, so the same code that loaded the bag's state at start-up can store it again at shutdown. The whole bag can also be retrieved or replaced as a single byte array through [**Contents**](#contents), which makes it straightforward to save the state to a file, a database column, or another **PropertyBag**.
 

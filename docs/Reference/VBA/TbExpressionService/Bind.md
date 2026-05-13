@@ -1,7 +1,9 @@
 ---
 title: Bind
-parent: ExpressionService Module
-permalink: /tB/Modules/ExpressionService/Bind
+parent: TbExpressionService Module
+permalink: /tB/Modules/TbExpressionService/Bind
+redirect_from:
+  - /tB/Modules/ExpressionService/Bind
 ---
 # Bind
 {: .no_toc }

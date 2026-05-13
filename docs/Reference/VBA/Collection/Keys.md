@@ -1,6 +1,6 @@
 ---
 title: Keys
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/Keys
 vba_attribution: true
 ---

@@ -7,7 +7,7 @@ has_toc: false
 
 # FileSystem module
 
-The **FileSystem** module groups together the procedures and statements for working with files and directories on disk. Its members divide cleanly into two camps: *pathname-based* operations that act on something named in the filesystem, and *file-number-based* operations that act on a handle previously returned by the **Open** statement.
+The **FileSystem** module groups together the procedures and statements for working with files and directories on disk. Its members divide cleanly into two camps: *pathname-based* operations that act on something named in the filesystem (creating and deleting files and directories, querying their attributes, walking a directory listing), and *file-number-based* operations that act on a handle previously returned by the **Open** statement (reading, positioning, formatting, and tracking the channel).
 
 ## Navigating directories
 
@@ -68,6 +68,12 @@ Loop
 Close #N
 ```
 
+## Reading and formatting through open file numbers
+
+[**Input**](Input) and [**Input$**](Input) return a fixed number of characters read from a file number opened with **Open**, as a **Variant** or a **String** respectively; [**InputB**](InputB) and [**InputB$**](InputB) are their byte-oriented counterparts, counting raw bytes rather than UTF-16 characters. They differ from the **Input #** statement in that they return every character they read — commas, newlines, quotation marks, leading spaces, and all — making them the right choice when the bytes on disk are not a stream of comma-delimited values.
+
+[**Width**](Width) sets the output line width on a sequential output channel: subsequent **Print #** wraps to a new line once the chosen number of characters has been written, or never wraps at all when *Width* is `0`.
+
 ## Members
 
 - [ChDir](ChDir) -- changes the current directory or folder
@@ -81,6 +87,8 @@ Close #N
 - [FileLen](FileLen) -- returns the length of a file in bytes
 - [FreeFile](FreeFile) -- returns the next file number available for use by the **Open** statement
 - [GetAttr](GetAttr) -- returns the attributes of a file or directory
+- [Input, Input$](Input) -- reads a fixed number of characters from an open sequential file
+- [InputB, InputB$](InputB) -- reads a fixed number of bytes from an open sequential file
 - [Kill](Kill) -- deletes files from a disk
 - [Loc](Loc) -- returns the current read/write position within an open file
 - [LOF](LOF) -- returns the size, in bytes, of an open file
@@ -89,3 +97,4 @@ Close #N
 - [RmDir](RmDir) -- removes an existing directory or folder
 - [Seek](Seek) -- returns or sets the read/write position within an open file
 - [SetAttr](SetAttr) -- sets attribute information for a file
+- [Width](Width) -- sets the line width for a sequential output file

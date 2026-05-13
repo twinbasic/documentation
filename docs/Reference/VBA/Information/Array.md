@@ -1,9 +1,10 @@
 ---
 title: Array
-parent: (Default) Module
-permalink: /tB/Modules/HiddenModule/Array
+parent: Information Module
+permalink: /tB/Modules/Information/Array
 redirect_from:
   - /tB/Core/Array
+  - /tB/Modules/HiddenModule/Array
 vba_attribution: true
 ---
 # Array
@@ -63,4 +64,4 @@ MyDay = MyWeek(2)        ' MyDay contains "Wed" with default Option Base 0,
 ### See Also
 
 - [Option](../../Core/Option) statement
-- [LBound](../Information/LBound), [UBound](../Information/UBound) functions
+- [LBound](LBound), [UBound](UBound) functions

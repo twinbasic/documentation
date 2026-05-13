@@ -1,6 +1,6 @@
 ---
 title: Item
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/Item
 vba_attribution: true
 ---

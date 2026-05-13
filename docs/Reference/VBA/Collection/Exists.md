@@ -1,6 +1,6 @@
 ---
 title: Exists
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/Exists
 vba_attribution: true
 ---

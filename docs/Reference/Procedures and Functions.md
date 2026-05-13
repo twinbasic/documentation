@@ -15,7 +15,7 @@ permalink: /Reference/Procedures-and-Functions
 - [Abs](../tB/Modules/Math/Abs) -- returns the absolute value of a number
 - [AllocMem](../tB/Modules/HiddenModule/AllocMem) -- allocates a block of native memory and returns its address
 - [AppActivate](../tB/Modules/Interaction/AppActivate) -- activates an application window
-- [Array](../tB/Modules/HiddenModule/Array) -- creates a **Variant** array from a comma-separated list of values, or destructures one when used on the left of an assignment
+- [Array](../tB/Modules/Information/Array) -- creates a **Variant** array from a comma-separated list of values, or destructures one when used on the left of an assignment
 - [Asc, AscB, AscW](../tB/Modules/Strings/Asc) -- returns the character code of the first letter in a string
 - [Atn](../tB/Modules/Math/Atn) -- returns the arctangent of a number
 
@@ -127,8 +127,8 @@ permalink: /Reference/Procedures-and-Functions
 - [If](../tB/Modules/Interaction/If) -- evaluates an expression and returns one of two values, with short-circuit evaluation
 - [IIf](../tB/Modules/Interaction/IIf) -- evaluates an expression and returns one of two values; both branches are always evaluated
 - [IMEStatus](../tB/Modules/Information/IMEStatus) -- returns the status of the Input Method Editor
-- [Input, Input$](../tB/Modules/HiddenModule/Input) -- reads a fixed number of characters from an open sequential file
-- [InputB, InputB$](../tB/Modules/HiddenModule/InputB) -- reads a fixed number of bytes from an open sequential file
+- [Input, Input$](../tB/Modules/FileSystem/Input) -- reads a fixed number of characters from an open sequential file
+- [InputB, InputB$](../tB/Modules/FileSystem/InputB) -- reads a fixed number of bytes from an open sequential file
 - [InputBox](../tB/Modules/Interaction/InputBox) -- prompts the user for a line of text and returns what was entered
 - [InStr$, InStrB, InStr](../tB/Modules/Strings/InStr) -- returns the position of one string within another
 - [InStrRev](../tB/Modules/Strings/InStrRev) -- returns the position of one string within another, searching from the end
@@ -186,7 +186,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## O
 
-- [ObjPtr](../tB/Modules/HiddenModule/ObjPtr) -- returns the COM-identity address of an object
+- [ObjPtr](../tB/Modules/Information/ObjPtr) -- returns the COM-identity address of an object
 - [Oct$, Oct](../tB/Modules/Conversion/Oct) -- returns a string representing the octal value of a number
 
 ## P
@@ -246,7 +246,7 @@ permalink: /Reference/Procedures-and-Functions
 - [StrComp](../tB/Modules/Strings/StrComp) -- compares two strings
 - [StrConv](../tB/Modules/Strings/StrConv) -- converts a string to a specified format
 - [String$, String](../tB/Modules/Strings/String) -- returns a string of repeating characters
-- [StrPtr](../tB/Modules/HiddenModule/StrPtr) -- returns the address of the underlying buffer of a **String**
+- [StrPtr](../tB/Modules/Information/StrPtr) -- returns the address of the underlying buffer of a **String**
 - [StrReverse](../tB/Modules/Strings/StrReverse) -- reverses the order of characters in a string
 - [Switch](../tB/Modules/Interaction/Switch) -- returns the value paired with the first **True** condition in a list of (condition, value) pairs
 - [SYD](../tB/Modules/Financial/SYD) -- returns the sum-of-years' digits depreciation of an asset for a specified period
@@ -272,7 +272,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Val](../tB/Modules/Conversion/Val) -- parses a string into a **Double**
 - [ValDec](../tB/Modules/Conversion/ValDec) -- parses a string into a **Decimal**
-- [VarPtr](../tB/Modules/HiddenModule/VarPtr) -- returns the address of a variable
+- [VarPtr](../tB/Modules/Information/VarPtr) -- returns the address of a variable
 - [VarType](../tB/Modules/Information/VarType) -- returns the **VbVarType** enumeration value identifying a variable's subtype
 - [vbaCastObj](../tB/Modules/HiddenModule/vbaCastObj) -- returns an object reinterpreted as another COM interface
 - [vbaCopyBytes](../tB/Modules/HiddenModule/vbaCopyBytes) -- copies a block of bytes from one address to another
@@ -285,7 +285,7 @@ permalink: /Reference/Procedures-and-Functions
 
 - [Weekday](../tB/Modules/DateTime/Weekday) -- returns the day of the week from a date value
 - [WeekdayName](../tB/Modules/Strings/WeekdayName) -- returns the name of the specified day of the week
-- [Width](../tB/Modules/HiddenModule/Width) -- sets the line width for a sequential output file
+- [Width](../tB/Modules/FileSystem/Width) -- sets the line width for a sequential output file
 
 ## X
 

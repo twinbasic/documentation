@@ -1,6 +1,6 @@
 ---
 title: ReturnHResult
-parent: ErrObject Module
+parent: ErrObject
 permalink: /tB/Modules/ErrObject/ReturnHResult
 ---
 # ReturnHResult

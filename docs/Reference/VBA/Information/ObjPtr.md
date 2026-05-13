@@ -1,7 +1,9 @@
 ---
 title: ObjPtr
-parent: (Default) Module
-permalink: /tB/Modules/HiddenModule/ObjPtr
+parent: Information Module
+permalink: /tB/Modules/Information/ObjPtr
+redirect_from:
+  - /tB/Modules/HiddenModule/ObjPtr
 ---
 # ObjPtr
 {: .no_toc }

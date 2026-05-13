@@ -1,13 +1,14 @@
 ---
-title: AmbientProperties Module
+title: AmbientProperties
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/AmbientProperties/
 redirect_from:
   - /tB/Modules/AmbientProperties
 has_toc: false
 ---
 
-# AmbientProperties module
+# AmbientProperties class
 
 The **AmbientProperties** object exposes information about the environment in which a control is hosted. The container — a form, a property page, the IDE designer surface — populates this object with hints about its appearance, locale, and operating mode so that an embedded control can adapt itself to fit in. Every property is read-only: the container, not the control, decides what these values should be.
 

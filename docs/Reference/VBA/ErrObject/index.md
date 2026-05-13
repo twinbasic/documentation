@@ -1,11 +1,12 @@
 ---
-title: ErrObject Module
+title: ErrObject
 parent: VBA Package
+nav_order: 11
 permalink: /tB/Modules/ErrObject/
 has_toc: false
 ---
 
-# ErrObject module
+# ErrObject class
 
 The **Err** object holds information about the most recent run-time error. It is a global, intrinsic singleton — there is no need to declare it or construct one with **New**, just reference it as **Err**. The default property is [**Number**](Number), so a bare **Err** is equivalent to `Err.Number`.
 

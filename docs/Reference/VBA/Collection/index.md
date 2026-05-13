@@ -1,11 +1,12 @@
 ---
-title: Collection Module
+title: Collection
 parent: VBA Package
+nav_order: 10
 permalink: /tB/Modules/Collection/
 has_toc: false
 ---
 
-# Collection module
+# Collection class
 
 A **Collection** is an ordered set of items that can be referred to as a unit. The members of a collection do not have to share a data type — any value or object reference is acceptable. Items are accessed by their one-based numeric position in the collection or, if they were added with a key, by that key.
 

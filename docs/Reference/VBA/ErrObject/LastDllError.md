@@ -1,6 +1,6 @@
 ---
 title: LastDllError
-parent: ErrObject Module
+parent: ErrObject
 permalink: /tB/Modules/ErrObject/LastDllError
 vba_attribution: true
 ---

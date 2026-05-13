@@ -1,7 +1,9 @@
 ---
 title: InputB, InputB$
-parent: (Default) Module
-permalink: /tB/Modules/HiddenModule/InputB
+parent: FileSystem Module
+permalink: /tB/Modules/FileSystem/InputB
+redirect_from:
+  - /tB/Modules/HiddenModule/InputB
 vba_attribution: true
 ---
 # InputB, InputB$
@@ -36,4 +38,4 @@ Close #1
 
 - [Input, Input$](Input) functions
 - [Open](../../Core/Open) statement
-- [LOF](../FileSystem/LOF) function
+- [LOF](LOF) function

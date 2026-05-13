@@ -1,13 +1,14 @@
 ---
-title: AsyncProperty Module
+title: AsyncProperty
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/AsyncProperty/
 redirect_from:
   - /tB/Modules/AsyncProperty
 has_toc: false
 ---
 
-# AsyncProperty module
+# AsyncProperty class
 
 The **AsyncProperty** object carries the results of an asynchronous read started with **UserControl.AsyncRead**. It is passed to the **AsyncReadComplete** and **AsyncReadProgress** events, where it identifies which read this notification refers to, reports how far the download has got, and — once complete — supplies the downloaded value. Every property is read-only: the runtime fills the object in before raising the event.
 

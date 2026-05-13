@@ -1,13 +1,14 @@
 ---
-title: ContainedControls Module
+title: ContainedControls
 parent: VBRUN Package
+nav_order: 10
 permalink: /tB/Packages/VBRUN/ContainedControls/
 redirect_from:
   - /tB/Modules/ContainedControls
 has_toc: false
 ---
 
-# ContainedControls module
+# ContainedControls class
 
 The **ContainedControls** object is a collection that exposes the controls placed inside an instance of a **UserControl** that has been set up as a control container. The author of the **UserControl** uses this collection to enumerate or inspect those constituent controls at run time. The author of the **UserControl** sees only what the consumer added — controls placed on the **UserControl** at design time by the author themselves are not part of this collection.
 

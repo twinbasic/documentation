@@ -16,4 +16,4 @@ Open "C:\MyFile.txt" For Input Encoding utf_8 As #1
 
 ## Supported Encodings
 
-See the [TextEncodingConstants module](../../tB/Modules/TextEncodingConstants/).
+See the [Text Encodings table](../../tB/Core/Open#text-encodings) on the **Open** statement reference page.

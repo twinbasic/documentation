@@ -1,7 +1,9 @@
 ---
 title: Input, Input$
-parent: (Default) Module
-permalink: /tB/Modules/HiddenModule/Input
+parent: FileSystem Module
+permalink: /tB/Modules/FileSystem/Input
+redirect_from:
+  - /tB/Modules/HiddenModule/Input
 vba_attribution: true
 ---
 # Input, Input$
@@ -23,7 +25,7 @@ Data read with **Input** is usually written to a file with **Print #** or **[Put
 
 Unlike the **Input #** statement, the **Input** function returns all the characters it reads, including commas, carriage returns, linefeeds, quotation marks, and leading spaces.
 
-For files opened for **Binary** access, an attempt to read through the file using **Input** until [**EOF**](../FileSystem/EOF) returns **True** generates an error. Use [**LOF**](../FileSystem/LOF) and [**Loc**](../FileSystem/Loc) instead of **EOF** when reading binary files with **Input**, or use **[Get](../../Core/Get)** when **EOF** is needed.
+For files opened for **Binary** access, an attempt to read through the file using **Input** until [**EOF**](EOF) returns **True** generates an error. Use [**LOF**](LOF) and [**Loc**](Loc) instead of **EOF** when reading binary files with **Input**, or use **[Get](../../Core/Get)** when **EOF** is needed.
 
 > [!NOTE]
 > Use [**InputB**](InputB) for byte data contained within text files. With **InputB**, *Number* specifies the number of bytes to return rather than the number of characters.
@@ -46,4 +48,4 @@ Close #1                            ' Close file.
 
 - [InputB, InputB$](InputB) functions
 - [Open](../../Core/Open) statement
-- [EOF](../FileSystem/EOF), [LOF](../FileSystem/LOF), [Loc](../FileSystem/Loc) functions
+- [EOF](EOF), [LOF](LOF), [Loc](Loc) functions
