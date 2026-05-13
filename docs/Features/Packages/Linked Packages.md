@@ -1,6 +1,7 @@
 ---
 title: Linked Packages
 parent: Packages
+grand_parent: Features
 nav_order: 5
 permalink: /Features/Packages/Linked
 

@@ -1,7 +1,8 @@
 ---
 title: VB Package
-parent: Reference Section
-nav_order: 21
+parent: Packages
+grand_parent: Reference Section
+nav_order: 1
 permalink: /tB/Packages/VB/
 has_toc: false
 ---
