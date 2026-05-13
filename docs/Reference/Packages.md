@@ -24,4 +24,5 @@ These packages are built into twinBASIC and are always available, even offline. 
 
 - [Assert Package](Assert/) -- assertion functions for unit tests — three modules (**Exact**, **Strict**, **Permissive**) sharing the same fifteen-member API with different comparison strictness
 - [CustomControls Package](CustomControls/) -- owner-drawn `Waynes…` custom controls (button, form, frame, grid, label, slider, textbox, timer), the shared `Styles/` helpers that paint them, and the DESIGNER framework (interfaces, callback objects, **Canvas**, **SerializeInfo**) for authoring new custom controls
+- [CEF Package](CEF/) -- the **CefBrowser** control wrapping the Chromium Embedded Framework: cross-platform-ready browser embedding with a choice of three Chromium runtimes (v49 / v109 / v145); currently in BETA
 - [WebView2 Package](WebView2/) -- the **WebView2** control wrapping the Microsoft Edge runtime, plus its surrounding wrapper objects (request / response / headers / environment options) and the `wv2…` enumerations
