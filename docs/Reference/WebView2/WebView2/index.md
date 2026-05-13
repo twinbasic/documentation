@@ -381,6 +381,14 @@ The control's width. **Single**. Inherited.
 
 The current zoom factor — `1.0` is 100%, `1.5` is 150%, and so on. **Double**. The design-time default is `0`, which means "do not override Edge's default of 1.0".
 
+> [!NOTE]
+> Because the design-time default is `0`, not `1.0`, arithmetic that multiplies the current value silently starts from zero unless the host clamps it to `1` first:
+>
+> ```tb
+> If WebView21.ZoomFactor = 0 Then WebView21.ZoomFactor = 1
+> WebView21.ZoomFactor *= 1.1   ' 110% on first click, 121% on second, …
+> ```
+
 Methods
 -------
 
@@ -399,6 +407,27 @@ Syntax: *object*.**AddObject** *ObjName*, *Object* [, *UseDeferredInvoke* ]
 
 *UseDeferredInvoke*
 : *optional* A **Boolean**, default **False**. When **True**, calls from the page are deferred onto the BASIC message-loop — safe to re-enter the WebView2 control from within them, but the page cannot read a return value back. Use **False** when the page needs to read return values.
+
+```tb
+Private Sub WebView21_Ready()
+    WebView21.AddObject "myCalculator", New MyCalculator
+End Sub
+
+Class MyCalculator
+    Public Function MultiplyByTen(ByVal Value As Long) As Long
+        Return Value * 10
+    End Function
+End Class
+```
+
+```js
+async function callHostCalculator() {
+    let result = await chrome.webview.hostObjects.myCalculator.MultiplyByTen(7);
+    alert("BASIC returned: " + result);   //  -> 70
+}
+```
+
+Calls into the host object are asynchronous on the JavaScript side and must be `await`-ed inside an `async` function — even when *UseDeferredInvoke* is **False**. See the [Re-entrancy](../../../../Tutorials/WebView2/Re-entrancy) tutorial for when to pass **True**.
 
 ### AddScriptToExecuteOnDocumentCreated
 {: .no_toc }
@@ -516,6 +545,12 @@ Syntax: *object*.**JsRun** ( *FuncName*, [ *args* ] ) **As Variant**
 *args*
 : *optional* Any number of **Variant** arguments. Each is JSON-encoded before being passed to the function. Strings, numerics, **Boolean**, **Null**, and **Empty** are supported.
 
+```tb
+' Calls the page-side function `multiplyTheseNumbers(a, b)` and waits for the result.
+Dim product As Long = WebView21.JsRun("multiplyTheseNumbers", 5, 6)
+Debug.Print product   ' 30
+```
+
 ### JsRunAsync
 {: .no_toc }
 
@@ -528,6 +563,21 @@ Syntax: *object*.**JsRunAsync** ( *FuncName*, [ *args* ] ) **As LongLong**
 
 *args*
 : *optional* Any number of **Variant** arguments, JSON-encoded as in [**JsRun**](#jsrun).
+
+```tb
+Private Sub btnRun_Click()
+    WebView21.JsRunAsync "multiplyTheseNumbers", 5, 6
+End Sub
+
+Private Sub WebView21_JsAsyncResult( _
+        ByVal Result As Variant, Token As LongLong, ErrString As String)
+    If LenB(ErrString) = 0 Then
+        Debug.Print "Async result: "; Result
+    Else
+        Debug.Print "Async error: "; ErrString
+    End If
+End Sub
+```
 
 ### Move
 {: .no_toc }
@@ -552,6 +602,18 @@ Syntax: *object*.**Navigate** *uri*
 
 *uri*
 : *required* A **String** URI such as `"https://www.twinbasic.com"` or `"file:///C:/page.html"`.
+
+```tb
+Private Sub AddressBar_KeyDown(KeyCode As Integer, Shift As Integer)
+    If KeyCode = vbKeyReturn Then WebView21.Navigate AddressBar.Text
+End Sub
+
+Private Sub WebView21_NavigationComplete( _
+        ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long)
+    btnBack.Enabled = WebView21.CanGoBack
+    btnForward.Enabled = WebView21.CanGoForward
+End Sub
+```
 
 ### NavigateCustom
 {: .no_toc }
@@ -586,6 +648,10 @@ Syntax: *object*.**NavigateToString** *htmlContent*
 
 *htmlContent*
 : *required* A **String** of HTML source.
+
+```tb
+WebView21.NavigateToString "<h1>Hello, world!</h1>"
+```
 
 ### OpenDefaultDownloadDialog
 {: .no_toc }
@@ -623,6 +689,21 @@ Syntax: *object*.**PostWebMessage** *Message*
 : *required* A **Variant** value to send.
 
 Requires [**IsWebMessageEnabled**](#iswebmessageenabled).
+
+```tb
+WebView21.PostWebMessage "Hello from twinBASIC!"
+
+Private Sub WebView21_JsMessage(ByVal Message As Variant)
+    Debug.Print "Reply from page: "; Message
+End Sub
+```
+
+```js
+window.chrome.webview.addEventListener('message', (e) => {
+    alert("Host sent: " + e.data);
+    window.chrome.webview.postMessage("Thanks, twinBASIC!");
+});
+```
 
 ### PostWebMessageJSON
 {: .no_toc }
@@ -663,6 +744,16 @@ Syntax: *object*.**PrintToPdf** *outputPath* [, *Orientation* [, *ScaleFactor* [
 
 *HeaderTitle*, *FooterUri*
 : *optional* **String**s overriding the default header title and footer URI.
+
+```tb
+Private Sub btnSave_Click()
+    WebView21.PrintToPdf Environ$("USERPROFILE") & "\Documents\page.pdf"
+End Sub
+
+Private Sub WebView21_PrintToPdfCompleted()
+    MsgBox "PDF saved.", vbInformation
+End Sub
+```
 
 ### Reload
 {: .no_toc }
@@ -730,6 +821,17 @@ Syntax: *object*.**SetVirtualHostNameToFolderMapping** *hostName*, *folderPath* 
 > Pick the *hostName* carefully — certain DNS-resolvable hostnames cause a 2-second resolution stall before the local override kicks in. See [WebView2Feedback#2381](https://github.com/MicrosoftEdge/WebView2Feedback/issues/2381).
 
 Requires [**SupportsFolderMappingFeatures**](#supportsfoldermappingfeatures).
+
+```tb
+Private Sub WebView21_Ready()
+    Dim folderPath As String = Environ$("USERPROFILE") & "\Documents\MyApp"
+    WebView21.SetVirtualHostNameToFolderMapping _
+        "myapp.example", folderPath & "\", wv2ResourceAllow
+    WebView21.Navigate "https://myapp.example/index.html"
+End Sub
+```
+
+See the [Hosting local web assets](../../../../Tutorials/WebView2/Hosting-Local-Web-Assets) tutorial for the matching pattern of bundling the assets through the project's `Resources` folder.
 
 ### Suspend
 {: .no_toc }
@@ -801,6 +903,22 @@ Raised when the WebView2 environment or controller fails to initialise — most 
 
 Syntax: *object*\_**Error**( *code* **As Long**, *msg* **As String** )
 
+> [!NOTE]
+> Code `&H80070002` (`ERROR_FILE_NOT_FOUND`) is the canonical signal that the WebView2 Evergreen runtime is missing from the machine — the right cue to prompt the user to install it.
+
+```tb
+Private Sub WebView21_Error(ByVal code As Long, ByVal msg As String)
+    Const ERROR_FILE_NOT_FOUND As Long = &H80070002
+    If code = ERROR_FILE_NOT_FOUND Then
+        MsgBox "The WebView2 (Evergreen) runtime is not installed on this machine.", _
+               vbExclamation, "WebView2"
+    Else
+        MsgBox "WebView2 error " & Hex$(code) & ": " & msg, _
+               vbExclamation, "WebView2"
+    End If
+End Sub
+```
+
 ### JsAsyncResult
 {: .no_toc }
 
@@ -828,6 +946,20 @@ Syntax: *object*\_**NavigationComplete**( *IsSuccess* **As Boolean**, *WebErrorS
 Raised before each navigation begins. Set *Cancel* to **True** to block the navigation; modify *RequestHeaders* to alter the HTTP request the runtime is about to send. Can be deferred — see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**NavigationStarting**( *Uri* **As String**, *IsUserInitiated* **As Boolean**, *IsRedirected* **As Boolean**, *RequestHeaders* **As** [**WebView2RequestHeaders**](../WebView2RequestHeaders), *Cancel* **As Boolean** )
+
+```tb
+' Block any navigation to a URL outside our own virtual host.
+Private Sub WebView21_NavigationStarting( _
+        ByVal Uri As String, ByVal IsUserInitiated As Boolean, _
+        ByVal IsRedirected As Boolean, _
+        ByVal RequestHeaders As WebView2RequestHeaders, _
+        Cancel As Boolean)
+    If Not (Uri Like "https://myapp.example/*" Or Uri = "about:blank") Then
+        MsgBox "External link blocked: " & Uri
+        Cancel = True
+    End If
+End Sub
+```
 
 ### NewWindowRequested
 {: .no_toc }
