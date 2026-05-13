@@ -4,7 +4,7 @@ Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source un
 
 ## Status
 
-Initial reference documentation is **complete**. All eight packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
+Initial reference documentation is **complete**. All nine packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
 
 | Package                              | Reference | Tutorials |
 |--------------------------------------|-----------|-----------|
@@ -16,6 +16,7 @@ Initial reference documentation is **complete**. All eight packages have full re
 | CustomControls / CustomControlsPackage | done    | —         |
 | cefPackage (CEF)                     | done      | done      |
 | WinEventLogLib                       | done      | —         |
+| WinNamedPipesLib                     | done      | —         |
 
 The rest of this file is the maintenance guide for adding new pages or updating existing ones — primary-source paths, page templates, cross-section linking conventions, the per-symbol workflow, and the integrity check.
 
@@ -32,6 +33,7 @@ When working from a primary source: always read it first — **never paraphrase 
 - `docs/Reference/CustomControls/` — CustomControls package: the eight **Waynes…** custom controls, their shared `Styles/` helper classes (`Fill`, `Borders`, `Corners`, `TextRendering`, …), the `Framework/` DESIGNER surface (interfaces, CoClasses, the `Canvas` / `SerializeInfo` UDTs), and the `Enumerations/` (`CornerShape`, `FillPattern`, `DockMode`, …).
 - `docs/Reference/CEF/` — CEF (Chromium Embedded Framework) package: the **CefBrowser** control, its `EnvironmentOptions` sub-page, and the two user-facing enumerations (`CefLogSeverity`, `cefPrintOrientation`). This is a much smaller surface than WebView2 — the package is currently BETA and many WebView2-equivalent features are not yet exposed.
 - `docs/Reference/WinEventLogLib/` — Windows Event Log package: the generic `EventLog(Of T1, T2)` class and the `EventLogHelperPublic` module with its single `RegisterEventLogInternal` helper. Three pages total — `index.md`, `EventLog.md`, `EventLogHelperPublic.md`.
+- `docs/Reference/WinNamedPipesLib/` — Windows Named Pipes package: the IOCP-based async pipe framework — `NamedPipeServer` + `NamedPipeServerConnection` on the server side, `NamedPipeClientManager` + `NamedPipeClientConnection` on the client side. Five pages total (`index.md` + one per class).
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - `docs/_includes/footer_custom.html` — overrides the theme's footer slot; renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
@@ -64,6 +66,7 @@ All of twinbasic's package sources are at:
 ..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\
 ..\tb-export\NewProject\Packages\cefPackages\Sources\
 ..\tb-export\NewProject\Packages\WinEventLogLib\Sources\
+..\tb-export\NewProject\Packages\WinNamedPipesLib\Sources\
 etc.
 ```
 
@@ -451,6 +454,160 @@ Class-level decoration on `EventLog`: `[COMCreatable(False)]`, `[ClassId("4AEA12
 
 **License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2025; first release v0.1, 04-FEB-2025) — same situation as WebView2Package, Assert, CustomControls, and CEF. Pages are fully original content; **omit** the `vba_attribution: true` flag.
 
+### WinNamedPipesLib
+
+Layout of `..\tb-export\NewProject\Packages\WinNamedPipesLib\Sources\` is flat — seven `.twin` files plus three text files (`_README.txt`, `_LICENCE.txt`, `_RELEASE_HISTORY.txt`):
+
+- `APIs.twin` — `Private Module NamedPipesAPIs` wrapping Win32 declarations from `kernel32.dll`, `user32.dll`, and `oleaut32.dll` (`CreateNamedPipeW`, `ConnectNamedPipe`, `ReadFile` / `WriteFile`, `CreateIoCompletionPort`, `GetQueuedCompletionStatus`, `PostQueuedCompletionStatus`, `CreateThread`, …) plus the supporting `Type` declarations (`POINT`, `MSG`, `SAFEARRAYBOUND`, `SAFEARRAY_1D`, `OVERLAPPED_CUSTOM`, `FILETIME`, `WIN32_FIND_DATAW`) and a 32/64-bit `SetWindowLongPtrW` alias. No doc page.
+- `Constants.twin` — `Private Module NamedPipesConstants` carrying Win32 constants (`PIPE_ACCESS_DUPLEX`, `PIPE_TYPE_MESSAGE`, `FILE_FLAG_OVERLAPPED`, `ERROR_IO_PENDING`, `ERROR_MORE_DATA`, …) and the package-internal `Enum OverlappedTypeConstants` (`tbOverlappedConnect`, `tbOverlappedRead`, `tbOverlappedWrite`). Module is private, so none of these surface in the public API; no doc page.
+- `Helper.twin` — `Private Module NamedPipesHelper` with `ObjectFromPointer_*` and `ObjPtrRef` / `ObjReleaseRef` reference-counting helpers used internally to ferry COM pointers across IOCP worker threads. Module is private; no doc page.
+- `NamedPipeServer.twin` — `Public Class NamedPipeServer`. The server-side entry point. Also declares the private `INamedPipeServerInternal` interface (implementation detail; no doc page).
+- `NamedPipeServerConnection.twin` — `Public Class NamedPipeServerConnection`. Per-client connection object surfaced through `NamedPipeServer` events. Also declares the private `INamedPipeServerConnectionInternal` interface (no doc page).
+- `NamedPipeClientManager.twin` — `Public Class NamedPipeClientManager`. Owns the client-side IOCP machinery and the `Connect` / `Stop` / `FindNamedPipes` entry points. Also declares the private `INamedPipeClientManagerInternal` interface (no doc page).
+- `NamedPipeClientConnection.twin` — `Public Class NamedPipeClientConnection`. Returned by `NamedPipeClientManager.Connect`. Carries the `Connected` / `Disconnected` / `MessageReceived` / `MessageSent` events and the `AsyncWrite` / `AsyncRead` / `AsyncClose` methods. Also declares the private `INamedPipeClientConnectionInternal` interface (no doc page).
+
+The four classes are each tagged `[COMCreatable(False)]` — only the manager / server classes can be instantiated by user code (with `New`); the two `Connection` classes are constructed internally and handed back through events / return values.
+
+The private `INamedPipe*Internal` interfaces serve a marshalling-only role: each public class implements its matching internal interface so that the IOCP worker threads can refcount and dispatch through `stdole.IUnknown` without taking a strong reference to the parent class. They are *not* user-facing surface and get no documentation page.
+
+Public user-facing surface (four classes — two on each side):
+
+| Class                       | Role                                                                                                          |
+|-----------------------------|---------------------------------------------------------------------------------------------------------------|
+| `NamedPipeServer`           | The server. User-instantiated. Sets `PipeName`, calls `Start`, listens for events; one server hosts many clients. |
+| `NamedPipeServerConnection` | One server-side per-client connection. Surfaced through `NamedPipeServer` events; carries `AsyncRead` / `AsyncWrite` / `AsyncClose`. |
+| `NamedPipeClientManager`    | The client-side coordinator. User-instantiated. Owns the IOCP worker threads; the `Connect` method returns a `NamedPipeClientConnection`. |
+| `NamedPipeClientConnection` | One client-side connection. Returned by `NamedPipeClientManager.Connect`; carries `Connected` / `Disconnected` / `MessageReceived` / `MessageSent` events and `AsyncRead` / `AsyncWrite` / `AsyncClose`. |
+
+#### `NamedPipeServer` public members
+
+Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[EventInterfaceId(...)]`, `[ClassId(...)]`. No `[Description("...")]` on the class itself.
+
+**Public fields** (each carries a `[Description("...")]`):
+
+- `PipeName As String` — *"the discoverable pipe name"*. Set this before `Start()` or `Start()` raises run-time error 5 (*"cannot start without specifying a pipe name"*). The Win32 pipe namespace path is `\\.\pipe\<PipeName>` (the package prepends `\\.\pipe\` itself).
+- `NumThreadsIOCP As Long = 1` — *"the number of IOCP worker threads that will be created"*. Read once when `Start()` is called; the in-source `FIXME` notes that this should become read-only once started.
+- `FreeThreadingEvents As Boolean = False` — *"set to TRUE to allow the server events ClientConnected / ClientReceivedDataAsync etc to be fired directly from the IOCP worker threads. set to FALSE to ensure the events get fired on the main UI thread."* The free-threaded path skips a Win32 message-loop round-trip; the marshalled path is safer because the events fire on the UI thread.
+- `ContinuouslyReadFromPipe As Boolean = True` — *"set to TRUE to ensure ClientReceivedDataAsync events always fire without having to call AsyncRead manually."* When `False`, the consumer must call `AsyncRead` after each `ClientMessageReceived` to keep receiving.
+- `MessageBufferSize As Long = 131072` — *"sets the initial size for ReadFile() buffers. does not affect the maximum message receive size, but can affect performance."* On `ERROR_MORE_DATA` the IOCP loop allocates a larger overflow buffer and re-issues the read, so messages larger than this size do work — but with one extra allocation per overflowed message.
+
+**Public events**:
+
+- `ServerReady()` — fires once after `Start()` when every IOCP worker has joined.
+- `ClientConnected(Connection As NamedPipeServerConnection)` — a new client connection has completed.
+- `ClientDisconnected(Connection As NamedPipeServerConnection)` — the connection has dropped and every outstanding async operation has returned.
+- `ClientMessageReceived(Connection As NamedPipeServerConnection, ByRef Cookie As Variant, ByRef Data() As Byte)` — a message arrived. *Data* is a transient view over the IOCP read buffer (a hand-rolled `SAFEARRAY` whose backing memory is reused after the event); copy it if you need to keep it past the event handler.
+- `ClientMessageSent(Connection As NamedPipeServerConnection, ByRef Cookie As Variant)` — a previously-issued `AsyncWrite` has completed.
+
+**Public methods**:
+
+- `Sub New()` — constructor; creates the hidden marshalling-window used for UI-thread event delivery.
+- `Public Sub Start()` — creates the IOCP completion port and `NumThreadsIOCP` worker threads, then issues the first connection listener. Idempotent: calling `Start()` while already started is a no-op.
+- `Public Sub Stop()` — cancels every outstanding I/O, joins the IOCP threads, closes pipe handles. Idempotent. Called automatically from `Class_Terminate`.
+- `Sub AsyncBroadcast(ByRef Data() As Byte, Optional ByRef Cookie As Variant = Empty)` — issues `AsyncWrite` against every currently-connected `NamedPipeServerConnection`.
+- `Public Sub ManualMessageLoopEnter()` / `Public Sub ManualMessageLoopLeave()` — drive a Win32 message loop manually (rare; only needed when the host process does not naturally pump messages — e.g. an unattended Windows service that wants the marshalled-event semantics rather than the free-threaded ones). `Leave` posts `WM_USER_QUITTING`, which `Enter` reads to break the loop.
+
+#### `NamedPipeServerConnection` public members
+
+Tagged `[COMCreatable(False)]`. Not directly user-instantiable.
+
+**Public fields**:
+
+- `Handle As LongPtr` — the underlying Win32 pipe handle. Exposed but not normally needed; useful for low-level operations or debugging.
+- `IsOpening As Boolean` — true while `Open()` is in progress (race-condition window between adding to the linked list and finishing `ConnectNamedPipe`).
+- `IsConnected As Boolean` — true between the client connecting and the connection dropping.
+- `CustomData As Variant` — *"free for use"*: opaque per-connection slot the consumer can attach state to.
+
+**Public methods**:
+
+- `Sub New(...)` — internal constructor; takes the parent server + pipe info. Never called by user code.
+- `Public Sub AsyncClose()` — cancels outstanding I/O and closes the pipe handle. Called automatically from `Class_Terminate`.
+- `Public Sub AsyncWrite(ByRef Data() As Byte, Optional ByRef Cookie As Variant = Empty)` — writes a message back to this specific client. Returns immediately; `NamedPipeServer.ClientMessageSent` fires when the write completes.
+- `Public Sub AsyncRead(Optional ByRef Cookie As Variant = Empty, Optional OverlappedStruct As LongPtr)` — manually issues a read. Only needed when `NamedPipeServer.ContinuouslyReadFromPipe = False`; otherwise the server keeps the read pump fed automatically.
+
+No public events — message-received and connection-dropped notifications come through the parent `NamedPipeServer`. The class declares an internal `INamedPipeServerConnectionInternal` interface that the IOCP loop uses for refcounting; that interface is `Private` and gets no doc page.
+
+#### `NamedPipeClientManager` public members
+
+Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[EventInterfaceId(...)]`, `[ClassId(...)]`.
+
+**Public fields** (each carries `[Description("...")]`, mirror the server's):
+
+- `NumThreadsIOCP As Long = 1`
+- `MessageBufferSize As Long = 131072`
+- `FreeThreadingEvents As Boolean = False`
+- `ContinuouslyReadFromPipe As Boolean = True`
+
+These four are read once on the first `Connect()` call and propagated to every `NamedPipeClientConnection` created through that manager; subsequent changes do not affect connections that already exist. Source comment in `NamedPipeClientConnection` confirms: *"tip: set it in NamedPipeClientConnections before Connect()"*.
+
+**Public methods**:
+
+- `Sub New()` — constructor; creates the hidden marshalling window.
+- `Public Function Connect(ByVal PipeName As String) As NamedPipeClientConnection` — opens a connection to a server (`\\.\pipe\<PipeName>`). Lazy on first call: creates the IOCP port and the worker threads. Returns a connection object that fires `Connected` once the async `CreateFileW` completes.
+- `Public Sub Stop()` — cancels every outstanding I/O on every managed connection, joins the IOCP threads, frees the resources. Idempotent. Called automatically from `Class_Terminate`.
+- `Public Function FindNamedPipes(Optional Pattern As String = "*") As Collection` — enumerates the named pipes currently published on the local machine (via `FindFirstFileW("\\.\pipe\<Pattern>")`). Returns a `Collection` of `String`. Useful as a discovery helper before calling `Connect`.
+
+No events on the manager itself — per-connection events live on the returned `NamedPipeClientConnection` objects.
+
+#### `NamedPipeClientConnection` public members
+
+Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[ClassId(...)]`, `[EventInterfaceId(...)]`. Not directly user-instantiable — `NamedPipeClientManager.Connect` returns it.
+
+**Public fields**:
+
+- `PipeName As String` — the pipe name the connection targets.
+- `Handle As LongPtr` — the underlying Win32 file handle. Same caveats as on the server-side connection.
+- `CustomData As Variant` — *"free for use"*.
+
+**Public events**:
+
+- `Connected()` — the async `CreateFileW` has succeeded.
+- `Disconnected()` — the connection has dropped and every outstanding async operation has returned.
+- `MessageReceived(ByRef Cookie As Variant, ByRef Data() As Byte)` — a message arrived. *Data* has the same transient-view semantics as on the server.
+- `MessageSent(ByRef Cookie As Variant)` — a previously-issued `AsyncWrite` has completed.
+
+**Public methods**:
+
+- `Sub New(...)` — internal constructor; never called by user code directly.
+- `Public Sub AsyncClose()` — **critical:** the README says *"you MUST call AsyncClose on the client side, otherwise the connection is left alive when the object goes out of scope"*. Surface this on every relevant page.
+- `Public Sub AsyncWrite(ByRef Data() As Byte, Optional ByRef Cookie As Variant = Empty)` — sends a message to the server.
+- `Public Sub AsyncRead(Optional ByRef Cookie As Variant = Empty, Optional OverlappedStruct As LongPtr)` — manually issues a read. Same gating as on the server-side: only call this when `ContinuouslyReadFromPipe = False`.
+
+**Documented gaps / TODOs from `_README.txt`** (surface on the landing page):
+
+- *"we need a method to allow closing a client connection from the server side"* — there is no `NamedPipeServerConnection.Disconnect` or `.Close` user-method today. The server can stop the whole pipe (`NamedPipeServer.Stop`) but cannot selectively drop one client.
+- *"named pipe error should be raised via Error events (rather than throwing an error on the worker threads)"* — internal IOCP errors currently bubble up as VBA run-time errors on worker threads rather than as `Error` events. No `Error` event exists on any of the four classes yet.
+- *"remove max size 131072 of messages"* — the `MessageBufferSize` initial-buffer default is 131072 bytes. The IOCP overflow path (`ERROR_MORE_DATA` → larger buffer → re-issue read) does handle larger messages, but there may be a hard cap somewhere the author wants to remove; surface this as *"see TODO list in `_README.txt`"* rather than making a stronger claim.
+- *"currently a lot of duplicate code in server + client"* — internal-refactor note. **Not** surfaced on the docs.
+
+**Cookie pattern.** Every `AsyncRead` and `AsyncWrite` accepts an optional *Cookie* (`Variant`). Whatever the consumer passes in flows through the IOCP completion buffer and is handed back out on the matching `MessageReceived` / `MessageSent` event. This is the package's mechanism for correlating individual writes with their completion notifications when many are in flight.
+
+**`Data() As Byte` transience.** Inside `MessageReceived` / `ClientMessageReceived`, *Data* is **not** a real `Byte` array — it is a hand-rolled `SAFEARRAY` whose `pvData` field points at the IOCP overlapped buffer. The buffer is recycled back into a free-list at the end of the event handler. Copy the bytes out (`ReDim`-and-copy, or `CStrConv` for text payloads) if you need them after returning from the handler. The source uses `PutMemPtr(VarPtr(safeArrayPtr), VarPtr(safeArrayPsuedo))` and clears it afterwards — surface this lifetime caveat on every event-page entry that carries *Data*.
+
+**Hidden message window.** Each `NamedPipeServer` and `NamedPipeClientManager` instance creates an invisible `STATIC`-class window with a subclassed `WndProc`, used to marshal IOCP-thread completions back to the UI thread when `FreeThreadingEvents = False`. Mention this on each class's intro paragraph — it explains why the consumer's process must be pumping a message loop for the default event-delivery semantics to work, and why `ManualMessageLoopEnter` / `ManualMessageLoopLeave` exist on `NamedPipeServer` for service / console hosts.
+
+**Layout decision** — five pages total, one per public class plus the landing page:
+
+```
+docs/Reference/WinNamedPipesLib/
+  index.md                          ← package landing; intro + IOCP model + cookie + transient-data caveat + gap list + class table
+  NamedPipeServer.md                ← single-file: fields, events, methods
+  NamedPipeServerConnection.md      ← single-file
+  NamedPipeClientManager.md         ← single-file
+  NamedPipeClientConnection.md      ← single-file
+```
+
+All four class pages are single-file (no folder-style — no natural sub-pages; the surface per class is medium-small, on the order of WebView2 wrapper classes).
+
+**Naming:**
+
+- Folder / URL segment: `WinNamedPipesLib/` (matches the source-side package name; no `Package` suffix to drop, same as `WinEventLogLib`).
+- Index title: `WinNamedPipesLib Package` — the `<Name> Package` convention.
+- Permalinks: `/tB/Packages/WinNamedPipesLib/` for the landing; `/tB/Packages/WinNamedPipesLib/<Class>` for each of the four class pages.
+- `parent: WinNamedPipesLib Package` on each child page (matching the index `title:`).
+
+**License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2025; first release v0.1, 04-FEB-2025) — same situation as WebView2Package, Assert, CustomControls, CEF, and WinEventLogLib. Pages are fully original content; **omit** the `vba_attribution: true` flag.
+
 ## Page template
 
 Match the existing style. Worked examples to imitate:
@@ -535,6 +692,7 @@ The URL prefixes are *not* uniform across packages — VBA pages live one segmen
 - CEF enumeration → `/tB/Packages/CEF/Enumerations/<Enum>`
 - WinEventLogLib class → `/tB/Packages/WinEventLogLib/EventLog` (single-file; same depth as a single-file VB class)
 - WinEventLogLib module → `/tB/Packages/WinEventLogLib/EventLogHelperPublic` (single-file; same depth as an Assert module)
+- WinNamedPipesLib class → `/tB/Packages/WinNamedPipesLib/<Class>` (single-file; same depth as a single-file VB class)
 
 Common patterns:
 
@@ -605,6 +763,9 @@ Common patterns:
 | WinEventLogLib `Packages/WinEventLogLib/X` | sibling `Packages/WinEventLogLib/Y`         | `[Y](Y)`                                   |
 | WinEventLogLib `Packages/WinEventLogLib/X` | VBA `Modules/<Mod>/Y`                       | `[Y](../../Modules/<Mod>/Y)`               |
 | WinEventLogLib `Packages/WinEventLogLib/X` | `Core/Y`                                    | `[Y](../../Core/Y)`                        |
+| WinNamedPipesLib `Packages/WinNamedPipesLib/X` | sibling `Packages/WinNamedPipesLib/Y`   | `[Y](Y)`                                   |
+| WinNamedPipesLib `Packages/WinNamedPipesLib/X` | VBA `Modules/<Mod>/Y`                   | `[Y](../../Modules/<Mod>/Y)`               |
+| WinNamedPipesLib `Packages/WinNamedPipesLib/X` | `Core/Y`                                | `[Y](../../Core/Y)`                        |
 | `Core/X`                                   | VBA `Modules/<Mod>/Y`                       | `[Y](../Modules/<Mod>/Y)`                  |
 | `Core/X`                                   | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../Packages/VBRUN/<Mod>/Y)`           |
 | `Core/X`                                   | VB `Packages/VB/Y`                          | `[Y](../Packages/VB/Y)`                    |
@@ -613,6 +774,7 @@ Common patterns:
 | `Core/X`                                   | CC `Packages/CustomControls/Y`              | `[Y](../Packages/CustomControls/Y)`        |
 | `Core/X`                                   | CEF `Packages/CEF/Y`                        | `[Y](../Packages/CEF/Y)`                   |
 | `Core/X`                                   | WinEventLogLib `Packages/WinEventLogLib/Y`  | `[Y](../Packages/WinEventLogLib/Y)`        |
+| `Core/X`                                   | WinNamedPipesLib `Packages/WinNamedPipesLib/Y` | `[Y](../Packages/WinNamedPipesLib/Y)`   |
 | `Core/X`                                   | `Core/Y` (sibling)                          | `[Y](Y)`                                   |
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
@@ -627,6 +789,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - CustomControls — framework half: `..\tb-export\NewProject\Packages\CustomControls\Sources\CustomControls.twin` (a single file with `Module Constants`, the interfaces, and the CoClasses). Runtime half: `..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\Waynes<X>.twin` for each control + `zTemporarySupport.twin` for the shared style helpers and the mixin base classes.
    - CEF package → `..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\CefControl.twin` for the whole public surface (the `CefBrowser` control, its `CefBrowserBaseCtl` base, and `CefEnvironmentOptions`). For the two surfaced enums: `CEF\Enums\_cef_log_severity_t.twin` (declares both the internal `cef_log_severity_t` and the user-facing `CefLogSeverity`) and `CEF\CrossProcessIPC\BrowserOM.twin` (declares `cefPrintOrientation` inline, around line 29). Everything else under `cefPackage\Sources\` and `cefPackage\Sources\CEF\` is `Private Class` / `Private Module` plumbing — skip. The sample project's `Sources\Example1..4.twin` are the source-of-truth for which features are *not* yet exposed (commented-out event handlers with *"Sorry, this feature is not yet available in the CEF package"*).
    - WinEventLogLib package → `..\tb-export\NewProject\Packages\WinEventLogLib\Sources\EventLog.twin` (the generic `EventLog(Of T1, T2)` class) and `Helper.twin` (`EventLogHelperPublic.RegisterEventLogInternal`). Skip `APIs.twin` (`Private Module`), `Constants.twin` (`Private Module` — the `EventLogTypeConstants` enum is unreachable from outside the package), and the `EventLogHelperPrivate` module in `Helper.twin` (named "Private" though declared `Public`; only used internally by `EventLog.LogArray`).
+   - WinNamedPipesLib package → `..\tb-export\NewProject\Packages\WinNamedPipesLib\Sources\` — one `.twin` per public class: `NamedPipeServer.twin`, `NamedPipeServerConnection.twin`, `NamedPipeClientManager.twin`, `NamedPipeClientConnection.twin`. Each `.twin` also declares a `Private Interface INamedPipe*Internal` (refcount / dispatch helper used by the IOCP threads); skip those. Skip `APIs.twin`, `Constants.twin`, and `Helper.twin` (all `Private Module`).
 2. **Decide placement**:
    - Pure language keyword (parsed by the compiler, no runtime call) → `docs/Reference/Core/`.
    - Runtime function/property → `docs/Reference/<Package>/<Mod>/`. Add `redirect_from: /tB/Core/<name>` so legacy `tB/Core/<name>` links still work.
@@ -641,6 +804,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - CustomControls enumeration → `docs/Reference/CustomControls/Enumerations/<Enum>.md` (mirrors `WebView2/Enumerations/` and `VBRUN/Constants/`). The three `Long`-alias enums (`ColorRGBA`, `PixelCount`, `PointSize`) live here too, even though they're really typedefs.
    - CEF control → `docs/Reference/CEF/CefBrowser/index.md` (folder-style; carries the `EnvironmentOptions` sub-page). Pre-creation options class → `docs/Reference/CEF/CefBrowser/EnvironmentOptions.md` (parallel to `WebView2/WebView2/EnvironmentOptions.md`). CEF enumeration → `docs/Reference/CEF/Enumerations/<Enum>.md`.
    - WinEventLogLib generic class → `docs/Reference/WinEventLogLib/EventLog.md` (single-file; the surface is small — constructor + three methods). WinEventLogLib helper module → `docs/Reference/WinEventLogLib/EventLogHelperPublic.md` (single-file; one Sub).
+   - WinNamedPipesLib class → `docs/Reference/WinNamedPipesLib/<Class>.md` (single-file; one page per public class — `NamedPipeServer.md`, `NamedPipeServerConnection.md`, `NamedPipeClientManager.md`, `NamedPipeClientConnection.md`). No folder-style — none of the four classes have sub-pages.
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 3. **Adapt content** (VBA-Docs sources):
    - Strip MS frontmatter (`ms.assetid`, `f1_keywords`, `keywords`, `ms.date`, `ms.localizationpriority`).
@@ -699,10 +863,25 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - The index page's *Message resources* section should describe what Windows *expects* (a message-table resource in the EXE pointed at by `EventMessageFile`, keyed by the `T1` / `T2` enum values), **not** make strong claims about how twinBASIC delivers it. The `.twin` source does not contain visible `mc.exe`-equivalent emit; whatever populates the resource lives in the compiler's special-handling path for the `[ClassId("…EAEAEAEAEAEA")]` magic-byte pattern, and that is not directly observable from the package's own sources.
    - The README copy-paste mistake (header says "NAMED PIPES PACKAGE", body is correct) is *not* surfaced on the docs — write the actual description ("a simple framework for creating Windows event log entries"), don't propagate the wrong name.
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same situation as the other Wayne Phillips packages).
-10. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-11. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
-12. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
-13. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
+10. **Adapt content** (WinNamedPipesLib `.twin` sources):
+   - The four `Public Class …` files are flat — there is no inheritance to walk, so list each class's surface in the order *Fields → Events → Methods*, with members within each group alphabetised. Mirror the shape of `WebView2/WebView2Request.md` (similar size + flat layout).
+   - `[COMCreatable(False)]` is on every class — mention this on each page's intro paragraph (the consumer reaches `NamedPipeServerConnection` / `NamedPipeClientConnection` through events / return values rather than by `New`). Do not list `[InterfaceId]`, `[ClassId]`, `[EventInterfaceId]` on the page; they are COM-plumbing decoration.
+   - Each `Public` field carries a `[Description("…")]` attribute — use it as the basis for the field entry, then expand. There is no `[Description]` on events, on methods, or on classes; that prose is fully original.
+   - The `INamedPipe*Internal` interfaces at the top of each `.twin` are `Private Interface` and only exist so the IOCP worker threads can refcount the corresponding class via `stdole.IUnknown`. **No doc page** — do not surface the underscored implementing properties (`_Handle`, `_IsConnected`, …) either; they're the interface-implementation half of the `Public` field of the same name.
+   - For events with a `Data() As Byte` parameter (server `ClientMessageReceived`, client `MessageReceived`): document the parameter as **Byte()** but include a `> [!IMPORTANT]` callout saying the array is a transient `SAFEARRAY` view over the IOCP read buffer and must be **copied** if its contents are needed past the event handler. The source uses a hand-rolled `SAFEARRAY_1D` UDT and clears the array pointer at the end of `NotifyClientDataReceived` / `NotifyReceivedDataAsync` — that lifetime is real and trips up consumers who store the array reference.
+   - The optional *Cookie* parameter on `AsyncRead` / `AsyncWrite` (and the corresponding event parameter) is the package's correlation handle. Document it as a **Variant** opaque token whose value flows through unchanged from the issuing call to the matching `MessageSent` / `MessageReceived` event. Use this as the example pattern when illustrating tracked writes.
+   - `MessageBufferSize` is the *initial* buffer size, not a cap on message size — the IOCP loop handles `ERROR_MORE_DATA` by allocating a larger buffer and re-issuing the read. Surface this on each `MessageBufferSize` entry (server and client manager). The `_README.txt` TODO *"remove max size 131072 of messages"* suggests a future hard cap removal; surface as a TODO without making a stronger claim.
+   - `NamedPipeServer.PipeName` must be set before `Start()` (or `Start()` raises run-time error 5). Surface as a `> [!IMPORTANT]` callout on the field entry.
+   - `NamedPipeServer.Start()` is idempotent (no-op if already started); `Stop()` is idempotent (no-op if not started). Both call back into themselves from `Class_Terminate`. Mention this on each method.
+   - `NamedPipeClientConnection.AsyncClose()`: the `_README.txt` says *"you MUST call AsyncClose on the client side, otherwise the connection is left alive when the object goes out of scope"*. This is a required-call: surface as a `> [!IMPORTANT]` callout on the class intro AND on the `AsyncClose` method entry. Note that `Class_Terminate` also calls `AsyncClose`, so the contract is technically *"either let the object terminate, or call `AsyncClose` first"* — but the README's wording is what users will look for, so quote it.
+   - `NamedPipeServer.ManualMessageLoopEnter` / `ManualMessageLoopLeave`: explain why these exist — when `FreeThreadingEvents = False` (the default) events are marshalled to the UI thread via a hidden `STATIC`-class window's `WndProc`, which requires a Win32 message loop to be running. UI hosts (Forms) already pump; services / console hosts don't, so they call `ManualMessageLoopEnter` from their entry point and `ManualMessageLoopLeave` from a shutdown handler.
+   - `Handle` is `Public` on both connection classes — it is the underlying Win32 pipe handle. Document it as informational (useful for low-level / debugging access), not as something user code typically reads or writes.
+   - The README TODO list lives on the **landing page** ("Known limitations" or "Roadmap" section), not on the per-class pages. Reproduce only the user-facing items (no method to drop a single client from the server side; no `Error` events on the IOCP worker thread; suspected hard cap on message size). Skip the *"currently a lot of duplicate code in server + client"* note — it's an internal-refactor concern.
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed).
+11. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+12. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `docs/Reference/WinNamedPipesLib/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
+13. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
+14. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
 ## twinBASIC deviations from VBA to flag
 
