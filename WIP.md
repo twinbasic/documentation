@@ -63,6 +63,7 @@ All of twinbasic's package sources are at:
 ..\tb-export\NewProject\Packages\CustomControls\Sources\
 ..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\
 ..\tb-export\NewProject\Packages\cefPackages\Sources\
+..\tb-export\NewProject\Packages\WinEventLogLib\Sources\
 etc.
 ```
 
@@ -431,7 +432,7 @@ Class-level decoration on `EventLog`: `[COMCreatable(False)]`, `[ClassId("4AEA12
 
 - The `EventLogTypeConstants` enum has five values (`Success`, `Warning`, `Error`, `AuditSuccess`, `AuditFailure`) but the public class only exposes Information and Error event types — Warning and Audit events are not currently reachable.
 - Method names follow the Win32 SDK constants verbatim: `LogSuccess` writes an *Information* event (because `EVENTLOG_SUCCESS = 0` is the Win32 spelling for the information type), and `LogFailure` writes an *Error* event. Call this out on the per-method entries.
-- Message resources: the registry entries point at `App.ModulePath` (the running EXE) for both `EventMessageFile` and `CategoryMessageFile`. The twinBASIC compiler synthesises Windows message-table resources for the `T1` and `T2` enums when a generic instance of `EventLog(Of T1, T2)` is compiled, so the EXE carries the per-EventId and per-CategoryId message strings out-of-the-box.
+- Message resources: the registry entries point at `App.ModulePath` (the running EXE) for both `EventMessageFile` and `CategoryMessageFile`. Windows therefore expects a message-table resource keyed by the `T1` and `T2` enum values to be embedded in the EXE. The `.twin` source does not itself synthesise that resource — there is no `mc.exe` invocation or message-table emit visible in `WinEventLogLib\Sources\`; whatever mechanism populates the resource sits in the compiler's special-handling path for the `[ClassId("…EAEAEAEAEAEA")]` magic-byte pattern. The docs describe what Windows expects without making strong claims about how the compiler delivers it.
 - `Register()` requires elevation. Normal usage is to call it once during install (from an elevated installer), then call `LogSuccess` / `LogFailure` at runtime without elevation.
 - The package is described in `_README.txt` with a copy-pasted "NAMED PIPES PACKAGE" header (clearly an unintentional carry-over from another sister package); the body correctly says *"A simple framework for creating Windows event log entries from twinBASIC"*. Use the body, not the header.
 
@@ -462,13 +463,14 @@ Match the existing style. Worked examples to imitate:
 - VB control class (folder-style): `docs/Reference/VB/CheckMark/index.md`.
 - Assert module page (single-file, all members inline): `docs/Reference/Assert/Exact.md`.
 - CEF control class (folder-style with a sub-page): `docs/Reference/CEF/CefBrowser/index.md` + `docs/Reference/CEF/CefBrowser/EnvironmentOptions.md`.
+- Generic class (single-file, `(Of T1, T2)`): `docs/Reference/WinEventLogLib/EventLog.md`.
 
 Skeleton:
 
 ````markdown
 ---
 title: <Symbol>
-parent: <Statements | Procedures and Functions | <Mod> Module | VB Package>
+parent: <Statements | Procedures and Functions | <Mod> Module | <Package> Package>
 # Pick the permalink that matches the section:
 #   Core            → /tB/Core/<Symbol>
 #   VBA module      → /tB/Modules/<Mod>/<Symbol>           (legacy URL scheme retained)
@@ -694,6 +696,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - `Register()` requires elevation (it writes to `HKLM`); typical usage is *"call once during install"*. Call this out on the method entry.
    - For `EventLogHelperPublic.RegisterEventLogInternal`: do not surface the `Const HKEY_LOCAL_MACHINE` / `Const KEY_WRITE` declarations or the `RegCreateKeyExW` / `RegSetValueExW` Win32 calls — those are implementation detail. Describe what the function *does* at the registry (writes the source key with `EventMessageFile = App.ModulePath`, `CategoryMessageFile = App.ModulePath`, `CategoryCount = <value>`).
    - On the index page, mention the package's current gaps in passing: the `EventLogTypeConstants` enum has five entries (Information / Warning / Error / AuditSuccess / AuditFailure) but the public API surfaces only Information and Error event types — Warning and the two Audit variants are not yet reachable.
+   - The index page's *Message resources* section should describe what Windows *expects* (a message-table resource in the EXE pointed at by `EventMessageFile`, keyed by the `T1` / `T2` enum values), **not** make strong claims about how twinBASIC delivers it. The `.twin` source does not contain visible `mc.exe`-equivalent emit; whatever populates the resource lives in the compiler's special-handling path for the `[ClassId("…EAEAEAEAEAEA")]` magic-byte pattern, and that is not directly observable from the package's own sources.
    - The README copy-paste mistake (header says "NAMED PIPES PACKAGE", body is correct) is *not* surfaced on the docs — write the actual description ("a simple framework for creating Windows event log entries"), don't propagate the wrong name.
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same situation as the other Wayne Phillips packages).
 10. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
