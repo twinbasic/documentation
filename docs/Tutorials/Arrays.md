@@ -59,7 +59,7 @@ Both variants of size specifications can be mixed in one declaration, e.g.
 
 Here is how **Option Base** controls the default lower bound of a dimension:
 
-```vb
+```tb
 Option Base 0
 Dim A(10, 20)   ' is equivalent to...
 Dim A(0 To 10, 0 To 20)   ' i.e. a 21 x 11 array
@@ -71,7 +71,7 @@ Dim A(1 To 10, 1 To 20)    ' i.e. a 20 x 10 array
 
 Only the dynamic arrays can be passed as procedure arguments:
 
-```vb
+```tb
 Sub OkSub1(data() As Byte)     ' Dynamic array parameter
 Sub OkSub2(data As Byte())     ' Alternate syntax
 
@@ -83,7 +83,7 @@ Sub BadSub2(data As Byte(10))  ' ... in neither syntax
 
 A dynamic array is uninitialized after declaration. It cannot be used in any way other than to be dimensioned. Dimensioning is performed by the **ReDim** statement:
 
-```vb
+```tb
 Dim array()
 Debug.Assert IsArrayInitialized(array) = False
 Debug.Print LBound(array)  ' raises a runtime error since the array is uninitialized,
@@ -106,7 +106,7 @@ Syntax:
 > Only the upper bound of an array dimension can be changed with **ReDim Preserve**.
 > Non-preserving **ReDim** allows arbitrary changes.
 
-```vb
+```tb
 Dim a() As Long
 
 ReDim a(1 To 2)             ' Initial dimensioning
@@ -128,7 +128,7 @@ Debug.Assert a(5) = 0
 
 Every dimension of an *initialized* array has an associated lower and upper bound. These bounds are accessed with the **LBound** and **UBound** functions.
 
-```vb
+```tb
 Dim array(1 To 10, 3 To 20)
 Debug.Assert LBound(array) = 1		' 1st dimension by default
 Debug.Assert LBound(array, 1) = 1	' 1st dimension
@@ -140,7 +140,7 @@ Debug.Assert UBound(array, 2) = 20  ' 2nd dimension, upper bound'
 
 An attempt to use **LBound** or **UBound** on an uninitialized array causes a runtime error. Thus, a function that determines the number of elements in a given dimension of an array, must first check if the array is initialized:
 
-```vb
+```tb
 Sub ArrayLen(Of T)(array() Of T, ByVal dimension% = 1) As Long
     ' zero is the default return value    
     If IsArrayInitialized(array) Then
@@ -155,7 +155,7 @@ See also [Efficient low-level access of a 1D array](#efficient-low-level-access-
 
 To access array elements, indices for all dimensions should be provided as a parenthesized list after the name of the array variable:
 
-```vb
+```tb
 Dim array(1 To 10) As Long
 
 array(1) = 42
@@ -168,7 +168,7 @@ Debug.Assert array(1, 2) = 42
 
 Array elements are initialized to zero/null, just as all the other types are in twinBASIC:
 
-```vb
+```tb
 Dim intArray(1 To 10) As Integer
 Debug.Assert intArray(1) = 0 AndAlso intArray(10) = 0
 
@@ -180,7 +180,7 @@ Debug.Assert strArray(20) = vbNullString
 
 Any array can be returned as a dynamic array:
 
-```vb
+```tb
 Function Fn1() As Long()
     Dim array1() As Long
     Dim array2(11) As Long
@@ -191,7 +191,7 @@ End Function
 
 To return a fixed size array, it has to be wrapped in a UDT:
 
-```vb
+```tb
 Type Wrapper
     array(11) As Long
 End Type
@@ -217,7 +217,7 @@ This can be leveraged to efficiently access:
 - as the pointer to the data (to the 1st element in the array)
 - the size of the array in bytes
 
-```vb
+```tb
 Function ArrayLen(Of T)(array() As T) As Long
     Dim p As LongPtr
     GetMemPtr(VarPtr(array), p)
@@ -250,7 +250,7 @@ End Function
 
 These functions are useful to pass arrays and array counts to external **Declare**-d procedures. For example:
 
-```vb
+```tb
 Declare Sub SaveData Lib "mylib" (ByVal ptr As LongPtr, ByVal count&)
 Declare Sub WriteData Lib "mylib" (ByVal ptr As LongPtr, ByVal numBytes&)
 
@@ -266,7 +266,7 @@ End Sub
 
 Without these functions, this would have been more cumbersome:
 
-```vb
+```tb
 Sub Save(array() As Long)
     If IsArrayInitialized(array) Then
         SaveLongData( _

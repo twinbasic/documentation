@@ -13,7 +13,7 @@ This chapter covers the consumption of the documentation, e.g. in an IDE, as wel
 {:toc}
 ## Permanent Links
 
-The stable, or machine-accessible part of the documentation tree is rooted on the `/tB/` prefix. The URLs with this prefix, as well as the internal links (e.g. [`docs.twinbasic.com/tB/Modules/Math#round`](../tB/Modules/Math#round)), are stable.
+The stable, or machine-accessible part of the documentation tree is rooted on the `/tB/` prefix. The URLs with this prefix, as well as the internal links (e.g. [`docs.twinbasic.com/tB/Modules/Math/Round`](../tB/Modules/Math/Round)), are stable.
 
 ### /tB/Core/\<Statement\>
 
@@ -37,11 +37,9 @@ The stable, or machine-accessible part of the documentation tree is rooted on th
 - [Unload](../tB/Core/Unload), [Unlock](../tB/Core/Unlock)
 - [While-Wend](../tB/Core/While-Wend), [Width](../tB/Core/Width), [With](../tB/Core/With), [Write](../tB/Core/Write)
 
-### /tB/Modules/\<ModuleName\>#\<procedure\>
+### /tB/Modules/\<ModuleName\>/\<procedure\>
 
-Within each module, unless indicated otherwise, the procedures and statements are internal links, e.g. [**LenB**: /tB/Modules/Strings#lenb](../tB/Modules/Strings#lenb). The `$`-suffixed versions have reference links ending with `-1`, e.g. [**LenB$**: /tB/Modules/Strings#lenb-1](../tB/Modules/Strings#lenb-1).
-
-Similarly, when the procedures and statements are stand-alone pages, e.g. [**Date$**: /tB/Modules/DateTime/Date#date-1](../tB/Modules/DateTime/Date#date-1), the `$`-suffixed version has a reference link ending with `-1`.
+Within each module, each procedure or statement has its own stand-alone page, e.g. [**LenB**: /tB/Modules/Strings/Len](../tB/Modules/Strings/Len). The `$`-suffixed and `B`/`W` variants are documented on the same page as the base symbol (so `LenB`, `Len$`, etc. all share the [`Len`](../tB/Modules/Strings/Len) page).
 
 These are modules within VBA and VBRUN:
 
@@ -59,8 +57,7 @@ These are modules within VBA and VBRUN:
   - [Interaction](../tB/Modules/Interaction)
   - [Math](../tB/Modules/Math)
   - [Strings](../tB/Modules/Strings)
-  - [TextEncodingConstants](../tB/Modules/TextEncodingConstants)
-  - Internal [_HiddenModule](../tB/Modules/_HiddenModule)
+  - Internal [_HiddenModule](../tB/Modules/HiddenModule)
 - VBRUN
   - [AmbientProperties](../tB/Modules/AmbientProperties)
   - [AsyncProperty](../tB/Modules/AsyncProperty)
@@ -155,7 +152,7 @@ The documentation server detects changes in the filesystem and automatically reg
 
 Mermaid diagrams are supported within the `{% raw %}{% mermaid %} ... {% endmermaid %}{% endraw %}` tags, e.g.
 
-```
+```tb
 {% raw %}{% mermaid %}
 graph TD;
     A-->B;
@@ -173,7 +170,7 @@ To render new or changed diagrams, the following should be available:
 
 - [nodejs](https://nodejs.org/en/download)
 - [mermaid-cli](https://github.com/mermaid-js/mermaid-cli)
-  ```
+  ```tb
   npm install -g @mermaid-js/mermaid-cli
   ```
 

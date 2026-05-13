@@ -2,6 +2,7 @@
 title: Erase
 parent: Statements
 permalink: /tB/Core/Erase
+vba_attribution: true
 ---
 
 # Erase
@@ -30,7 +31,7 @@ Syntax: **Erase** *arraylist*
 ### Example
 This example uses the **Erase** statement to reinitialize the elements of fixed-size arrays and deallocate dynamic-array storage space.
 
-```vb
+```tb
 ' Declare array variables. 
 Dim NumArray(10) As Integer        ' Integer array. 
 Dim StrVarArray(10) As String      ' Variable-string array. 
@@ -45,5 +46,3 @@ Erase StrFixArray                  ' Each element set to 0.
 Erase VarArray                     ' Each element set to Empty. 
 Erase DynamicArray                 ' Free memory used by array.
 ```
-
-{% include VBA-Attribution.md %}

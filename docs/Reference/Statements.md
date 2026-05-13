@@ -10,14 +10,15 @@ permalink: /Reference/Statements
 
 These statements are built into the language itself. They are understood by the compiler, and are not explicitly declared nor defined in the visible runtime library.
 
-> [!WARNING]
-> Work in Progress
-
 ## Alphabetical List
+
+* [Alias](../tB/Core/Alias) -- (twinBASIC) declares an alternative name for an intrinsic type, user-defined type, or interface
 
 * [Call](../tB/Core/Call) -- transfer control to a procedure
 
 * [Class](../tB/Core/Class) -- define a class
+
+* [CoClass](../tB/Core/CoClass) -- (twinBASIC) defines a creatable COM class as the contract for one or more **Interface** blocks
 
 * [Close](../tB/Core/Close) -- concludes input/output (I/O) to a file opened using the **Open** statement
 
@@ -26,6 +27,8 @@ These statements are built into the language itself. They are understood by the 
 * [Continue](../tB/Core/Continue) -- immediately begins the next iteration of the enclosing loop
 
 * [Declare](../tB/Core/Declare) -- declares references to external procedures in a dynamic-link library (DLL)
+
+* [Delegate](../tB/Core/Delegate) -- (twinBASIC) declares a function-pointer type — a named signature for indirect calls
 
 * [Dim](../tB/Core/Dim) -- declares variables and allocates storage space
 
@@ -49,86 +52,106 @@ These statements are built into the language itself. They are understood by the 
 
 * [Function](../tB/Core/Function) -- declares the name, arguments, and code that form the body of a **Function** procedure
 
-* [Get](../tB/Core/Get)
+* [Get](../tB/Core/Get) -- reads data from an open disk file into a variable
 
-* [GoSub ... Return](../tB/Core/GoSub-Return)
+* [GoSub ... Return](../tB/Core/GoSub-Return) -- branches to and returns from a subroutine within a procedure
 
-* [GoTo](../tB/Core/GoTo)
+* [GoTo](../tB/Core/GoTo) -- branches unconditionally to a specified line within a procedure
 
-* [If ... Then ... Else](../tB/Core/If-Then-Else)
+* [Handles](../tB/Core/Handles) -- (twinBASIC) binds a procedure as an event handler for one or more named events
 
-* [Input](../tB/Core/Input)
+* [If ... Then ... Else](../tB/Core/If-Then-Else) -- conditionally executes a group of statements, depending on the value of an expression
 
-* [Implements](../tB/Core/Implements)
+* [Input #](../tB/Core/Input) -- reads data from an open sequential file and assigns it to variables
 
-* [Let](../tB/Core/Let)
+* [Implements](../tB/Core/Implements) -- specifies an interface or class that will be implemented in the class in which it appears
 
-* [Line Input](../tB/Core/Line-Input)
+* [Interface](../tB/Core/Interface) -- (twinBASIC) defines a COM interface using twinBASIC syntax
 
-* [Lock](../tB/Core/Lock)
+* [Kill](../tB/Core/Kill) -- deletes files from a disk
 
-* [LSet](../tB/Core/LSet)
+* [Let](../tB/Core/Let) -- assigns the value of an expression to a variable or property
 
-* [Mid =](../tB/Core/Mid-equals)
+* [Line Input #](../tB/Core/Line-Input) -- reads a single line from an open sequential file into a string variable
 
-* [MidB =](../tB/Core/MidB-equals)
+* [Load](../tB/Core/Load) -- loads an object (typically a form) into memory without showing it
 
-* [Module](../tB/Core/Module)
+* [Lock](../tB/Core/Lock), [Unlock](../tB/Core/Unlock) -- control access by other processes to all or part of an open file
 
-* [On Error](../tB/Core/On-Error)
+* [LSet](../tB/Core/LSet) -- left-aligns a string within a string variable, or copies one user-defined-type variable into another
 
-* [On ... GoTo](../tB/Core/On-GoTo), [On .. GoSub](../tB/Core/On-GoSub)
+* [Mid =](../tB/Core/Mid-equals) -- replaces a specified number of characters within a string variable
 
-* [Open](../tB/Core/Open)
+* [MidB =](../tB/Core/MidB-equals) -- byte-positioned form of **Mid =**
+
+* [Module](../tB/Core/Module) -- defines a module: a non-instantiable container for procedures, constants, types, and module-level variables
+
+* [Name](../tB/Core/Name) -- renames a disk file, directory, or folder
+
+* [New](../tB/Core/New) -- creates a new instance of a class
+
+* [On Error](../tB/Core/On-Error) -- enables an error-handling routine and specifies its location, or disables error handling
+
+* [On ... GoTo](../tB/Core/On-GoTo), [On ... GoSub](../tB/Core/On-GoSub) -- branch to one of several lines based on the value of an expression
+
+* [Open](../tB/Core/Open) -- enables input/output (I/O) to a file
 
 * [Option](../tB/Core/Option) -- configure a compiler option
 
-* [Print](../tB/Core/Print)
+* [ParamArray](../tB/Core/ParamArray) -- declares the final parameter of a procedure as an arbitrary-arity list of arguments
 
-* [Private](../tB/Core/Private)
+* [Print #](../tB/Core/Print) -- writes display-formatted data to a sequential file
 
-* [Property](../tB/Core/Property)
+* [Private](../tB/Core/Private) -- declares module-level variables accessible only within the declaring module
 
-* [Public](../tB/Core/Public)
+* [Property](../tB/Core/Property) -- declares the **Get**, **Let**, or **Set** procedures that form the body of a property
 
-* [Put](../tB/Core/Put)
+* [Protected](../tB/Core/Protected) -- (twinBASIC) declares a class member accessible within the class and its derived classes
 
-* [RaiseEvent](../tB/Core/RaiseEvent)
+* [Public](../tB/Core/Public) -- declares module-level variables accessible to all procedures in all modules
 
-* [ReDim](../tB/Core/ReDim)
+* [Put](../tB/Core/Put) -- writes data from a variable to a disk file
 
-* [Resume](../tB/Core/Resume)
+* [RaiseEvent](../tB/Core/RaiseEvent) -- fires an event declared at the module level within a class, form, or document
 
-* [Return](../tB/Core/Return)
+* [Randomize](../tB/Modules/Math/Randomize) -- initializes the random-number generator
 
-* [RSet](../tB/Core/RSet)
+* [ReDim](../tB/Core/ReDim) -- reallocates storage space for a dynamic array
 
-* [Seek](../tB/Core/Seek)
+* [Resume](../tB/Core/Resume) -- resumes execution after an error-handling routine is finished
 
-* [Select Case](../tB/Core/Select-Case)
+* [Return](../tB/Core/Return) -- returns from a **GoSub** subroutine, or (twinBASIC) exits a procedure with an optional value
 
-* [Set](../tB/Core/Set)
+* [RSet](../tB/Core/RSet) -- right-aligns a string within a string variable
 
-* [Static](../tB/Core/Static)
+* [SavePicture](../tB/Core/SavePicture) -- saves a graphic from a **Picture** or **Image** to a file
 
-* [Stop](../tB/Core/Stop)
+* [Seek](../tB/Core/Seek) -- sets the read/write position within a file opened by using the **Open** statement
 
-* [Sub](../tB/Core/Sub)
+* [Select Case](../tB/Core/Select-Case) -- executes one of several groups of statements, depending on the value of an expression
 
-* [Unlock](../tB/Core/Unlock)
+* [Set](../tB/Core/Set) -- assigns an object reference to a variable or property
 
-* [While ... Wend](../tB/Core/While-Wend)
+* [Static](../tB/Core/Static) -- declares procedure-local variables whose values are preserved between calls
 
-* [With](../tB/Core/With)
+* [Stop](../tB/Core/Stop) -- suspends execution
 
-* [Write](../tB/Core/Write)
+* [Sub](../tB/Core/Sub) -- declares the name, arguments, and code that form the body of a **Sub** procedure
 
-* [#If ... Then ... Else](../tB/Core/Topic-Preprocessor)
+* [Type](../tB/Core/Type) -- defines a user-defined data type containing one or more elements
+
+* [Unload](../tB/Core/Unload) -- removes an object (typically a form) from memory
+
+* [While ... Wend](../tB/Core/While-Wend) -- executes a series of statements as long as a given condition is **True**
+
+* [With](../tB/Core/With) -- executes a series of statements on a single object or a user-defined type
+
+* [Write #](../tB/Core/Write) -- writes raw, delimited data to a sequential file (paired with [**Input #**](../tB/Core/Input))
+
+* [#If ... Then ... Else](../tB/Core/Topic-Preprocessor), [#Const](../tB/Core/Topic-Preprocessor) -- compiler directives that conditionally include code blocks at compile time
 
 ---
 
 ## Deprecated
 
-* [DefBool through DefVar](../tB/Core/Deftype)
-
-* [Error](../tB/Core/Error)
+* [DefBool through DefVar](../tB/Core/Deftype) -- set the default data type for variables whose names start with given letters; superseded by explicit **As** *type* declarations

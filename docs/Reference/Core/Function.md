@@ -2,6 +2,7 @@
 title: Function
 parent: Statements
 permalink: /tB/Core/Function
+vba_attribution: true
 ---
 # Function
 {: .no_toc }
@@ -10,12 +11,12 @@ Declares the name, arguments, and code that form the body of a **Function** proc
 
 Syntax:
 > [ *attributes* ]  
-> [ **Public** | **Private** | **Friend** ] [ **Static** ] **Function** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ **As** *type* ]   
+> [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Function** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ **As** *type* ] [ *binding-clause* ]  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ [ **Let** ] *name* **=** *expression* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ **Set** *name* **=** *expression* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ **Return** *expression* ] ...  
-> &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Function** | **Return** ] ...  
+> &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Function** ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
 > **End Function**
 
@@ -32,8 +33,14 @@ Syntax:
 **Friend**
 : *optional* Used only in a class module. Indicates that the **Function** procedure is visible throughout the project, but not visible to a controller of an instance of an object.
 
+**[Protected](Protected)**
+: *optional*  (twinBASIC) Used only in a class. Indicates that the **Function** procedure is accessible from inside the declaring class and from classes that derive from it via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop), but not from outside callers.
+
 **Static**
 : *optional* Indicates that the **Function** procedure's local variables are preserved between calls. The **Static** attribute doesn't affect variables that are declared outside the **Function**, even if they are used in the procedure.
+
+**Overridable**
+: *optional*  (twinBASIC) Marks the **Function** as an inheritance hook that classes derived via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop) may replace with an **Overrides** clause. Meaningful only on a member of a class that participates in an **Inherits** hierarchy.
 
 *name*
 :  Name of the **Function**; follows standard variable naming conventions.
@@ -45,7 +52,14 @@ Syntax:
 : *optional* List of variables representing arguments that are passed to the **Function** procedure when it is called. Multiple variables are separated by commas.
 
 **As** *type*
-: *optional* Data type of the value returned by the **Function** procedure; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal (not currently supported), Date, String (except fixed length), Object, Variant, or any user-defined type (UDT).
+: *optional* Data type of the value returned by the **Function** procedure; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal, Date, String (except fixed length), Object, Variant, or any user-defined type (UDT).
+
+*binding-clause*
+: *optional*  (twinBASIC) One of three trailing clauses that bind this body to a member declared elsewhere:
+
+  - **Handles** *object*.*event* [ **,** *object*.*event* … ] — wires this **Function** up as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
+  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] — provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list lets one body satisfy several interfaces' members at once. See [**Implements** statement](Implements).
+  - **Overrides** *base*.*member* — supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
 
 *statements*
 : *optional* Any group of statements to be executed within the **Function** procedure.
@@ -56,11 +70,11 @@ Syntax:
 **[Set](Set)**
 : *optional* Assigns an object-type return value of the **Function** without exiting the function.
 
-**[Return](Return)**
-: *optional* Immediately returns from the function. If an *expression* is provided, its value is used as the return value of the **Function**.
+**[Return](Return)** *expression*
+: *optional* Immediately returns from the function with *expression* as the return value. The *expression* is required in this form; a bare **Return** is reserved for the [**GoSub...Return**](GoSub-Return) construct and does not exit a **Function**.
 
 **[Exit Function](Exit)**
-: *optional* Immediately returns from the function.
+: *optional* Immediately returns from the function without setting a return value. Use this to leave a function early when no value needs to be returned (the function will yield its default return value: 0 for numeric types, `""` for strings, **Empty** for **Variant**, **Nothing** for object references).
 
 *expression*
 : *optional* Return value of the **Function**.
@@ -86,7 +100,7 @@ Syntax: One or more of
 : Name of the variable representing the argument; follows standard variable naming conventions.
 
 *type*
-: *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal** (not currently supported) **Date**, **String** (variable length only), **Object**, **Variant**, a specific object type, or the name of a generic type argument. If the parameter is not **Optional**, a user-defined type may also be specified.  
+: *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (variable length only), **Object**, **Variant**, a specific object type, or the name of a generic type argument. If the parameter is not **Optional**, a user-defined type may also be specified.  
 If the name of a generic type parameter is used, it becomes bound to the concrete type of the argument passed to the function. The name binding has the scope of the body of the function.
 
 *defaultvalue*
@@ -102,7 +116,7 @@ The **Friend** keyword can only be used in class modules. However, **Friend** pr
 
 All executable code must be in procedures. You can't define a **Function** procedure inside another **Function**, **[Sub](Sub)**, or **[Property](Property)** procedure.
 
-The **[Exit Function](Exit)** and **[Return](Return)** statements cause an immediate exit from a **Function** procedure. Program execution continues with the statement following the statement that called the **Function** procedure. Any number of **Exit Function** and **Return**  statements can appear anywhere in a **Function** procedure.
+The **[Exit Function](Exit)** statement and the **[Return](Return)** *expression* statement both cause an immediate exit from a **Function** procedure. Program execution continues with the statement following the statement that called the **Function** procedure. Any number of these statements can appear anywhere in a **Function** procedure. Use **Exit Function** when you've already assigned the return value (or want the default), and **Return** *expression* when you want to set the return value and exit in a single step.
 
 Like a **Sub** procedure, a **Function** procedure is a separate procedure that can take arguments, perform a series of statements, and change the values of its arguments. However, unlike a **Sub** procedure, you can use a **Function** procedure on the right side of an expression in the same way you use any intrinsic function, such as **Sqr**, **Cos**, or **Chr**, when you want to use the value returned by the function.
 
@@ -112,7 +126,7 @@ To return a value from a function, assign the value to the function name, or pro
 
 The following example shows how to assign a return value to a function. In this case, **False** is assigned to the name to indicate that some value was not found.
 
-```vb
+```tb
 Function BinarySearch(...) As Boolean 
   '... 
   ' Value not found. Return a value of False. 
@@ -136,7 +150,7 @@ Visual Basic may rearrange arithmetic expressions to increase internal efficienc
 
 This example uses the **Function** statement to declare the name, arguments, and code that form the body of a **Function** procedure. The last example uses hard-typed, initialized **Optional** arguments.
 
-```vb
+```tb
 ' The following user-defined function returns the square root of the 
 ' argument passed to it. 
 Function CalculateSquareRoot(NumberArg As Double) As Double 
@@ -150,7 +164,7 @@ End Function
 
 Using the **ParamArray** keyword enables a function to accept a variable number of arguments. In the following definition, it is passed by value.
 
-```vb
+```tb
 Function CalcSum(ByVal FirstArg As Integer, ParamArray OtherArgs()) 
   Dim ReturnValue 
   ' If the function is invoked as follows: 
@@ -163,7 +177,7 @@ End Function
 
 **Optional** arguments can have default values and types other than **Variant**.
 
-```vb
+```tb
 ' If a function's arguments are defined as follows: 
 Function MyFunc(MyStr As String,Optional MyArg1 As _
  Integer = 5,Optional MyArg2 = "Dolly") 
@@ -175,4 +189,3 @@ Function MyFunc(MyStr As String,Optional MyArg1 As _
   RetVal = MyFunc(MyStr:="Hello ", MyArg1:=7)
 End Function
 ```
-{% include VBA-Attribution.md %}

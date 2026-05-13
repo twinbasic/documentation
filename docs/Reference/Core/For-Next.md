@@ -2,6 +2,7 @@
 title: For...Next
 parent: Statements
 permalink: /tB/Core/For-Next
+vba_attribution: true
 ---
 
 # For...Next
@@ -59,7 +60,7 @@ After all statements in the loop have executed, *step* is added to *counter*. At
 
 You can nest **For...Next** loops by placing one **For...Next** loop within another. Give each loop a unique variable name as its *counter*. The following construction is correct:
 
-```vb
+```tb
 For I = 1 To 10 
   For J = 1 To 10 
     For K = 1 To 10 
@@ -77,7 +78,7 @@ Next I
 
 This example uses the **For...Next** statement to create a string that contains 10 instances of the numbers 0 through 9, each string separated from the other by a single space. The outer loop uses a loop counter variable that is decremented each time through the loop.
 
-```vb
+```tb
 Dim Words, Chars, MyString 
 For Words = 10 To 1 Step -1 ' Set up 10 repetitions. 
   For Chars = 0 To 9 ' Set up 10 repetitions. 
@@ -86,5 +87,3 @@ For Words = 10 To 1 Step -1 ' Set up 10 repetitions.
   MyString = MyString & " " ' Append a space. 
 Next Words 
 ```
-
-{% include VBA-Attribution.md %}

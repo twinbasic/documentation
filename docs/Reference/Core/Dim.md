@@ -2,6 +2,7 @@
 title: Dim
 parent: Statements
 permalink: /tB/Core/Dim
+vba_attribution: true
 ---
 
 # Dim
@@ -9,7 +10,7 @@ permalink: /tB/Core/Dim
 
 Declares variables and allocates storage space.
 
-Syntax: **Dim** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ **As** [ **New** ] *type* ] [ **,** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ **As** [ **New** ] *type* ]] **. . .**
+Syntax: **Dim** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ **As** [ **New** ] *type* ] [ **=** *expression* ] [ **,** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ **As** [ **New** ] *type* ] [ **=** *expression* ] ] **. . .**
 
 **WithEvents**
 
@@ -29,19 +30,23 @@ Syntax: **Dim** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ 
 
 *type*
 
-: *optional*. Data type of the variable; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal (not currently supported), Date, String (for variable-length strings), **String** *length* (for fixed-length strings), Object, Variant, a user-defined type (UDT), or an object type. Use a separate **As** *type* clause for each variable you declare.
+: *optional*. Data type of the variable; may be **Byte**, **Boolean**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (for variable-length strings), **String** *length* (for fixed-length strings), **Object**, **Variant**, a user-defined type (UDT), an object type, or **Any** (twinBASIC; type is inferred from *expression* — see [Type Inference](../../Features/Language/Type-Inference)). Use a separate **As** *type* clause for each variable you declare.
+
+*expression*
+
+: *optional*. (twinBASIC) Initial value assigned to the variable at declaration. Equivalent to a separate assignment statement immediately after the **Dim** — `Dim i As Long = 1` is the same as `Dim i As Long: i = 1`. For object types, `= New *type* ( *args* )` constructs an instance (and may pass custom-constructor arguments). When *type* is **Any**, *expression* is required and determines the inferred type. See [Inline Variable Initialization](../../Features/Language/Inline-Initialization).
 
 Variables declared with **Dim** at the module level are available to all procedures within the module. At the procedure level, variables are available only within the procedure.
 
 Use the **Dim** statement at the module or procedure level to declare the data type of a variable. For example, the following statement declares a variable as an **Integer**.
 
-```vb
+```tb
 Dim NumberOfEmployees As Integer 
 ```
 
 Also use a **Dim** statement to declare the object type of a variable. The following declares a variable for a new instance of a worksheet.
 
-```vb
+```tb
 Dim X As New Worksheet 
 ```
 
@@ -59,7 +64,7 @@ If you don't specify a data type or object type, and there is no [**Deftype**](D
 
 This example shows the **Dim** statement used to declare variables. It also shows the **Dim** statement used to declare arrays. The default lower bound for array subscripts is 0 and can be overridden at the module level by using the **Option Base** statement.
 
-```vb
+```tb
 ' AnyValue and MyValue are declared as Variant by default with values 
 ' set to Empty. 
 Dim AnyValue, MyValue 
@@ -89,5 +94,3 @@ Dim BirthDay(1 To 10)As Date
 ' MyArray is a dynamic array of variants. 
 Dim MyArray()
 ```
-
-{% include VBA-Attribution.md %}

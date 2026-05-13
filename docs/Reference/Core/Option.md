@@ -2,6 +2,7 @@
 title: Option
 parent: Statements
 permalink: /tB/Core/Option
+vba_attribution: true
 ---
 # Option
 {: .no_toc }
@@ -23,7 +24,7 @@ Because the default base is **0**, the **Option Base** statement is never requir
 If used, the statement must appear in a [module](../Gloss#module) or [class](../Gloss#class) before any procedures, functions, or properties. **Option Base** can appear only once in a module and must precede array [declarations](../Gloss#declaration) that include dimensions.
 
 > [!NOTE]
-> The **To** clause in the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](ParamArray) (or the [**Array**](../Modules/VBA/Array) function, when qualified with the name of its type library, for example [**VBA.Array**](../Modules/VBA/Array)).
+> The **To** clause in the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](ParamArray) (or the [**Array**](../../tB/Core/Array) function).
 
 The **Option Base** statement only affects the lower bound of arrays in the module where the statement is located.
 
@@ -38,7 +39,7 @@ The **Option Base** statement only affects the lower bound of arrays in the modu
 
 This example uses the **Option Base** statement to override the default base array subscript value of 0. The [**LBound**](LBound) function returns the smallest available subscript for the indicated dimension of an array. The **Option Base** statement is used at the module level only.
 
-```vb
+```tb
 Module MyModule
     Option Base 1 ' Set the default array subscripts to 1. 
     Sub Example()
@@ -57,7 +58,7 @@ End Module
 ### Example of use at class level
 {: .no_toc}
 
-``` vb
+```tb
 Class Example1
     Option Base 1
     Sub New()
@@ -103,7 +104,7 @@ If you don't use the **Option Explicit** statement, and when the [**Option Expli
 ### Example of use at module level
 {: .no_toc }
 
-``` vb
+```tb
 Module MyModule
     Option Explicit ' Force explicit variable declaration. 
 	Dim MyVar ' Declare variable. 
@@ -125,13 +126,13 @@ The **Option Compare** statement specifies the [string comparison](../Gloss#stri
 
 * **Option Compare Binary** results in string comparisons based on a [sort order](../Gloss#sort-order) derived from the internal binary representations of the characters. In Microsoft Windows, sort order is determined by the code page. A typical binary sort order is shown in the following example:
 
-  ```
+  ```tb
   A < B < E < Z < a < b < e < z < À < Ê < Ø < à < ê < ø 
   ```
 
 * **Option Compare Text** results in string comparisons based on a case-insensitive text sort order determined by your system's [locale](../Gloss#locale). When the same characters are sorted by using **Option Compare Text**, the following text sort order is produced:
 
-  ```
+  ```tb
   (A=a) < ( À=à) < (B=b) < (E=e) < (Ê=ê) < (Z=z) < (Ø=ø) 
   ```
 * **Option Compare Database** has no effect in twinBASIC. When used within Microsoft Access, it results in string comparisons based on the sort order determined by the locale ID of the database where the string comparisons occur.
@@ -139,14 +140,14 @@ The **Option Compare** statement specifies the [string comparison](../Gloss#stri
 ### See Also
 {: .no_toc }
 
-- [**InStr\$**](../Modules/Strings#instr-1), [**InStr**](../Modules/Strings#instr), [**InStrB**](../Modules/Strings#instrb), and [**InStrRev**](../Modules/Strings#instrrev) functions.
+- [**InStr\$**](../Modules/Strings/InStr), [**InStr**](../Modules/Strings/InStr), [**InStrB**](../Modules/Strings/InStr), and [**InStrRev**](../Modules/Strings/InStrRev) functions.
 
 ### Example
 {: .no_toc }
 
 This example uses the **Option Compare** statement to set the default string comparison method. The **Option Compare** statement is used at the module level only.
 
-``` vb
+```tb
 Module ModBin
 	' Set the string comparison method to Binary. 
 	Option Compare Binary ' That is, "AAA" is less than "aaa". 
@@ -187,10 +188,8 @@ When a module contains **Option Private Module**, the public parts, for example,
 
 This example demonstrates the **Option Private** statement, which is used at module level to indicate that the entire module is private. With **Option Private Module**, module-level parts not declared **Private** are available to other modules in the project, but not to other projects or applications.
 
-``` vb
+```tb
 Module MyModule
     Option Private Module ' Indicates that the module is private.
 End Module    
 ```
-
-{% include VBA-Attribution.md %}

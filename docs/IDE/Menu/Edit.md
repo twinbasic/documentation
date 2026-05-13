@@ -1,6 +1,7 @@
 ---
 title: Edit
 parent: Menu
+grand_parent: IDE
 nav_order: 2
 permalink: /tB/IDE/Project/Menu/Edit
 ---

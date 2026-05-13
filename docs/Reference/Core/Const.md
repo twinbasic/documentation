@@ -2,6 +2,7 @@
 title: Const
 parent: Statements
 permalink: /tB/Core/Const
+vba_attribution: true
 ---
 
 # Const
@@ -31,7 +32,7 @@ Syntax:
 
 *type*
 
-: *optional* The data type of the constant; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal (not currently supported), Date, String, or Variant. Use a separate **As** *type* clause for each constant being declared.
+: *optional* The data type of the constant; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal, Date, String, or Variant. Use a separate **As** *type* clause for each constant being declared.
 
 *expression*
 
@@ -55,7 +56,7 @@ Constants declared in a **Sub**, **Function**, or **Property** procedure are loc
 
 This example uses the **Const** statement to declare constants for use in place of literal values. **Public** constants are declared in the General section of a standard module, rather than a class module. **Private** constants are declared in the General section of any type of module.
 
-```vb
+```tb
 ' Constants are Private by default. 
 Const MyVar = 459 
  
@@ -68,5 +69,3 @@ Private Const MyInt As Integer = 5
 ' Declare multiple constants on same line. 
 Const MyStr = "Hello", MyDouble As Double = 3.4567 
 ```
-
-{% include VBA-Attribution.md %}

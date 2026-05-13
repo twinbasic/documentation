@@ -1,6 +1,7 @@
 ---
 title: Tools
 parent: Menu
+grand_parent: IDE
 nav_order: 8
 permalink: /tB/IDE/Project/Menu/Tools
 ---

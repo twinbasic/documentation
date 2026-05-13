@@ -1,0 +1,202 @@
+---
+title: Open
+parent: Statements
+permalink: /tB/Core/Open
+redirect_from:
+  - /tB/Modules/TextEncodingConstants
+vba_attribution: true
+---
+# Open
+{: .no_toc }
+
+Enables input/output (I/O) to a file.
+
+Syntax:
+> **Open** *pathname* **For** *mode* [ **Access** *access* ] [ *lock* ] [ **Encoding** *encoding* ] **As** [ **#** ] *filenumber* [ **Len** **=** *reclength* ]
+
+*pathname*
+: String expression that specifies a file name; may include directory or folder, and drive.
+
+*mode*
+: Keyword specifying the file mode: **Append**, **Binary**, **Input**, **Output**, or **Random**. If unspecified, the file is opened for **Random** access.
+
+*access*
+: *optional*  Keyword specifying the operations permitted on the open file: **Read**, **Write**, or **Read Write**.
+
+*lock*
+: *optional*  Keyword specifying the operations restricted on the open file by other processes: **Shared**, **Lock Read**, **Lock Write**, or **Lock Read Write**.
+
+*encoding*
+: *optional*  An encoding identifier — for example **utf_8**, **utf_16**, **windows_1252_western**, or **default_system_ansi**. See [Text Encodings](#text-encodings) below for the full list. The **Encoding** clause applies to text-mode I/O (**Input**, **Output**, **Append**); it has no effect on **Binary** or **Random** mode files.
+
+*filenumber*
+: A valid file number in the range 1 to 511, inclusive. Use the [**FreeFile**](../Modules/FileSystem/FreeFile) function to obtain the next available file number.
+
+*reclength*
+: *optional*  Number less than or equal to 32,767 (bytes). For files opened for random access, this value is the record length. For sequential files, this value is the number of characters buffered.
+
+You must open a file before any I/O operation can be performed on it. **Open** allocates a buffer for I/O to the file and determines the mode of access to use with the buffer.
+
+If the file specified by *pathname* doesn't exist, it is created when a file is opened for **Append**, **Binary**, **Output**, or **Random** modes.
+
+If the file is already opened by another process, and the specified type of access is not allowed, the **Open** operation fails and an error occurs.
+
+The **Len** clause is ignored if *mode* is **Binary**.
+
+> [!IMPORTANT]
+> In **Binary**, **Input**, and **Random** modes, you can open a file by using a different file number without first closing the file. In **Append** and **Output** modes, you must close a file before opening it with a different file number.
+
+> [!NOTE]
+> The **Encoding** clause is a twinBASIC extension. Classic VBA has no equivalent and reads or writes text using the system ANSI code page only.
+
+### Example
+
+This example illustrates various uses of the **Open** statement to enable input and output to a file.
+
+The following code opens the file in sequential-input mode.
+
+```tb
+Open "TESTFILE" For Input As #1
+' Close before reopening in another mode.
+Close #1
+```
+
+This example opens the file in **Binary** mode for writing operations only.
+
+```tb
+Open "TESTFILE" For Binary Access Write As #1
+' Close before reopening in another mode.
+Close #1
+```
+
+The following example opens the file in **Random** mode. The file contains records of the user-defined type.
+
+```tb
+Type Record ' Define user-defined type.
+    ID As Integer
+    Name As String * 20
+End Type
+
+Dim MyRecord As Record ' Declare variable.
+Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
+' Close before reopening in another mode.
+Close #1
+```
+
+This code example opens the file for sequential output; any process can read or write to the file.
+
+```tb
+Open "TESTFILE" For Output Shared As #1
+' Close before reopening in another mode.
+Close #1
+```
+
+This code example opens the file in **Binary** mode for reading; other processes can't read the file.
+
+```tb
+Open "TESTFILE" For Binary Access Read Lock Read As #1
+```
+
+This example reads a UTF-8 text file, naming the [**utf_8**](#utf_8) encoding identifier.
+
+```tb
+Open "C:\MyFile.txt" For Input Encoding utf_8 As #1
+' Subsequent Line Input #, Input #, etc. interpret bytes as UTF-8.
+Close #1
+```
+
+### Text Encodings
+
+These identifier strings are accepted as the **Encoding** argument. The constants listed below name the well-known encodings; other system-supported encodings with similar identifier strings are also accepted at runtime. All members are marked **[Hidden, Restricted]** — they are omitted from general IntelliSense, but the IDE surfaces them automatically after the **Encoding** keyword.
+
+#### Default and Unicode
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| **default_system_ansi**{: #default_system_ansi } | `"default"` | The system default ANSI code page. |
+| **utf_7**{: #utf_7 } | `"utf-7"` | UTF-7. |
+| **utf_7_bom**{: #utf_7_bom } | `"utf-7 bom"` | UTF-7 with byte-order mark. |
+| **utf_8**{: #utf_8 } | `"utf-8"` | UTF-8. |
+| **utf_8_bom**{: #utf_8_bom } | `"utf-8 bom"` | UTF-8 with byte-order mark. |
+| **utf_16**{: #utf_16 } | `"utf-16"` | UTF-16 (little-endian). |
+| **utf_16_bom**{: #utf_16_bom } | `"utf-16 bom"` | UTF-16 with byte-order mark. |
+| **us_ascii**{: #us_ascii } | `"us-ascii"` | 7-bit US-ASCII. |
+
+#### KOI8 (Cyrillic)
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| **koi8_r**{: #koi8_r } | `"koi8_r"` | KOI8-R, Russian. |
+| **koi8_u**{: #koi8_u } | `"koi8_u"` | KOI8-U, Ukrainian. |
+
+#### Big5
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| **big5**{: #big5 } | `"big5"` | Big5, Traditional Chinese. |
+
+#### ISO 8859
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| **iso_8859_1_latin1**{: #iso_8859_1_latin1 } | `"iso-8859-1"` | Latin-1, Western European. |
+| **iso_8859_2_latin2**{: #iso_8859_2_latin2 } | `"iso-8859-2"` | Latin-2, Central European. |
+| **iso_8859_3_latin3**{: #iso_8859_3_latin3 } | `"iso-8859-3"` | Latin-3, South European (Esperanto, Maltese). |
+| **iso_8859_4_latin4**{: #iso_8859_4_latin4 } | `"iso-8859-4"` | Latin-4, North European. |
+| **iso_8859_5_cyrillic**{: #iso_8859_5_cyrillic } | `"iso-8859-5"` | Cyrillic. |
+| **iso_8859_6_arabic**{: #iso_8859_6_arabic } | `"iso-8859-6"` | Arabic. |
+| **iso_8859_7_greek**{: #iso_8859_7_greek } | `"iso-8859-7"` | Greek. |
+| **iso_8859_8_hebrew**{: #iso_8859_8_hebrew } | `"iso-8859-8"` | Hebrew. |
+| **iso_8859_9_latin5_turkish**{: #iso_8859_9_latin5_turkish } | `"iso-8859-9"` | Latin-5, Turkish. |
+| **iso_8859_10_latin6_nordic**{: #iso_8859_10_latin6_nordic } | `"iso-8859-10"` | Latin-6, Nordic. |
+| **iso_8859_11_thai**{: #iso_8859_11_thai } | `"iso-8859-11"` | Thai. |
+| **iso_8859_13_latin8_baltic**{: #iso_8859_13_latin8_baltic } | `"iso-8859-13"` | Latin-7, Baltic Rim. |
+| **iso_8859_14_latin8_celtic**{: #iso_8859_14_latin8_celtic } | `"iso-8859-14"` | Latin-8, Celtic. |
+| **iso_8859_15_latin9_euro**{: #iso_8859_15_latin9_euro } | `"iso-8859-15"` | Latin-9, Western European with euro sign. |
+| **iso_8859_16_latin10_balkan**{: #iso_8859_16_latin10_balkan } | `"iso-8859-16"` | Latin-10, South-Eastern European. |
+
+#### Windows code pages
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| **windows_1250_central_europe**{: #windows_1250_central_europe } | `"windows-1250"` | Central European. |
+| **windows_1251_cyrillic**{: #windows_1251_cyrillic } | `"windows-1251"` | Cyrillic. |
+| **windows_1252_western**{: #windows_1252_western } | `"windows-1252"` | Western European. |
+| **windows_1253_greek**{: #windows_1253_greek } | `"windows-1253"` | Greek. |
+| **windows_1254_turkish**{: #windows_1254_turkish } | `"windows-1254"` | Turkish. |
+| **windows_1255_hebrew**{: #windows_1255_hebrew } | `"windows-1255"` | Hebrew. |
+| **windows_1256_arabic**{: #windows_1256_arabic } | `"windows-1256"` | Arabic. |
+| **windows_1257_baltic**{: #windows_1257_baltic } | `"windows-1257"` | Baltic. |
+| **windows_1258_vietnamese**{: #windows_1258_vietnamese } | `"windows-1258"` | Vietnamese. |
+
+#### IBM/OEM code pages
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| **ibm_850_western_europe**{: #ibm_850_western_europe } | `"850"` | OEM Multilingual Latin-1, Western European. |
+| **ibm_852_central_and_eastern_europe**{: #ibm_852_central_and_eastern_europe } | `"852"` | OEM Latin-2, Central and Eastern European. |
+| **ibm_855_cyrillic**{: #ibm_855_cyrillic } | `"855"` | OEM Cyrillic (primarily pre-Unicode Russian). |
+| **ibm_856_hebrew**{: #ibm_856_hebrew } | `"856"` | Hebrew. |
+| **ibm_857_turkish**{: #ibm_857_turkish } | `"857"` | OEM Turkish (Latin-5). |
+| **ibm_858_western_europe**{: #ibm_858_western_europe } | `"858"` | OEM Multilingual Latin-1 with euro sign. |
+| **ibm_860_portuguese**{: #ibm_860_portuguese } | `"860"` | Portuguese. |
+| **ibm_861_icelandic**{: #ibm_861_icelandic } | `"861"` | Icelandic. |
+| **ibm_862_hebrew**{: #ibm_862_hebrew } | `"862"` | Hebrew. |
+| **ibm_863_canadian**{: #ibm_863_canadian } | `"863"` | French Canadian. |
+| **ibm_865_danish**{: #ibm_865_danish } | `"865"` | Nordic (Danish, Norwegian). |
+| **ibm_866_cyrillic**{: #ibm_866_cyrillic } | `"866"` | Russian. |
+| **ibm_869_greek**{: #ibm_869_greek } | `"869"` | Modern Greek. |
+| **ibm_932_japanese**{: #ibm_932_japanese } | `"932"` | Japanese (Shift-JIS, Microsoft variant). |
+| **ibm_949_korean**{: #ibm_949_korean } | `"949"` | Korean (Unified Hangul Code). |
+
+### See Also
+
+- [**Close** statement](Close)
+- [**Get** statement](Get)
+- [**Put** statement](Put)
+- [**Input #** statement](Input)
+- [**Line Input #** statement](Line-Input)
+- [**Print #** statement](Print)
+- [**Write #** statement](Write)
+- [**Lock** / **Unlock** statements](Lock)
+- [**FreeFile** function](../Modules/FileSystem/FreeFile)

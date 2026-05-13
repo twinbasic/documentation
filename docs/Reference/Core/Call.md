@@ -2,6 +2,7 @@
 title: Call
 parent: Statements
 permalink: /tB/Core/Call
+vba_attribution: true
 ---
 
 # Call
@@ -34,7 +35,7 @@ To pass a whole array to a procedure, use the array name followed by empty paren
 
 This example illustrates how the **Call** statement is used to transfer control to a **Sub** procedure, an intrinsic function, and a dynamic-link library (DLL) procedure.
 
-``` vb
+```tb
 ' Call a Sub procedure. 
 Call PrintToDebugWindow("Hello World")     
 ' The above statement causes control to be passed to the following 
@@ -63,6 +64,3 @@ End Sub
 - [**Function** statement](Function)
 - [**Sub** statement](Sub)
 
-
-
-{% include VBA-Attribution.md %}

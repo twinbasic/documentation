@@ -2,6 +2,7 @@
 title: Close
 parent: Statements
 permalink: /tB/Core/Close
+vba_attribution: true
 ---
 
 # Close
@@ -29,7 +30,7 @@ When the **Close** statement is executed, the association of a file with  its fi
 
 This example uses the **Close** statement to close the three files opened  for **Output**.
 
-```vb
+```tb
 Dim I%, FileName$, FileNumber%(1 To 3)
 For I = 1 To 3             ' Loop 3 times
    FileName = "TEST" & I   ' Create file name
@@ -44,5 +45,3 @@ Close #FileNumber(1), #FileNumber(2), #FileNumber(3)  ' Close the 3 open files.
 
 - [Open](Open) statement
 - [FreeFile](../Modules/FileSystem) function
-
-{% include VBA-Attribution.md %}

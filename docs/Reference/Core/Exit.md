@@ -2,11 +2,12 @@
 title: Exit
 parent: Statements
 permalink: /tB/Core/Exit
+vba_attribution: true
 ---
 # Exit
 {: .no_toc }
 
-Exits a block of **Do…Loop**, **For…Next**, **Function**,  **Sub**, or **Property** code.
+Exits a block of **Do…Loop**, **For…Next**, **While...Wend**, **Function**,  **Sub**, or **Property** code.
 
 Syntax:
 
@@ -15,6 +16,9 @@ Syntax:
   
 - **Exit For**  
   Provides a way to exit a **For** loop. It can be used only in a **[For...Next](For-Next)** or **[For Each...Next](For-Next)** loop. **Exit For** transfers control to the statement following the **Next** statement. When used within nested **For** loops, **Exit For** transfers control to the loop that is one nested level above the loop where **Exit For** occurs.
+  
+- **Exit While**  
+  Provides a way to exit a **[While...Wend](While-Wend)** loop. It can be used only inside a **While...Wend** statement. **Exit While** transfers control to the statement following the **Wend** statement. When used within nested **While...Wend** statements, **Exit While** transfers control to the loop that is one nested level above the loop where **Exit While** occurs. **Exit While** is a twinBASIC extension; classic VBA has no early-exit form for **While...Wend**.
   
 - **Exit Function**  
   Immediately exits the **[Function](Function)** procedure in which it appears. Execution continues with the statement following the statement that called the **Function**.
@@ -31,7 +35,7 @@ Do not confuse **Exit** statements with **End** statements. **Exit** does not de
 
 This example uses the **Exit** statement to exit a **For...Next** loop, a **Do...Loop**, and a **Sub** procedure.
 
-```vb
+```tb
 Sub ExitStatementDemo() 
   Dim I%, MyNum% 
   Do ' Set up infinite loop. 
@@ -46,4 +50,3 @@ Sub ExitStatementDemo()
   Loop 
 End Sub
 ```
-{% include VBA-Attribution.md %}

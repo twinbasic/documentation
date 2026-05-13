@@ -9,9 +9,11 @@ permalink: /Features/64bit
 
 twinBASIC can compile native 64bit executables in addition to 32bit. The syntax is compatible with VBA7 for this: the `LongPtr` data type and the standard to mark APIs `PtrSafe`.
 
+Using the [Fusion](Fusion) feature, it is also possible to use both 32bit and 64bit ActiveX controls in 32bit *and* 64bit projects.
+
 ## Example Syntax
 
-```vb
+```tb
 Public Declare PtrSafe Sub foo Lib "bar" (ByVal hWnd As LongPtr)
 ```
 

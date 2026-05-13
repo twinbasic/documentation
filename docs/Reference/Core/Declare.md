@@ -2,6 +2,7 @@
 title: Declare
 parent: Statements
 permalink: /tB/Core/Declare
+vba_attribution: true
 ---
 
 # Declare
@@ -10,15 +11,18 @@ Used at the module level to declare references to external procedures in a dynam
 
 > [!NOTE]
 >
-> **Declare** statements with the PtrSafe keyword is the recommended syntax. **Declare** statements that include **PtrSafe** work correctly in twinBASIC and VBA version 7 development environment on both 32-bit and 64-bit platforms only after all data types in the **Declare** statement (parameters and return values) that need to store 64-bit quantities are updated to use LongLong for 64-bit integrals or LongPtr for pointers and handles. To ensure backwards compatibility with VBA version 6 and earlier, use the following construct:
+> **Declare** statements with the PtrSafe keyword is the recommended syntax. **Declare** statements that include **PtrSafe** work correctly in twinBASIC and VBA version 7 development environment on both 32-bit and 64-bit platforms only after all data types in the **Declare** statement (parameters and return values) that need to store 64-bit quantities are updated to use LongLong for 64-bit integrals or LongPtr for pointers and handles.
 
-```vb
+To ensure backwards compatibility with VBA version 6 and earlier, use the following construct:
+
+```tb
 #If VBA7 Then 
 Declare PtrSafe Sub... 
 #Else 
 Declare Sub... 
 #EndIf
 ```
+
 > [!NOTE]
 >
 > For code to run when built for 64-bit targets, all **Declare** statements must include the **PtrSafe** keyword, and all data types in the **Declare** statement (parameters and return values) that need to store 64-bit quantities must be updated to use **LongLong** for 64-bit integrals or **LongPtr** for pointers and handles.
@@ -65,7 +69,7 @@ Syntax:
 : *optional* List of variables representing arguments that are passed to the procedure when it is called.
 
 *type*
-: *optional* Data type of the value returned by a **Function** procedure; may be Byte, Boolean, Integer, Long, LongLong, LongPtr, Currency, Single, Double, Decimal (not currently supported), Date, String (variable length only), Variant, a user-defined type (UDT), or an object type. **LongLong** is a valid declared type only on 64-bit platforms.
+: *optional* Data type of the value returned by a **Function** procedure; may be Byte, Boolean, Integer, Long, LongLong, LongPtr, Currency, Single, Double, Decimal, Date, String (variable length only), Variant, a user-defined type (UDT), or an object type. **LongLong** is a valid declared type only on 64-bit platforms.
 
 ### arglist
 
@@ -92,11 +96,11 @@ Syntax: [ **Optional** ] [ **ByVal** \| **ByRef** ] [ **ParamArray** ] *varname*
 :  Required for array variables. Indicates that *varname* is an array.
 
 *type*
-: *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Currency**, **Single**, **Double**, **Decimal** (not currently supported), **Date**, **String** (variable length only), **Object**, **Variant**, a user-defined type (UDT), or an object type. (**LongLong** is a valid declared type only on 64-bit platforms.)
+: *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (variable length only), **Object**, **Variant**, a user-defined type (UDT), or an object type. (**LongLong** is a valid declared type only on 64-bit platforms.)
 
 If you include an argument list, the number and type of arguments are checked each time the procedure is called. The First sub in the following example takes one **Long** argument, wherease the Second sub takes no arguments:
 
-```vb
+```tb
 Declare Sub First Lib "MyLib" (X As Long)
 Declare Sub Second Lib "MyLib" ()
 ```
@@ -110,7 +114,7 @@ Declare Sub Second Lib "MyLib" ()
 
 This example shows how the **Declare** statement is used at the module level of a standard module to declare a reference to an external procedure in a dynamic-link library (DLL). You can place the **Declare** statements in class modules if the **Declare** statements are **Private**.
 
-```vb
+```tb
 ' In 32-bit Microsoft Windows systems, specify the library USER32.DLL.
 Declare Sub MessageBeep Lib "User32" (ByVal N As Long)
  
@@ -129,5 +133,3 @@ Declare PtrSafe Function GetActiveWindow Lib "User32" () As LongPtr
      ' Code is NOT running in 32-bit or 64-bit twinBASIC or VBA7.
 #End If 
 ```
-
-{% include VBA-Attribution.md %}

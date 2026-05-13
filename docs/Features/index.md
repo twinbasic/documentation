@@ -2,6 +2,8 @@
 title: Features
 nav_order: 6
 permalink: /Features/
+redirect_from: 
+  - /Features/Overview
 has_toc: false
 ---
 
@@ -83,6 +85,10 @@ Improved development experience:
 - CodeLens for running Subs directly
 - Modern IDE with themes, code folding, and more
 - Package server for code sharing
+
+### [Fusion](Fusion)
+
+Fusion enables 64-bit applications to host 32-bit ActiveX controls (and vice versa) by transparently bridging them through an out-of-process host executable using IPC-based communication.
 
 ### [64bit Compilation](64bit)
 

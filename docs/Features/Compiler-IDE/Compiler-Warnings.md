@@ -49,7 +49,7 @@ When assigning a member of one Enum to a variable typed as another, such as `Dim
 
 If a declared coclass doesn't explicitly name an interface as supported, converting to it will trigger this warning, e.g.:
 
-```vb
+```tb
 Dim myPic As StdPicture
 Dim myFont As StdFont
 Set myFont = myPic

@@ -3,7 +3,7 @@ title: Windowless Controls vs. Windowed Controls
 parent: GUI Components
 nav_order: 3
 permalink: /Features/GUI-Components/Windowless
-redirect-from:
+redirect_from:
   - /Features/Windowless
 ---
 
@@ -125,7 +125,7 @@ redirect-from:
 
 #### Code Snippet for twinBASIC
 
-``` vb
+```tb
 ' Example: Printing a Mixed-Control Form in twinBASIC
 Dim bmp As StdPicture
 Set bmp = CreateCompatibleBitmap(Me.Width, Me.Height)

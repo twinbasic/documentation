@@ -27,11 +27,11 @@ Syntax: [ **Public** ] **Event** *procedurename* [ (*arglist*) ]
    : Name  of the variable representing the argument being passed to the procedure; follows standard variable naming conventions.
    
    *type*
-   : *optional* Data type of the argument passed to the procedure; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal (not currently supported), Date, String (variable length only), Object, Variant, a user-defined type (UDT), or an object type.
+   : *optional* Data type of the argument passed to the procedure; may be Byte, Boolean, Integer, Long, Currency, Single, Double, Decimal, Date, String (variable length only), Object, Variant, a user-defined type (UDT), or an object type.
 
 After the event has been declared, use the [**RaiseEvent**](RaiseEvent) statement to fire the event. A syntax error occurs if an **Event** declaration appears in a standard module. An event can't be declared to return a value. A typical event might be declared and raised as shown in the following fragments.
 
-```vb
+```tb
 ' Declare an event at module level of a class module 
  
 Event LogonCompleted (UserName as String) 
@@ -55,7 +55,7 @@ The example also uses a form (`Form1`) with a button (`Command1`), a label (`Lab
 
 The code specifies the initial and terminal states of the form. It also contains the code executed when events are raised.
 
-```vb
+```tb
 Class Form1
   Option Explicit 
  
@@ -93,7 +93,7 @@ The remaining code is in a class module named TimerState. The **Event** statemen
 
 VB
 
-```vb
+```tb
 Class TimerState
     Option Explicit 
     Public Event UpdateTime(ByVal dblJump As Double)
