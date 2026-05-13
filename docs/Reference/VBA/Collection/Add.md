@@ -1,6 +1,6 @@
 ---
 title: Add
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/Add
 vba_attribution: true
 ---

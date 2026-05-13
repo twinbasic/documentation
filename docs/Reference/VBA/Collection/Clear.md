@@ -1,6 +1,6 @@
 ---
 title: Clear
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/Clear
 vba_attribution: true
 ---

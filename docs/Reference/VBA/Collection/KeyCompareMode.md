@@ -1,6 +1,6 @@
 ---
 title: KeyCompareMode
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/KeyCompareMode
 vba_attribution: true
 ---

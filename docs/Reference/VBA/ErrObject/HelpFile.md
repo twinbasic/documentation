@@ -1,6 +1,6 @@
 ---
 title: HelpFile
-parent: ErrObject Module
+parent: ErrObject
 permalink: /tB/Modules/ErrObject/HelpFile
 vba_attribution: true
 ---

@@ -1,7 +1,9 @@
 ---
 title: VarPtr
-parent: (Default) Module
-permalink: /tB/Modules/HiddenModule/VarPtr
+parent: Information Module
+permalink: /tB/Modules/Information/VarPtr
+redirect_from:
+  - /tB/Modules/HiddenModule/VarPtr
 ---
 # VarPtr
 {: .no_toc }

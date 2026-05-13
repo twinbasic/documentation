@@ -1,7 +1,9 @@
 ---
 title: AddCustomBinderObject
-parent: ExpressionService Module
-permalink: /tB/Modules/ExpressionService/AddCustomBinderObject
+parent: TbExpressionService
+permalink: /tB/Modules/TbExpressionService/AddCustomBinderObject
+redirect_from:
+  - /tB/Modules/ExpressionService/AddCustomBinderObject
 ---
 # AddCustomBinderObject
 {: .no_toc }

@@ -1,9 +1,10 @@
 ---
 title: Width
-parent: (Default) Module
-permalink: /tB/Modules/HiddenModule/Width
+parent: FileSystem Module
+permalink: /tB/Modules/FileSystem/Width
 redirect_from:
--  /tB/Core/Width
+  - /tB/Core/Width
+  - /tB/Modules/HiddenModule/Width
 vba_attribution: true
 ---
 # Width #

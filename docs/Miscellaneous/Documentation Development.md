@@ -57,7 +57,6 @@ These are modules within VBA and VBRUN:
   - [Interaction](../tB/Modules/Interaction)
   - [Math](../tB/Modules/Math)
   - [Strings](../tB/Modules/Strings)
-  - [TextEncodingConstants](../tB/Modules/TextEncodingConstants)
   - Internal [_HiddenModule](../tB/Modules/HiddenModule)
 - VBRUN
   - [AmbientProperties](../tB/Modules/AmbientProperties)

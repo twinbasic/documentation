@@ -1,6 +1,6 @@
 ---
 title: Description
-parent: ErrObject Module
+parent: ErrObject
 permalink: /tB/Modules/ErrObject/Description
 vba_attribution: true
 ---

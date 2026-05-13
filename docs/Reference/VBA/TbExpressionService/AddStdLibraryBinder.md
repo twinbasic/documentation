@@ -1,7 +1,9 @@
 ---
 title: AddStdLibraryBinder
-parent: ExpressionService Module
-permalink: /tB/Modules/ExpressionService/AddStdLibraryBinder
+parent: TbExpressionService
+permalink: /tB/Modules/TbExpressionService/AddStdLibraryBinder
+redirect_from:
+  - /tB/Modules/ExpressionService/AddStdLibraryBinder
 ---
 # AddStdLibraryBinder
 {: .no_toc }

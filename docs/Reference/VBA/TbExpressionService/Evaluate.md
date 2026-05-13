@@ -1,7 +1,9 @@
 ---
 title: Evaluate
-parent: ExpressionService Module
-permalink: /tB/Modules/ExpressionService/Evaluate
+parent: TbExpressionService
+permalink: /tB/Modules/TbExpressionService/Evaluate
+redirect_from:
+  - /tB/Modules/ExpressionService/Evaluate
 ---
 # Evaluate
 {: .no_toc }

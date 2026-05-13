@@ -1,7 +1,9 @@
 ---
 title: StrPtr
-parent: (Default) Module
-permalink: /tB/Modules/HiddenModule/StrPtr
+parent: Information Module
+permalink: /tB/Modules/Information/StrPtr
+redirect_from:
+  - /tB/Modules/HiddenModule/StrPtr
 ---
 # StrPtr
 {: .no_toc }

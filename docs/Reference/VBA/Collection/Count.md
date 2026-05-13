@@ -1,6 +1,6 @@
 ---
 title: Count
-parent: Collection Module
+parent: Collection
 permalink: /tB/Modules/Collection/Count
 vba_attribution: true
 ---

@@ -1,15 +1,18 @@
 ---
-title: ExpressionService Module
+title: TbExpressionService
 parent: VBA Package
-permalink: /tB/Modules/ExpressionService/
+nav_order: 12
+permalink: /tB/Modules/TbExpressionService/
+redirect_from:
+  - /tB/Modules/ExpressionService/
 has_toc: false
 ---
 
-# ExpressionService module
+# TbExpressionService class
 
-The **ExpressionService** module provides a runtime expression engine: a way to take twinBASIC-syntax expressions supplied as ordinary strings and compile and evaluate them on the fly, without going through a separate build step. It powers calculators, formula columns in reports, scriptable property bindings, and any other feature that needs to turn user-supplied text into a value.
+**TbExpressionService** is twinBASIC's runtime expression engine: a way to take twinBASIC-syntax expressions supplied as ordinary strings and compile and evaluate them on the fly, without going through a separate build step. It powers calculators, formula columns in reports, scriptable property bindings, and any other feature that needs to turn user-supplied text into a value.
 
-The module exposes one class and two interfaces:
+It is exposed as one class and two interfaces:
 
 - [**TbExpressionService**](#tbexpressionservice-class) — the engine; instantiate one with **New**, register its binders, then [**Compile**](Compile) expressions against it.
 - [**ITbExpression**](#itbexpression-interface) — a compiled expression handle returned by [**Compile**](Compile), evaluated with [**Evaluate**](Evaluate).

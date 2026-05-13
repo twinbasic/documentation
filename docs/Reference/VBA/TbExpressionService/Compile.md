@@ -1,7 +1,9 @@
 ---
 title: Compile
-parent: ExpressionService Module
-permalink: /tB/Modules/ExpressionService/Compile
+parent: TbExpressionService
+permalink: /tB/Modules/TbExpressionService/Compile
+redirect_from:
+  - /tB/Modules/ExpressionService/Compile
 ---
 # Compile
 {: .no_toc }

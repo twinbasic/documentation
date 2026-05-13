@@ -1,6 +1,6 @@
 ---
 title: Clear
-parent: ErrObject Module
+parent: ErrObject
 permalink: /tB/Modules/ErrObject/Clear
 vba_attribution: true
 ---

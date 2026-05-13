@@ -10,7 +10,7 @@ vba_attribution: true
 Reads data from an open sequential file and assigns the data to variables.
 
 > [!NOTE]
-> This page documents the **Input #** *statement*. The unrelated [**Input** function](../Modules/HiddenModule/Input) reads a fixed number of characters from any open file.
+> This page documents the **Input #** *statement*. The unrelated [**Input** function](../Modules/FileSystem/Input) reads a fixed number of characters from any open file.
 
 Syntax:
 > **Input** **#** *filenumber* **,** *varlist*
@@ -66,5 +66,5 @@ Close #1    ' Close file.
 - [**Line Input #** statement](Line-Input)
 - [**Write #** statement](Write)
 - [**Print #** statement](Print)
-- [**Input** function](../Modules/HiddenModule/Input)
+- [**Input** function](../Modules/FileSystem/Input)
 - [**EOF** function](../Modules/FileSystem/EOF)
