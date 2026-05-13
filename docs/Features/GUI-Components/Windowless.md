@@ -101,12 +101,12 @@ redirect_from:
 1. **Render the Entire Form to a Bitmap**
 
    * In VB6: Use `BitBlt` or `PaintPicture` to copy the form’s visible area.
-   * In TwinBASIC: Use the form’s `Canvas` or `ICustomControl.Paint` logic to manually render windowless elements to a bitmap.
+   * In TwinBASIC: Use the form’s [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) or [`ICustomControl.Paint`](../../tB/Packages/CustomControls/Framework/ICustomControl#paint) logic to manually render windowless elements to a bitmap. See the [CustomControls package reference](../../tB/Packages/CustomControls/) for the full framework surface.
 
 2. **Ensure Windowless Controls Are Painted**
 
-   * For custom controls using `ICustomControl.Paint`, call their paint routines manually into the same bitmap or `DC`.
-   * If using `Canvas.AddElement`, simulate a paint pass with the same layout logic used during runtime.
+   * For [custom controls](../../tB/Packages/CustomControls/) using [`ICustomControl.Paint`](../../tB/Packages/CustomControls/Framework/ICustomControl#paint), call their paint routines manually into the same bitmap or `DC`.
+   * If using [`Canvas.RuntimeUICCCanvasAddElement`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuicccanvasaddelement), simulate a paint pass with the same layout logic used during runtime.
 
 3. **Send the Bitmap to the Printer**
 

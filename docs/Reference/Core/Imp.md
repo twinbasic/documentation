@@ -8,7 +8,7 @@ vba_attribution: true
 # Imp operator
 {: .no_toc }
 
-Used to perform a logical implication on two expressions. *expression1* **Imp** *expression2* is **False** only when *expression1* is **True** and *expression2* is **False**; in every other non-**Null** case the result is **True**.
+Used to perform a bitwise implication on two expressions. *expression1* **Imp** *expression2* is **False** only when *expression1* is **True** and *expression2* is **False**; in every other non-**Null** case the result is **True**.
 
 Syntax:
 > *result* **=** *expression1* **Imp** *expression2*
@@ -33,7 +33,7 @@ The following table illustrates how *result* is determined:
 | **Null**  | **False** | **Null**  |
 | **Null**  | **Null**  | **Null**  |
 
-The **Imp** operator also performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
+The **Imp** operator performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
 
 | If bit in *expression1* is | And bit in *expression2* is | The *result* is |
 |:-----:|:-----:|:-----:|

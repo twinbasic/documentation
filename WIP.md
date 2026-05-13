@@ -12,7 +12,8 @@ Status:
 - **VBRUN package** — done.
 - **VB package** — done.
 - **WebView2Package** — done.
-- **Assert package** — in progress.
+- **Assert package** — done.
+- **CustomControls / CustomControlsPackage** — in progress.
 
 ## Where things live
 
@@ -23,6 +24,7 @@ Status:
 - `docs/Reference/VB/<Class>/index.md` — folder-style class page when sub-pages may follow (e.g. [`CheckMark/index.md`](docs/Reference/VB/CheckMark/index.md)).
 - `docs/Reference/VB/todo.md` — backlog tracker for the VB package; see [Backlog discovery](#backlog-discovery).
 - `docs/Reference/WebView2/` — WebView2 package: the **WebView2** control class plus its small wrapper classes (request / response / headers / environment options) and the `wv2…` enumerations.
+- `docs/Reference/CustomControls/` — CustomControls package: the eight **Waynes…** custom controls, their shared `Styles/` helper classes (`Fill`, `Borders`, `Corners`, `TextRendering`, …), the `Framework/` DESIGNER surface (interfaces, CoClasses, the `Canvas` / `SerializeInfo` UDTs), and the `Enumerations/` (`CornerShape`, `FillPattern`, `DockMode`, …).
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - `docs/_includes/footer_custom.html` — overrides the theme's footer slot; renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
@@ -51,6 +53,8 @@ All of twinbasic's package sources are at:
 ..\tb-export\NewProject\Packages\VBRUN\Sources\
 ..\tb-export\NewProject\Packages\WebView2Package\Sources\
 ..\tb-export\NewProject\Packages\Assert\Sources\
+..\tb-export\NewProject\Packages\CustomControls\Sources\
+..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\
 etc.
 ```
 
@@ -169,6 +173,138 @@ That's 4 pages total. (If a future release of the package adds more modules or n
 
 **No backlog file** — three modules listed in this section are the entire backlog.
 
+### CustomControls / CustomControlsPackage
+
+Two source-side packages, **one** doc-side package. They always ship together and are co-versioned with twinBASIC — `CustomControlsPackage` lists `CustomControls` as a `isCompilerPackage` reference in its `Settings`, and neither is usable without the other. Document the union as `docs/Reference/CustomControls/`.
+
+The split on the source side is by *role*:
+
+- `..\tb-export\NewProject\Packages\CustomControls\Sources\CustomControls.twin` — the **DESIGNER** framework. A single file with `Module Constants` (the enums + the `SerializeInfo` / `Canvas` UDTs) plus the abstract surface a custom control hooks into (`ICustomControl`, `ICustomForm` interfaces; `CustomControlContext`, `CustomFormContext`, `CustomControlTimer`, `CustomControlsCollection` CoClasses). Project `appTitle` is `"CustomControls DESIGNER Package"`.
+- `..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\` — the **runtime**: eight concrete `Waynes…` controls plus `zTemporarySupport.twin`, a bag of shared appearance helpers and three mixin base classes. Project `appTitle` is `"Custom Controls Package"`.
+
+Public user-facing surface, grouped by role.
+
+#### Concrete controls (`CustomControlsPackage\Sources\Waynes*.twin`)
+
+Each is `Class <Name>` (no `Public` modifier — implicitly public), tagged `[CustomControl("/miscellaneous/frm<X>.png")]` (designer icon) and `[COMCreatable(False)]` (cannot be `New`'d through COM; instantiated by the designer).
+
+| Control          | Implements                                                | Co-located public types                          |
+|------------------|-----------------------------------------------------------|--------------------------------------------------|
+| `WaynesButton`   | `ICustomControl` + `BaseControlFocusable` (mixin)         | `WaynesButtonState` (private, but exposed)       |
+| `WaynesForm`     | `ICustomControl` + `BaseForm` (mixin)                     | — (uses `WindowsFormOptions` from support file)  |
+| `WaynesFrame`    | `ICustomControl` + `BaseControl` (mixin)                  | —                                                |
+| `WaynesGrid`     | `ICustomControl` + `BaseControlFocusable` (mixin)         | `Column`, `CellRenderingOptions`                 |
+| `WaynesLabel`    | `ICustomControl` + `BaseControl` (mixin)                  | —                                                |
+| `WaynesSlider`   | `ICustomControl` + `BaseControlFocusable` (mixin)         | `WaynesSliderState`, `SliderDirection` & `SliderDisplayValueFormat` (nested enums) |
+| `WaynesTextBox`  | `ICustomControl` + `BaseControlFocusable` (mixin)         | `WaynesTextBoxState`                             |
+| `WaynesTimer`    | `ICustomControl` + `BaseControl` (mixin)                  | —                                                |
+
+The "mixin" base classes (`BaseControl`, `BaseControlFocusable`, `BaseForm`) are declared `Private Class` in `zTemporarySupport.twin` and pulled into each control via the twinBASIC `Implements <Base> Via _BaseControl = New <Base>` syntax. The base classes themselves get **no doc page** (they're private and never named by user code), but the inherited members **must be folded into each control's Properties listing** the same way VB-package controls list their inherited surface. The visible inherited surface, by mixin:
+
+- `BaseControl` → `Name`, `Left`, `Top`, `Width`, `Height`, `Anchors`, `Dock`, `Visible`.
+- `BaseControlFocusable` → all of `BaseControl` + `TabIndex`, `TabStop`.
+- `BaseForm` → `FormDesignerId`, `Name`, `Left`, `Top`, `Width`, `Height`, `Controls`.
+
+The state-holder classes (`WaynesButtonState`, `WaynesSliderState`, `WaynesTextBoxState`) and `WindowsFormOptions` are declared `Private Class` but are exposed on the parent control via `Public WithEvents NormalState As WaynesButtonState` (etc.). Same situation as `WebView2EnvironmentOptions` — document them as **sub-pages** of the parent control using the folder-style layout.
+
+#### Shared appearance helpers (`CustomControlsPackage\Sources\zTemporarySupport.twin`)
+
+Every helper in this file is `Private Class`, but the ones below are reachable through `Public WithEvents …` properties on one or more of the eight controls and **must be documented**:
+
+| Class           | Reached as                                                                          |
+|-----------------|-------------------------------------------------------------------------------------|
+| `Anchors`       | `<control>.Anchors` (via the mixin base)                                            |
+| `Corners`       | `<state>.Corners`, `CellRenderingOptions.Corners`, `<sliderState>.BackgroundCorners`, `BlockCorners` |
+| `Corner`        | `Corners.TopLeft` / `.TopRight` / `.BottomLeft` / `.BottomRight`                    |
+| `Borders`       | `<state>.Borders`, `CellRenderingOptions.Borders`, `<sliderState>.BackgroundBorders`, `BlockBorders` |
+| `Border`        | element of `Borders.Elements()`; also `TextRendering.Outlines()`                    |
+| `Fill`          | `<state>.BackgroundFill`, `<sliderState>.BlockFill`, `CellRenderingOptions.Fill`, `Border.Fill`, `Line.Fill`, `TextRendering.Fill` |
+| `FillColorPoint`  | element of `FillColorPoints.Values()`                                             |
+| `FillColorPoints` | `Fill.ColorPoints`                                                                |
+| `Line`          | `WaynesGrid.VerticalLineOptions` / `.HorizontalLineOptions` / `.ResizerBar`         |
+| `Padding`       | `TextRendering.Padding`                                                             |
+| `TextRendering` | `<state>.TextRendering`, `WaynesLabel.TextRendering`, `CellRenderingOptions.TextRendering` |
+| `FontStyle`     | `TextRendering.Font`                                                                |
+| `WindowsFormOptions` | `WaynesForm.WindowsOptions` (only one consumer)                                |
+
+Document these under `docs/Reference/CustomControls/Styles/`. Pair small helpers with their containers on a single page (the pairings happen to be self-evident from the table — `Corner` inlines under `Corners.md`, `Border` under `Borders.md`, `FillColorPoint` and `FillColorPoints` under `Fill.md`, `FontStyle` under `TextRendering.md`). `WindowsFormOptions` is the exception: it has exactly one consumer (`WaynesForm`), so put it as a sub-page of `WaynesForm/` (folder-style), parallel to how WebView2 carries `EnvironmentOptions`.
+
+The remaining `Private Class` / `Private Module` content in `zTemporarySupport.twin` is implementation-detail and gets **no doc page**:
+
+- `TextDecorator`, `TextDecorators` — used only inside `ElementDescriptor`, not surfaced on any control property.
+- `UDTs` — a wrapper class whose `Public Type` declarations (`MouseEvent`, `KeyEvent`, `FocusEvent`, `ElementDescriptor`) and `Public Enum` declarations (`CaretPosition`, `SpecialKeyCodes`) only matter to someone writing a *new* custom control (they're passed to `AddressOf`-registered callbacks on `ElementDescriptor`). Defer documenting these until / unless an "authoring a custom control" tutorial calls for them.
+- `BaseControl`, `BaseControlFocusable`, `BaseForm` — the mixin bases (covered above; members surface on each control, but the bases themselves are private).
+- `Private Module MathSupport` / `Private Module ColorSupport` — internal.
+
+#### DESIGNER framework surface (`CustomControls\Sources\CustomControls.twin`)
+
+The framework half — what a *control author* writes against. Document at `docs/Reference/CustomControls/Framework/`:
+
+| Symbol                       | Kind                | Role                                                                                  |
+|------------------------------|---------------------|---------------------------------------------------------------------------------------|
+| `ICustomControl`             | `Interface`         | what every concrete control implements: `Initialize(Context)`, `Destroy()`, `Paint(Canvas)` |
+| `ICustomForm`                | `Interface`         | analogous surface for form-class custom controls                                      |
+| `CustomControlContext`       | `CoClass`           | passed to `ICustomControl.Initialize`; offers `GetSerializer()`, `Repaint()`, `CreateTimer()`, `ChangeFocusedElement()` |
+| `CustomFormContext`          | `CoClass`           | extends `CustomControlContext` with `Show()` / `Close()`                              |
+| `CustomControlTimer`         | `CoClass`           | returned by `CustomControlContext.CreateTimer()`; `Interval`, `Enabled`, `OnTimer` event |
+| `CustomControlsCollection`   | `CoClass`           | the `Controls` collection on a form — `Count`, `Item`, `Add`, `Remove`, `_NewEnum`    |
+| `SerializeInfo`              | UDT                 | obtained from `Context.GetSerializer()`; exposes `RuntimeUISrz*` operations (deserialize, mode flags, …) |
+| `Canvas`                     | UDT                 | parameter to `ICustomControl.Paint`; exposes `RuntimeUICCCanvasAddElement` + DPI / size getters |
+
+Both UDTs follow a pattern unique to twinBASIC: a `Pointer As LongPtr` field plus `Public DeclareWide PtrSafe Function/Sub … Lib "<runtimeuisrz>" Alias "#N"` pseudo-DLL declarations bound directly into the type. From a *caller* perspective these read as instance methods on the UDT (`Canvas.RuntimeUICCCanvasAddElement(descriptor)`); document them as methods, and **do not** surface the `Lib "<…>"` / `Alias "#N"` / `PreserveSig` / `DLLStackCheck` decoration (same treatment as Assert's pseudo-DLL plumbing). The verbose `RuntimeUISrz*` / `RuntimeUICC*` names are unfortunate but they *are* the public API — keep them as-is.
+
+The two underscore-prefixed default interfaces of each CoClass (`_CustomControlTimer`, `_CustomControlContext`, `_CustomFormContext`, `_CustomControlsCollection`, `_CustomControlTimerEvents`) are an implementation detail of the COM `[Default]`/`[Default, Source]` pattern — fold their members onto the CoClass page, **don't** give the interfaces their own pages.
+
+#### Enumerations (`CustomControls.twin`, module `Constants`)
+
+Public enums to surface, one page each, under `docs/Reference/CustomControls/Enumerations/`:
+
+- `CornerShape`, `FillPattern`, `TextAlignment`, `TextOverflowMode`, `DockMode`, `FontWeight`, `StartupPosition`, `BorderStyle`, `WindowState` — straightforward value enums.
+- `Customtate` — **probable typo** for `CustomState`. Has the same three members as `WindowState` (`tbNormal` / `tbMinimized` / `tbMaximized`) and isn't referenced anywhere else in the package. Document it (since it's `Public`), but add a `> [!NOTE]` callout flagging the typo and pointing readers to `WindowState`.
+- `ColorRGBA`, `PixelCount`, `PointSize` — these are declared as `Enum` only because twinBASIC doesn't yet have a `Type Foo = Long` alias syntax. Each carries a `FIXME` comment ("Substitute for an ALIAS to Long") and a single `[_MAX] = 0` placeholder member. Document them as **typedefs for `Long`** (the underlying storage type), not as real enums. Note in each that the alias is what user code actually sees on `Public Width As CustomControls.PixelCount` (etc.) — when the alias syntax lands, these enum stand-ins go away.
+
+Plus the two enums nested inside `WaynesSlider`: `SliderDirection` and `SliderDisplayValueFormat`. Document them on the `WaynesSlider/index.md` page rather than under `Enumerations/` (they're locally scoped to the slider).
+
+#### Doc-side layout (folders / files)
+
+Compact form:
+
+```
+docs/Reference/CustomControls/
+  index.md                                  ← package landing; intro + role split + cross-links to the four groups
+  WaynesButton/index.md, WaynesButton/WaynesButtonState.md
+  WaynesForm/index.md, WaynesForm/WindowsFormOptions.md
+  WaynesFrame.md
+  WaynesGrid/index.md, WaynesGrid/Column.md, WaynesGrid/CellRenderingOptions.md
+  WaynesLabel.md
+  WaynesSlider/index.md, WaynesSlider/WaynesSliderState.md
+  WaynesTextBox/index.md, WaynesTextBox/WaynesTextBoxState.md
+  WaynesTimer.md
+  Styles/index.md, Styles/Anchors.md, Styles/Borders.md, Styles/Corners.md,
+    Styles/Fill.md, Styles/Line.md, Styles/Padding.md, Styles/TextRendering.md
+  Framework/index.md, Framework/Canvas.md, Framework/CustomControlContext.md,
+    Framework/CustomControlsCollection.md, Framework/CustomControlTimer.md,
+    Framework/CustomFormContext.md, Framework/ICustomControl.md,
+    Framework/ICustomForm.md, Framework/SerializeInfo.md
+  Enumerations/index.md, Enumerations/BorderStyle.md, Enumerations/ColorRGBA.md,
+    Enumerations/CornerShape.md, Enumerations/Customtate.md, Enumerations/DockMode.md,
+    Enumerations/FillPattern.md, Enumerations/FontWeight.md, Enumerations/PixelCount.md,
+    Enumerations/PointSize.md, Enumerations/StartupPosition.md, Enumerations/TextAlignment.md,
+    Enumerations/TextOverflowMode.md, Enumerations/WindowState.md
+```
+
+**Naming:**
+
+- Folder / URL segment: `CustomControls/` (drops the "Package" suffix; collapses the two source packages, same simplification WebView2 used).
+- Index title: `CustomControls Package` — the `<Name> Package` convention.
+- Permalinks: `/tB/Packages/CustomControls/` for the landing; `/tB/Packages/CustomControls/<Control>` and `/tB/Packages/CustomControls/<Control>/` for single-file vs folder-style controls; `/tB/Packages/CustomControls/Styles/<Name>`, `/tB/Packages/CustomControls/Framework/<Name>`, `/tB/Packages/CustomControls/Enumerations/<Name>` for the three sub-groups.
+- `parent: CustomControls Package` on every child page (matching the index `title:`).
+- The `Styles/`, `Framework/`, `Enumerations/` index pages set `parent: CustomControls Package` and `has_children: true`; their children set `parent: <Styles | Framework | Enumerations>` (the grouped-page pattern). Mirror exactly the structure WebView2 uses for its `Enumerations/`.
+
+**License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2022) — same situation as WebView2Package and Assert. Pages are fully original; **omit** the `vba_attribution: true` flag.
+
+**No backlog file** — the eight controls + the three sub-groups enumerated above are the entire backlog; track inline here.
+
 ## Page template
 
 Match the existing style. Worked examples to imitate:
@@ -242,6 +378,10 @@ The URL prefixes are *not* uniform across packages — VBA pages live one segmen
 - WebView2 class → `/tB/Packages/WebView2/<Class>` (or `/tB/Packages/WebView2/<Class>/` for folder-style — used by `WebView2/`)
 - WebView2 enumeration → `/tB/Packages/WebView2/Enumerations/<Enum>` (one segment deeper than a class, parallel to VBRUN's `Constants/<Enum>`)
 - Assert module → `/tB/Packages/Assert/<Mod>` (single-page-per-module; same depth as a single-file VB class)
+- CustomControls control → `/tB/Packages/CustomControls/<Control>` (single-file) or `/tB/Packages/CustomControls/<Control>/` (folder-style — used by `WaynesButton/`, `WaynesForm/`, `WaynesGrid/`, `WaynesSlider/`, `WaynesTextBox/`)
+- CustomControls style helper → `/tB/Packages/CustomControls/Styles/<Name>`
+- CustomControls framework symbol → `/tB/Packages/CustomControls/Framework/<Name>`
+- CustomControls enumeration → `/tB/Packages/CustomControls/Enumerations/<Enum>`
 
 Common patterns:
 
@@ -278,11 +418,30 @@ Common patterns:
 | Assert `Packages/Assert/<Mod>`             | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../VBRUN/<Mod>/Y)`                    |
 | Assert `Packages/Assert/<Mod>`             | VBA `Modules/<Mod>/Y`                       | `[Y](../../Modules/<Mod>/Y)`               |
 | Assert `Packages/Assert/<Mod>`             | `Core/Y`                                    | `[Y](../../Core/Y)`                        |
+| CC `Packages/CustomControls/X` (single-file) | sibling `Packages/CustomControls/Y`       | `[Y](Y)`                                   |
+| CC `Packages/CustomControls/X` (single-file) | `Packages/CustomControls/Styles/Y`        | `[Y](Styles/Y)`                            |
+| CC `Packages/CustomControls/X` (single-file) | `Packages/CustomControls/Framework/Y`     | `[Y](Framework/Y)`                         |
+| CC `Packages/CustomControls/X` (single-file) | `Packages/CustomControls/Enumerations/Y`  | `[Y](Enumerations/Y)`                      |
+| CC `Packages/CustomControls/X` (single-file) | VB `Packages/VB/Y`                        | `[Y](../VB/Y)`                             |
+| CC `Packages/CustomControls/X` (single-file) | `Core/Y`                                  | `[Y](../../Core/Y)`                        |
+| CC `Packages/CustomControls/<Control>/index` | sibling `Packages/CustomControls/Y`       | `[Y](../Y)`                                |
+| CC `Packages/CustomControls/<Control>/index` | `Packages/CustomControls/Styles/Y`        | `[Y](../Styles/Y)`                         |
+| CC `Packages/CustomControls/<Control>/index` | `Packages/CustomControls/Enumerations/Y`  | `[Y](../Enumerations/Y)`                   |
+| CC `Packages/CustomControls/<Control>/index` | `Core/Y`                                  | `[Y](../../../Core/Y)`                     |
+| CC `Packages/CustomControls/Styles/X`      | sibling `Styles/Y`                          | `[Y](Y)`                                   |
+| CC `Packages/CustomControls/Styles/X`      | `Packages/CustomControls/<Control>` (single-file) | `[Y](../<Control>)`                  |
+| CC `Packages/CustomControls/Styles/X`      | `Packages/CustomControls/Enumerations/Y`    | `[Y](../Enumerations/Y)`                   |
+| CC `Packages/CustomControls/Styles/X`      | `Core/Y`                                    | `[Y](../../../Core/Y)`                     |
+| CC `Packages/CustomControls/Framework/X`   | sibling `Framework/Y`                       | `[Y](Y)`                                   |
+| CC `Packages/CustomControls/Framework/X`   | `Packages/CustomControls/<Control>` (single-file) | `[Y](../<Control>)`                  |
+| CC `Packages/CustomControls/Enumerations/X` | sibling `Enumerations/Y`                   | `[Y](Y)`                                   |
+| CC `Packages/CustomControls/Enumerations/X` | `Packages/CustomControls/<Control>` (single-file) | `[Y](../<Control>)`                 |
 | `Core/X`                                   | VBA `Modules/<Mod>/Y`                       | `[Y](../Modules/<Mod>/Y)`                  |
 | `Core/X`                                   | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../Packages/VBRUN/<Mod>/Y)`           |
 | `Core/X`                                   | VB `Packages/VB/Y`                          | `[Y](../Packages/VB/Y)`                    |
 | `Core/X`                                   | WebView2 `Packages/WebView2/Y`       | `[Y](../Packages/WebView2/Y)`       |
 | `Core/X`                                   | Assert `Packages/Assert/<Mod>`              | `[Y](../Packages/Assert/<Mod>)`            |
+| `Core/X`                                   | CC `Packages/CustomControls/Y`              | `[Y](../Packages/CustomControls/Y)`        |
 | `Core/X`                                   | `Core/Y` (sibling)                          | `[Y](Y)`                                   |
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
@@ -294,6 +453,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - VB control classes → `..\tb-export\NewProject\Packages\VB\Sources\CONTROLS\STANDARD\<Class>.twin` (and the relevant `BASE/Base*.twin` files for inherited members).
    - WebView2Package items → `..\tb-export\NewProject\Packages\WebView2Package\Sources\Classes\<Class>.twin`, with enumerations in `Support\Enumerations.twin` and the one user-type in `Support\Types.twin`. Ignore everything under `Abstract\` (private COM interfaces).
    - Assert package → `..\tb-export\NewProject\Packages\Assert\Sources\<Mod>.twin` (one file per module — `Exact.twin`, `Strict.twin`, `Permissive.twin`).
+   - CustomControls — framework half: `..\tb-export\NewProject\Packages\CustomControls\Sources\CustomControls.twin` (a single file with `Module Constants`, the interfaces, and the CoClasses). Runtime half: `..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\Waynes<X>.twin` for each control + `zTemporarySupport.twin` for the shared style helpers and the mixin base classes.
 2. **Decide placement**:
    - Pure language keyword (parsed by the compiler, no runtime call) → `docs/Reference/Core/`.
    - Runtime function/property → `docs/Reference/<Package>/<Mod>/`. Add `redirect_from: /tB/Core/<name>` so legacy `tB/Core/<name>` links still work.
@@ -302,6 +462,10 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - WebView2 enumeration → `docs/Reference/WebView2/Enumerations/<Enum>.md`, mirroring `docs/Reference/VBRUN/Constants/`.
    - WebView2 user-type → `docs/Reference/WebView2/Types/<Name>.md`.
    - Assert module → `docs/Reference/Assert/<Mod>.md` — one single-file page per module, with all 15 members listed inline under `## <Member>` headings. **Do not** create per-member sub-pages; the three modules share an identical API and per-member duplication would add noise.
+   - CustomControls concrete control → `docs/Reference/CustomControls/<Control>.md` (single-file, e.g. `WaynesFrame`, `WaynesLabel`, `WaynesTimer`) or `docs/Reference/CustomControls/<Control>/index.md` (folder-style — required when the control has a state-holder or options sub-page, i.e. `WaynesButton/`, `WaynesForm/`, `WaynesGrid/`, `WaynesSlider/`, `WaynesTextBox/`).
+   - CustomControls shared style helper → `docs/Reference/CustomControls/Styles/<Name>.md`. Pair small helpers with their containers on a single page (`Corner` inline under `Corners.md`, `Border` under `Borders.md`, `FillColorPoint` + `FillColorPoints` under `Fill.md`, `FontStyle` under `TextRendering.md`).
+   - CustomControls framework symbol (interface, CoClass, UDT) → `docs/Reference/CustomControls/Framework/<Name>.md`.
+   - CustomControls enumeration → `docs/Reference/CustomControls/Enumerations/<Enum>.md` (mirrors `WebView2/Enumerations/` and `VBRUN/Constants/`). The three `Long`-alias enums (`ColorRGBA`, `PixelCount`, `PointSize`) live here too, even though they're really typedefs.
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 3. **Adapt content** (VBA-Docs sources):
    - Strip MS frontmatter (`ms.assetid`, `f1_keywords`, `keywords`, `ms.date`, `ms.localizationpriority`).
@@ -324,11 +488,23 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - **Do not** surface the `Lib "<assert{exact,strict,permissive}>"`, `Alias "#N"`, `PreserveSig`, `UseGetLastError`, `DeclareWide PtrSafe Sub` decoration on the page — that's internal pseudo-DLL plumbing. Show each member as if it were an ordinary `Sub`: `Sub AreEqual(Expected, Actual, [Message])`.
    - **Do** mention `[DebugOnly(True)]` (assertions compile out of release builds) and `[MustBeQualified(True)]` (callers must write the module name, e.g. `Strict.IsTrue(x)`).
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the Assert package is MIT-licensed).
-7. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-8. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page.
-9. **Remove the symbol's path from `docs/Reference/VB/todo.md`** `redirect_from:` array (VB controls only — VBA/VBRUN backlogs are closed; WebView2Package and Assert have small enough backlogs to track inline in this file rather than via a `todo.md`).
-10. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
-11. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
+7. **Adapt content** (CustomControls `.twin` sources):
+   - For each concrete control: walk the `Implements <Base> Via _BaseControl = New <Base>` mixin to know which inherited members surface on the control. The base classes are `Private Class` in `zTemporarySupport.twin` and never get their own doc page; their public members fold into the control's Properties listing. The visible inherited surface is small and fixed — see the "Concrete controls" sub-section above for the exact lists per base.
+   - List own + inherited members alphabetically within Properties / Methods / Events sections (mirror VB-package control pages like `CheckBox.md`).
+   - State-holder classes (`WaynesButtonState`, `WaynesSliderState`, `WaynesTextBoxState`) and `WindowsFormOptions` are declared `Private Class` but are reachable through `Public WithEvents …` properties — document them as **sub-pages** of the parent control (folder-style layout, parallel to `WebView2/EnvironmentOptions.md`).
+   - For shared style helpers in `zTemporarySupport.twin` (`Corners`, `Fill`, `Borders`, `TextRendering`, `Anchors`, `Padding`, `Line`): list `Public` fields in source order, grouped into Properties / Methods. They have no `Property Get`/`Property Let` pairs — they're bare-field UDT-style classes that raise an `OnChanged` event when any field is set. Document the fields as properties; mention the `OnChanged` event once at the end.
+   - For the DESIGNER framework: fold the underscore-prefixed default interface (`_CustomControlTimer`, `_CustomControlContext`, …) onto the CoClass page — don't give the `_…` interfaces their own pages. The `[Default]` / `[Default, Source]` decoration is COM detail; show members as if they were declared directly on the CoClass.
+   - For the `SerializeInfo` and `Canvas` UDTs: each carries a `Pointer As LongPtr` field plus `Public DeclareWide PtrSafe Function/Sub … Lib "<…>" Alias "#N"` pseudo-DLL members. Document those members as instance methods on the UDT (`Canvas.RuntimeUICCCanvasAddElement(descriptor)`); **do not** surface the `Lib` / `Alias` / `PreserveSig` / `DLLStackCheck` / `SimplerByVals` decoration (same treatment as Assert).
+   - The `[Description("…")]` attribute on `Public` fields / properties / events gives the user-visible one-liner from the IDE — use it as the basis for the page's description, then expand.
+   - For the three `Long`-alias enums (`ColorRGBA`, `PixelCount`, `PointSize`): document each as a typedef for `Long` (the underlying storage is `Long`), with a callout that they're currently declared as empty `Enum` blocks pending real alias support — the carrying `FIXME` comment confirms this is transitional.
+   - For `Customtate`: document the enum, but include a `> [!NOTE]` callout flagging the typo (the name appears to be a slip for `CustomState`) and pointing readers to the active `WindowState` enum, which carries identical members.
+   - For `BaseControl` / `BaseControlFocusable` / `BaseForm`, `TextDecorator(s)`, the `UDTs` wrapper class (`MouseEvent`, `KeyEvent`, `FocusEvent`, `ElementDescriptor`, `CaretPosition`, `SpecialKeyCodes`), and `MathSupport` / `ColorSupport` modules: **no doc page** — implementation-detail private content. The mixin bases' members surface on the controls; the UDT-class members only matter for someone authoring a *new* custom control and can wait for an "authoring tutorial" pass.
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (both source packages are MIT-licensed).
+8. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+9. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. Also extend `docs/Reference/Packages.md` to list the new package once the landing page exists.
+10. **Remove the symbol's path from `docs/Reference/VB/todo.md`** `redirect_from:` array (VB controls only — VBA/VBRUN backlogs are closed; WebView2Package, Assert, and CustomControls have small enough backlogs to track inline in this file rather than via a `todo.md`).
+11. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
+12. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
 ## twinBASIC deviations from VBA to flag
 

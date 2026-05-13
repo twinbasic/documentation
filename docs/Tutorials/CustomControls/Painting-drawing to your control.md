@@ -10,7 +10,7 @@ redirect_from:
 # Painting / Drawing to Your Control
 
 ### The ICustomControl.Paint method
-This is by far the most important method of a CustomControl.  It tells the form engine exactly how you want it to render your control.
+This is by far the most important method of a CustomControl.  It tells the form engine exactly how you want it to render your control. See the [`ICustomControl.Paint`](../../tB/Packages/CustomControls/Framework/ICustomControl#paint) reference for the host-side contract.
 
 > [!TIP]
 > It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.
@@ -20,7 +20,7 @@ Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas)  _
     Implements ICustomControl.Paint
 ```
 
-You are passed a Canvas object that offers the following methods:
+You are passed a [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) object that offers the following methods:
 
 ```tb
 Canvas.Width As Long    [Property-Get]
@@ -29,6 +29,9 @@ Canvas.Dpi As Long      [Property-Get]
 Canvas.DpiScaleFactor As Double [Property-Get]
 Canvas.AddElement(Descriptor As ElementDescriptor)
 ```
+
+> [!NOTE]
+> The current framework spells these members [`RuntimeUICCGetWidth`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetwidth), [`RuntimeUICCGetHeight`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetheight), [`RuntimeUICCGetDpi`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetdpi), [`RuntimeUICCGetDpiScaleFactor`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetdpiscalefactor), and [`RuntimeUICCCanvasAddElement`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuicccanvasaddelement). The shorter names shown above are how the API was originally drafted; the underlying behaviour is the same.
 
 `Canvas.Width` and `Canvas.Height` are the absolute pixel sizes that your control is drawing to.  Unlike your controls Width/Height properties that are not DPI-scaled, the `Canvas.Width` and `Canvas.Height` values **are** DPI-scaled.
 
@@ -99,3 +102,11 @@ Class MyCustomControl
 EventInfo (MouseEvent) provides mouse information such as the relative X/Y position of the mouse, plus the TrackingX/Y values discussed earlier.
 
 - When you call Canvas.AddElement, your element goes into a render pipeline.  It is **not** immediately painted to the screen.   The render pipeline is compared to the previous render pipeline that was provided by you in the last OnPaint call, and the tB form engine will only redraw areas of the control that have changed.  This allows for efficient painting of controls whilst not needing to be concerned about the finer details of how to do partial repainting.
+
+***
+## See also
+
+- [`ICustomControl`](../../tB/Packages/CustomControls/Framework/ICustomControl) — the interface every custom control implements
+- [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) — the drawing surface passed to **Paint**
+- Style helpers used by the `BackgroundFill` / `Borders` / `Corners` / `TextRenderingOptions` fields of an `ElementDescriptor`: [`Fill`](../../tB/Packages/CustomControls/Styles/Fill), [`Borders`](../../tB/Packages/CustomControls/Styles/Borders), [`Corners`](../../tB/Packages/CustomControls/Styles/Corners), [`TextRendering`](../../tB/Packages/CustomControls/Styles/TextRendering)
+- [CustomControls package reference](../../tB/Packages/CustomControls/) — overview of the framework and the built-in `Waynes…` controls (a number of which — `WaynesGrid`, `WaynesButton`, … — are exactly the worked examples mentioned above)

@@ -8,7 +8,7 @@ vba_attribution: true
 # Xor operator
 {: .no_toc }
 
-Used to perform a logical exclusion (exclusive-or) on two expressions.
+Used to perform a bitwise exclusion (exclusive-or) on two expressions.
 
 Syntax:
 > *result* **=** *expression1* **Xor** *expression2*
@@ -28,7 +28,7 @@ If one — and only one — of the expressions evaluates to **True**, *result* i
 | **False** | **True**  | **True**  |
 | **False** | **False** | **False** |
 
-The **Xor** operator also performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
+The **Xor** operator performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
 
 | If bit in *expression1* is | And bit in *expression2* is | Then *result* is |
 |:-----:|:-----:|:-----:|
