@@ -17,6 +17,24 @@ Reached as `<state>.Borders`, [**CellRenderingOptions.Borders**](../WaynesGrid/C
 btnGo.NormalState.Borders.SetSimpleBorder StrokeSize:=1, ColorRGB:=vbBlack
 ```
 
+Layered borders — multiple [**Border**](#border-class) instances stroked in order — are assigned to the [**Elements**](#elements) array directly. Each element can have its own [**StrokeSize**](#strokesize) and its own [**Fill**](Fill), so a thin black outline can sit on top of a wide coloured band, or three bands of different colours can stack into a "shadow":
+
+```tb
+Dim elems(0 To 2) As Border
+Set elems(0) = New Border
+elems(0).StrokeSize = 4
+elems(0).Fill.ColorPoints.SetSolidColor vbBlack
+Set elems(1) = New Border
+elems(1).StrokeSize = 7
+elems(1).Fill.ColorPoints.SetSolidColor &H99CCFF       ' light blue band
+Set elems(2) = New Border
+elems(2).StrokeSize = 4
+elems(2).Fill.ColorPoints.SetSolidColor &H4D7AB4       ' deeper blue
+btnGo.NormalState.Borders.Elements = elems
+```
+
+A single [**Border**](#border-class) can also carry a gradient instead of a solid colour — assign a multi-stop [**Fill**](Fill) to its [**Fill**](#fill) member. Set [**BlendWithBackgroundFill**](#blendwithbackgroundfill) to **True** on a translucent border to make it tint with the control's own **BackgroundFill** rather than with whatever lies under the control.
+
 * TOC
 {:toc}
 

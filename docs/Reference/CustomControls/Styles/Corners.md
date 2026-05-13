@@ -18,6 +18,19 @@ With btnGo.NormalState.Corners
 End With
 ```
 
+The three [**CornerShape**](../Enumerations/CornerShape) values can mix on a single control. Setting [**TopLeft**](#topleft), [**TopRight**](#topright), [**BottomLeft**](#bottomleft), and [**BottomRight**](#bottomright) individually gives full control over the silhouette:
+
+```tb
+With btnTab.NormalState.Corners
+    .TopLeft.Shape = tbCurve     : .TopLeft.Radius = 12
+    .TopRight.Shape = tbCurve    : .TopRight.Radius = 12
+    .BottomLeft.Shape = tbNotched : .BottomLeft.Radius = 0
+    .BottomRight.Shape = tbNotched : .BottomRight.Radius = 0
+End With
+```
+
+A circular control is just a square one with all four corners set to [**tbCurve**](../Enumerations/CornerShape#tbCurve) and a radius greater than or equal to half the control's smaller dimension — that is what the `Circle` button in the package's sample forms uses.
+
 * TOC
 {:toc}
 

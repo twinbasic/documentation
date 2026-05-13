@@ -22,6 +22,25 @@ With lblTitle.TextRendering
 End With
 ```
 
+[**Fill**](#fill) can hold a gradient just as well as a solid colour, so glyphs themselves can be painted with a top-to-bottom or corner-to-corner colour transition. [**Outlines**](#outlines) is an array of [**Border**](Borders#border-class) elements stroked around the glyphs — a single thin black outline gives a "stickered" look; layering several outlines with different [**StrokeSize**](Borders#strokesize) values produces a glow or drop-shadow:
+
+```tb
+With lblBanner.TextRendering
+    .Font.Size = 32
+    .Font.Weight = tbBold
+    .Alignment = tbAlignMiddleCenter
+    .Fill.SetSimplePattern vbWhite, &HCCCCFF, _
+            Pattern:=tbGradientNorthToSouth
+    Dim outline(0 To 0) As Border
+    Set outline(0) = New Border
+    outline(0).StrokeSize = 2
+    outline(0).Fill.ColorPoints.SetSolidColor vbBlack
+    .Outlines = outline
+End With
+```
+
+Set [**OverflowMode**](#overflowmode) to **tbShrinkToFit** to scale the glyphs down rather than truncating with an ellipsis when the text is too long for the available width — useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
+
 * TOC
 {:toc}
 

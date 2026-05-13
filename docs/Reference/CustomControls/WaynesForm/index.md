@@ -26,6 +26,15 @@ Private Sub Form_Load()
 End Sub
 ```
 
+[**BackgroundFill**](#backgroundfill) is an ordinary [**Fill**](../Styles/Fill), so the form can carry a gradient backdrop just as easily as a solid colour — this is what the package's `HelloWorld` sample form uses to give itself a soft top-to-bottom wash:
+
+```tb
+Private Sub Form_Load()
+    Me.BackgroundFill.SetSimplePattern &HE5E5E5, &HF8F8F8, _
+            Pattern:=tbGradientNorthToSouth
+End Sub
+```
+
 * TOC
 {:toc}
 

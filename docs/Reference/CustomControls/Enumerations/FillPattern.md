@@ -34,3 +34,21 @@ Identifies how the colour table held by a [**Fill**](../Styles/Fill) is applied 
 | **tbGradientCornerBottomRightAlt**{: #tbGradientCornerBottomRightAlt } | 20 | Alternate bottom-right corner gradient with the stops mirrored. |
 
 The colour table itself comes from the array of [**FillColorPoint**](../Styles/Fill#fillcolorpoint-class) values inside [**Fill.ColorPoints**](../Styles/Fill#colorpoints), interpolated to the configured [**Granularity**](../Styles/Fill#granularity).
+
+The same two-stop pair painted with three different patterns produces three quite different results:
+
+```tb
+' Top fades to bottom
+pnlOne.BackgroundFill.SetSimplePattern vbWhite, &H99CCFF, _
+        Pattern:=tbGradientNorthToSouth
+
+' Left fades to right
+pnlTwo.BackgroundFill.SetSimplePattern vbWhite, &H99CCFF, _
+        Pattern:=tbGradientWestToEast
+
+' Emanates from the top-left corner
+pnlThree.BackgroundFill.SetSimplePattern vbWhite, &H99CCFF, _
+        Pattern:=tbGradientCornerTopLeft
+```
+
+For a flat region with no gradient at all, use **tbPatternNone** — the `Fill` becomes fully transparent and the area behind the control shows through.
