@@ -29,7 +29,7 @@ Identifiers for the standard intrinsic and bundled control types, used by runtim
 | **vbDriveListBox**{: #vbDriveListBox } | 15 | A drive list-box. |
 | **vbFileListBox**{: #vbFileListBox } | 16 | A file list-box. |
 | **vbForm**{: #vbForm } | 17 | A form. |
-| **vbWebView2**{: #vbWebView2 } | 18 | A WebView2 control (twinBASIC). |
+| **vbWebView2**{: #vbWebView2 } | 18 | A [**WebView2**](../../WebView2/WebView2/) control. |
 | **vbActiveXExtender**{: #vbActiveXExtender } | 19 | An ActiveX extender wrapper. |
 | **vbShape**{: #vbShape } | 20 | A shape control. |
 | **vbProgressBar**{: #vbProgressBar } | 21 | A progress-bar control. |

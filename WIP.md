@@ -11,7 +11,7 @@ Status:
 - **VBA package** — done.
 - **VBRUN package** — done.
 - **VB package** — done.
-- **WebView2Package** — in progress.
+- **WebView2Package** — done.
 
 ## Where things live
 
