@@ -2,18 +2,23 @@
 
 Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source under `docs/`.
 
-## Current Task
+## Status
 
-Fill out reference documentation by adapting Microsoft VBA-Docs (CC-BY-4.0) for twinBASIC, and document the twinBASIC-specific packages (`VB`, `WebView2Package`, `Assert`, …) from their `.twin` source. Always work from a primary source — never paraphrase from memory.
+Initial reference documentation is **complete**. All seven packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
 
-Status:
+| Package                              | Reference | Tutorials |
+|--------------------------------------|-----------|-----------|
+| VBA package                          | done      | —         |
+| VBRUN package                        | done      | —         |
+| VB package                           | done      | —         |
+| WebView2Package                      | done      | done      |
+| Assert package                       | done      | —         |
+| CustomControls / CustomControlsPackage | done    | —         |
+| cefPackage (CEF)                     | done      | done      |
 
-- **VBA package** — done.
-- **VBRUN package** — done.
-- **VB package** — done.
-- **WebView2Package** — done.
-- **Assert package** — done.
-- **CustomControls / CustomControlsPackage** — in progress.
+The rest of this file is the maintenance guide for adding new pages or updating existing ones — primary-source paths, page templates, cross-section linking conventions, the per-symbol workflow, and the integrity check.
+
+When working from a primary source: always read it first — **never paraphrase from memory.**
 
 ## Where things live
 
@@ -22,9 +27,9 @@ Status:
 - `docs/Reference/<Package>/<Mod>/index.md` — module landing page listing its members.
 - `docs/Reference/VB/<Class>.md` — single-file class page (e.g. [`CheckBox.md`](docs/Reference/VB/CheckBox.md)).
 - `docs/Reference/VB/<Class>/index.md` — folder-style class page when sub-pages may follow (e.g. [`CheckMark/index.md`](docs/Reference/VB/CheckMark/index.md)).
-- `docs/Reference/VB/todo.md` — backlog tracker for the VB package; see [Backlog discovery](#backlog-discovery).
 - `docs/Reference/WebView2/` — WebView2 package: the **WebView2** control class plus its small wrapper classes (request / response / headers / environment options) and the `wv2…` enumerations.
 - `docs/Reference/CustomControls/` — CustomControls package: the eight **Waynes…** custom controls, their shared `Styles/` helper classes (`Fill`, `Borders`, `Corners`, `TextRendering`, …), the `Framework/` DESIGNER surface (interfaces, CoClasses, the `Canvas` / `SerializeInfo` UDTs), and the `Enumerations/` (`CornerShape`, `FillPattern`, `DockMode`, …).
+- `docs/Reference/CEF/` — CEF (Chromium Embedded Framework) package: the **CefBrowser** control, its `EnvironmentOptions` sub-page, and the two user-facing enumerations (`CefLogSeverity`, `cefPrintOrientation`). This is a much smaller surface than WebView2 — the package is currently BETA and many WebView2-equivalent features are not yet exposed.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - `docs/_includes/footer_custom.html` — overrides the theme's footer slot; renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
@@ -58,9 +63,16 @@ All of twinbasic's package sources are at:
 etc.
 ```
 
+For the CEF package, the sources live in a separate sibling tree (not under `tb-export`):
+
+```
+..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\
+..\tbrepro\cef\CEFSampleProject\Sources\                        ← four worked examples + MainForm
+```
+
 ### VB Controls
 
-The `STANDARD/` folder is the primary backlog. The `BASE/` folder defines the inheritance chain (e.g. `BaseControlWindowlessNoFocus` → `BaseControlRectDockable` → `BaseControlRect` → `BaseControl`); read those alongside the leaf class to know which `Public` members are actually visible. Members marked `Protected` or hidden behind `[Unimplemented]` should be flagged with a `> [!NOTE]` callout.
+The `STANDARD/` folder holds the leaf control classes. The `BASE/` folder defines the inheritance chain (e.g. `BaseControlWindowlessNoFocus` → `BaseControlRectDockable` → `BaseControlRect` → `BaseControl`); read those alongside the leaf class to know which `Public` members are actually visible. Members marked `Protected` or hidden behind `[Unimplemented]` should be flagged with a `> [!NOTE]` callout.
 
 These pages are fully original content — **omit** the `vba_attribution: true` frontmatter flag.
 
@@ -170,8 +182,6 @@ That's 4 pages total. (If a future release of the package adds more modules or n
 - `parent: Assert Package` on each module page (matching the index `title:`, the same split VB / VBRUN / WebView2 use).
 
 **License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2022) — same situation as WebView2Package. Pages are fully original; **omit** the `vba_attribution: true` flag.
-
-**No backlog file** — three modules listed in this section are the entire backlog.
 
 ### CustomControls / CustomControlsPackage
 
@@ -303,7 +313,87 @@ docs/Reference/CustomControls/
 
 **License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2022) — same situation as WebView2Package and Assert. Pages are fully original; **omit** the `vba_attribution: true` flag.
 
-**No backlog file** — the eight controls + the three sub-groups enumerated above are the entire backlog; track inline here.
+### cefPackage (CEF)
+
+Layout of `..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\`:
+
+- `CefControl.twin` — contains three classes: the private `CefBrowserBaseCtl` (where every event / method / property is declared), the private `CefEnvironmentOptions` (a bare-field options class), and the public `CefBrowser` control which only inherits from `CefBrowserBaseCtl` and sets the design-time icon. This single file is the entire user-facing surface of the package.
+- `CefControlGlobalWnd.twin` — private internal message-window plumbing; no doc page.
+- `APIs.twin` — private Win32 API declarations; no doc page.
+- `MainModule.twin` — `PreSubMain` module that intercepts CEF sub-process launches; no doc page.
+- `Registry.twin` — Win32 registry helpers; no doc page.
+- `SpecialFolders.twin` — `KnownFolders_CSIDLs` enum + `GetSpecialFolder` helper; `Private Module`, no doc page (used only by the sample project, not exported from the package).
+- `CEF/Aliases.twin`, `CEF/ApiEntryPoints.twin`, `CEF/Globals.twin`, `CEF/Initialize.twin`, `CEF/Misc.twin` — `Private Module` implementation detail; no doc pages.
+- `CEF/Enums/_cef_*_t.twin` — internal C-ABI enums wrapped in `Private Module _cef_*_t`; one file (`_cef_log_severity_t.twin`) also declares the user-facing `CefLogSeverity` enum. The other 29 `_cef_*_t` enums never surface in the public API and get **no doc page**.
+- `CEF/Structs/_cef_*_t.twin` — internal C-ABI structs (`cef_browser_settings_t`, `cef_pdf_print_settings_t`, …) wrapped in `Private Module`; no doc pages. `Structs/TODO.twin` declares an empty placeholder `Class CefRequestHeaders` — also no doc page (see the alias note below).
+- `CEF/CrossProcessIPC/BrowserOM.twin`, `RendererOM.twin`, `RendererAsyncOM.twin` — `Private Class` (or unmarked-but-effectively-private) classes that broker IPC between the host and the CEF browser / renderer processes; no doc pages. **Exception:** `BrowserOM.twin` declares the user-facing `cefPrintOrientation` enum inline (used by `CefBrowser.PrintToPdf`); document it under `Enumerations/`.
+- `CEF/Implementations/*.twin` — every file is `Private Class` / `Private Module`; CEF callback handlers (`Client`, `ClientLifeSpanHandler`, `ClientLoadHandler`, `AppRender…`, the `Exposed*Javascript*` and `*Task` classes, the `PrintToPDFCallback`, …). All implementation detail; no doc pages.
+
+Public user-facing surface (one control + one options class + two enums):
+
+| Symbol                       | Kind                                  | Role                                                                                          |
+|------------------------------|---------------------------------------|-----------------------------------------------------------------------------------------------|
+| `CefBrowser`                 | Class (inherits `CefBrowserBaseCtl`)  | the control itself, tagged `[WindowsControl("/Miscellaneous/cef64.png")]`                     |
+| `CefEnvironmentOptions`      | `Private Class`, exposed              | reached via `Public EnvironmentOptions As CefEnvironmentOptions = New CefEnvironmentOptions` on the control |
+| `CefLogSeverity`             | `Enum` (in `_cef_log_severity_t.twin`)| used by `CefEnvironmentOptions.LogSeverity`                                                   |
+| `cefPrintOrientation`        | `Enum` (in `BrowserOM.twin`)          | used by the `Orientation` parameter of `CefBrowser.PrintToPdf`                                |
+
+`CefBrowserBaseCtl` is `Private Class` but is where every public member is *declared* — `CefBrowser` itself adds nothing beyond inheriting from it. Document everything on the `CefBrowser/index.md` page (folder-style, parallel to `WebView2/`) and treat the base class as an internal split that doesn't surface.
+
+`CefBrowser` inherits from `VB.BaseControlRectDockable`, so its Properties listing must fold in the dockable-rect surface (`Name`, `Left`, `Top`, `Width`, `Height`, `Anchors`, `Dock`, ...) the same way VB-package control pages and CustomControls control pages do.
+
+`CefBrowserRequestHeaders` is declared at the top of `CefControl.twin` as `Alias CefBrowserRequestHeaders As Object` and appears in the `NavigationStarting` event signature. The underlying `Class CefRequestHeaders` lives at the bottom of `Structs/TODO.twin` with an empty body — it's a placeholder for a future header collection. **No doc page;** mention on the `NavigationStarting` event entry that the parameter is currently typed `Object` and reserved for future use.
+
+The `CefBrowser` public surface, from `grep '^\s*Public' CefControl.twin` plus a walk through `CefBrowserBaseCtl`:
+
+- **Events (12):** `Create`, `Ready`, `Error`, `NavigationStarting`, `NavigationComplete`, `SourceChanged`, `DocumentTitleChanged`, `DOMContentLoaded`, `PrintToPdfCompleted`, `PrintToPdfFailed`, `JsAsyncResult`, `JsMessage`.
+- **Methods (14):** `Initialize`, `Navigate`, `NavigateToString`, `Reload`, `GoBack`, `GoForward`, `ExecuteScript`, `JsRun`, `JsRunAsync`, `PostWebMessage`, `SetVirtualHostNameToFolderMapping`, `ClearVirtualHostNameToFolderMapping`, `OpenDevToolsWindow`, `PrintToPdf`.
+- **Properties (12):** `DocumentURL` (Get/Let), `DocumentTitle` (Get), `ZoomFactor` (Get/Let), `UserAgent` (Get/Let), `CanGoBack` (Get), `CanGoForward` (Get), `CefMajorVersion` (Get), `Visible` (Get/Let), `hWnd` (Get), `Parent` (Get), `EnvironmentOptions` (field), `CreateInitialized` (field, `Boolean`, defaults `True`). Plus a `Hidden` `Align` (Get/Let) inherited boilerplate. Plus the inherited rect-dockable surface (`Name`, `Left`, `Top`, `Width`, `Height`, `Anchors`, `Dock`, …).
+
+`CefEnvironmentOptions` is four bare `Public` fields:
+
+| Field                      | Type             |
+|----------------------------|------------------|
+| `BrowserExecutableFolder`  | `String`         |
+| `UserDataFolder`           | `String`         |
+| `LogFilePath`              | `String`         |
+| `LogSeverity`              | `CefLogSeverity` |
+
+`CefLogSeverity` members: `CefLogDisable = 0`, `CefLogVerbose = 1`, `CefLogInfo = 2`, `CefLogWarning = 3`, `CefLogError = 4`, `CefLogFatal = 5`.
+
+`cefPrintOrientation` members: `cefPrintPortrait = 0`, `cefPrintLandscape = 1`.
+
+**WebView2-parity gap list** (call out on `CEF/index.md`, drawn from `Sources\Example1..4.twin` where these are commented out as *"Sorry, this feature is not yet available in the CEF package"*):
+
+- Methods: `OpenTaskManagerWindow`, `AddObject` (host-object publication), the request-filter machinery (`AddWebResourceRequestedFilter`).
+- Events: `AcceleratorKeyPressed`, `PermissionRequested`, `WebResourceRequested`, `ProcessFailed`, `ScriptDialogOpening`, `UserContextMenu`, `SuspendCompleted`, `SuspendFailed`, `DownloadStarting`, `NewWindowRequested`.
+
+`CefBrowser.NavigationComplete` carries `IsSuccess` and `WebErrorStatus` parameters, but the source (`OnNavigationComplete_UI` in `CefControl.twin`) currently hard-codes `IsSuccess = True` and `WebErrorStatus = 0` with `FIXME` comments — note this on the event page.
+
+**Multi-version source.** The same `.twin` sources compile against three CEF runtimes (v49 / v109 / v145) selected via the `CEF_VERSION` conditional-compilation argument on the project. At runtime, `CefBrowser.CefMajorVersion` returns the value picked at compile time. The user picks a runtime at deploy time by downloading the matching ZIP from `github.com/twinbasic/cef-runtimes` and extracting to `%LocalAppData%\twinBASIC_CEF_Runtime\`, or by overriding `CefBrowser.EnvironmentOptions.BrowserExecutableFolder` before / during the `Create` event. The wiki entry will redirect to the new docs, so the runtime download + version-picking section lives on `CEF/index.md`.
+
+#### Doc-side layout (folders / files)
+
+Six pages total:
+
+```
+docs/Reference/CEF/
+  index.md                                  ← package landing; intro + WebView2 comparison + version table + runtime install + WebView2-parity gap list + class & enum lists
+  CefBrowser/index.md                       ← the control (folder-style, like WebView2/WebView2/index.md)
+  CefBrowser/EnvironmentOptions.md          ← parallel to WebView2/WebView2/EnvironmentOptions.md
+  Enumerations/index.md
+  Enumerations/CefLogSeverity.md
+  Enumerations/cefPrintOrientation.md
+```
+
+**Naming:**
+
+- Folder / URL segment: `CEF/` (uppercase acronym, matches the wiki spelling; drops the `Package` suffix, same simplification as WebView2 and Assert).
+- Index title: `CEF Package` — the `<Name> Package` convention.
+- Permalinks: `/tB/Packages/CEF/` for the landing, `/tB/Packages/CEF/CefBrowser/` for the control (folder-style), `/tB/Packages/CEF/CefBrowser/EnvironmentOptions` for the sub-page, `/tB/Packages/CEF/Enumerations/<Enum>` for the enums.
+- `parent: CEF Package` on every top-level child page. The two enum pages set `parent: Enumerations` and `grand_parent: CEF Package` (the grouped-page pattern; mirror exactly the structure WebView2 uses for its `Enumerations/`). The `EnvironmentOptions` sub-page sets `parent: CefBrowser` and `grand_parent: CEF Package`.
+
+**License:** MIT (Wayne Phillips T/A iTech Masters) — same situation as WebView2Package, Assert, and CustomControls. The Settings file doesn't carry an explicit `licence:` field but every other package by this author is MIT and the wiki implies the same. Pages are fully original; **omit** the `vba_attribution: true` flag.
 
 ## Page template
 
@@ -316,6 +406,7 @@ Match the existing style. Worked examples to imitate:
 - VB control class (single-file): `docs/Reference/VB/CheckBox.md`.
 - VB control class (folder-style): `docs/Reference/VB/CheckMark/index.md`.
 - Assert module page (single-file, all members inline): `docs/Reference/Assert/Exact.md`.
+- CEF control class (folder-style with a sub-page): `docs/Reference/CEF/CefBrowser/index.md` + `docs/Reference/CEF/CefBrowser/EnvironmentOptions.md`.
 
 Skeleton:
 
@@ -382,6 +473,9 @@ The URL prefixes are *not* uniform across packages — VBA pages live one segmen
 - CustomControls style helper → `/tB/Packages/CustomControls/Styles/<Name>`
 - CustomControls framework symbol → `/tB/Packages/CustomControls/Framework/<Name>`
 - CustomControls enumeration → `/tB/Packages/CustomControls/Enumerations/<Enum>`
+- CEF `CefBrowser` class → `/tB/Packages/CEF/CefBrowser/` (folder-style — has the `EnvironmentOptions` sub-page)
+- CEF `EnvironmentOptions` sub-page → `/tB/Packages/CEF/CefBrowser/EnvironmentOptions`
+- CEF enumeration → `/tB/Packages/CEF/Enumerations/<Enum>`
 
 Common patterns:
 
@@ -436,12 +530,26 @@ Common patterns:
 | CC `Packages/CustomControls/Framework/X`   | `Packages/CustomControls/<Control>` (single-file) | `[Y](../<Control>)`                  |
 | CC `Packages/CustomControls/Enumerations/X` | sibling `Enumerations/Y`                   | `[Y](Y)`                                   |
 | CC `Packages/CustomControls/Enumerations/X` | `Packages/CustomControls/<Control>` (single-file) | `[Y](../<Control>)`                 |
+| CEF `Packages/CEF/index`                   | CEF `Packages/CEF/CefBrowser/`              | `[Y](CefBrowser/)`                         |
+| CEF `Packages/CEF/index`                   | CEF `Packages/CEF/Enumerations/Y`           | `[Y](Enumerations/Y)`                      |
+| CEF `Packages/CEF/index`                   | WebView2 `Packages/WebView2/Y`              | `[Y](../WebView2/Y)`                       |
+| CEF `Packages/CEF/CefBrowser/index`        | CEF `Packages/CEF/CefBrowser/EnvironmentOptions` | `[Y](EnvironmentOptions)`             |
+| CEF `Packages/CEF/CefBrowser/index`        | CEF `Packages/CEF/Enumerations/Y`           | `[Y](../Enumerations/Y)`                   |
+| CEF `Packages/CEF/CefBrowser/index`        | WebView2 `Packages/WebView2/Y`              | `[Y](../../WebView2/Y)`                    |
+| CEF `Packages/CEF/CefBrowser/index`        | VB `Packages/VB/Y`                          | `[Y](../../VB/Y)`                          |
+| CEF `Packages/CEF/CefBrowser/index`        | `Core/Y`                                    | `[Y](../../../Core/Y)`                     |
+| CEF `Packages/CEF/CefBrowser/EnvironmentOptions` | CEF `Packages/CEF/CefBrowser/` (parent)| `[Y](.)`                                   |
+| CEF `Packages/CEF/CefBrowser/EnvironmentOptions` | CEF `Packages/CEF/Enumerations/Y`    | `[Y](../Enumerations/Y)`                   |
+| CEF `Packages/CEF/Enumerations/X`          | sibling `Enumerations/Y`                    | `[Y](Y)`                                   |
+| CEF `Packages/CEF/Enumerations/X`          | CEF `Packages/CEF/CefBrowser/` (folder-style) | `[Y](../CefBrowser/)`                    |
+| CEF `Packages/CEF/Enumerations/X`          | CEF `Packages/CEF/CefBrowser/EnvironmentOptions` | `[Y](../CefBrowser/EnvironmentOptions)` |
 | `Core/X`                                   | VBA `Modules/<Mod>/Y`                       | `[Y](../Modules/<Mod>/Y)`                  |
 | `Core/X`                                   | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../Packages/VBRUN/<Mod>/Y)`           |
 | `Core/X`                                   | VB `Packages/VB/Y`                          | `[Y](../Packages/VB/Y)`                    |
 | `Core/X`                                   | WebView2 `Packages/WebView2/Y`       | `[Y](../Packages/WebView2/Y)`       |
 | `Core/X`                                   | Assert `Packages/Assert/<Mod>`              | `[Y](../Packages/Assert/<Mod>)`            |
 | `Core/X`                                   | CC `Packages/CustomControls/Y`              | `[Y](../Packages/CustomControls/Y)`        |
+| `Core/X`                                   | CEF `Packages/CEF/Y`                        | `[Y](../Packages/CEF/Y)`                   |
 | `Core/X`                                   | `Core/Y` (sibling)                          | `[Y](Y)`                                   |
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
@@ -454,6 +562,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - WebView2Package items → `..\tb-export\NewProject\Packages\WebView2Package\Sources\Classes\<Class>.twin`, with enumerations in `Support\Enumerations.twin` and the one user-type in `Support\Types.twin`. Ignore everything under `Abstract\` (private COM interfaces).
    - Assert package → `..\tb-export\NewProject\Packages\Assert\Sources\<Mod>.twin` (one file per module — `Exact.twin`, `Strict.twin`, `Permissive.twin`).
    - CustomControls — framework half: `..\tb-export\NewProject\Packages\CustomControls\Sources\CustomControls.twin` (a single file with `Module Constants`, the interfaces, and the CoClasses). Runtime half: `..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\Waynes<X>.twin` for each control + `zTemporarySupport.twin` for the shared style helpers and the mixin base classes.
+   - CEF package → `..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\CefControl.twin` for the whole public surface (the `CefBrowser` control, its `CefBrowserBaseCtl` base, and `CefEnvironmentOptions`). For the two surfaced enums: `CEF\Enums\_cef_log_severity_t.twin` (declares both the internal `cef_log_severity_t` and the user-facing `CefLogSeverity`) and `CEF\CrossProcessIPC\BrowserOM.twin` (declares `cefPrintOrientation` inline, around line 29). Everything else under `cefPackage\Sources\` and `cefPackage\Sources\CEF\` is `Private Class` / `Private Module` plumbing — skip. The sample project's `Sources\Example1..4.twin` are the source-of-truth for which features are *not* yet exposed (commented-out event handlers with *"Sorry, this feature is not yet available in the CEF package"*).
 2. **Decide placement**:
    - Pure language keyword (parsed by the compiler, no runtime call) → `docs/Reference/Core/`.
    - Runtime function/property → `docs/Reference/<Package>/<Mod>/`. Add `redirect_from: /tB/Core/<name>` so legacy `tB/Core/<name>` links still work.
@@ -466,6 +575,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - CustomControls shared style helper → `docs/Reference/CustomControls/Styles/<Name>.md`. Pair small helpers with their containers on a single page (`Corner` inline under `Corners.md`, `Border` under `Borders.md`, `FillColorPoint` + `FillColorPoints` under `Fill.md`, `FontStyle` under `TextRendering.md`).
    - CustomControls framework symbol (interface, CoClass, UDT) → `docs/Reference/CustomControls/Framework/<Name>.md`.
    - CustomControls enumeration → `docs/Reference/CustomControls/Enumerations/<Enum>.md` (mirrors `WebView2/Enumerations/` and `VBRUN/Constants/`). The three `Long`-alias enums (`ColorRGBA`, `PixelCount`, `PointSize`) live here too, even though they're really typedefs.
+   - CEF control → `docs/Reference/CEF/CefBrowser/index.md` (folder-style; carries the `EnvironmentOptions` sub-page). Pre-creation options class → `docs/Reference/CEF/CefBrowser/EnvironmentOptions.md` (parallel to `WebView2/WebView2/EnvironmentOptions.md`). CEF enumeration → `docs/Reference/CEF/Enumerations/<Enum>.md`.
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 3. **Adapt content** (VBA-Docs sources):
    - Strip MS frontmatter (`ms.assetid`, `f1_keywords`, `keywords`, `ms.date`, `ms.localizationpriority`).
@@ -500,9 +610,21 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - For `Customtate`: document the enum, but include a `> [!NOTE]` callout flagging the typo (the name appears to be a slip for `CustomState`) and pointing readers to the active `WindowState` enum, which carries identical members.
    - For `BaseControl` / `BaseControlFocusable` / `BaseForm`, `TextDecorator(s)`, the `UDTs` wrapper class (`MouseEvent`, `KeyEvent`, `FocusEvent`, `ElementDescriptor`, `CaretPosition`, `SpecialKeyCodes`), and `MathSupport` / `ColorSupport` modules: **no doc page** — implementation-detail private content. The mixin bases' members surface on the controls; the UDT-class members only matter for someone authoring a *new* custom control and can wait for an "authoring tutorial" pass.
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (both source packages are MIT-licensed).
-8. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-9. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. Also extend `docs/Reference/Packages.md` to list the new package once the landing page exists.
-10. **Remove the symbol's path from `docs/Reference/VB/todo.md`** `redirect_from:` array (VB controls only — VBA/VBRUN backlogs are closed; WebView2Package, Assert, and CustomControls have small enough backlogs to track inline in this file rather than via a `todo.md`).
+8. **Adapt content** (CEF `.twin` sources):
+   - `CefBrowser` is `Class CefBrowser` at the bottom of `CefControl.twin`, but inherits *everything* from the private `CefBrowserBaseCtl` declared at the top of the same file. Document the union as the `CefBrowser` page; don't surface the base-class split. Then walk `Inherits VB.BaseControlRectDockable` (`..\tb-export\NewProject\Packages\VB\Sources\BASE\BaseControlRectDockable.twin` and ancestors) to fold the inherited rect-dockable surface (`Name`, `Left`, `Top`, `Width`, `Height`, `Anchors`, `Dock`, …) into the Properties listing, the same way VB-package and CustomControls control pages do.
+   - List own + inherited members alphabetically within Properties / Methods / Events sections (mirror `CheckBox.md`, `WebView2/WebView2/index.md`).
+   - The `[Description("…")]` attribute on each `Public Event` / `Public` method / `Public Property` gives the user-visible one-liner from the IDE — use it as the basis for the page entry, then expand. The `[Description("")]` blocks with empty strings (the `Initialize` method, the bare-field properties like `CreateInitialized`) need fully original prose.
+   - `CefEnvironmentOptions` is `Private Class` but reached via `Public EnvironmentOptions As CefEnvironmentOptions = New CefEnvironmentOptions` on the control — same pattern as WebView2's `EnvironmentOptions`. Document it as the **sub-page** `CefBrowser/EnvironmentOptions.md` (folder-style layout on the parent). Its four fields are bare `Public` (no `Property Get`/`Let` pairs) — list them as properties.
+   - Settings on `CefEnvironmentOptions` only take effect *before or during* the `Create` event (the source `CreateCEFBrowser` reads them once when launching the helper process); call this out on the sub-page.
+   - For the two enums: `CefLogSeverity` and `cefPrintOrientation` (note the lowercase `c` on the second — it's declared `Enum cefPrintOrientation` in `BrowserOM.twin`; document it with its source-side spelling). Format pages like `WebView2/Enumerations/wv2PrintOrientation.md` — single intro paragraph, a value table with `{: #cefXxx }` anchors on each row for deep-linking.
+   - The `cefPrintOrientation` enum is declared *inside* the private `BrowserOM` class but accessed from user code unqualified (`cefPrintOrientation.cefPrintPortrait`) — it surfaces because `CefBrowser.PrintToPdf` exposes it as a parameter type. Don't surface the `BrowserOM` enclosing class; document the enum at top level under `Enumerations/`.
+   - `NavigationStarting` carries a `RequestHeaders As CefBrowserRequestHeaders` parameter. `CefBrowserRequestHeaders` is `Alias … As Object` (the underlying class is an empty placeholder) — call this out on the event entry as *"currently typed Object; reserved for a future request-headers collection"* and don't link out to a non-existent page.
+   - `NavigationComplete` carries `IsSuccess` and `WebErrorStatus` — but `OnNavigationComplete_UI` in `CefControl.twin` hard-codes both to placeholder values with `FIXME` comments. Document the signature as designed but add a `> [!NOTE]` saying the values are currently fixed pending implementation.
+   - WebView2-parity gap list lives on `CEF/index.md` (one bulleted section). Methods / events not yet exposed get **no per-page stub** — they don't exist on `CefBrowser` and have no place to land.
+   - Multi-version source: the same `.twin` files compile for CEF v49 / v109 / v145 via the `CEF_VERSION` compiler constant. Mention this on `CEF/index.md` together with the runtime download story; reference `CefBrowser.CefMajorVersion` as the runtime-side query.
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same as WebView2 / Assert / CustomControls).
+9. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+10. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
 11. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
 12. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
@@ -520,7 +642,7 @@ When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Ref
 
 ## Scripts and tooling
 
-Any new helper script (backlog reconciliation, content conversion, link checks beyond htmlproofer, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is.
+Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is.
 
 ## Build / preview
 
@@ -528,19 +650,19 @@ From `docs/`:
 
 - `bundle exec jekyll build` (or `build.bat`) — build to `_site/`.
 - `bundle exec jekyll serve` (or `serve.bat`) — local server at `localhost:4000`.
-- `bundle exec htmlproofer ./_site --disable-external --no-enforce-https` (or `check.bat`) — link check. See [Site integrity check](#site-integrity-check).
+- `check.bat` — link check (offline Lychee against `_site/`).
 
 ## Site integrity check
 
-After a batch of changes, verify the site builds clean and all links resolve. From the `docs/` folder, run **exactly** this command:
+After a batch of changes, verify the site builds clean and all links resolve. From the `docs/` folder, run:
 
 ```sh
-bundle exec htmlproofer ./_site --disable-external --no-enforce-https
+build.bat && check.bat
 ```
 
-Do not add, remove, or substitute flags. This catches broken intra-site links, missing pages, and malformed `redirect_from` entries — the most common breakage when adding new pages or moving content between sections. A clean run is the bar for "ready to commit".
+`check.bat` runs Lychee in offline mode against the built `_site/` tree — it catches broken intra-site links, missing pages, and malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections). A clean run is the bar for "ready to commit".
 
-Requires a prior `bundle exec jekyll build` so `_site/` is current.
+Requires `build.bat` to have produced an up-to-date `_site/`.
 
 ## Repository Use
 

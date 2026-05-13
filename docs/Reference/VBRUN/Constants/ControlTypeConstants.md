@@ -48,3 +48,4 @@ Identifiers for the standard intrinsic and bundled control types, used by runtim
 | **vbReport**{: #vbReport } | 34 | A report (data-report) control. |
 | **vbCheckMark**{: #vbCheckMark } | 35 | A check-mark control. |
 | **vbTwinBridge**{: #vbTwinBridge } | 36 | A TwinBridge interop wrapper (twinBASIC). |
+| **vbCefBrowser**{: #vbCefBrowser } | 37 | A [**CefBrowser**](../../CEF/CefBrowser/) control. |
