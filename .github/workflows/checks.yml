@@ -35,7 +35,14 @@ jobs:
       - name: Build with Jekyll
         run: bundle exec jekyll build
         working-directory: ./docs
-      - name: Run HTML Proofer
-        run: bundle exec htmlproofer ./_site --disable-external --no-enforce-https
-        # --log-level :debug 
-        working-directory: ./docs
+      - name: Run Lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --offline --include-fragments
+            --fallback-extensions html
+            --index-files 'index.html,.'
+            --root-dir ${{ github.workspace }}/docs/_site
+            ./_site
+          workingDirectory: ./docs
+          fail: true
