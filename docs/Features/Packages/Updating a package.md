@@ -1,6 +1,7 @@
 ---
 title: Updating a Package
 parent: Packages
+grand_parent: Features
 nav_order: 4
 permalink: /Features/Packages/Updating
 redirect_from:
