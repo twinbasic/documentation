@@ -2,7 +2,7 @@
 title: WebView2 Package
 parent: Packages
 grand_parent: Reference Section
-nav_order: 5
+nav_order: 6
 permalink: /tB/Packages/WebView2/
 has_toc: false
 ---
