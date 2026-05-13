@@ -43,4 +43,6 @@ MyResult = 12.6 Mod 5   ' Returns 3.
 
 ### See Also
 
+- [**\\** operator](IntegerDivide)
+- [**/** operator](Divide)
 - [Operators](../../Reference/Operators)

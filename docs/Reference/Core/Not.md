@@ -51,5 +51,8 @@ MyCheck = Not A          ' Returns -11 (bitwise comparison).
 
 - [**And** operator](And)
 - [**Or** operator](Or)
+- [**Xor** operator](Xor)
+- [**Eqv** operator](Eqv)
+- [**Imp** operator](Imp)
 - [**IsNot** operator](IsNot)
 - [Operators](../../Reference/Operators)

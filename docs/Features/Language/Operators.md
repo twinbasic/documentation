@@ -11,7 +11,7 @@ twinBASIC introduces several new operators to enhance language capabilities. Ref
 
 ## Bitshift Operators
 
-`<<` and `>>` perform left-shift and right-shift operations on a numeric variable. Note that shifts beyond available size result in 0, not wrapping.
+[`<<`](../../tB/Core/LeftShift) and [`>>`](../../tB/Core/RightShift) perform left-shift and right-shift operations on a numeric variable. Note that shifts beyond available size result in 0, not wrapping.
 
 ## Short-Circuit Conditional Operators
 
@@ -26,9 +26,9 @@ Short-circuit [`If()`](../../tB/Core/If) operator with syntax identical to the t
 
 ## Assignment Operators
 
-`+= -= /= *= ^= &= <<= >>=`
+`+= -= /= \= *= ^= &= <<= >>=`
 
-These are the equivalent of `var = var (operand) (var2)`. So `i += 1` is the equivalent of `i = i + 1`.
+These are the equivalent of `var = var (operand) (var2)`. So `i += 1` is the equivalent of `i = i + 1`. See [Reference → Operators → Compound Assignment](../../Reference/Operators#compound-assignment) for the per-operator details.
 
 ## IsNot Operator
 
