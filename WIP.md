@@ -2,19 +2,23 @@
 
 Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source under `docs/`.
 
-## Current Task
+## Status
 
-Fill out reference documentation by adapting Microsoft VBA-Docs (CC-BY-4.0) for twinBASIC, and document the twinBASIC-specific packages (`VB`, `WebView2Package`, `Assert`, …) from their `.twin` source. Always work from a primary source — never paraphrase from memory.
+Initial reference documentation is **complete**. All seven packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
 
-Status:
+| Package                              | Reference | Tutorials |
+|--------------------------------------|-----------|-----------|
+| VBA package                          | done      | —         |
+| VBRUN package                        | done      | —         |
+| VB package                           | done      | —         |
+| WebView2Package                      | done      | done      |
+| Assert package                       | done      | —         |
+| CustomControls / CustomControlsPackage | done    | —         |
+| cefPackage (CEF)                     | done      | done      |
 
-- **VBA package** — done.
-- **VBRUN package** — done.
-- **VB package** — done.
-- **WebView2Package** — done.
-- **Assert package** — done.
-- **CustomControls / CustomControlsPackage** — done.
-- **cefPackage (CEF)** — in progress.
+The rest of this file is the maintenance guide for adding new pages or updating existing ones — primary-source paths, page templates, cross-section linking conventions, the per-symbol workflow, and the integrity check.
+
+When working from a primary source: always read it first — **never paraphrase from memory.**
 
 ## Where things live
 
@@ -23,7 +27,6 @@ Status:
 - `docs/Reference/<Package>/<Mod>/index.md` — module landing page listing its members.
 - `docs/Reference/VB/<Class>.md` — single-file class page (e.g. [`CheckBox.md`](docs/Reference/VB/CheckBox.md)).
 - `docs/Reference/VB/<Class>/index.md` — folder-style class page when sub-pages may follow (e.g. [`CheckMark/index.md`](docs/Reference/VB/CheckMark/index.md)).
-- `docs/Reference/VB/todo.md` — backlog tracker for the VB package; see [Backlog discovery](#backlog-discovery).
 - `docs/Reference/WebView2/` — WebView2 package: the **WebView2** control class plus its small wrapper classes (request / response / headers / environment options) and the `wv2…` enumerations.
 - `docs/Reference/CustomControls/` — CustomControls package: the eight **Waynes…** custom controls, their shared `Styles/` helper classes (`Fill`, `Borders`, `Corners`, `TextRendering`, …), the `Framework/` DESIGNER surface (interfaces, CoClasses, the `Canvas` / `SerializeInfo` UDTs), and the `Enumerations/` (`CornerShape`, `FillPattern`, `DockMode`, …).
 - `docs/Reference/CEF/` — CEF (Chromium Embedded Framework) package: the **CefBrowser** control, its `EnvironmentOptions` sub-page, and the two user-facing enumerations (`CefLogSeverity`, `cefPrintOrientation`). This is a much smaller surface than WebView2 — the package is currently BETA and many WebView2-equivalent features are not yet exposed.
@@ -69,7 +72,7 @@ For the CEF package, the sources live in a separate sibling tree (not under `tb-
 
 ### VB Controls
 
-The `STANDARD/` folder is the primary backlog. The `BASE/` folder defines the inheritance chain (e.g. `BaseControlWindowlessNoFocus` → `BaseControlRectDockable` → `BaseControlRect` → `BaseControl`); read those alongside the leaf class to know which `Public` members are actually visible. Members marked `Protected` or hidden behind `[Unimplemented]` should be flagged with a `> [!NOTE]` callout.
+The `STANDARD/` folder holds the leaf control classes. The `BASE/` folder defines the inheritance chain (e.g. `BaseControlWindowlessNoFocus` → `BaseControlRectDockable` → `BaseControlRect` → `BaseControl`); read those alongside the leaf class to know which `Public` members are actually visible. Members marked `Protected` or hidden behind `[Unimplemented]` should be flagged with a `> [!NOTE]` callout.
 
 These pages are fully original content — **omit** the `vba_attribution: true` frontmatter flag.
 
@@ -179,8 +182,6 @@ That's 4 pages total. (If a future release of the package adds more modules or n
 - `parent: Assert Package` on each module page (matching the index `title:`, the same split VB / VBRUN / WebView2 use).
 
 **License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2022) — same situation as WebView2Package. Pages are fully original; **omit** the `vba_attribution: true` flag.
-
-**No backlog file** — three modules listed in this section are the entire backlog.
 
 ### CustomControls / CustomControlsPackage
 
@@ -312,8 +313,6 @@ docs/Reference/CustomControls/
 
 **License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2022) — same situation as WebView2Package and Assert. Pages are fully original; **omit** the `vba_attribution: true` flag.
 
-**No backlog file** — the eight controls + the three sub-groups enumerated above are the entire backlog; track inline here.
-
 ### cefPackage (CEF)
 
 Layout of `..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\`:
@@ -395,8 +394,6 @@ docs/Reference/CEF/
 - `parent: CEF Package` on every top-level child page. The two enum pages set `parent: Enumerations` and `grand_parent: CEF Package` (the grouped-page pattern; mirror exactly the structure WebView2 uses for its `Enumerations/`). The `EnvironmentOptions` sub-page sets `parent: CefBrowser` and `grand_parent: CEF Package`.
 
 **License:** MIT (Wayne Phillips T/A iTech Masters) — same situation as WebView2Package, Assert, and CustomControls. The Settings file doesn't carry an explicit `licence:` field but every other package by this author is MIT and the wiki implies the same. Pages are fully original; **omit** the `vba_attribution: true` flag.
-
-**No backlog file** — six pages total, tracked inline above.
 
 ## Page template
 
@@ -627,10 +624,9 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - Multi-version source: the same `.twin` files compile for CEF v49 / v109 / v145 via the `CEF_VERSION` compiler constant. Mention this on `CEF/index.md` together with the runtime download story; reference `CefBrowser.CefMajorVersion` as the runtime-side query.
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same as WebView2 / Assert / CustomControls).
 9. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-10. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. Also extend `docs/Reference/Packages.md` to list the new package once the landing page exists.
-11. **Remove the symbol's path from `docs/Reference/VB/todo.md`** `redirect_from:` array (VB controls only — VBA/VBRUN backlogs are closed; WebView2Package, Assert, CustomControls, and CEF have small enough backlogs to track inline in this file rather than via a `todo.md`).
-12. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
-13. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
+10. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
+11. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
+12. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
 ## twinBASIC deviations from VBA to flag
 
@@ -646,7 +642,7 @@ When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Ref
 
 ## Scripts and tooling
 
-Any new helper script (backlog reconciliation, content conversion, link checks beyond htmlproofer, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is.
+Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is.
 
 ## Build / preview
 
@@ -654,19 +650,19 @@ From `docs/`:
 
 - `bundle exec jekyll build` (or `build.bat`) — build to `_site/`.
 - `bundle exec jekyll serve` (or `serve.bat`) — local server at `localhost:4000`.
-- `bundle exec htmlproofer ./_site --disable-external --no-enforce-https` (or `check.bat`) — link check. See [Site integrity check](#site-integrity-check).
+- `check.bat` — link check (offline Lychee against `_site/`).
 
 ## Site integrity check
 
-After a batch of changes, verify the site builds clean and all links resolve. From the `docs/` folder, run **exactly** this command:
+After a batch of changes, verify the site builds clean and all links resolve. From the `docs/` folder, run:
 
 ```sh
-bundle exec htmlproofer ./_site --disable-external --no-enforce-https
+build.bat && check.bat
 ```
 
-Do not add, remove, or substitute flags. This catches broken intra-site links, missing pages, and malformed `redirect_from` entries — the most common breakage when adding new pages or moving content between sections. A clean run is the bar for "ready to commit".
+`check.bat` runs Lychee in offline mode against the built `_site/` tree — it catches broken intra-site links, missing pages, and malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections). A clean run is the bar for "ready to commit".
 
-Requires a prior `bundle exec jekyll build` so `_site/` is current.
+Requires `build.bat` to have produced an up-to-date `_site/`.
 
 ## Repository Use
 
