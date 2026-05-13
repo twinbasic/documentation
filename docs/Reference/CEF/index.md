@@ -116,3 +116,13 @@ The surface will continue to grow; treat this list as a snapshot of the current 
 
 - [CefLogSeverity](Enumerations/CefLogSeverity) -- the verbosity threshold for the CEF debug log; carried by [**EnvironmentOptions.LogSeverity**](CefBrowser/EnvironmentOptions#logseverity)
 - [cefPrintOrientation](Enumerations/cefPrintOrientation) -- page orientation passed to [**PrintToPdf**](CefBrowser/#printtopdf)
+
+## Tutorials
+
+- [Getting started](../../../Tutorials/CEF/Getting-Started) -- package reference, runtime download, install path
+- [Customize the UserDataFolder](../../../Tutorials/CEF/Customize-UserDataFolder) -- relocating the runtime's working folder
+- [Re-entrancy](../../../Tutorials/CEF/Re-entrancy) -- the deferred-event model and the one place ([**JsRun**](CefBrowser/#jsrun)) you still have to think about it
+- [Building a browser shell](../../../Tutorials/CEF/Building-A-Browser-Shell) -- back / forward / reload / zoom / PDF
+- [Hosting local web assets](../../../Tutorials/CEF/Hosting-Local-Web-Assets) -- virtual-host folder mappings
+- [JavaScript interop](../../../Tutorials/CEF/JavaScript-Interop) -- messages and scripted calls between BASIC and the page
+- [Driving Monaco from twinBASIC](../../../Tutorials/CEF/Driving-Monaco) -- case study combining everything above

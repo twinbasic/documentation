@@ -257,7 +257,7 @@ Debug.Print product   ' 30
 ```
 
 > [!WARNING]
-> A page-side handler that posts back into BASIC during the call can deadlock the UI. Prefer [**JsRunAsync**](#jsrunasync) for non-trivial calls.
+> A page-side handler that posts back into BASIC during the call can deadlock the UI. Prefer [**JsRunAsync**](#jsrunasync) for non-trivial calls. See the [Re-entrancy tutorial](../../../../Tutorials/CEF/Re-entrancy) for the full discussion.
 
 ### JsRunAsync
 {: .no_toc }
