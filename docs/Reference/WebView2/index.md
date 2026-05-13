@@ -42,3 +42,13 @@ Beyond the control itself, the package exposes a small set of wrapper objects th
 ## Types
 
 - [COREWEBVIEW2_PHYSICAL_KEY_STATUS](Types/COREWEBVIEW2_PHYSICAL_KEY_STATUS) -- decoded `WM_KEYDOWN` / `WM_KEYUP` `lParam` bit-fields; surfaced via the **AcceleratorKeyPressed** event
+
+## Tutorials
+
+- [Getting started](../../../Tutorials/WebView2/Getting-Started) -- adding the package references and dropping a control onto a form
+- [Customize the UserDataFolder](../../../Tutorials/WebView2/Customize-UserDataFolder) -- relocating the runtime's working folder for hosted scenarios (Office add-ins, kiosk installs)
+- [Re-entrancy](../../../Tutorials/WebView2/Re-entrancy) -- what the control's deferred-event machinery does for you, and the **AddObject** synchronous-vs-deferred trade-off
+- [Building a browser shell](../../../Tutorials/WebView2/Building-A-Browser-Shell) -- address bar, back / forward / reload, zoom, PDF export
+- [Hosting local web assets](../../../Tutorials/WebView2/Hosting-Local-Web-Assets) -- serve HTML / JS / CSS from a project resource folder, without an HTTP server
+- [JavaScript interop](../../../Tutorials/WebView2/JavaScript-Interop) -- the three bridges between BASIC and the page: host objects, messages, and scripted calls
+- [Driving Monaco from twinBASIC](../../../Tutorials/WebView2/Driving-Monaco) -- case study combining everything above
