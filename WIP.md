@@ -4,7 +4,7 @@ Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source un
 
 ## Status
 
-Initial reference documentation is **complete**. All seven packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
+Initial reference documentation is **complete**. All eight packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
 
 | Package                              | Reference | Tutorials |
 |--------------------------------------|-----------|-----------|
@@ -15,6 +15,7 @@ Initial reference documentation is **complete**. All seven packages have full re
 | Assert package                       | done      | —         |
 | CustomControls / CustomControlsPackage | done    | —         |
 | cefPackage (CEF)                     | done      | done      |
+| WinEventLogLib                       | done      | —         |
 
 The rest of this file is the maintenance guide for adding new pages or updating existing ones — primary-source paths, page templates, cross-section linking conventions, the per-symbol workflow, and the integrity check.
 
@@ -30,6 +31,7 @@ When working from a primary source: always read it first — **never paraphrase 
 - `docs/Reference/WebView2/` — WebView2 package: the **WebView2** control class plus its small wrapper classes (request / response / headers / environment options) and the `wv2…` enumerations.
 - `docs/Reference/CustomControls/` — CustomControls package: the eight **Waynes…** custom controls, their shared `Styles/` helper classes (`Fill`, `Borders`, `Corners`, `TextRendering`, …), the `Framework/` DESIGNER surface (interfaces, CoClasses, the `Canvas` / `SerializeInfo` UDTs), and the `Enumerations/` (`CornerShape`, `FillPattern`, `DockMode`, …).
 - `docs/Reference/CEF/` — CEF (Chromium Embedded Framework) package: the **CefBrowser** control, its `EnvironmentOptions` sub-page, and the two user-facing enumerations (`CefLogSeverity`, `cefPrintOrientation`). This is a much smaller surface than WebView2 — the package is currently BETA and many WebView2-equivalent features are not yet exposed.
+- `docs/Reference/WinEventLogLib/` — Windows Event Log package: the generic `EventLog(Of T1, T2)` class and the `EventLogHelperPublic` module with its single `RegisterEventLogInternal` helper. Three pages total — `index.md`, `EventLog.md`, `EventLogHelperPublic.md`.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - `docs/_includes/footer_custom.html` — overrides the theme's footer slot; renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
@@ -60,13 +62,13 @@ All of twinbasic's package sources are at:
 ..\tb-export\NewProject\Packages\Assert\Sources\
 ..\tb-export\NewProject\Packages\CustomControls\Sources\
 ..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\
+..\tb-export\NewProject\Packages\cefPackages\Sources\
 etc.
 ```
 
-For the CEF package, the sources live in a separate sibling tree (not under `tb-export`):
+For the CEF package, the examples live in a different folder:
 
 ```
-..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\
 ..\tbrepro\cef\CEFSampleProject\Sources\                        ← four worked examples + MainForm
 ```
 
@@ -315,7 +317,7 @@ docs/Reference/CustomControls/
 
 ### cefPackage (CEF)
 
-Layout of `..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\`:
+Layout of `..\tb-export\NewProject\Packages\cefPackages\Sources\`:
 
 - `CefControl.twin` — contains three classes: the private `CefBrowserBaseCtl` (where every event / method / property is declared), the private `CefEnvironmentOptions` (a bare-field options class), and the public `CefBrowser` control which only inherits from `CefBrowserBaseCtl` and sets the design-time icon. This single file is the entire user-facing surface of the package.
 - `CefControlGlobalWnd.twin` — private internal message-window plumbing; no doc page.
@@ -394,6 +396,59 @@ docs/Reference/CEF/
 - `parent: CEF Package` on every top-level child page. The two enum pages set `parent: Enumerations` and `grand_parent: CEF Package` (the grouped-page pattern; mirror exactly the structure WebView2 uses for its `Enumerations/`). The `EnvironmentOptions` sub-page sets `parent: CefBrowser` and `grand_parent: CEF Package`.
 
 **License:** MIT (Wayne Phillips T/A iTech Masters) — same situation as WebView2Package, Assert, and CustomControls. The Settings file doesn't carry an explicit `licence:` field but every other package by this author is MIT and the wiki implies the same. Pages are fully original; **omit** the `vba_attribution: true` flag.
+
+### WinEventLogLib
+
+Layout of `..\tb-export\NewProject\Packages\WinEventLogLib\Sources\` is flat — four `.twin` files plus three text files (`_README.txt`, `_LICENCE.txt`, `_RELEASE_HISTORY.txt`):
+
+- `APIs.twin` — `Private Module EventLogAPIs` wrapping six `advapi32.dll` entry points (`RegCreateKeyExW`, `RegSetValueExW`, `RegCloseKey`, `RegDeleteKeyExW`, `RegisterEventSourceW`, `ReportEventW`). No doc page.
+- `Constants.twin` — `Private Module EventLogConstants` carrying `Public Enum EventLogTypeConstants` (`vbEventLogTypeSuccess`, `vbEventLogTypeAuditFailure`, `vbEventLogTypeAuditSuccess`, `vbEventLogTypeError`, `vbEventLogTypeWarning`). The module is `Private`, so the enum does not surface in the public API; no doc page.
+- `EventLog.twin` — the generic `Public Class EventLog(Of T1, T2)`. The only user-facing class.
+- `Helper.twin` — two modules: `Public Module EventLogHelperPrivate` (one helper `VariantArrayToStringArray`, used only by `EventLog.LogArray` internally — its name signals *intended* private but the module is declared `Public`; treat as internal and skip) and `Public Module EventLogHelperPublic` (one user-facing helper `RegisterEventLogInternal`).
+
+Public user-facing surface (one generic class + one helper module):
+
+| Symbol                          | Kind                | Role                                                                                  |
+|---------------------------------|---------------------|---------------------------------------------------------------------------------------|
+| `EventLog(Of T1, T2)`           | Generic class       | Main user-facing class. `T1` is the event-ID enum, `T2` is the category enum.         |
+| `EventLogHelperPublic`          | Public module       | Holds the low-level `RegisterEventLogInternal` helper.                                |
+| `RegisterEventLogInternal`      | `Sub` on the module | Registry-write helper; `EventLog.Register()` is the normal entry point.               |
+
+`EventLog(Of T1, T2)` public members:
+
+- `Public Sub New(LogName As String)` — constructor. `LogName` is either a leaf name (`"MyService"`, registered under `Application\MyService`) or a full path (`"System\MyService"`, registered under `System\MyService`).
+- `Public Sub LogSuccess(ByVal EventId As T1, ByVal CategoryId As T2, ParamArray AdditionalStrings())` — writes an **Information**-type event (`EVENTLOG_SUCCESS = 0`). The name "Success" is the Win32 SDK constant's literal name, *not* the audit-success category — the underlying event type is **Information**.
+- `Public Sub LogFailure(ByVal EventId As T1, ByVal CategoryId As T2, ParamArray AdditionalStrings())` — writes an **Error**-type event (`EVENTLOG_ERROR_TYPE = 1`).
+- `Public Sub Register()` — writes the registry entries under `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\…` to declare this EXE as the message provider for the source. Calls `RegisterEventLogInternal(LogName, GetDeclaredMaxEnumValue(Of T2))` — the category count is derived from `T2`'s declared maximum value at compile time.
+
+Class-level decoration on `EventLog`: `[COMCreatable(False)]`, `[ClassId("4AEA12E8-…-EAEAEAEAEAEA")]` (the `EA` suffix triggers special compiler handling for generic classes). The `[Description]` attribute on the class is the basis for the page intro: *"This is the main event log (generic) class."*
+
+`EventLogHelperPublic` public members:
+
+- `Public Sub RegisterEventLogInternal(ByVal LogPath As String, ByVal CategoryCount As Long)` — the registry-write helper. Prepends `"Application\"` to *LogPath* if no backslash is present, opens `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\<LogPath>` with `KEY_WRITE`, then writes `EventMessageFile` and `CategoryMessageFile` (both set to `App.ModulePath`) and `CategoryCount`. Requires admin rights (registry writes to HKLM). Raises run-time error 5 with the message *"Failed to register event log source (\<LogName\>)"* if the open fails. Normally callers use `EventLog.Register()`, which fills *CategoryCount* automatically.
+
+**Gaps and quirks** to surface on the docs (drawn from a static read of the source):
+
+- The `EventLogTypeConstants` enum has five values (`Success`, `Warning`, `Error`, `AuditSuccess`, `AuditFailure`) but the public class only exposes Information and Error event types — Warning and Audit events are not currently reachable.
+- Method names follow the Win32 SDK constants verbatim: `LogSuccess` writes an *Information* event (because `EVENTLOG_SUCCESS = 0` is the Win32 spelling for the information type), and `LogFailure` writes an *Error* event. Call this out on the per-method entries.
+- Message resources: the registry entries point at `App.ModulePath` (the running EXE) for both `EventMessageFile` and `CategoryMessageFile`. The twinBASIC compiler synthesises Windows message-table resources for the `T1` and `T2` enums when a generic instance of `EventLog(Of T1, T2)` is compiled, so the EXE carries the per-EventId and per-CategoryId message strings out-of-the-box.
+- `Register()` requires elevation. Normal usage is to call it once during install (from an elevated installer), then call `LogSuccess` / `LogFailure` at runtime without elevation.
+- The package is described in `_README.txt` with a copy-pasted "NAMED PIPES PACKAGE" header (clearly an unintentional carry-over from another sister package); the body correctly says *"A simple framework for creating Windows event log entries from twinBASIC"*. Use the body, not the header.
+
+**Layout decision** — three pages total, mirroring the small-package approach used by Assert:
+
+- `docs/Reference/WinEventLogLib/index.md` — landing page: intro, lifecycle (define enums → instantiate → Register once → LogSuccess / LogFailure), gaps and quirks, the class and module lists.
+- `docs/Reference/WinEventLogLib/EventLog.md` — the generic class, single-file (no sub-pages — the surface is small).
+- `docs/Reference/WinEventLogLib/EventLogHelperPublic.md` — the helper module, single-file (one Sub listed under a `## RegisterEventLogInternal` heading, same shape as Assert per-member sections).
+
+**Naming:**
+
+- Folder / URL segment: `WinEventLogLib/` (matches the source-side package name; no `Package` suffix to drop, the package isn't named with that suffix in `Settings`).
+- Index title: `WinEventLogLib Package` — the `<Name> Package` convention used by every other package landing.
+- Permalinks: `/tB/Packages/WinEventLogLib/` for the landing; `/tB/Packages/WinEventLogLib/EventLog` and `/tB/Packages/WinEventLogLib/EventLogHelperPublic` for the two member pages.
+- `parent: WinEventLogLib Package` on each child page (matching the index `title:`, the same split every other package uses).
+
+**License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2025; first release v0.1, 04-FEB-2025) — same situation as WebView2Package, Assert, CustomControls, and CEF. Pages are fully original content; **omit** the `vba_attribution: true` flag.
 
 ## Page template
 
@@ -476,6 +531,8 @@ The URL prefixes are *not* uniform across packages — VBA pages live one segmen
 - CEF `CefBrowser` class → `/tB/Packages/CEF/CefBrowser/` (folder-style — has the `EnvironmentOptions` sub-page)
 - CEF `EnvironmentOptions` sub-page → `/tB/Packages/CEF/CefBrowser/EnvironmentOptions`
 - CEF enumeration → `/tB/Packages/CEF/Enumerations/<Enum>`
+- WinEventLogLib class → `/tB/Packages/WinEventLogLib/EventLog` (single-file; same depth as a single-file VB class)
+- WinEventLogLib module → `/tB/Packages/WinEventLogLib/EventLogHelperPublic` (single-file; same depth as an Assert module)
 
 Common patterns:
 
@@ -543,6 +600,9 @@ Common patterns:
 | CEF `Packages/CEF/Enumerations/X`          | sibling `Enumerations/Y`                    | `[Y](Y)`                                   |
 | CEF `Packages/CEF/Enumerations/X`          | CEF `Packages/CEF/CefBrowser/` (folder-style) | `[Y](../CefBrowser/)`                    |
 | CEF `Packages/CEF/Enumerations/X`          | CEF `Packages/CEF/CefBrowser/EnvironmentOptions` | `[Y](../CefBrowser/EnvironmentOptions)` |
+| WinEventLogLib `Packages/WinEventLogLib/X` | sibling `Packages/WinEventLogLib/Y`         | `[Y](Y)`                                   |
+| WinEventLogLib `Packages/WinEventLogLib/X` | VBA `Modules/<Mod>/Y`                       | `[Y](../../Modules/<Mod>/Y)`               |
+| WinEventLogLib `Packages/WinEventLogLib/X` | `Core/Y`                                    | `[Y](../../Core/Y)`                        |
 | `Core/X`                                   | VBA `Modules/<Mod>/Y`                       | `[Y](../Modules/<Mod>/Y)`                  |
 | `Core/X`                                   | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../Packages/VBRUN/<Mod>/Y)`           |
 | `Core/X`                                   | VB `Packages/VB/Y`                          | `[Y](../Packages/VB/Y)`                    |
@@ -550,6 +610,7 @@ Common patterns:
 | `Core/X`                                   | Assert `Packages/Assert/<Mod>`              | `[Y](../Packages/Assert/<Mod>)`            |
 | `Core/X`                                   | CC `Packages/CustomControls/Y`              | `[Y](../Packages/CustomControls/Y)`        |
 | `Core/X`                                   | CEF `Packages/CEF/Y`                        | `[Y](../Packages/CEF/Y)`                   |
+| `Core/X`                                   | WinEventLogLib `Packages/WinEventLogLib/Y`  | `[Y](../Packages/WinEventLogLib/Y)`        |
 | `Core/X`                                   | `Core/Y` (sibling)                          | `[Y](Y)`                                   |
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
@@ -563,6 +624,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - Assert package → `..\tb-export\NewProject\Packages\Assert\Sources\<Mod>.twin` (one file per module — `Exact.twin`, `Strict.twin`, `Permissive.twin`).
    - CustomControls — framework half: `..\tb-export\NewProject\Packages\CustomControls\Sources\CustomControls.twin` (a single file with `Module Constants`, the interfaces, and the CoClasses). Runtime half: `..\tb-export\NewProject\Packages\CustomControlsPackage\Sources\Waynes<X>.twin` for each control + `zTemporarySupport.twin` for the shared style helpers and the mixin base classes.
    - CEF package → `..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\CefControl.twin` for the whole public surface (the `CefBrowser` control, its `CefBrowserBaseCtl` base, and `CefEnvironmentOptions`). For the two surfaced enums: `CEF\Enums\_cef_log_severity_t.twin` (declares both the internal `cef_log_severity_t` and the user-facing `CefLogSeverity`) and `CEF\CrossProcessIPC\BrowserOM.twin` (declares `cefPrintOrientation` inline, around line 29). Everything else under `cefPackage\Sources\` and `cefPackage\Sources\CEF\` is `Private Class` / `Private Module` plumbing — skip. The sample project's `Sources\Example1..4.twin` are the source-of-truth for which features are *not* yet exposed (commented-out event handlers with *"Sorry, this feature is not yet available in the CEF package"*).
+   - WinEventLogLib package → `..\tb-export\NewProject\Packages\WinEventLogLib\Sources\EventLog.twin` (the generic `EventLog(Of T1, T2)` class) and `Helper.twin` (`EventLogHelperPublic.RegisterEventLogInternal`). Skip `APIs.twin` (`Private Module`), `Constants.twin` (`Private Module` — the `EventLogTypeConstants` enum is unreachable from outside the package), and the `EventLogHelperPrivate` module in `Helper.twin` (named "Private" though declared `Public`; only used internally by `EventLog.LogArray`).
 2. **Decide placement**:
    - Pure language keyword (parsed by the compiler, no runtime call) → `docs/Reference/Core/`.
    - Runtime function/property → `docs/Reference/<Package>/<Mod>/`. Add `redirect_from: /tB/Core/<name>` so legacy `tB/Core/<name>` links still work.
@@ -576,6 +638,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - CustomControls framework symbol (interface, CoClass, UDT) → `docs/Reference/CustomControls/Framework/<Name>.md`.
    - CustomControls enumeration → `docs/Reference/CustomControls/Enumerations/<Enum>.md` (mirrors `WebView2/Enumerations/` and `VBRUN/Constants/`). The three `Long`-alias enums (`ColorRGBA`, `PixelCount`, `PointSize`) live here too, even though they're really typedefs.
    - CEF control → `docs/Reference/CEF/CefBrowser/index.md` (folder-style; carries the `EnvironmentOptions` sub-page). Pre-creation options class → `docs/Reference/CEF/CefBrowser/EnvironmentOptions.md` (parallel to `WebView2/WebView2/EnvironmentOptions.md`). CEF enumeration → `docs/Reference/CEF/Enumerations/<Enum>.md`.
+   - WinEventLogLib generic class → `docs/Reference/WinEventLogLib/EventLog.md` (single-file; the surface is small — constructor + three methods). WinEventLogLib helper module → `docs/Reference/WinEventLogLib/EventLogHelperPublic.md` (single-file; one Sub).
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 3. **Adapt content** (VBA-Docs sources):
    - Strip MS frontmatter (`ms.assetid`, `f1_keywords`, `keywords`, `ms.date`, `ms.localizationpriority`).
@@ -623,10 +686,20 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - WebView2-parity gap list lives on `CEF/index.md` (one bulleted section). Methods / events not yet exposed get **no per-page stub** — they don't exist on `CefBrowser` and have no place to land.
    - Multi-version source: the same `.twin` files compile for CEF v49 / v109 / v145 via the `CEF_VERSION` compiler constant. Mention this on `CEF/index.md` together with the runtime download story; reference `CefBrowser.CefMajorVersion` as the runtime-side query.
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same as WebView2 / Assert / CustomControls).
-9. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-10. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
-11. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
-12. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
+9. **Adapt content** (WinEventLogLib `.twin` sources):
+   - The generic class declaration `Public Class EventLog(Of T1, T2)` follows the same syntax described in `docs/Features/Language/Generics.md` (look there for the parameterisation rules). Show the constructor as `New EventLog(Of <EventIds>, <Categories>)(LogName)` — both type arguments are required because twinBASIC does not deduce them from the `LogName` constructor argument.
+   - The `[Description("…")]` attributes on the class and on each `Public Sub` are the IDE one-liner — use them as the basis for each entry, then expand.
+   - The class itself is tagged `[COMCreatable(False)]` and `[ClassId("4AEA12E8-…-EAEAEAEAEAEA")]`. The `EA` byte sequence is *compiler magic* for generic classes — do not surface it on the page (it's an implementation detail of how generics are exposed to COM).
+   - Method-name quirk: `LogSuccess` writes a Windows *Information* event (`EVENTLOG_SUCCESS = 0` is the Win32 SDK spelling for the information event type). `LogFailure` writes a Windows *Error* event. Call this out on each method entry — readers familiar with the Windows Event Log will otherwise expect `LogSuccess` to write an Audit Success entry.
+   - `Register()` requires elevation (it writes to `HKLM`); typical usage is *"call once during install"*. Call this out on the method entry.
+   - For `EventLogHelperPublic.RegisterEventLogInternal`: do not surface the `Const HKEY_LOCAL_MACHINE` / `Const KEY_WRITE` declarations or the `RegCreateKeyExW` / `RegSetValueExW` Win32 calls — those are implementation detail. Describe what the function *does* at the registry (writes the source key with `EventMessageFile = App.ModulePath`, `CategoryMessageFile = App.ModulePath`, `CategoryCount = <value>`).
+   - On the index page, mention the package's current gaps in passing: the `EventLogTypeConstants` enum has five entries (Information / Warning / Error / AuditSuccess / AuditFailure) but the public API surfaces only Information and Error event types — Warning and the two Audit variants are not yet reachable.
+   - The README copy-paste mistake (header says "NAMED PIPES PACKAGE", body is correct) is *not* surfaced on the docs — write the actual description ("a simple framework for creating Windows event log entries"), don't propagate the wrong name.
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same situation as the other Wayne Phillips packages).
+10. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+11. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
+12. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
+13. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
 ## twinBASIC deviations from VBA to flag
 
