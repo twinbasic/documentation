@@ -86,7 +86,7 @@ Syntax: *connection*_**MessageReceived**(**ByRef** *Cookie* **As Variant**, **By
 : The opaque correlation value originally passed to the [**AsyncRead**](#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads driven by [**NamedPipeClientManager.ContinuouslyReadFromPipe**](NamedPipeClientManager#continuouslyreadfrompipe).
 
 *Data*
-: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if you need them.
+: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if you need them. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and gives you typed multi-field access in one step.
 
 ### MessageSent
 {: .no_toc }
@@ -133,7 +133,7 @@ Sends a message to the server.
 Syntax: *connection*.**AsyncWrite** *Data*() [, *Cookie* ]
 
 *Data*
-: *required* A **Byte()** array carrying the bytes to send. An uninitialised or zero-length array is a no-op.
+: *required* A **Byte()** array carrying the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended carrier is [**PropertyBag**](../VBRUN/PropertyBag/) — see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
 
 *Cookie*
 : *optional* A **Variant** correlation value, surfaced as the *Cookie* parameter of the matching [**MessageSent**](#messagesent) event. Default **Empty**.
@@ -143,5 +143,6 @@ Returns immediately; the actual transmission runs through the IOCP loop. The com
 ## See Also
 
 - [WinNamedPipesLib package](.) -- overview, IOCP / event-marshalling architecture, cookie pattern, `Data()` lifetime caveat, the **AsyncClose** rule
+- [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) -- the deep-copy capture pattern for transient *Data* in events
 - [NamedPipeClientManager class](NamedPipeClientManager) -- the manager that produced this connection
 - [NamedPipeServerConnection class](NamedPipeServerConnection) -- the server-side counterpart

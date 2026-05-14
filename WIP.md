@@ -4,7 +4,7 @@ Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source un
 
 ## Status
 
-Initial reference documentation is **complete**. All nine packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
+Reference documentation is **complete**. All ten packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
 
 | Package                              | Reference | Tutorials |
 |--------------------------------------|-----------|-----------|
@@ -17,6 +17,7 @@ Initial reference documentation is **complete**. All nine packages have full ref
 | cefPackage (CEF)                     | done      | done      |
 | WinEventLogLib                       | done      | —         |
 | WinNamedPipesLib                     | done      | —         |
+| WinServicesLib                       | done      | —         |
 
 The rest of this file is the maintenance guide for adding new pages or updating existing ones — primary-source paths, page templates, cross-section linking conventions, the per-symbol workflow, and the integrity check.
 
@@ -34,6 +35,7 @@ When working from a primary source: always read it first — **never paraphrase 
 - `docs/Reference/CEF/` — CEF (Chromium Embedded Framework) package: the **CefBrowser** control, its `EnvironmentOptions` sub-page, and the two user-facing enumerations (`CefLogSeverity`, `cefPrintOrientation`). This is a much smaller surface than WebView2 — the package is currently BETA and many WebView2-equivalent features are not yet exposed.
 - `docs/Reference/WinEventLogLib/` — Windows Event Log package: the generic `EventLog(Of T1, T2)` class and the `EventLogHelperPublic` module with its single `RegisterEventLogInternal` helper. Three pages total — `index.md`, `EventLog.md`, `EventLogHelperPublic.md`.
 - `docs/Reference/WinNamedPipesLib/` — Windows Named Pipes package: the IOCP-based async pipe framework — `NamedPipeServer` + `NamedPipeServerConnection` on the server side, `NamedPipeClientManager` + `NamedPipeClientConnection` on the client side. Five pages total (`index.md` + one per class).
+- `docs/Reference/WinServicesLib/` — Windows Services package: a thin OS-services wrapper. `Services` (predeclared singleton) coordinates one or more `ServiceManager` configurations; `ServiceCreator(Of T)` is the generic factory the dispatcher uses to instantiate each user-defined `ITbService` class; `ServiceState` is a read-only state snapshot for an installed service. Four public enums (`ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants`) live under `Enumerations/`.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - `docs/_includes/footer_custom.html` — overrides the theme's footer slot; renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
@@ -67,6 +69,7 @@ All of twinbasic's package sources are at:
 ..\tb-export\NewProject\Packages\cefPackages\Sources\
 ..\tb-export\NewProject\Packages\WinEventLogLib\Sources\
 ..\tb-export\NewProject\Packages\WinNamedPipesLib\Sources\
+..\tb-export\NewProject\Packages\WinServicesLib\Sources\
 etc.
 ```
 
@@ -75,6 +78,20 @@ For the CEF package, the examples live in a different folder:
 ```
 ..\tbrepro\cef\CEFSampleProject\Sources\                        ← four worked examples + MainForm
 ```
+
+For the WinServicesLib package — and the canonical integration story across **all three** "winlibs" packages (services + event log + named pipes wired together end-to-end) — the worked example lives at:
+
+```
+..\tbrepro\winlibs\tbServiceTest2\Sources\
+  Startup.twin                                                  ← Sub Main: configures two services + dispatches
+  SERVICES\TBSERVICE001.twin, TBSERVICE002.twin                 ← user-implemented ITbService classes
+  FORMS\MainForm.twin                                           ← non-service mode: control-panel UI
+  FORMS\InProcessNamedPipeServerForm.twin                       ← in-process pipe server (no service)
+  MISC\MESSAGETABLE.twin                                        ← [PopulateFrom("json",...)] enums for the event log
+..\tbrepro\winlibs\tbServiceTest2\Resources\MESSAGETABLE\Strings.json   ← message-table backing JSON
+```
+
+Read this project end-to-end before extending the docs for any of WinServicesLib, WinEventLogLib, or WinNamedPipesLib — the three packages share a load-bearing set of idioms (composition-delegation on `EventLog(Of T1, T2)`, the manual-message-loop pattern coupling `NamedPipeServer` to a service's `ChangeState` handler, `PropertyBag` as the canonical pipe payload) that only become visible when you see them used together.
 
 ### VB Controls
 
@@ -439,6 +456,75 @@ Class-level decoration on `EventLog`: `[COMCreatable(False)]`, `[ClassId("4AEA12
 - `Register()` requires elevation. Normal usage is to call it once during install (from an elevated installer), then call `LogSuccess` / `LogFailure` at runtime without elevation.
 - The package is described in `_README.txt` with a copy-pasted "NAMED PIPES PACKAGE" header (clearly an unintentional carry-over from another sister package); the body correctly says *"A simple framework for creating Windows event log entries from twinBASIC"*. Use the body, not the header.
 
+#### Canonical usage idiom — composition-delegation onto a service class
+
+`tbServiceTest2` (`..\tbrepro\winlibs\tbServiceTest2\Sources\`) shows the package's intended usage pattern, which is *not* obvious from the bare API:
+
+```tb
+Class TBSERVICE001
+    Implements ITbService
+    Implements EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES) Via _
+        EventLog = New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Application\" & CurrentComponentName)
+    …
+    LogSuccess(service_started, status_changed, CurrentComponentName)   ' surfaces directly
+End Class
+```
+
+The `Implements <Class> Via <field> = <expression>` form is twinBASIC's composition-delegation syntax (see [`docs/Features/Language/Delegation.md`](docs/Features/Language/Delegation.md) if/once that page exists, or the [`CustomControls` mixin pattern](docs/Reference/CustomControls/index.md) for an analogous use). The class declares it `Implements EventLog(Of …)` and gives the compiler a private field plus a constructor expression; the compiler then auto-forwards every `Public` member of `EventLog` (`LogSuccess`, `LogFailure`, `Register`) through that field. The result: a service class that *contains* an `EventLog` instance and exposes its logging methods as if they were its own.
+
+Surface this on the `EventLog` page (and on the package index) as the **recommended pattern** for service / long-running classes. Spell out:
+
+- The constructor expression evaluates *once* (the first time the delegating class is instantiated, per twinBASIC's `Implements ... Via` semantics).
+- The `T1` / `T2` type arguments must be identical at the `Implements` declaration and the constructor (the compiler enforces this).
+- The `LogPath` is typically `"Application\" & CurrentComponentName` — `CurrentComponentName` is the compile-time class name, so the log path automatically tracks renames.
+- The delegating class transparently inherits all three of `LogSuccess` / `LogFailure` / `Register`. Calling code can use them unqualified.
+
+#### Message-table backing: `[PopulateFrom("json", …)]` on the enums
+
+The `T1` / `T2` enums are typically auto-populated from a JSON resource via the `[PopulateFrom]` attribute. `tbServiceTest2`'s `Sources\MISC\MESSAGETABLE.twin`:
+
+```tb
+Module MESSAGETABLE
+    [PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", "events", "name", "id")]
+    Enum EVENTS
+    End Enum
+
+    [PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", "categories", "name", "id")]
+    Enum CATEGORIES
+    End Enum
+End Module
+```
+
+…with `Resources\MESSAGETABLE\Strings.json`:
+
+```json
+{
+    "events": [
+        { "id": -1073610751, "name": "service_started",        "LCID_0000": "%1 service started" },
+        { "id": -1073610750, "name": "service_startup_failed", "LCID_0000": "%1 service startup failed" },
+        …
+    ],
+    "categories": [
+        { "id": 1, "name": "status_changed", "LCID_0000": "Status Changed" }
+    ]
+}
+```
+
+Two things are happening here:
+
+1. **The enum bodies are populated at compile time** — `Enum EVENTS` starts empty in the source, but after compilation it has members `service_started = -1073610751`, `service_startup_failed = -1073610750`, … (one per `"events"` entry in the JSON, keyed `name → id`).
+2. **The same JSON is consumed by the compiler's `mc.exe`-equivalent** that emits the message-table resource into `App.ModulePath`. The `LCID_0000` strings are the message-table entries, and the `%1`, `%2`, … placeholders are filled at log time from the `AdditionalStrings` `ParamArray` to `LogSuccess` / `LogFailure`. The `CategoryCount` registry value (written by `Register()`) is the highest declared `id` in the `categories` block, which is what `GetDeclaredMaxEnumValue(Of T2)` recovers at compile time.
+
+So the round-trip is: JSON → compile-time enum population + message-table resource emission → registry entries that point Windows at the EXE → runtime `LogSuccess(EventId, CategoryId, …)` writes an event the Event Viewer can format using the embedded message-table strings.
+
+Surface this on the index page (under "Setting up message resources" or similar) with the JSON skeleton and the cross-reference to `[PopulateFrom]` (which is documented under `docs/Features/`, not in the reference set — link to that page if it exists, otherwise describe in-place).
+
+The negative event-ID values in the JSON (`-1073610751`) are the standard Win32 event-ID encoding: the high bits encode severity (`0xC0000000` = Error), facility (`0x...`), and customer bit. Don't unpack this on the docs; just note that *"event IDs follow the Win32 documented encoding — see Microsoft's 'Event Identifiers' reference"*.
+
+#### Why `T1` / `T2` and not separate `EventIds` / `Categories` classes
+
+A class can only `Implements EventLog(Of T1, T2) Via …` *once*. If a service needs events from multiple unrelated message tables, it can compose multiple `EventLog` instances **as named fields** (no `Via`), accepting a small loss of ergonomics (calls become `MyEventLog.LogSuccess(…)` instead of `LogSuccess(…)`). Surface this as a one-line note on the index — most services share a single `MESSAGETABLE` module across all their classes (as the example does), so the limitation rarely bites.
+
 **Layout decision** — three pages total, mirroring the small-package approach used by Assert:
 
 - `docs/Reference/WinEventLogLib/index.md` — landing page: intro, lifecycle (define enums → instantiate → Register once → LogSuccess / LogFailure), gaps and quirks, the class and module lists.
@@ -586,6 +672,82 @@ Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[ClassId(...)]`, `[EventI
 
 **Hidden message window.** Each `NamedPipeServer` and `NamedPipeClientManager` instance creates an invisible `STATIC`-class window with a subclassed `WndProc`, used to marshal IOCP-thread completions back to the UI thread when `FreeThreadingEvents = False`. Mention this on each class's intro paragraph — it explains why the consumer's process must be pumping a message loop for the default event-delivery semantics to work, and why `ManualMessageLoopEnter` / `ManualMessageLoopLeave` exist on `NamedPipeServer` for service / console hosts.
 
+#### Canonical service-host idiom — `ManualMessageLoopEnter` paired with `ChangeState`
+
+`tbServiceTest2`'s `Sources\SERVICES\TBSERVICE001.twin` shows the standard pattern for a Windows service that hosts a `NamedPipeServer`. Surface this on the `NamedPipeServer.md` page (under a "Hosting inside a Windows service" sub-heading) and on the index landing:
+
+```tb
+' On the service thread (ITbService.EntryPoint):
+Set NamedPipeServer = New NamedPipeServer
+NamedPipeServer.PipeName = "WaynesPipe_" & CurrentComponentName
+ServiceManager.ReportStatus(vbServiceStatusRunning)
+
+NamedPipeServer.Start()
+NamedPipeServer.ManualMessageLoopEnter()    ' blocks until ManualMessageLoopLeave
+NamedPipeServer.Stop()
+
+ServiceManager.ReportStatus(vbServiceStatusStopped)
+
+' On the dispatcher thread (ITbService.ChangeState):
+Select Case dwControl
+    Case vbServiceControlStop, vbServiceControlShutdown
+        ServiceManager.ReportStatus(vbServiceStatusStopPending)
+        NamedPipeServer.ManualMessageLoopLeave()    ' wakes the service thread
+End Select
+```
+
+Key facts that aren't obvious from the per-method `[Description]`s:
+
+- The service-thread `EntryPoint` and the dispatcher-thread `ChangeState` are **different threads**. The `NamedPipeServer` member field is shared between them; the dispatcher-thread `ChangeState` calls `ManualMessageLoopLeave` on it to wake the service thread out of `ManualMessageLoopEnter`.
+- `ManualMessageLoopLeave` is the **only** way to wake `ManualMessageLoopEnter` cleanly. There is no timeout, no second blocking primitive. If the service needs to react to other wake-up sources (paused state, custom control codes), it sets a shared flag *then* calls `ManualMessageLoopLeave` to break out, inspects the flag, and decides whether to re-enter the loop or proceed to shutdown. The `TBSERVICE002` variant in the same example demonstrates this with `IsPaused` / `IsStopping` shared `Public` fields and a `While IsStopping = False` outer loop.
+- Pause / continue support uses the same pattern: `ChangeState` flips `IsPaused = True` and calls `ManualMessageLoopLeave`; the service thread sees the flag, reports `vbServiceStatusPaused`, enters a `Do While IsPaused : Sleep(500) : Loop`, then re-enters `ManualMessageLoopEnter` once `Continue` flips the flag back.
+- `FreeThreadingEvents = False` (the default) is **required** for this pattern — events are marshalled to whichever thread is currently inside `ManualMessageLoopEnter`. Setting `FreeThreadingEvents = True` would deliver events on the IOCP worker thread instead and bypass the manual loop entirely (advanced; not the documented service idiom).
+
+The non-service equivalent — hosting the same `NamedPipeServer` inside a Form — is in `Sources\FORMS\InProcessNamedPipeServerForm.twin`: the Form's regular message loop pumps the marshalling window automatically, so the Form just calls `Server.Start()` in `Form_Load` and `Server.Stop` in `Form_Unload` without ever touching `ManualMessageLoopEnter` / `Leave`. Cross-reference both patterns on the `NamedPipeServer.md` page so the reader sees the choice point.
+
+#### PropertyBag as the canonical message carrier
+
+Every example serialises structured payloads through the pipe as a `PropertyBag.Contents` `Byte()`:
+
+```tb
+' Sender:
+Dim propertyBag As New PropertyBag
+propertyBag.WriteProperty("CommandID", "WHAT_TIME_IS_IT")
+propertyBag.WriteProperty("Data", payload)
+SelectedNamedPipe.AsyncWrite propertyBag.Contents
+
+' Receiver (inside MessageReceived event):
+Dim propertyBag As New PropertyBag
+propertyBag.Contents = Data          ' deep-copies the bytes; safe past the event handler
+Dim commandID As String = propertyBag.ReadProperty("CommandID")
+…
+```
+
+Two reasons this pattern matters and should be surfaced on the docs:
+
+1. **The transient-`Data()` problem is solved by `PropertyBag`.** Assigning to `PropertyBag.Contents` deep-copies the byte buffer; once the assignment returns, the original IOCP buffer can be recycled without invalidating the data. This is the cleanest answer to *"how do I keep the data past the event handler?"* — call out on every `MessageReceived` / `ClientMessageReceived` page entry as the recommended capture mechanism.
+2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on the property names (`"CommandID"`, `"ResponseCommandID"`, `"ResponseData"`, `"Data"`) and `PropertyBag` handles the encoding / decoding. Cross-link [`PropertyBag` reference](docs/Reference/VBRUN/PropertyBag/index.md) from the index landing.
+
+Surface as the **recommended** carrier; nothing in the package mandates it, raw `Byte()` works too, but every worked example uses `PropertyBag` and the integration story reads much more cleanly with it.
+
+#### Discovery loop — `FindNamedPipes`
+
+`tbServiceTest2`'s `MainForm` shows the canonical client-side discovery pattern: a low-frequency `Timer` (the form uses `timerRefreshNamedPipes` with a multi-second interval) that calls `NamedPipeClients.FindNamedPipes("WaynesPipe_*")`, repopulates a `ListBox`, and preserves the user's current selection:
+
+```tb
+For Each namePipeName In NamePipeClients.FindNamedPipes("WaynesPipe_*")
+    If namePipeName = NamedPipeSelected Then namedPipeSelectedIndex = Index
+    lstNamedPipes.AddItem(namePipeName)
+    Index += 1
+Next
+```
+
+Surface on the `NamedPipeClientManager.md` page (under the `FindNamedPipes` entry) as the recommended polling loop — the underlying `FindFirstFileW("\\.\pipe\…")` call is cheap enough to invoke every few seconds without measurable cost, and pipes appear / disappear too quickly for any event-driven discovery to be reliable. Don't claim there's no faster API; just say *"polling is the documented approach"*.
+
+#### Service-side broadcast
+
+`InProcessNamedPipeServerForm.twin` demonstrates `Server.AsyncBroadcast("BROADCAST")` (string coerced to `Byte()` via twinBASIC's implicit `String → Byte()` conversion). Useful when the same server has multiple concurrent connections and wants to push an update to all of them — the alternative is iterating over a user-maintained list of `NamedPipeServerConnection`s and calling `AsyncWrite` on each. The package handles the iteration internally. Mention on the `NamedPipeServer.AsyncBroadcast` entry.
+
 **Layout decision** — five pages total, one per public class plus the landing page:
 
 ```
@@ -607,6 +769,181 @@ All four class pages are single-file (no folder-style — no natural sub-pages; 
 - `parent: WinNamedPipesLib Package` on each child page (matching the index `title:`).
 
 **License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2025; first release v0.1, 04-FEB-2025) — same situation as WebView2Package, Assert, CustomControls, CEF, and WinEventLogLib. Pages are fully original content; **omit** the `vba_attribution: true` flag.
+
+### WinServicesLib
+
+Layout of `..\tb-export\NewProject\Packages\WinServicesLib\Sources\` is flat — eight `.twin` files plus three text files (`_README.txt`, `_LICENCE.txt`, `_RELEASE_HISTORY.txt`):
+
+- `APIs.twin` — `Private Module ServicesAPIs` wrapping fourteen `advapi32.dll` / `kernel32.dll` / `ole32.dll` / `oleaut32.dll` entry points (`StartServiceCtrlDispatcherW`, `OpenSCManagerW`, `CreateServiceW`, `RegisterServiceCtrlHandlerExW`, `SetServiceStatus`, `OpenServiceW`, `DeleteService`, `CloseServiceHandle`, `QueryServiceStatusEx`, `StartServiceW`, `ControlServiceExW`, `ChangeServiceConfig2W`, `CoInitializeEx`, `SysAllocStringPtr`) plus the supporting `Type` declarations (`SERVICE_STATUS`, `SERVICE_STATUS_PROCESS`, `SERVICE_CONTROL_STATUS_REASON_PARAMSW`, `SERVICE_CONFIG_DESCRIPTION`). No doc page.
+- `Constants.twin` — two modules. `Private Module ServicesConstants` carries the Win32 access-flag constants (`SC_MANAGER_*`, `SERVICE_*` permission bits, `SERVICE_CONTROL_*` control codes, `SERVICE_ACCEPT_*` accepted-controls flags, etc.) plus the `SC_STATUS_TYPE` enum. **Public** module `ServicesConstantsPublic` carries the four user-facing enumerations (`ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants`). The private module is internal; the public module's enums surface and need their own doc pages.
+- `Helper.twin` — `Private Module ServicesHelper` with the IOCP-style trampoline (`ServiceControlHandlerCallback_Trampoline`) used in place of class-`AddressOf` plus a `VariantArrayToStringArray` helper. No doc page.
+- `Interfaces.twin` — three interfaces: `Public Interface ITbService` (user-implemented), `Private Interface IServiceCreator` (internal — the public `ServiceCreator(Of T)` class implements it), `Private Interface IServiceManagerInternal` (internal). Only `ITbService` gets a doc page.
+- `Services.twin` — the predeclared `Class Services` (no `Public`/`Private` modifier — `Class` defaults to public; tagged `[PredeclaredId]`, so it's used singleton-style as `Services.ConfigureNew`). The package's main entry point.
+- `ServiceManager.twin` — `Public Class ServiceManager`. Per-service configuration + runtime status reporting. `[COMCreatable(False)]`. User code never instantiates this directly — it's returned by `Services.ConfigureNew()`.
+- `ServiceCreator.twin` — `Public Class ServiceCreator(Of T)`. Generic factory `T → New T As ITbService`. `[COMCreatable(False)]`. Has the EA magic-byte `ClassId("66170220-FEF3-4257-8FBA-EAEAEAEAEAEA")` pattern, same compiler-special-handling as `WinEventLogLib`'s `EventLog(Of T1, T2)`.
+- `ServiceState.twin` — `Class ServiceState` (no modifier — public by default). Read-only state snapshot for an installed service. `[COMCreatable(False)]`. Returned by `Services.QueryStateOfService`.
+
+Public user-facing surface (three concrete classes + one generic class + one interface + four enums):
+
+| Symbol                          | Kind                  | Role                                                                                              |
+|---------------------------------|-----------------------|---------------------------------------------------------------------------------------------------|
+| `Services`                      | `[PredeclaredId]` Class | The singleton coordinator: `ConfigureNew`, `RunServiceDispatcher`, `InstallAll`, `UninstallAll`, `LaunchService`, `ControlService`, `QueryStateOfService`, `GetConfiguredService`, `_NewEnum`. Used as `Services.X` without `New`. |
+| `ServiceManager`                | Class                 | Per-service configuration + runtime status reporting. Returned by `Services.ConfigureNew()`.      |
+| `ServiceCreator(Of T)`          | Generic class         | The dispatcher's factory: `T` must implement `ITbService`; `CreateInstance` returns `New T`.       |
+| `ServiceState`                  | Class                 | Read-only state snapshot. Constructor (called via `Services.QueryStateOfService(Name)`) queries the SCM.  |
+| `ITbService`                    | Public Interface      | The contract every service class implements: `EntryPoint`, `StartupFailed`, `ChangeState`.        |
+| `ServiceTypeConstants`          | Enum                  | `tbServiceTypeOwnProcess`, `tbServiceTypeShareProcess`, etc.                                       |
+| `ServiceStartConstants`         | Enum                  | `tbServiceStartAuto`, `tbServiceStartOnDemand`, etc.                                              |
+| `ServiceControlCodeConstants`   | Enum                  | `vbServiceControlStop`, `vbServiceControlPause`, `vbServiceControlContinue`, etc.                  |
+| `ServiceStatusConstants`        | Enum                  | `vbServiceStatusRunning`, `vbServiceStatusStartPending`, `vbServiceStatusStopped`, etc.            |
+
+The two private interfaces (`IServiceCreator`, `IServiceManagerInternal`) are pure implementation detail — same situation as `WinNamedPipesLib`'s `INamedPipe*Internal` interfaces. **No doc page**, and don't surface the underscored implementing members on the concrete classes either.
+
+The two `Private Module` declarations (`ServicesAPIs`, `ServicesConstants`) and the `Private Module ServicesHelper` are all internal — **no doc page**.
+
+#### `Services` public members
+
+`[PredeclaredId]` Class. The compiler instantiates a singleton named `Services` at program start; user code calls `Services.X` directly without `New`. The class also doubles as an enumerable collection of the `ServiceManager` instances that have been configured (`For Each manager In Services`).
+
+**Public methods**:
+
+- `Function ConfigureNew() As ServiceManager` — *"Use this method to configure a service. Usually used during app startup."* Allocates a new `ServiceManager`, adds it to the internal collection, returns it. Typical use: `With Services.ConfigureNew : .Name = "MyService" : .InstanceCreator = New ServiceCreator(Of MyServiceClass) : End With`.
+- `Sub RunServiceDispatcher()` — *"This method hands over to the OS for managing the starting/stopping of services via the main thread. This is a BLOCKING call, until the OS wants to shutdown the service EXE."* Builds a `SERVICE_TABLE_ENTRYW` from every configured `ServiceManager` and calls `StartServiceCtrlDispatcherW`. Returns only when the OS terminates the service host. Raises run-time error 5 if the dispatcher cannot start (typically when the EXE was launched normally rather than by the SCM).
+- `Sub InstallAll()` — *"This method tries to register ALL of the configured services onto the system."* Iterates the configured `ServiceManager`s and calls `.Install()` on each. Requires admin.
+- `Sub UninstallAll()` — *"This method tries to unregister ALL of the configured services off the system."* Iterates and calls `.Uninstall()` on each. Requires admin.
+- `Function QueryStateOfService(ByVal ServiceName As String) As ServiceState` — returns a fresh `ServiceState` snapshot. Raises run-time error 5 if the service isn't installed.
+- `Sub LaunchService(ByVal ServiceName As String, ParamArray LaunchArgs())` — start an installed service by name, optionally passing launch arguments through to its `ServiceManager.LaunchArgs()` field. Wraps `OpenServiceW(SERVICE_START)` + `StartServiceW`. Raises run-time error 5 on permission / not-installed / already-running.
+- `Sub ControlService(ByVal ServiceName As String, ByVal ControlCode As ServiceControlCodeConstants)` — send an SCM control code to a running service. The required SCM permission is derived from the control code automatically (`SERVICE_STOP` for `vbServiceControlStop`, `SERVICE_PAUSE_CONTINUE` for the pause / continue / netbind / paramchange family, `SERVICE_INTERROGATE` for `vbServiceControlInterrogate`, `SERVICE_USER_DEFINED_CONTROL` for codes 128–255, `SERVICE_ALL_ACCESS` otherwise). For `vbServiceControlStop` the wrapper fills `SERVICE_CONTROL_STATUS_REASON_PARAMSW` with `SERVICE_STOP_REASON_FLAG_PLANNED | MAJOR_NONE | MINOR_NONE` — there is a `FIXME` to allow customising the reason code.
+
+**Public properties**:
+
+- `Property Get GetConfiguredService(ByVal Name As String) As ServiceManager` — look up a previously-configured `ServiceManager` by its `Name`. Raises run-time error 5 if not found. (Despite the `Get` syntax the lookup is parameterised by name; it's a property in name only.)
+
+**Public enumerator**:
+
+- `Property Get _NewEnum() As Variant` — `[Enumerator]`-tagged; enables `For Each manager In Services` over the configured `ServiceManager`s. *"Provides For-Each support for the services collection, exposing each configured service as a ServiceManager instance."*
+
+#### `ServiceManager` public members
+
+`[COMCreatable(False)]`. User code never instantiates this directly — `Services.ConfigureNew()` returns it. The source-side constructor carries `[Description("For internal use. Dont create instances of ServiceManager manually, use Services.ConfigureNew instead")]` — surface that on the page intro.
+
+**Public field** (one):
+
+- `LaunchArgs() As String` — populated by `ServiceEntryPoint` from the `argv` the SCM hands over. `LaunchArgs(0)` is the *first user-supplied* argument (the SCM-supplied service name at `argv[0]` is dropped). The example uses it to gate startup: `If Join(ServiceManager.LaunchArgs) <> "MySecretPassword" Then …`.
+
+**Public properties** (each carries a `[Description("...")]`):
+
+- `InstanceCreator As IServiceCreator` (Get / Let / Set) — *"Set this to an instance of the ServiceCreator class to allow the OS to launch the instance of your service."* Typically `.InstanceCreator = New ServiceCreator(Of MyServiceClass)`.
+- `Name As String` (Get / Let) — *"The name of the service, as listed in the OS services database."*
+- `Description As String` (Get / Let) — *"The description of the service, as listed in the OS services database."* Applied via `ChangeServiceConfig2W(SERVICE_CONFIG_DESCRIPTION)` on every successful `Install()`.
+- `Type As ServiceTypeConstants` (Get / Let) — *"The type of the service, typically `tbServiceTypeOwnProcess` or `tbServiceTypeShareProcess`."* Defaults to `tbServiceTypeOwnProcess`.
+- `InstallStartMode As ServiceStartConstants` (Get / Let) — *"The start-mode of the service, typically `tbServiceStartOnDemand` or `tbServiceStartAuto`."* Defaults to `tbServiceStartOnDemand`.
+- `InstallCmdLine As String` (Get / Let) — *"The command line arguments passed to the service EXE when the OS launches the service."* Defaults to `"""<App.ModulePath>"""`. **Usually overridden to add a discriminator argument** like `-startService` so the EXE knows whether it was launched by the SCM (run dispatcher) or by a user (show UI). Example: `.InstallCmdLine = """" & App.ModulePath & """ -startService"`.
+- `DependentServices() As Variant` (Get / Let) — *"A list of dependent services that this service requires to be started before this service is launched (dependent services are auto-launched by the OS)."* Pass an `Array("OtherSvc1", "OtherSvc2")`. The setter stashes it; `Install()` packs it into a double-null-terminated string and hands it to `CreateServiceW`.
+- `AutoInitializeCOM As Boolean` (Get / Let) — *"When TRUE, COM will be initialized for you on the new service thread in STA mode."* Defaults to `True`. Set to `False` if your service needs a different apartment model (call `CoInitializeEx` yourself from `EntryPoint`).
+- `SupportsPausing As Boolean` (Get / Let) — *"When TRUE, the SCM will send `SERVICE_CONTROL_PAUSE` / `SERVICE_CONTROL_CONTINUE` notifications."* Defaults to `False`. The setter calls `ResyncStatus()` so toggling it mid-run takes effect immediately. (Most services set this to `True` once inside `EntryPoint` and then handle `vbServiceControlPause` / `vbServiceControlContinue` in `ChangeState`.)
+
+**Public methods**:
+
+- `Sub Install()` — *"This method attempts to install the configured service on the system."* Opens the SCM with `SC_MANAGER_CONNECT Or SC_MANAGER_CREATE_SERVICE`, calls `CreateServiceW`. If the service already exists, deletes it (via `OpenServiceW(SERVICE_DELETE)` + `DeleteService`) and **retries** the create — so `Install()` is effectively re-entrant / safe to call multiple times. On successful create, sets the description via `ChangeServiceConfig2W`. Raises run-time error 5 on permissions failure or unrecoverable create failure. **Requires admin elevation.**
+- `Sub Uninstall()` — *"This method attempts to uninstall the configured service on the system."* Opens the SCM, opens the service with `SERVICE_DELETE`, calls `DeleteService`. Raises run-time error 5 if the service isn't registered or on permissions failure. **Requires admin elevation.**
+- `Sub ReportStatus(ByVal dwCurrentState As ServiceStatusConstants, Optional ByVal dwWin32ExitCode As Long = ERRORCODE_NO_ERROR, Optional ByVal dwWaitHint As Long = 0)` — *"This method informs the OS of the current state of the service."* The user's `EntryPoint` is **required** to call `ReportStatus(vbServiceStatusRunning)` once steady-state is reached and `ReportStatus(vbServiceStatusStopped)` once shut-down completes; long start-up sequences should also call `ReportStatus(vbServiceStatusStartPending, , <waitHint_ms>)` periodically to keep the SCM from killing the service. The `dwControlsAccepted` field of `SERVICE_STATUS` is filled automatically from the state and from `SupportsPausing` (Stop is always accepted except during `StartPending`; Pause/Continue is gated on `SupportsPausing`). The `dwCheckPoint` field auto-increments for pending states and resets on `Running`/`Stopped`.
+- `Sub ResyncStatus()` — re-applies the cached `SERVICE_STATUS` to the SCM via `SetServiceStatus`. Called automatically from `ReportStatus` and from the `SupportsPausing` setter. User code rarely needs to call this directly; mention it for completeness.
+
+The class also carries two methods that are technically `Public`-by-default (no modifier) but are invoked only by the OS dispatcher / the package's own trampoline — `ServiceEntryPoint(ByVal dwArgc As Long, ByVal lpszArgv As LongPtr)` and `ServiceControlHandlerCallback(ByVal dwControl As Long, ByVal dwEventType As Long, ByVal lpEventData As LongPtr)`. **Do not list these as user-facing methods**; mention them at the very end of the page under "Internal hooks" with a `> [!NOTE]` saying the OS / package infrastructure invokes them and user code never calls them.
+
+#### `ServiceCreator(Of T)` public members
+
+Generic class. `[COMCreatable(False)]`. `[Description("This class allows the service manager to create an instance of a particular service on-demand as needed")]` is the source intro. Tagged with the EA magic-byte `[ClassId("66170220-FEF3-4257-8FBA-EAEAEAEAEAEA")]` — same compiler-special-handling treatment as `WinEventLogLib`'s `EventLog(Of T1, T2)`. Do not surface the `ClassId` on the page.
+
+Type parameter constraint: `T` must implement `ITbService`. There is no syntactic `Where T : ITbService` constraint expressed in the source, but `Function CreateInstance() As ITbService` returning `New T` only compiles when `T` implements `ITbService` — flag this as the practical constraint on the page.
+
+**Public method**:
+
+- `Function CreateInstance() As ITbService` — `Implements IServiceCreator.CreateInstance`. Returns `New T`. Called once per service start by the package's dispatcher trampoline. User code never calls this directly; the typical usage is `.InstanceCreator = New ServiceCreator(Of MyServiceClass)` on a freshly-allocated `ServiceManager`.
+
+The page should be small (the surface is one method) and largely focused on explaining the `Of T` parameterisation + the `T : ITbService` constraint + how it slots into `ServiceManager.InstanceCreator`.
+
+#### `ServiceState` public members
+
+`[COMCreatable(False)]`. Returned by `Services.QueryStateOfService(Name)`. The constructor takes the service name, opens the SCM with `SC_MANAGER_CONNECT`, opens the service with `SERVICE_QUERY_STATUS`, calls `QueryServiceStatusEx(SC_STATUS_PROCESS_INFO, ...)`, and snapshots a `SERVICE_STATUS_PROCESS` struct. **The snapshot is taken once at construction time and never refreshed** — to see updated state, call `Services.QueryStateOfService` again.
+
+The constructor raises run-time error 5 with descriptive messages on three failure modes: SCM open failed (*"Unable to open the Service manager..."*), service not installed (*"Service '<Name>' is not installed on this system"*), status query failed (*"Unable to query the service state"*).
+
+**Public properties** (all read-only `Get`):
+
+- `Type As ServiceTypeConstants` — the SCM-reported service type.
+- `CurrentState As Long` — the SCM-reported state, but typed `Long` rather than `ServiceStatusConstants`. **Source carries a `' FIXME` comment** — surface as a `> [!NOTE]` that this returns the underlying `Long` value (which happens to match the `ServiceStatusConstants` enum values), and that callers wanting type-safety can `CType(state.CurrentState, ServiceStatusConstants)`.
+- `CurrentStateText As String` — human-readable text: `"RUNNING"`, `"STOPPED"`, `"STARTING"`, `"STOPPING"`, `"PAUSED"`, `"PAUSING"`, `"CONTINUING"`, `"UNKNOWN STATE (<n>)"`.
+- `ControlsAccepted As Long` — bitmask of `SERVICE_ACCEPT_*` flags. **Source carries a `' FIXME` comment** — surface the same way as `CurrentState`.
+- `ExitCode As Long` — the `dwWin32ExitCode` field. The Win32 documented sentinel `ERROR_SERVICE_SPECIFIC_ERROR` (`1066`) means "see `ServiceSpecificExitCode`".
+- `ServiceSpecificExitCode As Long` — the service-defined exit code when `ExitCode = ERROR_SERVICE_SPECIFIC_ERROR`. Otherwise meaningless.
+- `CheckPoint As Long` — the `dwCheckPoint` field; increments while the service is in a pending state and resets at steady state.
+- `WaitHint As Long` — the `dwWaitHint` milliseconds field.
+- `ProcessId As Long` — the OS process ID hosting the service (0 if not running).
+- `Flags As Long` — the `dwServiceFlags` field (currently `SERVICE_RUNS_IN_SYSTEM_PROCESS = 1` is the only documented bit).
+
+#### `ITbService` public members
+
+`Public Interface`. Tagged `[InterfaceId("5F137E12-5164-452E-911A-6FD9BF20EC81")]`. Description: *"All services must implement `ITbService`."* The contract is three subs:
+
+- `Sub EntryPoint(ByVal ServiceContext As ServiceManager)` — the main service body. Called by the package's dispatcher trampoline once the SCM has finished start-up handshaking. **Runs on the service thread** (a separate thread from the dispatcher). Inside this sub the implementor:
+  1. Optionally validates startup conditions (e.g. checks `ServiceContext.LaunchArgs`).
+  2. Calls `ServiceContext.ReportStatus(vbServiceStatusRunning)` once steady-state is reached (the dispatcher trampoline reports `vbServiceStatusStartPending` automatically before calling `EntryPoint`).
+  3. Runs the long-running work loop. For pipe-server services this is the `NamedPipeServer.ManualMessageLoopEnter()` blocking call; for other services it might be a `Do While IsStopping = False` loop with a wait primitive.
+  4. Calls `ServiceContext.ReportStatus(vbServiceStatusStopped)` before returning.
+- `Sub StartupFailed(ByVal ServiceContext As ServiceManager)` — called if `RegisterServiceCtrlHandlerExW` failed (the control handler couldn't be hooked, e.g. the service was launched outside the SCM context). Typical implementation: log a failure event. Don't try to `ReportStatus` from here — the status handle is invalid.
+- `Sub ChangeState(ByVal ServiceContext As ServiceManager, ByVal dwControl As ServiceControlCodeConstants, ByVal dwEventType As Long, ByVal lpEventData As LongPtr)` — the control-code dispatcher. **Runs on the main (dispatcher) thread**, not on the service thread. Typical pattern: `Select Case dwControl` over `vbServiceControlStop` / `vbServiceControlShutdown` / `vbServiceControlPause` / `vbServiceControlContinue`, set shared `Public` flags (`IsStopping`, `IsPaused`), call `ServiceContext.ReportStatus` to acknowledge the transition, signal the service thread to react (e.g. `NamedPipeServer.ManualMessageLoopLeave()`). The `dwEventType` + `lpEventData` parameters carry the event-specific payload for the codes that need it (`SERVICE_CONTROL_DEVICEEVENT`, `SERVICE_CONTROL_POWEREVENT`, `SERVICE_CONTROL_SESSIONCHANGE`, `SERVICE_CONTROL_HARDWAREPROFILECHANGE` — see Microsoft's `HandlerEx` documentation for the data layouts).
+
+**The two-thread split is the single most important fact about the interface** — every page entry should reinforce it. The example uses `Public IsPaused As Boolean` + `Public IsStopping As Boolean` shared fields on the service class to ferry state between the two threads, which is the documented pattern.
+
+#### Enumerations
+
+Public enums (in `Public Module ServicesConstantsPublic`), one page each under `docs/Reference/WinServicesLib/Enumerations/`:
+
+- `ServiceTypeConstants` — `tbServiceTypeAdapter`, `tbServiceTypeSystemDriver`, `tbServiceTypeKernelDriver`, `tbServiceTypeRecognizerDriver`, `tbServiceTypeOwnProcess`, `tbServiceTypeShareProcess`, `tbServiceTypeOwnProcessInteractive`, `tbServiceTypeShareProcessInteractive`. The driver values (`tbServiceTypeSystemDriver`, `tbServiceTypeKernelDriver`, `tbServiceTypeRecognizerDriver`, `tbServiceTypeAdapter`) are only meaningful when registering a kernel-mode driver — twinBASIC services compile to a user-mode EXE and should use `tbServiceTypeOwnProcess` (one service per EXE) or `tbServiceTypeShareProcess` (multiple services hosted in one EXE; the example uses this). The `Interactive` variants are kept for compatibility but Windows Vista and later disallow them; flag with a `> [!NOTE]`.
+- `ServiceStartConstants` — `tbServiceStartAuto`, `tbServiceStartBoot`, `tbServiceStartOnDemand`, `tbServiceStartDisabled`, `tbServiceStartDriverSystem`. `tbServiceStartBoot` and `tbServiceStartDriverSystem` only apply to kernel drivers.
+- `ServiceControlCodeConstants` — 18 values mirroring the Win32 `SERVICE_CONTROL_*` constants. Source-side prefix is `vbServiceControl*` (carried over from VB6 — note the prefix is `vb`, not `tb`, in this enum; surface as-is, don't try to rationalise).
+- `ServiceStatusConstants` — `vbServiceStatusStopped`, `vbServiceStatusStartPending`, `vbServiceStatusStopPending`, `vbServiceStatusRunning`, `vbServiceStatusContinuePending`, `vbServiceStatusPausePending`, `vbServiceStatusPaused`. Same `vb` prefix.
+
+Format pages like `WebView2/Enumerations/wv2PrintOrientation.md` — single intro paragraph, a value table with `{: #vbServiceXxx }` anchors per row for deep-linking.
+
+#### Doc-side layout (folders / files)
+
+Ten pages total:
+
+```
+docs/Reference/WinServicesLib/
+  index.md                                  ← package landing; lifecycle + dual-thread model + install / launch flows + integration cross-links (event log + named pipes)
+  Services.md                               ← the predeclared singleton
+  ServiceManager.md                         ← per-service configuration + ReportStatus
+  ServiceCreator.md                         ← Of T generic factory
+  ServiceState.md                           ← read-only state snapshot
+  ITbService.md                             ← interface every service implements
+  Enumerations/index.md
+  Enumerations/ServiceTypeConstants.md
+  Enumerations/ServiceStartConstants.md
+  Enumerations/ServiceControlCodeConstants.md
+  Enumerations/ServiceStatusConstants.md
+```
+
+All five concrete pages are single-file (no folder-style — no natural sub-pages; each class's surface is medium-sized).
+
+The `index.md` should be substantial and walk the reader through:
+
+1. **What a Windows service is** (one paragraph: long-running background process supervised by the SCM, started before/independently of user logon, controlled via the Services control panel applet or `sc.exe`).
+2. **Lifecycle**: configure (`Services.ConfigureNew`) → install (`Services.InstallAll` or per-manager `.Install`, **elevated**) → run (`Services.RunServiceDispatcher` blocks the EXE's main thread; SCM launches the service thread on demand). The example's `If InStr(Command, "-startService") > 0` branch is the canonical "same EXE for install-time UI and run-time service" pattern.
+3. **The two-thread split**: `EntryPoint` and `ChangeState` run on different threads; surface this prominently with a small diagram or numbered explanation.
+4. **Integration with the sister packages**: cross-link `Implements EventLog(Of …) Via EventLog = New EventLog(…)` (see `WinEventLogLib`) and the `NamedPipeServer.ManualMessageLoopEnter`/`Leave` service-hosting idiom (see `WinNamedPipesLib`). The worked example at `..\tbrepro\winlibs\tbServiceTest2\Sources\` ties all three together.
+
+**Naming:**
+
+- Folder / URL segment: `WinServicesLib/` (matches the source-side package name; no `Package` suffix to drop, same as `WinEventLogLib` and `WinNamedPipesLib`).
+- Index title: `WinServicesLib Package` — the `<Name> Package` convention.
+- Permalinks: `/tB/Packages/WinServicesLib/` for the landing; `/tB/Packages/WinServicesLib/<Class>` for each class page; `/tB/Packages/WinServicesLib/Enumerations/<Enum>` for each enum page.
+- `parent: WinServicesLib Package` on each top-level child page. The four enum pages set `parent: Enumerations` and `grand_parent: WinServicesLib Package` (the grouped-page pattern; same shape as the WebView2 / CEF / CustomControls `Enumerations/` directories).
+
+**License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2025; first release v0.1, 04-FEB-2025) — same situation as every other Wayne Phillips package. Pages are fully original content; **omit** the `vba_attribution: true` flag.
 
 ## Page template
 
@@ -693,6 +1030,8 @@ The URL prefixes are *not* uniform across packages — VBA pages live one segmen
 - WinEventLogLib class → `/tB/Packages/WinEventLogLib/EventLog` (single-file; same depth as a single-file VB class)
 - WinEventLogLib module → `/tB/Packages/WinEventLogLib/EventLogHelperPublic` (single-file; same depth as an Assert module)
 - WinNamedPipesLib class → `/tB/Packages/WinNamedPipesLib/<Class>` (single-file; same depth as a single-file VB class)
+- WinServicesLib class / interface → `/tB/Packages/WinServicesLib/<Class>` (single-file; same depth as a single-file VB class)
+- WinServicesLib enumeration → `/tB/Packages/WinServicesLib/Enumerations/<Enum>` (one segment deeper, parallel to WebView2 / CEF / CustomControls)
 
 Common patterns:
 
@@ -766,6 +1105,19 @@ Common patterns:
 | WinNamedPipesLib `Packages/WinNamedPipesLib/X` | sibling `Packages/WinNamedPipesLib/Y`   | `[Y](Y)`                                   |
 | WinNamedPipesLib `Packages/WinNamedPipesLib/X` | VBA `Modules/<Mod>/Y`                   | `[Y](../../Modules/<Mod>/Y)`               |
 | WinNamedPipesLib `Packages/WinNamedPipesLib/X` | `Core/Y`                                | `[Y](../../Core/Y)`                        |
+| WinNamedPipesLib `Packages/WinNamedPipesLib/X` | WinServicesLib `Packages/WinServicesLib/Y` | `[Y](../WinServicesLib/Y)`              |
+| WinNamedPipesLib `Packages/WinNamedPipesLib/X` | WinEventLogLib `Packages/WinEventLogLib/Y` | `[Y](../WinEventLogLib/Y)`              |
+| WinServicesLib `Packages/WinServicesLib/X` (single-file) | sibling `Packages/WinServicesLib/Y` | `[Y](Y)`                              |
+| WinServicesLib `Packages/WinServicesLib/X` (single-file) | `Packages/WinServicesLib/Enumerations/Y` | `[Y](Enumerations/Y)`              |
+| WinServicesLib `Packages/WinServicesLib/X` (single-file) | WinEventLogLib `Packages/WinEventLogLib/Y` | `[Y](../WinEventLogLib/Y)`        |
+| WinServicesLib `Packages/WinServicesLib/X` (single-file) | WinNamedPipesLib `Packages/WinNamedPipesLib/Y` | `[Y](../WinNamedPipesLib/Y)`  |
+| WinServicesLib `Packages/WinServicesLib/X` (single-file) | VBRUN `Packages/VBRUN/<Mod>/Y`     | `[Y](../VBRUN/<Mod>/Y)`                    |
+| WinServicesLib `Packages/WinServicesLib/X` (single-file) | `Core/Y`                            | `[Y](../../Core/Y)`                        |
+| WinServicesLib `Packages/WinServicesLib/Enumerations/X` | sibling `Enumerations/Y`             | `[Y](Y)`                                   |
+| WinServicesLib `Packages/WinServicesLib/Enumerations/X` | `Packages/WinServicesLib/<Class>`    | `[Y](../<Class>)`                          |
+| WinServicesLib `Packages/WinServicesLib/Enumerations/X` | WinEventLogLib `Packages/WinEventLogLib/Y` | `[Y](../../WinEventLogLib/Y)`        |
+| WinEventLogLib `Packages/WinEventLogLib/X` | WinServicesLib `Packages/WinServicesLib/Y` | `[Y](../WinServicesLib/Y)`             |
+| WinEventLogLib `Packages/WinEventLogLib/X` | WinNamedPipesLib `Packages/WinNamedPipesLib/Y` | `[Y](../WinNamedPipesLib/Y)`       |
 | `Core/X`                                   | VBA `Modules/<Mod>/Y`                       | `[Y](../Modules/<Mod>/Y)`                  |
 | `Core/X`                                   | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../Packages/VBRUN/<Mod>/Y)`           |
 | `Core/X`                                   | VB `Packages/VB/Y`                          | `[Y](../Packages/VB/Y)`                    |
@@ -775,6 +1127,7 @@ Common patterns:
 | `Core/X`                                   | CEF `Packages/CEF/Y`                        | `[Y](../Packages/CEF/Y)`                   |
 | `Core/X`                                   | WinEventLogLib `Packages/WinEventLogLib/Y`  | `[Y](../Packages/WinEventLogLib/Y)`        |
 | `Core/X`                                   | WinNamedPipesLib `Packages/WinNamedPipesLib/Y` | `[Y](../Packages/WinNamedPipesLib/Y)`   |
+| `Core/X`                                   | WinServicesLib `Packages/WinServicesLib/Y` | `[Y](../Packages/WinServicesLib/Y)`     |
 | `Core/X`                                   | `Core/Y` (sibling)                          | `[Y](Y)`                                   |
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
@@ -790,6 +1143,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - CEF package → `..\tbrepro\cef\CEFSampleProject\Packages\cefPackage\Sources\CefControl.twin` for the whole public surface (the `CefBrowser` control, its `CefBrowserBaseCtl` base, and `CefEnvironmentOptions`). For the two surfaced enums: `CEF\Enums\_cef_log_severity_t.twin` (declares both the internal `cef_log_severity_t` and the user-facing `CefLogSeverity`) and `CEF\CrossProcessIPC\BrowserOM.twin` (declares `cefPrintOrientation` inline, around line 29). Everything else under `cefPackage\Sources\` and `cefPackage\Sources\CEF\` is `Private Class` / `Private Module` plumbing — skip. The sample project's `Sources\Example1..4.twin` are the source-of-truth for which features are *not* yet exposed (commented-out event handlers with *"Sorry, this feature is not yet available in the CEF package"*).
    - WinEventLogLib package → `..\tb-export\NewProject\Packages\WinEventLogLib\Sources\EventLog.twin` (the generic `EventLog(Of T1, T2)` class) and `Helper.twin` (`EventLogHelperPublic.RegisterEventLogInternal`). Skip `APIs.twin` (`Private Module`), `Constants.twin` (`Private Module` — the `EventLogTypeConstants` enum is unreachable from outside the package), and the `EventLogHelperPrivate` module in `Helper.twin` (named "Private" though declared `Public`; only used internally by `EventLog.LogArray`).
    - WinNamedPipesLib package → `..\tb-export\NewProject\Packages\WinNamedPipesLib\Sources\` — one `.twin` per public class: `NamedPipeServer.twin`, `NamedPipeServerConnection.twin`, `NamedPipeClientManager.twin`, `NamedPipeClientConnection.twin`. Each `.twin` also declares a `Private Interface INamedPipe*Internal` (refcount / dispatch helper used by the IOCP threads); skip those. Skip `APIs.twin`, `Constants.twin`, and `Helper.twin` (all `Private Module`).
+   - WinServicesLib package → `..\tb-export\NewProject\Packages\WinServicesLib\Sources\` — one `.twin` per public class: `Services.twin` (the `[PredeclaredId]` coordinator), `ServiceManager.twin`, `ServiceCreator.twin`, `ServiceState.twin`. Plus `Interfaces.twin` for the `Public Interface ITbService` (the file also declares `Private Interface IServiceCreator` and `Private Interface IServiceManagerInternal` — skip both). Enumerations live in `Constants.twin` under `Public Module ServicesConstantsPublic` (four enums: `ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants`). Skip `APIs.twin`, `Helper.twin`, and the `Private Module ServicesConstants` half of `Constants.twin` (all package-internal). The worked integration example — services + event log + named pipes wired together — is at `..\tbrepro\winlibs\tbServiceTest2\Sources\` (read `Startup.twin` and `SERVICES\TBSERVICE001.twin` first; the latter is the canonical `ITbService` implementation).
 2. **Decide placement**:
    - Pure language keyword (parsed by the compiler, no runtime call) → `docs/Reference/Core/`.
    - Runtime function/property → `docs/Reference/<Package>/<Mod>/`. Add `redirect_from: /tB/Core/<name>` so legacy `tB/Core/<name>` links still work.
@@ -805,6 +1159,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - CEF control → `docs/Reference/CEF/CefBrowser/index.md` (folder-style; carries the `EnvironmentOptions` sub-page). Pre-creation options class → `docs/Reference/CEF/CefBrowser/EnvironmentOptions.md` (parallel to `WebView2/WebView2/EnvironmentOptions.md`). CEF enumeration → `docs/Reference/CEF/Enumerations/<Enum>.md`.
    - WinEventLogLib generic class → `docs/Reference/WinEventLogLib/EventLog.md` (single-file; the surface is small — constructor + three methods). WinEventLogLib helper module → `docs/Reference/WinEventLogLib/EventLogHelperPublic.md` (single-file; one Sub).
    - WinNamedPipesLib class → `docs/Reference/WinNamedPipesLib/<Class>.md` (single-file; one page per public class — `NamedPipeServer.md`, `NamedPipeServerConnection.md`, `NamedPipeClientManager.md`, `NamedPipeClientConnection.md`). No folder-style — none of the four classes have sub-pages.
+   - WinServicesLib class → `docs/Reference/WinServicesLib/<Class>.md` (single-file; one page each for `Services.md`, `ServiceManager.md`, `ServiceCreator.md`, `ServiceState.md`, `ITbService.md`). WinServicesLib enumeration → `docs/Reference/WinServicesLib/Enumerations/<Enum>.md` — one page each for `ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants` (mirrors `WebView2/Enumerations/`, `CEF/Enumerations/`, `CustomControls/Enumerations/`, `VBRUN/Constants/`).
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 3. **Adapt content** (VBA-Docs sources):
    - Strip MS frontmatter (`ms.assetid`, `f1_keywords`, `keywords`, `ms.date`, `ms.localizationpriority`).
@@ -881,10 +1236,22 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - `Handle` is `Public` on both connection classes — it is the underlying Win32 pipe handle. Document it as informational (useful for low-level / debugging access), not as something user code typically reads or writes.
    - The README TODO list lives on the **landing page** ("Known limitations" or "Roadmap" section), not on the per-class pages. Reproduce only the user-facing items (no method to drop a single client from the server side; no `Error` events on the IOCP worker thread; suspected hard cap on message size). Skip the *"currently a lot of duplicate code in server + client"* note — it's an internal-refactor concern.
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed).
-11. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-12. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `docs/Reference/WinNamedPipesLib/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
-13. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
-14. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
+11. **Adapt content** (WinServicesLib `.twin` sources):
+   - The five public classes are flat — `Services` (PredeclaredId), `ServiceManager`, `ServiceCreator(Of T)`, `ServiceState`, and the `ITbService` interface. List each class's surface in the order *Fields → Properties → Methods → Events* (the package has no events on the public classes; the `ITbService` interface defines callbacks that the user implements, not events on a class).
+   - `Services` is `[PredeclaredId]` — surface this on the page intro. The class is used singleton-style as `Services.X` without `New`, and also doubles as an enumerable collection (`For Each manager In Services`). The `[Description("...")]` attribute on each method is the IDE one-liner — use it as the basis for the entry, then expand.
+   - `ServiceManager` carries `[COMCreatable(False)]` plus an `[Description("For internal use. Dont create instances of ServiceManager manually, use Services.ConfigureNew instead")]` on its constructor. Surface that on the intro paragraph (*"Instantiate via `Services.ConfigureNew`, not directly"*) — same shape as the WinNamedPipesLib `Connection` classes. Two methods on `ServiceManager` are technically `Public`-by-default but only invoked by the OS / package infrastructure (`ServiceEntryPoint`, `ServiceControlHandlerCallback`) — list them at the bottom of the page under "Internal hooks" with a `> [!NOTE]` saying user code never calls them; do not list them at the top with the user-facing methods. `ResyncStatus` is borderline — list it under Methods but note that `ReportStatus` calls it automatically.
+   - `ServiceCreator(Of T)` is a single-method generic class. Surface the constraint clearly: `T` must implement `ITbService` (the source has no syntactic `Where T : ITbService` clause, but `Return New T As ITbService` only compiles when `T` does). Do not surface the `[ClassId("66170220-...-EAEAEAEAEAEA")]` — same compiler-special-handling rule as `WinEventLogLib`'s `EventLog(Of T1, T2)`.
+   - `ServiceState` is read-only and constructed via `Services.QueryStateOfService(Name)`. Surface that the snapshot is taken **once at construction time** and never refreshed — to see updated state, call `QueryStateOfService` again. Two properties (`CurrentState`, `ControlsAccepted`) carry `' FIXME` comments noting they return raw `Long` rather than the typed enum; surface as a `> [!NOTE]` on each, with a `CType` example.
+   - `ITbService` is the user-implemented contract. Three subs (`EntryPoint`, `StartupFailed`, `ChangeState`). The page **must** prominently flag the two-thread split: `EntryPoint` runs on the service thread (spawned by the SCM dispatcher), `ChangeState` runs on the main dispatcher thread. The canonical inter-thread coordination pattern uses shared `Public` flags (`IsStopping`, `IsPaused`) on the implementing class — surface this as the recommended idiom, with the `tbServiceTest2\Sources\SERVICES\TBSERVICE002.twin` `IsStopping` / `IsPaused` example.
+   - For the four enums under `ServicesConstantsPublic`: format pages like `WebView2/Enumerations/wv2PrintOrientation.md` — single intro paragraph, a value table with `{: #vbServiceXxx }` / `{: #tbServiceXxx }` anchors per row for deep-linking. The mixed `vb` / `tb` prefix across enums is source-side inconsistency — surface as-is, don't try to rationalise. Call out on `ServiceTypeConstants` that the driver values (`tbServiceTypeSystemDriver`, `tbServiceTypeKernelDriver`, `tbServiceTypeRecognizerDriver`, `tbServiceTypeAdapter`) are only meaningful for kernel-mode drivers (twinBASIC services compile to user-mode EXEs); the `Interactive` variants are kept for compatibility but Windows Vista and later disallow them (note with a `> [!NOTE]`).
+   - Do not list `[InterfaceId]`, `[ClassId]`, `[EventInterfaceId]` on any page; they are COM-plumbing decoration.
+   - The package-internal `IServiceCreator` and `IServiceManagerInternal` interfaces (both `Private Interface` in `Interfaces.twin`) are pure marshalling-and-trampoline plumbing — **no doc page**, and do not surface the underscored implementing members on the concrete classes either.
+   - The index landing page must walk the integration story: configure-during-`Sub Main` → install (elevated, one-time) → run-as-service (the `-startService` discriminator pattern) → service-thread `EntryPoint` reports running → `ChangeState` handles stop on the dispatcher thread. Cross-link the [`EventLog` composition-delegation idiom](docs/Reference/WinEventLogLib/EventLog.md) (the `Implements EventLog(Of …) Via …` pattern from `tbServiceTest2\Sources\SERVICES\TBSERVICE001.twin`) and the [`NamedPipeServer` service-host idiom](docs/Reference/WinNamedPipesLib/NamedPipeServer.md) (the `ManualMessageLoopEnter` / `Leave` pattern).
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same as every other Wayne Phillips package).
+12. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+13. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `docs/Reference/WinNamedPipesLib/index.md`, `docs/Reference/WinServicesLib/index.md` (and its `Enumerations/` sub-index), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
+14. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
+15. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
 ## twinBASIC deviations from VBA to flag
 

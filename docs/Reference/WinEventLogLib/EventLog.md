@@ -37,7 +37,9 @@ Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
 
 Both type arguments are required at instantiation — twinBASIC does not deduce them from the *LogName* constructor argument. See the [Generics](../../../Features/Language/Generics) page for the general rules.
 
-The package [overview](.) covers the install-then-log lifecycle, registry layout, and message-resource generation that surround this class.
+A class that needs to expose [**LogSuccess**](#logsuccess) / [**LogFailure**](#logfailure) / [**Register**](#register) as if those methods were its own can mix the **EventLog** surface in through [**Implements ... Via**](../../../Features/Language/Inheritance) composition — see the [composition-delegation idiom](.#composition-delegation-idiom) section on the package overview for the canonical service-class pattern.
+
+The package [overview](.) covers the install-then-log lifecycle, the [`[PopulateFrom("json", ...)]` message-resource convention](.#populatefrom-convention), registry layout, and the [composition-delegation idiom](.#composition-delegation-idiom).
 
 * TOC
 {:toc}
@@ -112,7 +114,7 @@ Creates `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\<LogPath>` (prepending 
 > [!IMPORTANT]
 > **Register** requires administrator rights — it writes to `HKEY_LOCAL_MACHINE`. The usual pattern is to call it once from an elevated installer, not from the application's normal startup path.
 
-The Event Viewer renders message strings by loading **EventMessageFile** and looking up the message resource keyed by *EventId*. Because **EventMessageFile** points at `App.ModulePath`, the same EXE that calls **Register** must be the one that later calls [**LogSuccess**](#logsuccess) / [**LogFailure**](#logfailure); otherwise the Event Viewer cannot find the message strings. See [Message resources](.#message-resources) on the package landing page for how the resource is expected to be populated.
+The Event Viewer renders message strings by loading **EventMessageFile** and looking up the message resource keyed by *EventId*. Because **EventMessageFile** points at `App.ModulePath`, the same EXE that calls **Register** must be the one that later calls [**LogSuccess**](#logsuccess) / [**LogFailure**](#logfailure); otherwise the Event Viewer cannot find the message strings. See [Message resources](.#message-resources) and [The `[PopulateFrom("json", ...)]` convention](.#populatefrom-convention) on the package landing page for the recommended way to populate the resource.
 
 If the registry key cannot be opened for write, **Register** raises run-time error 5 *"Failed to register event log source (\<LogName\>)"*. Typical causes are insufficient privileges and a *LogPath* that points at a non-existent parent log.
 

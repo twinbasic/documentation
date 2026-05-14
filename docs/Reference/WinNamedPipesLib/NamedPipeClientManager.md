@@ -97,6 +97,8 @@ For Each name In names
 Next
 ```
 
+The package does not publish an event when pipes appear or disappear, so dynamic UIs that list available servers typically refresh the list from a low-frequency [**Timer**](../VB/Timer/) — see [Discovering pipes](.#discovering-pipes) on the package overview for the polling-loop pattern that preserves the user's current selection across refreshes.
+
 ### Stop
 {: .no_toc }
 
@@ -116,5 +118,6 @@ Syntax: **New NamedPipeClientManager**
 ## See Also
 
 - [WinNamedPipesLib package](.) -- overview, IOCP / event-marshalling architecture, cookie pattern, `Data()` lifetime caveat, **AsyncClose** rule
+- [Discovering pipes](.#discovering-pipes) -- the **Timer**-driven polling loop that powers dynamic pipe-listing UIs
 - [NamedPipeClientConnection class](NamedPipeClientConnection) -- the per-connection object returned by [**Connect**](#connect)
 - [NamedPipeServer class](NamedPipeServer) -- the server-side counterpart

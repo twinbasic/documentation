@@ -106,7 +106,7 @@ Syntax: *server*_**ClientMessageReceived**(*Connection* **As NamedPipeServerConn
 : The opaque correlation value originally passed to the [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads driven by [**ContinuouslyReadFromPipe**](#continuouslyreadfrompipe).
 
 *Data*
-: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if you need them.
+: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if you need them. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and gives you typed multi-field access in one step.
 
 ### ClientMessageSent
 {: .no_toc }
@@ -138,7 +138,7 @@ Issues an [**AsyncWrite**](NamedPipeServerConnection#asyncwrite) against every c
 Syntax: *server*.**AsyncBroadcast** *Data*() [, *Cookie* ]
 
 *Data*
-: *required* The message bytes to send.
+: *required* The message bytes to send. twinBASIC will coerce a **String** literal to **Byte()** implicitly, so `server.AsyncBroadcast "shutting down"` works without a separate `StrConv` step — useful for protocol-less server-pushed notifications.
 
 *Cookie*
 : *optional* A **Variant** correlation value, attached to *each* per-client [**ClientMessageSent**](#clientmessagesent) event. Default **Empty**.
@@ -154,12 +154,16 @@ Syntax: *server*.**ManualMessageLoopEnter**
 
 Intended for console / service hosts that do not have a Forms-style message pump of their own but want the default ([**FreeThreadingEvents**](#freethreadingevents) = **False**) marshalled-event semantics. UI hosts already pump messages naturally and do not need this method.
 
+The canonical caller is a Windows service that owns this server: the service-thread entry-point opens the server, transitions the service to `Running`, calls **ManualMessageLoopEnter** to block while events flow, and a control-code handler running on the dispatcher thread calls [**ManualMessageLoopLeave**](#manualmessageloopleave) when the SCM signals stop. See [Hosting inside a Windows service](.#service-host-idiom) on the package overview for the complete pattern, including the two-thread coordination and the *Pause* / *Continue* extension.
+
 ### ManualMessageLoopLeave
 {: .no_toc }
 
 Posts a `WM_USER_QUITTING` message to the hidden marshalling window, causing the [**ManualMessageLoopEnter**](#manualmessageloopenter) loop on the other thread to break out cleanly. Safe to call from any thread.
 
 Syntax: *server*.**ManualMessageLoopLeave**
+
+The intended caller is a thread *other* than the one inside [**ManualMessageLoopEnter**](#manualmessageloopenter) — typically the Windows service's dispatcher thread waking the service-entry-point thread out of its blocked loop. See [Hosting inside a Windows service](.#service-host-idiom).
 
 ### Start
 {: .no_toc }
@@ -189,5 +193,7 @@ Syntax: **New NamedPipeServer**
 ## See Also
 
 - [WinNamedPipesLib package](.) -- overview, IOCP / event-marshalling architecture, cookie pattern, `Data()` lifetime caveat, known limitations
+- [Hosting inside a Windows service](.#service-host-idiom) -- the **ManualMessageLoopEnter** / **ManualMessageLoopLeave** service-entry-point pattern
+- [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) -- the deep-copy capture pattern for transient *Data* in events
 - [NamedPipeServerConnection class](NamedPipeServerConnection) -- the per-client connection passed to every event
 - [NamedPipeClientManager class](NamedPipeClientManager) -- the client-side counterpart

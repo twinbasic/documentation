@@ -87,17 +87,26 @@ Sends a message back to this specific client.
 Syntax: *connection*.**AsyncWrite** *Data*() [, *Cookie* ]
 
 *Data*
-: *required* A **Byte()** array carrying the bytes to send. An uninitialised or zero-length array is a no-op.
+: *required* A **Byte()** array carrying the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended carrier is [**PropertyBag**](../VBRUN/PropertyBag/) — see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
 
 *Cookie*
 : *optional* A **Variant** correlation value, surfaced as the *Cookie* parameter of the matching [**ClientMessageSent**](NamedPipeServer#clientmessagesent) event. Default **Empty**.
 
 Returns immediately; the actual transmission runs through the IOCP loop. The completion fires [**ClientMessageSent**](NamedPipeServer#clientmessagesent) on the parent server.
 
+```tb
+' Reply to a request using the PropertyBag convention:
+Dim reply As New PropertyBag
+reply.WriteProperty "ResponseCommandID", "WHAT_TIME_IS_IT"
+reply.WriteProperty "ResponseData",      Time()
+Connection.AsyncWrite reply.Contents
+```
+
 To send the same message to every connected client at once, use [**NamedPipeServer.AsyncBroadcast**](NamedPipeServer#asyncbroadcast).
 
 ## See Also
 
 - [WinNamedPipesLib package](.) -- overview, IOCP / event-marshalling architecture, cookie pattern, `Data()` lifetime caveat
+- [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) -- the deep-copy capture / typed-payload convention for messages
 - [NamedPipeServer class](NamedPipeServer) -- the parent server that owns this connection
 - [NamedPipeClientConnection class](NamedPipeClientConnection) -- the client-side counterpart
