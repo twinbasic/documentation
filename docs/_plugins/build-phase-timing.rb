@@ -8,10 +8,9 @@
 # summary table at the end of the build, but the build phase breakdown
 # is only visible there if --profile is passed. With this plugin you see
 # each phase's duration inline, alongside the existing log lines from
-# plugins (jekyll-remote-theme, jekyll-gfm-admonitions,
-# jekyll-github-metadata, etc.), so the otherwise-silent stretch between
-# a generator's last log line and a :post_render hook's first log line
-# becomes a visible number.
+# plugins (jekyll-remote-theme, jekyll-gfm-admonitions, etc.), so the
+# otherwise-silent stretch between a generator's last log line and a
+# :post_render hook's first log line becomes a visible number.
 #
 # Example output:
 #
@@ -19,9 +18,8 @@
 #         GFMA: Converted admonitions in 232 file(s).
 #         GFMA: Generator ran in 410ms.
 #       Phases: GENERATE done in 3800ms.
-#   GitHub Metadata: No GitHub API authentication could be found...
-#       Phases: RENDER done in 12030ms.
 #         GFMA: Inserting admonition CSS in 0 page(s).
+#       Phases: RENDER done in 12030ms.
 #       Phases: WRITE+CLEANUP done in 580ms.
 #                    done in 16.960 seconds.
 #
