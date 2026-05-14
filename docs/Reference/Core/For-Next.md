@@ -56,9 +56,9 @@ After all statements in the loop have executed, *step* is added to *counter*. At
 
 > [!TIP]
 > 
-> Changing the value of *counter* while inside a loop can make it more difficult to read and debug your code.
+> Changing the value of *counter* while inside a loop can make code harder to read and debug.
 
-You can nest **For...Next** loops by placing one **For...Next** loop within another. Give each loop a unique variable name as its *counter*. The following construction is correct:
+**For...Next** loops can be nested by placing one **For...Next** loop within another. Give each loop a unique variable name as its *counter*. The following construction is correct:
 
 ```tb
 For I = 1 To 10 
@@ -72,7 +72,7 @@ Next I
 
 > [!NOTE]
 >
-> If you omit *counter* in a **Next** statement, execution continues as if *counter* is included. If a **Next** statement is encountered before its corresponding **For** statement, an error occurs.
+> When *counter* is omitted in a **Next** statement, execution continues as if *counter* is included. If a **Next** statement is encountered before its corresponding **For** statement, an error occurs.
 
 ### Example
 

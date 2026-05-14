@@ -9,7 +9,7 @@ permalink: /tB/Core/Handles
 A trailing clause on a procedure header that binds the procedure as an event handler for one or more specific events.
 
 > [!NOTE]
-> The **Handles** clause is a twinBASIC extension. Classic VBA connects event handlers solely by name: a `Sub` called `Form_Load` automatically handles the `Load` event of `Form`. twinBASIC still supports that pattern — **Handles** decouples the procedure name from the events it handles and lets one body handle several events at once. Whether the IDE inserts the new syntax when auto-generating event prototypes is controlled by the "IDE: Use new handles/implements syntax" option.
+> The **Handles** clause is a twinBASIC extension. Classic VBA connects event handlers solely by name: a `Sub` called `Form_Load` automatically handles the `Load` event of `Form`. twinBASIC still supports that pattern --- **Handles** decouples the procedure name from the events it handles and lets one body handle several events at once. Whether the IDE inserts the new syntax when auto-generating event prototypes is controlled by the "IDE: Use new handles/implements syntax" option.
 
 Syntax:
 > *procedure-header* **Handles** *object*.*event* [ **,** *object*.*event* ] …
@@ -25,9 +25,9 @@ Syntax:
 
 The procedure's parameter list must match the signatures of every event it handles. When several events are listed they must all share the same signature, so one body can service them interchangeably.
 
-Because **Handles** decouples the procedure's name from the events it handles, you can:
+Because **Handles** decouples the procedure's name from the events it handles, the procedure can:
 
-- give the procedure a descriptive name (`OnLoad`, `SyncOpacity`) instead of the compound `<Object>_<Event>` form;
+- have a descriptive name (`OnLoad`, `SyncOpacity`) instead of the compound `<Object>_<Event>` form;
 - factor several related event handlers into a single body without duplicating code; and
 - handle an event from a procedure whose name happens to collide with the implicit naming pattern.
 
@@ -63,7 +63,7 @@ Private Sub BackColor_OnPropertyLet()
 End Sub
 ```
 
-— and you would need a separate procedure body per event.
+--- a separate procedure body would be required per event.
 
 ### See Also
 

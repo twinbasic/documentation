@@ -37,19 +37,19 @@ End Sub
 
 ## Direction and sizing
 
-[**Direction**](#direction) chooses between **vbDirectionHorizontal** (the default — frames laid out left-to-right) and **vbDirectionVertical** (frames stacked top-to-bottom). Changing **Direction** at run time triggers an immediate re-layout.
+[**Direction**](#direction) chooses between **vbDirectionHorizontal** (the default --- frames laid out left-to-right) and **vbDirectionVertical** (frames stacked top-to-bottom). Changing **Direction** at run time triggers an immediate re-layout.
 
-For each contained frame, [**MultiFrameSize**](../Frame#multiframesize) gives its extent as a percentage of the **MultiFrame**'s width (horizontal) or height (vertical). Frames whose **MultiFrameSize** is `0` share the leftover extent equally — so a typical pattern is to give the edge panels fixed percentages and leave one centre panel at `0` so it absorbs window resizes. Percentages are not clamped; if the fixed-size frames already exceed the **MultiFrame**'s extent the auto-sized frames collapse to zero.
+For each contained frame, [**MultiFrameSize**](../Frame#multiframesize) gives its extent as a percentage of the **MultiFrame**'s width (horizontal) or height (vertical). Frames whose **MultiFrameSize** is `0` share the leftover extent equally --- so a typical pattern is to give the edge panels fixed percentages and leave one centre panel at `0` so it absorbs window resizes. Percentages are not clamped; if the fixed-size frames already exceed the **MultiFrame**'s extent the auto-sized frames collapse to zero.
 
 ## Position and shuffling
 
-Each contained frame is anchored to a sequential position via its [**MultiFramePosition**](../Frame#multiframeposition) property (zero-based). Positions are kept contiguous: assigning a frame a new **MultiFramePosition** at run time makes the **MultiFrame** shuffle the remaining frames up or down so that the old slot closes and the new slot opens at the requested index. Duplicate or out-of-range positions are normalised at the next layout pass — the **MultiFrame** falls back to the original control order on the parent form, renumbering the frames sequentially from `0`.
+Each contained frame is anchored to a sequential position via its [**MultiFramePosition**](../Frame#multiframeposition) property (zero-based). Positions are kept contiguous: assigning a frame a new **MultiFramePosition** at run time makes the **MultiFrame** shuffle the remaining frames up or down so that the old slot closes and the new slot opens at the requested index. Duplicate or out-of-range positions are normalised at the next layout pass --- the **MultiFrame** falls back to the original control order on the parent form, renumbering the frames sequentially from `0`.
 
 A frame whose [**Container**](../Frame#container) is the **MultiFrame** but whose **MultiFramePosition** is `-1` is appended at the next free slot the first time the layout is built.
 
 ## Adopting frames at run time
 
-The mapping from frame to **MultiFrame** is discovered from the parent form's control collection on each layout pass: a frame appears in the strip exactly when its [**Container**](../Frame#container) property points at the **MultiFrame**. The discovered set is then cached. To force the cache to be rebuilt — for example after re-parenting a frame at run time — assign any value to [**FramesCount**](#framescount):
+The mapping from frame to **MultiFrame** is discovered from the parent form's control collection on each layout pass: a frame appears in the strip exactly when its [**Container**](../Frame#container) property points at the **MultiFrame**. The discovered set is then cached. To force the cache to be rebuilt --- for example after re-parenting a frame at run time --- assign any value to [**FramesCount**](#framescount):
 
 ```tb
 Set fraExtra.Container = mfPanels
@@ -63,17 +63,17 @@ The **MultiFrame** repositions the frame's existing window in place; it does not
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the **MultiFrame**'s corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the **MultiFrame**'s corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### BackColor
 {: .no_toc }
 
-The background colour of the **MultiFrame**'s drawing surface, as an **OLE_COLOR**. Defaults to the system window-background colour. Visible only where the contained frames do not fully cover the extent — e.g. when their **MultiFrameSize**s sum to less than 100%.
+The background colour of the **MultiFrame**'s drawing surface, as an **OLE_COLOR**. Defaults to the system window-background colour. Visible only where the contained frames do not fully cover the extent --- e.g. when their **MultiFrameSize**s sum to less than 100%.
 
 ### Container
 {: .no_toc }
 
-The control that hosts this **MultiFrame** — typically the form. Read with **Get**, change with **Set**. Setting **Container** re-parents the **MultiFrame** to a different container at run time.
+The control that hosts this **MultiFrame** --- typically the form. Read with **Get**, change with **Set**. Setting **Container** re-parents the **MultiFrame** to a different container at run time.
 
 ### ControlType
 {: .no_toc }
@@ -83,7 +83,7 @@ A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstant
 ### Direction
 {: .no_toc }
 
-The orientation in which contained frames are laid out. A member of **MultiFrameDirectionConstants**: **vbDirectionHorizontal** (0, default — frames laid out left-to-right) or **vbDirectionVertical** (1 — frames stacked top-to-bottom). Changing **Direction** triggers an immediate re-layout of the contained frames.
+The orientation in which contained frames are laid out. A member of **MultiFrameDirectionConstants**: **vbDirectionHorizontal** (0, default --- frames laid out left-to-right) or **vbDirectionVertical** (1 --- frames stacked top-to-bottom). Changing **Direction** triggers an immediate re-layout of the contained frames.
 
 ### Dock
 {: .no_toc }
@@ -97,7 +97,7 @@ The number of [**Frame**](../Frame) controls currently in the **MultiFrame**'s l
 
 Syntax: *object*.**FramesCount** [ = *value* ]
 
-Reading **FramesCount** returns the size of the current layout cache. Assigning *any* value discards the cache so it is rebuilt on the next layout pass — the assigned number itself is ignored. Use the assignment as a manual refresh after re-parenting a frame at run time.
+Reading **FramesCount** returns the size of the current layout cache. Assigning *any* value discards the cache so it is rebuilt on the next layout pass --- the assigned number itself is ignored. Use the assignment as a manual refresh after re-parenting a frame at run time.
 
 ### Height
 {: .no_toc }
@@ -135,7 +135,7 @@ A reference to the [**Form**](../Form) that ultimately contains the **MultiFrame
 The position of the **MultiFrame** in the form's TAB-key navigation order. **Long**.
 
 > [!NOTE]
-> A **MultiFrame** never takes the focus itself — **TabIndex** is preserved for compatibility but has no observable effect on the user.
+> A **MultiFrame** never takes the focus itself --- **TabIndex** is preserved for compatibility but has no observable effect on the user.
 
 ### TabStop
 {: .no_toc }
@@ -143,7 +143,7 @@ The position of the **MultiFrame** in the form's TAB-key navigation order. **Lon
 Whether the **MultiFrame** participates in TAB-key navigation. **Boolean**, default **True**.
 
 > [!NOTE]
-> A **MultiFrame** never takes the focus itself — **TabStop** is preserved for compatibility but has no observable effect on the user.
+> A **MultiFrame** never takes the focus itself --- **TabStop** is preserved for compatibility but has no observable effect on the user.
 
 ### Tag
 {: .no_toc }

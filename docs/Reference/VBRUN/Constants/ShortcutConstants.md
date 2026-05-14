@@ -19,13 +19,13 @@ Shortcut-key identifiers for menu items, used by the menu editor and the runtime
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbShortcutCtrlA**{: #vbShortcutCtrlA } – **vbShortcutCtrlZ**{: #vbShortcutCtrlZ } | 1 – 26 | **Ctrl** + **A** through **Ctrl** + **Z**. |
+| **vbShortcutCtrlA**{: #vbShortcutCtrlA } -- **vbShortcutCtrlZ**{: #vbShortcutCtrlZ } | 1 -- 26 | **Ctrl** + **A** through **Ctrl** + **Z**. |
 
 ## Function keys
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbShortcutF1**{: #vbShortcutF1 } – **vbShortcutF9**{: #vbShortcutF9 } | 27 – 35 | **F1** through **F9**. |
+| **vbShortcutF1**{: #vbShortcutF1 } -- **vbShortcutF9**{: #vbShortcutF9 } | 27 -- 35 | **F1** through **F9**. |
 | **vbShortcutF11**{: #vbShortcutF11 } | 36 | **F11**. |
 | **vbShortcutF12**{: #vbShortcutF12 } | 37 | **F12**. |
 
@@ -33,7 +33,7 @@ Shortcut-key identifiers for menu items, used by the menu editor and the runtime
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbShortcutShiftF1**{: #vbShortcutShiftF1 } – **vbShortcutShiftF9**{: #vbShortcutShiftF9 } | 38 – 46 | **Shift** + **F1** through **Shift** + **F9**. |
+| **vbShortcutShiftF1**{: #vbShortcutShiftF1 } -- **vbShortcutShiftF9**{: #vbShortcutShiftF9 } | 38 -- 46 | **Shift** + **F1** through **Shift** + **F9**. |
 | **vbShortcutShiftF11**{: #vbShortcutShiftF11 } | 47 | **Shift** + **F11**. |
 | **vbShortcutShiftF12**{: #vbShortcutShiftF12 } | 48 | **Shift** + **F12**. |
 
@@ -41,7 +41,7 @@ Shortcut-key identifiers for menu items, used by the menu editor and the runtime
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbShortcutCtrlF1**{: #vbShortcutCtrlF1 } – **vbShortcutCtrlF9**{: #vbShortcutCtrlF9 } | 49 – 57 | **Ctrl** + **F1** through **Ctrl** + **F9**. |
+| **vbShortcutCtrlF1**{: #vbShortcutCtrlF1 } -- **vbShortcutCtrlF9**{: #vbShortcutCtrlF9 } | 49 -- 57 | **Ctrl** + **F1** through **Ctrl** + **F9**. |
 | **vbShortcutCtrlF11**{: #vbShortcutCtrlF11 } | 58 | **Ctrl** + **F11**. |
 | **vbShortcutCtrlF12**{: #vbShortcutCtrlF12 } | 59 | **Ctrl** + **F12**. |
 
@@ -49,7 +49,7 @@ Shortcut-key identifiers for menu items, used by the menu editor and the runtime
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbShortcutShiftCtrlF1**{: #vbShortcutShiftCtrlF1 } – **vbShortcutShiftCtrlF9**{: #vbShortcutShiftCtrlF9 } | 60 – 68 | **Shift** + **Ctrl** + **F1** through **Shift** + **Ctrl** + **F9**. |
+| **vbShortcutShiftCtrlF1**{: #vbShortcutShiftCtrlF1 } -- **vbShortcutShiftCtrlF9**{: #vbShortcutShiftCtrlF9 } | 60 -- 68 | **Shift** + **Ctrl** + **F1** through **Shift** + **Ctrl** + **F9**. |
 | **vbShortcutShiftCtrlF11**{: #vbShortcutShiftCtrlF11 } | 69 | **Shift** + **Ctrl** + **F11**. |
 | **vbShortcutShiftCtrlF12**{: #vbShortcutShiftCtrlF12 } | 70 | **Shift** + **Ctrl** + **F12**. |
 

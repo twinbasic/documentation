@@ -20,10 +20,10 @@ ImageList1.ListImages("doc").Draw _
 | Member                    | Value | Description                                                              |
 |---------------------------|-------|--------------------------------------------------------------------------|
 | **ImlDrawNormal**{: #ImlDrawNormal }           | 1  | Render in the normal state (no overlays).                |
-| **ImlDrawTransparent**{: #ImlDrawTransparent } | 2  | Honour the image's mask / alpha — transparent pixels stay transparent. |
+| **ImlDrawTransparent**{: #ImlDrawTransparent } | 2  | Honour the image's mask / alpha --- transparent pixels stay transparent. |
 | **ImlDrawSelected**{: #ImlDrawSelected }       | 4  | Render with the selection-color overlay (typically a blue tint).        |
 | **ImlDrawFocus**{: #ImlDrawFocus }             | 8  | Render with the focus-rectangle overlay (dotted border).                |
-| **ImlDrawNoMask**{: #ImlDrawNoMask }           | 16 | Bypass the mask — draw the entire bitmap including pixels that would normally be transparent. |
+| **ImlDrawNoMask**{: #ImlDrawNoMask }           | 16 | Bypass the mask --- draw the entire bitmap including pixels that would normally be transparent. |
 
 ## See Also
 

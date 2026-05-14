@@ -11,11 +11,11 @@ Compiles and evaluates a twinBASIC expression supplied as a string, returning th
 Syntax: **Eval(** *Expression* **)** **As Variant**
 
 *Expression*
-: *required* **String**. A twinBASIC expression that resolves to a value — for example, `"2 + 2"`, `"Sqr(2)"`, or `"UCase(""hello"")"`.
+: *required* **String**. A twinBASIC expression that resolves to a value --- for example, `"2 + 2"`, `"Sqr(2)"`, or `"UCase(""hello"")"`.
 
 A fresh [**TbExpressionService**](../TbExpressionService/) is built for every call, with the standard library binder registered so the standard runtime functions ([**Sin**](../Math/Sin), [**Sqr**](../Math/Sqr), [**Len**](../Strings/Len), [**CStr**](../Conversion/CStr), and the rest) are visible. The expression is then compiled and evaluated once, and the service is discarded.
 
-For repeated evaluation of the same source, or for expressions that need to see your own application objects, build the service yourself and reuse a compiled [**ITbExpression**](../TbExpressionService/#itbexpression-interface).
+For repeated evaluation of the same source, or for expressions that need to see application objects, construct the service explicitly and reuse a compiled [**ITbExpression**](../TbExpressionService/#itbexpression-interface).
 
 ### Example
 

@@ -10,25 +10,25 @@ has_toc: false
 ## Constants
 
 **vbBack**{: #vbBack }
-: The backspace character — **Chr(8)**.
+: The backspace character --- **Chr(8)**.
 
 **vbCr**{: #vbCr }
-: The carriage return character — **Chr(13)**.
+: The carriage return character --- **Chr(13)**.
 
 **vbCrLf**{: #vbCrLf }
-: The carriage return + linefeed pair — **Chr(13) & Chr(10)**.
+: The carriage return + linefeed pair --- **Chr(13) & Chr(10)**.
 
 **vbFormFeed**{: #vbFormFeed }
-: The form feed character — **Chr(12)**.
+: The form feed character --- **Chr(12)**.
 
 **vbLf**{: #vbLf }
-: The linefeed character — **Chr(10)**.
+: The linefeed character --- **Chr(10)**.
 
 **vbNewLine**{: #vbNewLine }
 : The platform-appropriate newline character. In twinBASIC, identical to **vbCrLf**.
 
 **vbNullChar**{: #vbNullChar }
-: The null character — **Chr(0)**.
+: The null character --- **Chr(0)**.
 
 **vbNullPtr**{: #vbNullPtr }
 : A null pointer of type **LongPtr** (zero), for use with API declarations that take a pointer or handle argument.
@@ -37,13 +37,13 @@ has_toc: false
 : A null string pointer. Distinct from the zero-length string `""`; used when calling external procedures that differentiate between a null pointer and an empty string.
 
 **vbObjectError**{: #vbObjectError }
-: The base value for user-defined error numbers — **&H80040000** (-2147221504). User-defined error numbers should be greater than this; for example, `Err.Raise vbObjectError + 1000`.
+: The base value for user-defined error numbers --- **&H80040000** (-2147221504). User-defined error numbers should be greater than this; for example, `Err.Raise vbObjectError + 1000`.
 
 **vbTab**{: #vbTab }
-: The tab character — **Chr(9)**.
+: The tab character --- **Chr(9)**.
 
 **vbVerticalTab**{: #vbVerticalTab }
-: The vertical tab character — **Chr(11)**.
+: The vertical tab character --- **Chr(11)**.
 
 ## Enumerations
 

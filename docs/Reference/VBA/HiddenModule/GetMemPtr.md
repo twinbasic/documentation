@@ -16,7 +16,7 @@ Syntax: **GetMemPtr** *Address* **,** *retVal*
 *retVal*
 : *required* **LongPtr**. The variable to receive the pointer-sized value read from *Address*.
 
-The number of bytes read matches the host's pointer width — four bytes in 32-bit builds, eight bytes in 64-bit builds. The bytes are interpreted in the host's native byte order. The address is read directly with no bounds or alignment check.
+The number of bytes read matches the host's pointer width --- four bytes in 32-bit builds, eight bytes in 64-bit builds. The bytes are interpreted in the host's native byte order. The address is read directly with no bounds or alignment check.
 
 ### Example
 

@@ -10,7 +10,7 @@ has_toc: false
 
 A rectangular container control whose entire area is painted with a configurable [**BackgroundFill**](#backgroundfill). Used to group other controls on a [**WaynesForm**](WaynesForm/), with the same layout / sizing members as any other custom control.
 
-The default fill is a solid mid-grey ([**WAYNESCOLOR_GREY**](#) — `&H808080`); change it by accessing the **Fill.ColorPoints** collection.
+The default fill is a solid mid-grey ([**WAYNESCOLOR_GREY**](#) --- `&H808080`); change it by accessing the **Fill.ColorPoints** collection.
 
 ```tb
 Private Sub Form_Load()
@@ -18,7 +18,7 @@ Private Sub Form_Load()
 End Sub
 ```
 
-Frames work well as containers for [**Dock**](Enumerations/DockMode)-positioned children. Set the frame's own **Dock** to **tbDockFill** so it claims the form's body, then dock its children to **tbDockTop** / **tbDockLeft** / **tbDockFill** / etc. — the docking calculation walks the container tree, so children dock to the frame's client area rather than to the form. The order in which the children are added still determines which edges they claim first.
+Frames work well as containers for [**Dock**](Enumerations/DockMode)-positioned children. Set the frame's own **Dock** to **tbDockFill** so it claims the form's body, then dock its children to **tbDockTop** / **tbDockLeft** / **tbDockFill** / etc. --- the docking calculation traverses the container tree, so children dock to the frame's client area rather than to the form. The order in which the children are added still determines which edges they claim first.
 
 ## Properties
 

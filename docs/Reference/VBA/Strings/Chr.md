@@ -20,7 +20,7 @@ Syntax:
 
 The `$`-suffixed forms return a **String**; the unsuffixed forms return a **Variant** (**String**).
 
-Numbers from 0–31 are the same as standard, nonprintable ASCII codes. For example, `Chr(10)` returns a linefeed character. The normal range for *charcode* is 0–255. However, on DBCS systems, the actual range for *charcode* is -32768–65535.
+Numbers from 0--31 are the same as standard, nonprintable ASCII codes. For example, `Chr(10)` returns a linefeed character. The normal range for *charcode* is 0--255. However, on DBCS systems, the actual range for *charcode* is -32768--65535.
 
 > [!NOTE]
 > The **ChrB** function is used with byte data contained in a **String**. Instead of returning a character, which may be one or two bytes, **ChrB** always returns a single byte.

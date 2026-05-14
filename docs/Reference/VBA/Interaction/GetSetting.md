@@ -20,7 +20,7 @@ Syntax: **GetSetting(** *appname* **,** *section* **,** *key* [ **,** *default* 
 
 *section*
 
-:  String expression containing the name of the ection where the key setting is found.
+:  String expression containing the name of the section where the key setting is found.
 
 *key*
 

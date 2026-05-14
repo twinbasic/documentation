@@ -88,5 +88,5 @@ At the moment, the form-designer doesn't yet support code-behind-forms, so this 
 ***
 ## See also
 
-- [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) — the reference for the current serializer type (the `SerializationInfo` name in the snippets above is the older draft name; the current type is `SerializeInfo` and `Deserialize()` is exposed as `RuntimeUISrzDeserialize()`)
-- [CustomControls package reference](../../tB/Packages/CustomControls/) — overview of the framework and the built-in `Waynes…` controls
+- [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) -- the reference for the current serializer type (the `SerializationInfo` name in the snippets above is the older draft name; the current type is `SerializeInfo` and `Deserialize()` is exposed as `RuntimeUISrzDeserialize()`)
+- [CustomControls package reference](../../tB/Packages/CustomControls/) -- overview of the framework and the built-in `Waynes…` controls

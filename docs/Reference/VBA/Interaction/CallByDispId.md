@@ -6,7 +6,7 @@ permalink: /tB/Modules/Interaction/CallByDispId
 # CallByDispId
 {: .no_toc }
 
-Calls a method, or reads or writes a property, on an object — looked up by raw IDispatch dispatch ID at run time. **CallByDispId** is a twinBASIC addition; the by-name variant, [**CallByName**](CallByName), exists in VBA as well.
+Calls a method, or reads or writes a property, on an object --- looked up by raw IDispatch dispatch ID at run time. **CallByDispId** is a twinBASIC addition; the by-name variant, [**CallByName**](CallByName), exists in VBA as well.
 
 Syntax: **CallByDispId(** *object* **,** *dispid* **,** *calltype* [ **,** *args* ... ] **)**
 
@@ -24,11 +24,11 @@ Syntax: **CallByDispId(** *object* **,** *dispid* **,** *calltype* [ **,** *args
 
 The return value is a **Variant** containing whatever the call returned. For methods that return nothing, or for property assignments, the result is **Empty**.
 
-**CallByDispId** skips the name lookup that [**CallByName**](CallByName) performs, which is useful in two situations: when you already know the dispatch ID and want to avoid the cost of a `GetIDsOfNames` round trip, and when the target member is not exposed by name (e.g. a default member with `DISPID_VALUE = 0`, an explicit-DISPID extension, or a hidden/restricted member).
+**CallByDispId** skips the name lookup that [**CallByName**](CallByName) performs, which is useful in two situations: when the dispatch ID is already known and the cost of a `GetIDsOfNames` round trip should be avoided, and when the target member is not exposed by name (e.g. a default member with `DISPID_VALUE = 0`, an explicit-DISPID extension, or a hidden/restricted member).
 
 ### Example
 
-This example invokes the default member of an object — `DISPID_VALUE`, defined as 0 — by dispatch ID.
+This example invokes the default member of an object --- `DISPID_VALUE`, defined as 0 --- by dispatch ID.
 
 ```tb
 Const DISPID_VALUE As Long = 0

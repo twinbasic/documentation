@@ -10,15 +10,15 @@ permalink: /Tutorials/WebView2/Building-A-Browser-Shell
 
 A short worked tutorial: turn a [**WebView2**](../../tB/Packages/WebView2/WebView2/) control into a working browser with an address bar, back / forward / reload buttons, zoom, and a few helpers (DevTools, Task Manager, PDF export).
 
-The complete project ships as *Sample 0 — WebView2 Examples* in the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
+The complete project ships as *Sample 0 --- WebView2 Examples* in the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
 
 ## The form
 
-Drop a [**WebView2**](../../tB/Packages/WebView2/WebView2/) control onto a Form and rename it `WebView`. Around it, add a `TextBox` named `AddressBar` plus seven `CommandButton`s — `btnBack`, `btnForward`, `btnRefresh`, `btnZoomIn`, `btnZoomOut`, `btnPDF`, `btnDevTools`, `btnTaskMgr`.
+Drop a [**WebView2**](../../tB/Packages/WebView2/WebView2/) control onto a Form and rename it `WebView`. Around it, add a `TextBox` named `AddressBar` plus seven `CommandButton`s --- `btnBack`, `btnForward`, `btnRefresh`, `btnZoomIn`, `btnZoomOut`, `btnPDF`, `btnDevTools`, `btnTaskMgr`.
 
 ## Navigating
 
-The bare-bones navigation methods — [**Navigate**](../../tB/Packages/WebView2/WebView2/#navigate), [**GoBack**](../../tB/Packages/WebView2/WebView2/#goback), [**GoForward**](../../tB/Packages/WebView2/WebView2/#goforward), [**Reload**](../../tB/Packages/WebView2/WebView2/#reload) — are one-liners:
+The bare-bones navigation methods --- [**Navigate**](../../tB/Packages/WebView2/WebView2/#navigate), [**GoBack**](../../tB/Packages/WebView2/WebView2/#goback), [**GoForward**](../../tB/Packages/WebView2/WebView2/#goforward), [**Reload**](../../tB/Packages/WebView2/WebView2/#reload) --- are one-liners:
 
 ```tb
 Private Sub btnBack_Click() Handles btnBack.Click
@@ -47,7 +47,7 @@ End Sub
 
 ## The address bar
 
-Pressing **Enter** in the address bar triggers a navigation. The reverse direction — keeping the visible URL in sync with the page — is the [**SourceChanged**](../../tB/Packages/WebView2/WebView2/#sourcechanged) event, which fires whenever [**DocumentURL**](../../tB/Packages/WebView2/WebView2/#documenturl) changes (including same-document `history.pushState` updates):
+Pressing **Enter** in the address bar triggers a navigation. The reverse direction --- keeping the visible URL in sync with the page --- is the [**SourceChanged**](../../tB/Packages/WebView2/WebView2/#sourcechanged) event, which fires whenever [**DocumentURL**](../../tB/Packages/WebView2/WebView2/#documenturl) changes (including same-document `history.pushState` updates):
 
 ```tb
 Private Sub AddressBar_KeyDown(KeyCode As Integer, Shift As Integer) _
@@ -65,7 +65,7 @@ End Sub
 
 ## Zoom
 
-[**ZoomFactor**](../../tB/Packages/WebView2/WebView2/#zoomfactor) is a **Double** — `1.0` is 100%, `1.5` is 150%. The design-time default is `0`, meaning *"don't override Edge's default of 1.0"* — so multiplying by `1.1` from cold gives `0`, not `1.1`. Clamp to `1` before scaling:
+[**ZoomFactor**](../../tB/Packages/WebView2/WebView2/#zoomfactor) is a **Double** --- `1.0` is 100%, `1.5` is 150%. The design-time default is `0`, meaning *"don't override Edge's default of 1.0"* --- so multiplying by `1.1` from cold gives `0`, not `1.1`. Clamp to `1` before scaling:
 
 ```tb
 Private Sub btnZoomIn_Click() Handles btnZoomIn.Click
@@ -81,7 +81,7 @@ End Sub
 
 ## PDF export
 
-[**PrintToPdf**](../../tB/Packages/WebView2/WebView2/#printtopdf) saves the current document to disk asynchronously — the result arrives as [**PrintToPdfCompleted**](../../tB/Packages/WebView2/WebView2/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/WebView2/WebView2/#printtopdffailed):
+[**PrintToPdf**](../../tB/Packages/WebView2/WebView2/#printtopdf) saves the current document to disk asynchronously --- the result arrives as [**PrintToPdfCompleted**](../../tB/Packages/WebView2/WebView2/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/WebView2/WebView2/#printtopdffailed):
 
 ```tb
 Private Sub btnPDF_Click() Handles btnPDF.Click
@@ -97,7 +97,7 @@ End Sub
 
 ## DevTools and Task Manager
 
-Both windows are one-shot — call the matching method and Edge opens the window in its own process:
+Both windows are one-shot --- call the matching method and Edge opens the window in its own process:
 
 ```tb
 Private Sub btnDevTools_Click() Handles btnDevTools.Click
@@ -109,7 +109,7 @@ Private Sub btnTaskMgr_Click() Handles btnTaskMgr.Click
 End Sub
 ```
 
-[**OpenDevToolsWindow**](../../tB/Packages/WebView2/WebView2/#opendevtoolswindow) works even when [**AreDevToolsEnabled**](../../tB/Packages/WebView2/WebView2/#aredevtoolsenabled) is **False** (that setting only disables the user-initiated path — keyboard shortcut and context menu).
+[**OpenDevToolsWindow**](../../tB/Packages/WebView2/WebView2/#opendevtoolswindow) works even when [**AreDevToolsEnabled**](../../tB/Packages/WebView2/WebView2/#aredevtoolsenabled) is **False** (that setting only disables the user-initiated path --- keyboard shortcut and context menu).
 
 ## Form-title sync
 
@@ -123,6 +123,6 @@ End Sub
 
 ## Where next
 
-- [Hosting local web assets](Hosting-Local-Web-Assets) — serve HTML / JS / CSS from a folder without an HTTP server.
-- [JavaScript interop](JavaScript-Interop) — pass values and method calls between BASIC and the page.
-- [WebView2 reference](../../tB/Packages/WebView2/WebView2/) — every property, method, and event.
+- [Hosting local web assets](Hosting-Local-Web-Assets) -- serve HTML / JS / CSS from a folder without an HTTP server.
+- [JavaScript interop](JavaScript-Interop) -- pass values and method calls between BASIC and the page.
+- [WebView2 reference](../../tB/Packages/WebView2/WebView2/) -- every property, method, and event.

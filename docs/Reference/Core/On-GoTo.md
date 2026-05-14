@@ -28,7 +28,7 @@ The value of *expression* determines which line is branched to in *destinationli
 | Negative | An error occurs. |
 | Greater than 255 | An error occurs. |
 
-You can mix line numbers and line labels in the same list. Use as many line labels and line numbers as you like with **On...GoSub** and **On...GoTo**. However, if you use more labels or numbers than fit on a single line, you must use the line-continuation character to continue the logical line onto the next physical line.
+Line numbers and line labels can be mixed in the same list. Any number of line labels and line numbers can be used with **On...GoSub** and **On...GoTo**. However, when more labels or numbers are present than fit on a single line, the line-continuation character must be used to continue the logical line onto the next physical line.
 
 > [!TIP]
 > [**Select Case**](Select-Case) provides a more structured and flexible way to perform multiple branching.

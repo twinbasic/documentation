@@ -13,7 +13,7 @@ Bit flags for the *Effect* argument of OLE drag-and-drop events, controlling wha
 |----------|-------|-------------|
 | **vbDropEffectNone**{: #vbDropEffectNone } | 0 | The drop is not allowed. |
 | **vbDropEffectCopy**{: #vbDropEffectCopy } | 1 | The data should be copied to the target. |
-| **vbDropEffectMove**{: #vbDropEffectMove } | 2 | The data should be moved to the target — the source removes it after a successful drop. |
+| **vbDropEffectMove**{: #vbDropEffectMove } | 2 | The data should be moved to the target --- the source removes it after a successful drop. |
 | **vbDropEffectLink**{: #vbDropEffectLink } | 4 | A link to the data should be created at the target. *(twinBASIC addition.)* |
 | **vbDropEffectScroll**{: #vbDropEffectScroll } | -2147483648 | The target is scrolling because the cursor is near its edge. |
 

@@ -25,7 +25,7 @@ The return type matches *type*.
 
 **CType** has two roles:
 
-1. **As an explicit cast**, used wherever an implicit conversion would either be disallowed or produce a compiler warning. It conveys the same intent as [**CInt**](CInt), [**CLng**](CLng), and the rest of the C-prefix functions, but for any target type — most usefully when the target is an **Enum** or an interface. For example, assigning a numeric literal or another **Enum** member to an **Enum**-typed variable triggers a compiler warning that **CType** silences:
+1. **As an explicit cast**, used wherever an implicit conversion would either be disallowed or produce a compiler warning. It conveys the same intent as [**CInt**](CInt), [**CLng**](CLng), and the rest of the C-prefix functions, but for any target type --- most usefully when the target is an **Enum** or an interface. For example, assigning a numeric literal or another **Enum** member to an **Enum**-typed variable triggers a compiler warning that **CType** silences:
 
    ```tb
    Dim day As VbDayOfWeek

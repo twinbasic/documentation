@@ -7,7 +7,7 @@ vba_attribution: true
 # DDB
 {: .no_toc }
 
-Returns a **Double** specifying the depreciation of an asset for a specific time period by using the double-declining balance method or some other method you specify.
+Returns a **Double** specifying the depreciation of an asset for a specific time period by using the double-declining balance method or another specified method.
 
 Syntax: **DDB(** *cost*, *salvage*, *life*, *period* [ **,** *factor* ] **)**
 

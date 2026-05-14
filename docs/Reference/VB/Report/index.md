@@ -8,7 +8,7 @@ has_toc: false
 # Report class
 {: .no_toc }
 
-A **Report** is a top-level Win32 window — much like a [**Form**](../Form/) — specialised for rendering the print preview of a banded report. Each report designed in the IDE becomes its own class derived from **Report**: its sections (report header / page header / detail / page footer / report footer) and the controls placed in them become members of that class. At run time, code assigns a recordset to [**Recordset**](#recordset), calls [**Show**](#show), and the framework iterates the recordset, evaluates expressions on the controls, and paints the resulting pages into a built-in preview window with a navigation toolbar at the bottom. [**PrintReport**](#printreport) sends the same pages to the printer. The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
+A **Report** is a top-level Win32 window --- much like a [**Form**](../Form/) --- specialised for rendering the print preview of a banded report. Each report designed in the IDE becomes its own class derived from **Report**: its sections (report header / page header / detail / page footer / report footer) and the controls placed in them become members of that class. At run time, code assigns a recordset to [**Recordset**](#recordset), calls [**Show**](#show), and the framework iterates the recordset, evaluates expressions on the controls, and paints the resulting pages into a built-in preview window with a navigation toolbar at the bottom. [**PrintReport**](#printreport) sends the same pages to the printer. The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
 
 ```tb
 ' In the report's code-behind (rptSales):
@@ -38,15 +38,15 @@ A report is composed of up to five sections, laid out vertically on each page:
 | **PageFooter**   | At the bottom of every page.                                   |
 | **ReportFooter** | Once, at the end of the last page after the final detail row.  |
 
-Sections are designed in the IDE — each is a container that holds [**Label**](../Label/), [**Image**](../Image/), [**QRCode**](../QRCode/), and other controls. A section's `KeepTogether` property prevents it from splitting across a page break; its `BackStyle` and back colour control the section background; the framework picks an alternating-row colour for the detail section automatically when the section requests it.
+Sections are designed in the IDE --- each is a container that holds [**Label**](../Label/), [**Image**](../Image/), [**QRCode**](../QRCode/), and other controls. A section's `KeepTogether` property prevents it from splitting across a page break; its `BackStyle` and back colour control the section background; the framework picks an alternating-row colour for the detail section automatically when the section requests it.
 
 ## Recordset binding
 
-[**Recordset**](#recordset) accepts any object that exposes the classic ADO/DAO interface — `EOF`, `MoveNext`, and a `Fields` collection indexable by name. The framework wraps non-tB recordsets transparently. `Recordset` may also be left **Nothing**, in which case the detail section is rendered exactly once with no field data.
+[**Recordset**](#recordset) accepts any object that exposes the classic ADO/DAO interface --- `EOF`, `MoveNext`, and a `Fields` collection indexable by name. The framework wraps non-tB recordsets transparently. `Recordset` may also be left **Nothing**, in which case the detail section is rendered exactly once with no field data.
 
-A control in a section opts into binding by setting its `DataField` to a recordset field name; the framework reads that field for each detail row and writes it back into the control's value (or [**Caption**](../Label/#caption) for [**Label**](../Label/)s, **Payload** for [**QRCode**](../QRCode/)). For richer cases, prefix `DataField` with `=` to make it an *expression* — any twinBASIC expression that mixes recordset fields, the report's own [**Page**](#page) / [**Pages**](#pages) / [**Caption**](#caption), and standard library calls. A label whose **DataField** is `="Page " & Report.Page & " of " & Report.Pages` updates itself as each page is rendered.
+A control in a section opts into binding by setting its `DataField` to a recordset field name; the framework reads that field for each detail row and writes it back into the control's value (or [**Caption**](../Label/#caption) for [**Label**](../Label/)s, **Payload** for [**QRCode**](../QRCode/)). For richer cases, prefix `DataField` with `=` to make it an *expression* --- any twinBASIC expression that mixes recordset fields, the report's own [**Page**](#page) / [**Pages**](#pages) / [**Caption**](#caption), and standard library calls. A label whose **DataField** is `="Page " & Report.Page & " of " & Report.Pages` updates itself as each page is rendered.
 
-When **DataField** is empty and a [**Label**](../Label/)'s [**Caption**](../Label/#caption) contains `%`-placeholders, those placeholders are converted to an expression automatically — see [Caption placeholders](#caption-placeholders) below. Setting `DataFieldAggregate` on a Label additionally accumulates the expression's value across rows for running totals.
+When **DataField** is empty and a [**Label**](../Label/)'s [**Caption**](../Label/#caption) contains `%`-placeholders, those placeholders are converted to an expression automatically --- see [Caption placeholders](#caption-placeholders) below. Setting `DataFieldAggregate` on a Label additionally accumulates the expression's value across rows for running totals.
 
 ## Caption placeholders
 
@@ -68,15 +68,15 @@ Use `%%` to embed a literal `%`. A caption with no recognised placeholder is lef
 
 The bottom strip of the report window is a fixed toolbar with three groups of controls:
 
-- **Record selectors** — first / previous / next / last buttons around a page-number readout.
-- **Zoom controls** — minus / plus buttons around a percentage readout.
-- **Print button** — sends the report to the default printer (calls [**PrintReport**](#printreport) with `ShowDialog := False`).
+- **Record selectors** --- first / previous / next / last buttons around a page-number readout.
+- **Zoom controls** --- minus / plus buttons around a percentage readout.
+- **Print button** --- sends the report to the default printer (calls [**PrintReport**](#printreport) with `ShowDialog := False`).
 
 The toolbar always paints; it cannot be hidden. The plus and minus buttons step [**ZoomPercent**](#zoompercent) by [**ZoomStep**](#zoomstep) (default `10`) and switch [**ZoomAutoFit**](#zoomautofit) to **vbZoomAutoFitNever**. Scroll bars appear automatically when the zoomed page does not fit the available area; the mouse wheel scrolls vertically and **Shift+Wheel** scrolls horizontally.
 
 ## Zoom and page sizing
 
-[**PixelsReportWidth**](#pixelsreportwidth) and [**PixelsReportHeight**](#pixelsreportheight) define the page size *between the margins*; [**PixelsLeftMargin**](#pixelsleftmargin), [**PixelsRightMargin**](#pixelsrightmargin), [**PixelsTopMargin**](#pixelstopmargin), and [**PixelsBottomMargin**](#pixelsbottommargin) define the margins. All five values are in *scaled pixels* (1 px ≈ 1/96 inch at 100% DPI). The defaults — `300` × `900` for the page and `96/2.54` (≈ 1 cm) for each margin — are placeholders rather than a real paper size; the IDE designer's [**ChangePageSize**](#changepagesize) helper writes the values for the standard paper sizes.
+[**PixelsReportWidth**](#pixelsreportwidth) and [**PixelsReportHeight**](#pixelsreportheight) define the page size *between the margins*; [**PixelsLeftMargin**](#pixelsleftmargin), [**PixelsRightMargin**](#pixelsrightmargin), [**PixelsTopMargin**](#pixelstopmargin), and [**PixelsBottomMargin**](#pixelsbottommargin) define the margins. All five values are in *scaled pixels* (1 px ≈ 1/96 inch at 100% DPI). The defaults --- `300` × `900` for the page and `96/2.54` (≈ 1 cm) for each margin --- are placeholders rather than a real paper size; the IDE designer's [**ChangePageSize**](#changepagesize) helper writes the values for the standard paper sizes.
 
 ### ZoomAutoFitConstants
 
@@ -92,7 +92,7 @@ Clicking the toolbar's plus or minus button automatically switches [**ZoomAutoFi
 
 ## Drawing inside sections
 
-Every section's repaint raises [**BeforePaintSection**](#beforepaintsection) on the report, with the [**Section**](#beforepaintsection) being drawn as the argument. During this event, [**hDC**](#hdc) returns the metafile device context that the section is being recorded into — drawing primitives ([**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**PaintPicture**](#paintpicture), [**Print**](#print), and direct GDI calls through [**hDC**](#hdc)) write straight into that section's image. Outside the event, [**hDC**](#hdc) returns the report window's own DC, suitable for screen drawing only.
+Every section's repaint raises [**BeforePaintSection**](#beforepaintsection) on the report, with the [**Section**](#beforepaintsection) being drawn as the argument. During this event, [**hDC**](#hdc) returns the metafile device context that the section is being recorded into --- drawing primitives ([**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**PaintPicture**](#paintpicture), [**Print**](#print), and direct GDI calls through [**hDC**](#hdc)) write straight into that section's image. Outside the event, [**hDC**](#hdc) returns the report window's own DC, suitable for screen drawing only.
 
 ```tb
 Private Sub Report_BeforePaintSection(Section As ControlsSection)
@@ -106,9 +106,9 @@ End Sub
 
 A report mixes three coordinate systems:
 
-- **Window dimensions** — [**Width**](#width), [**Height**](#height), [**Left**](#left), and [**Top**](#top) describe the report window itself, in twips (the size of the on-screen frame, including the toolbar).
-- **Client constraints** — [**MinWidth**](#minwidth), [**MinHeight**](#minheight), [**MaxWidth**](#maxwidth), and [**MaxHeight**](#maxheight) constrain the *client area* of the window during interactive resize, in twips.
-- **Page dimensions** — [**PixelsReportWidth**](#pixelsreportwidth), [**PixelsReportHeight**](#pixelsreportheight), and the margin properties describe the *printed page*, in scaled pixels.
+- **Window dimensions** --- [**Width**](#width), [**Height**](#height), [**Left**](#left), and [**Top**](#top) describe the report window itself, in twips (the size of the on-screen frame, including the toolbar).
+- **Client constraints** --- [**MinWidth**](#minwidth), [**MinHeight**](#minheight), [**MaxWidth**](#maxwidth), and [**MaxHeight**](#maxheight) constrain the *client area* of the window during interactive resize, in twips.
+- **Page dimensions** --- [**PixelsReportWidth**](#pixelsreportwidth), [**PixelsReportHeight**](#pixelsreportheight), and the margin properties describe the *printed page*, in scaled pixels.
 
 The graphics primitives inherited from the form-style drawing surface ([**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**Print**](#print), …) use the report's own [**ScaleMode**](#scalemode) and [**Scale\***](#scaleleft) properties for their coordinate inputs.
 
@@ -120,7 +120,7 @@ The graphics primitives inherited from the form-style drawing surface ([**Cls**]
 rptSales.PrintReport ShowDialog:=False
 ```
 
-The print dialog is not yet supported in this beta; calling **PrintReport** with **ShowDialog := True** raises run-time error 5. Paper size is currently locked to A4 — a message box reminds the user of this on each print job.
+The print dialog is not yet supported in this beta; calling **PrintReport** with **ShowDialog := True** raises run-time error 5. Paper size is currently locked to A4 --- a message box reminds the user of this on each print job.
 
 ## Properties
 
@@ -163,7 +163,7 @@ A member of **ReportSizeConstants**: blank (default), **A4 Portrait**, **A4 Land
 ### ClipControls
 {: .no_toc }
 
-Whether child controls are clipped out of the report window's drawing region during paint. **Boolean**, default **True**. Read-only at run time — set at design time.
+Whether child controls are clipped out of the report window's drawing region during paint. **Boolean**, default **True**. Read-only at run time --- set at design time.
 
 ### ControlBox
 {: .no_toc }
@@ -173,7 +173,7 @@ Whether the title bar shows the system menu (and, with it, the close button). **
 ### Controls
 {: .no_toc }
 
-The collection of every control hosted by this report's sections, indexable by control name or zero-based position. **Default property.** Read-only — controls are added to the collection by the runtime, not by user code.
+The collection of every control hosted by this report's sections, indexable by control name or zero-based position. **Default property.** Read-only --- controls are added to the collection by the runtime, not by user code.
 
 ### ControlType
 {: .no_toc }
@@ -223,7 +223,7 @@ The pen width in pixels for drawing primitives. **Long**, default `1`. Widths gr
 ### Enabled
 {: .no_toc }
 
-Determines whether the report window accepts user input. A disabled report ignores keyboard and mouse input — including the toolbar buttons. **Boolean**, default **True**.
+Determines whether the report window accepts user input. A disabled report ignores keyboard and mouse input --- including the toolbar buttons. **Boolean**, default **True**.
 
 ### FillColor
 {: .no_toc }
@@ -258,7 +258,7 @@ The Win32 device context handle currently relevant to drawing, as a **LongPtr**.
 ### HasDC
 {: .no_toc }
 
-Whether the report window keeps a private device context (`CS_OWNDC`) for its drawing surface. **Boolean**, default **True**. Read-only at run time — set at design time.
+Whether the report window keeps a private device context (`CS_OWNDC`) for its drawing surface. **Boolean**, default **True**. Read-only at run time --- set at design time.
 
 ### Height
 {: .no_toc }
@@ -293,7 +293,7 @@ When **True**, the report's [**KeyDown**](#keydown), [**KeyUp**](#keyup), and [*
 ### Left
 {: .no_toc }
 
-The horizontal position of the report window's outer rectangle, in twips, measured from the left edge of the screen — or, for an MDI child, from the left edge of the MDI parent's client area. **Double**.
+The horizontal position of the report window's outer rectangle, in twips, measured from the left edge of the screen --- or, for an MDI child, from the left edge of the MDI parent's client area. **Double**.
 
 ### MaxButton
 {: .no_toc }
@@ -313,7 +313,7 @@ The maximum width of the report window's *client area*, in twips. **Double**, de
 ### MDIChild
 {: .no_toc }
 
-When **True**, the report is hosted as a child inside an [**MDIForm**](../MDIForm/). **Boolean**, read-only — set at design time. An MDI child report cannot be shown modally.
+When **True**, the report is hosted as a child inside an [**MDIForm**](../MDIForm/). **Boolean**, read-only --- set at design time. An MDI child report cannot be shown modally.
 
 ### MinButton
 {: .no_toc }
@@ -353,7 +353,7 @@ The unique design-time name of the report. Read-only at run time. Also the class
 ### Opacity
 {: .no_toc }
 
-The report window's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Values below 100 cause the window to become a layered window.
+The report window's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Values below 100 cause the window to become a layered window.
 
 ### Page
 {: .no_toc }
@@ -371,7 +371,7 @@ The total number of pages in the report. **Long**. Initialised to `999` and revi
 The colour of the simulated paper behind the rendered page in the preview. **OLE_COLOR**, default **vbWhite**.
 
 > [!NOTE]
-> This affects the *preview* only — it does not change the colour sent to the printer.
+> This affects the *preview* only --- it does not change the colour sent to the printer.
 
 ### Picture
 {: .no_toc }
@@ -423,7 +423,7 @@ Syntax: **Set** *object*.**Recordset** = *value*
 *value*
 : Any object with `EOF`, `MoveNext`, and a `Fields` collection (a tB **ITbRecordset** is used directly; other recordsets are wrapped transparently). May be **Nothing**, in which case the detail section is rendered exactly once with no field data.
 
-Assigning **Recordset** does not by itself reset paging — call `Page = 1` (or **Refresh**) to start the preview at the new first page.
+Assigning **Recordset** does not by itself reset paging --- call `Page = 1` (or **Refresh**) to start the preview at the new first page.
 
 ### RecordNum
 {: .no_toc }
@@ -464,12 +464,12 @@ The width of the logical drawing rectangle, in [**ScaleMode**](#scalemode) units
 ### ShowInTaskbar
 {: .no_toc }
 
-Whether the report window appears in the Windows taskbar and Alt-Tab list. **Boolean**, default **True**. Read-only at run time — set at design time.
+Whether the report window appears in the Windows taskbar and Alt-Tab list. **Boolean**, default **True**. Read-only at run time --- set at design time.
 
 ### StartUpPosition
 {: .no_toc }
 
-How the report window's initial position is determined the first time it is shown. A member of [**StartUpPositionConstants**](../../VBRUN/Constants/StartUpPositionConstants): **vbStartUpManual**, **vbStartUpOwner**, **vbStartUpScreen**, or **vbStartUpWindowsDefault** (default). Read-only at run time — set at design time.
+How the report window's initial position is determined the first time it is shown. A member of [**StartUpPositionConstants**](../../VBRUN/Constants/StartUpPositionConstants): **vbStartUpManual**, **vbStartUpOwner**, **vbStartUpScreen**, or **vbStartUpWindowsDefault** (default). Read-only at run time --- set at design time.
 
 ### Tag
 {: .no_toc }
@@ -479,7 +479,7 @@ A free-form **String** the application can use to associate custom data with the
 ### Top
 {: .no_toc }
 
-The vertical position of the report window's outer rectangle, in twips, measured from the top edge of the screen — or, for an MDI child, from the top edge of the MDI parent's client area. **Double**.
+The vertical position of the report window's outer rectangle, in twips, measured from the top edge of the screen --- or, for an MDI child, from the top edge of the MDI parent's client area. **Double**.
 
 ### TopMost
 {: .no_toc }
@@ -489,7 +489,7 @@ Whether the report window sits in the always-on-top z-order layer. **Boolean**, 
 ### TransparencyKey
 {: .no_toc }
 
-An **OLE_COLOR** that, when set, becomes fully transparent in the rendered report window — clicks pass through to whatever is underneath, and the corresponding pixels do not paint. Default `-1` disables the effect.
+An **OLE_COLOR** that, when set, becomes fully transparent in the rendered report window --- clicks pass through to whatever is underneath, and the corresponding pixels do not paint. Default `-1` disables the effect.
 
 ### Visible
 {: .no_toc }
@@ -548,7 +548,7 @@ Syntax: *object*.**Circle** [ **Step** ] ( *X*, *Y* ), *Radius* [, [ *Color* ] [
 ### Close
 {: .no_toc }
 
-Initiates the report window's unload sequence — [**QueryUnload**](#queryunload), then [**Unload**](#unload), then [**Terminate**](#terminate). Either of the first two events can cancel the close by setting *Cancel* to non-zero.
+Initiates the report window's unload sequence --- [**QueryUnload**](#queryunload), then [**Unload**](#unload), then [**Terminate**](#terminate). Either of the first two events can cancel the close by setting *Cancel* to non-zero.
 
 Syntax: *object*.**Close**
 
@@ -633,10 +633,10 @@ Writes text to the current drawing surface using [**Font**](#font), starting at 
 
 Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 
-A trailing `;` or `,` suppresses the newline so the next **Print** call continues on the same line. **Print** is the language-level statement, not a function call — multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone), and **Spc(n)** / **Tab(n)** insert spaces or move to a column.
+A trailing `;` or `,` suppresses the newline so the next **Print** call continues on the same line. **Print** is the language-level statement, not a function call --- multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone), and **Spc(n)** / **Tab(n)** insert spaces or move to a column.
 
 > [!NOTE]
-> To send a report to the printer, use [**PrintReport**](#printreport) — not **Print**.
+> To send a report to the printer, use [**PrintReport**](#printreport) --- not **Print**.
 
 ### PrintReport
 {: .no_toc }
@@ -646,7 +646,7 @@ Sends every page of the report to the [**Printer**](../../VB/Printer) object. It
 Syntax: *object*.**PrintReport** [ *ShowDialog* [, *Range* [, *PageFrom* [, *PageTo* ] ] ] ]
 
 *ShowDialog*
-: *optional* When **True** (default), display the standard print dialog before printing. **Not yet supported** — calling **PrintReport** with **ShowDialog := True** raises run-time error 5.
+: *optional* When **True** (default), display the standard print dialog before printing. **Not yet supported** --- calling **PrintReport** with **ShowDialog := True** raises run-time error 5.
 
 *Range*
 : *optional* A member of **PageRangeConstants**: **rptRangeAllPages** (0, default) or **rptRangeFromTo** (1).
@@ -731,7 +731,7 @@ Makes the report window visible. Triggers [**Load**](#load) on the first call.
 Syntax: *object*.**Show** [ *Modal* [, *OwnerForm* ] ]
 
 *Modal*
-: *optional* A member of [**FormShowConstants**](../../VBRUN/Constants/FormShowConstants): **vbModeless** (0, default — the call returns immediately) or **vbModal** (1 — the call blocks until the report is closed).
+: *optional* A member of [**FormShowConstants**](../../VBRUN/Constants/FormShowConstants): **vbModeless** (0, default --- the call returns immediately) or **vbModal** (1 --- the call blocks until the report is closed).
 
 *OwnerForm*
 : *optional* For modal shows, the form that is disabled while the report is up; defaults to the currently active form.
@@ -771,7 +771,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Activate
 {: .no_toc }
 
-Raised when the report window becomes the active window in the application — either after [**Load**](#load) for the first show, or whenever it gains activation back from another window.
+Raised when the report window becomes the active window in the application --- either after [**Load**](#load) for the first show, or whenever it gains activation back from another window.
 
 Syntax: *object*\_**Activate**( )
 
@@ -899,7 +899,7 @@ Syntax: *object*\_**QueryUnload**( *Cancel* **As Integer**, *UnloadMode* **As In
 ### Resize
 {: .no_toc }
 
-Raised when the report window is resized — by the user, by code, by the OS following a [**WindowState**](#windowstate) change, or by initial layout during the first show.
+Raised when the report window is resized --- by the user, by code, by the OS following a [**WindowState**](#windowstate) change, or by initial layout during the first show.
 
 Syntax: *object*\_**Resize**( )
 

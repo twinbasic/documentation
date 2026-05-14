@@ -12,7 +12,7 @@ A single-line editable text field. The user can type, select with the mouse or w
 
 The control paints three visual states ([**NormalState**](#normalstate), [**HoverState**](#hoverstate), [**FocusedState**](#focusedstate)) controlled by parallel [**WaynesTextBoxState**](WaynesTextBoxState) sub-objects, each of which has its own background fill, borders, corners, text rendering, selection colours, caret colour, and decorator colours.
 
-The current text is held in [**Value**](#value). Surrogate-pair characters are handled correctly by the cursor / selection logic — the caret never appears between the high and low halves of a pair.
+The current text is held in [**Value**](#value). Surrogate-pair characters are handled correctly by the cursor / selection logic --- the caret never appears between the high and low halves of a pair.
 
 ```tb
 Private Sub Form_Load()
@@ -22,7 +22,7 @@ Private Sub Form_Load()
 End Sub
 ```
 
-The three states are styled independently — a common pattern is to give the focused state a heavier border in an accent colour and brighten its fill, so the active field stands out from its siblings:
+The three states are styled independently --- a common pattern is to give the focused state a heavier border in an accent colour and brighten its fill, so the active field stands out from its siblings:
 
 ```tb
 Private Sub Form_Load()
@@ -51,9 +51,9 @@ End Sub
 
 As the user types, the control automatically marks any occurrence of three literal strings inside [**Value**](#value):
 
-- `ERROR` — a red squiggle underline (colour from [**WaynesTextBoxState.DecorationERROR**](WaynesTextBoxState#decorationerror)).
-- `WARNING` — a dark-blue 2-pixel straight underline (from [**DecorationWARNING**](WaynesTextBoxState#decorationwarning)).
-- `INFO` — a light-blue background highlight (from [**DecorationINFO**](WaynesTextBoxState#decorationinfo)).
+- `ERROR` --- a red squiggle underline (colour from [**WaynesTextBoxState.DecorationERROR**](WaynesTextBoxState#decorationerror)).
+- `WARNING` --- a dark-blue 2-pixel straight underline (from [**DecorationWARNING**](WaynesTextBoxState#decorationwarning)).
+- `INFO` --- a light-blue background highlight (from [**DecorationINFO**](WaynesTextBoxState#decorationinfo)).
 
 The colours are configurable per visual state. The substrings themselves are hard-coded into the control's paint logic in the current release.
 
@@ -72,7 +72,7 @@ How the control is docked inside its container. A member of [**DockMode**](../En
 ### FocusedState
 {: .no_toc }
 
-The [**WaynesTextBoxState**](WaynesTextBoxState) used when the control has the keyboard focus. Pre-set with focus-specific defaults — orange caret, blue selection background.
+The [**WaynesTextBoxState**](WaynesTextBoxState) used when the control has the keyboard focus. Pre-set with focus-specific defaults --- orange caret, blue selection background.
 
 ### Height
 {: .no_toc }
@@ -97,7 +97,7 @@ The unique design-time name of the control on its parent form. **String**. Inher
 ### NormalState
 {: .no_toc }
 
-The [**WaynesTextBoxState**](WaynesTextBoxState) used when the textbox is idle — not focused and not hovered.
+The [**WaynesTextBoxState**](WaynesTextBoxState) used when the textbox is idle --- not focused and not hovered.
 
 ### TabIndex
 {: .no_toc }

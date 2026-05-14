@@ -16,7 +16,7 @@ Syntax: **GetMem2** *Address* **,** *retVal*
 *retVal*
 : *required* **Integer**. The variable to receive the value read from *Address*.
 
-The bytes are interpreted in the host's native byte order — little-endian on x86 and x64. The address is read directly with no bounds or alignment check.
+The bytes are interpreted in the host's native byte order --- little-endian on x86 and x64. The address is read directly with no bounds or alignment check.
 
 ### See Also
 

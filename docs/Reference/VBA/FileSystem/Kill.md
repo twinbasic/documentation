@@ -18,7 +18,7 @@ Syntax: **Kill** *pathname*
 
 **Kill** supports the use of multiple-character (`*`) and single-character (`?`) wildcards to specify multiple files.
 
-An error occurs if you try to use **Kill** to delete an open file.
+An error occurs when **Kill** is used to delete an open file.
 
 > [!NOTE]
 > To delete directories, use the [**RmDir**](RmDir) statement.

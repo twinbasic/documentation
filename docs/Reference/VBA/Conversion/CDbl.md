@@ -14,11 +14,11 @@ Coerces an expression to a **Double**.
 Syntax: **CDbl(** *expression* **)**
 
 *expression*
-: *required* Any valid string or numeric expression in the **Double** range — `-1.79769313486231E308` to `-4.94065645841247E-324` for negative values, and `4.94065645841247E-324` to `1.79769313486232E308` for positive values.
+: *required* Any valid string or numeric expression in the **Double** range --- `-1.79769313486231E308` to `-4.94065645841247E-324` for negative values, and `4.94065645841247E-324` to `1.79769313486232E308` for positive values.
 
 The return type is **Double**. If *expression* is outside the range of a **Double**, a run-time error occurs.
 
-Use **CDbl** instead of [**Val**](Val) to provide internationally aware conversions from a string to a numeric type. **CDbl** recognizes different decimal separators and different thousand separators properly, depending on the locale setting of your computer.
+**CDbl** is the internationally aware alternative to [**Val**](Val) for converting a string to a numeric type. **CDbl** recognizes different decimal separators and different thousand separators properly, depending on the system's locale setting.
 
 ### Example
 

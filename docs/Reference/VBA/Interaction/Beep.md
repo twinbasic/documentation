@@ -13,11 +13,11 @@ Sounds a tone through the computer's speaker.
 
 Syntax: **Beep**
 
-The frequency and duration of the beep depend on your hardware and system  software, and vary among computers.
+The frequency and duration of the beep depend on the hardware and system software, and vary among computers.
 
 ### Example
 
-This example uses the **Beep** statement to sound three consecutive tones  through the computer's speaker.
+This example uses the **Beep** statement to sound three consecutive tones through the computer's speaker.
 
 ```tb
 Dim I%

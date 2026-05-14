@@ -11,7 +11,7 @@ has_toc: false
 
 A **ListImage** is one picture inside an [**ImageList**](.)'s [**ListImages**](ListImages) collection. Returned from [**ListImages.Add**](ListImages#add) and from [**ListImages.Item**](ListImages#item).
 
-The class is tagged `[COMCreatable(False)]` — user code never instantiates a **ListImage** directly; the [**ListImages**](ListImages) collection creates them as part of its **Add** method.
+The class is tagged `[COMCreatable(False)]` --- user code never instantiates a **ListImage** directly; the [**ListImages**](ListImages) collection creates them as part of its **Add** method.
 
 ```tb
 Dim img As ListImage = ImageList1.ListImages.Add(, "open", LoadPicture("open.ico"))

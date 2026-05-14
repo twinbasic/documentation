@@ -22,7 +22,7 @@ Syntax: **Choose(** *index* **,** *choice-1* [ **,** *choice-2* **, ...** [ **,*
 If *index* is 1, **Choose** returns *choice-1*; if *index* is 2, it returns *choice-2*; and so on. If *index* is less than 1 or greater than the number of choices listed, **Choose** returns **Null**. Non-integer values of *index* are rounded to the nearest whole number before being evaluated.
 
 > [!NOTE]
-> **Choose** evaluates *every* choice in the list, not only the one it returns. Watch for side effects: a [**MsgBox**](MsgBox) call inside any of the choices is invoked once per choice, not just for the selected one. To avoid this — for example, when one of the branches would error out — use the short-circuiting [**If**](If) function instead.
+> **Choose** evaluates *every* choice in the list, not only the one it returns. Watch for side effects: a [**MsgBox**](MsgBox) call inside any of the choices is invoked once per choice, not just for the selected one. To avoid this --- for example, when one of the branches would error out --- use the short-circuiting [**If**](If) function instead.
 
 ### Example
 

@@ -7,7 +7,7 @@ permalink: /tB/Packages/VBRUN/Constants/SystemColorConstants
 # SystemColorConstants
 {: .no_toc }
 
-Reference values for system palette entries — the colours the user has chosen for various standard parts of the Windows UI. Values have the high bit set so that the runtime can distinguish them from RGB colours; pass them through [**TranslateColor**](../../../Modules/Information/TranslateColor) to obtain a plain RGB value.
+Reference values for system palette entries --- the colours the user has chosen for various standard parts of the Windows UI. Values have the high bit set so that the runtime can distinguish them from RGB colours; pass them through [**TranslateColor**](../../../Modules/Information/TranslateColor) to obtain a plain RGB value.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/TextAlignment
 # TextAlignment
 {: .no_toc }
 
-Horizontal and vertical alignment of text drawn inside a control's bounding rectangle. Carried by [**TextRendering.Alignment**](../Styles/TextRendering#alignment); each member combines one of three vertical positions (top, middle, bottom) with one of three horizontal positions (left, centre, right).
+Horizontal and vertical alignment of text drawn inside a control's bounding rectangle. Used by [**TextRendering.Alignment**](../Styles/TextRendering#alignment); each member combines one of three vertical positions (top, middle, bottom) with one of three horizontal positions (left, centre, right).
 
 | Constant | Value | Description |
 |----------|-------|-------------|

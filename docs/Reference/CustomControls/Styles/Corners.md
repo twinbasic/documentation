@@ -9,7 +9,7 @@ has_toc: false
 # Corners class
 {: .no_toc }
 
-The four corners of a rendered region. Each corner is an independent [**Corner**](#corner-class) sub-object — the shape and radius can vary corner by corner — letting a control round one corner while notching another. Reached as `<state>.Corners`, [**CellRenderingOptions.Corners**](../WaynesGrid/CellRenderingOptions#corners), and the slider's `<sliderState>.BackgroundCorners` / `BlockCorners`.
+The four corners of a rendered region. Each corner is an independent [**Corner**](#corner-class) sub-object --- the shape and radius can vary corner by corner --- letting a control round one corner while notching another. Accessed as `<state>.Corners`, [**CellRenderingOptions.Corners**](../WaynesGrid/CellRenderingOptions#corners), and the slider's `<sliderState>.BackgroundCorners` / `BlockCorners`.
 
 ```tb
 With btnGo.NormalState.Corners
@@ -29,7 +29,7 @@ With btnTab.NormalState.Corners
 End With
 ```
 
-A circular control is just a square one with all four corners set to [**tbCurve**](../Enumerations/CornerShape#tbCurve) and a radius greater than or equal to half the control's smaller dimension — that is what the `Circle` button in the package's sample forms uses.
+A circular control is just a square one with all four corners set to [**tbCurve**](../Enumerations/CornerShape#tbCurve) and a radius greater than or equal to half the control's smaller dimension --- that is what the `Circle` button in the package's sample forms uses.
 
 * TOC
 {:toc}
@@ -76,7 +76,7 @@ Syntax: *object*.**SetAll** *Shape*, *Radius*
 ### OnChanged
 {: .no_toc }
 
-Raised whenever any of the four corner sub-objects changes — either through a direct property set on the **Corners** object or through a propagated **OnChanged** from one of the **Corner** sub-objects.
+Raised whenever any of the four corner sub-objects changes --- either through a direct property set on the **Corners** object or through a propagated **OnChanged** from one of the **Corner** sub-objects.
 
 ## Corner class
 

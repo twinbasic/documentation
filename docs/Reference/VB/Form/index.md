@@ -8,7 +8,7 @@ has_toc: false
 # Form class
 {: .no_toc }
 
-A **Form** is a top-level Win32 window that hosts the controls, menus, and drawing surface of a single twinBASIC user interface. Each form designed in the IDE becomes its own class derived from **Form** — its controls become members of that class, its event handlers become methods on it, and the file's name becomes the class name. Code outside the form normally instantiates it implicitly through the global default-instance reference (`MyForm.Show`) or explicitly with `New MyForm`. The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
+A **Form** is a top-level Win32 window that hosts the controls, menus, and drawing surface of a single twinBASIC user interface. Each form designed in the IDE becomes its own class derived from **Form** --- its controls become members of that class, its event handlers become methods on it, and the file's name becomes the class name. Code outside the form normally instantiates it implicitly through the global default-instance reference (`MyForm.Show`) or explicitly with `New MyForm`. The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
 
 ```tb
 ' In Form1's code-behind:
@@ -49,7 +49,7 @@ Closing a form goes through both **QueryUnload** *and* **Unload**, so either can
 
 ## Showing the form
 
-[**Show**](#show) makes the form visible. It accepts an optional [**FormShowConstants**](../../VBRUN/Constants/FormShowConstants) argument: **vbModeless** (default — the call returns immediately and the user can interact with other forms) or **vbModal** (the call blocks until the form is closed, and other forms in the application become unresponsive). MDI child forms cannot be shown modally; attempting to do so raises run-time error 404.
+[**Show**](#show) makes the form visible. It accepts an optional [**FormShowConstants**](../../VBRUN/Constants/FormShowConstants) argument: **vbModeless** (default --- the call returns immediately and the user can interact with other forms) or **vbModal** (the call blocks until the form is closed, and other forms in the application become unresponsive). MDI child forms cannot be shown modally; attempting to do so raises run-time error 404.
 
 ```tb
 dlgOptions.Show vbModal, Me      ' modal, owned by the calling form
@@ -57,7 +57,7 @@ dlgOptions.Show vbModal, Me      ' modal, owned by the calling form
 
 [**Hide**](#hide) and [**Close**](#close) reverse the effect: **Hide** just clears [**Visible**](#visible); **Close** runs the full unload sequence (**QueryUnload** then **Unload** then **Terminate**). The classic `Unload <FormName>` statement is the language-level equivalent of **Close**.
 
-[**StartUpPosition**](#startupposition) ([**StartUpPositionConstants**](../../VBRUN/Constants/StartUpPositionConstants)) is read at the first **Show** to decide where the form lands; afterwards the user (or code through [**Move**](#move) and [**WindowState**](#windowstate)) controls position.
+[**StartUpPosition**](#startupposition) ([**StartUpPositionConstants**](../../VBRUN/Constants/StartUpPositionConstants)) is read at the first **Show** to decide where the form is placed; afterwards the user (or code through [**Move**](#move) and [**WindowState**](#windowstate)) controls position.
 
 ## Window appearance
 
@@ -69,9 +69,9 @@ dlgOptions.Show vbModal, Me      ' modal, owned by the calling form
 
 ## Drawing surface
 
-A **Form** is itself a graphics surface — code can draw lines, shapes, and text directly on it. The coordinate system is governed by [**ScaleMode**](#scalemode) (default **vbTwips** — the classic VB6 behaviour) and the [**ScaleLeft**](#scaleleft) / [**ScaleTop**](#scaletop) / [**ScaleWidth**](#scalewidth) / [**ScaleHeight**](#scaleheight) properties, which together describe the form's logical drawing rectangle. Setting **ScaleMode** to **vbUser** lets the four **Scale\*** properties define an arbitrary rectangle; the [**Scale**](#scale) method does this in a single call.
+A **Form** is itself a graphics surface --- code can draw lines, shapes, and text directly on it. The coordinate system is governed by [**ScaleMode**](#scalemode) (default **vbTwips** --- the classic VB6 behaviour) and the [**ScaleLeft**](#scaleleft) / [**ScaleTop**](#scaletop) / [**ScaleWidth**](#scalewidth) / [**ScaleHeight**](#scaleheight) properties, which together describe the form's logical drawing rectangle. Setting **ScaleMode** to **vbUser** lets the four **Scale\*** properties define an arbitrary rectangle; the [**Scale**](#scale) method does this in a single call.
 
-The drawing primitives are [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and the [**Print**](#print) statement (`Form1.Print "Hello"`) — all use [**ForeColor**](#forecolor), [**FillColor**](#fillcolor), [**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle) for their pen and fill, and the form's [**Font**](#font) for text. The current pen position is tracked by [**CurrentX**](#currentx) and [**CurrentY**](#currenty); [**TextWidth**](#textwidth) and [**TextHeight**](#textheight) measure a string in the current font. [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert single coordinates between scale modes.
+The drawing primitives are [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and the [**Print**](#print) statement (`Form1.Print "Hello"`) --- all use [**ForeColor**](#forecolor), [**FillColor**](#fillcolor), [**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle) for their pen and fill, and the form's [**Font**](#font) for text. The current pen position is tracked by [**CurrentX**](#currentx) and [**CurrentY**](#currenty); [**TextWidth**](#textwidth) and [**TextHeight**](#textheight) measure a string in the current font. [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert single coordinates between scale modes.
 
 [**AutoRedraw**](#autoredraw) controls whether drawn output persists across paints: when **False** (default), the [**Paint**](#paint) event must redraw on every invalidation; when **True**, the form keeps an off-screen buffer that survives invalidations and the **Paint** event is suppressed. Setting [**Picture**](#picture) puts a bitmap behind the drawing layer; [**Image**](#image) returns the rendered combined surface as a **StdPicture**.
 
@@ -88,9 +88,9 @@ End Sub
 
 ## Controls and validation
 
-[**Controls**](#controls) is a collection of every control on the form, indexable by name or zero-based position. **Form** is also enumerable directly — `For Each ctrl In Form1` yields the same items as `For Each ctrl In Form1.Controls`. [**Count**](#count) is shorthand for `Controls.Count`. [**ActiveControl**](#activecontrol) returns the currently focused child, or **Nothing** when no control on this form has the focus.
+[**Controls**](#controls) is a collection of every control on the form, indexable by name or zero-based position. **Form** is also enumerable directly --- `For Each ctrl In Form1` yields the same items as `For Each ctrl In Form1.Controls`. [**Count**](#count) is shorthand for `Controls.Count`. [**ActiveControl**](#activecontrol) returns the currently focused child, or **Nothing** when no control on this form has the focus.
 
-[**KeyPreview**](#keypreview) routes keystrokes to the form's [**KeyDown**](#keydown), [**KeyUp**](#keyup), and [**KeyPress**](#keypress) events *before* the focused control sees them — useful for application-wide hotkey handling. [**ValidateControls**](#validatecontrols) explicitly fires the active control's **Validate** event from code; it raises run-time error 380 if the validation handler sets *Cancel*.
+[**KeyPreview**](#keypreview) routes keystrokes to the form's [**KeyDown**](#keydown), [**KeyUp**](#keyup), and [**KeyPress**](#keypress) events *before* the focused control sees them --- useful for application-wide hotkey handling. [**ValidateControls**](#validatecontrols) explicitly fires the active control's **Validate** event from code; it raises run-time error 380 if the validation handler sets *Cancel*.
 
 ## Menus and pop-ups
 
@@ -127,7 +127,7 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 
 Whether drawing performed on the form persists across invalidations. **Boolean**, default **False**.
 
-When **False**, drawing primitives — [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and [**Print**](#print) — paint directly to the screen and the form must redraw them in its [**Paint**](#paint) event whenever the affected area is invalidated. When **True**, the form keeps an off-screen bitmap, drawing primitives paint into it (and immediately to the screen), the bitmap survives invalidations, and the **Paint** event is suppressed. Reading [**Image**](#image) returns this bitmap.
+When **False**, drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and [**Print**](#print) --- paint directly to the screen and the form must redraw them in its [**Paint**](#paint) event whenever the affected area is invalidated. When **True**, the form keeps an off-screen bitmap, drawing primitives paint into it (and immediately to the screen), the bitmap survives invalidations, and the **Paint** event is suppressed. Reading [**Image**](#image) returns this bitmap.
 
 ### BackColor
 {: .no_toc }
@@ -137,7 +137,7 @@ The background colour of the form's client area, as an **OLE_COLOR**. Defaults t
 ### BorderStyle
 {: .no_toc }
 
-The window-frame style. A member of [**FormBorderStyleConstants**](../../VBRUN/Constants/FormBorderStyleConstants): **vbBSNone**, **vbFixedSingle**, **vbSizable** (default), **vbFixedDialog**, **vbFixedToolWindow**, **vbSizableToolWindow**, **vbSizableNoTitleBar** (new in twinBASIC), or **vbSizableToolWindowNoTitleBar** (new in twinBASIC). Run-time changes are accepted but only take effect after another change to the window — typically reassigning [**Caption**](#caption).
+The window-frame style. A member of [**FormBorderStyleConstants**](../../VBRUN/Constants/FormBorderStyleConstants): **vbBSNone**, **vbFixedSingle**, **vbSizable** (default), **vbFixedDialog**, **vbFixedToolWindow**, **vbSizableToolWindow**, **vbSizableNoTitleBar** (new in twinBASIC), or **vbSizableToolWindowNoTitleBar** (new in twinBASIC). Run-time changes are accepted but only take effect after another change to the window --- typically reassigning [**Caption**](#caption).
 
 ### Caption
 {: .no_toc }
@@ -151,7 +151,7 @@ Setting **Caption** updates the title bar immediately and re-syncs the title-bar
 ### ClipControls
 {: .no_toc }
 
-Whether child controls are clipped out of the form's drawing region during paint. **Boolean**, default **True**. Read-only at run time — set at design time.
+Whether child controls are clipped out of the form's drawing region during paint. **Boolean**, default **True**. Read-only at run time --- set at design time.
 
 ### ControlBox
 {: .no_toc }
@@ -161,7 +161,7 @@ Whether the form's title bar shows the system menu (and, with it, the close butt
 ### Controls
 {: .no_toc }
 
-The collection of every control hosted by this form, indexable by control name or zero-based position. **Default property.** Read-only — controls are added to the collection by the runtime, not by user code.
+The collection of every control hosted by this form, indexable by control name or zero-based position. **Default property.** Read-only --- controls are added to the collection by the runtime, not by user code.
 
 ```tb
 Dim ctrl As Control
@@ -253,7 +253,7 @@ The Win32 device context handle for the form, as a **LongPtr**. Read-only. Retur
 ### HasDC
 {: .no_toc }
 
-Whether the form keeps a private device context (`CS_OWNDC`) for its drawing surface. **Boolean**, default **True**. Read-only at run time — set at design time.
+Whether the form keeps a private device context (`CS_OWNDC`) for its drawing surface. **Boolean**, default **True**. Read-only at run time --- set at design time.
 
 ### Height
 {: .no_toc }
@@ -278,7 +278,7 @@ The icon shown on the title bar, in the taskbar, and in Alt-Tab. A **StdPicture*
 ### Image
 {: .no_toc }
 
-Returns the rendered drawing surface as a **StdPicture**. Read-only. Most useful when [**AutoRedraw**](#autoredraw) is **True** — the returned picture is the persistent off-screen buffer.
+Returns the rendered drawing surface as a **StdPicture**. Read-only. Most useful when [**AutoRedraw**](#autoredraw) is **True** --- the returned picture is the persistent off-screen buffer.
 
 ### KeyPreview
 {: .no_toc }
@@ -288,7 +288,7 @@ When **True**, the form's [**KeyDown**](#keydown), [**KeyUp**](#keyup), and [**K
 ### Left
 {: .no_toc }
 
-The horizontal position of the form's outer rectangle, in twips (or the calling code's **ScaleMode** units), measured from the left edge of the screen — or, for an MDI child, from the left edge of the MDI parent's client area. **Double**.
+The horizontal position of the form's outer rectangle, in twips (or the calling code's **ScaleMode** units), measured from the left edge of the screen --- or, for an MDI child, from the left edge of the MDI parent's client area. **Double**.
 
 ### LinkMode
 {: .no_toc }
@@ -320,7 +320,7 @@ The maximum width of the form's *client area*, in twips. **Double**, default `0`
 ### MDIChild
 {: .no_toc }
 
-When **True**, the form is hosted as a child inside an [**MDIForm**](../MDIForm). **Boolean**, read-only — set at design time. An MDI child form cannot be shown modally.
+When **True**, the form is hosted as a child inside an [**MDIForm**](../MDIForm). **Boolean**, read-only --- set at design time. An MDI child form cannot be shown modally.
 
 ### MinButton
 {: .no_toc }
@@ -371,7 +371,7 @@ How the form responds to OLE drops. A restricted member of [**OLEDropConstants**
 ### Opacity
 {: .no_toc }
 
-The form's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Values below 100 cause the form to become a layered window.
+The form's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Values below 100 cause the form to become a layered window.
 
 ### Palette
 {: .no_toc }
@@ -429,12 +429,12 @@ The width of the logical drawing rectangle, in [**ScaleMode**](#scalemode) units
 ### ShowInTaskbar
 {: .no_toc }
 
-Whether the form appears in the Windows taskbar and Alt-Tab list. **Boolean**, default **True**. Read-only at run time — set at design time.
+Whether the form appears in the Windows taskbar and Alt-Tab list. **Boolean**, default **True**. Read-only at run time --- set at design time.
 
 ### StartUpPosition
 {: .no_toc }
 
-How the form's initial position is determined the first time it is shown. A member of [**StartUpPositionConstants**](../../VBRUN/Constants/StartUpPositionConstants): **vbStartUpManual**, **vbStartUpOwner**, **vbStartUpScreen**, or **vbStartUpWindowsDefault** (default). Read-only at run time — set at design time.
+How the form's initial position is determined the first time it is shown. A member of [**StartUpPositionConstants**](../../VBRUN/Constants/StartUpPositionConstants): **vbStartUpManual**, **vbStartUpOwner**, **vbStartUpScreen**, or **vbStartUpWindowsDefault** (default). Read-only at run time --- set at design time.
 
 ### TabFocusAutoSelect
 {: .no_toc }
@@ -449,7 +449,7 @@ A free-form **String** the application can use to associate custom data with the
 ### Top
 {: .no_toc }
 
-The vertical position of the form's outer rectangle, in twips (or the calling code's **ScaleMode** units), measured from the top edge of the screen — or, for an MDI child, from the top edge of the MDI parent's client area. **Double**.
+The vertical position of the form's outer rectangle, in twips (or the calling code's **ScaleMode** units), measured from the top edge of the screen --- or, for an MDI child, from the top edge of the MDI parent's client area. **Double**.
 
 ### TopMost
 {: .no_toc }
@@ -459,7 +459,7 @@ Whether the form sits in the always-on-top z-order layer. **Boolean**, read-only
 ### TransparencyKey
 {: .no_toc }
 
-An **OLE_COLOR** that, when set, becomes fully transparent in the rendered form — clicks pass through to whatever is underneath, and the corresponding pixels do not paint. Default `-1` disables the effect.
+An **OLE_COLOR** that, when set, becomes fully transparent in the rendered form --- clicks pass through to whatever is underneath, and the corresponding pixels do not paint. Default `-1` disables the effect.
 
 ### Visible
 {: .no_toc }
@@ -469,7 +469,7 @@ Whether the form is shown. **Boolean**, default **True**. Setting **Visible** to
 ### WhatsThisButton
 {: .no_toc }
 
-When **True**, the title bar shows a "?" help button — but only when [**MinButton**](#minbutton) is **False**, [**MaxButton**](#maxbutton) is **False**, [**ControlBox**](#controlbox) is **True**, and [**BorderStyle**](#borderstyle) is not a tool-window style. **Boolean**.
+When **True**, the title bar shows a "?" help button --- but only when [**MinButton**](#minbutton) is **False**, [**MaxButton**](#maxbutton) is **False**, [**ControlBox**](#controlbox) is **True**, and [**BorderStyle**](#borderstyle) is not a tool-window style. **Boolean**.
 
 ### WhatsThisHelp
 {: .no_toc }
@@ -520,7 +520,7 @@ Syntax: *object*.**Cls**
 ### Close
 {: .no_toc }
 
-Initiates the form's unload sequence — [**QueryUnload**](#queryunload), then [**Unload**](#unload), then [**Terminate**](#terminate). Either of the first two events can cancel the close by setting *Cancel* to non-zero. Equivalent to the language statement `Unload Me`.
+Initiates the form's unload sequence --- [**QueryUnload**](#queryunload), then [**Unload**](#unload), then [**Terminate**](#terminate). Either of the first two events can cancel the close by setting *Cancel* to non-zero. Equivalent to the language statement `Unload Me`.
 
 Syntax: *object*.**Close**
 
@@ -628,7 +628,7 @@ Syntax: *object*.**Point**( *X*, *Y* )
 ### Print
 {: .no_toc }
 
-Writes text to the form's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the VB6 **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and — when [**AutoRedraw**](#autoredraw) is **True** — is recorded into the persistent off-screen bitmap so it survives invalidations.
+Writes text to the form's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the VB6 **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and --- when [**AutoRedraw**](#autoredraw) is **True** --- is recorded into the persistent off-screen bitmap so it survives invalidations.
 
 Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 
@@ -728,7 +728,7 @@ Makes the form visible. Triggers [**Load**](#load) on the first call.
 Syntax: *object*.**Show** [ *Modal* [, *OwnerForm* ] ]
 
 *Modal*
-: *optional* A member of [**FormShowConstants**](../../VBRUN/Constants/FormShowConstants): **vbModeless** (0, default — the call returns immediately) or **vbModal** (1 — the call blocks until the form is closed and the user cannot interact with other forms).
+: *optional* A member of [**FormShowConstants**](../../VBRUN/Constants/FormShowConstants): **vbModeless** (0, default --- the call returns immediately) or **vbModal** (1 --- the call blocks until the form is closed and the user cannot interact with other forms).
 
 *OwnerForm*
 : *optional* For modal shows, the form that is disabled while this form is up; defaults to the currently active form.
@@ -763,7 +763,7 @@ Syntax: *object*.**ValidateControls**
 ### WhatsThisMode
 {: .no_toc }
 
-Enters Windows' "What's This?" cursor mode — the next click on a control raises that control's help instead of activating it. [**WhatsThisHelp**](#whatsthishelp) must be **True**.
+Enters Windows' "What's This?" cursor mode --- the next click on a control raises that control's help instead of activating it. [**WhatsThisHelp**](#whatsthishelp) must be **True**.
 
 Syntax: *object*.**WhatsThisMode**
 
@@ -782,7 +782,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Activate
 {: .no_toc }
 
-Raised when the form becomes the active window in the application — either after [**Load**](#load) for the first show, or whenever it gains activation back from another window.
+Raised when the form becomes the active window in the application --- either after [**Load**](#load) for the first show, or whenever it gains activation back from another window.
 
 Syntax: *object*\_**Activate**( )
 
@@ -974,7 +974,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Paint
 {: .no_toc }
 
-Raised when an invalidated portion of the form needs to be redrawn. Suppressed when [**AutoRedraw**](#autoredraw) is **True** — the form's persistent off-screen buffer is blitted to the screen instead.
+Raised when an invalidated portion of the form needs to be redrawn. Suppressed when [**AutoRedraw**](#autoredraw) is **True** --- the form's persistent off-screen buffer is blitted to the screen instead.
 
 Syntax: *object*\_**Paint**( )
 
@@ -989,12 +989,12 @@ Syntax: *object*\_**QueryUnload**( *Cancel* **As Integer**, *UnloadMode* **As In
 : Set to non-zero (any non-zero value, conventionally **1**) to cancel the close.
 
 *UnloadMode*
-: A member of [**QueryUnloadConstants**](../../VBRUN/Constants/QueryUnloadConstants) identifying what triggered the close — the close button, code, Windows shutdown, the MDI parent, or the owner form.
+: A member of [**QueryUnloadConstants**](../../VBRUN/Constants/QueryUnloadConstants) identifying what triggered the close --- the close button, code, Windows shutdown, the MDI parent, or the owner form.
 
 ### Resize
 {: .no_toc }
 
-Raised when the form is resized — by the user, by code, by the OS following a [**WindowState**](#windowstate) change, or by initial layout during the first show.
+Raised when the form is resized --- by the user, by code, by the OS following a [**WindowState**](#windowstate) change, or by initial layout during the first show.
 
 Syntax: *object*\_**Resize**( )
 

@@ -20,9 +20,7 @@ The **HelpContext** property is used to automatically display the Help topic spe
 
 If both **HelpFile** and **HelpContext** are empty, the value of [**Number**](Number) is checked. If **Number** corresponds to a built-in run-time error, the Help context ID for that error is used. If the **Number** value doesn't correspond to a built-in error, the contents page of the Help file is displayed.
 
-> [!NOTE]
->
-> Write routines in your application to handle typical errors. When programming with an object, you can use the object's Help file to improve the quality of your error handling, or to display a meaningful message to the user when an error isn't recoverable.
+Write routines to handle typical errors. When programming with an object, the object's Help file can improve error handling or display a meaningful message to the user when an error isn't recoverable.
 
 ### Example
 

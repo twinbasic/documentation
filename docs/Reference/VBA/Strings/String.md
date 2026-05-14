@@ -19,7 +19,7 @@ Syntax: **String$(** *number*, *character* **)**, **String(** *number*, *charact
 
 The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Variant** (**String**).
 
-If you specify a number for *character* greater than 255, **String** converts the number to a valid character code by using this formula: *character* **Mod** 256.
+When *character* is a number greater than 255, **String** converts the number to a valid character code by using this formula: *character* **Mod** 256.
 
 ### Example
 

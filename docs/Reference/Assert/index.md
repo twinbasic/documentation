@@ -9,9 +9,9 @@ has_toc: false
 
 # Assert Package
 
-The **Assert** built-in package supplies the assertion functions used to write unit tests for twinBASIC code. Each assertion checks an expected condition; on failure, it records a test failure with the call site and an optional message. The test runner — the twinBASIC IDE's Test Explorer, or any equivalent harness — collects those results, decides which tests passed, failed, or were skipped, and reports them.
+The **Assert** built-in package supplies the assertion functions used to write unit tests for twinBASIC code. Each assertion checks an expected condition; on failure, it records a test failure with the call site and an optional message. The test runner --- the twinBASIC IDE's Test Explorer, or any equivalent harness --- collects those results, decides which tests passed, failed, or were skipped, and reports them.
 
-The package's three modules — [**Exact**](Exact), [**Strict**](Strict), and [**Permissive**](Permissive) — expose the same fifteen assertion functions; only the *comparison semantics* differ. Pick the flavour that matches how strictly you want equality to be evaluated.
+The package's three modules --- [**Exact**](Exact), [**Strict**](Strict), and [**Permissive**](Permissive) --- expose the same fifteen assertion functions; only the *comparison semantics* differ. Each flavour matches a different strictness level for equality evaluation.
 
 | Module                       | String comparisons | Numeric and other comparisons                                                                                                                              |
 |------------------------------|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -19,7 +19,7 @@ The package's three modules — [**Exact**](Exact), [**Strict**](Strict), and [*
 | [**Strict**](Strict)         | case-sensitive     | evaluated as if the comparison were written directly in twinBASIC code; object default members are *not* evaluated                                         |
 | [**Permissive**](Permissive) | case-insensitive   | evaluated as if the comparison were written directly in twinBASIC code                                                                                     |
 
-`Null` is never considered equal to anything — not even to itself — under any of the three flavours. To test for **Null** explicitly, use the [**IsNull**](Exact#isnull) / [**IsNotNull**](Exact#isnotnull) assertions rather than `AreEqual(..., Null)`.
+`Null` is never considered equal to anything --- not even to itself --- under any of the three flavours. To test for **Null** explicitly, use the [**IsNull**](Exact#isnull) / [**IsNotNull**](Exact#isnotnull) assertions rather than `AreEqual(..., Null)`.
 
 ```tb
 Sub TestStringReverse()
@@ -30,7 +30,7 @@ End Sub
 
 ## Calling convention
 
-Every member of every module is tagged `[MustBeQualified(True)]` — calls *must* be written with the module name, even from inside a project that has imported the **Assert** package:
+Every member of every module is tagged `[MustBeQualified(True)]` --- calls *must* be written with the module name, even from inside a project that has imported the **Assert** package:
 
 ```tb
 Strict.IsTrue x > 0          ' OK
@@ -41,7 +41,7 @@ If a project references more than one package that exposes a module called **Str
 
 ## Debug-only
 
-Every assertion is tagged `[DebugOnly(True)]` — the calls compile to *nothing* in release builds, in the same way that [**Debug.Print**](../../Core/Print) and the **Debug.Assert** statement do. A test runner therefore needs to build the project with debug enabled.
+Every assertion is tagged `[DebugOnly(True)]` --- the calls compile to *nothing* in release builds, in the same way that [**Debug.Print**](../../Core/Print) and the **Debug.Assert** statement do. A test runner therefore needs to build the project with debug enabled.
 
 ## Modules
 
@@ -53,10 +53,10 @@ Every assertion is tagged `[DebugOnly(True)]` — the calls compile to *nothing*
 
 Each module exposes the same fifteen functions, grouped here by purpose:
 
-- **Diagnostic outcome** — **Succeed**, **Fail**, **Inconclusive**
-- **Equality** — **AreEqual** / **AreNotEqual**, **AreSame** / **AreNotSame**
-- **Boolean** — **IsTrue**, **IsFalse**
-- **Reference and value state** — **IsNothing** / **IsNotNothing**, **IsNull** / **IsNotNull**
-- **Sequence** — **SequenceEquals** / **NotSequenceEquals**
+- **Diagnostic outcome** --- **Succeed**, **Fail**, **Inconclusive**
+- **Equality** --- **AreEqual** / **AreNotEqual**, **AreSame** / **AreNotSame**
+- **Boolean** --- **IsTrue**, **IsFalse**
+- **Reference and value state** --- **IsNothing** / **IsNotNothing**, **IsNull** / **IsNotNull**
+- **Sequence** --- **SequenceEquals** / **NotSequenceEquals**
 
 See the per-module pages for the full signatures and the comparison semantics that apply to each member.

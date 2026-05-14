@@ -10,7 +10,7 @@ has_toc: false
 
 One server-side per-client connection. A [**NamedPipeServer**](NamedPipeServer) creates one of these for every client that connects, and passes it as the *Connection* parameter of every server event. Use it to send messages to that specific client, to manually issue reads when [**NamedPipeServer.ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is **False**, and to close the connection from the server side.
 
-The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface — reach instances only through [**NamedPipeServer**](NamedPipeServer) events. Connection-lifecycle and message events come through the parent [**NamedPipeServer**](NamedPipeServer); this class holds the per-connection data and methods only.
+The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface --- reach instances only through [**NamedPipeServer**](NamedPipeServer) events. Connection-lifecycle and message events come through the parent [**NamedPipeServer**](NamedPipeServer); this class holds the per-connection data and methods only.
 
 ```tb
 Private Sub server_ClientConnected(Connection As NamedPipeServerConnection)
@@ -38,12 +38,12 @@ See the package [overview](.) for the IOCP / event-marshalling architecture, the
 ### CustomData
 {: .no_toc }
 
-A per-connection opaque slot the consumer can attach state to — typically a session object scoped to that one client. **Variant**, default **Empty**. The package never reads or writes this field; it is provided for convenience so that consumers do not have to maintain a parallel `Dictionary` keyed by [**Handle**](#handle).
+A per-connection opaque slot the consumer can attach state to --- typically a session object scoped to that one client. **Variant**, default **Empty**. The package never reads or writes this field; it is provided for convenience so that consumers do not have to maintain a parallel `Dictionary` keyed by [**Handle**](#handle).
 
 ### Handle
 {: .no_toc }
 
-The underlying Win32 named-pipe handle. **LongPtr**. Exposed for low-level / debugging use — most consumers can ignore it. Do not call `CloseHandle` on this value yourself; use [**AsyncClose**](#asyncclose) so the IOCP loop and the parent server's bookkeeping stay consistent.
+The underlying Win32 named-pipe handle. **LongPtr**. Exposed for low-level / debugging use --- most consumers can ignore it. Do not call `CloseHandle` on this value directly; use [**AsyncClose**](#asyncclose) so the IOCP loop and the parent server's bookkeeping stay consistent.
 
 ### IsConnected
 {: .no_toc }
@@ -75,7 +75,7 @@ Syntax: *connection*.**AsyncRead** [ *Cookie* [, *OverlappedStruct* ] ]
 : *optional* A **Variant** correlation value, passed back as the *Cookie* parameter of the matching [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) event. Default **Empty**.
 
 *OverlappedStruct*
-: *optional* A **LongPtr** to a pre-allocated `OVERLAPPED_CUSTOM` structure. **Internal use only** — the IOCP machinery passes this when re-issuing a read after `ERROR_MORE_DATA`. Consumer code should always omit this parameter.
+: *optional* A **LongPtr** to a pre-allocated `OVERLAPPED_CUSTOM` structure. **Internal use only** --- the IOCP machinery passes this when re-issuing a read after `ERROR_MORE_DATA`. Consumer code should always omit this parameter.
 
 Only needed when the parent server's [**ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is **False**; otherwise the IOCP loop keeps a read pending automatically and explicit calls are redundant.
 
@@ -87,7 +87,7 @@ Sends a message back to this specific client.
 Syntax: *connection*.**AsyncWrite** *Data*() [, *Cookie* ]
 
 *Data*
-: *required* A **Byte()** array containing the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended encoding is [**PropertyBag**](../VBRUN/PropertyBag/) — see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
+: *required* A **Byte()** array containing the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended encoding is [**PropertyBag**](../VBRUN/PropertyBag/) --- see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
 
 *Cookie*
 : *optional* A **Variant** correlation value, passed back as the *Cookie* parameter of the matching [**ClientMessageSent**](NamedPipeServer#clientmessagesent) event. Default **Empty**.

@@ -10,7 +10,7 @@ has_toc: false
 
 # ContainedControls class
 
-The **ContainedControls** object is a collection that exposes the controls placed inside an instance of a **UserControl** that has been set up as a control container. The author of the **UserControl** uses this collection to enumerate or inspect those constituent controls at run time. The author of the **UserControl** sees only what the consumer added — controls placed on the **UserControl** at design time by the author themselves are not part of this collection.
+The **ContainedControls** object is a collection that exposes the controls placed inside an instance of a **UserControl** that has been set up as a control container. The author of the **UserControl** uses this collection to enumerate or inspect those constituent controls at run time. The author of the **UserControl** sees only what the consumer added --- controls placed on the **UserControl** at design time by the author themselves are not part of this collection.
 
 The collection is read-only: items cannot be added or removed through it, and the indexer returns existing controls only. To use it, the **UserControl**'s **ControlContainer** property must have been set to **True** at design time.
 

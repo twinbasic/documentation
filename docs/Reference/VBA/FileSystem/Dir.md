@@ -32,14 +32,14 @@ The *attributes* argument settings are:
 
 **Dir** supports the use of multiple-character (`*`) and single-character (`?`) wildcards to specify multiple files.
 
-You must specify *pathname* the first time you call the **Dir** function, or an error occurs. If you also specify file attributes, *pathname* must be included.
+The first call to **Dir** must specify *pathname*, or an error occurs. When file attributes are also specified, *pathname* must be included.
 
-**Dir** returns the first file name that matches *pathname*. To get any additional file names that match *pathname*, call **Dir** again with no arguments. When no more file names match, **Dir** returns a zero-length string (`""`). After a zero-length string is returned, you must specify *pathname* in subsequent calls, or an error occurs.
+**Dir** returns the first file name that matches *pathname*. To get any additional file names that match *pathname*, call **Dir** again with no arguments. When no more file names match, **Dir** returns a zero-length string (`""`). After a zero-length string is returned, subsequent calls must specify *pathname*, or an error occurs.
 
-You can change to a new *pathname* without retrieving all of the file names that match the current *pathname*. However, you can't call the **Dir** function recursively. Calling **Dir** with the **vbDirectory** attribute does not continually return subdirectories.
+A new *pathname* can be specified without first retrieving all of the file names that match the current *pathname*. However, **Dir** cannot be called recursively. Calling **Dir** with the **vbDirectory** attribute does not continually return subdirectories.
 
 > [!TIP]
-> Because file names are retrieved in case-insensitive order on Windows, you may want to store returned file names in an array, and then sort the array.
+> Because file names are retrieved in case-insensitive order on Windows, consider storing returned file names in an array and sorting the array.
 
 ### See Also
 

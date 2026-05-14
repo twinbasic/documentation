@@ -9,7 +9,7 @@ vba_attribution: true
 # Now
 {: .no_toc }
 
-Returns a **Variant** (**Date**) specifying the current date and time according to your computer's system date and time.
+Returns a **Variant** (**Date**) specifying the current date and time according to the system date and time.
 
 Syntax: **Now** [ **()** ]
 

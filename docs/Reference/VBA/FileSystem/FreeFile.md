@@ -14,7 +14,7 @@ Returns an **Integer** representing the next file number available for use by th
 Syntax: **FreeFile** [ **(** *rangenumber* **)** ]
 
 *rangenumber*
-: *optional* **Variant** that specifies the range from which the next free file number is to be returned. Specify **0** (default) to return a file number in the range 1–255, inclusive. Specify **1** to return a file number in the range 256–511.
+: *optional* **Variant** that specifies the range from which the next free file number is to be returned. Specify **0** (default) to return a file number in the range 1--255, inclusive. Specify **1** to return a file number in the range 256--511.
 
 Use **FreeFile** to supply a file number that is not already in use.
 

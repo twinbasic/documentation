@@ -31,16 +31,16 @@ End Sub
 
 [**MultiLine**](#multiline) selects between the single-line edit (the default) and a multi-line editor:
 
-- **Single-line.** The control accepts a single row of text. Pressing **Enter** does not insert a newline — it is handled by the form's default button, if any. [**ScrollBars**](#scrollbars) and most line-wrapping settings are ignored.
+- **Single-line.** The control accepts a single row of text. Pressing **Enter** does not insert a newline --- it is handled by the form's default button, if any. [**ScrollBars**](#scrollbars) and most line-wrapping settings are ignored.
 - **Multi-line.** The control accepts and displays multiple lines, with line wrapping based on the client width. **Enter** inserts a line break inside the control. [**ScrollBars**](#scrollbars) decides whether horizontal, vertical, both, or no scroll bars are shown.
 
-Changing [**MultiLine**](#multiline), [**ScrollBars**](#scrollbars), or [**HideSelection**](#hideselection) at run time recreates the underlying window — the contents, current [**MaxLength**](#maxlength), [**PasswordChar**](#passwordchar), and [**Locked**](#locked) state are preserved across the recreate.
+Changing [**MultiLine**](#multiline), [**ScrollBars**](#scrollbars), or [**HideSelection**](#hideselection) at run time recreates the underlying window --- the contents, current [**MaxLength**](#maxlength), [**PasswordChar**](#passwordchar), and [**Locked**](#locked) state are preserved across the recreate.
 
 ## Password masking
 
 When [**PasswordChar**](#passwordchar) is set to a non-empty string, the first character of that string is displayed in place of each character the user types. Reading [**Text**](#text) still returns the real characters. Setting [**PasswordChar**](#passwordchar) back to an empty string restores normal display.
 
-Password masking is a single-line edit feature — assigning [**PasswordChar**](#passwordchar) while [**MultiLine**](#multiline) is **True** has no visible effect on the displayed text.
+Password masking is a single-line edit feature --- assigning [**PasswordChar**](#passwordchar) while [**MultiLine**](#multiline) is **True** has no visible effect on the displayed text.
 
 ```tb
 txtPassword.PasswordChar = "•"      ' display a bullet for each character
@@ -48,17 +48,17 @@ txtPassword.PasswordChar = "•"      ' display a bullet for each character
 
 ## Cue banner
 
-[**TextHint**](#texthint) sets a placeholder string that appears, in a dimmed colour, while [**Text**](#text) is empty — useful for hinting at the expected content without occupying it. By default the hint is hidden as soon as the control receives the focus; set [**TextHintAlways**](#texthintalways) to **True** to keep it visible even when the empty control has focus (until the user starts typing).
+[**TextHint**](#texthint) sets a placeholder string that appears, in a dimmed colour, while [**Text**](#text) is empty --- useful for hinting at the expected content without occupying it. By default the hint is hidden as soon as the control receives the focus; set [**TextHintAlways**](#texthintalways) to **True** to keep it visible even when the empty control has focus (until the user starts typing).
 
 ## Selection
 
 [**SelStart**](#selstart), [**SelLength**](#sellength), and [**SelText**](#seltext) read and modify the user's text selection. Reading any of them when no selection is active returns the caret position and an empty [**SelText**](#seltext). Assigning [**SelStart**](#selstart) or [**SelLength**](#sellength) scrolls the caret into view; assigning [**SelText**](#seltext) replaces the current selection with the assigned string and positions the caret immediately after the inserted text.
 
-By default the selection is hidden whenever the control loses focus. Set [**HideSelection**](#hideselection) to **False** to keep the highlight visible even when another control has the focus — useful when the application needs to draw the user's attention to a particular range of text after a search or validation.
+By default the selection is hidden whenever the control loses focus. Set [**HideSelection**](#hideselection) to **False** to keep the highlight visible even when another control has the focus --- useful when the application needs to draw the user's attention to a particular range of text after a search or validation.
 
 ## Numbers only
 
-When [**NumbersOnly**](#numbersonly) is **True**, the edit control silently rejects any keystroke that is not a decimal digit. Sign characters, decimal separators, and thousand separators are *not* accepted — the property is a thin wrapper around the OS **ES_NUMBER** style and provides only digit filtering. Use a [**KeyPress**](#keypress) handler if you need more elaborate validation.
+When [**NumbersOnly**](#numbersonly) is **True**, the edit control silently rejects any keystroke that is not a decimal digit. Sign characters, decimal separators, and thousand separators are *not* accepted --- the property is a thin wrapper around the OS **ES_NUMBER** style and provides only digit filtering. Use a [**KeyPress**](#keypress) handler for more elaborate validation.
 
 ## OLE drag-and-drop
 
@@ -68,7 +68,7 @@ When [**NumbersOnly**](#numbersonly) is **True**, the edit control silently reje
 
 ## Data binding
 
-Setting [**DataSource**](#datasource) and [**DataField**](#datafield) connects the control's [**Text**](#text) to a field of a [**Data**](../Data) control's recordset. The bound value is read as a string on each row change (a **Null** field becomes an empty string), and the current [**Text**](#text) is written back when the row is saved. Modifying [**Text**](#text) — either by user input or by code — sets [**DataChanged**](#datachanged) and marks the recordset row as dirty.
+Setting [**DataSource**](#datasource) and [**DataField**](#datafield) connects the control's [**Text**](#text) to a field of a [**Data**](../Data) control's recordset. The bound value is read as a string on each row change (a **Null** field becomes an empty string), and the current [**Text**](#text) is written back when the row is saved. Modifying [**Text**](#text) --- either by user input or by code --- sets [**DataChanged**](#datachanged) and marks the recordset row as dirty.
 
 ## Properties
 
@@ -85,12 +85,12 @@ Syntax: *object*.**Alignment** [ = *value* ]
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the text box's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the text box's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Appearance
 {: .no_toc }
 
-Determines how the control's border is drawn by the OS. A member of [**AppearanceConstants**](../../VBRUN/Constants/AppearanceConstants): **vbAppearFlat** or **vbAppear3d** (default). Only meaningful when [**BorderStyle**](#borderstyle) is **vbFixedSingleBorder** — chooses between a sunken 3-D edge and a thin flat border.
+Determines how the control's border is drawn by the OS. A member of [**AppearanceConstants**](../../VBRUN/Constants/AppearanceConstants): **vbAppearFlat** or **vbAppear3d** (default). Only meaningful when [**BorderStyle**](#borderstyle) is **vbFixedSingleBorder** --- chooses between a sunken 3-D edge and a thin flat border.
 
 ### BackColor
 {: .no_toc }
@@ -110,7 +110,7 @@ Determines whether the previously focused control's [**Validate**](#validate) ev
 ### Container
 {: .no_toc }
 
-The control that hosts this text box — typically the form, a [**Frame**](../Frame), or a [**PictureBox**](../PictureBox). Read with **Get**, change with **Set**. Setting **Container** at run time re-parents the text box.
+The control that hosts this text box --- typically the form, a [**Frame**](../Frame), or a [**PictureBox**](../PictureBox). Read with **Get**, change with **Set**. Setting **Container** at run time re-parents the text box.
 
 ### ControlType
 {: .no_toc }
@@ -161,7 +161,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -191,7 +191,7 @@ Shortcut for [**Font**](#font)`.Name`. **String**.
 ### FontSize
 {: .no_toc }
 
-Shortcut for [**Font**](#font)`.Size` — the point size. **Single**.
+Shortcut for [**Font**](#font)`.Size` --- the point size. **Single**.
 
 ### FontStrikethru
 {: .no_toc }
@@ -267,12 +267,12 @@ A member of [**LinkModeConstants**](../../VBRUN/Constants/LinkModeConstants).
 ### Locked
 {: .no_toc }
 
-When **True**, the user can scroll, select, and copy text but cannot modify it. **Boolean**, default **False**. Distinct from [**Enabled**](#enabled) — a locked text box is still drawn normally and continues to raise focus and mouse events, whereas a disabled one is dimmed and ignores input entirely.
+When **True**, the user can scroll, select, and copy text but cannot modify it. **Boolean**, default **False**. Distinct from [**Enabled**](#enabled) --- a locked text box is still drawn normally and continues to raise focus and mouse events, whereas a disabled one is dimmed and ignores input entirely.
 
 ### MaxLength
 {: .no_toc }
 
-The maximum number of characters the user can type into the control. **Long**, default `0` — when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters.
+The maximum number of characters the user can type into the control. **Long**, default `0` --- when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters.
 
 ### MouseIcon
 {: .no_toc }
@@ -297,12 +297,12 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### NumbersOnly
 {: .no_toc }
 
-When **True**, the edit control rejects keystrokes other than the decimal digits **0**–**9**. **Boolean**, default **False**. Does not validate code-assigned values, sign characters, decimal points, or thousand separators — use a [**KeyPress**](#keypress) handler for additional validation.
+When **True**, the edit control rejects keystrokes other than the decimal digits **0**--**9**. **Boolean**, default **False**. Does not validate code-assigned values, sign characters, decimal points, or thousand separators --- use a [**KeyPress**](#keypress) handler for additional validation.
 
 ### OLEDragMode
 {: .no_toc }
 
-Whether the control's selected text can act as an automatic OLE drag source. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1).
+Whether the control's selected text can act as an automatic OLE drag source. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default --- call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1).
 
 ### OLEDropMode
 {: .no_toc }
@@ -312,7 +312,7 @@ How the control responds to OLE drops. A member of [**OLEDropConstants**](../../
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Parent
 {: .no_toc }
@@ -335,7 +335,7 @@ A **String** whose first character is displayed in place of each typed character
 
 Which scroll bars the multi-line text box displays. A member of [**ScrollBarConstants**](../../VBRUN/Constants/ScrollBarConstants): **vbSBNone** (0, default), **vbHorizontal** (1), **vbVertical** (2), or **vbBoth** (3). Ignored when [**MultiLine**](#multiline) is **False**. Changing this at run time recreates the underlying window.
 
-When the vertical scroll bar is enabled in a wrapping multi-line box, the horizontal scroll bar disables word wrap — lines extend past the right edge instead of wrapping.
+When the vertical scroll bar is enabled in a wrapping multi-line box, the horizontal scroll bar disables word wrap --- lines extend past the right edge instead of wrapping.
 
 ### SelLength
 {: .no_toc }
@@ -355,7 +355,7 @@ The text currently selected. Assigning a string replaces the selection with that
 ### TabFocusAutoSelect
 {: .no_toc }
 
-When **True** (default), the entire contents of the text box are automatically selected when the user moves focus to it with the **TAB** key. **Boolean**. The parent form's `TabFocusAutoSelect` property must also be **True** for this setting to take effect — when the form-level switch is **False**, the per-control value is ignored.
+When **True** (default), the entire contents of the text box are automatically selected when the user moves focus to it with the **TAB** key. **Boolean**. The parent form's `TabFocusAutoSelect` property must also be **True** for this setting to take effect --- when the form-level switch is **False**, the per-control value is ignored.
 
 ### TabIndex
 {: .no_toc }
@@ -384,7 +384,7 @@ Assigning a value that differs from the current one raises a [**Change**](#chang
 ### TextHint
 {: .no_toc }
 
-A placeholder **String** displayed in a dimmed colour when [**Text**](#text) is empty — the Win32 *cue banner*. Default empty (no cue). The hint disappears as soon as the user starts typing.
+A placeholder **String** displayed in a dimmed colour when [**Text**](#text) is empty --- the Win32 *cue banner*. Default empty (no cue). The hint disappears as soon as the user starts typing.
 
 ### TextHintAlways
 {: .no_toc }
@@ -523,7 +523,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Change
 {: .no_toc }
 
-Raised whenever [**Text**](#text) changes — either through user input or by code assigning a new value. Not raised during [**Initialize**](#initialize); the very first text load from the serialized form does not produce a **Change** event. **Default-designer event.**
+Raised whenever [**Text**](#text) changes --- either through user input or by code assigning a new value. Not raised during [**Initialize**](#initialize); the very first text load from the serialized form does not produce a **Change** event. **Default-designer event.**
 
 Syntax: *object*\_**Change**( )
 
@@ -645,7 +645,7 @@ Syntax: *object*\_**MouseUp**( *Button* **As Integer**, *Shift* **As Integer**, 
 ### MouseWheel
 {: .no_toc }
 
-Raised when the user rotates the mouse wheel while the control has focus or the cursor is over it. New in twinBASIC — there is no equivalent VB6 event.
+Raised when the user rotates the mouse wheel while the control has focus or the cursor is over it. New in twinBASIC --- there is no equivalent VB6 event.
 
 Syntax: *object*\_**MouseWheel**( *Delta* **As Integer**, *Horizontal* **As Boolean** )
 
@@ -700,7 +700,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Scroll
 {: .no_toc }
 
-Raised when a multi-line text box is scrolled — by the scroll bar (including thumb-track dragging), the keyboard, or the mouse wheel. Wheel-driven scrolling can be silenced by setting [**WheelScrollEvent**](#wheelscrollevent) to **False**. New in twinBASIC — there is no equivalent VB6 event.
+Raised when a multi-line text box is scrolled --- by the scroll bar (including thumb-track dragging), the keyboard, or the mouse wheel. Wheel-driven scrolling can be silenced by setting [**WheelScrollEvent**](#wheelscrollevent) to **False**. New in twinBASIC --- there is no equivalent VB6 event.
 
 Syntax: *object*\_**Scroll**( )
 

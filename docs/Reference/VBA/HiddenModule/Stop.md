@@ -13,7 +13,7 @@ Syntax: *hook*.**Stop**
 *hook*
 : *required* An [**IGetMessageHook**](./#igetmessagehook-interface) instance.
 
-Subscriptions remain registered after **Stop** — call [**Start**](Start) again to resume delivery without re-registering. Calling **Stop** on a hook that is already stopped has no effect.
+Subscriptions remain registered after **Stop** --- call [**Start**](Start) again to resume delivery without re-registering. Calling **Stop** on a hook that is already stopped has no effect.
 
 > [!NOTE]
 > This is the **Stop** method of the [**IGetMessageHook**](./#igetmessagehook-interface) interface. The unrelated [**Stop**](../../Core/Stop) statement is a language keyword that suspends execution and breaks into the debugger.

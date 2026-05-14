@@ -8,7 +8,7 @@ has_toc: false
 # KeyboardShortcuts class
 {: .no_toc }
 
-The IDE's keyboard-shortcut registry — reached through [**Host.KeyboardShortcuts**](Host#keyboardshortcuts). Use [**Add**](#add) to bind a key combination to a callback. There is no removal API; the registration is released when the addin is unloaded.
+The IDE's keyboard-shortcut registry --- reached through [**Host.KeyboardShortcuts**](Host#keyboardshortcuts). Call [**Add**](#add) to bind a key combination to a callback. There is no removal API; the registration is released when the addin is unloaded.
 
 ```tb
 Private Sub Host_OnProjectLoaded()
@@ -45,4 +45,4 @@ Syntax: *keyboardShortcuts*.**Add** *keyString*, *Callback*
 *Callback*
 : *required* The callback. Pass `AddressOf` a sub of signature `Sub()` (no arguments). **LongPtr**.
 
-The callback runs on the IDE's UI thread. Long-running work inside the callback will block the IDE until it returns — keep the callback short and offload heavy work to a background mechanism if needed.
+The callback runs on the IDE's UI thread. Long-running work inside the callback will block the IDE until it returns --- keep the callback short and offload heavy work to a background mechanism when needed.

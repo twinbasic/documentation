@@ -37,10 +37,10 @@ Syntax: **DateAdd** ( *interval*, *number*, *date* )
 | **n**    | Minute       |
 | **s**    | Second       |
 
-To add days to *date*, you can use Day of Year ("y"), Day ("d"), or Weekday ("w").
+To add days to *date*, use Day of Year ("y"), Day ("d"), or Weekday ("w").
 
 > [!NOTE]
-> When you use the "w" interval to add days to a date, **DateAdd** adds the total number of days that you specified, not just workdays (Monday through Friday).
+> When the "w" interval is used to add days to a date, **DateAdd** adds the total number of days specified, not just workdays (Monday through Friday).
 
 **DateAdd** won't return an invalid date. The following example adds one month to January 31:
 

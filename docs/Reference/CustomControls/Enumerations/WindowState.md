@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/WindowState
 # WindowState
 {: .no_toc }
 
-The window state of a [**WaynesForm**](../WaynesForm/) — minimized, restored to normal size, or maximized to fill its monitor. Carried by [**WindowsFormOptions.WindowState**](../WaynesForm/WindowsFormOptions#windowstate); honoured once when the form is first shown.
+The window state of a [**WaynesForm**](../WaynesForm/) --- minimized, restored to normal size, or maximized to fill its monitor. Used by [**WindowsFormOptions.WindowState**](../WaynesForm/WindowsFormOptions#windowstate); honoured once when the form is first shown.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

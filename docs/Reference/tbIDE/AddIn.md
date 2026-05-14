@@ -8,7 +8,7 @@ has_toc: false
 # AddIn class
 {: .no_toc }
 
-The contract every addin's main class must implement. One read-only property — [**Name**](#name) — that the IDE reads to label the addin in error messages, log lines, and (eventually) any addin-management UI. The IDE never creates an **AddIn** itself; the addin DLL constructs the object inside [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) and returns it.
+The contract every addin's main class must implement. One read-only property --- [**Name**](#name) --- that the IDE reads to label the addin in error messages, log lines, and any addin-management UI added later. The IDE never creates an **AddIn** itself; the addin DLL constructs the object inside [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) and returns it.
 
 ```tb
 Private Class MyAddIn
@@ -26,7 +26,7 @@ Private Class MyAddIn
 End Class
 ```
 
-The class implementing **AddIn** is also the natural place to hold every other `WithEvents` reference the addin uses ([**Host**](Host), each [**Button**](Button), each [**ToolWindow**](ToolWindow), an optional [**AddinTimer**](AddinTimer), …) — its lifetime is tied to the addin's loaded state.
+The class implementing **AddIn** is also the natural place to hold every other `WithEvents` reference the addin uses ([**Host**](Host), each [**Button**](Button), each [**ToolWindow**](ToolWindow), an optional [**AddinTimer**](AddinTimer), …) --- its lifetime is tied to the addin's loaded state.
 
 ## Properties
 

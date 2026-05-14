@@ -8,11 +8,11 @@ has_toc: false
 # UserControl class
 {: .no_toc }
 
-A **UserControl** is the base class for designing a reusable ActiveX control in twinBASIC. Each control designed in the IDE becomes its own class derived from **UserControl** — its child controls become members of that class, its event handlers become methods on it, and the file's name becomes the COM class name registered with the runtime. Hosts that embed the control (the twinBASIC IDE, classic VB6, Office, any other ActiveX container) talk to it through the standard ActiveX control interfaces, while the design-time code-behind talks to it as a regular twinBASIC class.
+A **UserControl** is the base class for designing a reusable ActiveX control in twinBASIC. Each control designed in the IDE becomes its own class derived from **UserControl** --- its child controls become members of that class, its event handlers become methods on it, and the file's name becomes the COM class name registered with the runtime. Hosts that embed the control (the twinBASIC IDE, classic VB6, Office, any other ActiveX container) talk to it through the standard ActiveX control interfaces, while the design-time code-behind talks to it as a regular twinBASIC class.
 
 A **UserControl** is not directly visible at run time as a property of an outer form. The host wraps it in an **Extender** object that adds the standard container properties (**Top**, **Left**, **Width**, **Height**, **Name**, **Visible**, **TabIndex**, …) and the user code reaches the extender through [**Extender**](#extender). The inner **UserControl** keeps a graphics surface, a private property bag, and the lifecycle events through which the host loads and saves the control's persistent state.
 
-The default-designer event is [**Initialize**](#initialize) — double-clicking the control surface in the IDE adds a `UserControl_Initialize` handler.
+The default-designer event is [**Initialize**](#initialize) --- double-clicking the control surface in the IDE adds a `UserControl_Initialize` handler.
 
 ```tb
 ' In MyMonthView's code-behind:
@@ -54,8 +54,8 @@ A user control instance goes through up to seven distinct events from creation t
 | [**InitProperties**](#initproperties)  | Once, for a brand-new instance with no saved property bag (a fresh drop on a design surface).       |
 | [**ReadProperties**](#readproperties)  | Once, for an instance reloaded from a property bag (every load after the first save).               |
 | [**Resize**](#resize)                  | When the host first sizes the control, and on every subsequent size change.                         |
-| [**Show**](#show) / [**Hide**](#hide)  | When the host changes the container's visibility — typically as the host's design view / run view changes. |
-| [**WriteProperties**](#writeproperties)| When the host asks the control to persist its state — design-time saves, host-initiated serialisation. |
+| [**Show**](#show) / [**Hide**](#hide)  | When the host changes the container's visibility --- typically as the host's design view / run view changes. |
+| [**WriteProperties**](#writeproperties)| When the host asks the control to persist its state --- design-time saves, host-initiated serialisation. |
 | [**Terminate**](#terminate)            | After the window has been destroyed and the class instance is about to be released.                 |
 
 For each instance, exactly one of **InitProperties** or **ReadProperties** runs after [**Initialize**](#initialize), depending on whether the host had a saved property bag. [**WriteProperties**](#writeproperties) is only raised when [**PropertyChanged**](#propertychanged) has been called at least once since the last save, so handlers that never mark themselves dirty are never asked to write.
@@ -73,7 +73,7 @@ End Property
 
 ## Host integration
 
-[**Extender**](#extender) returns the host's wrapper around this control — usually an object exposing **Top**, **Left**, **Width**, **Height**, **Name**, **Visible**, **TabIndex**, **TabStop**, **Container**, **Parent**, and any host-specific extras. [**Parent**](#parent) is shorthand for `Extender.Parent` — the form (or sheet, or page) that ultimately hosts the control. [**ParentControls**](#parentcontrols) is a live enumerator over every sibling control on that parent, useful for design-time inspection.
+[**Extender**](#extender) returns the host's wrapper around this control --- usually an object exposing **Top**, **Left**, **Width**, **Height**, **Name**, **Visible**, **TabIndex**, **TabStop**, **Container**, **Parent**, and any host-specific extras. [**Parent**](#parent) is shorthand for `Extender.Parent` --- the form (or sheet, or page) that ultimately hosts the control. [**ParentControls**](#parentcontrols) is a live enumerator over every sibling control on that parent, useful for design-time inspection.
 
 [**Ambient**](#ambient) exposes the host's ambient properties (the colours, font, locale, and design/run-mode flags the host wants child controls to honour). Changes to any of those raise the [**AmbientChanged**](#ambientchanged) event with the name of the affected property.
 
@@ -81,25 +81,25 @@ End Property
 
 ## Drawing surface
 
-A **UserControl** is a graphics surface in its own right. The full set of VB6 drawing primitives — [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and the [**Print**](#print) statement — write to its device context, using [**ForeColor**](#forecolor), [**FillColor**](#fillcolor)/[**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle) for the pen and fill, and [**Font**](#font) for text. The current pen position is tracked by [**CurrentX**](#currentx) and [**CurrentY**](#currenty); [**TextWidth**](#textwidth) and [**TextHeight**](#textheight) measure a string in the current font; [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert single coordinates between scale modes.
+A **UserControl** is a graphics surface in its own right. The full set of VB6 drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and the [**Print**](#print) statement --- write to its device context, using [**ForeColor**](#forecolor), [**FillColor**](#fillcolor)/[**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle) for the pen and fill, and [**Font**](#font) for text. The current pen position is tracked by [**CurrentX**](#currentx) and [**CurrentY**](#currenty); [**TextWidth**](#textwidth) and [**TextHeight**](#textheight) measure a string in the current font; [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert single coordinates between scale modes.
 
-The coordinate system is governed by [**ScaleMode**](#scalemode), [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), and [**ScaleHeight**](#scaleheight), exactly as on a [**Form**](../Form). [**AutoRedraw**](#autoredraw) controls whether drawn output persists across paints — when **False** (default), the [**Paint**](#paint) event must redraw on every invalidation; when **True**, the control keeps an off-screen buffer that survives invalidations and the **Paint** event is suppressed.
+The coordinate system is governed by [**ScaleMode**](#scalemode), [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), and [**ScaleHeight**](#scaleheight), exactly as on a [**Form**](../Form). [**AutoRedraw**](#autoredraw) controls whether drawn output persists across paints --- when **False** (default), the [**Paint**](#paint) event must redraw on every invalidation; when **True**, the control keeps an off-screen buffer that survives invalidations and the **Paint** event is suppressed.
 
-[**BackStyle**](#backstyle) chooses between an opaque background (the default — **BackColor** fills the surface) and a transparent one (the background is left untouched so that whatever is behind the control shows through). Transparent **UserControl**s are commonly windowless ([**Windowless**](#windowless) = **True**) so that mouse hit-testing follows the painted shape rather than the bounding rectangle.
+[**BackStyle**](#backstyle) chooses between an opaque background (the default --- **BackColor** fills the surface) and a transparent one (the background is left untouched so that whatever is behind the control shows through). Transparent **UserControl**s are commonly windowless ([**Windowless**](#windowless) = **True**) so that mouse hit-testing follows the painted shape rather than the bounding rectangle.
 
 ## Windowless mode
 
-Setting [**Windowless**](#windowless) to **True** asks the host to embed the control without giving it its own **HWND**. The control's painting goes through `IViewObject::Draw`, mouse hit-testing through `IViewObjectEx::QueryHitPoint`, and so on; the [**HitTest**](#hittest) event raises for each hit-test request so the control can refine which pixels register as "hits". Many hosts support windowless activation (the twinBASIC IDE, Office); some hosts do not — the framework transparently falls back to a windowed mode at activation time when that happens.
+Setting [**Windowless**](#windowless) to **True** asks the host to embed the control without giving it its own **HWND**. The control's painting goes through `IViewObject::Draw`, mouse hit-testing through `IViewObjectEx::QueryHitPoint`, and so on; the [**HitTest**](#hittest) event raises for each hit-test request so the control can refine which pixels register as "hits". Many hosts support windowless activation (the twinBASIC IDE, Office); some hosts do not --- the framework transparently falls back to a windowed mode at activation time when that happens.
 
-[**hWnd**](#hwnd) returns `0` while the control is windowless-activated. [**PreKeyEvents**](#prekeyevents) — and the [**PreKeyDown**](#prekeydown) / [**PreKeyUp**](#prekeyup) events — are not available on a windowless **UserControl**.
+[**hWnd**](#hwnd) returns `0` while the control is windowless-activated. [**PreKeyEvents**](#prekeyevents) --- and the [**PreKeyDown**](#prekeydown) / [**PreKeyUp**](#prekeyup) events --- are not available on a windowless **UserControl**.
 
 ## Children and focus
 
-The **UserControl** can host child controls dropped onto it at design time. [**Controls**](#controls) is the collection of every such child, indexable by control name or zero-based position. The control is enumerable directly (`For Each ctrl In UserControl`) — [**Count**](#count) and [**InternalEnumerator**](#internalenumerator) forward to it. [**ContainedControls**](#containedcontrols) enumerates the same collection but as raw `IUnknown` references for low-level COM work.
+The **UserControl** can host child controls dropped onto it at design time. [**Controls**](#controls) is the collection of every such child, indexable by control name or zero-based position. The control is enumerable directly (`For Each ctrl In UserControl`) --- [**Count**](#count) and [**InternalEnumerator**](#internalenumerator) forward to it. [**ContainedControls**](#containedcontrols) enumerates the same collection but as raw `IUnknown` references for low-level COM work.
 
-[**ActiveControl**](#activecontrol) returns the focused child, or **Nothing** when no control on this surface has the focus. [**SetFocus**](#setfocus) gives the focus to the **UserControl** itself, which forwards it to its tab order. [**KeyPreview**](#keypreview) routes keystrokes through the **UserControl**'s [**KeyDown**](#keydown), [**KeyUp**](#keyup), and [**KeyPress**](#keypress) events *before* the focused child sees them — useful for handling **Escape**, **Tab**, or container-wide hotkeys.
+[**ActiveControl**](#activecontrol) returns the focused child, or **Nothing** when no control on this surface has the focus. [**SetFocus**](#setfocus) gives the focus to the **UserControl** itself, which forwards it to its tab order. [**KeyPreview**](#keypreview) routes keystrokes through the **UserControl**'s [**KeyDown**](#keydown), [**KeyUp**](#keyup), and [**KeyPress**](#keypress) events *before* the focused child sees them --- useful for handling **Escape**, **Tab**, or container-wide hotkeys.
 
-[**EnterFocus**](#enterfocus) and [**ExitFocus**](#exitfocus) fire when the focus enters or leaves the **UserControl** as a whole (the control itself or any descendant); [**GotFocus**](#gotfocus) and [**LostFocus**](#lostfocus) fire only when the **UserControl**'s own window — and no child — holds the focus.
+[**EnterFocus**](#enterfocus) and [**ExitFocus**](#exitfocus) fire when the focus enters or leaves the **UserControl** as a whole (the control itself or any descendant); [**GotFocus**](#gotfocus) and [**LostFocus**](#lostfocus) fire only when the **UserControl**'s own window --- and no child --- holds the focus.
 
 ## Properties
 
@@ -128,14 +128,14 @@ A snapshot of the host's [**AmbientProperties**](../../VBRUN/AmbientProperties/)
 ### Appearance
 {: .no_toc }
 
-A member of [**AppearanceConstants**](../../VBRUN/Constants/AppearanceConstants): **vbAppearFlat** or **vbAppear3d** (default). Only meaningful when [**BorderStyle**](#borderstyle) is **vbFixedSingleBorder** — controls whether the border is drawn flat or 3-D.
+A member of [**AppearanceConstants**](../../VBRUN/Constants/AppearanceConstants): **vbAppearFlat** or **vbAppear3d** (default). Only meaningful when [**BorderStyle**](#borderstyle) is **vbFixedSingleBorder** --- controls whether the border is drawn flat or 3-D.
 
 ### AutoRedraw
 {: .no_toc }
 
 Whether drawing performed on the control persists across invalidations. **Boolean**, default **False**.
 
-When **False**, drawing primitives — [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and [**Print**](#print) — paint directly to the screen and the control must redraw them in its [**Paint**](#paint) event whenever the affected area is invalidated. When **True**, the control keeps an off-screen bitmap, drawing primitives paint into it (and immediately to the screen), the bitmap survives invalidations, and the **Paint** event is suppressed. Reading [**Image**](#image) returns this bitmap.
+When **False**, drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and [**Print**](#print) --- paint directly to the screen and the control must redraw them in its [**Paint**](#paint) event whenever the affected area is invalidated. When **True**, the control keeps an off-screen bitmap, drawing primitives paint into it (and immediately to the screen), the bitmap survives invalidations, and the **Paint** event is suppressed. Reading [**Image**](#image) returns this bitmap.
 
 ### BackColor
 {: .no_toc }
@@ -145,7 +145,7 @@ The background colour of the control's surface, as an **OLE_COLOR**. Defaults to
 ### BackStyle
 {: .no_toc }
 
-Whether the control's background is opaque or transparent. A member of [**BackFillStyleConstants**](../../VBRUN/Constants/BackFillStyleConstants): **vbBFTransparent** (0) or **vbBFOpaque** (1, default). Setting **BackStyle** to **vbBFTransparent** stops the framework from clearing the surface to [**BackColor**](#backcolor) on each paint — useful when the control wants to draw a non-rectangular shape over whatever is behind it. Typically used with [**Windowless**](#windowless) = **True**.
+Whether the control's background is opaque or transparent. A member of [**BackFillStyleConstants**](../../VBRUN/Constants/BackFillStyleConstants): **vbBFTransparent** (0) or **vbBFOpaque** (1, default). Setting **BackStyle** to **vbBFTransparent** stops the framework from clearing the surface to [**BackColor**](#backcolor) on each paint --- useful when the control wants to draw a non-rectangular shape over whatever is behind it. Typically used with [**Windowless**](#windowless) = **True**.
 
 ### BorderStyle
 {: .no_toc }
@@ -180,7 +180,7 @@ Whether the **UserControl** acts as a container that can host other ActiveX cont
 ### Controls
 {: .no_toc }
 
-The collection of every child control hosted by this **UserControl**, indexable by control name or zero-based position. Read-only — controls are added to the collection by the runtime, not by user code.
+The collection of every child control hosted by this **UserControl**, indexable by control name or zero-based position. Read-only --- controls are added to the collection by the runtime, not by user code.
 
 ```tb
 Dim ctrl As Control
@@ -271,7 +271,7 @@ Whether the host has temporarily suspended event delivery to the control. **Bool
 ### Extender
 {: .no_toc }
 
-The host's extender wrapper around this **UserControl**, as an **Object**. Read-only. The extender is the object the host exposes to user code as the control on the form — it provides standard container properties (**Top**, **Left**, **Width**, **Height**, **Name**, **Visible**, **TabIndex**, **TabStop**, **Container**, **Parent**, **DragMode**, **DragIcon**, …) plus whatever host-specific extras it likes. Returns **Nothing** when no extender is available (the control has not yet been embedded, or the host is too primitive to provide one).
+The host's extender wrapper around this **UserControl**, as an **Object**. Read-only. The extender is the object the host exposes to user code as the control on the form --- it provides standard container properties (**Top**, **Left**, **Width**, **Height**, **Name**, **Visible**, **TabIndex**, **TabStop**, **Container**, **Parent**, **DragMode**, **DragIcon**, …) plus whatever host-specific extras it likes. Returns **Nothing** when no extender is available (the control has not yet been embedded, or the host is too primitive to provide one).
 
 ### FillColor
 {: .no_toc }
@@ -306,7 +306,7 @@ Shortcut for [**Font**](#font)`.Name`. **String**.
 ### FontSize
 {: .no_toc }
 
-Shortcut for [**Font**](#font)`.Size` — the point size. **Single**.
+Shortcut for [**Font**](#font)`.Size` --- the point size. **Single**.
 
 ### FontStrikethru
 {: .no_toc }
@@ -342,12 +342,12 @@ The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pse
 ### FormDesignerId
 {: .no_toc }
 
-A unique GUID-formatted **String** associating a designed code-behind class with a specific designer file. Read-only at run time — set by the IDE.
+A unique GUID-formatted **String** associating a designed code-behind class with a specific designer file. Read-only at run time --- set by the IDE.
 
 ### HasDC
 {: .no_toc }
 
-Whether the control keeps a private device context (`CS_OWNDC`) for its drawing surface. **Boolean**, default **True**. Read-only at run time — set at design time.
+Whether the control keeps a private device context (`CS_OWNDC`) for its drawing surface. **Boolean**, default **True**. Read-only at run time --- set at design time.
 
 ### HitBehavior
 {: .no_toc }
@@ -374,7 +374,7 @@ The Win32 window handle for the control, as a **LongPtr**. Read-only. Returns `0
 ### Image
 {: .no_toc }
 
-Returns the rendered drawing surface as a **StdPicture**. Read-only. Most useful when [**AutoRedraw**](#autoredraw) is **True** — the returned picture is the persistent off-screen buffer.
+Returns the rendered drawing surface as a **StdPicture**. Read-only. Most useful when [**AutoRedraw**](#autoredraw) is **True** --- the returned picture is the persistent off-screen buffer.
 
 ### Index
 {: .no_toc }
@@ -421,7 +421,7 @@ The mouse cursor shown when the pointer is over the control. A member of [**Mous
 ### Name
 {: .no_toc }
 
-The unique design-time name of the **UserControl** class. Read-only at run time. Also the class name of the generated user-control class. The host's extender exposes its own **Name** that identifies the instance on the form — the inner **UserControl**'s **Name** identifies the *class*.
+The unique design-time name of the **UserControl** class. Read-only at run time. Also the class name of the generated user-control class. The host's extender exposes its own **Name** that identifies the instance on the form --- the inner **UserControl**'s **Name** identifies the *class*.
 
 ### Palette
 {: .no_toc }
@@ -443,7 +443,7 @@ The form (or other host object) that contains this **UserControl**, as an **Obje
 ### ParentControls
 {: .no_toc }
 
-A live collection of every sibling control on the host's parent — useful at design time for inspecting or coordinating with other controls on the same surface. Read-only. Supports indexed access (`ParentControls(0)`), enumeration (`For Each ctl In ParentControls`), and a **Count** member. Its **ParentControlsType** property toggles between the *extender*-wrapped view (the default — items are the host's extender objects) and the *raw* view (items are the inner `IUnknown` of each control).
+A live collection of every sibling control on the host's parent --- useful at design time for inspecting or coordinating with other controls on the same surface. Read-only. Supports indexed access (`ParentControls(0)`), enumeration (`For Each ctl In ParentControls`), and a **Count** member. Its **ParentControlsType** property toggles between the *extender*-wrapped view (the default --- items are the host's extender objects) and the *raw* view (items are the inner `IUnknown` of each control).
 
 ### PictureDpiScaling
 {: .no_toc }
@@ -459,12 +459,12 @@ A **StdPicture** drawn as the control's background. Painted before any drawing p
 ### PreKeyEvents
 {: .no_toc }
 
-Whether the [**PreKeyDown**](#prekeydown) and [**PreKeyUp**](#prekeyup) events are raised for descendants of this **UserControl**. **Boolean**, read-only at run time — set at design time. Not available when [**Windowless**](#windowless) is **True**.
+Whether the [**PreKeyDown**](#prekeydown) and [**PreKeyUp**](#prekeyup) events are raised for descendants of this **UserControl**. **Boolean**, read-only at run time --- set at design time. Not available when [**Windowless**](#windowless) is **True**.
 
 ### PropertyPages
 {: .no_toc }
 
-An array of **String** **CLSID**s identifying the [**PropertyPage**](../PropertyPage) classes the host should offer through the **(Custom)** entry on the property browser. Read at the host's `ISpecifyPropertyPages::GetPages` call. Order matters — the array order is the tab order in the property-sheet dialog.
+An array of **String** **CLSID**s identifying the [**PropertyPage**](../PropertyPage) classes the host should offer through the **(Custom)** entry on the property browser. Read at the host's `ISpecifyPropertyPages::GetPages` call. Order matters --- the array order is the tab order in the property-sheet dialog.
 
 ```tb
 Private Sub UserControl_Initialize()
@@ -524,7 +524,7 @@ The vertical position of the **UserControl** inside its host container, in the h
 ### Verbs
 {: .no_toc }
 
-An array of **String** names registered with the host's `IOleObject::EnumVerbs` enumerator — each entry appears on the host's right-click menu for this control. Invoking one raises [**VerbInvoked**](#verbinvoked) with the verb's name.
+An array of **String** names registered with the host's `IOleObject::EnumVerbs` enumerator --- each entry appears on the host's right-click menu for this control. Invoking one raises [**VerbInvoked**](#verbinvoked) with the verb's name.
 
 ```tb
 Private Sub UserControl_Initialize()
@@ -554,7 +554,7 @@ The control's height. **Double**. Setting it resizes the control and raises [**R
 ### Windowless
 {: .no_toc }
 
-Whether the control supports windowless activation. **Boolean**, default **False**. Read-only at run time — set at design time. See [Windowless mode](#windowless-mode).
+Whether the control supports windowless activation. **Boolean**, default **False**. Read-only at run time --- set at design time. See [Windowless mode](#windowless-mode).
 
 ## Methods
 
@@ -578,7 +578,7 @@ Syntax: *object*.**CancelAsyncRead** [ *Property* ]
 {: .no_toc }
 
 > [!NOTE]
-> Declared for VB6 compatibility; not currently implemented in twinBASIC. In VB6 this returned **True** if the named property of the **DataSource** was writable — used by data-bound controls before pushing edited values back to the source.
+> Declared for VB6 compatibility; not currently implemented in twinBASIC. In VB6 this returned **True** if the named property of the **DataSource** was writable --- used by data-bound controls before pushing edited values back to the source.
 
 Syntax: *object*.**CanPropertyChange**( *PropertyName* )
 
@@ -690,14 +690,14 @@ Syntax: *object*.**Point**( *X*, *Y* )
 {: .no_toc }
 
 > [!NOTE]
-> Declared for VB6 compatibility; not currently implemented on **UserControl** in twinBASIC. A **UserControl** has no menu structure of its own — invoke a host pop-up through the extender or the parent form's [**PopUpMenu**](../Form/#popupmenu).
+> Declared for VB6 compatibility; not currently implemented on **UserControl** in twinBASIC. A **UserControl** has no menu structure of its own --- invoke a host pop-up through the extender or the parent form's [**PopUpMenu**](../Form/#popupmenu).
 
 Syntax: *object*.**PopUpMenu** *Menu* [, *Flags* [, *X* [, *Y* [, *DefaultMenu* ] ] ] ]
 
 ### Print
 {: .no_toc }
 
-Writes text to the control's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the VB6 **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and — when [**AutoRedraw**](#autoredraw) is **True** — is recorded into the persistent off-screen bitmap so it survives invalidations.
+Writes text to the control's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the VB6 **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and --- when [**AutoRedraw**](#autoredraw) is **True** --- is recorded into the persistent off-screen bitmap so it survives invalidations.
 
 Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 
@@ -823,19 +823,19 @@ Syntax: *object*.**ValidateControls**
 {: .no_toc }
 
 > [!NOTE]
-> Declared for VB6 compatibility; only partially implemented in twinBASIC. The runtime currently raises this event when the host calls `IOleControl::OnMnemonic` with the **Escape**, **Return**, or **Execute** keys — typically because [**DefaultCancel**](#defaultcancel) (or a default-button equivalent) routed a default-action keystroke to the control.
+> Declared for VB6 compatibility; only partially implemented in twinBASIC. The runtime currently raises this event when the host calls `IOleControl::OnMnemonic` with the **Escape**, **Return**, or **Execute** keys --- typically because [**DefaultCancel**](#defaultcancel) (or a default-button equivalent) routed a default-action keystroke to the control.
 
 Syntax: *object*\_**AccessKeyPress**( *KeyAscii* **As Integer** )
 
 ### AmbientChanged
 {: .no_toc }
 
-Raised when the host changes one of the ambient properties exposed through [**Ambient**](#ambient) — typically when its [**Font**](#font), colours, locale, or run/design mode flag shifts. The *PropertyName* argument names the ambient property that changed.
+Raised when the host changes one of the ambient properties exposed through [**Ambient**](#ambient) --- typically when its [**Font**](#font), colours, locale, or run/design mode flag shifts. The *PropertyName* argument names the ambient property that changed.
 
 Syntax: *object*\_**AmbientChanged**( *PropertyName* **As String** )
 
 *PropertyName*
-: A **String** identifying the ambient property — for example, `"BackColor"`, `"Font"`, `"LocaleID"`, `"UserMode"`.
+: A **String** identifying the ambient property --- for example, `"BackColor"`, `"Font"`, `"LocaleID"`, `"UserMode"`.
 
 ### AsyncReadComplete
 {: .no_toc }
@@ -893,14 +893,14 @@ Syntax: *object*\_**DragOver**( *Source* **As Control**, *X* **As Single**, *Y* 
 ### EnterFocus
 {: .no_toc }
 
-Raised when the input focus moves into the **UserControl** — either the **UserControl** itself or any of its descendants. Fires before any child's **GotFocus**.
+Raised when the input focus moves into the **UserControl** --- either the **UserControl** itself or any of its descendants. Fires before any child's **GotFocus**.
 
 Syntax: *object*\_**EnterFocus**( )
 
 ### ExitFocus
 {: .no_toc }
 
-Raised when the input focus leaves the **UserControl** — i.e. moves out to a control that is not a descendant. Fires after the leaving child's **LostFocus**.
+Raised when the input focus leaves the **UserControl** --- i.e. moves out to a control that is not a descendant. Fires after the leaving child's **LostFocus**.
 
 Syntax: *object*\_**ExitFocus**( )
 
@@ -922,14 +922,14 @@ Syntax: *object*\_**GotFocus**( )
 ### Hide
 {: .no_toc }
 
-Raised when the host hides the container — typically as it switches from a run view to a design view, or as it makes a containing tab inactive.
+Raised when the host hides the container --- typically as it switches from a run view to a design view, or as it makes a containing tab inactive.
 
 Syntax: *object*\_**Hide**( )
 
 ### HitTest
 {: .no_toc }
 
-Raised for each `IViewObjectEx::QueryHitPoint` request from the host when the control is windowless. Setting *HitResult* to a non-zero **HitResult** value tells the host whether the given pixel is "hit" for mouse-routing purposes — useful for non-rectangular windowless controls.
+Raised for each `IViewObjectEx::QueryHitPoint` request from the host when the control is windowless. Setting *HitResult* to a non-zero **HitResult** value tells the host whether the given pixel is "hit" for mouse-routing purposes --- useful for non-rectangular windowless controls.
 
 Syntax: *object*\_**HitTest**( *X* **As Single**, *Y* **As Single**, *HitResult* **As Integer** )
 
@@ -943,7 +943,7 @@ Syntax: *object*\_**Initialize**( )
 ### InitProperties
 {: .no_toc }
 
-Raised once on the first ever activation of a brand-new **UserControl** instance — before a property bag exists for it. The classic place to assign initial values to persistent properties. Not raised on subsequent loads; on those, [**ReadProperties**](#readproperties) runs instead.
+Raised once on the first ever activation of a brand-new **UserControl** instance --- before a property bag exists for it. The classic place to assign initial values to persistent properties. Not raised on subsequent loads; on those, [**ReadProperties**](#readproperties) runs instead.
 
 Syntax: *object*\_**InitProperties**( )
 
@@ -1048,14 +1048,14 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Paint
 {: .no_toc }
 
-Raised when an invalidated portion of the control needs to be redrawn. Suppressed when [**AutoRedraw**](#autoredraw) is **True** — the control's persistent off-screen buffer is blitted to the screen instead.
+Raised when an invalidated portion of the control needs to be redrawn. Suppressed when [**AutoRedraw**](#autoredraw) is **True** --- the control's persistent off-screen buffer is blitted to the screen instead.
 
 Syntax: *object*\_**Paint**( )
 
 ### PreKeyDown
 {: .no_toc }
 
-Raised for every key press anywhere on the **UserControl** or any of its descendants, *before* the focused child sees it — so handlers can consume the keystroke. Requires [**PreKeyEvents**](#prekeyevents) **True**. Not raised when [**Windowless**](#windowless) is **True**. New in twinBASIC.
+Raised for every key press anywhere on the **UserControl** or any of its descendants, *before* the focused child sees it --- so handlers can consume the keystroke. Requires [**PreKeyEvents**](#prekeyevents) **True**. Not raised when [**Windowless**](#windowless) is **True**. New in twinBASIC.
 
 Syntax: *object*\_**PreKeyDown**( *KeyCode* **As Integer**, *Shift* **As Integer** )
 
@@ -1069,7 +1069,7 @@ Syntax: *object*\_**PreKeyUp**( *KeyCode* **As Integer**, *Shift* **As Integer**
 ### ReadProperties
 {: .no_toc }
 
-Raised when the host hands the control a property bag containing previously saved state — i.e. on every load except the very first. The handler reads the values it cares about from *PropBag* and applies them to its fields. *PropBag*'s **ReadProperty** method takes a key, a default value, and a type hint.
+Raised when the host hands the control a property bag containing previously saved state --- i.e. on every load except the very first. The handler reads the values it cares about from *PropBag* and applies them to its fields. *PropBag*'s **ReadProperty** method takes a key, a default value, and a type hint.
 
 Syntax: *object*\_**ReadProperties**( *PropBag* **As PropertyBag** )
 
@@ -1079,14 +1079,14 @@ Syntax: *object*\_**ReadProperties**( *PropBag* **As PropertyBag** )
 ### Resize
 {: .no_toc }
 
-Raised when the **UserControl** is resized — by the host during initial layout, by user code assigning [**Width**](#width) or [**Height**](#height), or by the host responding to a designer drag.
+Raised when the **UserControl** is resized --- by the host during initial layout, by user code assigning [**Width**](#width) or [**Height**](#height), or by the host responding to a designer drag.
 
 Syntax: *object*\_**Resize**( )
 
 ### Show
 {: .no_toc }
 
-Raised when the host makes the container visible — typically as it switches from a design view to a run view, or as it makes a containing tab active.
+Raised when the host makes the container visible --- typically as it switches from a design view to a run view, or as it makes a containing tab active.
 
 Syntax: *object*\_**Show**( )
 
@@ -1100,7 +1100,7 @@ Syntax: *object*\_**Terminate**( )
 ### VerbInvoked
 {: .no_toc }
 
-Raised when the host invokes one of the verbs declared in [**Verbs**](#verbs) — typically because the user picked it from the host's right-click context menu.
+Raised when the host invokes one of the verbs declared in [**Verbs**](#verbs) --- typically because the user picked it from the host's right-click context menu.
 
 Syntax: *object*\_**VerbInvoked**( *Verb* **As String** )
 
@@ -1110,7 +1110,7 @@ Syntax: *object*\_**VerbInvoked**( *Verb* **As String** )
 ### WriteProperties
 {: .no_toc }
 
-Raised when the host asks the control to persist its current state — design-time saves and host-initiated serialisation. The handler writes each persistent value to *PropBag* through **WriteProperty**, which takes a key, the value, and (optionally) the same default the [**ReadProperties**](#readproperties) handler used so that round-trip defaults are not written. Only raised when at least one call to [**PropertyChanged**](#propertychanged) has happened since the last save.
+Raised when the host asks the control to persist its current state --- design-time saves and host-initiated serialisation. The handler writes each persistent value to *PropBag* through **WriteProperty**, which takes a key, the value, and (optionally) the same default the [**ReadProperties**](#readproperties) handler used so that round-trip defaults are not written. Only raised when at least one call to [**PropertyChanged**](#propertychanged) has happened since the last save.
 
 Syntax: *object*\_**WriteProperties**( *PropBag* **As PropertyBag** )
 

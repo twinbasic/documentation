@@ -8,9 +8,9 @@ has_toc: false
 # WebView2 class
 {: .no_toc }
 
-A **WebView2** is a twinBASIC control that hosts the Microsoft Edge **WebView2** runtime — drop one onto a [**Form**](../../VB/Form/) and the running Edge engine renders web content inside its rectangle. Application code can navigate to URLs, run JavaScript, intercept HTTP requests, share BASIC objects with the page, post messages back and forth, and print the document to PDF.
+A **WebView2** is a twinBASIC control that hosts the Microsoft Edge **WebView2** runtime --- drop one onto a [**Form**](../../VB/Form/) and the running Edge engine renders web content inside its rectangle. Application code can navigate to URLs, run JavaScript, intercept HTTP requests, share BASIC objects with the page, post messages back and forth, and print the document to PDF.
 
-The control wraps the underlying `ICoreWebView2*` COM interfaces and exposes them as ordinary BASIC properties, methods, and events. Most of the work happens asynchronously inside the browser process — the control raises [**Ready**](#ready) once the WebView2 environment and controller have been created, and most members raise *"WebView2 control is not ready"* (run-time error 5) if called before then.
+The control wraps the underlying `ICoreWebView2*` COM interfaces and exposes them as ordinary BASIC properties, methods, and events. Most of the work happens asynchronously inside the browser process --- the control raises [**Ready**](#ready) once the WebView2 environment and controller have been created, and most members raise *"WebView2 control is not ready"* (run-time error 5) if called before then.
 
 ```tb
 Private Sub Form_Load()
@@ -39,32 +39,32 @@ A WebView2 control passes through three distinct phases between construction and
 | Event                                | When                                                                                                              |
 |--------------------------------------|-------------------------------------------------------------------------------------------------------------------|
 | [**Create**](#create)                | After the container window exists, before the WebView2 environment is built. Last chance to set [**EnvironmentOptions**](#environmentoptions). |
-| [**Error**](#error)                  | The environment or controller could not be created — typically because the WebView2 runtime is missing.            |
+| [**Error**](#error)                  | The environment or controller could not be created --- typically because the WebView2 runtime is missing.            |
 | [**Ready**](#ready)                  | The environment, controller, and core view are all live. The control is now fully functional.                      |
 
-Calling navigation, scripting, or setting accessors before [**Ready**](#ready) raises run-time error 5 with the message *"WebView2 control is not ready"*. Where a setting depends on a newer runtime interface, the same error appears with *"The executing version of WebView2 does not support the requested feature"* instead — query the matching `Supports…Features` property first.
+Calling navigation, scripting, or setting accessors before [**Ready**](#ready) raises run-time error 5 with the message *"WebView2 control is not ready"*. Where a setting depends on a newer runtime interface, the same error appears with *"The executing version of WebView2 does not support the requested feature"* instead --- query the matching `Supports…Features` property first.
 
 If the [**DocumentURL**](#documenturl) field has a non-empty value when [**Ready**](#ready) fires (the design-time default is `https://www.twinbasic.com`), the control auto-navigates to it.
 
 ## Deferred events
 
-Several runtime callbacks — [**PermissionRequested**](#permissionrequested), [**NavigationStarting**](#navigationstarting), [**WebResourceRequested**](#webresourcerequested), [**ScriptDialogOpening**](#scriptdialogopening), [**DownloadStarting**](#downloadstarting), and [**NewWindowRequested**](#newwindowrequested) — are reentrant from the Edge side, meaning they fire on the WebView2 thread while it expects the host to either return synchronously or hold a *deferral* until the decision is made. Calling back into the control from inside a synchronous handler can deadlock the browser process.
+Several runtime callbacks --- [**PermissionRequested**](#permissionrequested), [**NavigationStarting**](#navigationstarting), [**WebResourceRequested**](#webresourcerequested), [**ScriptDialogOpening**](#scriptdialogopening), [**DownloadStarting**](#downloadstarting), and [**NewWindowRequested**](#newwindowrequested) --- are reentrant from the Edge side, meaning they fire on the WebView2 thread while it expects the host to either return synchronously or hold a *deferral* until the decision is made. Calling back into the control from inside a synchronous handler can deadlock the browser process.
 
-When [**UseDeferredEvents**](#usedeferredevents) is **True** (the default), the control takes the runtime's deferral on the host's behalf, posts the event onto the BASIC message-loop, and completes the deferral after the handler returns. Application code is therefore safe to call any other **WebView2** method from inside these events. Set [**UseDeferredEvents**](#usedeferredevents) to **False** only if you need synchronous semantics and have arranged your own re-entrancy guard.
+When [**UseDeferredEvents**](#usedeferredevents) is **True** (the default), the control takes the runtime's deferral on the host's behalf, posts the event onto the BASIC message-loop, and completes the deferral after the handler returns. Application code is therefore safe to call any other **WebView2** method from inside these events. Set [**UseDeferredEvents**](#usedeferredevents) to **False** only when synchronous semantics are required and the host has arranged its own re-entrancy guard.
 
-[**AcceleratorKeyPressed**](#acceleratorkeypressed) is always synchronous — its runtime arguments do not expose a deferral.
+[**AcceleratorKeyPressed**](#acceleratorkeypressed) is always synchronous --- its runtime arguments do not expose a deferral.
 
 ## JavaScript interop
 
 The control offers three families of BASIC ↔ JavaScript bridges:
 
-- **Host-object sharing** — [**AddObject**](#addobject) publishes a COM object to JavaScript under `chrome.webview.hostObjects.<Name>`. The page can call methods and read / write properties on the BASIC object directly. Requires [**AreHostObjectsAllowed**](#arehostobjectsallowed) (default **True**). Pass `UseDeferredInvoke:=True` if the page may call back during a BASIC operation, then accept that you cannot return values to the page.
-- **Posting messages** — [**PostWebMessage**](#postwebmessage) sends a value to the page, where it shows up via `window.chrome.webview.addEventListener('message', …)`. The page replies with `window.chrome.webview.postMessage(…)`, which fires the [**JsMessage**](#jsmessage) event. Requires [**IsWebMessageEnabled**](#iswebmessageenabled) (default **True**).
-- **Executing script** — [**JsRun**](#jsrun) calls a named JavaScript function and waits for the result, [**JsRunAsync**](#jsrunasync) calls one and fires [**JsAsyncResult**](#jsasyncresult) when the result arrives, [**JsProp**](#jsprop) evaluates an expression like `document.title`, and [**ExecuteScript**](#executescript) fires-and-forgets.
+- **Host-object sharing** --- [**AddObject**](#addobject) publishes a COM object to JavaScript under `chrome.webview.hostObjects.<Name>`. The page can call methods and read / write properties on the BASIC object directly. Requires [**AreHostObjectsAllowed**](#arehostobjectsallowed) (default **True**). Pass `UseDeferredInvoke:=True` when the page may call back during a BASIC operation; with deferred invocation the host cannot return values to the page.
+- **Posting messages** --- [**PostWebMessage**](#postwebmessage) sends a value to the page, where it shows up via `window.chrome.webview.addEventListener('message', …)`. The page replies with `window.chrome.webview.postMessage(…)`, which fires the [**JsMessage**](#jsmessage) event. Requires [**IsWebMessageEnabled**](#iswebmessageenabled) (default **True**).
+- **Executing script** --- [**JsRun**](#jsrun) calls a named JavaScript function and waits for the result, [**JsRunAsync**](#jsrunasync) calls one and fires [**JsAsyncResult**](#jsasyncresult) when the result arrives, [**JsProp**](#jsprop) evaluates an expression like `document.title`, and [**ExecuteScript**](#executescript) fires-and-forgets.
 
 ## Intercepting requests
 
-To rewrite, mock, or simply observe HTTP traffic from the page, register a URL filter with [**AddWebResourceRequestedFilter**](#addwebresourcerequestedfilter) and handle [**WebResourceRequested**](#webresourcerequested). The event arguments expose a [**WebView2Request**](../WebView2Request) (read-only metadata, mutable body) and a [**WebView2Response**](../WebView2Response) — assign **StatusCode**, **ReasonPhrase**, **Headers**, and content to the response object to short-circuit the network fetch; leave it untouched to let the runtime proceed normally.
+To rewrite, mock, or simply observe HTTP traffic from the page, register a URL filter with [**AddWebResourceRequestedFilter**](#addwebresourcerequestedfilter) and handle [**WebResourceRequested**](#webresourcerequested). The event arguments expose a [**WebView2Request**](../WebView2Request) (read-only metadata, mutable body) and a [**WebView2Response**](../WebView2Response) --- assign **StatusCode**, **ReasonPhrase**, **Headers**, and content to the response object to short-circuit the network fetch; leave it untouched to let the runtime proceed normally.
 
 Properties
 ----------
@@ -84,17 +84,17 @@ The container-edge anchors that control automatic resizing when the parent **For
 ### AreBrowserAcceleratorKeysEnabled
 {: .no_toc }
 
-Whether Edge's built-in accelerator keys are active — **F5** to reload, **Ctrl+P** to print, **Ctrl+F** to find in page, and so on. **Boolean**, default **True**. Requires [**SupportsAcceleratorKeysFeatures**](#supportsacceleratorkeysfeatures).
+Whether Edge's built-in accelerator keys are active --- **F5** to reload, **Ctrl+P** to print, **Ctrl+F** to find in page, and so on. **Boolean**, default **True**. Requires [**SupportsAcceleratorKeysFeatures**](#supportsacceleratorkeysfeatures).
 
 ### AreDefaultContextMenusEnabled
 {: .no_toc }
 
-Whether Edge's right-click context menu is shown. **Boolean**, default **True**. Set to **False** and handle [**UserContextMenu**](#usercontextmenu) to draw your own menu.
+Whether Edge's right-click context menu is shown. **Boolean**, default **True**. Set to **False** and handle [**UserContextMenu**](#usercontextmenu) to draw a custom menu.
 
 ### AreDefaultScriptDialogsEnabled
 {: .no_toc }
 
-Whether Edge shows its own dialogs for `alert()`, `confirm()`, `prompt()`, and the `beforeunload` confirmation. **Boolean**, default **True**. Set to **False** and handle [**ScriptDialogOpening**](#scriptdialogopening) to provide your own.
+Whether Edge shows its own dialogs for `alert()`, `confirm()`, `prompt()`, and the `beforeunload` confirmation. **Boolean**, default **True**. Set to **False** and handle [**ScriptDialogOpening**](#scriptdialogopening) to provide custom dialogs.
 
 ### AreDevToolsEnabled
 {: .no_toc }
@@ -144,7 +144,7 @@ Always **vbWebView2** ([**ControlTypeConstants**](../../VBRUN/Constants/ControlT
 ### DocumentTitle
 {: .no_toc }
 
-The current document's `<title>` text. **String**. Read-only. Updated each time the page changes its title — the [**DocumentTitleChanged**](#documenttitlechanged) event fires on every update.
+The current document's `<title>` text. **String**. Read-only. Updated each time the page changes its title --- the [**DocumentTitleChanged**](#documenttitlechanged) event fires on every update.
 
 ### DocumentURL
 {: .no_toc }
@@ -159,7 +159,7 @@ A **StdPicture** used as the mouse cursor during a manual drag from this control
 ### DragMode
 {: .no_toc }
 
-How drag-and-drop is initiated. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1). Inherited.
+How drag-and-drop is initiated. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1). Inherited.
 
 ### Enabled
 {: .no_toc }
@@ -169,7 +169,7 @@ Whether the control accepts user input. **Boolean**, default **True**. Inherited
 ### EnvironmentOptions
 {: .no_toc }
 
-The [**WebView2EnvironmentOptions**](EnvironmentOptions) object that configures the WebView2 environment — user-data folder, executable folder, locale, tracking-prevention, single-sign-on, and additional command-line arguments. The control auto-creates one on initialization; assign to its fields before or during the [**Create**](#create) event for them to take effect.
+The [**WebView2EnvironmentOptions**](EnvironmentOptions) object that configures the WebView2 environment --- user-data folder, executable folder, locale, tracking-prevention, single-sign-on, and additional command-line arguments. The control auto-creates one on initialization; assign to its fields before or during the [**Create**](#create) event for them to take effect.
 
 ### Height
 {: .no_toc }
@@ -179,7 +179,7 @@ The control's height. **Single**. Inherited.
 ### hWnd
 {: .no_toc }
 
-The Win32 window handle of the *container* window that hosts the WebView2 surface — not the HWND of the Edge browser tab itself, which lives in a separate process. **LongPtr**. Read-only. Overrides the inherited definition.
+The Win32 window handle of the *container* window that hosts the WebView2 surface --- not the HWND of the Edge browser tab itself, which lives in a separate process. **LongPtr**. Read-only. Overrides the inherited definition.
 
 ### Index
 {: .no_toc }
@@ -279,62 +279,62 @@ The design-time name. **String**. Read-only at runtime. Inherited.
 ### SupportsAcceleratorKeysFeatures
 {: .no_toc }
 
-Whether the loaded WebView2 runtime supports the accelerator-key settings — i.e. exposes `ICoreWebView2Settings3`. **Boolean**. Read-only.
+Whether the loaded WebView2 runtime supports the accelerator-key settings --- i.e. exposes `ICoreWebView2Settings3`. **Boolean**. Read-only.
 
 ### SupportsAudioFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports the audio settings — i.e. exposes `ICoreWebView2_8`. **Boolean**. Read-only.
+Whether the loaded runtime supports the audio settings --- i.e. exposes `ICoreWebView2_8`. **Boolean**. Read-only.
 
 ### SupportsAutoFillFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports the autofill settings — i.e. exposes `ICoreWebView2Settings4`. **Boolean**. Read-only.
+Whether the loaded runtime supports the autofill settings --- i.e. exposes `ICoreWebView2Settings4`. **Boolean**. Read-only.
 
 ### SupportsDownloadDialogFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports controlling the download dialog — i.e. exposes `ICoreWebView2_9`. **Boolean**. Read-only.
+Whether the loaded runtime supports controlling the download dialog --- i.e. exposes `ICoreWebView2_9`. **Boolean**. Read-only.
 
 ### SupportsFolderMappingFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports virtual-host-to-folder mapping — i.e. exposes `ICoreWebView2_5`. **Boolean**. Read-only.
+Whether the loaded runtime supports virtual-host-to-folder mapping --- i.e. exposes `ICoreWebView2_5`. **Boolean**. Read-only.
 
 ### SupportsNavigateCustomFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports the custom-request navigation feature used by [**NavigateCustom**](#navigatecustom) — i.e. exposes `ICoreWebView2_2`. **Boolean**. Read-only.
+Whether the loaded runtime supports the custom-request navigation feature used by [**NavigateCustom**](#navigatecustom) --- i.e. exposes `ICoreWebView2_2`. **Boolean**. Read-only.
 
 ### SupportsPdfFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports [**PrintToPdf**](#printtopdf) — i.e. exposes `ICoreWebView2_7`. **Boolean**. Read-only.
+Whether the loaded runtime supports [**PrintToPdf**](#printtopdf) --- i.e. exposes `ICoreWebView2_7`. **Boolean**. Read-only.
 
 ### SupportsPinchZoomFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports the pinch-zoom setting — i.e. exposes `ICoreWebView2Settings5`. **Boolean**. Read-only.
+Whether the loaded runtime supports the pinch-zoom setting --- i.e. exposes `ICoreWebView2Settings5`. **Boolean**. Read-only.
 
 ### SupportsSuspendResumeFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports [**Suspend**](#suspend) / [**Resume**](#resume) — i.e. exposes `ICoreWebView2_3`. **Boolean**. Read-only.
+Whether the loaded runtime supports [**Suspend**](#suspend) / [**Resume**](#resume) --- i.e. exposes `ICoreWebView2_3`. **Boolean**. Read-only.
 
 ### SupportsSwipeNavigationFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports the swipe-navigation setting — i.e. exposes `ICoreWebView2Settings6`. **Boolean**. Read-only.
+Whether the loaded runtime supports the swipe-navigation setting --- i.e. exposes `ICoreWebView2Settings6`. **Boolean**. Read-only.
 
 ### SupportsTaskManagerFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports [**OpenTaskManagerWindow**](#opentaskmanagerwindow) — i.e. exposes `ICoreWebView2_6`. **Boolean**. Read-only.
+Whether the loaded runtime supports [**OpenTaskManagerWindow**](#opentaskmanagerwindow) --- i.e. exposes `ICoreWebView2_6`. **Boolean**. Read-only.
 
 ### SupportsUserAgentFeatures
 {: .no_toc }
 
-Whether the loaded runtime supports the [**UserAgent**](#useragent) setting — i.e. exposes `ICoreWebView2Settings2`. **Boolean**. Read-only.
+Whether the loaded runtime supports the [**UserAgent**](#useragent) setting --- i.e. exposes `ICoreWebView2Settings2`. **Boolean**. Read-only.
 
 ### TabIndex
 {: .no_toc }
@@ -379,7 +379,7 @@ The control's width. **Single**. Inherited.
 ### ZoomFactor
 {: .no_toc }
 
-The current zoom factor — `1.0` is 100%, `1.5` is 150%, and so on. **Double**. The design-time default is `0`, which means "do not override Edge's default of 1.0".
+The current zoom factor --- `1.0` is 100%, `1.5` is 150%, and so on. **Double**. The design-time default is `0`, which means "do not override Edge's default of 1.0".
 
 > [!NOTE]
 > Because the design-time default is `0`, not `1.0`, arithmetic that multiplies the current value silently starts from zero unless the host clamps it to `1` first:
@@ -406,7 +406,7 @@ Syntax: *object*.**AddObject** *ObjName*, *Object* [, *UseDeferredInvoke* ]
 : *required* An **Object** to publish.
 
 *UseDeferredInvoke*
-: *optional* A **Boolean**, default **False**. When **True**, calls from the page are deferred onto the BASIC message-loop — safe to re-enter the WebView2 control from within them, but the page cannot read a return value back. Use **False** when the page needs to read return values.
+: *optional* A **Boolean**, default **False**. When **True**, calls from the page are deferred onto the BASIC message-loop --- safe to re-enter the WebView2 control from within them, but the page cannot read a return value back. Use **False** when the page needs to read return values.
 
 ```tb
 Private Sub WebView21_Ready()
@@ -427,12 +427,12 @@ async function callHostCalculator() {
 }
 ```
 
-Calls into the host object are asynchronous on the JavaScript side and must be `await`-ed inside an `async` function — even when *UseDeferredInvoke* is **False**. See the [Re-entrancy](../../../../Tutorials/WebView2/Re-entrancy) tutorial for when to pass **True**.
+Calls into the host object are asynchronous on the JavaScript side and must be `await`-ed inside an `async` function --- even when *UseDeferredInvoke* is **False**. See the [Re-entrancy](../../../../Tutorials/WebView2/Re-entrancy) tutorial for when to pass **True**.
 
 ### AddScriptToExecuteOnDocumentCreated
 {: .no_toc }
 
-Registers a JavaScript snippet to be run automatically at the top of every new document the WebView2 navigates to. Takes effect on the *next* navigation — does not affect the page currently loaded.
+Registers a JavaScript snippet to be run automatically at the top of every new document the WebView2 navigates to. Takes effect on the *next* navigation --- does not affect the page currently loaded.
 
 Syntax: *object*.**AddScriptToExecuteOnDocumentCreated** *jsCode*
 
@@ -499,7 +499,7 @@ Syntax: *object*.**Drag** [ *Action* ]
 ### ExecuteScript
 {: .no_toc }
 
-Evaluates JavaScript in the page without waiting for it to finish and without returning its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when you need the value.
+Evaluates JavaScript in the page without waiting for it to finish and without returning its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when the value is needed.
 
 Syntax: *object*.**ExecuteScript** *jsCode*
 
@@ -523,14 +523,14 @@ Syntax: *object*.**GoForward**
 ### JsProp
 {: .no_toc }
 
-Evaluates a JavaScript expression and returns the result synchronously — convenient for property reads like `document.title`. Waits up to [**JsCallTimeOutSeconds**](#jscalltimeoutseconds) for the result.
+Evaluates a JavaScript expression and returns the result synchronously --- convenient for property reads like `document.title`. Waits up to [**JsCallTimeOutSeconds**](#jscalltimeoutseconds) for the result.
 
 Syntax: *object*.**JsProp** ( *PropName* ) **As Variant**
 
 *PropName*
 : *required* A **String** containing the expression to evaluate.
 
-Returns the result decoded from the JSON the runtime returns — **Boolean**, **Double**, **String**, **Null**, or **Empty** (for `undefined`). Object and array results are not yet supported — accessing them raises run-time error 5.
+Returns the result decoded from the JSON the runtime returns --- **Boolean**, **Double**, **String**, **Null**, or **Empty** (for `undefined`). Object and array results are not yet supported --- accessing them raises run-time error 5.
 
 ### JsRun
 {: .no_toc }
@@ -540,7 +540,7 @@ Calls a named JavaScript function with the given arguments and returns the resul
 Syntax: *object*.**JsRun** ( *FuncName*, [ *args* ] ) **As Variant**
 
 *FuncName*
-: *required* A **String** naming the JavaScript function — e.g. `"document.querySelector"`.
+: *required* A **String** naming the JavaScript function --- e.g. `"document.querySelector"`.
 
 *args*
 : *optional* Any number of **Variant** arguments. Each is JSON-encoded before being passed to the function. Strings, numerics, **Boolean**, **Null**, and **Empty** are supported.
@@ -589,7 +589,7 @@ Syntax: *object*.**Move** *Left* [, *Top* [, *Width* [, *Height* ] ] ]
 ### MoveFocus
 {: .no_toc }
 
-Hands keyboard focus to the underlying WebView2 surface so that subsequent keystrokes are dispatched into the page. Distinct from the inherited [**SetFocus**](#setfocus), which focuses the host control window.
+Transfers keyboard focus to the underlying WebView2 surface so that subsequent keystrokes are dispatched into the page. Distinct from the inherited [**SetFocus**](#setfocus), which focuses the host control window.
 
 Syntax: *object*.**MoveFocus**
 
@@ -618,7 +618,7 @@ End Sub
 ### NavigateCustom
 {: .no_toc }
 
-Navigates with an arbitrary HTTP method, optional headers, and an optional request body — useful for POST navigation or attaching authorization headers up front. Fires [**NavigationStarting**](#navigationstarting) and [**NavigationComplete**](#navigationcomplete).
+Navigates with an arbitrary HTTP method, optional headers, and an optional request body --- useful for POST navigation or attaching authorization headers up front. Fires [**NavigationStarting**](#navigationstarting) and [**NavigationComplete**](#navigationcomplete).
 
 Syntax: *object*.**NavigateCustom** *uri*, *method* [, *headers* [, *postData* [, *postDataAsUTF8* ] ] ]
 
@@ -626,13 +626,13 @@ Syntax: *object*.**NavigateCustom** *uri*, *method* [, *headers* [, *postData* [
 : *required* A **String** URI. As with [**Navigate**](#navigate), a missing protocol prefix is patched to `https://`.
 
 *method*
-: *required* A **String** HTTP method — `"GET"`, `"POST"`, …
+: *required* A **String** HTTP method --- `"GET"`, `"POST"`, …
 
 *headers*
 : *optional* A **String** of `vbCrLf`-delimited `Header: value` lines.
 
 *postData*
-: *optional* A **Variant** containing the body — a **String** (encoded according to *postDataAsUTF8*) or a **Byte()** array (used verbatim).
+: *optional* A **Variant** containing the body --- a **String** (encoded according to *postDataAsUTF8*) or a **Byte()** array (used verbatim).
 
 *postDataAsUTF8*
 : *optional* A **Boolean**, default **True**. When **True** and *postData* is a **String**, the string is UTF-8-encoded before being sent.
@@ -642,7 +642,7 @@ Requires [**SupportsNavigateCustomFeatures**](#supportsnavigatecustomfeatures).
 ### NavigateToString
 {: .no_toc }
 
-Loads an HTML string directly into the WebView2 as if it were the body of an HTTP response — useful for splash screens, generated reports, or about pages. Fires [**NavigationStarting**](#navigationstarting) and [**NavigationComplete**](#navigationcomplete).
+Loads an HTML string directly into the WebView2 as if it were the body of an HTTP response --- useful for splash screens, generated reports, or about pages. Fires [**NavigationStarting**](#navigationstarting) and [**NavigationComplete**](#navigationcomplete).
 
 Syntax: *object*.**NavigateToString** *htmlContent*
 
@@ -708,7 +708,7 @@ window.chrome.webview.addEventListener('message', (e) => {
 ### PostWebMessageJSON
 {: .no_toc }
 
-Posts a literal JSON string to the page without re-encoding it — useful when the caller already has serialised JSON.
+Posts a literal JSON string to the page without re-encoding it --- useful when the caller already has serialised JSON.
 
 Syntax: *object*.**PostWebMessageJSON** *jsonString*
 
@@ -720,7 +720,7 @@ Requires [**IsWebMessageEnabled**](#iswebmessageenabled).
 ### PrintToPdf
 {: .no_toc }
 
-Saves the current document to a PDF file. The work happens asynchronously — the result arrives through [**PrintToPdfCompleted**](#printtopdfcompleted) or [**PrintToPdfFailed**](#printtopdffailed). Requires [**SupportsPdfFeatures**](#supportspdffeatures).
+Saves the current document to a PDF file. The work happens asynchronously --- the result arrives through [**PrintToPdfCompleted**](#printtopdfcompleted) or [**PrintToPdfFailed**](#printtopdffailed). Requires [**SupportsPdfFeatures**](#supportspdffeatures).
 
 Syntax: *object*.**PrintToPdf** *outputPath* [, *Orientation* [, *ScaleFactor* [, *PageWidth* [, *PageHeight* [, *MarginTop* [, *MarginBottom* [, *MarginLeft* [, *MarginRight* [, *ShouldPrintBackgrounds* [, *ShouldPrintSelectionOnly* [, *ShouldPrintHeaderAndFooter* [, *HeaderTitle* [, *FooterUri* ] ] ] ] ] ] ] ] ] ] ] ] ]
 
@@ -758,7 +758,7 @@ End Sub
 ### Reload
 {: .no_toc }
 
-Reloads the current document — equivalent to pressing **F5**.
+Reloads the current document --- equivalent to pressing **F5**.
 
 Syntax: *object*.**Reload**
 
@@ -788,7 +788,7 @@ Syntax: *object*.**RemoveWebResourceRequestedFilter** *sFilter*, *FilterContext*
 ### Resume
 {: .no_toc }
 
-Resumes a previously suspended WebView2 pipeline. Fires no event — read [**IsSuspended**](#issuspended) afterwards to confirm.
+Resumes a previously suspended WebView2 pipeline. Fires no event --- read [**IsSuspended**](#issuspended) afterwards to confirm.
 
 Syntax: *object*.**Resume**
 
@@ -804,7 +804,7 @@ Syntax: *object*.**SetFocus**
 ### SetVirtualHostNameToFolderMapping
 {: .no_toc }
 
-Maps a virtual hostname to a local folder so that a page can reference local files through HTTPS URLs — e.g. `https://app.local/index.html` resolves to `C:\MyApp\html\index.html`. Useful for hosting local assets without setting up an HTTP server.
+Maps a virtual hostname to a local folder so that a page can reference local files through HTTPS URLs --- e.g. `https://app.local/index.html` resolves to `C:\MyApp\html\index.html`. Useful for hosting local assets without setting up an HTTP server.
 
 Syntax: *object*.**SetVirtualHostNameToFolderMapping** *hostName*, *folderPath* [, *accessKind* ]
 
@@ -818,7 +818,7 @@ Syntax: *object*.**SetVirtualHostNameToFolderMapping** *hostName*, *folderPath* 
 : *optional* A member of [**wv2HostResourceAccessKind**](../Enumerations/wv2HostResourceAccessKind). Default **wv2ResourceAllow**.
 
 > [!NOTE]
-> Pick the *hostName* carefully — certain DNS-resolvable hostnames cause a 2-second resolution stall before the local override kicks in. See [WebView2Feedback#2381](https://github.com/MicrosoftEdge/WebView2Feedback/issues/2381).
+> Pick the *hostName* carefully --- certain DNS-resolvable hostnames cause a 2-second resolution stall before the local override kicks in. See [WebView2Feedback#2381](https://github.com/MicrosoftEdge/WebView2Feedback/issues/2381).
 
 Requires [**SupportsFolderMappingFeatures**](#supportsfoldermappingfeatures).
 
@@ -836,7 +836,7 @@ See the [Hosting local web assets](../../../../Tutorials/WebView2/Hosting-Local-
 ### Suspend
 {: .no_toc }
 
-Pauses the WebView2 pipeline so the browser process can free memory — useful for application-style tab management. Read [**IsSuspended**](#issuspended) afterwards to confirm; the runtime hides the control while suspended.
+Pauses the WebView2 pipeline so the browser process can free memory --- useful for application-style tab management. Read [**IsSuspended**](#issuspended) afterwards to confirm; the runtime hides the control while suspended.
 
 Syntax: *object*.**Suspend**
 
@@ -855,11 +855,11 @@ Events
 ### AcceleratorKeyPressed
 {: .no_toc }
 
-Raised when Edge detects an accelerator-style keystroke — e.g. **F1**, **Alt+**, **Ctrl+**. Set *IsHandled* to **True** to consume the keystroke so Edge doesn't act on it. Always synchronous: cannot be deferred.
+Raised when Edge detects an accelerator-style keystroke --- e.g. **F1**, **Alt+**, **Ctrl+**. Set *IsHandled* to **True** to consume the keystroke so Edge doesn't act on it. Always synchronous: cannot be deferred.
 
 Syntax: *object*\_**AcceleratorKeyPressed**( *KeyState* **As** [**wv2KeyEventKind**](../Enumerations/wv2KeyEventKind), *IsExtendedKey* **As Boolean**, *WasKeyDown* **As Boolean**, *IsKeyReleased* **As Boolean**, *IsMenuKeyDown* **As Boolean**, *RepeatCount* **As Long**, *ScanCode* **As Long**, *IsHandled* **As Boolean** )
 
-The flags are the contents of the Win32 `WM_KEYDOWN` / `WM_KEYUP` *lParam* — see [**COREWEBVIEW2_PHYSICAL_KEY_STATUS**](../Types/COREWEBVIEW2_PHYSICAL_KEY_STATUS) for the full breakdown.
+The flags are the contents of the Win32 `WM_KEYDOWN` / `WM_KEYUP` *lParam* --- see [**COREWEBVIEW2_PHYSICAL_KEY_STATUS**](../Types/COREWEBVIEW2_PHYSICAL_KEY_STATUS) for the full breakdown.
 
 ### Create
 {: .no_toc }
@@ -871,40 +871,40 @@ Syntax: *object*\_**Create**( )
 ### DevToolsProtocolResponse
 {: .no_toc }
 
-Raised when a previously sent [**CallDevToolsProtocolMethod**](#calldevtoolsprotocolmethod) call returns. Carries the *CustomEventId* supplied at the call site and the JSON-encoded response.
+Raised when a previously sent [**CallDevToolsProtocolMethod**](#calldevtoolsprotocolmethod) call returns. Includes the *CustomEventId* supplied at the call site and the JSON-encoded response.
 
 Syntax: *object*\_**DevToolsProtocolResponse**( *CustomEventId* **As Variant**, *JsonResponse* **As String** )
 
 ### DocumentTitleChanged
 {: .no_toc }
 
-Raised when the document changes its title — typically right after a navigation, but also when client-side JavaScript writes to `document.title`. Read [**DocumentTitle**](#documenttitle) for the new value.
+Raised when the document changes its title --- typically right after a navigation, but also when client-side JavaScript writes to `document.title`. Read [**DocumentTitle**](#documenttitle) for the new value.
 
 Syntax: *object*\_**DocumentTitleChanged**( )
 
 ### DOMContentLoaded
 {: .no_toc }
 
-Raised when the page reaches the `DOMContentLoaded` lifecycle event — the DOM tree is built and JavaScript can safely walk it, but external resources may still be loading.
+Raised when the page reaches the `DOMContentLoaded` lifecycle event --- the DOM tree is built and JavaScript can safely walk it, but external resources may still be loading.
 
 Syntax: *object*\_**DOMContentLoaded**( )
 
 ### DownloadStarting
 {: .no_toc }
 
-Raised when the user (or the page) starts a file download. Set *Cancel* to **True** to suppress the download; set *Handled* to **True** to suppress the runtime's default download UI when you intend to manage progress yourself. Modify *ResultFilePath* to redirect the download to a different path. Can be deferred — see [Deferred events](#deferred-events).
+Raised when the user (or the page) starts a file download. Set *Cancel* to **True** to suppress the download; set *Handled* to **True** to suppress the runtime's default download UI when the application intends to manage progress itself. Modify *ResultFilePath* to redirect the download to a different path. Can be deferred --- see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**DownloadStarting**( *ResultFilePath* **As String**, *Cancel* **As Boolean**, *Handled* **As Boolean** )
 
 ### Error
 {: .no_toc }
 
-Raised when the WebView2 environment or controller fails to initialise — most commonly because the Edge WebView2 runtime isn't installed, the user-data folder isn't writable, or the fixed-version folder is incorrect.
+Raised when the WebView2 environment or controller fails to initialise --- most commonly because the Edge WebView2 runtime isn't installed, the user-data folder isn't writable, or the fixed-version folder is incorrect.
 
 Syntax: *object*\_**Error**( *code* **As Long**, *msg* **As String** )
 
 > [!NOTE]
-> Code `&H80070002` (`ERROR_FILE_NOT_FOUND`) is the canonical signal that the WebView2 Evergreen runtime is missing from the machine — the right cue to prompt the user to install it.
+> Code `&H80070002` (`ERROR_FILE_NOT_FOUND`) is the canonical signal that the WebView2 Evergreen runtime is missing from the machine --- the right cue to prompt the user to install it.
 
 ```tb
 Private Sub WebView21_Error(ByVal code As Long, ByVal msg As String)
@@ -936,14 +936,14 @@ Syntax: *object*\_**JsMessage**( *Message* **As Variant** )
 ### NavigationComplete
 {: .no_toc }
 
-Raised after a navigation finishes — successfully or otherwise. Inspect *IsSuccess* first; if **False**, *WebErrorStatus* is a member of [**wv2ErrorStatus**](../Enumerations/wv2ErrorStatus).
+Raised after a navigation finishes --- successfully or otherwise. Inspect *IsSuccess* first; if **False**, *WebErrorStatus* is a member of [**wv2ErrorStatus**](../Enumerations/wv2ErrorStatus).
 
 Syntax: *object*\_**NavigationComplete**( *IsSuccess* **As Boolean**, *WebErrorStatus* **As Long** )
 
 ### NavigationStarting
 {: .no_toc }
 
-Raised before each navigation begins. Set *Cancel* to **True** to block the navigation; modify *RequestHeaders* to alter the HTTP request the runtime is about to send. Can be deferred — see [Deferred events](#deferred-events).
+Raised before each navigation begins. Set *Cancel* to **True** to block the navigation; modify *RequestHeaders* to alter the HTTP request the runtime is about to send. Can be deferred --- see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**NavigationStarting**( *Uri* **As String**, *IsUserInitiated* **As Boolean**, *IsRedirected* **As Boolean**, *RequestHeaders* **As** [**WebView2RequestHeaders**](../WebView2RequestHeaders), *Cancel* **As Boolean** )
 
@@ -964,14 +964,14 @@ End Sub
 ### NewWindowRequested
 {: .no_toc }
 
-Raised when the page tries to open a new window — via `window.open(…)`, `target="_blank"`, **Ctrl+** click, and so on. Set *IsHandled* to **True** to suppress the default behaviour (which opens a fresh Edge window) so the application can host the new content itself. The window-features arguments describe what the page asked for. Can be deferred — see [Deferred events](#deferred-events).
+Raised when the page tries to open a new window --- via `window.open(…)`, `target="_blank"`, **Ctrl+** click, and so on. Set *IsHandled* to **True** to suppress the default behaviour (which opens a fresh Edge window) so the application can host the new content itself. The window-features arguments describe what the page asked for. Can be deferred --- see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**NewWindowRequested**( *IsUserInitiated* **As Boolean**, *IsHandled* **As Boolean**, *Uri* **As String**, *HasPosition* **As Long**, *HasSize* **As Long**, *Left* **As Long**, *Top* **As Long**, *Width* **As Long**, *Height* **As Long**, *ShouldDisplayMenuBar* **As Long**, *ShouldDisplayStatus* **As Long**, *ShouldDisplayToolbar* **As Long**, *ShouldDisplayScrollBars* **As Long** )
 
 ### PermissionRequested
 {: .no_toc }
 
-Raised when the page asks for permission to use a device or browser capability — camera, microphone, geolocation, notifications, clipboard. Assign *State* to grant ([**wv2StateAllow**](../Enumerations/wv2PermissionState#wv2StateAllow)) or deny ([**wv2StateDeny**](../Enumerations/wv2PermissionState#wv2StateDeny)); leave it at **wv2StateDefault** to let Edge prompt the user. Can be deferred — see [Deferred events](#deferred-events).
+Raised when the page asks for permission to use a device or browser capability --- camera, microphone, geolocation, notifications, clipboard. Assign *State* to grant ([**wv2StateAllow**](../Enumerations/wv2PermissionState#wv2StateAllow)) or deny ([**wv2StateDeny**](../Enumerations/wv2PermissionState#wv2StateDeny)); leave it at **wv2StateDefault** to let Edge prompt the user. Can be deferred --- see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**PermissionRequested**( *IsUserInitiated* **As Boolean**, *State* **As** [**wv2PermissionState**](../Enumerations/wv2PermissionState), *Uri* **As String**, *PermissionKind* **As** [**wv2PermissionKind**](../Enumerations/wv2PermissionKind) )
 
@@ -985,14 +985,14 @@ Syntax: *object*\_**PrintToPdfCompleted**( )
 ### PrintToPdfFailed
 {: .no_toc }
 
-Raised when [**PrintToPdf**](#printtopdf) fails — e.g. the output path was not writable.
+Raised when [**PrintToPdf**](#printtopdf) fails --- e.g. the output path was not writable.
 
 Syntax: *object*\_**PrintToPdfFailed**( )
 
 ### ProcessFailed
 {: .no_toc }
 
-Raised when one of WebView2's external processes (the browser, renderer, GPU, …) exits unexpectedly. Inspect *Kind* — a [**wv2ProcessFailedKind**](../Enumerations/wv2ProcessFailedKind) — to find out which.
+Raised when one of WebView2's external processes (the browser, renderer, GPU, …) exits unexpectedly. Inspect *Kind* --- a [**wv2ProcessFailedKind**](../Enumerations/wv2ProcessFailedKind) --- to find out which.
 
 Syntax: *object*\_**ProcessFailed**( *Kind* **As** [**wv2ProcessFailedKind**](../Enumerations/wv2ProcessFailedKind) )
 
@@ -1006,14 +1006,14 @@ Syntax: *object*\_**Ready**( )
 ### ScriptDialogOpening
 {: .no_toc }
 
-Raised when the page tries to open a script dialog — `alert()`, `confirm()`, `prompt()`, or `beforeunload`. Only fires when [**AreDefaultScriptDialogsEnabled**](#aredefaultscriptdialogsenabled) is **False**. Set *Accept* to **True** to accept the dialog (the JavaScript-side equivalent of clicking *OK*); for prompts, update *ResultText* with the text to return. Can be deferred — see [Deferred events](#deferred-events).
+Raised when the page tries to open a script dialog --- `alert()`, `confirm()`, `prompt()`, or `beforeunload`. Only fires when [**AreDefaultScriptDialogsEnabled**](#aredefaultscriptdialogsenabled) is **False**. Set *Accept* to **True** to accept the dialog (the JavaScript-side equivalent of clicking *OK*); for prompts, update *ResultText* with the text to return. Can be deferred --- see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**ScriptDialogOpening**( *ScriptDialogKind* **As** [**wv2ScriptDialogKind**](../Enumerations/wv2ScriptDialogKind), *Accept* **As Boolean**, *ResultText* **As String**, *URI* **As String**, *Message* **As String**, *DefaultText* **As String** )
 
 ### SourceChanged
 {: .no_toc }
 
-Raised when [**DocumentURL**](#documenturl) changes — typically right after a navigation, but also when client-side script calls `history.pushState(…)`. *IsNewDocument* distinguishes a real navigation (**True**) from a same-document URL change (**False**).
+Raised when [**DocumentURL**](#documenturl) changes --- typically right after a navigation, but also when client-side script calls `history.pushState(…)`. *IsNewDocument* distinguishes a real navigation (**True**) from a same-document URL change (**False**).
 
 Syntax: *object*\_**SourceChanged**( *IsNewDocument* **As Boolean** )
 
@@ -1027,7 +1027,7 @@ Syntax: *object*\_**SuspendCompleted**( )
 ### SuspendFailed
 {: .no_toc }
 
-Raised when a [**Suspend**](#suspend) request fails — typically because the page is still doing something the runtime cannot suspend.
+Raised when a [**Suspend**](#suspend) request fails --- typically because the page is still doing something the runtime cannot suspend.
 
 Syntax: *object*\_**SuspendFailed**( )
 
@@ -1041,7 +1041,7 @@ Syntax: *object*\_**UserContextMenu**( *X* **As Single**, *Y* **As Single** )
 ### WebResourceRequested
 {: .no_toc }
 
-Raised when an in-flight HTTP request matches a filter previously registered with [**AddWebResourceRequestedFilter**](#addwebresourcerequestedfilter). Modify *Response* to mock or override the reply; leave it untouched to let the runtime fetch normally. Can be deferred — see [Deferred events](#deferred-events).
+Raised when a pending HTTP request matches a filter previously registered with [**AddWebResourceRequestedFilter**](#addwebresourcerequestedfilter). Modify *Response* to mock or override the reply; leave it untouched to let the runtime fetch normally. Can be deferred --- see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**WebResourceRequested**( *Request* **As** [**WebView2Request**](../WebView2Request), *Response* **As** [**WebView2Response**](../WebView2Response) )
 

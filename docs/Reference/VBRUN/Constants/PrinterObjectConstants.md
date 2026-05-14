@@ -7,7 +7,7 @@ permalink: /tB/Packages/VBRUN/Constants/PrinterObjectConstants
 # PrinterObjectConstants
 {: .no_toc }
 
-A combined enumeration containing every option value used by the **Printer** object — colour mode, duplex mode, orientation, paper bin, paper size, and print quality. Each logical group also has a more specific enumeration of its own — see the See Also section.
+A combined enumeration containing every option value used by the **Printer** object --- colour mode, duplex mode, orientation, paper bin, paper size, and print quality. Each logical group also has a more specific enumeration of its own --- see the See Also section.
 
 ## Colour mode
 

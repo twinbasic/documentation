@@ -19,7 +19,7 @@ Syntax: **InterlockedCompareExchangePointer(** *Target* **,** *NewValue* **,** *
 *OldValueCompare*
 : *required* **LongPtr**. The expected current value of *Target*.
 
-The compare-and-swap happens as one atomic operation. The return value is the value that was in *Target* at the start of the call — equal to *OldValueCompare* on success, anything else on failure (in which case *Target* is left unchanged). Wraps the Win32 `InterlockedCompareExchangePointer` intrinsic.
+The compare-and-swap happens as one atomic operation. The return value is the value that was in *Target* at the start of the call --- equal to *OldValueCompare* on success, anything else on failure (in which case *Target* is left unchanged). Wraps the Win32 `InterlockedCompareExchangePointer` intrinsic.
 
 ### Example
 

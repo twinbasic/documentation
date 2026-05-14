@@ -13,7 +13,7 @@ Reinitializes the elements of fixed-size arrays, or releases dynamic-array stora
 Syntax: **Erase** *arraylist*
 
 *arraylist*
-:  one or more comma-delimited array variables to be erased
+: one or more comma-delimited array variables to be erased
 
 **Erase** behaves differently depending on whether an array is fixed-size (ordinary) or dynamic. **Erase** recovers no memory for fixed-size arrays. Erase sets the elements of a fixed array as follows:
 
@@ -26,7 +26,7 @@ Syntax: **Erase** *arraylist*
 | Array of user-defined types |	Sets each element as if it were a separate variable. |
 | Array of objects |	Sets each element to the special value **Nothing**. |
 
-**Erase** frees the memory used by dynamic arrays. Before your program can refer to the dynamic array again, it must redeclare the array variable's dimensions by using a ReDim statement.
+**Erase** frees the memory used by dynamic arrays. Before the program can refer to the dynamic array again, it must redeclare the array variable's dimensions by using a ReDim statement.
 
 ### Example
 This example uses the **Erase** statement to reinitialize the elements of fixed-size arrays and deallocate dynamic-array storage space.

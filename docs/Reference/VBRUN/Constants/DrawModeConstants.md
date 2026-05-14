@@ -21,7 +21,7 @@ GDI raster-operation values for the **DrawMode** property, controlling how the p
 | **vbNotMaskPen**{: #vbNotMaskPen } | 8 | Inverse of **vbMaskPen**. |
 | **vbMaskPen**{: #vbMaskPen } | 9 | Combination of the colours common to both the pen and the screen. |
 | **vbNotXorPen**{: #vbNotXorPen } | 10 | Inverse of **vbXorPen**. |
-| **vbNop**{: #vbNop } | 11 | No drawing — the screen is left unchanged. |
+| **vbNop**{: #vbNop } | 11 | No drawing --- the screen is left unchanged. |
 | **vbMergeNotPen**{: #vbMergeNotPen } | 12 | Combination of the screen and the inverse of the pen. |
 | **vbCopyPen**{: #vbCopyPen } | 13 | Output is the pen colour (the default). |
 | **vbMergePenNot**{: #vbMergePenNot } | 14 | Combination of the pen and the inverse of the screen. |

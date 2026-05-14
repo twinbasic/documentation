@@ -8,7 +8,7 @@ has_toc: false
 # FileListBox class
 {: .no_toc }
 
-A **FileListBox** is a Win32 native list control that displays the files in a single directory, filtered by a wildcard pattern and a set of file-attribute toggles. It is normally placed on a **Form** or **UserControl** at design time and paired with a [**DriveListBox**](../DriveListBox) and a [**DirListBox**](../DirListBox) to make a complete file picker — wire their **Change** events through to **FileListBox.Path** and let the user pick a name from the list. The default property is [**FileName**](#filename) and the default event is [**Click**](#click).
+A **FileListBox** is a Win32 native list control that displays the files in a single directory, filtered by a wildcard pattern and a set of file-attribute toggles. It is normally placed on a **Form** or **UserControl** at design time and paired with a [**DriveListBox**](../DriveListBox) and a [**DirListBox**](../DirListBox) to make a complete file picker --- their **Change** events feed into **FileListBox.Path**, and the user selects a name from the list. The default property is [**FileName**](#filename) and the default event is [**Click**](#click).
 
 ```tb
 Private Sub Form_Load()
@@ -36,7 +36,7 @@ End Sub
 
 ## Path and Pattern
 
-[**Path**](#path) is the directory whose files are listed. It defaults to [**App.Path**](../App/#path) when the control is first created. Setting it from code reloads the list, raises [**PathChange**](#pathchange), and trims any trailing backslash (except for a drive root). Setting a bare drive specifier without a backslash — `"C:"` — is silently rejected; use `"C:\"`. Assigning a path that does not exist raises run-time error 76 (*Path not found*). [**PathWithBackslash**](#pathwithbackslash) returns the same value with a trailing backslash always present, which is convenient when concatenating with [**FileName**](#filename).
+[**Path**](#path) is the directory whose files are listed. It defaults to [**App.Path**](../App/#path) when the control is first created. Setting it from code reloads the list, raises [**PathChange**](#pathchange), and trims any trailing backslash (except for a drive root). Setting a bare drive specifier without a backslash --- `"C:"` --- is silently rejected; use `"C:\"`. Assigning a path that does not exist raises run-time error 76 (*Path not found*). [**PathWithBackslash**](#pathwithbackslash) returns the same value with a trailing backslash always present, which is convenient when concatenating with [**FileName**](#filename).
 
 [**Pattern**](#pattern) is one or more wildcard masks separated by semicolons (`"*.txt;*.doc"`). Each mask is matched case-insensitively using the **Like** operator; a file is shown if it matches *any* mask. The default is `"*.*"`. Setting **Pattern** reloads the list and raises [**PatternChange**](#patternchange) when the new value differs from the previous one.
 
@@ -52,7 +52,7 @@ Five **Boolean** properties decide which files are included after the pattern ma
 | [**ReadOnly**](#readonly)     | **Include read-only files.**                                                      |
 | [**System**](#system)         | Include system files.                                                             |
 
-A file passes if every attribute it carries is permitted. **Normal** is the odd one out: it gates files that carry *no* attribute at all, so setting **Normal = False** with the others left at their defaults restricts the list to files that explicitly have one of the included attributes. Changing any of these reloads the list and raises [**PatternChange**](#patternchange) — the event is shared with [**Pattern**](#pattern), matching the VB6 behaviour even though the name is misleading.
+A file passes if every attribute it carries is permitted. **Normal** is the odd one out: it gates files that carry *no* attribute at all, so setting **Normal = False** with the others left at their defaults restricts the list to files that explicitly have one of the included attributes. Changing any of these reloads the list and raises [**PatternChange**](#patternchange) --- the event is shared with [**Pattern**](#pattern), matching the VB6 behaviour even though the name is misleading.
 
 ## Selecting files
 
@@ -111,7 +111,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -190,7 +190,7 @@ The number of files currently shown in the list, as a **Long**. Read-only.
 ### ListIndex
 {: .no_toc }
 
-The zero-based index of the focused item, or `-1` if no item is focused. **Long**. In multi-select modes the focused item and the selected items are independent — see [**Selected**](#selected). Assigning a value that differs from the current one focuses that item and raises [**Click**](#click).
+The zero-based index of the focused item, or `-1` if no item is focused. **Long**. In multi-select modes the focused item and the selected items are independent --- see [**Selected**](#selected). Assigning a value that differs from the current one focuses that item and raises [**Click**](#click).
 
 ### MouseIcon
 {: .no_toc }
@@ -205,7 +205,7 @@ The mouse cursor shown when the pointer is over the control. A member of [**Mous
 ### MultiSelect
 {: .no_toc }
 
-The selection mode. A member of [**MultiSelectConstants**](../../VBRUN/Constants/MultiSelectConstants): **vbMultiSelectNone** (0, default — single selection), **vbMultiSelectSimple** (1 — each click toggles), or **vbMultiSelectExtended** (2 — **Shift** for ranges, **Ctrl** for individual toggles). Changing this at run time recreates the underlying window; the current path, pattern, top-index, and focused item are restored, but multi-item selections are not.
+The selection mode. A member of [**MultiSelectConstants**](../../VBRUN/Constants/MultiSelectConstants): **vbMultiSelectNone** (0, default --- single selection), **vbMultiSelectSimple** (1 --- each click toggles), or **vbMultiSelectExtended** (2 --- **Shift** for ranges, **Ctrl** for individual toggles). Changing this at run time recreates the underlying window; the current path, pattern, top-index, and focused item are restored, but multi-item selections are not.
 
 ### Name
 {: .no_toc }
@@ -220,7 +220,7 @@ When **True** (default), files with no attribute bits set are included in the li
 ### OLEDragMode
 {: .no_toc }
 
-Whether the control acts as an automatic OLE drag source. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1 — dragging an entry starts an OLE drag whose **Text** data is the full path of the selected file, or a list of paths in multi-select mode).
+Whether the control acts as an automatic OLE drag source. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default --- call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1 --- dragging an entry starts an OLE drag whose **Text** data is the full path of the selected file, or a list of paths in multi-select mode).
 
 ### OLEDropMode
 {: .no_toc }
@@ -230,7 +230,7 @@ How the control responds to OLE drops. A restricted member of [**OLEDropConstant
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Parent
 {: .no_toc }
@@ -244,7 +244,7 @@ The directory whose files are listed. **String**. Defaults to [**App.Path**](../
 
 Syntax: *object*.**Path** [ = *string* ]
 
-Reading **Path** returns the directory currently shown — without a trailing backslash (except for a drive root, which is always returned as `"C:\"`). Setting **Path** reloads the list and raises [**PathChange**](#pathchange) when the new value differs from the current one. A bare drive specifier with no backslash (`"C:"`) is silently rejected; use `"C:\"`. Assigning a path that does not exist raises run-time error 76 (*Path not found*).
+Reading **Path** returns the directory currently shown --- without a trailing backslash (except for a drive root, which is always returned as `"C:\"`). Setting **Path** reloads the list and raises [**PathChange**](#pathchange) when the new value differs from the current one. A bare drive specifier with no backslash (`"C:"`) is silently rejected; use `"C:\"`. Assigning a path that does not exist raises run-time error 76 (*Path not found*).
 
 ### PathWithBackslash
 {: .no_toc }
@@ -386,7 +386,7 @@ Syntax: *object*.**OLEDrag**
 ### Refresh
 {: .no_toc }
 
-Re-reads the contents of the current [**Path**](#path) from disk and repaints the control. Useful when the directory has been modified outside the application — the control does not watch the file system on its own. Does not raise [**PathChange**](#pathchange) or [**PatternChange**](#patternchange).
+Re-reads the contents of the current [**Path**](#path) from disk and repaints the control. Useful when the directory has been modified outside the application --- the control does not watch the file system on its own. Does not raise [**PathChange**](#pathchange) or [**PatternChange**](#patternchange).
 
 Syntax: *object*.**Refresh**
 
@@ -433,14 +433,14 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Click
 {: .no_toc }
 
-Raised after the focused item changes — whether the user clicked a different entry, used the keyboard to move the focus, or code assigned a different value to [**ListIndex**](#listindex) or [**Selected**](#selected). Also raised when the selection is cancelled. **Default event.**
+Raised after the focused item changes --- whether the user clicked a different entry, used the keyboard to move the focus, or code assigned a different value to [**ListIndex**](#listindex) or [**Selected**](#selected). Also raised when the selection is cancelled. **Default event.**
 
 Syntax: *object*\_**Click**( )
 
 ### DblClick
 {: .no_toc }
 
-Raised when the user double-clicks an entry. Unlike [**DirListBox**](../DirListBox), the **FileListBox** does *not* navigate on double-click — typically the application listens for **DblClick** to open the file the user has chosen.
+Raised when the user double-clicks an entry. Unlike [**DirListBox**](../DirListBox), the **FileListBox** does *not* navigate on double-click --- typically the application listens for **DblClick** to open the file the user has chosen.
 
 Syntax: *object*\_**DblClick**( )
 
@@ -468,7 +468,7 @@ Syntax: *object*\_**GotFocus**( )
 ### Initialize
 {: .no_toc }
 
-Raised once, immediately after the underlying window is created and the initial list of files has been loaded from [**App.Path**](../App/#path). New in twinBASIC — VB6 had no equivalent on this control.
+Raised once, immediately after the underlying window is created and the initial list of files has been loaded from [**App.Path**](../App/#path). New in twinBASIC --- VB6 had no equivalent on this control.
 
 Syntax: *object*\_**Initialize**( )
 
@@ -566,21 +566,21 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### PathChange
 {: .no_toc }
 
-Raised after [**Path**](#path) has changed — typically because code assigned a new value to it. Not raised for assignments that match the current value.
+Raised after [**Path**](#path) has changed --- typically because code assigned a new value to it. Not raised for assignments that match the current value.
 
 Syntax: *object*\_**PathChange**( )
 
 ### PatternChange
 {: .no_toc }
 
-Raised after [**Pattern**](#pattern) has changed *or* after one of the file-attribute filter properties — [**Archive**](#archive), [**Hidden**](#hidden), [**Normal**](#normal), [**ReadOnly**](#readonly), [**System**](#system) — has changed. Not raised for pattern assignments that match the current value. The shared event matches the VB6 behaviour even though the name is misleading.
+Raised after [**Pattern**](#pattern) has changed *or* after one of the file-attribute filter properties --- [**Archive**](#archive), [**Hidden**](#hidden), [**Normal**](#normal), [**ReadOnly**](#readonly), [**System**](#system) --- has changed. Not raised for pattern assignments that match the current value. The shared event matches the VB6 behaviour even though the name is misleading.
 
 Syntax: *object*\_**PatternChange**( )
 
 ### Scroll
 {: .no_toc }
 
-Raised when the visible portion of the list scrolls — by the scroll bar, the keyboard, or (when [**WheelScrollEvent**](#wheelscrollevent) is **True**) the mouse wheel. The new offset can be read from [**TopIndex**](#topindex).
+Raised when the visible portion of the list scrolls --- by the scroll bar, the keyboard, or (when [**WheelScrollEvent**](#wheelscrollevent) is **True**) the mouse wheel. The new offset can be read from [**TopIndex**](#topindex).
 
 Syntax: *object*\_**Scroll**( )
 

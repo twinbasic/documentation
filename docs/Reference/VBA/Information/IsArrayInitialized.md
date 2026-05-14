@@ -13,7 +13,7 @@ Syntax: **IsArrayInitialized(** *varname* **)**
 *varname*
 : *required* The array variable to test.
 
-A dynamic array declared with empty parentheses (`Dim a() As Long`) holds a special "uninitialized" state until **ReDim** allocates storage for it. **IsArrayInitialized** returns **False** in that state and **True** once the array has dimensions. Calling [**LBound**](LBound) or [**UBound**](UBound) on an uninitialized array, or accessing any of its elements, raises a run-time error — so **IsArrayInitialized** is the safe way to test before reading.
+A dynamic array declared with empty parentheses (`Dim a() As Long`) holds a special "uninitialized" state until **ReDim** allocates storage for it. **IsArrayInitialized** returns **False** in that state and **True** once the array has dimensions. Calling [**LBound**](LBound) or [**UBound**](UBound) on an uninitialized array, or accessing any of its elements, raises a run-time error --- so **IsArrayInitialized** is the safe way to test before reading.
 
 If *varname* is not an array, **IsArrayInitialized** returns **False**.
 

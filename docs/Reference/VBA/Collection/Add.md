@@ -21,10 +21,10 @@ Syntax: *object*.**Add** *item* [ **,** *key* ] [ **,** *before* ] [ **,** *afte
 : *optional* A unique string expression that specifies a key string that can be used, instead of a positional index, to access a member of the collection.
 
 *before*
-: *optional* An expression that specifies a relative position in the collection. The member to be added is placed in the collection before the member identified by the *before* argument. If a numeric expression, *before* must be a number from 1 to the value of the collection's [**Count**](Count) property. If a string expression, *before* must correspond to the *key* specified when the member being referred to was added to the collection. You can specify a *before* position or an *after* position, but not both.
+: *optional* An expression that specifies a relative position in the collection. The member to be added is placed in the collection before the member identified by the *before* argument. If a numeric expression, *before* must be a number from 1 to the value of the collection's [**Count**](Count) property. If a string expression, *before* must correspond to the *key* specified when the member being referred to was added to the collection. Specify a *before* position or an *after* position, but not both.
 
 *after*
-: *optional* An expression that specifies a relative position in the collection. The member to be added is placed in the collection after the member identified by the *after* argument. The same numeric and string-key constraints as *before* apply. You can specify a *before* position or an *after* position, but not both.
+: *optional* An expression that specifies a relative position in the collection. The member to be added is placed in the collection after the member identified by the *after* argument. The same numeric and string-key constraints as *before* apply. Specify a *before* position or an *after* position, but not both.
 
 If neither *before* nor *after* is specified, the new item is added at the end of the collection.
 

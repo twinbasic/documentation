@@ -28,8 +28,8 @@ The rest of this file is the maintenance guide for updating existing pages or ad
 - `docs/Reference/Core/` — language statements/keywords (`Dim`, `For-Next`, `Sub`, ...).
 - `docs/Reference/<Package>/<Mod>/` — runtime library (VBA, VBRUN), grouped by modules.
 - `docs/Reference/<Package>/<Mod>/index.md` — module landing page listing its members.
-- `docs/Reference/VB/<Class>.md` — single-file class page (e.g. [`CheckBox.md`](docs/Reference/VB/CheckBox.md)).
-- `docs/Reference/VB/<Class>/index.md` — folder-style class page when sub-pages may follow (e.g. [`CheckMark/index.md`](docs/Reference/VB/CheckMark/index.md)).
+- `docs/Reference/VB/<Class>.md` — single-file class page. No current VB class uses this shape; all VB classes are folder-style.
+- `docs/Reference/VB/<Class>/index.md` — folder-style class page (e.g. [`CheckBox/index.md`](docs/Reference/VB/CheckBox/index.md), [`CheckMark/index.md`](docs/Reference/VB/CheckMark/index.md)).
 - `docs/Reference/WebView2/` — WebView2 package: the **WebView2** control class plus its small wrapper classes (request / response / headers / environment options) and the `wv2…` enumerations.
 - `docs/Reference/CustomControls/` — CustomControls package: the eight **Waynes…** custom controls, their shared `Styles/` helper classes (`Fill`, `Borders`, `Corners`, `TextRendering`, …), the `Framework/` DESIGNER surface (interfaces, CoClasses, the `Canvas` / `SerializeInfo` UDTs), and the `Enumerations/` (`CornerShape`, `FillPattern`, `DockMode`, …).
 - `docs/Reference/CEF/` — CEF (Chromium Embedded Framework) package: the **CefBrowser** control, its `EnvironmentOptions` sub-page, and the two user-facing enumerations (`CefLogSeverity`, `cefPrintOrientation`). This is a much smaller surface than WebView2 — the package is currently BETA and many WebView2-equivalent features are not yet exposed.
@@ -66,8 +66,7 @@ Match the existing style. Worked examples to imitate:
 - VBA module function: `docs/Reference/VBA/Interaction/AppActivate.md`, `docs/Reference/VBA/Interaction/Beep.md`.
 - VBA property with `Core/` redirect: `docs/Reference/VBA/DateTime/Date.md`.
 - VBRUN module member: `docs/Reference/VBRUN/AmbientProperties/BackColor.md`, `docs/Reference/VBRUN/PropertyBag/index.md`.
-- VB control class (single-file): `docs/Reference/VB/CheckBox.md`.
-- VB control class (folder-style): `docs/Reference/VB/CheckMark/index.md`.
+- VB control class (folder-style; all current VB classes): `docs/Reference/VB/CheckBox/index.md`, `docs/Reference/VB/CheckMark/index.md`.
 - Assert module page (single-file, all members inline): `docs/Reference/Assert/Exact.md`.
 - CEF control class (folder-style with a sub-page): `docs/Reference/CEF/CefBrowser/index.md` + `docs/Reference/CEF/CefBrowser/EnvironmentOptions.md`.
 - Generic class (single-file, `(Of T1, T2)`): `docs/Reference/WinEventLogLib/EventLog.md`.
@@ -314,6 +313,29 @@ The audience is international: standard-English readers worldwide, often non-nat
 
 The guiding principle: **replace metaphors imported from outside programming; keep vocabulary with a specific technical meaning inside Win32 / COM / event-driven programming.** If a phrase is the kind of thing a reader would have to look up in a tech blog, it doesn't belong in reference prose.
 
+### Sentence and structure
+
+The vocabulary tables further down cover word choice. The rules in this subsection cover sentence shape and voice — the structural side of writing for an international audience.
+
+1. **Page opening.** One-sentence verb-phrase summary directly under the H1, in present tense, no preamble. *Good:* "Activates an application window." / "Writes an **Error**-type entry to the log." *Avoid:* "The **Const** statement is used to declare constants in place of literal values." For class pages, a noun-phrase descriptor is acceptable — *"A **CheckBox** is a Win32 native control that displays..."*
+
+2. **Voice and tense.** Active voice by default. Passive only for subjectless operations where there is no obvious agent — "the entry is written", "the constant is private by default". Present tense for behavior — `returns`, not `will return`. Don't give the class human traits: it doesn't "decide", "want", or "know" — it returns, raises, contains.
+
+3. **Sentence shape.** One idea per sentence. Prefer two short sentences over one compound sentence with nested clauses. Em-dash (`—`) for parenthetical asides; reserve parentheses for code-ish notation like `(default)`.
+
+4. **Person and pronouns.** Reference body prose uses third-person impersonal — "the constant", "the source", "the entry". Rewrite "you" to the impersonal form even in VBA-derived pages. "You" is acceptable inside `Example` lead-ins and in tutorial prose. Avoid first-person ("we", "I").
+
+5. **Parameter descriptions.** Italic `*required*` / `*optional*` flag, then a short prose description. Lead with the type when it matters — "A **String** naming the source...", "A *T1* value naming the event...". Don't restate the parameter's name inside its own definition. Property setters omit the flag — the `[ = *value* ]` brackets on the syntax line carry that information.
+
+6. **Callout severity.** Three severity levels, used distinctly:
+   - `> [!NOTE]` — twinBASIC-vs-VBA deviations, behavior clarifications, useful caveats. Not for marketing/why-bother prose — that should be a plain paragraph.
+   - `> [!IMPORTANT]` — requirements that affect correctness: admin rights, threading constraints, ordering.
+   - `> [!WARNING]` — operations that can corrupt state or lose data.
+
+   One callout per concern; don't stack a NOTE and an IMPORTANT for the same point.
+
+7. **See Also.** Last section on the page, after `Example`. Format: `- [Symbol](Symbol) <noun>` where `<noun>` is the kind: statement, function, property, method, class, module, package. Pages with annotations use `- [Symbol](Symbol) -- short description` — the `--` source renders as a typographic dash via kramdown's smart_quotes (en-dash for `--`, em-dash for `---`). Don't write literal `—` in source; keep `--` for consistency across the docs. Order by conceptual proximity, not strict alphabetical.
+
 ### Replace
 
 | Term | Use instead |
@@ -383,6 +405,19 @@ Don't over-correct these — they are precise technical vocabulary or otherwise 
 
 Some kept terms are referenced by in-doc anchors. The most prominent is `idiom` / `idiomatic` — `WIP.WinEventLogLib.md` and `WIP.WinServicesLib.md` reference anchors like `#service-host-idiom` and `#composition-delegation-idiom`. Don't rename these casually; if you do, add `redirect_from` aliases to preserve legacy links.
 
+### Source dashes
+
+Kramdown's `smart_quotes` feature (enabled by default in this site) converts the ASCII source forms to typographic characters at build time:
+
+| Source | Rendered | Use for |
+|--------|----------|---------|
+| `--`   | en-dash `–`  | bullet-list separator (rule 7), ranges |
+| `---`  | em-dash `—`  | parenthetical asides (rule 3), breaks in thought |
+
+The source uses the ASCII forms; the rendered HTML uses the typographic characters. Literal `–` or `—` in `docs/` markdown source is forbidden — see the Don'ts at the end of this file. `scripts/convert_em_dash_separators.py` is the canonical normaliser if any literals slip back in.
+
+WIP.md itself (and other files outside `docs/`) is not part of the Jekyll site and is exempt — literal em-dashes here render directly in the GitHub viewer, which is fine.
+
 ## Scripts and tooling
 
 Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is.
@@ -415,6 +450,7 @@ Favor concise one-line git commit messages.
 
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` (build output, gitignored).
+- Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — kramdown's smart_quotes does the conversion at build time. `scripts/convert_em_dash_separators.py` normalises any strays.
 - Don't push or force-push without explicit user request.
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
 - Don't add boilerplate sections (Remarks, See Also) if the source has nothing meaningful for them.

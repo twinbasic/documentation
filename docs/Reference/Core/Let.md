@@ -13,7 +13,7 @@ Syntax:
 > [ **Let** ] *varname* **=** *expression*
 
 **Let**
-: *optional*  Explicit use of the **Let** keyword is a matter of style; it is usually omitted.
+: *optional* Explicit use of the **Let** keyword is a matter of style; it is usually omitted.
 
 *varname*
 : Name of the variable or property; follows standard variable naming conventions.
@@ -21,7 +21,7 @@ Syntax:
 *expression*
 : Value assigned to the variable or property.
 
-A value expression can be assigned to a variable or property only if it is of a data type that is compatible with the variable. You can't assign string expressions to numeric variables, and you can't assign numeric expressions to string variables. If you do, an error occurs at compile time.
+A value expression can be assigned to a variable or property only if it is of a data type that is compatible with the variable. String expressions cannot be assigned to numeric variables, and numeric expressions cannot be assigned to string variables. Such an assignment raises an error at compile time.
 
 **Variant** variables can be assigned to either string or numeric expressions. However, the reverse is not always true. Any **Variant** except a **Null** can be assigned to a string variable, but only a **Variant** whose value can be interpreted as a number can be assigned to a numeric variable. Use the **IsNumeric** function to determine if the **Variant** can be converted to a number.
 

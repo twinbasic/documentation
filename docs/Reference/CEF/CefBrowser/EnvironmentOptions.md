@@ -9,9 +9,9 @@ has_toc: false
 # CefEnvironmentOptions class
 {: .no_toc }
 
-Carries the host's pre-creation configuration for the CEF environment — runtime folder, user-data folder, and the optional debug-log destination. Surfaces on every [**CefBrowser**](.) control as its **EnvironmentOptions** property; the control instantiates one automatically before raising the [**Create**](.#create) event.
+Pre-creation configuration for the CEF environment --- runtime folder, user-data folder, and the optional debug-log destination. Available on every [**CefBrowser**](.) control as its **EnvironmentOptions** property; the control instantiates one automatically before raising the [**Create**](.#create) event.
 
-The fields below take effect only while the CEF runtime is being launched — that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
+The fields below take effect only while the CEF runtime is being launched --- that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
 
 ```tb
 Private Sub CefBrowser1_Create()
@@ -23,14 +23,14 @@ Private Sub CefBrowser1_Create()
 End Sub
 ```
 
-The type itself is `Private Class` — you reach instances only through the control's **EnvironmentOptions** property and cannot declare a variable typed as **CefEnvironmentOptions** from outside the package.
+The type itself is `Private Class` --- instances are reachable only through the control's **EnvironmentOptions** property, and a variable typed as **CefEnvironmentOptions** cannot be declared from outside the package.
 
 ## Properties
 
 ### BrowserExecutableFolder
 {: .no_toc }
 
-Path to the folder containing `libcef.dll` and its accompanying runtime files. **String**. Default: empty (the runtime is loaded from `%LocalAppData%\twinBASIC_CEF_Runtime\<version-stamped-folder>` — see [Installing runtime files](../#installing-runtime-files)).
+Path to the folder containing `libcef.dll` and its accompanying runtime files. **String**. Default: empty (the runtime is loaded from `%LocalAppData%\twinBASIC_CEF_Runtime\<version-stamped-folder>` --- see [Installing runtime files](../#installing-runtime-files)).
 
 Set this to point at a portable side-by-side deployment, e.g. a CEF folder shipped beside the application executable:
 
@@ -48,7 +48,7 @@ If `libcef.dll` is not found at the configured (or default) location, the [**Err
 
 Path to a writable file CEF will append its debug log to. **String**. Default: empty (no log file is written, regardless of [**LogSeverity**](#logseverity)).
 
-Used together with [**LogSeverity**](#logseverity) — messages at or above the chosen severity are written to this file. The log is appended across runs; rotate or delete the file as needed.
+Used together with [**LogSeverity**](#logseverity) --- messages at or above the chosen severity are written to this file. The log is appended across runs; rotate or delete the file as needed.
 
 ### LogSeverity
 {: .no_toc }
@@ -60,9 +60,9 @@ Set to **CefLogWarning** or **CefLogError** when investigating runtime issues, a
 ### UserDataFolder
 {: .no_toc }
 
-Path to the folder CEF uses for the user profile — cache, cookies, history, local storage, and so on. **String**. Default: empty (the runtime picks a folder under `%LocalAppData%\twinBASIC_CEF\<ProjectName>\`).
+Path to the folder CEF uses for the user profile --- cache, cookies, history, local storage, and so on. **String**. Default: empty (the runtime picks a folder under `%LocalAppData%\twinBASIC_CEF\<ProjectName>\`).
 
-Set a writable, application-specific path when the default would end up in a read-only location, or when multiple deployments of the same application must keep their profiles separate. The same folder cannot be opened by two CEF processes simultaneously — if it's already locked, the [**Error**](.#error) event fires with *"CEF cache path already locked by another process"*.
+Set a writable, application-specific path when the default would end up in a read-only location, or when multiple deployments of the same application must keep their profiles separate. The same folder cannot be opened by two CEF processes simultaneously --- if it's already locked, the [**Error**](.#error) event fires with *"CEF cache path already locked by another process"*.
 
 ### See Also
 

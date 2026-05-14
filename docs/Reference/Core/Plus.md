@@ -8,7 +8,7 @@ vba_attribution: true
 # + and += operators
 {: .no_toc }
 
-Used to sum two numbers, or — depending on operand types — to concatenate two strings. The compound form **+=** adds-and-assigns in one step.
+Used to sum two numbers, or --- depending on operand types --- to concatenate two strings. The compound form **+=** adds-and-assigns in one step.
 
 Syntax:
 > *result* **=** *expression1* **+** *expression2*  
@@ -23,7 +23,7 @@ Syntax:
 *expression*, *expression1*, *expression2*
 : Any expressions.
 
-When you use the **+** operator, you may not be able to determine whether addition or string concatenation will occur. Use the [**&**](Concat) operator for concatenation to eliminate ambiguity and produce self-documenting code.
+When the **+** operator is used, it may not be obvious whether addition or string concatenation will occur. Use the [**&**](Concat) operator for concatenation to eliminate ambiguity and produce self-documenting code.
 
 If at least one expression is not a **Variant**, the following rules apply:
 
@@ -62,7 +62,7 @@ If one or both expressions are **Null** expressions, *result* is **Null**. If bo
 
 ### Compound assignment
 
-`x += y` is the twinBASIC shorthand for `x = x + y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. Like all of twinBASIC's compound-assignment operators, **+=** is a statement, not an expression — it does not produce a value.
+`x += y` is the twinBASIC shorthand for `x = x + y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. Like all of twinBASIC's compound-assignment operators, **+=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Total As Long = 0
@@ -75,7 +75,7 @@ Greeting += ", world"           ' Greeting is now "Hello, world".
 
 ### Example
 
-This example uses the **+** operator to sum numbers. The **+** operator can also be used to concatenate strings, but to eliminate ambiguity you should use the [**&**](Concat) operator instead.
+This example uses the **+** operator to sum numbers. The **+** operator can also be used to concatenate strings, but to eliminate ambiguity use the [**&**](Concat) operator instead.
 
 ```tb
 Dim MyNumber, Var1, Var2

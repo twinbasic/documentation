@@ -9,7 +9,7 @@ vba_attribution: true
 # GetObject
 {: .no_toc }
 
-Returns a reference to a COM/Automation object — either an already-running instance, or one bound to a file.
+Returns a reference to a COM/Automation object --- either an already-running instance, or one bound to a file.
 
 Syntax: **GetObject(** [ *pathname* ] [ **,** *class* ] **)**
 
@@ -17,7 +17,7 @@ Syntax: **GetObject(** [ *pathname* ] [ **,** *class* ] **)**
 : *optional* **Variant** (**String**). The full path and name of a file containing the object to retrieve. If *pathname* is omitted, *class* is required.
 
 *class*
-: *optional* **Variant** (**String**). The class of the object to retrieve, in the form *appname*.*objecttype* — for example, `"Excel.Application"`.
+: *optional* **Variant** (**String**). The class of the object to retrieve, in the form *appname*.*objecttype* --- for example, `"Excel.Application"`.
 
 To assign the returned reference to a variable, use **Set**:
 
@@ -30,13 +30,13 @@ When the call is made with a *pathname*, the application registered for that fil
 
 If *pathname* is a zero-length string (`""`), **GetObject** returns a *new* instance of the type named by *class*. If *pathname* is omitted altogether, **GetObject** attempts to attach to a *currently running* instance of the type named by *class*; if no such instance exists, a run-time error occurs.
 
-Some applications support activating a *part* of a file. Append `!` and an application-specific identifier to the file name — for example, the third layer of a CAD drawing:
+Some applications support activating a *part* of a file. Append `!` and an application-specific identifier to the file name --- for example, the third layer of a CAD drawing:
 
 ```tb
 Set LayerObject = GetObject("C:\CAD\SCHEMA.CAD!Layer3")
 ```
 
-If you don't specify *class*, the operating system determines the application to start and the object to activate based on the file name you provide. Some files, however, may support more than one class of object. To be specific, supply both arguments:
+When *class* is not specified, the operating system determines the application to start and the object to activate based on the supplied file name. Some files, however, may support more than one class of object. To be specific, supply both arguments:
 
 ```tb
 Dim MyObject As Object
@@ -44,7 +44,7 @@ Set MyObject = GetObject("C:\Drawings\Sample.drw", "Figment.Drawing")
 ```
 
 > [!NOTE]
-> Use **GetObject** when there is already a current instance of the object, or when you want to create the object with a file already loaded. If there is no current instance and you don't want the object started with a file loaded, use [**CreateObject**](CreateObject) instead.
+> **GetObject** attaches to a current instance of the object, or creates the object with a file already loaded. When there is no current instance and the object should not be started with a file loaded, [**CreateObject**](CreateObject) creates a new instance.
 
 For an object registered as single-instance, **GetObject** with the zero-length-string syntax always returns the same instance, and the form with *pathname* omitted causes an error.
 

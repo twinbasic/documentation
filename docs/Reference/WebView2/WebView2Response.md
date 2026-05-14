@@ -10,7 +10,7 @@ has_toc: false
 
 The response side of a [**WebResourceRequested**](WebView2/#webresourcerequested) event. Fill in any of [**StatusCode**](#statuscode), [**ReasonPhrase**](#reasonphrase), [**Headers**](#headers), or one of the content properties, and the runtime returns that synthesised response to the page instead of going to the network.
 
-If the event handler does not touch the response (no property is written), the runtime falls through to its normal fetch — the in-flight request continues unchanged.
+If the event handler does not touch the response (no property is written), the runtime falls through to its normal fetch --- the pending request continues unchanged.
 
 ```tb
 Private Sub Form_Load()
@@ -43,7 +43,7 @@ Syntax: *object*.**ContentBytes** [ = *bytes* ]
 ### ContentUTF8
 {: .no_toc }
 
-The response body as a UTF-8 **String** — a convenience over [**ContentBytes**](#contentbytes) that does the `StrConv` round-trip for you. Read / write.
+The response body as a UTF-8 **String** --- a convenience over [**ContentBytes**](#contentbytes) that performs the `StrConv` round-trip automatically. Read / write.
 
 Syntax: *object*.**ContentUTF8** [ = *text* ]
 
@@ -53,7 +53,7 @@ Syntax: *object*.**ContentUTF8** [ = *text* ]
 ### Headers
 {: .no_toc }
 
-The response's HTTP headers as a [**WebView2ResponseHeaders**](WebView2ResponseHeaders) collection — add or inspect headers here. Read-only at the property level (the collection itself is mutable).
+The response's HTTP headers as a [**WebView2ResponseHeaders**](WebView2ResponseHeaders) collection --- add or inspect headers here. Read-only at the property level (the collection itself is mutable).
 
 ### ReasonPhrase
 {: .no_toc }

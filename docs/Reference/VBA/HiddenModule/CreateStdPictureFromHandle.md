@@ -11,7 +11,7 @@ Wraps a GDI handle in an **stdole.StdPicture** so it can be assigned to a contro
 Syntax: **CreateStdPictureFromHandle(** *Handle* **,** *Type* **,** *TakeOwnership* **)** **As Object**
 
 *Handle*
-: *required* **LongPtr**. The GDI handle to wrap — typically an `HBITMAP`, `HICON`, `HCURSOR`, `HENHMETAFILE`, or `HMETAFILE`.
+: *required* **LongPtr**. The GDI handle to wrap --- typically an `HBITMAP`, `HICON`, `HCURSOR`, `HENHMETAFILE`, or `HMETAFILE`.
 
 *Type*
 : *required* **Long**. The picture type. Pass one of the **PictureTypeConstants** values (`vbPicTypeBitmap`, `vbPicTypeIcon`, `vbPicTypeMetafile`, `vbPicTypeEnhMetafile`) corresponding to *Handle*'s flavour.

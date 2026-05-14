@@ -13,7 +13,7 @@ Syntax: **RGB_G(** *RGBA* **)**
 *RGBA*
 : *required* A **Long** RGBA colour value, of the kind returned by [**RGB**](RGB) or [**RGBA**](RGBA).
 
-The return value is the green component in the range 0–255.
+The return value is the green component in the range 0--255.
 
 ### Example
 

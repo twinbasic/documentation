@@ -21,21 +21,21 @@ Syntax:
 : Keyword specifying the file mode: **Append**, **Binary**, **Input**, **Output**, or **Random**. If unspecified, the file is opened for **Random** access.
 
 *access*
-: *optional*  Keyword specifying the operations permitted on the open file: **Read**, **Write**, or **Read Write**.
+: *optional* Keyword specifying the operations permitted on the open file: **Read**, **Write**, or **Read Write**.
 
 *lock*
-: *optional*  Keyword specifying the operations restricted on the open file by other processes: **Shared**, **Lock Read**, **Lock Write**, or **Lock Read Write**.
+: *optional* Keyword specifying the operations restricted on the open file by other processes: **Shared**, **Lock Read**, **Lock Write**, or **Lock Read Write**.
 
 *encoding*
-: *optional*  An encoding identifier — for example **utf_8**, **utf_16**, **windows_1252_western**, or **default_system_ansi**. See [Text Encodings](#text-encodings) below for the full list. The **Encoding** clause applies to text-mode I/O (**Input**, **Output**, **Append**); it has no effect on **Binary** or **Random** mode files.
+: *optional* An encoding identifier --- for example **utf_8**, **utf_16**, **windows_1252_western**, or **default_system_ansi**. See [Text Encodings](#text-encodings) below for the full list. The **Encoding** clause applies to text-mode I/O (**Input**, **Output**, **Append**); it has no effect on **Binary** or **Random** mode files.
 
 *filenumber*
 : A valid file number in the range 1 to 511, inclusive. Use the [**FreeFile**](../Modules/FileSystem/FreeFile) function to obtain the next available file number.
 
 *reclength*
-: *optional*  Number less than or equal to 32,767 (bytes). For files opened for random access, this value is the record length. For sequential files, this value is the number of characters buffered.
+: *optional* Number less than or equal to 32,767 (bytes). For files opened for random access, this value is the record length. For sequential files, this value is the number of characters buffered.
 
-You must open a file before any I/O operation can be performed on it. **Open** allocates a buffer for I/O to the file and determines the mode of access to use with the buffer.
+A file must be opened before any I/O operation can be performed on it. **Open** allocates a buffer for I/O to the file and determines the mode of access to use with the buffer.
 
 If the file specified by *pathname* doesn't exist, it is created when a file is opened for **Append**, **Binary**, **Output**, or **Random** modes.
 
@@ -44,7 +44,7 @@ If the file is already opened by another process, and the specified type of acce
 The **Len** clause is ignored if *mode* is **Binary**.
 
 > [!IMPORTANT]
-> In **Binary**, **Input**, and **Random** modes, you can open a file by using a different file number without first closing the file. In **Append** and **Output** modes, you must close a file before opening it with a different file number.
+> In **Binary**, **Input**, and **Random** modes, a file can be opened with a different file number without first closing the file. In **Append** and **Output** modes, a file must be closed before opening it with a different file number.
 
 > [!NOTE]
 > The **Encoding** clause is a twinBASIC extension. Classic VBA has no equivalent and reads or writes text using the system ANSI code page only.
@@ -107,7 +107,7 @@ Close #1
 
 ### Text Encodings
 
-These identifier strings are accepted as the **Encoding** argument. The constants listed below name the well-known encodings; other system-supported encodings with similar identifier strings are also accepted at runtime. All members are marked **[Hidden, Restricted]** — they are omitted from general IntelliSense, but the IDE shows them automatically after the **Encoding** keyword.
+These identifier strings are accepted as the **Encoding** argument. The constants listed below name the well-known encodings; other system-supported encodings with similar identifier strings are also accepted at runtime. All members are marked **[Hidden, Restricted]** --- they are omitted from general IntelliSense, but the IDE shows them automatically after the **Encoding** keyword.
 
 #### Default and Unicode
 

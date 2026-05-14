@@ -8,7 +8,7 @@ has_toc: false
 # CheckMark class
 {: .no_toc }
 
-A **CheckMark** is a windowless control that draws a single check glyph — checked, unchecked, or grey — that scales to fill its rectangle. Unlike [**CheckBox**](../CheckBox), it has no caption, no font, and cannot take focus or receive keyboard input; it is essentially the box from a check-box rendered at whatever size the layout requires. This makes it especially useful inside reports and other dense layouts where the fixed-size system check would look out of place, but it is also available on a **Form** or **UserControl**.
+A **CheckMark** is a windowless control that draws a single check glyph --- checked, unchecked, or grey --- that scales to fill its rectangle. Unlike [**CheckBox**](../CheckBox), it has no caption, no font, and cannot take focus or receive keyboard input; it is essentially the box from a check-box rendered at whatever size the layout requires. This makes it especially useful inside reports and other dense layouts where the fixed-size system check would look out of place, but it is also available on a **Form** or **UserControl**.
 
 The default property is [**Value**](#value) and the default event is [**Click**](#click).
 
@@ -35,7 +35,7 @@ End Sub
 | **vbChecked**    | 1     | The check is selected.                                 |
 | **vbGrayed**     | 2     | The check is in an indeterminate (grey) state.         |
 
-A user click toggles **Value** between **vbChecked** and **vbUnchecked** only. The grey state is reachable from code — assign **vbGrayed** to **Value** to display it.
+A user click toggles **Value** between **vbChecked** and **vbUnchecked** only. The grey state is reachable from code --- assign **vbGrayed** to **Value** to display it.
 
 ```tb
 Check1.Value = vbGrayed     ' show the indeterminate state
@@ -45,22 +45,22 @@ Check1.Value = vbGrayed     ' show the indeterminate state
 
 [**VisualStyles**](#visualstyles) selects how the glyph is rendered:
 
-- **VisualStyles = False** (default) — drawn with the GDI **DrawFrameControl** primitive. Honours [**Appearance**](#appearance): **vbAppear3d** uses the classic raised/sunken look, **vbAppearFlat** uses a single-pixel outline. A disabled check, or one in the **vbGrayed** state, is drawn over the dotted three-state pattern.
-- **VisualStyles = True** — drawn through the OS theme engine (UXTHEME), so the glyph uses the current visual-style theme. **Appearance** is ignored in this mode.
+- **VisualStyles = False** (default) --- drawn with the GDI **DrawFrameControl** primitive. Honours [**Appearance**](#appearance): **vbAppear3d** uses the classic raised/sunken look, **vbAppearFlat** uses a single-pixel outline. A disabled check, or one in the **vbGrayed** state, is drawn over the dotted three-state pattern.
+- **VisualStyles = True** --- drawn through the OS theme engine (UXTHEME), so the glyph uses the current visual-style theme. **Appearance** is ignored in this mode.
 
 ## Background
 
 [**BackStyle**](#backstyle) controls whether the rectangle behind the glyph is filled before the glyph is drawn:
 
-- **vbBFTransparent** (default) — only the glyph is painted; whatever the container draws shows through.
-- **vbBFOpaque** — the rectangle is filled with [**BackColor**](#backcolor) first.
+- **vbBFTransparent** (default) --- only the glyph is painted; whatever the container draws shows through.
+- **vbBFOpaque** --- the rectangle is filled with [**BackColor**](#backcolor) first.
 
 ## Properties
 
 ### Anchors
 {: .no_toc }
 
-The **Anchors** object that determines which sides of the control follow the corresponding sides of its container as the container is resized. Read-only — set the individual sides through the returned object.
+The **Anchors** object that determines which sides of the control follow the corresponding sides of its container as the container is resized. Read-only --- set the individual sides through the returned object.
 
 ### Appearance
 {: .no_toc }
@@ -100,7 +100,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -256,7 +256,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Click
 {: .no_toc }
 
-Raised when the user clicks the control with the left mouse button — after [**Value**](#value) has toggled between **vbChecked** and **vbUnchecked**. **Default event.**
+Raised when the user clicks the control with the left mouse button --- after [**Value**](#value) has toggled between **vbChecked** and **vbUnchecked**. **Default event.**
 
 Syntax: *object*\_**Click**( )
 

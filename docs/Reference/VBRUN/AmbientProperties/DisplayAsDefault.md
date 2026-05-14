@@ -13,7 +13,7 @@ Syntax: *object*.**DisplayAsDefault**
 *object*
 : *required* An object expression that evaluates to an **AmbientProperties** object.
 
-The default control on a form is the one activated when the user presses **Enter** without first giving focus to another control — most often a command button. A control that wants to advertise its default-button status should paint itself with the heavier border or other distinguishing visual when **DisplayAsDefault** is **True**.
+The default control on a form is the one activated when the user presses **Enter** without first giving focus to another control --- most often a command button. A control that wants to advertise its default-button status should paint itself with the heavier border or other distinguishing visual when **DisplayAsDefault** is **True**.
 
 ### See Also
 

@@ -34,15 +34,15 @@ Syntax:
   Required to end a user-defined type (UDT) definition ([**Type**](Type) statement).
 
 - **End With**
-  Required to end a  [**With**](With) statement.
+  Required to end a [**With**](With) statement.
 
-When executed, the **End** statement resets all module-level variables and all static local variables in all modules. To preserve the value of these variables, use the [**Stop**](Stop) statement instead. You can then resume execution while preserving the value of those variables.
+When executed, the **End** statement resets all module-level variables and all static local variables in all modules. To preserve the value of these variables, use the [**Stop**](Stop) statement instead --- execution can then resume while preserving the value of those variables.
 
-> [!NOTE]
+> [!IMPORTANT]
 >
-> The **End** statement stops code execution abruptly, without invoking the Unload, QueryUnload, or Terminate event, or any other Visual Basic code. Code you have placed in the Unload, QueryUnload, and Terminate events of forms and class modules is not executed. Objects created from class modules are destroyed, files opened by using the **Open** statement are closed, and memory used by your program is freed. Object references held by other programs are invalidated.
+> The **End** statement stops code execution abruptly, without invoking the Unload, QueryUnload, or Terminate event, or any other Visual Basic code. Code placed in the Unload, QueryUnload, and Terminate events of forms and class modules is not executed. Objects created from class modules are destroyed, files opened by using the **Open** statement are closed, and memory used by the program is freed. Object references held by other programs are invalidated.
 
-The **End** statement provides a way to force your program to halt. For normal termination of a Visual Basic program, you should unload all forms. Your program closes as soon as there are no other programs holding references to objects created from your public class modules and no code executing.
+The **End** statement provides a way to force the program to halt. For normal termination of a Visual Basic program, all forms should be unloaded. The program closes as soon as there are no other programs holding references to objects created from public class modules and no code executing.
 
 ### Example
 

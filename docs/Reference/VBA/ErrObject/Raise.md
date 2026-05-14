@@ -12,7 +12,7 @@ Generates a run-time error.
 Syntax: **Err**.**Raise** *number* [ **,** *source* [ **,** *description* [ **,** *helpfile* [ **,** *helpcontext* ] ] ] ]
 
 *number*
-: *required* A **Long** that identifies the nature of the error. Built-in errors fall in the range 0–65535; the range 0–512 is reserved for system errors and 513–65535 is available for user-defined errors. When raising a user-defined error from a class module, add the chosen number to the [**vbObjectError**](../Constants/#vbObjectError) constant — for example, `vbObjectError + 513`.
+: *required* A **Long** that identifies the nature of the error. Built-in errors fall in the range 0--65535; the range 0--512 is reserved for system errors and 513--65535 is available for user-defined errors. When raising a user-defined error from a class module, add the chosen number to the [**vbObjectError**](../Constants/#vbObjectError) constant --- for example, `vbObjectError + 513`.
 
 *source*
 : *optional* A **String** naming the object or application that generated the error. When setting the [**Source**](Source) property for an object, use the form *project.class*. If *source* is not specified, the programmatic ID of the current twinBASIC project is used.
@@ -26,7 +26,7 @@ Syntax: **Err**.**Raise** *number* [ **,** *source* [ **,** *description* [ **,*
 *helpcontext*
 : *optional* The context ID identifying a topic within *helpfile* that provides help for the error. If omitted, the [**HelpContext**](HelpContext) property is cleared.
 
-All of the arguments are optional except *number*. If you call **Raise** without specifying some arguments, and the corresponding properties of the **Err** object still hold values from an earlier error, those values serve as the values for your error.
+All of the arguments are optional except *number*. When **Raise** is called without specifying some arguments, and the corresponding properties of the **Err** object still hold values from an earlier error, those values serve as the values for the current error.
 
 **Raise** is preferred over the [**Error**](../../Core/Error) statement when generating run-time errors, particularly inside class modules: the **Err** object holds richer information than the **Error** statement can supply. With **Raise** the source that generated the error can be specified in the [**Source**](Source) property, online Help for the error can be referenced through [**HelpFile**](HelpFile) and [**HelpContext**](HelpContext), and so on.
 

@@ -28,7 +28,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [Declare](../tB/Core/Declare) -- declares references to external procedures in a dynamic-link library (DLL)
 
-* [Delegate](../tB/Core/Delegate) -- (twinBASIC) declares a function-pointer type — a named signature for indirect calls
+* [Delegate](../tB/Core/Delegate) -- (twinBASIC) declares a function-pointer type --- a named signature for indirect calls
 
 * [Dim](../tB/Core/Dim) -- declares variables and allocates storage space
 

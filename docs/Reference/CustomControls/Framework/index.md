@@ -7,13 +7,13 @@ has_toc: false
 
 # Framework
 
-The framework half of the [**CustomControls**](..) package — the interfaces, callback objects, and drawing primitives an *author* of a custom control writes against. The eight concrete `Waynes…` controls in the package are themselves built on this framework; the same pieces are available to user code that needs to implement an entirely new custom control.
+The framework half of the [**CustomControls**](..) package --- the interfaces, callback objects, and drawing primitives an *author* of a custom control writes against. The eight concrete `Waynes…` controls in the package are themselves built on this framework; the same pieces are available to user code that needs to implement an entirely new custom control.
 
 A custom control:
 
 1. Implements [**ICustomControl**](ICustomControl) (or [**ICustomForm**](ICustomForm) for a form-class custom control).
-2. Stores the [**CustomControlContext**](CustomControlContext) handed to it on **Initialize** and uses it to request repaints, create timers, or change the focused element.
-3. Inside **Paint**, builds one or more `ElementDescriptor` records and hands them to the [**Canvas**](Canvas) via **RuntimeUICCCanvasAddElement** — the framework rasterises them, handles input routing, and dispatches events back through the descriptor's `AddressOf`-registered callbacks.
+2. Stores the [**CustomControlContext**](CustomControlContext) passed to it on **Initialize** and uses it to request repaints, create timers, or change the focused element.
+3. Inside **Paint**, builds one or more `ElementDescriptor` records and passes them to the [**Canvas**](Canvas) via **RuntimeUICCCanvasAddElement** --- the framework rasterises them, handles input routing, and dispatches events back through the descriptor's `AddressOf`-registered callbacks.
 
 ```tb
 Class MyControl
@@ -52,4 +52,4 @@ End Class
 ## Drawing primitives
 
 - [Canvas](Canvas) -- the drawing surface passed to **Paint**; **RuntimeUICCCanvasAddElement**, plus size and DPI accessors
-- [SerializeInfo](SerializeInfo) -- the per-instance serializer reached via **CustomControlContext.GetSerializer**; **RuntimeUISrzDeserialize**, design-mode flags, owner handle, runtime mode
+- [SerializeInfo](SerializeInfo) -- the per-instance serializer returned by **CustomControlContext.GetSerializer**; **RuntimeUISrzDeserialize**, design-mode flags, owner handle, runtime mode

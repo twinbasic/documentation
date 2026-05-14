@@ -8,7 +8,7 @@ has_toc: false
 # PropertyPage class
 {: .no_toc }
 
-A **PropertyPage** is a container that backs a single tab of a COM property-page dialog — the popup invoked from the **(Custom)** entry on an ActiveX control's property browser. It exposes the **IPropertyPage2** COM interface so that any host that supports ActiveX property pages (the twinBASIC IDE, classic VB6, Office, …) can place it inside its own property-sheet frame, give it the controls the user is editing, and apply the page's changes back to them.
+A **PropertyPage** is a container that backs a single tab of a COM property-page dialog --- the popup invoked from the **(Custom)** entry on an ActiveX control's property browser. It exposes the **IPropertyPage2** COM interface so that any host that supports ActiveX property pages (the twinBASIC IDE, classic VB6, Office, …) can place it inside its own property-sheet frame, give it the controls the user is editing, and apply the page's changes back to them.
 
 Designing a property page is much like designing a small dialog [**Form**](../Form): drop child controls onto it, write event handlers, and use its drawing surface freely. What sets it apart is the lifecycle, which is controlled by the host rather than by the application:
 
@@ -47,7 +47,7 @@ End Sub
 
 [**SelectedControls**](#selectedcontrols) is a read-only collection of the controls the host wants this tab to edit. The host populates it before raising [**SelectionChanged**](#selectionchanged); the page keeps the references for as long as it is alive. The collection supports indexed access (`SelectedControls(0)`), enumeration (`For Each ctl In SelectedControls`), and a **Count** member.
 
-[**Changed**](#changed) is a two-way flag the page uses to talk to the host. Setting it to **True** enables the host's *Apply* button; the framework notifies the host immediately through **IPropertyPageSite.OnStatusChange**. Setting it to **False** clears the flag — the framework does this automatically after raising [**ApplyChanges**](#applychanges).
+[**Changed**](#changed) is a two-way flag the page uses to talk to the host. Setting it to **True** enables the host's *Apply* button; the framework notifies the host immediately through **IPropertyPageSite.OnStatusChange**. Setting it to **False** clears the flag --- the framework does this automatically after raising [**ApplyChanges**](#applychanges).
 
 [**EditProperty**](#editproperty) is declared for VB6 compatibility but is not currently raised by the runtime; pages that want to react to a per-property edit request from the host need to wait until that wiring lands.
 
@@ -55,19 +55,19 @@ End Sub
 
 ## Standard sizes
 
-The VB6 property-page dialog frame draws each tab at one of two standard sizes — small (250 × 62 dialog units) or large (250 × 110 dialog units) — chosen by the host based on the [**StandardSize**](#standardsize) of the largest page in the sheet. Assigning [**StandardSize**](#standardsize) at design time tells the host which size to request; reading it at run time returns the size the page is actually drawn at, or **StandardSizeCustom** when [**Width**](#width) and [**Height**](#height) have been changed away from either preset. The value is in **EnumStandardSize** units: **StandardSizeCustom** (0), **StandardSizeSmall** (1), or **StandardSizeLarge** (2).
+The VB6 property-page dialog frame draws each tab at one of two standard sizes --- small (250 × 62 dialog units) or large (250 × 110 dialog units) --- chosen by the host based on the [**StandardSize**](#standardsize) of the largest page in the sheet. Assigning [**StandardSize**](#standardsize) at design time tells the host which size to request; reading it at run time returns the size the page is actually drawn at, or **StandardSizeCustom** when [**Width**](#width) and [**Height**](#height) have been changed away from either preset. The value is in **EnumStandardSize** units: **StandardSizeCustom** (0), **StandardSizeSmall** (1), or **StandardSizeLarge** (2).
 
 ## Drawing surface
 
-A **PropertyPage** is a graphics surface in its own right. The full set of VB6 drawing primitives — [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and the [**Print**](#print) statement — write to its device context, using [**ForeColor**](#forecolor), [**FillColor**](#fillcolor)/[**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle) for the pen and fill, and [**Font**](#font) for text. The current pen position is tracked by [**CurrentX**](#currentx) and [**CurrentY**](#currenty); [**TextWidth**](#textwidth) and [**TextHeight**](#textheight) measure a string in the current font; [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert single coordinates between scale modes.
+A **PropertyPage** is a graphics surface in its own right. The full set of VB6 drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and the [**Print**](#print) statement --- write to its device context, using [**ForeColor**](#forecolor), [**FillColor**](#fillcolor)/[**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle) for the pen and fill, and [**Font**](#font) for text. The current pen position is tracked by [**CurrentX**](#currentx) and [**CurrentY**](#currenty); [**TextWidth**](#textwidth) and [**TextHeight**](#textheight) measure a string in the current font; [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert single coordinates between scale modes.
 
-The coordinate system is governed by [**ScaleMode**](#scalemode), [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), and [**ScaleHeight**](#scaleheight), exactly as on a [**Form**](../Form). [**AutoRedraw**](#autoredraw) controls whether drawn output persists across paints — when **False** (default), the [**Paint**](#paint) event must redraw on every invalidation; when **True**, the page keeps an off-screen buffer that survives invalidations and the **Paint** event is suppressed.
+The coordinate system is governed by [**ScaleMode**](#scalemode), [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), and [**ScaleHeight**](#scaleheight), exactly as on a [**Form**](../Form). [**AutoRedraw**](#autoredraw) controls whether drawn output persists across paints --- when **False** (default), the [**Paint**](#paint) event must redraw on every invalidation; when **True**, the page keeps an off-screen buffer that survives invalidations and the **Paint** event is suppressed.
 
 ## Controls and containers
 
-[**Controls**](#controls) is the collection of every child control on this page, indexable by name or zero-based position. The page is enumerable directly (`For Each ctrl In Me`) — the [**Count**](#count) and [**\_Default**](#controls) members forward to it.
+[**Controls**](#controls) is the collection of every child control on this page, indexable by name or zero-based position. The page is enumerable directly (`For Each ctrl In Me`) --- the [**Count**](#count) and [**\_Default**](#controls) members forward to it.
 
-[**ActiveControl**](#activecontrol) returns the focused child, or **Nothing** if no control on this page has the focus. [**SetFocus**](#setfocus) gives the focus to the page itself, which forwards it to the page's tab order. [**KeyPreview**](#keypreview) routes keystrokes through the page's [**KeyDown**](#keydown), [**KeyUp**](#keyup), and [**KeyPress**](#keypress) events *before* the focused control sees them — useful for handling **Escape** or page-wide hotkeys.
+[**ActiveControl**](#activecontrol) returns the focused child, or **Nothing** if no control on this page has the focus. [**SetFocus**](#setfocus) gives the focus to the page itself, which forwards it to the page's tab order. [**KeyPreview**](#keypreview) routes keystrokes through the page's [**KeyDown**](#keydown), [**KeyUp**](#keyup), and [**KeyPress**](#keypress) events *before* the focused control sees them --- useful for handling **Escape** or page-wide hotkeys.
 
 ## Properties
 
@@ -89,7 +89,7 @@ A member of [**AppearanceConstants**](../../VBRUN/Constants/AppearanceConstants)
 
 Whether drawing performed on the page persists across invalidations. **Boolean**, default **False**.
 
-When **False**, drawing primitives — [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and [**Print**](#print) — paint directly to the screen and the page must redraw them in its [**Paint**](#paint) event whenever the affected area is invalidated. When **True**, the page keeps an off-screen bitmap, drawing primitives paint into it (and immediately to the screen), the bitmap survives invalidations, and the **Paint** event is suppressed.
+When **False**, drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), [**PaintPicture**](#paintpicture), and [**Print**](#print) --- paint directly to the screen and the page must redraw them in its [**Paint**](#paint) event whenever the affected area is invalidated. When **True**, the page keeps an off-screen bitmap, drawing primitives paint into it (and immediately to the screen), the bitmap survives invalidations, and the **Paint** event is suppressed.
 
 ### BackColor
 {: .no_toc }
@@ -110,17 +110,17 @@ The framework reads the current value when the host calls **IPropertyPage2.GetPa
 
 Whether the page has unapplied edits. **Boolean**, default **False**.
 
-Setting **Changed** to **True** notifies the host through **IPropertyPageSite.OnStatusChange** that the page is dirty — the host normally enables its *Apply* button as a result. The framework automatically clears the flag back to **False** before raising [**ApplyChanges**](#applychanges), so handlers do not need to reset it themselves.
+Setting **Changed** to **True** notifies the host through **IPropertyPageSite.OnStatusChange** that the page is dirty --- the host normally enables its *Apply* button as a result. The framework automatically clears the flag back to **False** before raising [**ApplyChanges**](#applychanges), so handlers do not need to reset it themselves.
 
 ### ClipControls
 {: .no_toc }
 
-Whether child controls are clipped out of the page's drawing region during paint. **Boolean**, default **True**. Read-only at run time — set at design time.
+Whether child controls are clipped out of the page's drawing region during paint. **Boolean**, default **True**. Read-only at run time --- set at design time.
 
 ### Controls
 {: .no_toc }
 
-The collection of every control hosted by this page, indexable by control name or zero-based position. **Default property.** Read-only — controls are added to the collection by the runtime, not by user code.
+The collection of every control hosted by this page, indexable by control name or zero-based position. **Default property.** Read-only --- controls are added to the collection by the runtime, not by user code.
 
 ```tb
 Dim ctrl As Control
@@ -207,7 +207,7 @@ Shortcut for [**Font**](#font)`.Name`. **String**.
 ### FontSize
 {: .no_toc }
 
-Shortcut for [**Font**](#font)`.Size` — the point size. **Single**.
+Shortcut for [**Font**](#font)`.Size` --- the point size. **Single**.
 
 ### FontStrikethru
 {: .no_toc }
@@ -344,9 +344,9 @@ The collection of objects the host has asked this page to edit, as a **SelectedC
 
 The returned object exposes three members:
 
-- `Count` **As Long** — the number of selected objects (`0` when the host has not yet called **SetObjects** or has cleared the selection).
-- `Item(`*Index*`)` **As Object** — zero-based indexed access. **Default member**, so `SelectedControls(0)` returns the first object.
-- `_NewEnum` — supports `For Each ctl In SelectedControls`.
+- `Count` **As Long** --- the number of selected objects (`0` when the host has not yet called **SetObjects** or has cleared the selection).
+- `Item(`*Index*`)` **As Object** --- zero-based indexed access. **Default member**, so `SelectedControls(0)` returns the first object.
+- `_NewEnum` --- supports `For Each ctl In SelectedControls`.
 
 The items are returned as **Object**, so use **CallByName** or late-bound member access to read and write their properties.
 
@@ -359,11 +359,11 @@ Next
 ### StandardSize
 {: .no_toc }
 
-The standard size of the page in the host's property-sheet frame. A member of **EnumStandardSize**: **StandardSizeCustom** (0), **StandardSizeSmall** (1 — 250 × 62 dialog units), or **StandardSizeLarge** (2 — 250 × 110 dialog units).
+The standard size of the page in the host's property-sheet frame. A member of **EnumStandardSize**: **StandardSizeCustom** (0), **StandardSizeSmall** (1 --- 250 × 62 dialog units), or **StandardSizeLarge** (2 --- 250 × 110 dialog units).
 
 Syntax: *object*.**StandardSize** [ = *value* ]
 
-Reading **StandardSize** compares the page's current pixel size against the small/large presets and returns **StandardSizeCustom** when neither matches. Assigning **StandardSizeSmall** or **StandardSizeLarge** resizes the page accordingly; assigning **StandardSizeCustom** is a no-op (leave the size as it is). The property is exposed only in code — VB6 exposed it on the design-time property sheet but never in the runtime object model.
+Reading **StandardSize** compares the page's current pixel size against the small/large presets and returns **StandardSizeCustom** when neither matches. Assigning **StandardSizeSmall** or **StandardSizeLarge** resizes the page accordingly; assigning **StandardSizeCustom** is a no-op (leave the size as it is). The property is exposed only in code --- VB6 exposed it on the design-time property sheet but never in the runtime object model.
 
 ### Tag
 {: .no_toc }
@@ -476,7 +476,7 @@ Syntax: *object*.**Point**( *X*, *Y* )
 ### Print
 {: .no_toc }
 
-Writes text to the page's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the VB6 **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and — when [**AutoRedraw**](#autoredraw) is **True** — is recorded into the persistent off-screen bitmap so it survives invalidations.
+Writes text to the page's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the VB6 **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and --- when [**AutoRedraw**](#autoredraw) is **True** --- is recorded into the persistent off-screen bitmap so it survives invalidations.
 
 Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 
@@ -580,7 +580,7 @@ Syntax: *object*.**ValidateControls**
 ### ApplyChanges
 {: .no_toc }
 
-Raised when the host calls **IPropertyPage2.Apply** — typically because the user clicked *OK* or *Apply* on the property-sheet dialog. The handler should write the page's current editor values back to every object in [**SelectedControls**](#selectedcontrols). The framework clears [**Changed**](#changed) to **False** before the handler runs. Not raised when [**Changed**](#changed) is already **False** at the time of the apply.
+Raised when the host calls **IPropertyPage2.Apply** --- typically because the user clicked *OK* or *Apply* on the property-sheet dialog. The handler should write the page's current editor values back to every object in [**SelectedControls**](#selectedcontrols). The framework clears [**Changed**](#changed) to **False** before the handler runs. Not raised when [**Changed**](#changed) is already **False** at the time of the apply.
 
 Syntax: *object*\_**ApplyChanges**( )
 
@@ -625,7 +625,7 @@ Syntax: *object*\_**DragOver**( *Source* **As Control**, *X* **As Single**, *Y* 
 > [!NOTE]
 > Declared for VB6 compatibility; not currently raised in twinBASIC. The host's **IPropertyPage2.EditProperty** request is acknowledged but does not propagate to a managed event yet.
 
-When implemented, raised when the host asks the page to give focus to the editor that corresponds to the named property — typically because the user double-clicked that property in the property browser.
+When implemented, raised when the host asks the page to give focus to the editor that corresponds to the named property --- typically because the user double-clicked that property in the property browser.
 
 Syntax: *object*\_**EditProperty**( *PropertyName* **As String** )
 
@@ -740,7 +740,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Paint
 {: .no_toc }
 
-Raised when an invalidated portion of the page needs to be redrawn. Suppressed when [**AutoRedraw**](#autoredraw) is **True** — the page's persistent off-screen buffer is blitted to the screen instead.
+Raised when an invalidated portion of the page needs to be redrawn. Suppressed when [**AutoRedraw**](#autoredraw) is **True** --- the page's persistent off-screen buffer is blitted to the screen instead.
 
 Syntax: *object*\_**Paint**( )
 
@@ -754,6 +754,6 @@ Syntax: *object*\_**SelectionChanged**( )
 ### Terminate
 {: .no_toc }
 
-Raised when the page is being destroyed — once when its window is unhooked from the host's property-sheet frame, and again when the class instance's last reference is released. The handler runs while [**SelectedControls**](#selectedcontrols) is still populated, giving it a final chance to read state from the edited objects before they are released.
+Raised when the page is being destroyed --- once when its window is unhooked from the host's property-sheet frame, and again when the class instance's last reference is released. The handler runs while [**SelectedControls**](#selectedcontrols) is still populated, giving it a final chance to read state from the edited objects before they are released.
 
 Syntax: *object*\_**Terminate**( )

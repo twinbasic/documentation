@@ -14,7 +14,7 @@ Converts a valid date and time expression to a **Variant** of subtype **Date**.
 Syntax: **CVDate(** *expression* **)**
 
 *expression*
-: *required* Any expression that can be converted to a date — a date literal, a date/time string, or a number that falls within the range of acceptable dates.
+: *required* Any expression that can be converted to a date --- a date literal, a date/time string, or a number that falls within the range of acceptable dates.
 
 The return type is **Variant** (**Date**). An error occurs if *expression* cannot be converted to a date.
 

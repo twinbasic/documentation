@@ -8,7 +8,7 @@ has_toc: false
 # TreeView class
 {: .no_toc }
 
-A **TreeView** is a hierarchical display of [**Node**](Node) objects organized into a tree. Each node can be expanded or collapsed, optionally has a checkbox, and references an icon from an associated [**ImageList**](../ImageList/). The collection of nodes is reached through [**Nodes**](#nodes); each [**Node**](Node) has its own siblings, parent, and child navigation properties.
+A **TreeView** is a hierarchical display of [**Node**](Node) objects organized into a tree. Each node can be expanded or collapsed, optionally has a checkbox, and references an icon from an associated [**ImageList**](../ImageList/). The collection of nodes is accessed through [**Nodes**](#nodes); each [**Node**](Node) has its own siblings, parent, and child navigation properties.
 
 ```tb
 Private Sub Form_Load()
@@ -27,7 +27,7 @@ Private Sub TreeView1_NodeClick(ByVal Node As Node)
 End Sub
 ```
 
-The control inherits the focusable rect-dockable members from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the focusable rect-dockable members from `BaseControlFocusable` --- size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -38,13 +38,13 @@ The control inherits the focusable rect-dockable members from `BaseControlFocusa
 
 | [**Style**](#style)                                | Buttons | Lines | Icons |
 |----------------------------------------------------|---------|-------|-------|
-| **tvwTextOnly**                                    | —       | —     | —     |
-| **tvwPictureText**                                 | —       | —     | yes   |
-| **tvwPlusMinusText**                               | yes     | —     | —     |
-| **tvwPlusMinusPictureText**                        | yes     | —     | yes   |
-| **tvwTreelinesText**                               | —       | yes   | —     |
-| **tvwTreelinesPictureText**                        | —       | yes   | yes   |
-| **tvwTreelinesPlusMinusText**                      | yes     | yes   | —     |
+| **tvwTextOnly**                                    | ---       | ---     | ---     |
+| **tvwPictureText**                                 | ---       | ---     | yes   |
+| **tvwPlusMinusText**                               | yes     | ---     | ---     |
+| **tvwPlusMinusPictureText**                        | yes     | ---     | yes   |
+| **tvwTreelinesText**                               | ---       | yes   | ---     |
+| **tvwTreelinesPictureText**                        | ---       | yes   | yes   |
+| **tvwTreelinesPlusMinusText**                      | yes     | yes   | ---     |
 | **tvwTreelinesPlusMinusPictureText** (default)     | yes     | yes   | yes   |
 
 The values are decoded internally into the Win32 `TVS_HASBUTTONS` / `TVS_HASLINES` style bits.
@@ -177,7 +177,7 @@ The string comparison used for sorting at the root level. A member of [**TreeSor
 ### Style
 {: .no_toc }
 
-The composite visual style — see [the **Style** table above](#style-a-composite-of-buttons--lines--icons--text). A member of [**TreeStyleConstants**](../Enumerations/TreeStyleConstants). Default: **tvwTreelinesPlusMinusPictureText**.
+The composite visual style --- see [the **Style** table above](#style-a-composite-of-buttons--lines--icons--text). A member of [**TreeStyleConstants**](../Enumerations/TreeStyleConstants). Default: **tvwTreelinesPlusMinusPictureText**.
 
 ### WheelScrollEvent
 {: .no_toc }
@@ -296,21 +296,21 @@ Inherited mouse events.
 ### NodeCheck
 {: .no_toc }
 
-Raised when a node's checkbox is toggled — either by the user clicking it, by **Space** keypress, or by code assigning [**Node.Checked**](Node#checked).
+Raised when a node's checkbox is toggled --- either by the user clicking it, by **Space** keypress, or by code assigning [**Node.Checked**](Node#checked).
 
 Syntax: *object*\_**NodeCheck**( **ByVal** *Node* **As Node** )
 
 ### NodeClick
 {: .no_toc }
 
-Raised when a node is clicked. Distinct from [**Click**](#click), which fires on any mouse click in the control regardless of where it lands.
+Raised when a node is clicked. Distinct from [**Click**](#click), which fires on any mouse click in the control regardless of where it occurs.
 
 Syntax: *object*\_**NodeClick**( **ByVal** *Node* **As Node** )
 
 ### NodeSelect
 {: .no_toc }
 
-Raised when a node becomes the selected node — either by user click, by keyboard arrow navigation, or by code assigning [**SelectedItem**](#selecteditem).
+Raised when a node becomes the selected node --- either by user click, by keyboard arrow navigation, or by code assigning [**SelectedItem**](#selecteditem).
 
 Syntax: *object*\_**NodeSelect**( **ByVal** *Node* **As Node** )
 

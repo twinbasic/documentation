@@ -7,11 +7,11 @@ has_toc: false
 
 # FileSystem module
 
-The **FileSystem** module groups together the procedures and statements for working with files and directories on disk. Its members divide cleanly into two camps: *pathname-based* operations that act on something named in the filesystem (creating and deleting files and directories, querying their attributes, walking a directory listing), and *file-number-based* operations that act on a handle previously returned by the **Open** statement (reading, positioning, formatting, and tracking the channel).
+The **FileSystem** module groups together the procedures and statements for working with files and directories on disk. Its members divide cleanly into two camps: *pathname-based* operations that act on something named in the filesystem (creating and deleting files and directories, querying their attributes, iterating over a directory listing), and *file-number-based* operations that act on a handle previously returned by the **Open** statement (reading, positioning, formatting, and tracking the channel).
 
 ## Navigating directories
 
-[**ChDrive**](ChDrive) changes the current drive, [**ChDir**](ChDir) changes the current directory on a given drive, and [**CurDir**](CurDir) returns the path of the current drive — or of any other drive, if one is named. [**MkDir**](MkDir) and [**RmDir**](RmDir) create and remove directories.
+[**ChDrive**](ChDrive) changes the current drive, [**ChDir**](ChDir) changes the current directory on a given drive, and [**CurDir**](CurDir) returns the path of the current drive --- or of any other drive, if one is named. [**MkDir**](MkDir) and [**RmDir**](RmDir) create and remove directories.
 
 ```tb
 ChDrive "D"
@@ -22,7 +22,7 @@ MkDir "D:\Projects\Output"
 
 ## Inspecting files and directories
 
-[**Dir**](Dir) is the wildcard matcher: pass it a pathname containing `*` or `?` and it returns the first matching name, then call it again with no arguments to step through subsequent matches until it returns `""`. [**FileLen**](FileLen) returns the size of a file in bytes without opening it, and [**FileDateTime**](FileDateTime) returns its last-modified timestamp. [**GetAttr**](GetAttr) and [**SetAttr**](SetAttr) read and write the [**VbFileAttribute**](../Constants/VbFileAttribute) flag bits — read-only, hidden, system, archive — and **GetAttr** also reports whether a name refers to a directory by setting the **vbDirectory** bit.
+[**Dir**](Dir) is the wildcard matcher: pass it a pathname containing `*` or `?` and it returns the first matching name, then call it again with no arguments to step through subsequent matches until it returns `""`. [**FileLen**](FileLen) returns the size of a file in bytes without opening it, and [**FileDateTime**](FileDateTime) returns its last-modified timestamp. [**GetAttr**](GetAttr) and [**SetAttr**](SetAttr) read and write the [**VbFileAttribute**](../Constants/VbFileAttribute) flag bits --- read-only, hidden, system, archive --- and **GetAttr** also reports whether a name refers to a directory by setting the **vbDirectory** bit.
 
 ```tb
 Dim Name As String
@@ -44,7 +44,7 @@ Kill "C:\Backup\*.tmp"
 
 ## Opening and tracking file numbers
 
-The lower-level read/write statements — **Open**, **Close**, **Get**, **Put**, **Print**, **Write**, **Input**, and **Line Input** — work in terms of a *file number* in the range 1–511. [**FreeFile**](FreeFile) returns the next number that isn't currently in use, sparing the caller from picking one by hand and racing other code to it. Once a file is open, [**FileAttr**](FileAttr) reports the access mode — **Input**, **Output**, **Random**, **Append**, or **Binary** — that the file number was opened with. [**Reset**](Reset) closes every file number currently open and flushes its buffers, and is most useful as a last-ditch cleanup before exit.
+The lower-level read/write statements --- **Open**, **Close**, **Get**, **Put**, **Print**, **Write**, **Input**, and **Line Input** --- work in terms of a *file number* in the range 1--511. [**FreeFile**](FreeFile) returns the next number that isn't currently in use, sparing the caller from picking one by hand and racing other code to it. Once a file is open, [**FileAttr**](FileAttr) reports the access mode --- **Input**, **Output**, **Random**, **Append**, or **Binary** --- that the file number was opened with. [**Reset**](Reset) closes every file number currently open and flushes its buffers, and is most useful as a last-ditch cleanup before exit.
 
 ```tb
 Dim N As Long
@@ -56,7 +56,7 @@ Close #N
 
 ## Position within an open file
 
-For an open file number, [**EOF**](EOF) returns **True** once a sequential read has run past the last record, [**LOF**](LOF) returns the file's total length in bytes, and [**Loc**](Loc) returns the current read/write position. The unit of *position* depends on the open mode — record number for **Random**, byte offset for **Binary**, and the byte position divided by 128 for sequential modes — so the per-mode tables on each function's page are the authoritative reference. [**Seek**](Seek) doubles as a function and a statement: the function returns the position of the **next** read or write (whereas **Loc** reports the position of the *last*), and the statement repositions the file pointer ahead of the next operation.
+For an open file number, [**EOF**](EOF) returns **True** once a sequential read has run past the last record, [**LOF**](LOF) returns the file's total length in bytes, and [**Loc**](Loc) returns the current read/write position. The unit of *position* depends on the open mode --- record number for **Random**, byte offset for **Binary**, and the byte position divided by 128 for sequential modes --- so the per-mode tables on each function's page are the authoritative reference. [**Seek**](Seek) doubles as a function and a statement: the function returns the position of the **next** read or write (whereas **Loc** reports the position of the *last*), and the statement repositions the file pointer ahead of the next operation.
 
 ```tb
 Dim N As Long, Line As String
@@ -70,7 +70,7 @@ Close #N
 
 ## Reading and formatting through open file numbers
 
-[**Input**](Input) and [**Input$**](Input) return a fixed number of characters read from a file number opened with **Open**, as a **Variant** or a **String** respectively; [**InputB**](InputB) and [**InputB$**](InputB) are their byte-oriented counterparts, counting raw bytes rather than UTF-16 characters. They differ from the **Input #** statement in that they return every character they read — commas, newlines, quotation marks, leading spaces, and all — making them the right choice when the bytes on disk are not a stream of comma-delimited values.
+[**Input**](Input) and [**Input$**](Input) return a fixed number of characters read from a file number opened with **Open**, as a **Variant** or a **String** respectively; [**InputB**](InputB) and [**InputB$**](InputB) are their byte-oriented counterparts, counting raw bytes rather than UTF-16 characters. They differ from the **Input #** statement in that they return every character they read --- commas, newlines, quotation marks, leading spaces, and all --- making them the right choice when the bytes on disk are not a stream of comma-delimited values.
 
 [**Width**](Width) sets the output line width on a sequential output channel: subsequent **Print #** wraps to a new line once the chosen number of characters has been written, or never wraps at all when *Width* is `0`.
 

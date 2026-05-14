@@ -13,19 +13,19 @@ Syntax:
 > **Public** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ **As** [ **New** ] *type* ] [ **,** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ **As** [ **New** ] *type* ]] **. . .**
 
 **WithEvents**
-: *optional*  Keyword specifying that *varname* is an object variable used to respond to events triggered by an ActiveX object. **WithEvents** is valid only in class modules. You can declare as many individual variables as you like by using **WithEvents**, but you can't create arrays with **WithEvents**, nor can you use **New** with **WithEvents**.
+: *optional* Keyword specifying that *varname* is an object variable used to respond to events triggered by an ActiveX object. **WithEvents** is valid only in class modules. Any number of individual variables may be declared by using **WithEvents**, but arrays cannot be declared with **WithEvents**, nor can **New** be combined with **WithEvents**.
 
 *varname*
 : Name of the variable; follows standard naming conventions.
 
 *subscripts*
-: *optional*  Dimensions of an array variable; up to 60 multiple dimensions may be declared. The *subscripts* argument uses the following syntax: [ *lower* **To** ] *upper* [ , [ *lower* **To** ] *upper* ] **. . .**.  When not explicitly stated in *lower*, the lower bound of an array is controlled by the [**Option Base**](Option#Base) statement. The lower bound is zero if no **Option Base** statement is present.
+: *optional* Dimensions of an array variable; up to 60 multiple dimensions may be declared. The *subscripts* argument uses the following syntax: [ *lower* **To** ] *upper* [ , [ *lower* **To** ] *upper* ] **. . .**. When not explicitly stated in *lower*, the lower bound of an array is controlled by the [**Option Base**](Option#Base) statement. The lower bound is zero if no **Option Base** statement is present.
 
 **New**
-: *optional*  Keyword that enables implicit creation of an object. If you use **New** when declaring the object variable, a new instance of the object is created on first reference to it, so you don't have to use the **[Set](Set)** statement to assign the object reference. The **New** keyword can't be used to declare variables of any intrinsic data type or to declare instances of dependent objects, and it can't be used with **WithEvents**.
+: *optional* Keyword that enables implicit creation of an object. When **New** is used to declare the object variable, a new instance of the object is created on first reference to it, so the **[Set](Set)** statement is not required to assign the object reference. The **New** keyword can't be used to declare variables of any intrinsic data type or to declare instances of dependent objects, and it can't be used with **WithEvents**.
 
 *type*
-: *optional*  Data type of the variable; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (for variable-length strings), **String** *length* (for fixed-length strings), **Object**, **Variant**, a user-defined type, or an object type. Use a separate **As** *type* clause for each variable being defined.
+: *optional* Data type of the variable; may be **Byte**, **Boolean**, **Integer**, **Long**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (for variable-length strings), **String** *length* (for fixed-length strings), **Object**, **Variant**, a user-defined type, or an object type. Use a separate **As** *type* clause for each variable being defined.
 
 Variables declared by using the **Public** statement are available to all procedures in all modules in all applications, unless **[Option Private Module](Option)** is in effect; in which case, the variables are public only within the project in which they reside.
 
@@ -45,9 +45,9 @@ Public X As New Worksheet
 
 If the **New** keyword is not used when declaring an object variable, the variable that refers to the object must be assigned an existing object by using the **Set** statement before it can be used. Until it is assigned an object, the declared object variable has the special value **Nothing**, which indicates that it doesn't refer to any particular instance of an object.
 
-You can also use the **Public** statement with empty parentheses to declare a dynamic array. After declaring a dynamic array, use the **[ReDim](ReDim)** statement within a procedure to define the number of dimensions and elements in the array. If you try to redeclare a dimension for an array variable whose size was explicitly specified in a [**Private**](Private), **Public**, or [**Dim**](Dim) statement, an error occurs.
+The **Public** statement with empty parentheses also declares a dynamic array. After declaring a dynamic array, use the **[ReDim](ReDim)** statement within a procedure to define the number of dimensions and elements in the array. Redeclaring a dimension for an array variable whose size was explicitly specified in a [**Private**](Private), **Public**, or [**Dim**](Dim) statement raises an error.
 
-If you don't specify a data type or object type, and there is no [**Deftype**](Deftype) statement in the module, the variable is **Variant** by default.
+When no data type or object type is specified, and there is no [**Deftype**](Deftype) statement in the module, the variable is **Variant** by default.
 
 When variables are initialized, a numeric variable is initialized to 0, a variable-length string is initialized to a zero-length string (""), and a fixed-length string is filled with zeros. **Variant** variables are initialized to **Empty**. Each element of a user-defined type variable is initialized as if it were a separate variable.
 

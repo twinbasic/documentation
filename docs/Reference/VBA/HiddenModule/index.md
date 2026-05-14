@@ -9,7 +9,7 @@ has_toc: false
 
 # (Default) module
 
-The **(Default)** module — known internally as **\_HiddenModule** — gathers together the unqualified intrinsic procedures that the compiler emits calls into and that are also callable directly: raw-memory helpers, atomic operations, compile-time reflection, codegen and stack-inspection primitives, and a long tail of runtime utilities. Members of this module are referenced without a qualifier, the same way **MsgBox** and **CStr** are.
+The **(Default)** module --- known internally as **\_HiddenModule** --- gathers together the unqualified intrinsic procedures that the compiler emits calls into and that are also callable directly: raw-memory helpers, atomic operations, compile-time reflection, codegen and stack-inspection primitives, and a long tail of runtime utilities. Members of this module are referenced without a qualifier, the same way **MsgBox** and **CStr** are.
 
 Most of these procedures are deliberately hidden from IntelliSense and exist for advanced or low-level use; use them only when the higher-level alternatives in **[Math](../Math/)**, **[Strings](../Strings/)**, **[Information](../Information/)**, or **[Interaction](../Interaction/)** don't cover the case. Several have additional internal-only members that are not listed here at all.
 
@@ -17,7 +17,7 @@ The pointer functions [**ObjPtr**](../Information/ObjPtr), [**StrPtr**](../Infor
 
 ## Reading and writing memory
 
-Memory at a known address is read and written one machine word at a time with the **GetMem*** / **PutMem*** family — [**GetMem1**](GetMem1), [**GetMem2**](GetMem2), [**GetMem4**](GetMem4), [**GetMem8**](GetMem8), and [**GetMemPtr**](GetMemPtr) for reads, with matching [**PutMem1**](PutMem1), [**PutMem2**](PutMem2), [**PutMem4**](PutMem4), [**PutMem8**](PutMem8), and [**PutMemPtr**](PutMemPtr). [**vbaCopyBytes**](vbaCopyBytes) and [**vbaCopyBytesZero**](vbaCopyBytesZero) move blocks; [**AllocMem**](AllocMem) and [**FreeMem**](FreeMem) manage heap allocations. The pointer constructors that feed these helpers — [**ObjPtr**](../Information/ObjPtr), [**StrPtr**](../Information/StrPtr), [**VarPtr**](../Information/VarPtr) — live in [**Information**](../Information/).
+Memory at a known address is read and written one machine word at a time with the **GetMem*** / **PutMem*** family --- [**GetMem1**](GetMem1), [**GetMem2**](GetMem2), [**GetMem4**](GetMem4), [**GetMem8**](GetMem8), and [**GetMemPtr**](GetMemPtr) for reads, with matching [**PutMem1**](PutMem1), [**PutMem2**](PutMem2), [**PutMem4**](PutMem4), [**PutMem8**](PutMem8), and [**PutMemPtr**](PutMemPtr). [**vbaCopyBytes**](vbaCopyBytes) and [**vbaCopyBytesZero**](vbaCopyBytesZero) move blocks; [**AllocMem**](AllocMem) and [**FreeMem**](FreeMem) manage heap allocations. The pointer constructors that feed these helpers --- [**ObjPtr**](../Information/ObjPtr), [**StrPtr**](../Information/StrPtr), [**VarPtr**](../Information/VarPtr) --- live in [**Information**](../Information/).
 
 ```tb
 Dim Buffer As LongPtr = AllocMem(16)
@@ -35,15 +35,15 @@ FreeMem Buffer
 
 ## Atomic operations
 
-The **Interlocked*** family wraps the corresponding Windows kernel atomics — building blocks for lock-free counters and pointer swaps: [**InterlockedExchangePointer**](InterlockedExchangePointer), [**InterlockedCompareExchangePointer**](InterlockedCompareExchangePointer), [**InterlockedCompareExchange32**](InterlockedCompareExchange32), [**InterlockedCompareExchange64**](InterlockedCompareExchange64), [**InterlockedIncrement32**](InterlockedIncrement32), and [**InterlockedDecrement32**](InterlockedDecrement32).
+The **Interlocked*** family wraps the corresponding Windows kernel atomics --- building blocks for lock-free counters and pointer swaps: [**InterlockedExchangePointer**](InterlockedExchangePointer), [**InterlockedCompareExchangePointer**](InterlockedCompareExchangePointer), [**InterlockedCompareExchange32**](InterlockedCompareExchange32), [**InterlockedCompareExchange64**](InterlockedCompareExchange64), [**InterlockedIncrement32**](InterlockedIncrement32), and [**InterlockedDecrement32**](InterlockedDecrement32).
 
 ## Compile-time reflection
 
-A handful of intrinsics ask questions about the surrounding type without running anything; they are resolved by the compiler and burn in as constants. [**GetDeclaredTypeProgId**](GetDeclaredTypeProgId), [**GetDeclaredTypeClsid**](GetDeclaredTypeClsid), [**GetDeclaredTypeIid**](GetDeclaredTypeIid), and [**GetDeclaredTypeEventIid**](GetDeclaredTypeEventIid) report a type's COM identifiers. [**GetDeclaredMinEnumValue**](GetDeclaredMinEnumValue) and [**GetDeclaredMaxEnumValue**](GetDeclaredMaxEnumValue) return the minimum and maximum value of a declared enumeration.
+A few intrinsics ask questions about the surrounding type without running anything; they are resolved by the compiler and embedded as constants. [**GetDeclaredTypeProgId**](GetDeclaredTypeProgId), [**GetDeclaredTypeClsid**](GetDeclaredTypeClsid), [**GetDeclaredTypeIid**](GetDeclaredTypeIid), and [**GetDeclaredTypeEventIid**](GetDeclaredTypeEventIid) report a type's COM identifiers. [**GetDeclaredMinEnumValue**](GetDeclaredMinEnumValue) and [**GetDeclaredMaxEnumValue**](GetDeclaredMaxEnumValue) return the minimum and maximum value of a declared enumeration.
 
 ## Codegen injection and stack inspection
 
-[**Emit**](Emit) and [**EmitAny**](EmitAny) splice raw bytes or typed literals into the codegen output of the enclosing procedure — the vehicle for inline assembly. [**StackOffset**](StackOffset) and [**StackArgsSize**](StackArgsSize) report layout information at the current call site; [**UnprotectedAccess**](UnprotectedAccess) returns an object reference that bypasses the usual access checks on private members.
+[**Emit**](Emit) and [**EmitAny**](EmitAny) splice raw bytes or typed literals into the codegen output of the enclosing procedure --- the vehicle for inline assembly. [**StackOffset**](StackOffset) and [**StackArgsSize**](StackArgsSize) report layout information at the current call site; [**UnprotectedAccess**](UnprotectedAccess) returns an object reference that bypasses the usual access checks on private members.
 
 ## Runtime expression evaluation
 
@@ -108,7 +108,7 @@ A handful of intrinsics ask questions about the surrounding type without running
 
 ## IGetMessageHook interface
 
-The **IGetMessageHook** interface taps into the Windows message stream for a chosen window — and optionally its descendants — and forwards messages of a chosen type to a user-supplied callback. Obtain an instance with [**RuntimeCreateGetMessageHook**](RuntimeCreateGetMessageHook); connect callbacks with [**RegisterMessage**](RegisterMessage); then call [**Start**](Start) to activate every registered subscription, and [**Stop**](Stop) to remove them.
+The **IGetMessageHook** interface hooks into the Windows message stream for a chosen window --- and optionally its descendants --- and forwards messages of a chosen type to a user-supplied callback. Obtain an instance with [**RuntimeCreateGetMessageHook**](RuntimeCreateGetMessageHook); connect callbacks with [**RegisterMessage**](RegisterMessage); then call [**Start**](Start) to activate every registered subscription, and [**Stop**](Stop) to remove them.
 
 The interface inherits directly from **stdole.IUnknown** (it is not dispatch-based), and the callbacks supplied to **RegisterMessage** are typed as [**GetMessageHookHelper.GetMessageHandler**](#getmessagehandler).
 
@@ -141,7 +141,7 @@ Selects the window scope passed to [**RegisterMessage**](RegisterMessage):
 | Constant                                 | Value | Description |
 |------------------------------------------|-------|-------------|
 | **ExactWindow**{: #ExactWindow }         | 1     | Hook only the specified window. |
-| **AllDescendants**{: #AllDescendants }   | 2     | Hook the specified window and every descendant — children, grandchildren, and so on. |
+| **AllDescendants**{: #AllDescendants }   | 2     | Hook the specified window and every descendant --- children, grandchildren, and so on. |
 | **DirectChildren**{: #DirectChildren }   | 4     | Hook the specified window and its immediate children only. |
 
 ## GetMessageHookHelper module

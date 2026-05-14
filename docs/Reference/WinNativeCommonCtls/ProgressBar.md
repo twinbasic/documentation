@@ -35,7 +35,7 @@ ProgressBar1.MarqueeSpeed = 30       ' milliseconds per animation step
 ProgressBar1.MarqueeAnimation = True ' start animating
 ```
 
-The control inherits the non-focusable rect-dockable members from `BaseControlNotFocusable2` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the non-focusable rect-dockable members from `BaseControlNotFocusable2` --- size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -44,9 +44,9 @@ The control inherits the non-focusable rect-dockable members from `BaseControlNo
 
 The visual is the cartesian product of three properties:
 
-- **[Scrolling](#scrolling)** — *Standard* (the default, animated segmented bar), *Smooth* (a continuous block — combine with [**SmoothReverse**](#smoothreverse) to allow the bar to decrease), or *Marquee* (an indeterminate animated stripe; control with [**MarqueeAnimation**](#marqueeanimation) + [**MarqueeSpeed**](#marqueespeed)).
-- **[State](#state)** — *Normal* (theme-default color, typically green), *Error* (typically red), or *Paused* (typically yellow). The OS chooses the actual colors based on its current theme.
-- **[Orientation](#orientation)** — *Horizontal* or *Vertical*.
+- **[Scrolling](#scrolling)** --- *Standard* (the default, animated segmented bar), *Smooth* (a continuous block --- combine with [**SmoothReverse**](#smoothreverse) to allow the bar to decrease), or *Marquee* (an indeterminate animated stripe; control with [**MarqueeAnimation**](#marqueeanimation) + [**MarqueeSpeed**](#marqueespeed)).
+- **[State](#state)** --- *Normal* (theme-default color, typically green), *Error* (typically red), or *Paused* (typically yellow). The OS chooses the actual colors based on its current theme.
+- **[Orientation](#orientation)** --- *Horizontal* or *Vertical*.
 
 All three can be changed at run time; the underlying Win32 styles are re-applied without recreating the window.
 
@@ -120,12 +120,12 @@ The visual style of progress. A member of [**PrbScrolling**](#prbscrolling). Def
 ### SmoothReverse
 {: .no_toc }
 
-Whether a smooth progress bar can decrease (when [**Value**](#value) is set to a smaller number). **Boolean**. Default: **False**. Without this flag a smooth bar that has reached, say, 80% will not visibly decrease when [**Value**](#value) is reduced — it simply snaps back. Only meaningful when [**Scrolling**](#scrolling) is **PrbScrollingSmooth**.
+Whether a smooth progress bar can decrease (when [**Value**](#value) is set to a smaller number). **Boolean**. Default: **False**. Without this flag a smooth bar that has reached, say, 80% will not visibly decrease when [**Value**](#value) is reduced --- it simply snaps back. Only meaningful when [**Scrolling**](#scrolling) is **PrbScrollingSmooth**.
 
 ### State
 {: .no_toc }
 
-The visual state of the bar. A member of [**PrbState**](#prbstate). Default: **PrbStateNormal**. The OS uses the value to tint the bar — **PrbStateError** typically renders red, **PrbStatePaused** typically renders yellow, **PrbStateNormal** uses the theme-default progress color (typically green).
+The visual state of the bar. A member of [**PrbState**](#prbstate). Default: **PrbStateNormal**. The OS uses the value to tint the bar --- **PrbStateError** typically renders red, **PrbStatePaused** typically renders yellow, **PrbStateNormal** uses the theme-default progress color (typically green).
 
 ### Step
 {: .no_toc }
@@ -153,7 +153,7 @@ Events
 ### Change
 {: .no_toc }
 
-Raised when [**Value**](#value) has changed — either through direct assignment, through [**StepIt**](#stepit), or by code adjusting [**Step**](#step) and re-applying.
+Raised when [**Value**](#value) has changed --- either through direct assignment, through [**StepIt**](#stepit), or by code adjusting [**Step**](#step) and re-applying.
 
 Syntax: *object*\_**Change**( )
 
@@ -201,7 +201,7 @@ Determines how the progress bar animates as the value changes. Declared on the *
 |------------------------------|-------|------------------------------------------------------------------------|
 | **PrbScrollingStandard**{: #PrbScrolling_PrbScrollingStandard } | 0 | Segmented bar with the classic discrete blocks animation. |
 | **PrbScrollingSmooth**{: #PrbScrolling_PrbScrollingSmooth } | 1 | Continuous block with no inter-segment gaps. Pair with [**SmoothReverse**](#smoothreverse) to allow the value to decrease visibly. |
-| **PrbScrollingMarquee**{: #PrbScrolling_PrbScrollingMarquee } | 2 | Indeterminate animated stripe. Drive with [**MarqueeAnimation**](#marqueeanimation) and [**MarqueeSpeed**](#marqueespeed); the actual [**Value**](#value) is irrelevant. |
+| **PrbScrollingMarquee**{: #PrbScrolling_PrbScrollingMarquee } | 2 | Indeterminate animated stripe. Control with [**MarqueeAnimation**](#marqueeanimation) and [**MarqueeSpeed**](#marqueespeed); the actual [**Value**](#value) is irrelevant. |
 
 ## PrbState
 {: #prbstate }

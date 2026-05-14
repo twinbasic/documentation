@@ -15,11 +15,11 @@ Syntax: *expression*.**Evaluate()**
 *expression*
 : *required* An object expression that evaluates to an [**ITbExpression**](./#itbexpression-interface), typically the value returned by [**Compile**](Compile).
 
-The return value is a **Variant** holding the result of the expression. Its subtype reflects the natural type of the value — for example, **Double** for a numeric expression, **String** for a text-producing one, **Boolean** for a comparison.
+The return value is a **Variant** holding the result of the expression. Its subtype reflects the natural type of the value --- for example, **Double** for a numeric expression, **String** for a text-producing one, **Boolean** for a comparison.
 
-Each call re-runs the expression against the current state of its bindings. If the bound objects expose properties whose values can change between calls — host application state, the current row of a recordset, configurable parameters — evaluating the same compiled expression twice may legitimately return different values.
+Each call re-runs the expression against the current state of its bindings. If the bound objects expose properties whose values can change between calls --- host application state, the current row of a recordset, configurable parameters --- evaluating the same compiled expression twice may legitimately return different values.
 
-A run-time error raised inside the expression — division by zero, type mismatch, an invalid call into a bound object — propagates out of **Evaluate** like any other run-time error.
+A run-time error raised inside the expression --- division by zero, type mismatch, an invalid call into a bound object --- propagates out of **Evaluate** like any other run-time error.
 
 ### Example
 

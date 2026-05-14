@@ -11,7 +11,7 @@ The minimum severity at which the CEF runtime records messages to its debug log.
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **CefLogDisable**{: #cefLogDisable } | 0 | Default — logging is disabled. |
+| **CefLogDisable**{: #cefLogDisable } | 0 | Default --- logging is disabled. |
 | **CefLogVerbose**{: #cefLogVerbose } | 1 | All messages, including verbose tracing. |
 | **CefLogInfo**{: #cefLogInfo } | 2 | Informational messages and above. |
 | **CefLogWarning**{: #cefLogWarning } | 3 | Warnings and above. |

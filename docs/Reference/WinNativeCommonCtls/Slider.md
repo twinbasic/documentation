@@ -8,7 +8,7 @@ has_toc: false
 # Slider class
 {: .no_toc }
 
-A **Slider** is a trackbar control — a horizontal or vertical channel with a draggable thumb that lets the user pick a value between [**Min**](#min) and [**Max**](#max). Optional tick marks, a floating value tip, and a highlighted selection range round out the control.
+A **Slider** is a trackbar control --- a horizontal or vertical channel with a draggable thumb that lets the user pick a value between [**Min**](#min) and [**Max**](#max). Optional tick marks, a floating value tip, and a highlighted selection range round out the control.
 
 ```tb
 Private Sub Form_Load()
@@ -25,7 +25,7 @@ Private Sub Slider1_Change()
 End Sub
 ```
 
-The control inherits the focusable rect-dockable members from `BaseControlFocusableNoFont` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**. Slider does not have a [**Font**](../VB/CheckBox#font) property (its thumb and tick marks are drawn by the OS theme).
+The control inherits the focusable rect-dockable members from `BaseControlFocusableNoFont` --- size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**. Slider does not have a [**Font**](../VB/CheckBox#font) property (its thumb and tick marks are drawn by the OS theme).
 
 * TOC
 {:toc}
@@ -34,7 +34,7 @@ The control inherits the focusable rect-dockable members from `BaseControlFocusa
 
 The slider raises two distinct events as the user interacts with the thumb:
 
-- **[Scroll](#scroll)** fires *during* drag and during keyboard navigation — every time the thumb position is updated, regardless of whether the user has settled.
+- **[Scroll](#scroll)** fires *during* drag and during keyboard navigation --- every time the thumb position is updated, regardless of whether the user has settled.
 - **[Change](#change)** fires *only when the drag completes* (mouse release) or when the user reaches an extremity with the keyboard.
 
 Use **Scroll** for live previews ("show the value as the user is dragging") and **Change** for commit-style handlers ("apply the value once the user lets go").

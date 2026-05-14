@@ -106,7 +106,7 @@ EventInfo (MouseEvent) provides mouse information such as the relative X/Y posit
 ***
 ## See also
 
-- [`ICustomControl`](../../tB/Packages/CustomControls/Framework/ICustomControl) — the interface every custom control implements
-- [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) — the drawing surface passed to **Paint**
+- [`ICustomControl`](../../tB/Packages/CustomControls/Framework/ICustomControl) -- the interface every custom control implements
+- [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) -- the drawing surface passed to **Paint**
 - Style helpers used by the `BackgroundFill` / `Borders` / `Corners` / `TextRenderingOptions` fields of an `ElementDescriptor`: [`Fill`](../../tB/Packages/CustomControls/Styles/Fill), [`Borders`](../../tB/Packages/CustomControls/Styles/Borders), [`Corners`](../../tB/Packages/CustomControls/Styles/Corners), [`TextRendering`](../../tB/Packages/CustomControls/Styles/TextRendering)
-- [CustomControls package reference](../../tB/Packages/CustomControls/) — overview of the framework and the built-in `Waynes…` controls (a number of which — `WaynesGrid`, `WaynesButton`, … — are exactly the worked examples mentioned above)
+- [CustomControls package reference](../../tB/Packages/CustomControls/) -- overview of the framework and the built-in `Waynes…` controls (a number of which --- `WaynesGrid`, `WaynesButton`, … --- are exactly the worked examples mentioned above)

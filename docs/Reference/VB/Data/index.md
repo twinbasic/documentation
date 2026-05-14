@@ -8,7 +8,7 @@ has_toc: false
 # Data class
 {: .no_toc }
 
-A **Data** control is a Win32 native control that opens a DAO database and exposes a single recordset to other controls on the form through data binding. It draws a strip of four arrow-shaped buttons — **Move-First**, **Move-Previous**, **Move-Next**, **Move-Last** — with a centred [**Caption**](#caption) between them, and lets the user step through the recordset with the mouse. The control is normally placed on a **Form** or **UserControl** at design time. Setting [**DatabaseName**](#databasename) and [**RecordSource**](#recordsource) is enough to populate it; the recordset opens automatically the first time the control is created. The default event is [**Validate**](#validate); the control has no usable default property.
+A **Data** control is a Win32 native control that opens a DAO database and exposes a single recordset to other controls on the form through data binding. It draws a strip of four arrow-shaped buttons --- **Move-First**, **Move-Previous**, **Move-Next**, **Move-Last** --- with a centred [**Caption**](#caption) between them, and lets the user step through the recordset with the mouse. The control is normally placed on a **Form** or **UserControl** at design time. Setting [**DatabaseName**](#databasename) and [**RecordSource**](#recordsource) is enough to populate it; the recordset opens automatically the first time the control is created. The default event is [**Validate**](#validate); the control has no usable default property.
 
 ```tb
 Private Sub Form_Load()
@@ -41,7 +41,7 @@ End Sub
 
 [**DatabaseName**](#databasename) gives the path to the database file (for Jet/ACE) or the DSN (for ODBC); [**Connect**](#connect) is the connection string. The Jet-flavoured default `"Access 2000;"` is rewritten to `"MS Access;"` before the database is opened, matching the VB6 behaviour. [**Exclusive**](#exclusive) and [**ReadOnly**](#readonly) are passed through to **OpenDatabase**, and [**Options**](#options) is the DAO option bit-mask. [**DefaultCursorType**](#defaultcursortype) is consulted only when **DefaultType** is **vbUseODBC**.
 
-[**RecordSource**](#recordsource) is the table name (or SQL statement) opened against the database, and [**RecordsetType**](#recordsettype) chooses between table, dynaset, and snapshot ([**RecordsetTypeConstants**](../../VBRUN/Constants/RecordsetTypeConstants)). Calling [**Refresh**](#refresh) reopens the recordset using the current values of these properties — typically after one of them is changed at run time.
+[**RecordSource**](#recordsource) is the table name (or SQL statement) opened against the database, and [**RecordsetType**](#recordsettype) chooses between table, dynaset, and snapshot ([**RecordsetTypeConstants**](../../VBRUN/Constants/RecordsetTypeConstants)). Calling [**Refresh**](#refresh) reopens the recordset using the current values of these properties --- typically after one of them is changed at run time.
 
 The opened objects are exposed read-only as [**Database**](#database) and read/write as [**Recordset**](#recordset). Assigning a new value to **Recordset** disconnects from the current database, adopts the new recordset, and re-binds every dependent control.
 
@@ -50,7 +50,7 @@ The opened objects are exposed read-only as [**Database**](#database) and read/w
 Other controls become *data-bound* by setting their **DataSource** to this **Data** control and their **DataField** to the name of a field in [**Recordset**](#recordset). A bound control reads its value from that field whenever the current record changes, and writes user edits back into the field as part of the next save. The **Data** control mediates both directions, raising [**Reposition**](#reposition) after the bound controls have re-synced and [**Validate**](#validate) before any operation that would discard pending edits.
 
 ```tb
-' At design time you would normally set these in the property sheet,
+' At design time these are normally set in the property sheet,
 ' but they can also be assigned in code:
 Set txtTitle.DataSource = Data1
 txtTitle.DataField = "Title"
@@ -60,11 +60,11 @@ chkInPrint.DataField = "InPrint"
 
 ## Navigation and end-of-file behaviour
 
-The four buttons step through the recordset with **MoveFirst**, **MovePrevious**, **MoveNext**, and **MoveLast**. [**BOFAction**](#bofaction) controls what happens when the user moves past the first record ([**DataBOFconstants**](../../VBRUN/Constants/DataBOFconstants)): **vbMoveFirst** (default) snaps back to the first record; **vbBOF** lets the recordset sit on the BOF marker. [**EOFAction**](#eofaction) controls what happens past the last record ([**DataEOFConstants**](../../VBRUN/Constants/DataEOFConstants)): **vbMoveLast** (default), **vbEOF**, or **vbAddNew** — which clears every bound control and starts a new record.
+The four buttons step through the recordset with **MoveFirst**, **MovePrevious**, **MoveNext**, and **MoveLast**. [**BOFAction**](#bofaction) controls what happens when the user moves past the first record ([**DataBOFconstants**](../../VBRUN/Constants/DataBOFconstants)): **vbMoveFirst** (default) snaps back to the first record; **vbBOF** lets the recordset sit on the BOF marker. [**EOFAction**](#eofaction) controls what happens past the last record ([**DataEOFConstants**](../../VBRUN/Constants/DataEOFConstants)): **vbMoveLast** (default), **vbEOF**, or **vbAddNew** --- which clears every bound control and starts a new record.
 
 ## The validate / save cycle
 
-Whenever the control is about to leave the current record — through a navigation button, a programmatic move, **Refresh**, **Update**, **Delete**, or unloading the form — it fires [**Validate**](#validate) with an *Action* argument from [**DataValidateConstants**](../../VBRUN/Constants/DataValidateConstants) and a *Save* flag indicating whether bound controls hold unsaved edits. Setting *Action* to **vbDataActionCancel** (0) cancels the operation and keeps the current record. If *Save* is non-zero on return and the operation proceeds, the bound controls are flushed back into the recordset before the move occurs.
+Whenever the control is about to leave the current record --- through a navigation button, a programmatic move, **Refresh**, **Update**, **Delete**, or unloading the form --- it fires [**Validate**](#validate) with an *Action* argument from [**DataValidateConstants**](../../VBRUN/Constants/DataValidateConstants) and a *Save* flag indicating whether bound controls hold unsaved edits. Setting *Action* to **vbDataActionCancel** (0) cancels the operation and keeps the current record. If *Save* is non-zero on return and the operation proceeds, the bound controls are flushed back into the recordset before the move occurs.
 
 [**Reposition**](#reposition) is raised after a successful move, with the bound controls already showing the new record. [**UpdateControls**](#updatecontrols) re-pulls the current record into the bound controls without firing **Reposition**, and [**UpdateRecord**](#updaterecord) is reserved for explicit save-without-move (currently unimplemented).
 
@@ -83,12 +83,12 @@ The fill colour of the band behind the [**Caption**](#caption), as an **OLE_COLO
 ### BOFAction
 {: .no_toc }
 
-Controls what happens when the user moves past the start of the recordset. A member of [**DataBOFconstants**](../../VBRUN/Constants/DataBOFconstants): **vbMoveFirst** (0, default — snap back to the first record) or **vbBOF** (1 — let the recordset sit on the beginning-of-file marker, leaving bound controls cleared).
+Controls what happens when the user moves past the start of the recordset. A member of [**DataBOFconstants**](../../VBRUN/Constants/DataBOFconstants): **vbMoveFirst** (0, default --- snap back to the first record) or **vbBOF** (1 --- let the recordset sit on the beginning-of-file marker, leaving bound controls cleared).
 
 ### Caption
 {: .no_toc }
 
-The text drawn in the band between the navigation buttons. **String**, default `"Data"`. The string is read directly from the underlying window — assigning to **Caption** is reflected immediately.
+The text drawn in the band between the navigation buttons. **String**, default `"Data"`. The string is read directly from the underlying window --- assigning to **Caption** is reflected immediately.
 
 Syntax: *object*.**Caption** [ = *string* ]
 
@@ -110,7 +110,7 @@ A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstant
 ### Database
 {: .no_toc }
 
-The currently open DAO database. Read-only — assign to [**Recordset**](#recordset) or call [**Refresh**](#refresh) to change it.
+The currently open DAO database. Read-only --- assign to [**Recordset**](#recordset) or call [**Refresh**](#refresh) to change it.
 
 ### DatabaseName
 {: .no_toc }
@@ -125,7 +125,7 @@ The cursor driver to use when [**DefaultType**](#defaulttype) is **vbUseODBC**. 
 ### DefaultType
 {: .no_toc }
 
-The database engine to use. A member of [**DatabaseTypeConstants**](../../VBRUN/Constants/DatabaseTypeConstants): **vbUseJet** (2, default), **vbUseODBC** (1), or **vbUseACE** (3 — new in twinBASIC, uses the Access ACE engine). Read once when the recordset is opened.
+The database engine to use. A member of [**DatabaseTypeConstants**](../../VBRUN/Constants/DatabaseTypeConstants): **vbUseJet** (2, default), **vbUseODBC** (1), or **vbUseACE** (3 --- new in twinBASIC, uses the Access ACE engine). Read once when the recordset is opened.
 
 ### DragIcon
 {: .no_toc }
@@ -135,7 +135,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -145,7 +145,7 @@ Determines whether the control accepts user input. A disabled **Data** control s
 ### EOFAction
 {: .no_toc }
 
-Controls what happens when the user moves past the end of the recordset. A member of [**DataEOFConstants**](../../VBRUN/Constants/DataEOFConstants): **vbMoveLast** (0, default — snap back to the last record), **vbEOF** (1 — sit on the end-of-file marker), or **vbAddNew** (2 — clear all bound controls and start a new record ready for editing).
+Controls what happens when the user moves past the end of the recordset. A member of [**DataEOFConstants**](../../VBRUN/Constants/DataEOFConstants): **vbMoveLast** (0, default --- snap back to the last record), **vbEOF** (1 --- sit on the end-of-file marker), or **vbAddNew** (2 --- clear all bound controls and start a new record ready for editing).
 
 ### Exclusive
 {: .no_toc }
@@ -401,7 +401,7 @@ Syntax: *object*\_**Error**( *DataErr* **As Integer**, *Response* **As Integer**
 ### Initialize
 {: .no_toc }
 
-Raised once, immediately after the underlying window is created and before the recordset is opened. Useful for setting [**DatabaseName**](#databasename), [**RecordSource**](#recordsource), or [**Connect**](#connect) from code in time for the first connection. New in twinBASIC — VB6 had no equivalent on the **Data** control.
+Raised once, immediately after the underlying window is created and before the recordset is opened. Useful for setting [**DatabaseName**](#databasename), [**RecordSource**](#recordsource), or [**Connect**](#connect) from code in time for the first connection. New in twinBASIC --- VB6 had no equivalent on the **Data** control.
 
 Syntax: *object*\_**Initialize**( )
 
@@ -478,7 +478,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Reposition
 {: .no_toc }
 
-Raised after the current record has changed — through a navigation button, a programmatic move on [**Recordset**](#recordset), an assignment to **Recordset**, or [**Refresh**](#refresh) — and after every bound control has been re-synced to the new record. The point at which to update derived UI such as a "Record *n* of *m*" caption.
+Raised after the current record has changed --- through a navigation button, a programmatic move on [**Recordset**](#recordset), an assignment to **Recordset**, or [**Refresh**](#refresh) --- and after every bound control has been re-synced to the new record. The point at which to update derived UI such as a "Record *n* of *m*" caption.
 
 Syntax: *object*\_**Reposition**( )
 
@@ -493,7 +493,7 @@ Syntax: *object*\_**Resize**( )
 ### Validate
 {: .no_toc }
 
-Raised before any operation that would leave the current record — a navigation button, a programmatic move, **Update**, **Delete**, **Refresh**, **Find**, an **AddNew**, an explicit close, or unloading the form. **Default event.**
+Raised before any operation that would leave the current record --- a navigation button, a programmatic move, **Update**, **Delete**, **Refresh**, **Find**, an **AddNew**, an explicit close, or unloading the form. **Default event.**
 
 Syntax: *object*\_**Validate**( *Action* **As Integer**, *Save* **As Integer** )
 

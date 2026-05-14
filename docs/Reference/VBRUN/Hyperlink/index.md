@@ -10,7 +10,7 @@ has_toc: false
 
 # Hyperlink class
 
-The **Hyperlink** object lets a control or form ask its container to navigate to a target document, the way clicking a link in a browser would. It is used from a control's code through the host's **Hyperlink** property — for example **UserControl.Hyperlink** — and works in containers that participate in browser-style navigation (Internet Explorer, Office binders, and a handful of other hyperlink-aware hosts). When the host does not support hyperlink navigation, the runtime falls back to launching the system's default handler for the target.
+The **Hyperlink** object lets a control or form ask its container to navigate to a target document, the way clicking a link in a browser would. It is used from a control's code through the host's **Hyperlink** property --- for example **UserControl.Hyperlink** --- and works in containers that participate in browser-style navigation (Internet Explorer, Office binders, and a few other hyperlink-aware hosts). When the host does not support hyperlink navigation, the runtime falls back to launching the system's default handler for the target.
 
 ```tb
 Private Sub HelpButton_Click()
@@ -52,10 +52,10 @@ Syntax: *object*.**NavigateTo** *Target* [ **,** *Location* [ **,** *FrameName* 
 : *required* An object expression that evaluates to a **Hyperlink** object.
 
 *Target*
-: *required* A **String** giving the destination — a URL, a UNC path, or a local file path. The container is responsible for resolving the string and dispatching it to the right handler.
+: *required* A **String** giving the destination --- a URL, a UNC path, or a local file path. The container is responsible for resolving the string and dispatching it to the right handler.
 
 *Location*
-: *optional* A **String** naming an anchor or bookmark within *Target* — for example the fragment after `#` in an HTML URL — that the container should scroll to once the document has been loaded.
+: *optional* A **String** naming an anchor or bookmark within *Target* --- for example the fragment after `#` in an HTML URL --- that the container should scroll to once the document has been loaded.
 
 *FrameName*
 : *optional* A **String** naming a frame within an HTML frameset that should receive the navigation, instead of the top-level window. Ignored by hosts that do not understand HTML frames.

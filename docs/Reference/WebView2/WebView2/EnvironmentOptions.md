@@ -9,9 +9,9 @@ has_toc: false
 # WebView2EnvironmentOptions class
 {: .no_toc }
 
-Carries the host's pre-creation configuration for the underlying WebView2 environment — folder layout, additional command-line arguments, locale, and a few policy switches. Surfaces on every [**WebView2**](.) control as its **EnvironmentOptions** property; the control instantiates one automatically before raising the [**Create**](.#create) event.
+Holds the host's pre-creation configuration for the underlying WebView2 environment --- folder layout, additional command-line arguments, locale, and a few policy switches. Exposed on every [**WebView2**](.) control as its **EnvironmentOptions** property; the control instantiates one automatically before raising the [**Create**](.#create) event.
 
-The fields below take effect only while the WebView2 environment is being constructed — that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
+The fields below take effect only while the WebView2 environment is being constructed --- that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
 
 ```tb
 Private Sub WebView21_Create()
@@ -21,14 +21,14 @@ Private Sub WebView21_Create()
 End Sub
 ```
 
-The type itself is `Private Class` — you reach instances only through the control's **EnvironmentOptions** property and cannot declare a variable typed as **WebView2EnvironmentOptions** from outside the package.
+The type itself is `Private Class` --- instances are reachable only through the control's **EnvironmentOptions** property, and a variable typed as **WebView2EnvironmentOptions** cannot be declared from outside the package.
 
 ## Properties
 
 ### AdditionalBrowserArguments
 {: .no_toc }
 
-Extra command-line switches passed straight through to the Edge browser process — same syntax as `msedge.exe`. **String**. Default: empty.
+Extra command-line switches passed straight through to the Edge browser process --- same syntax as `msedge.exe`. **String**. Default: empty.
 
 ### AllowSingleSignOnUsingOSPrimaryAccount
 {: .no_toc }
@@ -53,17 +53,17 @@ When **True**, the runtime locks the user-data folder so that no other WebView2 
 ### Language
 {: .no_toc }
 
-The language and locale Edge should report in `Accept-Language` and use for its UI strings — BCP-47 form, e.g. `"en-GB"`, `"fr-FR"`. **String**. Default: empty (the runtime picks the system default).
+The language and locale Edge should report in `Accept-Language` and use for its UI strings --- BCP-47 form, e.g. `"en-GB"`, `"fr-FR"`. **String**. Default: empty (the runtime picks the system default).
 
 ### TargetCompatibleBrowserVersion
 {: .no_toc }
 
-The minimum Edge browser version this application is built against — used by the loader to decide whether a runtime can host it. **String**. Default: `"86.0.616.0"` (the minimum version that supports WebView2).
+The minimum Edge browser version this application is built against --- used by the loader to decide whether a runtime can host it. **String**. Default: `"86.0.616.0"` (the minimum version that supports WebView2).
 
 ### UserDataFolder
 {: .no_toc }
 
-Path to the folder Edge uses for the user profile — cache, cookies, history, local storage, password manager, and so on. Leave empty (the default) to let the runtime pick a folder beside the host executable; set it to keep user data outside the install location, e.g. under `%APPDATA%`. **String**.
+Path to the folder Edge uses for the user profile --- cache, cookies, history, local storage, password manager, and so on. Leave empty (the default) to let the runtime pick a folder beside the host executable; set it to keep user data outside the install location, e.g. under `%APPDATA%`. **String**.
 
 Setting a writable user-data folder is the usual remedy for the *"Error occurred creating the WebView2 controller"* failure on installs that live under `Program Files`.
 

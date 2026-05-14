@@ -8,7 +8,7 @@ has_toc: false
 # Toolbars class
 {: .no_toc }
 
-The collection of IDE toolbars. Reached through [**Host.Toolbars**](Host#toolbars). Currently there is only one toolbar — `Host.Toolbars(0)` — but the collection interface allows future IDE versions to add more.
+The collection of IDE toolbars. Reached through [**Host.Toolbars**](Host#toolbars). Currently a single toolbar --- `Host.Toolbars(0)` --- but the collection interface allows future IDE versions to add more.
 
 ```tb
 With Host.Toolbars(0)
@@ -27,7 +27,7 @@ The number of toolbars. **Long**, read-only. Currently always **1**.
 ### Item
 {: .no_toc }
 
-Indexed access to a toolbar. **DefaultMember** — so `Toolbars(0)` is equivalent to `Toolbars.Item(0)`.
+Indexed access to a toolbar. **DefaultMember** --- so `Toolbars(0)` is equivalent to `Toolbars.Item(0)`.
 
 Syntax: *toolbars*( *Index* ) **As** [**Toolbar**](Toolbar)
 

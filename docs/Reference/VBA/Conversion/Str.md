@@ -23,7 +23,7 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 
 When numbers are converted to strings, a leading space is always reserved for the sign of *number*. If *number* is positive, the returned string contains a leading space and the plus sign is implied.
 
-Use the [**Format**](../Strings/Format) function to convert numeric values that you want formatted as dates, times, or currency or in other user-defined formats. Unlike **Str**, the **Format** function doesn't include a leading space for the sign of *number*.
+Use the [**Format**](../Strings/Format) function to convert numeric values to be formatted as dates, times, or currency, or in other user-defined formats. Unlike **Str**, the **Format** function doesn't include a leading space for the sign of *number*.
 
 > [!NOTE]
 > The **Str** function recognizes only the period (`.`) as a valid decimal separator. When different decimal separators may be used (for example, in international applications), use [**CStr**](CStr) to convert a number to a string.

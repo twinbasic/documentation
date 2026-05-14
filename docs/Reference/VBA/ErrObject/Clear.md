@@ -7,7 +7,7 @@ vba_attribution: true
 # Clear
 {: .no_toc }
 
-Clears all property settings of the **Err** object — [**Number**](Number) is reset to **0**, the string properties to zero-length strings, and [**HelpContext**](HelpContext) to **0**.
+Clears all property settings of the **Err** object --- [**Number**](Number) is reset to **0**, the string properties to zero-length strings, and [**HelpContext**](HelpContext) to **0**.
 
 Syntax: **Err**.**Clear**
 
@@ -19,11 +19,11 @@ Use **Clear** to explicitly reset the **Err** object after an error has been han
 
 > [!NOTE]
 >
-> The **On Error Resume Next** construct may be preferable to **On Error GoTo** when handling errors generated during access to other objects. Checking **Err** after each interaction with an object removes ambiguity about which object the error came from. You can be sure which object placed the code in [**Err.Number**](Number) and which object originally generated the error (the object specified in [**Err.Source**](Source)).
+> The **On Error Resume Next** construct may be preferable to **On Error GoTo** when handling errors generated during access to other objects. Checking **Err** after each interaction with an object removes ambiguity about which object the error came from --- both the object that placed the code in [**Err.Number**](Number) and the object that originally generated the error (specified in [**Err.Source**](Source)) can be identified, and they may be distinct.
 
 ### Example
 
-This example uses **Err.Clear** to reset the **Err** object's numeric properties to zero and its string properties to zero-length strings between iterations of a loop. If **Clear** were omitted, the error message dialog box would be displayed on every iteration after an error first occurred — whether or not the next calculation actually generated an error.
+This example uses **Err.Clear** to reset the **Err** object's numeric properties to zero and its string properties to zero-length strings between iterations of a loop. If **Clear** were omitted, the error message dialog box would be displayed on every iteration after an error first occurred --- whether or not the next calculation actually generated an error.
 
 ```tb
 Dim result(10) As Integer    ' Declare an array whose elements 

@@ -10,7 +10,7 @@ has_toc: false
 
 # ErrorStackFrame class
 
-An **ErrorStackFrame** describes one procedure that was active on the call stack at the moment a run-time error was raised — the project it belongs to, the module that contains it, and its own name. Frames are produced by walking an [**ErrorCallstack**](../ErrorCallstack) snapshot, which in turn is reachable from the [**Callstack**](../ErrorContext#callstack) property of an [**ErrorContext**](../ErrorContext). Every property is read-only.
+An **ErrorStackFrame** describes one procedure that was active on the call stack at the moment a run-time error was raised --- the project it belongs to, the module that contains it, and its own name. Frames are produced by iterating an [**ErrorCallstack**](../ErrorCallstack) snapshot, which in turn is reachable from the [**Callstack**](../ErrorContext#callstack) property of an [**ErrorContext**](../ErrorContext). Every property is read-only.
 
 ```tb
 Sub LogStackTrace(ByVal Stack As ErrorCallstack)
@@ -27,7 +27,7 @@ End Sub
 
 ### ModuleName
 
-Returns the name of the module — the standard module, class module, form, or user control — that contains the procedure for this frame, as a **String**.
+Returns the name of the module --- the standard module, class module, form, or user control --- that contains the procedure for this frame, as a **String**.
 
 Syntax: *object*.**ModuleName**
 

@@ -9,9 +9,9 @@ has_toc: false
 # ColumnHeaders class
 {: .no_toc }
 
-The **ColumnHeaders** collection is the entry point for managing the columns of a [**ListView**](.) in **lvwReport** view. Reached as `<listView>.ColumnHeaders`; supports adding, removing, indexed access, and `For Each` iteration.
+The **ColumnHeaders** collection is the entry point for managing the columns of a [**ListView**](.) in **lvwReport** view. Accessed as `<listView>.ColumnHeaders`; supports adding, removing, indexed access, and `For Each` iteration.
 
-The class is tagged `[COMCreatable(False)]` — user code reaches **ColumnHeaders** through the parent [**ListView**](.) control's [**ColumnHeaders**](.#columnheaders) property.
+The class is tagged `[COMCreatable(False)]` --- user code accesses **ColumnHeaders** through the parent [**ListView**](.) control's [**ColumnHeaders**](.#columnheaders) property.
 
 ```tb
 With ListView1.ColumnHeaders
@@ -40,7 +40,7 @@ Returns the [**ColumnHeader**](ColumnHeader) at the given index or with the give
 Syntax: *object*.**Item** ( *Index* ) **As ColumnHeader**
 
 *Index*
-: A **Variant** — either a 1-based **Long** position or a **String** key.
+: A **Variant** --- either a 1-based **Long** position or a **String** key.
 
 Methods
 -------
@@ -68,7 +68,7 @@ Syntax: *object*.**Add** ( [ *Index* ] [, *Key* ] [, *Text* ] [, *Width* ] [, *A
 : *optional* A member of [**ListColumnAlignmentConstants**](ColumnHeader#listcolumnalignmentconstants). Default: **lvwColumnLeft**. Attempting to add a non-left-aligned column at position `1` raises run-time error 5.
 
 *Icon*
-: *optional* A **Variant** identifying the header icon — either a 1-based **Long** index into [**ListView.ColumnHeaderIcons**](.#columnheadericons), or a **String** key.
+: *optional* A **Variant** identifying the header icon --- either a 1-based **Long** index into [**ListView.ColumnHeaderIcons**](.#columnheadericons), or a **String** key.
 
 Returns the newly-created [**ColumnHeader**](ColumnHeader).
 
@@ -87,7 +87,7 @@ Removes a column from the listview.
 Syntax: *object*.**Remove** ( *Index* )
 
 *Index*
-: A **Variant** — either a 1-based **Long** position or a **String** key.
+: A **Variant** --- either a 1-based **Long** position or a **String** key.
 
 ### _NewEnum
 {: .no_toc }

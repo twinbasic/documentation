@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/TextOverflowMode
 # TextOverflowMode
 {: .no_toc }
 
-Controls how text that does not fit inside the available rectangle is truncated. Carried by [**TextRendering.OverflowMode**](../Styles/TextRendering#overflowmode).
+Controls how text that does not fit inside the available rectangle is truncated. Used by [**TextRendering.OverflowMode**](../Styles/TextRendering#overflowmode).
 
 | Constant | Value | Description |
 |----------|-------|-------------|

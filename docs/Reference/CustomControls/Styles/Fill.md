@@ -9,7 +9,7 @@ has_toc: false
 # Fill class
 {: .no_toc }
 
-The colour or gradient that paints a region — background of a control, body of a border, fill of a grid line, foreground of text. A **Fill** has two parts: a [**Pattern**](#pattern) that picks the gradient direction (or `tbPatternNone` for transparent), and a [**ColorPoints**](#colorpoints) collection of one or more colour stops that supply the actual colours.
+The colour or gradient that paints a region --- background of a control, body of a border, fill of a grid line, foreground of text. A **Fill** has two parts: a [**Pattern**](#pattern) that picks the gradient direction (or `tbPatternNone` for transparent), and a [**ColorPoints**](#colorpoints) collection of one or more colour stops that supply the actual colours.
 
 A single solid colour is just a one-stop fill: call [**ColorPoints.SetSolidColor**](#setsolidcolor) with a `Long` colour, or [**SetSimplePattern**](#setsimplepattern) on the parent **Fill** for a two-colour gradient.
 
@@ -19,7 +19,7 @@ btnGo.HoverState.BackgroundFill.SetSimplePattern vbBlue, vbWhite, _
         Pattern:=tbGradientNorthToSouth
 ```
 
-For three or more colour stops, build [**FillColorPoint**](#fillcolorpoint-class) instances and pass them to [**SetColorPoints**](#setcolorpoints). The stops accept fully-opaque ARGB literals (`&HFF` alpha in the high byte) — see [**ColorRGBA**](../Enumerations/ColorRGBA) for the encoding:
+For three or more colour stops, build [**FillColorPoint**](#fillcolorpoint-class) instances and pass them to [**SetColorPoints**](#setcolorpoints). The stops accept fully-opaque ARGB literals (`&HFF` alpha in the high byte) --- see [**ColorRGBA**](../Enumerations/ColorRGBA) for the encoding:
 
 ```tb
 With pnlHeader.BackgroundFill
@@ -95,7 +95,7 @@ Raised whenever [**Pattern**](#pattern) is assigned or the [**ColorPoints**](#co
 
 ## FillColorPoints class
 
-The collection of [**FillColorPoint**](#fillcolorpoint-class) stops that define a [**Fill**](#)'s colour gradient. Reached as [**Fill.ColorPoints**](#colorpoints). Internally an array of **FillColorPoint** plus a [**Granularity**](#granularity) integer.
+The collection of [**FillColorPoint**](#fillcolorpoint-class) stops that define a [**Fill**](#)'s colour gradient. Accessed as [**Fill.ColorPoints**](#colorpoints). Internally an array of **FillColorPoint** plus a [**Granularity**](#granularity) integer.
 
 ### Granularity
 {: .no_toc }
@@ -105,7 +105,7 @@ The size of the generated colour table that interpolates the stops. Higher value
 ### Values
 {: .no_toc }
 
-The array of [**FillColorPoint**](#fillcolorpoint-class) gradient stops. Read-write, but in practice you populate it through the [**SetSolidColor**](#setsolidcolor), [**SetSolidColorRGBA**](#setsolidcolorrgba), [**SetColorPoints**](#setcolorpoints), or [**SetColorPointsArray**](#setcolorpointsarray) methods rather than assigning the array directly.
+The array of [**FillColorPoint**](#fillcolorpoint-class) gradient stops. Read-write, but in practice populated through the [**SetSolidColor**](#setsolidcolor), [**SetSolidColorRGBA**](#setsolidcolorrgba), [**SetColorPoints**](#setcolorpoints), or [**SetColorPointsArray**](#setcolorpointsarray) methods rather than by assigning the array directly.
 
 ### SetSolidColor
 {: .no_toc }
@@ -154,7 +154,7 @@ Raised when the array of stops is reassigned or when any single stop raises its 
 
 ## FillColorPoint class
 
-A single gradient stop — a colour together with the position (0–100 %) at which the colour applies along the gradient. Elements of the [**FillColorPoints.Values**](#values) array.
+A single gradient stop --- a colour together with the position (0--100 %) at which the colour applies along the gradient. Elements of the [**FillColorPoints.Values**](#values) array.
 
 ### Color
 {: .no_toc }

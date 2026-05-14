@@ -8,9 +8,9 @@ permalink: /Tutorials/WebView2/Driving-Monaco
 
 # Driving Monaco from twinBASIC
 
-A case study combining everything from the previous tutorials: a form with **two** [**WebView2**](../../tB/Packages/WebView2/WebView2/) controls — the Microsoft Monaco editor on the left, a live HTML preview on the right. As the user types, Monaco posts the edited source to twinBASIC, which mirrors it into the preview pane.
+A case study combining everything from the previous tutorials: a form with **two** [**WebView2**](../../tB/Packages/WebView2/WebView2/) controls --- the Microsoft Monaco editor on the left, a live HTML preview on the right. As the user types, Monaco posts the edited source to twinBASIC, which mirrors it into the preview pane.
 
-The complete project ships as *Sample 0 — WebView2 Examples* in the New-Project dialog (form *Example 3*).
+The complete project ships as *Sample 0 --- WebView2 Examples* in the New-Project dialog (form *Example 3*).
 
 ## Architecture
 
@@ -20,7 +20,7 @@ The editor runs as a local web app under a virtual hostname; the preview pane is
 
 ## Setting up the editor's assets
 
-The Monaco editor ships as a ~2 MB collection of JavaScript, CSS, and font files. Drop them into a `Resources` sub-folder of your project — call it `MONACO_DEMO` — alongside an `index.html` and a small bootstrap `script.js`. The [Hosting local web assets](Hosting-Local-Web-Assets) tutorial describes the layout.
+The Monaco editor ships as a ~2 MB collection of JavaScript, CSS, and font files. Drop them into a `Resources` sub-folder of your project --- call it `MONACO_DEMO` --- alongside an `index.html` and a small bootstrap `script.js`. The [Hosting local web assets](Hosting-Local-Web-Assets) tutorial describes the layout.
 
 The page itself is a single `<div id='container'>` plus the bootstrap script that listens for an *initial-content* message from the host:
 
@@ -61,7 +61,7 @@ window.chrome.webview.addEventListener('message', (event) => {
 
 ## The BASIC side
 
-Drop two `WebView2` controls on a form — `WebView` (the editor) and `WebViewPreview` (the renderer). The `Ready` handler deploys the assets, registers the virtual host, and navigates:
+Drop two `WebView2` controls on a form --- `WebView` (the editor) and `WebViewPreview` (the renderer). The `Ready` handler deploys the assets, registers the virtual host, and navigates:
 
 ```tb
 Private localPath As String
@@ -99,7 +99,7 @@ End Sub
 
 ## Live preview
 
-Every keystroke in Monaco fires its `onDidChangeModelContent` callback, which `postMessage`s the new content back to BASIC. That arrives as the [**JsMessage**](../../tB/Packages/WebView2/WebView2/#jsmessage) event — feed it straight into the preview:
+Every keystroke in Monaco fires its `onDidChangeModelContent` callback, which `postMessage`s the new content back to BASIC. That arrives as the [**JsMessage**](../../tB/Packages/WebView2/WebView2/#jsmessage) event --- feed it straight into the preview:
 
 ```tb
 Private Sub WebView_JsMessage(ByVal Message As Variant) Handles WebView.JsMessage
@@ -107,7 +107,7 @@ Private Sub WebView_JsMessage(ByVal Message As Variant) Handles WebView.JsMessag
 End Sub
 ```
 
-That's it — the preview pane re-renders on every edit.
+That's it --- the preview pane re-renders on every edit.
 
 ## Detecting a missing Edge runtime
 
@@ -128,10 +128,10 @@ Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) _
 End Sub
 ```
 
-It is worth handling this even in single-WebView applications — the message you show here is the difference between *"nothing happens"* and *"oh, I need to install something"*.
+It is worth handling this even in single-WebView applications --- the message you show here is the difference between *"nothing happens"* and *"oh, I need to install something"*.
 
 ## Where next
 
-- [Hosting local web assets](Hosting-Local-Web-Assets) — the `CopyResourcesFolderContentsToLocalPath` helper and virtual-host pattern this tutorial builds on.
-- [JavaScript interop](JavaScript-Interop) — the three bridges between BASIC and JavaScript.
-- [WebView2 reference](../../tB/Packages/WebView2/WebView2/) — every property, method, and event.
+- [Hosting local web assets](Hosting-Local-Web-Assets) -- the `CopyResourcesFolderContentsToLocalPath` helper and virtual-host pattern this tutorial builds on.
+- [JavaScript interop](JavaScript-Interop) -- the three bridges between BASIC and JavaScript.
+- [WebView2 reference](../../tB/Packages/WebView2/WebView2/) -- every property, method, and event.

@@ -64,7 +64,7 @@ Syntax: **DatePart** ( *interval*, *date* [, *firstdayofweek* [, *firstweekofyea
 
 The *firstdayofweek* argument affects calculations that use the "w" and "ww" interval symbols.
 
-If *date* is a date literal, the specified year becomes a permanent part of that date. If *date* is enclosed in double quotation marks and you omit the year, the current year is inserted each time the expression is evaluated.
+If *date* is a date literal, the specified year becomes a permanent part of that date. If *date* is enclosed in double quotation marks and the year is omitted, the current year is inserted each time the expression is evaluated.
 
 If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date must be Gregorian. If the calendar is Hijri, the supplied date must be Hijri. The returned date part is in the time period units of the current calendar.
 

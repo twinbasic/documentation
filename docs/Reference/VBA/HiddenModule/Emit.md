@@ -13,7 +13,7 @@ Syntax: **Emit** *Values* ...
 *Values*
 : *required* A **ParamArray** of **Byte** values that are emitted, in order, at the location of the call.
 
-The bytes are written into the procedure's machine code at the spot where **Emit** appears — there is no run-time call. Used together with the **Naked** procedure modifier to write inline assembly.
+The bytes are written into the procedure's machine code at the spot where **Emit** appears --- there is no run-time call. Used together with the **Naked** procedure modifier to write inline assembly.
 
 ### Example
 

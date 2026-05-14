@@ -13,7 +13,7 @@ Syntax: **CurrentProjectName** [ **()** ]
 The value is the name of the project (executable or library) that owns the call site.
 
 > [!NOTE]
-> **CurrentProjectName** is a compile-time intrinsic — the literal string is embedded in the compiled code from the project's metadata at the point of the call.
+> **CurrentProjectName** is a compile-time intrinsic --- the literal string is embedded in the compiled code from the project's metadata at the point of the call.
 
 ### Example
 

@@ -20,7 +20,7 @@ Syntax: *object*.**Items()**
 
 If the collection is empty, **Items** returns an empty array.
 
-The **Items** method is useful when you need to pass the collection's contents to a procedure expecting an array, or to iterate without holding a reference to the collection.
+The **Items** method is useful when passing the collection's contents to a procedure expecting an array, or to iterate without holding a reference to the collection.
 
 ### Example
 

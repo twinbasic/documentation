@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/FontWeight
 # FontWeight
 {: .no_toc }
 
-The weight of a font face, on the standard 100 – 900 scale used by OpenType's `wght` axis and by CSS's `font-weight`. Carried by [**FontStyle.Weight**](../Styles/TextRendering#weight); availability of each weight depends on which faces are installed for the chosen font family.
+The weight of a font face, on the standard 100 -- 900 scale used by OpenType's `wght` axis and by CSS's `font-weight`. Assigned to [**FontStyle.Weight**](../Styles/TextRendering#weight); availability of each weight depends on which faces are installed for the chosen font family.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

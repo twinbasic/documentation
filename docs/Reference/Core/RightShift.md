@@ -32,7 +32,7 @@ The data type of *result* matches the (integral) type of *number*. The right shi
 
 ### Compound assignment
 
-`x >>= n` is the twinBASIC shorthand for `x = x >> n`. **\>>=** is a statement, not an expression — it does not produce a value.
+`x >>= n` is the twinBASIC shorthand for `x = x >> n`. **\>>=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Flags As Long = &H100

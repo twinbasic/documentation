@@ -24,7 +24,7 @@ The modified internal rate of return is the internal rate of return when payment
 
 The *finance_rate* and *reinvest_rate* arguments are percentages expressed as decimal values. For example, 12 percent is expressed as 0.12.
 
-The **MIRR** function uses the order of values within the array to interpret the order of payments and receipts. Be sure to enter your payment and receipt values in the correct sequence.
+The **MIRR** function uses the order of values within the array to interpret the order of payments and receipts. The payment and receipt values must be in the correct sequence.
 
 ### Example
 

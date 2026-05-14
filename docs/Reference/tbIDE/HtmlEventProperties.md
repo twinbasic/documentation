@@ -8,7 +8,7 @@ has_toc: false
 # HtmlEventProperties class
 {: .no_toc }
 
-The dynamic event-payload bag passed to every [**HtmlElement.AddEventListener**](HtmlElement#addeventlistener) callback. Conceptually the IDE-side equivalent of the JavaScript `Event` object — fields like `.key`, `.target.id`, `.target.value`, `.index` are accessed dynamically through the bag's `[COMExtensible(True)]` resolution.
+The dynamic event-payload bag passed to every [**HtmlElement.AddEventListener**](HtmlElement#addeventlistener) callback. Conceptually the IDE-side equivalent of the JavaScript `Event` object --- fields like `.key`, `.target.id`, `.target.value`, `.index` are accessed dynamically through the bag's `[COMExtensible(True)]` resolution.
 
 ```tb
 Private Sub MyButtonClicked(ByVal eventInfo As HtmlEventProperties)
@@ -44,7 +44,7 @@ End Sub
 
 ## Asynchronous events (`setAsyncResult`)
 
-Some events — notably the virtual listview's `onAsyncGetItemHTML` — are *asynchronous*: the IDE asks the addin to produce content for a specific argument and expects the answer back through the event object itself. The argument arrives on the event as `eventInfo.asyncArgument`, and the listener responds by calling `eventInfo.setAsyncResult(answer)`:
+Some events --- notably the virtual listview's `onAsyncGetItemHTML` --- are *asynchronous*: the IDE asks the addin to produce content for a specific argument and expects the answer back through the event object itself. The argument arrives on the event as `eventInfo.asyncArgument`, and the listener responds by calling `eventInfo.setAsyncResult(answer)`:
 
 ```tb
 Private Sub OnAsyncGetItemHTML(ByVal eventInfo As HtmlEventProperties)
@@ -53,11 +53,11 @@ Private Sub OnAsyncGetItemHTML(ByVal eventInfo As HtmlEventProperties)
 End Sub
 ```
 
-This is the standard `[COMExtensible(True)]` resolution at work — `setAsyncResult` is not declared on the interface, it is dispatched through the dynamic mechanism just like `.key` or `.target` would be. See sample 14 (`WaynesVirtualListViewAddIn`) for the full pattern, including the cache-invalidation companion call `listview.notifyChangedItem(idx)`.
+This is the standard `[COMExtensible(True)]` resolution at work --- `setAsyncResult` is not declared on the interface, it is dispatched through the dynamic mechanism just like `.key` or `.target` would be. See sample 14 (`WaynesVirtualListViewAddIn`) for the full pattern, including the cache-invalidation companion call `listview.notifyChangedItem(idx)`.
 
 ## Default member
 
-The interface's **DefaultMember** is [**Item**](#item) — so `eventInfo("target")` is equivalent to `eventInfo.Item("target")`. The `.target.id` shorthand desugars accordingly.
+The interface's **DefaultMember** is [**Item**](#item) --- so `eventInfo("target")` is equivalent to `eventInfo.Item("target")`. The `.target.id` shorthand desugars accordingly.
 
 ## Properties
 

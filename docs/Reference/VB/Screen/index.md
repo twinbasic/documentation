@@ -8,7 +8,7 @@ has_toc: false
 # Screen class
 {: .no_toc }
 
-The **Screen** class wraps the user's primary display — its dimensions and twip-to-pixel ratio, the list of installed fonts, the currently active [**Form**](../Form/) and the currently focused control on that form, and the application-wide mouse-pointer override. It is a singleton: there is exactly one **Screen** instance per process, owned by the runtime and exposed through the [**Screen**](../Global/#screen) property of the [**Global**](../Global/) app-object. Code reaches it without qualification:
+The **Screen** class wraps the user's primary display --- its dimensions and twip-to-pixel ratio, the list of installed fonts, the currently active [**Form**](../Form/) and the currently focused control on that form, and the application-wide mouse-pointer override. It is a singleton: there is exactly one **Screen** instance per process, owned by the runtime and exposed through the [**Screen**](../Global/#screen) property of the [**Global**](../Global/) app-object. Code reaches it without qualification:
 
 ```tb
 ' Centre a form on the primary display
@@ -26,10 +26,10 @@ Screen.MousePointer = vbDefault
 
 ## Dimensions and DPI
 
-[**Width**](#width) and [**Height**](#height) report the primary monitor's dimensions in twips — the same unit forms and controls use by default. The conversion factors are exposed too:
+[**Width**](#width) and [**Height**](#height) report the primary monitor's dimensions in twips --- the same unit forms and controls use by default. The conversion factors are exposed too:
 
-- [**TwipsPerPixelX**](#twipsperpixelx) — twips per horizontal pixel on the primary display.
-- [**TwipsPerPixelY**](#twipsperpixely) — twips per vertical pixel.
+- [**TwipsPerPixelX**](#twipsperpixelx) -- twips per horizontal pixel on the primary display.
+- [**TwipsPerPixelY**](#twipsperpixely) -- twips per vertical pixel.
 
 On a 96-DPI display these are both `15` (1440 twips per logical inch ÷ 96 pixels per inch); on a 144-DPI display they are `10`. Use them when interop with the Win32 API forces a conversion between pixels and the form-side coordinate system.
 
@@ -40,7 +40,7 @@ On a 96-DPI display these are both `15` (1440 twips per logical inch ÷ 96 pixel
 
 [**ActiveForm**](#activeform) returns the [**Form**](../Form/) instance that is currently the foreground form in the application; [**ActiveControl**](#activecontrol) returns the control within that form that currently holds the focus. Both return **Nothing** if no form in the application is active.
 
-The most common idiom is accessing the active form from a global handler — for example, a toolbar button on an [**MDIForm**](../MDIForm/) that operates on whatever MDI child is in front:
+The most common idiom is accessing the active form from a global handler --- for example, a toolbar button on an [**MDIForm**](../MDIForm/) that operates on whatever MDI child is in front:
 
 ```tb
 Private Sub tbrEdit_ButtonClick(ByVal Button As MSComctlLib.Button)
@@ -57,7 +57,7 @@ End Sub
 
 ## Fonts
 
-[**FontCount**](#fontcount) is the number of fonts the OS reports for the current display context; [**Fonts**](#fonts)(*Index*) returns the name of the font at *Index* — `0` to `FontCount - 1`. Together they let an application build a font-picker without going through the Win32 `EnumFontFamilies` API.
+[**FontCount**](#fontcount) is the number of fonts the OS reports for the current display context; [**Fonts**](#fonts)(*Index*) returns the name of the font at *Index* --- `0` to `FontCount - 1`. Together they let an application build a font-picker without going through the Win32 `EnumFontFamilies` API.
 
 ```tb
 Dim i As Integer
@@ -68,7 +68,7 @@ Next
 
 ## Mouse pointer override
 
-[**MousePointer**](#mousepointer) is an application-wide cursor override. Setting it to anything other than **vbDefault** forces the chosen cursor over every window of the application, regardless of each individual control's own [**MousePointer**](../CheckBox/#mousepointer) setting — the typical use is showing the hourglass while a synchronous operation runs. Set it back to **vbDefault** when the operation completes.
+[**MousePointer**](#mousepointer) is an application-wide cursor override. Setting it to anything other than **vbDefault** forces the chosen cursor over every window of the application, regardless of each individual control's own [**MousePointer**](../CheckBox/#mousepointer) setting --- the typical use is showing the hourglass while a synchronous operation runs. Set it back to **vbDefault** when the operation completes.
 
 [**MouseIcon**](#mouseicon) supplies a custom **StdPicture** to use when [**MousePointer**](#mousepointer) is **vbCustom**.
 

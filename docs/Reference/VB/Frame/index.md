@@ -8,9 +8,9 @@ has_toc: false
 # Frame class
 {: .no_toc }
 
-A **Frame** is a Win32 native container control that groups a set of related controls inside a captioned border. It serves two distinct purposes — a visual cue that the enclosed controls belong together, and a logical grouping for [**OptionButton**](../OptionButton) controls: option buttons inside the same frame are mutually exclusive of one another but independent of option buttons elsewhere on the form. Controls dropped onto a frame at design time become its children, and moving, hiding, disabling, or destroying the frame moves, hides, disables, or destroys the entire group with it.
+A **Frame** is a Win32 native container control that groups a set of related controls inside a captioned border. It serves two distinct purposes --- a visual cue that the enclosed controls belong together, and a logical grouping for [**OptionButton**](../OptionButton) controls: option buttons inside the same frame are mutually exclusive of one another but independent of option buttons elsewhere on the form. Controls dropped onto a frame at design time become its children, and moving, hiding, disabling, or destroying the frame moves, hides, disables, or destroys the entire group with it.
 
-A frame cannot itself receive the input focus. The mnemonic marker (`&`) in its [**Caption**](#caption) is honoured, but pressing **Alt+** that character moves the focus to the next control in tab order rather than to the frame itself — exactly like a [**Label**](../Label).
+A frame cannot itself receive the input focus. The mnemonic marker (`&`) in its [**Caption**](#caption) is honoured, but pressing **Alt+** that character moves the focus to the next control in tab order rather than to the frame itself --- exactly like a [**Label**](../Label).
 
 The default property is [**Caption**](#caption) and the default event is [**Click**](#click).
 
@@ -42,9 +42,9 @@ A frame is a true container: each control inside it has the frame's `hWnd` as it
 
 ## Caption, mnemonics, and the border
 
-The text in [**Caption**](#caption) is rendered along the top edge of the border by the standard Win32 group-box style. An ampersand in the caption marks the next character as a keyboard mnemonic; use `&&` to display a literal ampersand. Pressing **Alt+** the marked character moves the focus to the next control in tab order — the frame does not take focus itself.
+The text in [**Caption**](#caption) is rendered along the top edge of the border by the standard Win32 group-box style. An ampersand in the caption marks the next character as a keyboard mnemonic; use `&&` to display a literal ampersand. Pressing **Alt+** the marked character moves the focus to the next control in tab order --- the frame does not take focus itself.
 
-[**BorderStyle**](#borderstyle) chooses between the standard captioned single-line border (**vbFixedSingleBorder**, the default) and a borderless mode (**vbNoBorder**). In **vbNoBorder** mode the standard group-box rendering is bypassed entirely — neither the line nor the caption text is drawn — and the frame becomes a plain rectangular region. [**Appearance**](#appearance) further selects between the 3-D and flat variant of the standard border.
+[**BorderStyle**](#borderstyle) chooses between the standard captioned single-line border (**vbFixedSingleBorder**, the default) and a borderless mode (**vbNoBorder**). In **vbNoBorder** mode the standard group-box rendering is bypassed entirely --- neither the line nor the caption text is drawn --- and the frame becomes a plain rectangular region. [**Appearance**](#appearance) further selects between the 3-D and flat variant of the standard border.
 
 ## OptionButton groups
 
@@ -58,14 +58,14 @@ Each frame defines its own option-button group. When the user selects an [**Opti
 
 ## Transparency and opacity
 
-[**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) enable Windows' layered-window features. Setting [**Opacity**](#opacity) below 100 makes the frame and its contained controls translucent; setting [**TransparencyKey**](#transparencykey) to a colour makes pixels of that colour fully transparent on screen. Both features require Windows 8 or later when the frame contains child controls — otherwise only the frame's own background is affected.
+[**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) enable Windows' layered-window features. Setting [**Opacity**](#opacity) below 100 makes the frame and its contained controls translucent; setting [**TransparencyKey**](#transparencykey) to a colour makes pixels of that colour fully transparent on screen. Both features require Windows 8 or later when the frame contains child controls --- otherwise only the frame's own background is affected.
 
 ## Properties
 
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the frame's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the frame's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Appearance
 {: .no_toc }
@@ -80,7 +80,7 @@ The background colour of the frame's client area, as an **OLE_COLOR**. Defaults 
 ### BorderStyle
 {: .no_toc }
 
-The style of the frame's border. A member of [**ControlBorderStyleConstants**](../../VBRUN/Constants/ControlBorderStyleConstants): **vbFixedSingleBorder** (1, default — the captioned group-box line) or **vbNoBorder** (0). With **vbNoBorder** the caption is also suppressed and the frame becomes a borderless background panel.
+The style of the frame's border. A member of [**ControlBorderStyleConstants**](../../VBRUN/Constants/ControlBorderStyleConstants): **vbFixedSingleBorder** (1, default --- the captioned group-box line) or **vbNoBorder** (0). With **vbNoBorder** the caption is also suppressed and the frame becomes a borderless background panel.
 
 ### Caption
 {: .no_toc }
@@ -89,7 +89,7 @@ The text rendered along the top edge of the frame's border. **String**. **Defaul
 
 Syntax: *object*.**Caption** [ = *string* ]
 
-An ampersand marks the next character as a mnemonic; `&&` produces a literal ampersand. The string is read directly from the underlying window — assigning to **Caption** updates the rendering immediately.
+An ampersand marks the next character as a mnemonic; `&&` produces a literal ampersand. The string is read directly from the underlying window --- assigning to **Caption** updates the rendering immediately.
 
 ### ClipControls
 {: .no_toc }
@@ -99,7 +99,7 @@ Whether child controls are clipped out of the frame's drawing region during pain
 ### Container
 {: .no_toc }
 
-The control that hosts this frame — typically the form, or another frame. Read with **Get**, change with **Set**. Setting **Container** re-parents the frame to a different container at run time.
+The control that hosts this frame --- typically the form, or another frame. Read with **Get**, change with **Set**. Setting **Container** re-parents the frame to a different container at run time.
 
 ### ControlType
 {: .no_toc }
@@ -119,7 +119,7 @@ A **StdPicture** used as the mouse cursor while the frame is being drag-and-drop
 ### DragMode
 {: .no_toc }
 
-Whether the frame should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the frame should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -224,7 +224,7 @@ How the frame responds to OLE drops. A restricted member of [**OLEDropConstants*
 ### Opacity
 {: .no_toc }
 
-The frame's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Values below 100 require Windows 8 or later when the frame has child controls; out-of-process child windows are not affected.
+The frame's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Values below 100 require Windows 8 or later when the frame has child controls; out-of-process child windows are not affected.
 
 ### OriginalMultiFramePosition
 {: .no_toc }
@@ -265,7 +265,7 @@ The vertical distance from the top of the container to the top of the frame. **D
 ### TransparencyKey
 {: .no_toc }
 
-An **OLE_COLOR** that, when set, becomes fully transparent in the rendered frame — clicks pass through to whatever is underneath, and the corresponding pixels do not paint. Default `-1` disables the effect. Requires Windows 8 or later when the frame has child controls.
+An **OLE_COLOR** that, when set, becomes fully transparent in the rendered frame --- clicks pass through to whatever is underneath, and the corresponding pixels do not paint. Default `-1` disables the effect. Requires Windows 8 or later when the frame has child controls.
 
 ### Visible
 {: .no_toc }

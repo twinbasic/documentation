@@ -24,7 +24,7 @@ Syntax: *service*.**AddCustomBinderObject** *name*, *object* [ **,** *flags* ]
 *flags*
 : *optional* A combination of [**ExpressionEngineBinderFlags**](./#expressionenginebinderflags) values. The default is `0`, in which case the object's members are reachable only when qualified by *name* (e.g. `Report.Title`). Pass [**IsAppObject**](./#IsAppObject) to additionally make the members reachable without qualification, the way an Office host's **Application** members are.
 
-Member resolution is performed by name through the standard COM/IDispatch protocol — any property or method that is callable from outside the object is callable from the expression. The object must remain alive for as long as expressions might be evaluated against it.
+Member resolution is performed by name through the standard COM/IDispatch protocol --- any property or method that is callable from outside the object is callable from the expression. The object must remain alive for as long as expressions might be evaluated against it.
 
 Multiple objects can be bound to the same service, each under its own *name*. They are consulted in the order they were added.
 

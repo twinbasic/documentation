@@ -9,7 +9,7 @@ has_toc: false
 # TextRendering class
 {: .no_toc }
 
-Aggregates everything needed to draw a piece of text inside a control: the font, the padding, the fill that supplies the text colour, an optional array of outlines, the alignment within the available area, and the overflow behaviour. Reached as `<state>.TextRendering`, [**WaynesLabel.TextRendering**](../WaynesLabel#textrendering), and [**CellRenderingOptions.TextRendering**](../WaynesGrid/CellRenderingOptions#textrendering).
+Aggregates everything needed to draw a piece of text inside a control: the font, the padding, the fill that supplies the text colour, an optional array of outlines, the alignment within the available area, and the overflow behaviour. Accessed as `<state>.TextRendering`, [**WaynesLabel.TextRendering**](../WaynesLabel#textrendering), and [**CellRenderingOptions.TextRendering**](../WaynesGrid/CellRenderingOptions#textrendering).
 
 A newly-constructed **TextRendering** pre-sets its [**Fill**](#fill) to solid black so that text is immediately visible.
 
@@ -22,7 +22,7 @@ With lblTitle.TextRendering
 End With
 ```
 
-[**Fill**](#fill) can hold a gradient just as well as a solid colour, so glyphs themselves can be painted with a top-to-bottom or corner-to-corner colour transition. [**Outlines**](#outlines) is an array of [**Border**](Borders#border-class) elements stroked around the glyphs — a single thin black outline gives a "stickered" look; layering several outlines with different [**StrokeSize**](Borders#strokesize) values produces a glow or drop-shadow:
+[**Fill**](#fill) can hold a gradient just as well as a solid colour, so glyphs themselves can be painted with a top-to-bottom or corner-to-corner colour transition. [**Outlines**](#outlines) is an array of [**Border**](Borders#border-class) elements stroked around the glyphs --- a single thin black outline gives a "stickered" look; layering several outlines with different [**StrokeSize**](Borders#strokesize) values produces a glow or drop-shadow:
 
 ```tb
 With lblBanner.TextRendering
@@ -39,7 +39,7 @@ With lblBanner.TextRendering
 End With
 ```
 
-Set [**OverflowMode**](#overflowmode) to **tbShrinkToFit** to scale the glyphs down rather than truncating with an ellipsis when the text is too long for the available width — useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
+Setting [**OverflowMode**](#overflowmode) to **tbShrinkToFit** scales the glyphs down rather than truncating with an ellipsis when the text is too long for the available width --- useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
 
 * TOC
 {:toc}
@@ -85,7 +85,7 @@ Raised when [**Alignment**](#alignment) or [**OverflowMode**](#overflowmode) is 
 
 ## FontStyle class
 
-The font metrics that control how [**TextRendering**](#) lays out text. Reached as [**TextRendering.Font**](#font).
+The font metrics that control how [**TextRendering**](#) lays out text. Accessed as [**TextRendering.Font**](#font).
 
 ### Italic
 {: .no_toc }

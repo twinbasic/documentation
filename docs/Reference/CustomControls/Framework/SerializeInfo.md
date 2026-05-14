@@ -9,7 +9,7 @@ has_toc: false
 # SerializeInfo type (UDT)
 {: .no_toc }
 
-The per-instance serializer for a custom control, returned by [**CustomControlContext.GetSerializer**](CustomControlContext#getserializer). The main entry point is [**RuntimeUISrzDeserialize**](#runtimeuisrzdeserialize) — called from a control's [**Initialize**](ICustomControl#initialize) to load the designer-set property values that were saved into the form's serialized data. The remaining members expose framework state — design-mode flag, runtime / report mode, owner window handle — that a control may need while initializing.
+The per-instance serializer for a custom control, returned by [**CustomControlContext.GetSerializer**](CustomControlContext#getserializer). The main entry point is [**RuntimeUISrzDeserialize**](#runtimeuisrzdeserialize) --- called from a control's [**Initialize**](ICustomControl#initialize) to load the designer-set property values that were saved into the form's serialized data. The remaining members expose framework state --- design-mode flag, runtime / report mode, owner window handle --- that a control may need while initializing.
 
 ```tb
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
@@ -32,7 +32,7 @@ End Sub
 ### RuntimeUISrzDeserialize
 {: .no_toc }
 
-Loads the serialized property values for this control instance into *Object*. Returns **True** if serialized data was present and was applied, or **False** if no data was found — in which case the control should apply its own defaults.
+Loads the serialized property values for this control instance into *Object*. Returns **True** if serialized data was present and was applied, or **False** if no data was found --- in which case the control should apply its own defaults.
 
 Syntax: *SerializeInfo*.**RuntimeUISrzDeserialize** ( *Object*, *UseOuterOwner* ) **As Boolean**
 
@@ -73,7 +73,7 @@ Syntax: *SerializeInfo*.**RuntimeUISrzGetRootClassDispatch** ( ) **As Object**
 ### RuntimeUISrzIsDesignMode
 {: .no_toc }
 
-Returns **True** if the control is being created at design time (inside the form designer) rather than at run time. Controls that want to render a placeholder at design time only — like [**WaynesTimer**](../WaynesTimer), which draws its 🕑 glyph only when **IsDesignMode** is **True** — read this flag during **Initialize**.
+Returns **True** if the control is being created at design time (inside the form designer) rather than at run time. Controls that want to render a placeholder at design time only --- like [**WaynesTimer**](../WaynesTimer), which draws its 🕑 glyph only when **IsDesignMode** is **True** --- read this flag during **Initialize**.
 
 Syntax: *SerializeInfo*.**RuntimeUISrzIsDesignMode** ( ) **As Boolean**
 

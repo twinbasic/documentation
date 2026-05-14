@@ -8,7 +8,7 @@ has_toc: false
 # MonthView class
 {: .no_toc }
 
-A **MonthView** is a full-month calendar grid: a visible matrix of [**MonthColumns**](#monthcolumns) × [**MonthRows**](#monthrows) month panels, navigable forwards and backwards through the month headers, with optional today indicator, week numbers, and bold-day highlighting through the [**GetDayBold**](#getdaybold) callback event. Unlike [**DTPicker**](DTPicker) — which shows only its inline value field and pops the calendar on demand — a **MonthView** is always visible on the form.
+A **MonthView** is a full-month calendar grid: a visible matrix of [**MonthColumns**](#monthcolumns) × [**MonthRows**](#monthrows) month panels, navigable forwards and backwards through the month headers, with optional today indicator, week numbers, and bold-day highlighting through the [**GetDayBold**](#getdaybold) callback event. Unlike [**DTPicker**](DTPicker) --- which shows only its inline value field and pops the calendar on demand --- a **MonthView** is always visible on the form.
 
 ```tb
 Private Sub Form_Load()
@@ -33,7 +33,7 @@ Private Sub MonthView1_GetDayBold( _
 End Sub
 ```
 
-The control inherits the focusable rect-dockable members from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the focusable rect-dockable members from `BaseControlFocusable` --- size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -42,13 +42,13 @@ The control inherits the focusable rect-dockable members from `BaseControlFocusa
 
 A **MonthView** can display more than one calendar panel at once. [**MonthColumns**](#monthcolumns) and [**MonthRows**](#monthrows) set the panel grid (default 1 × 1); when [**ResizeToFit**](#resizetofit) is **True** (the default), the control auto-sizes its **Width** and **Height** to fit the requested grid using the current [**Font**](../VB/CheckBox#font) and the [**ShowToday**](#showtoday) / [**ShowWeekNumbers**](#showweeknumbers) options. Setting **ResizeToFit** to **False** allows the application to size the control freely, with the calendar panels arranged to fit whatever space is available.
 
-[**GetMonthRange**](#getmonthrange) returns the span of dates currently visible across all panels — useful inside [**GetDayBold**](#getdaybold) to know which days to populate.
+[**GetMonthRange**](#getmonthrange) returns the span of dates currently visible across all panels --- useful inside [**GetDayBold**](#getdaybold) to know which days to populate.
 
 ## Single-day and multi-day selection
 
 When [**MultiSelect**](#multiselect) is **False** (the default), the user can select one date at a time and [**Value**](#value), [**SelStart**](#selstart), and [**SelEnd**](#selend) all report the same value. When [**MultiSelect**](#multiselect) is **True**, the user can drag-select a contiguous range up to [**MaxSelCount**](#maxselcount) days wide; [**SelStart**](#selstart) and [**SelEnd**](#selend) bracket the range, and [**Value**](#value) returns [**SelStart**](#selstart).
 
-Changing [**MultiSelect**](#multiselect) at run time recreates the underlying Win32 window — the property cannot be flipped through GWL_STYLE alone.
+Changing [**MultiSelect**](#multiselect) at run time recreates the underlying Win32 window --- the property cannot be flipped through GWL_STYLE alone.
 
 ## Bold days for highlighting
 
@@ -80,7 +80,7 @@ The number of calendar panels the underlying control is rendering. **Byte**, rea
 ### Day
 {: .no_toc }
 
-The day-of-month component of [**Value**](#value). **Integer** (1–31). See [**DayCount**](#daycount).
+The day-of-month component of [**Value**](#value). **Integer** (1--31). See [**DayCount**](#daycount).
 
 ### DayBold(date)
 {: #dayboldday .no_toc }
@@ -125,7 +125,7 @@ The lower bound of the navigable date range. **Date**. Default: `1753-01-01`.
 ### Month
 {: .no_toc }
 
-The month-of-year component of [**Value**](#value). **Integer** (1–12).
+The month-of-year component of [**Value**](#value). **Integer** (1--12).
 
 ### MonthBackColor
 {: .no_toc }
@@ -163,7 +163,7 @@ A **Boolean**.
 ### ScrollRate
 {: .no_toc }
 
-The number of months the navigation arrows scroll the visible range by. **Long**. Default: `0` — meaning "use the calendar's natural width" (typically `MonthColumns`). Pass any positive integer to override.
+The number of months the navigation arrows scroll the visible range by. **Long**. Default: `0` --- meaning "use the calendar's natural width" (typically `MonthColumns`). Pass any positive integer to override.
 
 ### SelEnd
 {: .no_toc }
@@ -235,7 +235,7 @@ Syntax: *object*.**VisibleDays**( *sIndex* )
 ### Week
 {: .no_toc }
 
-The week-of-year for the current [**Value**](#value). **Integer** (1–53).
+The week-of-year for the current [**Value**](#value). **Integer** (1--53).
 
 ### Year
 {: .no_toc }

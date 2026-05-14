@@ -20,7 +20,7 @@ Printer.Print "Second page."
 Printer.EndDoc
 ```
 
-User code never instantiates a **Printer** directly — the class is marked `[COMCreatable(False)]` and its public API has no useful constructor. The two access paths are the implicit **Printer** global and the [**Printers**](../Printers/) collection.
+User code never instantiates a **Printer** directly --- the class is marked `[COMCreatable(False)]` and its public API has no useful constructor. The two access paths are the implicit **Printer** global and the [**Printers**](../Printers/) collection.
 
 * TOC
 {:toc}
@@ -38,7 +38,7 @@ Next
 
 By default the implicit **Printer** has [**TrackDefault**](#trackdefault) **True**: every property read consults the current system-default printer, so the application reflects changes the user makes in **Settings → Printers** without restarting. Writing to a settings property, calling **Set Printer = Printers(i)**, or starting a print job locks **TrackDefault** to **False** and pins the object to a specific device.
 
-The entries returned by [**Printers**](../Printers/) are immutable — assigning to one of their properties raises run-time error 383 (*Property is read-only*), and the document-control methods raise error 438 (*Object doesn't support this property or method*). To print to one of them, copy it onto the implicit **Printer** with **Set**:
+The entries returned by [**Printers**](../Printers/) are immutable --- assigning to one of their properties raises run-time error 383 (*Property is read-only*), and the document-control methods raise error 438 (*Object doesn't support this property or method*). To print to one of them, copy it onto the implicit **Printer** with **Set**:
 
 ```tb
 Set Printer = Printers("HP LaserJet")
@@ -47,11 +47,11 @@ Printer.Print "Hello on landscape paper."
 Printer.EndDoc
 ```
 
-`Set Printer = …` does not replace the implicit instance — it forwards the new device's identity onto the existing object, ending any active print job and discarding the cached device context in the process.
+`Set Printer = …` does not replace the implicit instance --- it forwards the new device's identity onto the existing object, ending any active print job and discarding the cached device context in the process.
 
 ## Print-job lifecycle
 
-The methods that manage the job — [**EndDoc**](#enddoc), [**KillDoc**](#killdoc), [**NewPage**](#newpage) — and the implicit "start-on-first-output" rule together form a small state machine:
+The methods that manage the job --- [**EndDoc**](#enddoc), [**KillDoc**](#killdoc), [**NewPage**](#newpage) --- and the implicit "start-on-first-output" rule together form a small state machine:
 
 | State              | How it advances                                                                                          |
 |--------------------|----------------------------------------------------------------------------------------------------------|
@@ -59,7 +59,7 @@ The methods that manage the job — [**EndDoc**](#enddoc), [**KillDoc**](#killdo
 | Page in progress   | [**NewPage**](#newpage) emits the page and starts another; [**EndDoc**](#enddoc) emits it and finishes.  |
 | Anywhere           | [**KillDoc**](#killdoc) aborts the job without emitting whatever is on the current page.                 |
 
-[**Page**](#page) reports the current page number (starting at 1). Property setters that affect page geometry — [**PaperSize**](#papersize), [**Orientation**](#orientation), [**Copies**](#copies), [**Width**](#width), [**Height**](#height), [**Duplex**](#duplex), [**PaperBin**](#paperbin), [**ColorMode**](#colormode), [**PrintQuality**](#printquality), [**Zoom**](#zoom) — must be assigned on a blank page; doing so mid-page raises error 396 (*'PropertyName' cannot be set within a page*).
+[**Page**](#page) reports the current page number (starting at 1). Property setters that affect page geometry --- [**PaperSize**](#papersize), [**Orientation**](#orientation), [**Copies**](#copies), [**Width**](#width), [**Height**](#height), [**Duplex**](#duplex), [**PaperBin**](#paperbin), [**ColorMode**](#colormode), [**PrintQuality**](#printquality), [**Zoom**](#zoom) --- must be assigned on a blank page; doing so mid-page raises error 396 (*'PropertyName' cannot be set within a page*).
 
 ## Coordinate system
 
@@ -72,7 +72,7 @@ Printer.Line (0.5, 0.5)-(8, 10.5), vbBlack, B   ' 1/2-inch margin rectangle
 
 ## Printing to a file
 
-Assigning a path to [**OutputFile**](#outputfile) **before** the job starts redirects the raw spool output to that file instead of the printer device. The file holds the printer-driver-specific bytes that would otherwise be sent over the port — typically a `.prn` file that can later be copied to a port with the **COPY /B** command.
+Assigning a path to [**OutputFile**](#outputfile) **before** the job starts redirects the raw spool output to that file instead of the printer device. The file holds the printer-driver-specific bytes that would otherwise be sent over the port --- typically a `.prn` file that can later be copied to a port with the **COPY /B** command.
 
 ```tb
 Printer.OutputFile = "C:\Spool\report.prn"
@@ -219,7 +219,7 @@ The colour used by the drawing-method pen (lines, circles, points) and by [**Pri
 
 The Win32 device-context handle for the printer's drawing surface, as a **LongPtr**. Read-only.
 
-Reading **hDC** the first time creates the device context — calling the driver's **CreateDC** and preparing the surface for drawing — but does **not** start the spool job. The spooler is engaged only when the first drawing call runs, so reading **hDC** for, say, a **GetDeviceCaps** query is non-committal: nothing is printed if the application never calls a drawing method afterwards.
+Reading **hDC** the first time creates the device context --- calling the driver's **CreateDC** and preparing the surface for drawing --- but does **not** start the spool job. The spooler is engaged only when the first drawing call runs, so reading **hDC** for, say, a **GetDeviceCaps** query is non-committal: nothing is printed if the application never calls a drawing method afterwards.
 
 ### Height
 {: .no_toc }
@@ -254,7 +254,7 @@ The paper source the printer should pull from.
 Syntax: *object*.**PaperBin** [ = *value* ]
 
 *value*
-: A member of [**PrinterObjectConstants_PaperBin**](../../VBRUN/Constants/PrinterObjectConstants_PaperBin) — for example **vbPRBNUpper**, **vbPRBNManual**, **vbPRBNCassette**. The value must be one of the bins the driver enumerates through **DC_BINS**; an unsupported value raises error 380.
+: A member of [**PrinterObjectConstants_PaperBin**](../../VBRUN/Constants/PrinterObjectConstants_PaperBin) --- for example **vbPRBNUpper**, **vbPRBNManual**, **vbPRBNCassette**. The value must be one of the bins the driver enumerates through **DC_BINS**; an unsupported value raises error 380.
 
 ### PaperSize
 {: .no_toc }
@@ -264,7 +264,7 @@ The paper size to print on.
 Syntax: *object*.**PaperSize** [ = *value* ]
 
 *value*
-: A member of [**PrinterObjectConstants_PaperSize**](../../VBRUN/Constants/PrinterObjectConstants_PaperSize) — for example **vbPRPSLetter**, **vbPRPSA4**, **vbPRPSEnv10**. Assigning to [**Width**](#width) or [**Height**](#height) forces this property to **vbPRPSUser** (256).
+: A member of [**PrinterObjectConstants_PaperSize**](../../VBRUN/Constants/PrinterObjectConstants_PaperSize) --- for example **vbPRPSLetter**, **vbPRPSA4**, **vbPRPSEnv10**. Assigning to [**Width**](#width) or [**Height**](#height) forces this property to **vbPRPSUser** (256).
 
 ### Port
 {: .no_toc }
@@ -279,7 +279,7 @@ The print resolution.
 Syntax: *object*.**PrintQuality** [ = *value* ]
 
 *value*
-: An **Integer** — either a positive DPI value supported by the driver, or a member of [**PrinterObjectConstants_PrintQuality**](../../VBRUN/Constants/PrinterObjectConstants_PrintQuality): **vbPRPQDraft** (-1), **vbPRPQLow** (-2), **vbPRPQMedium** (-3), or **vbPRPQHigh** (-4). Zero, or values below -4, raise error 380.
+: An **Integer** --- either a positive DPI value supported by the driver, or a member of [**PrinterObjectConstants_PrintQuality**](../../VBRUN/Constants/PrinterObjectConstants_PrintQuality): **vbPRPQDraft** (-1), **vbPRPQLow** (-2), **vbPRPQMedium** (-3), or **vbPRPQHigh** (-4). Zero, or values below -4, raise error 380.
 
 ### RightToLeft
 {: .no_toc }
@@ -322,7 +322,7 @@ Setting **TrackDefault** to **False** captures the current default device into t
 ### TwipsPerPixelX
 {: .no_toc }
 
-The number of twips that correspond to one device pixel, horizontally — useful for custom DPI-aware sizing. **Double**, read-only.
+The number of twips that correspond to one device pixel, horizontally --- useful for custom DPI-aware sizing. **Double**, read-only.
 
 ### TwipsPerPixelY
 {: .no_toc }
@@ -430,7 +430,7 @@ Syntax: *object*.**PaintPicture** *Picture*, *X1*, *Y1* [, *Width1* [, *Height1*
 : *optional* Source rectangle within *Picture*. Defaults to the whole picture.
 
 *Opcode*
-: *optional* A raster-operation code passed through to **BitBlt** — for example **&HCC0020** (`vbSrcCopy`, default) or **&H660046** (`vbSrcInvert`).
+: *optional* A raster-operation code passed through to **BitBlt** --- for example **&HCC0020** (`vbSrcCopy`, default) or **&H660046** (`vbSrcInvert`).
 
 If no job is in progress, **PaintPicture** implicitly starts one.
 
@@ -466,10 +466,10 @@ Defines a user coordinate system for the page. Calling **Scale** with no argumen
 Syntax: *object*.**Scale** [ ( *X1*, *Y1* ) **-** ( *X2*, *Y2* ) ]
 
 *X1*, *Y1*
-: *required* (with the second pair) The coordinate that maps to the top-left corner — sets [**ScaleLeft**](#scaleleft) and [**ScaleTop**](#scaletop).
+: *required* (with the second pair) The coordinate that maps to the top-left corner --- sets [**ScaleLeft**](#scaleleft) and [**ScaleTop**](#scaletop).
 
 *X2*, *Y2*
-: *required* The coordinate that maps to the bottom-right corner — sets [**ScaleWidth**](#scalewidth) = `X2 - X1` and [**ScaleHeight**](#scaleheight) = `Y2 - Y1`. [**ScaleMode**](#scalemode) becomes **vbUser**.
+: *required* The coordinate that maps to the bottom-right corner --- sets [**ScaleWidth**](#scalewidth) = `X2 - X1` and [**ScaleHeight**](#scaleheight) = `Y2 - Y1`. [**ScaleMode**](#scalemode) becomes **vbUser**.
 
 Calling **Scale** with coordinates implicitly starts a print job (matching VB6 behaviour); calling it without arguments does not.
 
@@ -484,7 +484,7 @@ Syntax: *object*.**ScaleX**( *Width*, *FromScale* [, *ToScale* ] ) **As Double**
 : *required* The value to convert. **Double**.
 
 *FromScale*
-: *required* A [**ScaleModeConstants**](../../VBRUN/Constants/ScaleModeConstants) member identifying the unit of *Width*. Unlike on a [**PictureBox**](../PictureBox/) or [**Form**](../Form/), this argument has no default on a **Printer** — omitting it raises error 448 (*Named argument not found*).
+: *required* A [**ScaleModeConstants**](../../VBRUN/Constants/ScaleModeConstants) member identifying the unit of *Width*. Unlike on a [**PictureBox**](../PictureBox/) or [**Form**](../Form/), this argument has no default on a **Printer** --- omitting it raises error 448 (*Named argument not found*).
 
 *ToScale*
 : *optional* A [**ScaleModeConstants**](../../VBRUN/Constants/ScaleModeConstants) member identifying the unit of the result; defaults to the printer's current [**ScaleMode**](#scalemode).
@@ -499,7 +499,7 @@ Syntax: *object*.**ScaleY**( *Height*, *FromScale* [, *ToScale* ] ) **As Double*
 ### TextHeight
 {: .no_toc }
 
-Measures the height of the given string when rendered in the current [**Font**](#font), in [**ScaleMode**](#scalemode) units — including the line-spacing leading, so the result is suitable for advancing [**CurrentY**](#currenty) between rows of text. Embedded line breaks are honoured.
+Measures the height of the given string when rendered in the current [**Font**](#font), in [**ScaleMode**](#scalemode) units --- including the line-spacing leading, so the result is suitable for advancing [**CurrentY**](#currenty) between rows of text. Embedded line breaks are honoured.
 
 Syntax: *object*.**TextHeight**( *Str* **As String** ) **As Double**
 
@@ -512,7 +512,7 @@ Syntax: *object*.**TextWidth**( *Str* **As String** ) **As Double**
 
 ## See Also
 
-- [Printers](../Printers/) — read-only collection of every installed printer.
-- [Form.PrintForm](../Form/#printform) — sends a screenshot of a form to the implicit **Printer**.
-- [Report.PrintReport](../Report/#printreport) — sends every page of a banded report to the implicit **Printer**.
-- [PrinterObjectConstants](../../VBRUN/Constants/PrinterObjectConstants) — combined enumeration of printer option values.
+- [Printers](../Printers/) -- read-only collection of every installed printer.
+- [Form.PrintForm](../Form/#printform) -- sends a screenshot of a form to the implicit **Printer**.
+- [Report.PrintReport](../Report/#printreport) -- sends every page of a banded report to the implicit **Printer**.
+- [PrinterObjectConstants](../../VBRUN/Constants/PrinterObjectConstants) -- combined enumeration of printer option values.

@@ -9,7 +9,7 @@ vba_attribution: true
 # Calendar
 {: .no_toc }
 
-Returns or sets a value specifying the type of calendar to use with your project.
+Returns or sets a value specifying the type of calendar used by the project.
 
 Syntax: **Calendar** [ **=** *calendartype* ]
 

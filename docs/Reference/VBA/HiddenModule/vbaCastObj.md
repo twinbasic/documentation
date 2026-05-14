@@ -14,7 +14,7 @@ Syntax: **vbaCastObj(** *Obj* **,** *IID* **)** **As IUnknown**
 : *required* **stdole.IUnknown**. The object to cast.
 
 *IID*
-: *required* **Any**. The interface ID to query for — accepted as a 16-byte **GUID** structure or as a **String** in registry format (`{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}`).
+: *required* **Any**. The interface ID to query for --- accepted as a 16-byte **GUID** structure or as a **String** in registry format (`{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}`).
 
 A direct wrapper over **IUnknown::QueryInterface**: the object is asked whether it implements the requested interface, and if so a reference to that interface is returned. If not, **Nothing** is returned.
 

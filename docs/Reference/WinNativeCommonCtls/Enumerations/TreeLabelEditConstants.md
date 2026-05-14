@@ -8,7 +8,7 @@ permalink: /tB/Packages/WinNativeCommonCtls/Enumerations/TreeLabelEditConstants
 # TreeLabelEditConstants
 {: .no_toc }
 
-Controls when inline label editing is triggered on a [**TreeView**](../TreeView/). Carried by [**TreeView.LabelEdit**](../TreeView/#labeledit).
+Controls when inline label editing is triggered on a [**TreeView**](../TreeView/). Used by [**TreeView.LabelEdit**](../TreeView/#labeledit).
 
 | Member               | Value | Description                                                                       |
 |----------------------|-------|-----------------------------------------------------------------------------------|

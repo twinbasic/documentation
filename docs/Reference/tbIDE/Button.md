@@ -8,7 +8,7 @@ has_toc: false
 # Button class
 {: .no_toc }
 
-An addin-created toolbar button. Returned by [**Toolbar.AddButton**](Toolbar#addbutton); hold it via `WithEvents` to receive [**OnClick**](#onclick) notifications. The button's [**Caption**](#caption) and [**IconData**](#icondata) are mutable at run time — change the caption to reflect a state, or swap the icon to reflect a toggle.
+An addin-created toolbar button. Returned by [**Toolbar.AddButton**](Toolbar#addbutton); held via `WithEvents` to receive [**OnClick**](#onclick) notifications. The button's [**Caption**](#caption) and [**IconData**](#icondata) are mutable at run time --- the caption can reflect a state, or the icon can reflect a toggle.
 
 ```tb
 Private WithEvents RefreshButton As Button
@@ -38,7 +38,7 @@ Syntax: *button*.**Caption** [ = *value* ]
 ### IconData
 {: .no_toc }
 
-The icon graphic as a **Byte()** array — typically the bytes of an embedded PNG / ICO resource. Pass **Empty** to remove the icon and fall back to showing the [**Caption**](#caption) inline. Read / write.
+The icon graphic as a **Byte()** array --- typically the bytes of an embedded PNG / ICO resource. Pass **Empty** to remove the icon and fall back to showing the [**Caption**](#caption) inline. Read / write.
 
 Syntax: *button*.**IconData** [ = *bytes* ]
 

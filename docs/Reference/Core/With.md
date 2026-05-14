@@ -20,9 +20,9 @@ Syntax:
 : Name of an object or a user-defined type.
 
 *statements*
-: *optional*  One or more statements to be executed on *object*.
+: *optional* One or more statements to be executed on *object*.
 
-The **With** statement allows you to perform a series of statements on a specified object without requalifying the name of the object. For example, to change a number of different properties on a single object, place the property assignment statements within the **With** control structure, referring to the object once instead of referring to it with each property assignment.
+The **With** statement permits a series of statements on a specified object without requalifying the name of the object. For example, to change a number of different properties on a single object, place the property assignment statements within the **With** control structure, referring to the object once instead of referring to it with each property assignment.
 
 The following example illustrates use of the **With** statement to assign values to several properties of the same object.
 
@@ -35,12 +35,12 @@ End With
 ```
 
 > [!NOTE]
-> Once a **With** block is entered, *object* can't be changed. As a result, you can't use a single **With** statement to affect a number of different objects.
+> Once a **With** block is entered, *object* can't be changed. As a result, a single **With** statement cannot affect a number of different objects.
 
-You can nest **With** statements by placing one **With** block within another. However, because members of outer **With** blocks are masked within the inner **With** blocks, you must provide a fully qualified object reference in an inner **With** block to any member of an object in an outer **With** block.
+**With** statements can be nested by placing one **With** block within another. However, because members of outer **With** blocks are masked within the inner **With** blocks, a fully qualified object reference must be supplied in an inner **With** block to any member of an object in an outer **With** block.
 
-> [!NOTE]
-> In general, it's recommended that you don't jump into or out of **With** blocks. If statements in a **With** block are executed, but either the **With** or **End With** statement is not executed, a temporary variable containing a reference to the object remains in memory until you exit the procedure.
+> [!IMPORTANT]
+> Jumping into or out of **With** blocks is not recommended. If statements in a **With** block are executed, but either the **With** or **End With** statement is not executed, a temporary variable containing a reference to the object remains in memory until the procedure exits.
 
 ### Example
 

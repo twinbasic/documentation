@@ -13,7 +13,7 @@ Syntax: **AllocMem(** *BytesToAlloc* **)** **As LongPtr**
 *BytesToAlloc*
 : *required* **Long**. The size of the block to allocate, in bytes.
 
-The contents of the new block are unspecified. Release the block with [**FreeMem**](FreeMem) when you are done with it; passing the address to anything else (e.g. a Win32 `HeapFree`) will not work, since the block is owned by the twinBASIC runtime's heap.
+The contents of the new block are unspecified. Release the block with [**FreeMem**](FreeMem) when no longer needed; passing the address to anything else (e.g. a Win32 `HeapFree`) will not work, since the block is owned by the twinBASIC runtime's heap.
 
 If the allocation fails, **AllocMem** raises a run-time error.
 

@@ -14,7 +14,7 @@ Syntax: *object*.**GetFormatByName(** *Format* **)**
 : *required* An object expression that evaluates to a **DataObject**.
 
 *Format*
-: *required* A **String** giving the name of the format to test for — typically the name a custom clipboard format was registered under with `RegisterClipboardFormat`.
+: *required* A **String** giving the name of the format to test for --- typically the name a custom clipboard format was registered under with `RegisterClipboardFormat`.
 
 The result is **True** if the **DataObject** can produce a value in *Format*, **False** otherwise. Use this before calling [**GetDataByName**](GetDataByName) when the format may not be present.
 

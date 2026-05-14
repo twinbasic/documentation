@@ -27,7 +27,7 @@ End Sub
 
 ## Drive list
 
-The list is populated automatically when the underlying window is created, by asking the OS for every currently-attached drive. Each entry combines the drive letter with the volume label, or — for a network drive — the UNC path the drive is mapped to:
+The list is populated automatically when the underlying window is created, by asking the OS for every currently-attached drive. Each entry combines the drive letter with the volume label, or --- for a network drive --- the UNC path the drive is mapped to:
 
 | Entry shape          | Meaning                                                          |
 |----------------------|------------------------------------------------------------------|
@@ -35,15 +35,15 @@ The list is populated automatically when the underlying window is created, by as
 | `d:` (no brackets)   | Drive present but no volume label (unformatted, or empty CD-ROM).|
 | `z: [\\srv\share]`   | Network drive; UNC path in brackets.                             |
 
-Each entry is owner-drawn with an icon chosen from the drive type — closed disk, removable, fixed, CD-ROM, network, or RAM disk. The list cannot be edited from code: [**AddItem**](../ComboBox/#additem), [**RemoveItem**](../ComboBox/#removeitem), and [**Clear**](../ComboBox/#clear) are present in the type library for VB6 source compatibility but raise run-time error 438 (*Object doesn't support this property or method*) when called. Call [**Refresh**](#refresh) to re-read the drive set from the OS — useful after a removable medium is inserted or a network drive is mapped.
+Each entry is owner-drawn with an icon chosen from the drive type --- closed disk, removable, fixed, CD-ROM, network, or RAM disk. The list cannot be edited from code: [**AddItem**](../ComboBox/#additem), [**RemoveItem**](../ComboBox/#removeitem), and [**Clear**](../ComboBox/#clear) are present in the type library for VB6 source compatibility but raise run-time error 438 (*Object doesn't support this property or method*) when called. Call [**Refresh**](#refresh) to re-read the drive set from the OS --- useful after a removable medium is inserted or a network drive is mapped.
 
 [**ListCount**](#listcount) is the number of entries, [**List**](#list) returns the text of any entry by zero-based index, and [**TopIndex**](#topindex) controls vertical scrolling within the drop-down portion when it is open. [**NewIndex**](#newindex) reports the position of the last entry added during population (useful only when re-reading the list from code).
 
 ## Drive property semantics
 
-Reading [**Drive**](#drive) returns the *displayed text* of the currently selected entry — drive letter, colon, and (where applicable) the bracketed volume label or UNC path, exactly as shown in the combo.
+Reading [**Drive**](#drive) returns the *displayed text* of the currently selected entry --- drive letter, colon, and (where applicable) the bracketed volume label or UNC path, exactly as shown in the combo.
 
-Assigning to [**Drive**](#drive) looks only at the **first character** of the value and selects the entry whose drive letter matches (case-insensitively, by prefix). Anything after the first character is ignored, so `"C"`, `"C:"`, and `"C:\Windows"` all select the **C:** drive. If no entry matches the letter — e.g. when the requested drive is not currently attached — the assignment is silently ignored, leaving the previous selection in place. Assigning a value that matches the current selection does not raise [**Change**](#change); assigning a different value does.
+Assigning to [**Drive**](#drive) looks only at the **first character** of the value and selects the entry whose drive letter matches (case-insensitively, by prefix). Anything after the first character is ignored, so `"C"`, `"C:"`, and `"C:\Windows"` all select the **C:** drive. If no entry matches the letter --- e.g. when the requested drive is not currently attached --- the assignment is silently ignored, leaving the previous selection in place. Assigning a value that matches the current selection does not raise [**Change**](#change); assigning a different value does.
 
 ```tb
 Drive1.Drive = "D"          ' select drive D if present, else no-op
@@ -52,7 +52,7 @@ Debug.Print Drive1.Drive    ' "d: [Backup]"  (the displayed text)
 
 ## OLE drag and drop
 
-[**OLEDropMode**](#oledropmode) lets the control act as a drop target (restricted to **vbOLEDropNone** or **vbOLEDropManual**). Source-side automatic OLE drag is not supported on this control — VB6's `OLEDragMode` property was non-functional here and is omitted in twinBASIC. Call [**OLEDrag**](#oledrag) from code if a manual drag is needed.
+[**OLEDropMode**](#oledropmode) lets the control act as a drop target (restricted to **vbOLEDropNone** or **vbOLEDropManual**). Source-side automatic OLE drag is not supported on this control --- VB6's `OLEDragMode` property was non-functional here and is omitted in twinBASIC. Call [**OLEDrag**](#oledrag) from code if a manual drag is needed.
 
 ## Properties
 
@@ -84,7 +84,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Drive
 {: .no_toc }
@@ -93,7 +93,7 @@ The currently selected drive. **Default property.**
 
 Syntax: *object*.**Drive** [ = *string* ]
 
-Reading returns the displayed text of the selected entry — drive letter, colon, and (where applicable) the bracketed volume label or UNC path. Writing examines only the first character of *string* and selects the entry whose drive letter matches; values that do not match any present drive are silently ignored. Assigning a value that changes the selection raises [**Change**](#change). See [Drive property semantics](#drive-property-semantics) above for details.
+Reading returns the displayed text of the selected entry --- drive letter, colon, and (where applicable) the bracketed volume label or UNC path. Writing examines only the first character of *string* and selects the entry whose drive letter matches; values that do not match any present drive are silently ignored. Assigning a value that changes the selection raises [**Change**](#change). See [Drive property semantics](#drive-property-semantics) above for details.
 
 ### Enabled
 {: .no_toc }
@@ -183,7 +183,7 @@ How the control responds to OLE drops. A restricted member of [**OLEDropConstant
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Parent
 {: .no_toc }
@@ -285,7 +285,7 @@ Syntax: *object*.**OLEDrag**
 ### Refresh
 {: .no_toc }
 
-Re-reads the set of currently-attached drives from the operating system and repopulates the list, then redraws the control. Useful after a removable medium is inserted or a network drive is mapped or disconnected — the control does not watch for these events on its own. Does not raise [**Change**](#change), even if the previously-selected drive is no longer present (the selection moves to entry `0`).
+Re-reads the set of currently-attached drives from the operating system and repopulates the list, then redraws the control. Useful after a removable medium is inserted or a network drive is mapped or disconnected --- the control does not watch for these events on its own. Does not raise [**Change**](#change), even if the previously-selected drive is no longer present (the selection moves to entry `0`).
 
 Syntax: *object*.**Refresh**
 
@@ -318,14 +318,14 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Change
 {: .no_toc }
 
-Raised after the selected drive changes — whether the user picked a different entry from the drop-down or code assigned a different value to [**Drive**](#drive) or [**ListIndex**](#listindex). Not raised for assignments that match the current selection, nor during [**Refresh**](#refresh) or the initial population that occurs before [**Initialize**](#initialize). **Default event.**
+Raised after the selected drive changes --- whether the user picked a different entry from the drop-down or code assigned a different value to [**Drive**](#drive) or [**ListIndex**](#listindex). Not raised for assignments that match the current selection, nor during [**Refresh**](#refresh) or the initial population that occurs before [**Initialize**](#initialize). **Default event.**
 
 Syntax: *object*\_**Change**( )
 
 ### CloseUp
 {: .no_toc }
 
-Raised when the drop-down portion closes — either because the user picked an entry, clicked elsewhere, or pressed **Esc**.
+Raised when the drop-down portion closes --- either because the user picked an entry, clicked elsewhere, or pressed **Esc**.
 
 Syntax: *object*\_**CloseUp**( )
 
@@ -360,7 +360,7 @@ Syntax: *object*\_**GotFocus**( )
 ### Initialize
 {: .no_toc }
 
-Raised once, immediately after the underlying window is created and the initial list of drives has been loaded. New in twinBASIC — VB6 had no equivalent on this control.
+Raised once, immediately after the underlying window is created and the initial list of drives has been loaded. New in twinBASIC --- VB6 had no equivalent on this control.
 
 Syntax: *object*\_**Initialize**( )
 
@@ -437,7 +437,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Scroll
 {: .no_toc }
 
-Raised when the drop-down list is scrolled — by the scroll bar, the keyboard, or (when [**WheelScrollEvent**](#wheelscrollevent) is **True**) the mouse wheel. The new offset can be read from [**TopIndex**](#topindex).
+Raised when the drop-down list is scrolled --- by the scroll bar, the keyboard, or (when [**WheelScrollEvent**](#wheelscrollevent) is **True**) the mouse wheel. The new offset can be read from [**TopIndex**](#topindex).
 
 Syntax: *object*\_**Scroll**( )
 

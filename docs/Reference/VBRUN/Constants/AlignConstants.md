@@ -7,7 +7,7 @@ permalink: /tB/Packages/VBRUN/Constants/AlignConstants
 # AlignConstants
 {: .no_toc }
 
-Values for the **Align** property of forms and controls — picture boxes, data controls, and toolbars — that anchor a control to one edge of its container.
+Values for the **Align** property of forms and controls --- picture boxes, data controls, and toolbars --- that anchor a control to one edge of its container.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

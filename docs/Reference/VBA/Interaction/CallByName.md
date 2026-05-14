@@ -9,7 +9,7 @@ vba_attribution: true
 # CallByName
 {: .no_toc }
 
-Calls a method, or reads or writes a property, on an object — looked up by name at run time.
+Calls a method, or reads or writes a property, on an object --- looked up by name at run time.
 
 Syntax: **CallByName(** *object* **,** *procname* **,** *calltype* [ **,** *args* ... ] **)**
 

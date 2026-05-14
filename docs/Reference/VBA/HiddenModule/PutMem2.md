@@ -16,7 +16,7 @@ Syntax: **PutMem2** *Address* **,** *Value*
 *Value*
 : *required* **Integer**. The 16-bit value to store at *Address*.
 
-The bytes are written in the host's native byte order — little-endian on x86 and x64. The address is written directly with no bounds or alignment check.
+The bytes are written in the host's native byte order --- little-endian on x86 and x64. The address is written directly with no bounds or alignment check.
 
 ### See Also
 

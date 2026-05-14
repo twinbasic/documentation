@@ -8,7 +8,7 @@ has_toc: false
 # Toolbar class
 {: .no_toc }
 
-One IDE toolbar — the strip of buttons that runs along the top of the IDE window. Addins add their own buttons and splitters to it during start-up. Reached through `Host.Toolbars(0)` (currently the only toolbar).
+One IDE toolbar --- the strip of buttons that runs along the top of the IDE window. Addins add their own buttons and separators to it during start-up. Reached through `Host.Toolbars(0)` (currently the only toolbar).
 
 ```tb
 Private Sub Host_OnProjectLoaded()
@@ -20,7 +20,7 @@ Private Sub Host_OnProjectLoaded()
 End Sub
 ```
 
-The toolbar is shared with the IDE's own commands and with every other loaded addin — pick button IDs that uniquely identify the addin so multiple addins do not collide.
+The toolbar is shared with the IDE's own commands and with every other loaded addin --- pick button IDs that uniquely identify the addin so multiple addins do not collide.
 
 * TOC
 {:toc}
@@ -30,7 +30,7 @@ The toolbar is shared with the IDE's own commands and with every other loaded ad
 ### AddButton
 {: .no_toc }
 
-Adds a new button to the right-hand end of the toolbar and returns the [**Button**](Button) object for the addin to wire `WithEvents` against.
+Adds a new button to the right-hand end of the toolbar and returns the [**Button**](Button) object for the addin to attach `WithEvents` against.
 
 Syntax: *toolbar*.**AddButton**( *Id*, *Caption* [, *IconData* ] ) **As** [**Button**](Button)
 
@@ -41,7 +41,7 @@ Syntax: *toolbar*.**AddButton**( *Id*, *Caption* [, *IconData* ] ) **As** [**But
 : *required* The button's label. **String**. When *IconData* is supplied, the caption appears as a tooltip only; when *IconData* is omitted, the caption is displayed inline as the button's text.
 
 *IconData*
-: *optional* The button's icon as a **Byte()** array — typically the bytes of an embedded PNG / ICO resource loaded with `LoadResData`. **Variant**. Pass an empty / **Empty** value to omit the icon and show the caption inline.
+: *optional* The button's icon as a **Byte()** array --- typically the bytes of an embedded PNG / ICO resource loaded with `LoadResData`. **Variant**. Pass an empty / **Empty** value to omit the icon and show the caption inline.
 
 ```tb
 Dim icon() As Byte
@@ -52,7 +52,7 @@ Set Button1 = Host.Toolbars(0).AddButton("MyAddIn.Button1", "Refresh Project", i
 ### AddSplitter
 {: .no_toc }
 
-Adds a vertical separator bar to the toolbar — a visual divider between groups of buttons.
+Adds a vertical separator bar to the toolbar --- a visual divider between groups of buttons.
 
 Syntax: *toolbar*.**AddSplitter**
 

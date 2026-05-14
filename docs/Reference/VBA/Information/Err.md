@@ -18,9 +18,9 @@ Syntax:
 *errorNumber*
 : A **Long** error code to assign to the **Err** object. This is shorthand for `Err.Number = errorNumber`, since [**Number**](../ErrObject/Number) is the default property of **ErrObject**.
 
-The **Err** object is intrinsic and global — there is no need to declare or construct one. Its properties are populated when a run-time error is raised, and reset to zero or zero-length strings when the active error handler exits via **Resume**, **Resume Next**, or any **Exit** statement, or when [**Err.Clear**](../ErrObject/Clear) is called explicitly.
+The **Err** object is intrinsic and global --- there is no need to declare or construct one. Its properties are populated when a run-time error is raised, and reset to zero or zero-length strings when the active error handler exits via **Resume**, **Resume Next**, or any **Exit** statement, or when [**Err.Clear**](../ErrObject/Clear) is called explicitly.
 
-To generate a run-time error from your own code, use the [**Raise**](../ErrObject/Raise) method rather than the **Error** statement, especially for class-module and Automation errors.
+To generate a run-time error from user code, use the [**Raise**](../ErrObject/Raise) method rather than the **Error** statement, especially for class-module and Automation errors.
 
 ### Example
 

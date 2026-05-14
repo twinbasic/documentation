@@ -16,9 +16,9 @@ Syntax: **CVErr(** *errornumber* **)**
 *errornumber*
 : *required* Any valid error number.
 
-Use the **CVErr** function to create user-defined errors in user-created procedures. For example, if you create a function that accepts several arguments and normally returns a string, you can have your function evaluate the input arguments to ensure they are within an acceptable range. If they aren't, it is likely your function will not return what you expect. In this event, **CVErr** allows you to return an error number that tells the caller what action to take.
+Use the **CVErr** function to create user-defined errors in user-created procedures. For example, a function that accepts several arguments and normally returns a string can evaluate the input arguments to ensure they are within an acceptable range. If they aren't, the function is unlikely to return the expected result. In this event, **CVErr** returns an error number that tells the caller what action to take.
 
-Note that implicit conversion of an **Error** is not allowed. For example, you can't directly assign the return value of **CVErr** to a variable that is not a **Variant**. However, you can perform an explicit conversion (by using [**CInt**](CInt), [**CDbl**](CDbl), and so on) of the value returned by **CVErr** and assign that to a variable of the appropriate data type.
+Note that implicit conversion of an **Error** is not allowed. For example, the return value of **CVErr** cannot be directly assigned to a variable that is not a **Variant**. An explicit conversion (using [**CInt**](CInt), [**CDbl**](CDbl), and so on) of the value returned by **CVErr** can be assigned to a variable of the appropriate data type.
 
 ### Example
 

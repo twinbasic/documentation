@@ -31,7 +31,7 @@ vba_attribution: true
 
 Input Method Editor mode constants. Each value is exposed under both the legacy `vbIME...` name and the newer `vbIMEMode...` name; the two names with the same value are interchangeable.
 
-The constants applicable to a given mode depend on the system locale. Values 4–8 apply to Japanese locales, and values 9 and 10 apply to Korean locales.
+The constants applicable to a given mode depend on the system locale. Values 4--8 apply to Japanese locales, and values 9 and 10 apply to Korean locales.
 
 | Constants | Value | Description |
 |-----------|-------|-------------|

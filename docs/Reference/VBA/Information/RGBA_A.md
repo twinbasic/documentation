@@ -13,7 +13,7 @@ Syntax: **RGBA_A(** *RGBA* **)**
 *RGBA*
 : *required* A **Long** RGBA colour value, of the kind returned by [**RGBA**](RGBA).
 
-The return value is the alpha (opacity) component in the range 0–255: **0** is fully transparent and **255** is fully opaque.
+The return value is the alpha (opacity) component in the range 0--255: **0** is fully transparent and **255** is fully opaque.
 
 ### Example
 

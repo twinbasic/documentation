@@ -25,12 +25,12 @@ Syntax:
 : *required* Value or expression returned when *expression* is **False**, or when *expressiontruepart* is **Null**, **Empty**, or **Nothing**. Evaluated only when actually needed.
 
 *expressiontruepart*
-: *required* (in the two-argument form) Expression that serves as both the test and the value to return when it is "set". The function returns *expressiontruepart* unless it is **Null**, **Empty**, or a **Nothing** object reference, in which case it returns *falsepart*. Useful for null-coalescing — for example, `If(MaybeNothing, FallbackValue)`.
+: *required* (in the two-argument form) Expression that serves as both the test and the value to return when it is "set". The function returns *expressiontruepart* unless it is **Null**, **Empty**, or a **Nothing** object reference, in which case it returns *falsepart*. Useful for null-coalescing --- for example, `If(MaybeNothing, FallbackValue)`.
 
 The three-argument form is the inline conditional: it returns *truepart* when *expression* is **True**, *falsepart* otherwise, and only the chosen branch is evaluated. This makes expressions such as `If(Divisor <> 0, 100 / Divisor, "n/a")` safe even when *Divisor* is zero.
 
 > [!NOTE]
-> **If** uses special internal bindings in the compiler and may not behave exactly like a regular function — in particular, `Application.Run "If", ...` and other reflective callers will not invoke it.
+> **If** uses special internal bindings in the compiler and may not behave exactly like a regular function --- in particular, `Application.Run "If", ...` and other reflective callers will not invoke it.
 
 ### Example
 

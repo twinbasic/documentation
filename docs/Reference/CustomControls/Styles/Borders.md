@@ -9,15 +9,15 @@ has_toc: false
 # Borders class
 {: .no_toc }
 
-The collection of border strokes drawn around a region. Each stroke is an independent [**Border**](#border-class) sub-object with its own thickness, fill, and blending behaviour, layered in source order. A single thin black outline is a one-element collection — easiest constructed by calling [**SetSimpleBorder**](#setsimpleborder).
+The collection of border strokes drawn around a region. Each stroke is an independent [**Border**](#border-class) sub-object with its own thickness, fill, and blending behaviour, layered in source order. A single thin black outline is a one-element collection --- easiest constructed by calling [**SetSimpleBorder**](#setsimpleborder).
 
-Reached as `<state>.Borders`, [**CellRenderingOptions.Borders**](../WaynesGrid/CellRenderingOptions#borders), and the slider's `<sliderState>.BackgroundBorders` / `BlockBorders`. The array of [**Border**](#border-class) sub-objects on a [**TextRendering**](TextRendering)'s **Outlines** member uses the same element type.
+Accessed as `<state>.Borders`, [**CellRenderingOptions.Borders**](../WaynesGrid/CellRenderingOptions#borders), and the slider's `<sliderState>.BackgroundBorders` / `BlockBorders`. The array of [**Border**](#border-class) sub-objects on a [**TextRendering**](TextRendering)'s **Outlines** member uses the same element type.
 
 ```tb
 btnGo.NormalState.Borders.SetSimpleBorder StrokeSize:=1, ColorRGB:=vbBlack
 ```
 
-Layered borders — multiple [**Border**](#border-class) instances stroked in order — are assigned to the [**Elements**](#elements) array directly. Each element can have its own [**StrokeSize**](#strokesize) and its own [**Fill**](Fill), so a thin black outline can sit on top of a wide coloured band, or three bands of different colours can stack into a "shadow":
+Layered borders --- multiple [**Border**](#border-class) instances stroked in order --- are assigned to the [**Elements**](#elements) array directly. Each element can have its own [**StrokeSize**](#strokesize) and its own [**Fill**](Fill), so a thin black outline can sit on top of a wide coloured band, or three bands of different colours can stack into a "shadow":
 
 ```tb
 Dim elems(0 To 2) As Border
@@ -33,7 +33,7 @@ elems(2).Fill.ColorPoints.SetSolidColor &H4D7AB4       ' deeper blue
 btnGo.NormalState.Borders.Elements = elems
 ```
 
-A single [**Border**](#border-class) can also display a gradient instead of a solid colour — assign a multi-stop [**Fill**](Fill) to its [**Fill**](#fill) member. Set [**BlendWithBackgroundFill**](#blendwithbackgroundfill) to **True** on a translucent border to make it tint with the control's own **BackgroundFill** rather than with whatever lies under the control.
+A single [**Border**](#border-class) can also display a gradient instead of a solid colour --- assign a multi-stop [**Fill**](Fill) to its [**Fill**](#fill) member. Set [**BlendWithBackgroundFill**](#blendwithbackgroundfill) to **True** on a translucent border to make it tint with the control's own **BackgroundFill** rather than with whatever lies under the control.
 
 * TOC
 {:toc}

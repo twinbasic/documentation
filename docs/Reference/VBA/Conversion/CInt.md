@@ -20,7 +20,7 @@ The return type is **Integer**. If *expression* is outside the range of an **Int
 
 When the fractional part is exactly `0.5`, **CInt** always rounds it to the nearest even number. For example, `0.5` rounds to `0`, and `1.5` rounds to `2`. **CInt** differs from the [**Fix**](Fix) and [**Int**](Int) functions, which truncate, rather than round, the fractional part of a number. Also, **Fix** and **Int** always return a value of the same type as is passed in.
 
-Use **CInt** instead of [**Val**](Val) to provide internationally aware conversions from a string to a numeric type.
+**CInt** is the internationally aware alternative to [**Val**](Val) for converting a string to a numeric type.
 
 ### Example
 

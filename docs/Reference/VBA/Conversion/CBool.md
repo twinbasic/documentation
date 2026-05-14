@@ -20,7 +20,7 @@ The return type is **Boolean**. If *expression* evaluates to a nonzero value, **
 
 If *expression* cannot be interpreted as a numeric value, a run-time error occurs.
 
-In general, you can document your code using the data-type conversion functions to show that the result of some operation should be expressed as a particular data type rather than the default data type.
+The data-type conversion functions document code by showing that the result of some operation should be expressed as a particular data type rather than the default data type.
 
 ### Example
 

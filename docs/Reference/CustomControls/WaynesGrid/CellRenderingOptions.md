@@ -9,7 +9,7 @@ has_toc: false
 # CellRenderingOptions class
 {: .no_toc }
 
-A bundle of the style objects that describe one *category* of cell in a [**WaynesGrid**](.). Each grid has six parallel instances — one for column headers, one for row headers, one for normal cells, one for the hovered cell, one for the selected cell, and one for cells inside a full-row or full-column multi-selection — and the grid picks the appropriate instance per cell at paint time.
+A bundle of the style objects that describe one *category* of cell in a [**WaynesGrid**](.). Each grid has six parallel instances --- one for column headers, one for row headers, one for normal cells, one for the hovered cell, one for the selected cell, and one for cells inside a full-row or full-column multi-selection --- and the grid picks the appropriate instance per cell at paint time.
 
 ```tb
 With Grid1.SelectedCellOptions
@@ -38,7 +38,7 @@ The mouse cursor shown when the pointer is over this category of cell. A member 
 ### Fill
 {: .no_toc }
 
-The [**Fill**](../Styles/Fill) that paints the cell background. Newly-constructed **CellRenderingOptions** instances default to a solid mid-grey background ([**WAYNESCOLOR_GREY**](#) — `&H808080`).
+The [**Fill**](../Styles/Fill) that paints the cell background. Newly-constructed **CellRenderingOptions** instances default to a solid mid-grey background ([**WAYNESCOLOR_GREY**](#) --- `&H808080`).
 
 ### TextRendering
 {: .no_toc }

@@ -24,13 +24,13 @@ Syntax:
 
 The `$`-suffixed forms return a **String**; the unsuffixed forms return a **Variant** (**String**).
 
-When called with *envstring*, **Environ** returns the value assigned to that environment variable — that is, the text following the equal sign (`=`) in the environment-string table for that variable. If *envstring* can't be found in the table, a zero-length string (`""`) is returned.
+When called with *envstring*, **Environ** returns the value assigned to that environment variable --- that is, the text following the equal sign (`=`) in the environment-string table for that variable. If *envstring* can't be found in the table, a zero-length string (`""`) is returned.
 
 When called with *number*, **Environ** returns the entire entry at that position, including the variable name, the equal sign, and the value (e.g. `"PATH=C:\Windows;C:\Windows\System32"`). If there is no entry at that position, a zero-length string is returned.
 
 ### Example
 
-This example walks the environment-string table to find the entry number and the value length for `PATH`.
+This example iterates over the environment-string table to find the entry number and the value length for `PATH`.
 
 ```tb
 Dim EnvString As String, Indx As Long, PathLen As Long

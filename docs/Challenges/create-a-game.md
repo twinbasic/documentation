@@ -63,7 +63,7 @@ Bonus points may be awarded at the discretion of the twinBASIC team.
 
 Entries must be received by:
 
-🗓️ 1st March — 12:00 PM (GMT)
+🗓️ 1st March --- 12:00 PM (GMT)
 
 Submissions will be locked after the deadline.
 

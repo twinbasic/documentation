@@ -14,7 +14,7 @@ Syntax: **Randomize** [ *number* ]
 *number*
 : *optional* A **Variant** or any valid numeric expression.
 
-**Randomize** uses *number* to initialize the [**Rnd**](Rnd) function's random-number generator, giving it a new seed value. If you omit *number*, the value returned by the system timer is used as the new seed value.
+**Randomize** uses *number* to initialize the [**Rnd**](Rnd) function's random-number generator, giving it a new seed value. If *number* is omitted, the value returned by the system timer is used as the new seed value.
 
 If **Randomize** is not used, the **Rnd** function (with no arguments) uses the same number as a seed the first time it is called, and thereafter uses the last generated number as a seed value.
 

@@ -43,17 +43,16 @@ Sets the current system date from a value with a Variant or Date type.
 
 Syntax: **Date** **=** *date*
 
-date
+*date*
+: *required* For systems running Microsoft Windows 95, the *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
 
-: For systems running Microsoft Windows 95, the required *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
-
-> [!NOTE]
+> [!IMPORTANT]
 >
 > In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions. Without those permissions, assignment to **Date** results in a Permission Denied runtime error.
 
 #### Example
 
-This example uses the **Date** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of your code.
+This example uses the **Date** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of the code.
 
 ```tb
 Dim MyDate As Date
@@ -64,7 +63,7 @@ Date= MyDate                  ' Change system date.
 ## Date$ Property
 {: #date-1 }
 
-The behavior of the **Date$** property relies on the [**Calendar**](Calendar) property setting. If the calendar is Hijri, **Date$** returns or accepts a 10-character string of the form *mm-dd-yyyy*, where *mm* (01–12), *dd* (01–30) and *yyyy* (1400–1523) are the Hijri month, day, and year. The equivalent Gregorian range is Jan 1, 1980, through Dec 31, 2099.
+The behavior of the **Date$** property relies on the [**Calendar**](Calendar) property setting. If the calendar is Hijri, **Date$** returns or accepts a 10-character string of the form *mm-dd-yyyy*, where *mm* (01--12), *dd* (01--30) and *yyyy* (1400--1523) are the Hijri month, day, and year. The equivalent Gregorian range is Jan 1, 1980, through Dec 31, 2099.
 
 ### Get
 {: #date-get-1 }
@@ -89,17 +88,16 @@ Sets the current system date from a string.
 
 Syntax: **Date$** **=** *date*
 
-date
+*date*
+: *required* For systems running Microsoft Windows 95, the *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
 
-: For systems running Microsoft Windows 95, the required *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
-
-> [!NOTE]
+> [!IMPORTANT]
 >
 > In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions. Without those permissions, assignment to **Date**$ results in a Permission Denied runtime error.
 
 #### Example
 
-This example uses the **Date$** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of your code.
+This example uses the **Date$** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of the code.
 
 ```tb
 Dim MyDate$
@@ -110,4 +108,5 @@ Date$ = MyDate               ' Change the system date.
 ### See Also
 
 - [Time](Time) property
-- [Format](../Strings/Format) and [Now](Now) functions
+- [Format](../Strings/Format) function
+- [Now](Now) function

@@ -16,14 +16,14 @@ Syntax:
 : Any valid file number.
 
 *recnumber*
-: *optional*  **Variant** (**Long**). Record number (**Random** mode files) or byte number (**Binary** mode files) at which writing begins.
+: *optional* **Variant** (**Long**). Record number (**Random** mode files) or byte number (**Binary** mode files) at which writing begins.
 
 *varname*
 : Name of the variable containing data to be written to disk.
 
 Data written with **Put** is usually read from a file with [**Get**](Get).
 
-The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. If you omit *recnumber*, the next record or byte after the last **Get** or **Put** statement, or pointed to by the last [**Seek**](../Modules/FileSystem/Seek) function, is written. You must include the delimiting commas:
+The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. When *recnumber* is omitted, the next record or byte after the last **Get** or **Put** statement, or pointed to by the last [**Seek**](../Modules/FileSystem/Seek) function, is written. The delimiting commas must be included:
 
 ```tb
 Put #4, , FileBuffer
@@ -38,7 +38,7 @@ For files opened in **Random** mode, the following rules apply:
 - If the variable being written is a **Variant** of a numeric type, **Put** writes 2 bytes identifying the **VarType** of the **Variant** and then writes the variable. For example, when writing a **Variant** of **VarType** 3, **Put** writes 6 bytes: 2 bytes identifying the **Variant** as **VarType** 3 (**Long**) and 4 bytes containing the **Long** data. The record length specified by the **Len** clause in the **Open** statement must be at least 2 bytes greater than the actual number of bytes required to store the variable.
 
   > [!NOTE]
-  > Use the **Put** statement to write a **Variant** array to disk, but you can't use **Put** to write a scalar **Variant** containing an array to disk. You also can't use **Put** to write objects to disk.
+  > Use the **Put** statement to write a **Variant** array to disk; **Put** cannot write a scalar **Variant** containing an array to disk. **Put** also cannot write objects to disk.
 
 - If the variable being written is a **Variant** of **VarType** 8 (**String**), **Put** writes 2 bytes identifying the **VarType**, 2 bytes indicating the length of the string, and then writes the string data. The record length specified by the **Len** clause in the **Open** statement must be at least 4 bytes greater than the actual length of the string.
 

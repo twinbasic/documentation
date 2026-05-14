@@ -13,11 +13,11 @@ Syntax: *object*.**Value**
 *object*
 : *required* An object expression that evaluates to an **AsyncProperty** object.
 
-**Value** is only meaningful in the **AsyncReadComplete** event — during a progress notification the read has not yet finished. The concrete subtype of **Value** is determined by [**AsyncType**](AsyncType):
+**Value** is only meaningful in the **AsyncReadComplete** event --- during a progress notification the read has not yet finished. The concrete subtype of **Value** is determined by [**AsyncType**](AsyncType):
 
-- `vbAsyncTypePicture` — an **stdole.IPictureDisp**, which can be assigned to a **Picture** property.
-- `vbAsyncTypeFile` — a **String** holding the path of a temporary file containing the downloaded data.
-- `vbAsyncTypeByteArray` — a **Byte** array (`Byte()`) holding the raw bytes.
+- `vbAsyncTypePicture` --- an **stdole.IPictureDisp**, which can be assigned to a **Picture** property.
+- `vbAsyncTypeFile` --- a **String** holding the path of a temporary file containing the downloaded data.
+- `vbAsyncTypeByteArray` --- a **Byte** array (`Byte()`) holding the raw bytes.
 
 ### See Also
 

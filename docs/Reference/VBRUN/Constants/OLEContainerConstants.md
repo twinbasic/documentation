@@ -7,7 +7,7 @@ permalink: /tB/Packages/VBRUN/Constants/OLEContainerConstants
 # OLEContainerConstants
 {: .no_toc }
 
-A combined enumeration containing every option value used by the **OLE** container control. Each logical group of values has a more specific enumeration of its own — see the See Also section — but **OLEContainerConstants** retains all of the original VB6 names so existing code continues to compile.
+A combined enumeration containing every option value used by the **OLE** container control. Each logical group of values has a more specific enumeration of its own --- see the See Also section --- but **OLEContainerConstants** retains all of the original VB6 names so existing code continues to compile.
 
 ## OLE type
 

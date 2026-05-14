@@ -8,7 +8,7 @@ has_toc: false
 # Label class
 {: .no_toc }
 
-A **Label** is a windowless lightweight control for displaying read-only text. Labels are typically used as static captions next to input controls ("Name:", "Email:"), as status displays that code keeps up to date, or as keyboard-mnemonic anchors that route **Alt+** keystrokes to the next focusable control. Because the **Label** has no `hWnd` of its own, it is much cheaper than a [**TextBox**](../TextBox) configured to be read-only — but it is also non-interactive in the keyboard sense: it cannot take focus, raise key events, or be selected with the **TAB** key.
+A **Label** is a windowless lightweight control for displaying read-only text. Labels are typically used as static captions next to input controls ("Name:", "Email:"), as status displays that code keeps up to date, or as keyboard-mnemonic anchors that route **Alt+** keystrokes to the next focusable control. Because the **Label** has no `hWnd` of its own, it is much cheaper than a [**TextBox**](../TextBox) configured to be read-only --- but it is also non-interactive in the keyboard sense: it cannot take focus, raise key events, or be selected with the **TAB** key.
 
 The default property is [**Caption**](#caption) and the default event is [**Click**](#click).
 
@@ -39,7 +39,7 @@ For text the user can edit (or that needs to take focus), use [**TextBox**](../T
 
 ## Mnemonics and access keys
 
-Labels do not take focus themselves, but they participate in keyboard-mnemonic routing. With [**UseMnemonic**](#usemnemonic) **True** (the default), an ampersand in [**Caption**](#caption) marks the next character as a mnemonic — pressing **Alt+** that character moves the focus to the *next focusable control in tab order* after the label. Use `&&` to display a literal ampersand. Set [**UseMnemonic**](#usemnemonic) to **False** to disable the special handling and have ampersands rendered verbatim.
+Labels do not take focus themselves, but they participate in keyboard-mnemonic routing. With [**UseMnemonic**](#usemnemonic) **True** (the default), an ampersand in [**Caption**](#caption) marks the next character as a mnemonic --- pressing **Alt+** that character moves the focus to the *next focusable control in tab order* after the label. Use `&&` to display a literal ampersand. Set [**UseMnemonic**](#usemnemonic) to **False** to disable the special handling and have ampersands rendered verbatim.
 
 ```tb
 lblName.Caption = "&Name:"           ' Alt+N → next control (typically txtName)
@@ -63,7 +63,7 @@ The convention is to place the **Label** immediately before the control it capti
 
 ## Rotation
 
-[**Angle**](#angle) rotates the rendered caption, in degrees, anti-clockwise around the top-left of the control's rectangle. `0` is the natural orientation, `90` is a quarter-turn anti-clockwise, and so on. The control's bounding rectangle does not change — large rotation angles can therefore push the visible text outside the rectangle. Hit-testing for [**Click**](#click) and the mouse events still uses the unrotated rectangle.
+[**Angle**](#angle) rotates the rendered caption, in degrees, anti-clockwise around the top-left of the control's rectangle. `0` is the natural orientation, `90` is a quarter-turn anti-clockwise, and so on. The control's bounding rectangle does not change --- large rotation angles can therefore push the visible text outside the rectangle. Hit-testing for [**Click**](#click) and the mouse events still uses the unrotated rectangle.
 
 ## Border styles
 
@@ -87,7 +87,7 @@ End With
 
 ## Background
 
-[**BackStyle**](#backstyle) chooses between **vbBFOpaque** (default — paint [**BackColor**](#backcolor) under the caption) and **vbBFTransparent** (don't paint a background — whatever the parent has drawn shows through). Transparent labels are essential when overlaying captions on a [**PictureBox**](../PictureBox), an [**Image**](../Image/), or a custom-painted form background. New labels created in *report mode* default to **vbBFTransparent**.
+[**BackStyle**](#backstyle) chooses between **vbBFOpaque** (default --- paint [**BackColor**](#backcolor) under the caption) and **vbBFTransparent** (don't paint a background --- whatever the parent has drawn shows through). Transparent labels are essential when overlaying captions on a [**PictureBox**](../PictureBox), an [**Image**](../Image/), or a custom-painted form background. New labels created in *report mode* default to **vbBFTransparent**.
 
 ## Data binding
 
@@ -103,7 +103,7 @@ The horizontal placement of [**Caption**](#caption) within the label's rectangle
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the label's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the label's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Angle
 {: .no_toc }
@@ -128,7 +128,7 @@ The colour painted behind the caption when [**BackStyle**](#backstyle) is **vbBF
 ### BackStyle
 {: .no_toc }
 
-Whether the label paints a background. A member of [**BackFillStyleConstants**](../../VBRUN/Constants/BackFillStyleConstants): **vbBFOpaque** (1, default — paint [**BackColor**](#backcolor)) or **vbBFTransparent** (0 — let whatever the parent has drawn show through).
+Whether the label paints a background. A member of [**BackFillStyleConstants**](../../VBRUN/Constants/BackFillStyleConstants): **vbBFOpaque** (1, default --- paint [**BackColor**](#backcolor)) or **vbBFTransparent** (0 --- let whatever the parent has drawn show through).
 
 ### BorderCustomOptions
 {: .no_toc }
@@ -152,7 +152,7 @@ An ampersand marks the next character as a mnemonic when [**UseMnemonic**](#usem
 ### Container
 {: .no_toc }
 
-The control that hosts this label — typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
+The control that hosts this label --- typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
 
 ### ControlType
 {: .no_toc }
@@ -216,7 +216,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -342,7 +342,7 @@ A reference to the [**Form**](../Form/) (or **UserControl**) that ultimately con
 {: .no_toc }
 
 > [!NOTE]
-> Reserved for compatibility with VB6; not currently implemented in twinBASIC. The label is non-focusable, so the value would only affect mnemonic-routing — that is currently controlled by the design-time Z-order instead.
+> Reserved for compatibility with VB6; not currently implemented in twinBASIC. The label is non-focusable, so the value would only affect mnemonic-routing --- that is currently controlled by the design-time Z-order instead.
 
 ### Tag
 {: .no_toc }
@@ -395,7 +395,7 @@ Whether the caption breaks into multiple lines at white-space when it would othe
 ### Drag
 {: .no_toc }
 
-Begins, completes, or cancels a manual VB-style drag operation. Distinct from OLE drag — see [**OLEDrag**](#oledrag).
+Begins, completes, or cancels a manual VB-style drag operation. Distinct from OLE drag --- see [**OLEDrag**](#oledrag).
 
 Syntax: *object*.**Drag** [ *Action* ]
 

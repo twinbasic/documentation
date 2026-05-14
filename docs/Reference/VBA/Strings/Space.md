@@ -12,7 +12,7 @@ Returns a **String** consisting of the specified number of spaces.
 Syntax: **Space$(** *number* **)**, **Space(** *number* **)**
 
 *number*
-: *required* The number of spaces you want in the string.
+: *required* The number of spaces in the string.
 
 The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Variant** (**String**).
 

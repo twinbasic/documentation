@@ -18,7 +18,7 @@ Syntax:
 *string*
 : *required* Any valid string expression. If *string* contains no characters, a run-time error occurs.
 
-The range for returns from **Asc** is 0–255 on non-DBCS systems, but -32768–32767 on DBCS systems.
+The range for returns from **Asc** is 0--255 on non-DBCS systems, but -32768--32767 on DBCS systems.
 
 > [!NOTE]
 > The **AscB** function is used with byte data contained in a string. Instead of returning the character code for the first character, **AscB** returns the first byte. The **AscW** function returns the Unicode character code.

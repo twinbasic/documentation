@@ -24,7 +24,7 @@ redirect_from:
 
 ### ✅ **Benefits of Windowless Controls**
 
-- **Performance Boost**: No hWnd means less GDI overhead—great for forms with many static elements.<sup>3</sup> 
+- **Performance Boost**: No hWnd means less GDI overhead---great for forms with many static elements.<sup>3</sup> 
 - **Visual Flexibility**: Enables transparent or shaped UI elements (e.g., rounded buttons, overlays).  
 - **Resource Efficiency**: Helps avoid hitting system handle limits in control-heavy UIs.
 
@@ -33,7 +33,7 @@ redirect_from:
 ### ⚠️ **Drawbacks**
 
 - **Complex Input Handling**: You must manually forward focus, mouse, and keyboard events from the container.  
-- **Z-Order Limitations**: Cannot appear above windowed controls—problematic for overlays or tooltips.<sup>4</sup>  
+- **Z-Order Limitations**: Cannot appear above windowed controls---problematic for overlays or tooltips.<sup>4</sup>  
 - **Quirks**: twinBASIC has some known issues with windowless control events and other features.<sup>2</sup> 
 - **Accessibility Overhead**: Requires extra work to expose accessibility interfaces.<sup>1</sup>
 
@@ -41,9 +41,9 @@ redirect_from:
 
 <sup>1</sup> [IAccessibleWindowlessSite Interface on Microsoft Learn](https://learn.microsoft.com/en-us/windows/win32/api/oleacc/nn-oleacc-iaccessiblewindowlesssite)
 
-<sup>2</sup> Originally reported in [twinBASIC GitHub Issue #1310 – Windowless Anchor Resizing Bug](https://github.com/twinbasic/twinbasic/issues/1310). Fixed in BETA 162.
+<sup>2</sup> Originally reported in [twinBASIC GitHub Issue #1310 -- Windowless Anchor Resizing Bug](https://github.com/twinbasic/twinbasic/issues/1310). Fixed in BETA 162.
 
-<sup>3</sup> Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN – Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-resources)
+<sup>3</sup> Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN -- Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-resources)
 
 <sup>4</sup> Background on Z-order rendering and Windows control layering: [Windows Controls - Z-order](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#z-order)
 
@@ -74,16 +74,16 @@ redirect_from:
 
 ### 🪟 Windowless Control Examples
 
-- **[SweetIceLolly/VB6-MemoryDC](https://github.com/SweetIceLolly/VB6-MemoryDC)** – A VB6 project demonstrating off-screen rendering using memory device contexts. Great for illustrating custom-drawn, windowless UI elements.  
-- **[fafalone/WinDevLib](https://github.com/fafalone/WinDevLib)** – A twinBASIC library with low-level Win32 API wrappers. Includes examples of custom rendering and control logic that bypass hWnds.  
-- **[fafalone/EventTrace](https://github.com/fafalone/EventTrace)** – A twinBASIC port of an ETW file activity monitor. Uses lightweight, non-windowed UI elements for performance.
+- **[SweetIceLolly/VB6-MemoryDC](https://github.com/SweetIceLolly/VB6-MemoryDC)** -- A VB6 project demonstrating off-screen rendering using memory device contexts. Great for illustrating custom-drawn, windowless UI elements.  
+- **[fafalone/WinDevLib](https://github.com/fafalone/WinDevLib)** -- A twinBASIC library with low-level Win32 API wrappers. Includes examples of custom rendering and control logic that bypass hWnds.  
+- **[fafalone/EventTrace](https://github.com/fafalone/EventTrace)** -- A twinBASIC port of an ETW file activity monitor. Uses lightweight, non-windowed UI elements for performance.
 
 ### 🧱 Windowed Control Examples
 
-- **[fafalone/UIRibbonDemos](https://github.com/fafalone/UIRibbonDemos)** – twinBASIC demos of the Windows Ribbon UI framework. Showcases interactive, hWnd-backed controls with full accessibility and Z-order behavior.  
-- **[SweetIceLolly/DragControlsIDE](https://github.com/SweetIceLolly/DragControlsIDE)** – A VB6-based IDE-like interface with draggable, windowed controls. Useful for demonstrating layout and anchoring behavior. 
+- **[fafalone/UIRibbonDemos](https://github.com/fafalone/UIRibbonDemos)** -- twinBASIC demos of the Windows Ribbon UI framework. Showcases interactive, hWnd-backed controls with full accessibility and Z-order behavior.  
+- **[SweetIceLolly/DragControlsIDE](https://github.com/SweetIceLolly/DragControlsIDE)** -- A VB6-based IDE-like interface with draggable, windowed controls. Useful for demonstrating layout and anchoring behavior. 
 - **[SweetIceLolly/DragControlsIDE-v2](https://github.com/SweetIceLolly/DragControlsIDE-v2)** - an updated version of the above.
-- **[bclothier/TwinBasicSevenZip](https://github.com/bclothier/TwinBasicSevenZip)** – A twinBASIC wrapper for 7-Zip COM integration. Includes a UI with standard windowed controls for file selection and progress.
+- **[bclothier/TwinBasicSevenZip](https://github.com/bclothier/TwinBasicSevenZip)** -- A twinBASIC wrapper for 7-Zip COM integration. Includes a UI with standard windowed controls for file selection and progress.
 
 ---
 
@@ -146,4 +146,4 @@ Printer.EndDoc
 ```
 ---
 
-For DPI-aware, multi-monitor layout work, windowless controls are useful—especially for static or decorative elements—but they demand more manual handling when interactivity or layering is involved. If you're building a hybrid layout, a mix of both types might give you the best of both worlds.
+For DPI-aware, multi-monitor layout work, windowless controls are useful---especially for static or decorative elements---but they demand more manual handling when interactivity or layering is involved. If you're building a hybrid layout, a mix of both types might give you the best of both worlds.

@@ -14,9 +14,9 @@ Changes the current directory or folder.
 Syntax: **ChDir** *path*
 
 path
-: A string expression that identifies which  directory or folder becomes the new default directory or folder. The *path*  may include the drive. If no drive is specified, **ChDir** changes the  default directory or folder on the current drive.
+: A string expression that identifies which directory or folder becomes the new default directory or folder. The *path* may include the drive. If no drive is specified, **ChDir** changes the default directory or folder on the current drive.
 
-The **ChDir** statement changes the default directory but not the default  drive. For example, if the default drive is C, the following statement changes  the default directory on drive D, but C remains the default drive:
+The **ChDir** statement changes the default directory but not the default drive. For example, if the default drive is C, the following statement changes the default directory on drive D, but C remains the default drive:
 
 ```tb
 ChDir "D:\TMP" ' Make "D:\TMP" the current folder. 
@@ -46,7 +46,7 @@ On MacOS, the default drive name is "HD" and portions of the pathname are separa
 
 ### Example
 
-This example uses the **ChDir** statement to change the current directory  or folder.
+This example uses the **ChDir** statement to change the current directory or folder.
 
 ```tb
 ' Change current directory or folder to "MYDIR".

@@ -16,12 +16,12 @@ Syntax: **vbaObjSetAddref(** *DstObject* **,** *SrcObjPtr* **)** **As LongPtr**
 *SrcObjPtr*
 : *required* **LongPtr**. The pointer to the COM object that *DstObject* should refer to. **IUnknown::AddRef** is called on the pointer.
 
-This is the copy-with-addref primitive — equivalent to a regular `Set DstObject = obj` when *obj* is held only as a raw **LongPtr**.
+This is the copy-with-addref primitive --- equivalent to a regular `Set DstObject = obj` when *obj* is held only as a raw **LongPtr**.
 
 The return value mirrors the assigned pointer.
 
 ### See Also
 
-- [vbaObjSet](vbaObjSet) function — move-without-addref counterpart
+- [vbaObjSet](vbaObjSet) function -- move-without-addref counterpart
 - [vbaObjAddref](vbaObjAddref) procedure
 - [ObjPtr](ObjPtr) function

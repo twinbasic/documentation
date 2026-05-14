@@ -9,9 +9,9 @@ has_toc: false
 # Canvas type (UDT)
 {: .no_toc }
 
-The drawing surface a custom control paints onto. Passed to [**ICustomControl.Paint**](ICustomControl#paint) on every redraw pass and used exclusively from inside that method — its lifetime is the duration of the single paint pass.
+The drawing surface a custom control paints onto. Passed to [**ICustomControl.Paint**](ICustomControl#paint) on every redraw pass and used exclusively from inside that method --- its lifetime is the duration of the single paint pass.
 
-A custom control builds up one or more `ElementDescriptor` records describing the rectangles it wants to draw — each with a position, size, fill, borders, corners, text, cursor, tab-index, and a set of `AddressOf`-registered input callbacks — and hands each descriptor to [**RuntimeUICCCanvasAddElement**](#runtimeuicccanvasaddelement). The framework rasterises the descriptor, routes hit-testing to the registered callbacks, and (where the descriptor opts in) tracks keyboard tab order and focus.
+A custom control builds up one or more `ElementDescriptor` records describing the rectangles to draw --- each with a position, size, fill, borders, corners, text, cursor, tab-index, and a set of `AddressOf`-registered input callbacks --- and passes each descriptor to [**RuntimeUICCCanvasAddElement**](#runtimeuicccanvasaddelement). The framework rasterises the descriptor, routes hit-testing to the registered callbacks, and (where the descriptor opts in) tracks keyboard tab order and focus.
 
 ```tb
 Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
@@ -54,7 +54,7 @@ Syntax: *Canvas*.**RuntimeUICCGetDpi** ( ) **As Long**
 ### RuntimeUICCGetDpiScaleFactor
 {: .no_toc }
 
-Returns the DPI scale factor — `RuntimeUICCGetDpi / 96` — as a **Double**. Multiply [**PixelCount**](../Enumerations/PixelCount)-typed measurements by this value to convert from design-time pixels to device pixels at paint time.
+Returns the DPI scale factor --- `RuntimeUICCGetDpi / 96` --- as a **Double**. Multiply [**PixelCount**](../Enumerations/PixelCount)-typed measurements by this value to convert from design-time pixels to device pixels at paint time.
 
 Syntax: *Canvas*.**RuntimeUICCGetDpiScaleFactor** ( ) **As Double**
 

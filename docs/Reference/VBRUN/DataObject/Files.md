@@ -15,7 +15,7 @@ Syntax: *object*.**Files**
 
 This is the typical way to read the payload of a Windows shell drag-and-drop, which arrives as a list of fully qualified paths under the `vbCFFiles` clipboard format. Each element of the collection is a **String**.
 
-The source side may also fill the **DataObject** with a list of files by adding paths to this collection — see [**DataObjectFiles.Add**](DataObjectFiles#add).
+The source side may also fill the **DataObject** with a list of files by adding paths to this collection --- see [**DataObjectFiles.Add**](DataObjectFiles#add).
 
 ### Example
 

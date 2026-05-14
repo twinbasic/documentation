@@ -8,7 +8,7 @@ has_toc: false
 # Host class
 {: .no_toc }
 
-The root API the IDE passes to every addin. The DLL receives a **Host** as the argument to its [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) factory; the addin holds onto that reference for its lifetime and reaches every other capability through it — the currently-loaded [**CurrentProject**](#currentproject), the [**ActiveEditors**](#activeeditors), the [**Toolbars**](#toolbars) for adding buttons, the [**ToolWindows**](#toolwindows) for adding HTML-rendered panels, the [**DebugConsole**](#debugconsole) for log output, the virtual [**FileSystem**](#filesystem), the [**KeyboardShortcuts**](#keyboardshortcuts) registry, the [**Themes**](#themes) state, plus the dialog helpers [**ShowMessageBox**](#showmessagebox) / [**ShowNotification**](#shownotification).
+The root API the IDE passes to every addin. The DLL receives a **Host** as the argument to its [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) factory; the addin retains that reference for its lifetime and reaches every other capability through it --- the currently-loaded [**CurrentProject**](#currentproject), the [**ActiveEditors**](#activeeditors), the [**Toolbars**](#toolbars) for adding buttons, the [**ToolWindows**](#toolwindows) for adding HTML-rendered panels, the [**DebugConsole**](#debugconsole) for log output, the virtual [**FileSystem**](#filesystem), the [**KeyboardShortcuts**](#keyboardshortcuts) registry, the [**Themes**](#themes) state, plus the dialog helpers [**ShowMessageBox**](#showmessagebox) / [**ShowNotification**](#shownotification).
 
 Typically held via `WithEvents` so the addin can subscribe to lifecycle events:
 
@@ -27,7 +27,7 @@ Private Sub Host_OnProjectLoaded()
 End Sub
 ```
 
-Almost every meaningful addin builds its toolbar buttons and tool windows inside the [**OnProjectLoaded**](#onprojectloaded) handler — that is the first moment the IDE is fully ready to accept extensibility commands.
+Almost every meaningful addin builds its toolbar buttons and tool windows inside the [**OnProjectLoaded**](#onprojectloaded) handler --- that is the first moment the IDE is fully ready to accept extensibility commands.
 
 * TOC
 {:toc}
@@ -37,7 +37,7 @@ Almost every meaningful addin builds its toolbar buttons and tool windows inside
 ### ActiveEditors
 {: .no_toc }
 
-The collection of editors currently open in the IDE. Use `Host.ActiveEditors(0)` for the active one — at present the IDE exposes exactly one active editor at a time and `Host.ActiveEditors.Count` is **1** when an editor is open, **0** when none is. **As** [**Editors**](Editors). Read-only.
+The collection of editors currently open in the IDE. `Host.ActiveEditors(0)` returns the active one --- at present the IDE exposes exactly one active editor at a time and `Host.ActiveEditors.Count` is **1** when an editor is open, **0** when none is. **As** [**Editors**](Editors). Read-only.
 
 ### CompilerVersion
 {: .no_toc }
@@ -57,12 +57,12 @@ The IDE's DEBUG CONSOLE pane. Print, clear, or set focus. **As** [**DebugConsole
 ### FileSystem
 {: .no_toc }
 
-The IDE's virtual file system — the abstraction that lets the addin walk and read source files without touching the on-disk paths. **As** [**FileSystem**](FileSystem). Read-only.
+The IDE's virtual file system --- the abstraction that lets the addin traverse and read source files without touching the on-disk paths. **As** [**FileSystem**](FileSystem). Read-only.
 
 ### IDEProcessID
 {: .no_toc }
 
-The OS process ID of the running IDE process. **Long**, read-only. Useful for inter-process scenarios — e.g. an external helper EXE that needs to know which IDE invoked it.
+The OS process ID of the running IDE process. **Long**, read-only. Useful for inter-process scenarios --- e.g. an external helper EXE that needs to know which IDE invoked it.
 
 ### IDEWindowHandle
 {: .no_toc }
@@ -72,7 +72,7 @@ The Win32 `HWND` of the IDE's main window. **LongPtr**, read-only. Pass to Win32
 ### KeyboardShortcuts
 {: .no_toc }
 
-The keyboard-shortcut registry. Use [**KeyboardShortcuts.Add**](KeyboardShortcuts#add) to bind a key combination to a callback. **As** [**KeyboardShortcuts**](KeyboardShortcuts). Read-only.
+The keyboard-shortcut registry. Call [**KeyboardShortcuts.Add**](KeyboardShortcuts#add) to bind a key combination to a callback. **As** [**KeyboardShortcuts**](KeyboardShortcuts). Read-only.
 
 ### Themes
 {: .no_toc }
@@ -82,12 +82,12 @@ The IDE's theme state. Exposes the active theme name and group; pair with the [*
 ### Toolbars
 {: .no_toc }
 
-The collection of IDE toolbars. Currently a one-element collection — `Host.Toolbars(0)` is the only available toolbar. **As** [**Toolbars**](Toolbars). Read-only.
+The collection of IDE toolbars. Currently a one-element collection --- `Host.Toolbars(0)` is the only available toolbar. **As** [**Toolbars**](Toolbars). Read-only.
 
 ### ToolWindows
 {: .no_toc }
 
-Factory for HTML-rendered tool windows. Use [**ToolWindows.Add**](ToolWindows#add) to create one. **As** [**ToolWindows**](ToolWindows). Read-only.
+Factory for HTML-rendered tool windows. Call [**ToolWindows.Add**](ToolWindows#add) to create one. **As** [**ToolWindows**](ToolWindows). Read-only.
 
 ## Methods
 
@@ -119,18 +119,18 @@ End Select
 ### ShowNotification
 {: .no_toc }
 
-Displays a non-modal, discreet notification pop-up in the IDE — a toast-style transient message that does not require the user to react.
+Displays a non-modal, discreet notification pop-up in the IDE --- a toast-style transient message that does not require the user to react.
 
 Syntax: *host*.**ShowNotification** *Prompt*
 
 *Prompt*
 : *required* The notification text. **String**.
 
-Use [**ShowMessageBox**](#showmessagebox) when the user has to answer something; **ShowNotification** is for "the user should know but doesn't have to react".
+[**ShowMessageBox**](#showmessagebox) is for when the user has to answer something; **ShowNotification** is for "the user should know but doesn't have to react".
 
 ## Events
 
-The **Host** CoClass exposes three events. The third (and any future addition) is tagged with the compile-time `[AllowUnpopulatedVtableEntry]` attribute, which lets a newer addin compile against the newer events interface and still load against an older IDE that does not yet fire the newer event — older IDEs simply leave the slot empty and the addin never receives that particular event.
+The **Host** CoClass exposes three events. The third (and any future addition) is tagged with the compile-time `[AllowUnpopulatedVtableEntry]` attribute, which lets a newer addin compile against the newer events interface and still load against an older IDE that does not yet fire the newer event --- older IDEs leave the slot empty and the addin never receives that particular event.
 
 ### OnProjectLoaded
 {: .no_toc }
@@ -151,7 +151,7 @@ End Sub
 ### OnChangedActiveEditor
 {: .no_toc }
 
-Fires when the user switches the focused editor. Use this to refresh any addin UI that depends on the current editor (e.g. a context-aware tool window). Available since IDE BETA 504+; older IDEs simply do not fire it.
+Fires when the user switches the focused editor. The event is the right hook for refreshing any addin UI that depends on the current editor (e.g. a context-aware tool window). Available since IDE BETA 504+; older IDEs do not fire it.
 
 Syntax: *host*_**OnChangedActiveEditor**(*EditorIdx* **As Long**, *Editor* **As** [**Editor**](Editor))
 
@@ -159,7 +159,7 @@ Syntax: *host*_**OnChangedActiveEditor**(*EditorIdx* **As Long**, *Editor* **As*
 : The zero-based index of the newly active editor in the [**ActiveEditors**](#activeeditors) collection.
 
 *Editor*
-: The newly active editor object. Castable to [**CodeEditor**](CodeEditor) for code panes — see [Editor castability](Editor#castability).
+: The newly active editor object. Castable to [**CodeEditor**](CodeEditor) for code panes --- see [Editor castability](Editor#castability).
 
 ### OnChangedTheme
 {: .no_toc }
@@ -169,12 +169,12 @@ Fires when the user changes the IDE theme. Pair with [**Themes.ActiveThemeName**
 Syntax: *host*_**OnChangedTheme**(*ThemeName* **As String**)
 
 *ThemeName*
-: The new theme's name — same value the user now sees in [**Themes.ActiveThemeName**](Themes#activethemename) (e.g. `"Classic"`, `"Dark"`, `"Light"`).
+: The new theme's name --- same value the user now sees in [**Themes.ActiveThemeName**](Themes#activethemename) (e.g. `"Classic"`, `"Dark"`, `"Light"`).
 
 ## DebuggerEvaluateOptions
 {: #debuggerevaluateoptions }
 
-A flags enum declared inline on the **Host** interface; consumed by [**Project.Evaluate**](Project#evaluate) (and any future debugger-evaluation API). Currently a single-value placeholder — additional flags may appear in later IDE versions.
+A flags enum declared inline on the **Host** interface; consumed by [**Project.Evaluate**](Project#evaluate) (and any future debugger-evaluation API). Currently a single-value placeholder --- additional flags may appear in later IDE versions.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

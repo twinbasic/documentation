@@ -8,13 +8,12 @@ has_toc: false
 # Editor class
 {: .no_toc }
 
-The base interface every IDE editor presents. **Editor** itself exposes only the universal members — [**Path**](#path), [**Type**](#type), [**SetFocus**](#setfocus), [**Close**](#close), [**Save**](#save), [**IsDirty**](#isdirty) — and an instance returned from [**Editors.Item**](Editors#item) or the [**Host.OnChangedActiveEditor**](Host#onchangedactiveeditor) event is normally a *specific* editor kind (e.g. [**CodeEditor**](CodeEditor) for code panes), reachable by casting.
+The base interface every IDE editor presents. **Editor** itself exposes only the universal members --- [**Path**](#path), [**Type**](#type), [**SetFocus**](#setfocus), [**Close**](#close), [**Save**](#save), [**IsDirty**](#isdirty) --- and an instance returned from [**Editors.Item**](Editors#item) or the [**Host.OnChangedActiveEditor**](Host#onchangedactiveeditor) event is normally a *specific* editor kind (e.g. [**CodeEditor**](CodeEditor) for code panes), reachable by casting.
 
 ## Castability
 {: #castability }
 
-> [!NOTE]
-> An **Editor** returned by the IDE is castable to the specific editor kind for the underlying pane. For a code pane the cast target is [**CodeEditor**](CodeEditor); other editor kinds may be added in future IDE versions and will follow the same pattern.
+An **Editor** returned by the IDE is castable to the specific editor kind for the underlying pane. For a code pane the cast target is [**CodeEditor**](CodeEditor); other editor kinds may be added in future IDE versions and will follow the same pattern.
 
 Use `TypeOf` to test before casting:
 
@@ -27,7 +26,7 @@ If Host.ActiveEditors.Count > 0 Then
 End If
 ```
 
-Cast unconditionally only when the source — e.g. an [**OnChangedActiveEditor**](Host#onchangedactiveeditor) handler for a known editor kind — guarantees the underlying type.
+Cast unconditionally only when the source --- e.g. an [**OnChangedActiveEditor**](Host#onchangedactiveeditor) handler for a known editor kind --- guarantees the underlying type.
 
 * TOC
 {:toc}
@@ -42,12 +41,12 @@ Cast unconditionally only when the source — e.g. an [**OnChangedActiveEditor**
 ### Path
 {: .no_toc }
 
-The internal virtual-FS path of the file the editor is displaying — e.g. `"twinbasic:/Sources/MainModule.twin"`. **String**, read-only. Resolves through [**FileSystem.ResolvePath**](FileSystem#resolvepath).
+The internal virtual-FS path of the file the editor is displaying --- e.g. `"twinbasic:/Sources/MainModule.twin"`. **String**, read-only. Resolves through [**FileSystem.ResolvePath**](FileSystem#resolvepath).
 
 ### Type
 {: .no_toc }
 
-A short string identifying the editor kind — e.g. `"CodeEditor"` for a code pane. **String**, read-only. Useful for diagnostic log lines; for capability dispatch prefer `TypeOf` over comparing this string.
+A short string identifying the editor kind --- e.g. `"CodeEditor"` for a code pane. **String**, read-only. Useful for diagnostic log lines; for capability dispatch prefer `TypeOf` over comparing this string.
 
 ## Methods
 

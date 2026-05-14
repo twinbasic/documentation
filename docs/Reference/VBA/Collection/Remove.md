@@ -19,7 +19,7 @@ Syntax: *object*.**Remove(** *index* **)**
 
 If *index* doesn't match an existing member of the collection, an error occurs.
 
-When an item is removed, the indexes of subsequent items decrease by one. Take this into account when iterating over a collection while removing items — see the example below.
+When an item is removed, the indexes of subsequent items decrease by one. Take this into account when iterating over a collection while removing items --- see the example below.
 
 Key comparison is governed by the [**KeyCompareMode**](KeyCompareMode) property.
 

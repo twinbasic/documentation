@@ -8,7 +8,7 @@ has_toc: false
 # Editors class
 {: .no_toc }
 
-The collection of editors active in the IDE — accessible through [**Host.ActiveEditors**](Host#activeeditors). The IDE currently exposes exactly one active editor at a time, but the collection interface allows future versions to expose more. The most common operations are `Host.ActiveEditors(0)` (the active editor) and [**Open**](#open) (jump to a file at a given line / column).
+The collection of editors active in the IDE --- accessible through [**Host.ActiveEditors**](Host#activeeditors). The IDE currently exposes exactly one active editor at a time, but the collection interface allows future versions to expose more. The most common operations are `Host.ActiveEditors(0)` (the active editor) and [**Open**](#open) (jump to a file at a given line / column).
 
 ```tb
 ' Read the selection out of the currently-focused code pane:
@@ -37,14 +37,14 @@ Number of editors currently active. **Long**, read-only. Currently always **0** 
 ### Item
 {: .no_toc }
 
-Indexed access to the editor collection. **DefaultMember** — so `Host.ActiveEditors(0)` is equivalent to `Host.ActiveEditors.Item(0)`.
+Indexed access to the editor collection. **DefaultMember** --- so `Host.ActiveEditors(0)` is equivalent to `Host.ActiveEditors.Item(0)`.
 
 Syntax: *editors*( *Index* ) **As** [**Editor**](Editor)
 
 *Index*
 : A zero-based **Variant** index. Currently `0` is the only valid value when an editor is open.
 
-The returned object is an [**Editor**](Editor) but is usually castable to a more specific kind (e.g. [**CodeEditor**](CodeEditor) for a code pane) — see [Editor castability](Editor#castability).
+The returned object is an [**Editor**](Editor) but is usually castable to a more specific kind (e.g. [**CodeEditor**](CodeEditor) for a code pane) --- see [Editor castability](Editor#castability).
 
 ## Methods
 
@@ -59,7 +59,7 @@ Syntax: *editors*.**Open** *Path* [, *LineNumber* ] [, *ColumnNumber* ] [, *Opti
 : *required* The virtual-FS path of the file to open. **String**. Typically starts with `"twinbasic:/"`; the value returned by [**FileSystemItem.Path**](FileSystemItem#path) or [**Editor.Path**](Editor#path) is always a valid argument.
 
 *LineNumber*
-: *optional* One-based line number to navigate to. **Long**. Default **0** (no navigation — open the file at its remembered cursor position).
+: *optional* One-based line number to navigate to. **Long**. Default **0** (no navigation --- open the file at its remembered cursor position).
 
 *ColumnNumber*
 : *optional* One-based column number on the requested line. **Long**. Default **0** (column 1).
@@ -77,7 +77,7 @@ Host.ActiveEditors.Item(0).SetFocus
 ## EditorOpenOptions
 {: #editoropenoptions }
 
-A flags enum declared inline on the **Editors** interface; consumed by [**Open**](#open). Currently a single-value placeholder — additional flags may appear in later IDE versions.
+A flags enum declared inline on the **Editors** interface; consumed by [**Open**](#open). Currently a single-value placeholder --- additional flags may appear in later IDE versions.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

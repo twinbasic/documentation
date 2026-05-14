@@ -44,7 +44,7 @@ The American Standard Code for Information Interchange (ASCII) 7-bit character s
 
 ## attribute
 
-(twinBASIC) Metadata attached to a [module](#module), procedure, parameter, or other declaration, written in square brackets — for example, `[Documentation("...")]`. Some attributes control compiler behaviour (such as `[PackingAlignment]` on a [user-defined type](#user-defined-type) or `[VB_UserMemId]` on a member); others are informational. Attributes are a twinBASIC addition; classic VBA exposes only a small fixed set via the `Attribute` directive.
+(twinBASIC) Metadata attached to a [module](#module), procedure, parameter, or other declaration, written in square brackets --- for example, `[Documentation("...")]`. Some attributes control compiler behaviour (such as `[PackingAlignment]` on a [user-defined type](#user-defined-type) or `[VB_UserMemId]` on a member); others are informational. Attributes are a twinBASIC addition; classic VBA exposes only a small fixed set via the `Attribute` directive.
 
 ## Automation object
 
@@ -154,7 +154,7 @@ The period during which source code is translated to executable code.
 
 ## compiler directive
 
-A command used to alter the action of the compiler — for example, the [conditional compilation](#conditional-compiler-constant) directives `#If`, `#Else`, `#ElseIf`, and `#End If`, or the `#Const` directive. See [Preprocessor directives](Core/Topic-Preprocessor).
+A command used to alter the action of the compiler --- for example, the [conditional compilation](#conditional-compiler-constant) directives `#If`, `#Else`, `#ElseIf`, and `#End If`, or the `#Const` directive. See [Preprocessor directives](Core/Topic-Preprocessor).
 
 ## conditional compiler constant
 
@@ -236,7 +236,7 @@ Nonexecutable code that names a constant, [variable](#variable), or [procedure](
 A [data type](#data-type) that contains decimal numbers scaled by a power of 10. For zero-scaled numbers (integers with no fractional part), the range is +/-79,228,162,514,264,337,593,543,950,335. For numbers with 28 decimal places the range is +/-7.9228162514264337593543950335. The smallest non-zero value that can be represented as a **Decimal** is `0.0000000000000000000000000001`.
 
 > [!NOTE]
-> Unlike classic VBA — where **Decimal** was usable only as a **Variant** subtype produced by **CDec** — twinBASIC supports **Decimal** as a first-class declared type. You can write `Dim x As Decimal`.
+> Unlike classic VBA --- where **Decimal** was usable only as a **Variant** subtype produced by **CDec** --- twinBASIC supports **Decimal** as a first-class declared type. You can write `Dim x As Decimal`.
 
 ## designer
 
@@ -678,7 +678,7 @@ Times are stored as part of a real number. Values to the right of the decimal re
 
 ## transparent
 
-Describes the background of the object if the background is not visible. Instead of the background, whatever is behind the object is visible — for example, an image or picture used as a backdrop in your application. Use the `BackStyle` property to make the background transparent.
+Describes the background of the object if the background is not visible. Instead of the background, whatever is behind the object is visible --- for example, an image or picture used as a backdrop in your application. Use the `BackStyle` property to make the background transparent.
 
 ## twip
 

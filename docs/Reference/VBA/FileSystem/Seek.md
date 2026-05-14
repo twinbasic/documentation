@@ -37,7 +37,7 @@ Syntax: **Seek** [ **#** ] *filenumber*, *position*
 : *required* Any valid file number.
 
 *position*
-: *required* Number in the range 1–2,147,483,647 indicating where the next read/write operation should occur.
+: *required* Number in the range 1--2,147,483,647 indicating where the next read/write operation should occur.
 
 Record numbers specified in [Get](../../Core/Get) and [Put](../../Core/Put) statements override file positioning performed by **Seek**.
 

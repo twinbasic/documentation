@@ -9,7 +9,7 @@ has_toc: false
 # Column class
 {: .no_toc }
 
-One column of a [**WaynesGrid**](.). Carries a [**Caption**](#caption) that is shown in the column-header row and a [**Width**](#width) that the user can drag at run time. Elements of [**WaynesGrid.Columns**](.#columns).
+One column of a [**WaynesGrid**](.). Has a [**Caption**](#caption) that is shown in the column-header row and a [**Width**](#width) that the user can drag at run time. Elements of [**WaynesGrid.Columns**](.#columns).
 
 ```tb
 ReDim Grid1.Columns(2)

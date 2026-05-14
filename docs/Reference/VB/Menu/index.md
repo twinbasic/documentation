@@ -8,7 +8,7 @@ has_toc: false
 # Menu class
 {: .no_toc }
 
-A **Menu** is an item in a Win32 native menu — either a top-level entry on a [**Form**](../Form/)'s or [**MDIForm**](../MDIForm/)'s menu bar, an entry in a drop-down sub-menu, or a separator bar between groups of related commands. Menus are a non-windowed control: they have no [**Left**](#) / [**Top**](#) / [**Width**](#) / [**Height**](#), no font, and no mouse or keyboard events of their own — they are populated, structured, and bound to handlers at design time through the form's menu editor.
+A **Menu** is an item in a Win32 native menu --- either a top-level entry on a [**Form**](../Form/)'s or [**MDIForm**](../MDIForm/)'s menu bar, an entry in a drop-down sub-menu, or a separator bar between groups of related commands. Menus are a non-windowed control: they have no [**Left**](#) / [**Top**](#) / [**Width**](#) / [**Height**](#), no font, and no mouse or keyboard events of their own --- they are populated, structured, and bound to handlers at design time through the form's menu editor.
 
 The default property is [**Enabled**](#enabled) and the default event is [**Click**](#click).
 
@@ -34,7 +34,7 @@ End Sub
 
 [**Caption**](#caption) supplies the text drawn for the menu item. Two Caption values have special meaning:
 
-- An ampersand (`&`) marks the next character as a keyboard mnemonic — pressing **Alt + that letter** while the menu is open invokes the item, and the letter is underlined in the rendered menu. Use `&&` to display a literal ampersand.
+- An ampersand (`&`) marks the next character as a keyboard mnemonic --- pressing **Alt + that letter** while the menu is open invokes the item, and the letter is underlined in the rendered menu. Use `&&` to display a literal ampersand.
 - A Caption consisting of a single hyphen (`"-"`) renders the item as a horizontal separator bar between the surrounding entries. Separator items still receive their own [**Click**](#click) events if invoked programmatically, but the user cannot reach them with the keyboard or mouse.
 
 ```tb
@@ -45,7 +45,7 @@ mnuFileSaveAs.Caption = "Save &As..."   ' Alt+A
 
 ## Shortcut keys
 
-[**ShortcutId**](#shortcutid) binds a keyboard accelerator to the menu item. It is typed as [**ShortcutConstants**](../../VBRUN/Constants/ShortcutConstants) — **vbShortcutNone** disables the accelerator, **vbShortcutCtrlS** binds **Ctrl+S**, and so on across the function-key, **Shift+**, and **Ctrl+** ranges. When set, the Win32 runtime appends the corresponding text after a tab character in the rendered Caption — `Save\tCtrl+S` — so the shortcut appears right-aligned in the menu, the conventional way.
+[**ShortcutId**](#shortcutid) binds a keyboard accelerator to the menu item. It is typed as [**ShortcutConstants**](../../VBRUN/Constants/ShortcutConstants) --- **vbShortcutNone** disables the accelerator, **vbShortcutCtrlS** binds **Ctrl+S**, and so on across the function-key, **Shift+**, and **Ctrl+** ranges. When set, the Win32 runtime appends the corresponding text after a tab character in the rendered Caption --- `Save\tCtrl+S` --- so the shortcut appears right-aligned in the menu, the conventional way.
 
 ```tb
 mnuFileSave.ShortcutId = vbShortcutCtrlS
@@ -79,7 +79,7 @@ End Sub
 
 ## Window list (MDI)
 
-When the form hosting the menu is an [**MDIForm**](../MDIForm/), setting [**WindowList**](#windowlist) to **True** at design time turns this menu into the application's *Window* sub-menu — the runtime auto-populates it with one entry per open MDI child, marks the active child with a checkmark, and routes a click on any of those entries to **SetFocus** on the corresponding child. The application typically combines this with an explicit *Cascade* / *Tile* sub-menu that calls [**Arrange**](../MDIForm/#arrange) on the parent.
+When the form hosting the menu is an [**MDIForm**](../MDIForm/), setting [**WindowList**](#windowlist) to **True** at design time turns this menu into the application's *Window* sub-menu --- the runtime auto-populates it with one entry per open MDI child, marks the active child with a checkmark, and routes a click on any of those entries to **SetFocus** on the corresponding child. The application typically combines this with an explicit *Cascade* / *Tile* sub-menu that calls [**Arrange**](../MDIForm/#arrange) on the parent.
 
 ## Properties
 
@@ -145,7 +145,7 @@ The unique design-time name of the menu on its parent form. **String**, read-onl
 > [!NOTE]
 > Reserved for compatibility with VB6's ActiveX-document menu negotiation feature; not currently implemented in twinBASIC.
 
-Typed as [**NegotiatePositionConstants**](../../VBRUN/Constants/NegotiatePositionConstants) (**vbNoNegotiate**, **vbLeft**, **vbMiddle**, **vbRight**) — VB6 used this to decide where a top-level menu should appear in the host application's menu bar when an ActiveX document was activated.
+Typed as [**NegotiatePositionConstants**](../../VBRUN/Constants/NegotiatePositionConstants) (**vbNoNegotiate**, **vbLeft**, **vbMiddle**, **vbRight**) --- VB6 used this to decide where a top-level menu should appear in the host application's menu bar when an ActiveX document was activated.
 
 ### Parent
 {: .no_toc }
@@ -155,7 +155,7 @@ A reference to the [**Form**](../Form/) (or [**MDIForm**](../MDIForm/) / **UserC
 ### Picture
 {: .no_toc }
 
-A **StdPicture** drawn to the left of the caption. **twinBASIC extension** — VB6 menus could not display icons. Assigning **Nothing** removes the icon. Icons are converted to bitmaps internally; pass a bitmap directly to skip the conversion. Pair with [**IconSizeX**](#iconsizex) / [**IconSizeY**](#iconsizey) for multi-resolution `.ico` files.
+A **StdPicture** drawn to the left of the caption. **twinBASIC extension** --- VB6 menus could not display icons. Assigning **Nothing** removes the icon. Icons are converted to bitmaps internally; pass a bitmap directly to skip the conversion. Pair with [**IconSizeX**](#iconsizex) / [**IconSizeY**](#iconsizey) for multi-resolution `.ico` files.
 
 Syntax:
 - *object*.**Picture** [ = *picture* ]
@@ -165,19 +165,19 @@ Syntax:
 {: .no_toc }
 
 > [!NOTE]
-> Hidden, read-only, and unused at run time — exists only to round-trip the raw shortcut text imported from VB6 `.frm` files. Use [**ShortcutId**](#shortcutid) to bind an accelerator.
+> Hidden, read-only, and unused at run time --- exists only to round-trip the raw shortcut text imported from VB6 `.frm` files. Use [**ShortcutId**](#shortcutid) to bind an accelerator.
 
 ### ShortcutId
 {: .no_toc }
 
-The keyboard accelerator bound to this menu item. A member of [**ShortcutConstants**](../../VBRUN/Constants/ShortcutConstants) — **vbShortcutNone** (no accelerator, default), **vbShortcutCtrlA** through **vbShortcutCtrlZ**, **vbShortcutF1** through **vbShortcutF12**, and the **Shift+**, **Ctrl+**, and **Shift+Ctrl+** function-key variants. When set, the matching shortcut text is appended to [**Caption**](#caption) (after a tab) when the menu is rendered.
+The keyboard accelerator bound to this menu item. A member of [**ShortcutConstants**](../../VBRUN/Constants/ShortcutConstants) --- **vbShortcutNone** (no accelerator, default), **vbShortcutCtrlA** through **vbShortcutCtrlZ**, **vbShortcutF1** through **vbShortcutF12**, and the **Shift+**, **Ctrl+**, and **Shift+Ctrl+** function-key variants. When set, the matching shortcut text is appended to [**Caption**](#caption) (after a tab) when the menu is rendered.
 
 Syntax: *object*.**ShortcutId** [ = *value* ]
 
 ### Tag
 {: .no_toc }
 
-A free-form **String** the application can use to associate custom data with the menu item. Ignored by the framework. Inherited from the base control class. Useful for control arrays — e.g. holding the file path that an MRU-list entry should open.
+A free-form **String** the application can use to associate custom data with the menu item. Ignored by the framework. Inherited from the base control class. Useful for control arrays --- e.g. holding the file path that an MRU-list entry should open.
 
 ### Visible
 {: .no_toc }
@@ -189,14 +189,14 @@ Syntax: *object*.**Visible** [ = *boolean* ]
 ### WindowList
 {: .no_toc }
 
-When **True** on a menu hosted by an [**MDIForm**](../MDIForm/), turns this menu into the application's *Window* sub-menu — the runtime auto-populates it with one entry per open MDI child and routes the resulting click to **SetFocus** on the corresponding child. **Boolean**, read-only at run time — set at design time. At most one menu per MDI form should have **WindowList** set.
+When **True** on a menu hosted by an [**MDIForm**](../MDIForm/), turns this menu into the application's *Window* sub-menu --- the runtime auto-populates it with one entry per open MDI child and routes the resulting click to **SetFocus** on the corresponding child. **Boolean**, read-only at run time --- set at design time. At most one menu per MDI form should have **WindowList** set.
 
 ## Methods
 
 ### Container
 {: .no_toc }
 
-Returns a reference to the **Control** that hosts this menu — typically the [**Form**](../Form/) or [**MDIForm**](../MDIForm/) that owns the menu structure. Equivalent to traversing [**Parent**](#parent) for a top-level menu, but defined on every menu (including sub-items) so it can be called uniformly.
+Returns a reference to the **Control** that hosts this menu --- typically the [**Form**](../Form/) or [**MDIForm**](../MDIForm/) that owns the menu structure. Equivalent to traversing [**Parent**](#parent) for a top-level menu, but defined on every menu (including sub-items) so it can be called uniformly.
 
 Syntax: *object*.**Container**
 
@@ -205,7 +205,7 @@ Syntax: *object*.**Container**
 ### Click
 {: .no_toc }
 
-Raised when the user picks the menu item — by clicking it, pressing its mnemonic while the menu is open, or pressing its [**ShortcutId**](#shortcutid) accelerator. Also raised when [**PopUpMenu**](../Form/#popupmenu) selects an item. **Default event.**
+Raised when the user picks the menu item --- by clicking it, pressing its mnemonic while the menu is open, or pressing its [**ShortcutId**](#shortcutid) accelerator. Also raised when [**PopUpMenu**](../Form/#popupmenu) selects an item. **Default event.**
 
 Syntax: *object*\_**Click**( )
 

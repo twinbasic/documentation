@@ -10,7 +10,7 @@ Returns the total size, in bytes, of the arguments passed on the stack of the en
 
 Syntax: **StackArgsSize()** **As Long**
 
-The result is resolved at compile time and folded into the generated code as a numeric constant. Used inside a **Naked** procedure when the assembly needs to know how much to clean off the stack on return — for example, to issue the right `ret n` opcode under the `_stdcall` convention.
+The result is resolved at compile time and folded into the generated code as a numeric constant. Used inside a **Naked** procedure when the assembly needs to know how much to clean off the stack on return --- for example, to issue the right `ret n` opcode under the `_stdcall` convention.
 
 ### See Also
 

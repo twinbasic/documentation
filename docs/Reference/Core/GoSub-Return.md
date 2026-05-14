@@ -22,10 +22,10 @@ Syntax:
 Use **GoSub** and **Return** anywhere in a procedure, but **GoSub** and the corresponding **Return** statement must be in the same procedure. A subroutine can contain more than one **Return** statement, but the first **Return** statement encountered causes the flow of execution to branch back to the statement immediately following the most recently executed **GoSub** statement.
 
 > [!NOTE]
-> You can't enter or exit [**Sub**](Sub) procedures with **GoSub...Return**.
+> **GoSub...Return** cannot enter or exit [**Sub**](Sub) procedures.
 
 > [!TIP]
-> Creating separate procedures that you can call may provide a more structured alternative to using **GoSub...Return**.
+> Creating separate callable procedures may provide a more structured alternative to using **GoSub...Return**.
 
 ### Example
 

@@ -13,9 +13,9 @@ A bundle of the style objects that describe a single visual state of a [**Waynes
 
 In addition to the usual background / borders / corners / text-rendering quartet, a **WaynesTextBoxState** adds selection-highlight colours, a caret colour and width, and three decorator fills used for the *ERROR* / *WARNING* / *INFO* literal-substring decorations the textbox draws automatically.
 
-[**InitializeDefaultValues**](#initializedefaultvalues) and [**InitializeDefaultValues_Focused**](#initializedefaultvalues_focused) populate the state with reasonable defaults — the focused variant uses a different selection background and caret colour.
+[**InitializeDefaultValues**](#initializedefaultvalues) and [**InitializeDefaultValues_Focused**](#initializedefaultvalues_focused) populate the state with reasonable defaults --- the focused variant uses a different selection background and caret colour.
 
-The type itself is `Public Class` but is `[COMCreatable(False)]` — reach instances only through the textbox's **NormalState** / **HoverState** / **FocusedState** properties.
+The type itself is `Public Class` but is `[COMCreatable(False)]` --- instances are accessed only through the textbox's **NormalState** / **HoverState** / **FocusedState** properties.
 
 ## Properties
 
@@ -79,7 +79,7 @@ The [**TextRendering**](../Styles/TextRendering) that controls how [**Value**](.
 ### InitializeDefaultValues
 {: .no_toc }
 
-Populates every field with the package defaults — used by [**NormalState**](.#normalstate) and [**HoverState**](.#hoverstate).
+Populates every field with the package defaults --- used by [**NormalState**](.#normalstate) and [**HoverState**](.#hoverstate).
 
 Syntax: *object*.**InitializeDefaultValues**
 

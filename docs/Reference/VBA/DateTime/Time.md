@@ -45,7 +45,7 @@ Syntax: **Time** **=** *time*
 
 : *required* Any numeric expression, string expression, or any combination that can represent a time.
 
-If *time* is a string, **Time** attempts to convert it to a time by using the time separators specified for your system. If it cannot be converted to a valid time, an error occurs.
+If *time* is a string, **Time** attempts to convert it to a time by using the time separators specified by the system. If it cannot be converted to a valid time, an error occurs.
 
 > [!NOTE]
 >

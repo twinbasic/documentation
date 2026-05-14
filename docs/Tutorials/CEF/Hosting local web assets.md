@@ -8,13 +8,13 @@ permalink: /Tutorials/CEF/Hosting-Local-Web-Assets
 
 # Hosting local web assets
 
-A [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control can serve HTML, JavaScript, CSS, and any other assets straight from a folder on disk — no embedded HTTP server required. Chromium's [**SetVirtualHostNameToFolderMapping**](../../tB/Packages/CEF/CefBrowser/#setvirtualhostnametofoldermapping) routes a virtual `https://` hostname to a local folder so that resources behave as if they came from a real origin: same-origin `fetch`, Content Security Policy, service workers, and so on all work as expected.
+A [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control can serve HTML, JavaScript, CSS, and any other assets straight from a folder on disk --- no embedded HTTP server required. Chromium's [**SetVirtualHostNameToFolderMapping**](../../tB/Packages/CEF/CefBrowser/#setvirtualhostnametofoldermapping) routes a virtual `https://` hostname to a local folder so that resources behave as if they came from a real origin: same-origin `fetch`, Content Security Policy, service workers, and so on all work as expected.
 
-This tutorial demonstrates the pattern used by *Sample 1b — Chromium Embedded Framework Examples* (forms *Example 2*, *Example 3*, *Example 4*).
+This tutorial demonstrates the pattern used by *Sample 1b --- Chromium Embedded Framework Examples* (forms *Example 2*, *Example 3*, *Example 4*).
 
 ## The three-step pattern
 
-1. **Choose a folder.** It must exist on disk and contain `index.html` (plus whatever assets the page wants — scripts, styles, images).
+1. **Choose a folder.** It must exist on disk and contain `index.html` (plus whatever assets the page wants --- scripts, styles, images).
 2. **Register a virtual host** mapping to that folder.
 3. **Navigate** to a URL under the virtual hostname.
 
@@ -32,7 +32,7 @@ End Sub
 
 Once mapped, every request to `https://myapp.example/<path>` is served from `folderPath\<path>`. A `<script src="/script.js">` on the page resolves to `folderPath\script.js` exactly as if a real web server were sitting on `myapp.example`.
 
-The trailing backslash on the folder path is required — the runtime concatenates the incoming URL path onto the folder string verbatim, so a missing separator turns `folderPath` + `/index.html` into a nonsense path.
+The trailing backslash on the folder path is required --- the runtime concatenates the incoming URL path onto the folder string verbatim, so a missing separator turns `folderPath` + `/index.html` into a nonsense path.
 
 ## Picking a hostname
 
@@ -51,7 +51,7 @@ The `.example`, `.invalid`, and `.test` TLDs are formally reserved by IANA and w
 Most applications want to ship their HTML / JS / CSS *inside* the executable and drop them onto disk on first run. twinBASIC's `Resources` folder is the right place to keep them.
 
 1. In the IDE's Project explorer, expand **Resources** and add a sub-folder (right-click → *Add new subfolder*). Name it something memorable like `WEB_APP`.
-2. Drop the assets in — `index.html`, `script.js`, `styles.css`, plus any sub-directories you need.
+2. Drop the assets in --- `index.html`, `script.js`, `styles.css`, plus any sub-directories you need.
 
 At runtime, the helper below copies the contents of a `Resources` sub-folder out to a local path. Drop it into a `.twin` module in your project:
 
@@ -101,7 +101,7 @@ Module Files
 End Module
 ```
 
-[**LoadResIdList**](../../tB/Packages/VB/Global/#loadresidlist) returns every resource ID under the named sub-folder; [**LoadResData**](../../tB/Packages/VB/Global/#loadresdata) returns the bytes. The helper splits each resource name on `~` to reconstruct the original sub-directory tree on disk — the twinBASIC IDE flattens nested folders by joining their names with `~` when the resources are compiled in.
+[**LoadResIdList**](../../tB/Packages/VB/Global/#loadresidlist) returns every resource ID under the named sub-folder; [**LoadResData**](../../tB/Packages/VB/Global/#loadresdata) returns the bytes. The helper splits each resource name on `~` to reconstruct the original sub-directory tree on disk --- the twinBASIC IDE flattens nested folders by joining their names with `~` when the resources are compiled in.
 
 ## Putting it together
 
@@ -121,7 +121,7 @@ Private Sub WebView_Ready() Handles WebView.Ready
 End Sub
 ```
 
-Once deployed, the application can launch DevTools ([**OpenDevToolsWindow**](../../tB/Packages/CEF/CefBrowser/#opendevtoolswindow)) to inspect the loaded files, and users can edit `index.html` directly on disk and hit **Refresh** — useful for rapid iteration during development.
+Once deployed, the application can launch DevTools ([**OpenDevToolsWindow**](../../tB/Packages/CEF/CefBrowser/#opendevtoolswindow)) to inspect the loaded files, and users can edit `index.html` directly on disk and hit **Refresh** --- useful for rapid iteration during development.
 
 ## Removing a mapping
 
@@ -135,6 +135,6 @@ The browser keeps cached assets until a hard reload, so a navigation that hits t
 
 ## Where next
 
-- [JavaScript interop](JavaScript-Interop) — how a hosted page exchanges values and method calls with the BASIC application.
-- [Driving Monaco from twinBASIC](Driving-Monaco) — a full case study built on top of this pattern.
-- [SetVirtualHostNameToFolderMapping](../../tB/Packages/CEF/CefBrowser/#setvirtualhostnametofoldermapping) — full reference.
+- [JavaScript interop](JavaScript-Interop) -- how a hosted page exchanges values and method calls with the BASIC application.
+- [Driving Monaco from twinBASIC](Driving-Monaco) -- a full case study built on top of this pattern.
+- [SetVirtualHostNameToFolderMapping](../../tB/Packages/CEF/CefBrowser/#setvirtualhostnametofoldermapping) -- full reference.

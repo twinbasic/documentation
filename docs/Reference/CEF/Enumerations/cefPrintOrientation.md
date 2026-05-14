@@ -11,5 +11,5 @@ Page orientation passed to [**PrintToPdf**](../CefBrowser/#printtopdf) when writ
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **cefPrintPortrait**{: #cefPrintPortrait } | 0 | Default — pages are laid out with the long side vertical. |
+| **cefPrintPortrait**{: #cefPrintPortrait } | 0 | Default --- pages are laid out with the long side vertical. |
 | **cefPrintLandscape**{: #cefPrintLandscape } | 1 | Pages are laid out with the long side horizontal. |

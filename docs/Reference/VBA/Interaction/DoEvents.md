@@ -19,8 +19,8 @@ Returns an **Integer** indicating the number of open forms in the application; r
 
 **DoEvents** is most useful for simple things like keeping a UI responsive during a tight loop, or letting the user cancel a long-running operation. For genuinely long-running work, prefer a timer or a background worker (e.g. an out-of-process ActiveX EXE) so the operating system handles the multitasking.
 
-> [!NOTE]
-> Whenever you yield the processor inside an event procedure, make sure that procedure cannot be re-entered from a different code path before the original call returns; otherwise the program may behave unpredictably. Likewise, avoid **DoEvents** when other applications might interact with your procedure in unforeseen ways during the time you have yielded control.
+> [!IMPORTANT]
+> Whenever the processor is yielded inside an event procedure, that procedure must not be re-entered from a different code path before the original call returns; otherwise the program may behave unpredictably. Likewise, avoid **DoEvents** when other applications might interact with the procedure in unforeseen ways during the time control is yielded.
 
 ### Example
 
