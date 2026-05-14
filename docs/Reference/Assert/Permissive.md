@@ -8,7 +8,7 @@ has_toc: false
 # Permissive module
 {: .no_toc }
 
-The **Permissive** module of the [**Assert**](.) package supplies assertions that compare values as if the comparison had been written directly in twinBASIC code, with case-insensitive string comparison. Object default members are evaluated. Use **Permissive** for tests where you don't care about case differences in strings — for example, asserting that an error message contains a particular phrase regardless of capitalisation — and you want object comparison to use the same default-member rules as `=`.
+The **Permissive** module of the [**Assert**](.) package supplies assertions that compare values as if the comparison had been written directly in twinBASIC code, with case-insensitive string comparison. Object default members are evaluated. Use **Permissive** for tests that should ignore case differences in strings — for example, asserting that an error message contains a particular phrase regardless of capitalisation — and that need object comparison to use the same default-member rules as `=`.
 
 * TOC
 {:toc}

@@ -8,7 +8,7 @@ has_toc: false
 # Strict module
 {: .no_toc }
 
-The **Strict** module of the [**Assert**](.) package supplies assertions that compare values as if the comparison had been written directly in twinBASIC code, with two exceptions: string comparisons are case-sensitive (regardless of the project's `Option Compare` setting), and object default members are not evaluated. Use **Strict** for tests that should match the language's normal equality semantics for numbers and primitives but want a guaranteed case-sensitive string compare and reference-style equality on objects.
+The **Strict** module of the [**Assert**](.) package supplies assertions that compare values as if the comparison had been written directly in twinBASIC code, with two exceptions: string comparisons are case-sensitive (regardless of the project's `Option Compare` setting), and object default members are not evaluated. Use **Strict** for tests that should match the language's normal equality semantics for numbers and primitives but also need a guaranteed case-sensitive string compare and reference-style equality on objects.
 
 * TOC
 {:toc}
