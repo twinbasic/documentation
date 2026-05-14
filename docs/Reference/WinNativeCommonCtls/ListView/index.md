@@ -8,7 +8,7 @@ has_toc: false
 # ListView class
 {: .no_toc }
 
-A **ListView** is a flexible multi-column / icon list with four distinct visual modes selected through the [**View**](#view) property:
+A **ListView** is a multi-column / icon list with four distinct visual modes selected through the [**View**](#view) property:
 
 | [**View**](#view)              | Description                                                                        |
 |--------------------------------|------------------------------------------------------------------------------------|
@@ -17,7 +17,7 @@ A **ListView** is a flexible multi-column / icon list with four distinct visual 
 | **lvwList**                    | A single column of small-icon-plus-label entries, wrapped into multiple columns to fit. |
 | **lvwReport**                  | Multi-column table view with header row; columns are defined through [**ColumnHeaders**](ColumnHeaders). |
 
-The two main collections are reached through properties: [**ListItems**](#listitems) for the rows, and [**ColumnHeaders**](#columnheaders) for the **Report**-view column headers.
+The two main collections are accessed through properties: [**ListItems**](#listitems) for the rows, and [**ColumnHeaders**](#columnheaders) for the **Report**-view column headers.
 
 ```tb
 Private Sub Form_Load()

@@ -39,7 +39,7 @@ Once any image is in the list, attempting to assign [**ImageWidth**](#imagewidth
 
 ## Mask color and transparency
 
-When [**UseMaskColor**](#usemaskcolor) is **True** (the default), every bitmap added through [**ListImages.Add**](ListImages#add) is masked: pixels matching [**MaskColor**](#maskcolor) become transparent when the image is rendered into a consuming control. The default [**MaskColor**](#maskcolor) is `&H00C0C0C0` (silver), which matches the classic VB6 transparency convention. Icons (passed as `StdPicture` of type `vbPicTypeIcon`) carry their own alpha mask and are unaffected by **MaskColor** / **UseMaskColor**.
+When [**UseMaskColor**](#usemaskcolor) is **True** (the default), every bitmap added through [**ListImages.Add**](ListImages#add) is masked: pixels matching [**MaskColor**](#maskcolor) become transparent when the image is rendered into a consuming control. The default [**MaskColor**](#maskcolor) is `&H00C0C0C0` (silver), which matches the classic VB6 transparency convention. Icons (passed as `StdPicture` of type `vbPicTypeIcon`) include their own alpha mask and are unaffected by **MaskColor** / **UseMaskColor**.
 
 Setting [**ColorDepth**](#colordepth) to **ColorDepth32Bit** disables masking entirely — the alpha channel is preserved directly.
 

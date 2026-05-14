@@ -8,7 +8,7 @@ permalink: /tB/Packages/WinNativeCommonCtls/Enumerations/DTPickerFormatConstants
 # DTPickerFormatConstants
 {: .no_toc }
 
-Selects the display format used by a [**DTPicker**](../DTPicker) control. Carried by the [**DTPicker.Format**](../DTPicker#format) property.
+Selects the display format used by a [**DTPicker**](../DTPicker) control. Used by the [**DTPicker.Format**](../DTPicker#format) property.
 
 When set to **dtpCustom**, the picker also reads [**DTPicker.CustomFormat**](../DTPicker#customformat) to control the actual display.
 

@@ -9,9 +9,9 @@ has_toc: false
 # ListItems class
 {: .no_toc }
 
-The **ListItems** collection is the entry point for managing the rows of a [**ListView**](.). Reached as `<listView>.ListItems`; supports adding, removing, indexed access, and `For Each` iteration.
+The **ListItems** collection is the entry point for managing the rows of a [**ListView**](.). Accessed as `<listView>.ListItems`; supports adding, removing, indexed access, and `For Each` iteration.
 
-The class is tagged `[COMCreatable(False)]` — user code reaches **ListItems** through the parent [**ListView**](.) control's [**ListItems**](.#listitems) property.
+The class is tagged `[COMCreatable(False)]` — user code accesses **ListItems** through the parent [**ListView**](.) control's [**ListItems**](.#listitems) property.
 
 ```tb
 With ListView1.ListItems

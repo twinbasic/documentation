@@ -9,9 +9,9 @@ has_toc: false
 # ColumnHeaders class
 {: .no_toc }
 
-The **ColumnHeaders** collection is the entry point for managing the columns of a [**ListView**](.) in **lvwReport** view. Reached as `<listView>.ColumnHeaders`; supports adding, removing, indexed access, and `For Each` iteration.
+The **ColumnHeaders** collection is the entry point for managing the columns of a [**ListView**](.) in **lvwReport** view. Accessed as `<listView>.ColumnHeaders`; supports adding, removing, indexed access, and `For Each` iteration.
 
-The class is tagged `[COMCreatable(False)]` — user code reaches **ColumnHeaders** through the parent [**ListView**](.) control's [**ColumnHeaders**](.#columnheaders) property.
+The class is tagged `[COMCreatable(False)]` — user code accesses **ColumnHeaders** through the parent [**ListView**](.) control's [**ColumnHeaders**](.#columnheaders) property.
 
 ```tb
 With ListView1.ColumnHeaders

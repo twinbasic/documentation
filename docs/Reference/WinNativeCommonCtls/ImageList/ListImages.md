@@ -9,9 +9,9 @@ has_toc: false
 # ListImages class
 {: .no_toc }
 
-The **ListImages** collection is the entry point for managing the pictures inside an [**ImageList**](.). Reached as `<imageList>.ListImages`; supports adding, removing, indexed access, and `For Each` iteration.
+The **ListImages** collection is the entry point for managing the pictures inside an [**ImageList**](.). Accessed as `<imageList>.ListImages`; supports adding, removing, indexed access, and `For Each` iteration.
 
-The class is tagged `[COMCreatable(False)]` — user code reaches **ListImages** through the parent [**ImageList**](.) control's [**ListImages**](.#listimages) property, never by direct instantiation.
+The class is tagged `[COMCreatable(False)]` — user code accesses **ListImages** through the parent [**ImageList**](.) control's [**ListImages**](.#listimages) property, never by direct instantiation.
 
 ```tb
 With ImageList1.ListImages

@@ -11,7 +11,7 @@ has_toc: false
 
 A **Node** is a single entry in a [**TreeView**](.)'s [**Nodes**](Nodes) collection. Returned from [**Nodes.Add**](Nodes#add) and from [**Nodes.Item**](Nodes#item). Each node has its own text, icons, sort settings, check state, and sibling / parent / child relationships.
 
-The class is tagged `[COMCreatable(False)]` — user code reaches **Node** instances through the parent [**TreeView**](.)'s [**Nodes**](Nodes) collection or through navigation properties on other nodes.
+The class is tagged `[COMCreatable(False)]` — user code accesses **Node** instances through the parent [**TreeView**](.)'s [**Nodes**](Nodes) collection or through navigation properties on other nodes.
 
 ```tb
 Dim root As Node = TreeView1.Nodes.Add(, , "root", "My Computer")

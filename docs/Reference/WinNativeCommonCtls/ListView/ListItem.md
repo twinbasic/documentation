@@ -11,7 +11,7 @@ has_toc: false
 
 A **ListItem** is a single row in a [**ListView**](.). Returned from [**ListItems.Add**](ListItems#add) and from [**ListItems.Item**](ListItems#item). In **lvwReport** view, the first column is the main label ([**Text**](#text)); subsequent columns are exposed through [**SubItems**](#subitemsindex)(*index*).
 
-The class is tagged `[COMCreatable(False)]` — user code reaches **ListItem** instances through the parent [**ListView**](.)'s [**ListItems**](ListItems) collection, never by direct instantiation.
+The class is tagged `[COMCreatable(False)]` — user code accesses **ListItem** instances through the parent [**ListView**](.)'s [**ListItems**](ListItems) collection, never by direct instantiation.
 
 ```tb
 Dim item As ListItem = ListView1.ListItems.Add(, "doc1", "Report.docx", "doc")
@@ -112,7 +112,7 @@ The row's main label text. **String**, read/write. The default member. Maps to t
 ### ToolTipText
 {: .no_toc }
 
-A tooltip string shown when the user hovers over this row. **String**. Surfaced through the listview's `LVS_EX_INFOTIP` extended style.
+A tooltip string shown when the user hovers over this row. **String**. Exposed through the listview's `LVS_EX_INFOTIP` extended style.
 
 ### Top
 {: .no_toc }

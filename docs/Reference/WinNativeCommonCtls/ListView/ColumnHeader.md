@@ -11,7 +11,7 @@ has_toc: false
 
 A **ColumnHeader** represents a single column in a [**ListView**](.) running in **lvwReport** view. Returned from [**ColumnHeaders.Add**](ColumnHeaders#add) and from [**ColumnHeaders.Item**](ColumnHeaders#item).
 
-The class is tagged `[COMCreatable(False)]` — user code reaches **ColumnHeader** instances through the parent [**ListView**](.)'s [**ColumnHeaders**](ColumnHeaders) collection.
+The class is tagged `[COMCreatable(False)]` — user code accesses **ColumnHeader** instances through the parent [**ListView**](.)'s [**ColumnHeaders**](ColumnHeaders) collection.
 
 ```tb
 With ListView1.ColumnHeaders

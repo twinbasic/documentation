@@ -8,7 +8,7 @@ has_toc: false
 # TreeView class
 {: .no_toc }
 
-A **TreeView** is a hierarchical display of [**Node**](Node) objects organized into a tree. Each node can be expanded or collapsed, optionally has a checkbox, and references an icon from an associated [**ImageList**](../ImageList/). The collection of nodes is reached through [**Nodes**](#nodes); each [**Node**](Node) has its own siblings, parent, and child navigation properties.
+A **TreeView** is a hierarchical display of [**Node**](Node) objects organized into a tree. Each node can be expanded or collapsed, optionally has a checkbox, and references an icon from an associated [**ImageList**](../ImageList/). The collection of nodes is accessed through [**Nodes**](#nodes); each [**Node**](Node) has its own siblings, parent, and child navigation properties.
 
 ```tb
 Private Sub Form_Load()
@@ -303,7 +303,7 @@ Syntax: *object*\_**NodeCheck**( **ByVal** *Node* **As Node** )
 ### NodeClick
 {: .no_toc }
 
-Raised when a node is clicked. Distinct from [**Click**](#click), which fires on any mouse click in the control regardless of where it lands.
+Raised when a node is clicked. Distinct from [**Click**](#click), which fires on any mouse click in the control regardless of where it occurs.
 
 Syntax: *object*\_**NodeClick**( **ByVal** *Node* **As Node** )
 

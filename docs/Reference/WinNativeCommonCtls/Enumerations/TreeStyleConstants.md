@@ -10,7 +10,7 @@ permalink: /tB/Packages/WinNativeCommonCtls/Enumerations/TreeStyleConstants
 
 Composite visual style of a [**TreeView**](../TreeView/), encoding a 3-bit combination of which elements appear: **plus-minus** buttons, **treelines**, and **picture** icons. The labels are always shown.
 
-Carried by [**TreeView.Style**](../TreeView/#style). Default: **tvwTreelinesPlusMinusPictureText**.
+Used by [**TreeView.Style**](../TreeView/#style). Default: **tvwTreelinesPlusMinusPictureText**.
 
 The composite decoding:
 

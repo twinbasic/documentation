@@ -8,7 +8,7 @@ permalink: /tB/Packages/WinNativeCommonCtls/Enumerations/TreeLineStyleConstants
 # TreeLineStyleConstants
 {: .no_toc }
 
-Controls whether the [**TreeView**](../TreeView/) draws tree lines from root nodes or only from child nodes. Carried by [**TreeView.LineStyle**](../TreeView/#linestyle). Only has visible effect when [**Style**](../TreeView/#style) is one of the **tvwTreelines…** variants.
+Controls whether the [**TreeView**](../TreeView/) draws tree lines from root nodes or only from child nodes. Used by [**TreeView.LineStyle**](../TreeView/#linestyle). Only has visible effect when [**Style**](../TreeView/#style) is one of the **tvwTreelines…** variants.
 
 | Member                | Value | Description                                                                |
 |-----------------------|-------|----------------------------------------------------------------------------|

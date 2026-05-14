@@ -201,7 +201,7 @@ Determines how the progress bar animates as the value changes. Declared on the *
 |------------------------------|-------|------------------------------------------------------------------------|
 | **PrbScrollingStandard**{: #PrbScrolling_PrbScrollingStandard } | 0 | Segmented bar with the classic discrete blocks animation. |
 | **PrbScrollingSmooth**{: #PrbScrolling_PrbScrollingSmooth } | 1 | Continuous block with no inter-segment gaps. Pair with [**SmoothReverse**](#smoothreverse) to allow the value to decrease visibly. |
-| **PrbScrollingMarquee**{: #PrbScrolling_PrbScrollingMarquee } | 2 | Indeterminate animated stripe. Drive with [**MarqueeAnimation**](#marqueeanimation) and [**MarqueeSpeed**](#marqueespeed); the actual [**Value**](#value) is irrelevant. |
+| **PrbScrollingMarquee**{: #PrbScrolling_PrbScrollingMarquee } | 2 | Indeterminate animated stripe. Control with [**MarqueeAnimation**](#marqueeanimation) and [**MarqueeSpeed**](#marqueespeed); the actual [**Value**](#value) is irrelevant. |
 
 ## PrbState
 {: #prbstate }

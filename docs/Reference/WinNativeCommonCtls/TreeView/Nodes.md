@@ -9,9 +9,9 @@ has_toc: false
 # Nodes class
 {: .no_toc }
 
-The **Nodes** collection is the entry point for managing the [**Node**](Node) tree of a [**TreeView**](.). Reached as `<treeView>.Nodes`; supports adding, removing, indexed access, and `For Each` iteration.
+The **Nodes** collection is the entry point for managing the [**Node**](Node) tree of a [**TreeView**](.). Accessed as `<treeView>.Nodes`; supports adding, removing, indexed access, and `For Each` iteration.
 
-The class is tagged `[COMCreatable(False)]` — user code reaches **Nodes** through the parent [**TreeView**](.) control's [**Nodes**](.#nodes) property.
+The class is tagged `[COMCreatable(False)]` — user code accesses **Nodes** through the parent [**TreeView**](.) control's [**Nodes**](.#nodes) property.
 
 ```tb
 With TreeView1.Nodes
