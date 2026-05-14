@@ -38,5 +38,5 @@ If the registry key cannot be opened for write, **RegisterEventLogInternal** rai
 
 ## See Also
 
-- [WinEventLogLib package](.) -- overview, lifecycle, message-resource generation
-- [EventLog class](EventLog) -- the generic class whose [**Register**](EventLog#register) method wraps this helper
+- [WinEventLogLib](.) package — overview, lifecycle, message-resource generation
+- [EventLog](EventLog) class — the generic class whose [**Register**](EventLog#register) method wraps this helper

@@ -84,7 +84,7 @@ Syntax: *object*.**LogSuccess** *EventId*, *CategoryId* [, *AdditionalStrings* .
 : *optional* A **ParamArray** of values inserted into the event's message string at the `%1`, `%2`, … placeholders.
 
 > [!NOTE]
-> The Windows event type for this call is `EVENTLOG_SUCCESS` (= 0), which is the Win32 SDK's literal name for the **Information** event type — *not* an Audit Success entry. The class spells the method **LogSuccess** to track the SDK constant, but the entries you read back in `eventvwr.msc` are tagged **Information**.
+> The Windows event type for this call is `EVENTLOG_SUCCESS` (= 0), which is the Win32 SDK's literal name for the **Information** event type — *not* an Audit Success entry. The class spells the method **LogSuccess** to track the SDK constant, but the entries that appear in `eventvwr.msc` are tagged **Information**.
 
 ### New
 {: .no_toc }

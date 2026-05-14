@@ -10,7 +10,7 @@ has_toc: false
 # WinEventLogLib Package
 {: .no_toc }
 
-The **WinEventLogLib** built-in package writes entries to the Windows Event Log from twinBASIC. Define two enumerations — one naming the event IDs your application can report, one naming the categories those events belong to — and the generic [**EventLog**](EventLog) class handles registration, registry setup, and the per-event `ReportEventW` call.
+The **WinEventLogLib** built-in package writes entries to the Windows Event Log from twinBASIC. Define two enumerations — one naming the event IDs the application can report, one naming the categories those events belong to — and the generic [**EventLog**](EventLog) class handles registration, registry setup, and the per-event `ReportEventW` call.
 
 The package is a built-in package shipped with twinBASIC. Add it through Project → References (**Ctrl-T**) → Available Packages.
 
@@ -21,7 +21,7 @@ The package is a built-in package shipped with twinBASIC. Add it through Project
 
 A typical use has three stages:
 
-1. **Declare** two enumerations — the event IDs and the categories — anywhere in the project. The values you assign become the numeric **Event ID** and **Category** columns visible in `eventvwr.msc`.
+1. **Declare** two enumerations — the event IDs and the categories — anywhere in the project. The assigned values become the numeric **Event ID** and **Category** columns visible in `eventvwr.msc`.
 2. **Register** once, with administrator rights, at install time. Construct an [**EventLog**](EventLog) instance and call [**Register**](EventLog#register); this writes the source key under `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\<LogName>` and points the registry's **EventMessageFile** and **CategoryMessageFile** entries at the running EXE. Without this step, the Event Viewer shows *"The description for Event ID X cannot be found"* for every entry.
 3. **Log** at runtime, without elevation. Construct the same [**EventLog**](EventLog) with the same *LogName* and call [**LogSuccess**](EventLog#logsuccess) or [**LogFailure**](EventLog#logfailure) whenever the application has something to report.
 
@@ -147,4 +147,4 @@ The three other Windows Event Log entry types — **Warning**, **Audit Success**
 
 ## Modules
 
-- [EventLogHelperPublic](EventLogHelperPublic) -- the low-level registry helper underlying [**EventLog.Register**](EventLog#register); call it directly only when you need to supply a category count without using the generic class
+- [EventLogHelperPublic](EventLogHelperPublic) -- the low-level registry helper underlying [**EventLog.Register**](EventLog#register); call it directly only when needing to supply a category count without using the generic class
