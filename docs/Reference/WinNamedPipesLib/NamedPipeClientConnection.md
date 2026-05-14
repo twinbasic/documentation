@@ -52,7 +52,7 @@ A per-connection opaque slot the consumer can attach state to — typically a se
 ### Handle
 {: .no_toc }
 
-The underlying Win32 file handle returned by `CreateFileW("\\.\pipe\<PipeName>")`. **LongPtr**. Exposed for low-level / debugging use — most consumers can ignore it. Do not call `CloseHandle` on this value yourself; use [**AsyncClose**](#asyncclose) so the IOCP loop and the parent manager's bookkeeping stay consistent.
+The underlying Win32 file handle returned by `CreateFileW("\\.\pipe\<PipeName>")`. **LongPtr**. Exposed for low-level / debugging use — most consumers can ignore it. Do not call `CloseHandle` on this value directly; use [**AsyncClose**](#asyncclose) so the IOCP loop and the parent manager's bookkeeping stay consistent.
 
 ### PipeName
 {: .no_toc }
@@ -86,7 +86,7 @@ Syntax: *connection*_**MessageReceived**(**ByRef** *Cookie* **As Variant**, **By
 : The opaque correlation value originally passed to the [**AsyncRead**](#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads triggered by [**NamedPipeClientManager.ContinuouslyReadFromPipe**](NamedPipeClientManager#continuouslyreadfrompipe).
 
 *Data*
-: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if you need them. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and gives you typed multi-field access in one step.
+: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if they are needed later. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and provides typed multi-field access in one step.
 
 ### MessageSent
 {: .no_toc }

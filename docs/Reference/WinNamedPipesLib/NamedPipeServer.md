@@ -80,7 +80,7 @@ Fires after a client's `ConnectNamedPipe` has completed and the connection is re
 Syntax: *server*_**ClientConnected**(*Connection* **As NamedPipeServerConnection**)
 
 *Connection*
-: The newly-connected client's server-side connection object. Hold the reference if you need per-client state across messages — the same instance is passed to every event for this client. Note that **Cookie** / `Tag`-style storage is available through [**NamedPipeServerConnection.CustomData**](NamedPipeServerConnection#customdata).
+: The newly-connected client's server-side connection object. Hold the reference to keep per-client state across messages — the same instance is passed to every event for this client. **Cookie** / `Tag`-style storage is available through [**NamedPipeServerConnection.CustomData**](NamedPipeServerConnection#customdata).
 
 ### ClientDisconnected
 {: .no_toc }
@@ -106,7 +106,7 @@ Syntax: *server*_**ClientMessageReceived**(*Connection* **As NamedPipeServerConn
 : The opaque correlation value originally passed to the [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads triggered by [**ContinuouslyReadFromPipe**](#continuouslyreadfrompipe).
 
 *Data*
-: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if you need them. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and gives you typed multi-field access in one step.
+: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if they are needed later. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and provides typed multi-field access in one step.
 
 ### ClientMessageSent
 {: .no_toc }

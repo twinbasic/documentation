@@ -26,7 +26,7 @@ Two halves, each one user-instantiated coordinator class plus one per-connection
 | Server  | [**NamedPipeServer**](NamedPipeServer)                 | [**NamedPipeServerConnection**](NamedPipeServerConnection)     |
 | Client  | [**NamedPipeClientManager**](NamedPipeClientManager)   | [**NamedPipeClientConnection**](NamedPipeClientConnection)     |
 
-The server publishes a name (`PipeName = "MyService"` → Win32 path `\\.\pipe\MyService`) and returns a [**NamedPipeServerConnection**](NamedPipeServerConnection) for every client that connects. The client manager dials by the same name (with [**Connect**](NamedPipeClientManager#connect)) and gets back a [**NamedPipeClientConnection**](NamedPipeClientConnection). The two ends are symmetric thereafter — both expose `AsyncRead`, `AsyncWrite`, and `AsyncClose` with the same signatures.
+The server publishes a name (`PipeName = "MyService"` → Win32 path `\\.\pipe\MyService`) and returns a [**NamedPipeServerConnection**](NamedPipeServerConnection) for every client that connects. The client manager dials by the same name (with [**Connect**](NamedPipeClientManager#connect)) and returns a [**NamedPipeClientConnection**](NamedPipeClientConnection). The two ends are symmetric thereafter — both expose `AsyncRead`, `AsyncWrite`, and `AsyncClose` with the same signatures.
 
 Reads, writes, and connection completion all run through the same Windows I/O Completion Port (IOCP) infrastructure. Each coordinator class owns its own completion port, a configurable pool of worker threads ([**NumThreadsIOCP**](NamedPipeServer#numthreadsiocp)), and a hidden message-only window used to marshal events back to the UI thread.
 
@@ -34,7 +34,7 @@ Reads, writes, and connection completion all run through the same Windows I/O Co
 
 By default events fire on the main UI thread. The IOCP worker threads receive each completion, package the buffer, and `PostMessage` the result to a hidden `STATIC`-class window owned by the coordinator. The window's subclassed `WndProc` then raises the BASIC event from the message loop. This means the consuming process **must be pumping a Win32 message loop** for events to be delivered. Forms-based hosts already are; console hosts and Windows services are not, and need either [**NamedPipeServer.ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter) (and the matching `ManualMessageLoopLeave`) or `FreeThreadingEvents = True`.
 
-Setting [**FreeThreadingEvents**](NamedPipeServer#freethreadingevents) to **True** skips the marshalling round-trip and raises events directly from the IOCP worker thread. Performance is higher and there is no message-loop requirement, but the consumer's event handlers must be thread-safe — multiple `ClientMessageReceived` events from different clients can fire concurrently, and global / class state touched from the handler is **not** protected by the implicit UI-thread serialisation that the default mode gives.
+Setting [**FreeThreadingEvents**](NamedPipeServer#freethreadingevents) to **True** skips the marshalling round-trip and raises events directly from the IOCP worker thread. Performance is higher and there is no message-loop requirement, but the consumer's event handlers must be thread-safe — multiple `ClientMessageReceived` events from different clients can fire concurrently, and global / class state touched from the handler is **not** protected by the implicit UI-thread serialisation that the default mode provides.
 
 The flag must be set before [**Start**](NamedPipeServer#start) (server side) or before the first [**Connect**](NamedPipeClientManager#connect) call (client side); it is read once and propagated to every per-connection object.
 
@@ -50,7 +50,7 @@ The canonical pattern: [**ITbService.EntryPoint**](../WinServicesLib/ITbService#
 Set NamedPipeServer = New NamedPipeServer
 NamedPipeServer.PipeName = "MyServicePipe"
 
-' (tell the SCM we're running, then block on the message loop)
+' (tell the SCM the service is running, then block on the message loop)
 ServiceManager.ReportStatus vbServiceStatusRunning
 NamedPipeServer.Start
 NamedPipeServer.ManualMessageLoopEnter      ' blocks until ManualMessageLoopLeave
@@ -103,7 +103,7 @@ End Sub
 The *Data* parameter on [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) and [**MessageReceived**](NamedPipeClientConnection#messagereceived) is **not** a normal heap-allocated **Byte** array. The package constructs a custom `SAFEARRAY` whose backing memory points at the IOCP read buffer, then clears the array pointer at the end of the event handler so the buffer can be recycled. The values are valid *only* while the handler is on the stack.
 
 > [!IMPORTANT]
-> Copy the bytes out before the event handler returns if you need them later. Storing the array reference in a module-level variable, a **Collection**, or a class field leaves a dangling pointer once the IOCP loop reuses the buffer for the next message.
+> Copy the bytes out before the event handler returns if they are needed later. Storing the array reference in a module-level variable, a **Collection**, or a class field leaves a dangling pointer once the IOCP loop reuses the buffer for the next message.
 
 For a fresh **Byte()** copy:
 
@@ -120,7 +120,7 @@ For a text payload, `StrConv(Data, vbUnicode)` (UTF-8) or `CStr` over a `vbUnico
 
 The package transports raw bytes; it is agnostic about what is inside them. For non-trivial protocols the recommended carrier is [**PropertyBag**](../VBRUN/PropertyBag/) — twinBASIC's built-in keyed-property serialiser. Two reasons:
 
-1. **`PropertyBag.Contents` deep-copies the bytes**, which is the simplest answer to the transient-`Data()` lifetime caveat above. Assigning *Data* to a fresh **PropertyBag**'s **Contents** captures the buffer in one step; the copy is safe to keep past the event handler.
+1. **`PropertyBag.Contents` deep-copies the bytes**, which is the simplest answer to the transient-`Data()` lifetime caveat above. Assigning *Data* to a fresh **PropertyBag**'s **Contents** captures the buffer in one step; the copy is safe to retain past the event handler.
 2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on property names (e.g. `"CommandID"`, `"ResponseCommandID"`, `"Data"`) and **PropertyBag** handles the byte-level encoding.
 
 ```tb
@@ -143,7 +143,7 @@ Select Case cmd
 End Select
 ```
 
-Nothing in the package mandates **PropertyBag** — raw `Byte()` works too, and a custom wire format may be the right answer for very high-throughput scenarios. But the everyday case is well served by the **PropertyBag** convention and it solves the transient-`Data()` problem without extra effort.
+Nothing in the package mandates **PropertyBag** — raw `Byte()` works too, and a custom wire format may be the right answer for very high-throughput scenarios. The everyday case is well served by the **PropertyBag** convention, and it solves the transient-`Data()` problem as a side effect.
 
 ## Closing a client connection
 
@@ -177,7 +177,7 @@ End Sub
 ## Known limitations
 
 - **No `Error` event is raised.** None of the four classes raises an `Error` event. Recognised IOCP failures (`ERROR_BROKEN_PIPE`, `ERROR_OPERATION_ABORTED`) drop the connection silently through the normal [**ClientDisconnected**](NamedPipeServer#clientdisconnected) / [**Disconnected**](NamedPipeClientConnection#disconnected) path — the consumer cannot distinguish a deliberate close from a transport failure. Worse, the client-side IOCP loop (`IOCPThreadClient` in `NamedPipeClientManager.twin`) contains a literal **Stop** statement on the branch for *unrecognised* error codes, which halts execution rather than reporting the error to consumer code.
-- **Send is hard-capped at** [**MessageBufferSize**](NamedPipeServer#messagebuffersize) **bytes.** The receive path grows its buffer dynamically on `ERROR_MORE_DATA`, so reads of arbitrary size work. The send path does not: [**AsyncWrite**](NamedPipeServerConnection#asyncwrite) (and the client-side [**AsyncWrite**](NamedPipeClientConnection#asyncwrite)) copies the caller's `Byte()` *without a bounds-check* into a per-completion buffer sized at [**MessageBufferSize**](NamedPipeServer#messagebuffersize) (default **131072** bytes); the same goes for [**AsyncBroadcast**](NamedPipeServer#asyncbroadcast). A larger message overruns the buffer — likely a crash or heap corruption rather than a clean error. Raise [**MessageBufferSize**](NamedPipeServer#messagebuffersize) above your largest expected message *before* the first [**Start**](NamedPipeServer#start) (server) or [**Connect**](NamedPipeClientManager#connect) (client); the value is read once at that point and propagated to every per-connection buffer.
+- **Send is hard-capped at** [**MessageBufferSize**](NamedPipeServer#messagebuffersize) **bytes.** The receive path grows its buffer dynamically on `ERROR_MORE_DATA`, so reads of arbitrary size work. The send path does not: [**AsyncWrite**](NamedPipeServerConnection#asyncwrite) (and the client-side [**AsyncWrite**](NamedPipeClientConnection#asyncwrite)) copies the caller's `Byte()` *without a bounds-check* into a per-completion buffer sized at [**MessageBufferSize**](NamedPipeServer#messagebuffersize) (default **131072** bytes); the same applies to [**AsyncBroadcast**](NamedPipeServer#asyncbroadcast). A larger message overruns the buffer — likely a crash or heap corruption rather than a clean error. Raise [**MessageBufferSize**](NamedPipeServer#messagebuffersize) above the largest expected message *before* the first [**Start**](NamedPipeServer#start) (server) or [**Connect**](NamedPipeClientManager#connect) (client); the value is read once at that point and propagated to every per-connection buffer.
 
 ## Classes
 

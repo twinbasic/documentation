@@ -43,7 +43,7 @@ A per-connection opaque slot the consumer can attach state to — typically a se
 ### Handle
 {: .no_toc }
 
-The underlying Win32 named-pipe handle. **LongPtr**. Exposed for low-level / debugging use — most consumers can ignore it. Do not call `CloseHandle` on this value yourself; use [**AsyncClose**](#asyncclose) so the IOCP loop and the parent server's bookkeeping stay consistent.
+The underlying Win32 named-pipe handle. **LongPtr**. Exposed for low-level / debugging use — most consumers can ignore it. Do not call `CloseHandle` on this value directly; use [**AsyncClose**](#asyncclose) so the IOCP loop and the parent server's bookkeeping stay consistent.
 
 ### IsConnected
 {: .no_toc }
