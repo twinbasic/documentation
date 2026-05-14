@@ -41,9 +41,9 @@ The flag must be set before [**Start**](NamedPipeServer#start) (server side) or 
 ## Hosting inside a Windows service
 {: #service-host-idiom }
 
-Windows services that host a [**NamedPipeServer**](NamedPipeServer) run into the message-loop dependency described above: the service entry-point thread is not pumping messages by default, so the marshalled-event delivery has nothing to dispatch through. The package provides [**NamedPipeServer.ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter) / [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) for exactly this case.
+Windows services hosted through the [**WinServicesLib**](../WinServicesLib/) package run into the message-loop dependency described above when they also host a [**NamedPipeServer**](NamedPipeServer): the [**ITbService.EntryPoint**](../WinServicesLib/ITbService#entrypoint) thread is not pumping messages by default, so the marshalled-event delivery has nothing to dispatch through. The package provides [**NamedPipeServer.ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter) / [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) for exactly this case.
 
-The canonical pattern: the service-thread entry-point opens the server, transitions the service to `Running`, blocks inside [**ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter), and only leaves the loop when a control-code handler running on the *other* (dispatcher) thread calls [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) on the same server instance.
+The canonical pattern: [**ITbService.EntryPoint**](../WinServicesLib/ITbService#entrypoint) opens the server, transitions the service to `Running`, blocks inside [**ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter), and only leaves the loop when [**ITbService.ChangeState**](../WinServicesLib/ITbService#changestate) — running on the *other* (dispatcher) thread — calls [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) on the same server instance.
 
 ```tb
 ' On the service-entry-point thread:

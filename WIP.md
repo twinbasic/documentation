@@ -4,7 +4,7 @@ Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source un
 
 ## Status
 
-Reference documentation is **in progress**. Nine packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set. The WinServicesLib package is being added now.
+Reference documentation is **complete**. All ten packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
 
 | Package                              | Reference | Tutorials |
 |--------------------------------------|-----------|-----------|
@@ -17,7 +17,7 @@ Reference documentation is **in progress**. Nine packages have full reference co
 | cefPackage (CEF)                     | done      | done      |
 | WinEventLogLib                       | done      | —         |
 | WinNamedPipesLib                     | done      | —         |
-| WinServicesLib                       | **WIP**   | —         |
+| WinServicesLib                       | done      | —         |
 
 The rest of this file is the maintenance guide for adding new pages or updating existing ones — primary-source paths, page templates, cross-section linking conventions, the per-symbol workflow, and the integrity check.
 

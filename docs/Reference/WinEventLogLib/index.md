@@ -78,7 +78,7 @@ Two things to remember:
 - The *T1* / *T2* type arguments must match between the `Implements` declaration and the constructor expression — the compiler enforces this.
 - Using `"Application\" & CurrentComponentName` as the *LogName* makes the log path automatically track the class name at compile time; renaming the class renames the source it logs to.
 
-This is the canonical mix-in pattern for Windows-service classes (every service class in a project that shares one set of event IDs picks up logging methods without per-class boilerplate). The same pattern works for any class that wants the [**EventLog**](EventLog) surface inline.
+This is the canonical mix-in pattern for [**WinServicesLib**](../WinServicesLib/) service classes (every service class in a project that shares one set of event IDs picks up logging methods without per-class boilerplate). The same pattern works for any class that wants the [**EventLog**](EventLog) surface inline.
 
 A class can use `Implements ... Via` on [**EventLog**](EventLog)`(Of T1, T2)` only **once**. When several classes in the same project need to share a logging surface, declare a single module with one event-ID enum and one category enum and `Implements ... Via` against that pair from every class. Multiple unrelated message tables are still possible — they just have to be reached through explicitly-named [**EventLog**](EventLog) fields rather than the `Implements ... Via` shortcut.
 
