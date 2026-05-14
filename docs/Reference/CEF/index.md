@@ -25,10 +25,10 @@ The package is a built-in package shipped with twinBASIC, but the CEF runtime it
 CEF and [**WebView2**](../WebView2/) both wrap a Chromium-based browser inside a twinBASIC control. CEF brings advantages that matter for some applications:
 
 - **Cross-platform ready.** CEF runs on Windows, Linux, and macOS. [**WebView2**](../WebView2/) is Windows-only.
-- **Full control over the runtime stack.** The application targets a specific Chromium build and distributes it alongside the software. There is no runtime auto-update behind the developer's back, so behavior stays consistent across deployments.
-- **Deeper runtime integration.** CEF allows hosting twinBASIC code inside the renderer / JavaScript process — something the locked-down WebView2 object model cannot do.
+- **Full control over the runtime stack.** The application targets a specific Chromium build and distributes it alongside the software. There is no automatic runtime update outside the application's control, so behavior stays consistent across deployments.
+- **Deeper runtime integration.** CEF allows hosting twinBASIC code inside the renderer / JavaScript process — something the more restricted WebView2 object model cannot do.
 
-Choose [**WebView2**](../WebView2/) when targeting only modern Windows and willing to rely on the system-installed Edge runtime; choose **CEF** when control over the Chromium version or cross-platform readiness matters.
+Choose [**WebView2**](../WebView2/) when targeting only modern Windows and the system-installed Edge runtime is acceptable; choose **CEF** when control over the Chromium version or cross-platform readiness matters.
 
 ## Supported runtimes
 
@@ -41,7 +41,7 @@ Three CEF versions are supported, each with a different Chromium baseline and di
 | **v145**        | Windows 10+   | Recommended modern runtime.                                    |
 
 > [!WARNING]
-> Older Chromium versions should not generally be used for unrestricted internet browsing — they carry unpatched security vulnerabilities. They remain appropriate for tightly controlled environments where the browser loads only trusted local or internal content.
+> Older Chromium versions should not generally be used for unrestricted internet browsing — they have unpatched security vulnerabilities. They remain appropriate for tightly controlled environments where the browser loads only trusted local or internal content.
 
 The user picks a runtime in two places that must agree:
 
@@ -105,7 +105,7 @@ These [**WebView2**](../WebView2/) features are not yet exposed on **CefBrowser*
 
 The [**NavigationComplete**](CefBrowser/#navigationcomplete) event has **IsSuccess** and **WebErrorStatus** parameters in its signature but currently returns placeholder values (`True` and `0`) — the underlying CEF callbacks that would populate them have not yet been connected.
 
-The API will continue to grow; treat this list as a snapshot of the current beta and not a long-term limitation.
+The API will continue to grow; this list is a snapshot of the current beta, not a long-term limitation.
 
 ## Classes
 
@@ -121,7 +121,7 @@ The API will continue to grow; treat this list as a snapshot of the current beta
 
 - [Getting started](../../../Tutorials/CEF/Getting-Started) -- package reference, runtime download, install path
 - [Customize the UserDataFolder](../../../Tutorials/CEF/Customize-UserDataFolder) -- relocating the runtime's working folder
-- [Re-entrancy](../../../Tutorials/CEF/Re-entrancy) -- the deferred-event model and the one place ([**JsRun**](CefBrowser/#jsrun)) you still have to think about it
+- [Re-entrancy](../../../Tutorials/CEF/Re-entrancy) -- the deferred-event model and the one place ([**JsRun**](CefBrowser/#jsrun)) that still requires attention
 - [Building a browser shell](../../../Tutorials/CEF/Building-A-Browser-Shell) -- back / forward / reload / zoom / PDF
 - [Hosting local web assets](../../../Tutorials/CEF/Hosting-Local-Web-Assets) -- virtual-host folder mappings
 - [JavaScript interop](../../../Tutorials/CEF/JavaScript-Interop) -- messages and scripted calls between BASIC and the page

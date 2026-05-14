@@ -9,7 +9,7 @@ has_toc: false
 # CefEnvironmentOptions class
 {: .no_toc }
 
-Carries the host's pre-creation configuration for the CEF environment — runtime folder, user-data folder, and the optional debug-log destination. Surfaces on every [**CefBrowser**](.) control as its **EnvironmentOptions** property; the control instantiates one automatically before raising the [**Create**](.#create) event.
+Pre-creation configuration for the CEF environment — runtime folder, user-data folder, and the optional debug-log destination. Available on every [**CefBrowser**](.) control as its **EnvironmentOptions** property; the control instantiates one automatically before raising the [**Create**](.#create) event.
 
 The fields below take effect only while the CEF runtime is being launched — that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
 
@@ -23,7 +23,7 @@ Private Sub CefBrowser1_Create()
 End Sub
 ```
 
-The type itself is `Private Class` — you reach instances only through the control's **EnvironmentOptions** property and cannot declare a variable typed as **CefEnvironmentOptions** from outside the package.
+The type itself is `Private Class` — instances are reachable only through the control's **EnvironmentOptions** property, and a variable typed as **CefEnvironmentOptions** cannot be declared from outside the package.
 
 ## Properties
 

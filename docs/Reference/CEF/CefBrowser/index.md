@@ -27,7 +27,7 @@ Private Sub CefBrowser1_NavigationComplete( _
 End Sub
 ```
 
-The control inherits the rect-dockable members (size, layout, **Anchors**, **Dock**) from `BaseControlRectDockable`. It does *not* inherit a focusable layer, so the keyboard / mouse / focus events you might find on [**WebView2**](../../WebView2/WebView2/) are not part of its API — keystrokes go straight into the page once Chromium has focus.
+The control inherits the rect-dockable members (size, layout, **Anchors**, **Dock**) from `BaseControlRectDockable`. It does *not* inherit a focusable layer, so the keyboard / mouse / focus events available on [**WebView2**](../../WebView2/WebView2/) are not part of its API — keystrokes go straight into the page once Chromium has focus.
 
 * TOC
 {:toc}
@@ -48,7 +48,7 @@ The first **CefBrowser** to initialise in a process launches the shared browser 
 
 ## Deferred startup
 
-By default the control launches the browser helper as soon as the form is loaded (the `WS_VISIBLE` style is set on the host window and the first resize event triggers the helper). Set [**CreateInitialized**](#createinitialized) to **False** before the form loads, then call [**Initialize**](#initialize) at the moment you want the browser to start — useful when several **CefBrowser** controls live on tabs and you want to defer the cost until the tab is shown.
+By default the control launches the browser helper as soon as the form is loaded (the `WS_VISIBLE` style is set on the host window and the first resize event triggers the helper). Set [**CreateInitialized**](#createinitialized) to **False** before the form loads, then call [**Initialize**](#initialize) when the browser should start — useful when several **CefBrowser** controls live on tabs and the cost of launching the helper should be deferred until the tab is shown.
 
 ## JavaScript interop
 
@@ -207,7 +207,7 @@ Syntax: *object*.**ClearVirtualHostNameToFolderMapping** *hostName*
 ### ExecuteScript
 {: .no_toc }
 
-Evaluates JavaScript in the page without waiting for it to finish and without returning its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when you need the value.
+Evaluates JavaScript in the page without waiting for it to finish and without returning its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when the return value is needed.
 
 Syntax: *object*.**ExecuteScript** *jsCode*
 
@@ -554,7 +554,8 @@ End Sub
 ## See Also
 
 - [CefEnvironmentOptions](EnvironmentOptions) -- pre-creation configuration exposed through [**EnvironmentOptions**](#environmentoptions)
-- [CefLogSeverity](../Enumerations/CefLogSeverity), [cefPrintOrientation](../Enumerations/cefPrintOrientation) -- the package's two user-facing enumerations
+- [CefLogSeverity](../Enumerations/CefLogSeverity) -- the verbosity threshold for the CEF debug log
+- [cefPrintOrientation](../Enumerations/cefPrintOrientation) -- page orientation passed to [**PrintToPdf**](#printtopdf)
 - [WebView2](../../WebView2/WebView2/) -- the WebView2-runtime counterpart with a larger feature set
 - [WebView2 parity](../#webview2-parity) -- features available on **WebView2** that are not yet exposed on **CefBrowser**
 - [ControlTypeConstants](../../VBRUN/Constants/ControlTypeConstants) -- where **vbCefBrowser** lives
