@@ -50,7 +50,7 @@ If the [**DocumentURL**](#documenturl) field has a non-empty value when [**Ready
 
 Several runtime callbacks — [**PermissionRequested**](#permissionrequested), [**NavigationStarting**](#navigationstarting), [**WebResourceRequested**](#webresourcerequested), [**ScriptDialogOpening**](#scriptdialogopening), [**DownloadStarting**](#downloadstarting), and [**NewWindowRequested**](#newwindowrequested) — are reentrant from the Edge side, meaning they fire on the WebView2 thread while it expects the host to either return synchronously or hold a *deferral* until the decision is made. Calling back into the control from inside a synchronous handler can deadlock the browser process.
 
-When [**UseDeferredEvents**](#usedeferredevents) is **True** (the default), the control takes the runtime's deferral on the host's behalf, posts the event onto the BASIC message-loop, and completes the deferral after the handler returns. Application code is therefore safe to call any other **WebView2** method from inside these events. Set [**UseDeferredEvents**](#usedeferredevents) to **False** only if you need synchronous semantics and have arranged your own re-entrancy guard.
+When [**UseDeferredEvents**](#usedeferredevents) is **True** (the default), the control takes the runtime's deferral on the host's behalf, posts the event onto the BASIC message-loop, and completes the deferral after the handler returns. Application code is therefore safe to call any other **WebView2** method from inside these events. Set [**UseDeferredEvents**](#usedeferredevents) to **False** only when synchronous semantics are required and the host has arranged its own re-entrancy guard.
 
 [**AcceleratorKeyPressed**](#acceleratorkeypressed) is always synchronous — its runtime arguments do not expose a deferral.
 
@@ -58,7 +58,7 @@ When [**UseDeferredEvents**](#usedeferredevents) is **True** (the default), the 
 
 The control offers three families of BASIC ↔ JavaScript bridges:
 
-- **Host-object sharing** — [**AddObject**](#addobject) publishes a COM object to JavaScript under `chrome.webview.hostObjects.<Name>`. The page can call methods and read / write properties on the BASIC object directly. Requires [**AreHostObjectsAllowed**](#arehostobjectsallowed) (default **True**). Pass `UseDeferredInvoke:=True` if the page may call back during a BASIC operation, then accept that you cannot return values to the page.
+- **Host-object sharing** — [**AddObject**](#addobject) publishes a COM object to JavaScript under `chrome.webview.hostObjects.<Name>`. The page can call methods and read / write properties on the BASIC object directly. Requires [**AreHostObjectsAllowed**](#arehostobjectsallowed) (default **True**). Pass `UseDeferredInvoke:=True` when the page may call back during a BASIC operation; with deferred invocation the host cannot return values to the page.
 - **Posting messages** — [**PostWebMessage**](#postwebmessage) sends a value to the page, where it shows up via `window.chrome.webview.addEventListener('message', …)`. The page replies with `window.chrome.webview.postMessage(…)`, which fires the [**JsMessage**](#jsmessage) event. Requires [**IsWebMessageEnabled**](#iswebmessageenabled) (default **True**).
 - **Executing script** — [**JsRun**](#jsrun) calls a named JavaScript function and waits for the result, [**JsRunAsync**](#jsrunasync) calls one and fires [**JsAsyncResult**](#jsasyncresult) when the result arrives, [**JsProp**](#jsprop) evaluates an expression like `document.title`, and [**ExecuteScript**](#executescript) fires-and-forgets.
 
@@ -89,12 +89,12 @@ Whether Edge's built-in accelerator keys are active — **F5** to reload, **Ctrl
 ### AreDefaultContextMenusEnabled
 {: .no_toc }
 
-Whether Edge's right-click context menu is shown. **Boolean**, default **True**. Set to **False** and handle [**UserContextMenu**](#usercontextmenu) to draw your own menu.
+Whether Edge's right-click context menu is shown. **Boolean**, default **True**. Set to **False** and handle [**UserContextMenu**](#usercontextmenu) to draw a custom menu.
 
 ### AreDefaultScriptDialogsEnabled
 {: .no_toc }
 
-Whether Edge shows its own dialogs for `alert()`, `confirm()`, `prompt()`, and the `beforeunload` confirmation. **Boolean**, default **True**. Set to **False** and handle [**ScriptDialogOpening**](#scriptdialogopening) to provide your own.
+Whether Edge shows its own dialogs for `alert()`, `confirm()`, `prompt()`, and the `beforeunload` confirmation. **Boolean**, default **True**. Set to **False** and handle [**ScriptDialogOpening**](#scriptdialogopening) to provide custom dialogs.
 
 ### AreDevToolsEnabled
 {: .no_toc }
@@ -499,7 +499,7 @@ Syntax: *object*.**Drag** [ *Action* ]
 ### ExecuteScript
 {: .no_toc }
 
-Evaluates JavaScript in the page without waiting for it to finish and without returning its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when you need the value.
+Evaluates JavaScript in the page without waiting for it to finish and without returning its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when the value is needed.
 
 Syntax: *object*.**ExecuteScript** *jsCode*
 
@@ -589,7 +589,7 @@ Syntax: *object*.**Move** *Left* [, *Top* [, *Width* [, *Height* ] ] ]
 ### MoveFocus
 {: .no_toc }
 
-Hands keyboard focus to the underlying WebView2 surface so that subsequent keystrokes are dispatched into the page. Distinct from the inherited [**SetFocus**](#setfocus), which focuses the host control window.
+Transfers keyboard focus to the underlying WebView2 surface so that subsequent keystrokes are dispatched into the page. Distinct from the inherited [**SetFocus**](#setfocus), which focuses the host control window.
 
 Syntax: *object*.**MoveFocus**
 
@@ -871,7 +871,7 @@ Syntax: *object*\_**Create**( )
 ### DevToolsProtocolResponse
 {: .no_toc }
 
-Raised when a previously sent [**CallDevToolsProtocolMethod**](#calldevtoolsprotocolmethod) call returns. Carries the *CustomEventId* supplied at the call site and the JSON-encoded response.
+Raised when a previously sent [**CallDevToolsProtocolMethod**](#calldevtoolsprotocolmethod) call returns. Includes the *CustomEventId* supplied at the call site and the JSON-encoded response.
 
 Syntax: *object*\_**DevToolsProtocolResponse**( *CustomEventId* **As Variant**, *JsonResponse* **As String** )
 
@@ -892,7 +892,7 @@ Syntax: *object*\_**DOMContentLoaded**( )
 ### DownloadStarting
 {: .no_toc }
 
-Raised when the user (or the page) starts a file download. Set *Cancel* to **True** to suppress the download; set *Handled* to **True** to suppress the runtime's default download UI when you intend to manage progress yourself. Modify *ResultFilePath* to redirect the download to a different path. Can be deferred — see [Deferred events](#deferred-events).
+Raised when the user (or the page) starts a file download. Set *Cancel* to **True** to suppress the download; set *Handled* to **True** to suppress the runtime's default download UI when the application intends to manage progress itself. Modify *ResultFilePath* to redirect the download to a different path. Can be deferred — see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**DownloadStarting**( *ResultFilePath* **As String**, *Cancel* **As Boolean**, *Handled* **As Boolean** )
 
@@ -1041,7 +1041,7 @@ Syntax: *object*\_**UserContextMenu**( *X* **As Single**, *Y* **As Single** )
 ### WebResourceRequested
 {: .no_toc }
 
-Raised when an in-flight HTTP request matches a filter previously registered with [**AddWebResourceRequestedFilter**](#addwebresourcerequestedfilter). Modify *Response* to mock or override the reply; leave it untouched to let the runtime fetch normally. Can be deferred — see [Deferred events](#deferred-events).
+Raised when a pending HTTP request matches a filter previously registered with [**AddWebResourceRequestedFilter**](#addwebresourcerequestedfilter). Modify *Response* to mock or override the reply; leave it untouched to let the runtime fetch normally. Can be deferred — see [Deferred events](#deferred-events).
 
 Syntax: *object*\_**WebResourceRequested**( *Request* **As** [**WebView2Request**](../WebView2Request), *Response* **As** [**WebView2Response**](../WebView2Response) )
 

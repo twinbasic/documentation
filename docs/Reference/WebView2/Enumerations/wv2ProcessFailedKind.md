@@ -7,7 +7,7 @@ permalink: /tB/Packages/WebView2/Enumerations/wv2ProcessFailedKind
 # wv2ProcessFailedKind
 {: .no_toc }
 
-Identifies which of the external WebView2 processes failed. Carried as the `Kind` argument of the [**ProcessFailed**](../WebView2/#processfailed) event. Mirrors the `COREWEBVIEW2_PROCESS_FAILED_KIND` enumeration.
+Identifies which of the external WebView2 processes failed. Passed as the `Kind` argument of the [**ProcessFailed**](../WebView2/#processfailed) event. Mirrors the `COREWEBVIEW2_PROCESS_FAILED_KIND` enumeration.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

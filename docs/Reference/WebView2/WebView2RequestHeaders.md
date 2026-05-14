@@ -10,7 +10,7 @@ has_toc: false
 
 The mutable HTTP-request-header collection for a navigation or a web-resource request. Reached two ways:
 
-- As the **RequestHeaders** argument of the [**NavigationStarting**](WebView2/#navigationstarting) event — the headers that will be sent for the page navigation. Mutations made before the event handler returns are transmitted.
+- As the **RequestHeaders** argument of the [**NavigationStarting**](WebView2/#navigationstarting) event — the headers about to be sent for the page navigation. Mutations made before the event handler returns are transmitted.
 - Through [**WebView2Request.Headers**](WebView2Request#headers) when handling a [**WebResourceRequested**](WebView2/#webresourcerequested) event.
 
 The collection is enumerable: a `For Each` loop yields one [**WebView2Header**](WebView2Header) per entry.

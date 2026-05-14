@@ -8,7 +8,7 @@ has_toc: false
 # WebView2Request class
 {: .no_toc }
 
-The request side of a [**WebResourceRequested**](WebView2/#webresourcerequested) event. Surfaces the HTTP method, target URI, request headers, and request body of an in-flight WebView2 request, and lets the event handler edit the body before the runtime sends it.
+The request side of a [**WebResourceRequested**](WebView2/#webresourcerequested) event. Exposes the HTTP method, target URI, request headers, and request body of a pending WebView2 request, and lets the event handler edit the body before the runtime sends it.
 
 To be notified, register a URL filter first with [**AddWebResourceRequestedFilter**](WebView2/#addwebresourcerequestedfilter); only requests whose URI matches the filter raise the event.
 
@@ -40,7 +40,7 @@ Syntax: *object*.**ContentBytes** [ = *bytes* ]
 ### ContentUTF8
 {: .no_toc }
 
-The request body as a UTF-8 **String** — a convenience over [**ContentBytes**](#contentbytes) that does the `StrConv` round-trip for you. Read / write.
+The request body as a UTF-8 **String** — a convenience over [**ContentBytes**](#contentbytes) that performs the `StrConv` round-trip automatically. Read / write.
 
 Syntax: *object*.**ContentUTF8** [ = *text* ]
 

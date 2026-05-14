@@ -7,7 +7,7 @@ permalink: /tB/Packages/WebView2/Enumerations/wv2PermissionKind
 # wv2PermissionKind
 {: .no_toc }
 
-Identifies which device or browser capability a web page is asking permission to use. Carried as the `PermissionKind` argument of the [**PermissionRequested**](../WebView2/#permissionrequested) event. Mirrors the `COREWEBVIEW2_PERMISSION_KIND` enumeration in the Edge WebView2 runtime.
+Identifies which device or browser capability a web page is asking permission to use. Passed as the `PermissionKind` argument of the [**PermissionRequested**](../WebView2/#permissionrequested) event. Mirrors the `COREWEBVIEW2_PERMISSION_KIND` enumeration in the Edge WebView2 runtime.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

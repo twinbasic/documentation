@@ -11,7 +11,7 @@ has_toc: false
 
 The **WebView2Package** wraps the Microsoft Edge WebView2 runtime and exposes it as an ordinary twinBASIC control. Drop a [**WebView2**](WebView2/) onto a form and the running Edge engine renders web content inside it — navigate to URLs, run JavaScript, intercept HTTP requests, post messages between BASIC and JavaScript, and print pages to PDF.
 
-The package is a built-in package shipped with twinBASIC. See the [WebView2 tutorials](../../../Tutorials/WebView2/) for how to reference it in your project, and worked samples.
+The package is a built-in package shipped with twinBASIC. See the [WebView2 tutorials](../../../Tutorials/WebView2/) for how to reference it in a project, and worked samples.
 
 Beyond the control itself, the package exposes a small set of wrapper objects that appear inside the control's event arguments — the request / response pair on **WebResourceRequested**, the request-header collection on **NavigationStarting**, the environment-options object configured before **Create** — together with the `wv2…` enumerations used to spell out option values.
 
@@ -47,7 +47,7 @@ Beyond the control itself, the package exposes a small set of wrapper objects th
 
 - [Getting started](../../../Tutorials/WebView2/Getting-Started) -- adding the package references and dropping a control onto a form
 - [Customize the UserDataFolder](../../../Tutorials/WebView2/Customize-UserDataFolder) -- relocating the runtime's working folder for hosted scenarios (Office add-ins, kiosk installs)
-- [Re-entrancy](../../../Tutorials/WebView2/Re-entrancy) -- what the control's deferred-event machinery does for you, and the **AddObject** synchronous-vs-deferred trade-off
+- [Re-entrancy](../../../Tutorials/WebView2/Re-entrancy) -- what the control's deferred-event machinery handles automatically, and the **AddObject** synchronous-vs-deferred trade-off
 - [Building a browser shell](../../../Tutorials/WebView2/Building-A-Browser-Shell) -- address bar, back / forward / reload, zoom, PDF export
 - [Hosting local web assets](../../../Tutorials/WebView2/Hosting-Local-Web-Assets) -- serve HTML / JS / CSS from a project resource folder, without an HTTP server
 - [JavaScript interop](../../../Tutorials/WebView2/JavaScript-Interop) -- the three bridges between BASIC and the page: host objects, messages, and scripted calls
