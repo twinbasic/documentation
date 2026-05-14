@@ -107,7 +107,7 @@ Close #1
 
 ### Text Encodings
 
-These identifier strings are accepted as the **Encoding** argument. The constants listed below name the well-known encodings; other system-supported encodings with similar identifier strings are also accepted at runtime. All members are marked **[Hidden, Restricted]** — they are omitted from general IntelliSense, but the IDE surfaces them automatically after the **Encoding** keyword.
+These identifier strings are accepted as the **Encoding** argument. The constants listed below name the well-known encodings; other system-supported encodings with similar identifier strings are also accepted at runtime. All members are marked **[Hidden, Restricted]** — they are omitted from general IntelliSense, but the IDE shows them automatically after the **Encoding** keyword.
 
 #### Default and Unicode
 

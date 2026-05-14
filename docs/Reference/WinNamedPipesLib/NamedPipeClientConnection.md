@@ -8,7 +8,7 @@ has_toc: false
 # NamedPipeClientConnection class
 {: .no_toc }
 
-One client-side connection to a named pipe. Produced by [**NamedPipeClientManager.Connect**](NamedPipeClientManager#connect). Carries the connection-lifecycle events ([**Connected**](#connected), [**Disconnected**](#disconnected)) and the message events ([**MessageReceived**](#messagereceived), [**MessageSent**](#messagesent)), plus the [**AsyncRead**](#asyncread) / [**AsyncWrite**](#asyncwrite) / [**AsyncClose**](#asyncclose) methods that drive them.
+One client-side connection to a named pipe. Produced by [**NamedPipeClientManager.Connect**](NamedPipeClientManager#connect). Carries the connection-lifecycle events ([**Connected**](#connected), [**Disconnected**](#disconnected)) and the message events ([**MessageReceived**](#messagereceived), [**MessageSent**](#messagesent)), plus the [**AsyncRead**](#asyncread) / [**AsyncWrite**](#asyncwrite) / [**AsyncClose**](#asyncclose) methods that trigger them.
 
 The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface — reach instances only through [**NamedPipeClientManager.Connect**](NamedPipeClientManager#connect).
 
@@ -83,7 +83,7 @@ Fires when a complete message has been read from the pipe.
 Syntax: *connection*_**MessageReceived**(**ByRef** *Cookie* **As Variant**, **ByRef** *Data*() **As Byte**)
 
 *Cookie*
-: The opaque correlation value originally passed to the [**AsyncRead**](#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads driven by [**NamedPipeClientManager.ContinuouslyReadFromPipe**](NamedPipeClientManager#continuouslyreadfrompipe).
+: The opaque correlation value originally passed to the [**AsyncRead**](#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads triggered by [**NamedPipeClientManager.ContinuouslyReadFromPipe**](NamedPipeClientManager#continuouslyreadfrompipe).
 
 *Data*
 : The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if you need them. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and gives you typed multi-field access in one step.
@@ -118,7 +118,7 @@ Manually issues an asynchronous read against this connection.
 Syntax: *connection*.**AsyncRead** [ *Cookie* [, *OverlappedStruct* ] ]
 
 *Cookie*
-: *optional* A **Variant** correlation value, surfaced as the *Cookie* parameter of the matching [**MessageReceived**](#messagereceived) event. Default **Empty**.
+: *optional* A **Variant** correlation value, passed back as the *Cookie* parameter of the matching [**MessageReceived**](#messagereceived) event. Default **Empty**.
 
 *OverlappedStruct*
 : *optional* A **LongPtr** to a pre-allocated `OVERLAPPED_CUSTOM` structure. **Internal use only** — the IOCP machinery passes this when re-issuing a read after `ERROR_MORE_DATA`. Consumer code should always omit this parameter.
@@ -133,10 +133,10 @@ Sends a message to the server.
 Syntax: *connection*.**AsyncWrite** *Data*() [, *Cookie* ]
 
 *Data*
-: *required* A **Byte()** array carrying the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended carrier is [**PropertyBag**](../VBRUN/PropertyBag/) — see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
+: *required* A **Byte()** array containing the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended encoding is [**PropertyBag**](../VBRUN/PropertyBag/) — see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
 
 *Cookie*
-: *optional* A **Variant** correlation value, surfaced as the *Cookie* parameter of the matching [**MessageSent**](#messagesent) event. Default **Empty**.
+: *optional* A **Variant** correlation value, passed back as the *Cookie* parameter of the matching [**MessageSent**](#messagesent) event. Default **Empty**.
 
 Returns immediately; the actual transmission runs through the IOCP loop. The completion fires [**MessageSent**](#messagesent) on this connection.
 

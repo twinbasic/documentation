@@ -10,7 +10,7 @@ permalink: /tB/Packages/WinNativeCommonCtls/Enumerations/DTPickerFormatConstants
 
 Selects the display format used by a [**DTPicker**](../DTPicker) control. Carried by the [**DTPicker.Format**](../DTPicker#format) property.
 
-When set to **dtpCustom**, the picker also reads [**DTPicker.CustomFormat**](../DTPicker#customformat) to drive the actual display.
+When set to **dtpCustom**, the picker also reads [**DTPicker.CustomFormat**](../DTPicker#customformat) to control the actual display.
 
 | Member            | Value | Description                                                            |
 |-------------------|-------|------------------------------------------------------------------------|

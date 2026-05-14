@@ -10,7 +10,7 @@ has_toc: false
 
 A tabular data display — a grid of cells with column headers and row headers, resizable columns, optional grid lines, hover and selection highlighting, vertical and horizontal scrolling via the mouse wheel, and full keyboard navigation. The number of rows is set by [**RowCount**](#rowcount); the cells themselves are filled in by handling the [**GetCellText**](#getcelltext) event, which fires once per visible cell as the grid paints.
 
-The grid carries an array of [**Column**](Column) objects giving each column its [**Caption**](Column#caption) and [**Width**](Column#width). Five distinct [**CellRenderingOptions**](CellRenderingOptions) sub-objects drive the appearance of column headers, row headers, normal cells, the hovered cell, the selected cell, and full-column / full-row multi-selection.
+The grid has an array of [**Column**](Column) objects giving each column its [**Caption**](Column#caption) and [**Width**](Column#width). Five distinct [**CellRenderingOptions**](CellRenderingOptions) sub-objects control the appearance of column headers, row headers, normal cells, the hovered cell, the selected cell, and full-column / full-row multi-selection.
 
 ```tb
 Private Sub Form_Load()
@@ -64,7 +64,7 @@ End With
 
 The grid exposes three separate selection states, each tracked through its own pair of properties:
 
-- A single hover-highlight cell — the cell currently under the mouse — driven by [**HoverCellOptions**](#hovercelloptions). Internal to the grid; not exposed as a property.
+- A single hover-highlight cell — the cell currently under the mouse — controlled by [**HoverCellOptions**](#hovercelloptions). Internal to the grid; not exposed as a property.
 - A single selected cell, with coordinates in [**SelectedCellX**](#selectedcellx) and [**SelectedCellY**](#selectedcelly), drawn using [**SelectedCellOptions**](#selectedcelloptions).
 - A full-row or full-column multi-selection, indicated by clicking the row header or column header. [**SelectedFullColumnX**](#selectedfullcolumnx) and [**SelectedFullRowY**](#selectedfullrowy) hold the indices; the affected cells render with [**MultiSelectCellOptions**](#multiselectcelloptions).
 
@@ -75,7 +75,7 @@ A value of `-1` on any of the selection-coordinate properties means "no selectio
 ### Anchors
 {: .no_toc }
 
-Which sides of the control are pinned to its container during resize. [**Anchors**](../Styles/Anchors). Inherited.
+Which sides of the control are attached to its container during resize. [**Anchors**](../Styles/Anchors). Inherited.
 
 ### CellOptions
 {: .no_toc }
@@ -212,7 +212,7 @@ The control's width in pixels. [**PixelCount**](../Enumerations/PixelCount). Inh
 ### Repaint
 {: .no_toc }
 
-Asks the framework to redraw the grid. Equivalent to calling [**CustomControlContext.Repaint**](../Framework/CustomControlContext#repaint) on the control's stored context; exposed as a public method on the grid so an external observer (e.g. the form, after updating the data behind the grid) can trigger a redraw without reaching into the framework.
+Asks the framework to redraw the grid. Equivalent to calling [**CustomControlContext.Repaint**](../Framework/CustomControlContext#repaint) on the control's stored context; exposed as a public method on the grid so an external observer (e.g. the form, after updating the data behind the grid) can trigger a redraw without accessing the framework directly.
 
 Syntax: *object*.**Repaint**
 

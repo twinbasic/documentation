@@ -27,7 +27,7 @@ For Each node In TreeView1.Nodes
 Next
 ```
 
-The `For Each` iteration walks **only the nodes in the order they were added** — not in tree order. For a depth-first or breadth-first traversal that follows the visual hierarchy, walk the parent-child links manually starting from a root [**Node**](Node) and using [**Node.Child**](Node#child) / [**Node.Next**](Node#next).
+The `For Each` iteration visits **only the nodes in the order they were added** — not in tree order. For a depth-first or breadth-first traversal that follows the visual hierarchy, traverse the parent-child links manually starting from a root [**Node**](Node) and using [**Node.Child**](Node#child) / [**Node.Next**](Node#next).
 
 * TOC
 {:toc}

@@ -37,7 +37,7 @@ Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
 
 Both type arguments are required at instantiation — twinBASIC does not deduce them from the *LogName* constructor argument. See the [Generics](../../../Features/Language/Generics) page for the general rules.
 
-A class that needs to expose [**LogSuccess**](#logsuccess) / [**LogFailure**](#logfailure) / [**Register**](#register) as if those methods were its own can mix the **EventLog** surface in through [**Implements ... Via**](../../../Features/Language/Inheritance) composition — see the [composition-delegation idiom](.#composition-delegation-idiom) section on the package overview for the canonical service-class pattern.
+A class that needs to expose [**LogSuccess**](#logsuccess) / [**LogFailure**](#logfailure) / [**Register**](#register) as if those methods were its own can mix the **EventLog** members in through [**Implements ... Via**](../../../Features/Language/Inheritance) composition — see the [composition-delegation idiom](.#composition-delegation-idiom) section on the package overview for the canonical service-class pattern.
 
 The package [overview](.) covers the install-then-log lifecycle, the [`[PopulateFrom("json", ...)]` message-resource convention](.#populatefrom-convention), registry layout, and the [composition-delegation idiom](.#composition-delegation-idiom).
 

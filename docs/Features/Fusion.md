@@ -153,7 +153,7 @@ This explicit path must be set **before** opening any Fusion-backed form or cont
 
 ## Current Limitations
 
-Fusion is a powerful compatibility layer, but not all ActiveX controls are supported.
+Fusion is a compatibility layer, but not all ActiveX controls are supported.
 
 #### Currently NOT supported:
 - Windowless controls
@@ -181,4 +181,4 @@ Mouse events are not currently OLE-translated, therefore mouse event signatures 
 
 *twinBASIC Fusion* provides a practical path for modernising applications while retaining compatibility with legacy ActiveX controls.
 
-By leveraging an out-of-process architecture and fast IPC-based communication, *twinBASIC Fusion* enables cross-bitness interoperability while maintaining a familiar programming model.
+By using an out-of-process architecture and fast IPC-based communication, *twinBASIC Fusion* enables cross-bitness interoperability while maintaining a familiar programming model.

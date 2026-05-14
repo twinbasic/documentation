@@ -24,13 +24,13 @@ Set Printer = Printers("HP LaserJet")    ' make this the active printer
 
 ## What the collection contains
 
-Each entry is a [**Printer**](../Printer/) bound to the corresponding device. These instances are **immutable** descriptors — they are intended for identification and for handing to `Set Printer = …`, not for driving a print job directly. Assigning any of the settings properties on one raises run-time error 383 (*Property is read-only*); calling [**EndDoc**](../Printer/#enddoc), [**KillDoc**](../Printer/#killdoc), [**NewPage**](../Printer/#newpage), [**Print**](../Printer/#print), or the other document-control methods raises run-time error 438 (*Object doesn't support this property or method*). [**TrackDefault**](../Printer/#trackdefault) is always **False** on these instances.
+Each entry is a [**Printer**](../Printer/) bound to the corresponding device. These instances are **immutable** descriptors — they are intended for identification and for handing to `Set Printer = …`, not for running a print job directly. Assigning any of the settings properties on one raises run-time error 383 (*Property is read-only*); calling [**EndDoc**](../Printer/#enddoc), [**KillDoc**](../Printer/#killdoc), [**NewPage**](../Printer/#newpage), [**Print**](../Printer/#print), or the other document-control methods raises run-time error 438 (*Object doesn't support this property or method*). [**TrackDefault**](../Printer/#trackdefault) is always **False** on these instances.
 
 A driver that advertises a single device over multiple ports produces one [**Printer**](../Printer/) entry per port; only the first such entry is keyed by **DeviceName**, the rest are accessible only by numeric index.
 
 ## Live enumeration
 
-The collection is **not cached**. Every call to [**Count**](#count), [**Item**](#item), or `For Each` re-reads the system's installed-printers list from the Windows registry's profile section and reconstructs a fresh batch of [**Printer**](../Printer/) instances. A printer added or removed in **Settings → Printers** is therefore picked up the next time the collection is touched, with no need to refresh anything from code. The trade-off is that consecutive accesses are not cheap — when enumerating, cache the result if many lookups are needed:
+The collection is **not cached**. Every call to [**Count**](#count), [**Item**](#item), or `For Each` re-reads the system's installed-printers list from the Windows registry's profile section and reconstructs a fresh batch of [**Printer**](../Printer/) instances. A printer added or removed in **Settings → Printers** therefore appears the next time the collection is touched, with no need to refresh anything from code. The trade-off is that consecutive accesses are not cheap — when enumerating, cache the result if many lookups are needed:
 
 ```tb
 Dim snapshot As Variant : snapshot = Array()      ' or use a Collection

@@ -12,7 +12,7 @@ has_toc: false
 
 An **ErrorContext** object captures everything the runtime knows about a run-time error: its identity ([**Number**](#number), [**Description**](#description), [**Source**](#source)), its help references ([**HelpFile**](#helpfile), [**HelpContext**](#helpcontext)), the operating-system error code at the time it was raised ([**LastDLLError**](#lastdllerror)), the [**State**](#state) of the error-handling machinery, and a snapshot of the [**Callstack**](#callstack) from the moment of the failure. It is twinBASIC's structured counterpart to the simpler [**Err**](../../../Modules/ErrObject) object.
 
-The error-identity properties (**Number**, **Description**, **Source**, **HelpFile**, **HelpContext**, **LastDLLError**) carry the same meaning here as on the **Err** object — see the [**ErrObject**](../../../Modules/ErrObject) module for a discussion of each. **State** and **Callstack** are unique to **ErrorContext** and reflect the structured error-handling machinery that has no equivalent on the legacy **Err** object.
+The error-identity properties (**Number**, **Description**, **Source**, **HelpFile**, **HelpContext**, **LastDLLError**) have the same meaning here as on the **Err** object — see the [**ErrObject**](../../../Modules/ErrObject) module for a discussion of each. **State** and **Callstack** are unique to **ErrorContext** and reflect the structured error-handling machinery that has no equivalent on the legacy **Err** object.
 
 ## Members
 
@@ -102,7 +102,7 @@ Syntax: *object*.**State** [ **=** *value* ]
 *object*
 : *required* An object expression that evaluates to an **ErrorContext** object.
 
-The runtime updates **State** as control flows through error handlers, **Try**/**Catch**/**Finally** blocks, and the various propagation paths. Reading the property tells diagnostic code which construct it is being invoked from. Assigning to it overrides the runtime's idea of what to do next — a deliberately advanced operation, useful mainly to diagnostic tools and to libraries that orchestrate their own error flow.
+The runtime updates **State** as control flows through error handlers, **Try**/**Catch**/**Finally** blocks, and the various propagation paths. Reading the property tells diagnostic code which construct it is being invoked from. Assigning to it overrides the runtime's idea of what to do next — a deliberately advanced operation, useful mainly to diagnostic tools and to libraries that manage their own error flow.
 
 The **OnErrorStatus** enumeration values are:
 

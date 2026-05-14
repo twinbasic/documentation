@@ -174,7 +174,7 @@ Syntax: *host*_**OnChangedTheme**(*ThemeName* **As String**)
 ## DebuggerEvaluateOptions
 {: #debuggerevaluateoptions }
 
-A flags enum declared inline on the **Host** interface; consumed by [**Project.Evaluate**](Project#evaluate) (and the future debugger-evaluation surface). Currently a single-value placeholder — additional flags may appear in later IDE versions.
+A flags enum declared inline on the **Host** interface; consumed by [**Project.Evaluate**](Project#evaluate) (and any future debugger-evaluation API). Currently a single-value placeholder — additional flags may appear in later IDE versions.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

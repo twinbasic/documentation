@@ -26,7 +26,7 @@ Two halves, each one user-instantiated coordinator class plus one per-connection
 | Server  | [**NamedPipeServer**](NamedPipeServer)                 | [**NamedPipeServerConnection**](NamedPipeServerConnection)     |
 | Client  | [**NamedPipeClientManager**](NamedPipeClientManager)   | [**NamedPipeClientConnection**](NamedPipeClientConnection)     |
 
-The server publishes a name (`PipeName = "MyService"` → Win32 path `\\.\pipe\MyService`) and hands out a [**NamedPipeServerConnection**](NamedPipeServerConnection) for every client that connects. The client manager dials by the same name (with [**Connect**](NamedPipeClientManager#connect)) and gets back a [**NamedPipeClientConnection**](NamedPipeClientConnection). The two ends are symmetric thereafter — both expose `AsyncRead`, `AsyncWrite`, and `AsyncClose` with the same signatures.
+The server publishes a name (`PipeName = "MyService"` → Win32 path `\\.\pipe\MyService`) and returns a [**NamedPipeServerConnection**](NamedPipeServerConnection) for every client that connects. The client manager dials by the same name (with [**Connect**](NamedPipeClientManager#connect)) and gets back a [**NamedPipeClientConnection**](NamedPipeClientConnection). The two ends are symmetric thereafter — both expose `AsyncRead`, `AsyncWrite`, and `AsyncClose` with the same signatures.
 
 Reads, writes, and connection completion all run through the same Windows I/O Completion Port (IOCP) infrastructure. Each coordinator class owns its own completion port, a configurable pool of worker threads ([**NumThreadsIOCP**](NamedPipeServer#numthreadsiocp)), and a hidden message-only window used to marshal events back to the UI thread.
 
@@ -100,7 +100,7 @@ End Sub
 
 ## Working with `Data() As Byte` in events
 
-The *Data* parameter on [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) and [**MessageReceived**](NamedPipeClientConnection#messagereceived) is **not** a normal heap-allocated **Byte** array. The package constructs a hand-rolled `SAFEARRAY` whose backing memory points at the IOCP read buffer, then clears the array pointer at the end of the event handler so the buffer can be recycled. The values are valid *only* while the handler is on the stack.
+The *Data* parameter on [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) and [**MessageReceived**](NamedPipeClientConnection#messagereceived) is **not** a normal heap-allocated **Byte** array. The package constructs a custom `SAFEARRAY` whose backing memory points at the IOCP read buffer, then clears the array pointer at the end of the event handler so the buffer can be recycled. The values are valid *only* while the handler is on the stack.
 
 > [!IMPORTANT]
 > Copy the bytes out before the event handler returns if you need them later. Storing the array reference in a module-level variable, a **Collection**, or a class field leaves a dangling pointer once the IOCP loop reuses the buffer for the next message.
@@ -120,7 +120,7 @@ For a text payload, `StrConv(Data, vbUnicode)` (UTF-8) or `CStr` over a `vbUnico
 
 The package transports raw bytes; it is agnostic about what is inside them. For non-trivial protocols the recommended carrier is [**PropertyBag**](../VBRUN/PropertyBag/) — twinBASIC's built-in keyed-property serialiser. Two reasons:
 
-1. **`PropertyBag.Contents` deep-copies the bytes**, which is the cleanest answer to the transient-`Data()` lifetime caveat above. Assigning *Data* to a fresh **PropertyBag**'s **Contents** captures the buffer in one step; the copy is safe to keep past the event handler.
+1. **`PropertyBag.Contents` deep-copies the bytes**, which is the simplest answer to the transient-`Data()` lifetime caveat above. Assigning *Data* to a fresh **PropertyBag**'s **Contents** captures the buffer in one step; the copy is safe to keep past the event handler.
 2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on property names (e.g. `"CommandID"`, `"ResponseCommandID"`, `"Data"`) and **PropertyBag** handles the byte-level encoding.
 
 ```tb
@@ -143,7 +143,7 @@ Select Case cmd
 End Select
 ```
 
-Nothing in the package mandates **PropertyBag** — raw `Byte()` works too, and a custom wire format may be the right answer for very high-throughput scenarios. But the everyday case is well served by the **PropertyBag** convention and it solves the transient-`Data()` problem for free.
+Nothing in the package mandates **PropertyBag** — raw `Byte()` works too, and a custom wire format may be the right answer for very high-throughput scenarios. But the everyday case is well served by the **PropertyBag** convention and it solves the transient-`Data()` problem without extra effort.
 
 ## Closing a client connection
 
@@ -184,4 +184,4 @@ End Sub
 - [NamedPipeServer](NamedPipeServer) -- the server: publishes a pipe name, hosts an IOCP loop, raises events for the lifecycle of every accepted client
 - [NamedPipeServerConnection](NamedPipeServerConnection) -- one server-side per-client connection; the **Connection** parameter of every `NamedPipeServer` event, with its own `AsyncRead` / `AsyncWrite` / `AsyncClose`
 - [NamedPipeClientManager](NamedPipeClientManager) -- the client-side coordinator; owns the IOCP loop and the [**Connect**](NamedPipeClientManager#connect) / [**Stop**](NamedPipeClientManager#stop) / [**FindNamedPipes**](NamedPipeClientManager#findnamedpipes) methods
-- [NamedPipeClientConnection](NamedPipeClientConnection) -- one client-side connection; carries the `Connected` / `Disconnected` / `MessageReceived` / `MessageSent` events and the matching `AsyncRead` / `AsyncWrite` / `AsyncClose` methods
+- [NamedPipeClientConnection](NamedPipeClientConnection) -- one client-side connection; exposes the `Connected` / `Disconnected` / `MessageReceived` / `MessageSent` events and the matching `AsyncRead` / `AsyncWrite` / `AsyncClose` methods

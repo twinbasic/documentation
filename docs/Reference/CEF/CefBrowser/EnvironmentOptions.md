@@ -62,7 +62,7 @@ Set to **CefLogWarning** or **CefLogError** when investigating runtime issues, a
 
 Path to the folder CEF uses for the user profile — cache, cookies, history, local storage, and so on. **String**. Default: empty (the runtime picks a folder under `%LocalAppData%\twinBASIC_CEF\<ProjectName>\`).
 
-Set a writable, application-specific path when the default would land in a read-only location, or when multiple deployments of the same application must keep their profiles separate. The same folder cannot be opened by two CEF processes simultaneously — if it's already locked, the [**Error**](.#error) event fires with *"CEF cache path already locked by another process"*.
+Set a writable, application-specific path when the default would end up in a read-only location, or when multiple deployments of the same application must keep their profiles separate. The same folder cannot be opened by two CEF processes simultaneously — if it's already locked, the [**Error**](.#error) event fires with *"CEF cache path already locked by another process"*.
 
 ### See Also
 

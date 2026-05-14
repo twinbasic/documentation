@@ -101,7 +101,7 @@ redirect_from:
 1. **Render the Entire Form to a Bitmap**
 
    * In VB6: Use `BitBlt` or `PaintPicture` to copy the form’s visible area.
-   * In TwinBASIC: Use the form’s [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) or [`ICustomControl.Paint`](../../tB/Packages/CustomControls/Framework/ICustomControl#paint) logic to manually render windowless elements to a bitmap. See the [CustomControls package reference](../../tB/Packages/CustomControls/) for the full framework surface.
+   * In TwinBASIC: Use the form’s [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) or [`ICustomControl.Paint`](../../tB/Packages/CustomControls/Framework/ICustomControl#paint) logic to manually render windowless elements to a bitmap. See the [CustomControls package reference](../../tB/Packages/CustomControls/) for the full framework API.
 
 2. **Ensure Windowless Controls Are Painted**
 
@@ -146,4 +146,4 @@ Printer.EndDoc
 ```
 ---
 
-For DPI-aware, multi-monitor layout work, windowless controls can be a powerful tool—especially for static or decorative elements—but they demand more orchestration when interactivity or layering is involved. If you're building a hybrid layout, a mix of both types might give you the best of both worlds.
+For DPI-aware, multi-monitor layout work, windowless controls are useful—especially for static or decorative elements—but they demand more manual handling when interactivity or layering is involved. If you're building a hybrid layout, a mix of both types might give you the best of both worlds.

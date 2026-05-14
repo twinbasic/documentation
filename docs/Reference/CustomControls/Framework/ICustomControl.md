@@ -39,7 +39,7 @@ End Class
 ### Destroy
 {: .no_toc }
 
-Called once when the control is being released. The implementation should drop any references it holds to objects that themselves hold references back to it, so that the reference graph can collapse cleanly.
+Called once when the control is being released. The implementation should drop any references it holds to objects that themselves hold references back to it, so that the reference graph can collapse without cycles.
 
 Syntax: *object*.**Destroy** ( )
 
@@ -65,6 +65,6 @@ Syntax: *object*.**Paint** ( *Canvas* )
 *Canvas*
 : *required* The [**Canvas**](Canvas) drawing surface for this paint pass. Its **RuntimeUICCGetWidth**, **RuntimeUICCGetHeight**, and **RuntimeUICCGetDpiScaleFactor** methods supply the size and DPI of the area being painted, in device pixels.
 
-A descriptor may carry event callbacks (`OnClick`, `OnMouseDown`, …) as `AddressOf` pointers; the framework dispatches input back through those pointers without the control needing to subscribe explicitly to anything.
+A descriptor may include event callbacks (`OnClick`, `OnMouseDown`, …) as `AddressOf` pointers; the framework dispatches input back through those pointers without the control needing to subscribe explicitly to anything.
 
 A control should request additional repaints by calling [**CustomControlContext.Repaint**](CustomControlContext#repaint), not by calling **Paint** directly — the framework decides when to issue the actual paint pass.

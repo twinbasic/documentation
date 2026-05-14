@@ -66,7 +66,7 @@ To repeat a key, use the form `{key number}` — for example, `"{LEFT 42}"` to p
 
 ### Example
 
-This example uses [**Shell**](Shell) to launch the Windows Calculator and **SendKeys** to drive it: it adds the numbers 1 through 100, takes the running total, then closes Calculator with ALT+F4. Because [**AppActivate**](AppActivate) changes the focus, the example must be run, not single-stepped.
+This example uses [**Shell**](Shell) to launch the Windows Calculator and **SendKeys** to control it: it adds the numbers 1 through 100, takes the running total, then closes Calculator with ALT+F4. Because [**AppActivate**](AppActivate) changes the focus, the example must be run, not single-stepped.
 
 ```tb
 Dim TaskId As Double, I As Long

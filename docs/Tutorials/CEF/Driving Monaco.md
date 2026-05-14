@@ -28,7 +28,7 @@ If WebView.CefMajorVersion < 109 Then
 End If
 ```
 
-In practice this means **v109** or **v145** for this tutorial — **v49** lacks the JavaScript surface Monaco depends on. See [Getting started](Getting-Started) for picking the right package reference.
+In practice this means **v109** or **v145** for this tutorial — **v49** lacks the JavaScript API Monaco depends on. See [Getting started](Getting-Started) for picking the right package reference.
 
 ## Setting up the editor's assets
 
@@ -94,7 +94,7 @@ The two controls share a single helper browser process — the first **CefBrowse
 
 ## Pushing the initial content
 
-Once Monaco has finished loading, the bootstrap script listens for a `message` event carrying the HTML to seed the editor with. Fire that message after the editor's [**NavigationComplete**](../../tB/Packages/CEF/CefBrowser/#navigationcomplete):
+Once Monaco has finished loading, the bootstrap script listens for a `message` event containing the HTML to seed the editor with. Fire that message after the editor's [**NavigationComplete**](../../tB/Packages/CEF/CefBrowser/#navigationcomplete):
 
 ```tb
 Private Sub WebView_NavigationComplete( _
@@ -129,7 +129,7 @@ That's it — the preview pane re-renders on every edit.
 
 ## Detecting a missing runtime
 
-A reasonable fraction of users will run the application on a machine where the CEF runtime ZIP has not been installed. The [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event surfaces this case with the exact path the control searched:
+A reasonable fraction of users will run the application on a machine where the CEF runtime ZIP has not been installed. The [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event reports this case with the exact path the control searched:
 
 ```tb
 Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) _

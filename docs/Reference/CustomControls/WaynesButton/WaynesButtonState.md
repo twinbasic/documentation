@@ -9,7 +9,7 @@ has_toc: false
 # WaynesButtonState class
 {: .no_toc }
 
-A bundle of the four style objects that describe a single visual state of a [**WaynesButton**](.) — its corners, background fill, borders, and text rendering. Each button carries four parallel instances reachable as [**NormalState**](.#normalstate), [**HoverState**](.#hoverstate), [**FocusedState**](.#focusedstate), and [**PressedState**](.#pressedstate); the button picks one at each repaint depending on the mouse / focus state.
+A bundle of the four style objects that describe a single visual state of a [**WaynesButton**](.) — its corners, background fill, borders, and text rendering. Each button has four parallel instances reachable as [**NormalState**](.#normalstate), [**HoverState**](.#hoverstate), [**FocusedState**](.#focusedstate), and [**PressedState**](.#pressedstate); the button picks one at each repaint depending on the mouse / focus state.
 
 Newly-constructed **WaynesButtonState** objects pre-set their **BackgroundFill** to a solid mid-blue and all four corners to a 15-pixel curve. Override per-state to give the button a different look in each state.
 

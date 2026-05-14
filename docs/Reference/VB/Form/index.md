@@ -65,7 +65,7 @@ dlgOptions.Show vbModal, Me      ' modal, owned by the calling form
 
 [**MinWidth**](#minwidth), [**MinHeight**](#minheight), [**MaxWidth**](#maxwidth), and [**MaxHeight**](#maxheight) constrain the *client area* in twips during interactive resizing. [**Moveable**](#moveable) decides whether the user can drag the form by its title bar; [**ShowInTaskbar**](#showintaskbar) decides whether the form shows up in the taskbar and Alt-Tab list.
 
-[**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) drive Windows' layered-window features for translucent forms and cut-out shapes.
+[**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) enable Windows' layered-window features for translucent forms and cut-out shapes.
 
 ## Drawing surface
 
@@ -810,7 +810,7 @@ Syntax: *object*\_**Deactivate**( )
 ### DPIChange
 {: .no_toc }
 
-Raised when the form moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument carries the new effective DPI; child controls re-scale themselves automatically. New in twinBASIC.
+Raised when the form moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument gives the new effective DPI; child controls re-scale themselves automatically. New in twinBASIC.
 
 Syntax: *object*\_**DPIChange**( *NewDPI* **As Long** )
 

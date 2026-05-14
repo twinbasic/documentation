@@ -297,7 +297,7 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### NumbersOnly
 {: .no_toc }
 
-When **True**, the edit control rejects keystrokes other than the decimal digits **0**–**9**. **Boolean**, default **False**. Does not validate code-assigned values, sign characters, decimal points, or thousand separators — use a [**KeyPress**](#keypress) handler for richer filtering.
+When **True**, the edit control rejects keystrokes other than the decimal digits **0**–**9**. **Boolean**, default **False**. Does not validate code-assigned values, sign characters, decimal points, or thousand separators — use a [**KeyPress**](#keypress) handler for additional validation.
 
 ### OLEDragMode
 {: .no_toc }

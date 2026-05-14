@@ -60,7 +60,7 @@ The `-startService` discriminator is the conventional way for the EXE to know wh
 ## The two-thread split
 {: #two-thread-split }
 
-When the SCM launches the EXE as a service host, twinBASIC's runtime ends up driving **two threads** for each service:
+When the SCM launches the EXE as a service host, twinBASIC's runtime ends up running **two threads** for each service:
 
 - The **service thread** — the SCM-spawned thread that runs the user's [**ITbService.EntryPoint**](ITbService#entrypoint). This is where the service does its actual work. The thread is created by `StartServiceCtrlDispatcherW`'s machinery; it is *not* the main thread of the EXE.
 - The **dispatcher thread** — the EXE's main thread, which is what the SCM invokes when it has a control code to deliver (*Stop*, *Pause*, *Continue*, …). The package routes the control through `RegisterServiceCtrlHandlerExW` to a trampoline that calls the user's [**ITbService.ChangeState**](ITbService#changestate).
@@ -101,13 +101,13 @@ Class MyService
 End Class
 ```
 
-The shared-flag pattern is the documented coordination mechanism — there is no built-in cancellation primitive. For services that host an inherently message-loop-driven object (a [**NamedPipeServer**](../WinNamedPipesLib/NamedPipeServer), a window-message handler, …) the loop-driven object's own *Stop*-signal method is usually called from [**ChangeState**](ITbService#changestate); see [the WinNamedPipesLib service-host idiom](../WinNamedPipesLib/#service-host-idiom) for a worked example.
+The shared-flag pattern is the documented coordination mechanism — there is no built-in cancellation primitive. For services that host an inherently message-loop-driven object (a [**NamedPipeServer**](../WinNamedPipesLib/NamedPipeServer), a window-message handler, …) that object's own *Stop*-signal method is usually called from [**ChangeState**](ITbService#changestate); see [the WinNamedPipesLib service-host idiom](../WinNamedPipesLib/#service-host-idiom) for a worked example.
 
 ## Integration with the sister "winlibs" packages
 
-`WinServicesLib` is most often used together with [**WinEventLogLib**](../WinEventLogLib/) and [**WinNamedPipesLib**](../WinNamedPipesLib/) — Windows services typically need a place to write diagnostic events (the Windows Event Log) and a way to communicate with non-service processes (named pipes). The three packages compose cleanly:
+`WinServicesLib` is most often used together with [**WinEventLogLib**](../WinEventLogLib/) and [**WinNamedPipesLib**](../WinNamedPipesLib/) — Windows services typically need a place to write diagnostic events (the Windows Event Log) and a way to communicate with non-service processes (named pipes). The three packages integrate well:
 
-- **Logging** — every service class can mix in the [**EventLog**](../WinEventLogLib/EventLog) surface through the [composition-delegation idiom](../WinEventLogLib/#composition-delegation-idiom) (`Implements EventLog(Of EVENTS, CATEGORIES) Via EventLog = New EventLog(...)`), so [**LogSuccess**](../WinEventLogLib/EventLog#logsuccess) / [**LogFailure**](../WinEventLogLib/EventLog#logfailure) read as plain method calls inside `EntryPoint` and `ChangeState`. The events fire under the service account (typically `LocalSystem`), which the Event Viewer renders against the message-table resource the EXE carries.
+- **Logging** — every service class can mix in the [**EventLog**](../WinEventLogLib/EventLog) members through the [composition-delegation idiom](../WinEventLogLib/#composition-delegation-idiom) (`Implements EventLog(Of EVENTS, CATEGORIES) Via EventLog = New EventLog(...)`), so [**LogSuccess**](../WinEventLogLib/EventLog#logsuccess) / [**LogFailure**](../WinEventLogLib/EventLog#logfailure) read as plain method calls inside `EntryPoint` and `ChangeState`. The events fire under the service account (typically `LocalSystem`), which the Event Viewer renders against the message-table resource embedded in the EXE.
 - **IPC** — a [**NamedPipeServer**](../WinNamedPipesLib/NamedPipeServer) hosted inside the service uses [**ManualMessageLoopEnter**](../WinNamedPipesLib/NamedPipeServer#manualmessageloopenter) as the [**EntryPoint**](ITbService#entrypoint)'s blocking primitive, and [**ManualMessageLoopLeave**](../WinNamedPipesLib/NamedPipeServer#manualmessageloopleave) from [**ChangeState**](ITbService#changestate) becomes the *Stop*-signal mechanism. See [Hosting inside a Windows service](../WinNamedPipesLib/#service-host-idiom) for the complete pattern, including pause / continue and the dispatcher-thread / service-thread interaction.
 
 ## Installation and elevation
@@ -123,7 +123,7 @@ Calling [**Install**](ServiceManager#install) while running inside the twinBASIC
 ## Classes and interface
 
 - [Services](Services) -- the predeclared singleton coordinator: [**ConfigureNew**](Services#configurenew), [**RunServiceDispatcher**](Services#runservicedispatcher), the bulk install / uninstall helpers, plus the runtime control methods ([**LaunchService**](Services#launchservice), [**ControlService**](Services#controlservice), [**QueryStateOfService**](Services#querystateofservice))
-- [ServiceManager](ServiceManager) -- one per configured service; carries the fields the SCM cares about (name, description, type, start-mode, command-line, dependencies, ...) plus the [**ReportStatus**](ServiceManager#reportstatus) call the service uses to inform the SCM of state transitions
+- [ServiceManager](ServiceManager) -- one per configured service; holds the fields the SCM cares about (name, description, type, start-mode, command-line, dependencies, ...) plus the [**ReportStatus**](ServiceManager#reportstatus) call the service uses to inform the SCM of state transitions
 - [ServiceCreator](ServiceCreator) -- the generic [**ServiceCreator**](ServiceCreator)`(Of T)` factory the dispatcher uses to instantiate each service class on demand; *T* must implement [**ITbService**](ITbService)
 - [ServiceState](ServiceState) -- a read-only state snapshot returned by [**Services.QueryStateOfService**](Services#querystateofservice), giving the SCM-reported state and process ID of an installed service
 - [ITbService](ITbService) -- the interface every service class implements: [**EntryPoint**](ITbService#entrypoint), [**StartupFailed**](ITbService#startupfailed), [**ChangeState**](ITbService#changestate)

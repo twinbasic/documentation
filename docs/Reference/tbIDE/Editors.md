@@ -8,7 +8,7 @@ has_toc: false
 # Editors class
 {: .no_toc }
 
-The collection of editors active in the IDE — accessible through [**Host.ActiveEditors**](Host#activeeditors). The IDE currently exposes exactly one active editor at a time, but the surface is collection-shaped so future versions can expose more. The most common operations are `Host.ActiveEditors(0)` (the active editor) and [**Open**](#open) (jump to a file at a given line / column).
+The collection of editors active in the IDE — accessible through [**Host.ActiveEditors**](Host#activeeditors). The IDE currently exposes exactly one active editor at a time, but the collection interface allows future versions to expose more. The most common operations are `Host.ActiveEditors(0)` (the active editor) and [**Open**](#open) (jump to a file at a given line / column).
 
 ```tb
 ' Read the selection out of the currently-focused code pane:

@@ -56,7 +56,7 @@ For service / long-running classes that should expose [**LogSuccess**](EventLog#
 
 ## Composition-delegation idiom
 
-A class can mix [**EventLog**](EventLog)`(Of T1, T2)` in through twinBASIC's [`Implements ... Via`](../../../Features/Language/Inheritance) composition syntax and inherit its public surface unqualified:
+A class can mix [**EventLog**](EventLog)`(Of T1, T2)` in through twinBASIC's [`Implements ... Via`](../../../Features/Language/Inheritance) composition syntax and inherit its public members unqualified:
 
 ```tb
 Class MyService
@@ -78,9 +78,9 @@ Two things to remember:
 - The *T1* / *T2* type arguments must match between the `Implements` declaration and the constructor expression — the compiler enforces this.
 - Using `"Application\" & CurrentComponentName` as the *LogName* makes the log path automatically track the class name at compile time; renaming the class renames the source it logs to.
 
-This is the canonical mix-in pattern for [**WinServicesLib**](../WinServicesLib/) service classes (every service class in a project that shares one set of event IDs picks up logging methods without per-class boilerplate). The same pattern works for any class that wants the [**EventLog**](EventLog) surface inline.
+This is the canonical mix-in pattern for [**WinServicesLib**](../WinServicesLib/) service classes (every service class in a project that shares one set of event IDs inherits logging methods without per-class boilerplate). The same pattern works for any class that wants the [**EventLog**](EventLog) members available directly.
 
-A class can use `Implements ... Via` on [**EventLog**](EventLog)`(Of T1, T2)` only **once**. When several classes in the same project need to share a logging surface, declare a single module with one event-ID enum and one category enum and `Implements ... Via` against that pair from every class. Multiple unrelated message tables are still possible — they just have to be reached through explicitly-named [**EventLog**](EventLog) fields rather than the `Implements ... Via` shortcut.
+A class can use `Implements ... Via` on [**EventLog**](EventLog)`(Of T1, T2)` only **once**. When several classes in the same project need to share logging, declare a single module with one event-ID enum and one category enum and `Implements ... Via` against that pair from every class. Multiple unrelated message tables are still possible — they just have to be reached through explicitly-named [**EventLog**](EventLog) fields rather than the `Implements ... Via` shortcut.
 
 ## Message resources
 
@@ -107,7 +107,7 @@ End Module
 
 The five [`[PopulateFrom]`](../../Core/Attributes#populatefrom) arguments are: the resource format (`"json"`), the project-relative path to the file, the JSON array to read entries from (`"events"` for the events stub, `"categories"` for the categories stub), the field name supplying each enum member's identifier, and the field name supplying its numeric value.
 
-`Resources/MESSAGETABLE/Strings.json` carries one entry per event and one per category. Each entry has three fields — a numeric `id`, an enum-member `name`, and the per-locale message text under an `LCID_XXXX` key:
+`Resources/MESSAGETABLE/Strings.json` has one entry per event and one per category. Each entry has three fields — a numeric `id`, an enum-member `name`, and the per-locale message text under an `LCID_XXXX` key:
 
 ```json
 {
@@ -131,7 +131,7 @@ Dim Log As New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Applic
 Log.LogSuccess service_started, status_changed, "MyService"
 ```
 
-writes an event the Event Viewer renders as *"MyService service started"* — the `%1` placeholder filled from the [**LogSuccess**](EventLog#logsuccess) *AdditionalStrings* `ParamArray`, the `status_changed` category resolved against the message table, both keyed by the numeric values the enums carry.
+writes an event the Event Viewer renders as *"MyService service started"* — the `%1` placeholder filled from the [**LogSuccess**](EventLog#logsuccess) *AdditionalStrings* `ParamArray`, the `status_changed` category resolved against the message table, both keyed by the numeric values the enums define.
 
 The negative event-ID values in the JSON (`-1073610751` etc.) follow the Win32 documented event-ID bit layout — the high bits encode severity, facility, and customer-defined flags. See Microsoft's *"Event Identifiers"* reference for the encoding; pick fresh IDs for new events and don't reuse identifiers across products.
 

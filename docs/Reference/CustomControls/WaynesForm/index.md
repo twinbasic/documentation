@@ -12,7 +12,7 @@ The top-level form class that hosts the package's custom controls. A **WaynesFor
 
 Within the current release of the package every form created with the designer is hard-coded to use **WaynesForm** as its root class; other base form classes are planned but not yet supported.
 
-A form has a [**Caption**](#caption) (shown in the Win32 title bar), a [**BackgroundFill**](#backgroundfill) (painted across its entire client area), and a [**WindowsOptions**](#windowsoptions) sub-object that drives the surrounding Win32 frame — border style, window state, taskbar visibility, minimize / maximize buttons, and so on. Showing the form is done by calling [**Show**](#show); closing it by [**Close**](#close).
+A form has a [**Caption**](#caption) (shown in the Win32 title bar), a [**BackgroundFill**](#backgroundfill) (painted across its entire client area), and a [**WindowsOptions**](#windowsoptions) sub-object that controls the surrounding Win32 frame — border style, window state, taskbar visibility, minimize / maximize buttons, and so on. Showing the form is done by calling [**Show**](#show); closing it by [**Close**](#close).
 
 ```tb
 Private Sub Form_Load()
@@ -26,7 +26,7 @@ Private Sub Form_Load()
 End Sub
 ```
 
-[**BackgroundFill**](#backgroundfill) is an ordinary [**Fill**](../Styles/Fill), so the form can carry a gradient backdrop just as easily as a solid colour — this is what the package's `HelloWorld` sample form uses to give itself a soft top-to-bottom wash:
+[**BackgroundFill**](#backgroundfill) is an ordinary [**Fill**](../Styles/Fill), so the form can display a gradient backdrop or a solid colour — this is what the package's `HelloWorld` sample form uses to give itself a soft top-to-bottom wash:
 
 ```tb
 Private Sub Form_Load()
@@ -94,7 +94,7 @@ The form's width in pixels. [**PixelCount**](../Enumerations/PixelCount). Inheri
 ### WindowsOptions
 {: .no_toc }
 
-The [**WindowsFormOptions**](WindowsFormOptions) that drives the Win32 frame — border style, window state, taskbar visibility, minimize / maximize buttons, system menu.
+The [**WindowsFormOptions**](WindowsFormOptions) that controls the Win32 frame — border style, window state, taskbar visibility, minimize / maximize buttons, system menu.
 
 ## Methods
 

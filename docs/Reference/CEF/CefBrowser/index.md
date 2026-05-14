@@ -27,14 +27,14 @@ Private Sub CefBrowser1_NavigationComplete( _
 End Sub
 ```
 
-The control inherits the rect-dockable surface (size, layout, **Anchors**, **Dock**) from `BaseControlRectDockable`. It does *not* inherit a focusable layer, so the keyboard / mouse / focus events you might find on [**WebView2**](../../WebView2/WebView2/) are not part of its surface — keystrokes go straight into the page once Chromium has focus.
+The control inherits the rect-dockable members (size, layout, **Anchors**, **Dock**) from `BaseControlRectDockable`. It does *not* inherit a focusable layer, so the keyboard / mouse / focus events you might find on [**WebView2**](../../WebView2/WebView2/) are not part of its API — keystrokes go straight into the page once Chromium has focus.
 
 * TOC
 {:toc}
 
 ## Lifecycle
 
-A **CefBrowser** control progresses through three distinct phases, each driven by an asynchronous step in the CEF runtime:
+A **CefBrowser** control progresses through three distinct phases, each triggered by an asynchronous step in the CEF runtime:
 
 | Event                          | When                                                                                                              |
 |--------------------------------|-------------------------------------------------------------------------------------------------------------------|
@@ -54,7 +54,7 @@ By default the control launches the browser helper as soon as the form is loaded
 
 The control offers three families of BASIC ↔ JavaScript bridges:
 
-- **Posting messages** — [**PostWebMessage**](#postwebmessage) sends a value to the page where it surfaces via `window.chrome.webview.addEventListener('message', …)`. The page replies with `window.chrome.webview.postMessage(…)`, which fires the [**JsMessage**](#jsmessage) event.
+- **Posting messages** — [**PostWebMessage**](#postwebmessage) sends a value to the page where it arrives via `window.chrome.webview.addEventListener('message', …)`. The page replies with `window.chrome.webview.postMessage(…)`, which fires the [**JsMessage**](#jsmessage) event.
 - **Executing script** — [**JsRun**](#jsrun) calls a named JavaScript function and waits for the result, [**JsRunAsync**](#jsrunasync) calls one and fires [**JsAsyncResult**](#jsasyncresult) when the result arrives, and [**ExecuteScript**](#executescript) fires-and-forgets a snippet without awaiting a result.
 
 Synchronous [**JsRun**](#jsrun) blocks the BASIC thread until the renderer replies — which means that re-entrancy from the page (a JavaScript handler that posts back into BASIC during the call) can cause a UI freeze. Use [**JsRunAsync**](#jsrunasync) whenever the call is non-trivial.
@@ -66,12 +66,12 @@ Synchronous [**JsRun**](#jsrun) blocks the BASIC thread until the renderer repli
 Properties
 ----------
 
-The control inherits the standard rect-dockable surface from `BaseControlRectDockable` — size, position, **Anchors**, **Dock**, **Container**, the design-time **Name** / **Index** / **Tag**.
+The control inherits the standard rect-dockable members from `BaseControlRectDockable` — size, position, **Anchors**, **Dock**, **Container**, the design-time **Name** / **Index** / **Tag**.
 
 ### Anchors
 {: .no_toc }
 
-The container-edge anchors that drive automatic resizing when the parent **Form** is resized. Inherited from `BaseControlRectDockable`.
+The container-edge anchors that control automatic resizing when the parent **Form** is resized. Inherited from `BaseControlRectDockable`.
 
 ### CanGoBack
 {: .no_toc }
@@ -156,7 +156,7 @@ The **Form** (or other container) that hosts this control. **Object**. Read-only
 ### Tag
 {: .no_toc }
 
-A user-defined string carried by the control. **String**. Inherited.
+A user-defined string stored on the control. **String**. Inherited.
 
 ### Top
 {: .no_toc }
@@ -207,7 +207,7 @@ Syntax: *object*.**ClearVirtualHostNameToFolderMapping** *hostName*
 ### ExecuteScript
 {: .no_toc }
 
-Evaluates JavaScript in the page without waiting for it to finish and without surfacing its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when you need the value.
+Evaluates JavaScript in the page without waiting for it to finish and without returning its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when you need the value.
 
 Syntax: *object*.**ExecuteScript** *jsCode*
 
@@ -262,7 +262,7 @@ Debug.Print product   ' 30
 ### JsRunAsync
 {: .no_toc }
 
-Calls a named JavaScript function asynchronously and returns immediately. When the result arrives, [**JsAsyncResult**](#jsasyncresult) fires carrying the result and an error string.
+Calls a named JavaScript function asynchronously and returns immediately. When the result arrives, [**JsAsyncResult**](#jsasyncresult) fires with the result and an error string.
 
 Syntax: *object*.**JsRunAsync** *FuncName*, [ *args* ]
 
@@ -287,7 +287,7 @@ Private Sub CefBrowser1_JsAsyncResult( _
 End Sub
 ```
 
-If **JsRunAsync** is called before the renderer IPC has connected, the call is queued and dispatched once the connection comes up.
+If **JsRunAsync** is called before the renderer IPC has connected, the call is queued and dispatched once the connection is established.
 
 ### Move
 {: .no_toc }
@@ -326,14 +326,14 @@ Syntax: *object*.**OpenDevToolsWindow**
 ### PostWebMessage
 {: .no_toc }
 
-Sends a value to the page; it surfaces via `window.chrome.webview.addEventListener('message', …)`. The page can reply with `window.chrome.webview.postMessage(…)`, which fires the [**JsMessage**](#jsmessage) event.
+Sends a value to the page; it arrives via `window.chrome.webview.addEventListener('message', …)`. The page can reply with `window.chrome.webview.postMessage(…)`, which fires the [**JsMessage**](#jsmessage) event.
 
 Syntax: *object*.**PostWebMessage** *Message*
 
 *Message*
-: *required* A **Variant** carrying the value to send. Strings, numbers, **Boolean**, **Null**, and **Empty** are JSON-encoded for the page; objects and arrays are not currently supported.
+: *required* A **Variant** containing the value to send. Strings, numbers, **Boolean**, **Null**, and **Empty** are JSON-encoded for the page; objects and arrays are not currently supported.
 
-If **PostWebMessage** is called before the renderer IPC has connected, the call is queued and dispatched once the connection comes up.
+If **PostWebMessage** is called before the renderer IPC has connected, the call is queued and dispatched once the connection is established.
 
 ### PrintToPdf
 {: .no_toc }
@@ -435,7 +435,7 @@ Syntax: *object*\_**DocumentTitleChanged**( )
 ### DOMContentLoaded
 {: .no_toc }
 
-Raised when the page reaches the `DOMContentLoaded` lifecycle event — the DOM tree is built and JavaScript can safely walk it, but external resources may still be loading.
+Raised when the page reaches the `DOMContentLoaded` lifecycle event — the DOM tree is built and JavaScript can safely traverse it, but external resources may still be loading.
 
 Syntax: *object*\_**DOMContentLoaded**( )
 
@@ -481,7 +481,7 @@ Raised after a navigation initiated by [**Navigate**](#navigate), [**NavigateToS
 Syntax: *object*\_**NavigationComplete**( *IsSuccess* **As Boolean**, *WebErrorStatus* **As Long** )
 
 > [!NOTE]
-> *IsSuccess* and *WebErrorStatus* are part of the event signature but currently return placeholder values (`True` and `0`) — the underlying CEF callbacks that would populate them have not yet been wired in. Use the document state ([**DocumentURL**](#documenturl), [**CanGoBack**](#cangoback)) to determine the outcome.
+> *IsSuccess* and *WebErrorStatus* are part of the event signature but currently return placeholder values (`True` and `0`) — the underlying CEF callbacks that would populate them have not yet been connected. Use the document state ([**DocumentURL**](#documenturl), [**CanGoBack**](#cangoback)) to determine the outcome.
 
 ### NavigationStarting
 {: .no_toc }
@@ -553,8 +553,8 @@ End Sub
 
 ## See Also
 
-- [CefEnvironmentOptions](EnvironmentOptions) -- pre-creation configuration carried by [**EnvironmentOptions**](#environmentoptions)
+- [CefEnvironmentOptions](EnvironmentOptions) -- pre-creation configuration exposed through [**EnvironmentOptions**](#environmentoptions)
 - [CefLogSeverity](../Enumerations/CefLogSeverity), [cefPrintOrientation](../Enumerations/cefPrintOrientation) -- the package's two user-facing enumerations
-- [WebView2](../../WebView2/WebView2/) -- the WebView2-runtime counterpart with a larger feature surface
+- [WebView2](../../WebView2/WebView2/) -- the WebView2-runtime counterpart with a larger feature set
 - [WebView2 parity](../#webview2-parity) -- features available on **WebView2** that are not yet exposed on **CefBrowser**
 - [ControlTypeConstants](../../VBRUN/Constants/ControlTypeConstants) -- where **vbCefBrowser** lives

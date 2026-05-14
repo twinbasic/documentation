@@ -26,7 +26,7 @@ Private Sub Form_Load()
 End Sub
 ```
 
-The control inherits the rectangular non-focusable base surface from `BaseControlNotFocusable` — size and position (size is irrelevant at run time since the control isn't drawn), **Name**, **Tag**, **hWnd**. It does not surface **Visible**, **Anchors**, or **Dock** in any meaningful way, and never accepts focus.
+The control inherits the rectangular non-focusable base members from `BaseControlNotFocusable` — size and position (size is irrelevant at run time since the control isn't drawn), **Name**, **Tag**, **hWnd**. It does not expose **Visible**, **Anchors**, or **Dock** in any meaningful way, and never accepts focus.
 
 * TOC
 {:toc}

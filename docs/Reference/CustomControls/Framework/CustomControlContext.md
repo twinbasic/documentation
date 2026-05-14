@@ -11,7 +11,7 @@ has_toc: false
 
 The callback object handed to a custom control's [**Initialize**](ICustomControl#initialize). Holds the connection back into the framework — used to deserialize designer-set property values, request repaints, create timers, and move the keyboard focus between elements the control has drawn.
 
-Custom controls store the **CustomControlContext** in a private field (typically called **ControlContext**) so that they can call back into the framework at any point after **Initialize** has returned. The form-class counterpart [**CustomFormContext**](CustomFormContext) extends this surface with **Show** and **Close**.
+Custom controls store the **CustomControlContext** in a private field (typically called **ControlContext**) so that they can call back into the framework at any point after **Initialize** has returned. The form-class counterpart [**CustomFormContext**](CustomFormContext) extends this with **Show** and **Close**.
 
 ```tb
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
@@ -32,7 +32,7 @@ End Sub
 ### ChangeFocusedElement
 {: .no_toc }
 
-Asks the framework to move the keyboard focus to a particular `ElementTabIndex` value, as if the user had pressed **TAB** until it landed there. Used by [**WaynesGrid**](../WaynesGrid/) when a cell is selected programmatically — the grid changes its **SelectedCellX** / **SelectedCellY** and then calls this method so that the form-level focus tracking matches.
+Asks the framework to move the keyboard focus to a particular `ElementTabIndex` value, as if the user had pressed **TAB** until reaching that point. Used by [**WaynesGrid**](../WaynesGrid/) when a cell is selected programmatically — the grid changes its **SelectedCellX** / **SelectedCellY** and then calls this method so that the form-level focus tracking matches.
 
 Syntax: *object*.**ChangeFocusedElement** *ElementTabIndex*
 
@@ -51,7 +51,7 @@ The framework returns the timer typed as **stdole.IUnknown**; cast with `CType(O
 ### GetSerializer
 {: .no_toc }
 
-Returns the [**SerializeInfo**](SerializeInfo) handle for this control instance. The serializer surfaces the deserialization entry point and the run-time / design-time mode flags.
+Returns the [**SerializeInfo**](SerializeInfo) handle for this control instance. The serializer exposes the deserialization entry point and the run-time / design-time mode flags.
 
 Syntax: *object*.**GetSerializer** ( ) **As SerializeInfo**
 

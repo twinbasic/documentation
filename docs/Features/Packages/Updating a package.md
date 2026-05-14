@@ -32,7 +32,7 @@ then it's done and ready to be saved when a second message saying
 
 `[PACKAGES] downloading package '{1FCDB98D-617D-4995-9736-2ED0E4746A10}/8/7/0/498' from the online database... [DONE]`
 
-comes up. It will also go from the checkbox twirling to the entry being moved to the top (below built in packages) with `[IMPORTED]` prepended to it.
+comes up. It will also go from the checkbox spinning to the entry being moved to the top (below built in packages) with `[IMPORTED]` prepended to it.
 
 Restart the compiler if it doesn't on its own after saving, but it usually does.
 

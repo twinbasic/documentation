@@ -9,7 +9,7 @@ has_toc: false
 # WebView2EnvironmentOptions class
 {: .no_toc }
 
-Carries the host's pre-creation configuration for the underlying WebView2 environment — folder layout, additional command-line arguments, locale, and a small handful of policy switches. Surfaces on every [**WebView2**](.) control as its **EnvironmentOptions** property; the control instantiates one automatically before raising the [**Create**](.#create) event.
+Carries the host's pre-creation configuration for the underlying WebView2 environment — folder layout, additional command-line arguments, locale, and a few policy switches. Surfaces on every [**WebView2**](.) control as its **EnvironmentOptions** property; the control instantiates one automatically before raising the [**Create**](.#create) event.
 
 The fields below take effect only while the WebView2 environment is being constructed — that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
 

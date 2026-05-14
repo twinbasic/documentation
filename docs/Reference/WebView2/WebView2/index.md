@@ -10,7 +10,7 @@ has_toc: false
 
 A **WebView2** is a twinBASIC control that hosts the Microsoft Edge **WebView2** runtime — drop one onto a [**Form**](../../VB/Form/) and the running Edge engine renders web content inside its rectangle. Application code can navigate to URLs, run JavaScript, intercept HTTP requests, share BASIC objects with the page, post messages back and forth, and print the document to PDF.
 
-The control wraps the underlying `ICoreWebView2*` COM interfaces and surfaces them as ordinary BASIC properties, methods, and events. Most of the work happens asynchronously inside the browser process — the control raises [**Ready**](#ready) once the WebView2 environment and controller have been created, and most members raise *"WebView2 control is not ready"* (run-time error 5) if called before then.
+The control wraps the underlying `ICoreWebView2*` COM interfaces and exposes them as ordinary BASIC properties, methods, and events. Most of the work happens asynchronously inside the browser process — the control raises [**Ready**](#ready) once the WebView2 environment and controller have been created, and most members raise *"WebView2 control is not ready"* (run-time error 5) if called before then.
 
 ```tb
 Private Sub Form_Load()
@@ -34,7 +34,7 @@ End Sub
 
 ## Lifecycle
 
-A WebView2 control passes through three distinct phases between construction and use, each driven by an asynchronous step in the Edge runtime:
+A WebView2 control passes through three distinct phases between construction and use, each triggered by an asynchronous step in the Edge runtime:
 
 | Event                                | When                                                                                                              |
 |--------------------------------------|-------------------------------------------------------------------------------------------------------------------|
@@ -69,7 +69,7 @@ To rewrite, mock, or simply observe HTTP traffic from the page, register a URL f
 Properties
 ----------
 
-The control inherits the standard size, layout, and focus surface from `BaseControlFocusableNoFont`. The bulk of the WebView2-specific surface is split between settings that map to the Edge runtime, capability-flags that probe the loaded runtime version, and runtime-only state.
+The control inherits the standard size, layout, and focus members from `BaseControlFocusableNoFont`. The bulk of the WebView2-specific members are split between settings that map to the Edge runtime, capability-flags that probe the loaded runtime version, and runtime-only state.
 
 ### AdditionalAllowedFrameAncestors
 {: .no_toc }
@@ -79,7 +79,7 @@ Additional `Content-Security-Policy: frame-ancestors` directives allowed when th
 ### Anchors
 {: .no_toc }
 
-The container-edge anchors that drive automatic resizing when the parent **Form** is resized. Inherited from `BaseControlRectDockable`.
+The container-edge anchors that control automatic resizing when the parent **Form** is resized. Inherited from `BaseControlRectDockable`.
 
 ### AreBrowserAcceleratorKeysEnabled
 {: .no_toc }
@@ -455,7 +455,7 @@ Syntax: *object*.**AddWebResourceRequestedFilter** *sFilter*, *FilterContext*
 ### CallDevToolsProtocolMethod
 {: .no_toc }
 
-Sends a Chrome DevTools Protocol message to the running Edge instance. When *CustomEventId* is provided, the runtime's reply fires the [**DevToolsProtocolResponse**](#devtoolsprotocolresponse) event carrying the same *CustomEventId* and the JSON response.
+Sends a Chrome DevTools Protocol message to the running Edge instance. When *CustomEventId* is provided, the runtime's reply fires the [**DevToolsProtocolResponse**](#devtoolsprotocolresponse) event with the same *CustomEventId* and the JSON response.
 
 Syntax: *object*.**CallDevToolsProtocolMethod** *MethodName*, *ParamsAsJson* [, *CustomEventId* ]
 
@@ -499,7 +499,7 @@ Syntax: *object*.**Drag** [ *Action* ]
 ### ExecuteScript
 {: .no_toc }
 
-Evaluates JavaScript in the page without waiting for it to finish and without surfacing its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when you need the value.
+Evaluates JavaScript in the page without waiting for it to finish and without returning its result. Use [**JsRun**](#jsrun) or [**JsRunAsync**](#jsrunasync) when you need the value.
 
 Syntax: *object*.**ExecuteScript** *jsCode*
 
@@ -530,7 +530,7 @@ Syntax: *object*.**JsProp** ( *PropName* ) **As Variant**
 *PropName*
 : *required* A **String** containing the expression to evaluate.
 
-Returns the result decoded from the JSON the runtime hands back — **Boolean**, **Double**, **String**, **Null**, or **Empty** (for `undefined`). Object and array results are not yet supported — accessing them raises run-time error 5.
+Returns the result decoded from the JSON the runtime returns — **Boolean**, **Double**, **String**, **Null**, or **Empty** (for `undefined`). Object and array results are not yet supported — accessing them raises run-time error 5.
 
 ### JsRun
 {: .no_toc }
@@ -554,7 +554,7 @@ Debug.Print product   ' 30
 ### JsRunAsync
 {: .no_toc }
 
-Calls a named JavaScript function asynchronously and returns immediately with a token. When the result arrives, [**JsAsyncResult**](#jsasyncresult) fires carrying the same token.
+Calls a named JavaScript function asynchronously and returns immediately with a token. When the result arrives, [**JsAsyncResult**](#jsasyncresult) fires with the same token.
 
 Syntax: *object*.**JsRunAsync** ( *FuncName*, [ *args* ] ) **As LongLong**
 
@@ -632,7 +632,7 @@ Syntax: *object*.**NavigateCustom** *uri*, *method* [, *headers* [, *postData* [
 : *optional* A **String** of `vbCrLf`-delimited `Header: value` lines.
 
 *postData*
-: *optional* A **Variant** carrying the body — a **String** (encoded according to *postDataAsUTF8*) or a **Byte()** array (used verbatim).
+: *optional* A **Variant** containing the body — a **String** (encoded according to *postDataAsUTF8*) or a **Byte()** array (used verbatim).
 
 *postDataAsUTF8*
 : *optional* A **Boolean**, default **True**. When **True** and *postData* is a **String**, the string is UTF-8-encoded before being sent.
@@ -720,7 +720,7 @@ Requires [**IsWebMessageEnabled**](#iswebmessageenabled).
 ### PrintToPdf
 {: .no_toc }
 
-Saves the current document to a PDF file. The work happens asynchronously — the result surfaces through [**PrintToPdfCompleted**](#printtopdfcompleted) or [**PrintToPdfFailed**](#printtopdffailed). Requires [**SupportsPdfFeatures**](#supportspdffeatures).
+Saves the current document to a PDF file. The work happens asynchronously — the result arrives through [**PrintToPdfCompleted**](#printtopdfcompleted) or [**PrintToPdfFailed**](#printtopdffailed). Requires [**SupportsPdfFeatures**](#supportspdffeatures).
 
 Syntax: *object*.**PrintToPdf** *outputPath* [, *Orientation* [, *ScaleFactor* [, *PageWidth* [, *PageHeight* [, *MarginTop* [, *MarginBottom* [, *MarginLeft* [, *MarginRight* [, *ShouldPrintBackgrounds* [, *ShouldPrintSelectionOnly* [, *ShouldPrintHeaderAndFooter* [, *HeaderTitle* [, *FooterUri* ] ] ] ] ] ] ] ] ] ] ] ] ]
 
@@ -855,7 +855,7 @@ Events
 ### AcceleratorKeyPressed
 {: .no_toc }
 
-Raised when Edge detects an accelerator-style keystroke — e.g. **F1**, **Alt+**, **Ctrl+**. Set *IsHandled* to **True** to swallow the keystroke so Edge doesn't act on it. Always synchronous: cannot be deferred.
+Raised when Edge detects an accelerator-style keystroke — e.g. **F1**, **Alt+**, **Ctrl+**. Set *IsHandled* to **True** to consume the keystroke so Edge doesn't act on it. Always synchronous: cannot be deferred.
 
 Syntax: *object*\_**AcceleratorKeyPressed**( *KeyState* **As** [**wv2KeyEventKind**](../Enumerations/wv2KeyEventKind), *IsExtendedKey* **As Boolean**, *WasKeyDown* **As Boolean**, *IsKeyReleased* **As Boolean**, *IsMenuKeyDown* **As Boolean**, *RepeatCount* **As Long**, *ScanCode* **As Long**, *IsHandled* **As Boolean** )
 

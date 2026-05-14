@@ -21,7 +21,7 @@ End Sub
 ```
 
 > [!IMPORTANT]
-> This interface is **`[COMExtensible(True)]`**. Field names are resolved against the underlying event object at run time. The standard DOM event surface (`.target` → the element that fired the event; `.key`, `.code`, `.altKey`, `.ctrlKey`, `.shiftKey` for keyboard events; `.clientX`, `.clientY` for mouse events; `.index` for the IDE's listview events; …) is forwarded as-is to the JavaScript-side event object. See MDN's DOM Event documentation for the standard fields.
+> This interface is **`[COMExtensible(True)]`**. Field names are resolved against the underlying event object at run time. The standard DOM event properties (`.target` → the element that fired the event; `.key`, `.code`, `.altKey`, `.ctrlKey`, `.shiftKey` for keyboard events; `.clientX`, `.clientY` for mouse events; `.index` for the IDE's listview events; …) are forwarded as-is to the JavaScript-side event object. See MDN's DOM Event documentation for the standard fields.
 
 * TOC
 {:toc}
@@ -64,7 +64,7 @@ The interface's **DefaultMember** is [**Item**](#item) — so `eventInfo("target
 ### Item
 {: .no_toc }
 
-Looks up a field by name. Returns an [**HtmlEventProperty**](HtmlEventProperty), which carries the field's value plus a nested [**Properties**](HtmlEventProperty#properties) for further drill-down.
+Looks up a field by name. Returns an [**HtmlEventProperty**](HtmlEventProperty), which includes the field's value plus a nested [**Properties**](HtmlEventProperty#properties) for further drill-down.
 
 Syntax: *eventInfo*( *DomPropertyName* ) **As** [**HtmlEventProperty**](HtmlEventProperty)
 

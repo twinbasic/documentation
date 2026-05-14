@@ -8,12 +8,12 @@ has_toc: false
 # PropertyPage class
 {: .no_toc }
 
-A **PropertyPage** is a container that backs a single tab of a COM property-page dialog — the popup invoked from the **(Custom)** entry on an ActiveX control's property browser. It exposes the **IPropertyPage2** COM interface so that any host that knows how to drive ActiveX property pages (the twinBASIC IDE, classic VB6, Office, …) can place it inside its own property-sheet frame, give it the controls the user is editing, and apply the page's changes back to them.
+A **PropertyPage** is a container that backs a single tab of a COM property-page dialog — the popup invoked from the **(Custom)** entry on an ActiveX control's property browser. It exposes the **IPropertyPage2** COM interface so that any host that supports ActiveX property pages (the twinBASIC IDE, classic VB6, Office, …) can place it inside its own property-sheet frame, give it the controls the user is editing, and apply the page's changes back to them.
 
-Designing a property page is much like designing a small dialog [**Form**](../Form): drop child controls onto it, write event handlers, and use its drawing surface freely. What sets it apart is the lifecycle, which is driven by the host rather than by the application:
+Designing a property page is much like designing a small dialog [**Form**](../Form): drop child controls onto it, write event handlers, and use its drawing surface freely. What sets it apart is the lifecycle, which is controlled by the host rather than by the application:
 
 1. The host instantiates the property-page class once per dialog.
-2. The host calls **IPropertyPage2.SetObjects** to hand over the selected ActiveX controls. The framework stores them in [**SelectedControls**](#selectedcontrols) and raises [**SelectionChanged**](#selectionchanged).
+2. The host calls **IPropertyPage2.SetObjects** to pass the selected ActiveX controls. The framework stores them in [**SelectedControls**](#selectedcontrols) and raises [**SelectionChanged**](#selectionchanged).
 3. As the user edits values, the page handler sets [**Changed**](#changed) = **True** to enable the dialog's *Apply* button.
 4. When the user clicks *OK* or *Apply*, the host raises [**ApplyChanges**](#applychanges) so the page can write the new values back to [**SelectedControls**](#selectedcontrols).
 5. On dialog close the framework raises [**Terminate**](#terminate) and releases the class instance.
@@ -363,7 +363,7 @@ The standard size of the page in the host's property-sheet frame. A member of **
 
 Syntax: *object*.**StandardSize** [ = *value* ]
 
-Reading **StandardSize** compares the page's current pixel size against the small/large presets and returns **StandardSizeCustom** when neither matches. Assigning **StandardSizeSmall** or **StandardSizeLarge** resizes the page accordingly; assigning **StandardSizeCustom** is a no-op (leave the size as it is). The property is exposed only in code — VB6 surfaced it on the design-time property sheet but never in the runtime object model.
+Reading **StandardSize** compares the page's current pixel size against the small/large presets and returns **StandardSizeCustom** when neither matches. Assigning **StandardSizeSmall** or **StandardSizeLarge** resizes the page accordingly; assigning **StandardSizeCustom** is a no-op (leave the size as it is). The property is exposed only in code — VB6 exposed it on the design-time property sheet but never in the runtime object model.
 
 ### Tag
 {: .no_toc }
@@ -601,7 +601,7 @@ Syntax: *object*\_**DblClick**( )
 ### DPIChange
 {: .no_toc }
 
-Raised when the page moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument carries the new effective DPI; child controls re-scale themselves automatically.
+Raised when the page moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument gives the new effective DPI; child controls re-scale themselves automatically.
 
 Syntax: *object*\_**DPIChange**( *NewDPI* **As Long** )
 

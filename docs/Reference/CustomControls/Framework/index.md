@@ -7,7 +7,7 @@ has_toc: false
 
 # Framework
 
-The framework half of the [**CustomControls**](..) package — the interfaces, callback objects, and drawing primitives an *author* of a custom control writes against. The eight concrete `Waynes…` controls in the package are themselves built on this surface; the same pieces are available to user code that needs to implement an entirely new custom control.
+The framework half of the [**CustomControls**](..) package — the interfaces, callback objects, and drawing primitives an *author* of a custom control writes against. The eight concrete `Waynes…` controls in the package are themselves built on this framework; the same pieces are available to user code that needs to implement an entirely new custom control.
 
 A custom control:
 

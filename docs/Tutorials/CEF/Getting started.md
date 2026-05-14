@@ -18,7 +18,7 @@ To create a project that uses the CEF package, add the right compiler-package re
 | **twinBASIC - Chromium Embedded Framework Package v109**        | Chromium 109      | Windows 7+    |
 | **twinBASIC - Chromium Embedded Framework Package v145**        | Chromium 145      | Windows 10+   |
 
-Use **v145** unless you specifically need to support older operating systems. The package source compiles against all three — picking the reference sets the `CEF_VERSION` compiler constant, which selects the matching API surface.
+Use **v145** unless you specifically need to support older operating systems. The package source compiles against all three — picking the reference sets the `CEF_VERSION` compiler constant, which selects the matching API.
 
 Add the reference through **Project** → **References** (Ctrl-T) → **TWINPACK PACKAGES**. Tick the desired CEF package, close the dialog, and restart the compiler. Once added, **CefBrowser** appears in the form-designer toolbox.
 
@@ -39,7 +39,7 @@ Download the runtime ZIP that matches both the CEF version and the application b
 
 See [CEF Runtime Releases](https://github.com/twinbasic/cef-runtimes/releases/) for the full version list and release notes.
 
-Extract the ZIP into `%LocalAppData%\twinBASIC_CEF_Runtime\`. The version-stamped folder inside the ZIP — for example `145_0_7632_160_Win64` — must land directly under that path, containing `libcef.dll` and its sibling files:
+Extract the ZIP into `%LocalAppData%\twinBASIC_CEF_Runtime\`. The version-stamped folder inside the ZIP — for example `145_0_7632_160_Win64` — must be placed directly under that path, containing `libcef.dll` and its sibling files:
 
 ```text
 %LocalAppData%\twinBASIC_CEF_Runtime\145_0_7632_160_Win64\libcef.dll
@@ -60,7 +60,7 @@ End Sub
 
 ## Bitness must match
 
-The runtime bitness must match the application bitness — a 32-bit twinBASIC build needs the Win32 runtime, a 64-bit build needs the Win64 runtime. Mixing them produces a `libcef.dll` load failure surfaced through the [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event.
+The runtime bitness must match the application bitness — a 32-bit twinBASIC build needs the Win32 runtime, a 64-bit build needs the Win64 runtime. Mixing them produces a `libcef.dll` load failure reported through the [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event.
 
 ## Create a CefBrowser control on a form
 
@@ -76,7 +76,7 @@ The control starts up asynchronously — the first user-visible event is [**Read
 
 ## CefBrowser control properties
 
-Toggle the **Properties** pane to see the design-time-visible surface: [**DocumentURL**](../../tB/Packages/CEF/CefBrowser/#documenturl) (the initial URL the control auto-navigates to once **Ready** fires), [**ZoomFactor**](../../tB/Packages/CEF/CefBrowser/#zoomfactor), [**UserAgent**](../../tB/Packages/CEF/CefBrowser/#useragent), and the standard rect-dockable surface (size, **Anchors**, **Dock**).
+Toggle the **Properties** pane to see the design-time-visible properties: [**DocumentURL**](../../tB/Packages/CEF/CefBrowser/#documenturl) (the initial URL the control auto-navigates to once **Ready** fires), [**ZoomFactor**](../../tB/Packages/CEF/CefBrowser/#zoomfactor), [**UserAgent**](../../tB/Packages/CEF/CefBrowser/#useragent), and the standard rect-dockable properties (size, **Anchors**, **Dock**).
 
 For the full reference, see the [**CefBrowser** class reference](../../tB/Packages/CEF/CefBrowser/); for what the underlying Chromium runtime supports, consult the [Chromium Embedded Framework documentation](https://bitbucket.org/chromiumembedded/cef/wiki/Home).
 

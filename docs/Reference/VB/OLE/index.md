@@ -11,7 +11,7 @@ has_toc: false
 An **OLE** *container* control hosts a linked or embedded OLE Automation object — typically a Word document, an Excel spreadsheet, or any other registered OLE server — directly on a form, and lets the user activate and edit the contained object in place via its registered verbs.
 
 > [!NOTE]
-> The OLE container control is a **VB6 compatibility stub** in twinBASIC. Almost every OLE-specific property, method, and event is currently unimplemented (each is flagged below). The inherited base-control surface — positioning, sizing, anchoring, focus, drag, mouse cursor — does work normally, so a project ported from VB6 still parses and lays out the control on its form, but cannot create, embed, link, paste, save, or activate an actual OLE object through it.
+> The OLE container control is a **VB6 compatibility stub** in twinBASIC. Almost every OLE-specific property, method, and event is currently unimplemented (each is flagged below). The inherited base-control members — positioning, sizing, anchoring, focus, drag, mouse cursor — do work normally, so a project ported from VB6 still parses and lays out the control on its form, but cannot create, embed, link, paste, save, or activate an actual OLE object through it.
 
 There is no default property. The default-designer event is [**Click**](#click).
 
@@ -272,7 +272,7 @@ The horizontal distance from the left edge of the container to the left edge of 
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-A run-time-only **LongPtr** giving the raw `IOleObject` interface pointer of the contained object, for hand-off to native code.
+A run-time-only **LongPtr** giving the raw `IOleObject` interface pointer of the contained object, for passing to native code.
 
 ### MiscFlags
 {: .no_toc }

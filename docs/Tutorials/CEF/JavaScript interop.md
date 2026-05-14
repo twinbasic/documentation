@@ -57,7 +57,7 @@ Private Sub WebView_JsMessage(ByVal Message As Variant) _
 End Sub
 ```
 
-The two halves combine cleanly into a request / reply exchange — the page posts a query string, BASIC processes it and posts a result back:
+The two halves form a request / reply exchange — the page posts a query string, BASIC processes it and posts a result back:
 
 ```tb
 Private Sub WebView_JsMessage(ByVal Message As Variant) _
@@ -118,7 +118,7 @@ Private Sub WebView_JsAsyncResult( _
 End Sub
 ```
 
-The [**JsAsyncResult**](../../tB/Packages/CEF/CefBrowser/#jsasyncresult) event carries a *Token* parameter so a single handler can demultiplex multiple in-flight calls. *ErrString* is empty on success.
+The [**JsAsyncResult**](../../tB/Packages/CEF/CefBrowser/#jsasyncresult) event includes a *Token* parameter so a single handler can demultiplex multiple in-flight calls. *ErrString* is empty on success.
 
 Calls made before the renderer IPC has connected are queued and dispatched once the connection comes up.
 

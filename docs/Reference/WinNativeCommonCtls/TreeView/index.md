@@ -27,7 +27,7 @@ Private Sub TreeView1_NodeClick(ByVal Node As Node)
 End Sub
 ```
 
-The control inherits the focusable rect-dockable surface from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the focusable rect-dockable members from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -248,7 +248,7 @@ Syntax: *object*\_**BeforeLabelEdit**( *Cancel* **As Boolean** )
 ### Click
 {: .no_toc }
 
-Raised on a mouse click inside the control. Distinct from [**NodeClick**](#nodeclick), which fires when the click lands on a node.
+Raised on a mouse click inside the control. Distinct from [**NodeClick**](#nodeclick), which fires when the click hits a node.
 
 Syntax: *object*\_**Click**( )
 

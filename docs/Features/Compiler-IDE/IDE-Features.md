@@ -59,7 +59,7 @@ The classic file-based view is still used by default, you can activate the new v
 
 ## View Forms and Packages as JSON
 
-Project forms and packages are stored as JSON format data, and you can view this by right-click in Project Explorer and selecting 'View as JSON'. This is particularly interesting for packages as it exposes the entire code in a much more easily parsed format.
+Project forms and packages are stored as JSON format data, and you can view this by right-click in Project Explorer and selecting 'View as JSON'. This is particularly interesting for packages as it exposes the entire code in a more parseable format.
 
 ![image](../Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png)
 

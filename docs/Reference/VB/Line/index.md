@@ -8,7 +8,7 @@ has_toc: false
 # Line class
 {: .no_toc }
 
-A **Line** is a windowless lightweight control that draws a single straight line segment from one point to another on its container. It exists purely for visual presentation — to divide regions of a form, underline a heading, draw a leader to an annotation — and has no interaction surface of its own: no mouse events, no focus, no caption.
+A **Line** is a windowless lightweight control that draws a single straight line segment from one point to another on its container. It exists purely for visual presentation — to divide regions of a form, underline a heading, draw a leader to an annotation — and has no interactive elements of its own: no mouse events, no focus, no caption.
 
 A **Line** is positioned by its two endpoints, [**X1**](#x1) / [**Y1**](#y1) and [**X2**](#x2) / [**Y2**](#y2), rather than by a `Left` / `Top` / `Width` / `Height` rectangle. The default property is [**Visible**](#visible) and the default event is [**Initialize**](#initialize).
 
@@ -44,7 +44,7 @@ GDI applies a hard limitation here: when [**BorderWidth**](#borderwidth) is grea
 
 [**DrawMode**](#drawmode) selects the raster operation that combines the pen with the destination pixels. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants): **vbCopyPen** (default — opaque drawing) or one of the XOR / AND / NOT / merge variants. Non-default modes are mainly useful for "rubber-band" feedback drawn over an existing background — the same XOR you draw twice cancels itself out, restoring the original pixels.
 
-## No interaction surface
+## No interaction
 
 Unlike most other controls, a **Line** does not raise mouse, keyboard, or focus events of any kind, and has no [**Caption**](/tB/Packages/VB/Label#caption), [**Enabled**](/tB/Packages/VB/Label#enabled), or **ToolTipText**. To make a region clickable, place a transparent [**Label**](../Label/) on top.
 
@@ -142,6 +142,6 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Initialize
 {: .no_toc }
 
-Raised once, after the line has been wired into its container's paint cycle but before it is first painted. **Default event.**
+Raised once, after the line has been connected to its container's paint cycle but before it is first painted. **Default event.**
 
 Syntax: *object*\_**Initialize**( )

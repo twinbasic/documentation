@@ -63,7 +63,7 @@ Entries will be judged across multiple categories, including:
 Bonus points may be awarded for:
 
 - Use of newer twinBASIC features (e.g. delegates, generics)
-- Particularly clean or insightful design
+- Particularly clean or insightful design <!-- style: clean is approved here -->
 
 Winner selected at the **sole discretion of the twinBASIC team**.
 

@@ -9,7 +9,7 @@ permalink: /tB/Core/Delegate
 Declares a function-pointer type — a named signature that variables, parameters, and UDT members can hold a *reference* to a callable matching. A delegate value is bit-compatible with **LongPtr**, but adds compile-time signature checking when it is assigned, passed, or called.
 
 > [!NOTE]
-> The **Delegate** statement is a twinBASIC extension. In classic VBA, function pointers are untyped **LongPtr** values produced by **AddressOf** and called indirectly through hand-rolled mechanisms (`DispCallFunc`, `CallWindowProc` shims, etc.).
+> The **Delegate** statement is a twinBASIC extension. In classic VBA, function pointers are untyped **LongPtr** values produced by **AddressOf** and called indirectly through custom mechanisms (`DispCallFunc`, `CallWindowProc` shims, etc.).
 
 Syntax:
 > [ **Public** \| **Private** ] **Delegate Function** *name* [ **CDecl** ] **(** [ *arglist* ] **)** **As** *type*

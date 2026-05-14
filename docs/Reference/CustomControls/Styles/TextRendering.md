@@ -85,7 +85,7 @@ Raised when [**Alignment**](#alignment) or [**OverflowMode**](#overflowmode) is 
 
 ## FontStyle class
 
-The font metrics that drive how [**TextRendering**](#) lays out text. Reached as [**TextRendering.Font**](#font).
+The font metrics that control how [**TextRendering**](#) lays out text. Reached as [**TextRendering.Font**](#font).
 
 ### Italic
 {: .no_toc }

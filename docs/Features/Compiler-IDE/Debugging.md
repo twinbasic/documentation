@@ -11,7 +11,7 @@ twinBASIC includes several features to help with debugging.
 
 ## Debug Trace Logger
 
-New to the debugging experience is a powerful trace logging feature that can automatically create detailed logs to either the debug console or a file. Messages can be output to the new system with `Debug.TracePrint`. The logger works both when running from the IDE and in compiled executables.
+New to the debugging experience is a trace logging feature that automatically creates detailed logs to either the debug console or a file. Messages can be output with `Debug.TracePrint`. The logger works both when running from the IDE and in compiled executables.
 
 ![image](../Images/4fc2bf99-2bec-4943-837d-21038d791574.png)
 

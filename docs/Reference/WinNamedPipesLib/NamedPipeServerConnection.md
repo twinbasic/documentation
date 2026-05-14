@@ -8,9 +8,9 @@ has_toc: false
 # NamedPipeServerConnection class
 {: .no_toc }
 
-One server-side per-client connection. A [**NamedPipeServer**](NamedPipeServer) creates one of these for every client that connects, and surfaces it as the *Connection* parameter of every server event. Use it to send messages to that specific client, to manually issue reads when [**NamedPipeServer.ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is **False**, and to close the connection from the server side.
+One server-side per-client connection. A [**NamedPipeServer**](NamedPipeServer) creates one of these for every client that connects, and passes it as the *Connection* parameter of every server event. Use it to send messages to that specific client, to manually issue reads when [**NamedPipeServer.ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is **False**, and to close the connection from the server side.
 
-The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface — reach instances only through [**NamedPipeServer**](NamedPipeServer) events. Connection-lifecycle and message events come through the parent [**NamedPipeServer**](NamedPipeServer); this class carries the per-connection data and methods only.
+The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface — reach instances only through [**NamedPipeServer**](NamedPipeServer) events. Connection-lifecycle and message events come through the parent [**NamedPipeServer**](NamedPipeServer); this class holds the per-connection data and methods only.
 
 ```tb
 Private Sub server_ClientConnected(Connection As NamedPipeServerConnection)
@@ -72,7 +72,7 @@ Manually issues an asynchronous read against this connection.
 Syntax: *connection*.**AsyncRead** [ *Cookie* [, *OverlappedStruct* ] ]
 
 *Cookie*
-: *optional* A **Variant** correlation value, surfaced as the *Cookie* parameter of the matching [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) event. Default **Empty**.
+: *optional* A **Variant** correlation value, passed back as the *Cookie* parameter of the matching [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) event. Default **Empty**.
 
 *OverlappedStruct*
 : *optional* A **LongPtr** to a pre-allocated `OVERLAPPED_CUSTOM` structure. **Internal use only** — the IOCP machinery passes this when re-issuing a read after `ERROR_MORE_DATA`. Consumer code should always omit this parameter.
@@ -87,10 +87,10 @@ Sends a message back to this specific client.
 Syntax: *connection*.**AsyncWrite** *Data*() [, *Cookie* ]
 
 *Data*
-: *required* A **Byte()** array carrying the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended carrier is [**PropertyBag**](../VBRUN/PropertyBag/) — see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
+: *required* A **Byte()** array containing the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended encoding is [**PropertyBag**](../VBRUN/PropertyBag/) — see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
 
 *Cookie*
-: *optional* A **Variant** correlation value, surfaced as the *Cookie* parameter of the matching [**ClientMessageSent**](NamedPipeServer#clientmessagesent) event. Default **Empty**.
+: *optional* A **Variant** correlation value, passed back as the *Cookie* parameter of the matching [**ClientMessageSent**](NamedPipeServer#clientmessagesent) event. Default **Empty**.
 
 Returns immediately; the actual transmission runs through the IOCP loop. The completion fires [**ClientMessageSent**](NamedPipeServer#clientmessagesent) on the parent server.
 

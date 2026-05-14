@@ -56,7 +56,7 @@ QR codes embed a Reed-Solomon parity stream that lets the decoder recover from d
 | **vbQRCodegenEccQuartile**      | 2     | 25%              |
 | **vbQRCodegenEccHigh**          | 3     | 30%              |
 
-When [**EccBoost**](#eccboost) is **True** (default), the encoder raises the parity level beyond the configured minimum if doing so still fits the payload in the same QR version — getting better resilience for free.
+When [**EccBoost**](#eccboost) is **True** (default), the encoder raises the parity level beyond the configured minimum if doing so still fits the payload in the same QR version — automatically achieving better resilience.
 
 ## Version and mask
 
@@ -80,7 +80,7 @@ The QR-code *version* (1 to 40) sets the matrix size: version 1 is 21 × 21 modu
 
 A **QRCode** supports both ends of an OLE drag-drop operation:
 
-- [**OLEDragMode**](#oledragmode) controls the source side. With **vbOLEDragAutomatic**, holding the mouse over the control and beginning a drag automatically picks up the current [**Picture**](#picture) into the resulting **DataObject** — handy for dragging the generated QR onto another picture display or out to a file in Explorer. With **vbOLEDragManual** (default) drags must be initiated by calling [**OLEDrag**](#oledrag) from a [**MouseDown**](#mousedown) handler.
+- [**OLEDragMode**](#oledragmode) controls the source side. With **vbOLEDragAutomatic**, holding the mouse over the control and beginning a drag automatically copies the current [**Picture**](#picture) into the resulting **DataObject** — convenient for dragging the generated QR onto another picture display or out to a file in Explorer. With **vbOLEDragManual** (default) drags must be initiated by calling [**OLEDrag**](#oledrag) from a [**MouseDown**](#mousedown) handler.
 - [**OLEDropMode**](#oledropmode) controls the destination side. With **vbOLEDropManual** the [**OLEDragOver**](#oledragover) and [**OLEDragDrop**](#oledragdrop) events fire so the application can decide what to do — for example, set [**Payload**](#payload) to the dropped text. **vbOLEDropAutomatic** is not supported on a **QRCode** and assigning it raises run-time error 5 (*Invalid procedure call or argument*).
 
 ## Data binding
@@ -125,7 +125,7 @@ Whether the bound [**Picture**](#picture) has been written to since the last sav
 ### DataField
 {: .no_toc }
 
-The name of the field, in the recordset of the bound [**DataSource**](#datasource), whose value drives [**Payload**](#payload). **String**.
+The name of the field, in the recordset of the bound [**DataSource**](#datasource), whose value sets [**Payload**](#payload). **String**.
 
 ### DataFormat
 {: .no_toc }
@@ -239,12 +239,12 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### OLEDragMode
 {: .no_toc }
 
-Whether an OLE drag is started automatically when the user begins dragging the control. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — application calls [**OLEDrag**](#oledrag)) or **vbOLEDragAutomatic** (1 — the framework picks up the current [**Picture**](#picture) into the resulting **DataObject** automatically).
+Whether an OLE drag is started automatically when the user begins dragging the control. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — application calls [**OLEDrag**](#oledrag)) or **vbOLEDragAutomatic** (1 — the framework copies the current [**Picture**](#picture) into the resulting **DataObject** automatically).
 
 ### OLEDropMode
 {: .no_toc }
 
-How the control responds to OLE drops landing on it. A restricted member of [**OLEDropConstants**](../../VBRUN/Constants/OLEDropConstants): **vbOLEDropNone** (0, default) or **vbOLEDropManual** (1). Automatic drop is not supported on a **QRCode**; assigning **vbOLEDropAutomatic** raises run-time error 5 (*Invalid procedure call or argument*).
+How the control responds to OLE drops arriving on it. A restricted member of [**OLEDropConstants**](../../VBRUN/Constants/OLEDropConstants): **vbOLEDropNone** (0, default) or **vbOLEDropManual** (1). Automatic drop is not supported on a **QRCode**; assigning **vbOLEDropAutomatic** raises run-time error 5 (*Invalid procedure call or argument*).
 
 ### Parent
 {: .no_toc }
@@ -394,7 +394,7 @@ Syntax: *object*\_**DragOver**( *Source* **As Control**, *X* **As Single**, *Y* 
 ### Initialize
 {: .no_toc }
 
-Raised once, after the control has been wired into its container's paint cycle but before it is first painted. Useful for last-minute setup that depends on container state.
+Raised once, after the control has been connected to its container's paint cycle but before it is first painted. Useful for last-minute setup that depends on container state.
 
 Syntax: *object*\_**Initialize**( )
 

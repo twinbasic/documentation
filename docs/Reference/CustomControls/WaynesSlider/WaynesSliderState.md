@@ -11,7 +11,7 @@ has_toc: false
 
 A bundle of the style objects that describe a single visual state of a [**WaynesSlider**](.). Each slider holds three parallel instances ([**NormalState**](.#normalstate), [**HoverState**](.#hoverstate), [**FocusedState**](.#focusedstate)); the slider picks one at each repaint depending on the mouse / focus state.
 
-The state has two halves — the *background* (the full track behind the block) and the *block* (the draggable rectangle that indicates [**Value**](.#value)). Each half has its own [**Fill**](../Styles/Fill), [**Borders**](../Styles/Borders), and [**Corners**](../Styles/Corners). A [**TextRendering**](../Styles/TextRendering) on the state drives how the optional [**DisplayFormat**](.#displayformat) text is drawn on the block.
+The state has two halves — the *background* (the full track behind the block) and the *block* (the draggable rectangle that indicates [**Value**](.#value)). Each half has its own [**Fill**](../Styles/Fill), [**Borders**](../Styles/Borders), and [**Corners**](../Styles/Corners). A [**TextRendering**](../Styles/TextRendering) on the state controls how the optional [**DisplayFormat**](.#displayformat) text is drawn on the block.
 
 [**InitializeDefaultValues**](#initializedefaultvalues) pre-sets the block to a solid mid-blue ([**WAYNESCOLOR_BLUE**](#) — `&HAC7220`) fill, a 2-pixel black background border, and a transparent block border that acts as inner padding inside the background.
 

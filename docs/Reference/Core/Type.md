@@ -92,11 +92,11 @@ End Sub
 
 ### twinBASIC enhancements
 
-twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allocated structs that can be passed to Win32 APIs, but they can also carry behaviour like a lightweight class.
+twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allocated structs that can be passed to Win32 APIs, but they can also have behaviour like a lightweight class.
 
 **Member procedures.** [**Sub**](Sub), [**Function**](Function), and [**Property**](Property) procedures may appear inside `Type ... End Type`, and are called through any variable of the type. Inside a member procedure, other members of the same UDT must be accessed with the explicit `Me.` prefix.
 
-**Lifecycle and operator hooks.** Well-known member names are wired up by the compiler:
+**Lifecycle and operator hooks.** Well-known member names are connected by the compiler:
 
 | Member | Purpose |
 |:---|:---|

@@ -10,7 +10,7 @@ permalink: /Tutorials/CEF/Building-A-Browser-Shell
 
 A short worked tutorial: turn a [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control into a working browser with an address bar, back / forward / reload buttons, zoom, and a few helpers (DevTools, PDF export).
 
-The complete project ships as *Sample 1b — Chromium Embedded Framework Examples* in the New-Project dialog (form *Example 1*). This tutorial walks through its key pieces.
+The complete project ships as *Sample 1b — Chromium Embedded Framework Examples* in the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
 
 ## The form
 
@@ -18,7 +18,7 @@ Drop a [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control onto a Form a
 
 ## Navigating
 
-The bare-bones navigation surface — [**Navigate**](../../tB/Packages/CEF/CefBrowser/#navigate), [**GoBack**](../../tB/Packages/CEF/CefBrowser/#goback), [**GoForward**](../../tB/Packages/CEF/CefBrowser/#goforward), [**Reload**](../../tB/Packages/CEF/CefBrowser/#reload) — is one-liners:
+The bare-bones navigation methods — [**Navigate**](../../tB/Packages/CEF/CefBrowser/#navigate), [**GoBack**](../../tB/Packages/CEF/CefBrowser/#goback), [**GoForward**](../../tB/Packages/CEF/CefBrowser/#goforward), [**Reload**](../../tB/Packages/CEF/CefBrowser/#reload) — are one-liners:
 
 ```tb
 Private Sub btnBack_Click() Handles btnBack.Click
@@ -88,7 +88,7 @@ The `On Error Resume Next` catches the "control not ready" error that fires when
 
 ## PDF export
 
-[**PrintToPdf**](../../tB/Packages/CEF/CefBrowser/#printtopdf) saves the current document to disk asynchronously — the result surfaces as [**PrintToPdfCompleted**](../../tB/Packages/CEF/CefBrowser/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/CEF/CefBrowser/#printtopdffailed):
+[**PrintToPdf**](../../tB/Packages/CEF/CefBrowser/#printtopdf) saves the current document to disk asynchronously — the result arrives as [**PrintToPdfCompleted**](../../tB/Packages/CEF/CefBrowser/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/CEF/CefBrowser/#printtopdffailed):
 
 ```tb
 Private Sub btnPDF_Click() Handles btnPDF.Click

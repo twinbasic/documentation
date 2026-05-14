@@ -43,7 +43,7 @@ Label1.BackgroundFill.SetSimplePattern &H014C99, &H99CCFF, _
 ### Anchors
 {: .no_toc }
 
-Which sides of the control are pinned to its container during resize. [**Anchors**](Styles/Anchors). Inherited.
+Which sides of the control are attached to its container during resize. [**Anchors**](Styles/Anchors). Inherited.
 
 ### BackgroundFill
 {: .no_toc }

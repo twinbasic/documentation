@@ -47,7 +47,7 @@ Replacing the entire text is heavyweight — both for the editor (it has to rebu
 ### AddMonacoWidget
 {: .no_toc }
 
-Attaches an inline HTML overlay to a specific position in the editor — Monaco's *content widget* mechanism, surfaced as a familiar [**HtmlElement**](HtmlElement).
+Attaches an inline HTML overlay to a specific position in the editor — Monaco's *content widget* mechanism, exposed as a familiar [**HtmlElement**](HtmlElement).
 
 Syntax: *codeEditor*.**AddMonacoWidget**( *LineNumber*, *ColumnNumber*, *Html* [, *Css* ] ) **As** [**HtmlElement**](HtmlElement)
 
@@ -63,7 +63,7 @@ Syntax: *codeEditor*.**AddMonacoWidget**( *LineNumber*, *ColumnNumber*, *Html* [
 *Css*
 : *optional* Per-widget CSS as a **String**. Use this for widget-local styles that should not bleed into the rest of the code pane.
 
-The returned [**HtmlElement**](HtmlElement) has the same dynamic-DOM surface as elements inside a tool window — see [Dynamic DOM property resolution](.#dynamic-dom-property-resolution) on the package overview. Use [**HtmlElement.Remove**](HtmlElement#remove) on the returned object to take the widget down.
+The returned [**HtmlElement**](HtmlElement) has the same dynamic-DOM properties as elements inside a tool window — see [Dynamic DOM property resolution](.#dynamic-dom-property-resolution) on the package overview. Use [**HtmlElement.Remove**](HtmlElement#remove) on the returned object to take the widget down.
 
 ### ExecuteMonacoCommand
 {: .no_toc }
@@ -78,7 +78,7 @@ Syntax: *codeEditor*.**ExecuteMonacoCommand** *Command* [, *Arg1*, *Arg2*, … ]
 *Args*
 : *optional* A **ParamArray** of command-specific arguments. **Variant**. Forwarded verbatim to Monaco.
 
-The reference does not enumerate Monaco's command surface — refer to Monaco's documentation for the full list and their per-command argument shapes.
+The reference does not enumerate Monaco's command set — refer to Monaco's documentation for the full list and their per-command argument shapes.
 
 ```tb
 codeEditor.ExecuteMonacoCommand "actions.find"          ' open Find widget

@@ -40,7 +40,7 @@ This example creates a Microsoft Excel **Application** object, makes it visible,
 Dim XlApp As Object
 Set XlApp = CreateObject("Excel.Application")
 XlApp.Visible = True
-' ... drive Excel through XlApp ...
+' ... work with Excel through XlApp ...
 XlApp.Quit
 Set XlApp = Nothing
 ```

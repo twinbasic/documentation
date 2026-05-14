@@ -7,7 +7,7 @@ has_toc: false
 
 # Enumerations
 
-The four user-facing enumerations the **WinServicesLib** package exposes. All four come from the public `ServicesConstantsPublic` module in the package source; the larger surface of internal `SERVICE_*` constants the source uses to call into `advapi32.dll` lives in a `Private Module` and is not part of the public API.
+The four user-facing enumerations the **WinServicesLib** package exposes. All four come from the public `ServicesConstantsPublic` module in the package source; the larger set of internal `SERVICE_*` constants the source uses to call into `advapi32.dll` lives in a `Private Module` and is not part of the public API.
 
 | Enumeration | Used by |
 |-------------|---------|

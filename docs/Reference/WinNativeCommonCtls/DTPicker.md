@@ -23,7 +23,7 @@ Private Sub DTPicker1_Change()
 End Sub
 ```
 
-The control inherits the focusable rect-dockable surface from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **BackColor** / **ForeColor**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the focusable rect-dockable members from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **BackColor** / **ForeColor**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -36,7 +36,7 @@ The convenience accessors [**Year**](#year), [**Month**](#month), [**Week**](#we
 
 ## Custom format and callback events
 
-When [**Format**](#format) is set to **dtpCustom**, the [**CustomFormat**](#customformat) string drives the display. The format syntax follows the Win32 `GetDateFormat` / `GetTimeFormat` picture string (e.g. `"dddd, MMMM dd, yyyy"`). Tokens enclosed in callback markers (`X` literals in the format) raise the [**Format**](#format-event), [**FormatSize**](#formatsize), and [**CallbackKeyDown**](#callbackkeydown) events so the application can render its own field content and respond to keyboard navigation across it.
+When [**Format**](#format) is set to **dtpCustom**, the [**CustomFormat**](#customformat) string controls the display. The format syntax follows the Win32 `GetDateFormat` / `GetTimeFormat` picture string (e.g. `"dddd, MMMM dd, yyyy"`). Tokens enclosed in callback markers (`X` literals in the format) raise the [**Format**](#format-event), [**FormatSize**](#formatsize), and [**CallbackKeyDown**](#callbackkeydown) events so the application can render its own field content and respond to keyboard navigation across it.
 
 ## Calendar appearance
 

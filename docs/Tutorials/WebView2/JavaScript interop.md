@@ -142,7 +142,7 @@ Private Sub WebView_JsAsyncResult( _
 End Sub
 ```
 
-The return value of [**JsRunAsync**](../../tB/Packages/WebView2/WebView2/#jsrunasync) is a token; the [**JsAsyncResult**](../../tB/Packages/WebView2/WebView2/#jsasyncresult) event carries the same token so a single handler can demultiplex multiple in-flight calls.
+The return value of [**JsRunAsync**](../../tB/Packages/WebView2/WebView2/#jsrunasync) is a token; the [**JsAsyncResult**](../../tB/Packages/WebView2/WebView2/#jsasyncresult) event includes the same token so a single handler can demultiplex multiple in-flight calls.
 
 ### ExecuteScript (fire-and-forget)
 

@@ -25,7 +25,7 @@ Once you've created the project, you should find the extra 'PACKAGE PUBLISHING' 
 You should now edit the Namespace, Description, Licence and Visibility properties appropriately by using the package manager 'EDIT' links, which will take you to the individual settings in the `Settings` file.   Once you've edited them, remember to close (and save) the `Settings` file in order for your changes to be reflected in the package manager panel.
 
 - **Namespace:** this is the symbol that will be used to group your components in projects that reference your package.  For example, a package that provides a series of different dialog classes might use the namespace `Dialogs`.
-- **Description:** this is the descriptive text that will appear in the `Settings`->`References` list.  If you plan to share this package, it is wise to think carefully about the description so that others can find your package easily through TWINSERV.
+- **Description:** this is the descriptive text that will appear in the `Settings`->`References` list.  If you plan to share this package, think carefully about the description so that others can discover your package through TWINSERV.
 - **Licence:** this short text appears in the `Settings`->`References` list, alongside the Description.  If you plan to share this package, it is important that you enter this field, and the value you enter here should appropriately match the content of the LICENCE.md file (e.g. 'MIT', 'LGPL' etc).
 - **Visibility:** determines whether the package is visible to only you (PRIVATE) or everyone (PUBLIC).  The value set here only takes effect when you use the 'PUBLISH THIS PACKAGE' button to publish your package in the package manager service, TWINSERV.
 

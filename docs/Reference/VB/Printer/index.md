@@ -36,7 +36,7 @@ For Each p In Printers
 Next
 ```
 
-By default the implicit **Printer** has [**TrackDefault**](#trackdefault) **True**: every property read consults the current system-default printer, so the application picks up changes the user makes in **Settings → Printers** without restarting. Writing to a settings property, calling **Set Printer = Printers(i)**, or starting a print job locks **TrackDefault** to **False** and pins the object to a specific device.
+By default the implicit **Printer** has [**TrackDefault**](#trackdefault) **True**: every property read consults the current system-default printer, so the application reflects changes the user makes in **Settings → Printers** without restarting. Writing to a settings property, calling **Set Printer = Printers(i)**, or starting a print job locks **TrackDefault** to **False** and pins the object to a specific device.
 
 The entries returned by [**Printers**](../Printers/) are immutable — assigning to one of their properties raises run-time error 383 (*Property is read-only*), and the document-control methods raise error 438 (*Object doesn't support this property or method*). To print to one of them, copy it onto the implicit **Printer** with **Set**:
 
@@ -322,7 +322,7 @@ Setting **TrackDefault** to **False** captures the current default device into t
 ### TwipsPerPixelX
 {: .no_toc }
 
-The number of twips that correspond to one device pixel, horizontally — useful for hand-rolled DPI-aware sizing. **Double**, read-only.
+The number of twips that correspond to one device pixel, horizontally — useful for custom DPI-aware sizing. **Double**, read-only.
 
 ### TwipsPerPixelY
 {: .no_toc }

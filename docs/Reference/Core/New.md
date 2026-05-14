@@ -30,7 +30,7 @@ When **New** is used in a declaration, no instance is created at the point of de
 When **New** is used with **Set**, an instance is created immediately, and the reference is assigned to *objectvar*. If *objectvar* previously held a reference to another object, that reference is released when the new one is assigned.
 
 > [!NOTE]
-> **New** cannot be used together with **WithEvents** in a declaration. To wire up an event-aware object reference, declare the variable with **WithEvents** and assign it later with **Set**.
+> **New** cannot be used together with **WithEvents** in a declaration. To connect an event-aware object reference, declare the variable with **WithEvents** and assign it later with **Set**.
 
 ### Example
 

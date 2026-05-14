@@ -11,7 +11,7 @@ has_toc: false
 
 The **(Default)** module — known internally as **\_HiddenModule** — gathers together the unqualified intrinsic procedures that the compiler emits calls into and that are also callable directly: raw-memory helpers, atomic operations, compile-time reflection, codegen and stack-inspection primitives, and a long tail of runtime utilities. Members of this module are referenced without a qualifier, the same way **MsgBox** and **CStr** are.
 
-Most of these procedures are deliberately hidden from IntelliSense and exist for advanced or low-level use; reach for them only when the higher-level alternatives in **[Math](../Math/)**, **[Strings](../Strings/)**, **[Information](../Information/)**, or **[Interaction](../Interaction/)** don't cover the case. Several have additional internal-only members that are not listed here at all.
+Most of these procedures are deliberately hidden from IntelliSense and exist for advanced or low-level use; use them only when the higher-level alternatives in **[Math](../Math/)**, **[Strings](../Strings/)**, **[Information](../Information/)**, or **[Interaction](../Interaction/)** don't cover the case. Several have additional internal-only members that are not listed here at all.
 
 The pointer functions [**ObjPtr**](../Information/ObjPtr), [**StrPtr**](../Information/StrPtr), and [**VarPtr**](../Information/VarPtr) and the [**Array**](../Information/Array) constructor are documented under the [**Information**](../Information/) module; [**Input**](../FileSystem/Input), [**InputB**](../FileSystem/InputB), and [**Width**](../FileSystem/Width) under [**FileSystem**](../FileSystem/).
 
@@ -108,7 +108,7 @@ A handful of intrinsics ask questions about the surrounding type without running
 
 ## IGetMessageHook interface
 
-The **IGetMessageHook** interface taps into the Windows message stream for a chosen window — and optionally its descendants — and forwards messages of a chosen type to a user-supplied callback. Obtain an instance with [**RuntimeCreateGetMessageHook**](RuntimeCreateGetMessageHook); wire up callbacks with [**RegisterMessage**](RegisterMessage); then call [**Start**](Start) to activate every registered subscription, and [**Stop**](Stop) to remove them.
+The **IGetMessageHook** interface taps into the Windows message stream for a chosen window — and optionally its descendants — and forwards messages of a chosen type to a user-supplied callback. Obtain an instance with [**RuntimeCreateGetMessageHook**](RuntimeCreateGetMessageHook); connect callbacks with [**RegisterMessage**](RegisterMessage); then call [**Start**](Start) to activate every registered subscription, and [**Stop**](Stop) to remove them.
 
 The interface inherits directly from **stdole.IUnknown** (it is not dispatch-based), and the callbacks supplied to **RegisterMessage** are typed as [**GetMessageHookHelper.GetMessageHandler**](#getmessagehandler).
 
@@ -165,7 +165,7 @@ End Type
 
 ### HookPOINT
 
-A 2D point with **Long** coordinates, used by [**HookMSG**](#hookmsg) to carry the cursor position.
+A 2D point with **Long** coordinates, used by [**HookMSG**](#hookmsg) to hold the cursor position.
 
 ```tb
 Type HookPOINT

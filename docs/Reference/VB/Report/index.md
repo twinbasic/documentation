@@ -42,7 +42,7 @@ Sections are designed in the IDE — each is a container that holds [**Label**](
 
 ## Recordset binding
 
-[**Recordset**](#recordset) accepts any object that exposes the classic ADO/DAO surface — `EOF`, `MoveNext`, and a `Fields` collection indexable by name. The framework wraps non-tB recordsets transparently. `Recordset` may also be left **Nothing**, in which case the detail section is rendered exactly once with no field data.
+[**Recordset**](#recordset) accepts any object that exposes the classic ADO/DAO interface — `EOF`, `MoveNext`, and a `Fields` collection indexable by name. The framework wraps non-tB recordsets transparently. `Recordset` may also be left **Nothing**, in which case the detail section is rendered exactly once with no field data.
 
 A control in a section opts into binding by setting its `DataField` to a recordset field name; the framework reads that field for each detail row and writes it back into the control's value (or [**Caption**](../Label/#caption) for [**Label**](../Label/)s, **Payload** for [**QRCode**](../QRCode/)). For richer cases, prefix `DataField` with `=` to make it an *expression* — any twinBASIC expression that mixes recordset fields, the report's own [**Page**](#page) / [**Pages**](#pages) / [**Caption**](#caption), and standard library calls. A label whose **DataField** is `="Page " & Report.Page & " of " & Report.Pages` updates itself as each page is rendered.
 
@@ -88,7 +88,7 @@ The toolbar always paints; it cannot be hidden. The plus and minus buttons step 
 | **vbZoomAutoFitOnce**     | 1     | Recalculate once, on the first paint, then leave [**ZoomPercent**](#zoompercent) alone. |
 | **vbZoomAutoFitNever**    | 2     | Honour whatever [**ZoomPercent**](#zoompercent) is currently set to. |
 
-Clicking the toolbar's plus or minus button automatically switches [**ZoomAutoFit**](#zoomautofit) to **vbZoomAutoFitNever** so the user's manual zoom sticks.
+Clicking the toolbar's plus or minus button automatically switches [**ZoomAutoFit**](#zoomautofit) to **vbZoomAutoFitNever** so the user's manual zoom is preserved.
 
 ## Drawing inside sections
 
@@ -629,7 +629,7 @@ Syntax: *object*.**PaintPicture** *Picture*, *X1*, *Y1* [, *Width1* [, *Height1*
 ### Print
 {: .no_toc }
 
-Writes text to the current drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Inside a [**BeforePaintSection**](#beforepaintsection) handler the text lands on the section being painted; outside it, the text is drawn directly on the report window.
+Writes text to the current drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Inside a [**BeforePaintSection**](#beforepaintsection) handler the text appears on the section being painted; outside it, the text is drawn directly on the report window.
 
 Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 
@@ -809,7 +809,7 @@ Syntax: *object*\_**Deactivate**( )
 ### DPIChange
 {: .no_toc }
 
-Raised when the report window moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument carries the new effective DPI.
+Raised when the report window moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument gives the new effective DPI.
 
 Syntax: *object*\_**DPIChange**( *NewDPI* **As Long** )
 

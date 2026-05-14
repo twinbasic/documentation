@@ -8,9 +8,9 @@ has_toc: false
 # NamedPipeClientManager class
 {: .no_toc }
 
-The client-side coordinator. Owns a Windows I/O Completion Port and a pool of worker threads shared by every [**NamedPipeClientConnection**](NamedPipeClientConnection) it produces, and hands out connection objects through [**Connect**](#connect). One [**NamedPipeClientManager**](.) typically lives for the lifetime of the consuming process and brokers many connections — to one or several servers — through that shared IOCP infrastructure. Instantiate with **New**.
+The client-side coordinator. Owns a Windows I/O Completion Port and a pool of worker threads shared by every [**NamedPipeClientConnection**](NamedPipeClientConnection) it produces, and returns them through [**Connect**](#connect). One [**NamedPipeClientManager**](.) typically lives for the lifetime of the consuming process and manages many connections — to one or several servers — through that shared IOCP infrastructure. Instantiate with **New**.
 
-Configure the public fields (all four have sensible defaults), call [**Connect**](#connect) for each pipe the application wants to dial, and respond to the [**NamedPipeClientConnection**](NamedPipeClientConnection) events. The first [**Connect**](#connect) lazily creates the completion port and starts the worker threads; subsequent calls reuse them.
+Configure the public fields (all four have reasonable defaults), call [**Connect**](#connect) for each pipe the application wants to dial, and respond to the [**NamedPipeClientConnection**](NamedPipeClientConnection) events. The first [**Connect**](#connect) lazily creates the completion port and starts the worker threads; subsequent calls reuse them.
 
 ```tb
 Private manager As NamedPipeClientManager
@@ -102,7 +102,7 @@ The package does not publish an event when pipes appear or disappear, so dynamic
 ### Stop
 {: .no_toc }
 
-Cancels every outstanding I/O on every connection produced by this manager, posts the IOCP shutdown sentinel to each worker, waits for the threads to exit, closes every pipe handle, and frees the completion port. Idempotent: calling [**Stop**](#stop) on a manager that has not connected anything — or has already been stopped — is a no-op. Automatically invoked from `Class_Terminate`, so a manager going out of scope cleans up implicitly.
+Cancels every outstanding I/O on every connection produced by this manager, posts the IOCP shutdown sentinel to each worker, waits for the threads to exit, closes every pipe handle, and frees the completion port. Idempotent: calling [**Stop**](#stop) on a manager that has not connected anything — or has already been stopped — is a no-op. Automatically invoked from `Class_Terminate`, so a manager going out of scope closes resources implicitly.
 
 Syntax: *manager*.**Stop**
 

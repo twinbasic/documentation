@@ -90,10 +90,10 @@ CustomControls *must* offer a serialization constructor:
 Public Sub New(Serializer As SerializationInfo)
 ```
 
-The passed in Serializer object offers a `Deserialize()` method that you call in order to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](Properties) for further information.
+The passed in Serializer object offers a `Deserialize()` method that you call to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](Properties) for further information.
 
 > [!NOTE]
-> The current framework names the serializer type [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) (not `SerializationInfo`), and `Deserialize()` is exposed as `RuntimeUISrzDeserialize()`. See the reference page for the current member names and the design-mode / runtime-mode flags also carried on this object.
+> The current framework names the serializer type [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) (not `SerializationInfo`), and `Deserialize()` is exposed as `RuntimeUISrzDeserialize()`. See the reference page for the current member names and the design-mode / runtime-mode flags also available on this object.
 
 ***
 ## See also

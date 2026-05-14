@@ -35,13 +35,13 @@ The control is built around three closely-related properties:
 
 - [**Path**](#path) — the absolute path of the *current* directory. Set it from code (or by double-clicking an entry) to navigate the list. Defaults to [**App.Path**](../App/#path) when the control is first created.
 - [**ListIndex**](#listindex) — which entry the user has *selected*. `-1` selects the current folder itself (the deepest of the ancestor entries); `0` and up select successive subdirectories. Selecting an entry is independent of navigating to it — the selection just moves the highlight.
-- [**PathSelected**](#pathselected) — the absolute path that would become **Path** if the selected entry were activated. For an ancestor entry it walks back up the tree; for a subdirectory it concatenates **Path** and the entry's name.
+- [**PathSelected**](#pathselected) — the absolute path that would become **Path** if the selected entry were activated. For an ancestor entry it traverses back up the tree; for a subdirectory it concatenates **Path** and the entry's name.
 
 Activating an entry — by double-clicking, or by an external caller assigning **Path** — runs the navigation, repopulates the list, and raises [**Change**](#change). Setting **Path** to its current value is a no-op (no event).
 
 ## List, ListCount, and NewIndex
 
-[**ListCount**](#listcount) is the number of subdirectories of the current folder (it does *not* include the ancestor entries shown above). [**List**](#list) is indexed from zero through `ListCount - 1` and returns the *full path* of the corresponding subdirectory — handy when iterating from code:
+[**ListCount**](#listcount) is the number of subdirectories of the current folder (it does *not* include the ancestor entries shown above). [**List**](#list) is indexed from zero through `ListCount - 1` and returns the *full path* of the corresponding subdirectory — convenient when iterating from code:
 
 ```tb
 Dim i As Long
@@ -211,7 +211,7 @@ The **DriveListBox** and **DirListBox** controls accept each other's "drive [vol
 ### PathSelected
 {: .no_toc }
 
-The absolute path that the currently-selected entry refers to. **String**, read-only. For [**ListIndex**](#listindex) `-1` (the current folder) this is the same as [**Path**](#path); for an ancestor entry it walks back up the tree; for a subdirectory it returns **Path** plus the subdirectory's name. This is the value the control assigns to **Path** when the user double-clicks the selected entry.
+The absolute path that the currently-selected entry refers to. **String**, read-only. For [**ListIndex**](#listindex) `-1` (the current folder) this is the same as [**Path**](#path); for an ancestor entry it traverses back up the tree; for a subdirectory it returns **Path** plus the subdirectory's name. This is the value the control assigns to **Path** when the user double-clicks the selected entry.
 
 ### TabIndex
 {: .no_toc }

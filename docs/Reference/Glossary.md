@@ -44,7 +44,7 @@ The American Standard Code for Information Interchange (ASCII) 7-bit character s
 
 ## attribute
 
-(twinBASIC) Metadata attached to a [module](#module), procedure, parameter, or other declaration, written in square brackets — for example, `[Documentation("...")]`. Some attributes drive compiler behaviour (such as `[PackingAlignment]` on a [user-defined type](#user-defined-type) or `[VB_UserMemId]` on a member); others are informational. Attributes are a twinBASIC addition; classic VBA exposes only a small fixed set via the `Attribute` directive.
+(twinBASIC) Metadata attached to a [module](#module), procedure, parameter, or other declaration, written in square brackets — for example, `[Documentation("...")]`. Some attributes control compiler behaviour (such as `[PackingAlignment]` on a [user-defined type](#user-defined-type) or `[VB_UserMemId]` on a member); others are informational. Attributes are a twinBASIC addition; classic VBA exposes only a small fixed set via the `Attribute` directive.
 
 ## Automation object
 
@@ -412,7 +412,7 @@ A 4-byte integer ranging in value from -2,147,483,648 to 2,147,483,647. The ampe
 
 ## LongPtr data type
 
-(twinBASIC) A platform-dependent integer used to hold pointer or handle values. **LongPtr** is 4 bytes on 32-bit platforms and 8 bytes on 64-bit platforms. Use **LongPtr** rather than **Long** or **LongLong** when declaring DLL parameters that carry pointers or handles, so that the same source compiles correctly on both platforms.
+(twinBASIC) A platform-dependent integer used to hold pointer or handle values. **LongPtr** is 4 bytes on 32-bit platforms and 8 bytes on 64-bit platforms. Use **LongPtr** rather than **Long** or **LongLong** when declaring DLL parameters that hold pointers or handles, so that the same source compiles correctly on both platforms.
 
 ## MDI child
 

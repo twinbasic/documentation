@@ -32,7 +32,7 @@ Choose [**WebView2**](../WebView2/) when targeting only modern Windows and willi
 
 ## Supported runtimes
 
-Three CEF versions are supported, each carrying a different Chromium baseline and different OS reach:
+Three CEF versions are supported, each with a different Chromium baseline and different OS reach:
 
 | Runtime version | Supported OS  | Notes                                                          |
 |-----------------|---------------|----------------------------------------------------------------|
@@ -103,18 +103,18 @@ These [**WebView2**](../WebView2/) features are not yet exposed on **CefBrowser*
 - Methods: **OpenTaskManagerWindow**, **AddObject** (host-object publication for JavaScript), **AddWebResourceRequestedFilter** and the surrounding request-interception machinery.
 - Events: **AcceleratorKeyPressed**, **PermissionRequested**, **WebResourceRequested**, **ProcessFailed**, **ScriptDialogOpening**, **UserContextMenu**, **SuspendCompleted**, **SuspendFailed**, **DownloadStarting**, **NewWindowRequested**.
 
-The [**NavigationComplete**](CefBrowser/#navigationcomplete) event carries **IsSuccess** and **WebErrorStatus** parameters in its signature but currently returns placeholder values (`True` and `0`) — the underlying CEF callbacks that would populate them have not yet been wired in.
+The [**NavigationComplete**](CefBrowser/#navigationcomplete) event has **IsSuccess** and **WebErrorStatus** parameters in its signature but currently returns placeholder values (`True` and `0`) — the underlying CEF callbacks that would populate them have not yet been connected.
 
-The surface will continue to grow; treat this list as a snapshot of the current beta and not a long-term limitation.
+The API will continue to grow; treat this list as a snapshot of the current beta and not a long-term limitation.
 
 ## Classes
 
-- [CefBrowser](CefBrowser/) -- the control: navigation, scripting, virtual-host mapping, PDF printing, and lifecycle events driven by the matching CEF runtime
+- [CefBrowser](CefBrowser/) -- the control: navigation, scripting, virtual-host mapping, PDF printing, and lifecycle events controlled by the matching CEF runtime
 - [CefEnvironmentOptions](CefBrowser/EnvironmentOptions) -- pre-creation configuration for the CEF environment (executable folder, user-data folder, log file, log severity); reached via the control's **EnvironmentOptions** property
 
 ## Enumerations
 
-- [CefLogSeverity](Enumerations/CefLogSeverity) -- the verbosity threshold for the CEF debug log; carried by [**EnvironmentOptions.LogSeverity**](CefBrowser/EnvironmentOptions#logseverity)
+- [CefLogSeverity](Enumerations/CefLogSeverity) -- the verbosity threshold for the CEF debug log; used by [**EnvironmentOptions.LogSeverity**](CefBrowser/EnvironmentOptions#logseverity)
 - [cefPrintOrientation](Enumerations/cefPrintOrientation) -- page orientation passed to [**PrintToPdf**](CefBrowser/#printtopdf)
 
 ## Tutorials

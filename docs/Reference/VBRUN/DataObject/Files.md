@@ -6,7 +6,7 @@ permalink: /tB/Packages/VBRUN/DataObject/Files
 # Files
 {: .no_toc }
 
-Returns a [**DataObjectFiles**](DataObjectFiles) collection holding the file paths the **DataObject** carries.
+Returns a [**DataObjectFiles**](DataObjectFiles) collection holding the file paths the **DataObject** contains.
 
 Syntax: *object*.**Files**
 

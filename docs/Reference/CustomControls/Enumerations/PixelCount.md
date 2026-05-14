@@ -8,7 +8,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/PixelCount
 {: .no_toc }
 
 > [!NOTE]
-> **PixelCount** is declared as an empty `Enum` block (with a placeholder `[_MAX] = 0` member) only because twinBASIC has not yet exposed a type-alias syntax such as `Type PixelCount = Long`. The source carries a `FIXME` comment noting the stand-in. Treat **PixelCount** as a **Long**-compatible type alias rather than as an enumeration with named members; when alias syntax becomes available, the enum stand-in will be replaced.
+> **PixelCount** is declared as an empty `Enum` block (with a placeholder `[_MAX] = 0` member) only because twinBASIC has not yet exposed a type-alias syntax such as `Type PixelCount = Long`. The source has a `FIXME` comment noting the stand-in. Treat **PixelCount** as a **Long**-compatible type alias rather than as an enumeration with named members; when alias syntax becomes available, the enum stand-in will be replaced.
 
 A **Long**-compatible type alias used wherever a measurement in pixels is expected. Used pervasively across the package — every control's inherited **Left**, **Top**, **Width**, **Height** are typed as **PixelCount**, as are [**Corner.Radius**](../Styles/Corners#radius), [**Padding**](../Styles/Padding) fields, [**Border.StrokeSize**](../Styles/Borders#strokesize), and many more.
 

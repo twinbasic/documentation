@@ -95,7 +95,7 @@ Raised whenever [**Pattern**](#pattern) is assigned or the [**ColorPoints**](#co
 
 ## FillColorPoints class
 
-The collection of [**FillColorPoint**](#fillcolorpoint-class) stops that drive a [**Fill**](#)'s colour gradient. Reached as [**Fill.ColorPoints**](#colorpoints). Internally an array of **FillColorPoint** plus a [**Granularity**](#granularity) integer.
+The collection of [**FillColorPoint**](#fillcolorpoint-class) stops that define a [**Fill**](#)'s colour gradient. Reached as [**Fill.ColorPoints**](#colorpoints). Internally an array of **FillColorPoint** plus a [**Granularity**](#granularity) integer.
 
 ### Granularity
 {: .no_toc }

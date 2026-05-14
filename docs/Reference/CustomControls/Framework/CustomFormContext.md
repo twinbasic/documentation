@@ -23,7 +23,7 @@ End Sub
 
 ## Inherited
 
-A **CustomFormContext** carries every member from [**CustomControlContext**](CustomControlContext) — [**ChangeFocusedElement**](CustomControlContext#changefocusedelement), [**CreateTimer**](CustomControlContext#createtimer), [**GetSerializer**](CustomControlContext#getserializer), and [**Repaint**](CustomControlContext#repaint) — and adds the two form-specific members below.
+A **CustomFormContext** includes every member from [**CustomControlContext**](CustomControlContext) — [**ChangeFocusedElement**](CustomControlContext#changefocusedelement), [**CreateTimer**](CustomControlContext#createtimer), [**GetSerializer**](CustomControlContext#getserializer), and [**Repaint**](CustomControlContext#repaint) — and adds the two form-specific members below.
 
 ## Methods
 

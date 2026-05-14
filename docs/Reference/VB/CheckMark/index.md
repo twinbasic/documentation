@@ -46,7 +46,7 @@ Check1.Value = vbGrayed     ' show the indeterminate state
 [**VisualStyles**](#visualstyles) selects how the glyph is rendered:
 
 - **VisualStyles = False** (default) — drawn with the GDI **DrawFrameControl** primitive. Honours [**Appearance**](#appearance): **vbAppear3d** uses the classic raised/sunken look, **vbAppearFlat** uses a single-pixel outline. A disabled check, or one in the **vbGrayed** state, is drawn over the dotted three-state pattern.
-- **VisualStyles = True** — drawn through the OS theme engine (UXTHEME), so the glyph picks up the current visual-style theme. **Appearance** is ignored in this mode.
+- **VisualStyles = True** — drawn through the OS theme engine (UXTHEME), so the glyph uses the current visual-style theme. **Appearance** is ignored in this mode.
 
 ## Background
 

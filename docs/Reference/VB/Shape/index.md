@@ -10,7 +10,7 @@ has_toc: false
 
 A **Shape** is a windowless lightweight control that draws one of a fixed set of geometric primitives — rectangle, square, oval, circle, rounded rectangle, rounded square, five-pointed star, or an arrow pointing in any of the four cardinal directions — directly on its container. It exists purely for visual presentation: backgrounds, decorative artwork, panel dividers, highlighting, and any other place where a heavy [**PictureBox**](../PictureBox/) would be overkill.
 
-A **Shape** has no interaction surface — no focus, no caption, and no mouse, keyboard, or drag events. The shape kind and its appearance are chosen entirely through properties; the only event raised by the control is [**Initialize**](#initialize). The default property is [**Shape**](#shape) and the default event is [**Initialize**](#initialize).
+A **Shape** has no interactive elements — no focus, no caption, and no mouse, keyboard, or drag events. The shape kind and its appearance are chosen entirely through properties; the only event raised by the control is [**Initialize**](#initialize). The default property is [**Shape**](#shape) and the default event is [**Initialize**](#initialize).
 
 ```tb
 Private Sub Form_Load()
@@ -317,6 +317,6 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Initialize
 {: .no_toc }
 
-Raised once, after the **Shape** has been wired into its container's paint cycle but before it is first painted. Useful for last-minute setup that depends on container state. **Default event.**
+Raised once, after the **Shape** has been connected to its container's paint cycle but before it is first painted. Useful for last-minute setup that depends on container state. **Default event.**
 
 Syntax: *object*\_**Initialize**( )

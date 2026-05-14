@@ -27,7 +27,7 @@ This example uses **Err.Clear** to reset the **Err** object's numeric properties
 
 ```tb
 Dim result(10) As Integer    ' Declare an array whose elements 
-                             ' will overflow easily.
+                             ' will overflow.
 Dim idx As Long
 On Error Resume Next         ' Defer error trapping.
 Do Until idx = 10

@@ -33,7 +33,7 @@ Private Sub MonthView1_GetDayBold( _
 End Sub
 ```
 
-The control inherits the focusable rect-dockable surface from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the focusable rect-dockable members from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -269,7 +269,7 @@ Events
 ### Click
 {: .no_toc }
 
-Raised on any mouse click that doesn't land on a date cell.
+Raised on any mouse click that doesn't hit a date cell.
 
 Syntax: *object*\_**Click**( )
 
@@ -290,7 +290,7 @@ Syntax: *object*\_**DateDblClick**( **ByVal** *DateDblClicked* **As Date** )
 ### DblClick
 {: .no_toc }
 
-Raised on any double-click that doesn't land on a date cell.
+Raised on any double-click that doesn't hit a date cell.
 
 Syntax: *object*\_**DblClick**( )
 
