@@ -1,0 +1,132 @@
+{%- comment -%}
+  Shadow of just-the-docs's _includes/css/activation.scss.liquid.
+
+  Emits the per-page CSS that highlights the current page's nav entry,
+  unfolds its ancestor collections, and rotates their expander icons --
+  the no-JS fallback that lives in the `<style id="jtd-nav-activation">`
+  block in head.html. When JavaScript is enabled the theme's
+  `disableHeadStyleSheets()` disables this block before applying
+  `.active` classes via `activateNav()`; visitors with JS off rely on
+  these rules.
+
+  The upstream computes the page's positional path through the nav
+  tree by scanning the cached site_nav HTML (~150 KB) per page, which
+  costs ~11 s across the ~830-page site. This shadow consumes
+  `page.nav_levels` precomputed in Ruby by
+  `_plugins/nav-levels-precompute.rb` -- the same `[i, j, k, ...]`
+  array the upstream Liquid algorithm would build. The output CSS is
+  byte-identical to the upstream version after HTML compression.
+
+  Data shape on `page.nav_levels`:
+    Array of integers, ordered from collection-index outward:
+      nav_levels[0]   = collection index (always 1 on this site;
+                        the activation prefix is
+                        `.site-nav > ul.nav-list:first-child`)
+      nav_levels[i]   = 1-based position of the i-th ancestor in its
+                        parent's sorted, nav-filtered children list,
+                        for i in 1..page_level
+      nav_levels.size = page_level + 1
+
+  When `page.nav_levels` is nil (page excluded from the nav, missing
+  parent reference, or otherwise unresolvable) the include falls
+  through to the upstream's `activation_no_nav_link` rules.
+
+  Selector shapes (matching the upstream output verbatim):
+
+    Background-image removal (one rule, comma-separated parts):
+      - one part per ancestor level above the page's own level
+        (`prefix > li > a`, `prefix > li > ul > li > a`, ...)
+      - one part at the page's own level excluding the active sibling
+        (`prefix > ... > li:not(:nth-child(N)) > a`)
+      - one part covering all of the page's descendants
+        (`prefix > ... > li > ul > li a`)
+      - plus `.site-nav > ul.nav-list:not(:first-child) a` and
+        `.site-nav li.external a`
+
+    Active link bolding:
+      `prefix > li:nth-child(N1) > ul > li:nth-child(N2) > ... > a`
+
+    Expander rotation (one part per level, comma-separated):
+      `prefix > li:nth-child(N1) > ... > li:nth-child(Ni) > button svg`
+
+    Collection unfolding (one part per level, comma-separated):
+      `prefix > li.nav-list-item:nth-child(N1) > ... > ul.nav-list`
+{%- endcomment -%}
+
+{%- if page.nav_levels -%}
+
+  {%- assign nav_page_level = page.nav_levels.size | minus: 1 -%}
+  {%- assign nav_page_parent_level = nav_page_level | minus: 1 -%}
+
+  {%- capture activation_collection_prefix -%}
+  .site-nav > ul.nav-list:first-child
+  {%- endcapture -%}
+
+    {% if nav_page_level >= 2 -%}
+    {%- for i in (1..nav_page_parent_level) -%}
+    {{ activation_collection_prefix }} >
+    {%- for j in (2..i) %} li > ul >
+    {%- endfor %} li > a,
+    {% endfor -%}
+    {%- endif %}
+    {{ activation_collection_prefix }} >
+    {%- for i in (1..nav_page_parent_level) %} li > ul >
+    {%- endfor %} li:not(:nth-child({{ page.nav_levels[nav_page_level] }})) > a,
+    {{ activation_collection_prefix }} >
+    {%- for i in (1..nav_page_level) %} li > ul >
+    {%- endfor %} li a {
+      background-image: none;
+    }
+
+    .site-nav > ul.nav-list:not(:first-child) a,
+    .site-nav li.external a {
+      background-image: none;
+    }
+
+    {{ activation_collection_prefix }} > li:nth-child({{ page.nav_levels[1] }})
+    {%- for i in (2..nav_page_level) %} > ul > li:nth-child({{ page.nav_levels[i] }})
+    {%- endfor %} > a {
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    {%- if site.just_the_docs.collections %}
+    .site-nav > ul.nav-category-list > li > button svg,
+    {% endif -%}
+    {{ activation_collection_prefix }} > li:nth-child({{ page.nav_levels[1] }}) > button svg
+    {%- for i in (2..nav_page_level) %},
+    {{ activation_collection_prefix }} > li:nth-child({{ page.nav_levels[1] }}) >
+    {%- for j in (2..i) %} ul > li:nth-child({{ page.nav_levels[j] }}) >
+    {%- endfor %} button svg
+    {%- endfor %} {
+      transform: rotate(-90deg);
+    }
+
+    {%- if site.just_the_docs.collections %}
+    .site-nav > ul.nav-category-list > li.nav-list-item > ul.nav-list,
+    {% endif -%}
+    {{ activation_collection_prefix }} > li.nav-list-item:nth-child({{ page.nav_levels[1] }}) > ul.nav-list
+    {%- for i in (2..nav_page_level) %},
+    {{ activation_collection_prefix }} > li.nav-list-item:nth-child({{ page.nav_levels[1] }}) >
+    {%- for j in (2..i) %} ul.nav-list > li.nav-list-item:nth-child({{ page.nav_levels[j] }}) >
+    {%- endfor %} ul.nav-list
+    {%- endfor %} {
+      display: block;
+    }
+
+{%- else -%}
+
+    .site-nav ul li a {
+      background-image: none;
+    }
+
+    {%- if site.just_the_docs.collections %}
+    .site-nav > ul.nav-category-list > li > button svg {
+      transform: rotate(-90deg);
+    }
+    .site-nav > ul.nav-category-list > li.nav-list-item > ul.nav-list {
+      display: block;
+    }
+    {%- endif %}
+
+{%- endif -%}
