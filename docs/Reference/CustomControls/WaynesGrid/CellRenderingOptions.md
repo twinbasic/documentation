@@ -9,7 +9,7 @@ has_toc: false
 # CellRenderingOptions class
 {: .no_toc }
 
-A bundle of the style objects that describe one *category* of cell in a [**WaynesGrid**](.). Each grid carries six parallel instances — one for column headers, one for row headers, one for normal cells, one for the hovered cell, one for the selected cell, and one for cells inside a full-row or full-column multi-selection — and the grid picks the appropriate instance per cell at paint time.
+A bundle of the style objects that describe one *category* of cell in a [**WaynesGrid**](.). Each grid has six parallel instances — one for column headers, one for row headers, one for normal cells, one for the hovered cell, one for the selected cell, and one for cells inside a full-row or full-column multi-selection — and the grid picks the appropriate instance per cell at paint time.
 
 ```tb
 With Grid1.SelectedCellOptions

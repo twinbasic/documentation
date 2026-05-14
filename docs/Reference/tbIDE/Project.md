@@ -44,7 +44,7 @@ The folder containing the project's `.twinproj` file — i.e. the directory part
 ### BuildFileExtension
 {: .no_toc }
 
-The file extension the build output will carry (`"exe"`, `"dll"`, `"ocx"`, `"twinpack"`). **String**, read-only. Implied by [**BuildType**](#buildtype).
+The file extension of the build output (`"exe"`, `"dll"`, `"ocx"`, `"twinpack"`). **String**, read-only. Implied by [**BuildType**](#buildtype).
 
 ### BuildOutputPath
 {: .no_toc }
@@ -86,7 +86,7 @@ The four components of the project's current version (`Major.Minor.Build.Revisio
 ### Build
 {: .no_toc }
 
-Builds the project. Equivalent to the IDE's File → Make/Build… command. Writes the output to [**BuildOutputPath**](#buildoutputpath); errors raised during compilation surface in the DEBUG CONSOLE the same way they would for a user-initiated build.
+Builds the project. Equivalent to the IDE's File → Make/Build… command. Writes the output to [**BuildOutputPath**](#buildoutputpath); errors raised during compilation appear in the DEBUG CONSOLE the same way they would for a user-initiated build.
 
 Syntax: *project*.**Build**
 
@@ -127,7 +127,7 @@ Else
 End If
 ```
 
-Same engine the DEBUG CONSOLE uses, so the same set of identifiers, the same accessibility rules, and the same error semantics apply — including the run-time errors that surface from inside the evaluated expression. Wrap in `On Error Resume Next` if the expression may raise.
+Same engine the DEBUG CONSOLE uses, so the same set of identifiers, the same accessibility rules, and the same error semantics apply — including the run-time errors that arise from inside the evaluated expression. Wrap in `On Error Resume Next` if the expression may raise.
 
 ### LoadMetaData
 {: .no_toc }

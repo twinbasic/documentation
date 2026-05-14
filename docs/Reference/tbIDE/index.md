@@ -36,7 +36,7 @@ Module MainModule
 End Module
 ```
 
-The returned object must implement [**AddIn**](AddIn). The IDE releases the object when the addin is disabled or the IDE shuts down, which lets the addin clean up through `Class_Terminate`.
+The returned object must implement [**AddIn**](AddIn). The IDE releases the object when the addin is disabled or the IDE shuts down, which lets the addin close resources through `Class_Terminate`.
 
 A minimal addin class:
 
@@ -83,7 +83,7 @@ The package's twenty-four `.twin` files declare one interface-and-CoClass pair e
 - [**Folder**](Folder) — children enumeration (use **For Each** — see the warning on [**Count**](Folder#count) / [**Item**](Folder#item) — the IDE is multi-threaded and index-based iteration races), [**IsPackagesFolder**](Folder#ispackagesfolder).
 - [**File**](File) — virtual-FS file accessors: [**Data**](File#data) (raw bytes), [**Text**](File#text) (decoded text), [**ReadText**](File#readtext) (text with options like comment-stripping), [**IsDirty**](File#isdirty).
 
-### IDE UI surface
+### IDE UI
 
 - [**Toolbar**](Toolbar) — the IDE toolbar. [**AddSplitter**](Toolbar#addsplitter), [**AddButton**](Toolbar#addbutton).
 - [**Toolbars**](Toolbars) — the toolbar collection. Currently there is only one toolbar, addressable as `Toolbars(0)`.
@@ -110,7 +110,7 @@ The four `Html*` classes are the addin's keyhole into the DOM inside a tool wind
 
 ## Dynamic DOM property resolution
 
-The four `Html*` classes that carry the `[COMExtensible(True)]` attribute — [**HtmlElementProperties**](HtmlElementProperties), [**HtmlElementProperty**](HtmlElementProperty), [**HtmlEventProperties**](HtmlEventProperties), [**HtmlEventProperty**](HtmlEventProperty) — accept **arbitrary property names** that are resolved against the underlying DOM element (or event object) at run time. None of `style`, `innerText`, `chart`, `editor`, `listview`, `value`, `target`, `key`, `index`, …, are declared statically on the interfaces — they are all resolved dynamically through the COM-extensible `Item(name)` default member.
+The four `Html*` classes that have the `[COMExtensible(True)]` attribute — [**HtmlElementProperties**](HtmlElementProperties), [**HtmlElementProperty**](HtmlElementProperty), [**HtmlEventProperties**](HtmlEventProperties), [**HtmlEventProperty**](HtmlEventProperty) — accept **arbitrary property names** that are resolved against the underlying DOM element (or event object) at run time. None of `style`, `innerText`, `chart`, `editor`, `listview`, `value`, `target`, `key`, `index`, …, are declared statically on the interfaces — they are all resolved dynamically through the COM-extensible `Item(name)` default member.
 
 So:
 
@@ -130,18 +130,18 @@ reads at run time as:
 .Item("innerText").Value               = "Section heading"
 ```
 
-The compiler does not validate the property names; they are forwarded as strings to the IDE's tool-window renderer. The accepted set is **every DOM property of the underlying tag** — standard HTML attributes, every CSS-style property under `.style.…`, plus any custom-widget-specific surface like `.chart.data.datasets(0).borderWidth` on a `"chartjs"` element or `.editor.setOption(...)` on a `"monaco"` element. The reference does not enumerate them — defer to MDN for standard DOM property names, to Chart.js for `chartjs` widgets, to Monaco's documentation for `monaco` widgets, and to the matching samples below for the IDE-specific `listview` / `virtuallistview` surface.
+The compiler does not validate the property names; they are forwarded as strings to the IDE's tool-window renderer. The accepted set is **every DOM property of the underlying tag** — standard HTML attributes, every CSS-style property under `.style.…`, plus any custom-widget-specific properties like `.chart.data.datasets(0).borderWidth` on a `"chartjs"` element or `.editor.setOption(...)` on a `"monaco"` element. The reference does not enumerate them — defer to MDN for standard DOM property names, to Chart.js for `chartjs` widgets, to Monaco's documentation for `monaco` widgets, and to the matching samples below for the IDE-specific `listview` / `virtuallistview` properties.
 
 ## Tool-window DOM tags
 
 [**HtmlElements.Add**](HtmlElements#add) takes a *TagName* string. Standard HTML tags (`"div"`, `"span"`, `"input"`, `"h1"`, `"label"`, `"img"`, …) work as expected; in addition, the IDE provides four custom-widget tags:
 
-- **`"chartjs"`** — wraps **Chart.js**. The element surfaces a `.chart` property whose sub-properties mirror Chart.js's `data` / `options` / `config` namespaces. See sample 11.
-- **`"monaco"`** — embeds an instance of the **Monaco editor** (the same editor the IDE itself uses for code panes). The element surfaces an `.editor` property with `setOption`, `setValue`, `getValue`, and `AddEventListener` (note: event listeners attach to `.editor`, not to the DOM element). See sample 12.
-- **`"listview"`** — the IDE's built-in listview widget. The element surfaces a `.listview` property with `addItem`, `removeItem`, `getItem`, `setShowScrollbarV` / `setShowScrollbarH`, and the events `onClickItem` / `onDblClickItem`. See sample 13.
-- **`"virtuallistview"`** — a virtual variant of the listview suitable for huge data sets (millions of rows). The element surfaces the same `.listview` property plus `setItemCount` and the asynchronous `onAsyncGetItemHTML` event (the listener responds via `eventInfo.setAsyncResult("<html>")`); call `.listview.notifyChangedItem(idx)` to invalidate the internal cache for one row when its underlying data changes. See sample 14.
+- **`"chartjs"`** — wraps **Chart.js**. The element exposes a `.chart` property whose sub-properties mirror Chart.js's `data` / `options` / `config` namespaces. See sample 11.
+- **`"monaco"`** — embeds an instance of the **Monaco editor** (the same editor the IDE itself uses for code panes). The element exposes an `.editor` property with `setOption`, `setValue`, `getValue`, and `AddEventListener` (note: event listeners attach to `.editor`, not to the DOM element). See sample 12.
+- **`"listview"`** — the IDE's built-in listview widget. The element exposes a `.listview` property with `addItem`, `removeItem`, `getItem`, `setShowScrollbarV` / `setShowScrollbarH`, and the events `onClickItem` / `onDblClickItem`. See sample 13.
+- **`"virtuallistview"`** — a virtual variant of the listview suitable for huge data sets (millions of rows). The element exposes the same `.listview` property plus `setItemCount` and the asynchronous `onAsyncGetItemHTML` event (the listener responds via `eventInfo.setAsyncResult("<html>")`); call `.listview.notifyChangedItem(idx)` to invalidate the internal cache for one row when its underlying data changes. See sample 14.
 
-The full per-widget property and method surface is documented by each widget's home project; this package wraps them through the same `[COMExtensible(True)]` mechanism described above.
+The full per-widget properties and methods are documented by each widget's home project; this package wraps them through the same `[COMExtensible(True)]` mechanism described above.
 
 ## Where the samples live
 
@@ -150,7 +150,7 @@ Six worked addins ship in the twinBASIC samples folder. They are the canonical r
 | Sample | Project | What it teaches |
 |--------|---------|-----------------|
 | 10 | `WaynesWorldAddInTest1` | The kitchen-sink walkthrough — toolbar setup, a single big tool window populated with 22 styled `div`-buttons that each exercise a different `Host.*` capability. Start here. |
-| 11 | `WaynesWorldCPUMonitorTest1` | [**AddinTimer**](AddinTimer) + a `"chartjs"` custom-widget tool window driving a live line chart. |
+| 11 | `WaynesWorldCPUMonitorTest1` | [**AddinTimer**](AddinTimer) + a `"chartjs"` custom-widget tool window powering a live line chart. |
 | 12 | `WaynesWorldMonacoEditorTest1` | A `"monaco"` custom-widget tool window: an in-window Monaco editor with `setValue` / `getValue` and a content-change listener. |
 | 13 | `WaynesListViewAddIn` | A `"listview"` custom-widget tool window with `ApplyCss`, double-click-to-remove behaviour, and inline-HTML `raiseEvent()` for custom event names. |
 | 14 | `WaynesVirtualListViewAddIn` | A `"virtuallistview"` with 5,000,000 rows backed by `onAsyncGetItemHTML` / `setAsyncResult` / `notifyChangedItem`. |

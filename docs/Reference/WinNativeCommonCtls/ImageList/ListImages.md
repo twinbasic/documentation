@@ -73,7 +73,7 @@ Syntax: *object*.**Add** ( [ *Index* ] [, *Key* ] [, *Picture* ] [, *Tag* ] ) **
 : *required* A **StdPicture** to add. Bitmaps (`vbPicTypeBitmap`) are scaled and masked according to [**MaskColor**](.#maskcolor) / [**UseMaskColor**](.#usemaskcolor). Icons (`vbPicTypeIcon`) are added directly with their own alpha mask. Omitting *Picture* raises run-time error 35607.
 
 *Tag*
-: *optional* Arbitrary data attached to the new image; surfaced as [**ListImage.Tag**](ListImage#tag).
+: *optional* Arbitrary data attached to the new image; available as [**ListImage.Tag**](ListImage#tag).
 
 Returns the newly-created [**ListImage**](ListImage).
 

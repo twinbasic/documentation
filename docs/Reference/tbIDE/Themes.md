@@ -44,4 +44,4 @@ Note that the set of available themes is determined by the IDE and may grow in f
 
 The high-level "family" the current theme belongs to. **String**, read-only — exactly `"dark"` or `"light"`.
 
-Useful for an addin that just wants to flip its own colours between dark-on-light and light-on-dark; far more robust than parsing [**ActiveThemeName**](#activethemename).
+Useful for an addin that wants to flip its own colours between dark-on-light and light-on-dark without parsing [**ActiveThemeName**](#activethemename).

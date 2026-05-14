@@ -8,9 +8,9 @@ has_toc: false
 # NamedPipeServer class
 {: .no_toc }
 
-Hosts one named pipe and accepts an unbounded number of concurrent client connections, each represented by a [**NamedPipeServerConnection**](NamedPipeServerConnection). The class owns a Windows I/O Completion Port and a configurable pool of worker threads that drive every connection's reads, writes, and connect notifications. Instantiate with **New**.
+Hosts one named pipe and accepts an unbounded number of concurrent client connections, each represented by a [**NamedPipeServerConnection**](NamedPipeServerConnection). The class owns a Windows I/O Completion Port and a configurable pool of worker threads that handle every connection's reads, writes, and connect notifications. Instantiate with **New**.
 
-Configure the public fields ([**PipeName**](#pipename) is required, the others have sensible defaults), call [**Start**](#start), and respond to the lifecycle events as clients arrive and exchange messages. The package opens the underlying pipe as **PIPE_TYPE_MESSAGE** / **PIPE_READMODE_MESSAGE** — message boundaries on the wire match message boundaries seen by the consumer.
+Configure the public fields ([**PipeName**](#pipename) is required, the others have reasonable defaults), call [**Start**](#start), and respond to the lifecycle events as clients arrive and exchange messages. The package opens the underlying pipe as **PIPE_TYPE_MESSAGE** / **PIPE_READMODE_MESSAGE** — messages preserve their boundaries between sender and receiver.
 
 ```tb
 Private WithEvents server As NamedPipeServer
@@ -103,7 +103,7 @@ Syntax: *server*_**ClientMessageReceived**(*Connection* **As NamedPipeServerConn
 : The connection the message came from.
 
 *Cookie*
-: The opaque correlation value originally passed to the [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads driven by [**ContinuouslyReadFromPipe**](#continuouslyreadfrompipe).
+: The opaque correlation value originally passed to the [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads triggered by [**ContinuouslyReadFromPipe**](#continuouslyreadfrompipe).
 
 *Data*
 : The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if you need them. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and gives you typed multi-field access in one step.
@@ -159,7 +159,7 @@ The canonical caller is a Windows service that owns this server: the service-thr
 ### ManualMessageLoopLeave
 {: .no_toc }
 
-Posts a `WM_USER_QUITTING` message to the hidden marshalling window, causing the [**ManualMessageLoopEnter**](#manualmessageloopenter) loop on the other thread to break out cleanly. Safe to call from any thread.
+Posts a `WM_USER_QUITTING` message to the hidden marshalling window, causing the [**ManualMessageLoopEnter**](#manualmessageloopenter) loop on the other thread to exit. Safe to call from any thread.
 
 Syntax: *server*.**ManualMessageLoopLeave**
 
@@ -168,7 +168,7 @@ The intended caller is a thread *other* than the one inside [**ManualMessageLoop
 ### Start
 {: .no_toc }
 
-Creates the I/O Completion Port, spins up [**NumThreadsIOCP**](#numthreadsiocp) worker threads, and publishes the first connection listener under `\\.\pipe\<PipeName>`. Fires [**ServerReady**](#serverready) when every worker has joined.
+Creates the I/O Completion Port, starts [**NumThreadsIOCP**](#numthreadsiocp) worker threads, and publishes the first connection listener under `\\.\pipe\<PipeName>`. Fires [**ServerReady**](#serverready) when every worker has joined.
 
 Syntax: *server*.**Start**
 
@@ -179,7 +179,7 @@ Idempotent: calling [**Start**](#start) while the server is already running is a
 ### Stop
 {: .no_toc }
 
-Cancels every outstanding I/O on every connection, posts the IOCP shutdown sentinel to each worker, waits for the threads to exit, closes every pipe handle, and frees the completion port. Idempotent: calling [**Stop**](#stop) on a server that has not been started — or has already been stopped — is a no-op. Automatically invoked from `Class_Terminate`, so a server going out of scope cleans up implicitly.
+Cancels every outstanding I/O on every connection, posts the IOCP shutdown sentinel to each worker, waits for the threads to exit, closes every pipe handle, and frees the completion port. Idempotent: calling [**Stop**](#stop) on a server that has not been started — or has already been stopped — is a no-op. Automatically invoked from `Class_Terminate`, so a server going out of scope closes resources implicitly.
 
 Syntax: *server*.**Stop**
 

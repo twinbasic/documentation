@@ -211,7 +211,7 @@ End Sub
 
 In twinBASIC, array types are implemented as pointers to a pointer to the Windows API **SAFEARRAY** structure.
 
-This can be leveraged to efficiently access:
+This can be used to efficiently access:
 
 - the count of elements in the 1st dimension
 - as the pointer to the data (to the 1st element in the array)

@@ -132,7 +132,7 @@ For functions which contain the `va_list` type as part of their arguments the Pa
 
 ## PreserveSig
 
-The `[PreserveSig]` attribute was described earlier for COM methods, but it can also be used on API declares. For APIs, the default is `True`. So therefore, you can specify `False` in order to rewrite the last parameter as a return.
+The `[PreserveSig]` attribute was described earlier for COM methods, but it can also be used on API declares. For APIs, the default is `True`. So therefore, you can specify `False` to rewrite the last parameter as a return.
 
 ### Example
 

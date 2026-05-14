@@ -75,7 +75,7 @@ An MDIForm always uses the sizable border style — there is no [**BorderStyle**
 
 [**MinWidth**](#minwidth), [**MinHeight**](#minheight), [**MaxWidth**](#maxwidth), and [**MaxHeight**](#maxheight) constrain the *client area* in twips during interactive resizing. [**Moveable**](#moveable) decides whether the user can drag the form by its title bar.
 
-[**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) drive Windows' layered-window features for translucent forms and cut-out shapes.
+[**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) enable Windows' layered-window features for translucent forms and cut-out shapes.
 
 [**BackColor**](#backcolor) paints the MDI client area's background — defaults to the system **vbApplicationWorkspace** colour rather than 3-D face. [**Picture**](#picture), when set, is drawn over **BackColor** as the client-area backdrop, scaled to fill the area for metafiles and centred at its natural size for bitmaps. [**PictureDpiScaling**](#picturedpiscaling) scales bitmaps by the current DPI factor before drawing. There is no on-screen drawing API on an MDIForm — the [**Cls**](../Form/#cls), [**Circle**](../Form/#circle), [**Line**](../Form/#line), [**PSet**](../Form/#pset), [**PaintPicture**](../Form/#paintpicture), and **Print** members of the **Form** interface raise run-time error 438 (*Object doesn't support this property or method*) when called on an MDIForm.
 
@@ -491,7 +491,7 @@ Syntax: *object*\_**Deactivate**( )
 ### DPIChange
 {: .no_toc }
 
-Raised when the form moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument carries the new effective DPI; child controls and MDI children re-scale themselves automatically. New in twinBASIC.
+Raised when the form moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument gives the new effective DPI; child controls and MDI children re-scale themselves automatically. New in twinBASIC.
 
 Syntax: *object*\_**DPIChange**( *NewDPI* **As Long** )
 

@@ -9,7 +9,7 @@ permalink: /tB/Core/Handles
 A trailing clause on a procedure header that binds the procedure as an event handler for one or more specific events.
 
 > [!NOTE]
-> The **Handles** clause is a twinBASIC extension. Classic VBA wires up event handlers solely by name: a `Sub` called `Form_Load` automatically handles the `Load` event of `Form`. twinBASIC still supports that pattern — **Handles** decouples the procedure name from the events it handles and lets one body handle several events at once. Whether the IDE inserts the new syntax when auto-generating event prototypes is controlled by the "IDE: Use new handles/implements syntax" option.
+> The **Handles** clause is a twinBASIC extension. Classic VBA connects event handlers solely by name: a `Sub` called `Form_Load` automatically handles the `Load` event of `Form`. twinBASIC still supports that pattern — **Handles** decouples the procedure name from the events it handles and lets one body handle several events at once. Whether the IDE inserts the new syntax when auto-generating event prototypes is controlled by the "IDE: Use new handles/implements syntax" option.
 
 Syntax:
 > *procedure-header* **Handles** *object*.*event* [ **,** *object*.*event* ] …

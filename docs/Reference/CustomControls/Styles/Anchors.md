@@ -9,7 +9,7 @@ has_toc: false
 # Anchors class
 {: .no_toc }
 
-Determines which sides of a control are pinned to its parent container when the container is resized. A control with both **Left** and **Right** set to **True**, for example, keeps its left and right edges at the same distance from the container's edges, stretching horizontally as the container grows. Controls receive this object through their inherited **Anchors** property.
+Determines which sides of a control are attached to its parent container when the container is resized. A control with both **Left** and **Right** set to **True**, for example, keeps its left and right edges at the same distance from the container's edges, stretching horizontally as the container grows. Controls receive this object through their inherited **Anchors** property.
 
 The default is **Left**=**True**, **Top**=**True**, **Right**=**False**, **Bottom**=**False** — the control stays at the same offset from the upper-left corner of the container and does not resize. To make a control fill the bottom of its container as the form is resized, anchor it to **Left**, **Right**, and **Bottom**.
 

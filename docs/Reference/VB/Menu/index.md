@@ -196,7 +196,7 @@ When **True** on a menu hosted by an [**MDIForm**](../MDIForm/), turns this menu
 ### Container
 {: .no_toc }
 
-Returns a reference to the **Control** that hosts this menu — typically the [**Form**](../Form/) or [**MDIForm**](../MDIForm/) that owns the menu structure. Equivalent to walking [**Parent**](#parent) for a top-level menu, but defined on every menu (including sub-items) so it can be called uniformly.
+Returns a reference to the **Control** that hosts this menu — typically the [**Form**](../Form/) or [**MDIForm**](../MDIForm/) that owns the menu structure. Equivalent to traversing [**Parent**](#parent) for a top-level menu, but defined on every menu (including sub-items) so it can be called uniformly.
 
 Syntax: *object*.**Container**
 

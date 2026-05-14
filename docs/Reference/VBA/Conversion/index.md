@@ -20,7 +20,7 @@ Dim Amount As Currency
 Amount = CCur("1,234.56")        ' parses with the local decimal separator
 ```
 
-Two further constructors return a **Variant** whose subtype is fixed: [**CVDate**](CVDate) builds a **Variant** of subtype **Date** (kept for compatibility with code written before **Date** became an intrinsic type), and [**CVErr**](CVErr) builds a **Variant** of subtype **Error** carrying a chosen error number — the canonical way for a **Variant**-returning function to signal "this call failed with this error code" without raising a run-time error.
+Two further constructors return a **Variant** whose subtype is fixed: [**CVDate**](CVDate) builds a **Variant** of subtype **Date** (kept for compatibility with code written before **Date** became an intrinsic type), and [**CVErr**](CVErr) builds a **Variant** of subtype **Error** containing a chosen error number — the canonical way for a **Variant**-returning function to signal "this call failed with this error code" without raising a run-time error.
 
 ## Generic conversion
 

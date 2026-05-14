@@ -42,7 +42,7 @@ Private Sub ListView1_ItemClick(Item As ListItem)
 End Sub
 ```
 
-The control inherits the focusable rect-dockable surface from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the focusable rect-dockable members from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -231,7 +231,7 @@ Events
 ### AfterLabelEdit
 {: .no_toc }
 
-Raised when an inline label edit completes. Set *Cancel* to **True** to revert; *NewString* carries the user's proposed new text.
+Raised when an inline label edit completes. Set *Cancel* to **True** to revert; *NewString* holds the user's proposed new text.
 
 Syntax: *object*\_**AfterLabelEdit**( *Cancel* **As Boolean**, *NewString* **As String** )
 
@@ -245,7 +245,7 @@ Syntax: *object*\_**BeforeLabelEdit**( *Cancel* **As Boolean** )
 ### Click
 {: .no_toc }
 
-Raised on a mouse click inside the control. Distinct from [**ItemClick**](#itemclick), which fires only when the click lands on a row.
+Raised on a mouse click inside the control. Distinct from [**ItemClick**](#itemclick), which fires only when the click hits a row.
 
 Syntax: *object*\_**Click**( )
 

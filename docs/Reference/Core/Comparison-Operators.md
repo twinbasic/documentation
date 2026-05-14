@@ -49,7 +49,7 @@ The following table lists the comparison operators and the conditions that deter
 
 The `=` symbol is also the assignment operator (`*variable* = *expression*`). The context — whether `=` appears in an expression or at the top of a statement — determines which meaning applies; you do not need to choose between them explicitly.
 
-When comparing two expressions, you may not be able to easily determine whether the expressions are being compared as numbers or as strings. The following table shows how the expressions are compared, or the result when either expression is not a **Variant**:
+When comparing two expressions, determining whether they are being compared as numbers or as strings can be non-obvious. The following table shows how the expressions are compared, or the result when either expression is not a **Variant**:
 
 | If                                                                                       | Then                                                  |
 |:-----------------------------------------------------------------------------------------|:------------------------------------------------------|

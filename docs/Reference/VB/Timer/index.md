@@ -46,10 +46,10 @@ Assigning a negative value to [**Interval**](#interval) raises run-time error 38
 
 ## Accuracy and resolution
 
-The control wraps Win32's per-window timer queue, which is driven by the standard message pump. Two consequences follow:
+The control wraps Win32's per-window timer queue, which runs on the standard message pump. Two consequences follow:
 
 - **Resolution is coarse.** The OS quantises timer ticks to the system clock-tick period — typically ~15.6 ms on desktop Windows. Intervals shorter than that are silently rounded up. For sub-millisecond pacing use a multimedia timer or `QueryPerformanceCounter` directly.
-- **Ticks can be skipped under load.** If the message pump is blocked when a tick is due, no events queue up — the runtime delivers a single [**Timer**](#timer) event when the pump catches up, *not* one for each missed period. Long-running work inside the handler therefore lengthens the next interval rather than producing a backlog.
+- **Ticks can be skipped under load.** If the message pump is blocked when a tick is due, no events queue up — the runtime delivers a single [**Timer**](#timer) event when the pump resumes, *not* one for each missed period. Long-running work inside the handler therefore lengthens the next interval rather than producing a backlog.
 
 For periodic UI updates (a clock, a progress animation, a poll for external state) the **Timer** is exactly the right tool. For precise wall-clock pacing, audio scheduling, or anything that must keep up under heavy CPU load, it is not.
 

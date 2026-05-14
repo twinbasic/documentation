@@ -10,7 +10,7 @@ has_toc: false
 
 # AsyncProperty class
 
-The **AsyncProperty** object carries the results of an asynchronous read started with **UserControl.AsyncRead**. It is passed to the **AsyncReadComplete** and **AsyncReadProgress** events, where it identifies which read this notification refers to, reports how far the download has got, and — once complete — supplies the downloaded value. Every property is read-only: the runtime fills the object in before raising the event.
+The **AsyncProperty** object holds the results of an asynchronous read started with **UserControl.AsyncRead**. It is passed to the **AsyncReadComplete** and **AsyncReadProgress** events, where it identifies which read this notification refers to, reports how far the download has got, and — once complete — supplies the downloaded value. Every property is read-only: the runtime fills the object in before raising the event.
 
 ## Identifying the read
 

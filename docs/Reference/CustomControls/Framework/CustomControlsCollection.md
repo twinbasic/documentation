@@ -78,4 +78,4 @@ For Each ctl In MyForm.Controls
 Next
 ```
 
-The hidden member that drives this is `_NewEnum`; application code does not call it directly.
+The hidden member that powers this is `_NewEnum`; application code does not call it directly.

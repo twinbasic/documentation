@@ -8,7 +8,7 @@ has_toc: false
 # Toolbars class
 {: .no_toc }
 
-The collection of IDE toolbars. Reached through [**Host.Toolbars**](Host#toolbars). Currently there is only one toolbar — `Host.Toolbars(0)` — but the surface is collection-shaped so future IDE versions can add more.
+The collection of IDE toolbars. Reached through [**Host.Toolbars**](Host#toolbars). Currently there is only one toolbar — `Host.Toolbars(0)` — but the collection interface allows future IDE versions to add more.
 
 ```tb
 With Host.Toolbars(0)

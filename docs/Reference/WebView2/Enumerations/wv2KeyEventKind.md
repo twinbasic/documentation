@@ -7,7 +7,7 @@ permalink: /tB/Packages/WebView2/Enumerations/wv2KeyEventKind
 # wv2KeyEventKind
 {: .no_toc }
 
-The kind of accelerator-key keyboard message that fired the [**AcceleratorKeyPressed**](../WebView2/#acceleratorkeypressed) event, carried as its **ByRef** `KeyState` argument. Mirrors the `COREWEBVIEW2_KEY_EVENT_KIND` enumeration.
+The kind of accelerator-key keyboard message that fired the [**AcceleratorKeyPressed**](../WebView2/#acceleratorkeypressed) event, passed as its **ByRef** `KeyState` argument. Mirrors the `COREWEBVIEW2_KEY_EVENT_KIND` enumeration.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

@@ -9,7 +9,7 @@ has_toc: false
 # Node class
 {: .no_toc }
 
-A **Node** is a single entry in a [**TreeView**](.)'s [**Nodes**](Nodes) collection. Returned from [**Nodes.Add**](Nodes#add) and from [**Nodes.Item**](Nodes#item). Each node carries its own text, icons, sort settings, check state, and sibling / parent / child relationships.
+A **Node** is a single entry in a [**TreeView**](.)'s [**Nodes**](Nodes) collection. Returned from [**Nodes.Add**](Nodes#add) and from [**Nodes.Item**](Nodes#item). Each node has its own text, icons, sort settings, check state, and sibling / parent / child relationships.
 
 The class is tagged `[COMCreatable(False)]` — user code reaches **Node** instances through the parent [**TreeView**](.)'s [**Nodes**](Nodes) collection or through navigation properties on other nodes.
 

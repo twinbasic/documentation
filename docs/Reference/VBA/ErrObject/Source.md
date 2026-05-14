@@ -28,7 +28,7 @@ When an unexpected error occurs in your code, the **Source** property is automat
 
 This example assigns the programmatic ID of an Automation object to the variable `myObjectID`, and then assigns that to the **Source** property of the **Err** object when it generates an error with the [**Raise**](Raise) method.
 
-When handling errors, you should not rely on the **Source** property (or any **Err** properties other than [**Number**](Number)) for control flow. The intended use of properties other than **Number** is to display rich information to an end user when you can't handle an error.
+When handling errors, you should not rely on the **Source** property (or any **Err** properties other than [**Number**](Number)) for control flow. The intended use of properties other than **Number** is to display detailed information to an end user when you can't handle an error.
 
 ```tb
 Dim myObjectID As String, myHelpFile As String, myHelpContext As Long

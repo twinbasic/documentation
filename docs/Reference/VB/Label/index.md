@@ -46,7 +46,7 @@ lblName.Caption = "&Name:"           ' Alt+N → next control (typically txtName
 lblHelp.Caption = "Use && to escape" ' renders as: Use & to escape
 ```
 
-The convention is to place the **Label** immediately before the control it captions in tab order, so the mnemonic naturally lands on that control.
+The convention is to place the **Label** immediately before the control it captions in tab order, so the mnemonic naturally targets that control.
 
 ## Caption layout
 
@@ -75,7 +75,7 @@ The convention is to place the **Label** immediately before the control it capti
 | **vbFixedSingleBorder**   | 1     | A sunken Win32-style border. [**Appearance**](#appearance) selects 3-D or flat.            |
 | **vbCustomBorder**        | 2     | Per-edge custom border configured through [**BorderCustomOptions**](#bordercustomoptions). |
 
-With **vbCustomBorder**, [**BorderCustomOptions**](#bordercustomoptions) returns an object whose `.Left`, `.Top`, `.Right`, and `.Bottom` properties each carry independent **Size** (line thickness, in twips), **Padding** (inset between the border and the caption, in twips), and **Color** values:
+With **vbCustomBorder**, [**BorderCustomOptions**](#bordercustomoptions) returns an object whose `.Left`, `.Top`, `.Right`, and `.Bottom` properties each have independent **Size** (line thickness, in twips), **Padding** (inset between the border and the caption, in twips), and **Color** values:
 
 ```tb
 lblBox.BorderStyle = vbCustomBorder
@@ -342,7 +342,7 @@ A reference to the [**Form**](../Form/) (or **UserControl**) that ultimately con
 {: .no_toc }
 
 > [!NOTE]
-> Reserved for compatibility with VB6; not currently implemented in twinBASIC. The label is non-focusable, so the value would only affect mnemonic-routing — that is currently driven by the design-time Z-order instead.
+> Reserved for compatibility with VB6; not currently implemented in twinBASIC. The label is non-focusable, so the value would only affect mnemonic-routing — that is currently controlled by the design-time Z-order instead.
 
 ### Tag
 {: .no_toc }
@@ -519,7 +519,7 @@ Syntax: *object*\_**DragOver**( *Source* **As Control**, *X* **As Single**, *Y* 
 ### Initialize
 {: .no_toc }
 
-Raised once, after the label has been wired into its container's paint cycle but before it is first painted. Useful for last-minute setup that depends on container state.
+Raised once, after the label has been connected to its container's paint cycle but before it is first painted. Useful for last-minute setup that depends on container state.
 
 Syntax: *object*\_**Initialize**( )
 

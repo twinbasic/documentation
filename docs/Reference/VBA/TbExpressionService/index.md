@@ -53,7 +53,7 @@ For full control over symbol resolution — for example, to look up names dynami
 
 ## TbExpressionService class
 
-`New TbExpressionService` returns the default interface, **ITbExpressionService**. Multiple services can coexist; each carries its own list of binders and is independent of the others.
+`New TbExpressionService` returns the default interface, **ITbExpressionService**. Multiple services can coexist; each has its own list of binders and is independent of the others.
 
 ### Members
 

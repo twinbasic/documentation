@@ -10,7 +10,7 @@ permalink: /Tutorials/WebView2/Building-A-Browser-Shell
 
 A short worked tutorial: turn a [**WebView2**](../../tB/Packages/WebView2/WebView2/) control into a working browser with an address bar, back / forward / reload buttons, zoom, and a few helpers (DevTools, Task Manager, PDF export).
 
-The complete project ships as *Sample 0 — WebView2 Examples* in the New-Project dialog (form *Example 1*). This tutorial walks through its key pieces.
+The complete project ships as *Sample 0 — WebView2 Examples* in the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
 
 ## The form
 
@@ -18,7 +18,7 @@ Drop a [**WebView2**](../../tB/Packages/WebView2/WebView2/) control onto a Form 
 
 ## Navigating
 
-The bare-bones navigation surface — [**Navigate**](../../tB/Packages/WebView2/WebView2/#navigate), [**GoBack**](../../tB/Packages/WebView2/WebView2/#goback), [**GoForward**](../../tB/Packages/WebView2/WebView2/#goforward), [**Reload**](../../tB/Packages/WebView2/WebView2/#reload) — is one-liners:
+The bare-bones navigation methods — [**Navigate**](../../tB/Packages/WebView2/WebView2/#navigate), [**GoBack**](../../tB/Packages/WebView2/WebView2/#goback), [**GoForward**](../../tB/Packages/WebView2/WebView2/#goforward), [**Reload**](../../tB/Packages/WebView2/WebView2/#reload) — are one-liners:
 
 ```tb
 Private Sub btnBack_Click() Handles btnBack.Click
@@ -81,7 +81,7 @@ End Sub
 
 ## PDF export
 
-[**PrintToPdf**](../../tB/Packages/WebView2/WebView2/#printtopdf) saves the current document to disk asynchronously — the result surfaces as [**PrintToPdfCompleted**](../../tB/Packages/WebView2/WebView2/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/WebView2/WebView2/#printtopdffailed):
+[**PrintToPdf**](../../tB/Packages/WebView2/WebView2/#printtopdf) saves the current document to disk asynchronously — the result arrives as [**PrintToPdfCompleted**](../../tB/Packages/WebView2/WebView2/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/WebView2/WebView2/#printtopdffailed):
 
 ```tb
 Private Sub btnPDF_Click() Handles btnPDF.Click

@@ -36,7 +36,7 @@ These classes are *containers* rather than controls in the strict sense — they
 
 ## File-system browsing
 
-These three controls are normally wired up together to build a complete file picker.
+These three controls are normally connected together to build a complete file picker.
 
 - DriveListBox — drive picker. *Not yet documented.*
 - [DirListBox](Packages/VB/DirListBox/) — directory-tree picker for a single path.
@@ -54,7 +54,7 @@ These three controls are normally wired up together to build a complete file pic
 - [Image](Packages/VB/Image/) — windowless lightweight picture display; the small, efficient alternative to [PictureBox](Packages/VB/PictureBox/).
 - [Line](Packages/VB/Line/) — windowless single straight line between two endpoints.
 - [Shape](Packages/VB/Shape/) — windowless geometric primitive (rectangle, oval, circle, star, arrow, …) with configurable border, fill, and rotation.
-- [QRCode](Packages/VB/QRCode/) — windowless QR-code renderer driven by a text or byte-array payload.
+- [QRCode](Packages/VB/QRCode/) — windowless QR-code renderer populated from a text or byte-array payload.
 
 ## Menus
 

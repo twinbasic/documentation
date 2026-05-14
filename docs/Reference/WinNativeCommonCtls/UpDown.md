@@ -27,7 +27,7 @@ Private Sub Text1_Change()
 End Sub
 ```
 
-The control inherits the focusable rect-dockable surface from `BaseControlFocusableNoFont` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**. **UpDown** does not carry a [**Font**](../VB/CheckBox#font) property (the arrows are drawn by the OS theme).
+The control inherits the focusable rect-dockable members from `BaseControlFocusableNoFont` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**. **UpDown** does not have a [**Font**](../VB/CheckBox#font) property (the arrows are drawn by the OS theme).
 
 * TOC
 {:toc}

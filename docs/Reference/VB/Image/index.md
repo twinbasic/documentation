@@ -60,7 +60,7 @@ Metafiles (`vbPicTypeMetafile`, `vbPicTypeEMetafile`) are vector — they always
 
 The **Image** control supports both ends of an OLE drag-drop operation:
 
-- [**OLEDragMode**](#oledragmode) controls the source side. With **vbOLEDragAutomatic**, holding the mouse over the **Image** and beginning a drag automatically picks up the current [**Picture**](#picture) into the resulting **DataObject**. With **vbOLEDragManual** (default) drags must be initiated by calling [**OLEDrag**](#oledrag) from a [**MouseDown**](#mousedown) handler.
+- [**OLEDragMode**](#oledragmode) controls the source side. With **vbOLEDragAutomatic**, holding the mouse over the **Image** and beginning a drag automatically copies the current [**Picture**](#picture) into the resulting **DataObject**. With **vbOLEDragManual** (default) drags must be initiated by calling [**OLEDrag**](#oledrag) from a [**MouseDown**](#mousedown) handler.
 - [**OLEDropMode**](#oledropmode) controls the destination side. With **vbOLEDropManual** the [**OLEDragOver**](#oledragover) and [**OLEDragDrop**](#oledragdrop) events fire and the application decides what to do. **vbOLEDropAutomatic** is not supported on an **Image** and assigning it raises run-time error 5.
 
 ## Data binding
@@ -179,12 +179,12 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### OLEDragMode
 {: .no_toc }
 
-Whether an OLE drag is started automatically when the user begins dragging the **Image**. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — application calls [**OLEDrag**](#oledrag)) or **vbOLEDragAutomatic** (1 — the framework picks up the current [**Picture**](#picture) into the resulting **DataObject** automatically).
+Whether an OLE drag is started automatically when the user begins dragging the **Image**. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — application calls [**OLEDrag**](#oledrag)) or **vbOLEDragAutomatic** (1 — the framework copies the current [**Picture**](#picture) into the resulting **DataObject** automatically).
 
 ### OLEDropMode
 {: .no_toc }
 
-How the **Image** responds to OLE drops landing on it. A restricted member of [**OLEDropConstants**](../../VBRUN/Constants/OLEDropConstants): **vbOLEDropNone** (0, default) or **vbOLEDropManual** (1). Automatic drop is not supported on an **Image**; assigning **vbOLEDropAutomatic** raises run-time error 5 (*Invalid procedure call or argument*).
+How the **Image** responds to OLE drops arriving on it. A restricted member of [**OLEDropConstants**](../../VBRUN/Constants/OLEDropConstants): **vbOLEDropNone** (0, default) or **vbOLEDropManual** (1). Automatic drop is not supported on an **Image**; assigning **vbOLEDropAutomatic** raises run-time error 5 (*Invalid procedure call or argument*).
 
 ### Parent
 {: .no_toc }
@@ -285,7 +285,7 @@ Syntax: *object*.**Move** *Left* [, *Top* [, *Width* [, *Height* ] ] ]
 ### OLEDrag
 {: .no_toc }
 
-Initiates an OLE drag operation from this **Image**, raising the [**OLEStartDrag**](#olestartdrag) event so the application can populate the **DataObject** (or, if the source has already been pre-populated, kicks off the drag immediately).
+Initiates an OLE drag operation from this **Image**, raising the [**OLEStartDrag**](#olestartdrag) event so the application can populate the **DataObject** (or, if the source has already been pre-populated, begins the drag immediately).
 
 Syntax: *object*.**OLEDrag**
 
@@ -347,7 +347,7 @@ Syntax: *object*\_**DragOver**( *Source* **As Control**, *X* **As Single**, *Y* 
 ### Initialize
 {: .no_toc }
 
-Raised once, after the control has been wired into its container's paint cycle but before it is first painted. Useful for last-minute setup that depends on container state.
+Raised once, after the control has been connected to its container's paint cycle but before it is first painted. Useful for last-minute setup that depends on container state.
 
 Syntax: *object*\_**Initialize**( )
 

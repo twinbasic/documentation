@@ -45,4 +45,4 @@ Padding inserted at the top edge, in pixels. [**PixelCount**](../Enumerations/Pi
 ### OnChanged
 {: .no_toc }
 
-Raised whenever any of the four padding values is assigned. The containing [**TextRendering**](TextRendering) re-raises its own **OnChanged** in response, which in turn drives a repaint on the hosting control.
+Raised whenever any of the four padding values is assigned. The containing [**TextRendering**](TextRendering) re-raises its own **OnChanged** in response, which in turn triggers a repaint on the hosting control.

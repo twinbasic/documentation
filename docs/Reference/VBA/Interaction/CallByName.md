@@ -29,7 +29,7 @@ The return value is a **Variant** containing whatever the call returned. For met
 
 ### Example
 
-These three calls drive a control by name. The first sets its **MousePointer** property to the crosshair cursor, the second reads the same property back out, and the third invokes the **Move** method to reposition the control.
+These three calls use **CallByName** to operate on a control by name. The first sets its **MousePointer** property to the crosshair cursor, the second reads the same property back out, and the third invokes the **Move** method to reposition the control.
 
 ```tb
 CallByName Text1, "MousePointer", vbLet, vbCrosshair

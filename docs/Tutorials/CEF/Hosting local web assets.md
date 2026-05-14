@@ -10,7 +10,7 @@ permalink: /Tutorials/CEF/Hosting-Local-Web-Assets
 
 A [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control can serve HTML, JavaScript, CSS, and any other assets straight from a folder on disk — no embedded HTTP server required. Chromium's [**SetVirtualHostNameToFolderMapping**](../../tB/Packages/CEF/CefBrowser/#setvirtualhostnametofoldermapping) routes a virtual `https://` hostname to a local folder so that resources behave as if they came from a real origin: same-origin `fetch`, Content Security Policy, service workers, and so on all work as expected.
 
-This tutorial walks through the pattern used by *Sample 1b — Chromium Embedded Framework Examples* (forms *Example 2*, *Example 3*, *Example 4*).
+This tutorial demonstrates the pattern used by *Sample 1b — Chromium Embedded Framework Examples* (forms *Example 2*, *Example 3*, *Example 4*).
 
 ## The three-step pattern
 
@@ -101,7 +101,7 @@ Module Files
 End Module
 ```
 
-[**LoadResIdList**](../../tB/Packages/VB/Global/#loadresidlist) returns every resource ID under the named sub-folder; [**LoadResData**](../../tB/Packages/VB/Global/#loadresdata) hands back the bytes. The helper splits each resource name on `~` to reconstruct the original sub-directory tree on disk — the twinBASIC IDE flattens nested folders by joining their names with `~` when the resources are compiled in.
+[**LoadResIdList**](../../tB/Packages/VB/Global/#loadresidlist) returns every resource ID under the named sub-folder; [**LoadResData**](../../tB/Packages/VB/Global/#loadresdata) returns the bytes. The helper splits each resource name on `~` to reconstruct the original sub-directory tree on disk — the twinBASIC IDE flattens nested folders by joining their names with `~` when the resources are compiled in.
 
 ## Putting it together
 

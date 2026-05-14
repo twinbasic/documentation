@@ -60,7 +60,7 @@ The scroll bar produces value changes through four kinds of user input:
 | Drag the thumb                      | continuous                   | [**Scroll**](#scroll) during drag, [**Change**](#change) on release |
 | Press **Home** / **End**            | jumps to **Min** / **Max**   | [**Change**](#change) |
 
-Both [**SmallChange**](#smallchange) and [**LargeChange**](#largechange) default to `1`. [**LargeChange**](#largechange) also drives the visible width of the thumb relative to the track, so larger values produce a chunkier thumb.
+Both [**SmallChange**](#smallchange) and [**LargeChange**](#largechange) default to `1`. [**LargeChange**](#largechange) also controls the visible width of the thumb relative to the track, so larger values produce a chunkier thumb.
 
 ## Change versus Scroll
 
@@ -345,7 +345,7 @@ Syntax: *object*\_**GotFocus**( )
 ### Initialize
 {: .no_toc }
 
-Raised once, after the underlying window has been created and the scroll bar is wired up to its Win32 range, but before the scroll bar is first painted. Useful for last-minute setup that needs the underlying handle.
+Raised once, after the underlying window has been created and the scroll bar is connected to its Win32 range, but before the scroll bar is first painted. Useful for last-minute setup that needs the underlying handle.
 
 Syntax: *object*\_**Initialize**( )
 

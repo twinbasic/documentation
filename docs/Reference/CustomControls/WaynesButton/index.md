@@ -8,7 +8,7 @@ has_toc: false
 # WaynesButton class
 {: .no_toc }
 
-An owner-drawn push-button. Renders a configurable rectangle (with optional gradient fill, borders, rounded / notched / cut-out corners) and a centred [**Caption**](#caption), in one of four visual states — normal, hovered, focused, or pressed — driven by four parallel [**WaynesButtonState**](WaynesButtonState) sub-objects.
+An owner-drawn push-button. Renders a configurable rectangle (with optional gradient fill, borders, rounded / notched / cut-out corners) and a centred [**Caption**](#caption), in one of four visual states — normal, hovered, focused, or pressed — controlled by four parallel [**WaynesButtonState**](WaynesButtonState) sub-objects.
 
 The button raises a [**Click**](#click) event when clicked, plus the standard set of mouse, focus, and keyboard events. By default the four state objects are pre-set with a solid mid-blue ([**WAYNESCOLOR_BLUE**](#) — `&HAC7220`) background and 15-pixel curved corners.
 
@@ -46,7 +46,7 @@ Each state is a [**WaynesButtonState**](WaynesButtonState) — a small bundle of
 ### Anchors
 {: .no_toc }
 
-Which sides of the control are pinned to its container during resize. [**Anchors**](../Styles/Anchors). Inherited.
+Which sides of the control are attached to its container during resize. [**Anchors**](../Styles/Anchors). Inherited.
 
 ### Caption
 {: .no_toc }
@@ -88,7 +88,7 @@ The unique design-time name of the control on its parent form. **String**. Inher
 ### NormalState
 {: .no_toc }
 
-The [**WaynesButtonState**](WaynesButtonState) used when the button is at rest — not hovered, not focused, not pressed.
+The [**WaynesButtonState**](WaynesButtonState) used when the button is idle — not hovered, not focused, not pressed.
 
 ### PressedState
 {: .no_toc }

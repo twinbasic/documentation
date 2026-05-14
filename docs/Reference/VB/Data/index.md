@@ -226,7 +226,7 @@ When **True**, the database is opened read-only and edits to bound fields are pr
 ### Recordset
 {: .no_toc }
 
-The DAO recordset currently driving the bound controls. **Object** (a `DAO.Recordset` at run time).
+The DAO recordset currently populating the bound controls. **Object** (a `DAO.Recordset` at run time).
 
 Syntax: *object*.**Recordset** [ = *recordset* ]
 
@@ -394,7 +394,7 @@ Syntax: *object*\_**DragOver**( *Source* **As Control**, *X* **As Single**, *Y* 
 {: .no_toc }
 
 > [!NOTE]
-> Reserved for compatibility with VB6; not currently raised in twinBASIC. In VB6 this event is raised when an asynchronous DAO operation fails outside of a code path the application can intercept; it is not needed for synchronous errors that surface through normal `On Error` handling.
+> Reserved for compatibility with VB6; not currently raised in twinBASIC. In VB6 this event is raised when an asynchronous DAO operation fails outside of a code path the application can intercept; it is not needed for synchronous errors that arise through normal `On Error` handling.
 
 Syntax: *object*\_**Error**( *DataErr* **As Integer**, *Response* **As Integer** )
 

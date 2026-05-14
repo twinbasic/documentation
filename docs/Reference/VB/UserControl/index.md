@@ -46,7 +46,7 @@ End Property
 
 ## Lifecycle
 
-A user control instance goes through up to seven distinct events from creation to destruction. The host drives the sequence:
+A user control instance goes through up to seven distinct events from creation to destruction. The host controls the sequence:
 
 | Event                                  | When                                                                                                |
 |----------------------------------------|-----------------------------------------------------------------------------------------------------|
@@ -55,7 +55,7 @@ A user control instance goes through up to seven distinct events from creation t
 | [**ReadProperties**](#readproperties)  | Once, for an instance reloaded from a property bag (every load after the first save).               |
 | [**Resize**](#resize)                  | When the host first sizes the control, and on every subsequent size change.                         |
 | [**Show**](#show) / [**Hide**](#hide)  | When the host changes the container's visibility — typically as the host's design view / run view changes. |
-| [**WriteProperties**](#writeproperties)| When the host asks the control to persist its state — design-time saves, host-driven serialisation. |
+| [**WriteProperties**](#writeproperties)| When the host asks the control to persist its state — design-time saves, host-initiated serialisation. |
 | [**Terminate**](#terminate)            | After the window has been destroyed and the class instance is about to be released.                 |
 
 For each instance, exactly one of **InitProperties** or **ReadProperties** runs after [**Initialize**](#initialize), depending on whether the host had a saved property bag. [**WriteProperties**](#writeproperties) is only raised when [**PropertyChanged**](#propertychanged) has been called at least once since the last save, so handlers that never mark themselves dirty are never asked to write.
@@ -175,7 +175,7 @@ The Win32 window handle of the host container that frames this **UserControl**, 
 ### ControlContainer
 {: .no_toc }
 
-Whether the **UserControl** acts as a container that can host other ActiveX controls dropped onto it at design time. **Boolean**, read-only at run time. Set at design time. Setting **ControlContainer** to **True** tells the host to enumerate this control's children when walking the form's control collection.
+Whether the **UserControl** acts as a container that can host other ActiveX controls dropped onto it at design time. **Boolean**, read-only at run time. Set at design time. Setting **ControlContainer** to **True** tells the host to enumerate this control's children when iterating over the form's control collection.
 
 ### Controls
 {: .no_toc }
@@ -622,7 +622,7 @@ Syntax: *object*.**DataMemberChanged** *DataMember*
 ### InternalEnumerator
 {: .no_toc }
 
-Returns the `IUnknown` enumerator backing `For Each` over the **UserControl**'s [**Controls**](#controls). Read-only. Exposed as the [Enumerator] member so that `For Each ctl In UserControl` walks the children directly.
+Returns the `IUnknown` enumerator backing `For Each` over the **UserControl**'s [**Controls**](#controls). Read-only. Exposed as the [Enumerator] member so that `For Each ctl In UserControl` iterates over the children directly.
 
 ### Line
 {: .no_toc }
@@ -813,7 +813,7 @@ Syntax: *object*.**TextWidth**( *Str* )
 {: .no_toc }
 
 > [!NOTE]
-> Declared for VB6 compatibility; not currently implemented in twinBASIC. In VB6 this fired the focused child's **Validate** event from code; on a **UserControl** the host normally drives validation through the form-level [**ValidateControls**](../Form/#validatecontrols).
+> Declared for VB6 compatibility; not currently implemented in twinBASIC. In VB6 this fired the focused child's **Validate** event from code; on a **UserControl** the host normally handles validation through the form-level [**ValidateControls**](../Form/#validatecontrols).
 
 Syntax: *object*.**ValidateControls**
 
@@ -870,7 +870,7 @@ Syntax: *object*\_**DblClick**( )
 ### DPIChange
 {: .no_toc }
 
-Raised when the control moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument carries the new effective DPI; child controls re-scale themselves automatically. New in twinBASIC.
+Raised when the control moves to a monitor with a different DPI scale, *but only* when the application is per-monitor DPI aware (`PROCESS_PER_MONITOR_DPI_AWARE`). The event's *NewDPI* argument gives the new effective DPI; child controls re-scale themselves automatically. New in twinBASIC.
 
 Syntax: *object*\_**DPIChange**( *NewDPI* **As Long** )
 
@@ -1055,7 +1055,7 @@ Syntax: *object*\_**Paint**( )
 ### PreKeyDown
 {: .no_toc }
 
-Raised for every key press anywhere on the **UserControl** or any of its descendants, *before* the focused child sees it — so handlers can swallow the keystroke. Requires [**PreKeyEvents**](#prekeyevents) **True**. Not raised when [**Windowless**](#windowless) is **True**. New in twinBASIC.
+Raised for every key press anywhere on the **UserControl** or any of its descendants, *before* the focused child sees it — so handlers can consume the keystroke. Requires [**PreKeyEvents**](#prekeyevents) **True**. Not raised when [**Windowless**](#windowless) is **True**. New in twinBASIC.
 
 Syntax: *object*\_**PreKeyDown**( *KeyCode* **As Integer**, *Shift* **As Integer** )
 
@@ -1074,7 +1074,7 @@ Raised when the host hands the control a property bag containing previously save
 Syntax: *object*\_**ReadProperties**( *PropBag* **As PropertyBag** )
 
 *PropBag*
-: The host-supplied [**PropertyBag**](../../VBRUN/PropertyBag/) carrying the persisted values.
+: The host-supplied [**PropertyBag**](../../VBRUN/PropertyBag/) containing the persisted values.
 
 ### Resize
 {: .no_toc }
@@ -1110,7 +1110,7 @@ Syntax: *object*\_**VerbInvoked**( *Verb* **As String** )
 ### WriteProperties
 {: .no_toc }
 
-Raised when the host asks the control to persist its current state — design-time saves and host-driven serialisation. The handler writes each persistent value to *PropBag* through **WriteProperty**, which takes a key, the value, and (optionally) the same default the [**ReadProperties**](#readproperties) handler used so that round-trip defaults are not written. Only raised when at least one call to [**PropertyChanged**](#propertychanged) has happened since the last save.
+Raised when the host asks the control to persist its current state — design-time saves and host-initiated serialisation. The handler writes each persistent value to *PropBag* through **WriteProperty**, which takes a key, the value, and (optionally) the same default the [**ReadProperties**](#readproperties) handler used so that round-trip defaults are not written. Only raised when at least one call to [**PropertyChanged**](#propertychanged) has happened since the last save.
 
 Syntax: *object*\_**WriteProperties**( *PropBag* **As PropertyBag** )
 

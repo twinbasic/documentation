@@ -10,7 +10,7 @@ redirect_from:
 
 The [**WebView2**](../../tB/Packages/WebView2/WebView2/) control hosts the Microsoft Edge browser engine inside a twinBASIC form — navigate to web pages, run local web apps, exchange messages and method calls with JavaScript, intercept HTTP traffic, and print pages to PDF.
 
-These tutorials walk through the most common patterns:
+These tutorials demonstrate the most common patterns:
 
 - [Getting started](Getting-Started) — adding the package references and dropping a control onto a form.
 - [Customize the UserDataFolder](Customize-UserDataFolder) — relocating the runtime's working folder for hosted scenarios (Office add-ins, kiosk installs).
@@ -22,4 +22,4 @@ These tutorials walk through the most common patterns:
 
 The complete sample code for the last four tutorials ships as *Sample 0 — WebView2 Examples* in the New-Project dialog.
 
-For the full surface area of the control itself, see the [**WebView2** class reference](../../tB/Packages/WebView2/WebView2/).
+For the full set of members on the control itself, see the [**WebView2** class reference](../../tB/Packages/WebView2/WebView2/).

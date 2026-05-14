@@ -10,9 +10,9 @@ has_toc: false
 
 A single-line editable text field. The user can type, select with the mouse or with shift-modified cursor keys, jump word-by-word with **Ctrl+Left** / **Ctrl+Right**, double-click to select a word, and copy / cut / paste / select-all with the standard Windows shortcuts. The control draws its own caret, selection highlight, and inline text decorators (squiggle for *ERROR*, underline for *WARNING*, background highlight for *INFO*) on top of the configurable background.
 
-The control paints three visual states ([**NormalState**](#normalstate), [**HoverState**](#hoverstate), [**FocusedState**](#focusedstate)) driven by parallel [**WaynesTextBoxState**](WaynesTextBoxState) sub-objects, each of which carries its own background fill, borders, corners, text rendering, selection colours, caret colour, and decorator colours.
+The control paints three visual states ([**NormalState**](#normalstate), [**HoverState**](#hoverstate), [**FocusedState**](#focusedstate)) controlled by parallel [**WaynesTextBoxState**](WaynesTextBoxState) sub-objects, each of which has its own background fill, borders, corners, text rendering, selection colours, caret colour, and decorator colours.
 
-The current text is held in [**Value**](#value). Surrogate-pair characters are handled correctly by the cursor / selection logic — the caret never lands between the high and low halves of a pair.
+The current text is held in [**Value**](#value). Surrogate-pair characters are handled correctly by the cursor / selection logic — the caret never appears between the high and low halves of a pair.
 
 ```tb
 Private Sub Form_Load()
@@ -62,7 +62,7 @@ The colours are configurable per visual state. The substrings themselves are har
 ### Anchors
 {: .no_toc }
 
-Which sides of the control are pinned to its container during resize. [**Anchors**](../Styles/Anchors). Inherited.
+Which sides of the control are attached to its container during resize. [**Anchors**](../Styles/Anchors). Inherited.
 
 ### Dock
 {: .no_toc }
@@ -97,7 +97,7 @@ The unique design-time name of the control on its parent form. **String**. Inher
 ### NormalState
 {: .no_toc }
 
-The [**WaynesTextBoxState**](WaynesTextBoxState) used when the textbox is at rest — not focused and not hovered.
+The [**WaynesTextBoxState**](WaynesTextBoxState) used when the textbox is idle — not focused and not hovered.
 
 ### TabIndex
 {: .no_toc }

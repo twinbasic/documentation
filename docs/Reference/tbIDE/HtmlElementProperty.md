@@ -29,7 +29,7 @@ element.style.color = "red"
 ### Properties
 {: .no_toc }
 
-A nested [**HtmlElementProperties**](HtmlElementProperties) for properties that themselves carry sub-properties (the canonical example is `style`, whose sub-properties are the individual CSS-style names). Read-only at the accessor level; the inner bag is mutable.
+A nested [**HtmlElementProperties**](HtmlElementProperties) for properties that themselves have sub-properties (the canonical example is `style`, whose sub-properties are the individual CSS-style names). Read-only at the accessor level; the inner bag is mutable.
 
 Syntax: *property*.**Properties** **As** [**HtmlElementProperties**](HtmlElementProperties)
 

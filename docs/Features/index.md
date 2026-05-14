@@ -11,7 +11,7 @@ has_toc: false
 
 This section documents all the features and enhancements that twinBASIC brings compared to VBx and earlier BASIC dialects. 
 
-twinBASIC maintains backward compatibility with VBx syntax while providing these powerful new features. Most enhancements are opt-in, allowing you to gradually adopt them in your projects.
+twinBASIC maintains backward compatibility with VBx syntax while providing these new features. Most enhancements are opt-in, allowing you to gradually adopt them in your projects.
 
 For detailed documentation on each feature, navigate to the specific category listed below.
 

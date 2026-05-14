@@ -10,7 +10,7 @@ has_toc: false
 
 A horizontal or vertical slider control — a draggable block over a track — for editing an integer value within a range. The user can drag the block, click on the track to step the value by one page, or use the arrow keys when the control has focus; an optional auto-increment timer activates while a mouse button is held down on the track.
 
-The control paints three visual states ([**NormalState**](#normalstate), [**HoverState**](#hoverstate), [**FocusedState**](#focusedstate)) driven by parallel [**WaynesSliderState**](WaynesSliderState) sub-objects, each of which carries independent fill / border / corner styling for the background and for the block. The current [**Value**](#value) is optionally rendered as text on the block — as a raw integer or as a formatted percentage — depending on [**DisplayFormat**](#displayformat).
+The control paints three visual states ([**NormalState**](#normalstate), [**HoverState**](#hoverstate), [**FocusedState**](#focusedstate)) controlled by parallel [**WaynesSliderState**](WaynesSliderState) sub-objects, each of which has independent fill / border / corner styling for the background and for the block. The current [**Value**](#value) is optionally rendered as text on the block — as a raw integer or as a formatted percentage — depending on [**DisplayFormat**](#displayformat).
 
 If the control's [**Height**](#height) is greater than its [**Width**](#width) on first display, the slider defaults to [**Direction**](#direction) = **Vertical**; otherwise it defaults to **Horizontal**.
 
@@ -71,7 +71,7 @@ How the [**Value**](#value) is rendered on the block, declared inside the **Wayn
 ### Anchors
 {: .no_toc }
 
-Which sides of the control are pinned to its container during resize. [**Anchors**](../Styles/Anchors). Inherited.
+Which sides of the control are attached to its container during resize. [**Anchors**](../Styles/Anchors). Inherited.
 
 ### Direction
 {: .no_toc }
@@ -131,7 +131,7 @@ The unique design-time name of the control on its parent form. **String**. Inher
 ### NormalState
 {: .no_toc }
 
-The [**WaynesSliderState**](WaynesSliderState) used when the slider is at rest — not hovered, not focused.
+The [**WaynesSliderState**](WaynesSliderState) used when the slider is idle — not hovered, not focused.
 
 ### PagingStepValue
 {: .no_toc }

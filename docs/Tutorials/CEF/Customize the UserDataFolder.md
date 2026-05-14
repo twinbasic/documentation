@@ -36,7 +36,7 @@ CEF reads the environment options *once*, when the helper browser process is lau
 
 A single user-data folder cannot be opened by two CEF processes at once — the runtime takes an exclusive lock on it for the lifetime of the browser process. Two **CefBrowser** controls in the *same* application share the helper process and therefore the same lock, so they cooperate fine; two *separate* applications pointing at the same folder collide.
 
-When a collision is detected and [**UserDataFolder**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions#userdatafolder) is left at its default, the control automatically retries with the next `instance-N` sub-folder. When the host has explicitly set a path, the lock failure instead surfaces as a CEF initialisation error (*"CEF cache path already locked by another process"*) — handle it in the [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event:
+When a collision is detected and [**UserDataFolder**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions#userdatafolder) is left at its default, the control automatically retries with the next `instance-N` sub-folder. When the host has explicitly set a path, the lock failure instead appears as a CEF initialisation error (*"CEF cache path already locked by another process"*) — handle it in the [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event:
 
 ```tb
 Private Sub CefBrowser1_Error(ByVal code As Long, ByVal msg As String)

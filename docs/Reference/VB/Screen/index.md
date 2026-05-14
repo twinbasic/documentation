@@ -40,7 +40,7 @@ On a 96-DPI display these are both `15` (1440 twips per logical inch ÷ 96 pixel
 
 [**ActiveForm**](#activeform) returns the [**Form**](../Form/) instance that is currently the foreground form in the application; [**ActiveControl**](#activecontrol) returns the control within that form that currently holds the focus. Both return **Nothing** if no form in the application is active.
 
-The most common idiom is reaching into the active form from a global handler — for example, a toolbar button on an [**MDIForm**](../MDIForm/) that operates on whatever MDI child is in front:
+The most common idiom is accessing the active form from a global handler — for example, a toolbar button on an [**MDIForm**](../MDIForm/) that operates on whatever MDI child is in front:
 
 ```tb
 Private Sub tbrEdit_ButtonClick(ByVal Button As MSComctlLib.Button)

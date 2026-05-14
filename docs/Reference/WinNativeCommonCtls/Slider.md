@@ -8,7 +8,7 @@ has_toc: false
 # Slider class
 {: .no_toc }
 
-A **Slider** is a trackbar control — a horizontal or vertical channel with a draggable thumb that lets the user pick a value between [**Min**](#min) and [**Max**](#max). Optional tick marks, a floating value tip, and a highlighted selection range round out the surface.
+A **Slider** is a trackbar control — a horizontal or vertical channel with a draggable thumb that lets the user pick a value between [**Min**](#min) and [**Max**](#max). Optional tick marks, a floating value tip, and a highlighted selection range round out the control.
 
 ```tb
 Private Sub Form_Load()
@@ -25,7 +25,7 @@ Private Sub Slider1_Change()
 End Sub
 ```
 
-The control inherits the focusable rect-dockable surface from `BaseControlFocusableNoFont` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**. Slider does not carry a [**Font**](../VB/CheckBox#font) property (its thumb and tick marks are drawn by the OS theme).
+The control inherits the focusable rect-dockable members from `BaseControlFocusableNoFont` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**. Slider does not have a [**Font**](../VB/CheckBox#font) property (its thumb and tick marks are drawn by the OS theme).
 
 * TOC
 {:toc}

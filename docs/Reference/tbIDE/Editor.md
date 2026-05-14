@@ -8,7 +8,7 @@ has_toc: false
 # Editor class
 {: .no_toc }
 
-The base interface every IDE editor presents. **Editor** itself carries only the universal members — [**Path**](#path), [**Type**](#type), [**SetFocus**](#setfocus), [**Close**](#close), [**Save**](#save), [**IsDirty**](#isdirty) — and an instance returned from [**Editors.Item**](Editors#item) or the [**Host.OnChangedActiveEditor**](Host#onchangedactiveeditor) event is normally a *specific* editor kind (e.g. [**CodeEditor**](CodeEditor) for code panes), reachable by casting.
+The base interface every IDE editor presents. **Editor** itself exposes only the universal members — [**Path**](#path), [**Type**](#type), [**SetFocus**](#setfocus), [**Close**](#close), [**Save**](#save), [**IsDirty**](#isdirty) — and an instance returned from [**Editors.Item**](Editors#item) or the [**Host.OnChangedActiveEditor**](Host#onchangedactiveeditor) event is normally a *specific* editor kind (e.g. [**CodeEditor**](CodeEditor) for code panes), reachable by casting.
 
 ## Castability
 {: #castability }

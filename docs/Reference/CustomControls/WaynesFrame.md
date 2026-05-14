@@ -8,9 +8,9 @@ has_toc: false
 # WaynesFrame class
 {: .no_toc }
 
-A rectangular container control whose entire area is painted with a configurable [**BackgroundFill**](#backgroundfill). Used to group other controls on a [**WaynesForm**](WaynesForm/), with the same layout / sizing surface as any other custom control.
+A rectangular container control whose entire area is painted with a configurable [**BackgroundFill**](#backgroundfill). Used to group other controls on a [**WaynesForm**](WaynesForm/), with the same layout / sizing members as any other custom control.
 
-The default fill is a solid mid-grey ([**WAYNESCOLOR_GREY**](#) — `&H808080`); change it by reaching into the **Fill.ColorPoints** collection.
+The default fill is a solid mid-grey ([**WAYNESCOLOR_GREY**](#) — `&H808080`); change it by accessing the **Fill.ColorPoints** collection.
 
 ```tb
 Private Sub Form_Load()
@@ -25,7 +25,7 @@ Frames work well as containers for [**Dock**](Enumerations/DockMode)-positioned 
 ### Anchors
 {: .no_toc }
 
-Which sides of the control are pinned to its container during resize. [**Anchors**](Styles/Anchors). Inherited.
+Which sides of the control are attached to its container during resize. [**Anchors**](Styles/Anchors). Inherited.
 
 ### BackgroundFill
 {: .no_toc }

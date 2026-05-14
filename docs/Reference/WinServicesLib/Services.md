@@ -79,7 +79,7 @@ Syntax: **Services.GetConfiguredService**( *Name* ) **As** [**ServiceManager**](
 *Name*
 : *required* A **String** matching the [**Name**](ServiceManager#name) of one of the [**ServiceManager**](ServiceManager) instances created with [**ConfigureNew**](#configurenew).
 
-Raises run-time error 5 *"service not found"* if no configured service carries that name. Typical use is in the interactive / install branch of `Sub Main`, where a UI button needs to act on a single configured service:
+Raises run-time error 5 *"service not found"* if no configured service has that name. Typical use is in the interactive / install branch of `Sub Main`, where a UI button needs to act on a single configured service:
 
 ```tb
 Private Sub btnInstallA_Click()
@@ -93,7 +93,7 @@ Despite the `Property Get` syntax, the lookup is parameterised by name — it re
 ### InstallAll
 {: .no_toc }
 
-Iterates every [**ServiceManager**](ServiceManager) created through [**ConfigureNew**](#configurenew) and calls its [**Install**](ServiceManager#install) method. Convenience for the typical case where the EXE registers every service it hosts in one shot.
+Iterates every [**ServiceManager**](ServiceManager) created through [**ConfigureNew**](#configurenew) and calls its [**Install**](ServiceManager#install) method. Convenience for the typical case where the EXE registers every service it hosts in a single call.
 
 Syntax: **Services.InstallAll**
 

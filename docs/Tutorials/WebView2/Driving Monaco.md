@@ -80,7 +80,7 @@ End Sub
 
 ## Pushing the initial content
 
-Once Monaco has finished loading, the bootstrap script listens for a `message` event carrying the HTML to seed the editor with. Fire that message after the editor's [**NavigationComplete**](../../tB/Packages/WebView2/WebView2/#navigationcomplete):
+Once Monaco has finished loading, the bootstrap script listens for a `message` event containing the HTML to seed the editor with. Fire that message after the editor's [**NavigationComplete**](../../tB/Packages/WebView2/WebView2/#navigationcomplete):
 
 ```tb
 Private Sub WebView_NavigationComplete( _
@@ -111,7 +111,7 @@ That's it — the preview pane re-renders on every edit.
 
 ## Detecting a missing Edge runtime
 
-A reasonable fraction of users will run the application on a machine where the WebView2 Evergreen runtime isn't installed. The [**Error**](../../tB/Packages/WebView2/WebView2/#error) event surfaces this case as Win32 error code `&H80070002` (`ERROR_FILE_NOT_FOUND`):
+A reasonable fraction of users will run the application on a machine where the WebView2 Evergreen runtime isn't installed. The [**Error**](../../tB/Packages/WebView2/WebView2/#error) event reports this case as Win32 error code `&H80070002` (`ERROR_FILE_NOT_FOUND`):
 
 ```tb
 Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) _

@@ -31,7 +31,7 @@ End Sub
 ## Controls
 
 - [WaynesButton](WaynesButton/) -- owner-drawn push-button with separate visual states for normal, hover, focused, and pressed
-- [WaynesForm](WaynesForm/) -- top-level form for hosting custom controls; carries the **WindowsOptions** sub-object that drives the Win32 frame
+- [WaynesForm](WaynesForm/) -- top-level form for hosting custom controls; exposes the **WindowsOptions** sub-object that controls the Win32 frame
 - [WaynesFrame](WaynesFrame) -- rectangular container that fills its area with a configurable background
 - [WaynesGrid](WaynesGrid/) -- tabular data display with column headers, row headers, hover / selection states, and resizable columns
 - [WaynesLabel](WaynesLabel) -- static text display with fill, text rendering, and caption
@@ -49,9 +49,9 @@ These members are listed on each control's own page; their definitions are ident
 
 ## Style objects
 
-The visual style of every control is driven by a handful of small helper classes, instantiated automatically through `Public WithEvents …` properties. They are nested arbitrarily — a [**TextRendering**](Styles/TextRendering) contains a [**Fill**](Styles/Fill) for the text colour, which contains a `Granularity` and an array of `FillColorPoint` gradient stops; an array of [**Border**](Styles/Borders#border-class) objects describes how the outline of a control is stroked; and so on.
+The visual style of every control is controlled by a few small helper classes, instantiated automatically through `Public WithEvents …` properties. They are nested arbitrarily — a [**TextRendering**](Styles/TextRendering) contains a [**Fill**](Styles/Fill) for the text colour, which contains a `Granularity` and an array of `FillColorPoint` gradient stops; an array of [**Border**](Styles/Borders#border-class) objects describes how the outline of a control is stroked; and so on.
 
-- [Anchors](Styles/Anchors) -- which sides of a control are pinned to its container when the container is resized
+- [Anchors](Styles/Anchors) -- which sides of a control are attached to its container when the container is resized
 - [Borders](Styles/Borders) -- one or more border strokes drawn around a control (including the single-stroke `Border` sub-object)
 - [Corners](Styles/Corners) -- the four corner shapes and radii of a control (including the per-corner `Corner` sub-object)
 - [Fill](Styles/Fill) -- the colour or gradient that paints a region (including the `FillColorPoint` / `FillColorPoints` gradient-stop sub-objects)
@@ -69,7 +69,7 @@ For authoring your own custom controls or forms, the **CustomControls DESIGNER**
 - [ICustomForm](Framework/ICustomForm) -- the analogous interface for custom form classes
 - [CustomControlContext](Framework/CustomControlContext) -- callback object passed to **Initialize**; offers serializer access, repaint requests, timer creation, and focus changes
 - [CustomFormContext](Framework/CustomFormContext) -- a **CustomControlContext** extended with **Show** and **Close** for form-class controls
-- [CustomControlTimer](Framework/CustomControlTimer) -- the timer returned by **CustomControlContext.CreateTimer**; carries **Interval**, **Enabled**, and an **OnTimer** event
+- [CustomControlTimer](Framework/CustomControlTimer) -- the timer returned by **CustomControlContext.CreateTimer**; has **Interval**, **Enabled**, and an **OnTimer** event
 - [CustomControlsCollection](Framework/CustomControlsCollection) -- the **Controls** collection on a form
 - [Canvas](Framework/Canvas) -- the drawing surface passed to **Paint**; the only way to put pixels into a custom control
 - [SerializeInfo](Framework/SerializeInfo) -- the per-instance serializer reached via **CustomControlContext.GetSerializer**; used to deserialize designer-set property values and to query the runtime mode

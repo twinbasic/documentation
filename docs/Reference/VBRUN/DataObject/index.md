@@ -44,7 +44,7 @@ Next F
 
 ## Files
 
-When a **DataObject** carries a list of file paths — for example, the payload of a Windows shell drag-and-drop — [**Files**](Files) returns a [**DataObjectFiles**](DataObjectFiles) collection holding each path as a **String**.
+When a **DataObject** contains a list of file paths — for example, the payload of a Windows shell drag-and-drop — [**Files**](Files) returns a [**DataObjectFiles**](DataObjectFiles) collection holding each path as a **String**.
 
 ```tb
 Dim Path As Variant

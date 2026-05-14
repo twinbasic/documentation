@@ -35,7 +35,7 @@ ProgressBar1.MarqueeSpeed = 30       ' milliseconds per animation step
 ProgressBar1.MarqueeAnimation = True ' start animating
 ```
 
-The control inherits the non-focusable rect-dockable surface from `BaseControlNotFocusable2` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the non-focusable rect-dockable members from `BaseControlNotFocusable2` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -44,7 +44,7 @@ The control inherits the non-focusable rect-dockable surface from `BaseControlNo
 
 The visual is the cartesian product of three properties:
 
-- **[Scrolling](#scrolling)** — *Standard* (the default, animated segmented bar), *Smooth* (a continuous block — combine with [**SmoothReverse**](#smoothreverse) to allow the bar to decrease), or *Marquee* (an indeterminate animated stripe; drive with [**MarqueeAnimation**](#marqueeanimation) + [**MarqueeSpeed**](#marqueespeed)).
+- **[Scrolling](#scrolling)** — *Standard* (the default, animated segmented bar), *Smooth* (a continuous block — combine with [**SmoothReverse**](#smoothreverse) to allow the bar to decrease), or *Marquee* (an indeterminate animated stripe; control with [**MarqueeAnimation**](#marqueeanimation) + [**MarqueeSpeed**](#marqueespeed)).
 - **[State](#state)** — *Normal* (theme-default color, typically green), *Error* (typically red), or *Paused* (typically yellow). The OS chooses the actual colors based on its current theme.
 - **[Orientation](#orientation)** — *Horizontal* or *Vertical*.
 
@@ -52,7 +52,7 @@ All three can be changed at run time; the underlying Win32 styles are re-applied
 
 ## Range, value, and stepping
 
-[**Min**](#min) and [**Max**](#max) bracket the range. [**Value**](#value) is the current position. [**Step**](#step) is the amount [**StepIt**](#stepit) advances the bar by, used to drive the common loop pattern:
+[**Min**](#min) and [**Max**](#max) bracket the range. [**Value**](#value) is the current position. [**Step**](#step) is the amount [**StepIt**](#stepit) advances the bar by, used to power the common loop pattern:
 
 ```tb
 ProgressBar1.Min = 0

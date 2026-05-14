@@ -13,7 +13,7 @@ Syntax: *object*.**StatusCode**
 *object*
 : *required* An object expression that evaluates to an **AsyncProperty** object.
 
-The value identifies the step the read is currently on — `vbAsyncStatusCodeFindingResource`, `vbAsyncStatusCodeConnecting`, `vbAsyncStatusCodeBeginDownloadData`, `vbAsyncStatusCodeEndDownloadData`, and so on. `vbAsyncStatusCodeError` (0) indicates that the read failed; the [**Status**](Status) property carries the matching human-readable description.
+The value identifies the step the read is currently on — `vbAsyncStatusCodeFindingResource`, `vbAsyncStatusCodeConnecting`, `vbAsyncStatusCodeBeginDownloadData`, `vbAsyncStatusCodeEndDownloadData`, and so on. `vbAsyncStatusCodeError` (0) indicates that the read failed; the [**Status**](Status) property contains the matching human-readable description.
 
 ### See Also
 

@@ -65,7 +65,7 @@ On Error GoTo 0
 Set MyXl = GetObject("C:\Reports\MyTest.xls")
 MyXl.Application.Visible = True
 MyXl.Parent.Windows(1).Visible = True
-' ... drive the workbook through MyXl ...
+' ... work with the workbook through MyXl ...
 
 If ExcelWasNotRunning Then MyXl.Application.Quit
 Set MyXl = Nothing

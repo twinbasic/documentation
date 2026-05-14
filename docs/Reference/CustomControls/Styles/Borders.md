@@ -33,7 +33,7 @@ elems(2).Fill.ColorPoints.SetSolidColor &H4D7AB4       ' deeper blue
 btnGo.NormalState.Borders.Elements = elems
 ```
 
-A single [**Border**](#border-class) can also carry a gradient instead of a solid colour — assign a multi-stop [**Fill**](Fill) to its [**Fill**](#fill) member. Set [**BlendWithBackgroundFill**](#blendwithbackgroundfill) to **True** on a translucent border to make it tint with the control's own **BackgroundFill** rather than with whatever lies under the control.
+A single [**Border**](#border-class) can also display a gradient instead of a solid colour — assign a multi-stop [**Fill**](Fill) to its [**Fill**](#fill) member. Set [**BlendWithBackgroundFill**](#blendwithbackgroundfill) to **True** on a translucent border to make it tint with the control's own **BackgroundFill** rather than with whatever lies under the control.
 
 * TOC
 {:toc}
@@ -87,7 +87,7 @@ A single border stroke. Elements of [**Borders.Elements**](#elements), and also 
 ### BlendWithBackgroundFill
 {: .no_toc }
 
-When **True**, the border's colour alpha-blends with the control's **BackgroundFill** rather than with whatever is painted underneath the control. Lets a translucent border colour pick up the background tint instead of the form's. **Boolean**. Default: **False**.
+When **True**, the border's colour alpha-blends with the control's **BackgroundFill** rather than with whatever is painted underneath the control. Lets a translucent border colour use the background tint instead of the form's. **Boolean**. Default: **False**.
 
 ### Fill
 {: .no_toc }

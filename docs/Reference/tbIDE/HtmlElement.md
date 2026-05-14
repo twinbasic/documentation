@@ -8,7 +8,7 @@ has_toc: false
 # HtmlElement class
 {: .no_toc }
 
-One DOM element inside a tool window — every node in the rendered HTML tree is reachable as an **HtmlElement**, starting from [**ToolWindow.RootDomElement**](ToolWindow#rootdomelement) and walking down through [**ChildDomElements**](#childdomelements). Inline overlays inside a code pane (created with [**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)) also surface as **HtmlElement** instances and behave identically.
+One DOM element inside a tool window — every node in the rendered HTML tree is reachable as an **HtmlElement**, starting from [**ToolWindow.RootDomElement**](ToolWindow#rootdomelement) and walking down through [**ChildDomElements**](#childdomelements). Inline overlays inside a code pane (created with [**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)) also appear as **HtmlElement** instances and behave identically.
 
 ```tb
 With myToolWindow.RootDomElement.ChildDomElements.Add("greeting", "h1")
@@ -42,7 +42,7 @@ The unique ID assigned to the element when it was created via [**HtmlElements.Ad
 
 The element's dynamic property bag — every DOM property, every CSS-style property, every custom-widget extension lives here. **As** [**HtmlElementProperties**](HtmlElementProperties). **DefaultMember** — so `element.<name>` is equivalent to `element.Properties.<name>`.
 
-The bag is [`[COMExtensible(True)]`](.#dynamic-dom-property-resolution): property names are resolved against the DOM element at run time, so the accepted set is everything the underlying tag supports — refer to MDN for standard DOM properties, and to the custom-widget documentation (Chart.js, Monaco, …) for the widget-specific surface.
+The bag is [`[COMExtensible(True)]`](.#dynamic-dom-property-resolution): property names are resolved against the DOM element at run time, so the accepted set is everything the underlying tag supports — refer to MDN for standard DOM properties, and to the custom-widget documentation (Chart.js, Monaco, …) for the widget-specific properties.
 
 ## Methods
 

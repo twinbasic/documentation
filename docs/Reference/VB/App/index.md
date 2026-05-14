@@ -22,7 +22,7 @@ End If
 App.HelpFile = App.Path & "\help.chm"
 ```
 
-Most properties are read-only and are populated from the project settings (compiled into the executable's Win32 `VERSIONINFO` resource) at build time. The handful of read/write properties — [**Title**](#title) and [**HelpFile**](#helpfile) — let code change a small amount of run-time state that other parts of the runtime (notably the form caption defaults and the **F1** help dispatcher) consult.
+Most properties are read-only and are populated from the project settings (compiled into the executable's Win32 `VERSIONINFO` resource) at build time. The few read/write properties — [**Title**](#title) and [**HelpFile**](#helpfile) — let code change a small amount of run-time state that other parts of the runtime (notably the form caption defaults and the **F1** help dispatcher) consult.
 
 * TOC
 {:toc}
@@ -41,7 +41,7 @@ Most properties are read-only and are populated from the project settings (compi
 
 When the project is running inside the twinBASIC IDE — `App.IsInIDE` is **True** — [**Path**](#path) is the folder of the *project file* rather than of a compiled EXE, so it remains useful as a "where the application is" anchor for opening relative resources at design time.
 
-[**LastBuildPath**](#lastbuildpath) is a twinBASIC-specific extension that records the path the most recent IDE build wrote its EXE to — handy for build scripts that need to chain steps after an IDE build.
+[**LastBuildPath**](#lastbuildpath) is a twinBASIC-specific extension that records the path the most recent IDE build wrote its EXE to — useful for build scripts that need to chain steps after an IDE build.
 
 ## Version metadata
 
@@ -200,7 +200,7 @@ The folder containing the executable, with no trailing backslash. **String**, re
 ### PrevInstance
 {: .no_toc }
 
-**True** if another instance of the application is already running, **False** otherwise. **Boolean**, read-only. Typically tested at startup so the second instance can bring the first to the foreground or exit cleanly.
+**True** if another instance of the application is already running, **False** otherwise. **Boolean**, read-only. Typically tested at startup so the second instance can bring the first to the foreground or exit gracefully.
 
 ### ProductName
 {: .no_toc }

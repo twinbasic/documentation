@@ -58,7 +58,7 @@ Each frame defines its own option-button group. When the user selects an [**Opti
 
 ## Transparency and opacity
 
-[**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) drive Windows' layered-window features. Setting [**Opacity**](#opacity) below 100 makes the frame and its contained controls translucent; setting [**TransparencyKey**](#transparencykey) to a colour makes pixels of that colour fully transparent on screen. Both features require Windows 8 or later when the frame contains child controls — otherwise only the frame's own background is affected.
+[**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) enable Windows' layered-window features. Setting [**Opacity**](#opacity) below 100 makes the frame and its contained controls translucent; setting [**TransparencyKey**](#transparencykey) to a colour makes pixels of that colour fully transparent on screen. Both features require Windows 8 or later when the frame contains child controls — otherwise only the frame's own background is affected.
 
 ## Properties
 
@@ -330,7 +330,7 @@ Syntax: *object*.**Refresh**
 ### SetFocus
 {: .no_toc }
 
-Attempts to move the input focus to the frame. Because a frame is not focusable, this call has no observable effect on which control holds the focus, but it is provided for parity with the rest of the control surface and for compatibility with code that calls **SetFocus** generically.
+Attempts to move the input focus to the frame. Because a frame is not focusable, this call has no observable effect on which control holds the focus, but it is provided for parity with the rest of the control API and for compatibility with code that calls **SetFocus** generically.
 
 Syntax: *object*.**SetFocus**
 

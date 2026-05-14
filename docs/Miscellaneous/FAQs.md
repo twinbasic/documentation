@@ -275,7 +275,7 @@ For an existing project, the Project Scope Option Explicit can be turned on or o
 <summary markdown=span><b>Does twinBASIC support addins?</b></summary>
 {: #addins }
 
-Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has its own powerful addin infrastructure based on modern web technologies. See Samples 10 through 16 in the 'Samples' tab of the New Project dialog:
+Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has its own addin infrastructure based on modern web technologies. See Samples 10 through 16 in the 'Samples' tab of the New Project dialog:
 
 ![image](Images/0e24eb5c-c9af-49a9-a908-03968b211554.png) 
 

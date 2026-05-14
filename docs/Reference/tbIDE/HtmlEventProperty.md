@@ -29,7 +29,7 @@ End Sub
 ### Properties
 {: .no_toc }
 
-A nested [**HtmlEventProperties**](HtmlEventProperties) for fields that themselves carry sub-fields (the canonical example is `.target`, whose sub-fields are the target element's own properties — `id`, `value`, `name`, `tagName`, …). Read-only at the accessor level.
+A nested [**HtmlEventProperties**](HtmlEventProperties) for fields that themselves have sub-fields (the canonical example is `.target`, whose sub-fields are the target element's own properties — `id`, `value`, `name`, `tagName`, …). Read-only at the accessor level.
 
 Syntax: *property*.**Properties** **As** [**HtmlEventProperties**](HtmlEventProperties)
 

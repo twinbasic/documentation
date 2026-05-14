@@ -33,7 +33,7 @@ The interface's **DefaultMember** is [**Item**](#item) — so `properties("style
 ### Item
 {: .no_toc }
 
-Looks up a property by name. Returns an [**HtmlElementProperty**](HtmlElementProperty), which carries the property's value plus a nested [**Properties**](HtmlElementProperty#properties) for further drill-down.
+Looks up a property by name. Returns an [**HtmlElementProperty**](HtmlElementProperty), which includes the property's value plus a nested [**Properties**](HtmlElementProperty#properties) for further drill-down.
 
 Syntax: *properties*( *DomPropertyName* ) **As** [**HtmlElementProperty**](HtmlElementProperty)
 
