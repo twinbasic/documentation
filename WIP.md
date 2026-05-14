@@ -4,21 +4,22 @@ Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source un
 
 ## Status
 
-Reference documentation is **complete**. All eleven packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
+Reference documentation is **mostly complete**. Eleven packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); a twelfth (WinNativeCommonCtls) is in progress. The CEF and WebView2 packages also carry a tutorial set.
 
-| Package                              | Reference | Tutorials |
-|--------------------------------------|-----------|-----------|
-| VBA package                          | done      | —         |
-| VBRUN package                        | done      | —         |
-| VB package                           | done      | —         |
-| WebView2Package                      | done      | done      |
-| Assert package                       | done      | —         |
-| CustomControls / CustomControlsPackage | done    | —         |
-| cefPackage (CEF)                     | done      | done      |
-| WinEventLogLib                       | done      | —         |
-| WinNamedPipesLib                     | done      | —         |
-| WinServicesLib                       | done      | —         |
-| tbIDE                                | done      | —         |
+| Package                              | Reference   | Tutorials |
+|--------------------------------------|-------------|-----------|
+| VBA package                          | done        | —         |
+| VBRUN package                        | done        | —         |
+| VB package                           | done        | —         |
+| WebView2Package                      | done        | done      |
+| Assert package                       | done        | —         |
+| CustomControls / CustomControlsPackage | done      | —         |
+| cefPackage (CEF)                     | done        | done      |
+| WinEventLogLib                       | done        | —         |
+| WinNamedPipesLib                     | done        | —         |
+| WinServicesLib                       | done        | —         |
+| tbIDE                                | done        | —         |
+| WinNativeCommonCtls                  | in progress | —         |
 
 The rest of this file is the maintenance guide for adding new pages or updating existing ones — primary-source paths, page templates, cross-section linking conventions, the per-symbol workflow, and the integrity check.
 
@@ -37,6 +38,7 @@ When working from a primary source: always read it first — **never paraphrase 
 - `docs/Reference/WinEventLogLib/` — Windows Event Log package: the generic `EventLog(Of T1, T2)` class and the `EventLogHelperPublic` module with its single `RegisterEventLogInternal` helper. Three pages total — `index.md`, `EventLog.md`, `EventLogHelperPublic.md`.
 - `docs/Reference/WinNamedPipesLib/` — Windows Named Pipes package: the IOCP-based async pipe framework — `NamedPipeServer` + `NamedPipeServerConnection` on the server side, `NamedPipeClientManager` + `NamedPipeClientConnection` on the client side. Five pages total (`index.md` + one per class).
 - `docs/Reference/WinServicesLib/` — Windows Services package: a thin OS-services wrapper. `Services` (predeclared singleton) coordinates one or more `ServiceManager` configurations; `ServiceCreator(Of T)` is the generic factory the dispatcher uses to instantiate each user-defined `ITbService` class; `ServiceState` is a read-only state snapshot for an installed service. Four public enums (`ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants`) live under `Enumerations/`.
+- `docs/Reference/WinNativeCommonCtls/` — Windows Native Common Controls compatibility package: a VB6-compatible Microsoft Common Controls 6.0 (`MSCOMCTL.OCX`) replacement, written on top of the Win32 ComCtl32 controls. Eight controls (**DTPicker**, **ImageList**, **ListView**, **MonthView**, **ProgressBar**, **Slider**, **TreeView**, **UpDown**), plus eight sub-object classes (**ListImages** / **ListImage**, **ListItems** / **ListItem**, **ColumnHeaders** / **ColumnHeader**, **Nodes** / **Node**) reached through container properties on the three collection-bearing controls, plus ~16 user-facing enumerations. Each control is a `<Name>BaseCtl` (`[COMCreatable(False)]`) plus a thin `<Name>` leaf tagged `[WindowsControl(...)]` — the same split VB-package and CEF use.
 - `docs/Reference/tbIDE/` — IDE Extensibility package (this is the **addin SDK**). The package is type-only — it ships **public interfaces + CoClasses** that an addin DLL binds to; every implementation behind them lives in the twinBASIC IDE itself. The user-facing surface is one entry-point factory (`tbCreateCompilerAddin`) plus ~20 CoClasses grouped by role: the addin contract (`AddIn`), the root API (`Host`), the loaded `Project`, the editors collection (`Editor` / `CodeEditor` / `Editors`), the virtual file system (`FileSystem` / `FileSystemItem` / `Folder` / `File`), the in-IDE UI surface (`Toolbar` / `Toolbars` / `Button` / `ToolWindow` / `ToolWindows`), the HTML DOM inside a tool window (`HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` / `HtmlEventProperty` / `HtmlEventProperties`), the `DebugConsole`, `KeyboardShortcuts`, `Themes`, and the single concrete user-instantiable helper class `AddinTimer`. Flat layout — one page per CoClass / Class plus the index landing.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
@@ -72,6 +74,7 @@ All of twinbasic's package sources are at:
 ..\tb-export\NewProject\Packages\WinEventLogLib\Sources\
 ..\tb-export\NewProject\Packages\WinNamedPipesLib\Sources\
 ..\tb-export\NewProject\Packages\WinServicesLib\Sources\
+..\tb-export\NewProject\Packages\WinNativeCommonCtls\Sources\
 etc.
 ```
 
@@ -1237,6 +1240,189 @@ All flat — no `Enumerations/` sub-folder; the four nested enums (`RevealArea`,
 
 **License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2022) — same situation as WebView2Package, Assert, CustomControls, CEF, and the three winlibs. Pages are fully original content; **omit** the `vba_attribution: true` flag.
 
+### WinNativeCommonCtls
+
+The package's `Settings` describes it as the *"twinBASIC - Common Controls Compatibility Package"* — a VB6-compatible replacement for **Microsoft Common Controls 6.0** (`MSCOMCTL.OCX`), written on top of the Win32 ComCtl32 controls (`COMCTL32.DLL` / `MSFTEDIT.DLL`). It ships eight controls that mirror the MSCOMCTL surface name-for-name where possible. The package was first released v0.0.1.0 on 18-FEB-2023 and is independent of (but co-versioned with) the VB compatibility package.
+
+Layout of `..\tb-export\NewProject\Packages\WinNativeCommonCtls\Sources\` — two sub-folders:
+
+- `CONTROLS\` — one `.twin` per control. Each file declares two classes: the heavy `<Name>BaseCtl` (where every event / method / property is implemented, tagged `[COMCreatable(False)]` + `[EventsUseDispInterface]`) and the thin `<Name>` leaf (`Inherits <Name>BaseCtl`, tagged `[WindowsControl("/miscellaneous/ICONS??/<Name>??.png")]`). The leaf adds only a `Class_BeforeFirstMethodAccess` that calls `[_HiddenModule].EnsureContainerIsLoaded(Me)` — same `<Name>BaseCtl` / `<Name>` leaf split that CEF and the VB controls use.
+- `SUPPORT\` — the sub-object classes (`ListItem` / `ListItems`, `ColumnHeader` / `ColumnHeaders`, `Node` / `Nodes`, `ListImage` / `ListImages`), the per-control `<Name>Consts.twin` modules holding Win32 SDK plumbing (with a small minority of user-facing enums mixed in), the `Interfaces.twin` private interfaces, the design-time `ImageListPropertyPage` form, and a couple of private helper modules.
+
+Eight controls (one `.twin` per pair):
+
+| File              | `<Name>BaseCtl` inherits        | Role                                                                                          |
+|-------------------|---------------------------------|-----------------------------------------------------------------------------------------------|
+| `DTPicker.twin`   | `VB.BaseControlFocusable`       | Date / time picker — calendar drop-down, single-date `Value`, custom format strings           |
+| `ImageList.twin`  | `VB.BaseControlNotFocusable`    | Off-screen image collection — feeds `ListView` / `TreeView` icons via `Icons` / `ImageList` properties |
+| `ListView.twin`   | `VB.BaseControlFocusable`       | Multi-column list — four `View` modes (Icon / SmallIcon / List / Report), label-edit, checkboxes |
+| `MonthView.twin`  | `VB.BaseControlFocusable`       | Full-month calendar grid — multi-select, bold-day callbacks, week-number / today display      |
+| `ProgressBar.twin`| `VB.BaseControlNotFocusable2`   | Standard / Smooth / Marquee progress indicator with three visual states (Normal / Error / Paused) |
+| `Slider.twin`     | `VB.BaseControlFocusableNoFont` | Trackbar / slider — tick marks, range selection, vertical or horizontal orientation           |
+| `TreeView.twin`   | `VB.BaseControlFocusable`       | Hierarchical tree of `Node` objects — sorting, label-edit, checkboxes, image lists            |
+| `UpDown.twin`     | `VB.BaseControlFocusableNoFont` | Spin control (up / down arrows) — pure Increment / Min / Max / Value; no auto-buddy binding   |
+
+Every `<Name>BaseCtl` carries `[WithDispatchForwarding] Implements Control` (where `Control` is `Private Interface` in `Interfaces.twin`, marked `[COMExtensible]` — essentially an `Object` alias that makes the dispatch forwarding behave). They also implement a chorus of `VB.IWindowsControl`, `VB.IWindowElementEventsCommon`, `VB.IWindowElementEventsCommonControls`, `VB.IWindowElementEventsUC`, `VB.IWindowElementEventsAX` — these are the VB-package event-dispatch interfaces; do **not** surface them on the docs. Each control also implements one private `Tb<Name>Private` interface (declared `[ComImport(True)]` inside the same `.twin`) that the package's collection sub-objects use to refcount and reach internal state without taking a strong reference; **no doc page** for those.
+
+#### Public user-facing surface
+
+The eight leaf classes `DTPicker`, `ImageList`, `ListView`, `MonthView`, `ProgressBar`, `Slider`, `TreeView`, `UpDown` are what user code references at design time (via `[WindowsControl(...)]`) and at run time (`Dim lv As ListView`). The `<Name>BaseCtl` base classes are the implementation half — `[COMCreatable(False)]` and not user-instantiable, but **the entire user-visible surface is declared on them**. Document on the leaf's name (`ListView.md`), describe the full surface, and don't surface the `<Name>BaseCtl` split.
+
+The package also surfaces eight sub-object classes — collection plus item:
+
+| Class           | Reached via                                              | Notes                                                                              |
+|-----------------|----------------------------------------------------------|------------------------------------------------------------------------------------|
+| `ListImages`    | `ImageList.ListImages` (Get-only)                        | Enumerable; `Item(Index or Key)` default member; `Add`, `Remove`, `Clear`, `Exists` |
+| `ListImage`     | element of `ListImages` (returned from `Add`, indexed)   | `Index` (read-only), `Key`, `Picture`, `Tag`, plus `Draw(hDC, x, y, Style)` and `ExtractIcon` |
+| `ListItems`    | `ListView.ListItems` (Get-only)                          | Enumerable; `Item(Index or Key)` default member; `Add`, `Remove`, `Clear`          |
+| `ListItem`     | element of `ListItems`                                   | `Text` (default), `SubItems(Index)`, `Icon`, `SmallIcon`, `Checked`, `Selected`, `Ghosted`, `Bold`, `BackColor`, `ForeColor`, `Tag`, `ToolTipText`, `EnsureVisible`, `Left` / `Top` / `Width` / `Height`, `Index` (RO), `Key`, `CreateDragImage` (`[Unimplemented]`) |
+| `ColumnHeaders` | `ListView.ColumnHeaders` (Get-only)                      | Same shape as `ListItems`; `Add(Index, Key, Text, Width, Alignment, Icon)` returns `ColumnHeader` |
+| `ColumnHeader`  | element of `ColumnHeaders`                               | `Text` (default), `Width`, `Left` (RO), `Alignment` (typed `ListColumnAlignmentConstants`), `Position`, `SubItemIndex`, `Icon`, `Index` (RO), `Key`, `Tag` |
+| `Nodes`        | `TreeView.Nodes` (Get-only)                              | Enumerable; `Item(Index or Key)` default; `Add(Relative, Relationship, Key, Text, Image, SelectedImage)` returns `Node` |
+| `Node`         | element of `Nodes`                                       | `Text` (default), `Parent`, `Child`, `Next`, `Previous`, `Root`, `FirstSibling`, `LastSibling`, `Children` (count), `Expanded`, `Selected`, `Checked`, `Bold`, `BackColor`, `ForeColor`, `Image`, `SelectedImage`, `Tag`, `FullPath`, `Visible` (RO), `Sorted`, `SortOrder`, `SortType`, `EnsureVisible`, `Index` (RO), `Key` |
+
+Every sub-object is `[COMCreatable(False)]` — its constructor takes a `<Name>BaseCtl` reference, so user code never instantiates these directly. They are returned from container methods (`Add`, `Item`) and reached through container properties.
+
+Container cross-references (typed as the `<Name>BaseCtl` parent, since the controls accept either the base or the leaf — but document the parameter as the **leaf**):
+
+- `TreeView.ImageList` / `Let` / `Set` — typed `As ImageListBaseCtl`; the user assigns an `ImageList`.
+- `ListView.Icons` / `Let` / `Set`, `ListView.SmallIcons` / `Let` / `Set`, `ListView.ColumnHeaderIcons` / `Let` / `Set` — all three typed `As ImageListBaseCtl`; the user assigns an `ImageList`.
+
+`ListView.BorderStyle` is unusually typed `As TreeBorderStyleConstants` (declared in `TreeViewPublic`, not in a `ListView*` module) — the enum is shared across both controls. Surface this on the `BorderStyle` entry without trying to rationalise it.
+
+#### Per-control highlights
+
+These are the points worth surfacing on each control's page that are *not* obvious from a flat property list:
+
+- **DTPicker** — the only control where most behaviour is in the calendar drop-down, not the inline display. The `Calendar*` colour properties (`CalendarBackColor`, `CalendarForeColor`, `CalendarTitleBackColor`, `CalendarTitleForeColor`, `CalendarTrailingForeColor`) act on the dropped-down month grid via `DTM_SETMCCOLOR`. `Format` (`DTPickerFormatConstants`) chooses between long-date / short-date / time / custom; when set to `dtpCustom`, the picker pulls `CustomFormat` (a `GetDateFormat`-style picture string). The control exposes `Year` / `Month` / `Week` / `Day` / `Hour` / `Minute` / `Second` accessors that decompose the current `Value`. `Value` is `Variant` — it can be `Null` (no date selected) when `CheckBox = True` and the user unchecks the box. Events `Format`, `FormatSize`, `CallbackKeyDown` fire when `Format = dtpCustom` and the format string contains a callback token.
+- **ImageList** — purely off-screen; `Visible` does nothing user-meaningful (it's a "store of pictures" control). The `ImageWidth` / `ImageHeight` properties are read/write **only while empty** — once any image is added, the setter raises run-time error 35611 (*"Property is read-only if image list contains images"*). `ColorDepth` is fixed at construction time. `MaskColor` + `UseMaskColor = True` makes the masked pixels transparent when rendered into a control that consumes the image list. `Overlay(Key1, Key2)` composes two list-images into a single `StdPicture`. Bound-count tracking: an `ImageList` cannot be modified (clear / remove) while any control has it bound as `Icons` / `SmallIcons` / `ColumnHeaderIcons` / `ImageList`, throwing error 35617.
+- **ListView** — the largest of the eight. `View` switches the visual mode (`lvwIcon` / `lvwSmallIcon` / `lvwList` / `lvwReport`); `Arrange` (`lvwNone` / `lvwAutoLeft` / `lvwAutoTop`) auto-flows the icon mode; `Report` mode is the only one that shows the `ColumnHeaders`. `LabelEdit` defaults to `lvwAutomatic` — F2 / click-and-wait edits a label in place; `lvwManual` requires `StartLabelEdit()` and `lvwDisabled` blocks editing. `TextBackground` (`lvwTransparent` / `lvwOpaque`) acts on the *item* text rendering, not the control's `BackColor`. `MultiSelect = True` enables Ctrl+click / Shift+click range selection. `CheckBoxes = True` adds a leading checkbox per row and fires `ItemCheck`. `AllowColumnReorder` only matters in Report view. `BorderStyle` is `TreeBorderStyleConstants` (`ccNone` / `ccFixedSingle`). The control surfaces `hWnd` and `hWndHeader` (the embedded `SysHeader32` window) separately. `Scroll` is `[Unimplemented]` per the source. `GetFirstVisible() As ListItem`, `SelectedItem` / `SelectedItemIndex` — the latter is read-only (assign through `ListItem.Selected = True` instead).
+- **MonthView** — `MonthColumns` / `MonthRows` lay out a grid of side-by-side month panels (`ResizeToFit` auto-sizes the control to fit them). `Day` / `Month` / `Week` / `Year` are the same decomposition pattern as DTPicker. `MaxSelCount` is the upper bound of a multi-day selection (default 7, max ≈ 366 per the Win32 control); `SelStart` and `SelEnd` are the inclusive range. `MinDate` / `MaxDate` bound the navigable range. `Value` is the *current selection's start date* (same as `SelStart` when `MultiSelect = False`). The control fires both `Click` (any click) and `DateClick` (only when a date cell is hit, with the date passed as a parameter); same split for `DblClick` / `DateDblClick`. `GetDayBold` is an event-driven callback — the control fires it for each visible month asking for a `State()` array of which days to render bold; this is the mechanism for highlighting holidays, schedule entries, etc. `DayBold` is an alternative per-date setter. `GetMonthRange(IncludeTrailing, StartDate, EndDate)` returns the visible date span.
+- **ProgressBar** — three orthogonal axes. `Min` / `Max` / `Value` are the standard range. `Step` + `StepIt()` advances the bar by `Step` units (typical loop pattern: `Min = 0`, `Max = N`, then `StepIt()` per iteration). `Scrolling = PrbScrollingStandard` (default) animates the bar in segments; `PrbScrollingSmooth` is the continuous block; `PrbScrollingMarquee` is the indeterminate animation (drive with `MarqueeAnimation = True` + `MarqueeSpeed`). `State` (`PrbStateNormal` / `Error` / `Paused`) tints the bar red / yellow per the OS theme. `Orientation` is `PrbOrientation` (`Horizontal` / `Vertical`). The control has `Click` / `DblClick` / `Mouse*` events but **no** `Change` despite the declaration — verify with the source if surfaced (`Change` is declared in the events region but not fired by any Win32 progress-bar notification).
+- **Slider** — `Min` / `Max` / `Value` like a scrollbar; `SmallChange` is the arrow-key step, `LargeChange` is the PgUp / PgDn step. `SelStart` + `SelLength` create a highlighted selection range (visible when `SelectRange = True`). `TickFrequency` controls how often tick marks appear; `TickStyle` (`sldBottomRight` / `sldTopLeft` / `sldBoth` / `sldNoTicks`) chooses which side(s) of the channel they render on. `TextPosition` (`sldAboveLeft` / `sldBelowRight`) is for the optional tip text. `HideThumb = True` removes the draggable indicator. `ShowTip = True` enables the floating tooltip showing the current value during drag. `Orientation` is `OrientationConstants` (the shared horizontal / vertical enum used also by `UpDown`).
+- **TreeView** — the second-largest control. `Style` (`TreeStyleConstants`, 8 values) is a composite of *show / hide* flags for tree-lines / plus-minus boxes / icons / text — the values name what's shown. `LineStyle` chooses `tvwRootLines` (lines from root nodes) or `tvwTreeLines` (lines only from children). `Sorted` / `SortOrder` / `SortType` apply at the root level; each `Node` has its own per-subtree `Sorted` / `SortOrder` / `SortType`. `LabelEdit` is the same gating as `ListView.LabelEdit` (`tvwAutomatic` / `Manual` / `Disabled`). `CheckBoxes = True` adds per-node checkboxes; `FullRowSelect` extends the selection highlight across the full row width. `Indentation` is in twips. `HitTest(x, y)` returns the `Node` at a point (for hover effects, drag-drop). `SelectedItem` (`Get` / `Let` / `Set`) and `DropHighlight` (`Get` / `Let` / `Set`) are both `Node`-typed. `StartLabelEdit()` for `Manual` mode. `GetVisibleCount()` returns how many full nodes the visible area shows. `Scroll` event new to tB.
+- **UpDown** — pure spin control: `Min` / `Max` / `Value` / `Increment`. `Orientation` is `OrientationConstants` (horizontal pair of arrows or vertical, the more common). Events are `Change` (any time `Value` changes), `UpClick`, `DownClick`. There is *no* auto-buddy / partner-control facility in this version (the Win32 `UDS_AUTOBUDDY` flag is in the source enums but not exposed) — user code wires `UpClick` / `DownClick` to update the partner control manually.
+
+Common surface across every control: `Public Opacity As Double = 100` (with the *"REQUIRES TARGET OS 6.2+ FOR CHILD CONTROLS."* description), `Public TransparencyKey As OLE_COLOR = -1` (same OS requirement), and (where `FEATURE_OLEDRAGDROP` is enabled at compile time) `Public OLEDropMode As VBRUN.OLEDropConstants` plus the `OLECompleteDrag` / `OLEDragDrop` / `OLEDragOver` / `OLEGiveFeedback` / `OLESetData` / `OLEStartDrag` events. `Public OLEDrag()` method on every control. `Public Property Get Parent() As Object` and `Public Property Get Object() As Object` on every control. The inherited surface from `VB.BaseControl*` includes `Name`, `Left`, `Top`, `Width`, `Height`, `Anchors`, `Dock`, `Visible`, `Enabled`, `BackColor` / `ForeColor` / `Font` (where focusable), `Appearance`, `MousePointer` / `MouseIcon`, `ToolTipText`, `DragMode` / `DragIcon`, `Drag()`, `Refresh()`, `SetFocus()` (focusable variants), `ZOrder()`, `CausesValidation`, `TabIndex` / `TabStop` (focusable variants), `VisualStyles`, `hWnd`, `HelpContextID` / `WhatsThisHelpID`. Walk the relevant `Inherits VB.BaseControl*` chain in `..\tb-export\NewProject\Packages\VB\Sources\BASE\` to enumerate exactly what each control's variant adds.
+
+#### Per-control nested enums (fold onto the declaring control's page)
+
+These enums are declared *inside* each `<Name>BaseCtl` (`Enum <Name>` without `Public`, which still surfaces because the enclosing class is public). Following the CustomControls convention for `WaynesSlider.SliderDirection`, document each on its declaring control's page rather than under `Enumerations/`:
+
+| Enum                            | Declared on                | Members                                                                       |
+|---------------------------------|----------------------------|-------------------------------------------------------------------------------|
+| `ImageListColorDepth`           | `ImageListBaseCtl`         | `ColorDepth4Bit = 4`, `ColorDepth8Bit = 8`, `ColorDepth16Bit = 16`, `ColorDepth24Bit = 24`, `ColorDepth32Bit = 32` |
+| `ListViewConstants`             | `ListViewBaseCtl`          | `lvwIcon = 0`, `lvwSmallIcon = 1`, `lvwList = 2`, `lvwReport = 3`             |
+| `ListArrangeConstants`          | `ListViewBaseCtl`          | `lvwNone = 0`, `lvwAutoLeft = 1`, `lvwAutoTop = 2`                            |
+| `ListTextBackgroundConstants`   | `ListViewBaseCtl`          | `lvwTransparent = 0`, `lvwOpaque = 1`                                         |
+| `ListLabelEditConstants`        | `ListViewBaseCtl`          | `lvwAutomatic = 0`, `lvwManual = 1`, `lvwDisabled = 2`                        |
+| `ListColumnAlignmentConstants`  | `ColumnHeader`             | `lvwColumnLeft = 0`, `lvwColumnRight = 1`, `lvwColumnCenter = 2`              |
+| `PrbOrientation`                | `ProgressBarBaseCtl`       | `PrbOrientationHorizontal = 0`, `PrbOrientationVertical = 1`                  |
+| `PrbScrolling`                  | `ProgressBarBaseCtl`       | `PrbScrollingStandard = 0`, `PrbScrollingSmooth = 1`, `PrbScrollingMarquee = 2` |
+| `PrbState`                      | `ProgressBarBaseCtl`       | `PrbStateNormal = 1`, `PrbStateError = 2`, `PrbStatePaused = 3`               |
+| `TickStyleConstants`            | `SliderBaseCtl`            | `sldBottomRight = 0`, `sldTopLeft = 1`, `sldBoth = 2`, `sldNoTicks = 3`       |
+| `TextPositionConstants`         | `SliderBaseCtl`            | `sldAboveLeft = 0`, `sldBelowRight = 1`                                       |
+
+Source-side spelling note: every enum is named `<Name>` (no `Public` modifier) but the *member* names use the historical VB6 prefix conventions — `lvw` for ListView, `tvw` for TreeView, `sld` for Slider, `dtp` for DTPicker, `Prb` for ProgressBar, `cc` for cross-control. Mixed casing in member names (`SldAboveLeft` literal in the source defaults vs `sldAboveLeft` declaration) is a source-side issue; surface members with the declared casing.
+
+#### Module-level enums (under `Enumerations/`)
+
+Five `<Name>Consts.twin` modules in `SUPPORT/` carry Win32 SDK plumbing (message IDs, notification IDs, style flags, Win32 types like `NMHDR` / `SYSTEMTIME` / `LVCOLUMNW`) **plus** a small fraction of user-facing enums. The plumbing is unreachable by user code (mostly inside `Private Module …Consts`); the user-facing enums are split into a separate `Public Module` (TreeView's clean case) or coexist with the plumbing in an effectively-public bare `Module` (the rest). Either way, surface only the user-facing enums:
+
+| Enum                          | Declared in / module                                       | Members                                                              |
+|-------------------------------|------------------------------------------------------------|----------------------------------------------------------------------|
+| `DTPickerFormatConstants`     | `DTPickerConsts.twin` (module `DTPickerConsts`)            | `dtpLongDate = 0`, `dtpShortDate = 1`, `dtpTime = 2`, `dtpCustom = 3` |
+| `TreeBorderStyleConstants`    | `TreeViewConsts.twin` (`Public Module TreeViewPublic`)     | `ccNone = 0`, `ccFixedSingle = 1`                                    |
+| `TreeLabelEditConstants`      | `TreeViewConsts.twin` (`TreeViewPublic`)                   | `tvwAutomatic = 0`, `tvwManual = 1`, `tvwDisabled = 2`               |
+| `TreeLineStyleConstants`      | `TreeViewConsts.twin` (`TreeViewPublic`)                   | `tvwTreeLines = 0`, `tvwRootLines = 1`                               |
+| `TreeStyleConstants`          | `TreeViewConsts.twin` (`TreeViewPublic`)                   | 8 members: `tvwTextOnly`, `tvwPictureText`, `tvwPlusMinusText`, `tvwPlusMinusPictureText`, `tvwTreelinesText`, `tvwTreelinesPictureText`, `tvwTreelinesPlusMinusText`, `tvwTreelinesPlusMinusPictureText` |
+| `TreeRelationshipConstants`   | `TreeViewConsts.twin` (`TreeViewPublic`)                   | `tvwFirst = 0`, `tvwLast = 1`, `tvwNext = 2`, `tvwPrevious = 3`, `tvwChild = 4` |
+| `TreeSortOrderConstants`      | `TreeViewConsts.twin` (`TreeViewPublic`)                   | `tvwAscending = 0`, `tvwDescending = 1`                              |
+| `TreeSortTypeConstants`       | `TreeViewConsts.twin` (`TreeViewPublic`)                   | `tvwBinary = 0`, `tvwText = 1`                                       |
+| `OrientationConstants`        | `Misc.twin` (`Private Module Miscellaneous`)               | `ccOrientationHorizontal = 0`, `ccOrientationVertical = 1` — used by both **Slider** and **UpDown** |
+| `ImlDrawConstants`            | `ImageListConsts.twin` (`Private Module ImageListConsts`)  | `ImlDrawNormal = 1`, `ImlDrawTransparent = 2`, `ImlDrawSelected = 4`, `ImlDrawFocus = 8`, `ImlDrawNoMask = 16` — flag combination; used as `[TypeHint(ImlDrawConstants)]` on `ListImage.Draw`'s `Style` parameter |
+
+For `OrientationConstants` and `ImlDrawConstants` (declared `Public Enum` inside a `Private Module`): the enclosing module is unreachable by name from user code, but the enum members are reachable because they're tagged through `[TypeHint]` on the consuming method's parameter and are also surfaced by the IDE's "implicit member visibility" — i.e. user code writes `Slider1.Orientation = ccOrientationVertical` and `ListImage.Draw(hdc, 0, 0, ImlDrawTransparent Or ImlDrawSelected)`. Document the enum and don't worry about qualification — the user's call site never needs `Module.Enum.Member` form.
+
+The remaining `<Name>Consts.twin` modules (`ImageListConsts`, `ListViewConsts`, `ProgressBarConsts`, `TreeViewConsts.TreeViewConsts` (the private half), `UpDownConsts`, `SliderConsts`, `MonthViewConsts`, `DTPickerConsts` non-`DTPickerFormatConstants` content) are package-internal — Win32 message IDs, style flags, notification structures (`NMHDR`, `NMLISTVIEW`, `NMDATETIMECHANGE`, …) that the controls use to talk to ComCtl32 but that the user never references. **No doc pages** for those; do not document `LVMessages`, `TVMessages`, `MonthViewMessages`, `SliderMessages`, `UpDownMessages`, `DTPickerMessages` and the associated `*Notifications` / `*Styles` enums.
+
+#### Private classes (no doc page)
+
+- `Private Class ListViewHeaderSubclasser` (in `ListView.twin`) — subclasses the embedded `SysHeader32` window to intercept `HDM_LAYOUT` notifications for the column-resize handler. Implementation detail.
+- `Private Class TreeViewNodeCheckState` / `ListViewNodeCheckState` / `TreeViewNodeClick` / `TreeViewNodeDblClick` (in `TreeViewNodeCheckState.twin`) — four `IScheduledCallback`-implementing dispatch helpers that the controls schedule onto the message loop to fire `NodeCheck` / `ItemCheck` / `NodeClick` / `DblClick` events at the right point in the click-handling sequence. Same role as the `…Internal` classes in WinNamedPipesLib; no doc page.
+- `Class ImageListPropertyPage` (in `ImageListPropertyPage.twin`) — `[FormDesignerId]` `[PredeclaredId]` `[COMCreatable(False)]` Form class that's the IDE's design-time property editor for `ImageList` (the "Custom Properties..." button). Invoked from `ImageListBaseCtl.HandleInvokePropertyExtension`. Pure design-time tooling, never appears at run-time; no doc page.
+- `Private Interface Control` / `IScheduledCallback` / `ITwinBasicDesignerExtensions` (in `Interfaces.twin`) — internal interfaces. `Control` is the empty marker interface that `[WithDispatchForwarding]` resolves names through. No doc pages.
+- `Private Module Miscellaneous` (in `Misc.twin`) — `StrPtrSafe`, `CommonTreeViewGetNodeFromHandle`, `SyncBorderStyle` — internal helpers. `OrientationConstants` does surface from this module (see above) but the module itself doesn't get a doc page.
+- `Private Module ImagesHelper` (in `ImagesHelper.twin`) — `GetBitsPerPixelFromPic`. Internal helper. No doc page.
+- `Private Module ImageListConsts`, `ListViewConsts`, `ProgressBarConsts`, `TreeViewConsts` (the private half), and the bare `Module DTPickerConsts` / `MonthViewConsts` / `SliderConsts` / `UpDownConsts` (effectively public but Win32-plumbing-only) — covered above; no per-module doc page.
+
+#### `[Unimplemented]` and `[Hidden]` members to flag
+
+- **DTPicker.RightToLeft** — tagged `[Unimplemented]`; flag with `> [!NOTE]`.
+- **MonthView.RightToLeft** — same.
+- **ListView.Scroll** event — tagged `[Unimplemented]`; flag on the event entry.
+- **ListItem.CreateDragImage** — tagged `[Unimplemented]`; flag with `> [!NOTE]`.
+- **ListImages.ControlDefault** — tagged `[Unimplemented]` and `[Hidden]`; **do not document** (`[Hidden]` means the IDE intentionally suppresses it).
+- **ListView.AllowColumnReorder** — implemented but only takes effect in Report view; surface as a note on the property.
+
+#### Doc-side layout (folders / files)
+
+Twenty-eight pages total, mixing single-file controls with folder-style controls (used when the control has sub-object companion pages):
+
+```
+docs/Reference/WinNativeCommonCtls/
+  index.md                                    ← landing; intro + control table + sub-object map + cross-references (VBRUN/ControlTypeConstants)
+  DTPicker.md                                 ← single-file
+  ImageList/index.md
+  ImageList/ListImage.md
+  ImageList/ListImages.md
+  ListView/index.md
+  ListView/ColumnHeader.md
+  ListView/ColumnHeaders.md
+  ListView/ListItem.md
+  ListView/ListItems.md
+  MonthView.md                                ← single-file
+  ProgressBar.md                              ← single-file
+  Slider.md                                   ← single-file
+  TreeView/index.md
+  TreeView/Node.md
+  TreeView/Nodes.md
+  UpDown.md                                   ← single-file
+  Enumerations/index.md
+  Enumerations/DTPickerFormatConstants.md
+  Enumerations/ImlDrawConstants.md
+  Enumerations/OrientationConstants.md
+  Enumerations/TreeBorderStyleConstants.md
+  Enumerations/TreeLabelEditConstants.md
+  Enumerations/TreeLineStyleConstants.md
+  Enumerations/TreeRelationshipConstants.md
+  Enumerations/TreeSortOrderConstants.md
+  Enumerations/TreeSortTypeConstants.md
+  Enumerations/TreeStyleConstants.md
+```
+
+Decisions explained:
+
+- **Folder-style for `ImageList/`, `ListView/`, `TreeView/`** — each has 2–4 sub-object companions (`ListImage` + `ListImages`; `ListItem` + `ListItems` + `ColumnHeader` + `ColumnHeaders`; `Node` + `Nodes`) that are 1:1 with the container. Same pattern as `CustomControls/WaynesButton/WaynesButtonState.md`. Each container's index page covers the control's surface; the sub-pages cover the collection / item details.
+- **Single-file for the remaining five controls** (`DTPicker.md`, `MonthView.md`, `ProgressBar.md`, `Slider.md`, `UpDown.md`) — no sub-objects to host. Surface large but flat. Same shape as `WebView2/WebView2Request.md` or `CheckBox.md`.
+- **`Enumerations/` folder** for the 10 module-level / shared enums. Per-control nested enums (the 11 in the table above) fold onto their declaring control's page.
+- **No `Types/` folder** — every `Public Type` in the package (the Win32-flavoured `NMHDR`-derived notification structures, `SYSTEMTIME`, `LVITEMW`, etc.) is internal-only; nothing user-facing matches the WebView2 `COREWEBVIEW2_PHYSICAL_KEY_STATUS` precedent.
+
+#### Naming
+
+- Folder / URL segment: `WinNativeCommonCtls/` (matches the source-side package name; no `Package` suffix to drop, same as the three winlibs and tbIDE).
+- Index title: `WinNativeCommonCtls Package` — the `<Name> Package` convention.
+- Permalinks: `/tB/Packages/WinNativeCommonCtls/` for the landing; `/tB/Packages/WinNativeCommonCtls/<Class>` for single-file control pages (`DTPicker`, `MonthView`, `ProgressBar`, `Slider`, `UpDown`); `/tB/Packages/WinNativeCommonCtls/<Container>/` and `/tB/Packages/WinNativeCommonCtls/<Container>/<SubObject>` for the folder-style controls (`ImageList/`, `ListView/`, `TreeView/`); `/tB/Packages/WinNativeCommonCtls/Enumerations/<Enum>` for each enum page.
+- `parent: WinNativeCommonCtls Package` on every top-level child page. The enum pages set `parent: Enumerations` and `grand_parent: WinNativeCommonCtls Package` (the grouped-page pattern; same shape as the WebView2 / CEF / CustomControls / WinServicesLib `Enumerations/` directories). The sub-object pages set `parent: <Container>` and `grand_parent: WinNativeCommonCtls Package` (the same shape CustomControls uses for `WaynesButton/WaynesButtonState.md`).
+
+#### Pre-existing cross-references on the site
+
+- [`docs/Reference/VBRUN/Constants/ControlTypeConstants.md`](docs/Reference/VBRUN/Constants/ControlTypeConstants.md) already lists every control's `vb<Name>` constant: `vbProgressBar = 21`, `vbTreeView = 22`, `vbSlider = 26`, `vbUpDown = 27`, `vbDTPicker = 28`, `vbMonthView = 29`, `vbListView = 30`, `vbImageList = 31`. Each control's reference page should link back to its constant.
+- [`docs/Reference/VBRUN/Constants/OLEDropConstants.md`](docs/Reference/VBRUN/Constants/OLEDropConstants.md) and the `OLEDragDrop` events are inherited surface — link the `OLEDropMode` entries to the constant.
+- [`docs/Reference/Packages.md`](docs/Reference/Packages.md) — add a new bullet between `tbIDE Package` and the closing of the "Built-In Packages" list.
+
+**License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2023; first release v0.0.1.0 on 18-FEB-2023) — same situation as every other Wayne Phillips package. Pages are fully original content; **omit** the `vba_attribution: true` flag.
+
 ## Page template
 
 Match the existing style. Worked examples to imitate:
@@ -1250,6 +1436,7 @@ Match the existing style. Worked examples to imitate:
 - Assert module page (single-file, all members inline): `docs/Reference/Assert/Exact.md`.
 - CEF control class (folder-style with a sub-page): `docs/Reference/CEF/CefBrowser/index.md` + `docs/Reference/CEF/CefBrowser/EnvironmentOptions.md`.
 - Generic class (single-file, `(Of T1, T2)`): `docs/Reference/WinEventLogLib/EventLog.md`.
+- Folder-style control with collection sub-objects: pattern to follow for WinNativeCommonCtls's `ImageList/`, `ListView/`, `TreeView/` — `<Container>/index.md` for the control's own surface plus sibling `<Container>/<SubObject>.md` per collection / item. Mirror CustomControls's `WaynesButton/` + `WaynesButton/WaynesButtonState.md` shape.
 
 Skeleton:
 
@@ -1258,10 +1445,12 @@ Skeleton:
 title: <Symbol>
 parent: <Statements | Procedures and Functions | <Mod> Module | <Package> Package>
 # Pick the permalink that matches the section:
-#   Core            → /tB/Core/<Symbol>
-#   VBA module      → /tB/Modules/<Mod>/<Symbol>           (legacy URL scheme retained)
-#   VBRUN module    → /tB/Packages/VBRUN/<Mod>/<Symbol>
-#   VB class        → /tB/Packages/VB/<Class>              (or /tB/Packages/VB/<Class>/ for folder-style)
+#   Core                       → /tB/Core/<Symbol>
+#   VBA module                 → /tB/Modules/<Mod>/<Symbol>           (legacy URL scheme retained)
+#   VBRUN module               → /tB/Packages/VBRUN/<Mod>/<Symbol>
+#   VB class                   → /tB/Packages/VB/<Class>              (or /tB/Packages/VB/<Class>/ for folder-style)
+#   WinNativeCommonCtls control → /tB/Packages/WinNativeCommonCtls/<Class> (single-file)
+#                                  or /tB/Packages/WinNativeCommonCtls/<Container>/ (folder-style)
 permalink: /tB/Core/<Symbol>
 redirect_from:                          # only if relocated; e.g. moved from Core/ to a Module/
 -  /tB/Core/<Symbol>
@@ -1325,6 +1514,9 @@ The URL prefixes are *not* uniform across packages — VBA pages live one segmen
 - WinServicesLib class / interface → `/tB/Packages/WinServicesLib/<Class>` (single-file; same depth as a single-file VB class)
 - WinServicesLib enumeration → `/tB/Packages/WinServicesLib/Enumerations/<Enum>` (one segment deeper, parallel to WebView2 / CEF / CustomControls)
 - tbIDE class / CoClass → `/tB/Packages/tbIDE/<Class>` (single-file; same depth as a single-file VB class — no `Enumerations/` sub-folder, the nested enums live on their declaring class's page)
+- WinNativeCommonCtls control → `/tB/Packages/WinNativeCommonCtls/<Class>` (single-file — used by `DTPicker`, `MonthView`, `ProgressBar`, `Slider`, `UpDown`) or `/tB/Packages/WinNativeCommonCtls/<Container>/` (folder-style — used by `ImageList/`, `ListView/`, `TreeView/`, each carrying their sub-object companion pages)
+- WinNativeCommonCtls sub-object → `/tB/Packages/WinNativeCommonCtls/<Container>/<SubObject>` (e.g. `ImageList/ListImage`, `ListView/ListItem`, `TreeView/Node`)
+- WinNativeCommonCtls enumeration → `/tB/Packages/WinNativeCommonCtls/Enumerations/<Enum>` (one segment deeper, parallel to WebView2 / CEF / CustomControls / WinServicesLib)
 
 Common patterns:
 
@@ -1414,6 +1606,24 @@ Common patterns:
 | tbIDE `Packages/tbIDE/X`                   | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../VBRUN/<Mod>/Y)`                    |
 | tbIDE `Packages/tbIDE/X`                   | VB `Packages/VB/Y`                          | `[Y](../VB/Y)`                             |
 | tbIDE `Packages/tbIDE/X`                   | `Core/Y`                                    | `[Y](../../Core/Y)`                        |
+| WNCC `Packages/WinNativeCommonCtls/X` (single-file) | sibling `Packages/WinNativeCommonCtls/Y` | `[Y](Y)`                            |
+| WNCC `Packages/WinNativeCommonCtls/X` (single-file) | `Packages/WinNativeCommonCtls/<Container>/` (folder-style) | `[Y](<Container>/)`     |
+| WNCC `Packages/WinNativeCommonCtls/X` (single-file) | `Packages/WinNativeCommonCtls/Enumerations/Y` | `[Y](Enumerations/Y)`           |
+| WNCC `Packages/WinNativeCommonCtls/X` (single-file) | VBRUN `Packages/VBRUN/<Mod>/Y`         | `[Y](../VBRUN/<Mod>/Y)`                    |
+| WNCC `Packages/WinNativeCommonCtls/X` (single-file) | VB `Packages/VB/Y`                     | `[Y](../VB/Y)`                             |
+| WNCC `Packages/WinNativeCommonCtls/X` (single-file) | `Core/Y`                               | `[Y](../../Core/Y)`                        |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/index` | sibling `Packages/WinNativeCommonCtls/Y` (single-file) | `[Y](../Y)`           |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/index` | `Packages/WinNativeCommonCtls/<OtherContainer>/` | `[Y](../<OtherContainer>/)` |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/index` | `Packages/WinNativeCommonCtls/Enumerations/Y`    | `[Y](../Enumerations/Y)`     |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/index` | VBRUN `Packages/VBRUN/<Mod>/Y`           | `[Y](../../VBRUN/<Mod>/Y)`                 |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/index` | `Core/Y`                                 | `[Y](../../../Core/Y)`                     |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/<Sub>`  | sibling `<Container>/<OtherSub>`        | `[Y](<OtherSub>)`                          |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/<Sub>`  | parent `<Container>/` (index)           | `[Y](.)`                                   |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/<Sub>`  | sibling control (single-file)           | `[Y](../<OtherControl>)`                   |
+| WNCC `Packages/WinNativeCommonCtls/<Container>/<Sub>`  | `Packages/WinNativeCommonCtls/Enumerations/Y` | `[Y](../Enumerations/Y)`             |
+| WNCC `Packages/WinNativeCommonCtls/Enumerations/X`  | sibling `Enumerations/Y`                   | `[Y](Y)`                                   |
+| WNCC `Packages/WinNativeCommonCtls/Enumerations/X`  | `Packages/WinNativeCommonCtls/<Class>` (single-file) | `[Y](../<Class>)`                |
+| WNCC `Packages/WinNativeCommonCtls/Enumerations/X`  | `Packages/WinNativeCommonCtls/<Container>/` (folder-style) | `[Y](../<Container>/)`     |
 | WinEventLogLib `Packages/WinEventLogLib/X` | WinServicesLib `Packages/WinServicesLib/Y` | `[Y](../WinServicesLib/Y)`             |
 | WinEventLogLib `Packages/WinEventLogLib/X` | WinNamedPipesLib `Packages/WinNamedPipesLib/Y` | `[Y](../WinNamedPipesLib/Y)`       |
 | `Core/X`                                   | VBA `Modules/<Mod>/Y`                       | `[Y](../Modules/<Mod>/Y)`                  |
@@ -1427,6 +1637,7 @@ Common patterns:
 | `Core/X`                                   | WinNamedPipesLib `Packages/WinNamedPipesLib/Y` | `[Y](../Packages/WinNamedPipesLib/Y)`   |
 | `Core/X`                                   | WinServicesLib `Packages/WinServicesLib/Y` | `[Y](../Packages/WinServicesLib/Y)`     |
 | `Core/X`                                   | tbIDE `Packages/tbIDE/Y`                    | `[Y](../Packages/tbIDE/Y)`                 |
+| `Core/X`                                   | WNCC `Packages/WinNativeCommonCtls/Y`       | `[Y](../Packages/WinNativeCommonCtls/Y)`   |
 | `Core/X`                                   | `Core/Y` (sibling)                          | `[Y](Y)`                                   |
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
@@ -1444,6 +1655,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - WinNamedPipesLib package → `..\tb-export\NewProject\Packages\WinNamedPipesLib\Sources\` — one `.twin` per public class: `NamedPipeServer.twin`, `NamedPipeServerConnection.twin`, `NamedPipeClientManager.twin`, `NamedPipeClientConnection.twin`. Each `.twin` also declares a `Private Interface INamedPipe*Internal` (refcount / dispatch helper used by the IOCP threads); skip those. Skip `APIs.twin`, `Constants.twin`, and `Helper.twin` (all `Private Module`).
    - WinServicesLib package → `..\tb-export\NewProject\Packages\WinServicesLib\Sources\` — one `.twin` per public class: `Services.twin` (the `[PredeclaredId]` coordinator), `ServiceManager.twin`, `ServiceCreator.twin`, `ServiceState.twin`. Plus `Interfaces.twin` for the `Public Interface ITbService` (the file also declares `Private Interface IServiceCreator` and `Private Interface IServiceManagerInternal` — skip both). Enumerations live in `Constants.twin` under `Public Module ServicesConstantsPublic` (four enums: `ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants`). Skip `APIs.twin`, `Helper.twin`, and the `Private Module ServicesConstants` half of `Constants.twin` (all package-internal). The worked integration example — services + event log + named pipes wired together — is at `..\tbrepro\winlibs\tbServiceTest2\Sources\` (read `Startup.twin` and `SERVICES\TBSERVICE001.twin` first; the latter is the canonical `ITbService` implementation).
    - tbIDE package → `..\tbrepro\sample10\WaynesWorldAddInTest1\Packages\tbIDE\Sources\` — twenty-four flat `.twin` files, one per CoClass / Class. Read every file (none is `Private` plumbing; even `AddinTimer.twin` — the only `Class` without an explicit `Public` modifier — is user-instantiated). The six consumer-side example addins are at `..\tbrepro\sample10\…\Sources\MainModule.twin` through `..\tbrepro\sample15\…\Sources\MainModule.twin` — read sample10 first (the kitchen-sink "Hello, World" addin), then samples 11–14 (each one focuses on a single advanced custom-element widget — `chartjs` / `monaco` / `listview` / `virtuallistview`), then sample15 (the complete Global Search addin — exercises the file-system traversal + editor-navigation surface). Ignore the `CHANGELOG.md` inside the package source (it's a copy-paste from `WinNativeForms` and unrelated).
+   - WinNativeCommonCtls package → `..\tb-export\NewProject\Packages\WinNativeCommonCtls\Sources\` — two sub-folders: `CONTROLS\` (eight `.twin` files, one per control; each declares the heavy `<Name>BaseCtl` + the thin `<Name>` leaf — read both halves), and `SUPPORT\` for the sub-object classes (`ListImage.twin`, `ListImages.twin`, `ListItem.twin`, `ListItems.twin`, `ColumnHeader.twin`, `ColumnHeaders.twin`, `Node.twin`, `Nodes.twin`). For inherited surface, walk the relevant `VB.BaseControl*` chain in `..\tb-export\NewProject\Packages\VB\Sources\BASE\` — each control inherits one of `BaseControlFocusable`, `BaseControlFocusableNoFont`, `BaseControlNotFocusable`, or `BaseControlNotFocusable2`. Skip `SUPPORT\Anchors.twin` (entirely commented out), `SUPPORT\Misc.twin` (private — but `OrientationConstants` surfaces from it), `SUPPORT\ImagesHelper.twin` (private), `SUPPORT\Interfaces.twin` (three private interfaces — no doc page), `SUPPORT\TreeViewNodeCheckState.twin` (four private scheduled-callback helpers — no doc page), `SUPPORT\ImageListPropertyPage.twin` + `.tbform` (design-time `[FormDesignerId]` form — no doc page), and the Win32-plumbing halves of the `<Name>Consts.twin` modules. The user-facing enums in `SUPPORT\TreeViewConsts.twin` live in the `Public Module TreeViewPublic` block (line 327+); the user-facing `DTPickerFormatConstants` is at the bottom of `SUPPORT\DTPickerConsts.twin` (line 94+); `OrientationConstants` is in `SUPPORT\Misc.twin`; `ImlDrawConstants` is in `SUPPORT\ImageListConsts.twin`.
 2. **Decide placement**:
    - Pure language keyword (parsed by the compiler, no runtime call) → `docs/Reference/Core/`.
    - Runtime function/property → `docs/Reference/<Package>/<Mod>/`. Add `redirect_from: /tB/Core/<name>` so legacy `tB/Core/<name>` links still work.
@@ -1461,6 +1673,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - WinNamedPipesLib class → `docs/Reference/WinNamedPipesLib/<Class>.md` (single-file; one page per public class — `NamedPipeServer.md`, `NamedPipeServerConnection.md`, `NamedPipeClientManager.md`, `NamedPipeClientConnection.md`). No folder-style — none of the four classes have sub-pages.
    - WinServicesLib class → `docs/Reference/WinServicesLib/<Class>.md` (single-file; one page each for `Services.md`, `ServiceManager.md`, `ServiceCreator.md`, `ServiceState.md`, `ITbService.md`). WinServicesLib enumeration → `docs/Reference/WinServicesLib/Enumerations/<Enum>.md` — one page each for `ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants` (mirrors `WebView2/Enumerations/`, `CEF/Enumerations/`, `CustomControls/Enumerations/`, `VBRUN/Constants/`).
    - tbIDE class / CoClass → `docs/Reference/tbIDE/<Class>.md` — one single-file page per CoClass (or per concrete `Class` for `AddinTimer`). No folder-style, no `Enumerations/` sub-folder — the package's six nested enums (`RevealArea`, `EditorOpenOptions`, `ReadTextFlags`, `FileSystemItemType`, `VbBuildType`, `DebuggerEvaluateOptions`) each live on the declaring class's page (e.g. `RevealArea` on `CodeEditor.md`).
+   - WinNativeCommonCtls control without sub-objects → `docs/Reference/WinNativeCommonCtls/<Class>.md` (single-file; used by `DTPicker.md`, `MonthView.md`, `ProgressBar.md`, `Slider.md`, `UpDown.md`). WinNativeCommonCtls control *with* sub-objects → `docs/Reference/WinNativeCommonCtls/<Container>/index.md` (folder-style; used by `ImageList/`, `ListView/`, `TreeView/`). Sub-object → `docs/Reference/WinNativeCommonCtls/<Container>/<SubObject>.md` (e.g. `ImageList/ListImage.md`, `ListView/ListItem.md`, `ListView/ColumnHeaders.md`, `TreeView/Node.md`). WinNativeCommonCtls module-level enumeration → `docs/Reference/WinNativeCommonCtls/Enumerations/<Enum>.md`. **Per-control nested enums** (`ImageListColorDepth`, `ListViewConstants`, `ListArrangeConstants`, `ListTextBackgroundConstants`, `ListLabelEditConstants`, `ListColumnAlignmentConstants`, `PrbOrientation`, `PrbScrolling`, `PrbState`, `TickStyleConstants`, `TextPositionConstants`) fold onto the declaring control's page rather than getting their own `Enumerations/` file — same pattern as CustomControls's `WaynesSlider.SliderDirection`.
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 3. **Adapt content** (VBA-Docs sources):
    - Strip MS frontmatter (`ms.assetid`, `f1_keywords`, `keywords`, `ms.date`, `ms.localizationpriority`).
@@ -1566,10 +1779,29 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - **Folder iteration is thread-sensitive** — surface the `[Description]` warnings on `Folder.Count` / `Folder.Item` verbatim with a `> [!IMPORTANT]` callout, and recommend for-each as the supported traversal pattern. Sample 15's `PopulateFolderResultsRecursive` is the canonical example to inline on `Folder.md`.
    - The package's `CHANGELOG.md` is a copy-paste error (header says "twinBASIC WinNativeForms"); **do not** propagate it to the docs. There is no usable version history in-package.
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same as every other Wayne Phillips package).
-13. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-14. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `docs/Reference/WinNamedPipesLib/index.md`, `docs/Reference/WinServicesLib/index.md` (and its `Enumerations/` sub-index), `docs/Reference/tbIDE/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
-15. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
-16. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
+13. **Adapt content** (WinNativeCommonCtls `.twin` sources):
+   - Each control is a `<Name>BaseCtl` (where every member is declared) plus a thin `<Name>` leaf (`Inherits <Name>BaseCtl`, tagged `[WindowsControl(...)]`). Document on the leaf's name and treat the split as invisible — same approach as CEF's `CefBrowser` / `CefBrowserBaseCtl`.
+   - Walk `Inherits VB.BaseControl*` (one of `BaseControlFocusable` / `BaseControlFocusableNoFont` / `BaseControlNotFocusable` / `BaseControlNotFocusable2`) and its ancestors (`BaseControlRectDockable` → `BaseControlRect` → `BaseControl`, plus `BaseFont` for non-`NoFont` variants) to fold the inherited surface (`Name`, `Left`, `Top`, `Width`, `Height`, `Anchors`, `Dock`, `Visible`, `Enabled`, `BackColor` / `ForeColor` / `Font`, `Appearance`, `MousePointer` / `MouseIcon`, `ToolTipText`, `DragMode` / `DragIcon`, `Drag()`, `Refresh()`, `SetFocus()` for focusable, `ZOrder()`, `CausesValidation`, `TabIndex` / `TabStop` for focusable, `VisualStyles`, `hWnd`, `HelpContextID` / `WhatsThisHelpID`, …) into the control's Properties listing, same way VB-package and CEF / CustomControls control pages do.
+   - List own + inherited members alphabetically within Properties / Methods / Events sections (mirror `CheckBox.md`).
+   - The `[Description("…")]` attribute on each `Public` field / property / event gives the user-visible IDE one-liner — use it as the basis for the page entry, then expand. Some `[Description("")]` blocks are empty placeholders; write fully original prose for those.
+   - Do not list `[ClassId]`, `[InterfaceId]`, `[EventInterfaceId]`, `[COMCreatable(False)]`, `[EventsUseDispInterface]`, `[ComImport(True)]`, `[CustomDesigner(...)]`, `[Serialize(...)]`, `[NonBrowsable(...)]`, `[WithDispatchForwarding]` on any page — they are all COM / designer plumbing.
+   - **Do** mention `[WindowsControl(...)]` on the leaf class's intro paragraph as the marker that places the control on the form designer toolbox. **Do** mention `[Unimplemented]` (via `> [!NOTE]`) and `[Hidden]` (suppress the member entirely).
+   - Sub-object classes (`ListImage`, `ListImages`, `ListItem`, `ListItems`, `ColumnHeader`, `ColumnHeaders`, `Node`, `Nodes`) are all `[COMCreatable(False)]` and constructed by their container — write the intro paragraph as *"reached via `<Container>.<Property>`"* and don't surface the constructor signature.
+   - The collection classes (`ListImages`, `ListItems`, `ColumnHeaders`, `Nodes`) all have the same shape: `Count` property, `Item(Index|Key)` default member, `Add(…)`, `Clear`, `Remove`, plus `[Enumerator] Public Function _NewEnum() As stdole.IUnknown` for For-Each support. Document the shape consistently across all four pages.
+   - The container's typed property is `As <Sub>BaseCtl` for cross-control parameters (e.g. `TreeView.ImageList As ImageListBaseCtl`, `ListView.Icons As ImageListBaseCtl`), but the user assigns the leaf type (`ImageList`). On the doc page, type the parameter as the **leaf** (`ImageList`) — the `BaseCtl` split is invisible to user code.
+   - `TbImageListPrivate` / `TbListViewPrivate` / `TbTreeViewPrivate` interfaces (declared `[ComImport(True)] Interface` at the top of each control's `.twin`) are package-internal refcount / dispatch helpers — **no doc page**, and do not surface their `Protected ... Implements <Interface>.<Member>` half on the control's surface.
+   - **Common surface to surface once per control**: `Opacity` (with the OS 6.2+ caveat), `TransparencyKey` (same caveat), `OLEDropMode` + the six OLE drag-drop events + `OLEDrag()` method (only when `FEATURE_OLEDRAGDROP` is enabled — currently always is in the shipping build, so include them), `Parent` (`As Object`), `Object` (`As Object`).
+   - **Per-control nested enums**: list each on its declaring control's page under a `## <EnumName>` section near the bottom, with a value table and `{: #<EnumName>_<MemberName> }` anchors per row for deep-linking from properties / parameters using the enum. Do not split into separate `Enumerations/` pages — there are too many small enums and the navigation reads better with them in-place.
+   - For `ListView.BorderStyle` and `TreeView.BorderStyle`: both use `TreeBorderStyleConstants` (declared in `TreeViewPublic`). Surface the enum on `Enumerations/TreeBorderStyleConstants.md`; from each control's `BorderStyle` entry, link to the shared enum.
+   - The `Class_BeforeFirstMethodAccess` calling `[_HiddenModule].EnsureContainerIsLoaded(Me)` on every leaf is internal twinBASIC infrastructure; **do not** surface.
+   - The leaf class has its own `[ClassId]` / `[InterfaceId]` distinct from the base class's `[ClassId]` / `[InterfaceId]`. Both are internal — don't document either.
+   - Per-control idioms worth surfacing (see the WinNativeCommonCtls section above for the long list): `ImageList`'s bound-count guard against modification, `ListView`'s `View` / `Arrange` / `LabelEdit` interaction, `MonthView`'s `GetDayBold` callback event for highlighting holidays, `ProgressBar`'s three-axis configuration, `Slider`'s `SelStart` / `SelLength`, `TreeView`'s per-node `Sorted` overriding the control-level setting, `UpDown`'s lack of auto-buddy (manual partner-control wiring).
+   - The `CHANGELOG.md` is a placeholder (single bullet for v0.0.1.0); use the LICENCE.md copyright year (2023) as the package version reference, not the WIP table.
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same as every other Wayne Phillips package).
+14. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+15. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `docs/Reference/WinNamedPipesLib/index.md`, `docs/Reference/WinServicesLib/index.md` (and its `Enumerations/` sub-index), `docs/Reference/tbIDE/index.md`, `docs/Reference/WinNativeCommonCtls/index.md` (and its `Enumerations/` sub-index, plus the per-container index pages for `ImageList/`, `ListView/`, `TreeView/`), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
+16. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
+17. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
 ## twinBASIC deviations from VBA to flag
 
