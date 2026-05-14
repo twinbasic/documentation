@@ -4,7 +4,7 @@ Jekyll site (`just-the-docs` theme) deploying to `docs.twinbasic.com`. Source un
 
 ## Status
 
-Reference documentation is **complete**. All ten packages have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set.
+Reference documentation is **complete for ten packages** out of eleven. All packages except `tbIDE` have full reference coverage adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages); the CEF and WebView2 packages also carry a tutorial set. **`tbIDE` is in progress** — addin extensibility package; see [tbIDE](#tbide) below.
 
 | Package                              | Reference | Tutorials |
 |--------------------------------------|-----------|-----------|
@@ -18,6 +18,7 @@ Reference documentation is **complete**. All ten packages have full reference co
 | WinEventLogLib                       | done      | —         |
 | WinNamedPipesLib                     | done      | —         |
 | WinServicesLib                       | done      | —         |
+| tbIDE                                | **WIP**   | —         |
 
 The rest of this file is the maintenance guide for adding new pages or updating existing ones — primary-source paths, page templates, cross-section linking conventions, the per-symbol workflow, and the integrity check.
 
@@ -36,6 +37,7 @@ When working from a primary source: always read it first — **never paraphrase 
 - `docs/Reference/WinEventLogLib/` — Windows Event Log package: the generic `EventLog(Of T1, T2)` class and the `EventLogHelperPublic` module with its single `RegisterEventLogInternal` helper. Three pages total — `index.md`, `EventLog.md`, `EventLogHelperPublic.md`.
 - `docs/Reference/WinNamedPipesLib/` — Windows Named Pipes package: the IOCP-based async pipe framework — `NamedPipeServer` + `NamedPipeServerConnection` on the server side, `NamedPipeClientManager` + `NamedPipeClientConnection` on the client side. Five pages total (`index.md` + one per class).
 - `docs/Reference/WinServicesLib/` — Windows Services package: a thin OS-services wrapper. `Services` (predeclared singleton) coordinates one or more `ServiceManager` configurations; `ServiceCreator(Of T)` is the generic factory the dispatcher uses to instantiate each user-defined `ITbService` class; `ServiceState` is a read-only state snapshot for an installed service. Four public enums (`ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants`) live under `Enumerations/`.
+- `docs/Reference/tbIDE/` — IDE Extensibility package (this is the **addin SDK**). The package is type-only — it ships **public interfaces + CoClasses** that an addin DLL binds to; every implementation behind them lives in the twinBASIC IDE itself. The user-facing surface is one entry-point factory (`tbCreateCompilerAddin`) plus ~20 CoClasses grouped by role: the addin contract (`AddIn`), the root API (`Host`), the loaded `Project`, the editors collection (`Editor` / `CodeEditor` / `Editors`), the virtual file system (`FileSystem` / `FileSystemItem` / `Folder` / `File`), the in-IDE UI surface (`Toolbar` / `Toolbars` / `Button` / `ToolWindow` / `ToolWindows`), the HTML DOM inside a tool window (`HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` / `HtmlEventProperty` / `HtmlEventProperties`), the `DebugConsole`, `KeyboardShortcuts`, `Themes`, and the single concrete user-instantiable helper class `AddinTimer`. Flat layout — one page per CoClass / Class plus the index landing.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - `docs/_includes/footer_custom.html` — overrides the theme's footer slot; renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
@@ -72,6 +74,27 @@ All of twinbasic's package sources are at:
 ..\tb-export\NewProject\Packages\WinServicesLib\Sources\
 etc.
 ```
+
+For the **tbIDE** package, the sources are not in `..\tb-export\`. They live inside one of the six addin sample projects (any will do — the package is a binary-only compiler package and ships its `.twin` declarations alongside each sample). Use sample10's copy as the canonical path:
+
+```
+..\tbrepro\sample10\WaynesWorldAddInTest1\Packages\tbIDE\Sources\     ← 24 flat .twin files
+..\tbrepro\sample10\WaynesWorldAddInTest1\Packages\tbIDE\LICENCE.md   ← MIT, Wayne Phillips, 2022
+..\tbrepro\sample10\WaynesWorldAddInTest1\Packages\tbIDE\Settings     ← project.name = "tbIDE", buildType = Package TWINPACK
+```
+
+The six matching consumer-side example addins live at:
+
+```
+..\tbrepro\sample10\WaynesWorldAddInTest1\Sources\MainModule.twin     ← kitchen-sink: toolbar / toolwindow / DOM / events / Evaluate / ActiveEditors
+..\tbrepro\sample11\WaynesWorldCPUMonitorTest1\Sources\MainModule.twin ← AddinTimer + chartjs custom-element + onClose cleanup
+..\tbrepro\sample12\WaynesWorldMonacoEditorTest1\Sources\MainModule.twin ← monaco custom-element + .editor.AddEventListener
+..\tbrepro\sample13\WaynesListViewAddIn\Sources\MainModule.twin       ← listview custom-element + ApplyCss + raiseEvent() from inline HTML
+..\tbrepro\sample14\WaynesVirtualListViewAddIn\Sources\MainModule.twin ← virtuallistview + onAsyncGetItemHTML + setAsyncResult + notifyChangedItem
+..\tbrepro\sample15\tbGlobalSearchAddIn1\Sources\MainModule.twin      ← real-world: FS traversal + ReadText + ActiveEditors.Open + persistent settings
+```
+
+Read them in roughly that order — sample10 introduces the addin idioms one by one, samples 11–14 each focus on a single advanced custom-element widget (chartjs / monaco / listview / virtuallistview), and sample15 is a complete, polished addin that exercises the file system + editor-navigation surface.
 
 For the CEF package, the examples live in a different folder:
 
@@ -945,6 +968,275 @@ The `index.md` should be substantial and walk the reader through:
 
 **License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2025; first release v0.1, 04-FEB-2025) — same situation as every other Wayne Phillips package. Pages are fully original content; **omit** the `vba_attribution: true` flag.
 
+### tbIDE
+
+The **addin SDK** — a type-only compiler package. Every public symbol is an interface or a CoClass; the actual implementations live in the IDE binary, and an addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time. Twenty-four flat `.twin` files in `..\tbrepro\sample10\WaynesWorldAddInTest1\Packages\tbIDE\Sources\`, each 8–57 lines (501 lines total) — there is no plumbing to skip, every file declares user-facing types.
+
+The `CHANGELOG.md` shipped in the package is a leftover copy-paste from a different package ("twinBASIC WinNativeForms") and is **not** about tbIDE — **do not** propagate that history onto the docs.
+
+#### How an addin is built and loaded
+
+From any of the six sample `Settings` files (the structure is identical across them):
+
+- `project.buildType`: **Standard DLL** — addins are not packages, they are DLLs that the IDE loads.
+- `project.buildPath`: `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` — the build output drops directly into `<IDE>\addins\Win32\` or `<IDE>\addins\Win64\`. The IDE scans this folder on startup.
+- `project.references` includes the tbIDE compiler package: `id: {99DEC38C-75F6-4488-8EE7-2D52D83881D2}`, `isCompilerPackage: true`, `publisher: TWINBASIC-COMPILER`, `symbolId: tbIDE`. Same shape that `CustomControls` uses.
+
+The DLL **must** export a single factory function the IDE will call:
+
+```tb
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New MyAddinClass(Host)
+    End Function
+End Module
+```
+
+The returned object must implement the [`AddIn`](#addin) interface (a single read-only `Name` property). The IDE releases the object when the addin is disabled or the IDE shuts down. Every sample uses this exact `tbCreateCompilerAddin` skeleton — surface it on the index landing as the canonical entry point.
+
+#### Public user-facing surface
+
+Twenty-four files declaring twenty-three public CoClasses + one concrete `Class` + one interface-only declaration:
+
+| File                         | Public symbols                                                        | Role                                                                                                              |
+|------------------------------|-----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `Addin.twin`                 | `IAddInV1` + `AddIn` CoClass                                          | The contract every addin's main class implements. One member: `Property Get Name() As String`.                    |
+| `Host.twin`                  | `IHostV1` + `ItbHostEventsV1/V2/V3` + `Host` CoClass                  | Root of the API — passed to `tbCreateCompilerAddin`. Versioned events (see "Versioned event interfaces" below).   |
+| `AddinTimer.twin`            | `Class AddinTimer` (no CoClass)                                       | **The only concrete instantiable class** in the package. `New AddinTimer`; sets `Interval` (ms) + `Enabled`; fires `Timer` event. Internally wraps `SetTimer`/`KillTimer`. |
+| `Button.twin`                | `IButtonV1` + `IButtonEventsV1` + `Button` CoClass                    | Toolbar button. Returned by `Toolbar.AddButton`. `OnClick` event.                                                 |
+| `CodeEditor.twin`            | `ICodeEditorV1 Extends IEditorV1` + `CodeEditor` CoClass              | A code-pane editor — selection, text, Monaco passthrough, `AddMonacoWidget` for inline overlay HTML. Nested `RevealArea` enum. |
+| `DebugConsole.twin`          | `IDebugConsoleV1` + `DebugConsole` CoClass                            | The DEBUG CONSOLE pane. `PrintText` (with optional colour), `Clear`, `SetFocus`.                                  |
+| `Editor.twin`                | `IEditorV1` + `Editor` CoClass                                        | Base interface for editors. Source-side comment: *"Castable to CodeEditor etc."* — i.e. `Dim ce As CodeEditor = editor` works because the underlying object implements both. |
+| `Editors.twin`               | `IEditorsV1` + `Editors` CoClass                                      | Collection of active editors. `Item(Index)` default member, `Count`, `Open(Path, Line, Col, Options)`. Source-side note: *"There is currently only ONE active editor, accessible via Editors(0) syntax"*. |
+| `File.twin`                  | `IFileV1` + `IFileV2 Extends IFileV1` + `File` CoClass                | A virtual-FS file. V1: `Data` / `DataLen` / `Text` / `IsDirty`. V2 adds `ReadText(ReadTextFlags)`. Nested `ReadTextFlags` enum (one flag: `CommentsToWhitespace`). |
+| `FileSystem.twin`            | `IFileSystemV1` + `FileSystem` CoClass                                | Tiny — `RootFolder` and `ResolvePath(Path)` (path needs the `twinbasic:/` prefix).                                |
+| `FileSystemItem.twin`        | `IFileSystemItemV1` + `FileSystemItem` CoClass                        | Base for `File` and `Folder`. `Name`, `Path`, `Type`, `Parent`. Nested `FileSystemItemType` enum (`Folder`, `FileVIRTUALDOC`, `FileOTHER`, `FileTWIN`, `FileBAS`, `FileCLS`, `FileUIDESIGNER`, `FileJSON`). |
+| `Folder.twin`                | `IFolderV1 Extends IFileSystemItemV1` + `Folder` CoClass              | `Count`, `Item(IndexOrName)`, `IsPackagesFolder`, plus for-each enumeration over `FileSystemItem` children.       |
+| `HtmlElement.twin`           | `IHtmlElementV1` + `HtmlElement` CoClass                              | A DOM element inside a tool window. `Properties` (default member — see below), `ChildDomElements`, `Remove`, `AddEventListener(DomEventName, CallbackFunc, Optional Data)`. Plus one `[Hidden]` legacy `AddEventListenerOLD1`. |
+| `HtmlElementProperties.twin` | `IHtmlElementPropertiesV1` (`[COMExtensible(True)]`) + CoClass         | The dynamic property bag on a DOM element. `Item(DomPropertyName)` is the default member; the `[COMExtensible(True)]` attribute is what makes `.style.display = "flex"` resolve through `Item("style").Item("display")` at run time. |
+| `HtmlElementProperty.twin`   | `IHtmlElementPropertyV1` (`[COMExtensible(True)]`) + CoClass           | One value in the bag. `Value` (Get/Let, default member), plus nested `Properties` for chained access (`.style.color = "white"`). |
+| `HtmlElements.twin`          | `IHtmlElementsV1` + `HtmlElements` CoClass                            | The `ChildDomElements` collection. `Item(ID)` default, `Add(ElementID, TagName)` returns the new child. Note `TagName` accepts both standard HTML tags AND the IDE's custom widget tags `chartjs` / `monaco` / `listview` / `virtuallistview`. |
+| `IHtmlEventProperties.twin`  | `IHtmlEventPropertiesV1` (`[COMExtensible(True)]`) + `HtmlEventProperties` CoClass | The event-payload bag. Like `HtmlElementProperties` but read-only and used inside event handler callbacks. |
+| `IHtmlEventProperty.twin`    | `IHtmlEventPropertyV1` (`[COMExtensible(True)]`) + `HtmlEventProperty` CoClass | One value in the event bag.                                                                                  |
+| `KeyboardShortcuts.twin`     | `IKeyboardShortcutsV1` + `KeyboardShortcuts` CoClass                  | Single member: `Add(keyString, Callback As LongPtr)`. `keyString` is a literal key like `"{CTRL}{SHIFT}d"` (prefixes `{CTRL}` / `{SHIFT}` / `{ALT}`). |
+| `Project.twin`               | `IProjectV1` + `Project` CoClass                                      | The currently-loaded project. Lifecycle (`Save`, `Close`, `Build`, `Clean`), introspection (`Path`, `Name`, `BaseFolderPath`, `ProjectID`, version + architecture + build-output info), `Evaluate(ExprString)` (debug-console-style expression evaluation), `RootFolder` (entry into the virtual FS), and `LoadMetaData`/`SaveMetaData` (persistent per-addin key/value storage inside the `.twinproj`). Nested `VbBuildType` enum. |
+| `Themes.twin`                | `IThemesV1` + `Themes` CoClass                                        | `ActiveThemeName` ("Classic" / "Dark" / "Light"), `ActiveThemeNameGroup` ("dark" / "light"). The `Host` events interface fires `OnChangedTheme` when this flips. |
+| `ToolWindow.twin`            | `IToolWindowV1` + `IToolWindowEventsV1` + `ToolWindow` CoClass        | A dockable / floating tool window. `Title`, `Visible`, `Resizable`, `Close`, `ApplyCss(stylesString)`, `RootDomElement` (default member — the entry into the DOM tree). `OnClose` event. |
+| `ToolWindows.twin`           | `IToolWindowsV1` + `ToolWindows` CoClass                              | Single member: `Add(Name, Optional UniqueIdForPositionPersistance) As ToolWindow`. The second argument lets the IDE remember the floating-window position across IDE restarts. |
+| `Toolbar.twin`               | `IToolbarV1` + `Toolbar` CoClass                                      | `AddSplitter` (vertical-bar separator), `AddButton(Id, Caption, Optional IconData)`.                              |
+| `Toolbars.twin`              | `IToolbarsV1` + `Toolbars` CoClass                                    | `Item(Index)` default, `Count`. Source-side note: *"There is currently only ONE toolbar, accessible via the Toolbars(0) syntax"*. |
+
+#### The interface/CoClass split — what it means for the doc layout
+
+Almost every `.twin` declares one or two `Public Interface I<X>V1 Extends stdole.IUnknown` followed by `Public CoClass <X>` with `[Default] Interface I<X>V1` (and optionally `[Default, Source] Interface I<X>EventsV1`). The pattern is the standard COM idiom for late-binding-friendly extensibility — the IDE implements the interfaces, the addin holds references typed at the CoClass.
+
+**The interfaces themselves get no doc page.** Users type their variables `As Host` / `As Button` / `As ToolWindow` (the CoClass), not `As IHostV1`. Fold the interface's members onto the CoClass's page; do not list both. Same convention CustomControls uses for its `_…` default interfaces.
+
+**Versioning is conveyed by interface chains.** Two cases visible in the source:
+
+- `IFileV1` → `IFileV2 Extends IFileV1` (V2 adds `ReadText(ReadTextFlags)`). The `File` CoClass declares `[Default] Interface IFileV2`. Document the V2 surface as the canonical `File` page; do not split V1 vs V2. (Mention in passing that `ReadText` is V2-only and consequently won't bind against very early IDE builds — though in practice every shipping IDE is V2+.)
+- `IHostV1` → `ItbHostEventsV1` → `ItbHostEventsV2 Extends V1` → `ItbHostEventsV3 Extends V2`. The `Host` CoClass declares `[Default, Source] Interface ItbHostEventsV3`. The new members on V2 / V3 (`OnChangedActiveEditor`, `OnChangedTheme`) are each tagged **`[AllowUnpopulatedVtableEntry]`**, which is the mechanism that lets a newer addin compile against `ItbHostEventsV3` and still load against an older IDE that only implements `V1` — the IDE doesn't have to provide the V2/V3 entries.
+
+Document all `Host` events together on the `Host.md` page (the per-version split is a compatibility detail, not a user-facing concept).
+
+#### `AddinTimer` is the only user-instantiable class
+
+Every other public symbol is a CoClass exposed *to* the addin by the IDE — the addin receives instances via `Host`, never constructs them. `AddinTimer` is the exception: it's a concrete `Class AddinTimer` (not a CoClass) and the addin instantiates it with `New AddinTimer`. Internally it wraps `SetTimer` / `KillTimer` with a private `TimerCallback`, exposes `Interval` (ms) + `Enabled`, and fires a `Timer` event.
+
+Sample 11's CPU-monitor demonstrates the typical pattern:
+
+```tb
+Private WithEvents Timer As AddinTimer
+…
+Set Timer = New AddinTimer
+Timer.Interval = 500
+Timer.Enabled = True
+…
+Private Sub Timer_Timer()
+    ' fires every 500 ms
+End Sub
+Private Sub myToolWindow_OnClose()
+    Set Timer = Nothing       ' stop the timer when the window closes
+End Sub
+```
+
+The class uses the `Handles` syntax internally (`Private Sub Changed() Handles Enabled.OnPropertyLet, Interval.OnPropertyLet`) so any change to `Enabled` or `Interval` re-arms the underlying timer — surface this as *"set `Enabled = False` to stop, change `Interval` at any time"*, not as an implementation detail.
+
+`Class_Terminate` calls `KillTimer` so a dropped reference is sufficient to stop. Sample 15 demonstrates that direct Win32 `SetTimer` / `KillTimer` is also fine if `AddinTimer` doesn't fit — both patterns are valid; the package doesn't *require* the helper.
+
+#### The HTML / DOM surface
+
+Tool windows are rendered as HTML inside the IDE (the same browser surface the IDE uses for its own panes). The `HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` quartet is the addin's keyhole into the DOM.
+
+Three things make this surface unusual and have to be surfaced on the docs:
+
+1. **`[COMExtensible(True)]` on `HtmlElementProperties` / `HtmlElementProperty` / `HtmlEventProperties` / `HtmlEventProperty`.** The attribute opts the interface into IDispatch dynamic-member resolution, which is what makes `.style.display = "flex"` work — at compile time the right-hand `.style.display` resolves to `Item("style").Item("display").Value = "flex"` (the default-member dance), and the IDE resolves the names against the live DOM at run time. No member named `style` is *declared* on `IHtmlElementPropertiesV1`. Surface this on each of the four pages with a `> [!IMPORTANT]` callout: the property names accepted are **every DOM property of the underlying tag** (standard HTML attributes, CSS-style properties under `.style.…`, plus any custom-element-specific surface like `.chart.data.datasets(0).borderWidth` on a `chartjs` element or `.editor.setOption(...)` on a `monaco` element). The docs cannot enumerate them — refer the reader to the relevant DOM / library reference.
+2. **The custom-element tags.** `HtmlElements.Add(id, tagName)` accepts standard HTML tags (`"div"`, `"input"`, `"span"`, `"h1"`, …) AND four IDE-specific widget tags: `"chartjs"` (Chart.js wrapper — surfaces a `.chart` property), `"monaco"` (the Monaco editor — surfaces a `.editor` property), `"listview"` (the IDE's listview widget — surfaces a `.listview` property with `addItem` / `removeItem` / etc.), and `"virtuallistview"` (the same with `setItemCount` + the `onAsyncGetItemHTML` event). All four are demonstrated in samples 11–14. Surface as *"the tag name is forwarded to the IDE's tool-window renderer, which understands the standard HTML tags plus the custom widget tags … see sample 11 / 12 / 13 / 14"*.
+3. **`AddEventListener(DomEventName As String, CallbackFunc As LongPtr, Optional Data As Variant)`.** The callback is passed as `AddressOf SomeSub`, and `SomeSub` must have the signature `Sub(ByVal eventInfo As HtmlEventProperties)`. The `eventInfo` parameter is the IDE-marshalled equivalent of the JavaScript `Event` object — `eventInfo.key` / `eventInfo.target.value` / `eventInfo.target.id` are the usual fields, but again the property names are resolved against the *actual* event object at run time, not declared statically. Sample 13 also demonstrates **custom event names raised from inline HTML** via the IDE-side `raiseEvent("name", event, stopPropagation, …customData)` JavaScript helper; the custom-data values become `eventInfo.customData0`, `eventInfo.customData1`, … and are demonstrated in sample 15's `ClickedMatch` handler. Sample 14 demonstrates **async events** via `eventInfo.setAsyncResult("<html>")` (the listener returns the requested HTML asynchronously back into the virtual list view's render cycle).
+
+Document the four `Html*` classes as the *contract* (`Item` default member, the `Value` accessor, the `Properties` chaining) and use the samples to illustrate the dynamic-resolution mechanism. Do not try to enumerate the resolved property surface — it's open-ended.
+
+The `HtmlEvent*` half of the quartet declares `Value` as **read-only Get** (vs `HtmlElementProperty`'s `Value` which has Get + Let) — that's the contract distinction between an inbound event payload and an outbound DOM property setter. Note this on each page.
+
+#### ToolWindow as a jQuery-style selector
+
+`ToolWindow` is the *root* of a tool window's DOM and **also doubles as a member-by-ID accessor**: `myToolWindow("#dataEntry").Value` (see sample 13) returns the `Value` of the child element whose `id` is `dataEntry`. There is no explicit member on `IToolWindowV1` that takes a string argument — the source-side `RootDomElement` carries `[DefaultMember]`, so `myToolWindow("#dataEntry")` resolves to `RootDomElement.Properties.Item("#dataEntry")`, which the dynamic resolver then interprets as a CSS-style selector against the rendered DOM. Surface this as *"the tool window's default member is `RootDomElement`, which is COM-extensible — string indexing accepts CSS selectors"* and call out the `#id` (single element by ID) form as the most common case.
+
+`ApplyCss(styles As String)` injects a `<style>` element scoped to the tool window. Samples 13 / 14 / 15 load CSS from an embedded resource via `StrConv(LoadResDataInternal("styles.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)` and pass it through — surface that pattern on `ToolWindow.ApplyCss`.
+
+`.RootDomElement.Properties.suggestedWidth = "350px"` and `.suggestedHeight = "600px"` are *one-shot* hints — they're used the **first time** the tool window opens as a floating window, then the IDE persists the user's resize. The source-side comments make this explicit (*"used on first opening as a floating tool window"*) — surface as a `> [!NOTE]` on the `ToolWindow.md` page.
+
+#### `Project.Evaluate` — the debug-console hook
+
+`Project.Evaluate(EvalString, Options)` runs an arbitrary expression in the project's context, as if the user typed it into the DEBUG CONSOLE. The `Options` parameter is `DebuggerEvaluateOptions` — currently a single-value enum (`NONE = 0`) declared on `IHostV1` itself, not on `IProjectV1`, which is an oddity worth noting. The return is `Variant`. Sample 10's `CurrentProjectKeyUp` handler shows it in action — entering `10.5 * 4` in a textbox and pressing Enter passes the string to `Evaluate` and pops up the result in a message box. Surface as *"this is the same engine that powers the DEBUG CONSOLE; it can call any `Public` symbol the user can see at run time"*.
+
+The reason `DebuggerEvaluateOptions` is declared on `IHostV1` rather than `IProjectV1` looks like a source-side oversight (the only consumer is `IProjectV1.Evaluate`) — surface the enum on the `Host.md` page (where it's declared) and link to it from the `Project.Evaluate` entry, rather than rationalising the layout.
+
+#### `Project.LoadMetaData` / `SaveMetaData`
+
+Per-addin persistent key/value storage inside the `.twinproj` file. `LoadMetaData(Key) As String`, `SaveMetaData(Key, Value)`. Surface as *"the storage is associated with the loaded project, not with the addin globally — close the project, the storage goes with it; open a different project, you get a different store. For addin-wide persistence (e.g. checkbox state across all projects), use VBA's `GetSetting` / `SaveSetting` against the registry — see sample 15 for that pattern."*
+
+#### `Host.ShowMessageBox` and `Host.ShowNotification`
+
+Both are on `IHostV1`.
+
+- `ShowMessageBox(Prompt, Buttons, Title) As Long` — modal. `Buttons` is a single string with button captions delimited by `|`, e.g. `"OK"` or `"Yes|No|Cancel"`. Return is the zero-based index of the pressed button, or `-1` if the box was closed without picking one. Sample 10's `ShowMessageBoxClick` demonstrates the three-button case and the `-1` close path together — surface as the canonical example.
+- `ShowNotification(Prompt)` — non-modal, "discreet" toast-style notification.
+
+The convention is that `ShowMessageBox` is for "user must answer something" and `ShowNotification` is for "user should know but doesn't need to react".
+
+#### `Folder` for-each, thread-safety, and traversal
+
+The source-side `[Description]` on `Folder.Count` says: *"CAREFUL: tb IDE is multi-threaded, and so the Count can potentially change after you've read the value. For example, using it for a loop counter is wrong, use For-Each syntax instead."* The matching `Item` carries an analogous warning: *"try to avoid accessing entries by their index positions since the index might change by another thread. Use the For-Each syntax instead."*
+
+Surface this **as the primary fact** on `Folder.md` — the for-each path is the supported one; index-based iteration is technically supported (the methods exist) but races against the IDE's own background threads. Sample 15's `PopulateFolderResultsRecursive` is the canonical traversal pattern:
+
+```tb
+For Each folderItem In Folder
+    If TypeOf folderItem Is Folder Then
+        PopulateFolderResultsRecursive(folderItem, …)
+    Else
+        Dim file As File = folderItem
+        If (file.Type <> FileOTHER) And (file.Type <> FileJSON) Then
+            CheckAndPopulateTextFileResults(file, …)
+        End If
+    End If
+Next
+```
+
+— for-each yields each child as a `FileSystemItem`; `TypeOf … Is Folder` discriminates folder-vs-file; a folder gets recursed; a file gets a `Type` check against `FileSystemItemType` to skip non-text content before reading it.
+
+`Folder.IsPackagesFolder` returns `True` for the magic Packages folder at the project root — sample 15 uses it to skip package-internal sources when the user has "Search in packages" off. Surface as a usage hint on `Folder.IsPackagesFolder`.
+
+#### `File.ReadText` flags
+
+`IFileV2.ReadText(Options As ReadTextFlags) As String` — the V2-only "text view of the file, with options" accessor. Currently one flag: `CommentsToWhitespace` (replace every byte that's part of a comment with a space, preserving line numbers + column positions). Sample 15 uses it for the "exclude comments" search option. Surface as *"call `ReadText(0)` for raw text, `ReadText(ReadTextFlags.CommentsToWhitespace)` to mask comments out — the line/column positions of every non-comment character are preserved, which makes the flag suitable for indexers"*.
+
+`Text` and `Data` (on `IFileV1`) have `Property Let` declarations tagged `[Unimplemented]` — flag with the usual `> [!NOTE]` on each, pointing out that the file system is currently read-only from the addin's perspective.
+
+`File.Type` values that the addin cares about, in practice:
+
+- `FileTWIN` (`.twin`, Unicode UTF-8 source)
+- `FileBAS` / `FileCLS` (ANSI-encoded VB6 source)
+- `FileUIDESIGNER` (Unicode JSON — the designer surface for a Form)
+- `FileJSON` (Unicode JSON — `Settings`, `.twinproj` data)
+- `FileOTHER` (binary or unrecognised)
+- `FileVIRTUALDOC` (read-only virtual document — surface as *"e.g. the placeholder documents the IDE shows for unrecognised file types"*)
+- `Folder` (a `FileSystemItem.Type` of `0` — included in the enum because it's the per-item type discriminator)
+
+`ReadText` works on every text type (`FileTWIN` / `FileBAS` / `FileCLS` / `FileVIRTUALDOC` / `FileUIDESIGNER` / `FileJSON`); calling it on `FileOTHER` is unsupported. Surface on the method entry.
+
+#### `CodeEditor.AddMonacoWidget` and `ExecuteMonacoCommand`
+
+`CodeEditor` is the editor-pane subtype; the source-side comment on `IEditorV1` says *"Castable to CodeEditor etc."* — i.e. an `Editor` returned from `Host.ActiveEditors(0)` is actually a `CodeEditor` for code panes, and `Dim ce As CodeEditor = activeEditor` (or `TypeOf editor Is CodeEditor`) is the cast pattern. Sample 15's `GetActiveCodeEditorSelectedText` demonstrates the guarded cast:
+
+```tb
+If Host.ActiveEditors.Count > 0 Then
+    If TypeOf Host.ActiveEditors(0) Is CodeEditor Then
+        Dim activeCodeEditor As CodeEditor = Host.ActiveEditors(0)
+        Return activeCodeEditor.SelectedText
+    End If
+End If
+```
+
+Surface as the canonical safe-cast pattern on `CodeEditor.md`.
+
+`ExecuteMonacoCommand(Command As String, ParamArray Args())` sends a raw command to the underlying Monaco editor — e.g. `"actions.find"` opens the Find widget, `"closeFindWidget"` closes it (sample 10). The full list of Monaco commands is in Monaco's own documentation; the docs reference that without trying to enumerate.
+
+`AddMonacoWidget(LineNumber, ColumnNumber, Html, Optional Css) As HtmlElement` attaches an inline HTML overlay to a line of code; if `ColumnNumber` is zero, the widget is rendered below the line and the editor scrolls to make room rather than overlapping the next line. The return value is a normal `HtmlElement` — the same `Properties` / `ChildDomElements` / `AddEventListener` surface applies. Surface as *"the same DOM surface as a tool-window's elements; the widget lives inside the code editor but otherwise behaves identically"*.
+
+`CodeEditor.SelectedText` (Get + Let), `Text` (Get + Let), `GetSelectionInfo(ByRef StartLine, ByRef StartColumn, ByRef EndLine, ByRef EndColumn)`, `SetSelectionInfo(...)`, `RevealRange(... SmoothScroll, Area As RevealArea)` — all straightforward. The `RevealArea` enum is nested on `ICodeEditorV1` itself (six values: `Any` / `Top` / `Center` / `CenterIfNotVisible` / `NearTop` / `NearTopIfNotVisible`) — fold onto the `CodeEditor.md` page rather than spinning off a separate enum file.
+
+#### `KeyboardShortcuts.Add` callback signature
+
+The `keyString` argument is a literal key with optional `{CTRL}` / `{SHIFT}` / `{ALT}` prefixes, e.g. `"{CTRL}{SHIFT}d"` (the source-side `[Description]` is the canonical example). The `Callback` is `AddressOf` an addin function; the function takes no arguments and returns nothing. Surface as *"the callback fires on the IDE's UI thread; do everything Host-related synchronously"*.
+
+The samples don't actually use `KeyboardShortcuts.Add` — that's a feature documented through its declaration only. Cross-link to the relevant Win32 / IDE keyboard-handling section once available.
+
+#### `Themes.ActiveThemeNameGroup` and `OnChangedTheme`
+
+`Themes` is two members: `ActiveThemeName` (the specific theme — `"Classic"`, `"Dark"`, `"Light"`, …) and `ActiveThemeNameGroup` (which collapses to `"dark"` or `"light"`). The grouping is useful for addins that just want to invert colours.
+
+The `Host` event `OnChangedTheme(ThemeName As String)` fires when the user picks a new theme — the parameter is the new value of `ActiveThemeName`. Surface the pair as *"check `ActiveThemeNameGroup` once at startup for initial colour selection, then refresh in `OnChangedTheme`"*.
+
+#### Sample-by-sample idioms to surface
+
+Each sample exercises a different slice. Pick which idioms surface where:
+
+- **Sample 10 (kitchen sink)** — the canonical "Hello, World" structure: `Private WithEvents Host As Host` + a `Host_OnProjectLoaded` handler that sets up the toolbar via `Host.Toolbars(0).AddSplitter()` + `.AddButton(...)`. **Every** sample uses this. Surface as the canonical addin-startup pattern on `Host.md` (and on the index landing).
+- **Sample 10 (DOM walkthrough)** — the bulk of the file is a single `Button_OnClick` that builds a vertical-flex tool window populated with 22 styled "buttons" (each one a `div` with click handlers), exercising `.style.display = "flex"`, `.style.flexDirection = "column"`, `.style.gap`, `.style.backgroundImage` with a linear-gradient, `.style.borderRadius`, `.style.cursor = "pointer"`, etc. Surface as a *cross-link* from `HtmlElement.md` / `HtmlElementProperties.md` / `ToolWindow.md` rather than as primary content — the file is too long to inline.
+- **Sample 11 (AddinTimer + chartjs)** — the canonical `AddinTimer` example AND the canonical custom-element example. Surface on `AddinTimer.md` as the timer example; cross-link to `HtmlElement.md` for the `"chartjs"` custom-element note.
+- **Sample 12 (monaco editor)** — the in-window Monaco editor example. Surface the *"add event handlers to the editor, not the DOM element"* fact (`.editor.AddEventListener("onDidChangeModelContent", …)` not `monacoDivElement.AddEventListener(…)`) as a `> [!IMPORTANT]` on `HtmlElement.AddEventListener`. Cross-link to `CodeEditor.md` so the reader understands the two ways Monaco surfaces: built-in code editor via `CodeEditor`, embedded user-controlled editor via a `"monaco"` tag.
+- **Sample 13 (listview + raiseEvent)** — surface as the canonical `ApplyCss` + `myToolWindow("#dataEntry")`-selector example. The inline HTML `raiseEvent("dataEntryKeyDown", event, true)` JS-side helper is what brings custom event names to the addin via `AddEventListener` — surface as a cross-link from `HtmlElement.AddEventListener` to a brief explanation on the `HtmlEventProperties` page. The IDE-side JS helper is documented as *"available to inline HTML inside an addin's tool window: `raiseEvent(eventName, event, stopPropagation, …customData)`"* — it has no twinBASIC declaration.
+- **Sample 14 (virtual listview)** — the canonical async-event example. `onAsyncGetItemHTML` fires with `eventInfo.asyncArgument` (the row index the IDE wants HTML for) and the handler responds via `eventInfo.setAsyncResult("<html>")`. `listview.notifyChangedItem(idx)` invalidates the IDE's internal cache so the next render calls `onAsyncGetItemHTML` again. Surface on `HtmlEventProperties.md` as the asynchronous-event-handler pattern.
+- **Sample 15 (Global Search addin)** — the canonical end-to-end addin: FS traversal (`Folder` for-each + `TypeOf … Is Folder` recursion), text reading with comment-stripping (`File.ReadText(ReadTextFlags.CommentsToWhitespace)`), editor navigation (`Host.ActiveEditors.Open(path, line, col)` + `.Item(0).SetFocus`), persistent options (registry-side via `GetSetting` / `SaveSetting`, **not** via `Project.SaveMetaData` — flag the difference). The dwell-time pattern (`SetTimer` / `KillTimer` directly from Win32 to debounce keystrokes) is a *"could have used `AddinTimer`"* alternative — surface both options on `AddinTimer.md`.
+
+#### Layout decision — flat, one page per CoClass / Class
+
+Twenty-five pages total — landing + 24 type pages:
+
+```
+docs/Reference/tbIDE/
+  index.md                ← package landing; addin model + build setup + entry point + class groupings + sample list
+  AddIn.md                ← the contract: Property Get Name
+  AddinTimer.md           ← the one concrete instantiable class
+  Button.md
+  CodeEditor.md           ← + RevealArea enum + AddMonacoWidget + ExecuteMonacoCommand
+  DebugConsole.md
+  Editor.md               ← + cast-to-CodeEditor pattern
+  Editors.md              ← + EditorOpenOptions enum
+  File.md                 ← V1 + V2 folded; ReadTextFlags enum
+  FileSystem.md
+  FileSystemItem.md       ← + FileSystemItemType enum
+  Folder.md               ← + for-each idiom + IsPackagesFolder
+  Host.md                 ← + ItbHostEventsV1-V3 events folded + DebuggerEvaluateOptions enum + ShowMessageBox / ShowNotification
+  HtmlElement.md          ← + DOM model + AddEventListener
+  HtmlElementProperties.md ← + dynamic-resolution note
+  HtmlElementProperty.md  ← + chained access
+  HtmlElements.md         ← + custom-element-tag note
+  HtmlEventProperties.md  ← + async-event pattern (setAsyncResult) + customData fan-out
+  HtmlEventProperty.md
+  KeyboardShortcuts.md
+  Project.md              ← + VbBuildType enum + Evaluate + LoadMetaData / SaveMetaData
+  Themes.md
+  ToolWindow.md           ← + ApplyCss + suggested-size + jQuery-style selector via the default member
+  ToolWindows.md
+  Toolbar.md
+  Toolbars.md
+```
+
+All flat — no `Enumerations/` sub-folder; the four nested enums (`RevealArea`, `EditorOpenOptions`, `ReadTextFlags`, `FileSystemItemType`, `VbBuildType`, `DebuggerEvaluateOptions`) each live on their declaring class's page rather than getting their own file. The package is small enough that the navigation reads better with no second level.
+
+**Naming:**
+
+- Folder / URL segment: `tbIDE/` (the source-side `project.name` is exactly `tbIDE`; no `Package` suffix to drop because the package isn't named with it — same as `WinEventLogLib` / `WinNamedPipesLib` / `WinServicesLib`).
+- Index title: `tbIDE Package` — the `<Name> Package` convention.
+- Permalinks: `/tB/Packages/tbIDE/` for the landing; `/tB/Packages/tbIDE/<Class>` for each child.
+- `parent: tbIDE Package` on every child page (matching the index `title:`).
+
+**License:** MIT (copyright Wayne Phillips T/A iTech Masters, 2022) — same situation as WebView2Package, Assert, CustomControls, CEF, and the three winlibs. Pages are fully original content; **omit** the `vba_attribution: true` flag.
+
 ## Page template
 
 Match the existing style. Worked examples to imitate:
@@ -1032,6 +1324,7 @@ The URL prefixes are *not* uniform across packages — VBA pages live one segmen
 - WinNamedPipesLib class → `/tB/Packages/WinNamedPipesLib/<Class>` (single-file; same depth as a single-file VB class)
 - WinServicesLib class / interface → `/tB/Packages/WinServicesLib/<Class>` (single-file; same depth as a single-file VB class)
 - WinServicesLib enumeration → `/tB/Packages/WinServicesLib/Enumerations/<Enum>` (one segment deeper, parallel to WebView2 / CEF / CustomControls)
+- tbIDE class / CoClass → `/tB/Packages/tbIDE/<Class>` (single-file; same depth as a single-file VB class — no `Enumerations/` sub-folder, the nested enums live on their declaring class's page)
 
 Common patterns:
 
@@ -1116,6 +1409,11 @@ Common patterns:
 | WinServicesLib `Packages/WinServicesLib/Enumerations/X` | sibling `Enumerations/Y`             | `[Y](Y)`                                   |
 | WinServicesLib `Packages/WinServicesLib/Enumerations/X` | `Packages/WinServicesLib/<Class>`    | `[Y](../<Class>)`                          |
 | WinServicesLib `Packages/WinServicesLib/Enumerations/X` | WinEventLogLib `Packages/WinEventLogLib/Y` | `[Y](../../WinEventLogLib/Y)`        |
+| tbIDE `Packages/tbIDE/X`                   | sibling `Packages/tbIDE/Y`                  | `[Y](Y)`                                   |
+| tbIDE `Packages/tbIDE/X`                   | VBA `Modules/<Mod>/Y`                       | `[Y](../../Modules/<Mod>/Y)`               |
+| tbIDE `Packages/tbIDE/X`                   | VBRUN `Packages/VBRUN/<Mod>/Y`              | `[Y](../VBRUN/<Mod>/Y)`                    |
+| tbIDE `Packages/tbIDE/X`                   | VB `Packages/VB/Y`                          | `[Y](../VB/Y)`                             |
+| tbIDE `Packages/tbIDE/X`                   | `Core/Y`                                    | `[Y](../../Core/Y)`                        |
 | WinEventLogLib `Packages/WinEventLogLib/X` | WinServicesLib `Packages/WinServicesLib/Y` | `[Y](../WinServicesLib/Y)`             |
 | WinEventLogLib `Packages/WinEventLogLib/X` | WinNamedPipesLib `Packages/WinNamedPipesLib/Y` | `[Y](../WinNamedPipesLib/Y)`       |
 | `Core/X`                                   | VBA `Modules/<Mod>/Y`                       | `[Y](../Modules/<Mod>/Y)`                  |
@@ -1128,6 +1426,7 @@ Common patterns:
 | `Core/X`                                   | WinEventLogLib `Packages/WinEventLogLib/Y`  | `[Y](../Packages/WinEventLogLib/Y)`        |
 | `Core/X`                                   | WinNamedPipesLib `Packages/WinNamedPipesLib/Y` | `[Y](../Packages/WinNamedPipesLib/Y)`   |
 | `Core/X`                                   | WinServicesLib `Packages/WinServicesLib/Y` | `[Y](../Packages/WinServicesLib/Y)`     |
+| `Core/X`                                   | tbIDE `Packages/tbIDE/Y`                    | `[Y](../Packages/tbIDE/Y)`                 |
 | `Core/X`                                   | `Core/Y` (sibling)                          | `[Y](Y)`                                   |
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
@@ -1144,6 +1443,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - WinEventLogLib package → `..\tb-export\NewProject\Packages\WinEventLogLib\Sources\EventLog.twin` (the generic `EventLog(Of T1, T2)` class) and `Helper.twin` (`EventLogHelperPublic.RegisterEventLogInternal`). Skip `APIs.twin` (`Private Module`), `Constants.twin` (`Private Module` — the `EventLogTypeConstants` enum is unreachable from outside the package), and the `EventLogHelperPrivate` module in `Helper.twin` (named "Private" though declared `Public`; only used internally by `EventLog.LogArray`).
    - WinNamedPipesLib package → `..\tb-export\NewProject\Packages\WinNamedPipesLib\Sources\` — one `.twin` per public class: `NamedPipeServer.twin`, `NamedPipeServerConnection.twin`, `NamedPipeClientManager.twin`, `NamedPipeClientConnection.twin`. Each `.twin` also declares a `Private Interface INamedPipe*Internal` (refcount / dispatch helper used by the IOCP threads); skip those. Skip `APIs.twin`, `Constants.twin`, and `Helper.twin` (all `Private Module`).
    - WinServicesLib package → `..\tb-export\NewProject\Packages\WinServicesLib\Sources\` — one `.twin` per public class: `Services.twin` (the `[PredeclaredId]` coordinator), `ServiceManager.twin`, `ServiceCreator.twin`, `ServiceState.twin`. Plus `Interfaces.twin` for the `Public Interface ITbService` (the file also declares `Private Interface IServiceCreator` and `Private Interface IServiceManagerInternal` — skip both). Enumerations live in `Constants.twin` under `Public Module ServicesConstantsPublic` (four enums: `ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants`). Skip `APIs.twin`, `Helper.twin`, and the `Private Module ServicesConstants` half of `Constants.twin` (all package-internal). The worked integration example — services + event log + named pipes wired together — is at `..\tbrepro\winlibs\tbServiceTest2\Sources\` (read `Startup.twin` and `SERVICES\TBSERVICE001.twin` first; the latter is the canonical `ITbService` implementation).
+   - tbIDE package → `..\tbrepro\sample10\WaynesWorldAddInTest1\Packages\tbIDE\Sources\` — twenty-four flat `.twin` files, one per CoClass / Class. Read every file (none is `Private` plumbing; even `AddinTimer.twin` — the only `Class` without an explicit `Public` modifier — is user-instantiated). The six consumer-side example addins are at `..\tbrepro\sample10\…\Sources\MainModule.twin` through `..\tbrepro\sample15\…\Sources\MainModule.twin` — read sample10 first (the kitchen-sink "Hello, World" addin), then samples 11–14 (each one focuses on a single advanced custom-element widget — `chartjs` / `monaco` / `listview` / `virtuallistview`), then sample15 (the complete Global Search addin — exercises the file-system traversal + editor-navigation surface). Ignore the `CHANGELOG.md` inside the package source (it's a copy-paste from `WinNativeForms` and unrelated).
 2. **Decide placement**:
    - Pure language keyword (parsed by the compiler, no runtime call) → `docs/Reference/Core/`.
    - Runtime function/property → `docs/Reference/<Package>/<Mod>/`. Add `redirect_from: /tB/Core/<name>` so legacy `tB/Core/<name>` links still work.
@@ -1160,6 +1460,7 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - WinEventLogLib generic class → `docs/Reference/WinEventLogLib/EventLog.md` (single-file; the surface is small — constructor + three methods). WinEventLogLib helper module → `docs/Reference/WinEventLogLib/EventLogHelperPublic.md` (single-file; one Sub).
    - WinNamedPipesLib class → `docs/Reference/WinNamedPipesLib/<Class>.md` (single-file; one page per public class — `NamedPipeServer.md`, `NamedPipeServerConnection.md`, `NamedPipeClientManager.md`, `NamedPipeClientConnection.md`). No folder-style — none of the four classes have sub-pages.
    - WinServicesLib class → `docs/Reference/WinServicesLib/<Class>.md` (single-file; one page each for `Services.md`, `ServiceManager.md`, `ServiceCreator.md`, `ServiceState.md`, `ITbService.md`). WinServicesLib enumeration → `docs/Reference/WinServicesLib/Enumerations/<Enum>.md` — one page each for `ServiceTypeConstants`, `ServiceStartConstants`, `ServiceControlCodeConstants`, `ServiceStatusConstants` (mirrors `WebView2/Enumerations/`, `CEF/Enumerations/`, `CustomControls/Enumerations/`, `VBRUN/Constants/`).
+   - tbIDE class / CoClass → `docs/Reference/tbIDE/<Class>.md` — one single-file page per CoClass (or per concrete `Class` for `AddinTimer`). No folder-style, no `Enumerations/` sub-folder — the package's six nested enums (`RevealArea`, `EditorOpenOptions`, `ReadTextFlags`, `FileSystemItemType`, `VbBuildType`, `DebuggerEvaluateOptions`) each live on the declaring class's page (e.g. `RevealArea` on `CodeEditor.md`).
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 3. **Adapt content** (VBA-Docs sources):
    - Strip MS frontmatter (`ms.assetid`, `f1_keywords`, `keywords`, `ms.date`, `ms.localizationpriority`).
@@ -1248,10 +1549,27 @@ Always link to the **canonical** location (the page's `permalink:`), not to a `r
    - The package-internal `IServiceCreator` and `IServiceManagerInternal` interfaces (both `Private Interface` in `Interfaces.twin`) are pure marshalling-and-trampoline plumbing — **no doc page**, and do not surface the underscored implementing members on the concrete classes either.
    - The index landing page must walk the integration story: configure-during-`Sub Main` → install (elevated, one-time) → run-as-service (the `-startService` discriminator pattern) → service-thread `EntryPoint` reports running → `ChangeState` handles stop on the dispatcher thread. Cross-link the [`EventLog` composition-delegation idiom](docs/Reference/WinEventLogLib/EventLog.md) (the `Implements EventLog(Of …) Via …` pattern from `tbServiceTest2\Sources\SERVICES\TBSERVICE001.twin`) and the [`NamedPipeServer` service-host idiom](docs/Reference/WinNamedPipesLib/NamedPipeServer.md) (the `ManualMessageLoopEnter` / `Leave` pattern).
    - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same as every other Wayne Phillips package).
-12. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-13. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `docs/Reference/WinNamedPipesLib/index.md`, `docs/Reference/WinServicesLib/index.md` (and its `Enumerations/` sub-index), `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
-14. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
-15. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
+12. **Adapt content** (tbIDE `.twin` sources):
+   - Every public symbol is either an **interface + CoClass pair** (the IDE implements the interface; the addin holds a reference typed at the CoClass) or, in one case, a concrete **`Class`** (`AddinTimer` — user-instantiated with `New`). Document the CoClass, not the underlying interface — users type their variables `As Host`, not `As IHostV1`. Fold the interface's members onto the CoClass page.
+   - Do not list `[InterfaceId]`, `[ClassId]`, `[EventInterfaceId]`, `[CoClassId]`, `[Default]`, `[Default, Source]` on the page; they are COM-plumbing decoration.
+   - The `[Description("…")]` attribute on most `Public` properties / methods / fields gives the user-visible IDE tooltip — use it as the basis for the entry, then expand. A handful of members have no `[Description]` (every property on `Themes`, several on `Editor` / `Toolbars` / `Editors`); for those, write fully original prose.
+   - **`Public Interface I<X>V1 Extends stdole.IUnknown`** is the package's convention for the per-CoClass primary interface. `Extends stdole.IUnknown` is COM plumbing (the standard COM base interface) — do not surface; treat as if the interface had no base. The `V1` suffix is per-version; the CoClass declares `[Default] Interface I<X>V1` and the user types `As <X>`.
+   - **Interface versioning**: two cases visible in the source — `IFileV1` → `IFileV2 Extends IFileV1` (V2 adds `ReadText`), and `IHostV1` paired with the four-step `ItbHostEventsV1` → `V2` → `V3` events chain. For `File`, document the V2 surface as a single `File.md` page — do not surface the V1/V2 split. For `Host`, fold all three event interfaces onto `Host.md` as a single events listing; the per-version split is a compile-vs-run-time compatibility detail, surfaced as a brief `> [!NOTE]` mentioning the `[AllowUnpopulatedVtableEntry]` mechanism but not enumerated per-event.
+   - **`[AllowUnpopulatedVtableEntry]`** on `ItbHostEventsV2.OnChangedActiveEditor` and `ItbHostEventsV3.OnChangedTheme` is the compiler attribute that lets a newer addin compile against the newer events interface and still load against an older IDE that lacks the corresponding vtable slot — the IDE simply leaves the slot null and the addin never receives the event. Surface as a single sentence on `Host.md` together with the events listing: *"these events are tagged with the compile-time `[AllowUnpopulatedVtableEntry]` attribute so the addin works against older IDE builds that don't yet fire them"*.
+   - **`[COMExtensible(True)]`** on `HtmlElementProperties` / `HtmlElementProperty` / `HtmlEventProperties` / `HtmlEventProperty` is **load-bearing** for the dynamic-DOM surface — the whole `.style.display = "flex"` shorthand depends on it. Surface on each of the four pages with a `> [!IMPORTANT]` callout: *"this interface is `[COMExtensible(True)]`; property names are resolved against the underlying DOM element at run time, so you may write any property name that the JavaScript-side element supports"*. Do not try to enumerate the resolved property surface — it's open-ended (every DOM property of the underlying tag + custom-widget extras like `.chart` / `.editor` / `.listview`).
+   - **`[Hidden]`** on `IHtmlElementV1.AddEventListenerOLD1` marks an obsolete legacy method that the IDE retains for back-compatibility but doesn't want addins to call. **Do not document it**; the canonical method is `AddEventListener` (without the suffix).
+   - **`[DefaultMember]`** on `Item` (in collection-like interfaces) is what makes `Editors(0)`, `Toolbars(0)`, `Folder("MyFile.twin")`, etc. work syntactically. Surface on the relevant `Item` entry with the prose *"this is the default member, so `editors(0)` is equivalent to `editors.Item(0)`"*. Similarly, `ToolWindow.RootDomElement` carries `[DefaultMember]` — that's what makes `myToolWindow("#dataEntry")` resolve to a CSS-style selector lookup (RootDomElement → its Properties bag → dynamic resolution).
+   - **`[Unimplemented]`** on `IFileV1.Data` (Let) and `IFileV1.Text` (Let) means writing to the file is not currently supported. Surface as a `> [!NOTE]` on each Let-half saying the file system is read-only from the addin's perspective today.
+   - **Nested enums** (`RevealArea` on `ICodeEditorV1`, `EditorOpenOptions` on `IEditorsV1`, `ReadTextFlags` on `IFileV2`, `FileSystemItemType` on `IFileSystemItemV1`, `VbBuildType` on `IProjectV1`, `DebuggerEvaluateOptions` on `IHostV1`) live on the declaring class's page — give each a short `## <EnumName>` section near the bottom with the value table, anchor each value with `{: #<EnumName>_<MemberName> }` for deep-linking from the using-class's parameter entries. Do not split into separate enum pages; the package is small enough that the navigation reads better with the enums in-place.
+   - **Editor castability**: the source-side comment on `IEditorV1` (*"Castable to CodeEditor etc."*) is the contract — an `Editor` returned by `Host.ActiveEditors(0)` is actually a `CodeEditor` for code panes, and the cast `Dim ce As CodeEditor = editor` (or `TypeOf editor Is CodeEditor`) works because the underlying object implements both interfaces. Surface on `Editor.md` as a `> [!NOTE]` and demonstrate the guarded-cast pattern (sample 15's `GetActiveCodeEditorSelectedText` is the canonical example).
+   - **`AddinTimer` is the only user-instantiable class** — every other CoClass is handed to the addin by the IDE. Surface this prominently on `AddinTimer.md` and on the index landing. The class uses the `Handles` syntax internally to re-arm the underlying Win32 timer whenever `Enabled` or `Interval` changes — surface as the user-visible behaviour (*"changing `Interval` at runtime takes effect immediately"*) rather than as an implementation note.
+   - **Folder iteration is thread-sensitive** — surface the `[Description]` warnings on `Folder.Count` / `Folder.Item` verbatim with a `> [!IMPORTANT]` callout, and recommend for-each as the supported traversal pattern. Sample 15's `PopulateFolderResultsRecursive` is the canonical example to inline on `Folder.md`.
+   - The package's `CHANGELOG.md` is a copy-paste error (header says "twinBASIC WinNativeForms"); **do not** propagate it to the docs. There is no usable version history in-package.
+   - Omit the `vba_attribution: true` frontmatter flag — these pages are fully original (the package is MIT-licensed, same as every other Wayne Phillips package).
+13. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
+14. **Update the parent index** (`<Package>/<Mod>/index.md`, `docs/Reference/VB/index.md`, `docs/Reference/WebView2/index.md`, `docs/Reference/Assert/index.md`, `docs/Reference/CustomControls/index.md` (and its `Styles/`, `Framework/`, `Enumerations/` sub-indices), `docs/Reference/CEF/index.md` (and its `Enumerations/` sub-index), `docs/Reference/WinEventLogLib/index.md`, `docs/Reference/WinNamedPipesLib/index.md`, `docs/Reference/WinServicesLib/index.md` (and its `Enumerations/` sub-index), `docs/Reference/tbIDE/index.md`, `Reference/Statements.md`, or `Reference/Procedures and Functions.md`) — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also extend `docs/Reference/Packages.md` to list it.
+15. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
+16. **Run the [site integrity check](#site-integrity-check)** after the batch and before committing.
 
 ## twinBASIC deviations from VBA to flag
 
