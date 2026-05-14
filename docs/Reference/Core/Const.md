@@ -28,7 +28,7 @@ Syntax:
 
 *constname*
 
-: Name of the constant; follows standard variable naming conventions.
+: *required* Name of the constant; follows standard variable naming conventions.
 
 *type*
 
@@ -36,9 +36,9 @@ Syntax:
 
 *expression*
 
-: Required. Literal, other constant, or any combination that includes all arithmetic or logical operators except **Is**.
+: *required* Literal, other constant, or any combination that includes all arithmetic or logical operators except **Is**.
 
-Constants are private by default. Within procedures, constants are always private; their visibility can't be changed. In standard modules, the default visibility of module-level constants can be changed by using the **Public** keyword. In class modules, however, constants can only be private and their visibility can't be changed by using the **Public** keyword.
+Constants are private by default. Within procedures, constants are always private; their visibility can't be changed. In standard modules, the **Public** keyword can change the default visibility of module-level constants. In class modules, constants are always private; the **Public** keyword has no effect.
 
 To combine several constant declarations on the same line, separate each constant assignment with a comma. When constant declarations are combined in this way, the **Public** or **Private** keyword, if used, applies to all of them.
 

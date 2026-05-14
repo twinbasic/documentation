@@ -43,11 +43,10 @@ Sets the current system date from a value with a Variant or Date type.
 
 Syntax: **Date** **=** *date*
 
-date
+*date*
+: *required* For systems running Microsoft Windows 95, the *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
 
-: For systems running Microsoft Windows 95, the required *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
-
-> [!NOTE]
+> [!IMPORTANT]
 >
 > In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions. Without those permissions, assignment to **Date** results in a Permission Denied runtime error.
 
@@ -89,11 +88,10 @@ Sets the current system date from a string.
 
 Syntax: **Date$** **=** *date*
 
-date
+*date*
+: *required* For systems running Microsoft Windows 95, the *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
 
-: For systems running Microsoft Windows 95, the required *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
-
-> [!NOTE]
+> [!IMPORTANT]
 >
 > In some versions of Microsoft Windows, including Windows 10 and 11, setting the system date is a privileged operation that requires the process to have relevant permissions. Without those permissions, assignment to **Date**$ results in a Permission Denied runtime error.
 
@@ -110,4 +108,5 @@ Date$ = MyDate               ' Change the system date.
 ### See Also
 
 - [Time](Time) property
-- [Format](../Strings/Format) and [Now](Now) functions
+- [Format](../Strings/Format) function
+- [Now](Now) function

@@ -118,10 +118,10 @@ The Event Viewer renders message strings by loading **EventMessageFile** and loo
 
 If the registry key cannot be opened for write, **Register** raises run-time error 5 *"Failed to register event log source (\<LogName\>)"*. Typical causes are insufficient privileges and a *LogPath* that points at a non-existent parent log.
 
-The lower-level [**EventLogHelperPublic.RegisterEventLogInternal**](EventLogHelperPublic#registereventloginternal) is what **Register** delegates to; use it directly only if you need to register a source without binding it to a generic *T2* (and so without using **GetDeclaredMaxEnumValue** to derive the category count).
+The lower-level [**EventLogHelperPublic.RegisterEventLogInternal**](EventLogHelperPublic#registereventloginternal) is what **Register** delegates to; use it directly only when registering a source without binding it to a generic *T2* (and so without using **GetDeclaredMaxEnumValue** to derive the category count).
 
 ## See Also
 
-- [WinEventLogLib package](.) -- overview, lifecycle, message-resource generation
-- [EventLogHelperPublic module](EventLogHelperPublic) -- the lower-level registration helper
-- [Generics feature](../../../Features/Language/Generics) -- syntax rules for generic class instantiation
+- [WinEventLogLib](.) package — overview, lifecycle, message-resource generation
+- [EventLogHelperPublic](EventLogHelperPublic) module — the lower-level registration helper
+- [Generics](../../../Features/Language/Generics) feature — syntax rules for generic class instantiation
