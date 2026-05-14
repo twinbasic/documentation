@@ -334,7 +334,7 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 
    One callout per concern; don't stack a NOTE and an IMPORTANT for the same point.
 
-7. **See Also.** Last section on the page, after `Example`. Format: `- [Symbol](Symbol) <noun>` where `<noun>` is the kind: statement, function, property, method, class, module, package. Pages with annotations use `- [Symbol](Symbol) — short description` (em-dash separator). Order by conceptual proximity, not strict alphabetical.
+7. **See Also.** Last section on the page, after `Example`. Format: `- [Symbol](Symbol) <noun>` where `<noun>` is the kind: statement, function, property, method, class, module, package. Pages with annotations use `- [Symbol](Symbol) -- short description` — the `--` source renders as a typographic dash via kramdown's smart_quotes (en-dash for `--`, em-dash for `---`). Don't write literal `—` in source; keep `--` for consistency across the docs. Order by conceptual proximity, not strict alphabetical.
 
 ### Replace
 

@@ -122,6 +122,6 @@ The lower-level [**EventLogHelperPublic.RegisterEventLogInternal**](EventLogHelp
 
 ## See Also
 
-- [WinEventLogLib](.) package — overview, lifecycle, message-resource generation
-- [EventLogHelperPublic](EventLogHelperPublic) module — the lower-level registration helper
-- [Generics](../../../Features/Language/Generics) feature — syntax rules for generic class instantiation
+- [WinEventLogLib](.) package -- overview, lifecycle, message-resource generation
+- [EventLogHelperPublic](EventLogHelperPublic) module -- the lower-level registration helper
+- [Generics](../../../Features/Language/Generics) feature -- syntax rules for generic class instantiation
