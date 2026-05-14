@@ -1,0 +1,40 @@
+{%- comment -%}
+  Shadow of just-the-docs's _includes/components/children_nav.html.
+
+  Renders the auto-generated child-pages TOC at the bottom of any page
+  whose `has_toc != false`. The upstream implementation includes the
+  cached `site_nav` HTML with `all=true` to probe for the current
+  page's children, then re-derives the children via
+  `where:` / `group_by:` on `site.html_pages`. The probe is the only
+  thing that forces a second site_nav cache key (alongside
+  `sidebar.html`'s `all=nil` variant); eliminating the probe halves the
+  nav-rendering work.
+
+  The list of immediate children is now precomputed at site-generate
+  time by `_plugins/children-precompute.rb` and exposed as
+  `page.children_in_nav`. Each entry is a hash:
+
+      { "title" => String, "url" => String, "summary" => String | nil }
+
+  ordered with the same nav_order / title precedence and
+  child_nav_order reversal the upstream applies.
+
+  When the array is empty (a leaf page, or `has_toc != false` on a
+  page that genuinely has no children), the whole block collapses to
+  nothing -- byte-identical to the upstream's behaviour on the same
+  pages.
+{%- endcomment -%}
+
+{%- if page.children_in_nav and page.children_in_nav.size >= 1 -%}
+
+<hr>
+{% include toc_heading_custom.html %}
+<ul>
+  {% for nav_child in page.children_in_nav %}
+  <li>
+    <a href="{{ nav_child.url | relative_url }}">{{ nav_child.title }}</a>{% if nav_child.summary %} - {{ nav_child.summary }}{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+{%- endif -%}
