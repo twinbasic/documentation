@@ -73,7 +73,7 @@ Assigning a string to [**Text**](#text) searches the list with an exact, case-in
 
 ## Multi-column display
 
-When [**Columns**](#columns) is greater than zero, the OS lays the items out in that many side-by-side columns and gives the control a horizontal scroll bar instead of the usual vertical one. The column width is automatically set to the control's pixel width divided by [**Columns**](#columns) — assigning a new [**Width**](#width) does not re-divide the columns; you must reassign [**Columns**](#columns) to refresh the layout.
+When [**Columns**](#columns) is greater than zero, the OS lays the items out in that many side-by-side columns and gives the control a horizontal scroll bar instead of the usual vertical one. The column width is automatically set to the control's pixel width divided by [**Columns**](#columns) — assigning a new [**Width**](#width) does not re-divide the columns; reassign [**Columns**](#columns) to refresh the layout.
 
 The single-column / multi-column distinction is fixed at the moment the underlying window is created. At run time, [**Columns**](#columns) can be raised or lowered between non-zero values to re-divide the same control, but switching between zero and non-zero raises run-time error 380 (*Invalid property value*). Set [**Columns**](#columns) to its desired non-zero value at design time when a multi-column layout is wanted.
 

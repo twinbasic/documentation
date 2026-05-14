@@ -74,7 +74,7 @@ twinBASIC compiles project-level resources (bitmaps, strings, raw byte blobs) in
 
 ## Form lifetime helpers
 
-[**Load**](#load) creates a form (or, for control arrays, a control instance) without showing it; [**Unload**](#unload) tears it back down. Both are written without parentheses by convention — `Load Form1`, `Unload Form1` — and behave as statements, but they are in fact calls to **Global.Load** and **Global.Unload**. The corresponding form-lifecycle events ([**Initialize**](../Form/#initialize), [**Load**](../Form/#load), [**Unload**](../Form/#unload), [**Terminate**](../Form/#terminate)) fire at the expected points.
+[**Load**](#load) creates a form (or, for control arrays, a control instance) without showing it; [**Unload**](#unload) destroys it. Both are written without parentheses by convention — `Load Form1`, `Unload Form1` — and behave as statements, but they are in fact calls to **Global.Load** and **Global.Unload**. The corresponding form-lifecycle events ([**Initialize**](../Form/#initialize), [**Load**](../Form/#load), [**Unload**](../Form/#unload), [**Terminate**](../Form/#terminate)) fire at the expected points.
 
 ## Printer and Printers
 
@@ -205,7 +205,7 @@ Syntax: **LoadResString**( *id* )
 ### Unload
 {: .no_toc }
 
-Tears down the form (or removes the control-array element). The form's [**QueryUnload**](../Form/#queryunload), [**Unload**](../Form/#unload), and [**Terminate**](../Form/#terminate) events fire in order. Either of the first two can set its *Cancel* argument non-zero to veto the unload, in which case the form remains loaded and visible.
+Destroys the form (or removes the control-array element). The form's [**QueryUnload**](../Form/#queryunload), [**Unload**](../Form/#unload), and [**Terminate**](../Form/#terminate) events fire in order. Either of the first two can set its *Cancel* argument non-zero to veto the unload, in which case the form remains loaded and visible.
 
 Syntax: **Unload** *object*
 

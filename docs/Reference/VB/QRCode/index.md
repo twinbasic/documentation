@@ -333,7 +333,7 @@ Syntax: *object*.**Move** *Left* [, *Top* [, *Width* [, *Height* ] ] ]
 ### OLEDrag
 {: .no_toc }
 
-Initiates an OLE drag operation from the control, raising the [**OLEStartDrag**](#olestartdrag) event so the application can populate the **DataObject** (or, if the source has already been pre-populated, kicks off the drag immediately).
+Initiates an OLE drag operation from the control, raising the [**OLEStartDrag**](#olestartdrag) event so the application can populate the **DataObject** (or, if the source has already been pre-populated, begins the drag immediately).
 
 Syntax: *object*.**OLEDrag**
 

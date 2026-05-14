@@ -42,7 +42,7 @@ GDI applies a hard limitation here: when [**BorderWidth**](#borderwidth) is grea
 
 ## Draw mode
 
-[**DrawMode**](#drawmode) selects the raster operation that combines the pen with the destination pixels. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants): **vbCopyPen** (default — opaque drawing) or one of the XOR / AND / NOT / merge variants. Non-default modes are mainly useful for "rubber-band" feedback drawn over an existing background — the same XOR you draw twice cancels itself out, restoring the original pixels.
+[**DrawMode**](#drawmode) selects the raster operation that combines the pen with the destination pixels. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants): **vbCopyPen** (default — opaque drawing) or one of the XOR / AND / NOT / merge variants. Non-default modes are mainly useful for "rubber-band" feedback drawn over an existing background — the same XOR applied twice cancels itself out, restoring the original pixels.
 
 ## No interaction
 

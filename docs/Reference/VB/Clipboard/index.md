@@ -128,7 +128,7 @@ Syntax: *object*.**SetData** *Picture* [, *Format* ]
 ### SetText
 {: .no_toc }
 
-Places text data onto the clipboard. Note that **SetText** does *not* implicitly clear the clipboard first — call [**Clear**](#clear) explicitly when you want only this one value on the clipboard, so that no stale data of other formats survives.
+Places text data onto the clipboard. Note that **SetText** does *not* implicitly clear the clipboard first — call [**Clear**](#clear) explicitly to ensure that no stale data of other formats survives alongside the new value.
 
 Syntax: *object*.**SetText** *Str* [, *Format* ]
 

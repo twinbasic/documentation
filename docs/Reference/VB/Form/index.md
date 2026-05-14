@@ -57,7 +57,7 @@ dlgOptions.Show vbModal, Me      ' modal, owned by the calling form
 
 [**Hide**](#hide) and [**Close**](#close) reverse the effect: **Hide** just clears [**Visible**](#visible); **Close** runs the full unload sequence (**QueryUnload** then **Unload** then **Terminate**). The classic `Unload <FormName>` statement is the language-level equivalent of **Close**.
 
-[**StartUpPosition**](#startupposition) ([**StartUpPositionConstants**](../../VBRUN/Constants/StartUpPositionConstants)) is read at the first **Show** to decide where the form lands; afterwards the user (or code through [**Move**](#move) and [**WindowState**](#windowstate)) controls position.
+[**StartUpPosition**](#startupposition) ([**StartUpPositionConstants**](../../VBRUN/Constants/StartUpPositionConstants)) is read at the first **Show** to decide where the form is placed; afterwards the user (or code through [**Move**](#move) and [**WindowState**](#windowstate)) controls position.
 
 ## Window appearance
 

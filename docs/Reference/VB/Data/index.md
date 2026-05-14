@@ -50,7 +50,7 @@ The opened objects are exposed read-only as [**Database**](#database) and read/w
 Other controls become *data-bound* by setting their **DataSource** to this **Data** control and their **DataField** to the name of a field in [**Recordset**](#recordset). A bound control reads its value from that field whenever the current record changes, and writes user edits back into the field as part of the next save. The **Data** control mediates both directions, raising [**Reposition**](#reposition) after the bound controls have re-synced and [**Validate**](#validate) before any operation that would discard pending edits.
 
 ```tb
-' At design time you would normally set these in the property sheet,
+' At design time these are normally set in the property sheet,
 ' but they can also be assigned in code:
 Set txtTitle.DataSource = Data1
 txtTitle.DataField = "Title"

@@ -8,7 +8,7 @@ has_toc: false
 # HScrollBar class
 {: .no_toc }
 
-An **HScrollBar** is a Win32 native horizontal scroll bar exposed as a stand-alone control. Unlike the scroll bars that automatically appear inside a [**ListBox**](../ListBox), [**ComboBox**](../ComboBox), or [**TextBox**](../TextBox), an **HScrollBar** is independent of any other control — its [**Value**](#value) is whatever your code reads or writes. The typical use is to drive a numeric setting (a volume level, a paginator, a colour channel, the offset of a custom-drawn surface) by binding the **HScrollBar**'s [**Change**](#change) and [**Scroll**](#scroll) events to whatever the value represents.
+An **HScrollBar** is a Win32 native horizontal scroll bar exposed as a stand-alone control. Unlike the scroll bars that automatically appear inside a [**ListBox**](../ListBox), [**ComboBox**](../ComboBox), or [**TextBox**](../TextBox), an **HScrollBar** is independent of any other control — its [**Value**](#value) is whatever code reads or writes. The typical use is to control a numeric setting (a volume level, a paginator, a colour channel, the offset of a custom-drawn surface) by binding the **HScrollBar**'s [**Change**](#change) and [**Scroll**](#scroll) events to whatever the value represents.
 
 [**VScrollBar**](../VScrollBar) is the vertical counterpart; the two classes are identical apart from orientation.
 
@@ -380,7 +380,7 @@ Syntax: *object*\_**LostFocus**( )
 ### Scroll
 {: .no_toc }
 
-Raised continuously while the user is dragging the thumb, once for each tick that produces a different [**Value**](#value). After the user releases the thumb, a single [**Change**](#change) event fires with the final value. Use **Scroll** when you want a live preview while the thumb is moving; use [**Change**](#change) when you want to react only to the final value.
+Raised continuously while the user is dragging the thumb, once for each tick that produces a different [**Value**](#value). After the user releases the thumb, a single [**Change**](#change) event fires with the final value. Use **Scroll** for a live preview while the thumb is moving; use [**Change**](#change) to react only to the final value.
 
 Syntax: *object*\_**Scroll**( )
 

@@ -58,7 +58,7 @@ By default the selection is hidden whenever the control loses focus. Set [**Hide
 
 ## Numbers only
 
-When [**NumbersOnly**](#numbersonly) is **True**, the edit control silently rejects any keystroke that is not a decimal digit. Sign characters, decimal separators, and thousand separators are *not* accepted — the property is a thin wrapper around the OS **ES_NUMBER** style and provides only digit filtering. Use a [**KeyPress**](#keypress) handler if you need more elaborate validation.
+When [**NumbersOnly**](#numbersonly) is **True**, the edit control silently rejects any keystroke that is not a decimal digit. Sign characters, decimal separators, and thousand separators are *not* accepted — the property is a thin wrapper around the OS **ES_NUMBER** style and provides only digit filtering. Use a [**KeyPress**](#keypress) handler for more elaborate validation.
 
 ## OLE drag-and-drop
 

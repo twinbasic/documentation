@@ -8,7 +8,7 @@ has_toc: false
 # DirListBox class
 {: .no_toc }
 
-A **DirListBox** is a Win32 native list control that displays the directory tree for a single path: the ancestors of the current folder are shown above (each with a closed-folder icon, indented by depth), and the immediate subdirectories of the current folder appear below (each with an open-folder icon at full indent). Double-clicking an entry navigates into it, raising a [**Change**](#change) event. The control is normally placed on a **Form** or **UserControl** at design time alongside a [**DriveListBox**](../DriveListBox) and a [**FileListBox**](../FileListBox), wiring their **Change** events together to drive a complete file picker. The default property is [**Path**](#path) and the default event is [**Change**](#change).
+A **DirListBox** is a Win32 native list control that displays the directory tree for a single path: the ancestors of the current folder are shown above (each with a closed-folder icon, indented by depth), and the immediate subdirectories of the current folder appear below (each with an open-folder icon at full indent). Double-clicking an entry navigates into it, raising a [**Change**](#change) event. The control is normally placed on a **Form** or **UserControl** at design time alongside a [**DriveListBox**](../DriveListBox) and a [**FileListBox**](../FileListBox), connecting their **Change** events together to build a complete file picker. The default property is [**Path**](#path) and the default event is [**Change**](#change).
 
 ```tb
 Private Sub Form_Load()
