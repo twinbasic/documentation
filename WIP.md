@@ -56,7 +56,7 @@ Per-package content-shape references live in sibling files. Open the relevant on
 - [tbIDE Package](WIP.tbIDE.md) — the addin SDK (type-only compiler package): 23 CoClasses + `AddinTimer` + the HTML/DOM `[COMExtensible]` surface + samples 10–15 idiom map.
 - [WinNativeCommonCtls Package](WIP.WinNativeCommonCtls.md) — VB6-compatible `MSCOMCTL.OCX` replacement: 8 controls + 8 sub-objects + per-control nested enums + 10 module-level enums.
 
-The three "winlibs" packages — [WinServicesLib](WIP.WinServicesLib.md), [WinEventLogLib](WIP.WinEventLogLib.md), and [WinNamedPipesLib](WIP.WinNamedPipesLib.md) — share a load-bearing set of integration idioms: composition-delegation on `EventLog(Of …)`, the `ManualMessageLoopEnter` / `Leave` pattern coupling `NamedPipeServer` to a service's `ChangeState` handler, and `PropertyBag` as the canonical pipe payload. When working on any of the three, check the other two for cross-references.
+The three "winlibs" packages — [WinServicesLib](WIP.WinServicesLib.md), [WinEventLogLib](WIP.WinEventLogLib.md), and [WinNamedPipesLib](WIP.WinNamedPipesLib.md) — share an essential set of integration idioms: composition-delegation on `EventLog(Of …)`, the `ManualMessageLoopEnter` / `Leave` pattern coupling `NamedPipeServer` to a service's `ChangeState` handler, and `PropertyBag` as the canonical pipe payload. When working on any of the three, check the other two for cross-references.
 
 ## Page template
 
@@ -307,6 +307,81 @@ Add a `> [!NOTE]` callout or rewrite the affected section when source diverges. 
 - Mac-specific notes from VBA-Docs are typically irrelevant; trim.
 
 When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Reference/index.md` before assuming VBA semantics carry over.
+
+## Plain-English prose
+
+The audience is international: standard-English readers worldwide, often non-native, who may not parse idiomatic software-developer jargon. Use plain English in reference and tutorial prose.
+
+The guiding principle: **replace metaphors imported from outside programming; keep vocabulary with a specific technical meaning inside Win32 / COM / event-driven programming.** If a phrase is the kind of thing a reader would have to look up in a tech blog, it doesn't belong in reference prose.
+
+### Replace
+
+| Term | Use instead |
+|------|-------------|
+| `at rest` (idle state) | idle, in its default state |
+| `bake in` / `baked into` | embedded, stored, included |
+| `broker` (as verb) | manages, handles |
+| `carry` / `carries` (figurative) | has, contains, includes |
+| `catches up` | resumes, processes the queue |
+| `comes up` (a connection) | is established, becomes ready |
+| `drive` / `driven` (figurative) | controlled by, determined by, powered by |
+| `for free` (figurative) | as a side effect, without extra effort |
+| `hand off` / `hand over` / `hand back` | returns, passes, delivers |
+| `hand-rolled` | manually constructed, custom-built |
+| `handful` / `handy` | a few; useful |
+| `heavy hitter` / `heavy-hitter` (figurative) | main items, biggest items, most significant |
+| `in flight` / `in-flight` | pending, in progress |
+| `in one shot` | in a single call |
+| `in order to` | to |
+| `kick off` / `kicks off` | start, begin |
+| `land` (figurative — "where the call lands") | appears, arrives, ends up at |
+| `leverage` / `leveraging` | use, take advantage of |
+| `load-bearing` (figurative) | essential, critical, central |
+| `mid-call` | during the call |
+| `on the wire` | transmitted, over the network |
+| `orchestration` / `orchestrate` | coordination, manual handling |
+| `picks up` (figurative) | receives, reads, captures, inherits |
+| `pinned to` (UI layout) | attached to, fixed to |
+| `reach for` / `reaching into` | use, access |
+| `sensible defaults` | reasonable defaults, or list them inline |
+| `spin up` / `spins up` | start, create |
+| `stash` (as verb) | store, save |
+| `sticks` (figurative — "the zoom sticks") | is preserved, is retained |
+| `surface` (as verb) | expose, appear as, make available, raise |
+| `surface area` (figurative API surface) | set of members, interface |
+| `swallow` (a keystroke) | consume, discard |
+| `taps into` | hooks into, intercepts |
+| `tear down` (figurative) | destroy, unload |
+| `twirling` (UI animation) | spinning, or describe concretely |
+| `under the hood` | internally |
+| `utilize` | use |
+| `walk` (as verb — "walk the chain", "walks the children") | traverse, go through, iterate over |
+| `walks through` (tutorials) | demonstrates, explains, describes step by step |
+| `wire up` / `wired up` / `wired in` | connect, attach, link |
+
+### Delete outright
+
+Vague compliments that add no information. Be concrete instead — if a feature is fast, say what it is faster than; if an API is small, say how many members it has.
+
+- `powerful`
+- `robust`
+- `clean` (as a vague compliment — "clean architecture"; literal uses like "clean shutdown" stay)
+- `rich` (vague — "rich information"; literal "Rich Text Format" stays)
+- `easily` (filler — "easily share" → "share")
+
+### Keep as-is
+
+Don't over-correct these — they are precise technical vocabulary or otherwise pull their weight:
+
+- **Programming / Win32 / COM:** `no-op`, `round-trip` / `round-tripping`, `fire-and-forget`, `marshal` / `marshalled` (between threads), `pump` (messages) / `message pump`, `spawn` (a thread or process), `mixin`, `first-class` (type), `boilerplate`, `falls through`, `short-circuit`, `idiom` / `idiomatic`, `canonical`.
+- **Standard prose:** `ends up`, `modern`, `lightweight`, `talk to` (interop), `out of the box`, `on the fly`, `work around` / `workaround`.
+- **Vivid but tolerable:** `ship` / `ships with`, `bridge` (figurative), `cascade` (figurative), `fold in` (compile-time emit).
+- **Audience-appropriate VB6 vocabulary:** `drop it onto a form`.
+- **Marketing register (Videos section only — promotional copy):** `sneak peek`, `game-changing`, `drop-in`, `seamless`.
+
+### Anchors
+
+Some kept terms are referenced by in-doc anchors. The most prominent is `idiom` / `idiomatic` — `WIP.WinEventLogLib.md` and `WIP.WinServicesLib.md` reference anchors like `#service-host-idiom` and `#composition-delegation-idiom`. Don't rename these casually; if you do, add `redirect_from` aliases to preserve legacy links.
 
 ## Scripts and tooling
 
