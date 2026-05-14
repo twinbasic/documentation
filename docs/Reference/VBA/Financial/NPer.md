@@ -24,7 +24,7 @@ Syntax: **NPer(** *rate*, *pmt*, *pv* [ **,** *fv* [ **,** *type* ] ] **)**
 : *optional* **Variant** specifying future value or cash balance remaining after the final payment. For example, the future value of a loan is $0 because that's its value after the final payment. However, to save $50,000 over 18 years for a child's education, $50,000 is the future value. If omitted, 0 is assumed.
 
 *type*
-: *optional* **Variant** specifying when payments are due. Use 0 if payments are due at the end of the payment period, or use 1 if payments are due at the beginning of the period. If omitted, 0 is assumed.
+: *optional* **Variant** specifying when payments are due. 0 means payments are due at the end of the period; 1 means payments are due at the beginning. If omitted, 0 is assumed.
 
 An annuity is a series of fixed cash payments made over a period of time. An annuity can be a loan (such as a home mortgage) or an investment (such as a monthly savings plan).
 

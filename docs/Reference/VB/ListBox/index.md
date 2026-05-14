@@ -75,7 +75,7 @@ Assigning a string to [**Text**](#text) searches the list with an exact, case-in
 
 When [**Columns**](#columns) is greater than zero, the OS lays the items out in that many side-by-side columns and gives the control a horizontal scroll bar instead of the usual vertical one. The column width is automatically set to the control's pixel width divided by [**Columns**](#columns) — assigning a new [**Width**](#width) does not re-divide the columns; reassign [**Columns**](#columns) to refresh the layout.
 
-The single-column / multi-column distinction is fixed at the moment the underlying window is created. At run time, [**Columns**](#columns) can be raised or lowered between non-zero values to re-divide the same control, but switching between zero and non-zero raises run-time error 380 (*Invalid property value*). Set [**Columns**](#columns) to its desired non-zero value at design time when a multi-column layout is wanted.
+The single-column / multi-column distinction is fixed at the moment the underlying window is created. At run time, [**Columns**](#columns) can be raised or lowered between non-zero values to re-divide the same control, but switching between zero and non-zero raises run-time error 380 (*Invalid property value*). A multi-column layout requires [**Columns**](#columns) to be assigned its non-zero value at design time.
 
 ## Checkbox style
 
@@ -229,7 +229,7 @@ Syntax: *object*.**ItemData**( *Index* ) [ = *value* ]
 *Index*
 : *required* A **Long** zero-based item position.
 
-In **vbListBoxColorSwatch** mode, **ItemData** is read by the painting code as the **OLE_COLOR** to draw in the swatch — a typical use is to fill it with a list of palette colours and let the user pick one. In the other styles **ItemData** is purely application-defined.
+In **vbListBoxColorSwatch** mode, **ItemData** is read by the painting code as the **OLE_COLOR** to draw in the swatch — a typical use is to fill it with a list of palette colours from which the user selects one. In the other styles **ItemData** is purely application-defined.
 
 ```tb
 List1.AddItem "Highlight"

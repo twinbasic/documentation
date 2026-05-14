@@ -143,14 +143,14 @@ Select Case cmd
 End Select
 ```
 
-Nothing in the package mandates **PropertyBag** — raw `Byte()` works too, and a custom wire format may be the right answer for very high-throughput scenarios. The everyday case is well served by the **PropertyBag** convention, and it solves the transient-`Data()` problem as a side effect.
+Nothing in the package mandates **PropertyBag** — raw `Byte()` works too, and a custom wire format may be the right answer for very high-throughput scenarios. The everyday case is well served by the **PropertyBag** convention, and it solves the transient-`Data()` problem without extra effort.
 
 ## Closing a client connection
 
 > [!IMPORTANT]
 > The **`_README.txt`** states: *"you MUST call **AsyncClose** on the client side, otherwise the connection is left alive when the object goes out of scope"*.
 
-Either let the [**NamedPipeClientConnection**](NamedPipeClientConnection) object terminate cleanly through its `Class_Terminate` (which calls [**AsyncClose**](NamedPipeClientConnection#asyncclose) automatically) **or** call [**AsyncClose**](NamedPipeClientConnection#asyncclose) yourself before dropping the last reference. Holding a reference forever — for example in a long-lived module-level **Collection** — without calling [**AsyncClose**](NamedPipeClientConnection#asyncclose) keeps the underlying pipe handle open and the IOCP thread alive.
+Either let the [**NamedPipeClientConnection**](NamedPipeClientConnection) object terminate cleanly through its `Class_Terminate` (which calls [**AsyncClose**](NamedPipeClientConnection#asyncclose) automatically) **or** call [**AsyncClose**](NamedPipeClientConnection#asyncclose) explicitly before dropping the last reference. Holding a reference forever — for example in a long-lived module-level **Collection** — without calling [**AsyncClose**](NamedPipeClientConnection#asyncclose) keeps the underlying pipe handle open and the IOCP thread alive.
 
 ## Discovering pipes
 

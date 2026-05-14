@@ -8,7 +8,7 @@ has_toc: false
 # ListView class
 {: .no_toc }
 
-A **ListView** is a multi-column / icon list with four distinct visual modes selected through the [**View**](#view) property:
+A **ListView** is a flexible multi-column / icon list with four distinct visual modes selected through the [**View**](#view) property:
 
 | [**View**](#view)              | Description                                                                        |
 |--------------------------------|------------------------------------------------------------------------------------|

@@ -28,7 +28,7 @@ CEF and [**WebView2**](../WebView2/) both wrap a Chromium-based browser inside a
 - **Full control over the runtime stack.** The application targets a specific Chromium build and distributes it alongside the software. There is no automatic runtime update outside the application's control, so behavior stays consistent across deployments.
 - **Deeper runtime integration.** CEF allows hosting twinBASIC code inside the renderer / JavaScript process — something the more restricted WebView2 object model cannot do.
 
-Choose [**WebView2**](../WebView2/) when targeting only modern Windows and the system-installed Edge runtime is acceptable; choose **CEF** when control over the Chromium version or cross-platform readiness matters.
+[**WebView2**](../WebView2/) is the right fit when targeting only modern Windows and the system-installed Edge runtime is acceptable; **CEF** is preferable when control over the Chromium version or cross-platform readiness matters.
 
 ## Supported runtimes
 
@@ -85,7 +85,7 @@ At launch, [**CefBrowser**](CefBrowser/) searches for the runtime in this defaul
 ### Overriding the runtime location
 {: .no_toc }
 
-To point at a different folder — for example a portable side-by-side deployment — assign [**EnvironmentOptions.BrowserExecutableFolder**](CefBrowser/EnvironmentOptions#browserexecutablefolder) before or during the [**Create**](CefBrowser/#create) event:
+A different folder — for example a portable side-by-side deployment — is selected by assigning [**EnvironmentOptions.BrowserExecutableFolder**](CefBrowser/EnvironmentOptions#browserexecutablefolder) before or during the [**Create**](CefBrowser/#create) event:
 
 ```tb
 Private Sub CefBrowser1_Create()

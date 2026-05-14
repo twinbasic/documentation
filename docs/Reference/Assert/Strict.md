@@ -8,7 +8,7 @@ has_toc: false
 # Strict module
 {: .no_toc }
 
-The **Strict** module of the [**Assert**](.) package supplies assertions that compare values as if the comparison had been written directly in twinBASIC code, with two exceptions: string comparisons are case-sensitive (regardless of the project's `Option Compare` setting), and object default members are not evaluated. Use **Strict** for tests that should match the language's normal equality semantics for numbers and primitives but also need a guaranteed case-sensitive string compare and reference-style equality on objects.
+The **Strict** module of the [**Assert**](.) package supplies assertions that compare values as if the comparison had been written directly in twinBASIC code, with two exceptions: string comparisons are case-sensitive (regardless of the project's `Option Compare` setting), and object default members are not evaluated. **Strict** matches the language's normal equality semantics for numbers and primitives, plus guarantees a case-sensitive string compare and reference-style equality on objects.
 
 * TOC
 {:toc}
@@ -50,7 +50,7 @@ Syntax: **Strict.Fail** [ *Message* ]
 *Message*
 : *optional* A **String** describing the failure, recorded together with the source location of the call.
 
-Use **Fail** to mark code paths that should be unreachable in a passing test — most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
+**Fail** marks code paths that should be unreachable in a passing test — most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
 
 ```tb
 On Error Resume Next
@@ -67,7 +67,7 @@ Syntax: **Strict.Inconclusive** [ *Message* ]
 *Message*
 : *optional* A **String** describing why the result is inconclusive.
 
-Use **Inconclusive** when a precondition for the test could not be established, so that the assertion logic that follows would be meaningless. A common case is a setup step that failed to find a required external resource — a test database, a configured network endpoint — where the test itself is neither passing nor failing on its own merits.
+**Inconclusive** records that a precondition for the test could not be established and the assertion logic that follows would be meaningless. A common case is a setup step that failed to find a required external resource — a test database, a configured network endpoint — where the test itself is neither passing nor failing on its own merits.
 
 ## Equality
 

@@ -147,4 +147,4 @@ The three other Windows Event Log entry types — **Warning**, **Audit Success**
 
 ## Modules
 
-- [EventLogHelperPublic](EventLogHelperPublic) -- the low-level registry helper underlying [**EventLog.Register**](EventLog#register); call it directly only when needing to supply a category count without using the generic class
+- [EventLogHelperPublic](EventLogHelperPublic) -- the low-level registry helper underlying [**EventLog.Register**](EventLog#register); call it directly only when a category count must be supplied without using the generic class

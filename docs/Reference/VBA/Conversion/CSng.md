@@ -18,7 +18,7 @@ Syntax: **CSng(** *expression* **)**
 
 The return type is **Single**. If *expression* is outside the range of a **Single**, a run-time error occurs.
 
-Use **CSng** instead of [**Val**](Val) to provide internationally aware conversions from a string to a numeric type.
+**CSng** is the internationally aware alternative to [**Val**](Val) for converting a string to a numeric type.
 
 ### Example
 

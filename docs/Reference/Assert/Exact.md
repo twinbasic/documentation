@@ -8,7 +8,7 @@ has_toc: false
 # Exact module
 {: .no_toc }
 
-The **Exact** module of the [**Assert**](.) package supplies assertions with the strictest possible comparison semantics. String comparisons are case-sensitive; numeric values must match in datatype as well as value (so `5` is not equal to `5.0`); `vbNullString` is distinct from `""`; `Empty` is distinct from `0`, `False`, `""`, and `vbNullString`; and object default members are not evaluated. Use **Exact** when an assertion should flag any kind of implicit conversion or coercion in the values being tested.
+The **Exact** module of the [**Assert**](.) package supplies assertions with the strictest possible comparison semantics. String comparisons are case-sensitive; numeric values must match in datatype as well as value (so `5` is not equal to `5.0`); `vbNullString` is distinct from `""`; `Empty` is distinct from `0`, `False`, `""`, and `vbNullString`; and object default members are not evaluated. **Exact** flags any kind of implicit conversion or coercion in the values being tested.
 
 * TOC
 {:toc}
@@ -51,7 +51,7 @@ Syntax: **Exact.Fail** [ *Message* ]
 *Message*
 : *optional* A **String** describing the failure, recorded together with the source location of the call.
 
-Use **Fail** to mark code paths that should be unreachable in a passing test — most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
+**Fail** marks code paths that should be unreachable in a passing test — most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
 
 ```tb
 On Error Resume Next
@@ -68,7 +68,7 @@ Syntax: **Exact.Inconclusive** [ *Message* ]
 *Message*
 : *optional* A **String** describing why the result is inconclusive.
 
-Use **Inconclusive** when a precondition for the test could not be established, so that the assertion logic that follows would be meaningless. A common case is a setup step that failed to find a required external resource — a test database, a configured network endpoint — where the test itself is neither passing nor failing on its own merits.
+**Inconclusive** records that a precondition for the test could not be established and the assertion logic that follows would be meaningless. A common case is a setup step that failed to find a required external resource — a test database, a configured network endpoint — where the test itself is neither passing nor failing on its own merits.
 
 ## Equality
 

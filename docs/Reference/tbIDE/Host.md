@@ -37,7 +37,7 @@ Almost every meaningful addin builds its toolbar buttons and tool windows inside
 ### ActiveEditors
 {: .no_toc }
 
-The collection of editors currently open in the IDE. Use `Host.ActiveEditors(0)` for the active one — at present the IDE exposes exactly one active editor at a time and `Host.ActiveEditors.Count` is **1** when an editor is open, **0** when none is. **As** [**Editors**](Editors). Read-only.
+The collection of editors currently open in the IDE. `Host.ActiveEditors(0)` returns the active one — at present the IDE exposes exactly one active editor at a time and `Host.ActiveEditors.Count` is **1** when an editor is open, **0** when none is. **As** [**Editors**](Editors). Read-only.
 
 ### CompilerVersion
 {: .no_toc }
@@ -126,7 +126,7 @@ Syntax: *host*.**ShowNotification** *Prompt*
 *Prompt*
 : *required* The notification text. **String**.
 
-Use [**ShowMessageBox**](#showmessagebox) when the user has to answer something; **ShowNotification** is for "the user should know but doesn't have to react".
+[**ShowMessageBox**](#showmessagebox) is for when the user has to answer something; **ShowNotification** is for "the user should know but doesn't have to react".
 
 ## Events
 
@@ -151,7 +151,7 @@ End Sub
 ### OnChangedActiveEditor
 {: .no_toc }
 
-Fires when the user switches the focused editor. Use this to refresh any addin UI that depends on the current editor (e.g. a context-aware tool window). Available since IDE BETA 504+; older IDEs do not fire it.
+Fires when the user switches the focused editor. The event is the right hook for refreshing any addin UI that depends on the current editor (e.g. a context-aware tool window). Available since IDE BETA 504+; older IDEs do not fire it.
 
 Syntax: *host*_**OnChangedActiveEditor**(*EditorIdx* **As Long**, *Editor* **As** [**Editor**](Editor))
 

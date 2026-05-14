@@ -24,7 +24,7 @@ Syntax: **FV(** *rate*, *nper*, *pmt* [ **,** *pv* [ **,** *type* ] ] **)**
 : *optional* **Variant** specifying present value (or lump sum) of a series of future payments. For example, when borrowing money to buy a car, the loan amount is the present value to the lender of the monthly car payments to be made. If omitted, 0 is assumed.
 
 *type*
-: *optional* **Variant** specifying when payments are due. Use 0 if payments are due at the end of the payment period, or use 1 if payments are due at the beginning of the period. If omitted, 0 is assumed.
+: *optional* **Variant** specifying when payments are due. 0 means payments are due at the end of the period; 1 means payments are due at the beginning. If omitted, 0 is assumed.
 
 An annuity is a series of fixed cash payments made over a period of time. An annuity can be a loan (such as a home mortgage) or an investment (such as a monthly savings plan).
 

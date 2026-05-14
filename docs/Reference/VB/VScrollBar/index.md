@@ -380,7 +380,7 @@ Syntax: *object*\_**LostFocus**( )
 ### Scroll
 {: .no_toc }
 
-Raised continuously while the user is dragging the thumb, once for each tick that produces a different [**Value**](#value). After the user releases the thumb, a single [**Change**](#change) event fires with the final value. Use **Scroll** for a live preview while the thumb is moving; use [**Change**](#change) to react only to the final value.
+Raised continuously while the user is dragging the thumb, once for each tick that produces a different [**Value**](#value). After the user releases the thumb, a single [**Change**](#change) event fires with the final value. **Scroll** is the right event for a live preview while the thumb is moving; [**Change**](#change) fires only the final value.
 
 Syntax: *object*\_**Scroll**( )
 

@@ -63,7 +63,7 @@ Set to **False** if the service needs a different apartment model — for exampl
 
 The human-readable description listed in `services.msc` and `sc.exe query`. **String**, no default.
 
-The value is written to the SCM by [**Install**](#install) via `ChangeServiceConfig2W(SERVICE_CONFIG_DESCRIPTION)` and is applied to a fresh service or refreshed on every re-install. Set it before calling [**Install**](#install); changing the field at run-time has no effect until the next install.
+The value is written to the SCM by [**Install**](#install) via `ChangeServiceConfig2W(SERVICE_CONFIG_DESCRIPTION)` and is applied to a fresh service or refreshed on every re-install. The field must be assigned before [**Install**](#install) is called; changing it at run-time has no effect until the next install.
 
 ### DependentServices
 {: .no_toc }
@@ -109,7 +109,7 @@ The driver-only modes ([**tbServiceStartBoot**](Enumerations/ServiceStartConstan
 
 The factory the dispatcher uses to create the [**ITbService**](ITbService) instance for this service when the SCM launches it. [**IServiceCreator**](ServiceCreator), no default.
 
-Set this to `New ServiceCreator(Of MyServiceClass)` where `MyServiceClass` is the user's [**ITbService**](ITbService) implementation:
+Assigned `New ServiceCreator(Of MyServiceClass)` where `MyServiceClass` is the user's [**ITbService**](ITbService) implementation:
 
 ```tb
 .InstanceCreator = New ServiceCreator(Of MyService)
@@ -190,7 +190,7 @@ Re-applies the cached `SERVICE_STATUS` to the SCM via `SetServiceStatus`. Called
 
 Syntax: *manager*.**ResyncStatus**
 
-Raises run-time error 5 *"Can't update the service state until the service has started"* if called before the service has acquired its SCM status handle (i.e. before the dispatcher trampoline has called `RegisterServiceCtrlHandlerExW`). Use [**ReportStatus**](#reportstatus) from inside [**EntryPoint**](ITbService#entrypoint) instead of **ResyncStatus** directly.
+Raises run-time error 5 *"Can't update the service state until the service has started"* if called before the service has acquired its SCM status handle (i.e. before the dispatcher trampoline has called `RegisterServiceCtrlHandlerExW`). From inside [**EntryPoint**](ITbService#entrypoint), [**ReportStatus**](#reportstatus) is the right call rather than **ResyncStatus** directly.
 
 ### Uninstall
 {: .no_toc }

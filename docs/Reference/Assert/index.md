@@ -11,7 +11,7 @@ has_toc: false
 
 The **Assert** built-in package supplies the assertion functions used to write unit tests for twinBASIC code. Each assertion checks an expected condition; on failure, it records a test failure with the call site and an optional message. The test runner — the twinBASIC IDE's Test Explorer, or any equivalent harness — collects those results, decides which tests passed, failed, or were skipped, and reports them.
 
-The package's three modules — [**Exact**](Exact), [**Strict**](Strict), and [**Permissive**](Permissive) — expose the same fifteen assertion functions; only the *comparison semantics* differ. Pick the flavour that matches how strictly equality should be evaluated.
+The package's three modules — [**Exact**](Exact), [**Strict**](Strict), and [**Permissive**](Permissive) — expose the same fifteen assertion functions; only the *comparison semantics* differ. Each flavour matches a different strictness level for equality evaluation.
 
 | Module                       | String comparisons | Numeric and other comparisons                                                                                                                              |
 |------------------------------|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|

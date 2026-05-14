@@ -67,7 +67,7 @@ Invoked by the SCM dispatcher thread when a control code is delivered to the ser
 Syntax: *service*.**ChangeState** *ServiceManager*, *dwControl*, *dwEventType*, *lpEventData*
 
 *ServiceManager*
-: The [**ServiceManager**](ServiceManager) for this service — the same instance passed to [**EntryPoint**](#entrypoint). Use it to call [**ReportStatus**](ServiceManager#reportstatus) acknowledging the pending transition.
+: The [**ServiceManager**](ServiceManager) for this service — the same instance passed to [**EntryPoint**](#entrypoint). The implementation calls [**ReportStatus**](ServiceManager#reportstatus) on it to acknowledge the pending transition.
 
 *dwControl*
 : A [**ServiceControlCodeConstants**](Enumerations/ServiceControlCodeConstants) value identifying the control. Standard codes the SCM may deliver include [**vbServiceControlStop**](Enumerations/ServiceControlCodeConstants#vbServiceControlStop), [**vbServiceControlShutdown**](Enumerations/ServiceControlCodeConstants#vbServiceControlShutdown), [**vbServiceControlPause**](Enumerations/ServiceControlCodeConstants#vbServiceControlPause), [**vbServiceControlContinue**](Enumerations/ServiceControlCodeConstants#vbServiceControlContinue), [**vbServiceControlInterrogate**](Enumerations/ServiceControlCodeConstants#vbServiceControlInterrogate), and the event-bearing codes ([**vbServiceControlSessionChange**](Enumerations/ServiceControlCodeConstants#vbServiceControlSessionChange), [**vbServiceControlPowerEvent**](Enumerations/ServiceControlCodeConstants#vbServiceControlPowerEvent), [**vbServiceControlDeviceEvent**](Enumerations/ServiceControlCodeConstants#vbServiceControlDeviceEvent), [**vbServiceControlHardwareProfileChange**](Enumerations/ServiceControlCodeConstants#vbServiceControlHardwareProfileChange)). User-defined codes in the range 128–255 can also be delivered through [**Services.ControlService**](Services#controlservice).
@@ -100,7 +100,7 @@ The service's main routine. Invoked by the package's dispatcher trampoline on th
 Syntax: *service*.**EntryPoint** *ServiceManager*
 
 *ServiceManager*
-: The [**ServiceManager**](ServiceManager) for this service. Contains the configuration that was set during `Sub Main` plus the runtime [**LaunchArgs**](ServiceManager#launchargs) the SCM passed in. Use it to call [**ReportStatus**](ServiceManager#reportstatus) on every state transition.
+: The [**ServiceManager**](ServiceManager) for this service. Contains the configuration that was set during `Sub Main` plus the runtime [**LaunchArgs**](ServiceManager#launchargs) the SCM passed in. The implementation calls [**ReportStatus**](ServiceManager#reportstatus) on it for every state transition.
 
 The body of **EntryPoint** is the service's actual work. The minimum responsibilities:
 
@@ -112,7 +112,7 @@ The body of **EntryPoint** is the service's actual work. The minimum responsibil
 After the **EntryPoint** sub returns, the service thread exits and the SCM marks the service as stopped.
 
 > [!IMPORTANT]
-> **EntryPoint** runs on the **service thread**, not the dispatcher thread. The two threads execute concurrently for the lifetime of the service. Use shared `Public` flags on the implementing class (`IsStopping`, `IsPaused`, …) to coordinate state changes triggered from [**ChangeState**](#changestate).
+> **EntryPoint** runs on the **service thread**, not the dispatcher thread. The two threads execute concurrently for the lifetime of the service. Shared `Public` flags on the implementing class (`IsStopping`, `IsPaused`, …) coordinate state changes triggered from [**ChangeState**](#changestate).
 
 ### StartupFailed
 {: .no_toc }

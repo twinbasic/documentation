@@ -27,7 +27,7 @@ The return type is **String**. The result depends on the type of *expression*:
 | **Null**           | A run-time error.                                             |
 | Other numeric      | A string containing the number.                               |
 
-Use **CStr** instead of [**Str**](Str) to provide internationally aware conversions from a number to a string. **CStr** recognizes different decimal separators properly, depending on the system's locale setting.
+**CStr** is the internationally aware alternative to [**Str**](Str) for converting a number to a string. **CStr** recognizes different decimal separators properly, depending on the system's locale setting.
 
 ### Example
 

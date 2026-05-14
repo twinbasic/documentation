@@ -18,7 +18,7 @@ Syntax:
 : Enables the error-handling routine that starts at *line*. The *line* argument is any line label or line number. If a run-time error occurs, control branches to *line*, making the error handler active. The specified *line* must be in the same procedure as the **On Error** statement; otherwise, a compile-time error occurs.
 
 **On Error Resume Next**
-: Specifies that when a run-time error occurs, control goes to the statement immediately following the statement where the error occurred and execution continues. Use this form rather than **On Error GoTo** when accessing objects.
+: Specifies that when a run-time error occurs, control goes to the statement immediately following the statement where the error occurred and execution continues. This form is preferred over **On Error GoTo** when accessing objects.
 
 **On Error GoTo 0**
 : Disables any enabled error handler in the current procedure.

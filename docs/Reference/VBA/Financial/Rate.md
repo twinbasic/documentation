@@ -24,7 +24,7 @@ Syntax: **Rate(** *nper*, *pmt*, *pv* [ **,** *fv* [ **,** *type* [ **,** *guess
 : *optional* **Variant** specifying future value or cash balance remaining after the final payment. For example, the future value of a loan is $0 because that's its value after the final payment. However, to save $50,000 over 18 years for a child's education, $50,000 is the future value. If omitted, 0 is assumed.
 
 *type*
-: *optional* **Variant** specifying a number indicating when payments are due. Use 0 if payments are due at the end of the payment period, or use 1 if payments are due at the beginning of the period. If omitted, 0 is assumed.
+: *optional* **Variant** specifying when payments are due. 0 means payments are due at the end of the period; 1 means payments are due at the beginning. If omitted, 0 is assumed.
 
 *guess*
 : *optional* **Variant** specifying an estimate of the value to be returned by **Rate**. If omitted, *guess* is 0.1 (10 percent).

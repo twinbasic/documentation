@@ -116,7 +116,7 @@ The **Friend** keyword can only be used in class modules. However, **Friend** pr
 
 All executable code must be in procedures. A **Function** procedure cannot be defined inside another **Function**, **[Sub](Sub)**, or **[Property](Property)** procedure.
 
-The **[Exit Function](Exit)** statement and the **[Return](Return)** *expression* statement both cause an immediate exit from a **Function** procedure. Program execution continues with the statement following the statement that called the **Function** procedure. Any number of these statements can appear anywhere in a **Function** procedure. Use **Exit Function** when the return value has already been assigned (or the default is wanted), and **Return** *expression* to set the return value and exit in a single step.
+The **[Exit Function](Exit)** statement and the **[Return](Return)** *expression* statement both cause an immediate exit from a **Function** procedure. Program execution continues with the statement following the statement that called the **Function** procedure. Any number of these statements can appear anywhere in a **Function** procedure. **Exit Function** is the right choice when the return value has already been assigned (or the default is wanted); **Return** *expression* sets the return value and exits in a single step.
 
 Like a **Sub** procedure, a **Function** procedure is a separate procedure that can take arguments, perform a series of statements, and change the values of its arguments. However, unlike a **Sub** procedure, a **Function** procedure can appear on the right side of an expression in the same way as any intrinsic function — such as **Sqr**, **Cos**, or **Chr** — when the value returned by the function is needed.
 

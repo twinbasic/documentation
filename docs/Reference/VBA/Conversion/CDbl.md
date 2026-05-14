@@ -18,7 +18,7 @@ Syntax: **CDbl(** *expression* **)**
 
 The return type is **Double**. If *expression* is outside the range of a **Double**, a run-time error occurs.
 
-Use **CDbl** instead of [**Val**](Val) to provide internationally aware conversions from a string to a numeric type. **CDbl** recognizes different decimal separators and different thousand separators properly, depending on the system's locale setting.
+**CDbl** is the internationally aware alternative to [**Val**](Val) for converting a string to a numeric type. **CDbl** recognizes different decimal separators and different thousand separators properly, depending on the system's locale setting.
 
 ### Example
 

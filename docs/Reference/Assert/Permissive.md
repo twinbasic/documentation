@@ -8,7 +8,7 @@ has_toc: false
 # Permissive module
 {: .no_toc }
 
-The **Permissive** module of the [**Assert**](.) package supplies assertions that compare values as if the comparison had been written directly in twinBASIC code, with case-insensitive string comparison. Object default members are evaluated. Use **Permissive** for tests that should ignore case differences in strings — for example, asserting that an error message contains a particular phrase regardless of capitalisation — and that need object comparison to use the same default-member rules as `=`.
+The **Permissive** module of the [**Assert**](.) package supplies assertions that compare values as if the comparison had been written directly in twinBASIC code, with case-insensitive string comparison. Object default members are evaluated. **Permissive** ignores case differences in strings — for example, when asserting that an error message contains a particular phrase regardless of capitalisation — and uses the same default-member rules as `=` for object comparison.
 
 * TOC
 {:toc}
@@ -47,7 +47,7 @@ Syntax: **Permissive.Fail** [ *Message* ]
 *Message*
 : *optional* A **String** describing the failure, recorded together with the source location of the call.
 
-Use **Fail** to mark code paths that should be unreachable in a passing test — most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
+**Fail** marks code paths that should be unreachable in a passing test — most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
 
 ```tb
 On Error Resume Next
@@ -64,7 +64,7 @@ Syntax: **Permissive.Inconclusive** [ *Message* ]
 *Message*
 : *optional* A **String** describing why the result is inconclusive.
 
-Use **Inconclusive** when a precondition for the test could not be established, so that the assertion logic that follows would be meaningless. A common case is a setup step that failed to find a required external resource — a test database, a configured network endpoint — where the test itself is neither passing nor failing on its own merits.
+**Inconclusive** records that a precondition for the test could not be established and the assertion logic that follows would be meaningless. A common case is a setup step that failed to find a required external resource — a test database, a configured network endpoint — where the test itself is neither passing nor failing on its own merits.
 
 ## Equality
 

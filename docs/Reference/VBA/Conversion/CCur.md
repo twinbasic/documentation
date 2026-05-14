@@ -18,9 +18,9 @@ Syntax: **CCur(** *expression* **)**
 
 The return type is **Currency**. If *expression* is outside that range, a run-time error occurs.
 
-Use **CCur** to force currency arithmetic in cases where single-precision, double-precision, or integer arithmetic normally would occur.
+**CCur** forces currency arithmetic in cases where single-precision, double-precision, or integer arithmetic would normally occur.
 
-Use **CCur** instead of **Val** to provide internationally aware conversions from one data type to another. **CCur** recognizes different decimal separators, different thousand separators, and various currency options properly, depending on the system's locale setting.
+**CCur** is the internationally aware alternative to **Val** for converting between data types. **CCur** recognizes different decimal separators, different thousand separators, and various currency options properly, depending on the system's locale setting.
 
 ### Example
 

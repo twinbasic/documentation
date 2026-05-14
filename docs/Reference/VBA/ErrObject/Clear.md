@@ -19,7 +19,7 @@ Use **Clear** to explicitly reset the **Err** object after an error has been han
 
 > [!NOTE]
 >
-> The **On Error Resume Next** construct may be preferable to **On Error GoTo** when handling errors generated during access to other objects. Checking **Err** after each interaction with an object removes ambiguity about which object the error came from. The object that placed the code in [**Err.Number**](Number) and the object that originally generated the error (specified in [**Err.Source**](Source)) are both unambiguous.
+> The **On Error Resume Next** construct may be preferable to **On Error GoTo** when handling errors generated during access to other objects. Checking **Err** after each interaction with an object removes ambiguity about which object the error came from — both the object that placed the code in [**Err.Number**](Number) and the object that originally generated the error (specified in [**Err.Source**](Source)) can be identified, and they may be distinct.
 
 ### Example
 

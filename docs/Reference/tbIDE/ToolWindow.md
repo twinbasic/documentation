@@ -36,7 +36,7 @@ A `WithEvents` reference receives [**OnClose**](#onclose) when the user dismisse
 
 ## Tool-window default member — jQuery-style child lookup
 
-[**RootDomElement**](#rootdomelement) is the **DefaultMember** of the **ToolWindow** interface — so `myToolWindow(...)` is equivalent to `myToolWindow.RootDomElement.Properties(...)`. Because [**HtmlElementProperties**](HtmlElementProperties) is `[COMExtensible(True)]`, a string passed in parenthesis-syntax is resolved against the DOM at run time. The IDE treats CSS-style selectors specially, so:
+[**RootDomElement**](#rootdomelement) is the **DefaultMember** of the **ToolWindow** interface — so `myToolWindow.(...)` is equivalent to `myToolWindow.RootDomElement.Properties.(...)`. Because [**HtmlElementProperties**](HtmlElementProperties) is `[COMExtensible(True)]`, a string passed in parenthesis-syntax is resolved against the DOM at run time. The IDE treats CSS-style selectors specially, so:
 
 ```tb
 ' Find the descendant element whose id is "dataEntry" and read its .Value:

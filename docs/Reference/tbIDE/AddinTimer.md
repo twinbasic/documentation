@@ -26,7 +26,7 @@ End Sub
 
 Stop the timer by setting [**Enabled**](#enabled) = **False**, or simply by dropping the last reference — `Class_Terminate` cancels the underlying Win32 timer automatically. Both [**Enabled**](#enabled) and [**Interval**](#interval) are live: assigning to either re-arms the underlying Win32 timer using the new values, so changing the interval while the timer is running takes effect immediately.
 
-Nothing in the package *requires* this helper — a direct `SetTimer` / `KillTimer` pair (or any other periodic mechanism) works just as well; sample 15's dwell-time pattern uses raw Win32 calls. Use **AddinTimer** when the convenience of an event-bound class is preferable to managing the Win32 plumbing directly.
+Nothing in the package *requires* this helper — a direct `SetTimer` / `KillTimer` pair (or any other periodic mechanism) works just as well; sample 15's dwell-time pattern uses raw Win32 calls. **AddinTimer** is the right choice when the convenience of an event-bound class is preferable to managing the Win32 plumbing directly.
 
 * TOC
 {:toc}

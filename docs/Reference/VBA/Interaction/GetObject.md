@@ -44,7 +44,7 @@ Set MyObject = GetObject("C:\Drawings\Sample.drw", "Figment.Drawing")
 ```
 
 > [!NOTE]
-> Use **GetObject** when there is already a current instance of the object, or to create the object with a file already loaded. When there is no current instance and the object should not be started with a file loaded, use [**CreateObject**](CreateObject) instead.
+> **GetObject** attaches to a current instance of the object, or creates the object with a file already loaded. When there is no current instance and the object should not be started with a file loaded, [**CreateObject**](CreateObject) creates a new instance.
 
 For an object registered as single-instance, **GetObject** with the zero-length-string syntax always returns the same instance, and the form with *pathname* omitted causes an error.
 

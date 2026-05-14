@@ -30,7 +30,7 @@ ExcelApp.Visible = True
 If a remote *servername* is supplied but the remote machine doesn't exist or is unreachable, a run-time error occurs. If an object has registered itself as single-instance, only one instance is ever created, no matter how many times **CreateObject** is invoked.
 
 > [!NOTE]
-> Use **CreateObject** to obtain a new instance of the object. To attach to an *already-running* instance — or to start the object's application with a particular file loaded — use [**GetObject**](GetObject) instead.
+> **CreateObject** obtains a new instance of the object. [**GetObject**](GetObject) attaches to an *already-running* instance — or starts the object's application with a particular file loaded.
 
 ### Example
 

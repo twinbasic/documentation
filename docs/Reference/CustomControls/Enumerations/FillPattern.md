@@ -51,4 +51,4 @@ pnlThree.BackgroundFill.SetSimplePattern vbWhite, &H99CCFF, _
         Pattern:=tbGradientCornerTopLeft
 ```
 
-For a flat region with no gradient at all, use **tbPatternNone** — the `Fill` becomes fully transparent and the area behind the control shows through.
+**tbPatternNone** produces a flat region with no gradient — the `Fill` becomes fully transparent and the area behind the control shows through.

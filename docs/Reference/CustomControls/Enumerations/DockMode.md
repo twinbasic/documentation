@@ -30,4 +30,4 @@ Private Sub Form_Load()
 End Sub
 ```
 
-Setting **Dock** to anything other than **tbDockNone** makes the control's own [**Anchors**](../Styles/Anchors) irrelevant — docking takes over the position and size completely. To return to manual positioning, set **Dock** back to **tbDockNone**.
+Setting **Dock** to anything other than **tbDockNone** makes the control's own [**Anchors**](../Styles/Anchors) irrelevant — docking takes over the position and size completely. Manual positioning resumes when **Dock** is reset to **tbDockNone**.

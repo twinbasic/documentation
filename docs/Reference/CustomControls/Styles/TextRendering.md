@@ -39,7 +39,7 @@ With lblBanner.TextRendering
 End With
 ```
 
-Set [**OverflowMode**](#overflowmode) to **tbShrinkToFit** to scale the glyphs down rather than truncating with an ellipsis when the text is too long for the available width — useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
+Setting [**OverflowMode**](#overflowmode) to **tbShrinkToFit** scales the glyphs down rather than truncating with an ellipsis when the text is too long for the available width — useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
 
 * TOC
 {:toc}
