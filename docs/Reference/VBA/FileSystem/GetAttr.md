@@ -29,7 +29,7 @@ The value returned by **GetAttr** is the sum of the following attribute values:
 | **vbDirectory** | 16    | Directory or folder.   |
 | **vbArchive**   | 32    | File has changed since last backup. |
 
-To determine which attributes are set, use the **And** operator to perform a bitwise comparison of the value returned by **GetAttr** and the value of the individual file attribute you want. If the result is not zero, that attribute is set for the named file.
+To determine which attributes are set, use the **And** operator to perform a bitwise comparison of the value returned by **GetAttr** and the value of the individual file attribute being tested. If the result is not zero, that attribute is set for the named file.
 
 ```tb
 Result = GetAttr(FName) And vbArchive

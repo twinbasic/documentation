@@ -21,13 +21,13 @@ The return type is **String**. The result depends on the type of *expression*:
 | If *expression* is | CStr returns                                                  |
 |--------------------|---------------------------------------------------------------|
 | **Boolean**        | A string containing `"True"` or `"False"`.                    |
-| **Date**           | A string containing a date in the short date format of your system. |
+| **Date**           | A string containing a date in the system's short date format. |
 | **Empty**          | A zero-length string (`""`).                                  |
 | **Error**          | A string containing the word `Error` followed by the error number. |
 | **Null**           | A run-time error.                                             |
 | Other numeric      | A string containing the number.                               |
 
-Use **CStr** instead of [**Str**](Str) to provide internationally aware conversions from a number to a string. **CStr** recognizes different decimal separators properly, depending on the locale setting of your computer.
+Use **CStr** instead of [**Str**](Str) to provide internationally aware conversions from a number to a string. **CStr** recognizes different decimal separators properly, depending on the system's locale setting.
 
 ### Example
 

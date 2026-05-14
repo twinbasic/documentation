@@ -31,7 +31,7 @@ The *attributes* settings are:
 | **vbSystem**   | 4     | System file.                        |
 | **vbArchive**  | 32    | File has changed since last backup. |
 
-A run-time error occurs if you try to set the attributes of an open file.
+A run-time error occurs when setting the attributes of an open file.
 
 ### Example
 

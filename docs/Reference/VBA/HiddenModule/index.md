@@ -39,7 +39,7 @@ The **Interlocked*** family wraps the corresponding Windows kernel atomics — b
 
 ## Compile-time reflection
 
-A handful of intrinsics ask questions about the surrounding type without running anything; they are resolved by the compiler and burn in as constants. [**GetDeclaredTypeProgId**](GetDeclaredTypeProgId), [**GetDeclaredTypeClsid**](GetDeclaredTypeClsid), [**GetDeclaredTypeIid**](GetDeclaredTypeIid), and [**GetDeclaredTypeEventIid**](GetDeclaredTypeEventIid) report a type's COM identifiers. [**GetDeclaredMinEnumValue**](GetDeclaredMinEnumValue) and [**GetDeclaredMaxEnumValue**](GetDeclaredMaxEnumValue) return the minimum and maximum value of a declared enumeration.
+A few intrinsics ask questions about the surrounding type without running anything; they are resolved by the compiler and embedded as constants. [**GetDeclaredTypeProgId**](GetDeclaredTypeProgId), [**GetDeclaredTypeClsid**](GetDeclaredTypeClsid), [**GetDeclaredTypeIid**](GetDeclaredTypeIid), and [**GetDeclaredTypeEventIid**](GetDeclaredTypeEventIid) report a type's COM identifiers. [**GetDeclaredMinEnumValue**](GetDeclaredMinEnumValue) and [**GetDeclaredMaxEnumValue**](GetDeclaredMaxEnumValue) return the minimum and maximum value of a declared enumeration.
 
 ## Codegen injection and stack inspection
 
@@ -108,7 +108,7 @@ A handful of intrinsics ask questions about the surrounding type without running
 
 ## IGetMessageHook interface
 
-The **IGetMessageHook** interface taps into the Windows message stream for a chosen window — and optionally its descendants — and forwards messages of a chosen type to a user-supplied callback. Obtain an instance with [**RuntimeCreateGetMessageHook**](RuntimeCreateGetMessageHook); connect callbacks with [**RegisterMessage**](RegisterMessage); then call [**Start**](Start) to activate every registered subscription, and [**Stop**](Stop) to remove them.
+The **IGetMessageHook** interface hooks into the Windows message stream for a chosen window — and optionally its descendants — and forwards messages of a chosen type to a user-supplied callback. Obtain an instance with [**RuntimeCreateGetMessageHook**](RuntimeCreateGetMessageHook); connect callbacks with [**RegisterMessage**](RegisterMessage); then call [**Start**](Start) to activate every registered subscription, and [**Stop**](Stop) to remove them.
 
 The interface inherits directly from **stdole.IUnknown** (it is not dispatch-based), and the callbacks supplied to **RegisterMessage** are typed as [**GetMessageHookHelper.GetMessageHandler**](#getmessagehandler).
 

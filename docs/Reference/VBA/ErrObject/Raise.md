@@ -26,7 +26,7 @@ Syntax: **Err**.**Raise** *number* [ **,** *source* [ **,** *description* [ **,*
 *helpcontext*
 : *optional* The context ID identifying a topic within *helpfile* that provides help for the error. If omitted, the [**HelpContext**](HelpContext) property is cleared.
 
-All of the arguments are optional except *number*. If you call **Raise** without specifying some arguments, and the corresponding properties of the **Err** object still hold values from an earlier error, those values serve as the values for your error.
+All of the arguments are optional except *number*. When **Raise** is called without specifying some arguments, and the corresponding properties of the **Err** object still hold values from an earlier error, those values serve as the values for the current error.
 
 **Raise** is preferred over the [**Error**](../../Core/Error) statement when generating run-time errors, particularly inside class modules: the **Err** object holds richer information than the **Error** statement can supply. With **Raise** the source that generated the error can be specified in the [**Source**](Source) property, online Help for the error can be referenced through [**HelpFile**](HelpFile) and [**HelpContext**](HelpContext), and so on.
 

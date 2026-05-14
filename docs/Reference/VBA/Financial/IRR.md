@@ -15,11 +15,11 @@ Syntax: **IRR(** *values()* [ **,** *guess* ] **)**
 : *required* Array of **Double** specifying cash flow values. The array must contain at least one negative value (a payment) and one positive value (a receipt).
 
 *guess*
-: *optional* **Variant** specifying value that you estimate will be returned by **IRR**. If omitted, *guess* is 0.1 (10 percent).
+: *optional* **Variant** specifying an estimate of the value to be returned by **IRR**. If omitted, *guess* is 0.1 (10 percent).
 
 The internal rate of return is the interest rate received for an investment consisting of payments and receipts that occur at regular intervals.
 
-The **IRR** function uses the order of values within the array to interpret the order of payments and receipts. Be sure to enter your payment and receipt values in the correct sequence. The cash flow for each period doesn't have to be fixed, as it is for an annuity.
+The **IRR** function uses the order of values within the array to interpret the order of payments and receipts. The payment and receipt values must be in the correct sequence. The cash flow for each period doesn't have to be fixed, as it is for an annuity.
 
 **IRR** is calculated by iteration. Starting with the value of *guess*, **IRR** cycles through the calculation until the result is accurate to within 0.00001 percent. If **IRR** can't find a result after 20 tries, it fails.
 

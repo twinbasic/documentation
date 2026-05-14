@@ -16,7 +16,7 @@ Syntax: **Log(** *number* **)**
 
 The natural logarithm is the logarithm to the base *e*. The constant *e* is approximately 2.718282.
 
-You can calculate base-*n* logarithms for any number *x* by dividing the natural logarithm of *x* by the natural logarithm of *n* as follows:
+Base-*n* logarithms for any number *x* can be calculated by dividing the natural logarithm of *x* by the natural logarithm of *n* as follows:
 
 Log<sub>*n*</sub>(*x*) = **Log(** *x* **)** / **Log(** *n* **)**
 

@@ -19,7 +19,7 @@ Syntax: **CDec(** *expression* **)**
 The return type is **Decimal**.
 
 > [!NOTE]
-> In VBA, **CDec** does not return a discrete data type; it always returns a **Variant** whose value has been converted to a **Decimal** subtype. In twinBASIC, **Decimal** is a full first-class data type, so **CDec** returns a **Decimal** directly. You can still assign the result to a **Variant** to obtain VBA-compatible behavior.
+> In VBA, **CDec** does not return a discrete data type; it always returns a **Variant** whose value has been converted to a **Decimal** subtype. In twinBASIC, **Decimal** is a full first-class data type, so **CDec** returns a **Decimal** directly. Assign the result to a **Variant** to obtain VBA-compatible behavior.
 
 Use **CDec** instead of [**Val**](Val) to provide internationally aware conversions from a string to a numeric type.
 

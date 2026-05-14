@@ -7,7 +7,7 @@ has_toc: false
 
 # FileSystem module
 
-The **FileSystem** module groups together the procedures and statements for working with files and directories on disk. Its members divide cleanly into two camps: *pathname-based* operations that act on something named in the filesystem (creating and deleting files and directories, querying their attributes, walking a directory listing), and *file-number-based* operations that act on a handle previously returned by the **Open** statement (reading, positioning, formatting, and tracking the channel).
+The **FileSystem** module groups together the procedures and statements for working with files and directories on disk. Its members divide cleanly into two camps: *pathname-based* operations that act on something named in the filesystem (creating and deleting files and directories, querying their attributes, iterating over a directory listing), and *file-number-based* operations that act on a handle previously returned by the **Open** statement (reading, positioning, formatting, and tracking the channel).
 
 ## Navigating directories
 

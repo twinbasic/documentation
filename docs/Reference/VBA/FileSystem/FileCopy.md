@@ -19,7 +19,7 @@ Syntax: **FileCopy** *source*, *destination*
 *destination*
 : String expression that specifies the target file name. The *destination* may include directory or folder, and drive.
 
-If you try to use the **FileCopy** statement on a file that is currently open, an error occurs.
+An error occurs when **FileCopy** is used on a file that is currently open.
 
 ### Example
 

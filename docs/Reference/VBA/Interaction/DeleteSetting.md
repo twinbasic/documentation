@@ -25,7 +25,7 @@ Syntax: **DeleteSetting** *appname*, *section*, [ *key* ]
 
 : *optional* The name of the key to delete within the specified *section*. If omitted, the entire **section** and all keys within are deleted.
 
-A run-time error occurs if you attempt to use the **DeleteSetting** statement on a non-existent *appname*, *section* or *key*.
+A run-time error occurs when **DeleteSetting** is called for a non-existent *appname*, *section*, or *key*.
 
 The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB and VBA Program Settings`.
 

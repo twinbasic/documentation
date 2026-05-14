@@ -18,17 +18,17 @@ Syntax:
 
 The **Source** property holds a string representing the object that generated the error; the expression is usually the object's class name or programmatic ID.
 
-Use **Source** to provide information when your code is unable to handle an error generated in an accessed object. For example, if you call into an Automation server and it raises a `Division by zero` error, the server sets **Err.Number** to its error code for that error and sets **Source** to its programmatic ID.
+Use **Source** to provide information when handling code cannot handle an error generated in an accessed object. For example, when a call into an Automation server raises a `Division by zero` error, the server sets **Err.Number** to its error code for that error and sets **Source** to its programmatic ID.
 
-When generating an error from your own code, **Source** is your application's programmatic ID. For class modules, **Source** should contain a name in the form *project.class*.
+When generating an error from user code, **Source** is the application's programmatic ID. For class modules, **Source** should contain a name in the form *project.class*.
 
-When an unexpected error occurs in your code, the **Source** property is automatically filled in. For errors in a standard module, **Source** contains the project name. For errors in a class module, **Source** contains a name in *project.class* form.
+When an unexpected error occurs, the **Source** property is automatically filled in. For errors in a standard module, **Source** contains the project name. For errors in a class module, **Source** contains a name in *project.class* form.
 
 ### Example
 
 This example assigns the programmatic ID of an Automation object to the variable `myObjectID`, and then assigns that to the **Source** property of the **Err** object when it generates an error with the [**Raise**](Raise) method.
 
-When handling errors, you should not rely on the **Source** property (or any **Err** properties other than [**Number**](Number)) for control flow. The intended use of properties other than **Number** is to display detailed information to an end user when you can't handle an error.
+When handling errors, do not rely on the **Source** property (or any **Err** properties other than [**Number**](Number)) for control flow. The intended use of properties other than **Number** is to display detailed information to an end user when an error cannot be handled.
 
 ```tb
 Dim myObjectID As String, myHelpFile As String, myHelpContext As Long

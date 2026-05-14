@@ -24,7 +24,7 @@ Syntax: **CallByDispId(** *object* **,** *dispid* **,** *calltype* [ **,** *args
 
 The return value is a **Variant** containing whatever the call returned. For methods that return nothing, or for property assignments, the result is **Empty**.
 
-**CallByDispId** skips the name lookup that [**CallByName**](CallByName) performs, which is useful in two situations: when you already know the dispatch ID and want to avoid the cost of a `GetIDsOfNames` round trip, and when the target member is not exposed by name (e.g. a default member with `DISPID_VALUE = 0`, an explicit-DISPID extension, or a hidden/restricted member).
+**CallByDispId** skips the name lookup that [**CallByName**](CallByName) performs, which is useful in two situations: when the dispatch ID is already known and the cost of a `GetIDsOfNames` round trip should be avoided, and when the target member is not exposed by name (e.g. a default member with `DISPID_VALUE = 0`, an explicit-DISPID extension, or a hidden/restricted member).
 
 ### Example
 

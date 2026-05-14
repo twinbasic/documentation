@@ -30,7 +30,7 @@ When called with *number*, **Environ** returns the entire entry at that position
 
 ### Example
 
-This example walks the environment-string table to find the entry number and the value length for `PATH`.
+This example iterates over the environment-string table to find the entry number and the value length for `PATH`.
 
 ```tb
 Dim EnvString As String, Indx As Long, PathLen As Long

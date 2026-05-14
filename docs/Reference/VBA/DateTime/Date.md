@@ -52,7 +52,7 @@ Syntax: **Date** **=** *date*
 
 #### Example
 
-This example uses the **Date** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of your code.
+This example uses the **Date** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of the code.
 
 ```tb
 Dim MyDate As Date
@@ -97,7 +97,7 @@ Syntax: **Date$** **=** *date*
 
 #### Example
 
-This example uses the **Date$** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of your code.
+This example uses the **Date$** property to set the computer system date. In the development environment, the date literal is displayed in short date format by using the locale settings of the code.
 
 ```tb
 Dim MyDate$

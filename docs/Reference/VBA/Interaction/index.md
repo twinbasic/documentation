@@ -25,7 +25,7 @@ The module offers four ways to pick one of several values inline:
 - [**If**](If) is the short-circuiting inline conditional — a twinBASIC addition. Only the branch matching the condition is evaluated, so `If(Divisor <> 0, 100 / Divisor, "n/a")` is safe even when *Divisor* is zero.
 - [**IIf**](IIf) is the historical VBA inline conditional. Both *truepart* and *falsepart* are always evaluated, so it cannot guard against errors in the unused branch.
 - [**Choose**](Choose) returns the *index*-th item from a list of values — a one-based equivalent of array indexing for a fixed-length argument list.
-- [**Switch**](Switch) walks pairs of *(condition, value)* arguments and returns the value paired with the first **True** condition — a compact stand-in for an **If...ElseIf** ladder.
+- [**Switch**](Switch) iterates over pairs of *(condition, value)* arguments and returns the value paired with the first **True** condition — a compact stand-in for an **If...ElseIf** ladder.
 
 ```tb
 Dim Status As Variant

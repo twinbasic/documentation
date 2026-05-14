@@ -36,7 +36,7 @@ Some applications support activating a *part* of a file. Append `!` and an appli
 Set LayerObject = GetObject("C:\CAD\SCHEMA.CAD!Layer3")
 ```
 
-If you don't specify *class*, the operating system determines the application to start and the object to activate based on the file name you provide. Some files, however, may support more than one class of object. To be specific, supply both arguments:
+When *class* is not specified, the operating system determines the application to start and the object to activate based on the supplied file name. Some files, however, may support more than one class of object. To be specific, supply both arguments:
 
 ```tb
 Dim MyObject As Object
@@ -44,7 +44,7 @@ Set MyObject = GetObject("C:\Drawings\Sample.drw", "Figment.Drawing")
 ```
 
 > [!NOTE]
-> Use **GetObject** when there is already a current instance of the object, or when you want to create the object with a file already loaded. If there is no current instance and you don't want the object started with a file loaded, use [**CreateObject**](CreateObject) instead.
+> Use **GetObject** when there is already a current instance of the object, or to create the object with a file already loaded. When there is no current instance and the object should not be started with a file loaded, use [**CreateObject**](CreateObject) instead.
 
 For an object registered as single-instance, **GetObject** with the zero-length-string syntax always returns the same instance, and the form with *pathname* omitted causes an error.
 

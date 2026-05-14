@@ -62,13 +62,13 @@ Syntax: **DateDiff** ( *interval*, *date1*, *date2* [, *firstdayofweek* [, *firs
 | **vbFirstFourDays** | 2     | First week that has at least four days in the new year.   |
 | **vbFirstFullWeek** | 3     | First full week of the year.                              |
 
-To calculate the number of days between *date1* and *date2*, you can use either Day of Year ("y") or Day ("d"). When *interval* is Weekday ("w"), **DateDiff** returns the number of weeks between the two dates. If *date1* falls on a Monday, **DateDiff** counts the number of Mondays until *date2*. It counts *date2* but not *date1*.
+To calculate the number of days between *date1* and *date2*, use either Day of Year ("y") or Day ("d"). When *interval* is Weekday ("w"), **DateDiff** returns the number of weeks between the two dates. If *date1* falls on a Monday, **DateDiff** counts the number of Mondays until *date2*. It counts *date2* but not *date1*.
 
 If *interval* is Week ("ww"), however, **DateDiff** returns the number of calendar weeks between the two dates. It counts the number of Sundays between *date1* and *date2*. **DateDiff** counts *date2* if it falls on a Sunday, but it doesn't count *date1*, even if it does fall on a Sunday.
 
 If *date1* refers to a later point in time than *date2*, the function returns a negative number. The *firstdayofweek* argument affects calculations that use the "w" and "ww" interval symbols.
 
-If *date1* or *date2* is a date literal, the specified year becomes a permanent part of that date. If *date1* or *date2* is enclosed in double quotation marks and you omit the year, the current year is inserted each time the expression is evaluated.
+If *date1* or *date2* is a date literal, the specified year becomes a permanent part of that date. If *date1* or *date2* is enclosed in double quotation marks and the year is omitted, the current year is inserted each time the expression is evaluated.
 
 When comparing December 31 to January 1 of the immediately succeeding year, **DateDiff** for Year ("yyyy") returns 1 even though only a day has elapsed.
 

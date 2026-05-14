@@ -32,7 +32,7 @@ Sub Demo()
 End Sub
 ```
 
-## Binding to your own objects
+## Binding to user objects
 
 Anything beyond the standard library — application objects, configuration values, helper functions, recordset fields — has to be made visible to the engine through a *binder*.
 

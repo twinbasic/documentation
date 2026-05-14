@@ -42,7 +42,7 @@ Three functions return the depreciation of an asset over a chosen period under t
 
 ## Sign conventions and units
 
-Two conventions span the entire module. First, **cash flows carry a sign**: money paid *out* (mortgage payments, deposits to savings, investment outlays) is represented by a negative number, and money received (loan proceeds, savings withdrawals, dividends) by a positive number. The same convention applies whether the value appears as a single argument (*pmt*, *pv*, *fv*) or as an element of a cash flow array — entering a payment as a positive number is the most common cause of an unexpected result.
+Two conventions span the entire module. First, **cash flows have a sign**: money paid *out* (mortgage payments, deposits to savings, investment outlays) is represented by a negative number, and money received (loan proceeds, savings withdrawals, dividends) by a positive number. The same convention applies whether the value appears as a single argument (*pmt*, *pv*, *fv*) or as an element of a cash flow array — entering a payment as a positive number is the most common cause of an unexpected result.
 
 Second, **rates and counts must share a time unit**. If *nper* is given in months, *rate* must be the monthly rate (typically the annual rate divided by twelve); if *nper* is given in years, *rate* must be the annual rate. The same applies to depreciation: the *life* of the asset and the *period* being queried must be expressed in the same units.
 

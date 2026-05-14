@@ -20,7 +20,7 @@ The return type is **Currency**. If *expression* is outside that range, a run-ti
 
 Use **CCur** to force currency arithmetic in cases where single-precision, double-precision, or integer arithmetic normally would occur.
 
-You should use **CCur** instead of **Val** to provide internationally aware conversions from one data type to another. **CCur** recognizes different decimal separators, different thousand separators, and various currency options properly, depending on the locale setting of your computer.
+Use **CCur** instead of **Val** to provide internationally aware conversions from one data type to another. **CCur** recognizes different decimal separators, different thousand separators, and various currency options properly, depending on the system's locale setting.
 
 ### Example
 

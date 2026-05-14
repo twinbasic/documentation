@@ -21,7 +21,7 @@ Syntax: **SendKeys** *string* [ **,** *wait* ]
 
 Each key is represented by one or more characters. To specify a single keyboard character, use the character itself — for example, `"A"` for the letter A, or `"ABC"` for A, B, then C in sequence.
 
-The plus sign (`+`), caret (`^`), percent sign (`%`), tilde (`~`), and parentheses `( )` have special meanings to **SendKeys**. To send one of these characters as itself, enclose it in braces: for example, `"{+}"` for the plus sign. Brackets `[ ]` have no special meaning to **SendKeys** itself, but you must enclose them in braces because other applications may treat them specially during dynamic data exchange (DDE). To send brace characters, use `{% raw %}"{{}"{% endraw %}` and `"{% raw %}{}}{% endraw %}"`.
+The plus sign (`+`), caret (`^`), percent sign (`%`), tilde (`~`), and parentheses `( )` have special meanings to **SendKeys**. To send one of these characters as itself, enclose it in braces: for example, `"{+}"` for the plus sign. Brackets `[ ]` have no special meaning to **SendKeys** itself, but they must be enclosed in braces because other applications may treat them specially during dynamic data exchange (DDE). To send brace characters, use `{% raw %}"{{}"{% endraw %}` and `"{% raw %}{}}{% endraw %}"`.
 
 To send keys that don't correspond to a printable character, use the codes in the following table:
 

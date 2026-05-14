@@ -17,7 +17,7 @@ To inspect both success and non-failure status codes, read **LastHresult** immed
 ### Example
 
 ```tb
-' Assume comObject exposes a method whose HRESULT carries status information.
+' Assume comObject exposes a method whose HRESULT contains status information.
 Sub CheckHresult()
     comObject.SomeMethod
     Dim status As Long

@@ -18,9 +18,7 @@ Syntax:
 
 If a Help file is specified in **HelpFile**, it is automatically called when the user presses the **Help** button (or **F1**) in the error message dialog box. If the [**HelpContext**](HelpContext) property contains a valid context ID for the specified file, that topic is displayed automatically.
 
-> [!NOTE]
->
-> Write routines in your application to handle typical errors. When programming with an object, you can use the object's Help file to improve the quality of your error handling, or to display a meaningful message to the user when an error isn't recoverable.
+Write routines to handle typical errors. When programming with an object, the object's Help file can improve error handling or display a meaningful message to the user when an error isn't recoverable.
 
 ### Example
 

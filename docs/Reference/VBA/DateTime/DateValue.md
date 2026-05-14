@@ -16,9 +16,9 @@ Syntax: **DateValue** ( *date* )
 *date*
 : *required* String expression representing a date from January 1, 100, through December 31, 9999. However, *date* can also be any expression that can represent a date, a time, or both a date and time, in that range.
 
-If *date* is a string that includes only numbers separated by valid date separators, **DateValue** recognizes the order for month, day, and year according to the Short Date format specified for your system. **DateValue** also recognizes unambiguous dates that contain month names, either in long or abbreviated form. For example, in addition to recognizing 12/30/1991 and 12/30/91, **DateValue** also recognizes December 30, 1991 and Dec 30, 1991.
+If *date* is a string that includes only numbers separated by valid date separators, **DateValue** recognizes the order for month, day, and year according to the Short Date format specified by the system. **DateValue** also recognizes unambiguous dates that contain month names, either in long or abbreviated form. For example, in addition to recognizing 12/30/1991 and 12/30/91, **DateValue** also recognizes December 30, 1991 and Dec 30, 1991.
 
-If the year part of *date* is omitted, **DateValue** uses the current year from your computer's system date.
+If the year part of *date* is omitted, **DateValue** uses the current year from the system date.
 
 If the *date* argument includes time information, **DateValue** doesn't return it. However, if *date* includes invalid time information (such as "89:98"), an error occurs.
 

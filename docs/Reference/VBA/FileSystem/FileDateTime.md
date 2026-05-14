@@ -18,7 +18,7 @@ Syntax: **FileDateTime(** *pathname* **)**
 
 ### Example
 
-This example uses the **FileDateTime** function to determine the date and time a file was created or last modified. The format of the date and time displayed is based on the locale settings of your system.
+This example uses the **FileDateTime** function to determine the date and time a file was created or last modified. The format of the date and time displayed is based on the system's locale settings.
 
 ```tb
 Dim MyStamp

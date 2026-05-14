@@ -20,7 +20,7 @@ The return type is **Date**.
 
 Use the **IsDate** function to determine whether *expression* can be converted to a date or time. **CDate** recognizes date literals and time literals as well as some numbers that fall within the range of acceptable dates. When converting a number to a date, the whole-number portion is converted to a date. Any fractional part of the number is converted to a time of day, starting at midnight.
 
-**CDate** recognizes date formats according to the locale setting of your system. The correct order of day, month, and year may not be determined if it is provided in a format other than one of the recognized date settings. In addition, a long date format is not recognized if it also contains the day-of-the-week string.
+**CDate** recognizes date formats according to the system locale setting. The correct order of day, month, and year may not be determined if it is provided in a format other than one of the recognized date settings. In addition, a long date format is not recognized if it also contains the day-of-the-week string.
 
 [**CVDate**](CVDate) is also provided for compatibility with previous versions of Visual Basic. The syntax of **CVDate** is identical to **CDate**; however, **CVDate** returns a **Variant** whose subtype is **Date** instead of an actual **Date** type.
 

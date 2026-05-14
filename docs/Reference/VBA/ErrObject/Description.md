@@ -16,9 +16,9 @@ Syntax:
 *errorDescription*
 : A **String** describing the error. When read, **Description** returns the descriptive text for the active error, or a zero-length string if no error is active.
 
-The **Description** setting consists of a short description of the error. Use this property to alert the user to an error that you either can't or don't want to handle.
+The **Description** setting consists of a short description of the error. Use this property to alert the user to an error that the code cannot or does not handle.
 
-When generating a user-defined error, assign a short description of your error to the **Description** property. If **Description** isn't filled in and the value of [**Number**](Number) corresponds to a built-in run-time error, the string returned by the [**Error**](../Conversion/Error) function is placed in **Description** when the error is generated.
+When generating a user-defined error, assign a short description of the error to the **Description** property. If **Description** isn't filled in and the value of [**Number**](Number) corresponds to a built-in run-time error, the string returned by the [**Error**](../Conversion/Error) function is placed in **Description** when the error is generated.
 
 ### Example
 

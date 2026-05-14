@@ -35,7 +35,7 @@ The *conversion* argument settings are:
 | **vbFromUnicode** | 128   | Converts the string from Unicode to the default code page of the system.                   |
 
 > [!NOTE]
-> These constants are specified by twinBASIC. As a result, they may be used anywhere in your code in place of the actual values. Most can be combined, for example, **vbUpperCase + vbWide**, except when they are mutually exclusive, for example, **vbUnicode + vbFromUnicode**. The constants **vbWide**, **vbNarrow**, **vbKatakana**, and **vbHiragana** cause run-time errors when used in locales where they don't apply.
+> These constants are specified by twinBASIC. As a result, they may be used anywhere in code in place of the actual values. Most can be combined, for example, **vbUpperCase + vbWide**, except when they are mutually exclusive, for example, **vbUnicode + vbFromUnicode**. The constants **vbWide**, **vbNarrow**, **vbKatakana**, and **vbHiragana** cause run-time errors when used in locales where they don't apply.
 
 The following are valid word separators for proper casing: **Null** (`Chr$(0)`), horizontal tab (`Chr$(9)`), linefeed (`Chr$(10)`), vertical tab (`Chr$(11)`), form feed (`Chr$(12)`), carriage return (`Chr$(13)`), space (SBCS) (`Chr$(32)`). The actual value for a space varies by country/region for DBCS.
 

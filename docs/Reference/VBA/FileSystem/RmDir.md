@@ -16,7 +16,7 @@ Syntax: **RmDir** *path*
 *path*
 : A string expression that identifies the directory or folder to be removed. The *path* may include the drive. If no drive is specified, **RmDir** removes the directory or folder on the current drive.
 
-An error occurs if you try to use **RmDir** on a directory or folder containing files. Use the [**Kill**](Kill) statement to delete all files before attempting to remove a directory or folder.
+An error occurs when **RmDir** is used on a directory or folder containing files. Use the [**Kill**](Kill) statement to delete all files before attempting to remove a directory or folder.
 
 ### See Also
 

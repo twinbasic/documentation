@@ -27,7 +27,7 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 | **Empty**      | Zero (`"0"`)                    |
 | Any other number | Up to 11 octal characters     |
 
-You can represent octal numbers directly by preceding numbers in the proper range with `&O`. For example, `&O10` is the octal notation for decimal 8.
+Octal numbers can be represented directly by preceding numbers in the proper range with `&O`. For example, `&O10` is the octal notation for decimal 8.
 
 ### Example
 

@@ -18,7 +18,7 @@ Syntax: **MacID(** *constant* **)**
 
 The return type is **Long**.
 
-**MacID** is used with **Dir** and **Kill** to specify a Macintosh file type. Because the Macintosh does not support `*` and `?` as wildcards, you can use a four-character constant instead to identify groups of files. For example, the following statement returns `TEXT`-type files from the current folder:
+**MacID** is used with **Dir** and **Kill** to specify a Macintosh file type. Because the Macintosh does not support `*` and `?` as wildcards, a four-character constant identifies groups of files instead. For example, the following statement returns `TEXT`-type files from the current folder:
 
 ```tb
 Dir("SomePath", MacID("TEXT"))

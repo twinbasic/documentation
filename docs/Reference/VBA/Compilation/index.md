@@ -7,7 +7,7 @@ has_toc: false
 
 # Compilation module
 
-The **Compilation** module groups together intrinsics that report on how — and from where — the running code was built. Most of its members are *compile-time* intrinsics: they do not look anything up at run time but instead bake a literal value into the compiled code at the point of the call, recording the surrounding project, component, procedure, or source file as it stood when the compiler ran.
+The **Compilation** module groups together intrinsics that report on how — and from where — the running code was built. Most of its members are *compile-time* intrinsics: they do not look anything up at run time but instead embed a literal value into the compiled code at the point of the call, recording the surrounding project, component, procedure, or source file as it stood when the compiler ran.
 
 ## Build identity
 
