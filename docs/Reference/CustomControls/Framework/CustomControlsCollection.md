@@ -9,7 +9,7 @@ has_toc: false
 # CustomControlsCollection class
 {: .no_toc }
 
-The collection of controls hosted on a custom form. Reached as the **Controls** property of a [**WaynesForm**](../WaynesForm/). Supports indexed access by integer or name, enumeration with **For Each**, and runtime add / remove of controls.
+The collection of controls hosted on a custom form. Accessed as the **Controls** property of a [**WaynesForm**](../WaynesForm/). Supports indexed access by integer or name, enumeration with **For Each**, and runtime add / remove of controls.
 
 ```tb
 Dim ctl As Object

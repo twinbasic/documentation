@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/StartupPosition
 # StartupPosition
 {: .no_toc }
 
-The initial position of a form's window when it is first shown. Carried by [**WindowsFormOptions.StartUpPosition**](../WaynesForm/WindowsFormOptions#startupposition). Honoured once, at the form's first display; subsequent moves are at the user's discretion or controlled by code.
+The initial position of a form's window when it is first shown. Used by [**WindowsFormOptions.StartUpPosition**](../WaynesForm/WindowsFormOptions#startupposition). Honoured once, at the form's first display; subsequent moves are at the user's discretion or controlled by code.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

@@ -35,7 +35,7 @@ Private Sub Grid1_GetCellText( _
 End Sub
 ```
 
-The six [**CellRenderingOptions**](CellRenderingOptions) sub-objects ([**ColumnHeaderOptions**](#columnheaderoptions), [**RowHeaderOptions**](#rowheaderoptions), [**CellOptions**](#celloptions), [**HoverCellOptions**](#hovercelloptions), [**SelectedCellOptions**](#selectedcelloptions), [**MultiSelectCellOptions**](#multiselectcelloptions)) give the grid its visual personality. A typical setup gives headers a gradient, body cells left-aligned text with a small left-padding indent, and the selected cell a contrasting border:
+The six [**CellRenderingOptions**](CellRenderingOptions) sub-objects ([**ColumnHeaderOptions**](#columnheaderoptions), [**RowHeaderOptions**](#rowheaderoptions), [**CellOptions**](#celloptions), [**HoverCellOptions**](#hovercelloptions), [**SelectedCellOptions**](#selectedcelloptions), [**MultiSelectCellOptions**](#multiselectcelloptions)) control the grid's visual style. A typical setup gives headers a gradient, body cells left-aligned text with a small left-padding indent, and the selected cell a contrasting border:
 
 ```tb
 With Grid1.ColumnHeaderOptions

@@ -9,11 +9,11 @@ has_toc: false
 # WindowsFormOptions class
 {: .no_toc }
 
-The Win32-frame settings of a [**WaynesForm**](.) — border style, initial window state, startup position, taskbar visibility, and the title-bar buttons. Surfaces as [**WaynesForm.WindowsOptions**](.#windowsoptions); a single instance per form, created automatically.
+The Win32-frame settings of a [**WaynesForm**](.) — border style, initial window state, startup position, taskbar visibility, and the title-bar buttons. Exposed as [**WaynesForm.WindowsOptions**](.#windowsoptions); a single instance per form, created automatically.
 
 Most of the fields take effect *once*, when the form is first shown — changing [**StartUpPosition**](#startupposition) or [**WindowState**](#windowstate) on a form that is already visible has no effect. The exception is the title-bar buttons; whether they have a visible effect depends on whether [**BorderStyle**](#borderstyle) is one of the styles that include those buttons in the first place.
 
-The type itself is `Private Class` — you reach the instance only through the form's **WindowsOptions** property and cannot declare a variable typed as **WindowsFormOptions** from outside the package.
+The type itself is `Private Class` — the instance is accessed only through the form's **WindowsOptions** property, and a variable typed as **WindowsFormOptions** cannot be declared from outside the package.
 
 ```tb
 Private Sub Form_Load()

@@ -9,7 +9,7 @@ has_toc: false
 # Corners class
 {: .no_toc }
 
-The four corners of a rendered region. Each corner is an independent [**Corner**](#corner-class) sub-object — the shape and radius can vary corner by corner — letting a control round one corner while notching another. Reached as `<state>.Corners`, [**CellRenderingOptions.Corners**](../WaynesGrid/CellRenderingOptions#corners), and the slider's `<sliderState>.BackgroundCorners` / `BlockCorners`.
+The four corners of a rendered region. Each corner is an independent [**Corner**](#corner-class) sub-object — the shape and radius can vary corner by corner — letting a control round one corner while notching another. Accessed as `<state>.Corners`, [**CellRenderingOptions.Corners**](../WaynesGrid/CellRenderingOptions#corners), and the slider's `<sliderState>.BackgroundCorners` / `BlockCorners`.
 
 ```tb
 With btnGo.NormalState.Corners

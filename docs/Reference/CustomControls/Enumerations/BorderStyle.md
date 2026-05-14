@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/BorderStyle
 # BorderStyle
 {: .no_toc }
 
-The Win32 frame style used by a [**WaynesForm**](../WaynesForm/) window. Determines whether the window has a thick or thin border, whether it can be resized by dragging an edge, and whether it shows a normal title bar or the smaller tool-window title bar. Carried by [**WindowsFormOptions.BorderStyle**](../WaynesForm/WindowsFormOptions#borderstyle).
+The Win32 frame style used by a [**WaynesForm**](../WaynesForm/) window. Determines whether the window has a thick or thin border, whether it can be resized by dragging an edge, and whether it shows a normal title bar or the smaller tool-window title bar. Used by [**WindowsFormOptions.BorderStyle**](../WaynesForm/WindowsFormOptions#borderstyle).
 
 | Constant | Value | Description |
 |----------|-------|-------------|

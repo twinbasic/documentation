@@ -18,7 +18,7 @@ Private Sub Form_Load()
 End Sub
 ```
 
-Frames work well as containers for [**Dock**](Enumerations/DockMode)-positioned children. Set the frame's own **Dock** to **tbDockFill** so it claims the form's body, then dock its children to **tbDockTop** / **tbDockLeft** / **tbDockFill** / etc. — the docking calculation walks the container tree, so children dock to the frame's client area rather than to the form. The order in which the children are added still determines which edges they claim first.
+Frames work well as containers for [**Dock**](Enumerations/DockMode)-positioned children. Set the frame's own **Dock** to **tbDockFill** so it claims the form's body, then dock its children to **tbDockTop** / **tbDockLeft** / **tbDockFill** / etc. — the docking calculation traverses the container tree, so children dock to the frame's client area rather than to the form. The order in which the children are added still determines which edges they claim first.
 
 ## Properties
 

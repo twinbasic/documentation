@@ -11,7 +11,7 @@ has_toc: false
 
 The collection of border strokes drawn around a region. Each stroke is an independent [**Border**](#border-class) sub-object with its own thickness, fill, and blending behaviour, layered in source order. A single thin black outline is a one-element collection — easiest constructed by calling [**SetSimpleBorder**](#setsimpleborder).
 
-Reached as `<state>.Borders`, [**CellRenderingOptions.Borders**](../WaynesGrid/CellRenderingOptions#borders), and the slider's `<sliderState>.BackgroundBorders` / `BlockBorders`. The array of [**Border**](#border-class) sub-objects on a [**TextRendering**](TextRendering)'s **Outlines** member uses the same element type.
+Accessed as `<state>.Borders`, [**CellRenderingOptions.Borders**](../WaynesGrid/CellRenderingOptions#borders), and the slider's `<sliderState>.BackgroundBorders` / `BlockBorders`. The array of [**Border**](#border-class) sub-objects on a [**TextRendering**](TextRendering)'s **Outlines** member uses the same element type.
 
 ```tb
 btnGo.NormalState.Borders.SetSimpleBorder StrokeSize:=1, ColorRGB:=vbBlack

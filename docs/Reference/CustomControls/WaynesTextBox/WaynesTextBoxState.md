@@ -15,7 +15,7 @@ In addition to the usual background / borders / corners / text-rendering quartet
 
 [**InitializeDefaultValues**](#initializedefaultvalues) and [**InitializeDefaultValues_Focused**](#initializedefaultvalues_focused) populate the state with reasonable defaults — the focused variant uses a different selection background and caret colour.
 
-The type itself is `Public Class` but is `[COMCreatable(False)]` — reach instances only through the textbox's **NormalState** / **HoverState** / **FocusedState** properties.
+The type itself is `Public Class` but is `[COMCreatable(False)]` — instances are accessed only through the textbox's **NormalState** / **HoverState** / **FocusedState** properties.
 
 ## Properties
 

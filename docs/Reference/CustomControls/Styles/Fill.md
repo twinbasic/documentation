@@ -95,7 +95,7 @@ Raised whenever [**Pattern**](#pattern) is assigned or the [**ColorPoints**](#co
 
 ## FillColorPoints class
 
-The collection of [**FillColorPoint**](#fillcolorpoint-class) stops that define a [**Fill**](#)'s colour gradient. Reached as [**Fill.ColorPoints**](#colorpoints). Internally an array of **FillColorPoint** plus a [**Granularity**](#granularity) integer.
+The collection of [**FillColorPoint**](#fillcolorpoint-class) stops that define a [**Fill**](#)'s colour gradient. Accessed as [**Fill.ColorPoints**](#colorpoints). Internally an array of **FillColorPoint** plus a [**Granularity**](#granularity) integer.
 
 ### Granularity
 {: .no_toc }
@@ -105,7 +105,7 @@ The size of the generated colour table that interpolates the stops. Higher value
 ### Values
 {: .no_toc }
 
-The array of [**FillColorPoint**](#fillcolorpoint-class) gradient stops. Read-write, but in practice you populate it through the [**SetSolidColor**](#setsolidcolor), [**SetSolidColorRGBA**](#setsolidcolorrgba), [**SetColorPoints**](#setcolorpoints), or [**SetColorPointsArray**](#setcolorpointsarray) methods rather than assigning the array directly.
+The array of [**FillColorPoint**](#fillcolorpoint-class) gradient stops. Read-write, but in practice populated through the [**SetSolidColor**](#setsolidcolor), [**SetSolidColorRGBA**](#setsolidcolorrgba), [**SetColorPoints**](#setcolorpoints), or [**SetColorPointsArray**](#setcolorpointsarray) methods rather than by assigning the array directly.
 
 ### SetSolidColor
 {: .no_toc }

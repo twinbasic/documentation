@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/FillPattern
 # FillPattern
 {: .no_toc }
 
-Identifies how the colour table held by a [**Fill**](../Styles/Fill) is applied across the area being painted. The same colour stops produce very different results depending on the pattern — a north-to-south gradient with two stops paints a top-to-bottom transition, while a corner gradient with the same stops paints from one corner outward. Carried by [**Fill.Pattern**](../Styles/Fill#pattern).
+Identifies how the colour table held by a [**Fill**](../Styles/Fill) is applied across the area being painted. The same colour stops produce very different results depending on the pattern — a north-to-south gradient with two stops paints a top-to-bottom transition, while a corner gradient with the same stops paints from one corner outward. Used by [**Fill.Pattern**](../Styles/Fill#pattern).
 
 | Constant | Value | Description |
 |----------|-------|-------------|

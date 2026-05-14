@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/DockMode
 # DockMode
 {: .no_toc }
 
-How a control is positioned relative to its container — attached to one edge, filling the whole client area, or not docked at all (positioned absolutely by [**Left**](../#controls) / [**Top**](../#controls) / [**Width**](../#controls) / [**Height**](../#controls)). Carried by the **Dock** property that every concrete custom control inherits.
+How a control is positioned relative to its container — attached to one edge, filling the whole client area, or not docked at all (positioned absolutely by [**Left**](../#controls) / [**Top**](../#controls) / [**Width**](../#controls) / [**Height**](../#controls)). Used by the **Dock** property that every concrete custom control inherits.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

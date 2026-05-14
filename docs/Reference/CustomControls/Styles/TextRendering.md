@@ -9,7 +9,7 @@ has_toc: false
 # TextRendering class
 {: .no_toc }
 
-Aggregates everything needed to draw a piece of text inside a control: the font, the padding, the fill that supplies the text colour, an optional array of outlines, the alignment within the available area, and the overflow behaviour. Reached as `<state>.TextRendering`, [**WaynesLabel.TextRendering**](../WaynesLabel#textrendering), and [**CellRenderingOptions.TextRendering**](../WaynesGrid/CellRenderingOptions#textrendering).
+Aggregates everything needed to draw a piece of text inside a control: the font, the padding, the fill that supplies the text colour, an optional array of outlines, the alignment within the available area, and the overflow behaviour. Accessed as `<state>.TextRendering`, [**WaynesLabel.TextRendering**](../WaynesLabel#textrendering), and [**CellRenderingOptions.TextRendering**](../WaynesGrid/CellRenderingOptions#textrendering).
 
 A newly-constructed **TextRendering** pre-sets its [**Fill**](#fill) to solid black so that text is immediately visible.
 
@@ -85,7 +85,7 @@ Raised when [**Alignment**](#alignment) or [**OverflowMode**](#overflowmode) is 
 
 ## FontStyle class
 
-The font metrics that control how [**TextRendering**](#) lays out text. Reached as [**TextRendering.Font**](#font).
+The font metrics that control how [**TextRendering**](#) lays out text. Accessed as [**TextRendering.Font**](#font).
 
 ### Italic
 {: .no_toc }

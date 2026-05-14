@@ -9,7 +9,7 @@ has_toc: false
 # CustomControlContext class
 {: .no_toc }
 
-The callback object handed to a custom control's [**Initialize**](ICustomControl#initialize). Holds the connection back into the framework — used to deserialize designer-set property values, request repaints, create timers, and move the keyboard focus between elements the control has drawn.
+The callback object passed to a custom control's [**Initialize**](ICustomControl#initialize). Holds the connection back into the framework — used to deserialize designer-set property values, request repaints, create timers, and move the keyboard focus between elements the control has drawn.
 
 Custom controls store the **CustomControlContext** in a private field (typically called **ControlContext**) so that they can call back into the framework at any point after **Initialize** has returned. The form-class counterpart [**CustomFormContext**](CustomFormContext) extends this with **Show** and **Close**.
 

@@ -12,7 +12,7 @@ The top-level form class that hosts the package's custom controls. A **WaynesFor
 
 Within the current release of the package every form created with the designer is hard-coded to use **WaynesForm** as its root class; other base form classes are planned but not yet supported.
 
-A form has a [**Caption**](#caption) (shown in the Win32 title bar), a [**BackgroundFill**](#backgroundfill) (painted across its entire client area), and a [**WindowsOptions**](#windowsoptions) sub-object that controls the surrounding Win32 frame — border style, window state, taskbar visibility, minimize / maximize buttons, and so on. Showing the form is done by calling [**Show**](#show); closing it by [**Close**](#close).
+A form has a [**Caption**](#caption) (shown in the Win32 title bar), a [**BackgroundFill**](#backgroundfill) (painted across its entire client area), and a [**WindowsOptions**](#windowsoptions) sub-object that controls the surrounding Win32 frame — border style, window state, taskbar visibility, minimize / maximize buttons, and so on. Call [**Show**](#show) to display the form; call [**Close**](#close) to close it.
 
 ```tb
 Private Sub Form_Load()
@@ -59,7 +59,7 @@ Syntax: *object*.**Caption** [ = *string* ]
 ### Controls
 {: .no_toc }
 
-The [**CustomControlsCollection**](../Framework/CustomControlsCollection) of every control hosted on the form. Inherited from the form base. Read-only — iterate or look up by index / name to reach individual controls.
+The [**CustomControlsCollection**](../Framework/CustomControlsCollection) of every control hosted on the form. Inherited from the form base. Read-only — iterate or look up by index / name to access individual controls.
 
 ### FormDesignerId
 {: .no_toc }

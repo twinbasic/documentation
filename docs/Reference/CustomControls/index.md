@@ -13,7 +13,7 @@ The **CustomControls** built-in package supplies a set of fully owner-drawn cont
 
 The package ships as two paired components: a **CustomControls DESIGNER** library — the framework half, source-side project `CustomControls` — that defines the rendering surface and the interface every custom control implements; and the **Custom Controls** package — source-side project `CustomControlsPackage` — that supplies the eight concrete `Waynes…` controls. The two are co-versioned with twinBASIC and always ship together; both are MIT-licensed.
 
-Beyond providing ready-to-use controls, the package doubles as a worked example for authoring your own custom controls. The `Waynes…` classes implement the same [**ICustomControl**](Framework/ICustomControl) interface that a hand-written control would, against the same [**CustomControlContext**](Framework/CustomControlContext) callback object and [**Canvas**](Framework/Canvas) drawing surface — see the [Framework](Framework/) page for the host-side contract.
+Beyond providing ready-to-use controls, the package doubles as a worked example for authoring new custom controls. The `Waynes…` classes implement the same [**ICustomControl**](Framework/ICustomControl) interface that a hand-written control would, against the same [**CustomControlContext**](Framework/CustomControlContext) callback object and [**Canvas**](Framework/Canvas) drawing surface — see the [Framework](Framework/) page for the host-side contract.
 
 ```tb
 Private Sub Form_Load()
@@ -63,7 +63,7 @@ Every style object raises an **OnChanged** event whenever one of its fields is s
 
 ## Framework
 
-For authoring your own custom controls or forms, the **CustomControls DESIGNER** half of the package supplies:
+For authoring new custom controls or forms, the **CustomControls DESIGNER** half of the package supplies:
 
 - [ICustomControl](Framework/ICustomControl) -- the interface every custom control implements: **Initialize**, **Destroy**, **Paint**
 - [ICustomForm](Framework/ICustomForm) -- the analogous interface for custom form classes
@@ -72,7 +72,7 @@ For authoring your own custom controls or forms, the **CustomControls DESIGNER**
 - [CustomControlTimer](Framework/CustomControlTimer) -- the timer returned by **CustomControlContext.CreateTimer**; has **Interval**, **Enabled**, and an **OnTimer** event
 - [CustomControlsCollection](Framework/CustomControlsCollection) -- the **Controls** collection on a form
 - [Canvas](Framework/Canvas) -- the drawing surface passed to **Paint**; the only way to put pixels into a custom control
-- [SerializeInfo](Framework/SerializeInfo) -- the per-instance serializer reached via **CustomControlContext.GetSerializer**; used to deserialize designer-set property values and to query the runtime mode
+- [SerializeInfo](Framework/SerializeInfo) -- the per-instance serializer returned by **CustomControlContext.GetSerializer**; used to deserialize designer-set property values and to query the runtime mode
 
 ## Enumerations
 

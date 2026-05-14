@@ -15,7 +15,7 @@ The state has two halves — the *background* (the full track behind the block) 
 
 [**InitializeDefaultValues**](#initializedefaultvalues) pre-sets the block to a solid mid-blue ([**WAYNESCOLOR_BLUE**](#) — `&HAC7220`) fill, a 2-pixel black background border, and a transparent block border that acts as inner padding inside the background.
 
-The type itself is `Public Class` but cannot be instantiated from outside the package — reach instances only through the slider's **NormalState** / **HoverState** / **FocusedState** properties.
+The type itself is `Public Class` but cannot be instantiated from outside the package — instances are accessed only through the slider's **NormalState** / **HoverState** / **FocusedState** properties.
 
 ## Properties
 

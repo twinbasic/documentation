@@ -58,7 +58,7 @@ A common implementation calls **Context.GetSerializer().RuntimeUISrzDeserialize(
 ### Paint
 {: .no_toc }
 
-Called every time the framework needs to redraw the control's client area. The implementation builds one or more `ElementDescriptor` records describing the rectangles to draw and hands each to *Canvas*. **RuntimeUICCCanvasAddElement**.
+Called every time the framework needs to redraw the control's client area. The implementation builds one or more `ElementDescriptor` records describing the rectangles to draw and passes each to *Canvas*. **RuntimeUICCCanvasAddElement**.
 
 Syntax: *object*.**Paint** ( *Canvas* )
 
@@ -67,4 +67,4 @@ Syntax: *object*.**Paint** ( *Canvas* )
 
 A descriptor may include event callbacks (`OnClick`, `OnMouseDown`, …) as `AddressOf` pointers; the framework dispatches input back through those pointers without the control needing to subscribe explicitly to anything.
 
-A control should request additional repaints by calling [**CustomControlContext.Repaint**](CustomControlContext#repaint), not by calling **Paint** directly — the framework decides when to issue the actual paint pass.
+A control should request additional repaints by calling [**CustomControlContext.Repaint**](CustomControlContext#repaint), not by calling **Paint** directly — the framework controls when to issue the actual paint pass.

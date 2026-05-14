@@ -21,4 +21,4 @@ Every style object raises an **OnChanged** event whenever any of its public fiel
 | [Padding](Padding) | per-side padding around text inside a [**TextRendering**](TextRendering) |
 | [TextRendering](TextRendering) | font, padding, fill, outlines, alignment, and overflow for text; contains the `FontStyle` sub-object that holds the font metrics |
 
-The style classes are declared `Private Class` in the **CustomControlsPackage** source — they cannot be created with `New` from outside the package, and a variable cannot be typed as e.g. `Dim x As Fill` from a referencing project. Application code reaches every style object exclusively through the property chain that hangs off a concrete control.
+The style classes are declared `Private Class` in the **CustomControlsPackage** source — they cannot be created with `New` from outside the package, and a variable cannot be typed as e.g. `Dim x As Fill` from a referencing project. Application code accesses every style object exclusively through the property chain that hangs off a concrete control.
