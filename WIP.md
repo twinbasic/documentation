@@ -405,6 +405,19 @@ Don't over-correct these — they are precise technical vocabulary or otherwise 
 
 Some kept terms are referenced by in-doc anchors. The most prominent is `idiom` / `idiomatic` — `WIP.WinEventLogLib.md` and `WIP.WinServicesLib.md` reference anchors like `#service-host-idiom` and `#composition-delegation-idiom`. Don't rename these casually; if you do, add `redirect_from` aliases to preserve legacy links.
 
+### Source dashes
+
+Kramdown's `smart_quotes` feature (enabled by default in this site) converts the ASCII source forms to typographic characters at build time:
+
+| Source | Rendered | Use for |
+|--------|----------|---------|
+| `--`   | en-dash `–`  | bullet-list separator (rule 7), ranges |
+| `---`  | em-dash `—`  | parenthetical asides (rule 3), breaks in thought |
+
+The source uses the ASCII forms; the rendered HTML uses the typographic characters. Literal `–` or `—` in `docs/` markdown source is forbidden — see the Don'ts at the end of this file. `scripts/convert_em_dash_separators.py` is the canonical normaliser if any literals slip back in.
+
+WIP.md itself (and other files outside `docs/`) is not part of the Jekyll site and is exempt — literal em-dashes here render directly in the GitHub viewer, which is fine.
+
 ## Scripts and tooling
 
 Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is.
