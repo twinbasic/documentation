@@ -38,6 +38,42 @@ Setting [**FreeThreadingEvents**](NamedPipeServer#freethreadingevents) to **True
 
 The flag must be set before [**Start**](NamedPipeServer#start) (server side) or before the first [**Connect**](NamedPipeClientManager#connect) call (client side); it is read once and propagated to every per-connection object.
 
+## Hosting inside a Windows service
+{: #service-host-idiom }
+
+Windows services that host a [**NamedPipeServer**](NamedPipeServer) run into the message-loop dependency described above: the service entry-point thread is not pumping messages by default, so the marshalled-event delivery has nothing to dispatch through. The package provides [**NamedPipeServer.ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter) / [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) for exactly this case.
+
+The canonical pattern: the service-thread entry-point opens the server, transitions the service to `Running`, blocks inside [**ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter), and only leaves the loop when a control-code handler running on the *other* (dispatcher) thread calls [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) on the same server instance.
+
+```tb
+' On the service-entry-point thread:
+Set NamedPipeServer = New NamedPipeServer
+NamedPipeServer.PipeName = "MyServicePipe"
+
+' (tell the SCM we're running, then block on the message loop)
+ServiceManager.ReportStatus vbServiceStatusRunning
+NamedPipeServer.Start
+NamedPipeServer.ManualMessageLoopEnter      ' blocks until ManualMessageLoopLeave
+NamedPipeServer.Stop
+
+ServiceManager.ReportStatus vbServiceStatusStopped
+
+' On the dispatcher thread (an ITbService.ChangeState handler):
+Select Case dwControl
+    Case vbServiceControlStop, vbServiceControlShutdown
+        ServiceManager.ReportStatus vbServiceStatusStopPending
+        NamedPipeServer.ManualMessageLoopLeave   ' wakes the service thread out of ManualMessageLoopEnter
+End Select
+```
+
+Three facts worth pulling out:
+
+- The service entry-point and the control-code handler run on **different threads**. The shared [**NamedPipeServer**](NamedPipeServer) member field is what they coordinate through; the handler calls [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) on it to wake the entry-point.
+- [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) is the only way to exit [**ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter) cleanly. There is no timeout and no second blocking primitive. Services that need to react to other wake-up sources (e.g. a *Pause* control code) set a shared `Public` flag *then* call [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) to break out, inspect the flag, and re-enter the loop or proceed to shutdown.
+- [**FreeThreadingEvents**](NamedPipeServer#freethreadingevents) = **False** (the default) is **required** for this pattern. Setting it to **True** would deliver events directly on the IOCP worker thread and bypass the manual loop entirely — the pipe still works, but `ManualMessageLoopEnter` / `Leave` become irrelevant. Pick one mode and stay with it.
+
+The non-service equivalent — hosting the same [**NamedPipeServer**](NamedPipeServer) inside a Form — is simpler: the Form's regular message loop pumps the marshalling window automatically, so the Form calls [**Start**](NamedPipeServer#start) in `Form_Load`, [**Stop**](NamedPipeServer#stop) in `Form_Unload`, and never touches [**ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter) / [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave). Either pattern works; the service-host pattern is the one that needs the manual pump.
+
 ## Asynchronous reads
 
 When [**ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is **True** (the default), the package keeps a read pending against every connection at all times — every [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) / [**MessageReceived**](NamedPipeClientConnection#messagereceived) event is followed by another `AsyncRead` issued from inside the IOCP thread. Set the flag to **False** to handle reads one-at-a-time: each event handler must then call [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) / [**NamedPipeClientConnection.AsyncRead**](NamedPipeClientConnection#asyncread) to receive the next message. This is useful for back-pressure when the consumer can't process messages as fast as they arrive.
@@ -79,6 +115,36 @@ ReDim Stored(UBound(Data))
 
 For a text payload, `StrConv(Data, vbUnicode)` (UTF-8) or `CStr` over a `vbUnicode`-converted copy reads the bytes immediately and produces an owned **String** in one step.
 
+## Recommended payload encoding: `PropertyBag`
+{: #propertybag-carrier }
+
+The package transports raw bytes; it is agnostic about what is inside them. For non-trivial protocols the recommended carrier is [**PropertyBag**](../VBRUN/PropertyBag/) — twinBASIC's built-in keyed-property serialiser. Two reasons:
+
+1. **`PropertyBag.Contents` deep-copies the bytes**, which is the cleanest answer to the transient-`Data()` lifetime caveat above. Assigning *Data* to a fresh **PropertyBag**'s **Contents** captures the buffer in one step; the copy is safe to keep past the event handler.
+2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on property names (e.g. `"CommandID"`, `"ResponseCommandID"`, `"Data"`) and **PropertyBag** handles the byte-level encoding.
+
+```tb
+' Sender:
+Dim request As New PropertyBag
+request.WriteProperty "CommandID", "WHAT_TIME_IS_IT"
+connection.AsyncWrite request.Contents
+
+' Receiver — inside ClientMessageReceived / MessageReceived:
+Dim incoming As New PropertyBag
+incoming.Contents = Data        ' deep-copies the bytes; safe to use past the handler
+
+Dim cmd As String = incoming.ReadProperty("CommandID")
+Select Case cmd
+    Case "WHAT_TIME_IS_IT"
+        Dim reply As New PropertyBag
+        reply.WriteProperty "ResponseCommandID", cmd
+        reply.WriteProperty "ResponseData", Time()
+        Connection.AsyncWrite reply.Contents
+End Select
+```
+
+Nothing in the package mandates **PropertyBag** — raw `Byte()` works too, and a custom wire format may be the right answer for very high-throughput scenarios. But the everyday case is well served by the **PropertyBag** convention and it solves the transient-`Data()` problem for free.
+
 ## Closing a client connection
 
 > [!IMPORTANT]
@@ -90,13 +156,28 @@ Either let the [**NamedPipeClientConnection**](NamedPipeClientConnection) object
 
 [**NamedPipeClientManager.FindNamedPipes**](NamedPipeClientManager#findnamedpipes) enumerates the named pipes published on the local machine, returning a **Collection** of **String** names that match an optional `*`/`?` wildcard pattern. The implementation is `FindFirstFileW("\\.\pipe\<Pattern>")` — the package strips the leading namespace itself, so pass just the pipe name (`"MyService*"`, not `"\\.\pipe\MyService*"`).
 
+Named pipes can appear and disappear at any time as their server processes start and stop, and the package does not publish an event for this. The canonical discovery loop is a low-frequency [**Timer**](../VB/Timer/) that repopulates a list and preserves the user's current selection — a few seconds between polls is the typical interval; the underlying `FindFirstFileW` is cheap enough that nothing finer is required:
+
+```tb
+Private Sub timerRefreshNamedPipes_Timer()
+    Dim previousSelection As String = lstNamedPipes.List(lstNamedPipes.ListIndex)
+    lstNamedPipes.Clear
+    Dim restoredIndex As Long = -1
+    Dim index As Long = 0
+    Dim pipeName As Variant
+    For Each pipeName In manager.FindNamedPipes("MyService_*")
+        If pipeName = previousSelection Then restoredIndex = index
+        lstNamedPipes.AddItem pipeName
+        index = index + 1
+    Next
+    If restoredIndex <> -1 Then lstNamedPipes.ListIndex = restoredIndex
+End Sub
+```
+
 ## Known limitations
 
-These are open TODOs documented in the package's `_README.txt`. They are user-visible — surface them when designing a protocol on top of the package:
-
-- **No server-side disconnect of a single client.** [**NamedPipeServer.Stop**](NamedPipeServer#stop) tears down the whole pipe. There is no per-[**NamedPipeServerConnection**](NamedPipeServerConnection) `Close` method on the public surface yet, so a server cannot drop one misbehaving client while keeping the others connected.
-- **No `Error` event on the IOCP worker thread.** Errors inside the IOCP loop currently surface as VBA run-time errors on whichever worker thread is running, not as a marshalled `Error` event on any of the four classes. Wrap I/O calls in **On Error Resume Next** where you need to keep the worker thread running on failure.
-- **Message-size cap.** The author's TODO list flags *"remove max size 131072 of messages"*. [**MessageBufferSize**](NamedPipeServer#messagebuffersize) is the initial buffer size and the IOCP loop *does* grow it on `ERROR_MORE_DATA`, so messages larger than 128 KiB will work — but the TODO suggests there is a hard cap somewhere the author wants to remove. Treat very large messages as a roadmap item, not a guarantee.
+- **No `Error` event is raised.** None of the four classes raises an `Error` event. Recognised IOCP failures (`ERROR_BROKEN_PIPE`, `ERROR_OPERATION_ABORTED`) drop the connection silently through the normal [**ClientDisconnected**](NamedPipeServer#clientdisconnected) / [**Disconnected**](NamedPipeClientConnection#disconnected) path — the consumer cannot distinguish a deliberate close from a transport failure. Worse, the client-side IOCP loop (`IOCPThreadClient` in `NamedPipeClientManager.twin`) contains a literal **Stop** statement on the branch for *unrecognised* error codes, which halts execution rather than reporting the error to consumer code.
+- **Send is hard-capped at** [**MessageBufferSize**](NamedPipeServer#messagebuffersize) **bytes.** The receive path grows its buffer dynamically on `ERROR_MORE_DATA`, so reads of arbitrary size work. The send path does not: [**AsyncWrite**](NamedPipeServerConnection#asyncwrite) (and the client-side [**AsyncWrite**](NamedPipeClientConnection#asyncwrite)) copies the caller's `Byte()` *without a bounds-check* into a per-completion buffer sized at [**MessageBufferSize**](NamedPipeServer#messagebuffersize) (default **131072** bytes); the same goes for [**AsyncBroadcast**](NamedPipeServer#asyncbroadcast). A larger message overruns the buffer — likely a crash or heap corruption rather than a clean error. Raise [**MessageBufferSize**](NamedPipeServer#messagebuffersize) above your largest expected message *before* the first [**Start**](NamedPipeServer#start) (server) or [**Connect**](NamedPipeClientManager#connect) (client); the value is read once at that point and propagated to every per-connection buffer.
 
 ## Classes
 
