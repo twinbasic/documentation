@@ -33,7 +33,7 @@ Once the read finishes, [**Value**](Value) holds the result. Its concrete subtyp
 
 ## Tracking progress
 
-While a read is in flight, the runtime raises **AsyncReadProgress** periodically so the control can update a progress indicator. [**BytesRead**](BytesRead) reports how many bytes have arrived so far, and [**BytesMax**](BytesMax) the total number expected — though **BytesMax** may be zero when the server has not advertised a content length. [**Status**](Status) returns a human-readable description of the current step ("Connecting", "Receiving response", and so on), and [**StatusCode**](StatusCode) returns the corresponding **AsyncStatusCodeConstants** value for programmatic inspection.
+While a read is in progress, the runtime raises **AsyncReadProgress** periodically so the control can update a progress indicator. [**BytesRead**](BytesRead) reports how many bytes have arrived so far, and [**BytesMax**](BytesMax) the total number expected — though **BytesMax** may be zero when the server has not advertised a content length. [**Status**](Status) returns a human-readable description of the current step ("Connecting", "Receiving response", and so on), and [**StatusCode**](StatusCode) returns the corresponding **AsyncStatusCodeConstants** value for programmatic inspection.
 
 ## Members
 

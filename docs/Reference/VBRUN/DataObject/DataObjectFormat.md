@@ -6,7 +6,7 @@ permalink: /tB/Packages/VBRUN/DataObject/DataObjectFormat
 # DataObjectFormat
 {: .no_toc }
 
-A **DataObjectFormat** describes one of the formats a [**DataObject**](.) holds a value in. The descriptor is what you get when iterating a [**DataObjectFormats**](DataObjectFormats) collection, and exposes everything the runtime needs to negotiate a transfer: which clipboard format type the data is in, which aspect (rendering) of it is on offer, and how the bytes are stored.
+A **DataObjectFormat** describes one of the formats a [**DataObject**](.) holds a value in. The descriptor is the element type yielded when iterating a [**DataObjectFormats**](DataObjectFormats) collection, and exposes everything the runtime needs to negotiate a transfer: which clipboard format type the data is in, which aspect (rendering) of it is on offer, and how the bytes are stored.
 
 ## Members
 

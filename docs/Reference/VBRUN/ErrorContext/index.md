@@ -25,7 +25,7 @@ Syntax: *object*.**Callstack**
 *object*
 : *required* An object expression that evaluates to an **ErrorContext** object.
 
-The snapshot lists every active procedure outermost-first; the innermost frame is the procedure that raised the error. The collection is read-only — see [**ErrorCallstack**](../ErrorCallstack) for how to walk it.
+The snapshot lists every active procedure outermost-first; the innermost frame is the procedure that raised the error. The collection is read-only — see [**ErrorCallstack**](../ErrorCallstack) for how to iterate it.
 
 ### Description
 
