@@ -7,7 +7,7 @@ vba_attribution: true
 
 # Const
 
-{: no_toc }
+{: .no_toc }
 
 Declares constants for use in place of literal values.
 
@@ -24,7 +24,7 @@ Syntax:
 : *optional* Keyword used at the module level to declare constants that are available to all procedures in all modules. Not allowed in procedures.
 
 **Private**
-: *optional*  Keyword used at the class or module level to declare constants that are available only within the class or module where the declaration is made. Not allowed in procedures.
+: *optional* Keyword used at the class or module level to declare constants that are available only within the class or module where the declaration is made. Not allowed in procedures.
 
 *constname*
 
@@ -42,14 +42,13 @@ Constants are private by default. Within procedures, constants are always privat
 
 To combine several constant declarations on the same line, separate each constant assignment with a comma. When constant declarations are combined in this way, the **Public** or **Private** keyword, if used, applies to all of them.
 
-You can't use variables, user-defined functions, or intrinsic Visual Basic functions (such as **Chr**) in expressions assigned to constants.
+Variables, user-defined functions, and intrinsic Visual Basic functions (such as **Chr**) cannot be used in expressions assigned to constants.
 
-> [!NOTE]
-> Constants can make your programs self-documenting and easy to modify. Unlike variables, constants can't be inadvertently changed while your program is running.
+Constants can make programs self-documenting and easy to modify. Unlike variables, constants can't be inadvertently changed while the program is running.
 
-If you don't explicitly declare the constant type by using **As** *type*, the constant has the data type that is most appropriate for *expression*.
+When the constant type is not explicitly declared by using **As** *type*, the constant has the data type that is most appropriate for *expression*.
 
-Constants declared in a **Sub**, **Function**, or **Property** procedure are local to that procedure. A constant declared outside a procedure is defined throughout the module in which it is declared. Use constants anywhere you can use an expression.
+Constants declared in a **Sub**, **Function**, or **Property** procedure are local to that procedure. A constant declared outside a procedure is defined throughout the module in which it is declared. Constants can be used anywhere an expression is allowed.
 
 
 ### Example

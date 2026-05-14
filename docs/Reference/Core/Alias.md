@@ -15,10 +15,10 @@ Syntax:
 > [ **Public** \| **Private** ] **Alias** *aliasname* **As** *type*
 
 **Public**
-: *optional*  The alias is exported to the type library of an ActiveX DLL or control, so consumers in other projects see *aliasname* itself.
+: *optional* The alias is exported to the type library of an ActiveX DLL or control, so consumers in other projects see *aliasname* itself.
 
 **Private**
-: *optional*  The alias is visible only within the project. Usages of a **Private** alias are replaced with the underlying *type* during compilation, so *aliasname* never appears in the project's type library.
+: *optional* The alias is visible only within the project. Usages of a **Private** alias are replaced with the underlying *type* during compilation, so *aliasname* never appears in the project's type library.
 
 *aliasname*
 : The name of the alias. Must be a valid twinBASIC identifier.

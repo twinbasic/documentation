@@ -20,13 +20,13 @@ Syntax:
 > **End Interface**
 
 *attributes*
-: *optional*  Interface- and member-level attributes. See [Available attributes](#available-attributes) below.
+: *optional* Interface- and member-level attributes. See [Available attributes](#available-attributes) below.
 
 *name*
 : The identifier naming the interface. By convention an interface name begins with an uppercase `I` (`IFoo`, `ICalculator`, ...).
 
 *baseinterface*
-: *optional*  One or more interfaces that *name* extends. An implementing class is required to provide bodies for the inherited methods as well; in twinBASIC, you can `Implements` *name* and rely on the inherited interfaces being satisfied automatically.
+: *optional* One or more interfaces that *name* extends. An implementing class is required to provide bodies for the inherited methods as well; in twinBASIC, a class can `Implements` *name* and rely on the inherited interfaces being satisfied automatically.
 
 *member-prototype*
 : A header-only declaration. May be a [**Sub**](Sub), [**Function**](Function), [**Property Get**](Property), [**Property Let**](Property), or [**Property Set**](Property) signature, with arguments and return type. **Public**/**Private**/**Friend** modifiers are *not* allowed on members. There is no `End Sub` / `End Function` / `End Property` — the prototype ends at end of line.
@@ -48,7 +48,7 @@ Interface-level attributes:
 Member-level attributes:
 
 - `[Description("text")]`
-- `[PreserveSig]` — keeps the raw COM signature (returning `HRESULT`) instead of having the runtime translate negative results into errors. Use this when you need the literal return value, or when negative values mean *acceptable failure* (e.g. an enumerator running out of items).
+- `[PreserveSig]` — keeps the raw COM signature (returning `HRESULT`) instead of having the runtime translate negative results into errors. Use this when the literal return value is required, or when negative values mean *acceptable failure* (e.g. an enumerator running out of items).
 - `[DispId(number)]` — fixes the dispatch ID associated with the member.
 
 ### Example

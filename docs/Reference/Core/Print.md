@@ -19,7 +19,7 @@ Syntax:
 : Any valid file number.
 
 *outputlist*
-: *optional*  Expression or list of expressions to print. The *outputlist* settings are:
+: *optional* Expression or list of expressions to print. The *outputlist* settings are:
 
   > [ { **Spc(***n***)** \| **Tab** [ **(***n***)** ] } ] [ *expression* ] [ *charpos* ]
 
@@ -37,13 +37,13 @@ Syntax:
 
 Data written with **Print #** is usually read from a file with [**Line Input #**](Line-Input) or [**Input #**](Input).
 
-If you omit *outputlist* and include only a list separator after *filenumber*, a blank line is printed to the file.
+When *outputlist* is omitted and only a list separator follows *filenumber*, a blank line is printed to the file.
 
 Multiple expressions can be separated with either a space or a semicolon. A space has the same effect as a semicolon.
 
 For **Boolean** data, either `True` or `False` is printed. The **True** and **False** keywords are not translated, regardless of the locale.
 
-**Date** data is written to the file by using the standard short date format recognized by your system. When either the date or the time component is missing or zero, only the part provided gets written to the file.
+**Date** data is written to the file by using the standard short date format recognized by the system. When either the date or the time component is missing or zero, only the part provided gets written to the file.
 
 Nothing is written to the file if *outputlist* data is **Empty**. However, if *outputlist* data is **Null**, `Null` is written to the file.
 
@@ -51,10 +51,10 @@ For **Error** data, the output appears as `Error `*errorcode*. The **Error** key
 
 All data written to the file by using **Print #** is internationally-aware; that is, the data is properly formatted by using the appropriate decimal separator.
 
-Because **Print #** writes an image of the data to the file, you must delimit the data so that it prints correctly. If you use **Tab** with no arguments to move the print position to the next print zone, **Print #** also writes the spaces between print fields to the file.
+Because **Print #** writes an image of the data to the file, the data must be delimited so that it prints correctly. When **Tab** is used with no arguments to move the print position to the next print zone, **Print #** also writes the spaces between print fields to the file.
 
 > [!NOTE]
-> If, at some future time, you want to read the data from a file by using the **Input #** statement, use the [**Write #**](Write) statement instead of the **Print #** statement to write the data to the file. Using **Write #** ensures the integrity of each separate data field by properly delimiting it, so that it can be read back in by using **Input #**. Using **Write #** also ensures that it can be correctly read in any locale.
+> When the data is later read from a file by using the **Input #** statement, use the [**Write #**](Write) statement instead of the **Print #** statement to write the data to the file. Using **Write #** ensures the integrity of each separate data field by properly delimiting it, so that it can be read back in by using **Input #**. Using **Write #** also ensures that it can be correctly read in any locale.
 
 ### Example
 

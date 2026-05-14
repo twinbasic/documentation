@@ -17,7 +17,7 @@ Syntax:
 : Any valid file number.
 
 *recordrange*
-: *optional*  The range of records to lock or unlock. The *recordrange* settings are:
+: *optional* The range of records to lock or unlock. The *recordrange* settings are:
 
   > *recnumber* \| [ *start* ] **To** *end*
 
@@ -34,12 +34,12 @@ The **Lock** and **Unlock** statements are used in environments where several pr
 
 **Lock** and **Unlock** statements are always used in pairs. The arguments to **Lock** and **Unlock** must match exactly.
 
-The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. If you specify just one record, only that record is locked or unlocked. If you specify a range of records and omit a starting record (*start*), all records from the first record to the end of the range (*end*) are locked or unlocked. Using **Lock** without *recnumber* locks the entire file; using **Unlock** without *recnumber* unlocks the entire file.
+The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. When just one record is specified, only that record is locked or unlocked. When a range of records is specified and a starting record (*start*) is omitted, all records from the first record to the end of the range (*end*) are locked or unlocked. Using **Lock** without *recnumber* locks the entire file; using **Unlock** without *recnumber* unlocks the entire file.
 
 If the file has been opened for sequential input or output, **Lock** and **Unlock** affect the entire file, regardless of the range specified by *start* and *end*.
 
 > [!IMPORTANT]
-> Be sure to remove all locks with an **Unlock** statement before closing a file or quitting your program. Failure to remove locks produces unpredictable results.
+> Be sure to remove all locks with an **Unlock** statement before closing a file or quitting the program. Failure to remove locks produces unpredictable results.
 
 ### Example
 

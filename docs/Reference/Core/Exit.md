@@ -7,7 +7,7 @@ vba_attribution: true
 # Exit
 {: .no_toc }
 
-Exits a block of **Do…Loop**, **For…Next**, **While...Wend**, **Function**,  **Sub**, or **Property** code.
+Exits a block of **Do…Loop**, **For…Next**, **While...Wend**, **Function**, **Sub**, or **Property** code.
 
 Syntax:
 

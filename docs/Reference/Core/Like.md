@@ -34,7 +34,7 @@ Under **Option Compare Text** the same characters compare equal up to case and a
 
 `(A=a) < (À=à) < (B=b) < (E=e) < (Ê=ê) < (Z=z) < (Ø=ø)`
 
-The pattern-matching syntax allows wildcards, character lists, and character ranges. The following characters in *pattern* have special meaning:
+The pattern-matching syntax supports wildcards, character lists, and character ranges. The following characters in *pattern* have special meaning:
 
 | In *pattern*       | Matches in *string*                                  |
 |:-------------------|:-----------------------------------------------------|

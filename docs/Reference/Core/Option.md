@@ -24,7 +24,7 @@ Because the default base is **0**, the **Option Base** statement is never requir
 If used, the statement must appear in a [module](../Gloss#module) or [class](../Gloss#class) before any procedures, functions, or properties. **Option Base** can appear only once in a module and must precede array [declarations](../Gloss#declaration) that include dimensions.
 
 > [!NOTE]
-> The **To** clause in the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) statements provides a more flexible way to control the range of an array's subscripts. However, if you don't explicitly set the lower bound with a **To** clause, you can use **Option Base** to change the default lower bound to 1. The base of an array created with the [**ParamArray**](ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](ParamArray) (or the [**Array**](../../tB/Core/Array) function).
+> The **To** clause in the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) statements provides a more flexible way to control the range of an array's subscripts. However, when the lower bound is not explicitly set with a **To** clause, **Option Base** can change the default lower bound to 1. The base of an array created with the [**ParamArray**](ParamArray) keyword is zero; **Option Base** does not affect [**ParamArray**](ParamArray) (or the [**Array**](../../tB/Core/Array) function).
 
 The **Option Base** statement only affects the lower bound of arrays in the module where the statement is located.
 
@@ -87,9 +87,9 @@ If used, the **Option Explicit** statement must appear in a module before any [p
 
 This option makes it mandatory to require variable declarations. There is no complementary option to make the declarations optional.
 
-When **Option Explicit** appears in a module, you must explicitly declare all variables by using the  [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) **Static** statements. If you attempt to use an undeclared variable name, an error occurs at [compile time](../Gloss#compile-time).
+When **Option Explicit** appears in a module, all variables must be explicitly declared by using the [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](ReDim), and [**Static**](Static) **Static** statements. Attempting to use an undeclared variable name raises an error at [compile time](../Gloss#compile-time).
 
-If you don't use the **Option Explicit** statement, and when the [**Option Explicit On**](../IDE/Project/Settings#option-explicit-on) project setting is changed to its non-default value of *No*, all undeclared variables are of **Variant** type unless the default type is otherwise specified with a [**Def**_type_](Deftype) statement.
+Without the **Option Explicit** statement, and when the [**Option Explicit On**](../IDE/Project/Settings#option-explicit-on) project setting is changed to its non-default value of *No*, all undeclared variables are of **Variant** type unless the default type is otherwise specified with a [**Def**_type_](Deftype) statement.
 
 > [!NOTE]
 > The **Option Explicit On** project setting is *Yes* by default in new projects.
@@ -122,7 +122,7 @@ Syntax: **Option Compare** { **Binary** \| **Text** \| **Database** }
 
 If used, the **Option Compare** statement must appear in a [module](../Gloss#module) before any [procedures](../Gloss#procedure).
 
-The **Option Compare** statement specifies the [string comparison](../Gloss#string-comparison) method (**Binary**, **Text**, or** Database**) for a module. If a module doesn't include an **Option Compare** statement, the default text comparison method is **Binary**.
+The **Option Compare** statement specifies the [string comparison](../Gloss#string-comparison) method (**Binary**, **Text**, or **Database**) for a module. If a module doesn't include an **Option Compare** statement, the default text comparison method is **Binary**.
 
 * **Option Compare Binary** results in string comparisons based on a [sort order](../Gloss#sort-order) derived from the internal binary representations of the characters. In Microsoft Windows, sort order is determined by the code page. A typical binary sort order is shown in the following example:
 
@@ -130,7 +130,7 @@ The **Option Compare** statement specifies the [string comparison](../Gloss#stri
   A < B < E < Z < a < b < e < z < À < Ê < Ø < à < ê < ø 
   ```
 
-* **Option Compare Text** results in string comparisons based on a case-insensitive text sort order determined by your system's [locale](../Gloss#locale). When the same characters are sorted by using **Option Compare Text**, the following text sort order is produced:
+* **Option Compare Text** results in string comparisons based on a case-insensitive text sort order determined by the system's [locale](../Gloss#locale). When the same characters are sorted by using **Option Compare Text**, the following text sort order is produced:
 
   ```tb
   (A=a) < ( À=à) < (B=b) < (E=e) < (Ê=ê) < (Z=z) < (Ø=ø) 

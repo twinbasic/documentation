@@ -35,12 +35,12 @@ The following table illustrates how other input data is treated:
 
 Double quotation marks (`"`) within input data are ignored.
 
-> [!NOTE]
-> You should not write strings that contain embedded quotation marks (for example, `"1,2""X"`) for use with the **Input #** statement; **Input #** parses this string as two complete and separate strings.
+> [!IMPORTANT]
+> Do not write strings that contain embedded quotation marks (for example, `"1,2""X"`) for use with the **Input #** statement; **Input #** parses this string as two complete and separate strings.
 
 Data items in a file must appear in the same order as the variables in *varlist* and match variables of the same data type. If a variable is numeric and the data is not numeric, a value of zero is assigned to the variable.
 
-If you reach the end of the file while you are inputting a data item, the input is terminated and an error occurs.
+If the end of the file is reached while a data item is being read, the input is terminated and an error occurs.
 
 > [!NOTE]
 > To be able to correctly read data from a file into variables by using **Input #**, use the [**Write #**](Write) statement instead of the [**Print #**](Print) statement to write the data to the files. Using **Write #** ensures that each separate data field is properly delimited.

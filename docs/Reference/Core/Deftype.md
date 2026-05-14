@@ -61,9 +61,9 @@ Message = "Out of stack space."
 
 A **Def**_type_ statement affects only the module where it is used. The default data type for variables, arguments, and return types of items not declared explicitly and not covered by a **Def**_type_ statement is **Variant**.
 
-When you specify a letter range, it usually defines the data type for variables that begin with letters in the first 128 characters of the character set. However, when you specify the range A-Z, you set the default to the specified data type for *all* names, including those starting with characters from the extended part of the character set (128-255).
+A letter range usually defines the data type for variables that begin with letters in the first 128 characters of the character set. However, the range A-Z sets the default to the specified data type for *all* names, including those starting with characters from the extended part of the character set (128-255).
 
-After the range A-Z has been specified, you can't further redefine subranges by using **Def**_type_ statements. Once a range has been specified, including a previously defined letter in another **Def**_type_ statement is an error. You can, however, explicitly specify the data type of any variable — defined or not — by using a [**Dim**](Dim) statement with an **As** *type* clause:
+After the range A-Z has been specified, subranges cannot be further redefined by using **Def**_type_ statements. Once a range has been specified, including a previously defined letter in another **Def**_type_ statement is an error. The data type of any variable — defined or not — can still be explicitly specified by using a [**Dim**](Dim) statement with an **As** *type* clause:
 
 ```tb
 DefInt A-Z

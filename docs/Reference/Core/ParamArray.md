@@ -7,7 +7,7 @@ vba_attribution: true
 # ParamArray
 {: .no_toc }
 
-Used in the argument list of a [**Sub**](Sub), [**Function**](Function), or [**Property**](Property) procedure to indicate that the final parameter is an open-ended list of arguments. The **ParamArray** keyword allows the procedure to accept an arbitrary number of arguments at the call site.
+Used in the argument list of a [**Sub**](Sub), [**Function**](Function), or [**Property**](Property) procedure to indicate that the final parameter is an open-ended list of arguments. The **ParamArray** keyword permits the procedure to accept an arbitrary number of arguments at the call site.
 
 Syntax:
 > [ **Public** \| **Private** \| **Friend** ] [ **Static** ] **Sub** \| **Function** \| **Property Get** \| **Property Let** \| **Property Set** *name* **(** [ *arglist*, ] **ParamArray** *varname*[ **()** ] [ **As** *type* ] **)**
@@ -16,7 +16,7 @@ Syntax:
 : Name of the variable representing the **ParamArray**; follows standard variable naming conventions.
 
 *type*
-: *optional*  Must be **Variant** (explicitly or by default). Each argument supplied at the call site can be of a different data type, so **ParamArray** must always be an array of **Variant** elements.
+: *optional* Must be **Variant** (explicitly or by default). Each argument supplied at the call site can be of a different data type, so **ParamArray** must always be an array of **Variant** elements.
 
 **ParamArray** must be the last parameter in the argument list of a **Sub**, **Function**, or **Property Get** procedure. In a **Property Let** or **Property Set** procedure it must precede the *value*/*reference* parameter and so cannot be the only parameter.
 

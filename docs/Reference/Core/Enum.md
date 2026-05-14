@@ -29,10 +29,10 @@ Syntax:
 : *optional* Specifies that the **Enum** type is visible only within the module in which it appears.
 
 *name*
-:  The name of the **Enum** type. The *name* must be a valid Visual Basic identifier and is specified as the type when declaring variables or parameters of the **Enum** type.
+: The name of the **Enum** type. The *name* must be a valid Visual Basic identifier and is specified as the type when declaring variables or parameters of the **Enum** type.
 
 *membername*
-:  A valid Visual Basic identifier specifying the name by which a constituent element of the **Enum** type will be known.
+: A valid Visual Basic identifier specifying the name by which a constituent element of the **Enum** type will be known.
 
 *constantexpression*
 : *optional* Value of the element (evaluates to a **Long**). If no *constantexpression* is specified, the value assigned is either zero (if it is the first *membername* ), or 1 greater than the value of the immediately preceding *membername*.
@@ -47,15 +47,15 @@ Enum SecurityLevel
 End Enum 
 ```
 
-An **Enum** statement can appear only at the module level. After the **Enum** type is defined, it can be used to declare variables, parameters, or procedures returning its type. You can't qualify an **Enum** type name with a module name.
+An **Enum** statement can appear only at the module level. After the **Enum** type is defined, it can be used to declare variables, parameters, or procedures returning its type. An **Enum** type name cannot be qualified with a module name.
 
 **Public Enum** types in a class module are not members of the class; however, they are written to the type library. **Enum** types defined in standard modules aren't written to type libraries. **Public Enum** types of the same name can't be defined in both standard modules and class modules because they share the same name space. When two **Enum** types in different type libraries have the same name, but different elements, a reference to a variable of the type depends on which type library has higher priority in the **References**.
 
-You can't use an **Enum** type as the target in a **With** block.
+An **Enum** type cannot be used as the target in a **With** block.
 
 ### Example
 
-The following example shows the **Enum** statement used to define a collection of named constants. In this case, the constants are colors you might choose to design data entry forms for a database.
+The following example shows the **Enum** statement used to define a collection of named constants. In this case, the constants are colors that might be used to design data entry forms for a database.
 
 ```tb
 Public Enum InterfaceColors 

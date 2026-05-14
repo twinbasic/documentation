@@ -22,7 +22,7 @@ Syntax:
 : **Variant** (**Long**). Character position in *stringvar* where the replacement of text begins.
 
 *length*
-: *optional*  **Variant** (**Long**). Number of characters to replace. If omitted, all of *string* is used.
+: *optional* **Variant** (**Long**). Number of characters to replace. If omitted, all of *string* is used.
 
 *string*
 : String expression that replaces part of *stringvar*.

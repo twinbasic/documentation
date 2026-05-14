@@ -30,7 +30,7 @@ Syntax:
 If *string* is longer than *stringvar*, **LSet** places only the leftmost characters, up to the length of the *stringvar*, in *stringvar*.
 
 > [!WARNING]
-> Using **LSet** to copy a variable of one user-defined type into a variable of a different user-defined type is not recommended. Copying data of one data type into space reserved for a different data type can cause unpredictable results. When you copy a variable from one user-defined type to another, the binary data from one variable is copied into the memory space of the other, without regard for the data types specified for the elements.
+> Using **LSet** to copy a variable of one user-defined type into a variable of a different user-defined type is not recommended. Copying data of one data type into space reserved for a different data type can cause unpredictable results. When a variable is copied from one user-defined type to another, the binary data from one variable is copied into the memory space of the other, without regard for the data types specified for the elements.
 
 ### Example
 

@@ -19,7 +19,7 @@ Syntax:
 > **End CoClass**
 
 *attributes*
-: *optional*  Coclass-level attributes. See [Available attributes](#available-attributes) below.
+: *optional* Coclass-level attributes. See [Available attributes](#available-attributes) below.
 
 *name*
 : The identifier naming the coclass.
@@ -28,7 +28,7 @@ Syntax:
 : An [**Interface**](Interface) defined in the project (or imported from a referenced type library) that the coclass exposes. A coclass must list at least one interface and may list several.
 
 *member-attributes*
-: *optional*  Per-interface markers, principally:
+: *optional* Per-interface markers, principally:
 
   - `[Default]` — marks an interface as the default interface of the coclass. It is conventional and highly recommended to mark exactly one interface as `[Default]`.
   - `[Source]` — marks an interface as a source interface (an outgoing/event interface). Combine with `[Default]` (`[Default, Source]`) to mark the default event interface.
@@ -40,7 +40,7 @@ Syntax:
 - `[CoClassId("...")]` — fixes the CLSID for the coclass (a string GUID). Set this on any public/exported coclass so consumers in other projects bind to a stable identity.
 - `[Description("text")]` — exposed as the `helpstring` in the type library.
 - `[ComCreatable(True/False)]` — indicates whether the coclass can be created with **New**. `True` by default.
-- `[AppObject]` — marks the class as part of the global namespace. Use only when you fully understand the implication.
+- `[AppObject]` — marks the class as part of the global namespace. Use only when the implications are fully understood.
 - `[Hidden]` — hides the coclass from IntelliSense and similar lists.
 - `[CoClassCustomConstructor("ModuleName.FunctionName")]` — names a factory function (returning `HRESULT` and producing the new instance via an out parameter) used in place of the default `New` behavior. The factory may construct any private class that implements the coclass's interfaces.
 

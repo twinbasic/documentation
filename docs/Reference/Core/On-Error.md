@@ -23,7 +23,7 @@ Syntax:
 **On Error GoTo 0**
 : Disables any enabled error handler in the current procedure.
 
-If you don't use an **On Error** statement, any run-time error that occurs is fatal; that is, an error message is displayed and execution stops.
+Without an **On Error** statement, any run-time error that occurs is fatal; that is, an error message is displayed and execution stops.
 
 An "enabled" error handler is one that is turned on by an **On Error** statement; an "active" error handler is an enabled handler that is in the process of handling an error. If an error occurs while an error handler is active (between the occurrence of the error and a [**Resume**](Resume), [**Exit Sub**](Exit), **Exit Function**, or **Exit Property** statement), the current procedure's error handler can't handle the error. Control returns to the calling procedure.
 
@@ -36,10 +36,10 @@ Each time the error handler passes control back to a calling procedure, that pro
 
 Error-handling routines rely on the value in the **Number** property of the **Err** object to determine the cause of the error. The error-handling routine should test or save relevant property values in the **Err** object before any other error can occur or before a procedure that might cause an error is called. The property values in the **Err** object reflect only the most recent error. The error message associated with **Err.Number** is contained in **Err.Description**.
 
-**On Error Resume Next** causes execution to continue with the statement immediately following the statement that caused the run-time error, or with the statement immediately following the most recent call out of the procedure containing the **On Error Resume Next** statement. This statement allows execution to continue despite a run-time error. You can place the error-handling routine where the error would occur, rather than transferring control to another location within the procedure. An **On Error Resume Next** statement becomes inactive when another procedure is called, so you should execute an **On Error Resume Next** statement in each called routine if you want inline error handling within that routine.
+**On Error Resume Next** causes execution to continue with the statement immediately following the statement that caused the run-time error, or with the statement immediately following the most recent call out of the procedure containing the **On Error Resume Next** statement. This statement allows execution to continue despite a run-time error. The error-handling routine can be placed where the error would occur, rather than transferring control to another location within the procedure. An **On Error Resume Next** statement becomes inactive when another procedure is called, so an **On Error Resume Next** statement must be executed in each called routine that requires inline error handling.
 
 > [!NOTE]
-> The **On Error Resume Next** construct may be preferable to **On Error GoTo** when handling errors generated during access to other objects. Checking **Err** after each interaction with an object removes ambiguity about which object was accessed by the code. You can be sure which object placed the error code in **Err.Number**, as well as which object originally generated the error (the object specified in **Err.Source**).
+> The **On Error Resume Next** construct may be preferable to **On Error GoTo** when handling errors generated during access to other objects. Checking **Err** after each interaction with an object removes ambiguity about which object was accessed by the code. It is then clear which object placed the error code in **Err.Number**, as well as which object originally generated the error (the object specified in **Err.Source**).
 
 **On Error GoTo 0** disables error handling in the current procedure. It doesn't specify line 0 as the start of the error-handling code, even if the procedure contains a line numbered 0. Without an **On Error GoTo 0** statement, an error handler is automatically disabled when a procedure is exited.
 
@@ -58,14 +58,14 @@ End Sub
 
 Here, the error-handling code follows the **Exit Sub** statement and precedes the [**End Sub**](End) statement to separate it from the procedure flow. Error-handling code can be placed anywhere in a procedure.
 
-If you create an object that accesses other objects, you should try to handle errors passed back from them unhandled. If you cannot handle such errors, map the error code in **Err.Number** to one of your own errors, and then pass them back to the caller of your object. You should specify your error by adding your error code to the **vbObjectError** constant. For example, if your error code is 1052, assign it as follows:
+When creating an object that accesses other objects, try to handle errors passed back from them unhandled. When such errors cannot be handled, map the error code in **Err.Number** to a project-specific error, and then pass it back to the caller of the object. Specify the error by adding the project error code to the **vbObjectError** constant. For example, if the error code is 1052, assign it as follows:
 
 ```tb
 Err.Number = vbObjectError + 1052
 ```
 
 > [!NOTE]
-> System errors during calls to Windows dynamic-link libraries (DLLs) don't raise exceptions and cannot be trapped with twinBASIC error trapping. When calling DLL functions, you should check each return value for success or failure (according to the API specifications), and in the event of a failure, check the value in the **Err** object's **LastDLLError** property.
+> System errors during calls to Windows dynamic-link libraries (DLLs) don't raise exceptions and cannot be trapped with twinBASIC error trapping. When calling DLL functions, check each return value for success or failure (according to the API specifications), and in the event of a failure, check the value in the **Err** object's **LastDLLError** property.
 
 ### Example
 

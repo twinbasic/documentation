@@ -23,7 +23,7 @@ Syntax:
 **Resume** *line*
 : Execution resumes at the *line* specified. The *line* argument is a line label or line number, and must be in the same procedure as the error handler.
 
-If you use a **Resume** statement anywhere except in an error-handling routine, an error occurs.
+Using a **Resume** statement anywhere except in an error-handling routine raises an error.
 
 ### Example
 

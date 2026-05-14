@@ -16,11 +16,11 @@ Syntax:
 : Any valid file number.
 
 *outputlist*
-: *optional*  One or more comma-delimited numeric expressions or string expressions to write to a file.
+: *optional* One or more comma-delimited numeric expressions or string expressions to write to a file.
 
 Data written with **Write #** is usually read from a file with [**Input #**](Input).
 
-If you omit *outputlist* and include a comma after *filenumber*, a blank line is printed to the file. Multiple expressions can be separated with a space, a semicolon, or a comma. A space has the same effect as a semicolon.
+When *outputlist* is omitted and a comma follows *filenumber*, a blank line is printed to the file. Multiple expressions can be separated with a space, a semicolon, or a comma. A space has the same effect as a semicolon.
 
 When **Write #** is used to write data to a file, several universal assumptions are followed so that the data can always be read and correctly interpreted by using **Input #**, regardless of locale:
 
@@ -30,10 +30,10 @@ When **Write #** is used to write data to a file, several universal assumptions 
 - Nothing is written to the file if *outputlist* data is **Empty**. However, for **Null** data, `#NULL#` is written.
 - For **Error** data, the output appears as `#ERROR `*errorcode*`#`. The **Error** keyword is not translated, regardless of locale.
 
-Unlike the [**Print #**](Print) statement, the **Write #** statement inserts commas between items and quotation marks around strings as they are written to the file. You don't have to put explicit delimiters in the list. **Write #** inserts a newline character — that is, a carriage return-linefeed (**Chr**(13) + **Chr**(10)) — after it has written the final character in *outputlist* to the file.
+Unlike the [**Print #**](Print) statement, the **Write #** statement inserts commas between items and quotation marks around strings as they are written to the file. Explicit delimiters in the list are not required. **Write #** inserts a newline character — that is, a carriage return-linefeed (**Chr**(13) + **Chr**(10)) — after it has written the final character in *outputlist* to the file.
 
-> [!NOTE]
-> You should not write strings that contain embedded quotation marks (for example, `"1,2""X"`) for use with the **Input #** statement; **Input #** parses this string as two complete and separate strings.
+> [!IMPORTANT]
+> Do not write strings that contain embedded quotation marks (for example, `"1,2""X"`) for use with the **Input #** statement; **Input #** parses this string as two complete and separate strings.
 
 ### Example
 

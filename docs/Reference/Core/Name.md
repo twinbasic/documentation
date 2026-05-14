@@ -20,7 +20,7 @@ Syntax:
 
 The **Name** statement renames a file and moves it to a different directory or folder, if necessary. **Name** can move a file across drives, but it can only rename an existing directory or folder when both *newpathname* and *oldpathname* are located on the same drive. **Name** cannot create a new file, directory, or folder.
 
-Using **Name** on an open file produces an error. You must close an open file before renaming it. **Name** arguments cannot include multiple-character (`*`) and single-character (`?`) wildcards.
+Using **Name** on an open file produces an error. An open file must be closed before renaming it. **Name** arguments cannot include multiple-character (`*`) and single-character (`?`) wildcards.
 
 ### Example
 

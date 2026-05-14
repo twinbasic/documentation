@@ -15,19 +15,19 @@ Syntax:
 > [ **Public** \| **Private** ] **Delegate Function** *name* [ **CDecl** ] **(** [ *arglist* ] **)** **As** *type*
 
 **Public**
-: *optional*  In an ActiveX project, exports the delegate type to the type library so consumers in other projects see *name*.
+: *optional* In an ActiveX project, exports the delegate type to the type library so consumers in other projects see *name*.
 
 **Private**
-: *optional*  Withholds the delegate from the type library; usable only within the project.
+: *optional* Withholds the delegate from the type library; usable only within the project.
 
 *name*
 : The identifier naming the delegate type. Must be a valid twinBASIC identifier.
 
 **CDecl**
-: *optional*  Marks the delegate as using the C calling convention (`cdecl` — caller cleans the stack), used to model callbacks expected by C-runtime APIs such as `qsort`. The default is `stdcall`. See [API Declarations](../../Features/Advanced/API-Declarations#cdecl-callbacks).
+: *optional* Marks the delegate as using the C calling convention (`cdecl` — caller cleans the stack), used to model callbacks expected by C-runtime APIs such as `qsort`. The default is `stdcall`. See [API Declarations](../../Features/Advanced/API-Declarations#cdecl-callbacks).
 
 *arglist*
-: *optional*  Parameter signature, written exactly as for a [**Sub**](Sub) or [**Function**](Function) — comma-separated `[ ByVal | ByRef ] [ Optional ] *varname* [ As *type* ]` parts.
+: *optional* Parameter signature, written exactly as for a [**Sub**](Sub) or [**Function**](Function) — comma-separated `[ ByVal | ByRef ] [ Optional ] *varname* [ As *type* ]` parts.
 
 *type*
 : Return type of the delegate's signature.

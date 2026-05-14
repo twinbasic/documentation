@@ -47,7 +47,7 @@ The following table lists the comparison operators and the conditions that deter
 > [!NOTE]
 > The [**Is**](Is) and [**Like**](Like) operators have their own dedicated comparison semantics and are documented separately.
 
-The `=` symbol is also the assignment operator (`*variable* = *expression*`). The context — whether `=` appears in an expression or at the top of a statement — determines which meaning applies; you do not need to choose between them explicitly.
+The `=` symbol is also the assignment operator (`*variable* = *expression*`). The context — whether `=` appears in an expression or at the top of a statement — determines which meaning applies; no explicit choice between them is required.
 
 When comparing two expressions, determining whether they are being compared as numbers or as strings can be non-obvious. The following table shows how the expressions are compared, or the result when either expression is not a **Variant**:
 

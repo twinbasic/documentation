@@ -17,7 +17,7 @@ Syntax:
 The arguments to **Unlock** must match exactly the arguments of the corresponding **Lock** statement. See [**Lock, Unlock**](Lock) for full details.
 
 > [!IMPORTANT]
-> Be sure to remove all locks with an **Unlock** statement before closing a file or quitting your program. Failure to remove locks produces unpredictable results.
+> Be sure to remove all locks with an **Unlock** statement before closing a file or quitting the program. Failure to remove locks produces unpredictable results.
 
 ### See Also
 

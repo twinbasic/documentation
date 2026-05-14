@@ -17,7 +17,7 @@ Syntax:
 
 When an object is loaded, it is placed in memory but is not visible. Use the **Show** method to make it visible. Until an object is visible, the user can't interact with it; the object can be manipulated programmatically inside its **Initialize** event handler.
 
-Use [**Unload**](Unload) to remove the object from memory once you are done with it.
+Use [**Unload**](Unload) to remove the object from memory once it is no longer needed.
 
 ### Example
 

@@ -30,13 +30,13 @@ Syntax:
 : Optional in block form; required in single-line form that has no **Else** clause. One or more statements separated by colons; executed if *condition* is **True**.
 
 *condition-n*
-: *optional*  Same as *condition*.
+: *optional* Same as *condition*.
 
 *elseifstatements*
-: *optional*  One or more statements executed if the associated *condition-n* is **True**.
+: *optional* One or more statements executed if the associated *condition-n* is **True**.
 
 *elsestatements*
-: *optional*  One or more statements executed if no previous *condition* or *condition-n* expression is **True**.
+: *optional* One or more statements executed if no previous *condition* or *condition-n* expression is **True**.
 
 Use the single-line form (first syntax) for short, simple tests. The block form (second syntax) provides more structure and flexibility than the single-line form and is usually easier to read, maintain, and debug.
 
@@ -51,7 +51,7 @@ A block form **If** statement must be the first statement on a line. The **Else*
 
 To determine whether or not a statement is a block **If**, examine what follows the **Then** keyword. If anything other than a comment appears after **Then** on the same line, the statement is treated as a single-line **If** statement.
 
-The **Else** and **ElseIf** clauses are both optional. You can have as many **ElseIf** clauses as you want in a block **If**, but none can appear after an **Else** clause. Block **If** statements can be nested; that is, contained within one another.
+The **Else** and **ElseIf** clauses are both optional. A block **If** can have any number of **ElseIf** clauses, but none can appear after an **Else** clause. Block **If** statements can be nested; that is, contained within one another.
 
 When executing a block **If** (second syntax), *condition* is tested. If *condition* is **True**, the statements following **Then** are executed. If *condition* is **False**, each **ElseIf** condition (if any) is evaluated in turn. When a **True** condition is found, the statements immediately following the associated **Then** are executed. If none of the **ElseIf** conditions are **True** (or if there are no **ElseIf** clauses), the statements following **Else** are executed. After executing the statements following **Then** or **Else**, execution continues with the statement following **End If**.
 

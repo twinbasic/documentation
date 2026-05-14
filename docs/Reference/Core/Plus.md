@@ -23,7 +23,7 @@ Syntax:
 *expression*, *expression1*, *expression2*
 : Any expressions.
 
-When you use the **+** operator, you may not be able to determine whether addition or string concatenation will occur. Use the [**&**](Concat) operator for concatenation to eliminate ambiguity and produce self-documenting code.
+When the **+** operator is used, it may not be obvious whether addition or string concatenation will occur. Use the [**&**](Concat) operator for concatenation to eliminate ambiguity and produce self-documenting code.
 
 If at least one expression is not a **Variant**, the following rules apply:
 
@@ -75,7 +75,7 @@ Greeting += ", world"           ' Greeting is now "Hello, world".
 
 ### Example
 
-This example uses the **+** operator to sum numbers. The **+** operator can also be used to concatenate strings, but to eliminate ambiguity you should use the [**&**](Concat) operator instead.
+This example uses the **+** operator to sum numbers. The **+** operator can also be used to concatenate strings, but to eliminate ambiguity use the [**&**](Concat) operator instead.
 
 ```tb
 Dim MyNumber, Var1, Var2
