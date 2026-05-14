@@ -314,6 +314,29 @@ The audience is international: standard-English readers worldwide, often non-nat
 
 The guiding principle: **replace metaphors imported from outside programming; keep vocabulary with a specific technical meaning inside Win32 / COM / event-driven programming.** If a phrase is the kind of thing a reader would have to look up in a tech blog, it doesn't belong in reference prose.
 
+### Sentence and structure
+
+The vocabulary tables further down cover word choice. The rules in this subsection cover sentence shape and voice — the structural side of writing for an international audience.
+
+1. **Page opening.** One-sentence verb-phrase summary directly under the H1, in present tense, no preamble. *Good:* "Activates an application window." / "Writes an **Error**-type entry to the log." *Avoid:* "The **Const** statement is used to declare constants in place of literal values."
+
+2. **Voice and tense.** Active voice by default. Passive only for subjectless operations where there is no obvious agent — "the entry is written", "the constant is private by default". Present tense for behavior — `returns`, not `will return`. Don't give the class human traits: it doesn't "decide", "want", or "know" — it returns, raises, contains.
+
+3. **Sentence shape.** One idea per sentence. Prefer two short sentences over one compound sentence with nested clauses. Em-dash (`—`) for parenthetical asides; reserve parentheses for code-ish notation like `(default)`.
+
+4. **Person and pronouns.** Reference prose uses third-person impersonal — "the constant", "the source", "the entry". "You" is acceptable inside `Example` lead-ins and in tutorial prose. Existing "you" in VBA-derived pages stays in place; new prose written from scratch prefers the impersonal form. Avoid first-person ("we", "I").
+
+5. **Parameter descriptions.** Italic `*required*` / `*optional*` flag, then a short prose description. Lead with the type when it matters — "A **String** naming the source...", "A *T1* value naming the event...". Don't restate the parameter's name inside its own definition.
+
+6. **Callout severity.** Three severity levels, used distinctly:
+   - `> [!NOTE]` — twinBASIC-vs-VBA deviations, behavior clarifications, useful caveats.
+   - `> [!IMPORTANT]` — requirements that affect correctness: admin rights, threading constraints, ordering.
+   - `> [!WARNING]` — operations that can corrupt state or lose data.
+
+   One callout per concern; don't stack a NOTE and an IMPORTANT for the same point.
+
+7. **See Also.** Last section on the page, after `Example`. Format: `- [Symbol](Symbol) <noun>` where `<noun>` is the kind: statement, function, property, method, class, module, package. Pages with annotations use `- [Symbol](Symbol) — short description` (em-dash separator). Order by conceptual proximity, not strict alphabetical.
+
 ### Replace
 
 | Term | Use instead |
