@@ -130,11 +130,9 @@ Before checking link integrity, the documentation must be built. This can be don
 
 To check that none of the internal links in the most recent documentation build are broken:
 
-    bundle exec htmlproofer ./_site --disable-external --no-enforce-https
-
-or, on Windows only
-
     check.bat
+
+This runs [Lychee](https://github.com/lycheeverse/lychee) in offline mode against the built `_site/`.
 
 ### Building and Local Serving
 
