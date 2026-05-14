@@ -29,21 +29,21 @@ Private Sub Button1_OnClick()
 End Sub
 ```
 
-Use the `WithEvents` reference to receive [**OnClose**](#onclose) when the user dismisses the pane — typically the addin uses that event to release any per-window state (timers, references to DOM elements …).
+A `WithEvents` reference receives [**OnClose**](#onclose) when the user dismisses the pane — typically the addin uses that event to release any per-window state (timers, references to DOM elements …).
 
 * TOC
 {:toc}
 
 ## Tool-window default member — jQuery-style child lookup
 
-[**RootDomElement**](#rootdomelement) is the **DefaultMember** of the **ToolWindow** interface — so `myToolWindow.(...)` is equivalent to `myToolWindow.RootDomElement.Properties.(...)`. Because [**HtmlElementProperties**](HtmlElementProperties) is `[COMExtensible(True)]`, a string passed in parenthesis-syntax is resolved against the DOM at run time. The IDE treats CSS-style selectors specially, so:
+[**RootDomElement**](#rootdomelement) is the **DefaultMember** of the **ToolWindow** interface — so `myToolWindow(...)` is equivalent to `myToolWindow.RootDomElement.Properties(...)`. Because [**HtmlElementProperties**](HtmlElementProperties) is `[COMExtensible(True)]`, a string passed in parenthesis-syntax is resolved against the DOM at run time. The IDE treats CSS-style selectors specially, so:
 
 ```tb
 ' Find the descendant element whose id is "dataEntry" and read its .Value:
 Dim entered As String = myToolWindow("#dataEntry").Value
 ```
 
-Useful for grabbing a single child element by ID without holding a separate `As HtmlElement` reference for it.
+Useful for accessing a single child element by ID without holding a separate `As HtmlElement` reference for it.
 
 ## Suggested initial size
 
@@ -51,9 +51,6 @@ Useful for grabbing a single child element by ID without holding a separate `As 
 
 > [!NOTE]
 > Set `suggestedWidth` / `suggestedHeight` before the first time the pane becomes visible. If the pane has previously been opened by this user (and a persistence ID was supplied to [**ToolWindows.Add**](ToolWindows#add)), the IDE-remembered size wins.
-
-* TOC
-{:toc}
 
 ## Properties
 
@@ -95,7 +92,7 @@ Syntax: *toolWindow*.**Visible** [ = *value* ]
 ### ApplyCss
 {: .no_toc }
 
-Injects a `<style>` block into the pane's DOM that applies to every element inside the pane. Useful for global CSS — class selectors, custom-element styling, hover effects — that would be awkward to set element-by-element through [**HtmlElementProperties**](HtmlElementProperties).
+Injects a `<style>` block into the pane's DOM that applies to every element inside the pane. Useful for global CSS — class selectors, custom-element styling, hover effects — that would be awkward to set element by element through [**HtmlElementProperties**](HtmlElementProperties).
 
 Syntax: *toolWindow*.**ApplyCss** *styles*
 

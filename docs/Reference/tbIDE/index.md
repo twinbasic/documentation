@@ -12,7 +12,7 @@ has_toc: false
 
 The **tbIDE** package is the **addin SDK** for the twinBASIC IDE. An addin is a Standard DLL that the IDE loads at start-up; the DLL exports one factory function, returns one object implementing the [**AddIn**](AddIn) contract, and from there everything happens through the [**Host**](Host) object the IDE passes in. The package itself is **type-only** — every public symbol is an interface or a CoClass; the actual implementations live in the twinBASIC IDE binary, and the addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time.
 
-The package is a built-in *compiler* package shipped with twinBASIC. It is added to addin projects automatically; you do not need to add it manually through Project → References.
+The package is a built-in *compiler* package shipped with twinBASIC. It is added to addin projects automatically; there is no need to add it manually through Project → References.
 
 * TOC
 {:toc}
@@ -64,13 +64,13 @@ The `WithEvents Host As Host` pattern is how the addin subscribes to IDE lifecyc
 
 ## The class catalogue
 
-The package's twenty-four `.twin` files declare one interface-and-CoClass pair each (plus one concrete `Class`), grouped here by role for orientation. Every CoClass except [**AddinTimer**](AddinTimer) is **handed to the addin by the IDE** — never instantiated with `New`.
+The package's twenty-four `.twin` files declare one interface-and-CoClass pair each (plus one concrete `Class`), grouped here by role for orientation. Every CoClass except [**AddinTimer**](AddinTimer) is **supplied to the addin by the IDE** — never instantiated with `New`.
 
 ### Entry point and root API
 
 - [**AddIn**](AddIn) — the contract every addin's main class implements. One read-only [**Name**](AddIn#name) property.
 - [**Host**](Host) — the root API object passed to `tbCreateCompilerAddin`. Exposes the [**CurrentProject**](Host#currentproject), the [**ActiveEditors**](Host#activeeditors), the [**Toolbars**](Host#toolbars), the [**ToolWindows**](Host#toolwindows), the [**DebugConsole**](Host#debugconsole), the [**FileSystem**](Host#filesystem), the [**KeyboardShortcuts**](Host#keyboardshortcuts), the [**Themes**](Host#themes), and a small set of dialog helpers ([**ShowMessageBox**](Host#showmessagebox), [**ShowNotification**](Host#shownotification)).
-- [**AddinTimer**](AddinTimer) — the package's only user-instantiable class. `New AddinTimer`; set [**Interval**](AddinTimer#interval) and [**Enabled**](AddinTimer#enabled); receive a [**Timer**](AddinTimer#timer) event.
+- [**AddinTimer**](AddinTimer) — the package's only user-instantiable class. `New AddinTimer`; set [**Interval**](AddinTimer#interval) and [**Enabled**](AddinTimer#enabled); receives a [**Timer**](AddinTimer#timer) event.
 
 ### Project, editors, and the virtual file system
 
@@ -80,20 +80,20 @@ The package's twenty-four `.twin` files declare one interface-and-CoClass pair e
 - [**Editors**](Editors) — the collection of active editors. `Editors(0)` is the current editor; [**Open**](Editors#open) jumps to a file (and optional line/column).
 - [**FileSystem**](FileSystem) — the virtual file system. [**RootFolder**](FileSystem#rootfolder), [**ResolvePath**](FileSystem#resolvepath).
 - [**FileSystemItem**](FileSystemItem) — the base for [**File**](File) and [**Folder**](Folder). `Name`, `Path`, `Type`, `Parent`.
-- [**Folder**](Folder) — children enumeration (use **For Each** — see the warning on [**Count**](Folder#count) / [**Item**](Folder#item) — the IDE is multi-threaded and index-based iteration races), [**IsPackagesFolder**](Folder#ispackagesfolder).
+- [**Folder**](Folder) — children enumeration (prefer **For Each** — see the warning on [**Count**](Folder#count) / [**Item**](Folder#item) — the IDE is multi-threaded and index-based iteration races), [**IsPackagesFolder**](Folder#ispackagesfolder).
 - [**File**](File) — virtual-FS file accessors: [**Data**](File#data) (raw bytes), [**Text**](File#text) (decoded text), [**ReadText**](File#readtext) (text with options like comment-stripping), [**IsDirty**](File#isdirty).
 
 ### IDE UI
 
 - [**Toolbar**](Toolbar) — the IDE toolbar. [**AddSplitter**](Toolbar#addsplitter), [**AddButton**](Toolbar#addbutton).
-- [**Toolbars**](Toolbars) — the toolbar collection. Currently there is only one toolbar, addressable as `Toolbars(0)`.
+- [**Toolbars**](Toolbars) — the toolbar collection. Currently a single toolbar, addressable as `Toolbars(0)`.
 - [**Button**](Button) — a toolbar button created by [**AddButton**](Toolbar#addbutton). Exposes [**OnClick**](Button#onclick).
 - [**ToolWindow**](ToolWindow) — a dockable / floating HTML-rendered tool window. [**Title**](ToolWindow#title), [**Visible**](ToolWindow#visible), [**Resizable**](ToolWindow#resizable), [**RootDomElement**](ToolWindow#rootdomelement), [**ApplyCss**](ToolWindow#applycss), [**OnClose**](ToolWindow#onclose).
 - [**ToolWindows**](ToolWindows) — the tool-window factory: [**Add**](ToolWindows#add) creates a new one.
 
 ### Tool-window DOM and events
 
-The four `Html*` classes are the addin's keyhole into the DOM inside a tool window. All four are declared with `[COMExtensible(True)]` — see [Dynamic DOM property resolution](#dynamic-dom-property-resolution).
+The four `Html*` classes are the addin's view into the DOM inside a tool window. All four are declared with `[COMExtensible(True)]` — see [Dynamic DOM property resolution](#dynamic-dom-property-resolution).
 
 - [**HtmlElement**](HtmlElement) — one DOM element. [**Properties**](HtmlElement#properties), [**ChildDomElements**](HtmlElement#childdomelements), [**Remove**](HtmlElement#remove), [**AddEventListener**](HtmlElement#addeventlistener).
 - [**HtmlElements**](HtmlElements) — the child-element collection. [**Item**](HtmlElements#item) and [**Add**](HtmlElements#add) — the latter accepts standard HTML tags **and** the IDE's custom-widget tags `"chartjs"`, `"monaco"`, `"listview"`, `"virtuallistview"`.
@@ -105,7 +105,7 @@ The four `Html*` classes are the addin's keyhole into the DOM inside a tool wind
 ### Singletons
 
 - [**DebugConsole**](DebugConsole) — the DEBUG CONSOLE pane. [**PrintText**](DebugConsole#printtext), [**Clear**](DebugConsole#clear), [**SetFocus**](DebugConsole#setfocus).
-- [**KeyboardShortcuts**](KeyboardShortcuts) — global IDE keyboard shortcuts. [**Add**](KeyboardShortcuts#add).
+- [**KeyboardShortcuts**](KeyboardShortcuts) — IDE-wide keyboard shortcuts. [**Add**](KeyboardShortcuts#add).
 - [**Themes**](Themes) — the IDE's active theme. [**ActiveThemeName**](Themes#activethemename), [**ActiveThemeNameGroup**](Themes#activethemenamegroup).
 
 ## Dynamic DOM property resolution
@@ -149,7 +149,7 @@ Six worked addins ship in the twinBASIC samples folder. They are the canonical r
 
 | Sample | Project | What it teaches |
 |--------|---------|-----------------|
-| 10 | `WaynesWorldAddInTest1` | The kitchen-sink walkthrough — toolbar setup, a single big tool window populated with 22 styled `div`-buttons that each exercise a different `Host.*` capability. Start here. |
+| 10 | `WaynesWorldAddInTest1` | The kitchen-sink tour — toolbar setup, a single big tool window populated with 22 styled `div`-buttons that each exercise a different `Host.*` capability. Start here. |
 | 11 | `WaynesWorldCPUMonitorTest1` | [**AddinTimer**](AddinTimer) + a `"chartjs"` custom-widget tool window powering a live line chart. |
 | 12 | `WaynesWorldMonacoEditorTest1` | A `"monaco"` custom-widget tool window: an in-window Monaco editor with `setValue` / `getValue` and a content-change listener. |
 | 13 | `WaynesListViewAddIn` | A `"listview"` custom-widget tool window with `ApplyCss`, double-click-to-remove behaviour, and inline-HTML `raiseEvent()` for custom event names. |

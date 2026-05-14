@@ -10,7 +10,7 @@ has_toc: false
 
 A folder inside the IDE's virtual file system. Extends [**FileSystemItem**](FileSystemItem) with child-enumeration capability — [**Count**](#count), [**Item**](#item), and standard **For Each** iteration that yields each child as a [**FileSystemItem**](FileSystemItem) (use `TypeOf` to discriminate folders from files).
 
-A **Folder** also inherits the universal [**FileSystemItem**](FileSystemItem) members — [**Name**](FileSystemItem#name), [**Path**](FileSystemItem#path), [**Type**](FileSystemItem#type), [**Parent**](FileSystemItem#parent). The most common entry point is [**Host.CurrentProject.RootFolder**](Project#rootfolder), and the most common operation is a **For Each** recursive walk.
+A **Folder** also inherits the universal [**FileSystemItem**](FileSystemItem) members — [**Name**](FileSystemItem#name), [**Path**](FileSystemItem#path), [**Type**](FileSystemItem#type), [**Parent**](FileSystemItem#parent). The most common entry point is [**Host.CurrentProject.RootFolder**](Project#rootfolder), and the most common operation is a **For Each** recursive traversal.
 
 ```tb
 Private Sub WalkAllFiles(ByVal folder As Folder)
@@ -27,7 +27,7 @@ End Sub
 ```
 
 > [!IMPORTANT]
-> The twinBASIC IDE is multi-threaded. The same folder can change while an addin holds a reference to it — files arrive, files disappear, indices renumber. The supported way to walk a folder is **For Each**; index-based access through [**Count**](#count) / [**Item**](#item) races against the IDE's own threads and will sometimes miss or duplicate entries. Always prefer **For Each** for traversal.
+> The twinBASIC IDE is multi-threaded. The same folder can change while an addin holds a reference to it — files arrive, files disappear, indices renumber. The supported way to traverse a folder is **For Each**; index-based access through [**Count**](#count) / [**Item**](#item) races against the IDE's own threads and will sometimes miss or duplicate entries. Always prefer **For Each** for traversal.
 
 * TOC
 {:toc}
@@ -47,7 +47,7 @@ Number of items currently in the folder. **Long**, read-only.
 
 **True** if this folder is the project's special `Packages` folder (the one that contains every referenced package's source tree). **Boolean**, read-only.
 
-Useful when walking the project for source-search purposes — an addin that searches user code will usually want to *skip* the package sources:
+Useful when traversing the project for source-search purposes — an addin that searches user code will usually want to *skip* the package sources:
 
 ```tb
 If folder.IsPackagesFolder And Not searchInsidePackages Then Exit Sub

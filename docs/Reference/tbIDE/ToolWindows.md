@@ -8,7 +8,7 @@ has_toc: false
 # ToolWindows class
 {: .no_toc }
 
-The IDE's tool-window factory — reached through [**Host.ToolWindows**](Host#toolwindows). Use [**Add**](#add) to create a new HTML-rendered pane; populate its DOM through the returned [**ToolWindow**](ToolWindow)'s [**RootDomElement**](ToolWindow#rootdomelement); show the pane by setting [**Visible**](ToolWindow#visible) = **True**.
+The IDE's tool-window factory — reached through [**Host.ToolWindows**](Host#toolwindows). Call [**Add**](#add) to create a new HTML-rendered pane; populate its DOM through the returned [**ToolWindow**](ToolWindow)'s [**RootDomElement**](ToolWindow#rootdomelement); show the pane by setting [**Visible**](ToolWindow#visible) = **True**.
 
 ```tb
 Set myWindow = Host.ToolWindows.Add("MyAddIn.MyWindow", "MyAddIn.MyWindowPosition")

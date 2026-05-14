@@ -18,7 +18,7 @@ With Host.DebugConsole
 End With
 ```
 
-The pane is shared across the IDE's own output and every addin's output — prefix log lines with an addin tag (e.g. `"[MyAddIn] "`) so users can tell sources apart.
+The pane is shared across the IDE's own output and every addin's output — prefix log lines with an addin tag (e.g. `"[MyAddIn] "`) so users can distinguish the sources.
 
 * TOC
 {:toc}

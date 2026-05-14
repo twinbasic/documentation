@@ -77,7 +77,7 @@ Syntax: *file*.**ReadText**( *Options* ) **As String**
 
 Valid on every text file kind ([**FileTWIN**](FileSystemItem#FileSystemItemType_FileTWIN), [**FileBAS**](FileSystemItem#FileSystemItemType_FileBAS), [**FileCLS**](FileSystemItem#FileSystemItemType_FileCLS), [**FileVIRTUALDOC**](FileSystemItem#FileSystemItemType_FileVIRTUALDOC), [**FileUIDESIGNER**](FileSystemItem#FileSystemItemType_FileUIDESIGNER), [**FileJSON**](FileSystemItem#FileSystemItemType_FileJSON)); calling on a [**FileOTHER**](FileSystemItem#FileSystemItemType_FileOTHER) is not supported.
 
-The line and column structure of the returned text matches the original file — `CommentsToWhitespace` only blanks the comment characters, never moves the surrounding code. That makes the option suitable for indexers / search tools that need both "find non-comment occurrences" and "report the position in the original file".
+The line and column structure of the returned text matches the original file — `CommentsToWhitespace` only blanks the comment characters, never moves the surrounding code. The option is therefore suitable for indexers / search tools that need both "find non-comment occurrences" and "report the position in the original file".
 
 ## ReadTextFlags
 {: #readtextflags }

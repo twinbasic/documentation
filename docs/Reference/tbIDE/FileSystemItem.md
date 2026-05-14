@@ -8,7 +8,7 @@ has_toc: false
 # FileSystemItem class
 {: .no_toc }
 
-The base interface for everything inside the IDE's virtual file system. Both [**File**](File) and [**Folder**](Folder) extend **FileSystemItem** and inherit its four universal members ([**Name**](#name), [**Path**](#path), [**Type**](#type), [**Parent**](#parent)). An item returned from a [**Folder**](Folder) enumeration or from [**FileSystem.ResolvePath**](FileSystem#resolvepath) is normally castable to its specific kind — use the [**Type**](#type) property or `TypeOf` to discriminate.
+The base interface for everything inside the IDE's virtual file system. Both [**File**](File) and [**Folder**](Folder) extend **FileSystemItem** and inherit its four universal members ([**Name**](#name), [**Path**](#path), [**Type**](#type), [**Parent**](#parent)). An item returned from a [**Folder**](Folder) enumeration or from [**FileSystem.ResolvePath**](FileSystem#resolvepath) is normally castable to its specific kind — the [**Type**](#type) property or `TypeOf` discriminates between them.
 
 ```tb
 Dim item As FileSystemItem

@@ -8,7 +8,7 @@ has_toc: false
 # HtmlElement class
 {: .no_toc }
 
-One DOM element inside a tool window — every node in the rendered HTML tree is reachable as an **HtmlElement**, starting from [**ToolWindow.RootDomElement**](ToolWindow#rootdomelement) and walking down through [**ChildDomElements**](#childdomelements). Inline overlays inside a code pane (created with [**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)) also appear as **HtmlElement** instances and behave identically.
+One DOM element inside a tool window — every node in the rendered HTML tree is reachable as an **HtmlElement**, starting from [**ToolWindow.RootDomElement**](ToolWindow#rootdomelement) and traversing down through [**ChildDomElements**](#childdomelements). Inline overlays inside a code pane (created with [**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)) also appear as **HtmlElement** instances and behave identically.
 
 ```tb
 With myToolWindow.RootDomElement.ChildDomElements.Add("greeting", "h1")
@@ -30,7 +30,7 @@ The element's *properties* — every CSS-style property, every DOM attribute, ev
 ### ChildDomElements
 {: .no_toc }
 
-The element's child-element collection. Use [**HtmlElements.Add**](HtmlElements#add) to add new children, [**Item**](HtmlElements#item) to look one up by ID. **As** [**HtmlElements**](HtmlElements). Read-only.
+The element's child-element collection. Call [**HtmlElements.Add**](HtmlElements#add) to add new children, [**Item**](HtmlElements#item) to look one up by ID. **As** [**HtmlElements**](HtmlElements). Read-only.
 
 ### Name
 {: .no_toc }

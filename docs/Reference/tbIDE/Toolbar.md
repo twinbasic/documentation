@@ -8,7 +8,7 @@ has_toc: false
 # Toolbar class
 {: .no_toc }
 
-One IDE toolbar — the strip of buttons that runs along the top of the IDE window. Addins add their own buttons and splitters to it during start-up. Reached through `Host.Toolbars(0)` (currently the only toolbar).
+One IDE toolbar — the strip of buttons that runs along the top of the IDE window. Addins add their own buttons and separators to it during start-up. Reached through `Host.Toolbars(0)` (currently the only toolbar).
 
 ```tb
 Private Sub Host_OnProjectLoaded()
@@ -30,7 +30,7 @@ The toolbar is shared with the IDE's own commands and with every other loaded ad
 ### AddButton
 {: .no_toc }
 
-Adds a new button to the right-hand end of the toolbar and returns the [**Button**](Button) object for the addin to wire `WithEvents` against.
+Adds a new button to the right-hand end of the toolbar and returns the [**Button**](Button) object for the addin to attach `WithEvents` against.
 
 Syntax: *toolbar*.**AddButton**( *Id*, *Caption* [, *IconData* ] ) **As** [**Button**](Button)
 

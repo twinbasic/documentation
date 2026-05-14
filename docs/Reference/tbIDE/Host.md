@@ -8,7 +8,7 @@ has_toc: false
 # Host class
 {: .no_toc }
 
-The root API the IDE passes to every addin. The DLL receives a **Host** as the argument to its [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) factory; the addin holds onto that reference for its lifetime and reaches every other capability through it — the currently-loaded [**CurrentProject**](#currentproject), the [**ActiveEditors**](#activeeditors), the [**Toolbars**](#toolbars) for adding buttons, the [**ToolWindows**](#toolwindows) for adding HTML-rendered panels, the [**DebugConsole**](#debugconsole) for log output, the virtual [**FileSystem**](#filesystem), the [**KeyboardShortcuts**](#keyboardshortcuts) registry, the [**Themes**](#themes) state, plus the dialog helpers [**ShowMessageBox**](#showmessagebox) / [**ShowNotification**](#shownotification).
+The root API the IDE passes to every addin. The DLL receives a **Host** as the argument to its [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) factory; the addin retains that reference for its lifetime and reaches every other capability through it — the currently-loaded [**CurrentProject**](#currentproject), the [**ActiveEditors**](#activeeditors), the [**Toolbars**](#toolbars) for adding buttons, the [**ToolWindows**](#toolwindows) for adding HTML-rendered panels, the [**DebugConsole**](#debugconsole) for log output, the virtual [**FileSystem**](#filesystem), the [**KeyboardShortcuts**](#keyboardshortcuts) registry, the [**Themes**](#themes) state, plus the dialog helpers [**ShowMessageBox**](#showmessagebox) / [**ShowNotification**](#shownotification).
 
 Typically held via `WithEvents` so the addin can subscribe to lifecycle events:
 
@@ -57,7 +57,7 @@ The IDE's DEBUG CONSOLE pane. Print, clear, or set focus. **As** [**DebugConsole
 ### FileSystem
 {: .no_toc }
 
-The IDE's virtual file system — the abstraction that lets the addin walk and read source files without touching the on-disk paths. **As** [**FileSystem**](FileSystem). Read-only.
+The IDE's virtual file system — the abstraction that lets the addin traverse and read source files without touching the on-disk paths. **As** [**FileSystem**](FileSystem). Read-only.
 
 ### IDEProcessID
 {: .no_toc }
@@ -72,7 +72,7 @@ The Win32 `HWND` of the IDE's main window. **LongPtr**, read-only. Pass to Win32
 ### KeyboardShortcuts
 {: .no_toc }
 
-The keyboard-shortcut registry. Use [**KeyboardShortcuts.Add**](KeyboardShortcuts#add) to bind a key combination to a callback. **As** [**KeyboardShortcuts**](KeyboardShortcuts). Read-only.
+The keyboard-shortcut registry. Call [**KeyboardShortcuts.Add**](KeyboardShortcuts#add) to bind a key combination to a callback. **As** [**KeyboardShortcuts**](KeyboardShortcuts). Read-only.
 
 ### Themes
 {: .no_toc }
@@ -87,7 +87,7 @@ The collection of IDE toolbars. Currently a one-element collection — `Host.Too
 ### ToolWindows
 {: .no_toc }
 
-Factory for HTML-rendered tool windows. Use [**ToolWindows.Add**](ToolWindows#add) to create one. **As** [**ToolWindows**](ToolWindows). Read-only.
+Factory for HTML-rendered tool windows. Call [**ToolWindows.Add**](ToolWindows#add) to create one. **As** [**ToolWindows**](ToolWindows). Read-only.
 
 ## Methods
 
@@ -130,7 +130,7 @@ Use [**ShowMessageBox**](#showmessagebox) when the user has to answer something;
 
 ## Events
 
-The **Host** CoClass exposes three events. The third (and any future addition) is tagged with the compile-time `[AllowUnpopulatedVtableEntry]` attribute, which lets a newer addin compile against the newer events interface and still load against an older IDE that does not yet fire the newer event — older IDEs simply leave the slot empty and the addin never receives that particular event.
+The **Host** CoClass exposes three events. The third (and any future addition) is tagged with the compile-time `[AllowUnpopulatedVtableEntry]` attribute, which lets a newer addin compile against the newer events interface and still load against an older IDE that does not yet fire the newer event — older IDEs leave the slot empty and the addin never receives that particular event.
 
 ### OnProjectLoaded
 {: .no_toc }
@@ -151,7 +151,7 @@ End Sub
 ### OnChangedActiveEditor
 {: .no_toc }
 
-Fires when the user switches the focused editor. Use this to refresh any addin UI that depends on the current editor (e.g. a context-aware tool window). Available since IDE BETA 504+; older IDEs simply do not fire it.
+Fires when the user switches the focused editor. Use this to refresh any addin UI that depends on the current editor (e.g. a context-aware tool window). Available since IDE BETA 504+; older IDEs do not fire it.
 
 Syntax: *host*_**OnChangedActiveEditor**(*EditorIdx* **As Long**, *Editor* **As** [**Editor**](Editor))
 

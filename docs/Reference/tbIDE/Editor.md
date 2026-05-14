@@ -13,8 +13,7 @@ The base interface every IDE editor presents. **Editor** itself exposes only the
 ## Castability
 {: #castability }
 
-> [!NOTE]
-> An **Editor** returned by the IDE is castable to the specific editor kind for the underlying pane. For a code pane the cast target is [**CodeEditor**](CodeEditor); other editor kinds may be added in future IDE versions and will follow the same pattern.
+An **Editor** returned by the IDE is castable to the specific editor kind for the underlying pane. For a code pane the cast target is [**CodeEditor**](CodeEditor); other editor kinds may be added in future IDE versions and will follow the same pattern.
 
 Use `TypeOf` to test before casting:
 

@@ -10,7 +10,7 @@ has_toc: false
 
 A code-pane editor — the specific [**Editor**](Editor) kind the IDE returns when the active editor is a source-code pane. Adds selection / text / scrolling control, an inline-widget API, and a raw passthrough into the underlying Monaco editor that powers code panes.
 
-Reach a **CodeEditor** by casting an [**Editor**](Editor) — `Host.ActiveEditors(0)` returns an [**Editor**](Editor) that, for a code pane, is also a **CodeEditor**:
+A **CodeEditor** is reached by casting an [**Editor**](Editor) — `Host.ActiveEditors(0)` returns an [**Editor**](Editor) that, for a code pane, is also a **CodeEditor**:
 
 ```tb
 If TypeOf Host.ActiveEditors(0) Is CodeEditor Then
@@ -40,7 +40,7 @@ The full text of the code pane. Reading returns the entire document; assigning r
 
 Syntax: *codeEditor*.**Text** [ = *value* ]
 
-Replacing the entire text is heavyweight — both for the editor (it has to rebuild every Monaco data structure) and for the user (the undo stack collapses to a single step). For surgical edits, prefer [**SelectedText**](#selectedtext) over [**Text**](#text).
+Replacing the entire text is heavy — both for the editor (it has to rebuild every Monaco data structure) and for the user (the undo stack collapses to a single step). For targeted edits, prefer [**SelectedText**](#selectedtext) over [**Text**](#text).
 
 ## Methods
 
@@ -63,12 +63,12 @@ Syntax: *codeEditor*.**AddMonacoWidget**( *LineNumber*, *ColumnNumber*, *Html* [
 *Css*
 : *optional* Per-widget CSS as a **String**. Use this for widget-local styles that should not bleed into the rest of the code pane.
 
-The returned [**HtmlElement**](HtmlElement) has the same dynamic-DOM properties as elements inside a tool window — see [Dynamic DOM property resolution](.#dynamic-dom-property-resolution) on the package overview. Use [**HtmlElement.Remove**](HtmlElement#remove) on the returned object to take the widget down.
+The returned [**HtmlElement**](HtmlElement) has the same dynamic-DOM properties as elements inside a tool window — see [Dynamic DOM property resolution](.#dynamic-dom-property-resolution) on the package overview. Call [**HtmlElement.Remove**](HtmlElement#remove) on the returned object to remove the widget.
 
 ### ExecuteMonacoCommand
 {: .no_toc }
 
-Sends a direct command to the underlying Monaco editor instance. Useful for triggering Monaco's built-in commands (Find, Go-to-Line, Format, Toggle Comment, …) without writing equivalent twinBASIC code.
+Sends a direct command to the underlying Monaco editor instance. Useful for triggering Monaco's built-in commands (Find, Go-to-Line, Format, Toggle Comment, …) without writing the equivalent twinBASIC code.
 
 Syntax: *codeEditor*.**ExecuteMonacoCommand** *Command* [, *Arg1*, *Arg2*, … ]
 

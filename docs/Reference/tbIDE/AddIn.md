@@ -8,7 +8,7 @@ has_toc: false
 # AddIn class
 {: .no_toc }
 
-The contract every addin's main class must implement. One read-only property — [**Name**](#name) — that the IDE reads to label the addin in error messages, log lines, and (eventually) any addin-management UI. The IDE never creates an **AddIn** itself; the addin DLL constructs the object inside [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) and returns it.
+The contract every addin's main class must implement. One read-only property — [**Name**](#name) — that the IDE reads to label the addin in error messages, log lines, and any addin-management UI added later. The IDE never creates an **AddIn** itself; the addin DLL constructs the object inside [`tbCreateCompilerAddin`](.#building-and-loading-an-addin) and returns it.
 
 ```tb
 Private Class MyAddIn

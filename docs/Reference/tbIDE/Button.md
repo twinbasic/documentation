@@ -8,7 +8,7 @@ has_toc: false
 # Button class
 {: .no_toc }
 
-An addin-created toolbar button. Returned by [**Toolbar.AddButton**](Toolbar#addbutton); hold it via `WithEvents` to receive [**OnClick**](#onclick) notifications. The button's [**Caption**](#caption) and [**IconData**](#icondata) are mutable at run time — change the caption to reflect a state, or swap the icon to reflect a toggle.
+An addin-created toolbar button. Returned by [**Toolbar.AddButton**](Toolbar#addbutton); held via `WithEvents` to receive [**OnClick**](#onclick) notifications. The button's [**Caption**](#caption) and [**IconData**](#icondata) are mutable at run time — change the caption to reflect a state, or swap the icon to reflect a toggle.
 
 ```tb
 Private WithEvents RefreshButton As Button

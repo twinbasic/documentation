@@ -74,7 +74,7 @@ The project's GUID as a string — e.g. `"{99DEC38C-75F6-4488-8EE7-2D52D83881D2}
 ### RootFolder
 {: .no_toc }
 
-The root of the project's virtual file system — the entry point for walking sources, resources, packages, and other project contents. **As** [**Folder**](Folder). Read-only.
+The root of the project's virtual file system — the entry point for traversing sources, resources, packages, and other project contents. **As** [**Folder**](Folder). Read-only.
 
 ### VersionBuild, VersionMajor, VersionMinor, VersionRevision
 {: .no_toc }
@@ -127,7 +127,7 @@ Else
 End If
 ```
 
-Same engine the DEBUG CONSOLE uses, so the same set of identifiers, the same accessibility rules, and the same error semantics apply — including the run-time errors that arise from inside the evaluated expression. Wrap in `On Error Resume Next` if the expression may raise.
+Same engine the DEBUG CONSOLE uses, so the same set of identifiers, the same accessibility rules, and the same error semantics apply — including the run-time errors that arise from inside the evaluated expression. Wrap in `On Error Resume Next` when the expression may raise.
 
 ### LoadMetaData
 {: .no_toc }

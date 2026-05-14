@@ -37,7 +37,7 @@ End Sub
 
 The name of the current IDE theme — e.g. `"Classic"`, `"Dark"`, `"Light"`. **String**, read-only.
 
-Note that the set of available themes is determined by the IDE and may grow in future versions; do not switch on this value with an exhaustive `Select Case`. For binary light-vs-dark colour decisions, use [**ActiveThemeNameGroup**](#activethemenamegroup) instead.
+The set of available themes is determined by the IDE and may grow in future versions; do not switch on this value with an exhaustive `Select Case`. For binary light-vs-dark colour decisions, use [**ActiveThemeNameGroup**](#activethemenamegroup) instead.
 
 ### ActiveThemeNameGroup
 {: .no_toc }
