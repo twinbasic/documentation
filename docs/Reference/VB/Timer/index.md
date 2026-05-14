@@ -8,7 +8,7 @@ has_toc: false
 # Timer class
 {: .no_toc }
 
-A **Timer** is a non-visual Win32 control that raises a [**Timer**](#timer) event at a programmable interval. Drop one onto a [**Form**](../Form/) (or **UserControl**) at design time, set [**Interval**](#interval) to the desired millisecond period, set [**Enabled**](#enabled) to **True**, and handle the [**Timer**](#timer) event. Timers are invisible at run time — they appear only as icons in the designer.
+A **Timer** is a non-visual Win32 control that raises a [**Timer**](#timer) event at a programmable interval. Drop one onto a [**Form**](../Form/) (or **UserControl**) at design time, set [**Interval**](#interval) to the desired millisecond period, set [**Enabled**](#enabled) to **True**, and handle the [**Timer**](#timer) event. Timers are invisible at run time --- they appear only as icons in the designer.
 
 The default property is [**Enabled**](#enabled) and the default event is [**Timer**](#timer).
 
@@ -33,7 +33,7 @@ Two properties between them decide whether the [**Timer**](#timer) event fires:
 - [**Enabled**](#enabled) is the master switch. While it is **False**, the timer is dormant regardless of [**Interval**](#interval).
 - [**Interval**](#interval) is the period between events, in milliseconds. Setting it to `0` stops events from firing even while [**Enabled**](#enabled) remains **True**.
 
-Either property can be flipped from inside the [**Timer**](#timer) handler itself — a one-shot timer disables itself on the first tick:
+Either property can be flipped from inside the [**Timer**](#timer) handler itself --- a one-shot timer disables itself on the first tick:
 
 ```tb
 Private Sub tmrStartup_Timer()
@@ -48,8 +48,8 @@ Assigning a negative value to [**Interval**](#interval) raises run-time error 38
 
 The control wraps Win32's per-window timer queue, which runs on the standard message pump. Two consequences follow:
 
-- **Resolution is coarse.** The OS quantises timer ticks to the system clock-tick period — typically ~15.6 ms on desktop Windows. Intervals shorter than that are silently rounded up. For sub-millisecond pacing use a multimedia timer or `QueryPerformanceCounter` directly.
-- **Ticks can be skipped under load.** If the message pump is blocked when a tick is due, no events queue up — the runtime delivers a single [**Timer**](#timer) event when the pump resumes, *not* one for each missed period. Long-running work inside the handler therefore lengthens the next interval rather than producing a backlog.
+- **Resolution is coarse.** The OS quantises timer ticks to the system clock-tick period --- typically ~15.6 ms on desktop Windows. Intervals shorter than that are silently rounded up. For sub-millisecond pacing use a multimedia timer or `QueryPerformanceCounter` directly.
+- **Ticks can be skipped under load.** If the message pump is blocked when a tick is due, no events queue up --- the runtime delivers a single [**Timer**](#timer) event when the pump resumes, *not* one for each missed period. Long-running work inside the handler therefore lengthens the next interval rather than producing a backlog.
 
 For periodic UI updates (a clock, a progress animation, a poll for external state) the **Timer** is exactly the right tool. For precise wall-clock pacing, audio scheduling, or anything that must keep up under heavy CPU load, it is not.
 
@@ -103,7 +103,7 @@ The effective resolution is the OS clock-tick period (~15.6 ms on desktop Window
 ### Left
 {: .no_toc }
 
-The horizontal position of the timer icon in the designer, in the container's **ScaleMode** units. **Single**. The runtime value has no visual effect — the timer is invisible — but it is preserved so the designer can place the icon back where it was.
+The horizontal position of the timer icon in the designer, in the container's **ScaleMode** units. **Single**. The runtime value has no visual effect --- the timer is invisible --- but it is preserved so the designer can place the icon back where it was.
 
 ### Name
 {: .no_toc }
@@ -118,7 +118,7 @@ A reference to the [**Form**](../Form/) (or **UserControl**) that contains this 
 ### Tag
 {: .no_toc }
 
-A free-form **String** the application can use to associate custom data with the timer. Ignored by the framework. Inherited from the base control class. Useful for control arrays — e.g. holding the name of the operation a poll-timer is responsible for.
+A free-form **String** the application can use to associate custom data with the timer. Ignored by the framework. Inherited from the base control class. Useful for control arrays --- e.g. holding the name of the operation a poll-timer is responsible for.
 
 ### Top
 {: .no_toc }
@@ -138,4 +138,4 @@ For a timer that is part of a control array, the handler receives the array [**I
 
 Syntax: *object*\_**Timer**( *Index* **As Integer** )
 
-The event is delivered through the normal Win32 message pump — see [Accuracy and resolution](#accuracy-and-resolution) for the implications.
+The event is delivered through the normal Win32 message pump --- see [Accuracy and resolution](#accuracy-and-resolution) for the implications.

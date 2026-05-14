@@ -9,7 +9,7 @@ vba_attribution: true
 # GetObject
 {: .no_toc }
 
-Returns a reference to a COM/Automation object — either an already-running instance, or one bound to a file.
+Returns a reference to a COM/Automation object --- either an already-running instance, or one bound to a file.
 
 Syntax: **GetObject(** [ *pathname* ] [ **,** *class* ] **)**
 
@@ -17,7 +17,7 @@ Syntax: **GetObject(** [ *pathname* ] [ **,** *class* ] **)**
 : *optional* **Variant** (**String**). The full path and name of a file containing the object to retrieve. If *pathname* is omitted, *class* is required.
 
 *class*
-: *optional* **Variant** (**String**). The class of the object to retrieve, in the form *appname*.*objecttype* — for example, `"Excel.Application"`.
+: *optional* **Variant** (**String**). The class of the object to retrieve, in the form *appname*.*objecttype* --- for example, `"Excel.Application"`.
 
 To assign the returned reference to a variable, use **Set**:
 
@@ -30,7 +30,7 @@ When the call is made with a *pathname*, the application registered for that fil
 
 If *pathname* is a zero-length string (`""`), **GetObject** returns a *new* instance of the type named by *class*. If *pathname* is omitted altogether, **GetObject** attempts to attach to a *currently running* instance of the type named by *class*; if no such instance exists, a run-time error occurs.
 
-Some applications support activating a *part* of a file. Append `!` and an application-specific identifier to the file name — for example, the third layer of a CAD drawing:
+Some applications support activating a *part* of a file. Append `!` and an application-specific identifier to the file name --- for example, the third layer of a CAD drawing:
 
 ```tb
 Set LayerObject = GetObject("C:\CAD\SCHEMA.CAD!Layer3")

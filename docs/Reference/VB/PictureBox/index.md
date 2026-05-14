@@ -10,9 +10,9 @@ has_toc: false
 
 A **PictureBox** is a Win32 native control that combines three roles in one:
 
-1. A **picture display** — it can show a bitmap, GIF, JPEG, icon, cursor, or metafile loaded into its [**Picture**](#picture) property.
-2. A **drawing surface** — it exposes the VB6 graphics methods ([**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**Print**](#print), [**PaintPicture**](#paintpicture), …) that write into the control's device context.
-3. A **container** — it can host child controls dropped onto it at design time, much like a [**Frame**](../Frame), and can be docked or aligned within its parent.
+1. A **picture display** --- it can show a bitmap, GIF, JPEG, icon, cursor, or metafile loaded into its [**Picture**](#picture) property.
+2. A **drawing surface** --- it exposes the VB6 graphics methods ([**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**Print**](#print), [**PaintPicture**](#paintpicture), …) that write into the control's device context.
+3. A **container** --- it can host child controls dropped onto it at design time, much like a [**Frame**](../Frame), and can be docked or aligned within its parent.
 
 The control is normally placed on a [**Form**](../Form), [**Frame**](../Frame), or **UserControl** at design time. The default property is [**Picture**](#picture); the default-designer event is [**Click**](#click).
 
@@ -35,7 +35,7 @@ End Sub
 
 Setting [**Picture**](#picture) assigns a **StdPicture** to the control. When [**AutoSize**](#autosize) is **True** the control resizes itself in its container's **ScaleMode** units to fit the picture exactly (plus a 1- or 2-pixel border, depending on [**Appearance**](#appearance)); otherwise the picture is drawn at its natural size, anchored at the top-left, and clipped to the control's bounds. Assigning **Nothing** to **Picture** clears the displayed image but does not erase anything drawn through the graphics methods.
 
-The picture is read directly from the file passed to **LoadPicture**, or — when [**DataField**](#datafield) / [**DataSource**](#datasource) are set — from the bound recordset field. Anything assigned to **\_Default** (the control's default property) is forwarded to **Picture**.
+The picture is read directly from the file passed to **LoadPicture**, or --- when [**DataField**](#datafield) / [**DataSource**](#datasource) are set --- from the bound recordset field. Anything assigned to **\_Default** (the control's default property) is forwarded to **Picture**.
 
 ## Drawing surface
 
@@ -52,13 +52,13 @@ picCanvas.Print "Drawn over a Picture"              ' text at the pen
 
 ## AutoRedraw and the persistent image
 
-When [**AutoRedraw**](#autoredraw) is **False** (default) the graphics methods write directly into the visible device context, and the OS may erase that drawing whenever the control is uncovered, resized, or redrawn — typically the application redraws it from a [**Paint**](#paint) handler.
+When [**AutoRedraw**](#autoredraw) is **False** (default) the graphics methods write directly into the visible device context, and the OS may erase that drawing whenever the control is uncovered, resized, or redrawn --- typically the application redraws it from a [**Paint**](#paint) handler.
 
 When [**AutoRedraw**](#autoredraw) is **True**, the graphics methods are recorded into an off-screen persistent bitmap that is automatically blitted onto the control whenever it needs repainting. The control no longer raises [**Paint**](#paint) events; the bitmap is exposed read-only through [**Image**](#image), suitable for saving with **SavePicture** or for assigning to another **PictureBox** or [**Image**](../Image) control. Toggling **AutoRedraw** from **False** to **True** preserves the current contents; toggling it back to **False** discards the persistent bitmap.
 
 ## Coordinate system
 
-A **PictureBox** has its own coordinate system, independent of its parent. [**ScaleMode**](#scalemode) selects a built-in unit ([**ScaleModeConstants**](../../VBRUN/Constants/ScaleModeConstants) — **vbTwips**, **vbPoints**, **vbPixels**, **vbCharacters**, **vbInches**, **vbMillimeters**, **vbCentimeters**); assigning [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), or [**ScaleHeight**](#scaleheight) (or calling [**Scale**](#scale) with two corner points) switches to **vbUser** and remaps the surface so the assigned values address the corners directly — useful for mathematical plots where the natural axes don't match pixel coordinates.
+A **PictureBox** has its own coordinate system, independent of its parent. [**ScaleMode**](#scalemode) selects a built-in unit ([**ScaleModeConstants**](../../VBRUN/Constants/ScaleModeConstants) --- **vbTwips**, **vbPoints**, **vbPixels**, **vbCharacters**, **vbInches**, **vbMillimeters**, **vbCentimeters**); assigning [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), or [**ScaleHeight**](#scaleheight) (or calling [**Scale**](#scale) with two corner points) switches to **vbUser** and remaps the surface so the assigned values address the corners directly --- useful for mathematical plots where the natural axes don't match pixel coordinates.
 
 [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert distances between any two scale modes without changing the active one.
 
@@ -81,7 +81,7 @@ Setting [**DataSource**](#datasource) and [**DataField**](#datafield) binds the 
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the picture box's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the picture box's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Appearance
 {: .no_toc }
@@ -121,7 +121,7 @@ When **True** (default), child controls are clipped out of the picture box's pai
 ### Container
 {: .no_toc }
 
-The control that hosts this picture box — typically the form, a [**Frame**](../Frame), or another picture box. Read with **Get**, change with **Set**. Setting **Container** at run time re-parents the picture box.
+The control that hosts this picture box --- typically the form, a [**Frame**](../Frame), or another picture box. Read with **Get**, change with **Set**. Setting **Container** at run time re-parents the picture box.
 
 ### ControlType
 {: .no_toc }
@@ -176,12 +176,12 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### DrawMode
 {: .no_toc }
 
-The raster operation used when drawing through the graphics methods. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants), default **vbCopyPen** (13 — opaque overwrite).
+The raster operation used when drawing through the graphics methods. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants), default **vbCopyPen** (13 --- opaque overwrite).
 
 ### DrawStyle
 {: .no_toc }
@@ -231,7 +231,7 @@ Shortcut for [**Font**](#font)`.Name`. **String**.
 ### FontSize
 {: .no_toc }
 
-Shortcut for [**Font**](#font)`.Size` — the point size. **Single**.
+Shortcut for [**Font**](#font)`.Size` --- the point size. **Single**.
 
 ### FontStrikethru
 {: .no_toc }
@@ -281,7 +281,7 @@ The Win32 window handle for the picture box, as a **LongPtr**. Read-only. Useful
 ### Image
 {: .no_toc }
 
-A read-only **StdPicture** giving the current contents of the picture box — both the assigned [**Picture**](#picture) *and* anything drawn into the surface — as a single bitmap, suitable for saving with **SavePicture**, copying to the clipboard, or assigning to another picture display. Available only when [**AutoRedraw**](#autoredraw) is **True**, or when the persistent bitmap is otherwise present.
+A read-only **StdPicture** giving the current contents of the picture box --- both the assigned [**Picture**](#picture) *and* anything drawn into the surface --- as a single bitmap, suitable for saving with **SavePicture**, copying to the clipboard, or assigning to another picture display. Available only when [**AutoRedraw**](#autoredraw) is **True**, or when the persistent bitmap is otherwise present.
 
 ### Index
 {: .no_toc }
@@ -343,12 +343,12 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### OLEDragMode
 {: .no_toc }
 
-How the picture box initiates OLE drag operations. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1, which starts a drag with the current [**Picture**](#picture) as the payload as soon as the user begins a drag with the mouse).
+How the picture box initiates OLE drag operations. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default --- call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1, which starts a drag with the current [**Picture**](#picture) as the payload as soon as the user begins a drag with the mouse).
 
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Parent
 {: .no_toc }
@@ -374,7 +374,7 @@ When **True**, [**Picture**](#picture) and the graphics-method outputs are scale
 ### ScaleHeight
 {: .no_toc }
 
-The height of the drawing surface in [**ScaleMode**](#scalemode) units. **Double**. Read-write — assigning a value switches [**ScaleMode**](#scalemode) to **vbUser** and rescales the vertical axis so the control's client area spans the new value.
+The height of the drawing surface in [**ScaleMode**](#scalemode) units. **Double**. Read-write --- assigning a value switches [**ScaleMode**](#scalemode) to **vbUser** and rescales the vertical axis so the control's client area spans the new value.
 
 ### ScaleLeft
 {: .no_toc }
@@ -394,7 +394,7 @@ The Y coordinate that maps to the top edge of the drawing surface. **Double**, d
 ### ScaleWidth
 {: .no_toc }
 
-The width of the drawing surface in [**ScaleMode**](#scalemode) units. **Double**. Read-write — assigning a value switches [**ScaleMode**](#scalemode) to **vbUser**.
+The width of the drawing surface in [**ScaleMode**](#scalemode) units. **Double**. Read-write --- assigning a value switches [**ScaleMode**](#scalemode) to **vbUser**.
 
 ### TabIndex
 {: .no_toc }
@@ -539,7 +539,7 @@ Draws a picture onto the surface, optionally scaling, clipping, or applying a ra
 Syntax: *object*.**PaintPicture** *Picture*, *X1*, *Y1* [, *Width1* [, *Height1* [, *X2* [, *Y2* [, *Width2* [, *Height2* [, *Opcode* [, *StretchQuality* ] ] ] ] ] ] ] ]
 
 *Picture*
-: *required* An **IPictureDisp** to paint — typically the [**Picture**](#picture) or [**Image**](#image) of another picture display.
+: *required* An **IPictureDisp** to paint --- typically the [**Picture**](#picture) or [**Image**](#image) of another picture display.
 
 *X1*, *Y1*
 : *required* Destination top-left in [**ScaleMode**](#scalemode) units.
@@ -551,7 +551,7 @@ Syntax: *object*.**PaintPicture** *Picture*, *X1*, *Y1* [, *Width1* [, *Height1*
 : *optional* Source rectangle within *Picture*. Defaults to the whole picture.
 
 *Opcode*
-: *optional* A raster-operation code passed through to **BitBlt** — for example **&HCC0020** (`vbSrcCopy`, default) or **&H660046** (`vbSrcInvert`).
+: *optional* A raster-operation code passed through to **BitBlt** --- for example **&HCC0020** (`vbSrcCopy`, default) or **&H660046** (`vbSrcInvert`).
 
 *StretchQuality*
 : *optional* `vbStretchQuality` value: **vbQualityNormal** (default) or **vbQualityHigh** (uses half-tone stretching for nicer downscales).
@@ -605,10 +605,10 @@ Defines a user coordinate system for the surface. Calling **Scale** with no argu
 Syntax: *object*.**Scale** [ ( *X1*, *Y1* ) **-** ( *X2*, *Y2* ) ]
 
 *X1*, *Y1*
-: *required* (with the second pair) The coordinate that maps to the top-left corner — sets [**ScaleLeft**](#scaleleft) and [**ScaleTop**](#scaletop).
+: *required* (with the second pair) The coordinate that maps to the top-left corner --- sets [**ScaleLeft**](#scaleleft) and [**ScaleTop**](#scaletop).
 
 *X2*, *Y2*
-: *required* The coordinate that maps to the bottom-right corner — sets [**ScaleWidth**](#scalewidth) = `X2 - X1` and [**ScaleHeight**](#scaleheight) = `Y2 - Y1`. [**ScaleMode**](#scalemode) is switched to **vbUser**.
+: *required* The coordinate that maps to the bottom-right corner --- sets [**ScaleWidth**](#scalewidth) = `X2 - X1` and [**ScaleHeight**](#scaleheight) = `Y2 - Y1`. [**ScaleMode**](#scalemode) is switched to **vbUser**.
 
 ### ScaleX
 {: .no_toc }
@@ -647,7 +647,7 @@ Syntax: *object*.**ShowWhatsThis**
 ### TextHeight
 {: .no_toc }
 
-Measures the height, in [**ScaleMode**](#scalemode) units, of the given string when rendered in the current [**Font**](#font) — including the line-spacing leading, so the result is suitable for advancing [**CurrentY**](#currenty) between rows of text. Embedded line breaks are honoured.
+Measures the height, in [**ScaleMode**](#scalemode) units, of the given string when rendered in the current [**Font**](#font) --- including the line-spacing leading, so the result is suitable for advancing [**CurrentY**](#currenty) between rows of text. Embedded line breaks are honoured.
 
 Syntax: *object*.**TextHeight**( *Str* **As String** ) **As Single**
 
@@ -697,7 +697,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Change
 {: .no_toc }
 
-Raised when [**Picture**](#picture) is assigned a new value — either from code or from the bound recordset.
+Raised when [**Picture**](#picture) is assigned a new value --- either from code or from the bound recordset.
 
 Syntax: *object*\_**Change**( )
 
@@ -819,7 +819,7 @@ Syntax: *object*\_**MouseUp**( *Button* **As Integer**, *Shift* **As Integer**, 
 ### MouseWheel
 {: .no_toc }
 
-Raised when the user rotates the mouse wheel while the control has focus or the cursor is over it. New in twinBASIC — there is no equivalent VB6 event.
+Raised when the user rotates the mouse wheel while the control has focus or the cursor is over it. New in twinBASIC --- there is no equivalent VB6 event.
 
 Syntax: *object*\_**MouseWheel**( *Delta* **As Integer**, *Horizontal* **As Boolean** )
 
@@ -874,7 +874,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Paint
 {: .no_toc }
 
-Raised when the control needs to redraw its client area — typically because it was uncovered, resized, or [**Refresh**](#refresh) was called. Not raised while [**AutoRedraw**](#autoredraw) is **True**; the persistent bitmap is blitted instead.
+Raised when the control needs to redraw its client area --- typically because it was uncovered, resized, or [**Refresh**](#refresh) was called. Not raised while [**AutoRedraw**](#autoredraw) is **True**; the persistent bitmap is blitted instead.
 
 Syntax: *object*\_**Paint**( )
 

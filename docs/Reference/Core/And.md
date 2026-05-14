@@ -43,7 +43,7 @@ The **And** operator performs a bitwise comparison of identically positioned bit
 | 1 | 1 | 1 |
 
 > [!NOTE]
-> **And** evaluates *both* operands every time, even when *expression1* alone determines the result. Use [**AndAlso**](AndAlso) for short-circuit evaluation — for example, when *expression2* is expensive, has side effects, or would fail without the guard provided by *expression1*.
+> **And** evaluates *both* operands every time, even when *expression1* alone determines the result. Use [**AndAlso**](AndAlso) for short-circuit evaluation --- for example, when *expression2* is expensive, has side effects, or would fail without the guard provided by *expression1*.
 
 ### Example
 

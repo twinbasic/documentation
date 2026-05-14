@@ -8,7 +8,7 @@ has_toc: false
 # AddinTimer class
 {: .no_toc }
 
-A simple periodic-callback helper. **AddinTimer** is the **only user-instantiable class** in the package — every other CoClass is supplied to the addin by the IDE; this one the addin creates with `New`. Internally it wraps the Win32 `SetTimer` / `KillTimer` pair against `hwnd = 0` and fires its [**Timer**](#timer) event from the IDE's UI thread.
+A simple periodic-callback helper. **AddinTimer** is the **only user-instantiable class** in the package --- every other CoClass is supplied to the addin by the IDE; this one the addin creates with `New`. Internally it wraps the Win32 `SetTimer` / `KillTimer` pair against `hwnd = 0` and fires its [**Timer**](#timer) event from the IDE's UI thread.
 
 ```tb
 Private WithEvents Timer As AddinTimer
@@ -24,9 +24,9 @@ Private Sub Timer_Timer()
 End Sub
 ```
 
-Stop the timer by setting [**Enabled**](#enabled) = **False**, or simply by dropping the last reference — `Class_Terminate` cancels the underlying Win32 timer automatically. Both [**Enabled**](#enabled) and [**Interval**](#interval) are live: assigning to either re-arms the underlying Win32 timer using the new values, so changing the interval while the timer is running takes effect immediately.
+Stop the timer by setting [**Enabled**](#enabled) = **False**, or simply by dropping the last reference --- `Class_Terminate` cancels the underlying Win32 timer automatically. Both [**Enabled**](#enabled) and [**Interval**](#interval) are live: assigning to either re-arms the underlying Win32 timer using the new values, so changing the interval while the timer is running takes effect immediately.
 
-Nothing in the package *requires* this helper — a direct `SetTimer` / `KillTimer` pair (or any other periodic mechanism) works just as well; sample 15's dwell-time pattern uses raw Win32 calls. **AddinTimer** is the right choice when the convenience of an event-bound class is preferable to managing the Win32 plumbing directly.
+Nothing in the package *requires* this helper --- a direct `SetTimer` / `KillTimer` pair (or any other periodic mechanism) works just as well; sample 15's dwell-time pattern uses raw Win32 calls. **AddinTimer** is the right choice when the convenience of an event-bound class is preferable to managing the Win32 plumbing directly.
 
 * TOC
 {:toc}
@@ -56,4 +56,4 @@ Fires every [**Interval**](#interval) milliseconds while [**Enabled**](#enabled)
 
 Syntax: *timer*_**Timer**()
 
-Long-running work inside the handler will block the UI thread until it returns — keep the handler short and offload heavy work to a background mechanism when needed.
+Long-running work inside the handler will block the UI thread until it returns --- keep the handler short and offload heavy work to a background mechanism when needed.

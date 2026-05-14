@@ -28,7 +28,7 @@ vba_attribution: true
 # VbVarType
 {: .no_toc }
 
-Variant subtype codes returned by the **VarType** function. Most calls return a single value from the table below. Arrays are reported as **vbArray** added to the element subtype — for example, an array of **Long** returns `vbArray + vbLong` = 8195.
+Variant subtype codes returned by the **VarType** function. Most calls return a single value from the table below. Arrays are reported as **vbArray** added to the element subtype --- for example, an array of **Long** returns `vbArray + vbLong` = 8195.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

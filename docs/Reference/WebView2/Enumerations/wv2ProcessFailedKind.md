@@ -11,7 +11,7 @@ Identifies which of the external WebView2 processes failed. Passed as the `Kind`
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **wv2BrowserProcessExited**{: #wv2BrowserProcessExited } | 0 | The main browser process exited unexpectedly — the control cannot be recovered. |
+| **wv2BrowserProcessExited**{: #wv2BrowserProcessExited } | 0 | The main browser process exited unexpectedly --- the control cannot be recovered. |
 | **wv2RenderProcessExited**{: #wv2RenderProcessExited } | 1 | The renderer process exited unexpectedly. |
 | **wv2RenderProcessUnresponsive**{: #wv2RenderProcessUnresponsive } | 2 | The renderer process is hung. |
 | **wv2FrameRenderProcessExited**{: #wv2FrameRenderProcessExited } | 3 | A renderer process for one of the iframes exited. |

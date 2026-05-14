@@ -10,9 +10,9 @@ has_toc: false
 
 # ParentControls class
 
-The **ParentControls** object is the collection of other controls that live in the same container as a **UserControl** — its siblings on the host form, frame, or page. It is reachable inside a **UserControl** through **UserControl.ParentControls** and lets the control discover and interact with the other controls around it without being given explicit references.
+The **ParentControls** object is the collection of other controls that live in the same container as a **UserControl** --- its siblings on the host form, frame, or page. It is reachable inside a **UserControl** through **UserControl.ParentControls** and lets the control discover and interact with the other controls around it without being given explicit references.
 
-By default each item is returned wrapped in its host **Extender** — the container's per-control adapter that adds layout properties (**Top**, **Left**, **Tag**, **Visible**, **Name**, and so on) on top of the control's own interface. Set [**ParentControlsType**](#parentcontrolstype) to **vbNoExtender** to receive the bare controls instead. The collection itself is read-only: items cannot be added or removed through it.
+By default each item is returned wrapped in its host **Extender** --- the container's per-control adapter that adds layout properties (**Top**, **Left**, **Tag**, **Visible**, **Name**, and so on) on top of the control's own interface. Set [**ParentControlsType**](#parentcontrolstype) to **vbNoExtender** to receive the bare controls instead. The collection itself is read-only: items cannot be added or removed through it.
 
 ```tb
 ' Inside a UserControl: print the name and type of every sibling control.

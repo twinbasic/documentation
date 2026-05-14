@@ -7,7 +7,7 @@ has_toc: false
 
 # Information module
 
-The **Information** module groups together standalone procedures for asking questions about a value at run time — its subtype, whether it has been initialised, whether an optional argument was supplied — together with related utilities for querying array bounds, building **Variant** arrays, taking raw addresses, decomposing colour values, and reaching the current run-time error state.
+The **Information** module groups together standalone procedures for asking questions about a value at run time --- its subtype, whether it has been initialised, whether an optional argument was supplied --- together with related utilities for querying array bounds, building **Variant** arrays, taking raw addresses, decomposing colour values, and reaching the current run-time error state.
 
 ## Inspecting a value
 
@@ -45,7 +45,7 @@ Array(x, y, z) = a              ' destructuring assignment
 
 ## Raw pointers
 
-Three functions return raw addresses for use with API calls or unsafe interop: [**ObjPtr**](ObjPtr) for an object's COM identity, [**StrPtr**](StrPtr) for the underlying buffer of a **String**, and [**VarPtr**](VarPtr) for any variable. The result is a **LongPtr** valid only while the underlying object, string, or variable stays alive — taking a pointer never holds a reference of its own. To read or write the memory at a known address, pair these with the [**GetMem**](../HiddenModule/GetMem4) / [**PutMem**](../HiddenModule/PutMem4) family from the [(Default)](../HiddenModule/) module.
+Three functions return raw addresses for use with API calls or unsafe interop: [**ObjPtr**](ObjPtr) for an object's COM identity, [**StrPtr**](StrPtr) for the underlying buffer of a **String**, and [**VarPtr**](VarPtr) for any variable. The result is a **LongPtr** valid only while the underlying object, string, or variable stays alive --- taking a pointer never holds a reference of its own. To read or write the memory at a known address, pair these with the [**GetMem**](../HiddenModule/GetMem4) / [**PutMem**](../HiddenModule/PutMem4) family from the [(Default)](../HiddenModule/) module.
 
 ```tb
 Dim n As Long = &H12345678
@@ -68,7 +68,7 @@ Debug.Print RGB_B(C)         ' 150
 
 ## Run-time error state
 
-[**Err**](Err) returns the [**ErrObject**](../ErrObject) describing the run-time error currently in effect — its number, description, source, and so on. [**Erl**](Erl) returns the line number of the statement that raised the most recent error, when one was supplied as a numeric label.
+[**Err**](Err) returns the [**ErrObject**](../ErrObject) describing the run-time error currently in effect --- its number, description, source, and so on. [**Erl**](Erl) returns the line number of the statement that raised the most recent error, when one was supplied as a numeric label.
 
 ## Members
 

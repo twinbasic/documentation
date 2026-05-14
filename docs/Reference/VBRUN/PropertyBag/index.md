@@ -43,7 +43,7 @@ Syntax: *object*.**Contents** [ **=** *value* ]
 *value*
 : A **Variant** containing a **Byte** array previously obtained from another **PropertyBag**'s **Contents**.
 
-Reading **Contents** serialises the whole bag — every name/value pair currently in it — into a self-contained byte array suitable for writing to a file, sending across a network, or storing in another medium. Assigning to **Contents** discards the current state and replaces it with the state encoded in *value*; the byte array must be one previously produced by a compatible **PropertyBag**.
+Reading **Contents** serialises the whole bag --- every name/value pair currently in it --- into a self-contained byte array suitable for writing to a file, sending across a network, or storing in another medium. Assigning to **Contents** discards the current state and replaces it with the state encoded in *value*; the byte array must be one previously produced by a compatible **PropertyBag**.
 
 ### ReadProperty
 
@@ -78,4 +78,4 @@ Syntax: *object*.**WriteProperty** *Name* **,** *Value* [ **,** *DefaultValue* ]
 : *required* The value to store. May be any expression assignable to a **Variant**.
 
 *DefaultValue*
-: *optional* A value that the consumer will treat as the default when reading the property. If *Value* is equal to *DefaultValue*, the bag may skip writing the entry at all — the read side will fall back to the same default — keeping the serialised form small. Pass the same default that the matching call to [**ReadProperty**](#readproperty) will use.
+: *optional* A value that the consumer will treat as the default when reading the property. If *Value* is equal to *DefaultValue*, the bag may skip writing the entry at all --- the read side will fall back to the same default --- keeping the serialised form small. Pass the same default that the matching call to [**ReadProperty**](#readproperty) will use.

@@ -7,7 +7,7 @@ vba_attribution: true
 # Unload
 {: .no_toc }
 
-Removes an object — typically a form — from memory.
+Removes an object --- typically a form --- from memory.
 
 Syntax:
 > **Unload** *object*

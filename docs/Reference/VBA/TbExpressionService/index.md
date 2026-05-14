@@ -14,9 +14,9 @@ has_toc: false
 
 It is exposed as one class and two interfaces:
 
-- [**TbExpressionService**](#tbexpressionservice-class) — the engine; instantiate one with **New**, register its binders, then [**Compile**](Compile) expressions against it.
-- [**ITbExpression**](#itbexpression-interface) — a compiled expression handle returned by [**Compile**](Compile), evaluated with [**Evaluate**](Evaluate).
-- [**ITbCustomBinder**](#itbcustombinder-interface) — implement this to provide fully custom symbol resolution.
+- [**TbExpressionService**](#tbexpressionservice-class) -- the engine; instantiate one with **New**, register its binders, then [**Compile**](Compile) expressions against it.
+- [**ITbExpression**](#itbexpression-interface) -- a compiled expression handle returned by [**Compile**](Compile), evaluated with [**Evaluate**](Evaluate).
+- [**ITbCustomBinder**](#itbcustombinder-interface) -- implement this to provide fully custom symbol resolution.
 
 ## Compiling and evaluating an expression
 
@@ -34,7 +34,7 @@ End Sub
 
 ## Binding to user objects
 
-Anything beyond the standard library — application objects, configuration values, helper functions, recordset fields — has to be made visible to the engine through a *binder*.
+Anything beyond the standard library --- application objects, configuration values, helper functions, recordset fields --- has to be made visible to the engine through a *binder*.
 
 The simplest form is [**AddCustomBinderObject**](AddCustomBinderObject), which takes a name and an object and exposes the object's public members under that name. Pass the **IsAppObject** flag to make the object behave like an Office host's **Application**: its members become reachable both qualified (`Report.Title`) and unqualified (`Title`).
 
@@ -49,7 +49,7 @@ Sub UseCustomObject()
 End Sub
 ```
 
-For full control over symbol resolution — for example, to look up names dynamically against a recordset, virtualize a name into something other than a member access, or fall through to a custom default — implement [**ITbCustomBinder**](#itbcustombinder-interface) and register it with [**AddCustomBinder**](AddCustomBinder). Multiple binders can coexist; the engine consults them in registration order until one returns a non-**Nothing** result.
+For full control over symbol resolution --- for example, to look up names dynamically against a recordset, virtualize a name into something other than a member access, or fall through to a custom default --- implement [**ITbCustomBinder**](#itbcustombinder-interface) and register it with [**AddCustomBinder**](AddCustomBinder). Multiple binders can coexist; the engine consults them in registration order until one returns a non-**Nothing** result.
 
 ## TbExpressionService class
 
@@ -80,7 +80,7 @@ A handle to a compiled expression. Returned by [**Compile**](Compile) and by an 
 
 ## ITbCustomBinder interface
 
-Implement this interface to register a fully custom resolver with [**AddCustomBinder**](AddCustomBinder). The engine calls [**Bind**](Bind) during compilation for each unresolved symbol it encounters in the expression source, supplying the symbol name and the number of arguments at the call site, and expects an **ITbExpression** that produces the value when **Evaluate** is called — or **Nothing** to defer to the next binder.
+Implement this interface to register a fully custom resolver with [**AddCustomBinder**](AddCustomBinder). The engine calls [**Bind**](Bind) during compilation for each unresolved symbol it encounters in the expression source, supplying the symbol name and the number of arguments at the call site, and expects an **ITbExpression** that produces the value when **Evaluate** is called --- or **Nothing** to defer to the next binder.
 
 ### Members
 

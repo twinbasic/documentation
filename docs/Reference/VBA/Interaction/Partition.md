@@ -25,7 +25,7 @@ Syntax: **Partition(** *number* **,** *start* **,** *stop* **,** *interval* **)*
 *interval*
 : *required* The width of each individual range. May not be less than 1.
 
-The return value identifies the particular range in which *number* falls, formatted as `"<lowervalue>: <uppervalue>"`. **Partition** is most useful in queries — for example, an SQL `SELECT` that groups orders by freight-cost band.
+The return value identifies the particular range in which *number* falls, formatted as `"<lowervalue>: <uppervalue>"`. **Partition** is most useful in queries --- for example, an SQL `SELECT` that groups orders by freight-cost band.
 
 The following table shows how the ranges are determined for three sample sets of *start*, *stop*, and *interval*. The *Before First* column is what **Partition** returns for a *number* below *start*; the *After Last* column is what it returns for a *number* above *stop*.
 

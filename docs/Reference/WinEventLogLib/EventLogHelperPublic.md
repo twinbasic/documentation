@@ -8,7 +8,7 @@ has_toc: false
 # EventLogHelperPublic module
 {: .no_toc }
 
-A single low-level helper that writes the registry entries Windows reads when rendering Event Log messages. Most projects do not call into this module directly — [**EventLog.Register**](EventLog#register) wraps the call and automatically supplies the category count from the *T2* type argument. Use **EventLogHelperPublic** only when registering a source outside the generic [**EventLog**](EventLog) class (for example, when the category count cannot be derived from a declared enum).
+A single low-level helper that writes the registry entries Windows reads when rendering Event Log messages. Most projects do not call into this module directly --- [**EventLog.Register**](EventLog#register) wraps the call and automatically supplies the category count from the *T2* type argument. Use **EventLogHelperPublic** only when registering a source outside the generic [**EventLog**](EventLog) class (for example, when the category count cannot be derived from a declared enum).
 
 * TOC
 {:toc}
@@ -23,7 +23,7 @@ Syntax: **EventLogHelperPublic.RegisterEventLogInternal** *LogPath*, *CategoryCo
 : *required* A **String** naming the source. A leaf name like `"MyService"` is registered under the **Application** log (rewritten internally to `"Application\MyService"`); a full path like `"System\MyService"` is registered under the named parent log. The trailing segment is the source name displayed in the Event Viewer's **Source** column.
 
 *CategoryCount*
-: *required* A **Long** giving the number of categories declared for this source — the largest value in the corresponding category enum. Stored as the registry's `CategoryCount` DWORD; the Event Viewer uses it to bound category-string lookups in the EXE's message-table resource.
+: *required* A **Long** giving the number of categories declared for this source --- the largest value in the corresponding category enum. Stored as the registry's `CategoryCount` DWORD; the Event Viewer uses it to bound category-string lookups in the EXE's message-table resource.
 
 Creates `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\<LogPath>` and writes:
 

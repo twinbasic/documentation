@@ -10,7 +10,7 @@ has_toc: false
 
 The HTTP-response-header collection for a web-resource response. Reached through [**WebView2Response.Headers**](WebView2Response#headers) inside a [**WebResourceRequested**](WebView2/#webresourcerequested) event handler.
 
-The collection is enumerable — `For Each` yields one [**WebView2Header**](WebView2Header) per entry. Unlike the request side, **AppendHeader** appends additional values rather than overwriting the existing one, matching HTTP's allowance of repeated response headers (e.g. multiple `Set-Cookie`).
+The collection is enumerable --- `For Each` yields one [**WebView2Header**](WebView2Header) per entry. Unlike the request side, **AppendHeader** appends additional values rather than overwriting the existing one, matching HTTP's allowance of repeated response headers (e.g. multiple `Set-Cookie`).
 
 ```tb
 Private Sub WebView21_WebResourceRequested( _
@@ -29,7 +29,7 @@ End Sub
 ### AppendHeader
 {: .no_toc }
 
-Appends a header — adds it to the collection even if an entry with the same name already exists. Repeated headers are legal in HTTP responses.
+Appends a header --- adds it to the collection even if an entry with the same name already exists. Repeated headers are legal in HTTP responses.
 
 Syntax: *object*.**AppendHeader** *name*, *value*
 
@@ -52,7 +52,7 @@ Syntax: *object*.**Contains** ( *name* ) **As Boolean**
 ### GetHeader
 {: .no_toc }
 
-Returns the value of the named header — when there are several, the first.
+Returns the value of the named header --- when there are several, the first.
 
 Syntax: *object*.**GetHeader** ( *name* ) **As String**
 

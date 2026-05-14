@@ -10,7 +10,7 @@ has_toc: false
 
 Hosts one named pipe and accepts an unbounded number of concurrent client connections, each represented by a [**NamedPipeServerConnection**](NamedPipeServerConnection). The class owns a Windows I/O Completion Port and a configurable pool of worker threads that handle every connection's reads, writes, and connect notifications. Instantiate with **New**.
 
-Configure the public fields ([**PipeName**](#pipename) is required, the others have reasonable defaults), call [**Start**](#start), and respond to the lifecycle events as clients arrive and exchange messages. The package opens the underlying pipe as **PIPE_TYPE_MESSAGE** / **PIPE_READMODE_MESSAGE** — messages preserve their boundaries between sender and receiver.
+Configure the public fields ([**PipeName**](#pipename) is required, the others have reasonable defaults), call [**Start**](#start), and respond to the lifecycle events as clients arrive and exchange messages. The package opens the underlying pipe as **PIPE_TYPE_MESSAGE** / **PIPE_READMODE_MESSAGE** --- messages preserve their boundaries between sender and receiver.
 
 ```tb
 Private WithEvents server As NamedPipeServer
@@ -43,19 +43,19 @@ See the package [overview](.) for the IOCP / event-marshalling architecture, the
 ### ContinuouslyReadFromPipe
 {: .no_toc }
 
-When **True** (the default), the server keeps a read pending against every connected client at all times — every [**ClientMessageReceived**](#clientmessagereceived) is followed by an automatic `AsyncRead` issued from inside the IOCP thread. Set to **False** to handle reads one-at-a-time; each [**ClientMessageReceived**](#clientmessagereceived) handler must then call [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) to receive the next message. **Boolean**, default **True**.
+When **True** (the default), the server keeps a read pending against every connected client at all times --- every [**ClientMessageReceived**](#clientmessagereceived) is followed by an automatic `AsyncRead` issued from inside the IOCP thread. Set to **False** to handle reads one-at-a-time; each [**ClientMessageReceived**](#clientmessagereceived) handler must then call [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) to receive the next message. **Boolean**, default **True**.
 
 ### FreeThreadingEvents
 {: .no_toc }
 
-Controls where the lifecycle and message events are raised. When **False** (the default), the IOCP worker threads marshal each event to the main UI thread through a hidden message-only window, and the consuming process must be pumping a Win32 message loop. When **True**, events fire directly on whichever IOCP worker thread received the completion — no message-loop dependency, but the consumer's event handlers must be thread-safe. **Boolean**, default **False**.
+Controls where the lifecycle and message events are raised. When **False** (the default), the IOCP worker threads marshal each event to the main UI thread through a hidden message-only window, and the consuming process must be pumping a Win32 message loop. When **True**, events fire directly on whichever IOCP worker thread received the completion --- no message-loop dependency, but the consumer's event handlers must be thread-safe. **Boolean**, default **False**.
 
 Set this before calling [**Start**](#start); it is read once when the worker threads are created and propagated to every [**NamedPipeServerConnection**](NamedPipeServerConnection).
 
 ### MessageBufferSize
 {: .no_toc }
 
-The size, in bytes, of the per-completion `ReadFile` buffer initially allocated for each connection. **Long**, default **131072** (128 KiB). Does not cap the maximum message size — on `ERROR_MORE_DATA` the IOCP loop allocates a larger overflow buffer and re-issues the read — but the initial size affects how often that overflow path runs, and so affects throughput for sustained large-message traffic.
+The size, in bytes, of the per-completion `ReadFile` buffer initially allocated for each connection. **Long**, default **131072** (128 KiB). Does not cap the maximum message size --- on `ERROR_MORE_DATA` the IOCP loop allocates a larger overflow buffer and re-issues the read --- but the initial size affects how often that overflow path runs, and so affects throughput for sustained large-message traffic.
 
 ### NumThreadsIOCP
 {: .no_toc }
@@ -65,7 +65,7 @@ The number of IOCP worker threads created by [**Start**](#start). **Long**, defa
 ### PipeName
 {: .no_toc }
 
-The name the pipe is published under. **String**, no default. The Win32 pipe namespace path is `\\.\pipe\<PipeName>` — the package prepends `\\.\pipe\` itself; pass just the leaf name.
+The name the pipe is published under. **String**, no default. The Win32 pipe namespace path is `\\.\pipe\<PipeName>` --- the package prepends `\\.\pipe\` itself; pass just the leaf name.
 
 > [!IMPORTANT]
 > [**PipeName**](#pipename) must be set to a non-empty value before [**Start**](#start), or [**Start**](#start) raises run-time error 5 (*"cannot start without specifying a pipe name"*).
@@ -80,7 +80,7 @@ Fires after a client's `ConnectNamedPipe` has completed and the connection is re
 Syntax: *server*_**ClientConnected**(*Connection* **As NamedPipeServerConnection**)
 
 *Connection*
-: The newly-connected client's server-side connection object. Hold the reference to keep per-client state across messages — the same instance is passed to every event for this client. **Cookie** / `Tag`-style storage is available through [**NamedPipeServerConnection.CustomData**](NamedPipeServerConnection#customdata).
+: The newly-connected client's server-side connection object. Hold the reference to keep per-client state across messages --- the same instance is passed to every event for this client. **Cookie** / `Tag`-style storage is available through [**NamedPipeServerConnection.CustomData**](NamedPipeServerConnection#customdata).
 
 ### ClientDisconnected
 {: .no_toc }
@@ -103,10 +103,10 @@ Syntax: *server*_**ClientMessageReceived**(*Connection* **As NamedPipeServerConn
 : The connection the message came from.
 
 *Cookie*
-: The opaque correlation value originally passed to the [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads triggered by [**ContinuouslyReadFromPipe**](#continuouslyreadfrompipe).
+: The opaque correlation value originally passed to the [**NamedPipeServerConnection.AsyncRead**](NamedPipeServerConnection#asyncread) that produced this read --- or **Empty** if the read came from the auto-issued reads triggered by [**ContinuouslyReadFromPipe**](#continuouslyreadfrompipe).
 
 *Data*
-: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if they are needed later. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and provides typed multi-field access in one step.
+: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat --- copy the bytes out before the handler returns if they are needed later. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and provides typed multi-field access in one step.
 
 ### ClientMessageSent
 {: .no_toc }
@@ -138,7 +138,7 @@ Issues an [**AsyncWrite**](NamedPipeServerConnection#asyncwrite) against every c
 Syntax: *server*.**AsyncBroadcast** *Data*() [, *Cookie* ]
 
 *Data*
-: *required* The message bytes to send. twinBASIC will coerce a **String** literal to **Byte()** implicitly, so `server.AsyncBroadcast "shutting down"` works without a separate `StrConv` step — useful for protocol-less server-pushed notifications.
+: *required* The message bytes to send. twinBASIC will coerce a **String** literal to **Byte()** implicitly, so `server.AsyncBroadcast "shutting down"` works without a separate `StrConv` step --- useful for protocol-less server-pushed notifications.
 
 *Cookie*
 : *optional* A **Variant** correlation value, attached to *each* per-client [**ClientMessageSent**](#clientmessagesent) event. Default **Empty**.
@@ -163,7 +163,7 @@ Posts a `WM_USER_QUITTING` message to the hidden marshalling window, causing the
 
 Syntax: *server*.**ManualMessageLoopLeave**
 
-The intended caller is a thread *other* than the one inside [**ManualMessageLoopEnter**](#manualmessageloopenter) — typically the Windows service's dispatcher thread waking the service-entry-point thread out of its blocked loop. See [Hosting inside a Windows service](.#service-host-idiom).
+The intended caller is a thread *other* than the one inside [**ManualMessageLoopEnter**](#manualmessageloopenter) --- typically the Windows service's dispatcher thread waking the service-entry-point thread out of its blocked loop. See [Hosting inside a Windows service](.#service-host-idiom).
 
 ### Start
 {: .no_toc }
@@ -179,7 +179,7 @@ Idempotent: calling [**Start**](#start) while the server is already running is a
 ### Stop
 {: .no_toc }
 
-Cancels every outstanding I/O on every connection, posts the IOCP shutdown sentinel to each worker, waits for the threads to exit, closes every pipe handle, and frees the completion port. Idempotent: calling [**Stop**](#stop) on a server that has not been started — or has already been stopped — is a no-op. Automatically invoked from `Class_Terminate`, so a server going out of scope closes resources implicitly.
+Cancels every outstanding I/O on every connection, posts the IOCP shutdown sentinel to each worker, waits for the threads to exit, closes every pipe handle, and frees the completion port. Idempotent: calling [**Stop**](#stop) on a server that has not been started --- or has already been stopped --- is a no-op. Automatically invoked from `Class_Terminate`, so a server going out of scope closes resources implicitly.
 
 Syntax: *server*.**Stop**
 

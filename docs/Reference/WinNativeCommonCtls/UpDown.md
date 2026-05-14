@@ -8,7 +8,7 @@ has_toc: false
 # UpDown class
 {: .no_toc }
 
-An **UpDown** is a small spin control — a pair of up / down arrow buttons that adjust an internal [**Value**](#value) by [**Increment**](#increment) on each click. Often paired with an external textbox or label to display the current value.
+An **UpDown** is a small spin control --- a pair of up / down arrow buttons that adjust an internal [**Value**](#value) by [**Increment**](#increment) on each click. Often paired with an external textbox or label to display the current value.
 
 ```tb
 Private Sub Form_Load()
@@ -27,20 +27,20 @@ Private Sub Text1_Change()
 End Sub
 ```
 
-The control inherits the focusable rect-dockable members from `BaseControlFocusableNoFont` — size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**. **UpDown** does not have a [**Font**](../VB/CheckBox#font) property (the arrows are drawn by the OS theme).
+The control inherits the focusable rect-dockable members from `BaseControlFocusableNoFont` --- size, position, **Anchors**, **Dock**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**. **UpDown** does not have a [**Font**](../VB/CheckBox#font) property (the arrows are drawn by the OS theme).
 
 * TOC
 {:toc}
 
 ## No auto-buddy
 
-Unlike the VB6-era Win32 `msctls_updown32` control, this **UpDown** does not auto-attach to a "buddy" textbox — there is no `UDS_AUTOBUDDY` style exposed. Pair the spin control with another control manually by handling [**Change**](#change), [**UpClick**](#upclick), and [**DownClick**](#downclick).
+Unlike the VB6-era Win32 `msctls_updown32` control, this **UpDown** does not auto-attach to a "buddy" textbox --- there is no `UDS_AUTOBUDDY` style exposed. Pair the spin control with another control manually by handling [**Change**](#change), [**UpClick**](#upclick), and [**DownClick**](#downclick).
 
 ## Three event flavors
 
 Three events let the application observe spin interaction at different granularity:
 
-- **[Change](#change)** fires whenever [**Value**](#value) actually changes — including programmatic assignments.
+- **[Change](#change)** fires whenever [**Value**](#value) actually changes --- including programmatic assignments.
 - **[UpClick](#upclick)** fires when the user clicks the up arrow and [**Value**](#value) increases.
 - **[DownClick](#downclick)** fires when the user clicks the down arrow and [**Value**](#value) decreases.
 

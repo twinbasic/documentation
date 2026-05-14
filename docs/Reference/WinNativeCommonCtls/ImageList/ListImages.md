@@ -11,7 +11,7 @@ has_toc: false
 
 The **ListImages** collection is the entry point for managing the pictures inside an [**ImageList**](.). Accessed as `<imageList>.ListImages`; supports adding, removing, indexed access, and `For Each` iteration.
 
-The class is tagged `[COMCreatable(False)]` — user code accesses **ListImages** through the parent [**ImageList**](.) control's [**ListImages**](.#listimages) property, never by direct instantiation.
+The class is tagged `[COMCreatable(False)]` --- user code accesses **ListImages** through the parent [**ImageList**](.) control's [**ListImages**](.#listimages) property, never by direct instantiation.
 
 ```tb
 With ImageList1.ListImages
@@ -31,7 +31,7 @@ Next
 
 ## Modification while bound
 
-If the parent [**ImageList**](.) is bound to a consuming control (a [**ListView**](../ListView/) or [**TreeView**](../TreeView/) has it set as their image-list property), [**Clear**](#clear) and [**Remove**](#remove) raise run-time error 35617 (*"ImageList cannot be modified while another control is bound to it"*). [**Add**](#add) is unaffected — new pictures can always be added.
+If the parent [**ImageList**](.) is bound to a consuming control (a [**ListView**](../ListView/) or [**TreeView**](../TreeView/) has it set as their image-list property), [**Clear**](#clear) and [**Remove**](#remove) raise run-time error 35617 (*"ImageList cannot be modified while another control is bound to it"*). [**Add**](#add) is unaffected --- new pictures can always be added.
 
 To rebuild a bound image list, first unbind by setting the consuming control's image-list property to **Nothing**.
 
@@ -51,7 +51,7 @@ Returns the [**ListImage**](ListImage) at the given index or with the given key.
 Syntax: *object*.**Item** ( *Index* ) **As ListImage**
 
 *Index*
-: A **Variant** that is either a 1-based **Long** position in the collection or a **String** key (case-sensitive — the collection uses `vbBinaryCompare`).
+: A **Variant** that is either a 1-based **Long** position in the collection or a **String** key (case-sensitive --- the collection uses `vbBinaryCompare`).
 
 Methods
 -------
@@ -106,7 +106,7 @@ Removes a picture from the collection. The remaining pictures' [**Index**](ListI
 Syntax: *object*.**Remove** ( *Index* )
 
 *Index*
-: A **Variant** — either a 1-based **Long** position or a **String** key. Out-of-range / non-existent values raise run-time error 35601. Non-string non-numeric values raise run-time error 35603.
+: A **Variant** --- either a 1-based **Long** position or a **String** key. Out-of-range / non-existent values raise run-time error 35601. Non-string non-numeric values raise run-time error 35603.
 
 Raises run-time error 35617 if the parent [**ImageList**](.) is currently bound to a consuming control.
 

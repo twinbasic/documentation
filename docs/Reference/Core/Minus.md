@@ -44,7 +44,7 @@ If one or both expressions are **Null** expressions, *result* is **Null**. If an
 
 ### Compound assignment
 
-`x -= y` is the twinBASIC shorthand for `x = x - y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. **-=** is a statement, not an expression — it does not produce a value.
+`x -= y` is the twinBASIC shorthand for `x = x - y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. **-=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Total As Long = 100

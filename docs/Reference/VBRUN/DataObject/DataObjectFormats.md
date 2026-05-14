@@ -6,7 +6,7 @@ permalink: /tB/Packages/VBRUN/DataObject/DataObjectFormats
 # DataObjectFormats
 {: .no_toc }
 
-A **DataObjectFormats** object is the read-only collection of [**DataObjectFormat**](DataObjectFormat) descriptors a [**DataObject**](.) currently exposes — one element per clipboard format the object holds a value in. The collection is returned by the [**AvailableFormats**](AvailableFormats) method and is the only general way to discover, at run time, which formats a **DataObject** received from another application has on offer.
+A **DataObjectFormats** object is the read-only collection of [**DataObjectFormat**](DataObjectFormat) descriptors a [**DataObject**](.) currently exposes --- one element per clipboard format the object holds a value in. The collection is returned by the [**AvailableFormats**](AvailableFormats) method and is the only general way to discover, at run time, which formats a **DataObject** received from another application has on offer.
 
 ## Members
 

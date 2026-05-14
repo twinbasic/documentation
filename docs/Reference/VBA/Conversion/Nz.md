@@ -21,7 +21,7 @@ Syntax: **Nz(** *value* [ **,** *valueIfNull* ] **)**
 
 The return type is **Variant**.
 
-**Nz** is useful for handling expressions that may evaluate to **Null** — most commonly, fields read from a database recordset where a column permits **Null**. Unlike a direct comparison with **Null** (which itself yields **Null**), **Nz** returns a usable substitute value.
+**Nz** is useful for handling expressions that may evaluate to **Null** --- most commonly, fields read from a database recordset where a column permits **Null**. Unlike a direct comparison with **Null** (which itself yields **Null**), **Nz** returns a usable substitute value.
 
 If *value* is anything other than **Null**, **Nz** returns *value* unchanged.
 

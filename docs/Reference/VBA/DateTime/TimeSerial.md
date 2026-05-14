@@ -22,7 +22,7 @@ Syntax: **TimeSerial** ( *hour*, *minute*, *second* )
 *second*
 : *required* **Integer**. Any numeric expression.
 
-To specify a time, such as 11:59:59, the range of numbers for each **TimeSerial** argument should be in the normal range for the unit: 0–23 for hours and 0–59 for minutes and seconds. Relative times can also be specified for each argument by using any numeric expression that represents some number of hours, minutes, or seconds before or after a certain time.
+To specify a time, such as 11:59:59, the range of numbers for each **TimeSerial** argument should be in the normal range for the unit: 0--23 for hours and 0--59 for minutes and seconds. Relative times can also be specified for each argument by using any numeric expression that represents some number of hours, minutes, or seconds before or after a certain time.
 
 The following example uses expressions instead of absolute time numbers. The **TimeSerial** function returns a time for 15 minutes before (`-15`) six hours before noon (`12 - 6`), or 5:45:00 A.M.
 

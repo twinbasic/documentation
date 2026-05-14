@@ -12,8 +12,8 @@ vba_attribution: true
 Returns a fixed number of characters read from a file opened in **Input** or **Binary** mode.
 
 Syntax:
-- **Input(** *Number* **,** [ **#** ] *FileNumber* **)** — returns a **Variant**.
-- **Input$(** *Number* **,** [ **#** ] *FileNumber* **)** — returns a **String**.
+- **Input(** *Number* **,** [ **#** ] *FileNumber* **)** --- returns a **Variant**.
+- **Input$(** *Number* **,** [ **#** ] *FileNumber* **)** --- returns a **String**.
 
 *Number*
 : *required* The number of characters to return.

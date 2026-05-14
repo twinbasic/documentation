@@ -8,7 +8,7 @@ has_toc: false
 # ImageList class
 {: .no_toc }
 
-An **ImageList** is an off-screen container for pictures, all of which are scaled to the same [**ImageWidth**](#imagewidth) × [**ImageHeight**](#imageheight) bitmap size. The control has no visible representation at run time — its purpose is to feed icons to other controls that consume them through their [**Icons**](../ListView/#icons), [**SmallIcons**](../ListView/#smallicons), [**ColumnHeaderIcons**](../ListView/#columnheadericons), or [**ImageList**](../TreeView/#imagelist) properties.
+An **ImageList** is an off-screen container for pictures, all of which are scaled to the same [**ImageWidth**](#imagewidth) × [**ImageHeight**](#imageheight) bitmap size. The control has no visible representation at run time --- its purpose is to feed icons to other controls that consume them through their [**Icons**](../ListView/#icons), [**SmallIcons**](../ListView/#smallicons), [**ColumnHeaderIcons**](../ListView/#columnheadericons), or [**ImageList**](../TreeView/#imagelist) properties.
 
 ```tb
 Private Sub Form_Load()
@@ -26,14 +26,14 @@ Private Sub Form_Load()
 End Sub
 ```
 
-The control inherits the rectangular non-focusable base members from `BaseControlNotFocusable` — size and position (size is irrelevant at run time since the control isn't drawn), **Name**, **Tag**, **hWnd**. It does not expose **Visible**, **Anchors**, or **Dock** in any meaningful way, and never accepts focus.
+The control inherits the rectangular non-focusable base members from `BaseControlNotFocusable` --- size and position (size is irrelevant at run time since the control isn't drawn), **Name**, **Tag**, **hWnd**. It does not expose **Visible**, **Anchors**, or **Dock** in any meaningful way, and never accepts focus.
 
 * TOC
 {:toc}
 
 ## Image size lock-in
 
-The first picture added to the list fixes its [**ImageWidth**](#imagewidth) and [**ImageHeight**](#imageheight) — every subsequent picture is scaled to match those dimensions. The sizes can also be set explicitly *before* any image is added (typically through the design-time properties), in which case the first **Add** call honors the pre-set values rather than measuring the incoming picture.
+The first picture added to the list fixes its [**ImageWidth**](#imagewidth) and [**ImageHeight**](#imageheight) --- every subsequent picture is scaled to match those dimensions. The sizes can also be set explicitly *before* any image is added (typically through the design-time properties), in which case the first **Add** call honors the pre-set values rather than measuring the incoming picture.
 
 Once any image is in the list, attempting to assign [**ImageWidth**](#imagewidth) or [**ImageHeight**](#imageheight) raises run-time error 35611 with the message *"Property is read-only if image list contains images"*. To resize an image list, call [**ListImages.Clear**](ListImages#clear) first.
 
@@ -41,7 +41,7 @@ Once any image is in the list, attempting to assign [**ImageWidth**](#imagewidth
 
 When [**UseMaskColor**](#usemaskcolor) is **True** (the default), every bitmap added through [**ListImages.Add**](ListImages#add) is masked: pixels matching [**MaskColor**](#maskcolor) become transparent when the image is rendered into a consuming control. The default [**MaskColor**](#maskcolor) is `&H00C0C0C0` (silver), which matches the classic VB6 transparency convention. Icons (passed as `StdPicture` of type `vbPicTypeIcon`) include their own alpha mask and are unaffected by **MaskColor** / **UseMaskColor**.
 
-Setting [**ColorDepth**](#colordepth) to **ColorDepth32Bit** disables masking entirely — the alpha channel is preserved directly.
+Setting [**ColorDepth**](#colordepth) to **ColorDepth32Bit** disables masking entirely --- the alpha channel is preserved directly.
 
 ## Binding to consumers
 
@@ -58,7 +58,7 @@ The background color used to render the image list into a target DC via [**ListI
 ### ColorDepth
 {: .no_toc }
 
-The pixel depth of the underlying bitmap storage. A member of [**ImageListColorDepth**](#imagelistcolordepth). Default: **ColorDepth32Bit**. Once images have been added, this value is fixed for the life of the list — to change it, call [**ListImages.Clear**](ListImages#clear) first.
+The pixel depth of the underlying bitmap storage. A member of [**ImageListColorDepth**](#imagelistcolordepth). Default: **ColorDepth32Bit**. Once images have been added, this value is fixed for the life of the list --- to change it, call [**ListImages.Clear**](ListImages#clear) first.
 
 ### hImageList
 {: .no_toc }
@@ -111,7 +111,7 @@ Syntax: *object*.**Overlay** ( *Key1*, *Key2* ) **As StdPicture**
 *Key2*
 : The **Index** or **Key** of the top image.
 
-Returns an **StdPicture** of type **vbPicTypeIcon** suitable for direct rendering or for use elsewhere — note this is a one-off snapshot, not a reference into the image list. The returned icon is destroyed when the **StdPicture** goes out of scope.
+Returns an **StdPicture** of type **vbPicTypeIcon** suitable for direct rendering or for use elsewhere --- note this is a one-off snapshot, not a reference into the image list. The returned icon is destroyed when the **StdPicture** goes out of scope.
 
 ## ImageListColorDepth
 {: #imagelistcolordepth }

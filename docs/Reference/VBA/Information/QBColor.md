@@ -14,7 +14,7 @@ Returns a **Long** representing the RGB colour code corresponding to the specifi
 Syntax: **QBColor(** *color* **)**
 
 *color*
-: *required* A whole number in the range 0–15.
+: *required* A whole number in the range 0--15.
 
 The *color* argument has these settings:
 
@@ -29,7 +29,7 @@ The *color* argument has these settings:
 | 6 | Yellow | 14 | Light Yellow |
 | 7 | White | 15 | Bright White |
 
-The *color* argument represents colour values used by earlier versions of Basic — Microsoft Visual Basic for MS-DOS and the QuickBASIC compiler. Starting with the least-significant byte, the returned value specifies the red, green, and blue components used to set the corresponding colour in the RGB system, exactly as if [**RGB**](RGB) had been called with those components.
+The *color* argument represents colour values used by earlier versions of Basic --- Microsoft Visual Basic for MS-DOS and the QuickBASIC compiler. Starting with the least-significant byte, the returned value specifies the red, green, and blue components used to set the corresponding colour in the RGB system, exactly as if [**RGB**](RGB) had been called with those components.
 
 ### Example
 

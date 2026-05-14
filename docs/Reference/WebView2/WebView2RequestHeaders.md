@@ -10,7 +10,7 @@ has_toc: false
 
 The mutable HTTP-request-header collection for a navigation or a web-resource request. Reached two ways:
 
-- As the **RequestHeaders** argument of the [**NavigationStarting**](WebView2/#navigationstarting) event — the headers about to be sent for the page navigation. Mutations made before the event handler returns are transmitted.
+- As the **RequestHeaders** argument of the [**NavigationStarting**](WebView2/#navigationstarting) event --- the headers about to be sent for the page navigation. Mutations made before the event handler returns are transmitted.
 - Through [**WebView2Request.Headers**](WebView2Request#headers) when handling a [**WebResourceRequested**](WebView2/#webresourcerequested) event.
 
 The collection is enumerable: a `For Each` loop yields one [**WebView2Header**](WebView2Header) per entry.
@@ -34,7 +34,7 @@ End Sub
 ### AppendHeader
 {: .no_toc }
 
-Sets the value of a header — replacing the existing value if present, otherwise adding it. The underlying runtime call is `SetHeader`, so existing values for the named header are overwritten rather than appended; the method's name preserves twinBASIC's wrapping convention.
+Sets the value of a header --- replacing the existing value if present, otherwise adding it. The underlying runtime call is `SetHeader`, so existing values for the named header are overwritten rather than appended; the method's name preserves twinBASIC's wrapping convention.
 
 Syntax: *object*.**AppendHeader** *name*, *value*
 
@@ -67,7 +67,7 @@ Syntax: *object*.**GetHeader** ( *name* ) **As String**
 ### GetHeaders
 {: .no_toc }
 
-Returns a [**WebView2HeadersCollection**](WebView2HeadersCollection) iterator restricted to the headers that match *name* — useful for headers that may have multiple values.
+Returns a [**WebView2HeadersCollection**](WebView2HeadersCollection) iterator restricted to the headers that match *name* --- useful for headers that may have multiple values.
 
 Syntax: *object*.**GetHeaders** ( *name* ) **As WebView2HeadersCollection**
 

@@ -40,7 +40,7 @@ Syntax: *object*.**ContentBytes** [ = *bytes* ]
 ### ContentUTF8
 {: .no_toc }
 
-The request body as a UTF-8 **String** — a convenience over [**ContentBytes**](#contentbytes) that performs the `StrConv` round-trip automatically. Read / write.
+The request body as a UTF-8 **String** --- a convenience over [**ContentBytes**](#contentbytes) that performs the `StrConv` round-trip automatically. Read / write.
 
 Syntax: *object*.**ContentUTF8** [ = *text* ]
 
@@ -50,7 +50,7 @@ Syntax: *object*.**ContentUTF8** [ = *text* ]
 ### Headers
 {: .no_toc }
 
-The request's HTTP headers as a [**WebView2RequestHeaders**](WebView2RequestHeaders) collection — read or modify them before the request is sent. Read-only at the property level (the collection itself is mutable).
+The request's HTTP headers as a [**WebView2RequestHeaders**](WebView2RequestHeaders) collection --- read or modify them before the request is sent. Read-only at the property level (the collection itself is mutable).
 
 ### Method
 {: .no_toc }

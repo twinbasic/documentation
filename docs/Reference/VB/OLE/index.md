@@ -8,10 +8,10 @@ has_toc: false
 # OLE class
 {: .no_toc }
 
-An **OLE** *container* control hosts a linked or embedded OLE Automation object — typically a Word document, an Excel spreadsheet, or any other registered OLE server — directly on a form, and lets the user activate and edit the contained object in place via its registered verbs.
+An **OLE** *container* control hosts a linked or embedded OLE Automation object --- typically a Word document, an Excel spreadsheet, or any other registered OLE server --- directly on a form, and lets the user activate and edit the contained object in place via its registered verbs.
 
 > [!NOTE]
-> The OLE container control is a **VB6 compatibility stub** in twinBASIC. Almost every OLE-specific property, method, and event is currently unimplemented (each is flagged below). The inherited base-control members — positioning, sizing, anchoring, focus, drag, mouse cursor — do work normally, so a project ported from VB6 still parses and lays out the control on its form, but cannot create, embed, link, paste, save, or activate an actual OLE object through it.
+> The OLE container control is a **VB6 compatibility stub** in twinBASIC. Almost every OLE-specific property, method, and event is currently unimplemented (each is flagged below). The inherited base-control members --- positioning, sizing, anchoring, focus, drag, mouse cursor --- do work normally, so a project ported from VB6 still parses and lays out the control on its form, but cannot create, embed, link, paste, save, or activate an actual OLE object through it.
 
 There is no default property. The default-designer event is [**Click**](#click).
 
@@ -32,17 +32,17 @@ End Sub
 
 ## Linked vs embedded objects
 
-An OLE container holds either a *linked* object — a reference to a document on disk that opens in its registered server when activated — or an *embedded* object whose data is stored inside the host form's data stream. [**CreateLink**](#createlink) creates a linked object from an existing file; [**CreateEmbed**](#createembed) creates a fresh embedded object of a given class. [**OLEType**](#oletype) reports which form the current contents take, and [**OLETypeAllowed**](#oletypeallowed) restricts which forms the container will accept at design or run time.
+An OLE container holds either a *linked* object --- a reference to a document on disk that opens in its registered server when activated --- or an *embedded* object whose data is stored inside the host form's data stream. [**CreateLink**](#createlink) creates a linked object from an existing file; [**CreateEmbed**](#createembed) creates a fresh embedded object of a given class. [**OLEType**](#oletype) reports which form the current contents take, and [**OLETypeAllowed**](#oletypeallowed) restricts which forms the container will accept at design or run time.
 
 [**SourceDoc**](#sourcedoc) and [**SourceItem**](#sourceitem) identify the linked file (and, for partial links, the item within it). [**Class**](#class) holds the ProgID of the embedded server (e.g. `"Word.Document"`, `"Excel.Sheet"`).
 
 ## Verbs
 
-Each OLE server registers a set of *verbs* — labelled actions like *Open*, *Edit*, or *Play*. [**FetchVerbs**](#fetchverbs) populates the per-instance verb list, exposed as the indexed [**ObjectVerbs**](#objectverbs), [**ObjectVerbFlags**](#objectverbflags), and [**ObjectVerbsCount**](#objectverbscount) properties. [**DoVerb**](#doverb) executes a verb by index — passing **vbOLEPrimary** runs the server's primary verb, which is the action invoked by a double-click. [**AutoVerbMenu**](#autoverbmenu) controls whether right-clicking the control automatically pops up the verb menu.
+Each OLE server registers a set of *verbs* --- labelled actions like *Open*, *Edit*, or *Play*. [**FetchVerbs**](#fetchverbs) populates the per-instance verb list, exposed as the indexed [**ObjectVerbs**](#objectverbs), [**ObjectVerbFlags**](#objectverbflags), and [**ObjectVerbsCount**](#objectverbscount) properties. [**DoVerb**](#doverb) executes a verb by index --- passing **vbOLEPrimary** runs the server's primary verb, which is the action invoked by a double-click. [**AutoVerbMenu**](#autoverbmenu) controls whether right-clicking the control automatically pops up the verb menu.
 
 ## Activation and display
 
-[**AutoActivate**](#autoactivate) chooses when the embedded object is activated for in-place editing — manually, on focus, or on a double-click. [**DisplayType**](#displaytype) selects between rendering the object's content directly and rendering a registered icon. [**SizeMode**](#sizemode) chooses how the object's bitmap is fitted into the container (clipped, stretched, auto-sized, or zoomed).
+[**AutoActivate**](#autoactivate) chooses when the embedded object is activated for in-place editing --- manually, on focus, or on a double-click. [**DisplayType**](#displaytype) selects between rendering the object's content directly and rendering a registered icon. [**SizeMode**](#sizemode) chooses how the object's bitmap is fitted into the container (clipped, stretched, auto-sized, or zoomed).
 
 ## Updates and storage
 
@@ -65,7 +65,7 @@ A run-time-only **Integer** that, when assigned, performs one of the predefined 
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the OLE control's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the OLE control's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Appearance
 {: .no_toc }
@@ -134,12 +134,12 @@ Determines whether the previously focused control's [**Validate**](#validate) ev
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-The ProgID of the OLE server class for the contained object — for example `"Word.Document"` or `"Excel.Sheet"`. **String**. Used together with [**SourceDoc**](#sourcedoc) and [**SourceItem**](#sourceitem) when populating the container at design time, or as the default class for [**InsertObjDlg**](#insertobjdlg).
+The ProgID of the OLE server class for the contained object --- for example `"Word.Document"` or `"Excel.Sheet"`. **String**. Used together with [**SourceDoc**](#sourcedoc) and [**SourceItem**](#sourceitem) when populating the container at design time, or as the default class for [**InsertObjDlg**](#insertobjdlg).
 
 ### Container
 {: .no_toc }
 
-The control that hosts this OLE control — typically the form. Read with **Get**, change with **Set**. Setting **Container** re-parents the control to a different container at run time.
+The control that hosts this OLE control --- typically the form. Read with **Get**, change with **Set**. Setting **Container** re-parents the control to a different container at run time.
 
 ### ControlType
 {: .no_toc }
@@ -207,7 +207,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -249,7 +249,7 @@ A **Long** identifying a topic in the application's help file, retrieved when th
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-The friendly name the OLE server should display for the host application — e.g. shown in Word's title bar while editing the embedded document in place. **String**.
+The friendly name the OLE server should display for the host application --- e.g. shown in Word's title bar while editing the embedded document in place. **String**.
 
 ### hWnd
 {: .no_toc }
@@ -280,7 +280,7 @@ A run-time-only **LongPtr** giving the raw `IOleObject` interface pointer of the
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-A bit-mask of miscellaneous container behaviours (see [**OLEContainerConstants**](../../VBRUN/Constants/OLEContainerConstants) — **vbOLEMiscFlagMemStorage**, **vbOLEMiscFlagDisableInPlace**). **Long**.
+A bit-mask of miscellaneous container behaviours (see [**OLEContainerConstants**](../../VBRUN/Constants/OLEContainerConstants) --- **vbOLEMiscFlagMemStorage**, **vbOLEMiscFlagDisableInPlace**). **Long**.
 
 ### MouseIcon
 {: .no_toc }
@@ -303,7 +303,7 @@ The unique design-time name of the control on its parent form. Read-only at run 
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-A run-time-only **Object** reference to the OLE Automation interface of the contained object — the late-bound entry point for scripting it. **Read-only**.
+A run-time-only **Object** reference to the OLE Automation interface of the contained object --- the late-bound entry point for scripting it. **Read-only**.
 
 ### ObjectAcceptFormats
 {: .no_toc }
@@ -351,7 +351,7 @@ An indexed **Long** property giving the menu-flag bit-mask for each entry in [**
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-An indexed **String** property listing the names of the verbs registered for the contained object — populated by [**FetchVerbs**](#fetchverbs). Pass an index to [**DoVerb**](#doverb) to invoke a verb.
+An indexed **String** property listing the names of the verbs registered for the contained object --- populated by [**FetchVerbs**](#fetchverbs). Pass an index to [**DoVerb**](#doverb) to invoke a verb.
 
 ### ObjectVerbsCount
 {: .no_toc }
@@ -375,7 +375,7 @@ When **True**, the container accepts OLE objects dragged onto it from outside th
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-A run-time-only **Integer** reporting whether the contained object is currently linked, embedded, or empty (see [**OLEContainerConstants**](../../VBRUN/Constants/OLEContainerConstants) — **vbOLELinked**, **vbOLEEmbedded**, **vbOLEEither**, **vbOLENone**).
+A run-time-only **Integer** reporting whether the contained object is currently linked, embedded, or empty (see [**OLEContainerConstants**](../../VBRUN/Constants/OLEContainerConstants) --- **vbOLELinked**, **vbOLEEmbedded**, **vbOLEEither**, **vbOLENone**).
 
 ### OLETypeAllowed
 {: .no_toc }
@@ -428,7 +428,7 @@ The full path of the source file used by [**CreateLink**](#createlink) (and the 
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-The named item within [**SourceDoc**](#sourcedoc) that the link refers to — for example, an Excel range name. **String**.
+The named item within [**SourceDoc**](#sourcedoc) that the link refers to --- for example, an Excel range name. **String**.
 
 ### TabIndex
 {: .no_toc }
@@ -554,7 +554,7 @@ Syntax: *object*.**Delete**
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-Invokes a registered verb on the contained object. The standard verb constants are defined in [**OLEContainerConstants**](../../VBRUN/Constants/OLEContainerConstants) — **vbOLEPrimary** (0), **vbOLEShow** (-1), **vbOLEOpen** (-2), **vbOLEHide** (-3), **vbOLEUIActivate** (-4), **vbOLEInPlaceActivate** (-5), **vbOLEDiscardUndoState** (-6); positive indices refer to the per-server entries in [**ObjectVerbs**](#objectverbs).
+Invokes a registered verb on the contained object. The standard verb constants are defined in [**OLEContainerConstants**](../../VBRUN/Constants/OLEContainerConstants) --- **vbOLEPrimary** (0), **vbOLEShow** (-1), **vbOLEOpen** (-2), **vbOLEHide** (-3), **vbOLEUIActivate** (-4), **vbOLEInPlaceActivate** (-5), **vbOLEDiscardUndoState** (-6); positive indices refer to the per-server entries in [**ObjectVerbs**](#objectverbs).
 
 Syntax: *object*.**DoVerb** [ *Verb* ]
 
@@ -643,7 +643,7 @@ Syntax: *object*.**ReadFromFile** *FileNumber*
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-Writes the container's contents — including the linked or embedded object's data and any presentation cache — to a Basic-style binary file in the current OLE2 stream format.
+Writes the container's contents --- including the linked or embedded object's data and any presentation cache --- to a Basic-style binary file in the current OLE2 stream format.
 
 Syntax: *object*.**SaveToFile** *FileNumber*
 
@@ -832,7 +832,7 @@ Syntax: *object*\_**MouseUp**( *Button* **As Integer**, *Shift* **As Integer**, 
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-Raised when the contained object asks the container to relocate or resize itself — typically in response to in-place editing changes.
+Raised when the contained object asks the container to relocate or resize itself --- typically in response to in-place editing changes.
 
 Syntax: *object*\_**ObjectMove**( *Left* **As Single**, *Top* **As Single**, *Width* **As Single**, *Height* **As Single** )
 
@@ -842,7 +842,7 @@ Syntax: *object*\_**ObjectMove**( *Left* **As Single**, *Top* **As Single**, *Wi
 > [!NOTE]
 > Reserved for VB6 compatibility; not currently implemented in twinBASIC.
 
-Raised when the contained object reports a new natural size — for example, after an embedded image is replaced with one of different dimensions.
+Raised when the contained object reports a new natural size --- for example, after an embedded image is replaced with one of different dimensions.
 
 Syntax: *object*\_**Resize**( *HeightNew* **As Single**, *WidthNew* **As Single** )
 

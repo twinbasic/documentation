@@ -20,7 +20,7 @@ Syntax: **IsMissing(** *argname* **)**
 
 If **IsMissing** is used on a **ParamArray** argument, it always returns **False**. To detect an empty **ParamArray**, test whether the array's upper bound is less than its lower bound.
 
-**IsMissing** does not work on simple data types such as **Integer** or **Double**: unlike **Variant**s, they have no provision for a "missing" flag. For typed optional arguments, specify a default value instead — if the argument is omitted, it takes that default. In many cases the default-value form removes the need for a separate **IsMissing** check entirely.
+**IsMissing** does not work on simple data types such as **Integer** or **Double**: unlike **Variant**s, they have no provision for a "missing" flag. For typed optional arguments, specify a default value instead --- if the argument is omitted, it takes that default. In many cases the default-value form removes the need for a separate **IsMissing** check entirely.
 
 ```tb
 Sub MySub(Optional ByVal MyVar As String = "specialvalue")

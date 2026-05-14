@@ -13,5 +13,5 @@ The kind of accelerator-key keyboard message that fired the [**AcceleratorKeyPre
 |----------|-------|-------------|
 | **wv2EventKeyDown**{: #wv2EventKeyDown } | 0 | Raised from a `WM_KEYDOWN` message. |
 | **wv2EventKeyUp**{: #wv2EventKeyUp } | 1 | Raised from a `WM_KEYUP` message. |
-| **wv2EventSystemKeyDown**{: #wv2EventSystemKeyDown } | 2 | Raised from a `WM_SYSKEYDOWN` message — e.g. **Alt+** *key*. |
+| **wv2EventSystemKeyDown**{: #wv2EventSystemKeyDown } | 2 | Raised from a `WM_SYSKEYDOWN` message --- e.g. **Alt+** *key*. |
 | **wv2EventSystemKeyUp**{: #wv2EventSystemKeyUp } | 3 | Raised from a `WM_SYSKEYUP` message. |

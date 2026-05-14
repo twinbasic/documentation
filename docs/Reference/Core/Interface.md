@@ -9,7 +9,7 @@ permalink: /tB/Core/Interface
 Defines a COM interface using twinBASIC syntax. An interface is a contract: a named set of method and property prototypes, with no implementation. Classes provide implementations of interfaces by using the [**Implements**](Implements) statement.
 
 > [!NOTE]
-> The **Interface** block is a twinBASIC extension. In classic VBA there is no interface keyword — interfaces could only be defined indirectly via a referenced type library (IDL/C++) or by using a class with no implementation.
+> The **Interface** block is a twinBASIC extension. In classic VBA there is no interface keyword --- interfaces could only be defined indirectly via a referenced type library (IDL/C++) or by using a class with no implementation.
 
 Syntax:
 > [ *attributes* ]  
@@ -29,7 +29,7 @@ Syntax:
 : *optional* One or more interfaces that *name* extends. An implementing class is required to provide bodies for the inherited methods as well; in twinBASIC, a class can `Implements` *name* and rely on the inherited interfaces being satisfied automatically.
 
 *member-prototype*
-: A header-only declaration. May be a [**Sub**](Sub), [**Function**](Function), [**Property Get**](Property), [**Property Let**](Property), or [**Property Set**](Property) signature, with arguments and return type. **Public**/**Private**/**Friend** modifiers are *not* allowed on members. There is no `End Sub` / `End Function` / `End Property` — the prototype ends at end of line.
+: A header-only declaration. May be a [**Sub**](Sub), [**Function**](Function), [**Property Get**](Property), [**Property Let**](Property), or [**Property Set**](Property) signature, with arguments and return type. **Public**/**Private**/**Friend** modifiers are *not* allowed on members. There is no `End Sub` / `End Function` / `End Property` --- the prototype ends at end of line.
 
 **Interface** blocks are valid only in `.twin` source files (not legacy `.bas` or `.cls` files), and must appear *before* the [**Class**](Class) or [**Module**](Module) statement in the file. Interfaces always have project-wide scope.
 
@@ -37,19 +37,19 @@ Syntax:
 
 Interface-level attributes:
 
-- `[InterfaceId("...")]` — fixes the IID for the interface (a string GUID). Set this on any public/exported interface so consumers in other projects bind to a stable identity.
-- `[Description("text")]` — exposed as the `helpstring` in the type library.
-- `[Hidden]` — hides the interface from IntelliSense and similar lists.
-- `[Restricted]` — restricts the interface methods from being called in most contexts.
-- `[OleAutomation(True/False)]` — controls whether the attribute is applied in the type library. `True` by default.
-- `[ComImport]` — declares the interface as an import from an external COM library (e.g., the Windows shell).
-- `[ComExtensible(True/False)]` — controls whether dynamically-added members can be invoked through `IDispatch`. `False` by default.
+- `[InterfaceId("...")]` --- fixes the IID for the interface (a string GUID). Set this on any public/exported interface so consumers in other projects bind to a stable identity.
+- `[Description("text")]` --- exposed as the `helpstring` in the type library.
+- `[Hidden]` --- hides the interface from IntelliSense and similar lists.
+- `[Restricted]` --- restricts the interface methods from being called in most contexts.
+- `[OleAutomation(True/False)]` --- controls whether the attribute is applied in the type library. `True` by default.
+- `[ComImport]` --- declares the interface as an import from an external COM library (e.g., the Windows shell).
+- `[ComExtensible(True/False)]` --- controls whether dynamically-added members can be invoked through `IDispatch`. `False` by default.
 
 Member-level attributes:
 
 - `[Description("text")]`
-- `[PreserveSig]` — keeps the raw COM signature (returning `HRESULT`) instead of having the runtime translate negative results into errors. Use this when the literal return value is required, or when negative values mean *acceptable failure* (e.g. an enumerator running out of items).
-- `[DispId(number)]` — fixes the dispatch ID associated with the member.
+- `[PreserveSig]` --- keeps the raw COM signature (returning `HRESULT`) instead of having the runtime translate negative results into errors. Use this when the literal return value is required, or when negative values mean *acceptable failure* (e.g. an enumerator running out of items).
+- `[DispId(number)]` --- fixes the dispatch ID associated with the member.
 
 ### Example
 

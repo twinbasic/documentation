@@ -63,7 +63,7 @@ Syntax: **Services.ControlService** *ServiceName*, *ControlCode*
 : *required* A **String** naming an installed service.
 
 *ControlCode*
-: *required* A [**ServiceControlCodeConstants**](Enumerations/ServiceControlCodeConstants) value — typically [**vbServiceControlStop**](Enumerations/ServiceControlCodeConstants#vbServiceControlStop), [**vbServiceControlPause**](Enumerations/ServiceControlCodeConstants#vbServiceControlPause), [**vbServiceControlContinue**](Enumerations/ServiceControlCodeConstants#vbServiceControlContinue), or [**vbServiceControlInterrogate**](Enumerations/ServiceControlCodeConstants#vbServiceControlInterrogate). User-defined codes in the range 128–255 are also accepted.
+: *required* A [**ServiceControlCodeConstants**](Enumerations/ServiceControlCodeConstants) value --- typically [**vbServiceControlStop**](Enumerations/ServiceControlCodeConstants#vbServiceControlStop), [**vbServiceControlPause**](Enumerations/ServiceControlCodeConstants#vbServiceControlPause), [**vbServiceControlContinue**](Enumerations/ServiceControlCodeConstants#vbServiceControlContinue), or [**vbServiceControlInterrogate**](Enumerations/ServiceControlCodeConstants#vbServiceControlInterrogate). User-defined codes in the range 128--255 are also accepted.
 
 The method opens the SCM, requests the minimum required permission for the chosen control code (`SERVICE_STOP`, `SERVICE_PAUSE_CONTINUE`, `SERVICE_INTERROGATE`, or `SERVICE_USER_DEFINED_CONTROL`), opens the service, calls `ControlServiceExW`, and closes the handles. For [**vbServiceControlStop**](Enumerations/ServiceControlCodeConstants#vbServiceControlStop) the reason code is filled with `SERVICE_STOP_REASON_FLAG_PLANNED | SERVICE_STOP_REASON_MAJOR_NONE | SERVICE_STOP_REASON_MINOR_NONE` ("planned stop, no specific reason"). Customising the reason code is not currently exposed.
 
@@ -88,7 +88,7 @@ Private Sub btnInstallA_Click()
 End Sub
 ```
 
-Despite the `Property Get` syntax, the lookup is parameterised by name — it reads as a property in source code, but behaves like a function.
+Despite the `Property Get` syntax, the lookup is parameterised by name --- it reads as a property in source code, but behaves like a function.
 
 ### InstallAll
 {: .no_toc }
@@ -100,7 +100,7 @@ Syntax: **Services.InstallAll**
 > [!IMPORTANT]
 > **InstallAll** writes registry entries under `HKEY_LOCAL_MACHINE` and requires administrator rights. The usual pattern is to call it once from an elevated installer.
 
-Per-service errors raised inside [**ServiceManager.Install**](ServiceManager#install) propagate out of **InstallAll** and abort the bulk operation — there is no per-service `On Error Resume Next` wrapping. Services already installed before the failure remain installed.
+Per-service errors raised inside [**ServiceManager.Install**](ServiceManager#install) propagate out of **InstallAll** and abort the bulk operation --- there is no per-service `On Error Resume Next` wrapping. Services already installed before the failure remain installed.
 
 ### LaunchService
 {: .no_toc }
@@ -171,7 +171,7 @@ Syntax: **Services.RunServiceDispatcher**
 
 Internally builds a `SERVICE_TABLE_ENTRYW` array from every configured [**ServiceManager**](ServiceManager) and calls `StartServiceCtrlDispatcherW`. The SCM spawns a fresh thread for each service the user (or the *Start* configuration) wants to start, and invokes the package's dispatcher trampoline on that thread; the trampoline reports `StartPending`, optionally initialises COM in STA mode (controlled by [**ServiceManager.AutoInitializeCOM**](ServiceManager#autoinitializecom)), then calls the user's [**ITbService.EntryPoint**](ITbService#entrypoint).
 
-Raises run-time error 5 *"Unable to start the service dispatcher"* if `StartServiceCtrlDispatcherW` returns zero. The usual cause is that the EXE was launched normally rather than by the SCM — the dispatcher only works when the process is a service host. The conventional `If InStr(Command, "-startService") > 0 Then` gate in `Sub Main` avoids this error.
+Raises run-time error 5 *"Unable to start the service dispatcher"* if `StartServiceCtrlDispatcherW` returns zero. The usual cause is that the EXE was launched normally rather than by the SCM --- the dispatcher only works when the process is a service host. The conventional `If InStr(Command, "-startService") > 0 Then` gate in `Sub Main` avoids this error.
 
 ### UninstallAll
 {: .no_toc }
@@ -199,7 +199,7 @@ For Each manager In Services
 Next
 ```
 
-The enumeration order is insertion order — services appear in the order they were created with [**ConfigureNew**](#configurenew).
+The enumeration order is insertion order --- services appear in the order they were created with [**ConfigureNew**](#configurenew).
 
 ## See Also
 

@@ -8,7 +8,7 @@ has_toc: false
 # App class
 {: .no_toc }
 
-The **App** class wraps the running application's identity and version metadata, plus a small amount of process-level state (the module handle, the main thread ID, whether the process is running inside the twinBASIC IDE or with elevated privileges, …). It is a singleton — there is exactly one **App** instance per process, owned by the runtime and exposed through the global **App** property of the [**Global**](../Global/) object. Code reaches it without qualification:
+The **App** class wraps the running application's identity and version metadata, plus a small amount of process-level state (the module handle, the main thread ID, whether the process is running inside the twinBASIC IDE or with elevated privileges, …). It is a singleton --- there is exactly one **App** instance per process, owned by the runtime and exposed through the global **App** property of the [**Global**](../Global/) object. Code reaches it without qualification:
 
 ```tb
 Debug.Print "Running from " & App.Path
@@ -22,7 +22,7 @@ End If
 App.HelpFile = App.Path & "\help.chm"
 ```
 
-Most properties are read-only and are populated from the project settings (compiled into the executable's Win32 `VERSIONINFO` resource) at build time. The few read/write properties — [**Title**](#title) and [**HelpFile**](#helpfile) — let code change a small amount of run-time state that other parts of the runtime (notably the form caption defaults and the **F1** help dispatcher) consult.
+Most properties are read-only and are populated from the project settings (compiled into the executable's Win32 `VERSIONINFO` resource) at build time. The few read/write properties --- [**Title**](#title) and [**HelpFile**](#helpfile) --- let code change a small amount of run-time state that other parts of the runtime (notably the form caption defaults and the **F1** help dispatcher) consult.
 
 * TOC
 {:toc}
@@ -39,19 +39,19 @@ Most properties are read-only and are populated from the project settings (compi
 - [**ModulePath**](#modulepath) returns the full path to the EXE itself (e.g. `"C:\Program Files\MyApp\MyApp.exe"`).
 - [**EXEName**](#exename) returns the EXE's base name without the extension (e.g. `"MyApp"`).
 
-When the project is running inside the twinBASIC IDE — `App.IsInIDE` is **True** — [**Path**](#path) is the folder of the *project file* rather than of a compiled EXE, so it remains useful as a "where the application is" anchor for opening relative resources at design time.
+When the project is running inside the twinBASIC IDE --- `App.IsInIDE` is **True** --- [**Path**](#path) is the folder of the *project file* rather than of a compiled EXE, so it remains useful as a "where the application is" anchor for opening relative resources at design time.
 
-[**LastBuildPath**](#lastbuildpath) is a twinBASIC-specific extension that records the path the most recent IDE build wrote its EXE to — useful for build scripts that need to chain steps after an IDE build.
+[**LastBuildPath**](#lastbuildpath) is a twinBASIC-specific extension that records the path the most recent IDE build wrote its EXE to --- useful for build scripts that need to chain steps after an IDE build.
 
 ## Version metadata
 
 The version-info properties read straight from the EXE's `VERSIONINFO` resource:
 
-- [**Major**](#major), [**Minor**](#minor), [**Revision**](#revision), and [**Build**](#build) — the four parts of the four-part version number set in the project's *Make* tab.
-- [**Comments**](#comments), [**CompanyName**](#companyname), [**FileDescription**](#filedescription), [**LegalCopyright**](#legalcopyright), [**LegalTrademarks**](#legaltrademarks), and [**ProductName**](#productname) — the standard text fields of the same resource.
-- [**Title**](#title) — the friendly application title shown in tasklist and message-box defaults; readable and writable.
+- [**Major**](#major), [**Minor**](#minor), [**Revision**](#revision), and [**Build**](#build) -- the four parts of the four-part version number set in the project's *Make* tab.
+- [**Comments**](#comments), [**CompanyName**](#companyname), [**FileDescription**](#filedescription), [**LegalCopyright**](#legalcopyright), [**LegalTrademarks**](#legaltrademarks), and [**ProductName**](#productname) -- the standard text fields of the same resource.
+- [**Title**](#title) -- the friendly application title shown in tasklist and message-box defaults; readable and writable.
 
-[**hInstance**](#hinstance) and [**ThreadID**](#threadid) expose the underlying Win32 module handle and the ID of the application's main thread — useful for interop with Windows API functions that need either.
+[**hInstance**](#hinstance) and [**ThreadID**](#threadid) expose the underlying Win32 module handle and the ID of the application's main thread --- useful for interop with Windows API functions that need either.
 
 ## Properties
 
@@ -73,7 +73,7 @@ The **CompanyName** field of the application's `VERSIONINFO` resource. **String*
 ### EXEName
 {: .no_toc }
 
-The base name of the executable — the file name minus its `.exe` extension and any directory component. **String**, read-only. When running inside the IDE, this is the project's compile-time output name rather than the IDE host's name.
+The base name of the executable --- the file name minus its `.exe` extension and any directory component. **String**, read-only. When running inside the IDE, this is the project's compile-time output name rather than the IDE host's name.
 
 ### FileDescription
 {: .no_toc }
@@ -103,7 +103,7 @@ The Win32 module handle (`HINSTANCE`) for the executable. **LongPtr**, read-only
 ### LastBuildPath
 {: .no_toc }
 
-The full path that the IDE wrote the most recent build to. **String**, read-only. Empty when the IDE has not yet produced a build during the current session. twinBASIC-specific — VB6 had no equivalent.
+The full path that the IDE wrote the most recent build to. **String**, read-only. Empty when the IDE has not yet produced a build during the current session. twinBASIC-specific --- VB6 had no equivalent.
 
 ### LegalCopyright
 {: .no_toc }

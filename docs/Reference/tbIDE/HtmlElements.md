@@ -37,7 +37,7 @@ Creates a new child element under the parent [**HtmlElement**](HtmlElement) and 
 Syntax: *htmlElements*.**Add**( *ElementID*, *TagName* ) **As** [**HtmlElement**](HtmlElement)
 
 *ElementID*
-: *required* A DOM `id` for the new element. **String**. Pick distinct IDs across the tool window — they double as the key for [**Item**](#item) lookups.
+: *required* A DOM `id` for the new element. **String**. Pick distinct IDs across the tool window --- they double as the key for [**Item**](#item) lookups.
 
 *TagName*
 : *required* The HTML tag name. **String**. Standard tags (`"div"`, `"span"`, `"input"`, `"h1"`, `"label"`, `"img"`, …) work as expected; the IDE additionally accepts four custom-widget tags described in [Tool-window DOM tags](.#tool-window-dom-tags) on the package overview: `"chartjs"`, `"monaco"`, `"listview"`, `"virtuallistview"`.
@@ -59,9 +59,9 @@ Set virtList   = .ChildDomElements.Add("bigList",   "virtuallistview")
 ### Item
 {: .no_toc }
 
-Looks up an existing child element by its ID. **DefaultMember** — so `elements("greeting")` is equivalent to `elements.Item("greeting")`.
+Looks up an existing child element by its ID. **DefaultMember** --- so `elements("greeting")` is equivalent to `elements.Item("greeting")`.
 
 Syntax: *htmlElements*( *ID* ) **As** [**HtmlElement**](HtmlElement)
 
 *ID*
-: A **Variant** — typically the **String** ID assigned at [**Add**](#add) time.
+: A **Variant** --- typically the **String** ID assigned at [**Add**](#add) time.

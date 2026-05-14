@@ -8,7 +8,7 @@ has_toc: false
 # Image class
 {: .no_toc }
 
-An **Image** is a windowless lightweight control for displaying a picture — a bitmap, JPEG, GIF, PNG, icon, cursor, or Windows metafile. It is the small, efficient alternative to [**PictureBox**](../PictureBox): no underlying Win32 window, no drawing surface, no child controls, no focus — just a rectangle on the parent that paints whatever is in [**Picture**](#picture). Image controls are ideal for logos, decorative artwork, custom-drawn buttons, glyph rows, and any other place where a heavy **PictureBox** would be overkill.
+An **Image** is a windowless lightweight control for displaying a picture --- a bitmap, JPEG, GIF, PNG, icon, cursor, or Windows metafile. It is the small, efficient alternative to [**PictureBox**](../PictureBox): no underlying Win32 window, no drawing surface, no child controls, no focus --- just a rectangle on the parent that paints whatever is in [**Picture**](#picture). Image controls are ideal for logos, decorative artwork, custom-drawn buttons, glyph rows, and any other place where a heavy **PictureBox** would be overkill.
 
 The default property is [**Picture**](#picture) and the default event is [**Click**](#click).
 
@@ -41,16 +41,16 @@ For anything that needs those, use [**PictureBox**](../PictureBox) instead.
 
 [**Stretch**](#stretch) is the master switch for sizing behaviour:
 
-- **Stretch = False** (default): the picture is drawn at its natural pixel size and the **Image** auto-resizes itself to match every time a new [**Picture**](#picture) is assigned. The user may still resize the control manually — once that happens the picture is clipped or padded around the natural bounds (it is *not* re-stretched).
+- **Stretch = False** (default): the picture is drawn at its natural pixel size and the **Image** auto-resizes itself to match every time a new [**Picture**](#picture) is assigned. The user may still resize the control manually --- once that happens the picture is clipped or padded around the natural bounds (it is *not* re-stretched).
 - **Stretch = True**: the picture is scaled to fill the **Image**'s rectangle. The resampling algorithm is chosen by [**StretchMode**](#stretchmode); aspect ratio is *not* preserved.
 
-Metafiles (`vbPicTypeMetafile`, `vbPicTypeEMetafile`) are vector — they always scale to fit and the aspect ratio is preserved regardless of [**Stretch**](#stretch).
+Metafiles (`vbPicTypeMetafile`, `vbPicTypeEMetafile`) are vector --- they always scale to fit and the aspect ratio is preserved regardless of [**Stretch**](#stretch).
 
-[**PictureDpiScaling**](#picturedpiscaling), when **True**, multiplies the natural pixel dimensions by the current DPI scale factor before drawing — useful for keeping a logo the same physical size on a high-DPI monitor as on a 96-DPI one.
+[**PictureDpiScaling**](#picturedpiscaling), when **True**, multiplies the natural pixel dimensions by the current DPI scale factor before drawing --- useful for keeping a logo the same physical size on a high-DPI monitor as on a 96-DPI one.
 
 ## Rotation
 
-[**Angle**](#angle) rotates the rendered picture, in degrees, anti-clockwise around the top-left corner of the control's rectangle. `0` is the natural orientation; `90` is a quarter turn anti-clockwise; values between `0` and `360` give arbitrary rotations. The control's bounding rectangle does not change — large rotation angles can therefore push the visible picture outside the rectangle. Hit-testing for [**Click**](#click), [**MouseDown**](#mousedown), and the other mouse events still uses the unrotated rectangle.
+[**Angle**](#angle) rotates the rendered picture, in degrees, anti-clockwise around the top-left corner of the control's rectangle. `0` is the natural orientation; `90` is a quarter turn anti-clockwise; values between `0` and `360` give arbitrary rotations. The control's bounding rectangle does not change --- large rotation angles can therefore push the visible picture outside the rectangle. Hit-testing for [**Click**](#click), [**MouseDown**](#mousedown), and the other mouse events still uses the unrotated rectangle.
 
 ## Border
 
@@ -72,7 +72,7 @@ Setting [**DataSource**](#datasource) and [**DataField**](#datafield) connects t
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the **Image**'s corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the **Image**'s corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Angle
 {: .no_toc }
@@ -92,7 +92,7 @@ The style of border drawn around the rectangle. A member of [**ControlBorderStyl
 ### Container
 {: .no_toc }
 
-The control that hosts this **Image** — typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
+The control that hosts this **Image** --- typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
 
 ### ControlType
 {: .no_toc }
@@ -139,7 +139,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself (the manual VB-drag form, distinct from OLE drag) when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself (the manual VB-drag form, distinct from OLE drag) when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -179,7 +179,7 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### OLEDragMode
 {: .no_toc }
 
-Whether an OLE drag is started automatically when the user begins dragging the **Image**. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — application calls [**OLEDrag**](#oledrag)) or **vbOLEDragAutomatic** (1 — the framework copies the current [**Picture**](#picture) into the resulting **DataObject** automatically).
+Whether an OLE drag is started automatically when the user begins dragging the **Image**. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default --- application calls [**OLEDrag**](#oledrag)) or **vbOLEDragAutomatic** (1 --- the framework copies the current [**Picture**](#picture) into the resulting **DataObject** automatically).
 
 ### OLEDropMode
 {: .no_toc }
@@ -217,14 +217,14 @@ The resampling algorithm used when [**Stretch**](#stretch) is **True** and the p
 
 | Constant                  | Value | Algorithm                                                                |
 |---------------------------|-------|--------------------------------------------------------------------------|
-| **vbStretchHalftone**     | 0     | GDI `STRETCH_HALFTONE` (default — good general-purpose quality).         |
-| **vbStretchColorOnColor** | 1     | GDI `STRETCH_COLORONCOLOR` (fastest, lowest quality — nearest neighbour). |
+| **vbStretchHalftone**     | 0     | GDI `STRETCH_HALFTONE` (default --- good general-purpose quality).         |
+| **vbStretchColorOnColor** | 1     | GDI `STRETCH_COLORONCOLOR` (fastest, lowest quality --- nearest neighbour). |
 | **vbStretchLanczos8**     | 2     | Custom Lanczos resampler with an 8-lobe kernel (highest quality, slowest). |
 | **vbStretchLanczos3**     | 3     | Custom Lanczos resampler with a 3-lobe kernel (high quality).            |
 | **vbStretchBicubic**      | 4     | Custom bicubic resampler.                                                |
 | **vbStretchBilinear**     | 5     | Custom bilinear resampler.                                               |
 
-The Lanczos, bicubic, and bilinear modes only apply to bitmaps that actually need resizing — metafiles and unscaled bitmaps fall back to the GDI mode.
+The Lanczos, bicubic, and bilinear modes only apply to bitmaps that actually need resizing --- metafiles and unscaled bitmaps fall back to the GDI mode.
 
 ### Tag
 {: .no_toc }
@@ -262,7 +262,7 @@ The control's width, in twips by default (or in the container's **ScaleMode** un
 ### Drag
 {: .no_toc }
 
-Begins, completes, or cancels a manual VB-style drag operation. Distinct from OLE drag — see [**OLEDrag**](#oledrag).
+Begins, completes, or cancels a manual VB-style drag operation. Distinct from OLE drag --- see [**OLEDrag**](#oledrag).
 
 Syntax: *object*.**Drag** [ *Action* ]
 

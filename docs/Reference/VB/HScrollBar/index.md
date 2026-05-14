@@ -8,7 +8,7 @@ has_toc: false
 # HScrollBar class
 {: .no_toc }
 
-An **HScrollBar** is a Win32 native horizontal scroll bar exposed as a stand-alone control. Unlike the scroll bars that automatically appear inside a [**ListBox**](../ListBox), [**ComboBox**](../ComboBox), or [**TextBox**](../TextBox), an **HScrollBar** is independent of any other control — its [**Value**](#value) is whatever code reads or writes. The typical use is to control a numeric setting (a volume level, a paginator, a colour channel, the offset of a custom-drawn surface) by binding the **HScrollBar**'s [**Change**](#change) and [**Scroll**](#scroll) events to whatever the value represents.
+An **HScrollBar** is a Win32 native horizontal scroll bar exposed as a stand-alone control. Unlike the scroll bars that automatically appear inside a [**ListBox**](../ListBox), [**ComboBox**](../ComboBox), or [**TextBox**](../TextBox), an **HScrollBar** is independent of any other control --- its [**Value**](#value) is whatever code reads or writes. The typical use is to control a numeric setting (a volume level, a paginator, a colour channel, the offset of a custom-drawn surface) by binding the **HScrollBar**'s [**Change**](#change) and [**Scroll**](#scroll) events to whatever the value represents.
 
 [**VScrollBar**](../VScrollBar) is the vertical counterpart; the two classes are identical apart from orientation.
 
@@ -39,7 +39,7 @@ End Sub
 
 [**Min**](#min) and [**Max**](#max) define the closed range of integer values the scroll bar can represent, and [**Value**](#value) is the position within that range. Defaults are `0`, `32767`, and `0`. Assigning a [**Value**](#value) outside the current `[Min, Max]` interval raises run-time error 380 (*Invalid property value*); assigning the current value is a no-op (no [**Change**](#change) is raised).
 
-The two endpoints may be supplied in either order. When **Min** is greater than **Max** the scroll bar runs *inverted* — moving the thumb to the right decreases [**Value**](#value), and **Max** is the lower bound of the legal range. This is convenient for, for example, a "high-on-the-left" colour or zoom slider:
+The two endpoints may be supplied in either order. When **Min** is greater than **Max** the scroll bar runs *inverted* --- moving the thumb to the right decreases [**Value**](#value), and **Max** is the lower bound of the legal range. This is convenient for, for example, a "high-on-the-left" colour or zoom slider:
 
 ```tb
 hsbZoom.Min = 400      ' leftmost == 4.00x
@@ -47,7 +47,7 @@ hsbZoom.Max = 100      ' rightmost == 1.00x
 hsbZoom.Value = 100
 ```
 
-Changing **Min** or **Max** at run time clips the current [**Value**](#value) into the new range silently — no [**Change**](#change) event is raised for the implicit clip.
+Changing **Min** or **Max** at run time clips the current [**Value**](#value) into the new range silently --- no [**Change**](#change) event is raised for the implicit clip.
 
 ## Increment sizes
 
@@ -64,14 +64,14 @@ Both [**SmallChange**](#smallchange) and [**LargeChange**](#largechange) default
 
 ## Change versus Scroll
 
-The split between the two events lets the application choose how often it reacts to user input. [**Scroll**](#scroll) fires repeatedly while the user is dragging the thumb, so a handler can update a live preview as the thumb moves. [**Change**](#change) fires once each time the value settles — after the user releases the thumb, after a click on an arrow or the track, or whenever code assigns a different [**Value**](#value). Many applications wire both events to the same handler so that the bound display updates both during dragging and after.
+The split between the two events lets the application choose how often it reacts to user input. [**Scroll**](#scroll) fires repeatedly while the user is dragging the thumb, so a handler can update a live preview as the thumb moves. [**Change**](#change) fires once each time the value settles --- after the user releases the thumb, after a click on an arrow or the track, or whenever code assigns a different [**Value**](#value). Many applications wire both events to the same handler so that the bound display updates both during dragging and after.
 
 ## Properties
 
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the scroll bar's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the scroll bar's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### CausesValidation
 {: .no_toc }
@@ -81,7 +81,7 @@ Determines whether the previously focused control's [**Validate**](#validate) ev
 ### Container
 {: .no_toc }
 
-The control that hosts this scroll bar — typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
+The control that hosts this scroll bar --- typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
 
 ### ControlType
 {: .no_toc }
@@ -101,7 +101,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -111,7 +111,7 @@ Determines whether the scroll bar accepts user input. A disabled scroll bar is g
 ### Height
 {: .no_toc }
 
-The scroll bar's height in twips (or in the container's **ScaleMode** units). **Double**. For a horizontal scroll bar this is the small dimension — typically the OS standard scroll-bar thickness; values larger than that simply enlarge the surrounding hit area.
+The scroll bar's height in twips (or in the container's **ScaleMode** units). **Double**. For a horizontal scroll bar this is the small dimension --- typically the OS standard scroll-bar thickness; values larger than that simply enlarge the surrounding hit area.
 
 ### HelpContextID
 {: .no_toc }
@@ -141,7 +141,7 @@ The horizontal distance from the left edge of the container to the left edge of 
 ### Max
 {: .no_toc }
 
-The upper end of the scroll bar's value range. **Long**, default `32767`. May be set lower than [**Min**](#min) to invert the direction of travel — see [Range and value](#range-and-value).
+The upper end of the scroll bar's value range. **Long**, default `32767`. May be set lower than [**Min**](#min) to invert the direction of travel --- see [Range and value](#range-and-value).
 
 Syntax: *object*.**Max** [ = *value* ]
 
@@ -174,7 +174,7 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Parent
 {: .no_toc }
@@ -247,7 +247,7 @@ A **Long** identifying a "What's This?" help-pop-up topic in the application's h
 ### Width
 {: .no_toc }
 
-The scroll bar's width — i.e., the length of the track. **Double**.
+The scroll bar's width --- i.e., the length of the track. **Double**.
 
 ## Methods
 
@@ -298,7 +298,7 @@ Syntax: *object*.**ShowWhatsThis**
 ### SyncScrollBar
 {: .no_toc }
 
-Re-applies the current [**Min**](#min), [**Max**](#max), [**LargeChange**](#largechange), and [**Value**](#value) to the underlying Win32 scroll bar. Property assignments already do this implicitly — call **SyncScrollBar** only when external code (typically a Win32 API call) has reached around the control and changed its native state.
+Re-applies the current [**Min**](#min), [**Max**](#max), [**LargeChange**](#largechange), and [**Value**](#value) to the underlying Win32 scroll bar. Property assignments already do this implicitly --- call **SyncScrollBar** only when external code (typically a Win32 API call) has reached around the control and changed its native state.
 
 Syntax: *object*.**SyncScrollBar**
 
@@ -317,7 +317,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Change
 {: .no_toc }
 
-Raised after [**Value**](#value) settles on a new value — when the user releases the thumb after a drag, when the user clicks an arrow or the track, when the user presses **Home**, **End**, or an arrow key with focus on the scroll bar, or when code assigns a different [**Value**](#value). Not raised for the continuous updates that happen during a drag — see [**Scroll**](#scroll) for that. **Default event.**
+Raised after [**Value**](#value) settles on a new value --- when the user releases the thumb after a drag, when the user clicks an arrow or the track, when the user presses **Home**, **End**, or an arrow key with focus on the scroll bar, or when code assigns a different [**Value**](#value). Not raised for the continuous updates that happen during a drag --- see [**Scroll**](#scroll) for that. **Default event.**
 
 Syntax: *object*\_**Change**( )
 
@@ -352,7 +352,7 @@ Syntax: *object*\_**Initialize**( )
 ### KeyDown
 {: .no_toc }
 
-Raised when the user presses any key while the control has focus. Note that the scroll bar already handles the arrow keys, **Page Up** / **Page Down**, and **Home** / **End** internally — but **KeyDown** still fires for them in addition to the resulting [**Change**](#change).
+Raised when the user presses any key while the control has focus. Note that the scroll bar already handles the arrow keys, **Page Up** / **Page Down**, and **Home** / **End** internally --- but **KeyDown** still fires for them in addition to the resulting [**Change**](#change).
 
 Syntax: *object*\_**KeyDown**( *KeyCode* **As Integer**, *Shift* **As Integer** )
 

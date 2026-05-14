@@ -14,7 +14,7 @@ Coerces an expression to a **Single**.
 Syntax: **CSng(** *expression* **)**
 
 *expression*
-: *required* Any valid string or numeric expression in the **Single** range — `-3.402823E38` to `-1.401298E-45` for negative values, and `1.401298E-45` to `3.402823E38` for positive values.
+: *required* Any valid string or numeric expression in the **Single** range --- `-3.402823E38` to `-1.401298E-45` for negative values, and `1.401298E-45` to `3.402823E38` for positive values.
 
 The return type is **Single**. If *expression* is outside the range of a **Single**, a run-time error occurs.
 

@@ -19,7 +19,7 @@ Syntax:
 *expression1*, *expression2*
 : Any expressions.
 
-If one — and only one — of the expressions evaluates to **True**, *result* is **True**. If either expression is **Null**, *result* is also **Null**. When neither expression is **Null**, *result* is determined according to the following table:
+If one --- and only one --- of the expressions evaluates to **True**, *result* is **True**. If either expression is **Null**, *result* is also **Null**. When neither expression is **Null**, *result* is determined according to the following table:
 
 | If *expression1* is | And *expression2* is | Then *result* is |
 |:-----|:-----|:-----|

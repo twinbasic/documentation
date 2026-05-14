@@ -10,15 +10,15 @@ permalink: /Tutorials/CEF/Building-A-Browser-Shell
 
 A short worked tutorial: turn a [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control into a working browser with an address bar, back / forward / reload buttons, zoom, and a few helpers (DevTools, PDF export).
 
-The complete project ships as *Sample 1b — Chromium Embedded Framework Examples* in the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
+The complete project ships as *Sample 1b --- Chromium Embedded Framework Examples* in the New-Project dialog (form *Example 1*). This tutorial describes its key pieces.
 
 ## The form
 
-Drop a [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control onto a Form and rename it `WebView`. Around it, add a `TextBox` named `AddressBar` plus six `CommandButton`s — `btnBack`, `btnForward`, `btnRefresh`, `btnZoomIn`, `btnZoomOut`, `btnPDF`, `btnDevTools`.
+Drop a [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control onto a Form and rename it `WebView`. Around it, add a `TextBox` named `AddressBar` plus six `CommandButton`s --- `btnBack`, `btnForward`, `btnRefresh`, `btnZoomIn`, `btnZoomOut`, `btnPDF`, `btnDevTools`.
 
 ## Navigating
 
-The bare-bones navigation methods — [**Navigate**](../../tB/Packages/CEF/CefBrowser/#navigate), [**GoBack**](../../tB/Packages/CEF/CefBrowser/#goback), [**GoForward**](../../tB/Packages/CEF/CefBrowser/#goforward), [**Reload**](../../tB/Packages/CEF/CefBrowser/#reload) — are one-liners:
+The bare-bones navigation methods --- [**Navigate**](../../tB/Packages/CEF/CefBrowser/#navigate), [**GoBack**](../../tB/Packages/CEF/CefBrowser/#goback), [**GoForward**](../../tB/Packages/CEF/CefBrowser/#goforward), [**Reload**](../../tB/Packages/CEF/CefBrowser/#reload) --- are one-liners:
 
 ```tb
 Private Sub btnBack_Click() Handles btnBack.Click
@@ -46,11 +46,11 @@ End Sub
 ```
 
 > [!NOTE]
-> *IsSuccess* and *WebErrorStatus* are part of the event signature but currently return placeholder values (`True` and `0`) — use [**DocumentURL**](../../tB/Packages/CEF/CefBrowser/#documenturl) to confirm where the browser actually landed.
+> *IsSuccess* and *WebErrorStatus* are part of the event signature but currently return placeholder values (`True` and `0`) --- use [**DocumentURL**](../../tB/Packages/CEF/CefBrowser/#documenturl) to confirm where the browser actually landed.
 
 ## The address bar
 
-Pressing **Enter** in the address bar triggers a navigation. The reverse direction — keeping the visible URL in sync with the page — is the [**SourceChanged**](../../tB/Packages/CEF/CefBrowser/#sourcechanged) event, which fires whenever [**DocumentURL**](../../tB/Packages/CEF/CefBrowser/#documenturl) changes (including same-document `history.pushState` updates):
+Pressing **Enter** in the address bar triggers a navigation. The reverse direction --- keeping the visible URL in sync with the page --- is the [**SourceChanged**](../../tB/Packages/CEF/CefBrowser/#sourcechanged) event, which fires whenever [**DocumentURL**](../../tB/Packages/CEF/CefBrowser/#documenturl) changes (including same-document `history.pushState` updates):
 
 ```tb
 Private Sub AddressBar_KeyDown(KeyCode As Integer, Shift As Integer) _
@@ -64,11 +64,11 @@ Private Sub WebView_SourceChanged(ByVal IsNewDocument As Boolean) _
 End Sub
 ```
 
-[**Navigate**](../../tB/Packages/CEF/CefBrowser/#navigate) requires a full URI with scheme — `http://`, `https://`, `file://`, … Unlike [**WebView2**](../../tB/Packages/WebView2/WebView2/#navigate), no automatic `https://` prefix is added when the scheme is missing.
+[**Navigate**](../../tB/Packages/CEF/CefBrowser/#navigate) requires a full URI with scheme --- `http://`, `https://`, `file://`, … Unlike [**WebView2**](../../tB/Packages/WebView2/WebView2/#navigate), no automatic `https://` prefix is added when the scheme is missing.
 
 ## Zoom
 
-[**ZoomFactor**](../../tB/Packages/CEF/CefBrowser/#zoomfactor) is a **Double** — `1.0` is 100%, `1.5` is 150%. The value reads as `0` until the browser has reached [**Ready**](../../tB/Packages/CEF/CefBrowser/#ready), so arithmetic that multiplies the current value silently starts from zero unless you clamp first:
+[**ZoomFactor**](../../tB/Packages/CEF/CefBrowser/#zoomfactor) is a **Double** --- `1.0` is 100%, `1.5` is 150%. The value reads as `0` until the browser has reached [**Ready**](../../tB/Packages/CEF/CefBrowser/#ready), so arithmetic that multiplies the current value silently starts from zero unless you clamp first:
 
 ```tb
 Private Sub btnZoomIn_Click() Handles btnZoomIn.Click
@@ -88,7 +88,7 @@ The `On Error Resume Next` catches the "control not ready" error that fires when
 
 ## PDF export
 
-[**PrintToPdf**](../../tB/Packages/CEF/CefBrowser/#printtopdf) saves the current document to disk asynchronously — the result arrives as [**PrintToPdfCompleted**](../../tB/Packages/CEF/CefBrowser/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/CEF/CefBrowser/#printtopdffailed):
+[**PrintToPdf**](../../tB/Packages/CEF/CefBrowser/#printtopdf) saves the current document to disk asynchronously --- the result arrives as [**PrintToPdfCompleted**](../../tB/Packages/CEF/CefBrowser/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/CEF/CefBrowser/#printtopdffailed):
 
 ```tb
 Private Sub btnPDF_Click() Handles btnPDF.Click
@@ -102,7 +102,7 @@ Private Sub WebView_PrintToPdfCompleted() Handles WebView.PrintToPdfCompleted
 End Sub
 ```
 
-The optional parameters that follow *outputPath* — [**cefPrintOrientation**](../../tB/Packages/CEF/Enumerations/cefPrintOrientation), page size in microns, margins, header/footer toggles — let the host override Chromium's defaults. See the [**PrintToPdf** reference](../../tB/Packages/CEF/CefBrowser/#printtopdf) for the full signature.
+The optional parameters that follow *outputPath* --- [**cefPrintOrientation**](../../tB/Packages/CEF/Enumerations/cefPrintOrientation), page size in microns, margins, header/footer toggles --- let the host override Chromium's defaults. See the [**PrintToPdf** reference](../../tB/Packages/CEF/CefBrowser/#printtopdf) for the full signature.
 
 ## DevTools
 
@@ -114,7 +114,7 @@ Private Sub btnDevTools_Click() Handles btnDevTools.Click
 End Sub
 ```
 
-The CEF package does not currently expose **WebView2**'s **OpenTaskManagerWindow** equivalent — see the [WebView2 parity](../../tB/Packages/CEF/#webview2-parity) section of the reference for the current gap list.
+The CEF package does not currently expose **WebView2**'s **OpenTaskManagerWindow** equivalent --- see the [WebView2 parity](../../tB/Packages/CEF/#webview2-parity) section of the reference for the current gap list.
 
 ## Form-title sync
 
@@ -128,7 +128,7 @@ End Sub
 
 ## Where next
 
-- [Hosting local web assets](Hosting-Local-Web-Assets) — serve HTML / JS / CSS from a folder without an HTTP server.
-- [JavaScript interop](JavaScript-Interop) — pass values and method calls between BASIC and the page.
-- [Re-entrancy](Re-entrancy) — the one thing to know about [**JsRun**](../../tB/Packages/CEF/CefBrowser/#jsrun) before you use it.
-- [CefBrowser reference](../../tB/Packages/CEF/CefBrowser/) — every property, method, and event.
+- [Hosting local web assets](Hosting-Local-Web-Assets) -- serve HTML / JS / CSS from a folder without an HTTP server.
+- [JavaScript interop](JavaScript-Interop) -- pass values and method calls between BASIC and the page.
+- [Re-entrancy](Re-entrancy) -- the one thing to know about [**JsRun**](../../tB/Packages/CEF/CefBrowser/#jsrun) before you use it.
+- [CefBrowser reference](../../tB/Packages/CEF/CefBrowser/) -- every property, method, and event.

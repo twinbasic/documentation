@@ -7,7 +7,7 @@ permalink: /tB/Packages/CustomControls/Enumerations/DockMode
 # DockMode
 {: .no_toc }
 
-How a control is positioned relative to its container — attached to one edge, filling the whole client area, or not docked at all (positioned absolutely by [**Left**](../#controls) / [**Top**](../#controls) / [**Width**](../#controls) / [**Height**](../#controls)). Used by the **Dock** property that every concrete custom control inherits.
+How a control is positioned relative to its container --- attached to one edge, filling the whole client area, or not docked at all (positioned absolutely by [**Left**](../#controls) / [**Top**](../#controls) / [**Width**](../#controls) / [**Height**](../#controls)). Used by the **Dock** property that every concrete custom control inherits.
 
 | Constant | Value | Description |
 |----------|-------|-------------|
@@ -30,4 +30,4 @@ Private Sub Form_Load()
 End Sub
 ```
 
-Setting **Dock** to anything other than **tbDockNone** makes the control's own [**Anchors**](../Styles/Anchors) irrelevant — docking takes over the position and size completely. Manual positioning resumes when **Dock** is reset to **tbDockNone**.
+Setting **Dock** to anything other than **tbDockNone** makes the control's own [**Anchors**](../Styles/Anchors) irrelevant --- docking takes over the position and size completely. Manual positioning resumes when **Dock** is reset to **tbDockNone**.

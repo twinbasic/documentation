@@ -6,7 +6,7 @@ permalink: /tB/Core/Module
 # Module
 {: .no_toc }
 
-Defines a module — a non-instantiable container for procedures, constants, types, enums, and module-level variables. A module's members are accessed through the module name (or, for **Public** members in a non-private module, directly).
+Defines a module --- a non-instantiable container for procedures, constants, types, enums, and module-level variables. A module's members are accessed through the module name (or, for **Public** members in a non-private module, directly).
 
 > [!NOTE]
 > The explicit **Module** ... **End Module** block is a twinBASIC extension. Classic VBA distinguishes "standard modules" from "class modules" purely by file type (`.bas` vs. `.cls`); the source has no enclosing keyword. In `.twin` files twinBASIC requires (and supports) the explicit block, which permits a class and a module in the same file and allows attributes to apply to the module as a whole.

@@ -9,7 +9,7 @@ has_toc: false
 # CustomControlContext class
 {: .no_toc }
 
-The callback object passed to a custom control's [**Initialize**](ICustomControl#initialize). Holds the connection back into the framework — used to deserialize designer-set property values, request repaints, create timers, and move the keyboard focus between elements the control has drawn.
+The callback object passed to a custom control's [**Initialize**](ICustomControl#initialize). Holds the connection back into the framework --- used to deserialize designer-set property values, request repaints, create timers, and move the keyboard focus between elements the control has drawn.
 
 Custom controls store the **CustomControlContext** in a private field (typically called **ControlContext**) so that they can call back into the framework at any point after **Initialize** has returned. The form-class counterpart [**CustomFormContext**](CustomFormContext) extends this with **Show** and **Close**.
 
@@ -32,7 +32,7 @@ End Sub
 ### ChangeFocusedElement
 {: .no_toc }
 
-Asks the framework to move the keyboard focus to a particular `ElementTabIndex` value, as if the user had pressed **TAB** until reaching that point. Used by [**WaynesGrid**](../WaynesGrid/) when a cell is selected programmatically — the grid changes its **SelectedCellX** / **SelectedCellY** and then calls this method so that the form-level focus tracking matches.
+Asks the framework to move the keyboard focus to a particular `ElementTabIndex` value, as if the user had pressed **TAB** until reaching that point. Used by [**WaynesGrid**](../WaynesGrid/) when a cell is selected programmatically --- the grid changes its **SelectedCellX** / **SelectedCellY** and then calls this method so that the form-level focus tracking matches.
 
 Syntax: *object*.**ChangeFocusedElement** *ElementTabIndex*
 
@@ -62,4 +62,4 @@ Tells the framework that the control's appearance has changed and that the canva
 
 Syntax: *object*.**Repaint** ( )
 
-Every concrete `Waynes…` control hooks the **OnChanged** events on its state and style sub-objects, and calls **Repaint** from the handler — so a runtime assignment like `btn.NormalState.BackgroundFill.ColorPoints.SetSolidColor vbBlue` triggers an automatic redraw.
+Every concrete `Waynes…` control hooks the **OnChanged** events on its state and style sub-objects, and calls **Repaint** from the handler --- so a runtime assignment like `btn.NormalState.BackgroundFill.ColorPoints.SetSolidColor vbBlue` triggers an automatic redraw.

@@ -20,7 +20,7 @@ Syntax:
 
 **ParamArray** must be the last parameter in the argument list of a **Sub**, **Function**, or **Property Get** procedure. In a **Property Let** or **Property Set** procedure it must precede the *value*/*reference* parameter and so cannot be the only parameter.
 
-**ParamArray** cannot be combined with **Optional**, **ByVal**, or **ByRef** on the same parameter — arguments supplied to a **ParamArray** are always passed by reference as elements of a **Variant** array.
+**ParamArray** cannot be combined with **Optional**, **ByVal**, or **ByRef** on the same parameter --- arguments supplied to a **ParamArray** are always passed by reference as elements of a **Variant** array.
 
 When the procedure is called, each argument supplied in the call becomes a corresponding element of the **Variant** array. If no arguments are supplied for the **ParamArray** position, the array is empty.
 

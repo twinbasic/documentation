@@ -10,7 +10,7 @@ permalink: /tB/Packages/VBRUN/Constants/StorageTypeContants
 OLE data-storage medium identifiers used by [**DataObjectFormat.StorageType**](../DataObject/DataObjectFormat#storagetype) and other low-level data-transfer routines, identifying how the bytes are physically stored.
 
 > [!NOTE]
-> The enum is named `StorageTypeContants` (note the missing `s`) in the runtime — a long-standing VB6 holdover that twinBASIC preserves for source compatibility.
+> The enum is named `StorageTypeContants` (note the missing `s`) in the runtime --- a long-standing VB6 holdover that twinBASIC preserves for source compatibility.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

@@ -29,7 +29,7 @@ Usually, the data type of *result* is a **Double** or a **Variant** containing a
 
 ### Compound assignment
 
-`x ^= y` is the twinBASIC shorthand for `x = x ^ y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** rules described above. **^=** is a statement, not an expression — it does not produce a value.
+`x ^= y` is the twinBASIC shorthand for `x = x ^ y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** rules described above. **^=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Value As Double = 2

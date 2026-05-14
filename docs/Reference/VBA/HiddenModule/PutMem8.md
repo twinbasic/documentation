@@ -16,7 +16,7 @@ Syntax: **PutMem8** *Address* **,** *Value*
 *Value*
 : *required* **Currency**. A **Currency** carrier whose underlying eight bytes are stored at *Address*.
 
-**Currency** is used as the eight-byte carrier — its in-memory representation is a raw 64-bit pattern, scaled by the type's fixed factor of 10000 only at the point of arithmetic. To pack an arbitrary 64-bit integer, [**LSet**](../../Core/LSet) it into a **Currency** before calling **PutMem8**.
+**Currency** is used as the eight-byte carrier --- its in-memory representation is a raw 64-bit pattern, scaled by the type's fixed factor of 10000 only at the point of arithmetic. To pack an arbitrary 64-bit integer, [**LSet**](../../Core/LSet) it into a **Currency** before calling **PutMem8**.
 
 The address is written directly with no bounds or alignment check.
 

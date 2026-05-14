@@ -17,7 +17,7 @@ These classes are in the VB built-in package, which provides the standard set of
 
 - [App](App) -- singleton wrapping the running application's identity, version metadata, and process-level state
 - [Clipboard](Clipboard) -- singleton wrapper around the system clipboard for inter-application copy and paste
-- [Global](Global) -- the application's app object — singleton whose members (**App**, **Screen**, **Clipboard**, **Forms**, …) are reachable without qualification
+- [Global](Global) -- the application's app object -- singleton whose members (**App**, **Screen**, **Clipboard**, **Forms**, …) are reachable without qualification
 - [Printer](Printer) -- drawing-surface wrapper around one Windows printer device, recording graphics calls into a spooled print job
 - [Printers](Printers) -- read-only collection of every printer installed on the system
 - [Screen](Screen) -- singleton wrapping the primary display's metrics, font list, active form and control, and application-wide mouse pointer
@@ -25,7 +25,7 @@ These classes are in the VB built-in package, which provides the standard set of
 ### Controls
 
 - [CheckBox](CheckBox) -- Win32 native two- or three-state check-box with a caption and optional keyboard mnemonic
-- [CheckMark](CheckMark) -- windowless scalable check glyph with no caption or focus — a check-box rendered at any size
+- [CheckMark](CheckMark) -- windowless scalable check glyph with no caption or focus -- a check-box rendered at any size
 - [ComboBox](ComboBox) -- Win32 native edit field combined with a drop-down list of items
 - [CommandButton](CommandButton) -- Win32 native push-button that triggers an action when clicked
 - [Data](Data) -- Win32 native control that opens a DAO database and exposes a bound recordset to other controls
@@ -35,14 +35,14 @@ These classes are in the VB built-in package, which provides the standard set of
 - [Form](Form) -- top-level Win32 window that hosts the controls, menus, and drawing surface of a single user interface
 - [Frame](Frame) -- Win32 native captioned container that groups controls and forms an option-button group
 - [HScrollBar](HScrollBar) -- Win32 native stand-alone horizontal scroll bar
-- [Image](Image) -- windowless lightweight picture display — the cheap alternative to **PictureBox**
+- [Image](Image) -- windowless lightweight picture display -- the cheap alternative to **PictureBox**
 - [Label](Label) -- windowless lightweight control for displaying read-only text and keyboard-mnemonic anchors
 - [Line](Line) -- windowless lightweight control that draws a single straight line segment between two endpoints
 - [ListBox](ListBox) -- Win32 native vertically-scrolling list of items, single- or multi-select
 - [MDIForm](MDIForm) -- top-level window that hosts an MDI client area for **Form** instances marked as MDI children
-- [Menu](Menu) -- a single item — top-level entry, sub-menu entry, or separator — in a Win32 native menu
+- [Menu](Menu) -- a single item -- top-level entry, sub-menu entry, or separator --- in a Win32 native menu
 - [MultiFrame](MultiFrame) -- layout container that arranges **Frame** controls in a horizontal or vertical strip
-- [OLE](OLE) -- container that hosts a linked or embedded OLE Automation object (VB6 compatibility stub — mostly unimplemented)
+- [OLE](OLE) -- container that hosts a linked or embedded OLE Automation object (VB6 compatibility stub -- mostly unimplemented)
 - [OptionButton](OptionButton) -- Win32 native round selector, mutually exclusive within its container
 - [PictureBox](PictureBox) -- Win32 native picture display, drawing surface, and control container combined
 - [PropertyPage](PropertyPage) -- container backing a single tab of a COM property-page dialog

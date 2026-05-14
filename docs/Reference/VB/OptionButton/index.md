@@ -30,7 +30,7 @@ End Sub
 
 ## Mutual exclusion
 
-Setting [**Value**](#value) to **True** on one option button clears every other option button whose [**Container**](#container) is the same control — typically the parent form or a [**Frame**](../Frame). Option buttons in sibling frames are not affected, so a single form can host any number of independent groups: drop the buttons that belong to one group onto a frame, and the buttons that belong to a different group onto another frame (or directly onto the form).
+Setting [**Value**](#value) to **True** on one option button clears every other option button whose [**Container**](#container) is the same control --- typically the parent form or a [**Frame**](../Frame). Option buttons in sibling frames are not affected, so a single form can host any number of independent groups: drop the buttons that belong to one group onto a frame, and the buttons that belong to a different group onto another frame (or directly onto the form).
 
 ```tb
 ' Two independent groups on one form:
@@ -38,11 +38,11 @@ Setting [**Value**](#value) to **True** on one option button clears every other 
 '   fraColour: optRed, optGreen, optBlue       (children of fraColour)
 ```
 
-Setting [**Value**](#value) to **False** never deselects another button — there is no automatic *fallback* to a different option, so applications normally guarantee that exactly one button in each group is selected by setting one of them to **True** at start-up. Assigning **False** to the currently selected button leaves the group with no selection until the user (or code) selects another one.
+Setting [**Value**](#value) to **False** never deselects another button --- there is no automatic *fallback* to a different option, so applications normally guarantee that exactly one button in each group is selected by setting one of them to **True** at start-up. Assigning **False** to the currently selected button leaves the group with no selection until the user (or code) selects another one.
 
 ## Click semantics
 
-[**Click**](#click) is raised only when [**Value**](#value) transitions from **False** to **True** — whether the user clicked the button, pressed its access key, or assigned **True** in code. Re-clicking an already selected option button does nothing, and assigning **False** to a selected button does *not* raise [**Click**](#click). The event also does not fire while the form is loading; it starts firing once the control's [**Initialize**](#initialize) event has run.
+[**Click**](#click) is raised only when [**Value**](#value) transitions from **False** to **True** --- whether the user clicked the button, pressed its access key, or assigned **True** in code. Re-clicking an already selected option button does nothing, and assigning **False** to a selected button does *not* raise [**Click**](#click). The event also does not fire while the form is loading; it starts firing once the control's [**Initialize**](#initialize) event has run.
 
 ## Caption and mnemonics
 
@@ -67,12 +67,12 @@ Specifies the side of the selector on which the [**Caption**](#caption) text app
 Syntax: *object*.**Alignment** [ = *value* ]
 
 *value*
-: A member of [**AlignmentConstantsNoCenter**](../../VBRUN/Constants/AlignmentConstantsNoCenter): **tbLeftJustify** (0, default — caption to the right of the selector) or **tbRightJustify** (1 — caption to the left of the selector).
+: A member of [**AlignmentConstantsNoCenter**](../../VBRUN/Constants/AlignmentConstantsNoCenter): **tbLeftJustify** (0, default --- caption to the right of the selector) or **tbRightJustify** (1 --- caption to the left of the selector).
 
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the option button's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the option button's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Appearance
 {: .no_toc }
@@ -87,7 +87,7 @@ The background colour, as an **OLE_COLOR**. Defaults to the system 3-D face colo
 ### Caption
 {: .no_toc }
 
-The text displayed next to the option button. An ampersand marks the next character as a mnemonic; `&&` produces a literal ampersand. The string is read directly from the underlying window — assigning to **Caption** is reflected immediately.
+The text displayed next to the option button. An ampersand marks the next character as a mnemonic; `&&` produces a literal ampersand. The string is read directly from the underlying window --- assigning to **Caption** is reflected immediately.
 
 Syntax: *object*.**Caption** [ = *string* ]
 
@@ -99,7 +99,7 @@ Determines whether the previously focused control's [**Validate**](#validate) ev
 ### Container
 {: .no_toc }
 
-The control that hosts this option button — typically a [**Frame**](../Frame) or the parent form. Read with **Get**, change with **Set**. Setting **Container** at run time re-parents the option button into a different group; it is automatically excluded from the old group's mutual-exclusion set and included in the new one.
+The control that hosts this option button --- typically a [**Frame**](../Frame) or the parent form. Read with **Get**, change with **Set**. Setting **Container** at run time re-parents the option button into a different group; it is automatically excluded from the old group's mutual-exclusion set and included in the new one.
 
 ### ControlType
 {: .no_toc }
@@ -129,7 +129,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -200,7 +200,7 @@ How the control responds to OLE drops. A restricted member of [**OLEDropConstant
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Padding
 {: .no_toc }
@@ -210,7 +210,7 @@ The number of pixels of empty space inserted between the picture and the caption
 ### Parent
 {: .no_toc }
 
-A reference to the [**Form**](../Form) (or **UserControl**) that ultimately contains this control. Read-only. Distinct from [**Container**](#container), which returns the immediate parent — for an option button placed inside a [**Frame**](../Frame), **Container** returns the frame and **Parent** returns the form.
+A reference to the [**Form**](../Form) (or **UserControl**) that ultimately contains this control. Read-only. Distinct from [**Container**](#container), which returns the immediate parent --- for an option button placed inside a [**Frame**](../Frame), **Container** returns the frame and **Parent** returns the form.
 
 ### Picture
 {: .no_toc }
@@ -374,7 +374,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Click
 {: .no_toc }
 
-Raised when [**Value**](#value) transitions from **False** to **True** — whether the user clicked the selector, pressed the access key, or assigned **True** in code. Not raised on the form's first display, on a click that doesn't change the value, or when **Value** is set to **False**. **Default event.**
+Raised when [**Value**](#value) transitions from **False** to **True** --- whether the user clicked the selector, pressed the access key, or assigned **True** in code. Not raised on the form's first display, on a click that doesn't change the value, or when **Value** is set to **False**. **Default event.**
 
 Syntax: *object*\_**Click**( )
 

@@ -10,9 +10,9 @@ has_toc: false
 
 The contract every service class in a **WinServicesLib** project implements. Three subs, each invoked at a specific point in the service's lifecycle:
 
-- [**EntryPoint**](#entrypoint) — runs the service's actual work.
-- [**StartupFailed**](#startupfailed) — invoked when the SCM handshake fails before [**EntryPoint**](#entrypoint) can run.
-- [**ChangeState**](#changestate) — invoked when the SCM delivers a control code (*Stop*, *Pause*, *Continue*, …).
+- [**EntryPoint**](#entrypoint) -- runs the service's actual work.
+- [**StartupFailed**](#startupfailed) -- invoked when the SCM handshake fails before [**EntryPoint**](#entrypoint) can run.
+- [**ChangeState**](#changestate) -- invoked when the SCM delivers a control code (*Stop*, *Pause*, *Continue*, …).
 
 The package's [**ServiceCreator**](ServiceCreator)`(Of T)` factory creates one instance per service start; the dispatcher trampoline holds the instance for the lifetime of the service and routes the three lifecycle subs to it.
 
@@ -52,7 +52,7 @@ End Class
 ```
 
 > [!IMPORTANT]
-> [**EntryPoint**](#entrypoint) runs on the **service thread**. [**ChangeState**](#changestate) runs on the **dispatcher thread** (the EXE's main thread). The two methods execute concurrently and must coordinate through shared `Public` flags on the class — see [The two-thread split](.#two-thread-split) on the package overview.
+> [**EntryPoint**](#entrypoint) runs on the **service thread**. [**ChangeState**](#changestate) runs on the **dispatcher thread** (the EXE's main thread). The two methods execute concurrently and must coordinate through shared `Public` flags on the class --- see [The two-thread split](.#two-thread-split) on the package overview.
 
 * TOC
 {:toc}
@@ -67,10 +67,10 @@ Invoked by the SCM dispatcher thread when a control code is delivered to the ser
 Syntax: *service*.**ChangeState** *ServiceManager*, *dwControl*, *dwEventType*, *lpEventData*
 
 *ServiceManager*
-: The [**ServiceManager**](ServiceManager) for this service — the same instance passed to [**EntryPoint**](#entrypoint). The implementation calls [**ReportStatus**](ServiceManager#reportstatus) on it to acknowledge the pending transition.
+: The [**ServiceManager**](ServiceManager) for this service --- the same instance passed to [**EntryPoint**](#entrypoint). The implementation calls [**ReportStatus**](ServiceManager#reportstatus) on it to acknowledge the pending transition.
 
 *dwControl*
-: A [**ServiceControlCodeConstants**](Enumerations/ServiceControlCodeConstants) value identifying the control. Standard codes the SCM may deliver include [**vbServiceControlStop**](Enumerations/ServiceControlCodeConstants#vbServiceControlStop), [**vbServiceControlShutdown**](Enumerations/ServiceControlCodeConstants#vbServiceControlShutdown), [**vbServiceControlPause**](Enumerations/ServiceControlCodeConstants#vbServiceControlPause), [**vbServiceControlContinue**](Enumerations/ServiceControlCodeConstants#vbServiceControlContinue), [**vbServiceControlInterrogate**](Enumerations/ServiceControlCodeConstants#vbServiceControlInterrogate), and the event-bearing codes ([**vbServiceControlSessionChange**](Enumerations/ServiceControlCodeConstants#vbServiceControlSessionChange), [**vbServiceControlPowerEvent**](Enumerations/ServiceControlCodeConstants#vbServiceControlPowerEvent), [**vbServiceControlDeviceEvent**](Enumerations/ServiceControlCodeConstants#vbServiceControlDeviceEvent), [**vbServiceControlHardwareProfileChange**](Enumerations/ServiceControlCodeConstants#vbServiceControlHardwareProfileChange)). User-defined codes in the range 128–255 can also be delivered through [**Services.ControlService**](Services#controlservice).
+: A [**ServiceControlCodeConstants**](Enumerations/ServiceControlCodeConstants) value identifying the control. Standard codes the SCM may deliver include [**vbServiceControlStop**](Enumerations/ServiceControlCodeConstants#vbServiceControlStop), [**vbServiceControlShutdown**](Enumerations/ServiceControlCodeConstants#vbServiceControlShutdown), [**vbServiceControlPause**](Enumerations/ServiceControlCodeConstants#vbServiceControlPause), [**vbServiceControlContinue**](Enumerations/ServiceControlCodeConstants#vbServiceControlContinue), [**vbServiceControlInterrogate**](Enumerations/ServiceControlCodeConstants#vbServiceControlInterrogate), and the event-bearing codes ([**vbServiceControlSessionChange**](Enumerations/ServiceControlCodeConstants#vbServiceControlSessionChange), [**vbServiceControlPowerEvent**](Enumerations/ServiceControlCodeConstants#vbServiceControlPowerEvent), [**vbServiceControlDeviceEvent**](Enumerations/ServiceControlCodeConstants#vbServiceControlDeviceEvent), [**vbServiceControlHardwareProfileChange**](Enumerations/ServiceControlCodeConstants#vbServiceControlHardwareProfileChange)). User-defined codes in the range 128--255 can also be delivered through [**Services.ControlService**](Services#controlservice).
 
 *dwEventType*
 : A **Long** holding the event-type sub-code for the codes that have one. **0** otherwise. See Microsoft's `HandlerEx` documentation for the per-code interpretation.
@@ -88,7 +88,7 @@ Select Case dwControl
 End Select
 ```
 
-[**ChangeState**](#changestate) **does not stop** [**EntryPoint**](#entrypoint) — it only delivers the SCM's request. The user's code is responsible for the actual shutdown logic, typically by setting a shared `Public` flag the service thread polls (`IsStopping`) or by calling a signal method on a blocking primitive that [**EntryPoint**](#entrypoint) owns (`NamedPipeServer.ManualMessageLoopLeave`, `SetEvent` on a Win32 event handle, ...).
+[**ChangeState**](#changestate) **does not stop** [**EntryPoint**](#entrypoint) --- it only delivers the SCM's request. The user's code is responsible for the actual shutdown logic, typically by setting a shared `Public` flag the service thread polls (`IsStopping`) or by calling a signal method on a blocking primitive that [**EntryPoint**](#entrypoint) owns (`NamedPipeServer.ManualMessageLoopLeave`, `SetEvent` on a Win32 event handle, ...).
 
 The method runs on a different thread than [**EntryPoint**](#entrypoint); see [The two-thread split](.#two-thread-split) for the coordination rules.
 
@@ -124,7 +124,7 @@ Syntax: *service*.**StartupFailed** *ServiceManager*
 *ServiceManager*
 : The [**ServiceManager**](ServiceManager) for this service.
 
-This sub fires when `RegisterServiceCtrlHandlerExW` returns a zero handle — typically because the service was launched outside the SCM context, or the SCM's `RegisterServiceCtrlHandlerExW` rejected the registration. The service has no SCM status handle in this state, so [**ServiceManager.ReportStatus**](ServiceManager#reportstatus) cannot be called from inside **StartupFailed** — calling it raises run-time error 5.
+This sub fires when `RegisterServiceCtrlHandlerExW` returns a zero handle --- typically because the service was launched outside the SCM context, or the SCM's `RegisterServiceCtrlHandlerExW` rejected the registration. The service has no SCM status handle in this state, so [**ServiceManager.ReportStatus**](ServiceManager#reportstatus) cannot be called from inside **StartupFailed** --- calling it raises run-time error 5.
 
 The typical implementation is a logging-only hook so the failure is recorded somewhere a developer can find it later:
 
@@ -135,7 +135,7 @@ Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
 End Sub
 ```
 
-If there is no useful failure-reporting hook to add, an empty implementation is fine — the SCM has already abandoned the start attempt at this point and no recovery is possible.
+If there is no useful failure-reporting hook to add, an empty implementation is fine --- the SCM has already abandoned the start attempt at this point and no recovery is possible.
 
 ## See Also
 

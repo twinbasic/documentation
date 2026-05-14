@@ -98,4 +98,4 @@ The passed in Serializer object offers a `Deserialize()` method that you call to
 ***
 ## See also
 
-- [CustomControls package reference](../../tB/Packages/CustomControls/) — the full reference for the framework half (interfaces, callback objects, the [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) drawing surface, the [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) serializer) and the built-in `Waynes…` controls built on it.
+- [CustomControls package reference](../../tB/Packages/CustomControls/) -- the full reference for the framework half (interfaces, callback objects, the [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) drawing surface, the [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) serializer) and the built-in `Waynes…` controls built on it.

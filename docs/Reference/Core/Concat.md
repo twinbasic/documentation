@@ -27,14 +27,14 @@ If an *expression* is not a string, it is converted to a **String** variant. The
 
 If both expressions are **Null**, *result* is **Null**. However, if only one *expression* is **Null**, that expression is treated as a zero-length string (`""`) when concatenated with the other expression. Any expression that is **Empty** is also treated as a zero-length string.
 
-Prefer **&** over [**+**](Plus) for joining strings: **+** is also the addition operator, so its meaning depends on the operand types and can silently switch between arithmetic and concatenation. **&** is unambiguous — it always concatenates.
+Prefer **&** over [**+**](Plus) for joining strings: **+** is also the addition operator, so its meaning depends on the operand types and can silently switch between arithmetic and concatenation. **&** is unambiguous --- it always concatenates.
 
 > [!NOTE]
 > When **&** immediately follows a variable name (for example `x&`), it is parsed as the **Long** type-suffix on the identifier rather than the concatenation operator. Always put a space before **&** when concatenating: `Result = x & y`, not `Result = x& y`.
 
 ### Compound assignment
 
-`x &= y` is the twinBASIC shorthand for `x = x & y`. *y* is converted to **String** before being appended; if both sides are already **String**, the result stays **String**. **&=** is a statement, not an expression — it does not produce a value.
+`x &= y` is the twinBASIC shorthand for `x = x & y`. *y* is converted to **String** before being appended; if both sides are already **String**, the result stays **String**. **&=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Path As String = "C:\Users"

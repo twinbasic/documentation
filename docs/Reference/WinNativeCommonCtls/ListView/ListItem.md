@@ -11,7 +11,7 @@ has_toc: false
 
 A **ListItem** is a single row in a [**ListView**](.). Returned from [**ListItems.Add**](ListItems#add) and from [**ListItems.Item**](ListItems#item). In **lvwReport** view, the first column is the main label ([**Text**](#text)); subsequent columns are exposed through [**SubItems**](#subitemsindex)(*index*).
 
-The class is tagged `[COMCreatable(False)]` — user code accesses **ListItem** instances through the parent [**ListView**](.)'s [**ListItems**](ListItems) collection, never by direct instantiation.
+The class is tagged `[COMCreatable(False)]` --- user code accesses **ListItem** instances through the parent [**ListView**](.)'s [**ListItems**](ListItems) collection, never by direct instantiation.
 
 ```tb
 Dim item As ListItem = ListView1.ListItems.Add(, "doc1", "Report.docx", "doc")
@@ -30,7 +30,7 @@ Properties
 ### BackColor
 {: .no_toc }
 
-The background color used to render this row. **OLE_COLOR**. Default: `-1` (transparent — defer to [**ListView.BackColor**](#backcolor)).
+The background color used to render this row. **OLE_COLOR**. Default: `-1` (transparent --- defer to [**ListView.BackColor**](#backcolor)).
 
 ### Bold
 {: .no_toc }
@@ -45,7 +45,7 @@ Whether the row's checkbox is checked. **Boolean**. Only meaningful when [**List
 ### EnsureVisible
 {: .no_toc }
 
-Scrolls the listview so this row is visible. Available as a method (not a property — listed in the methods section below).
+Scrolls the listview so this row is visible. Available as a method (not a property --- listed in the methods section below).
 
 ### ForeColor
 {: .no_toc }
@@ -65,7 +65,7 @@ The pixel height of the row's selection rectangle. **Single**, read-only.
 ### Icon
 {: .no_toc }
 
-The large icon for the row in [**lvwIcon**](.#listviewconstants) view. **Variant** — either a 1-based **Long** index into [**ListView.Icons**](.#icons), or a **String** key. Assignment validates against the bound image list and raises run-time error 35601 (*"Element not found"*) for an unknown key, 35600 (*"Index out of bounds"*) for an out-of-range index, or 35613 (*"ImageList must be initialized before it can be used"*) if no image list is bound.
+The large icon for the row in [**lvwIcon**](.#listviewconstants) view. **Variant** --- either a 1-based **Long** index into [**ListView.Icons**](.#icons), or a **String** key. Assignment validates against the bound image list and raises run-time error 35601 (*"Element not found"*) for an unknown key, 35600 (*"Index out of bounds"*) for an out-of-range index, or 35613 (*"ImageList must be initialized before it can be used"*) if no image list is bound.
 
 ### Index
 {: .no_toc }
@@ -90,7 +90,7 @@ Whether the row is selected. **Boolean**, read/write. Setting **Selected = True*
 ### SmallIcon
 {: .no_toc }
 
-The small icon for the row in non-icon views. **Variant** — either an index or a key into [**ListView.SmallIcons**](.#smallicons). Same validation as [**Icon**](#icon).
+The small icon for the row in non-icon views. **Variant** --- either an index or a key into [**ListView.SmallIcons**](.#smallicons). Same validation as [**Icon**](#icon).
 
 ### SubItems(Index)
 {: #subitemsindex .no_toc }
@@ -131,7 +131,7 @@ Methods
 {: .no_toc }
 
 > [!NOTE]
-> **CreateDragImage** is tagged `[Unimplemented]` in the current source. Calling it has no useful effect — the body is empty.
+> **CreateDragImage** is tagged `[Unimplemented]` in the current source. Calling it has no useful effect --- the body is empty.
 
 ### EnsureVisible
 {: .no_toc }

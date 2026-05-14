@@ -9,11 +9,11 @@ has_toc: false
 
 # WebView2 Package
 
-The **WebView2Package** wraps the Microsoft Edge WebView2 runtime and exposes it as an ordinary twinBASIC control. Drop a [**WebView2**](WebView2/) onto a form and the running Edge engine renders web content inside it — navigate to URLs, run JavaScript, intercept HTTP requests, post messages between BASIC and JavaScript, and print pages to PDF.
+The **WebView2Package** wraps the Microsoft Edge WebView2 runtime and exposes it as an ordinary twinBASIC control. Drop a [**WebView2**](WebView2/) onto a form and the running Edge engine renders web content inside it --- navigate to URLs, run JavaScript, intercept HTTP requests, post messages between BASIC and JavaScript, and print pages to PDF.
 
 The package is a built-in package shipped with twinBASIC. See the [WebView2 tutorials](../../../Tutorials/WebView2/) for how to reference it in a project, and worked samples.
 
-Beyond the control itself, the package exposes a small set of wrapper objects that appear inside the control's event arguments — the request / response pair on **WebResourceRequested**, the request-header collection on **NavigationStarting**, the environment-options object configured before **Create** — together with the `wv2…` enumerations used to spell out option values.
+Beyond the control itself, the package exposes a small set of wrapper objects that appear inside the control's event arguments --- the request / response pair on **WebResourceRequested**, the request-header collection on **NavigationStarting**, the environment-options object configured before **Create** --- together with the `wv2…` enumerations used to spell out option values.
 
 ## Classes
 
@@ -21,9 +21,9 @@ Beyond the control itself, the package exposes a small set of wrapper objects th
 - [WebView2EnvironmentOptions](WebView2/EnvironmentOptions) -- pre-creation configuration for the WebView2 environment (user-data folder, executable folder, locale, tracking-prevention, …); reached via the control's **EnvironmentOptions** property
 - [WebView2Header](WebView2Header) -- one HTTP header (Name / Value); the element type yielded by header iteration
 - [WebView2HeadersCollection](WebView2HeadersCollection) -- enumerable wrapper used by `For Each` over request / response headers
-- [WebView2Request](WebView2Request) -- the request side of a **WebResourceRequested** event — **Method**, **Uri**, **Headers**, and the request body as bytes or UTF-8 text
+- [WebView2Request](WebView2Request) -- the request side of a **WebResourceRequested** event -- **Method**, **Uri**, **Headers**, and the request body as bytes or UTF-8 text
 - [WebView2RequestHeaders](WebView2RequestHeaders) -- mutable request-header collection passed to **NavigationStarting** and reached via **WebView2Request.Headers**
-- [WebView2Response](WebView2Response) -- the response side of a **WebResourceRequested** event — **StatusCode**, **ReasonPhrase**, **Headers**, and the body as bytes or UTF-8 text
+- [WebView2Response](WebView2Response) -- the response side of a **WebResourceRequested** event -- **StatusCode**, **ReasonPhrase**, **Headers**, and the body as bytes or UTF-8 text
 - [WebView2ResponseHeaders](WebView2ResponseHeaders) -- mutable response-header collection reached via **WebView2Response.Headers**
 
 ## Enumerations

@@ -8,9 +8,9 @@ has_toc: false
 # WaynesTimer class
 {: .no_toc }
 
-A non-visual timer control. Wraps an internal [**CustomControlTimer**](Framework/CustomControlTimer) and exposes its [**Interval**](#interval) / [**Enabled**](#enabled) as designer-visible properties — drop a **WaynesTimer** onto a [**WaynesForm**](WaynesForm/) at design time, set the interval, and handle the [**Timer**](#timer) event to run code on a repeating schedule.
+A non-visual timer control. Wraps an internal [**CustomControlTimer**](Framework/CustomControlTimer) and exposes its [**Interval**](#interval) / [**Enabled**](#enabled) as designer-visible properties --- drop a **WaynesTimer** onto a [**WaynesForm**](WaynesForm/) at design time, set the interval, and handle the [**Timer**](#timer) event to run code on a repeating schedule.
 
-At design time the control paints a 🕑 clock-face glyph centred in its rectangle, on a pale grey background, scaled to fit the control. At run time the control is invisible — its visible **Width** and **Height** are clamped to 32×32 on initialize but the control itself draws nothing.
+At design time the control paints a 🕑 clock-face glyph centred in its rectangle, on a pale grey background, scaled to fit the control. At run time the control is invisible --- its visible **Width** and **Height** are clamped to 32×32 on initialize but the control itself draws nothing.
 
 ```tb
 Private Sub Form_Load()

@@ -7,7 +7,7 @@ permalink: /tB/Packages/VBRUN/Constants/ApplicationStartConstants
 # ApplicationStartConstants
 {: .no_toc }
 
-Mode values reported by the application's start-up logic — whether it was launched as a stand-alone program or invoked via Automation by another application.
+Mode values reported by the application's start-up logic --- whether it was launched as a stand-alone program or invoked via Automation by another application.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

@@ -10,7 +10,7 @@ has_toc: false
 
 # AmbientProperties class
 
-The **AmbientProperties** object exposes information about the environment in which a control is hosted. The container — a form, a property page, the IDE designer surface — populates this object with hints about its appearance, locale, and operating mode so that an embedded control can adapt itself to fit in. Every property is read-only: the container, not the control, decides what these values should be.
+The **AmbientProperties** object exposes information about the environment in which a control is hosted. The container --- a form, a property page, the IDE designer surface --- populates this object with hints about its appearance, locale, and operating mode so that an embedded control can adapt itself to fit in. Every property is read-only: the container, not the control, decides what these values should be.
 
 ## Detecting design-time versus run-time
 
@@ -32,11 +32,11 @@ The container suggests a default colour scheme and typeface so that embedded con
 
 ## Layout and other UI hints
 
-[**ScaleUnits**](ScaleUnits) names the unit of measure the container uses to size itself — for example `"Twip"` or `"Pixel"`. [**SupportsMnemonics**](SupportsMnemonics) is **True** when the container will dispatch keyboard mnemonics — the underlined letters following an `&` — to its controls. [**DisplayAsDefault**](DisplayAsDefault) is **True** if the container is treating this control as its default control, so the control can paint itself with a heavier border. [**MessageReflect**](MessageReflect) indicates whether the container reflects window messages addressed to the control back to the control's own message handler.
+[**ScaleUnits**](ScaleUnits) names the unit of measure the container uses to size itself --- for example `"Twip"` or `"Pixel"`. [**SupportsMnemonics**](SupportsMnemonics) is **True** when the container will dispatch keyboard mnemonics --- the underlined letters following an `&` --- to its controls. [**DisplayAsDefault**](DisplayAsDefault) is **True** if the container is treating this control as its default control, so the control can paint itself with a heavier border. [**MessageReflect**](MessageReflect) indicates whether the container reflects window messages addressed to the control back to the control's own message handler.
 
 ## Locale and identity
 
-[**LocaleID**](LocaleID) returns the Locale ID of the container, so a control can format text and numbers consistently with its host. [**DisplayName**](DisplayName) returns the name the container has assigned to the control — a useful string for error messages or property browsers.
+[**LocaleID**](LocaleID) returns the Locale ID of the container, so a control can format text and numbers consistently with its host. [**DisplayName**](DisplayName) returns the name the container has assigned to the control --- a useful string for error messages or property browsers.
 
 ## Members
 

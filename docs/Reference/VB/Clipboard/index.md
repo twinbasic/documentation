@@ -8,7 +8,7 @@ has_toc: false
 # Clipboard class
 {: .no_toc }
 
-The **Clipboard** class wraps the system clipboard — the Win32 inter-application copy-and-paste API — and exposes it as a singleton object. Code reads and writes text, queries which formats are currently available, and (eventually — see [the picture caveat](#picture-data)) reads and writes pictures.
+The **Clipboard** class wraps the system clipboard --- the Win32 inter-application copy-and-paste API --- and exposes it as a singleton object. Code reads and writes text, queries which formats are currently available, and (eventually --- see [the picture caveat](#picture-data)) reads and writes pictures.
 
 **Clipboard** is not creatable: there is exactly one instance per process, owned by the runtime and exposed through the [**Clipboard**](../Global/#clipboard) property on the [**Global**](../Global/) app-object. Code reaches it without qualification:
 
@@ -28,7 +28,7 @@ End If
 
 ## Formats
 
-Clipboard contents are tagged with a *format* — text, bitmap, files, rich text, and so on. The [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) enum lists the predefined formats:
+Clipboard contents are tagged with a *format* --- text, bitmap, files, rich text, and so on. The [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) enum lists the predefined formats:
 
 | Constant              | Value | Meaning                                        |
 |-----------------------|-------|------------------------------------------------|
@@ -47,7 +47,7 @@ The [**GetText**](#gettext) / [**SetText**](#settext) methods take an optional *
 
 ## Picture data
 
-The picture methods — [**GetData**](#getdata) and [**SetData**](#setdata) — are declared but not yet connected.
+The picture methods --- [**GetData**](#getdata) and [**SetData**](#setdata) --- are declared but not yet connected.
 
 > [!NOTE]
 > [**GetData**](#getdata) and [**SetData**](#setdata) are reserved for compatibility with VB6; they are not currently implemented in twinBASIC. For picture-clipboard interop, use the Win32 clipboard API (`OpenClipboard`, `GetClipboardData`, `SetClipboardData`, `CloseClipboard`) directly until the implementation lands.
@@ -84,7 +84,7 @@ Tests whether the clipboard currently contains data in the given format. Returns
 Syntax: *object*.**GetFormat**( *Format* )
 
 *Format*
-: *required* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) — the format to probe for.
+: *required* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) --- the format to probe for.
 
 ```tb
 If Clipboard.GetFormat(vbCFFiles) Then
@@ -120,7 +120,7 @@ Syntax: *object*.**SetData** *Picture* [, *Format* ]
 : *required* A **stdole.StdPicture** holding the picture to copy.
 
 *Format*
-: *optional* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) — which picture format to publish. When omitted, the format is inferred from the picture's underlying type.
+: *optional* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) --- which picture format to publish. When omitted, the format is inferred from the picture's underlying type.
 
 > [!NOTE]
 > Reserved for compatibility with VB6; not currently implemented in twinBASIC.
@@ -128,7 +128,7 @@ Syntax: *object*.**SetData** *Picture* [, *Format* ]
 ### SetText
 {: .no_toc }
 
-Places text data onto the clipboard. Note that **SetText** does *not* implicitly clear the clipboard first — call [**Clear**](#clear) explicitly to ensure that no stale data of other formats survives alongside the new value.
+Places text data onto the clipboard. Note that **SetText** does *not* implicitly clear the clipboard first --- call [**Clear**](#clear) explicitly to ensure that no stale data of other formats survives alongside the new value.
 
 Syntax: *object*.**SetText** *Str* [, *Format* ]
 
@@ -136,7 +136,7 @@ Syntax: *object*.**SetText** *Str* [, *Format* ]
 : *required* The **String** to publish.
 
 *Format*
-: *optional* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) — **vbCFText** (default), **vbCFUnicodeText**, **vbCFRTF**, or **vbCFLink**.
+: *optional* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) --- **vbCFText** (default), **vbCFUnicodeText**, **vbCFRTF**, or **vbCFLink**.
 
 ```tb
 Clipboard.Clear

@@ -51,7 +51,7 @@ Called once after the framework has constructed the control and deserialized any
 Syntax: *object*.**Initialize** ( *Context* )
 
 *Context*
-: *required* The [**CustomControlContext**](CustomControlContext) for this control instance. Store it (typically as a class field named **ControlContext**) — it is the only way to request repaints, create timers, or check the runtime mode after **Initialize** returns.
+: *required* The [**CustomControlContext**](CustomControlContext) for this control instance. Store it (typically as a class field named **ControlContext**) --- it is the only way to request repaints, create timers, or check the runtime mode after **Initialize** returns.
 
 A common implementation calls **Context.GetSerializer().RuntimeUISrzDeserialize(Me, False)** to load designer-set property values into the instance; if the call returns **False**, no serialized data was found and the control should apply its own defaults.
 
@@ -67,4 +67,4 @@ Syntax: *object*.**Paint** ( *Canvas* )
 
 A descriptor may include event callbacks (`OnClick`, `OnMouseDown`, …) as `AddressOf` pointers; the framework dispatches input back through those pointers without the control needing to subscribe explicitly to anything.
 
-A control should request additional repaints by calling [**CustomControlContext.Repaint**](CustomControlContext#repaint), not by calling **Paint** directly — the framework controls when to issue the actual paint pass.
+A control should request additional repaints by calling [**CustomControlContext.Repaint**](CustomControlContext#repaint), not by calling **Paint** directly --- the framework controls when to issue the actual paint pass.

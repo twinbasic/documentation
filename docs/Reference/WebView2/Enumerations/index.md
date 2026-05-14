@@ -7,7 +7,7 @@ has_toc: false
 
 # Enumerations
 
-The `wv2…` enumerations used by the **WebView2** control's properties, methods, and event arguments. Their members have the constant value defined by the underlying `COREWEBVIEW2_*` enumeration in the Edge WebView2 runtime — the comment beside each `Enum` in the source records the runtime name.
+The `wv2…` enumerations used by the **WebView2** control's properties, methods, and event arguments. Their members have the constant value defined by the underlying `COREWEBVIEW2_*` enumeration in the Edge WebView2 runtime --- the comment beside each `Enum` in the source records the runtime name.
 
 | Enumeration | Used by |
 |-------------|---------|

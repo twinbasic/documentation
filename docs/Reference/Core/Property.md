@@ -89,9 +89,9 @@ Syntax:
 *binding-clause*
 : *optional* (twinBASIC) One of three trailing clauses that bind this accessor to a member declared elsewhere:
 
-  - **Handles** *object*.*event* [ **,** *object*.*event* … ] — connects the property as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
-  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] — provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list permits one body to satisfy several interfaces' members at once. See [**Implements** statement](Implements).
-  - **Overrides** *base*.*member* — supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
+  - **Handles** *object*.*event* [ **,** *object*.*event* … ] --- connects the property as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
+  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] --- provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list permits one body to satisfy several interfaces' members at once. See [**Implements** statement](Implements).
+  - **Overrides** *base*.*member* --- supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
 
 **[Exit Property](Exit)**
 : *optional* Immediately returns from the **Property** procedure without setting a return value. Valid in **Property Get**, **Property Let**, and **Property Set**.

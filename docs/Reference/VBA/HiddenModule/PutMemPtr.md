@@ -16,7 +16,7 @@ Syntax: **PutMemPtr** *Address* **,** *Value*
 *Value*
 : *required* **LongPtr**. The pointer-sized value to store at *Address*.
 
-The number of bytes written matches the host's pointer width — four bytes in 32-bit builds, eight bytes in 64-bit builds. The bytes are written in the host's native byte order. The address is written directly with no bounds or alignment check.
+The number of bytes written matches the host's pointer width --- four bytes in 32-bit builds, eight bytes in 64-bit builds. The bytes are written in the host's native byte order. The address is written directly with no bounds or alignment check.
 
 ### See Also
 

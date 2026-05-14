@@ -35,7 +35,7 @@ The return value is one of the constants from the [**VbMsgBoxResult**](../Consta
 If the dialog box displays a **Cancel** button, pressing the ESC key has the same effect as clicking **Cancel**. When both *helpfile* and *context* are supplied, the user can press F1 to view the relevant Help topic; if the dialog also contains a **Help** button, clicking it invokes context-sensitive Help. The dialog stays open and **MsgBox** does not return until one of the non-Help buttons is clicked.
 
 > [!NOTE]
-> To pass any argument by name (other than the first), use **MsgBox** in an expression context — for example, assign its result to a variable. To skip a positional argument, include the corresponding comma delimiter.
+> To pass any argument by name (other than the first), use **MsgBox** in an expression context --- for example, assign its result to a variable. To skip a positional argument, include the corresponding comma delimiter.
 
 ### Example
 

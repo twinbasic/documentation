@@ -7,9 +7,9 @@ has_toc: false
 
 # Constants module
 
-The VBRUN **Constants** module collects the named-integer enumerations that classic VB6 forms, intrinsic controls, and runtime services use to spell out their option values — colours, mouse pointers, key codes, drag/drop states, OLE container behaviour, printer setup values, and so on. There are no standalone constants in this module; everything is grouped into an enumeration so that **IntelliSense** can offer the right options at each property or argument.
+The VBRUN **Constants** module collects the named-integer enumerations that classic VB6 forms, intrinsic controls, and runtime services use to spell out their option values --- colours, mouse pointers, key codes, drag/drop states, OLE container behaviour, printer setup values, and so on. There are no standalone constants in this module; everything is grouped into an enumeration so that **IntelliSense** can offer the right options at each property or argument.
 
-Some enumerations are tagged **\[MustBeQualified\]** in the source — their members must be referenced through the enum name (e.g. `ControlBorderStyleConstantsCustom.vbCustomBorder`) to avoid clashing with members of similarly named enumerations. This is noted on those enum's pages.
+Some enumerations are tagged **\[MustBeQualified\]** in the source --- their members must be referenced through the enum name (e.g. `ControlBorderStyleConstantsCustom.vbCustomBorder`) to avoid clashing with members of similarly named enumerations. This is noted on those enum's pages.
 
 ## Enumerations
 

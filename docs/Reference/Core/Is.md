@@ -19,7 +19,7 @@ Syntax:
 *object1*, *object2*
 : Any object references.
 
-If *object1* and *object2* both refer to the same object, *result* is **True**; if they don't, *result* is **False**. **Is** does not compare values inside the objects — it compares whether the two references point to the same instance.
+If *object1* and *object2* both refer to the same object, *result* is **True**; if they don't, *result* is **False**. **Is** does not compare values inside the objects --- it compares whether the two references point to the same instance.
 
 Two variables can be made to refer to the same object in several ways. In the following example, A has been set to refer to the same object as B:
 

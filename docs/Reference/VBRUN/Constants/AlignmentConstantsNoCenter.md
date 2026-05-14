@@ -7,7 +7,7 @@ permalink: /tB/Packages/VBRUN/Constants/AlignmentConstantsNoCenter
 # AlignmentConstantsNoCenter
 {: .no_toc }
 
-Text alignment values for properties whose appearance does not include a centred option — for example, scroll-bar–aligned values or text fields that only support left/right justification.
+Text alignment values for properties whose appearance does not include a centred option --- for example, scroll-bar--aligned values or text fields that only support left/right justification.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

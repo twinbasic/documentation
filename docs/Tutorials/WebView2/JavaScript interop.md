@@ -10,13 +10,13 @@ permalink: /Tutorials/WebView2/JavaScript-Interop
 
 The [**WebView2**](../../tB/Packages/WebView2/WebView2/) control offers three complementary bridges between twinBASIC and the JavaScript running in the page:
 
-1. **Host objects** — publish a BASIC COM object to the page so JavaScript can call its methods and read its properties as if it were any other JS object.
-2. **Messages** — push a value (string, number, array, …) in either direction and listen for it on the other side.
-3. **Scripted calls** — call a named JavaScript function from BASIC and (optionally) wait for its return value.
+1. **Host objects** --- publish a BASIC COM object to the page so JavaScript can call its methods and read its properties as if it were any other JS object.
+2. **Messages** --- push a value (string, number, array, …) in either direction and listen for it on the other side.
+3. **Scripted calls** --- call a named JavaScript function from BASIC and (optionally) wait for its return value.
 
-This tutorial covers all three, with the matching JavaScript side shown next to each BASIC side. The worked code comes from *Sample 0 — WebView2 Examples* (form *Example 2*).
+This tutorial covers all three, with the matching JavaScript side shown next to each BASIC side. The worked code comes from *Sample 0 --- WebView2 Examples* (form *Example 2*).
 
-## Bridge 1 — Host objects
+## Bridge 1 --- Host objects
 
 [**AddObject**](../../tB/Packages/WebView2/WebView2/#addobject) publishes a BASIC class instance under `chrome.webview.hostObjects.<Name>`. Define a small class with public methods or properties:
 
@@ -36,7 +36,7 @@ Private Sub WebView_Ready() Handles WebView.Ready
 End Sub
 ```
 
-JavaScript can now call into it — but the proxy is asynchronous, so the call must be `await`ed inside an `async` function:
+JavaScript can now call into it --- but the proxy is asynchronous, so the call must be `await`ed inside an `async` function:
 
 ```js
 async function testHostCalculator() {
@@ -56,7 +56,7 @@ End Sub
 
 Requires [**AreHostObjectsAllowed**](../../tB/Packages/WebView2/WebView2/#arehostobjectsallowed) (default **True**). See [Re-entrancy](Re-entrancy) for the trade-off between synchronous calls (default) and the **UseDeferredInvoke:=True** variant.
 
-## Bridge 2 — Messages
+## Bridge 2 --- Messages
 
 Messages are values that travel in either direction. Use them for notifications and ad-hoc payloads where you don't want to define a method signature ahead of time.
 
@@ -95,7 +95,7 @@ End Sub
 
 Both directions require [**IsWebMessageEnabled**](../../tB/Packages/WebView2/WebView2/#iswebmessageenabled) (default **True**).
 
-## Bridge 3 — Scripted calls
+## Bridge 3 --- Scripted calls
 
 When the page exposes named JS functions, BASIC can call them directly. There are three variants:
 
@@ -103,7 +103,7 @@ When the page exposes named JS functions, BASIC can call them directly. There ar
 |-----------------------------------------------------------------------------------|--------------------------------------------------|-------------------------------------------------------------------|
 | [**JsRun**](../../tB/Packages/WebView2/WebView2/#jsrun)                           | **Variant**, synchronously                       | You need the result inline and the JS is quick.                   |
 | [**JsRunAsync**](../../tB/Packages/WebView2/WebView2/#jsrunasync)                 | **LongLong** token; result via `JsAsyncResult`   | The JS may take a while and you don't want to block the UI.       |
-| [**ExecuteScript**](../../tB/Packages/WebView2/WebView2/#executescript)           | nothing (fire-and-forget)                        | You just want to trigger something — no return value needed.      |
+| [**ExecuteScript**](../../tB/Packages/WebView2/WebView2/#executescript)           | nothing (fire-and-forget)                        | You just want to trigger something --- no return value needed.      |
 
 ### JsRun (synchronous)
 
@@ -122,7 +122,7 @@ Dim product As Long = WebView.JsRun("multiplyTheseNumbers", 5, 6)
 Debug.Print product   ' 30
 ```
 
-The call blocks for up to [**JsCallTimeOutSeconds**](../../tB/Packages/WebView2/WebView2/#jscalltimeoutseconds) (default 0 — wait forever).
+The call blocks for up to [**JsCallTimeOutSeconds**](../../tB/Packages/WebView2/WebView2/#jscalltimeoutseconds) (default 0 --- wait forever).
 
 ### JsRunAsync (asynchronous)
 
@@ -154,16 +154,16 @@ No return value, no event. The simplest way to nudge the page into doing somethi
 
 ## Re-entrancy
 
-The Edge runtime forbids host code from calling back into the WebView2 object model while a host-object method is still executing — re-entry deadlocks the browser process. The control protects most events by deferring them through the BASIC message loop ([**UseDeferredEvents**](../../tB/Packages/WebView2/WebView2/#usedeferredevents)), but host-object method calls are synchronous by default.
+The Edge runtime forbids host code from calling back into the WebView2 object model while a host-object method is still executing --- re-entry deadlocks the browser process. The control protects most events by deferring them through the BASIC message loop ([**UseDeferredEvents**](../../tB/Packages/WebView2/WebView2/#usedeferredevents)), but host-object method calls are synchronous by default.
 
 The full discussion lives in the [Re-entrancy tutorial](Re-entrancy); the short summary is:
 
-- **`AddObject(name, obj)`** — synchronous calls; the page can read return values but the BASIC method **must not** call back into the WebView2 control.
-- **`AddObject(name, obj, UseDeferredInvoke:=True)`** — asynchronous calls; the BASIC method is free to call any WebView2 member but the page cannot read a return value.
+- **`AddObject(name, obj)`** --- synchronous calls; the page can read return values but the BASIC method **must not** call back into the WebView2 control.
+- **`AddObject(name, obj, UseDeferredInvoke:=True)`** --- asynchronous calls; the BASIC method is free to call any WebView2 member but the page cannot read a return value.
 
 ## Where next
 
-- [Hosting local web assets](Hosting-Local-Web-Assets) — bundle and serve the JavaScript that talks to the host.
-- [Driving Monaco from twinBASIC](Driving-Monaco) — a full case study using all three bridges.
-- [Re-entrancy](Re-entrancy) — the deeper story behind **UseDeferredInvoke**.
-- [WebView2 reference](../../tB/Packages/WebView2/WebView2/) — every property, method, and event.
+- [Hosting local web assets](Hosting-Local-Web-Assets) -- bundle and serve the JavaScript that talks to the host.
+- [Driving Monaco from twinBASIC](Driving-Monaco) -- a full case study using all three bridges.
+- [Re-entrancy](Re-entrancy) -- the deeper story behind **UseDeferredInvoke**.
+- [WebView2 reference](../../tB/Packages/WebView2/WebView2/) -- every property, method, and event.

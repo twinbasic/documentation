@@ -33,15 +33,15 @@ End Sub
 
 The control is built around three closely-related properties:
 
-- [**Path**](#path) — the absolute path of the *current* directory. Set it from code (or by double-clicking an entry) to navigate the list. Defaults to [**App.Path**](../App/#path) when the control is first created.
-- [**ListIndex**](#listindex) — which entry the user has *selected*. `-1` selects the current folder itself (the deepest of the ancestor entries); `0` and up select successive subdirectories. Selecting an entry is independent of navigating to it — the selection just moves the highlight.
-- [**PathSelected**](#pathselected) — the absolute path that would become **Path** if the selected entry were activated. For an ancestor entry it traverses back up the tree; for a subdirectory it concatenates **Path** and the entry's name.
+- [**Path**](#path) -- the absolute path of the *current* directory. Set it from code (or by double-clicking an entry) to navigate the list. Defaults to [**App.Path**](../App/#path) when the control is first created.
+- [**ListIndex**](#listindex) -- which entry the user has *selected*. `-1` selects the current folder itself (the deepest of the ancestor entries); `0` and up select successive subdirectories. Selecting an entry is independent of navigating to it --- the selection just moves the highlight.
+- [**PathSelected**](#pathselected) -- the absolute path that would become **Path** if the selected entry were activated. For an ancestor entry it traverses back up the tree; for a subdirectory it concatenates **Path** and the entry's name.
 
-Activating an entry — by double-clicking, or by an external caller assigning **Path** — runs the navigation, repopulates the list, and raises [**Change**](#change). Setting **Path** to its current value is a no-op (no event).
+Activating an entry --- by double-clicking, or by an external caller assigning **Path** --- runs the navigation, repopulates the list, and raises [**Change**](#change). Setting **Path** to its current value is a no-op (no event).
 
 ## List, ListCount, and NewIndex
 
-[**ListCount**](#listcount) is the number of subdirectories of the current folder (it does *not* include the ancestor entries shown above). [**List**](#list) is indexed from zero through `ListCount - 1` and returns the *full path* of the corresponding subdirectory — convenient when iterating from code:
+[**ListCount**](#listcount) is the number of subdirectories of the current folder (it does *not* include the ancestor entries shown above). [**List**](#list) is indexed from zero through `ListCount - 1` and returns the *full path* of the corresponding subdirectory --- convenient when iterating from code:
 
 ```tb
 Dim i As Long
@@ -89,7 +89,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -190,7 +190,7 @@ How the control responds to OLE drops. A restricted member of [**OLEDropConstant
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Parent
 {: .no_toc }
@@ -204,9 +204,9 @@ The absolute path of the current directory. **Default property.**
 
 Syntax: *object*.**Path** [ = *string* ]
 
-Reading **Path** returns the path the list is currently displaying — drive plus joined ancestor names. Setting **Path** repopulates the list to show the new directory and its subdirectories, raising [**Change**](#change) if the new value differs from the current one. Assigning a path that does not exist (or is not a directory) raises run-time error 76 (*Path not found*).
+Reading **Path** returns the path the list is currently displaying --- drive plus joined ancestor names. Setting **Path** repopulates the list to show the new directory and its subdirectories, raising [**Change**](#change) if the new value differs from the current one. Assigning a path that does not exist (or is not a directory) raises run-time error 76 (*Path not found*).
 
-The **DriveListBox** and **DirListBox** controls accept each other's "drive [volume label]" formatting at this property — `Dir1.Path = Drive1.Drive` does the right thing without manual stripping.
+The **DriveListBox** and **DirListBox** controls accept each other's "drive [volume label]" formatting at this property --- `Dir1.Path = Drive1.Drive` does the right thing without manual stripping.
 
 ### PathSelected
 {: .no_toc }
@@ -308,7 +308,7 @@ Syntax: *object*.**OLEDrag**
 ### Refresh
 {: .no_toc }
 
-Re-reads the contents of the current [**Path**](#path) from disk and repaints the control. Useful when the directory has been modified outside the application — the control does not watch the file system on its own. Does not raise [**Change**](#change).
+Re-reads the contents of the current [**Path**](#path) from disk and repaints the control. Useful when the directory has been modified outside the application --- the control does not watch the file system on its own. Does not raise [**Change**](#change).
 
 Syntax: *object*.**Refresh**
 
@@ -341,14 +341,14 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Change
 {: .no_toc }
 
-Raised after [**Path**](#path) has changed — whether the user double-clicked an entry or code assigned a different value to **Path**. Not raised for assignments that match the current value, and not raised during the initial population that occurs before [**Initialize**](#initialize). **Default event.**
+Raised after [**Path**](#path) has changed --- whether the user double-clicked an entry or code assigned a different value to **Path**. Not raised for assignments that match the current value, and not raised during the initial population that occurs before [**Initialize**](#initialize). **Default event.**
 
 Syntax: *object*\_**Change**( )
 
 ### Click
 {: .no_toc }
 
-Raised after [**ListIndex**](#listindex) changes — whether the user clicked a different entry, used the keyboard to move the selection, or code assigned a different value to [**ListIndex**](#listindex). Also raised when the selection is cancelled (e.g. by clicking the empty area below the last entry).
+Raised after [**ListIndex**](#listindex) changes --- whether the user clicked a different entry, used the keyboard to move the selection, or code assigned a different value to [**ListIndex**](#listindex). Also raised when the selection is cancelled (e.g. by clicking the empty area below the last entry).
 
 Syntax: *object*\_**Click**( )
 
@@ -376,7 +376,7 @@ Syntax: *object*\_**GotFocus**( )
 ### Initialize
 {: .no_toc }
 
-Raised once, immediately after the underlying window is created and the initial path ([**App.Path**](../App/#path)) has been loaded. New in twinBASIC — VB6 had no equivalent on this control.
+Raised once, immediately after the underlying window is created and the initial path ([**App.Path**](../App/#path)) has been loaded. New in twinBASIC --- VB6 had no equivalent on this control.
 
 Syntax: *object*\_**Initialize**( )
 
@@ -474,7 +474,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Scroll
 {: .no_toc }
 
-Raised when the visible portion of the list scrolls — by the scroll bar, the keyboard, or (when [**WheelScrollEvent**](#wheelscrollevent) is **True**) the mouse wheel. The new offset can be read from [**TopIndex**](#topindex).
+Raised when the visible portion of the list scrolls --- by the scroll bar, the keyboard, or (when [**WheelScrollEvent**](#wheelscrollevent) is **True**) the mouse wheel. The new offset can be read from [**TopIndex**](#topindex).
 
 Syntax: *object*\_**Scroll**( )
 

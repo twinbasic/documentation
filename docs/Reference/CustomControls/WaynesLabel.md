@@ -8,7 +8,7 @@ has_toc: false
 # WaynesLabel class
 {: .no_toc }
 
-A static text-display control. Paints a [**Caption**](#caption) string inside its rectangle using the configured [**TextRendering**](#textrendering), on top of a [**BackgroundFill**](#backgroundfill). The label has no interactive states — appearance is the same whether the mouse is hovering over it or not.
+A static text-display control. Paints a [**Caption**](#caption) string inside its rectangle using the configured [**TextRendering**](#textrendering), on top of a [**BackgroundFill**](#backgroundfill). The label has no interactive states --- appearance is the same whether the mouse is hovering over it or not.
 
 ```tb
 Private Sub Form_Load()
@@ -80,7 +80,7 @@ The unique design-time name of the control on its parent form. **String**. Inher
 ### TextRendering
 {: .no_toc }
 
-The [**TextRendering**](Styles/TextRendering) that controls how the [**Caption**](#caption) is drawn — font, padding, fill, outlines, alignment, and overflow.
+The [**TextRendering**](Styles/TextRendering) that controls how the [**Caption**](#caption) is drawn --- font, padding, fill, outlines, alignment, and overflow.
 
 ### Top
 {: .no_toc }

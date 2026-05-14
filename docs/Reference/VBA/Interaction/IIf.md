@@ -23,7 +23,7 @@ Syntax: **IIf(** *expr* **,** *truepart* **,** *falsepart* **)**
 : *required* Value or expression returned if *expr* is **False**.
 
 > [!IMPORTANT]
-> **IIf** always evaluates both *truepart* and *falsepart*, even though it returns only one of them. Watch for side effects: if the unused branch would raise an error (for example, division by zero), the error still occurs. Use the short-circuiting [**If**](If) function — a twinBASIC addition — to guard against errors in the unused branch.
+> **IIf** always evaluates both *truepart* and *falsepart*, even though it returns only one of them. Watch for side effects: if the unused branch would raise an error (for example, division by zero), the error still occurs. Use the short-circuiting [**If**](If) function --- a twinBASIC addition --- to guard against errors in the unused branch.
 
 ### Example
 

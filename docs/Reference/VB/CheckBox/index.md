@@ -37,7 +37,7 @@ End Sub
 | **vbChecked**    | 1     | The check box is selected.                             |
 | **vbGrayed**     | 2     | The check box is in an indeterminate (grey) state.     |
 
-Clicking an unchecked or grey check box selects it; clicking a checked or grey check box clears it. The grey state is reachable only from code — assign **vbGrayed** to **Value** to display it. Assigning a negative number raises run-time error 380 (*Invalid property value*).
+Clicking an unchecked or grey check box selects it; clicking a checked or grey check box clears it. The grey state is reachable only from code --- assign **vbGrayed** to **Value** to display it. Assigning a negative number raises run-time error 380 (*Invalid property value*).
 
 ```tb
 Check1.Value = vbGrayed     ' show the indeterminate state
@@ -69,7 +69,7 @@ Specifies the side of the box on which the [**Caption**](#caption) text appears.
 Syntax: *object*.**Alignment** [ = *value* ]
 
 *value*
-: A member of [**AlignmentConstantsNoCenter**](../../VBRUN/Constants/AlignmentConstantsNoCenter): **tbLeftJustify** (0, default — caption to the right of the box) or **tbRightJustify** (1 — caption to the left of the box).
+: A member of [**AlignmentConstantsNoCenter**](../../VBRUN/Constants/AlignmentConstantsNoCenter): **tbLeftJustify** (0, default --- caption to the right of the box) or **tbRightJustify** (1 --- caption to the left of the box).
 
 ### Appearance
 {: .no_toc }
@@ -84,7 +84,7 @@ The background colour, as an **OLE_COLOR**. Defaults to the system 3-D face colo
 ### Caption
 {: .no_toc }
 
-The text displayed next to the check box. An ampersand marks the next character as a mnemonic; `&&` produces a literal ampersand. The string is read directly from the underlying window — assigning to **Caption** is reflected immediately.
+The text displayed next to the check box. An ampersand marks the next character as a mnemonic; `&&` produces a literal ampersand. The string is read directly from the underlying window --- assigning to **Caption** is reflected immediately.
 
 Syntax: *object*.**Caption** [ = *string* ]
 
@@ -126,7 +126,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -197,7 +197,7 @@ How the control responds to OLE drops. A restricted member of [**OLEDropConstant
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Padding
 {: .no_toc }
@@ -371,7 +371,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Click
 {: .no_toc }
 
-Raised after [**Value**](#value) changes — whether the user clicked the box, pressed the access key, or assigned a different value in code. **Default event.**
+Raised after [**Value**](#value) changes --- whether the user clicked the box, pressed the access key, or assigned a different value in code. **Default event.**
 
 Syntax: *object*\_**Click**( )
 

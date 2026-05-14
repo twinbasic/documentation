@@ -8,7 +8,7 @@ has_toc: false
 # DebugConsole class
 {: .no_toc }
 
-The IDE's DEBUG CONSOLE pane — reached through [**Host.DebugConsole**](Host#debugconsole). The canonical place for an addin to write diagnostic and log output.
+The IDE's DEBUG CONSOLE pane --- reached through [**Host.DebugConsole**](Host#debugconsole). The canonical place for an addin to write diagnostic and log output.
 
 ```tb
 With Host.DebugConsole
@@ -18,7 +18,7 @@ With Host.DebugConsole
 End With
 ```
 
-The pane is shared across the IDE's own output and every addin's output — prefix log lines with an addin tag (e.g. `"[MyAddIn] "`) so users can distinguish the sources.
+The pane is shared across the IDE's own output and every addin's output --- prefix log lines with an addin tag (e.g. `"[MyAddIn] "`) so users can distinguish the sources.
 
 * TOC
 {:toc}
@@ -43,7 +43,7 @@ Syntax: *debugConsole*.**PrintText** *Prompt* [, *ColorRGB* ]
 : *required* The text to print. **String**.
 
 *ColorRGB*
-: *optional* The text colour as an RGB **Long** (use the `RGB(r, g, b)` function to construct one). Default 0 — the IDE's default DEBUG CONSOLE foreground colour.
+: *optional* The text colour as an RGB **Long** (use the `RGB(r, g, b)` function to construct one). Default 0 --- the IDE's default DEBUG CONSOLE foreground colour.
 
 ```tb
 Host.DebugConsole.PrintText "Operation completed"                           ' default colour
@@ -53,6 +53,6 @@ Host.DebugConsole.PrintText "Warning: something looks off", RGB(255, 128, 0) ' o
 ### SetFocus
 {: .no_toc }
 
-Gives keyboard focus to the DEBUG CONSOLE's text-entry point — equivalent to the user clicking into the console.
+Gives keyboard focus to the DEBUG CONSOLE's text-entry point --- equivalent to the user clicking into the console.
 
 Syntax: *debugConsole*.**SetFocus**

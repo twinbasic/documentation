@@ -9,7 +9,7 @@ has_toc: false
 # CustomFormContext class
 {: .no_toc }
 
-The form-class counterpart to [**CustomControlContext**](CustomControlContext). Extends the base context with **Show** and **Close** — the operations a top-level form needs that an embedded control does not.
+The form-class counterpart to [**CustomControlContext**](CustomControlContext). Extends the base context with **Show** and **Close** --- the operations a top-level form needs that an embedded control does not.
 
 [**WaynesForm**](../WaynesForm/) receives its context as a [**CustomControlContext**](CustomControlContext) (because it implements [**ICustomControl**](ICustomControl)) and casts it to **CustomFormContext** internally so that it can call **Show** from its own **Show** method and **Close** from its **Close** method.
 
@@ -23,7 +23,7 @@ End Sub
 
 ## Inherited
 
-A **CustomFormContext** includes every member from [**CustomControlContext**](CustomControlContext) — [**ChangeFocusedElement**](CustomControlContext#changefocusedelement), [**CreateTimer**](CustomControlContext#createtimer), [**GetSerializer**](CustomControlContext#getserializer), and [**Repaint**](CustomControlContext#repaint) — and adds the two form-specific members below.
+A **CustomFormContext** includes every member from [**CustomControlContext**](CustomControlContext) --- [**ChangeFocusedElement**](CustomControlContext#changefocusedelement), [**CreateTimer**](CustomControlContext#createtimer), [**GetSerializer**](CustomControlContext#getserializer), and [**Repaint**](CustomControlContext#repaint) --- and adds the two form-specific members below.
 
 ## Methods
 

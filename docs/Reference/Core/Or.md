@@ -43,7 +43,7 @@ The **Or** operator performs a bitwise comparison of identically positioned bits
 | 1 | 1 | 1 |
 
 > [!NOTE]
-> **Or** evaluates *both* operands every time, even when *expression1* alone determines the result. Use [**OrElse**](OrElse) for short-circuit evaluation — for example, when *expression2* is expensive, has side effects, or only matters when *expression1* is **False**.
+> **Or** evaluates *both* operands every time, even when *expression1* alone determines the result. Use [**OrElse**](OrElse) for short-circuit evaluation --- for example, when *expression2* is expensive, has side effects, or only matters when *expression1* is **False**.
 
 ### Example
 

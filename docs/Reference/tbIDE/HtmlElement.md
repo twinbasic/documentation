@@ -8,7 +8,7 @@ has_toc: false
 # HtmlElement class
 {: .no_toc }
 
-One DOM element inside a tool window — every node in the rendered HTML tree is reachable as an **HtmlElement**, starting from [**ToolWindow.RootDomElement**](ToolWindow#rootdomelement) and traversing down through [**ChildDomElements**](#childdomelements). Inline overlays inside a code pane (created with [**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)) also appear as **HtmlElement** instances and behave identically.
+One DOM element inside a tool window --- every node in the rendered HTML tree is reachable as an **HtmlElement**, starting from [**ToolWindow.RootDomElement**](ToolWindow#rootdomelement) and traversing down through [**ChildDomElements**](#childdomelements). Inline overlays inside a code pane (created with [**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)) also appear as **HtmlElement** instances and behave identically.
 
 ```tb
 With myToolWindow.RootDomElement.ChildDomElements.Add("greeting", "h1")
@@ -20,7 +20,7 @@ With myToolWindow.RootDomElement.ChildDomElements.Add("greeting", "h1")
 End With
 ```
 
-The element's *properties* — every CSS-style property, every DOM attribute, every custom-widget extension — live inside the [**Properties**](#properties) bag, accessed through a dynamic resolution mechanism. See [Dynamic DOM property resolution](.#dynamic-dom-property-resolution) on the package overview for the underlying mechanism that makes `.style.textAlign = "center"` work without a statically-declared `style` member.
+The element's *properties* --- every CSS-style property, every DOM attribute, every custom-widget extension --- live inside the [**Properties**](#properties) bag, accessed through a dynamic resolution mechanism. See [Dynamic DOM property resolution](.#dynamic-dom-property-resolution) on the package overview for the underlying mechanism that makes `.style.textAlign = "center"` work without a statically-declared `style` member.
 
 * TOC
 {:toc}
@@ -40,9 +40,9 @@ The unique ID assigned to the element when it was created via [**HtmlElements.Ad
 ### Properties
 {: .no_toc }
 
-The element's dynamic property bag — every DOM property, every CSS-style property, every custom-widget extension lives here. **As** [**HtmlElementProperties**](HtmlElementProperties). **DefaultMember** — so `element.<name>` is equivalent to `element.Properties.<name>`.
+The element's dynamic property bag --- every DOM property, every CSS-style property, every custom-widget extension lives here. **As** [**HtmlElementProperties**](HtmlElementProperties). **DefaultMember** --- so `element.<name>` is equivalent to `element.Properties.<name>`.
 
-The bag is [`[COMExtensible(True)]`](.#dynamic-dom-property-resolution): property names are resolved against the DOM element at run time, so the accepted set is everything the underlying tag supports — refer to MDN for standard DOM properties, and to the custom-widget documentation (Chart.js, Monaco, …) for the widget-specific properties.
+The bag is [`[COMExtensible(True)]`](.#dynamic-dom-property-resolution): property names are resolved against the DOM element at run time, so the accepted set is everything the underlying tag supports --- refer to MDN for standard DOM properties, and to the custom-widget documentation (Chart.js, Monaco, …) for the widget-specific properties.
 
 ## Methods
 
@@ -78,10 +78,10 @@ End Sub
 > For the four custom-widget tags (`"chartjs"`, `"monaco"`, `"listview"`, `"virtuallistview"`), the widget-specific events (e.g. Monaco's `onDidChangeModelContent`, the listview's `onClickItem`) are registered on the **widget object**, not on the DOM element. So:
 >
 > ```tb
-> ' WRONG — listener is never reached:
+> ' WRONG --- listener is never reached:
 > monacoDivElement.AddEventListener("onDidChangeModelContent", AddressOf Handler)
 >
-> ' CORRECT — register on .editor (or .listview / .chart for the other widgets):
+> ' CORRECT --- register on .editor (or .listview / .chart for the other widgets):
 > monacoDivElement.Properties.editor.AddEventListener("onDidChangeModelContent", AddressOf Handler)
 > ```
 >
@@ -96,7 +96,7 @@ Inline HTML rendered inside a tool window can raise arbitrary event names back t
 raiseEvent(eventName, event, stopPropagation, ...customData)
 ```
 
-— pass an event name (any string), the DOM `event` object, a boolean controlling propagation, and any number of trailing custom-data values. The addin then registers a listener with the same event name through **AddEventListener**, and the custom-data values arrive on the [**HtmlEventProperties**](HtmlEventProperties) as `eventInfo.customData0`, `eventInfo.customData1`, … (numerically indexed from zero). This pattern is used heavily in sample 13 (listview) and sample 15 (Global Search) to attach handlers to per-item buttons rendered inside a listview's HTML.
+--- pass an event name (any string), the DOM `event` object, a boolean controlling propagation, and any number of trailing custom-data values. The addin then registers a listener with the same event name through **AddEventListener**, and the custom-data values arrive on the [**HtmlEventProperties**](HtmlEventProperties) as `eventInfo.customData0`, `eventInfo.customData1`, … (numerically indexed from zero). This pattern is used heavily in sample 13 (listview) and sample 15 (Global Search) to attach handlers to per-item buttons rendered inside a listview's HTML.
 
 ### Remove
 {: .no_toc }

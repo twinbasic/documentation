@@ -18,7 +18,7 @@ Syntax: *object*.**Clear**
 >
 > **Clear** is a twinBASIC extension; the classic VBA **Collection** object has no **Clear** method. The same effect in VBA requires repeatedly removing the first item until the collection is empty.
 
-**Clear** resets a **Collection** to its initial, empty state — useful when the object is to be reused without creating a new instance.
+**Clear** resets a **Collection** to its initial, empty state --- useful when the object is to be reused without creating a new instance.
 
 ### Example
 

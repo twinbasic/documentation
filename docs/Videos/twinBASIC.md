@@ -16,7 +16,7 @@ permalink: /Videos/tB
     referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
 </iframe>
 
-Introducing "twinBASIC for applications" – the game-changing drop-in replacement for VBA (and VBA SDK). See our proof of concept inside MS ACCESS in action! 🚀👨‍💻👩‍💻
+Introducing "twinBASIC for applications" -- the game-changing drop-in replacement for VBA (and VBA SDK). See our proof of concept inside MS ACCESS in action! 🚀👨‍💻👩‍💻
 
 We posted this video on X last month but forgot to post it also on YT, so here you go :)
 

@@ -8,7 +8,7 @@ has_toc: false
 # QRCode class
 {: .no_toc }
 
-A **QRCode** is a windowless lightweight control that renders a QR code generated from its [**Payload**](#payload) — a URL, plain text, or a raw byte array. The encoding is performed in-process by the embedded `qrcodegen` library and the resulting matrix is painted directly on the parent at design time and at run time. The picture is regenerated automatically whenever any of the encoding properties changes, so a QR control can be wired up declaratively to data bindings or to other UI state with no plumbing.
+A **QRCode** is a windowless lightweight control that renders a QR code generated from its [**Payload**](#payload) --- a URL, plain text, or a raw byte array. The encoding is performed in-process by the embedded `qrcodegen` library and the resulting matrix is painted directly on the parent at design time and at run time. The picture is regenerated automatically whenever any of the encoding properties changes, so a QR control can be wired up declaratively to data bindings or to other UI state with no plumbing.
 
 Like [**Image**](../Image), a QRCode has no `hWnd` and is not focusable. It is the right choice for embedding a scannable code in a form (login, payment, Wi-Fi credentials, contact card, app deep link, etc.) without paying for a heavy [**PictureBox**](../PictureBox).
 
@@ -41,9 +41,9 @@ For a QR code that needs any of those, host the **QRCode** inside a [**PictureBo
 
 ## Encoding the payload
 
-The [**Payload**](#payload) property is a **Variant** that accepts either a **String** (text or URL) or a one-dimensional **Byte()** array (for binary data). The encoder picks the most compact segment mode automatically — numeric, alphanumeric, or byte — based on the contents of the string; for a byte array the byte mode is used unconditionally and the data is encoded verbatim. Empty payloads clear [**Picture**](#picture) to **Nothing**; at design time the rectangle then shows a *(no payload text)* placeholder.
+The [**Payload**](#payload) property is a **Variant** that accepts either a **String** (text or URL) or a one-dimensional **Byte()** array (for binary data). The encoder picks the most compact segment mode automatically --- numeric, alphanumeric, or byte --- based on the contents of the string; for a byte array the byte mode is used unconditionally and the data is encoded verbatim. Empty payloads clear [**Picture**](#picture) to **Nothing**; at design time the rectangle then shows a *(no payload text)* placeholder.
 
-The QR code is regenerated whenever [**Payload**](#payload), [**ForeColor**](#forecolor), [**ModuleSize**](#modulesize), [**SquareModules**](#squaremodules), [**EccMode**](#eccmode), [**EccBoost**](#eccboost), [**MinVersion**](#minversion), [**MaxVersion**](#maxversion), or [**MaskType**](#masktype) changes, and the new picture becomes visible through [**Picture**](#picture). [**Refresh**](#refresh) only repaints — it does not force re-encoding.
+The QR code is regenerated whenever [**Payload**](#payload), [**ForeColor**](#forecolor), [**ModuleSize**](#modulesize), [**SquareModules**](#squaremodules), [**EccMode**](#eccmode), [**EccBoost**](#eccboost), [**MinVersion**](#minversion), [**MaxVersion**](#maxversion), or [**MaskType**](#masktype) changes, and the new picture becomes visible through [**Picture**](#picture). [**Refresh**](#refresh) only repaints --- it does not force re-encoding.
 
 ## Error correction
 
@@ -56,19 +56,19 @@ QR codes embed a Reed-Solomon parity stream that lets the decoder recover from d
 | **vbQRCodegenEccQuartile**      | 2     | 25%              |
 | **vbQRCodegenEccHigh**          | 3     | 30%              |
 
-When [**EccBoost**](#eccboost) is **True** (default), the encoder raises the parity level beyond the configured minimum if doing so still fits the payload in the same QR version — automatically achieving better resilience.
+When [**EccBoost**](#eccboost) is **True** (default), the encoder raises the parity level beyond the configured minimum if doing so still fits the payload in the same QR version --- automatically achieving better resilience.
 
 ## Version and mask
 
 The QR-code *version* (1 to 40) sets the matrix size: version 1 is 21 × 21 modules, version 40 is 177 × 177. [**MinVersion**](#minversion) and [**MaxVersion**](#maxversion) constrain the encoder's search; it picks the smallest version in the range that fits the payload at the chosen [**EccMode**](#eccmode). The defaults (`1` and `40`) span the full range. Values outside `1..40` are clamped, and if **MinVersion** ends up greater than **MaxVersion** it is reset to `1`.
 
-[**MaskType**](#masktype) selects one of eight masks applied to the matrix to break up patterns that confuse the scanner. **vbQRCodegenMaskAuto** (-1, default) picks the mask with the best penalty score; the eight named values **vbQRCodegenMask0** through **vbQRCodegenMask7** force a specific one — useful for reproducibility.
+[**MaskType**](#masktype) selects one of eight masks applied to the matrix to break up patterns that confuse the scanner. **vbQRCodegenMaskAuto** (-1, default) picks the mask with the best penalty score; the eight named values **vbQRCodegenMask0** through **vbQRCodegenMask7** force a specific one --- useful for reproducibility.
 
 ## Module rendering
 
 [**ModuleSize**](#modulesize) is the pixel size of one module of the generated [**Picture**](#picture). Default `120`. The picture is rescaled down to the control's rectangle at paint time, so the choice of [**ModuleSize**](#modulesize) only matters when the picture is being saved or pulled out for use elsewhere (clipboard, drag-drop, **SavePicture**, …).
 
-[**SquareModules**](#squaremodules) chooses how each module is drawn in the picture: as a filled square (**True**, default) or as a filled circle (**False** — a stylistic choice that most scanners still tolerate).
+[**SquareModules**](#squaremodules) chooses how each module is drawn in the picture: as a filled square (**True**, default) or as a filled circle (**False** --- a stylistic choice that most scanners still tolerate).
 
 [**Square**](#square), in contrast, controls the rendering of the picture *on the control*: with **True** (default) the picture is letter-boxed and centred so it stays square regardless of the control's aspect ratio; with **False** the picture is stretched to fill the rectangle.
 
@@ -80,22 +80,22 @@ The QR-code *version* (1 to 40) sets the matrix size: version 1 is 21 × 21 modu
 
 A **QRCode** supports both ends of an OLE drag-drop operation:
 
-- [**OLEDragMode**](#oledragmode) controls the source side. With **vbOLEDragAutomatic**, holding the mouse over the control and beginning a drag automatically copies the current [**Picture**](#picture) into the resulting **DataObject** — convenient for dragging the generated QR onto another picture display or out to a file in Explorer. With **vbOLEDragManual** (default) drags must be initiated by calling [**OLEDrag**](#oledrag) from a [**MouseDown**](#mousedown) handler.
-- [**OLEDropMode**](#oledropmode) controls the destination side. With **vbOLEDropManual** the [**OLEDragOver**](#oledragover) and [**OLEDragDrop**](#oledragdrop) events fire so the application can decide what to do — for example, set [**Payload**](#payload) to the dropped text. **vbOLEDropAutomatic** is not supported on a **QRCode** and assigning it raises run-time error 5 (*Invalid procedure call or argument*).
+- [**OLEDragMode**](#oledragmode) controls the source side. With **vbOLEDragAutomatic**, holding the mouse over the control and beginning a drag automatically copies the current [**Picture**](#picture) into the resulting **DataObject** -- convenient for dragging the generated QR onto another picture display or out to a file in Explorer. With **vbOLEDragManual** (default) drags must be initiated by calling [**OLEDrag**](#oledrag) from a [**MouseDown**](#mousedown) handler.
+- [**OLEDropMode**](#oledropmode) controls the destination side. With **vbOLEDropManual** the [**OLEDragOver**](#oledragover) and [**OLEDragDrop**](#oledragdrop) events fire so the application can decide what to do -- for example, set [**Payload**](#payload) to the dropped text. **vbOLEDropAutomatic** is not supported on a **QRCode** and assigning it raises run-time error 5 (*Invalid procedure call or argument*).
 
 ## Data binding
 
 Setting [**DataSource**](#datasource) and [**DataField**](#datafield) connects the control to a field of a [**Data**](../Data) control's recordset. Binding is asymmetric:
 
 - *Inbound* (recordset → control): non-null, non-empty field values are interpreted as text and assigned to [**Payload**](#payload); the QR is then re-encoded and repainted. Null and empty values clear [**Picture**](#picture) to **Nothing**.
-- *Outbound* (control → recordset): the current QR [**Picture**](#picture) is serialised as a byte array and written back to the bound field — useful for storing a snapshot of the rendered code, but note that what comes out of the binding is not the same as what went in.
+- *Outbound* (control → recordset): the current QR [**Picture**](#picture) is serialised as a byte array and written back to the bound field --- useful for storing a snapshot of the rendered code, but note that what comes out of the binding is not the same as what went in.
 
 ## Properties
 
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the control's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the control's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Appearance
 {: .no_toc }
@@ -110,12 +110,12 @@ The style of border drawn around the rectangle. A member of [**ControlBorderStyl
 ### Container
 {: .no_toc }
 
-The control that hosts this **QRCode** — typically the form, a [**Frame**](../Frame), a [**PictureBox**](../PictureBox), or a **UserControl**. Read with **Get**, change with **Set**.
+The control that hosts this **QRCode** --- typically the form, a [**Frame**](../Frame), a [**PictureBox**](../PictureBox), or a **UserControl**. Read with **Get**, change with **Set**.
 
 ### ControlType
 {: .no_toc }
 
-A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstants) value identifying the underlying control kind. Always **vbImage** — the QRCode shares its control-type tag with [**Image**](../Image).
+A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstants) value identifying the underlying control kind. Always **vbImage** --- the QRCode shares its control-type tag with [**Image**](../Image).
 
 ### DataChanged
 {: .no_toc }
@@ -155,7 +155,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself (the manual VB-drag form, distinct from OLE drag) when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself (the manual VB-drag form, distinct from OLE drag) when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### EccBoost
 {: .no_toc }
@@ -184,7 +184,7 @@ Determines whether the control accepts mouse input. A disabled **QRCode** still 
 ### ForeColor
 {: .no_toc }
 
-The colour of the dark modules in the generated QR code, as an **OLE_COLOR**. Default **vbBlack**. The light modules are always transparent — the control's parent shows through them, so place the **QRCode** over a contrasting background.
+The colour of the dark modules in the generated QR code, as an **OLE_COLOR**. Default **vbBlack**. The light modules are always transparent --- the control's parent shows through them, so place the **QRCode** over a contrasting background.
 
 ### Height
 {: .no_toc }
@@ -204,7 +204,7 @@ The horizontal distance from the left edge of the container to the left edge of 
 ### MaskType
 {: .no_toc }
 
-The mask applied to the encoded matrix to break up patterns that confuse the scanner. A member of **QRCodegenMaskConstants** (defined in the VB package): **vbQRCodegenMaskAuto** (-1, default — pick the mask with the lowest penalty score) or one of **vbQRCodegenMask0** … **vbQRCodegenMask7** (force the corresponding numbered mask). Out-of-range values fall back to **vbQRCodegenMaskAuto**.
+The mask applied to the encoded matrix to break up patterns that confuse the scanner. A member of **QRCodegenMaskConstants** (defined in the VB package): **vbQRCodegenMaskAuto** (-1, default --- pick the mask with the lowest penalty score) or one of **vbQRCodegenMask0** … **vbQRCodegenMask7** (force the corresponding numbered mask). Out-of-range values fall back to **vbQRCodegenMaskAuto**.
 
 ### MaxVersion
 {: .no_toc }
@@ -239,7 +239,7 @@ The unique design-time name of the control on its parent form. Read-only at run 
 ### OLEDragMode
 {: .no_toc }
 
-Whether an OLE drag is started automatically when the user begins dragging the control. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — application calls [**OLEDrag**](#oledrag)) or **vbOLEDragAutomatic** (1 — the framework copies the current [**Picture**](#picture) into the resulting **DataObject** automatically).
+Whether an OLE drag is started automatically when the user begins dragging the control. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default --- application calls [**OLEDrag**](#oledrag)) or **vbOLEDragAutomatic** (1 --- the framework copies the current [**Picture**](#picture) into the resulting **DataObject** automatically).
 
 ### OLEDropMode
 {: .no_toc }
@@ -258,17 +258,17 @@ The data encoded in the QR code. **Variant**, default `"https://www.twinbasic.co
 
 Syntax: *object*.**Payload** [ = *value* ]
 
-Accepts a **String** for text or URL payloads, or a one-dimensional **Byte()** array for arbitrary binary data. The encoder picks the most compact segment mode automatically — numeric, alphanumeric, or byte — based on the contents of the string. Assigning an empty value clears [**Picture**](#picture) to **Nothing**.
+Accepts a **String** for text or URL payloads, or a one-dimensional **Byte()** array for arbitrary binary data. The encoder picks the most compact segment mode automatically --- numeric, alphanumeric, or byte --- based on the contents of the string. Assigning an empty value clears [**Picture**](#picture) to **Nothing**.
 
 ### Picture
 {: .no_toc }
 
-The generated QR code, as a **StdPicture**. **Default property.** Read-only — produced by the encoder from [**Payload**](#payload) and the other encoding properties. Returns **Nothing** when [**Payload**](#payload) is empty.
+The generated QR code, as a **StdPicture**. **Default property.** Read-only --- produced by the encoder from [**Payload**](#payload) and the other encoding properties. Returns **Nothing** when [**Payload**](#payload) is empty.
 
 ### Square
 {: .no_toc }
 
-Whether the generated picture is rendered with a 1:1 aspect ratio inside the control's rectangle (**True**, default — picture is centred and letter-boxed) or stretched to fill it (**False**). **Boolean**.
+Whether the generated picture is rendered with a 1:1 aspect ratio inside the control's rectangle (**True**, default --- picture is centred and letter-boxed) or stretched to fill it (**False**). **Boolean**.
 
 ### SquareModules
 {: .no_toc }
@@ -310,7 +310,7 @@ The control's width, in twips by default (or in the container's **ScaleMode** un
 ### Drag
 {: .no_toc }
 
-Begins, completes, or cancels a manual VB-style drag operation. Distinct from OLE drag — see [**OLEDrag**](#oledrag).
+Begins, completes, or cancels a manual VB-style drag operation. Distinct from OLE drag --- see [**OLEDrag**](#oledrag).
 
 Syntax: *object*.**Drag** [ *Action* ]
 
@@ -340,7 +340,7 @@ Syntax: *object*.**OLEDrag**
 ### Refresh
 {: .no_toc }
 
-Forces an immediate repaint of the control's rectangle on the parent's drawing surface. Does *not* re-encode the QR — for that, reassign [**Payload**](#payload) (or any of the encoding properties) which triggers regeneration automatically.
+Forces an immediate repaint of the control's rectangle on the parent's drawing surface. Does *not* re-encode the QR --- for that, reassign [**Payload**](#payload) (or any of the encoding properties) which triggers regeneration automatically.
 
 Syntax: *object*.**Refresh**
 

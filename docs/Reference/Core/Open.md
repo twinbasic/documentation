@@ -27,7 +27,7 @@ Syntax:
 : *optional* Keyword specifying the operations restricted on the open file by other processes: **Shared**, **Lock Read**, **Lock Write**, or **Lock Read Write**.
 
 *encoding*
-: *optional* An encoding identifier — for example **utf_8**, **utf_16**, **windows_1252_western**, or **default_system_ansi**. See [Text Encodings](#text-encodings) below for the full list. The **Encoding** clause applies to text-mode I/O (**Input**, **Output**, **Append**); it has no effect on **Binary** or **Random** mode files.
+: *optional* An encoding identifier --- for example **utf_8**, **utf_16**, **windows_1252_western**, or **default_system_ansi**. See [Text Encodings](#text-encodings) below for the full list. The **Encoding** clause applies to text-mode I/O (**Input**, **Output**, **Append**); it has no effect on **Binary** or **Random** mode files.
 
 *filenumber*
 : A valid file number in the range 1 to 511, inclusive. Use the [**FreeFile**](../Modules/FileSystem/FreeFile) function to obtain the next available file number.
@@ -107,7 +107,7 @@ Close #1
 
 ### Text Encodings
 
-These identifier strings are accepted as the **Encoding** argument. The constants listed below name the well-known encodings; other system-supported encodings with similar identifier strings are also accepted at runtime. All members are marked **[Hidden, Restricted]** — they are omitted from general IntelliSense, but the IDE shows them automatically after the **Encoding** keyword.
+These identifier strings are accepted as the **Encoding** argument. The constants listed below name the well-known encodings; other system-supported encodings with similar identifier strings are also accepted at runtime. All members are marked **[Hidden, Restricted]** --- they are omitted from general IntelliSense, but the IDE shows them automatically after the **Encoding** keyword.
 
 #### Default and Unicode
 

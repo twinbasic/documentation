@@ -9,7 +9,7 @@ has_toc: false
 # Line class
 {: .no_toc }
 
-A single stroke used to draw a grid line, divider, or resizer bar — simpler than a full [**Border**](Borders#border-class) (no blend-with-background flag, no surrounding **Elements** array). Accessed as [**WaynesGrid.VerticalLineOptions**](../WaynesGrid/#verticallineoptions), [**HorizontalLineOptions**](../WaynesGrid/#horizontallineoptions), and [**ResizerBar**](../WaynesGrid/#resizerbar).
+A single stroke used to draw a grid line, divider, or resizer bar --- simpler than a full [**Border**](Borders#border-class) (no blend-with-background flag, no surrounding **Elements** array). Accessed as [**WaynesGrid.VerticalLineOptions**](../WaynesGrid/#verticallineoptions), [**HorizontalLineOptions**](../WaynesGrid/#horizontallineoptions), and [**ResizerBar**](../WaynesGrid/#resizerbar).
 
 ```tb
 With WaynesGrid1.VerticalLineOptions

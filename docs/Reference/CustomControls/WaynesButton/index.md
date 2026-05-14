@@ -8,9 +8,9 @@ has_toc: false
 # WaynesButton class
 {: .no_toc }
 
-An owner-drawn push-button. Renders a configurable rectangle (with optional gradient fill, borders, rounded / notched / cut-out corners) and a centred [**Caption**](#caption), in one of four visual states — normal, hovered, focused, or pressed — controlled by four parallel [**WaynesButtonState**](WaynesButtonState) sub-objects.
+An owner-drawn push-button. Renders a configurable rectangle (with optional gradient fill, borders, rounded / notched / cut-out corners) and a centred [**Caption**](#caption), in one of four visual states --- normal, hovered, focused, or pressed --- controlled by four parallel [**WaynesButtonState**](WaynesButtonState) sub-objects.
 
-The button raises a [**Click**](#click) event when clicked, plus the standard set of mouse, focus, and keyboard events. By default the four state objects are pre-set with a solid mid-blue ([**WAYNESCOLOR_BLUE**](#) — `&HAC7220`) background and 15-pixel curved corners.
+The button raises a [**Click**](#click) event when clicked, plus the standard set of mouse, focus, and keyboard events. By default the four state objects are pre-set with a solid mid-blue ([**WAYNESCOLOR_BLUE**](#) --- `&HAC7220`) background and 15-pixel curved corners.
 
 ```tb
 Private Sub Form_Load()
@@ -39,7 +39,7 @@ The button paints in one of four states, chosen at each repaint:
 | [**FocusedState**](#focusedstate)  | The control has the keyboard focus and the mouse is not hovering or pressing.   |
 | [**NormalState**](#normalstate)    | None of the above.                                                              |
 
-Each state is a [**WaynesButtonState**](WaynesButtonState) — a small bundle of [**Corners**](../Styles/Corners), [**BackgroundFill**](../Styles/Fill), [**Borders**](../Styles/Borders), and [**TextRendering**](../Styles/TextRendering).
+Each state is a [**WaynesButtonState**](WaynesButtonState) --- a small bundle of [**Corners**](../Styles/Corners), [**BackgroundFill**](../Styles/Fill), [**Borders**](../Styles/Borders), and [**TextRendering**](../Styles/TextRendering).
 
 ## Properties
 
@@ -88,7 +88,7 @@ The unique design-time name of the control on its parent form. **String**. Inher
 ### NormalState
 {: .no_toc }
 
-The [**WaynesButtonState**](WaynesButtonState) used when the button is idle — not hovered, not focused, not pressed.
+The [**WaynesButtonState**](WaynesButtonState) used when the button is idle --- not hovered, not focused, not pressed.
 
 ### PressedState
 {: .no_toc }

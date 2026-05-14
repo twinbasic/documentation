@@ -49,7 +49,7 @@ Statements:
 * [On ... GoTo](../tB/Core/On-GoTo), [On ... GoSub](../tB/Core/On-GoSub) - transfer execution to a location selected by an expression
 * [Stop](../tB/Core/Stop) - interrupt execution
 
-Inline conditional functions — expression-level alternatives to the **If...Then...Else** and **Select Case** statements above:
+Inline conditional functions --- expression-level alternatives to the **If...Then...Else** and **Select Case** statements above:
 
 * [If](../tB/Modules/Interaction/If) - evaluate an expression and return one of two values; only the chosen branch is evaluated (twinBASIC addition)
 * [IIf](../tB/Modules/Interaction/IIf) - evaluate an expression and return one of two values; both branches are always evaluated

@@ -30,7 +30,7 @@ When **Write #** is used to write data to a file, several universal assumptions 
 - Nothing is written to the file if *outputlist* data is **Empty**. However, for **Null** data, `#NULL#` is written.
 - For **Error** data, the output appears as `#ERROR `*errorcode*`#`. The **Error** keyword is not translated, regardless of locale.
 
-Unlike the [**Print #**](Print) statement, the **Write #** statement inserts commas between items and quotation marks around strings as they are written to the file. Explicit delimiters in the list are not required. **Write #** inserts a newline character — that is, a carriage return-linefeed (**Chr**(13) + **Chr**(10)) — after it has written the final character in *outputlist* to the file.
+Unlike the [**Print #**](Print) statement, the **Write #** statement inserts commas between items and quotation marks around strings as they are written to the file. Explicit delimiters in the list are not required. **Write #** inserts a newline character --- that is, a carriage return-linefeed (**Chr**(13) + **Chr**(10)) --- after it has written the final character in *outputlist* to the file.
 
 > [!IMPORTANT]
 > Do not write strings that contain embedded quotation marks (for example, `"1,2""X"`) for use with the **Input #** statement; **Input #** parses this string as two complete and separate strings.

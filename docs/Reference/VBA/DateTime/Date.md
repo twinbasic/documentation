@@ -63,7 +63,7 @@ Date= MyDate                  ' Change system date.
 ## Date$ Property
 {: #date-1 }
 
-The behavior of the **Date$** property relies on the [**Calendar**](Calendar) property setting. If the calendar is Hijri, **Date$** returns or accepts a 10-character string of the form *mm-dd-yyyy*, where *mm* (01–12), *dd* (01–30) and *yyyy* (1400–1523) are the Hijri month, day, and year. The equivalent Gregorian range is Jan 1, 1980, through Dec 31, 2099.
+The behavior of the **Date$** property relies on the [**Calendar**](Calendar) property setting. If the calendar is Hijri, **Date$** returns or accepts a 10-character string of the form *mm-dd-yyyy*, where *mm* (01--12), *dd* (01--30) and *yyyy* (1400--1523) are the Hijri month, day, and year. The equivalent Gregorian range is Jan 1, 1980, through Dec 31, 2099.
 
 ### Get
 {: #date-get-1 }

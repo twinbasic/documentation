@@ -17,7 +17,7 @@ A control that displays text and does not have its own alignment explicitly set 
 
 | Value | Meaning                                                |
 |-------|--------------------------------------------------------|
-| 0     | General — numeric values right-aligned, text left-aligned |
+| 0     | General --- numeric values right-aligned, text left-aligned |
 | 1     | Left-aligned                                           |
 | 2     | Centred                                                |
 | 3     | Right-aligned                                          |

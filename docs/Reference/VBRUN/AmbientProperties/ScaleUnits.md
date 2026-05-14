@@ -13,7 +13,7 @@ Syntax: *object*.**ScaleUnits**
 *object*
 : *required* An object expression that evaluates to an **AmbientProperties** object.
 
-Common values include `"Twip"`, `"Pixel"`, `"Inch"`, `"Centimeter"`, `"Millimeter"`, `"Point"`, and `"Character"`, but the container is free to return any string and to localise it for the current language. The value is a hint for display purposes — for example, in a status bar or a property sheet — and not a fixed enumeration that should be parsed.
+Common values include `"Twip"`, `"Pixel"`, `"Inch"`, `"Centimeter"`, `"Millimeter"`, `"Point"`, and `"Character"`, but the container is free to return any string and to localise it for the current language. The value is a hint for display purposes --- for example, in a status bar or a property sheet --- and not a fixed enumeration that should be parsed.
 
 ### See Also
 

@@ -22,7 +22,7 @@ With lblTitle.TextRendering
 End With
 ```
 
-[**Fill**](#fill) can hold a gradient just as well as a solid colour, so glyphs themselves can be painted with a top-to-bottom or corner-to-corner colour transition. [**Outlines**](#outlines) is an array of [**Border**](Borders#border-class) elements stroked around the glyphs — a single thin black outline gives a "stickered" look; layering several outlines with different [**StrokeSize**](Borders#strokesize) values produces a glow or drop-shadow:
+[**Fill**](#fill) can hold a gradient just as well as a solid colour, so glyphs themselves can be painted with a top-to-bottom or corner-to-corner colour transition. [**Outlines**](#outlines) is an array of [**Border**](Borders#border-class) elements stroked around the glyphs --- a single thin black outline gives a "stickered" look; layering several outlines with different [**StrokeSize**](Borders#strokesize) values produces a glow or drop-shadow:
 
 ```tb
 With lblBanner.TextRendering
@@ -39,7 +39,7 @@ With lblBanner.TextRendering
 End With
 ```
 
-Setting [**OverflowMode**](#overflowmode) to **tbShrinkToFit** scales the glyphs down rather than truncating with an ellipsis when the text is too long for the available width — useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
+Setting [**OverflowMode**](#overflowmode) to **tbShrinkToFit** scales the glyphs down rather than truncating with an ellipsis when the text is too long for the available width --- useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
 
 * TOC
 {:toc}

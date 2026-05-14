@@ -58,19 +58,19 @@ Virtual-key codes reported in the *KeyCode* argument of **KeyDown** and **KeyUp*
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbKeyA**{: #vbKeyA } – **vbKeyZ**{: #vbKeyZ } | 65 – 90 | The letters **A** through **Z**. |
+| **vbKeyA**{: #vbKeyA } -- **vbKeyZ**{: #vbKeyZ } | 65 -- 90 | The letters **A** through **Z**. |
 
 ## Number keys
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbKey0**{: #vbKey0 } – **vbKey9**{: #vbKey9 } | 48 – 57 | The digits **0** through **9** on the main keyboard. |
+| **vbKey0**{: #vbKey0 } -- **vbKey9**{: #vbKey9 } | 48 -- 57 | The digits **0** through **9** on the main keyboard. |
 
 ## Numeric keypad
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbKeyNumpad0**{: #vbKeyNumpad0 } – **vbKeyNumpad9**{: #vbKeyNumpad9 } | 96 – 105 | The digits **0** through **9** on the numeric keypad. |
+| **vbKeyNumpad0**{: #vbKeyNumpad0 } -- **vbKeyNumpad9**{: #vbKeyNumpad9 } | 96 -- 105 | The digits **0** through **9** on the numeric keypad. |
 | **vbKeyMultiply**{: #vbKeyMultiply } | 106 | **\*** on the numeric keypad. |
 | **vbKeyAdd**{: #vbKeyAdd } | 107 | **+** on the numeric keypad. |
 | **vbKeySeparator**{: #vbKeySeparator } | 108 | Numeric-keypad separator. |
@@ -82,4 +82,4 @@ Virtual-key codes reported in the *KeyCode* argument of **KeyDown** and **KeyUp*
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbKeyF1**{: #vbKeyF1 } – **vbKeyF16**{: #vbKeyF16 } | 112 – 127 | The function keys **F1** through **F16**. |
+| **vbKeyF1**{: #vbKeyF1 } -- **vbKeyF16**{: #vbKeyF16 } | 112 -- 127 | The function keys **F1** through **F16**. |

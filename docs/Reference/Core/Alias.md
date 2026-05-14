@@ -6,7 +6,7 @@ permalink: /tB/Core/Alias
 # Alias
 {: .no_toc }
 
-Declares an alternative name for an intrinsic type, user-defined [**Type**](Type), [**Interface**](Interface), or another **Alias**. The alias and the original type are interchangeable — assigning between them is not a type mismatch. Comparable to `typedef` in C/C++.
+Declares an alternative name for an intrinsic type, user-defined [**Type**](Type), [**Interface**](Interface), or another **Alias**. The alias and the original type are interchangeable --- assigning between them is not a type mismatch. Comparable to `typedef` in C/C++.
 
 > [!NOTE]
 > The **Alias** statement is a twinBASIC extension. It has no equivalent in classic VBA, where the only use of the **Alias** keyword is to name a DLL entry point in a [**Declare**](Declare) statement.
@@ -26,7 +26,7 @@ Syntax:
 *type*
 : The original type. May be an intrinsic type, a user-defined [**Type**](Type), an [**Interface**](Interface), or another **Alias**.
 
-**Alias** statements are valid only in `.twin` source files (not legacy `.bas` or `.cls` files), and must appear at file scope — outside of [**Module**](Module) and [**Class**](Class) blocks, alongside [**Interface**](Interface) and [**CoClass**](CoClass) declarations.
+**Alias** statements are valid only in `.twin` source files (not legacy `.bas` or `.cls` files), and must appear at file scope --- outside of [**Module**](Module) and [**Class**](Class) blocks, alongside [**Interface**](Interface) and [**CoClass**](CoClass) declarations.
 
 ### Example
 

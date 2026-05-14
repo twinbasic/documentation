@@ -8,9 +8,9 @@ has_toc: false
 # Shape class
 {: .no_toc }
 
-A **Shape** is a windowless lightweight control that draws one of a fixed set of geometric primitives — rectangle, square, oval, circle, rounded rectangle, rounded square, five-pointed star, or an arrow pointing in any of the four cardinal directions — directly on its container. It exists purely for visual presentation: backgrounds, decorative artwork, panel dividers, highlighting, and any other place where a heavy [**PictureBox**](../PictureBox/) would be overkill.
+A **Shape** is a windowless lightweight control that draws one of a fixed set of geometric primitives --- rectangle, square, oval, circle, rounded rectangle, rounded square, five-pointed star, or an arrow pointing in any of the four cardinal directions --- directly on its container. It exists purely for visual presentation: backgrounds, decorative artwork, panel dividers, highlighting, and any other place where a heavy [**PictureBox**](../PictureBox/) would be overkill.
 
-A **Shape** has no interactive elements — no focus, no caption, and no mouse, keyboard, or drag events. The shape kind and its appearance are chosen entirely through properties; the only event raised by the control is [**Initialize**](#initialize). The default property is [**Shape**](#shape) and the default event is [**Initialize**](#initialize).
+A **Shape** has no interactive elements --- no focus, no caption, and no mouse, keyboard, or drag events. The shape kind and its appearance are chosen entirely through properties; the only event raised by the control is [**Initialize**](#initialize). The default property is [**Shape**](#shape) and the default event is [**Initialize**](#initialize).
 
 ```tb
 Private Sub Form_Load()
@@ -28,10 +28,10 @@ End Sub
 
 ## Windowless rendering
 
-A **Shape** has no `hWnd`. The framework paints it onto its parent's drawing surface during the parent's paint cycle, so the control is cheap — no Win32 window is created on its behalf and no per-instance overhead beyond a small piece of state. The trade-offs are the same as for any windowless control:
+A **Shape** has no `hWnd`. The framework paints it onto its parent's drawing surface during the parent's paint cycle, so the control is cheap --- no Win32 window is created on its behalf and no per-instance overhead beyond a small piece of state. The trade-offs are the same as for any windowless control:
 
 - No focus, no keyboard input, no `KeyDown` / `KeyPress` / `KeyUp` / `GotFocus` / `LostFocus` / `Validate`.
-- No mouse events of any kind — to make a region clickable, place a transparent [**Label**](../Label/) on top.
+- No mouse events of any kind --- to make a region clickable, place a transparent [**Label**](../Label/) on top.
 - No `hWnd` to pass to API functions, and no `SetFocus`.
 - Cannot host child controls.
 
@@ -44,9 +44,9 @@ For anything that needs those, use [**PictureBox**](../PictureBox/) or a custom 
 | Constant                      | Value | Drawn as                                                                    |
 |-------------------------------|-------|-----------------------------------------------------------------------------|
 | **vbShapeRectangle**          | 0     | Rectangle filling the control's bounds.                                     |
-| **vbShapeSquare**             | 1     | Square inscribed in the bounds — the shorter side determines the size, the longer side is centred. |
+| **vbShapeSquare**             | 1     | Square inscribed in the bounds --- the shorter side determines the size, the longer side is centred. |
 | **vbShapeOval**               | 2     | Ellipse filling the bounds.                                                 |
-| **vbShapeCircle**             | 3     | Circle inscribed in the bounds — the shorter side determines the diameter.  |
+| **vbShapeCircle**             | 3     | Circle inscribed in the bounds --- the shorter side determines the diameter.  |
 | **vbShapeRoundedRectangle**   | 4     | Rectangle with rounded corners; corner radius from [**RoundedCornerSize**](#roundedcornersize). |
 | **vbShapeRoundedSquare**      | 5     | Square inscribed in the bounds, with rounded corners.                       |
 | **vbShapeStar**               | 6     | Regular star polygon; configured through [**VariationA**](#variationa), [**VariationB**](#variationb), and [**VariationC**](#variationc). |
@@ -63,14 +63,14 @@ Stars and arrows are parameterised through the three **Variation** properties, a
 
 For **vbShapeStar**:
 
-- [**VariationA**](#variationa) — number of points, clamped to the inclusive range `2`–`30`. Default `5`.
-- [**VariationB**](#variationb) — inner-radius factor controlling how "thin" the star's arms are. Larger values produce thinner arms. Default chosen so the inner radius is half the outer radius.
-- [**VariationC**](#variationc) — vertex-spread divisor, an integer from `1` to `12`. Lower values produce closely-bunched points; higher values produce a more conventional star. Default `12` (effectively a divisor of `2`).
+- [**VariationA**](#variationa) -- number of points, clamped to the inclusive range `2`--`30`. Default `5`.
+- [**VariationB**](#variationb) -- inner-radius factor controlling how "thin" the star's arms are. Larger values produce thinner arms. Default chosen so the inner radius is half the outer radius.
+- [**VariationC**](#variationc) -- vertex-spread divisor, an integer from `1` to `12`. Lower values produce closely-bunched points; higher values produce a more conventional star. Default `12` (effectively a divisor of `2`).
 
 For **vbShapeArrowLeft**, **vbShapeArrowRight**, **vbShapeArrowUp**, **vbShapeArrowDown**:
 
-- [**VariationA**](#variationa) — arrowhead "height" along the arrow's axis, as a percentage (`0`–`100`) of the control's cross-axis dimension. Default `30` (i.e. `0.30`).
-- [**VariationB**](#variationb) — arrowhead "depth" along the arrow's tip-to-tail axis, as a percentage (`0`–`100`) of the control's axis dimension. Default `50` (i.e. `0.50`).
+- [**VariationA**](#variationa) -- arrowhead "height" along the arrow's axis, as a percentage (`0`--`100`) of the control's cross-axis dimension. Default `30` (i.e. `0.30`).
+- [**VariationB**](#variationb) -- arrowhead "depth" along the arrow's tip-to-tail axis, as a percentage (`0`--`100`) of the control's axis dimension. Default `50` (i.e. `0.50`).
 
 [**VariationC**](#variationc) is unused for arrows.
 
@@ -87,7 +87,7 @@ A **Shape** is painted in three logical layers:
 | Constant                  | Value | Interior                                                       |
 |---------------------------|-------|----------------------------------------------------------------|
 | **vbFSSolid**             | 0     | Filled with [**FillColor**](#fillcolor).                       |
-| **vbFSTransparent**       | 1     | No fill (default — the shape's interior shows through).        |
+| **vbFSTransparent**       | 1     | No fill (default --- the shape's interior shows through).        |
 | **vbHorizontalLine**      | 2     | Horizontal hatch in [**FillColor**](#fillcolor).               |
 | **vbVerticalLine**        | 3     | Vertical hatch in [**FillColor**](#fillcolor).                 |
 | **vbUpwardDiagonal**      | 4     | `/`-direction diagonal hatch.                                  |
@@ -103,28 +103,28 @@ The gradient styles (**vbGradientNS**, **vbGradientWE**) use the Win32 `Gradient
 
 The outline is drawn with a Win32 GDI pen:
 
-- [**BorderColor**](#bordercolor) — the pen colour (defaults to the system window-text colour).
-- [**BorderWidth**](#borderwidth) — the pen width in pixels (default `1`).
-- [**BorderStyle**](#borderstyle) — the pen pattern, as a member of [**BorderStyleConstants**](../../VBRUN/Constants/BorderStyleConstants): **vbTransparent** (0 — no outline), **vbBSSolid** (1, default), **vbBSDash** (2), **vbBSDot** (3), **vbBSDashDot** (4), **vbBSDashDotDot** (5), or **vbBSInsideSolid** (6).
+- [**BorderColor**](#bordercolor) -- the pen colour (defaults to the system window-text colour).
+- [**BorderWidth**](#borderwidth) -- the pen width in pixels (default `1`).
+- [**BorderStyle**](#borderstyle) -- the pen pattern, as a member of [**BorderStyleConstants**](../../VBRUN/Constants/BorderStyleConstants): **vbTransparent** (0 --- no outline), **vbBSSolid** (1, default), **vbBSDash** (2), **vbBSDot** (3), **vbBSDashDot** (4), **vbBSDashDotDot** (5), or **vbBSInsideSolid** (6).
 
-As with [**Line**](../Line/), GDI forces a solid pen whenever [**BorderWidth**](#borderwidth) is greater than `1` — dashed and dotted patterns are only honoured at width `1`.
+As with [**Line**](../Line/), GDI forces a solid pen whenever [**BorderWidth**](#borderwidth) is greater than `1` --- dashed and dotted patterns are only honoured at width `1`.
 
 ## Rotation
 
-[**Angle**](#angle) rotates the rendered shape around the control's top-left point, in degrees, anti-clockwise. `0` (default) is the natural orientation; `90` is a quarter turn anti-clockwise; values between `0` and `360` give arbitrary rotations. The control's bounding rectangle on the parent does not change — large rotation angles can therefore push the visible shape outside the rectangle. The rendered pixels are bounded only by the parent's clip, not by the **Shape**'s own rectangle.
+[**Angle**](#angle) rotates the rendered shape around the control's top-left point, in degrees, anti-clockwise. `0` (default) is the natural orientation; `90` is a quarter turn anti-clockwise; values between `0` and `360` give arbitrary rotations. The control's bounding rectangle on the parent does not change --- large rotation angles can therefore push the visible shape outside the rectangle. The rendered pixels are bounded only by the parent's clip, not by the **Shape**'s own rectangle.
 
-Gradient fill styles do not honour rotation — see [Background, fill, and gradients](#background-fill-and-gradients).
+Gradient fill styles do not honour rotation --- see [Background, fill, and gradients](#background-fill-and-gradients).
 
 ## Draw mode
 
-[**DrawMode**](#drawmode) selects the raster operation that combines the drawn pixels with the destination. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants): **vbCopyPen** (default — opaque drawing) or one of the XOR / AND / NOT / merge variants. Non-default modes are mainly useful for "rubber-band" feedback drawn over an existing background — the same XOR applied twice cancels itself out, restoring the original pixels.
+[**DrawMode**](#drawmode) selects the raster operation that combines the drawn pixels with the destination. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants): **vbCopyPen** (default --- opaque drawing) or one of the XOR / AND / NOT / merge variants. Non-default modes are mainly useful for "rubber-band" feedback drawn over an existing background --- the same XOR applied twice cancels itself out, restoring the original pixels.
 
 ## Properties
 
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the **Shape**'s corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the **Shape**'s corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Angle
 {: .no_toc }
@@ -159,12 +159,12 @@ The outline pen width, in pixels. **Long**, default `1`. Widths greater than `1`
 ### Container
 {: .no_toc }
 
-The control that hosts this **Shape** — typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
+The control that hosts this **Shape** --- typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
 
 ### ControlType
 {: .no_toc }
 
-A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstants) value identifying this control. Always **vbShape**. This constant is shared with the [**Line**](../Line/) control — both are windowless geometric primitives.
+A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstants) value identifying this control. Always **vbShape**. This constant is shared with the [**Line**](../Line/) control --- both are windowless geometric primitives.
 
 ### Dock
 {: .no_toc }
@@ -189,7 +189,7 @@ The secondary colour used as the end of a gradient fill. **OLE_COLOR**, defaults
 ### FillStyle
 {: .no_toc }
 
-The pattern used to fill the shape's interior, as a member of [**FillStyleConstantsEx**](../../VBRUN/Constants/FillStyleConstantsEx). Default **vbFSTransparent** (1) — the interior is not painted and shows through to the underlying parent pixels. See [Background, fill, and gradients](#background-fill-and-gradients) for the full table and the caveat for gradients combined with rotation.
+The pattern used to fill the shape's interior, as a member of [**FillStyleConstantsEx**](../../VBRUN/Constants/FillStyleConstantsEx). Default **vbFSTransparent** (1) --- the interior is not painted and shows through to the underlying parent pixels. See [Background, fill, and gradients](#background-fill-and-gradients) for the full table and the caveat for gradients combined with rotation.
 
 ### Height
 {: .no_toc }

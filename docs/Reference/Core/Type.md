@@ -20,7 +20,7 @@ Syntax:
 > **End Type**
 
 *attributes*
-: *optional* (twinBASIC) Type-level attributes. Most notably [**PackingAlignment**](Attributes#packingalignment), which sets the field-alignment value used when laying out the UDT in memory — useful for interop with C structs declared under `#pragma pack` or `#include <pshpack1.h>`.
+: *optional* (twinBASIC) Type-level attributes. Most notably [**PackingAlignment**](Attributes#packingalignment), which sets the field-alignment value used when laying out the UDT in memory --- useful for interop with C structs declared under `#pragma pack` or `#include <pshpack1.h>`.
 
 **Public**
 : *optional* Used to declare user-defined types that are available to all procedures in all modules in all projects.
@@ -100,11 +100,11 @@ twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allo
 
 | Member | Purpose |
 |:---|:---|
-| `Type_Initialize` | Constructor — runs when a variable of the type is created. |
-| `Type_Terminate` | Destructor — runs when the variable goes out of scope. |
-| `Type_Assignment` | Assignment operator — `=` assigns *RHS* to a variable of the type. The signature is `Sub Type_Assignment(ByVal RHS As ...)`, and several overloads with different *RHS* types may coexist. |
-| `Type_Conversion` | Conversion operator — produces a value of another type from the UDT. The signature is `Function Type_Conversion() As ...`, and several overloads with different return types may coexist. |
-| `Type_DebugView` | Debugger display — returns a **String** shown in the IDE's variable inspector. |
+| `Type_Initialize` | Constructor --- runs when a variable of the type is created. |
+| `Type_Terminate` | Destructor --- runs when the variable goes out of scope. |
+| `Type_Assignment` | Assignment operator --- `=` assigns *RHS* to a variable of the type. The signature is `Sub Type_Assignment(ByVal RHS As ...)`, and several overloads with different *RHS* types may coexist. |
+| `Type_Conversion` | Conversion operator --- produces a value of another type from the UDT. The signature is `Function Type_Conversion() As ...`, and several overloads with different return types may coexist. |
+| `Type_DebugView` | Debugger display --- returns a **String** shown in the IDE's variable inspector. |
 
 **API declarations inside a UDT.** A [**Declare**](Declare) statement inside a **Type** body works as a regular module-level declaration, except that when its first parameter is named `Me` and is the same type as the UDT, calls on a variable of that type pass the variable as the first argument implicitly:
 
@@ -118,7 +118,7 @@ Dim h As HWND
 h.BringWindowToTop()  ' Passes h as the first argument to the API.
 ```
 
-**Custom packing.** The [**PackingAlignment**](Attributes#packingalignment) type-level attribute controls alignment of the UDT's fields. The default packing places each field at a multiple of its own size (with trailing padding so the total size is a multiple of the largest field). Setting `[PackingAlignment(1)]` packs fields with no padding — matching `#pragma pack(push, 1)` in C.
+**Custom packing.** The [**PackingAlignment**](Attributes#packingalignment) type-level attribute controls alignment of the UDT's fields. The default packing places each field at a multiple of its own size (with trailing padding so the total size is a multiple of the largest field). Setting `[PackingAlignment(1)]` packs fields with no padding --- matching `#pragma pack(push, 1)` in C.
 
 ```tb
 [PackingAlignment(2)]

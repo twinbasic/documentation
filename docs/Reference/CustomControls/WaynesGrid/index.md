@@ -8,7 +8,7 @@ has_toc: false
 # WaynesGrid class
 {: .no_toc }
 
-A tabular data display — a grid of cells with column headers and row headers, resizable columns, optional grid lines, hover and selection highlighting, vertical and horizontal scrolling via the mouse wheel, and full keyboard navigation. The number of rows is set by [**RowCount**](#rowcount); the cells themselves are filled in by handling the [**GetCellText**](#getcelltext) event, which fires once per visible cell as the grid paints.
+A tabular data display --- a grid of cells with column headers and row headers, resizable columns, optional grid lines, hover and selection highlighting, vertical and horizontal scrolling via the mouse wheel, and full keyboard navigation. The number of rows is set by [**RowCount**](#rowcount); the cells themselves are filled in by handling the [**GetCellText**](#getcelltext) event, which fires once per visible cell as the grid paints.
 
 The grid has an array of [**Column**](Column) objects giving each column its [**Caption**](Column#caption) and [**Width**](Column#width). Five distinct [**CellRenderingOptions**](CellRenderingOptions) sub-objects control the appearance of column headers, row headers, normal cells, the hovered cell, the selected cell, and full-column / full-row multi-selection.
 
@@ -64,7 +64,7 @@ End With
 
 The grid exposes three separate selection states, each tracked through its own pair of properties:
 
-- A single hover-highlight cell — the cell currently under the mouse — controlled by [**HoverCellOptions**](#hovercelloptions). Internal to the grid; not exposed as a property.
+- A single hover-highlight cell --- the cell currently under the mouse --- controlled by [**HoverCellOptions**](#hovercelloptions). Internal to the grid; not exposed as a property.
 - A single selected cell, with coordinates in [**SelectedCellX**](#selectedcellx) and [**SelectedCellY**](#selectedcelly), drawn using [**SelectedCellOptions**](#selectedcelloptions).
 - A full-row or full-column multi-selection, indicated by clicking the row header or column header. [**SelectedFullColumnX**](#selectedfullcolumnx) and [**SelectedFullRowY**](#selectedfullrowy) hold the indices; the affected cells render with [**MultiSelectCellOptions**](#multiselectcelloptions).
 
@@ -140,7 +140,7 @@ The [**Line**](../Styles/Line) drawn over a column-edge while the user is draggi
 ### RowCount
 {: .no_toc }
 
-The total number of rows in the grid. **Long**. Default: -1 (unbounded — the grid paints rows forever as the user scrolls).
+The total number of rows in the grid. **Long**. Default: -1 (unbounded --- the grid paints rows forever as the user scrolls).
 
 ### RowHeaderOptions
 {: .no_toc }
@@ -221,7 +221,7 @@ Syntax: *object*.**Repaint**
 ### GetCellText
 {: .no_toc }
 
-Raised once per visible cell as the grid paints, asking the host for the text to display. The default text is `<column-caption><row-index+1>` — replace *Value* in the handler to show real data.
+Raised once per visible cell as the grid paints, asking the host for the text to display. The default text is `<column-caption><row-index+1>` --- replace *Value* in the handler to show real data.
 
 Syntax: *object*\_**GetCellText**( **ByVal** *X* **As Long**, **ByVal** *Y* **As Long**, **ByRef** *Value* **As String** )
 

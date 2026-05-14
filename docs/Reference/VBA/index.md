@@ -11,17 +11,17 @@ has_toc: false
 
 # VBA Package
 
-The VBA built-in package collects the standard runtime library — the modules grouping the standalone procedures (**MsgBox**, **CStr**, **Mid**, **Format**, …), plus a small number of intrinsic classes (**Collection**, **Err**) and twinBASIC's runtime expression engine.
+The VBA built-in package collects the standard runtime library --- the modules grouping the standalone procedures (**MsgBox**, **CStr**, **Mid**, **Format**, …), plus a small number of intrinsic classes (**Collection**, **Err**) and twinBASIC's runtime expression engine.
 
 ## Classes
 
 - [Collection](../Modules/Collection) -- ordered set of values or object references, accessed by 1-based index or by optional string key
 - [ErrObject](../Modules/ErrObject) -- the singleton **Err** object holding information about the most recent run-time error
-- [TbExpressionService](../Modules/ExpressionService) -- runtime expression engine — parse and evaluate twinBASIC-syntax expressions supplied as strings
+- [TbExpressionService](../Modules/ExpressionService) -- runtime expression engine -- parse and evaluate twinBASIC-syntax expressions supplied as strings
 
 ## Modules
 
-- [(Default)](../Modules/HiddenModule) -- unqualified low-level intrinsics — the **GetMem** / **PutMem** family, **AllocMem**, atomic operations, compile-time reflection, codegen and stack-inspection primitives, …
+- [(Default)](../Modules/HiddenModule) -- unqualified low-level intrinsics -- the **GetMem** / **PutMem** family, **AllocMem**, atomic operations, compile-time reflection, codegen and stack-inspection primitives, …
 - [Compilation](../Modules/Compilation) -- compile-time intrinsics that record the project, component, procedure, and source file at the call site
 - [Constants](../Modules/Constants) -- global character, pointer, and error-base constants reachable without qualification (**vbCrLf**, **vbNullString**, **vbObjectError**, …)
 - [Conversion](../Modules/Conversion) -- type coercion (**CBool**, **CDate**, **CType**, …), number ↔ string parsing, base conversion, and **Variant**-with-error construction

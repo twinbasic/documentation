@@ -19,12 +19,12 @@ The VBRUN built-in package collects twinBASIC's runtime-only types: the ambient,
 - [DataMembers](DataMembers) -- collection of named data-source members advertised at design time to data-binding consumers
 - [DataObject](DataObject) -- clipboard / OLE drag-and-drop container that holds one payload in multiple clipboard formats
 - [ErrorCallstack](ErrorCallstack) -- snapshot of the call stack at the moment a run-time error was raised, exposed as a sequence of [**ErrorStackFrame**](ErrorStackFrame) items
-- [ErrorContext](ErrorContext) -- structured error object — number, description, source, help, OS error, state, and call stack
-- [ErrorStackFrame](ErrorStackFrame) -- single procedure on an [**ErrorCallstack**](ErrorCallstack) — its project, module, and procedure names
+- [ErrorContext](ErrorContext) -- structured error object -- number, description, source, help, OS error, state, and call stack
+- [ErrorStackFrame](ErrorStackFrame) -- single procedure on an [**ErrorCallstack**](ErrorCallstack) -- its project, module, and procedure names
 - [Hyperlink](Hyperlink) -- runtime bridge for browser-style navigation; controls call **UserControl.Hyperlink.NavigateTo** to ask the host to load a target
 - [ParentControls](ParentControls) -- collection of the **UserControl**'s siblings in its container, optionally wrapped in their host **Extender**
-- [PropertyBag](PropertyBag) -- creatable key / value store for persisting an object's state — used by **UserControl** save / load and serialisable as a single byte array
+- [PropertyBag](PropertyBag) -- creatable key / value store for persisting an object's state -- used by **UserControl** save / load and serialisable as a single byte array
 
 ## Modules
 
-- [Constants](Constants) -- enumerations used by classic VB6 forms, intrinsic controls, and runtime services — colours, mouse pointers, key codes, drag/drop states, OLE container behaviour, printer setup values, …
+- [Constants](Constants) -- enumerations used by classic VB6 forms, intrinsic controls, and runtime services -- colours, mouse pointers, key codes, drag/drop states, OLE container behaviour, printer setup values, …

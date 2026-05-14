@@ -8,7 +8,7 @@ vba_attribution: true
 # + and += operators
 {: .no_toc }
 
-Used to sum two numbers, or — depending on operand types — to concatenate two strings. The compound form **+=** adds-and-assigns in one step.
+Used to sum two numbers, or --- depending on operand types --- to concatenate two strings. The compound form **+=** adds-and-assigns in one step.
 
 Syntax:
 > *result* **=** *expression1* **+** *expression2*  
@@ -62,7 +62,7 @@ If one or both expressions are **Null** expressions, *result* is **Null**. If bo
 
 ### Compound assignment
 
-`x += y` is the twinBASIC shorthand for `x = x + y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. Like all of twinBASIC's compound-assignment operators, **+=** is a statement, not an expression — it does not produce a value.
+`x += y` is the twinBASIC shorthand for `x = x + y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. Like all of twinBASIC's compound-assignment operators, **+=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Total As Long = 0

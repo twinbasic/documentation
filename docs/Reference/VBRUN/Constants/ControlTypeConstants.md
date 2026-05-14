@@ -7,7 +7,7 @@ permalink: /tB/Packages/VBRUN/Constants/ControlTypeConstants
 # ControlTypeConstants
 {: .no_toc }
 
-Identifiers for the standard intrinsic and bundled control types, used by runtime introspection — for example by code that inspects the contents of a form's **Controls** collection.
+Identifiers for the standard intrinsic and bundled control types, used by runtime introspection --- for example by code that inspects the contents of a form's **Controls** collection.
 
 | Constant | Value | Description |
 |----------|-------|-------------|

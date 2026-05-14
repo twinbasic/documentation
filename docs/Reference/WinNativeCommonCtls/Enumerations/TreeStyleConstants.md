@@ -16,16 +16,16 @@ The composite decoding:
 
 | [**Style**](../TreeView/#style)                  | Buttons | Lines | Icons | Labels |
 |--------------------------------------------------|---------|-------|-------|--------|
-| **tvwTextOnly**                                  | —       | —     | —     | yes    |
-| **tvwPictureText**                               | —       | —     | yes   | yes    |
-| **tvwPlusMinusText**                             | yes     | —     | —     | yes    |
-| **tvwPlusMinusPictureText**                      | yes     | —     | yes   | yes    |
-| **tvwTreelinesText**                             | —       | yes   | —     | yes    |
-| **tvwTreelinesPictureText**                      | —       | yes   | yes   | yes    |
-| **tvwTreelinesPlusMinusText**                    | yes     | yes   | —     | yes    |
+| **tvwTextOnly**                                  | ---       | ---     | ---     | yes    |
+| **tvwPictureText**                               | ---       | ---     | yes   | yes    |
+| **tvwPlusMinusText**                             | yes     | ---     | ---     | yes    |
+| **tvwPlusMinusPictureText**                      | yes     | ---     | yes   | yes    |
+| **tvwTreelinesText**                             | ---       | yes   | ---     | yes    |
+| **tvwTreelinesPictureText**                      | ---       | yes   | yes   | yes    |
+| **tvwTreelinesPlusMinusText**                    | yes     | yes   | ---     | yes    |
 | **tvwTreelinesPlusMinusPictureText**             | yes     | yes   | yes   | yes    |
 
-The enum's underlying values are 0–7, matching the order in the table.
+The enum's underlying values are 0--7, matching the order in the table.
 
 | Member                                       | Value |
 |----------------------------------------------|-------|

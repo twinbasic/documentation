@@ -20,21 +20,21 @@ Syntax:
 *instance*
 : *optional* (twinBASIC) An object reference whose member *procedurename* is targeted. The resulting pointer is bound to *instance*, so calling through it invokes the method on that specific object.
 
-When a procedure name appears in an argument list, normally the procedure is *called* and the procedure's return value is passed. **AddressOf** suppresses the call and substitutes the procedure's address instead. The most common use is to install a callback in a Windows API — the API then invokes the procedure from outside the project's code, in a process known as a *callback*.
+When a procedure name appears in an argument list, normally the procedure is *called* and the procedure's return value is passed. **AddressOf** suppresses the call and substitutes the procedure's address instead. The most common use is to install a callback in a Windows API --- the API then invokes the procedure from outside the project's code, in a process known as a *callback*.
 
-The value **AddressOf** produces is bit-compatible with **LongPtr**, so it can be passed wherever a function pointer is expected — including legacy [**Declare**](Declare) parameters typed **As Long** or **As LongPtr**. When the destination type is a [**Delegate**](Delegate), the compiler additionally checks that the operand's signature matches the delegate's.
+The value **AddressOf** produces is bit-compatible with **LongPtr**, so it can be passed wherever a function pointer is expected --- including legacy [**Declare**](Declare) parameters typed **As Long** or **As LongPtr**. When the destination type is a [**Delegate**](Delegate), the compiler additionally checks that the operand's signature matches the delegate's.
 
-In classic VBA, *procedurename* must name a procedure in a standard [**Module**](Module) of the current project; the destination parameter must be typed **As Long**; and the resulting pointer can only be invoked by code outside Basic (e.g. a DLL). twinBASIC lifts each of these restrictions — see [twinBASIC enhancements](#twinbasic-enhancements) below.
+In classic VBA, *procedurename* must name a procedure in a standard [**Module**](Module) of the current project; the destination parameter must be typed **As Long**; and the resulting pointer can only be invoked by code outside Basic (e.g. a DLL). twinBASIC lifts each of these restrictions --- see [twinBASIC enhancements](#twinbasic-enhancements) below.
 
 > [!IMPORTANT]
-> Errors raised inside a callback cannot propagate back to the foreign caller — the API runs outside the project's error-handling chain. Place `On Error Resume Next` (or an explicit handler) at the top of any procedure used as an **AddressOf** target.
+> Errors raised inside a callback cannot propagate back to the foreign caller --- the API runs outside the project's error-handling chain. Place `On Error Resume Next` (or an explicit handler) at the top of any procedure used as an **AddressOf** target.
 
 ### twinBASIC enhancements
 
 - **Indirect calls back through Basic.** A delegate variable holding an **AddressOf** value can be called directly: `Dim op As Operation = AddressOf Add: r = op(5, 6)`. Classic VBA can pass such pointers between procedures but cannot invoke through them inside Basic. See [**Delegate**](Delegate).
-- **Class, form, and user-control members.** **AddressOf** accepts methods declared on a class, form, or user-control. Take a pointer to an instance method by qualifying the name with the object reference: `AddressOf myInstance.MyMethod`. The resulting pointer remembers the instance — calling through it dispatches to that object.
+- **Class, form, and user-control members.** **AddressOf** accepts methods declared on a class, form, or user-control. Take a pointer to an instance method by qualifying the name with the object reference: `AddressOf myInstance.MyMethod`. The resulting pointer remembers the instance --- calling through it dispatches to that object.
 - **CDecl callbacks.** Mark both the target procedure and the matching [**Delegate**](Delegate) (or [**Declare**](Declare) parameter) with **CDecl** to model `cdecl` callbacks. Classic VBA's **AddressOf** is hard-wired to `__stdcall`. See [API Declarations](../../Features/Advanced/API-Declarations#cdecl-callbacks).
-- **No `FARPROC` shim needed.** Assigning a function pointer to a local variable is direct — `Dim lpfn As LongPtr = AddressOf MyFunc` — without writing an intermediate forwarding procedure.
+- **No `FARPROC` shim needed.** Assigning a function pointer to a local variable is direct --- `Dim lpfn As LongPtr = AddressOf MyFunc` --- without writing an intermediate forwarding procedure.
 
 ### Example
 

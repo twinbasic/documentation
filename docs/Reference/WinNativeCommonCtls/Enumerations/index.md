@@ -12,7 +12,7 @@ nav_order: 99
 
 The ten module-level enumerations declared in the package's shared modules and exposed to user code. Each is reachable from any project that references the package.
 
-Per-control nested enumerations (those declared *inside* a `<Name>BaseCtl` class — `ListViewConstants`, `ListArrangeConstants`, `ListLabelEditConstants`, `ListTextBackgroundConstants`, `ListColumnAlignmentConstants`, `PrbOrientation`, `PrbScrolling`, `PrbState`, `TickStyleConstants`, `TextPositionConstants`, `ImageListColorDepth`) are documented on the page of the control that declares them, not under this folder.
+Per-control nested enumerations (those declared *inside* a `<Name>BaseCtl` class --- `ListViewConstants`, `ListArrangeConstants`, `ListLabelEditConstants`, `ListTextBackgroundConstants`, `ListColumnAlignmentConstants`, `PrbOrientation`, `PrbScrolling`, `PrbState`, `TickStyleConstants`, `TextPositionConstants`, `ImageListColorDepth`) are documented on the page of the control that declares them, not under this folder.
 
 * TOC
 {:toc}

@@ -30,7 +30,7 @@ vba_attribution: true
 # VbMsgBoxStyle
 {: .no_toc }
 
-Buttons, icons, default-button, modality, and other behaviour flags for the **MsgBox** dialog. Combine values from different groups with **Or** (or addition) to specify the desired combination — for example, `vbYesNo Or vbCritical Or vbDefaultButton2`.
+Buttons, icons, default-button, modality, and other behaviour flags for the **MsgBox** dialog. Combine values from different groups with **Or** (or addition) to specify the desired combination --- for example, `vbYesNo Or vbCritical Or vbDefaultButton2`.
 
 ### Buttons
 

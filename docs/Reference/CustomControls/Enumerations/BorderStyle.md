@@ -11,11 +11,11 @@ The Win32 frame style used by a [**WaynesForm**](../WaynesForm/) window. Determi
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **tbNone**{: #tbNone } | 0 | No border at all — the form is a borderless, captionless rectangle. |
+| **tbNone**{: #tbNone } | 0 | No border at all --- the form is a borderless, captionless rectangle. |
 | **tbFixedSingle**{: #tbFixedSingle } | 1 | Thin single-line border; size is fixed at run time. |
 | **tbFixedSizable**{: #tbFixedSizable } | 2 | Standard resizable border with a normal title bar. The default for newly-constructed [**WindowsFormOptions**](../WaynesForm/WindowsFormOptions). |
 | **tbFixedDialog**{: #tbFixedDialog } | 3 | Dialog-frame border; size is fixed and the system menu offers only **Move** / **Close**. |
 | **tbFixedToolWindow**{: #tbFixedToolWindow } | 4 | Tool-window border with the smaller title bar; size is fixed. |
 | **tbSizableToolWindow**{: #tbSizableToolWindow } | 5 | Tool-window border with the smaller title bar; the window is resizable. |
 
-Most border styles cannot be combined with **MinimizeButton** or **MaximizeButton** — only **tbFixedSizable** shows full sizing controls. Setting [**MinimizeButton**](../WaynesForm/WindowsFormOptions#minimizebutton) or [**MaximizeButton**](../WaynesForm/WindowsFormOptions#maximizebutton) to **True** on a window style that does not include them has no effect.
+Most border styles cannot be combined with **MinimizeButton** or **MaximizeButton** --- only **tbFixedSizable** shows full sizing controls. Setting [**MinimizeButton**](../WaynesForm/WindowsFormOptions#minimizebutton) or [**MaximizeButton**](../WaynesForm/WindowsFormOptions#maximizebutton) to **True** on a window style that does not include them has no effect.

@@ -11,7 +11,7 @@ has_toc: false
 
 The **ListItems** collection is the entry point for managing the rows of a [**ListView**](.). Accessed as `<listView>.ListItems`; supports adding, removing, indexed access, and `For Each` iteration.
 
-The class is tagged `[COMCreatable(False)]` — user code accesses **ListItems** through the parent [**ListView**](.) control's [**ListItems**](.#listitems) property.
+The class is tagged `[COMCreatable(False)]` --- user code accesses **ListItems** through the parent [**ListView**](.) control's [**ListItems**](.#listitems) property.
 
 ```tb
 With ListView1.ListItems
@@ -46,7 +46,7 @@ Returns the [**ListItem**](ListItem) at the given index or with the given key. T
 Syntax: *object*.**Item** ( *Index* ) **As ListItem**
 
 *Index*
-: A **Variant** — either a 1-based **Long** position or a **String** key.
+: A **Variant** --- either a 1-based **Long** position or a **String** key.
 
 Methods
 -------
@@ -68,7 +68,7 @@ Syntax: *object*.**Add** ( [ *Index* ] [, *Key* ] [, *Text* ] [, *Icon* ] [, *Sm
 : *optional* A **String** giving the row's main label.
 
 *Icon*
-: *optional* A **Variant** identifying the row's large icon — either a 1-based **Long** index into [**ListView.Icons**](.#icons), or a **String** key. Validated against the bound image list.
+: *optional* A **Variant** identifying the row's large icon --- either a 1-based **Long** index into [**ListView.Icons**](.#icons), or a **String** key. Validated against the bound image list.
 
 *SmallIcon*
 : *optional* A **Variant** identifying the row's small icon, against [**ListView.SmallIcons**](.#smallicons).
@@ -90,7 +90,7 @@ Removes a row from the listview. The remaining rows' [**Index**](ListItem#index)
 Syntax: *object*.**Remove** ( *Index* )
 
 *Index*
-: A **Variant** — either a 1-based **Long** position or a **String** key.
+: A **Variant** --- either a 1-based **Long** position or a **String** key.
 
 ### _NewEnum
 {: .no_toc }

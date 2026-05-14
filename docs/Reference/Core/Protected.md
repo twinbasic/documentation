@@ -18,7 +18,7 @@ Syntax:
 
 In a variable declaration, **Protected** has the same form as [**Private**](Private)/[**Public**](Public): a comma-separated list of names with optional `WithEvents`/`New` and `As`-clause. **Protected** is valid only at class scope; it cannot be used inside a procedure (use [**Dim**](Dim) or [**Static**](Static)), and it cannot be used in a [**Module**](Module) (modules have no notion of derived types).
 
-In a procedure declaration, **Protected** replaces the **Public**/**Private**/**Friend** modifier. Combined with the **Overridable** keyword, it declares an inheritance hook — a method or property that derived classes are allowed to override.
+In a procedure declaration, **Protected** replaces the **Public**/**Private**/**Friend** modifier. Combined with the **Overridable** keyword, it declares an inheritance hook --- a method or property that derived classes are allowed to override.
 
 ### Visibility summary
 

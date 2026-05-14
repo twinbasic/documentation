@@ -7,7 +7,7 @@ vba_attribution: true
 # Load
 {: .no_toc }
 
-Loads an object — typically a form — into memory but does not show it.
+Loads an object --- typically a form --- into memory but does not show it.
 
 Syntax:
 > **Load** *object*

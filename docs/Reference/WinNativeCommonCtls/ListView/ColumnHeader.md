@@ -11,7 +11,7 @@ has_toc: false
 
 A **ColumnHeader** represents a single column in a [**ListView**](.) running in **lvwReport** view. Returned from [**ColumnHeaders.Add**](ColumnHeaders#add) and from [**ColumnHeaders.Item**](ColumnHeaders#item).
 
-The class is tagged `[COMCreatable(False)]` — user code accesses **ColumnHeader** instances through the parent [**ListView**](.)'s [**ColumnHeaders**](ColumnHeaders) collection.
+The class is tagged `[COMCreatable(False)]` --- user code accesses **ColumnHeader** instances through the parent [**ListView**](.)'s [**ColumnHeaders**](ColumnHeaders) collection.
 
 ```tb
 With ListView1.ColumnHeaders
@@ -38,7 +38,7 @@ The horizontal alignment of the column's text. A member of [**ListColumnAlignmen
 ### Icon
 {: .no_toc }
 
-The icon rendered in the header. **Variant** — either a 1-based **Long** index into [**ListView.ColumnHeaderIcons**](.#columnheadericons), or a **String** key. Assignment validates against the bound image list.
+The icon rendered in the header. **Variant** --- either a 1-based **Long** index into [**ListView.ColumnHeaderIcons**](.#columnheadericons), or a **String** key. Assignment validates against the bound image list.
 
 ### Index
 {: .no_toc }
@@ -58,7 +58,7 @@ The column's horizontal pixel position in the listview, computed as the sum of p
 ### Position
 {: .no_toc }
 
-The column's visual position. **Long**, read/write. Distinct from [**Index**](#index) — when [**ListView.AllowColumnReorder**](.#allowcolumnreorder) is **True**, the user can drag columns to reorder them, in which case **Index** stays fixed but **Position** changes.
+The column's visual position. **Long**, read/write. Distinct from [**Index**](#index) --- when [**ListView.AllowColumnReorder**](.#allowcolumnreorder) is **True**, the user can drag columns to reorder them, in which case **Index** stays fixed but **Position** changes.
 
 Assigning a value outside `1..Count` raises run-time error 380.
 

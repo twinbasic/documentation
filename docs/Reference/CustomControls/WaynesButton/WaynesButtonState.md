@@ -9,11 +9,11 @@ has_toc: false
 # WaynesButtonState class
 {: .no_toc }
 
-A bundle of the four style objects that describe a single visual state of a [**WaynesButton**](.) — its corners, background fill, borders, and text rendering. Each button has four parallel instances accessed as [**NormalState**](.#normalstate), [**HoverState**](.#hoverstate), [**FocusedState**](.#focusedstate), and [**PressedState**](.#pressedstate); the button picks one at each repaint depending on the mouse / focus state.
+A bundle of the four style objects that describe a single visual state of a [**WaynesButton**](.) --- its corners, background fill, borders, and text rendering. Each button has four parallel instances accessed as [**NormalState**](.#normalstate), [**HoverState**](.#hoverstate), [**FocusedState**](.#focusedstate), and [**PressedState**](.#pressedstate); the button picks one at each repaint depending on the mouse / focus state.
 
 Newly-constructed **WaynesButtonState** objects pre-set their **BackgroundFill** to a solid mid-blue and all four corners to a 15-pixel curve. Override per-state to give the button a different look in each state.
 
-The type itself is `Private Class` — instances are accessed only through the **WaynesButton.…State** properties, and a variable typed as **WaynesButtonState** cannot be declared from outside the package.
+The type itself is `Private Class` --- instances are accessed only through the **WaynesButton.…State** properties, and a variable typed as **WaynesButtonState** cannot be declared from outside the package.
 
 ```tb
 With btnGo.NormalState
@@ -55,7 +55,7 @@ The [**TextRendering**](../Styles/TextRendering) that controls how the button's 
 ### InitializeDefaults
 {: .no_toc }
 
-Resets the state object to the package's defaults — solid mid-blue **BackgroundFill** and 15-pixel curved corners. Called automatically the first time the parent button is initialized, if no serialized data was loaded.
+Resets the state object to the package's defaults --- solid mid-blue **BackgroundFill** and 15-pixel curved corners. Called automatically the first time the parent button is initialized, if no serialized data was loaded.
 
 Syntax: *object*.**InitializeDefaults**
 

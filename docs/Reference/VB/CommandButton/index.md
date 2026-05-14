@@ -8,7 +8,7 @@ has_toc: false
 # CommandButton class
 {: .no_toc }
 
-A **CommandButton** is a Win32 native push-button control used to trigger an action — a click-handler runs every time the user presses it. The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
+A **CommandButton** is a Win32 native push-button control used to trigger an action --- a click-handler runs every time the user presses it. The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
 
 ```tb
 Private Sub Form_Load()
@@ -28,7 +28,7 @@ End Sub
 
 ## Triggering a click
 
-A **CommandButton** raises [**Click**](#click) every time the user presses it — by left-clicking, by pressing **Space** or **Enter** while it has focus, by typing the **Alt+** access key marked in the [**Caption**](#caption), by pressing **Esc** when [**Cancel**](#cancel) is **True**, or by pressing **Enter** anywhere on the form when [**Default**](#default) is **True**. Code can fire the same event by assigning **True** to [**Value**](#value):
+A **CommandButton** raises [**Click**](#click) every time the user presses it --- by left-clicking, by pressing **Space** or **Enter** while it has focus, by typing the **Alt+** access key marked in the [**Caption**](#caption), by pressing **Esc** when [**Cancel**](#cancel) is **True**, or by pressing **Enter** anywhere on the form when [**Default**](#default) is **True**. Code can fire the same event by assigning **True** to [**Value**](#value):
 
 ```tb
 cmdOK.Value = True              ' raises cmdOK_Click
@@ -38,7 +38,7 @@ cmdOK.Value = True              ' raises cmdOK_Click
 
 ## Cancel and Default
 
-[**Cancel**](#cancel) and [**Default**](#default) are mutually-form-exclusive — at most one button on a form can have either set to **True**. Assigning **True** to **Cancel** or **Default** on one button automatically clears the same property on whatever button held it before. Setting **Default = True** also gives the button the bold "default push-button" border.
+[**Cancel**](#cancel) and [**Default**](#default) are mutually-form-exclusive --- at most one button on a form can have either set to **True**. Assigning **True** to **Cancel** or **Default** on one button automatically clears the same property on whatever button held it before. Setting **Default = True** also gives the button the bold "default push-button" border.
 
 ## Caption and mnemonics
 
@@ -62,17 +62,17 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 ### BackColor
 {: .no_toc }
 
-The background colour, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Honoured only when [**Style**](#style) is **vbButtonGraphical** — the standard Win32 button always paints with the theme colour.
+The background colour, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Honoured only when [**Style**](#style) is **vbButtonGraphical** --- the standard Win32 button always paints with the theme colour.
 
 ### Cancel
 {: .no_toc }
 
-When **True**, this button is fired by the **Esc** key from anywhere on its form. **Boolean**, default **False**. Only one **CommandButton** on a form can hold this property — assigning **True** to a second button automatically clears it on the previous one.
+When **True**, this button is fired by the **Esc** key from anywhere on its form. **Boolean**, default **False**. Only one **CommandButton** on a form can hold this property --- assigning **True** to a second button automatically clears it on the previous one.
 
 ### Caption
 {: .no_toc }
 
-The text displayed on the button. An ampersand marks the next character as a mnemonic; `&&` produces a literal ampersand. The string is read directly from the underlying window — assigning to **Caption** is reflected immediately.
+The text displayed on the button. An ampersand marks the next character as a mnemonic; `&&` produces a literal ampersand. The string is read directly from the underlying window --- assigning to **Caption** is reflected immediately.
 
 Syntax: *object*.**Caption** [ = *string* ]
 
@@ -89,7 +89,7 @@ A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstant
 ### Default
 {: .no_toc }
 
-When **True**, this button is fired by the **Enter** key from anywhere on its form (unless another control is currently consuming **Enter**). The button also displays the bold "default push-button" border. **Boolean**, default **False**. Only one **CommandButton** on a form can hold this property — assigning **True** to a second button automatically clears it on the previous one.
+When **True**, this button is fired by the **Enter** key from anywhere on its form (unless another control is currently consuming **Enter**). The button also displays the bold "default push-button" border. **Boolean**, default **False**. Only one **CommandButton** on a form can hold this property --- assigning **True** to a second button automatically clears it on the previous one.
 
 ### DisabledPicture
 {: .no_toc }
@@ -109,7 +109,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -180,7 +180,7 @@ How the control responds to OLE drops. A restricted member of [**OLEDropConstant
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Padding
 {: .no_toc }
@@ -355,7 +355,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Click
 {: .no_toc }
 
-Raised every time the button is pressed — by mouse click, by **Space** or **Enter** while focused, by the **Alt+** access key in the [**Caption**](#caption), by **Esc** when [**Cancel**](#cancel) is **True**, by **Enter** when [**Default**](#default) is **True**, or by an assignment of **True** to [**Value**](#value). **Default event.**
+Raised every time the button is pressed --- by mouse click, by **Space** or **Enter** while focused, by the **Alt+** access key in the [**Caption**](#caption), by **Esc** when [**Cancel**](#cancel) is **True**, by **Enter** when [**Default**](#default) is **True**, or by an assignment of **True** to [**Value**](#value). **Default event.**
 
 Syntax: *object*\_**Click**( )
 

@@ -19,10 +19,10 @@ Syntax: **RaiseEventByName2(** *object* **,** *procname* [ **,** *arg1* **,** *a
 *arg1*, *arg2*, ...
 : *optional* **ParamArray** of **Variant**. The arguments to pass to the event handler(s), in declaration order.
 
-Returns a **Variant**. The returned value is the value left in the last `ByRef` event argument by the handler — useful only when the event has a `ByRef` "out" or "cancel" parameter.
+Returns a **Variant**. The returned value is the value left in the last `ByRef` event argument by the handler --- useful only when the event has a `ByRef` "out" or "cancel" parameter.
 
 > [!NOTE]
-> The array-based variant of this function — [**RaiseEventByName**](RaiseEventByName) — takes the argument list as a single packed **Variant** array, which is more convenient when the argument list is itself constructed dynamically. Use **RaiseEventByName2** when the argument list is fixed at the call site.
+> The array-based variant of this function --- [**RaiseEventByName**](RaiseEventByName) --- takes the argument list as a single packed **Variant** array, which is more convenient when the argument list is itself constructed dynamically. Use **RaiseEventByName2** when the argument list is fixed at the call site.
 
 If *procname* doesn't match any event declared on *object*, or the supplied arity doesn't match the event declaration, a run-time error occurs.
 

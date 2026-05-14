@@ -10,11 +10,11 @@ vba_attribution: true
 # Array
 {: .no_toc }
 
-Returns a **Variant** containing an array built from a comma-separated list of values, or — when used on the left of an assignment — destructures an array on the right-hand side into the supplied variables.
+Returns a **Variant** containing an array built from a comma-separated list of values, or --- when used on the left of an assignment --- destructures an array on the right-hand side into the supplied variables.
 
 Syntax:
-- *result* **= Array(** [ *ArgList* ] **)** — array creation.
-- **Array(** *Var1*, *Var2*, ... **) =** *RhsArray* — destructuring assignment.
+- *result* **= Array(** [ *ArgList* ] **)** --- array creation.
+- **Array(** *Var1*, *Var2*, ... **) =** *RhsArray* --- destructuring assignment.
 
 *ArgList*
 : *optional* A comma-delimited list of values that are assigned to the elements of the new array. If no arguments are supplied, an empty array is returned.

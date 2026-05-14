@@ -44,7 +44,7 @@ The *compare* argument can have the following values:
 | *start* > **Len**(*stringcheck*)                    | 0                                |
 
 > [!NOTE]
-> The syntax for the **InStrRev** function is not the same as the syntax for the [**InStr**](InStr) function — note the swapped order of the search arguments.
+> The syntax for the **InStrRev** function is not the same as the syntax for the [**InStr**](InStr) function --- note the swapped order of the search arguments.
 
 **InStrRev** will not find an instance of *stringmatch* unless the position of the end character of *stringmatch* is less than or equal to *start*.
 

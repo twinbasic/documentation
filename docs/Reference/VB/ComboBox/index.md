@@ -36,13 +36,13 @@ End Sub
 |---------------------------|-------|--------------------------------------------------------------------------|
 | **vbComboDropdown**       | 0     | Editable text + drop-down button + drop-down list. The default.          |
 | **vbComboSimple**         | 1     | Editable text + a permanently visible list (no drop-down button).        |
-| **vbComboDropdownList**   | 2     | Drop-down list only — the user must pick a value; typing is disabled.    |
+| **vbComboDropdownList**   | 2     | Drop-down list only --- the user must pick a value; typing is disabled.    |
 
 Changing **Style** at run time recreates the underlying window (the existing list contents and selection are preserved). [**Sorted**](#sorted) and [**IntegralHeight**](#integralheight) recreate the window the same way.
 
 ## Editing the list
 
-Items are held inside the OS combo-box control; the [**List**](#list) and [**ItemData**](#itemdata) arrays are projections onto that storage. Items are added with [**AddItem**](#additem), removed with [**RemoveItem**](#removeitem), and the whole list is cleared with [**Clear**](#clear). After each [**AddItem**](#additem) call, [**NewIndex**](#newindex) reports the position the item was inserted at — useful when [**Sorted**](#sorted) is **True** and the position is not predictable from the call.
+Items are held inside the OS combo-box control; the [**List**](#list) and [**ItemData**](#itemdata) arrays are projections onto that storage. Items are added with [**AddItem**](#additem), removed with [**RemoveItem**](#removeitem), and the whole list is cleared with [**Clear**](#clear). After each [**AddItem**](#additem) call, [**NewIndex**](#newindex) reports the position the item was inserted at --- useful when [**Sorted**](#sorted) is **True** and the position is not predictable from the call.
 
 ```tb
 Combo1.Sorted = True
@@ -55,13 +55,13 @@ Combo1.ItemData(Combo1.NewIndex) = 42
 
 [**ListIndex**](#listindex) is the index of the selected item, or `-1` when nothing is selected. Setting it from code highlights the corresponding item and raises [**Click**](#click) (only if the value actually changes). [**TopIndex**](#topindex) controls which item appears at the top of the drop-down portion when it is open.
 
-[**Text**](#text) reads or writes the editable area, except in **vbComboDropdownList** mode where there is no edit field — there, assigning a string searches the list with an exact, case-insensitive match and selects that item if found, doing nothing otherwise. Reading **Text** in any mode returns the current display text.
+[**Text**](#text) reads or writes the editable area, except in **vbComboDropdownList** mode where there is no edit field --- there, assigning a string searches the list with an exact, case-insensitive match and selects that item if found, doing nothing otherwise. Reading **Text** in any mode returns the current display text.
 
 For the styles that have an edit area (**vbComboDropdown** and **vbComboSimple**), [**SelStart**](#selstart), [**SelLength**](#sellength), and [**SelText**](#seltext) reflect or modify the user's text selection. Reading or writing any of these in **vbComboDropdownList** mode raises run-time error 380.
 
 ## OLE drag-and-drop
 
-[**OLEDragMode**](#oledragmode) controls source-side drags (only meaningful for the styles with an edit area — when set to **vbOLEDragAutomatic**, dragging selected text in the edit area starts an OLE drag with that text as the data). [**OLEDropMode**](#oledropmode) controls drop-target behaviour and is restricted to **vbOLEDropNone** or **vbOLEDropManual**.
+[**OLEDragMode**](#oledragmode) controls source-side drags (only meaningful for the styles with an edit area --- when set to **vbOLEDragAutomatic**, dragging selected text in the edit area starts an OLE drag with that text as the data). [**OLEDropMode**](#oledropmode) controls drop-target behaviour and is restricted to **vbOLEDropNone** or **vbOLEDropManual**.
 
 ## Properties
 
@@ -98,7 +98,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -118,7 +118,7 @@ The text colour, as an **OLE_COLOR**. Defaults to the system window-text colour.
 ### Height
 {: .no_toc }
 
-The control's height, in twips by default (or in the container's **ScaleMode** units). For **vbComboDropdown** and **vbComboDropdownList** this is the height of the closed control (the drop-down portion is sized separately — see [**MaxDropDownItems**](#maxdropdownitems)). For **vbComboSimple** it is the total height including the always-visible list. **Single**.
+The control's height, in twips by default (or in the container's **ScaleMode** units). For **vbComboDropdown** and **vbComboDropdownList** this is the height of the closed control (the drop-down portion is sized separately --- see [**MaxDropDownItems**](#maxdropdownitems)). For **vbComboSimple** it is the total height including the always-visible list. **Single**.
 
 ### HelpContextID
 {: .no_toc }
@@ -163,7 +163,7 @@ The horizontal distance from the left edge of the container to the left edge of 
 ### List
 {: .no_toc }
 
-The text of an item, indexed by zero-based position. Setting **List(*Index*)** removes the existing item at that position and reinserts the new value at the same index — note that this can change the resulting position when [**Sorted**](#sorted) is **True**.
+The text of an item, indexed by zero-based position. Setting **List(*Index*)** removes the existing item at that position and reinserts the new value at the same index --- note that this can change the resulting position when [**Sorted**](#sorted) is **True**.
 
 Syntax: *object*.**List**( *Index* ) [ = *string* ]
 
@@ -185,7 +185,7 @@ When **True**, the user can scroll and select within the control but cannot type
 ### MaxDropDownItems
 {: .no_toc }
 
-The maximum number of items shown in the drop-down portion when the user opens it. **Long**, default `0` — when zero, the OS chooses a height (typically eight items).
+The maximum number of items shown in the drop-down portion when the user opens it. **Long**, default `0` --- when zero, the OS chooses a height (typically eight items).
 
 ### MouseIcon
 {: .no_toc }
@@ -210,7 +210,7 @@ The zero-based index at which the most recent [**AddItem**](#additem) call inser
 ### OLEDragMode
 {: .no_toc }
 
-Whether the control's edit area can act as an automatic OLE drag source. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1 — dragging selected text in the edit area starts an OLE drag with that text as the data, and the drop effect **vbDropEffectMove** clears the selection).
+Whether the control's edit area can act as an automatic OLE drag source. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default --- call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1 --- dragging selected text in the edit area starts an OLE drag with that text as the data, and the drop effect **vbDropEffectMove** clears the selection).
 
 ### OLEDropMode
 {: .no_toc }
@@ -220,7 +220,7 @@ How the control responds to OLE drops. A restricted member of [**OLEDropConstant
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Parent
 {: .no_toc }
@@ -425,21 +425,21 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Change
 {: .no_toc }
 
-Raised when the text in the edit area changes — whether the user typed into it or code assigned a different value to [**Text**](#text). Not raised in **vbComboDropdownList** mode (where there is no edit area). **Default event.**
+Raised when the text in the edit area changes --- whether the user typed into it or code assigned a different value to [**Text**](#text). Not raised in **vbComboDropdownList** mode (where there is no edit area). **Default event.**
 
 Syntax: *object*\_**Change**( )
 
 ### Click
 {: .no_toc }
 
-Raised after [**ListIndex**](#listindex) changes — whether the user picked an item from the list or code assigned a different value to [**ListIndex**](#listindex). Assigning the current value again does not raise **Click**.
+Raised after [**ListIndex**](#listindex) changes --- whether the user picked an item from the list or code assigned a different value to [**ListIndex**](#listindex). Assigning the current value again does not raise **Click**.
 
 Syntax: *object*\_**Click**( )
 
 ### CloseUp
 {: .no_toc }
 
-Raised when the drop-down portion closes — either because the user picked an item, clicked elsewhere, or pressed **Esc**. Not raised in **vbComboSimple** mode (the list is always visible).
+Raised when the drop-down portion closes --- either because the user picked an item, clicked elsewhere, or pressed **Esc**. Not raised in **vbComboSimple** mode (the list is always visible).
 
 Syntax: *object*\_**CloseUp**( )
 
@@ -551,7 +551,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Scroll
 {: .no_toc }
 
-Raised when the drop-down (or always-visible) list is scrolled — by the scroll bar, the keyboard, or the mouse wheel. Wheel-driven scrolling can be silenced by setting [**WheelScrollEvent**](#wheelscrollevent) to **False**.
+Raised when the drop-down (or always-visible) list is scrolled --- by the scroll bar, the keyboard, or the mouse wheel. Wheel-driven scrolling can be silenced by setting [**WheelScrollEvent**](#wheelscrollevent) to **False**.
 
 Syntax: *object*\_**Scroll**( )
 

@@ -42,7 +42,7 @@ Private Sub ListView1_ItemClick(Item As ListItem)
 End Sub
 ```
 
-The control inherits the focusable rect-dockable members from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the focusable rect-dockable members from `BaseControlFocusable` --- size, position, **Anchors**, **Dock**, **Font**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
@@ -51,9 +51,9 @@ The control inherits the focusable rect-dockable members from `BaseControlFocusa
 
 A **ListView** can bind to three independent [**ImageList**](../ImageList/) instances, one per role:
 
-- **[Icons](#icons)** — large icons rendered in **lvwIcon** view.
-- **[SmallIcons](#smallicons)** — small icons rendered in **lvwSmallIcon**, **lvwList**, and **lvwReport** views.
-- **[ColumnHeaderIcons](#columnheadericons)** — small icons rendered inside the report-view column headers, addressed per-column through [**ColumnHeader.Icon**](ColumnHeader#icon).
+- **[Icons](#icons)** --- large icons rendered in **lvwIcon** view.
+- **[SmallIcons](#smallicons)** --- small icons rendered in **lvwSmallIcon**, **lvwList**, and **lvwReport** views.
+- **[ColumnHeaderIcons](#columnheadericons)** --- small icons rendered inside the report-view column headers, addressed per-column through [**ColumnHeader.Icon**](ColumnHeader#icon).
 
 A [**ListItem**](ListItem) selects its icons through its **Icon** and **SmallIcon** properties, which can be either a 1-based **Long** index or a **String** key into the respective image list.
 
@@ -63,9 +63,9 @@ Selection is single-row by default; setting [**MultiSelect**](#multiselect) to *
 
 [**LabelEdit**](#labeledit) controls inline label editing:
 
-- **lvwAutomatic** — clicking an already-selected item starts an edit (after a short delay; this is the F2 / single-click-and-pause pattern).
-- **lvwManual** — only programmatic [**StartLabelEdit**](#startlabeledit) calls open an editor.
-- **lvwDisabled** — labels cannot be edited.
+- **lvwAutomatic** --- clicking an already-selected item starts an edit (after a short delay; this is the F2 / single-click-and-pause pattern).
+- **lvwManual** --- only programmatic [**StartLabelEdit**](#startlabeledit) calls open an editor.
+- **lvwDisabled** --- labels cannot be edited.
 
 Edit start fires [**BeforeLabelEdit**](#beforelabeledit) (cancellable), and edit end fires [**AfterLabelEdit**](#afterlabeledit) (cancellable, with the proposed new text).
 
@@ -156,7 +156,7 @@ The Win32 handle of the listview window. **LongPtr**, read-only.
 ### hWndHeader
 {: .no_toc }
 
-The Win32 handle of the embedded column-header window (`SysHeader32`). **LongPtr**, read-only. Tagged `[Hidden]` `[NonBrowsable]` — exposed only for advanced Win32 customization (e.g. subclassing the header).
+The Win32 handle of the embedded column-header window (`SysHeader32`). **LongPtr**, read-only. Tagged `[Hidden]` `[NonBrowsable]` --- exposed only for advanced Win32 customization (e.g. subclassing the header).
 
 ### Icons
 {: .no_toc }
@@ -176,7 +176,7 @@ Whether item labels wrap to multiple lines in **lvwIcon** view. **Boolean**. Def
 ### ListItems
 {: .no_toc }
 
-The [**ListItems**](ListItems) collection — the rows of the list. Read-only.
+The [**ListItems**](ListItems) collection --- the rows of the list. Read-only.
 
 ### MultiSelect
 {: .no_toc }
@@ -186,7 +186,7 @@ Whether the user can select multiple items. **Boolean**. Default: **False**.
 ### SelectedItem
 {: .no_toc }
 
-The currently focused [**ListItem**](ListItem), or **Nothing** if no row is focused. Read-only — to change selection, assign to [**ListItem.Selected**](ListItem#selected).
+The currently focused [**ListItem**](ListItem), or **Nothing** if no row is focused. Read-only --- to change selection, assign to [**ListItem.Selected**](ListItem#selected).
 
 ### SelectedItemIndex
 {: .no_toc }

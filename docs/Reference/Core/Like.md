@@ -40,7 +40,7 @@ The pattern-matching syntax supports wildcards, character lists, and character r
 |:-------------------|:-----------------------------------------------------|
 | `?`                | Any single character.                                |
 | `*`                | Zero or more characters.                             |
-| `#`                | Any single digit (`0`–`9`).                          |
+| `#`                | Any single digit (`0`--`9`).                          |
 | `[`*charlist*`]`   | Any single character in *charlist*.                  |
 | `[!`*charlist*`]`  | Any single character *not* in *charlist*.            |
 
@@ -49,7 +49,7 @@ A group of one or more characters (*charlist*) enclosed in brackets can match an
 > [!NOTE]
 > To match the special characters left bracket (`[`), question mark (`?`), number sign (`#`), or asterisk (`*`), enclose them in brackets. The right bracket (`]`) cannot be used inside a group to match itself, but it can be used outside a group as a literal character.
 
-A hyphen (`-`) inside *charlist* separates the upper and lower bounds of a character range — for example, `[A-Z]` matches any uppercase letter. Multiple ranges are placed adjacently inside the same brackets, with no delimiter.
+A hyphen (`-`) inside *charlist* separates the upper and lower bounds of a character range --- for example, `[A-Z]` matches any uppercase letter. Multiple ranges are placed adjacently inside the same brackets, with no delimiter.
 
 The meaning of a range depends on the active **Option Compare** mode and the system locale. Under **Option Compare Binary** the range `[A-E]` matches `A`, `B`, `E`; under **Option Compare Text** it matches `A`, `a`, `À`, `à`, `B`, `b`, `E`, `e` (but not `Ê`/`ê`, which sort after the basic letters).
 

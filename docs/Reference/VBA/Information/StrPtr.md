@@ -15,7 +15,7 @@ Syntax: **StrPtr(** *String* **)**
 *String*
 : *required* The **String** whose buffer address is wanted.
 
-twinBASIC stores a **String** as a Unicode (UTF-16) BSTR — a length-prefixed buffer that **StrPtr** returns the start of. The returned value points at the first character, not at the four-byte length prefix that precedes it.
+twinBASIC stores a **String** as a Unicode (UTF-16) BSTR --- a length-prefixed buffer that **StrPtr** returns the start of. The returned value points at the first character, not at the four-byte length prefix that precedes it.
 
 If *String* is **vbNullString** the result is zero. For an empty string `""`, the result is the address of a valid (but zero-length) buffer; passing it to an API that distinguishes a null pointer from an empty string is the usual reason to prefer **vbNullString** over `""` in declarations.
 

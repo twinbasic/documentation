@@ -12,7 +12,7 @@ Generates a run-time error.
 Syntax: **Err**.**Raise** *number* [ **,** *source* [ **,** *description* [ **,** *helpfile* [ **,** *helpcontext* ] ] ] ]
 
 *number*
-: *required* A **Long** that identifies the nature of the error. Built-in errors fall in the range 0–65535; the range 0–512 is reserved for system errors and 513–65535 is available for user-defined errors. When raising a user-defined error from a class module, add the chosen number to the [**vbObjectError**](../Constants/#vbObjectError) constant — for example, `vbObjectError + 513`.
+: *required* A **Long** that identifies the nature of the error. Built-in errors fall in the range 0--65535; the range 0--512 is reserved for system errors and 513--65535 is available for user-defined errors. When raising a user-defined error from a class module, add the chosen number to the [**vbObjectError**](../Constants/#vbObjectError) constant --- for example, `vbObjectError + 513`.
 
 *source*
 : *optional* A **String** naming the object or application that generated the error. When setting the [**Source**](Source) property for an object, use the form *project.class*. If *source* is not specified, the programmatic ID of the current twinBASIC project is used.

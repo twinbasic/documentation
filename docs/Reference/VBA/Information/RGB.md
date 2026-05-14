@@ -14,13 +14,13 @@ Returns a **Long** representing an RGB colour value.
 Syntax: **RGB(** *red* **,** *green* **,** *blue* **)**
 
 *red*
-: *required* A number in the range 0–255 representing the red component of the colour.
+: *required* A number in the range 0--255 representing the red component of the colour.
 
 *green*
-: *required* A number in the range 0–255 representing the green component of the colour.
+: *required* A number in the range 0--255 representing the green component of the colour.
 
 *blue*
-: *required* A number in the range 0–255 representing the blue component of the colour.
+: *required* A number in the range 0--255 representing the blue component of the colour.
 
 Application methods and properties that accept a colour specification expect a number representing an RGB colour value: the relative intensity of red, green, and blue that produces a particular shade. The value of any argument that exceeds 255 is treated as 255.
 

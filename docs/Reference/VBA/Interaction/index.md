@@ -7,11 +7,11 @@ has_toc: false
 
 # Interaction module
 
-The **Interaction** module groups together standalone procedures for everything that happens at the edges of a program — talking to the user, branching on a value, launching another process, reading the environment or the registry, and creating, calling into, or raising events on COM objects.
+The **Interaction** module groups together standalone procedures for everything that happens at the edges of a program --- talking to the user, branching on a value, launching another process, reading the environment or the registry, and creating, calling into, or raising events on COM objects.
 
 ## Asking the user something
 
-[**MsgBox**](MsgBox) shows a modal dialog with a message, an icon, and a chosen set of buttons; it returns a [**VbMsgBoxResult**](../Constants/VbMsgBoxResult) value identifying the button that was clicked. [**InputBox**](InputBox) shows a similar dialog with a text-entry field and returns the string the user typed (or an empty string if the user cancels). [**Beep**](Beep) sounds the system alert tone — useful as an audible cue when a long-running operation finishes.
+[**MsgBox**](MsgBox) shows a modal dialog with a message, an icon, and a chosen set of buttons; it returns a [**VbMsgBoxResult**](../Constants/VbMsgBoxResult) value identifying the button that was clicked. [**InputBox**](InputBox) shows a similar dialog with a text-entry field and returns the string the user typed (or an empty string if the user cancels). [**Beep**](Beep) sounds the system alert tone --- useful as an audible cue when a long-running operation finishes.
 
 ```tb
 Dim Answer As VbMsgBoxResult
@@ -22,10 +22,10 @@ Answer = MsgBox("Save changes before closing?", vbYesNoCancel + vbQuestion, "Con
 
 The module offers four ways to pick one of several values inline:
 
-- [**If**](If) is the short-circuiting inline conditional — a twinBASIC addition. Only the branch matching the condition is evaluated, so `If(Divisor <> 0, 100 / Divisor, "n/a")` is safe even when *Divisor* is zero.
+- [**If**](If) is the short-circuiting inline conditional -- a twinBASIC addition. Only the branch matching the condition is evaluated, so `If(Divisor <> 0, 100 / Divisor, "n/a")` is safe even when *Divisor* is zero.
 - [**IIf**](IIf) is the historical VBA inline conditional. Both *truepart* and *falsepart* are always evaluated, so it cannot guard against errors in the unused branch.
-- [**Choose**](Choose) returns the *index*-th item from a list of values — a one-based equivalent of array indexing for a fixed-length argument list.
-- [**Switch**](Switch) iterates over pairs of *(condition, value)* arguments and returns the value paired with the first **True** condition — a compact stand-in for an **If...ElseIf** ladder.
+- [**Choose**](Choose) returns the *index*-th item from a list of values -- a one-based equivalent of array indexing for a fixed-length argument list.
+- [**Switch**](Switch) iterates over pairs of *(condition, value)* arguments and returns the value paired with the first **True** condition -- a compact stand-in for an **If...ElseIf** ladder.
 
 ```tb
 Dim Status As Variant
@@ -57,9 +57,9 @@ DeleteSetting  "MyApp", "Window", "Maximised"
 
 ## COM objects and dynamic dispatch
 
-[**CreateObject**](CreateObject) instantiates a new COM/Automation object given its ProgID or CLSID — optionally on a remote machine when a *servername* is supplied. [**GetObject**](GetObject) is the dual: it either binds to a file (loading the application that owns it) or attaches to an already-running instance of an object class.
+[**CreateObject**](CreateObject) instantiates a new COM/Automation object given its ProgID or CLSID --- optionally on a remote machine when a *servername* is supplied. [**GetObject**](GetObject) is the dual: it either binds to a file (loading the application that owns it) or attaches to an already-running instance of an object class.
 
-Once an object reference is in hand, [**CallByName**](CallByName) and [**CallByDispId**](CallByDispId) invoke a method or property on it dynamically, when the member to call is only known at run time — by name in the first case, or by raw IDispatch dispatch ID in the second. [**RaiseEventByName**](RaiseEventByName) and [**RaiseEventByName2**](RaiseEventByName2) raise an event on an object by event-name string — the run-time equivalent of the **RaiseEvent** statement, useful when the event being raised isn't known at compile time. The two forms differ only in how the event arguments are supplied: as a packed **Variant** array, or as a variable-length argument list.
+Once an object reference is in hand, [**CallByName**](CallByName) and [**CallByDispId**](CallByDispId) invoke a method or property on it dynamically, when the member to call is only known at run time --- by name in the first case, or by raw IDispatch dispatch ID in the second. [**RaiseEventByName**](RaiseEventByName) and [**RaiseEventByName2**](RaiseEventByName2) raise an event on an object by event-name string --- the run-time equivalent of the **RaiseEvent** statement, useful when the event being raised isn't known at compile time. The two forms differ only in how the event arguments are supplied: as a packed **Variant** array, or as a variable-length argument list.
 
 ## Members
 

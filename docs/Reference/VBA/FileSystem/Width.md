@@ -18,11 +18,11 @@ Syntax: **Width #** *FileNumber* **,** *Width*
 : *required* The file number used to open the file.
 
 *Width*
-: *required* A numeric expression in the range 0–255, inclusive, indicating how many characters appear on a line before a new line is started. If *Width* equals `0`, there is no limit to the length of a line. The default is `0`.
+: *required* A numeric expression in the range 0--255, inclusive, indicating how many characters appear on a line before a new line is started. If *Width* equals `0`, there is no limit to the length of a line. The default is `0`.
 
 ### Example
 
-This example sets the output line width to 5 — five characters are written per line before the channel wraps.
+This example sets the output line width to 5 --- five characters are written per line before the channel wraps.
 
 ```tb
 Dim I As Long

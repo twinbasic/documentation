@@ -13,7 +13,7 @@ Syntax: *hook*.**Start**
 *hook*
 : *required* An [**IGetMessageHook**](./#igetmessagehook-interface) instance whose subscriptions have been set up with [**RegisterMessage**](RegisterMessage).
 
-Calling **Start** on a hook that is already started has no effect. Calling it on a hook with no subscriptions is harmless but accomplishes nothing — register first, then start.
+Calling **Start** on a hook that is already started has no effect. Calling it on a hook with no subscriptions is harmless but accomplishes nothing --- register first, then start.
 
 ### See Also
 

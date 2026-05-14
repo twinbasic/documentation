@@ -39,7 +39,7 @@ Syntax:
 : *optional* (twinBASIC) Marks the **Sub** as an inheritance hook that classes derived via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop) may replace with an **Overrides** clause. Meaningful only on a member of a class that participates in an **Inherits** hierarchy.
 
 *name*
-: Name of the **Sub**; follows standard variable naming conventions. The special name `New` declares an instance constructor — see [Inheritance](../../Features/Language/Inheritance) for chained construction with `*baseclass*.New(...)`.
+: Name of the **Sub**; follows standard variable naming conventions. The special name `New` declares an instance constructor --- see [Inheritance](../../Features/Language/Inheritance) for chained construction with `*baseclass*.New(...)`.
 
 **Of** *typevars*
 : *optional* One or more type variable names, following standard variable naming conventions. The names are separated by commas. Causes the procedure to be a generic **Sub**.
@@ -50,15 +50,15 @@ Syntax:
 *binding-clause*
 : *optional* (twinBASIC) One of three trailing clauses that bind this body to a member declared elsewhere:
 
-  - **Handles** *object*.*event* [ **,** *object*.*event* … ] — connects this **Sub** as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
-  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] — provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list permits one body to satisfy several interfaces' members at once. See [**Implements** statement](Implements).
-  - **Overrides** *base*.*member* — supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
+  - **Handles** *object*.*event* [ **,** *object*.*event* … ] --- connects this **Sub** as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
+  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] --- provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list permits one body to satisfy several interfaces' members at once. See [**Implements** statement](Implements).
+  - **Overrides** *base*.*member* --- supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
 
 *statements*
 : *optional* Any group of statements to be executed within the **Sub** procedure.
 
 **[Exit Sub](Exit)**
-: *optional* Immediately returns from the **Sub** procedure. (A bare [**Return**](Return) statement does *not* exit a **Sub** — it is reserved for the [**GoSub...Return**](GoSub-Return) construct.)
+: *optional* Immediately returns from the **Sub** procedure. (A bare [**Return**](Return) statement does *not* exit a **Sub** --- it is reserved for the [**GoSub...Return**](GoSub-Return) construct.)
 
 ### *arglist*
 

@@ -8,9 +8,9 @@ has_toc: false
 # WaynesSlider class
 {: .no_toc }
 
-A horizontal or vertical slider control — a draggable block over a track — for editing an integer value within a range. The user can drag the block, click on the track to step the value by one page, or use the arrow keys when the control has focus; an optional auto-increment timer activates while a mouse button is held down on the track.
+A horizontal or vertical slider control --- a draggable block over a track --- for editing an integer value within a range. The user can drag the block, click on the track to step the value by one page, or use the arrow keys when the control has focus; an optional auto-increment timer activates while a mouse button is held down on the track.
 
-The control paints three visual states ([**NormalState**](#normalstate), [**HoverState**](#hoverstate), [**FocusedState**](#focusedstate)) controlled by parallel [**WaynesSliderState**](WaynesSliderState) sub-objects, each of which has independent fill / border / corner styling for the background and for the block. The current [**Value**](#value) is optionally rendered as text on the block — as a raw integer or as a formatted percentage — depending on [**DisplayFormat**](#displayformat).
+The control paints three visual states ([**NormalState**](#normalstate), [**HoverState**](#hoverstate), [**FocusedState**](#focusedstate)) controlled by parallel [**WaynesSliderState**](WaynesSliderState) sub-objects, each of which has independent fill / border / corner styling for the background and for the block. The current [**Value**](#value) is optionally rendered as text on the block --- as a raw integer or as a formatted percentage --- depending on [**DisplayFormat**](#displayformat).
 
 If the control's [**Height**](#height) is greater than its [**Width**](#width) on first display, the slider defaults to [**Direction**](#direction) = **Vertical**; otherwise it defaults to **Horizontal**.
 
@@ -24,7 +24,7 @@ Private Sub Form_Load()
 End Sub
 ```
 
-[**Value**](#value) is just a **Long** property — assigning to it from outside the control moves the block and triggers a repaint. Combined with a [**WaynesTimer**](../WaynesTimer), the slider can animate itself across its range:
+[**Value**](#value) is just a **Long** property --- assigning to it from outside the control moves the block and triggers a repaint. Combined with a [**WaynesTimer**](../WaynesTimer), the slider can animate itself across its range:
 
 ```tb
 Private Sub Form_Load()
@@ -63,7 +63,7 @@ How the [**Value**](#value) is rendered on the block, declared inside the **Wayn
 | Constant | Value | Description |
 |----------|-------|-------------|
 | **DisplayValue**{: #displayvalue } | 0 | Show the raw integer value. |
-| **DisplayPercentage**{: #displaypercentage } | 1 | Show the value as a percentage of the range — `FormatPercent((Value - MinValue) / (MaxValue - MinValue), 1)`. |
+| **DisplayPercentage**{: #displaypercentage } | 1 | Show the value as a percentage of the range --- `FormatPercent((Value - MinValue) / (MaxValue - MinValue), 1)`. |
 | **DisplayNone**{: #displaynone } | 2 | No text on the block. |
 
 ## Properties
@@ -131,7 +131,7 @@ The unique design-time name of the control on its parent form. **String**. Inher
 ### NormalState
 {: .no_toc }
 
-The [**WaynesSliderState**](WaynesSliderState) used when the slider is idle — not hovered, not focused.
+The [**WaynesSliderState**](WaynesSliderState) used when the slider is idle --- not hovered, not focused.
 
 ### PagingStepValue
 {: .no_toc }
@@ -141,7 +141,7 @@ How far [**Value**](#value) moves when the user clicks on the track outside the 
 ### StepValue
 {: .no_toc }
 
-The granularity of the slider — [**Value**](#value) is rounded to a multiple of **StepValue** offset from [**MinValue**](#minvalue) before each paint. **Long**. Default: 1.
+The granularity of the slider --- [**Value**](#value) is rounded to a multiple of **StepValue** offset from [**MinValue**](#minvalue) before each paint. **Long**. Default: 1.
 
 ### TabIndex
 {: .no_toc }
@@ -178,4 +178,4 @@ The control's width in pixels. [**PixelCount**](../Enumerations/PixelCount). Inh
 ### WrapAround
 {: .no_toc }
 
-When **False** (the default), [**Value**](#value) is clamped to the range `[MinValue, MaxValue]`. When **True**, values outside the range are allowed and the block wraps around — the slider paints additional block instances on the opposite edge to give a continuous visual. **Boolean**.
+When **False** (the default), [**Value**](#value) is clamped to the range `[MinValue, MaxValue]`. When **True**, values outside the range are allowed and the block wraps around --- the slider paints additional block instances on the opposite edge to give a continuous visual. **Boolean**.

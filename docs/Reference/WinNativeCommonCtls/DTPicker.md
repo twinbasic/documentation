@@ -23,14 +23,14 @@ Private Sub DTPicker1_Change()
 End Sub
 ```
 
-The control inherits the focusable rect-dockable members from `BaseControlFocusable` — size, position, **Anchors**, **Dock**, **Font**, **BackColor** / **ForeColor**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
+The control inherits the focusable rect-dockable members from `BaseControlFocusable` --- size, position, **Anchors**, **Dock**, **Font**, **BackColor** / **ForeColor**, **Appearance**, **MousePointer** / **MouseIcon**, **ToolTipText**, **DragMode** / **DragIcon**, **Drag**, **Refresh**, **SetFocus**, **TabIndex** / **TabStop**, **ZOrder**, **CausesValidation**, **VisualStyles**, **hWnd**, **HelpContextID** / **WhatsThisHelpID**.
 
 * TOC
 {:toc}
 
 ## Format and value
 
-[**Format**](#format) selects one of four display styles — long date, short date, time, or a custom format string supplied through [**CustomFormat**](#customformat). The inline value is always a **Date**, but [**Value**](#value) is typed **Variant** because a [**CheckBox**](#checkbox)-equipped picker may have no date assigned (the user can clear the checkbox), in which case [**Value**](#value) reads as **Null**.
+[**Format**](#format) selects one of four display styles --- long date, short date, time, or a custom format string supplied through [**CustomFormat**](#customformat). The inline value is always a **Date**, but [**Value**](#value) is typed **Variant** because a [**CheckBox**](#checkbox)-equipped picker may have no date assigned (the user can clear the checkbox), in which case [**Value**](#value) reads as **Null**.
 
 The convenience accessors [**Year**](#year), [**Month**](#month), [**Week**](#week), [**Day**](#day), [**Hour**](#hour), [**Minute**](#minute), and [**Second**](#second) decompose the current value into individual components; assigning to any of them rewrites [**Value**](#value) with the requested component changed. The [**StartOfWeek**](#startofweek) property selects the first-day-of-week used by the calendar dropdown and by [**Week**](#week).
 
@@ -42,7 +42,7 @@ When [**Format**](#format) is set to **dtpCustom**, the [**CustomFormat**](#cust
 
 When the dropdown calendar is shown, the [**CalendarBackColor**](#calendarbackcolor), [**CalendarForeColor**](#calendarforecolor), [**CalendarTitleBackColor**](#calendartitlebackcolor), [**CalendarTitleForeColor**](#calendartitleforecolor), and [**CalendarTrailingForeColor**](#calendartrailingforecolor) properties control the calendar's colors via `DTM_SETMCCOLOR`. The [**CalendarShowToday**](#calendarshowtoday), [**CalendarShowTodayCircle**](#calendarshowtodaycircle), [**CalendarShowWeekNumbers**](#calendarshowweeknumbers), and [**CalendarShowTrailingDates**](#calendarshowtrailingdates) booleans toggle the corresponding `MCS_…` style flags on the embedded calendar.
 
-[**hWndCalendar**](#hwndcalendar) returns the Win32 handle of the dropped-down calendar window — useful for advanced customization. It is only valid between the [**DropDown**](#dropdown) and [**CloseUp**](#closeup) events.
+[**hWndCalendar**](#hwndcalendar) returns the Win32 handle of the dropped-down calendar window --- useful for advanced customization. It is only valid between the [**DropDown**](#dropdown) and [**CloseUp**](#closeup) events.
 
 Properties
 ----------
@@ -97,7 +97,7 @@ The text color used for trailing days from adjacent months when [**CalendarShowT
 
 Whether the picker includes a checkbox next to the date value. **Boolean**. Default: **False**. When **True**, the user can clear the checkbox to leave the picker without a value, in which case [**Value**](#value) returns **Null**. Assigning **Null** to [**Value**](#value) when **CheckBox** is **False** raises run-time error 35787 (*"Can't set Value to NULL when CheckBox property = FALSE"*).
 
-Changing this property at run time recreates the underlying Win32 window — the property cannot be flipped in the GWL_STYLE alone.
+Changing this property at run time recreates the underlying Win32 window --- the property cannot be flipped in the GWL_STYLE alone.
 
 ### CustomFormat
 {: .no_toc }
@@ -107,7 +107,7 @@ The picture string used when [**Format**](#format) is **dtpCustom**. **String**.
 ### Day
 {: .no_toc }
 
-The day-of-month component of [**Value**](#value). **Integer** (1–31). Reading returns the current day; assigning rewrites the date with the new day, raising run-time error 380 if the assigned value is out of range for the current month. See also [**DayCount**](#daycount).
+The day-of-month component of [**Value**](#value). **Integer** (1--31). Reading returns the current day; assigning rewrites the date with the new day, raising run-time error 380 if the assigned value is out of range for the current month. See also [**DayCount**](#daycount).
 
 ### DayCount
 {: .no_toc }
@@ -127,7 +127,7 @@ The display format. A member of [**DTPickerFormatConstants**](Enumerations/DTPic
 ### Hour
 {: .no_toc }
 
-The hour component of [**Value**](#value), in 24-hour form. **Integer** (1–23 — note that `0` is rejected with run-time error 380 by the setter; read returns the live value). Reading is unrestricted.
+The hour component of [**Value**](#value), in 24-hour form. **Integer** (1--23 --- note that `0` is rejected with run-time error 380 by the setter; read returns the live value). Reading is unrestricted.
 
 ### hWndCalendar
 {: .no_toc }
@@ -147,12 +147,12 @@ The lower bound of the navigable date range. **Date**. Default: `1601-01-01`. As
 ### Minute
 {: .no_toc }
 
-The minute component of [**Value**](#value). **Integer** (1–59 on assignment; 0–59 on read).
+The minute component of [**Value**](#value). **Integer** (1--59 on assignment; 0--59 on read).
 
 ### Month
 {: .no_toc }
 
-The month-of-year component of [**Value**](#value). **Integer** (1–12). Assigning an out-of-range value raises run-time error 380.
+The month-of-year component of [**Value**](#value). **Integer** (1--12). Assigning an out-of-range value raises run-time error 380.
 
 ### RightToLeft
 {: .no_toc }
@@ -165,7 +165,7 @@ A **Boolean**.
 ### Second
 {: .no_toc }
 
-The seconds component of [**Value**](#value). **Integer** (1–59 on assignment; 0–59 on read).
+The seconds component of [**Value**](#value). **Integer** (1--59 on assignment; 0--59 on read).
 
 ### StartOfWeek
 {: .no_toc }
@@ -191,7 +191,7 @@ Assigning a numeric (non-**Date**) value implicitly converts via **CDate**. Assi
 ### Week
 {: .no_toc }
 
-The ISO-style week-of-year for the current [**Value**](#value). **Integer** (1–53). The setter applies a delta of `DateAdd("ww", …)` so changing **Week** preserves the day-of-week within the week. Assigning out-of-range raises run-time error 380. Honors [**StartOfWeek**](#startofweek) when computing the week boundary.
+The ISO-style week-of-year for the current [**Value**](#value). **Integer** (1--53). The setter applies a delta of `DateAdd("ww", …)` so changing **Week** preserves the day-of-week within the week. Assigning out-of-range raises run-time error 380. Honors [**StartOfWeek**](#startofweek) when computing the week boundary.
 
 ### Year
 {: .no_toc }
@@ -218,7 +218,7 @@ Syntax: *object*\_**CallbackKeyDown**( **ByVal** *KeyCode* **As Integer**, **ByV
 : The picture-string token identifying which callback field is focused.
 
 *CallbackDate*
-: **In / out** — the current value the application can mutate before the event returns.
+: **In / out** --- the current value the application can mutate before the event returns.
 
 ### Change
 {: .no_toc }
@@ -237,7 +237,7 @@ Syntax: *object*\_**Click**( )
 ### CloseUp
 {: .no_toc }
 
-Raised when the dropdown calendar closes — either by the user picking a date, by clicking outside the calendar, or by pressing **Esc**.
+Raised when the dropdown calendar closes --- either by the user picking a date, by clicking outside the calendar, or by pressing **Esc**.
 
 Syntax: *object*\_**CloseUp**( )
 
@@ -276,7 +276,7 @@ Syntax: *object*\_**Format**( **ByVal** *CallbackField* **As String**, *Formatte
 : The picture-string token identifying which callback field is being rendered.
 
 *FormattedString*
-: **Out** — the application sets this to the text the picker should display in the field.
+: **Out** --- the application sets this to the text the picker should display in the field.
 
 ### FormatSize
 {: .no_toc }
@@ -289,7 +289,7 @@ Syntax: *object*\_**FormatSize**( **ByVal** *CallbackField* **As String**, *Size
 : The picture-string token identifying the callback field.
 
 *Size*
-: **Out** — the application sets this to the expected character count.
+: **Out** --- the application sets this to the expected character count.
 
 ### GotFocus
 {: .no_toc }

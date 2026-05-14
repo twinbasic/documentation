@@ -13,7 +13,7 @@ Cursor-shape values for the **MousePointer** property of forms and controls.
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **vbDefault**{: #vbDefault } | 0 | The default — usually an arrow. |
+| **vbDefault**{: #vbDefault } | 0 | The default --- usually an arrow. |
 | **vbArrow**{: #vbArrow } | 1 | Arrow. |
 | **vbCrosshair**{: #vbCrosshair } | 2 | Crosshair. |
 | **vbIbeam**{: #vbIbeam } | 3 | I-beam (text-edit cursor). |
@@ -43,8 +43,8 @@ Cursor-shape values for the **MousePointer** property of forms and controls.
 | **vbScrollS**{: #vbScrollS } | 21 | Auto-scroll arrow pointing south. |
 | **vbScrollE**{: #vbScrollE } | 22 | Auto-scroll arrow pointing east. |
 | **vbScrollW**{: #vbScrollW } | 23 | Auto-scroll arrow pointing west. |
-| **vbScrollNS**{: #vbScrollNS } | 24 | Auto-scroll arrow pointing north–south. |
-| **vbScrollWE**{: #vbScrollWE } | 25 | Auto-scroll arrow pointing west–east. |
+| **vbScrollNS**{: #vbScrollNS } | 24 | Auto-scroll arrow pointing north--south. |
+| **vbScrollWE**{: #vbScrollWE } | 25 | Auto-scroll arrow pointing west--east. |
 | **vbScrollNW**{: #vbScrollNW } | 26 | Auto-scroll arrow pointing north-west. |
 | **vbScrollNE**{: #vbScrollNE } | 27 | Auto-scroll arrow pointing north-east. |
 | **vbScrollSW**{: #vbScrollSW } | 28 | Auto-scroll arrow pointing south-west. |

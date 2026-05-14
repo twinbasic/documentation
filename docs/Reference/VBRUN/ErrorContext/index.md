@@ -12,7 +12,7 @@ has_toc: false
 
 An **ErrorContext** object captures everything the runtime knows about a run-time error: its identity ([**Number**](#number), [**Description**](#description), [**Source**](#source)), its help references ([**HelpFile**](#helpfile), [**HelpContext**](#helpcontext)), the operating-system error code at the time it was raised ([**LastDLLError**](#lastdllerror)), the [**State**](#state) of the error-handling machinery, and a snapshot of the [**Callstack**](#callstack) from the moment of the failure. It is twinBASIC's structured counterpart to the simpler [**Err**](../../../Modules/ErrObject) object.
 
-The error-identity properties (**Number**, **Description**, **Source**, **HelpFile**, **HelpContext**, **LastDLLError**) have the same meaning here as on the **Err** object — see the [**ErrObject**](../../../Modules/ErrObject) module for a discussion of each. **State** and **Callstack** are unique to **ErrorContext** and reflect the structured error-handling machinery that has no equivalent on the legacy **Err** object.
+The error-identity properties (**Number**, **Description**, **Source**, **HelpFile**, **HelpContext**, **LastDLLError**) have the same meaning here as on the **Err** object --- see the [**ErrObject**](../../../Modules/ErrObject) module for a discussion of each. **State** and **Callstack** are unique to **ErrorContext** and reflect the structured error-handling machinery that has no equivalent on the legacy **Err** object.
 
 ## Members
 
@@ -25,7 +25,7 @@ Syntax: *object*.**Callstack**
 *object*
 : *required* An object expression that evaluates to an **ErrorContext** object.
 
-The snapshot lists every active procedure outermost-first; the innermost frame is the procedure that raised the error. The collection is read-only — see [**ErrorCallstack**](../ErrorCallstack) for how to iterate it.
+The snapshot lists every active procedure outermost-first; the innermost frame is the procedure that raised the error. The collection is read-only --- see [**ErrorCallstack**](../ErrorCallstack) for how to iterate it.
 
 ### Description
 
@@ -69,7 +69,7 @@ Syntax: *object*.**LastDLLError**
 *object*
 : *required* An object expression that evaluates to an **ErrorContext** object.
 
-twinBASIC's error trapping does not catch failures inside `Declare`d Windows API calls — those calls report failure through their return value, and the calling code has to inspect this property to learn the underlying Win32 error. The value is meaningful only on Windows.
+twinBASIC's error trapping does not catch failures inside `Declare`d Windows API calls --- those calls report failure through their return value, and the calling code has to inspect this property to learn the underlying Win32 error. The value is meaningful only on Windows.
 
 ### Number
 
@@ -102,12 +102,12 @@ Syntax: *object*.**State** [ **=** *value* ]
 *object*
 : *required* An object expression that evaluates to an **ErrorContext** object.
 
-The runtime updates **State** as control flows through error handlers, **Try**/**Catch**/**Finally** blocks, and the various propagation paths. Reading the property tells diagnostic code which construct it is being invoked from. Assigning to it overrides the runtime's idea of what to do next — a deliberately advanced operation, useful mainly to diagnostic tools and to libraries that manage their own error flow.
+The runtime updates **State** as control flows through error handlers, **Try**/**Catch**/**Finally** blocks, and the various propagation paths. Reading the property tells diagnostic code which construct it is being invoked from. Assigning to it overrides the runtime's idea of what to do next --- a deliberately advanced operation, useful mainly to diagnostic tools and to libraries that manage their own error flow.
 
 The **OnErrorStatus** enumeration values are:
 
 `OnErrorGoto0` (`&H1`)
-: An **On Error GoTo 0** is currently in effect — no handler is installed.
+: An **On Error GoTo 0** is currently in effect --- no handler is installed.
 
 `OnErrorResumeNext` (`&H2`)
 : An **On Error Resume Next** is currently in effect.

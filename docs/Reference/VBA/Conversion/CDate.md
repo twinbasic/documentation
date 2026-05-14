@@ -14,7 +14,7 @@ Coerces an expression to a **Date**.
 Syntax: **CDate(** *expression* **)**
 
 *expression*
-: *required* Any valid date expression — a date literal, a date/time string, or a number that falls within the range of acceptable dates.
+: *required* Any valid date expression --- a date literal, a date/time string, or a number that falls within the range of acceptable dates.
 
 The return type is **Date**.
 

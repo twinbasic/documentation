@@ -8,11 +8,11 @@ has_toc: false
 
 # Collection class
 
-A **Collection** is an ordered set of items that can be referred to as a unit. The members of a collection do not have to share a data type — any value or object reference is acceptable. Items are accessed by their one-based numeric position in the collection or, if they were added with a key, by that key.
+A **Collection** is an ordered set of items that can be referred to as a unit. The members of a collection do not have to share a data type --- any value or object reference is acceptable. Items are accessed by their one-based numeric position in the collection or, if they were added with a key, by that key.
 
 ## Creating, populating, and disposing of a collection
 
-A collection is created with **New**, populated with [**Add**](Add), and reduced with [**Remove**](Remove) (one item at a time) or [**Clear**](Clear) (every item at once). When the variable referring to the collection goes out of scope, or is set to **Nothing**, the collection — together with any object references it holds — is released.
+A collection is created with **New**, populated with [**Add**](Add), and reduced with [**Remove**](Remove) (one item at a time) or [**Clear**](Clear) (every item at once). When the variable referring to the collection goes out of scope, or is set to **Nothing**, the collection --- together with any object references it holds --- is released.
 
 ```tb
 Sub Demo()

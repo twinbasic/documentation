@@ -24,7 +24,7 @@ When the fractional part is exactly `0.5`, **CLngLng** always rounds it to the n
 > Conversion functions must be used to explicitly assign **LongLong** to smaller integral types. Implicit conversions of **LongLong** to smaller integrals are not allowed.
 
 > [!NOTE]
-> In VBA, **LongLong** (and therefore **CLngLng**) is restricted to 64-bit hosts. twinBASIC supports **LongLong** in both 32-bit and 64-bit modes — see [Data Types](../../../Features/Language/Data-Types).
+> In VBA, **LongLong** (and therefore **CLngLng**) is restricted to 64-bit hosts. twinBASIC supports **LongLong** in both 32-bit and 64-bit modes --- see [Data Types](../../../Features/Language/Data-Types).
 
 ### Example
 

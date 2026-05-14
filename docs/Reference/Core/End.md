@@ -36,7 +36,7 @@ Syntax:
 - **End With**
   Required to end a [**With**](With) statement.
 
-When executed, the **End** statement resets all module-level variables and all static local variables in all modules. To preserve the value of these variables, use the [**Stop**](Stop) statement instead — execution can then resume while preserving the value of those variables.
+When executed, the **End** statement resets all module-level variables and all static local variables in all modules. To preserve the value of these variables, use the [**Stop**](Stop) statement instead --- execution can then resume while preserving the value of those variables.
 
 > [!IMPORTANT]
 >

@@ -11,7 +11,7 @@ When and how the SCM starts a service. Assigned to [**ServiceManager.InstallStar
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **tbServiceStartBoot**{: #tbServiceStartBoot }                 | 0 | Started by the boot loader at OS boot. **Kernel drivers only** — not applicable to twinBASIC services. |
+| **tbServiceStartBoot**{: #tbServiceStartBoot }                 | 0 | Started by the boot loader at OS boot. **Kernel drivers only** --- not applicable to twinBASIC services. |
 | **tbServiceStartDriverSystem**{: #tbServiceStartDriverSystem } | 1 | Started by `Ntldr` / `Winload` during system initialisation. **Kernel drivers only.** |
 | **tbServiceStartAuto**{: #tbServiceStartAuto }                 | 2 | Automatically started by the SCM at system boot, before any user logs in. The typical setting for a background service that should always be running. |
 | **tbServiceStartOnDemand**{: #tbServiceStartOnDemand }         | 3 | Started by the SCM only when something explicitly requests it (control-panel applet, `sc.exe start`, [**Services.LaunchService**](../Services#launchservice), or a service that lists it in [**DependentServices**](../ServiceManager#dependentservices)). The default for new [**ServiceManager**](../ServiceManager) instances. |

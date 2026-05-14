@@ -13,7 +13,7 @@ Determines how a single corner of a control is shaped. Used by [**Corner.Shape**
 |----------|-------|-------------|
 | **tbCurve**{: #tbCurve } | 0 | Quarter-circle round corner; the radius gives the curve. |
 | **tbNotched**{: #tbNotched } | 1 | Diagonal notch across the corner; the radius gives the cut depth. |
-| **tbCutOut**{: #tbCutOut } | 2 | Inverse round-corner — the corner area is carved *out* of the control. |
+| **tbCutOut**{: #tbCutOut } | 2 | Inverse round-corner --- the corner area is carved *out* of the control. |
 
 [**Corners.SetAll**](../Styles/Corners#setall) applies one shape to every corner at once; setting [**TopLeft**](../Styles/Corners#topleft) / [**TopRight**](../Styles/Corners#topright) / [**BottomLeft**](../Styles/Corners#bottomleft) / [**BottomRight**](../Styles/Corners#bottomright) individually lets the shapes mix:
 

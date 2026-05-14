@@ -8,7 +8,7 @@ has_toc: false
 # ListBox class
 {: .no_toc }
 
-A **ListBox** is a Win32 native control that displays a vertically-scrolling list of items, optionally laid out in multiple columns, from which the user picks one item — or any number of items, when [**MultiSelect**](#multiselect) is non-zero. Each item is a string, with an optional **LongPtr** value the application can store alongside it through [**ItemData**](#itemdata). The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Text**](#text) and the default event is [**Click**](#click).
+A **ListBox** is a Win32 native control that displays a vertically-scrolling list of items, optionally laid out in multiple columns, from which the user picks one item --- or any number of items, when [**MultiSelect**](#multiselect) is non-zero. Each item is a string, with an optional **LongPtr** value the application can store alongside it through [**ItemData**](#itemdata). The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Text**](#text) and the default event is [**Click**](#click).
 
 ```tb
 Private Sub Form_Load()
@@ -43,11 +43,11 @@ End Sub
 
 Changing **Style** at run time recreates the underlying window, preserving the items, [**ItemData**](#itemdata) values, current selection, scroll position, and (in checkbox mode) check states. [**Sorted**](#sorted), [**MultiSelect**](#multiselect), [**IntegralHeight**](#integralheight), and [**UseTabStops**](#usetabstops) recreate the window the same way.
 
-[**MultiSelect**](#multiselect) is meaningful only with **vbListBoxStandard**. The other styles always behave as if **MultiSelect** were **vbMultiSelectNone** — the per-item toggle of **vbListBoxCheckbox** replaces the multi-selection feature, and the colour swatch is purely a display variant.
+[**MultiSelect**](#multiselect) is meaningful only with **vbListBoxStandard**. The other styles always behave as if **MultiSelect** were **vbMultiSelectNone** --- the per-item toggle of **vbListBoxCheckbox** replaces the multi-selection feature, and the colour swatch is purely a display variant.
 
 ## Editing the list
 
-Items are held inside the OS list-box control; the [**List**](#list) and [**ItemData**](#itemdata) arrays are projections onto that storage. Items are added with [**AddItem**](#additem), removed with [**RemoveItem**](#removeitem), and the whole list is cleared with [**Clear**](#clear). After each [**AddItem**](#additem) call, [**NewIndex**](#newindex) reports the position the item was inserted at — useful when [**Sorted**](#sorted) is **True** and the position is not predictable from the call.
+Items are held inside the OS list-box control; the [**List**](#list) and [**ItemData**](#itemdata) arrays are projections onto that storage. Items are added with [**AddItem**](#additem), removed with [**RemoveItem**](#removeitem), and the whole list is cleared with [**Clear**](#clear). After each [**AddItem**](#additem) call, [**NewIndex**](#newindex) reports the position the item was inserted at --- useful when [**Sorted**](#sorted) is **True** and the position is not predictable from the call.
 
 ```tb
 List1.Sorted = True
@@ -73,7 +73,7 @@ Assigning a string to [**Text**](#text) searches the list with an exact, case-in
 
 ## Multi-column display
 
-When [**Columns**](#columns) is greater than zero, the OS lays the items out in that many side-by-side columns and gives the control a horizontal scroll bar instead of the usual vertical one. The column width is automatically set to the control's pixel width divided by [**Columns**](#columns) — assigning a new [**Width**](#width) does not re-divide the columns; reassign [**Columns**](#columns) to refresh the layout.
+When [**Columns**](#columns) is greater than zero, the OS lays the items out in that many side-by-side columns and gives the control a horizontal scroll bar instead of the usual vertical one. The column width is automatically set to the control's pixel width divided by [**Columns**](#columns) --- assigning a new [**Width**](#width) does not re-divide the columns; reassign [**Columns**](#columns) to refresh the layout.
 
 The single-column / multi-column distinction is fixed at the moment the underlying window is created. At run time, [**Columns**](#columns) can be raised or lowered between non-zero values to re-divide the same control, but switching between zero and non-zero raises run-time error 380 (*Invalid property value*). A multi-column layout requires [**Columns**](#columns) to be assigned its non-zero value at design time.
 
@@ -96,7 +96,7 @@ When [**OLEDragMode**](#oledragmode) is set to **vbOLEDragAutomatic**, dragging 
 ### Anchors
 {: .no_toc }
 
-The set of edges of the parent that the list box's corresponding edges follow when the parent resizes. Read-only — assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
+The set of edges of the parent that the list box's corresponding edges follow when the parent resizes. Read-only --- assign individual `.Left`, `.Top`, `.Right`, `.Bottom` flags through the returned **Anchors** object.
 
 ### Appearance
 {: .no_toc }
@@ -130,7 +130,7 @@ Switching between zero and non-zero at run time raises run-time error 380 (*Inva
 ### Container
 {: .no_toc }
 
-The control that hosts this list box — typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
+The control that hosts this list box --- typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
 
 ### ControlType
 {: .no_toc }
@@ -177,7 +177,7 @@ A **StdPicture** used as the mouse cursor while the control is being drag-and-dr
 ### DragMode
 {: .no_toc }
 
-Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default — call [**Drag**](#drag) from code) or **vbAutomatic** (1).
+Whether the control should drag itself when the user holds the mouse over it. A member of [**DragModeConstants**](../../VBRUN/Constants/DragModeConstants): **vbManual** (0, default --- call [**Drag**](#drag) from code) or **vbAutomatic** (1).
 
 ### Enabled
 {: .no_toc }
@@ -229,7 +229,7 @@ Syntax: *object*.**ItemData**( *Index* ) [ = *value* ]
 *Index*
 : *required* A **Long** zero-based item position.
 
-In **vbListBoxColorSwatch** mode, **ItemData** is read by the painting code as the **OLE_COLOR** to draw in the swatch — a typical use is to fill it with a list of palette colours from which the user selects one. In the other styles **ItemData** is purely application-defined.
+In **vbListBoxColorSwatch** mode, **ItemData** is read by the painting code as the **OLE_COLOR** to draw in the swatch --- a typical use is to fill it with a list of palette colours from which the user selects one. In the other styles **ItemData** is purely application-defined.
 
 ```tb
 List1.AddItem "Highlight"
@@ -246,7 +246,7 @@ The horizontal distance from the left edge of the container to the left edge of 
 ### List
 {: .no_toc }
 
-The text of an item, indexed by zero-based position. Setting **List(*Index*)** removes the existing item at that position and reinserts the new value at the same index — note that this can change the resulting position when [**Sorted**](#sorted) is **True**.
+The text of an item, indexed by zero-based position. Setting **List(*Index*)** removes the existing item at that position and reinserts the new value at the same index --- note that this can change the resulting position when [**Sorted**](#sorted) is **True**.
 
 Syntax: *object*.**List**( *Index* ) [ = *string* ]
 
@@ -261,7 +261,7 @@ The number of items in the list, as a **Long**. Read-only.
 ### ListIndex
 {: .no_toc }
 
-The zero-based index of the focused item, or `-1` if no item is focused. **Long**. In multi-select modes the focused item and the selected items are independent — see [**Selected**](#selected). Assigning a value that differs from the current one focuses that item and raises [**Click**](#click).
+The zero-based index of the focused item, or `-1` if no item is focused. **Long**. In multi-select modes the focused item and the selected items are independent --- see [**Selected**](#selected). Assigning a value that differs from the current one focuses that item and raises [**Click**](#click).
 
 ### MaxCheckboxSize
 {: .no_toc }
@@ -281,7 +281,7 @@ The mouse cursor shown when the pointer is over the control. A member of [**Mous
 ### MultiSelect
 {: .no_toc }
 
-The selection mode. A member of [**MultiSelectConstants**](../../VBRUN/Constants/MultiSelectConstants): **vbMultiSelectNone** (0, default — single selection), **vbMultiSelectSimple** (1 — each click toggles), or **vbMultiSelectExtended** (2 — **Shift** for ranges, **Ctrl** for individual toggles). Changing this at run time recreates the underlying window; the items, [**ItemData**](#itemdata) values, focused item, and (in **vbListBoxCheckbox** mode) check states are restored, but multi-item selections are not. Effective only in **vbListBoxStandard** mode — see [Style](#style).
+The selection mode. A member of [**MultiSelectConstants**](../../VBRUN/Constants/MultiSelectConstants): **vbMultiSelectNone** (0, default --- single selection), **vbMultiSelectSimple** (1 --- each click toggles), or **vbMultiSelectExtended** (2 --- **Shift** for ranges, **Ctrl** for individual toggles). Changing this at run time recreates the underlying window; the items, [**ItemData**](#itemdata) values, focused item, and (in **vbListBoxCheckbox** mode) check states are restored, but multi-item selections are not. Effective only in **vbListBoxStandard** mode --- see [Style](#style).
 
 ### Name
 {: .no_toc }
@@ -296,7 +296,7 @@ The zero-based index at which the most recent [**AddItem**](#additem) call inser
 ### OLEDragMode
 {: .no_toc }
 
-Whether the control acts as an automatic OLE drag source. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default — call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1 — dragging an item starts an OLE drag whose **Text** data is the dragged item's text in single-select mode, or every selected item's text separated by **vbCrLf** in multi-select mode).
+Whether the control acts as an automatic OLE drag source. A member of [**OLEDragConstants**](../../VBRUN/Constants/OLEDragConstants): **vbOLEDragManual** (0, default --- call [**OLEDrag**](#oledrag) from code) or **vbOLEDragAutomatic** (1 --- dragging an item starts an OLE drag whose **Text** data is the dragged item's text in single-select mode, or every selected item's text separated by **vbCrLf** in multi-select mode).
 
 ### OLEDropMode
 {: .no_toc }
@@ -306,7 +306,7 @@ How the control responds to OLE drops. A restricted member of [**OLEDropConstant
 ### Opacity
 {: .no_toc }
 
-The control's opacity as a percentage (0–100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
+The control's opacity as a percentage (0--100, default 100). Values outside the range are clamped on **Initialize**. Requires Windows 8 or later for child controls.
 
 ### Parent
 {: .no_toc }
@@ -327,7 +327,7 @@ The number of items currently selected, as a **Long**. Read-only. Always `0` or 
 ### Selected
 {: .no_toc }
 
-The selection state of an individual item — or, in **vbListBoxCheckbox** mode, the check state.
+The selection state of an individual item --- or, in **vbListBoxCheckbox** mode, the check state.
 
 Syntax: *object*.**Selected**( *Index* ) [ = *boolean* ]
 
@@ -372,7 +372,7 @@ The text of the focused item, or an empty string when [**ListIndex**](#listindex
 
 Syntax: *object*.**Text** [ = *string* ]
 
-Reading **Text** returns `List(ListIndex)` — reading it when no item is focused raises run-time error 5 (*Invalid procedure call or argument*). Setting **Text** searches the list for an exact, case-insensitive match (using `LB_FINDSTRINGEXACT`) and selects the matching item if found; if no item matches, [**ListIndex**](#listindex) is set to `-1` and the current selection is cleared.
+Reading **Text** returns `List(ListIndex)` --- reading it when no item is focused raises run-time error 5 (*Invalid procedure call or argument*). Setting **Text** searches the list for an exact, case-insensitive match (using `LB_FINDSTRINGEXACT`) and selects the matching item if found; if no item matches, [**ListIndex**](#listindex) is set to `-1` and the current selection is cleared.
 
 ### ToolTipText
 {: .no_toc }
@@ -422,7 +422,7 @@ When **True** (default), mouse-wheel notifications over the control raise the [*
 ### Width
 {: .no_toc }
 
-The control's width. **Single**. In a multi-column layout, also determines the column width — see [Multi-column display](#multi-column-display).
+The control's width. **Single**. In a multi-column layout, also determines the column width --- see [Multi-column display](#multi-column-display).
 
 ## Methods
 
@@ -536,14 +536,14 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Click
 {: .no_toc }
 
-Raised after the focused item changes — whether the user clicked a different entry, used the keyboard to move the focus, or code assigned a different value to [**ListIndex**](#listindex) or [**Selected**](#selected). Also raised when the previously selected item is cancelled (`LBN_SELCANCEL`). **Default event.**
+Raised after the focused item changes --- whether the user clicked a different entry, used the keyboard to move the focus, or code assigned a different value to [**ListIndex**](#listindex) or [**Selected**](#selected). Also raised when the previously selected item is cancelled (`LBN_SELCANCEL`). **Default event.**
 
 Syntax: *object*\_**Click**( )
 
 ### DblClick
 {: .no_toc }
 
-Raised when the user double-clicks an entry. Typically used to act on the highlighted item — for example, opening it.
+Raised when the user double-clicks an entry. Typically used to act on the highlighted item --- for example, opening it.
 
 Syntax: *object*\_**DblClick**( )
 
@@ -571,14 +571,14 @@ Syntax: *object*\_**GotFocus**( )
 ### Initialize
 {: .no_toc }
 
-Raised once, immediately after the underlying window is created and the design-time items have been added. New in twinBASIC — VB6 had no equivalent on this control.
+Raised once, immediately after the underlying window is created and the design-time items have been added. New in twinBASIC --- VB6 had no equivalent on this control.
 
 Syntax: *object*\_**Initialize**( )
 
 ### ItemCheck
 {: .no_toc }
 
-Raised in **vbListBoxCheckbox** mode each time the check state of an item changes — whether the user clicked its check box, pressed **Space**, or code assigned to [**Selected**](#selected). Not raised in the other styles.
+Raised in **vbListBoxCheckbox** mode each time the check state of an item changes --- whether the user clicked its check box, pressed **Space**, or code assigned to [**Selected**](#selected). Not raised in the other styles.
 
 Syntax: *object*\_**ItemCheck**( *Item* **As Integer** )
 
@@ -682,7 +682,7 @@ Syntax: *object*\_**OLEStartDrag**( *Data* **As DataObject**, *AllowedEffects* *
 ### Scroll
 {: .no_toc }
 
-Raised when the visible portion of the list scrolls — by the scroll bar, the keyboard, or (when [**WheelScrollEvent**](#wheelscrollevent) is **True**) the mouse wheel. The new offset can be read from [**TopIndex**](#topindex).
+Raised when the visible portion of the list scrolls --- by the scroll bar, the keyboard, or (when [**WheelScrollEvent**](#wheelscrollevent) is **True**) the mouse wheel. The new offset can be read from [**TopIndex**](#topindex).
 
 Syntax: *object*\_**Scroll**( )
 

@@ -57,9 +57,9 @@ Syntax:
 *binding-clause*
 : *optional* (twinBASIC) One of three trailing clauses that bind this body to a member declared elsewhere:
 
-  - **Handles** *object*.*event* [ **,** *object*.*event* … ] — connects this **Function** as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
-  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] — provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list permits one body to satisfy several interfaces' members at once. See [**Implements** statement](Implements).
-  - **Overrides** *base*.*member* — supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
+  - **Handles** *object*.*event* [ **,** *object*.*event* … ] --- connects this **Function** as a handler for the named event(s), replacing the traditional `Object_Event` naming convention. See [**Handles** statement](Handles).
+  - **Implements** *iface*.*member* [ **,** *iface2*.*member2* … ] --- provides the body for the named [**Interface**](Interface) (or [**Class**](Class)) member, replacing the traditional `Iface_Member` naming convention. A comma-separated list permits one body to satisfy several interfaces' members at once. See [**Implements** statement](Implements).
+  - **Overrides** *base*.*member* --- supplies the body for an **Overridable** *member* inherited via [**Inherits**](../../Features/Language/Inheritance#inherits-for-complete-oop). Combine with **Overridable** on the same header to allow further-derived classes to override again.
 
 *statements*
 : *optional* Any group of statements to be executed within the **Function** procedure.
@@ -118,7 +118,7 @@ All executable code must be in procedures. A **Function** procedure cannot be de
 
 The **[Exit Function](Exit)** statement and the **[Return](Return)** *expression* statement both cause an immediate exit from a **Function** procedure. Program execution continues with the statement following the statement that called the **Function** procedure. Any number of these statements can appear anywhere in a **Function** procedure. **Exit Function** is the right choice when the return value has already been assigned (or the default is wanted); **Return** *expression* sets the return value and exits in a single step.
 
-Like a **Sub** procedure, a **Function** procedure is a separate procedure that can take arguments, perform a series of statements, and change the values of its arguments. However, unlike a **Sub** procedure, a **Function** procedure can appear on the right side of an expression in the same way as any intrinsic function — such as **Sqr**, **Cos**, or **Chr** — when the value returned by the function is needed.
+Like a **Sub** procedure, a **Function** procedure is a separate procedure that can take arguments, perform a series of statements, and change the values of its arguments. However, unlike a **Sub** procedure, a **Function** procedure can appear on the right side of an expression in the same way as any intrinsic function --- such as **Sqr**, **Cos**, or **Chr** --- when the value returned by the function is needed.
 
 A **Function** procedure is called by using the function name, followed by the argument list in parentheses, in an expression. See the **[Call](Call)** statement for specific information about how to call **Function** procedures.
 

@@ -7,11 +7,11 @@ permalink: /tB/Packages/CustomControls/Enumerations/FillPattern
 # FillPattern
 {: .no_toc }
 
-Identifies how the colour table held by a [**Fill**](../Styles/Fill) is applied across the area being painted. The same colour stops produce very different results depending on the pattern — a north-to-south gradient with two stops paints a top-to-bottom transition, while a corner gradient with the same stops paints from one corner outward. Used by [**Fill.Pattern**](../Styles/Fill#pattern).
+Identifies how the colour table held by a [**Fill**](../Styles/Fill) is applied across the area being painted. The same colour stops produce very different results depending on the pattern --- a north-to-south gradient with two stops paints a top-to-bottom transition, while a corner gradient with the same stops paints from one corner outward. Used by [**Fill.Pattern**](../Styles/Fill#pattern).
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| **tbPatternNone**{: #tbPatternNone } | 0 | No fill — leaves the region transparent. |
+| **tbPatternNone**{: #tbPatternNone } | 0 | No fill --- leaves the region transparent. |
 | **tbGradientNorthToSouth**{: #tbGradientNorthToSouth } | 1 | Linear gradient from the top edge down to the bottom edge. |
 | **tbGradientSouthToNorth**{: #tbGradientSouthToNorth } | 2 | Linear gradient from the bottom edge up to the top edge. |
 | **tbGradientWestToEast**{: #tbGradientWestToEast } | 3 | Linear gradient from the left edge across to the right edge. |
@@ -51,4 +51,4 @@ pnlThree.BackgroundFill.SetSimplePattern vbWhite, &H99CCFF, _
         Pattern:=tbGradientCornerTopLeft
 ```
 
-**tbPatternNone** produces a flat region with no gradient — the `Fill` becomes fully transparent and the area behind the control shows through.
+**tbPatternNone** produces a flat region with no gradient --- the `Fill` becomes fully transparent and the area behind the control shows through.

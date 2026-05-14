@@ -8,7 +8,7 @@ permalink: /tB/Core/Class
 
 {: .no_toc }
 
-Defines a class. Classes are templates from which objects are created — classes are object types, as opposed to value types. Objects are held by reference and are reference-counted. The memory an object occupies is freed when there are no more references to it — when no variables in the process refer to them.
+Defines a class. Classes are templates from which objects are created --- classes are object types, as opposed to value types. Objects are held by reference and are reference-counted. The memory an object occupies is freed when there are no more references to it --- when no variables in the process refer to them.
 
 Syntax:
 
@@ -27,7 +27,7 @@ Syntax:
 : *optional* (twinBASIC) In an ActiveX project, marks the class as exported into the type library so that consumers in other projects can create and use it.
 
 **Private**
-: *optional* (twinBASIC) In an ActiveX project, withholds the class from the type library: it remains usable within the project but is not exported. The conventional pairing with [**CoClass**](CoClass) — a public **CoClass** as the consumer-visible contract paired with a `Private Class` as the hidden implementation — relies on this modifier.
+: *optional* (twinBASIC) In an ActiveX project, withholds the class from the type library: it remains usable within the project but is not exported. The conventional pairing with [**CoClass**](CoClass) --- a public **CoClass** as the consumer-visible contract paired with a `Private Class` as the hidden implementation --- relies on this modifier.
 
 *name*
 : The identifier naming the class.
@@ -43,7 +43,7 @@ Syntax:
 
   - [constant](../Gloss#constant) defined using [**Const**](Const),
   - [variable](../Gloss#variable) defined using [**Public**](Public), [**Protected**](Protected), [**Private**](Private), or [**Dim**](Dim),
-  - [procedure](../Gloss#procedure) defined using [**Sub**](Sub), [**Function**](Function), or [**Property**](Property) — including the special instance constructor `Sub New(`*args*`)`, which the runtime invokes when the class is created with [**New**](New),
+  - [procedure](../Gloss#procedure) defined using [**Sub**](Sub), [**Function**](Function), or [**Property**](Property) --- including the special instance constructor `Sub New(`*args*`)`, which the runtime invokes when the class is created with [**New**](New),
   - [user-defined type (UDTs)](../Gloss#user-defined-type) defined using [**Type**](Type),
   - (twinBASIC) [**Implements**](Implements) clauses, listing interfaces or classes whose members this class provides bodies for.
 

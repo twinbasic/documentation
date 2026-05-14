@@ -11,11 +11,11 @@ has_toc: false
 
 A bundle of the style objects that describe a single visual state of a [**WaynesSlider**](.). Each slider holds three parallel instances ([**NormalState**](.#normalstate), [**HoverState**](.#hoverstate), [**FocusedState**](.#focusedstate)); the slider picks one at each repaint depending on the mouse / focus state.
 
-The state has two halves — the *background* (the full track behind the block) and the *block* (the draggable rectangle that indicates [**Value**](.#value)). Each half has its own [**Fill**](../Styles/Fill), [**Borders**](../Styles/Borders), and [**Corners**](../Styles/Corners). A [**TextRendering**](../Styles/TextRendering) on the state controls how the optional [**DisplayFormat**](.#displayformat) text is drawn on the block.
+The state has two halves --- the *background* (the full track behind the block) and the *block* (the draggable rectangle that indicates [**Value**](.#value)). Each half has its own [**Fill**](../Styles/Fill), [**Borders**](../Styles/Borders), and [**Corners**](../Styles/Corners). A [**TextRendering**](../Styles/TextRendering) on the state controls how the optional [**DisplayFormat**](.#displayformat) text is drawn on the block.
 
-[**InitializeDefaultValues**](#initializedefaultvalues) pre-sets the block to a solid mid-blue ([**WAYNESCOLOR_BLUE**](#) — `&HAC7220`) fill, a 2-pixel black background border, and a transparent block border that acts as inner padding inside the background.
+[**InitializeDefaultValues**](#initializedefaultvalues) pre-sets the block to a solid mid-blue ([**WAYNESCOLOR_BLUE**](#) --- `&HAC7220`) fill, a 2-pixel black background border, and a transparent block border that acts as inner padding inside the background.
 
-The type itself is `Public Class` but cannot be instantiated from outside the package — instances are accessed only through the slider's **NormalState** / **HoverState** / **FocusedState** properties.
+The type itself is `Public Class` but cannot be instantiated from outside the package --- instances are accessed only through the slider's **NormalState** / **HoverState** / **FocusedState** properties.
 
 ## Properties
 
@@ -64,7 +64,7 @@ The [**TextRendering**](../Styles/TextRendering) that controls how the optional 
 ### InitializeDefaultValues
 {: .no_toc }
 
-Resets the state object to the package's defaults — a solid mid-blue block fill, a 2-pixel black background border, and a transparent block border. Called automatically the first time the parent slider is initialized, if no serialized data was loaded.
+Resets the state object to the package's defaults --- a solid mid-blue block fill, a 2-pixel black background border, and a transparent block border. Called automatically the first time the parent slider is initialized, if no serialized data was loaded.
 
 Syntax: *object*.**InitializeDefaultValues**
 

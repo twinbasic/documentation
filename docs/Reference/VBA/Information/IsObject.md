@@ -16,7 +16,7 @@ Syntax: **IsObject(** *identifier* **)**
 *identifier*
 : *required* A variable name.
 
-**IsObject** is useful only for determining whether a **Variant** holds **VarType vbObject**. This is the case if the **Variant** actually references — or once referenced — an object, or if it contains **Nothing**.
+**IsObject** is useful only for determining whether a **Variant** holds **VarType vbObject**. This is the case if the **Variant** actually references --- or once referenced --- an object, or if it contains **Nothing**.
 
 **IsObject** returns **True** if *identifier* is a variable declared with **Object** type or any valid class type, or if *identifier* is a **Variant** of **VarType vbObject**, or a user-defined object; otherwise, it returns **False**.
 

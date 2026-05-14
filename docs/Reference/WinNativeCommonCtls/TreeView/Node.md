@@ -11,7 +11,7 @@ has_toc: false
 
 A **Node** is a single entry in a [**TreeView**](.)'s [**Nodes**](Nodes) collection. Returned from [**Nodes.Add**](Nodes#add) and from [**Nodes.Item**](Nodes#item). Each node has its own text, icons, sort settings, check state, and sibling / parent / child relationships.
 
-The class is tagged `[COMCreatable(False)]` — user code accesses **Node** instances through the parent [**TreeView**](.)'s [**Nodes**](Nodes) collection or through navigation properties on other nodes.
+The class is tagged `[COMCreatable(False)]` --- user code accesses **Node** instances through the parent [**TreeView**](.)'s [**Nodes**](Nodes) collection or through navigation properties on other nodes.
 
 ```tb
 Dim root As Node = TreeView1.Nodes.Add(, , "root", "My Computer")
@@ -80,7 +80,7 @@ Example: a node "C: drive" whose parent is "My Computer" returns `"My Computer\C
 ### Image
 {: .no_toc }
 
-The icon rendered when the node is not selected. **Variant** — either a 1-based **Long** index into [**TreeView.ImageList**](.#imagelist), or a **String** key. Assignment validates against the bound image list.
+The icon rendered when the node is not selected. **Variant** --- either a 1-based **Long** index into [**TreeView.ImageList**](.#imagelist), or a **String** key. Assignment validates against the bound image list.
 
 ### Index
 {: .no_toc }
@@ -105,7 +105,7 @@ The next sibling of this node, or **Nothing** if this is the last sibling. **Nod
 ### Parent
 {: .no_toc }
 
-The parent **Node**, or **Nothing** if this node is at the root level. **Node**, read/write. Note: assigning **Parent** does not move the node — it merely changes the recorded parent reference.
+The parent **Node**, or **Nothing** if this node is at the root level. **Node**, read/write. Note: assigning **Parent** does not move the node --- it merely changes the recorded parent reference.
 
 ### Previous
 {: .no_toc }
@@ -125,7 +125,7 @@ Whether this node is the [**TreeView.SelectedItem**](.#selecteditem) of the tree
 ### SelectedImage
 {: .no_toc }
 
-The icon rendered when the node is selected. **Variant** — either an index or a key into [**TreeView.ImageList**](.#imagelist). When unset, defaults to the same as [**Image**](#image).
+The icon rendered when the node is selected. **Variant** --- either an index or a key into [**TreeView.ImageList**](.#imagelist). When unset, defaults to the same as [**Image**](#image).
 
 ### Sorted
 {: .no_toc }
@@ -155,7 +155,7 @@ The node's label text. **String**, read/write.
 ### Visible
 {: .no_toc }
 
-Whether the node is currently visible — i.e. not hidden because an ancestor is collapsed and not scrolled out of view. **Boolean**, read-only.
+Whether the node is currently visible --- i.e. not hidden because an ancestor is collapsed and not scrolled out of view. **Boolean**, read-only.
 
 Methods
 -------

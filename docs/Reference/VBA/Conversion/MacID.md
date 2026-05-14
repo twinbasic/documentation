@@ -14,7 +14,7 @@ Used on the Macintosh to convert a 4-character constant to a value that may be u
 Syntax: **MacID(** *constant* **)**
 
 *constant*
-: *required* A **String** of 4 characters used to specify a resource type, file type, application signature, or Apple Event — for example, `"TEXT"`, `"OBIN"`, `"XLS5"` for Excel files (`"XLS8"` for Excel 97); Microsoft Word uses `"W6BN"` (`"W8BN"` for Word 97).
+: *required* A **String** of 4 characters used to specify a resource type, file type, application signature, or Apple Event --- for example, `"TEXT"`, `"OBIN"`, `"XLS5"` for Excel files (`"XLS8"` for Excel 97); Microsoft Word uses `"W6BN"` (`"W8BN"` for Word 97).
 
 The return type is **Long**.
 

@@ -14,7 +14,7 @@ Syntax: *object*.**GetFormat(** *Format* **)**
 : *required* An object expression that evaluates to a **DataObject**.
 
 *Format*
-: *required* A **ClipboardConstants** value identifying the format to test for — for example `vbCFText`, `vbCFUnicodeText`, `vbCFBitmap`, `vbCFFiles`.
+: *required* A **ClipboardConstants** value identifying the format to test for --- for example `vbCFText`, `vbCFUnicodeText`, `vbCFBitmap`, `vbCFFiles`.
 
 The result is **True** if the **DataObject** can produce a value in *Format*, **False** otherwise. Use this before calling [**GetData**](GetData) when the format may not be present, so that an unknown format does not silently return **Empty**.
 

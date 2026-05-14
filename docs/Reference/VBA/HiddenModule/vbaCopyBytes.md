@@ -19,7 +19,7 @@ Syntax: **vbaCopyBytes(** *Length* **,** *Dest* **,** *Src* **)** **As LongPtr**
 *Src*
 : *required* **LongPtr**. The source address.
 
-The behaviour for overlapping ranges is unspecified — use a temporary buffer if the ranges may overlap. The return value is *Dest* (the same address that was passed in), provided as a convenience for chaining.
+The behaviour for overlapping ranges is unspecified --- use a temporary buffer if the ranges may overlap. The return value is *Dest* (the same address that was passed in), provided as a convenience for chaining.
 
 ### Example
 

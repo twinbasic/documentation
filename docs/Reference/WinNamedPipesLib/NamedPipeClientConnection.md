@@ -10,10 +10,10 @@ has_toc: false
 
 One client-side connection to a named pipe. Produced by [**NamedPipeClientManager.Connect**](NamedPipeClientManager#connect). Carries the connection-lifecycle events ([**Connected**](#connected), [**Disconnected**](#disconnected)) and the message events ([**MessageReceived**](#messagereceived), [**MessageSent**](#messagesent)), plus the [**AsyncRead**](#asyncread) / [**AsyncWrite**](#asyncwrite) / [**AsyncClose**](#asyncclose) methods that trigger them.
 
-The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface — reach instances only through [**NamedPipeClientManager.Connect**](NamedPipeClientManager#connect).
+The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface --- reach instances only through [**NamedPipeClientManager.Connect**](NamedPipeClientManager#connect).
 
 > [!IMPORTANT]
-> The package `_README.txt` states: *"you MUST call **AsyncClose** on the client side, otherwise the connection is left alive when the object goes out of scope"*. Either call [**AsyncClose**](#asyncclose) explicitly before dropping the last reference, **or** let the object terminate cleanly through its `Class_Terminate` (which calls [**AsyncClose**](#asyncclose) automatically). Holding the reference forever — in a module-level **Collection**, for example — without calling [**AsyncClose**](#asyncclose) keeps the pipe handle open and the IOCP thread alive.
+> The package `_README.txt` states: *"you MUST call **AsyncClose** on the client side, otherwise the connection is left alive when the object goes out of scope"*. Either call [**AsyncClose**](#asyncclose) explicitly before dropping the last reference, **or** let the object terminate cleanly through its `Class_Terminate` (which calls [**AsyncClose**](#asyncclose) automatically). Holding the reference forever --- in a module-level **Collection**, for example --- without calling [**AsyncClose**](#asyncclose) keeps the pipe handle open and the IOCP thread alive.
 
 ```tb
 Private manager As NamedPipeClientManager
@@ -47,17 +47,17 @@ See the package [overview](.) for the IOCP / event-marshalling architecture, the
 ### CustomData
 {: .no_toc }
 
-A per-connection opaque slot the consumer can attach state to — typically a session object or a pending-replies dictionary tied to this one connection. **Variant**, default **Empty**. The package never reads or writes this field.
+A per-connection opaque slot the consumer can attach state to --- typically a session object or a pending-replies dictionary tied to this one connection. **Variant**, default **Empty**. The package never reads or writes this field.
 
 ### Handle
 {: .no_toc }
 
-The underlying Win32 file handle returned by `CreateFileW("\\.\pipe\<PipeName>")`. **LongPtr**. Exposed for low-level / debugging use — most consumers can ignore it. Do not call `CloseHandle` on this value directly; use [**AsyncClose**](#asyncclose) so the IOCP loop and the parent manager's bookkeeping stay consistent.
+The underlying Win32 file handle returned by `CreateFileW("\\.\pipe\<PipeName>")`. **LongPtr**. Exposed for low-level / debugging use --- most consumers can ignore it. Do not call `CloseHandle` on this value directly; use [**AsyncClose**](#asyncclose) so the IOCP loop and the parent manager's bookkeeping stay consistent.
 
 ### PipeName
 {: .no_toc }
 
-The leaf pipe name this connection was opened against — the same value that was passed to [**NamedPipeClientManager.Connect**](NamedPipeClientManager#connect). **String**. Read-only in practice; the package sets it from the constructor argument and never changes it.
+The leaf pipe name this connection was opened against --- the same value that was passed to [**NamedPipeClientManager.Connect**](NamedPipeClientManager#connect). **String**. Read-only in practice; the package sets it from the constructor argument and never changes it.
 
 ## Events
 
@@ -83,10 +83,10 @@ Fires when a complete message has been read from the pipe.
 Syntax: *connection*_**MessageReceived**(**ByRef** *Cookie* **As Variant**, **ByRef** *Data*() **As Byte**)
 
 *Cookie*
-: The opaque correlation value originally passed to the [**AsyncRead**](#asyncread) that produced this read — or **Empty** if the read came from the auto-issued reads triggered by [**NamedPipeClientManager.ContinuouslyReadFromPipe**](NamedPipeClientManager#continuouslyreadfrompipe).
+: The opaque correlation value originally passed to the [**AsyncRead**](#asyncread) that produced this read --- or **Empty** if the read came from the auto-issued reads triggered by [**NamedPipeClientManager.ContinuouslyReadFromPipe**](NamedPipeClientManager#continuouslyreadfrompipe).
 
 *Data*
-: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat — copy the bytes out before the handler returns if they are needed later. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and provides typed multi-field access in one step.
+: The message payload. See [Working with `Data() As Byte` in events](.#working-with-data-as-byte-in-events) on the package overview for the transient-buffer lifetime caveat --- copy the bytes out before the handler returns if they are needed later. The [recommended capture mechanism](.#propertybag-carrier) is to assign *Data* to a fresh [**PropertyBag**](../VBRUN/PropertyBag/)'s **Contents**, which deep-copies the bytes and provides typed multi-field access in one step.
 
 ### MessageSent
 {: .no_toc }
@@ -121,7 +121,7 @@ Syntax: *connection*.**AsyncRead** [ *Cookie* [, *OverlappedStruct* ] ]
 : *optional* A **Variant** correlation value, passed back as the *Cookie* parameter of the matching [**MessageReceived**](#messagereceived) event. Default **Empty**.
 
 *OverlappedStruct*
-: *optional* A **LongPtr** to a pre-allocated `OVERLAPPED_CUSTOM` structure. **Internal use only** — the IOCP machinery passes this when re-issuing a read after `ERROR_MORE_DATA`. Consumer code should always omit this parameter.
+: *optional* A **LongPtr** to a pre-allocated `OVERLAPPED_CUSTOM` structure. **Internal use only** --- the IOCP machinery passes this when re-issuing a read after `ERROR_MORE_DATA`. Consumer code should always omit this parameter.
 
 Only needed when the parent manager's [**ContinuouslyReadFromPipe**](NamedPipeClientManager#continuouslyreadfrompipe) is **False**; otherwise the IOCP loop keeps a read pending automatically and explicit calls are redundant.
 
@@ -133,7 +133,7 @@ Sends a message to the server.
 Syntax: *connection*.**AsyncWrite** *Data*() [, *Cookie* ]
 
 *Data*
-: *required* A **Byte()** array containing the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended encoding is [**PropertyBag**](../VBRUN/PropertyBag/) — see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
+: *required* A **Byte()** array containing the bytes to send. An uninitialised or zero-length array is a no-op. For typed multi-field payloads the recommended encoding is [**PropertyBag**](../VBRUN/PropertyBag/) --- see [Recommended payload encoding: `PropertyBag`](.#propertybag-carrier) on the package overview.
 
 *Cookie*
 : *optional* A **Variant** correlation value, passed back as the *Cookie* parameter of the matching [**MessageSent**](#messagesent) event. Default **Empty**.

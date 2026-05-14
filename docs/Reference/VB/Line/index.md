@@ -8,7 +8,7 @@ has_toc: false
 # Line class
 {: .no_toc }
 
-A **Line** is a windowless lightweight control that draws a single straight line segment from one point to another on its container. It exists purely for visual presentation — to divide regions of a form, underline a heading, draw a leader to an annotation — and has no interactive elements of its own: no mouse events, no focus, no caption.
+A **Line** is a windowless lightweight control that draws a single straight line segment from one point to another on its container. It exists purely for visual presentation --- to divide regions of a form, underline a heading, draw a leader to an annotation --- and has no interactive elements of its own: no mouse events, no focus, no caption.
 
 A **Line** is positioned by its two endpoints, [**X1**](#x1) / [**Y1**](#y1) and [**X2**](#x2) / [**Y2**](#y2), rather than by a `Left` / `Top` / `Width` / `Height` rectangle. The default property is [**Visible**](#visible) and the default event is [**Initialize**](#initialize).
 
@@ -26,7 +26,7 @@ End Sub
 
 ## Endpoints
 
-[**X1**](#x1) / [**Y1**](#y1) is one endpoint of the line; [**X2**](#x2) / [**Y2**](#y2) is the other. Coordinates are in the container's **ScaleMode** units (twips by default) and are measured from the top-left corner of the container's client area. The line is drawn between the two points regardless of which is "earlier" — swapping the endpoints does not change the result.
+[**X1**](#x1) / [**Y1**](#y1) is one endpoint of the line; [**X2**](#x2) / [**Y2**](#y2) is the other. Coordinates are in the container's **ScaleMode** units (twips by default) and are measured from the top-left corner of the container's client area. The line is drawn between the two points regardless of which is "earlier" --- swapping the endpoints does not change the result.
 
 The control has no `Width` or `Height` of its own; the bounding rectangle is derived from the two endpoints. Resizing a **Line** at design time moves whichever endpoint is being dragged.
 
@@ -34,15 +34,15 @@ The control has no `Width` or `Height` of its own; the bounding rectangle is der
 
 The line is drawn with a Win32 GDI pen whose appearance is controlled by:
 
-- [**BorderColor**](#bordercolor) — the colour of the pen (defaults to the system window-text colour).
-- [**BorderWidth**](#borderwidth) — the pen width in pixels (default `1`).
-- [**BorderStyle**](#borderstyle) — the pen pattern, as a member of [**BorderStyleConstants**](../../VBRUN/Constants/BorderStyleConstants): **vbTransparent** (0), **vbBSSolid** (1, default), **vbBSDash** (2), **vbBSDot** (3), **vbBSDashDot** (4), **vbBSDashDotDot** (5), or **vbBSInsideSolid** (6).
+- [**BorderColor**](#bordercolor) -- the colour of the pen (defaults to the system window-text colour).
+- [**BorderWidth**](#borderwidth) -- the pen width in pixels (default `1`).
+- [**BorderStyle**](#borderstyle) -- the pen pattern, as a member of [**BorderStyleConstants**](../../VBRUN/Constants/BorderStyleConstants): **vbTransparent** (0), **vbBSSolid** (1, default), **vbBSDash** (2), **vbBSDot** (3), **vbBSDashDot** (4), **vbBSDashDotDot** (5), or **vbBSInsideSolid** (6).
 
 GDI applies a hard limitation here: when [**BorderWidth**](#borderwidth) is greater than `1`, the OS forces a solid pen even if [**BorderStyle**](#borderstyle) requests a dashed or dotted pattern. Use width `1` if the pattern matters.
 
 ## Draw mode
 
-[**DrawMode**](#drawmode) selects the raster operation that combines the pen with the destination pixels. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants): **vbCopyPen** (default — opaque drawing) or one of the XOR / AND / NOT / merge variants. Non-default modes are mainly useful for "rubber-band" feedback drawn over an existing background — the same XOR applied twice cancels itself out, restoring the original pixels.
+[**DrawMode**](#drawmode) selects the raster operation that combines the pen with the destination pixels. A member of [**DrawModeConstants**](../../VBRUN/Constants/DrawModeConstants): **vbCopyPen** (default --- opaque drawing) or one of the XOR / AND / NOT / merge variants. Non-default modes are mainly useful for "rubber-band" feedback drawn over an existing background --- the same XOR applied twice cancels itself out, restoring the original pixels.
 
 ## No interaction
 
@@ -68,12 +68,12 @@ The pen width, in pixels. **Long**, default `1`. Widths greater than `1` ignore 
 ### Container
 {: .no_toc }
 
-The control that hosts this line — typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
+The control that hosts this line --- typically the form, a [**Frame**](../Frame/), or a **UserControl**. Read with **Get**, change with **Set**.
 
 ### ControlType
 {: .no_toc }
 
-A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstants) value identifying this control. The **Line** shares the **vbShape** constant with the [**Shape**](../Shape) control — both are windowless, points-based geometric primitives with no dedicated control-type identifier.
+A read-only [**ControlTypeConstants**](../../VBRUN/Constants/ControlTypeConstants) value identifying this control. The **Line** shares the **vbShape** constant with the [**Shape**](../Shape) control --- both are windowless, points-based geometric primitives with no dedicated control-type identifier.
 
 ### DrawMode
 {: .no_toc }
