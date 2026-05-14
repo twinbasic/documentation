@@ -60,12 +60,12 @@ The `-startService` discriminator is the conventional way for the EXE to know wh
 ## The two-thread split
 {: #two-thread-split }
 
-When the SCM launches the EXE as a service host, twinBASIC's runtime ends up running **two threads** for each service:
+When the SCM launches the EXE as a service host, twinBASIC's runtime runs **two threads** for each service:
 
 - The **service thread** — the SCM-spawned thread that runs the user's [**ITbService.EntryPoint**](ITbService#entrypoint). This is where the service does its actual work. The thread is created by `StartServiceCtrlDispatcherW`'s machinery; it is *not* the main thread of the EXE.
 - The **dispatcher thread** — the EXE's main thread, which is what the SCM invokes when it has a control code to deliver (*Stop*, *Pause*, *Continue*, …). The package routes the control through `RegisterServiceCtrlHandlerExW` to a trampoline that calls the user's [**ITbService.ChangeState**](ITbService#changestate).
 
-The two methods therefore run *concurrently*: while [**EntryPoint**](ITbService#entrypoint) is doing the service's work on the service thread, [**ChangeState**](ITbService#changestate) is sitting idle on the dispatcher thread, and the SCM wakes it on demand to deliver a control code. The two methods must coordinate through shared `Public` flags on the service class — `IsStopping`, `IsPaused`, and friends — because the package cannot tell the service thread to stop except through the user's own code path.
+The two methods therefore run *concurrently*: while [**EntryPoint**](ITbService#entrypoint) is doing the service's work on the service thread, [**ChangeState**](ITbService#changestate) waits idle on the dispatcher thread, and the SCM wakes it on demand to deliver a control code. The two methods must coordinate through shared `Public` flags on the service class — `IsStopping`, `IsPaused`, and similar — because the package cannot stop the service thread except through the user's own code path.
 
 ```tb
 Class MyService

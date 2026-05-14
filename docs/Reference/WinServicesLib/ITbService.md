@@ -100,7 +100,7 @@ The service's main routine. Invoked by the package's dispatcher trampoline on th
 Syntax: *service*.**EntryPoint** *ServiceManager*
 
 *ServiceManager*
-: The [**ServiceManager**](ServiceManager) for this service. Carries the configuration that was set during `Sub Main` plus the runtime [**LaunchArgs**](ServiceManager#launchargs) the SCM passed in. Use it to call [**ReportStatus**](ServiceManager#reportstatus) on every state transition.
+: The [**ServiceManager**](ServiceManager) for this service. Contains the configuration that was set during `Sub Main` plus the runtime [**LaunchArgs**](ServiceManager#launchargs) the SCM passed in. Use it to call [**ReportStatus**](ServiceManager#reportstatus) on every state transition.
 
 The body of **EntryPoint** is the service's actual work. The minimum responsibilities:
 
@@ -135,7 +135,7 @@ Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
 End Sub
 ```
 
-If you have no useful failure-reporting hook to add, an empty implementation is fine — the SCM has already given up at this point and no recovery is possible.
+If there is no useful failure-reporting hook to add, an empty implementation is fine — the SCM has already abandoned the start attempt at this point and no recovery is possible.
 
 ## See Also
 

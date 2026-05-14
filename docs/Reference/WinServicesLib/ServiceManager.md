@@ -81,7 +81,7 @@ Pass an `Array("OtherSvc1", "OtherSvc2")`. When the SCM is asked to start the se
 
 The command line the SCM will use when launching the service-host EXE. **String**, default `"""<App.ModulePath>"""` (the running EXE path, quoted).
 
-The default suffices only when the EXE always wants to run as a service. The conventional pattern is to **override the default** to add a discriminator argument so the EXE's `Sub Main` can tell which mode it is in:
+The default suffices only when the EXE always runs as a service. The conventional pattern is to **override the default** to add a discriminator argument so the EXE's `Sub Main` can tell which mode it is in:
 
 ```tb
 .InstallCmdLine = """" & App.ModulePath & """ -startService"
@@ -181,7 +181,7 @@ Syntax: *manager*.**ReportStatus** *CurrentState* [, *Win32ExitCode* [, *WaitHin
 
 **ReportStatus** fills the `dwControlsAccepted` field of `SERVICE_STATUS` automatically — *Stop* is always accepted except during [**vbServiceStatusStartPending**](Enumerations/ServiceStatusConstants#vbServiceStatusStartPending), and *Pause* / *Continue* are accepted when [**SupportsPausing**](#supportspausing) is **True**. The `dwCheckPoint` field auto-increments while the service is in a pending state and resets to **0** on [**vbServiceStatusRunning**](Enumerations/ServiceStatusConstants#vbServiceStatusRunning) / [**vbServiceStatusStopped**](Enumerations/ServiceStatusConstants#vbServiceStatusStopped).
 
-The package's dispatcher trampoline reports [**vbServiceStatusStartPending**](Enumerations/ServiceStatusConstants#vbServiceStatusStartPending) for you immediately before calling [**EntryPoint**](ITbService#entrypoint); the user's [**EntryPoint**](ITbService#entrypoint) is responsible for the subsequent [**vbServiceStatusRunning**](Enumerations/ServiceStatusConstants#vbServiceStatusRunning) and [**vbServiceStatusStopped**](Enumerations/ServiceStatusConstants#vbServiceStatusStopped) transitions.
+The package's dispatcher trampoline reports [**vbServiceStatusStartPending**](Enumerations/ServiceStatusConstants#vbServiceStatusStartPending) immediately before calling [**EntryPoint**](ITbService#entrypoint); the user's [**EntryPoint**](ITbService#entrypoint) is responsible for the subsequent [**vbServiceStatusRunning**](Enumerations/ServiceStatusConstants#vbServiceStatusRunning) and [**vbServiceStatusStopped**](Enumerations/ServiceStatusConstants#vbServiceStatusStopped) transitions.
 
 ### ResyncStatus
 {: .no_toc }

@@ -19,7 +19,7 @@ Debug.Print state.CurrentStateText, "PID " & state.ProcessId
 
 The snapshot is taken **once at construction time** and never refreshed. To monitor a service over time, call [**Services.QueryStateOfService**](Services#querystateofservice) again at each sampling interval — typically from a low-frequency Timer.
 
-The constructor opens the SCM with `SC_MANAGER_CONNECT`, opens the service with `SERVICE_QUERY_STATUS`, calls `QueryServiceStatusEx(SC_STATUS_PROCESS_INFO, ...)`, and copies the result into a private buffer. The three failure modes — SCM open failed, service not installed, status query failed — all raise run-time error 5 with a descriptive message. Wrap the call in `On Error Resume Next` if your UI needs to distinguish "service exists and is running" from "service is not installed":
+The constructor opens the SCM with `SC_MANAGER_CONNECT`, opens the service with `SERVICE_QUERY_STATUS`, calls `QueryServiceStatusEx(SC_STATUS_PROCESS_INFO, ...)`, and copies the result into a private buffer. The three failure modes — SCM open failed, service not installed, status query failed — all raise run-time error 5 with a descriptive message. Wrap the call in `On Error Resume Next` if the UI needs to distinguish "service exists and is running" from "service is not installed":
 
 ```tb
 Private Function GetStateText(ByVal serviceName As String) As String
@@ -121,7 +121,7 @@ The value the SCM has on file for the service, typically [**tbServiceTypeOwnProc
 
 The SCM-reported `dwWaitHint` value in milliseconds. **Long**.
 
-Only meaningful while the service is in a *Pending* state — it is the upper-bound estimate the service has told the SCM the pending transition will take. The SCM uses [**CheckPoint**](#checkpoint) and **WaitHint** together to decide whether a pending service is making progress.
+Only meaningful while the service is in a *Pending* state — it is the upper-bound estimate the service has told the SCM the pending transition will take. The SCM uses [**CheckPoint**](#checkpoint) and **WaitHint** together to determine whether a pending service is making progress.
 
 ## See Also
 
