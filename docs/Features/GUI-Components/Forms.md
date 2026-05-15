@@ -41,7 +41,7 @@ In addition to the above, forms have:
 - Control anchoring: control x/y/cx/cy can made relative, so they're automatically moved/resized with the Form. For example if you put a TextBox in the bottom right, then check the Right and Bottom anchors (in addition to Top and Left), the bottom right will size with the form on resize. This saves a lot of boiler-plate sizing code.
 - Control docking: Controls can be fixed along one of the sides of the Form (or container), or made to fill the whole Form/container. Multiple controls can be combined and mixed/matched in docking positions.
 
-For more information on Control Anchoring and Control Docking, see the [Anchoring and Docking page](Anchoring-Docking.md).
+For more information on Control Anchoring and Control Docking, see the [Anchoring and Docking page](Anchoring-Docking).
 
 ## High Quality Scaling in Image Controls
 

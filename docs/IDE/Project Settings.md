@@ -31,7 +31,7 @@ Listed below are the project settings, in the same order as they appear in the P
 
 ![Available COM References - Project Settings](Images/ProjectSettings_AvailableCOMReferences.png "Available COM References - Project Settings")
 
-See [Packages](../Features/Packages/index.md)
+See [Packages](../../../Features/Packages/)
 
 ![432410211-d9f1e4d9-1805-47e5-93aa-251151b4e914](../Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png)
 
