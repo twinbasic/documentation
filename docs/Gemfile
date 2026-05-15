@@ -13,7 +13,6 @@ gem "bigdecimal"
 
 group :jekyll_plugins do
   gem "jekyll-sass-converter", "~> 2.2"
-  gem "jekyll-seo-tag"
   gem "jekyll-include-cache"
   gem "jekyll-sitemap"
   gem "jekyll-relative-links"
