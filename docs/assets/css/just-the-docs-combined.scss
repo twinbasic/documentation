@@ -9,21 +9,115 @@ span {
 html.dark-mode {
   $color-scheme: dark;
   {% include css/just-the-docs.scss.liquid color_scheme="dark" %}
-  
+
+  // ---------------------------------------------------------------
+  // Workaround for the dark-mode + .search-active interaction.
+  //
+  // Upstream `_sass/search.scss` declares its active-state rules as
+  // `.search-active { .search-results { display: block; } ... }`,
+  // assuming `.search-active` will be set on `<html>` directly (which
+  // is what `showSearch()` in just-the-docs.js does). Wrapping the
+  // dark-theme @import inside `html.dark-mode { }` causes SCSS
+  // nesting to compile those to:
+  //
+  //   html.dark-mode .search-active .search-results { display: block; }
+  //
+  // -- a *descendant* combinator. With both classes on `<html>`,
+  // `.search-active` isn't a descendant of `html.dark-mode`, so the
+  // override never matches. Meanwhile the dark-mode default
+  // `html.dark-mode .search-results { display: none; }` (specificity
+  // 0,2,1) outranks the unscoped light override
+  // `.search-active .search-results { display: block; }` (0,2,0), so
+  // the search dropdown stays hidden in dark mode.
+  //
+  // Fix: re-emit the upstream `.search-active { ... }` block here
+  // with `&.search-active { ... }`, which composes into the
+  // *compound* selector `html.dark-mode.search-active` (specificity
+  // 0,3,1) -- enough to beat the dark-mode default. The contents
+  // mirror upstream `_sass/search.scss` so the dark-mode active-search
+  // visuals stay byte-equivalent to the light-mode ones.
+  &.search-active {
+    .search {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+    }
+
+    .search-input-wrap {
+      height: $sp-10;
+      border-radius: 0;
+
+      @include mq(md) {
+        width: $search-results-width;
+        box-shadow:
+          0 1px 2px rgba(0, 0, 0, 0.12),
+          0 3px 10px rgba(0, 0, 0, 0.08);
+      }
+    }
+
+    .search-input {
+      background-color: $search-background-color;
+
+      @include mq(md) {
+        padding-left: 2.3rem;
+      }
+    }
+
+    .search-label {
+      @include mq(md) {
+        padding-left: 0.6rem;
+      }
+    }
+
+    .search-results {
+      display: block;
+    }
+
+    .search-overlay {
+      width: 100%;
+      height: 100%;
+      opacity: 1;
+      transition:
+        opacity ease $transition-duration,
+        width 0s,
+        height 0s;
+    }
+
+    @include mq(md) {
+      .main {
+        position: fixed;
+        right: 0;
+        left: 0;
+      }
+    }
+
+    .main-header {
+      padding-top: $sp-10;
+
+      @include mq(md) {
+        padding-top: 0;
+      }
+    }
+  }
+  // ---------------------------------------------------------------
+
   div.highlighter-rouge div.highlight {
 	line-height: 1;
   }
-  
+
   span {
     color: $link-color;
   }
-  
+
   /* just-the-docs-switchable-src.css */
-  
+
   .site-footer {
 	color: #959396;
   }
-  
+
   h1,
   h2,
   h3,
