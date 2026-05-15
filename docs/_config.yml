@@ -101,3 +101,12 @@ gh_edit_repository: "https://github.com/twinbasic/documentation/" # the github U
 gh_edit_branch: "main" # the branch that your docs is served from
 gh_edit_source: docs # the source that your files originate from
 gh_edit_view_mode: "tree" # "tree" or "edit" if you want the user to jump into the editor immediately
+
+# When true, the Offlinify plugin (_plugins/offlinify.rb) runs at the
+# end of the build, copies _site/ to _site-offline/, rewrites every
+# URL to a page-relative form, patches a couple of just-the-docs JS
+# issues, and hides the (file://-broken) search box. The result is a
+# fully self-contained tree that can be opened directly off disk in a
+# browser. Adds ~3-5s to the build; the online _site/ output is
+# unaffected.
+also_build_offline: true

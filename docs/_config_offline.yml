@@ -8,10 +8,17 @@
 #
 # (or run build-offline.bat).
 
-# Activates _plugins/offlinify.rb -- without this flag, the plugin is a
-# no-op and the offline build would still produce broken root-absolute
-# URLs.
+# Activates _plugins/offlinify.rb in standalone mode -- writes the
+# offline tree directly to site.dest and rewrites in place. Without
+# this flag, the plugin is a no-op and the offline build would still
+# produce broken root-absolute URLs.
 offline_build: true
+
+# Override the default in _config.yml -- this overlay is the
+# "produce only the offline copy" path. The combined mode (which
+# would also write _site-offline/ alongside _site/) is unwanted here
+# since site.dest is already _site-offline/.
+also_build_offline: false
 
 # An empty url stops the canonical <link> tag from baking in the
 # production hostname (or `localhost:4000` if the build is launched
