@@ -1,0 +1,248 @@
+/* Self-contained print stylesheet for the twinBASIC documentation PDF.
+   Rendered through pagedjs-cli (CSS Paged Media Module Level 3).
+
+   Paired with rouge.css (Rouge `github.light` theme, generated via rougify).
+   No just-the-docs styles are loaded for the PDF build --- this file is the
+   complete book design. */
+
+
+/* ---- Page geometry, running header, page numbers --------------------- */
+
+@page {
+  size: A4;
+  margin: 22mm 20mm 22mm 20mm;
+
+  @bottom-right {
+    content: counter(page);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #555;
+  }
+
+  @top-right {
+    content: string(chapter-title);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #555;
+  }
+}
+
+/* First page of each chapter: drop the running header (the H1 is right there). */
+@page :first {
+  @top-right { content: ""; }
+}
+
+
+/* ---- Chapter boundaries --------------------------------------------- */
+
+article.page > h1:first-of-type {
+  string-set: chapter-title content();
+  break-before: page;
+}
+
+/* Don't force a page break before the very first chapter. */
+article.page:first-of-type > h1:first-of-type {
+  break-before: avoid;
+}
+
+
+/* ---- Base typography ----------------------------------------------- */
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #1a1a1a;
+}
+
+body {
+  margin: 0;
+}
+
+strong { font-weight: 700; }
+em     { font-style: italic; }
+
+
+/* ---- Headings ------------------------------------------------------ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: inherit;
+  color: #111;
+  margin: 1.6em 0 0.5em;
+  line-height: 1.25;
+  break-after: avoid;
+  break-inside: avoid;
+}
+
+h1 {
+  font-size: 24pt;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 0.8em;
+}
+
+h2 {
+  font-size: 18pt;
+  font-weight: 700;
+  border-bottom: 0.5pt solid #bbb;
+  padding-bottom: 0.2em;
+}
+
+h3 { font-size: 14pt; font-weight: 600; }
+h4 { font-size: 12pt; font-weight: 600; }
+h5 { font-size: 11pt; font-weight: 600; }
+h6 { font-size: 10.5pt; font-weight: 600; color: #444; }
+
+
+/* ---- Paragraphs and lists ----------------------------------------- */
+
+p {
+  margin: 0.6em 0;
+  orphans: 2;
+  widows: 2;
+}
+
+ul, ol {
+  margin: 0.5em 0;
+  padding-left: 1.8em;
+}
+
+li {
+  margin: 0.15em 0;
+  orphans: 2;
+  widows: 2;
+}
+
+
+/* ---- Definition lists (used heavily for parameter docs) ----------- */
+
+dl { margin: 0.6em 0; }
+dt { font-weight: 600; margin-top: 0.4em; }
+dd { margin: 0.1em 0 0.4em 1.8em; }
+
+
+/* ---- Inline code -------------------------------------------------- */
+
+code {
+  font-family: "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.92em;
+  background: #f4f4f6;
+  border: 0.5pt solid #e0e0e4;
+  border-radius: 2pt;
+  padding: 0 0.25em;
+}
+
+
+/* ---- Code blocks -------------------------------------------------- */
+
+pre, .highlight {
+  font-family: "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 9pt;
+  line-height: 1.4;
+  margin: 0.6em 0;
+  padding: 0.6em 0.8em;
+  border-radius: 3pt;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  break-inside: auto;
+}
+
+/* Code inside <pre> shouldn't get the inline-code box/border. */
+pre code, .highlight code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  white-space: inherit;
+}
+
+/* Strip the nested `.highlighter-rouge > .highlight > pre.highlight`
+   triple-wrapper backgrounds; the outer wrapper keeps the colour. */
+.highlighter-rouge .highlight,
+.highlighter-rouge pre.highlight {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+
+/* ---- Links -------------------------------------------------------- */
+
+a, a:link, a:visited {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+
+/* ---- Tables ------------------------------------------------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 0.95em;
+  break-inside: auto;
+}
+
+th, td {
+  border: 0.5pt solid #ccc;
+  padding: 0.3em 0.5em;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #f4f4f6;
+  font-weight: 600;
+}
+
+
+/* ---- Blockquotes -------------------------------------------------- */
+
+blockquote {
+  border-left: 2pt solid #bbb;
+  margin: 0.6em 0;
+  padding: 0.2em 0 0.2em 0.8em;
+  color: #444;
+}
+
+
+/* ---- GFMA admonitions (NOTE / IMPORTANT / WARNING / CAUTION / TIP) - */
+
+.markdown-alert {
+  border-left: 3pt solid #888;
+  background: #f6f8fa;
+  margin: 0.8em 0;
+  padding: 0.4em 0.8em 0.5em;
+  break-inside: avoid;
+}
+
+.markdown-alert-title {
+  font-weight: 700;
+  margin: 0 0 0.3em;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.markdown-alert-title svg {
+  width: 11pt;
+  height: 11pt;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.markdown-alert > :last-child { margin-bottom: 0; }
+
+.markdown-alert-note         { border-left-color: #0969da; }
+.markdown-alert-note         .markdown-alert-title { color: #0969da; }
+.markdown-alert-important    { border-left-color: #8250df; }
+.markdown-alert-important    .markdown-alert-title { color: #8250df; }
+.markdown-alert-warning      { border-left-color: #bf8700; }
+.markdown-alert-warning      .markdown-alert-title { color: #bf8700; }
+.markdown-alert-caution      { border-left-color: #cf222e; }
+.markdown-alert-caution      .markdown-alert-title { color: #cf222e; }
+.markdown-alert-tip          { border-left-color: #1a7f37; }
+.markdown-alert-tip          .markdown-alert-title { color: #1a7f37; }
