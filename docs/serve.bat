@@ -1,1 +1,1 @@
-bundler exec jekyll serve 
+bundler exec jekyll serve %*
