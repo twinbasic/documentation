@@ -16,13 +16,17 @@ highlighter: rouge
 
 defaults:
   - scope:
+      path: ""
+    values:
+      layout: default
+  - scope:
       path: "*/Images"
     values:
       image: true
   - scope:
       path: "assets/css"
     values:
-      render_with_liquid: true      
+      render_with_liquid: true
 
 # GitHub-style admonitions are supported, but we may wish to add custom
 # callouts below.
@@ -31,11 +35,6 @@ callouts:
   #  title: 💡 Tip
   #  color: green
 
-#defaults:
-#  - scope:
-#      path: ""
-#    values:
-#      layout: default
 
 #collections:
 #  intro:

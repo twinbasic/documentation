@@ -19,7 +19,6 @@ group :jekyll_plugins do
   gem "jekyll-sitemap"
   gem "jekyll-relative-links"
   gem "jekyll-redirect-from"
-  gem "jekyll-default-layout"
   gem "jekyll-gfm-admonitions"
 end
 

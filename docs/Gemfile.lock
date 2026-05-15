@@ -39,8 +39,6 @@ GEM
       safe_yaml (~> 1.0)
       terminal-table (>= 1.8, < 4.0)
       webrick (~> 1.7)
-    jekyll-default-layout (0.1.5)
-      jekyll (>= 3.0, < 5.0)
     jekyll-gfm-admonitions (1.2.0)
       cssminify (~> 1.0)
       jekyll (>= 3.0, < 5.0)
@@ -107,7 +105,6 @@ DEPENDENCIES
   bigdecimal
   fiddle
   jekyll (~> 4.2)
-  jekyll-default-layout
   jekyll-gfm-admonitions
   jekyll-include-cache
   jekyll-redirect-from
@@ -139,7 +136,6 @@ CHECKSUMS
   http_parser.rb (0.8.1) sha256=9ae8df145b39aa5398b2f90090d651c67bd8e2ebfe4507c966579f641e11097a
   i18n (1.14.8) sha256=285778639134865c5e0f6269e0b818256017e8cde89993fdfcbfb64d088824a5
   jekyll (4.4.1) sha256=4c1144d857a5b2b80d45b8cf5138289579a9f8136aadfa6dd684b31fe2bc18c1
-  jekyll-default-layout (0.1.5) sha256=c626be4e4a5deafca123539da2cd22ff873be350cafd4da134039efdf24320af
   jekyll-gfm-admonitions (1.2.0) sha256=38b95c75449033465313a92c2da3ee311d3569f38e6053c635bc16d3c28e702d
   jekyll-include-cache (0.2.1) sha256=c7d4b9e551732a27442cb2ce853ba36a2f69c66603694b8c1184c99ab1a1a205
   jekyll-redirect-from (0.16.0) sha256=6635cae569ef9b0f90ffb71ec014ba977177fafb44d32a2b0526288d4d9be6db
