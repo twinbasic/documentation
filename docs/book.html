@@ -3,13 +3,18 @@ layout: book-combined
 permalink: /book.html
 sitemap: false
 ---
-{% for chapter_url in site.data.book.chapters -%}
-  {%- assign chapter = site.pages | where: "url", chapter_url | first -%}
-  {%- if chapter %}
+{%- for section in site.data.book.sections -%}
+  {%- assign chapters = site.pages | where_exp: "p", "p.url contains section" | sort: "url" -%}
+  {%- for chapter in chapters -%}
+    {%- comment %}
+      Strip the leading slash from absolute `src="/..."` attributes so images
+      resolve relative to _site-pdf/book.html (which is what pagedjs-cli reads
+      under file://). Source pages use relative paths in markdown, but the
+      site rewrites them to absolute-from-root for the regular browser site.
+    {% endcomment -%}
+    {%- assign body = chapter.content | replace: 'src="/', 'src="' %}
 <article class="page">
-{{ chapter.content | markdownify }}
+{{ body }}
 </article>
-  {%- else %}
-<!-- manifest entry not found: {{ chapter_url }} -->
-  {%- endif %}
+  {%- endfor -%}
 {%- endfor %}
