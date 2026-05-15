@@ -292,12 +292,27 @@ module Offlinify
     start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     combined = (src_dest != out_dest)
 
-    # In combined mode, wipe the offline output tree and recreate it
-    # empty. (In-place mode: out_dest IS the dest Jekyll already
-    # cleaned and wrote; nothing to do.)
+    # In combined mode, wipe the offline output tree but keep the
+    # `_site-offline/` directory itself in place. (Deleting and
+    # recreating the directory surfaces in jekyll-watch as a bare
+    # `_site-offline` change event -- no trailing slash, since the
+    # directory was momentarily absent at notification time -- which
+    # the exclude entry's auto-generated `_site\-offline\/` regex
+    # does not match. The result was an infinite rebuild loop on
+    # `jekyll serve`. Cleaning contents in place keeps every event
+    # under `_site-offline/...`, where the exclude does match.)
+    # In-place mode: out_dest IS the dest Jekyll already cleaned and
+    # wrote; nothing to do.
     if combined
-      FileUtils.rm_rf(out_dest)
-      FileUtils.mkdir_p(out_dest)
+      if Dir.exist?(out_dest)
+        Dir.glob(File.join(out_dest, "*"), File::FNM_DOTMATCH).each do |entry|
+          basename = File.basename(entry)
+          next if basename == "." || basename == ".."
+          FileUtils.rm_rf(entry)
+        end
+      else
+        FileUtils.mkdir_p(out_dest)
+      end
     end
 
     # Pre-walk the source tree once and bucket every file under its

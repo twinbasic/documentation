@@ -105,8 +105,17 @@ gh_edit_view_mode: "tree" # "tree" or "edit" if you want the user to jump into t
 # When true, the Offlinify plugin (_plugins/offlinify.rb) runs at the
 # end of the build, copies _site/ to _site-offline/, rewrites every
 # URL to a page-relative form, patches a couple of just-the-docs JS
-# issues, and hides the (file://-broken) search box. The result is a
-# fully self-contained tree that can be opened directly off disk in a
-# browser. Adds ~3-5s to the build; the online _site/ output is
-# unaffected.
+# issues, and wires up the search index to load from a <script src=>
+# instead of XHR. The result is a fully self-contained tree that can
+# be opened directly off disk in a browser. Adds ~3-5s to the build;
+# the online _site/ output is unaffected.
 also_build_offline: true
+
+# Excludes for both the build (Jekyll won't try to process these as
+# source) and the watcher (`jekyll serve` won't trigger a rebuild
+# when these change). Jekyll already excludes site.destination
+# (_site/) automatically; we add _site-offline/ here so the
+# Offlinify plugin's writes don't kick the watcher into an infinite
+# rebuild loop. Keep this in sync with also_build_offline above.
+exclude:
+  - _site-offline
