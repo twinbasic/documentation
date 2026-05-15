@@ -1,0 +1,31 @@
+# Overlay applied on top of _config.yml when building the offline copy
+# of the site. Activates _plugins/offlinify.rb (which rewrites root-
+# absolute URLs to page-relative form so the output works under
+# file://) and disables features that require an HTTP server.
+#
+# Usage:
+#   bundle exec jekyll build -d _site-offline --config _config.yml,_config_offline.yml
+#
+# (or run build-offline.bat).
+
+# Activates _plugins/offlinify.rb -- without this flag, the plugin is a
+# no-op and the offline build would still produce broken root-absolute
+# URLs.
+offline_build: true
+
+# An empty url stops the canonical <link> tag from baking in the
+# production hostname (or `localhost:4000` if the build is launched
+# from a serve session). baseurl stays empty too -- the offlinify
+# plugin makes every URL page-relative regardless.
+url: ""
+baseurl: ""
+
+# lunr.js search loads search-data.json via XMLHttpRequest, which
+# browsers block under file:// for security. Disable the search box
+# entirely so the offline copy doesn't show a non-functional widget.
+search_enabled: false
+
+# The "Edit this page on GitHub" link and the "last edited" timestamp
+# are noise in an offline copy.
+gh_edit_link: false
+last_edit_timestamp: false

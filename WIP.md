@@ -420,15 +420,16 @@ WIP.md itself (and other files outside `docs/`) is not part of the Jekyll site a
 
 ## Scripts and tooling
 
-Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is.
+Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is. The one carve-out is `_plugins/offlinify.rb`, the link rewriter that powers the offline build (see [Build / preview](#build--preview)); future build-time concerns that are tightly coupled to Jekyll's internal model may go there too, but anything that can stand alone should still be Python.
 
 ## Build / preview
 
 From `docs/`:
 
-- `bundle exec jekyll build` (or `build.bat`) — build to `_site/`.
+- `bundle exec jekyll build` (or `build.bat`) — build the online copy to `_site/`.
 - `bundle exec jekyll serve` (or `serve.bat`) — local server at `localhost:4000`.
 - `check.bat` — link check (offline Lychee against `_site/`).
+- `build-offline.bat` — build a `file://`-browsable copy to `_site-offline/`. Layers `_config_offline.yml` over `_config.yml` to activate `_plugins/offlinify.rb`, which rewrites every root-absolute `href` / `src` / CSS `url()` to a page-relative path with the resolved file extension (`/FAQ` → `../../FAQ.html`, `/Tutorials/CEF/` → `../../Tutorials/CEF/index.html`), and patches `just-the-docs.js`'s `navLink()` to match the active nav entry by resolved DOM `link.href` rather than `document.location.pathname` (the upstream pathname-vs-attribute compare returns no match under `file://`, leaving the sidebar with no `.active` class so the nav appears collapsed on every navigation). The overlay also disables the lunr.js search box (its `XMLHttpRequest` for `search-data.json` fails under `file://`) and the GitHub edit link / last-edited timestamp.
 
 ## Site integrity check
 
@@ -449,7 +450,7 @@ Favor concise one-line git commit messages.
 ## Don'ts
 
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
-- Don't touch `_site/` (build output, gitignored).
+- Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — kramdown's smart_quotes does the conversion at build time. `scripts/convert_em_dash_separators.py` normalises any strays.
 - Don't push or force-push without explicit user request.
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
