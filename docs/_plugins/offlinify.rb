@@ -4,21 +4,25 @@ require "fileutils"
 require "pathname"
 require "set"
 
-# Produces a `file://`-browsable copy of the rendered site. Two modes:
+# Produces a `file://`-browsable copy of the rendered site. Two modes
+# that produce byte-equivalent offline output (the only difference
+# between them is whether `_site/` is also written):
 #
 #   1. Combined mode (default; `also_build_offline: true` in
 #      `_config.yml`). Plain `bundle exec jekyll build` writes the
 #      online site to `site.dest` (`_site/`) as usual, then this plugin
 #      copies the tree to `<site.dest>-offline` (`_site-offline/`),
 #      rewrites every URL to a page-relative form, patches a couple of
-#      just-the-docs JS issues, and hides the (file://-broken) search
-#      box. One Jekyll pipeline run, two outputs.
+#      just-the-docs JS issues, and wires up the search index to load
+#      from a `<script src=>` instead of XHR. One Jekyll pipeline run,
+#      two outputs.
 #
 #   2. Standalone mode (`offline_build: true` from `_config_offline.yml`,
 #      via `build-offline.bat`). Jekyll renders directly to
-#      `_site-offline/` with `search_enabled: false`, no `_site/` is
-#      produced, and the plugin rewrites in place. Faster than combined
-#      mode when only the offline copy is wanted.
+#      `_site-offline/` with no `_site/` produced, and the plugin
+#      rewrites in place. Faster than combined mode when only the
+#      offline copy is wanted; the result is identical to what combined
+#      mode writes to `_site-offline/`.
 #
 # === Why post-process at all? ===
 #
@@ -70,7 +74,7 @@ require "set"
 # `site_path` -> `[decoded_segs, encoded_segs]` cache (both arrays
 # share strings for URL-safe segments).
 #
-# === just-the-docs JS patches ===
+# === just-the-docs JS patches + offline search wiring ===
 #
 # `assets/js/just-the-docs.js` has two pieces that don't survive the
 # move to `file://`:
@@ -80,22 +84,41 @@ require "set"
 #     strings. Online both are root-absolute; offline pathname is a
 #     filesystem path (`/D:/.../tB/Core/Const.html`) and hrefs are
 #     page-relative (`Const.html`) -- no match, no nav-list-item gets
-#     `class="active"`, sidebar collapses on every navigation. Patched
-#     in both modes: replace the function body with a comparison of
-#     the resolved `link.href` DOM property (an absolute URL the
-#     browser produced from the relative attribute) against
-#     `window.location.href`.
+#     `class="active"`, sidebar collapses on every navigation. Patched:
+#     replace the function body with a comparison of the resolved
+#     `link.href` DOM property (an absolute URL the browser produced
+#     from the relative attribute) against `window.location.href`.
 #
-#   * `initSearch()` (combined mode only -- standalone mode renders
-#     with `search_enabled: false`, which omits initSearch from the JS
-#     file entirely) fires an `XMLHttpRequest` for
+#   * `initSearch()` fires an `XMLHttpRequest` for
 #     `/assets/js/search-data.json`. Browsers block `file://` XHR for
 #     file resources by default; the request fails silently in the
-#     `request.onerror` handler. Patched in combined mode: comment
-#     out the `initSearch();` call site so the function never runs
-#     (no failed XHR, no console noise). The search box markup is
-#     left in place -- search functionality is expected to be wired
-#     up by some other mechanism downstream.
+#     `request.onerror` handler. Patched: replace the function body
+#     to read the index data from `window.SEARCH_DATA` (populated by
+#     a sibling `search-data.js` that wraps the JSON in a global
+#     assignment and is loaded as a `<script src=>` -- script tags
+#     are not subject to the file:// XHR ban). Then rewrite each
+#     `doc.url` from a root-absolute permalink (`/tB/Core/Const`) to
+#     a page-relative path that lands on the actual file
+#     (`<root>tB/Core/Const.html`), prefixing with the per-page
+#     `window.OFFLINE_SITE_ROOT` constant the plugin also injects.
+#     Trailing-slash URLs map to `index.html`; URLs without an
+#     extension get `.html`; `#fragment` is preserved. The search
+#     index is built and handed to `searchLoaded(index, docs)` exactly
+#     as upstream does -- which sets `link.href = doc.url`, so the
+#     rewritten URLs are what users click.
+#
+# Each rendered HTML page gets two `<script>` tags injected right
+# before the existing `<script src="...just-the-docs.js">`:
+#
+#   <script>window.OFFLINE_SITE_ROOT="../../";</script>
+#   <script src="../../assets/js/search-data.js"></script>
+#
+# `OFFLINE_SITE_ROOT` is the per-page relative prefix from the
+# page's directory to the offline site root (computed from the same
+# `file_segs` the URL rewriter uses; empty string at root,
+# `"../../"` at depth 2, etc.). The JS-wrapped index data
+# (`search-data.js`) is generated once per build from the rendered
+# `search-data.json`.
 #
 # === Output parity ===
 #
@@ -120,7 +143,9 @@ require "set"
 # If the plugin is removed: the combined build silently stops
 # producing `_site-offline/` (Jekyll's normal `_site/` output is
 # unaffected); the standalone build produces a `_site-offline/` with
-# unrewritten root-absolute URLs that don't resolve under `file://`.
+# unrewritten root-absolute URLs that don't resolve under `file://`,
+# a search box that fires a failed XHR for `search-data.json`, and a
+# nav whose active-section highlighting collapses on every navigation.
 
 module Offlinify
   # Matches `href="..."` / `href='...'` / `src=...` attribute values
@@ -168,18 +193,98 @@ module Offlinify
     }
   JS
 
-  # Matches the `initSearch();` call inside the document-ready
-  # callback. Combined-mode only -- standalone mode's JS is rendered
-  # without the search code at all.
-  JTD_INITSEARCH_CALL_RE = /^(\s*)initSearch\(\);$/
+  # Matches the upstream `initSearch()` function body. The original
+  # fires `XMLHttpRequest` for `/assets/js/search-data.json` (blocked
+  # by browsers under file://) and on success builds a lunr index
+  # from the response. Anchored on the function signature and the
+  # closing `request.send();` line (a stable trailer in just-the-docs
+  # 0.10.x). A miss leaves the file untouched and emits a warning.
+  JTD_INITSEARCH_FN_RE = /function initSearch\(\) \{.*?request\.send\(\);\s*\}/m
 
-  # Comment-out replacement for the call site. The function
-  # definition remains in the file but is now unreachable, so no
-  # XMLHttpRequest for search-data.json is fired (browsers block that
-  # under file:// for file resources). The search box markup itself
-  # is left in place -- the assumption is that search functionality
-  # will be wired up downstream via a different mechanism.
-  JTD_INITSEARCH_CALL_REPLACEMENT = '\1// initSearch(); -- offlinify: disabled (file:// XHR for search-data.json fails)'
+  # Replacement body. Reads the index data from `window.SEARCH_DATA`
+  # (populated by `search-data.js`, which is generated from the
+  # rendered `search-data.json` and loaded as a `<script src=>` -- a
+  # classic script tag is allowed under file:// where XHR is not).
+  # Then rewrites each `doc.url` from a root-absolute permalink
+  # (`/tB/Core/Const`) to a page-relative path that lands on the
+  # actual file (`../../tB/Core/Const.html`), prefixing with the
+  # per-page `window.OFFLINE_SITE_ROOT` (also injected by this
+  # plugin). The URL transformation mirrors the rules in
+  # `compute_relative` Ruby-side: trailing slash -> `index.html`, no
+  # extension -> `.html`, preserve `#fragment`. Finally builds the
+  # lunr index with the same parameters as upstream and hands it to
+  # `searchLoaded(index, docs)` -- which sets `link.href = doc.url`,
+  # so the rewritten URLs are what users click.
+  JTD_INITSEARCH_FN_REPLACEMENT = <<~JS.chomp
+    function initSearch() {
+      // Patched by _plugins/offlinify.rb for file:// compatibility.
+      // The upstream version fires XMLHttpRequest for search-data.json,
+      // which browsers block under file://. We instead read the index
+      // from a global the offline copy preloads via <script src=>.
+      var docs = window.SEARCH_DATA;
+      if (!docs) {
+        console.log('Offlinify: window.SEARCH_DATA not found; ensure search-data.js loads before just-the-docs.js');
+        return;
+      }
+      var siteRoot = window.OFFLINE_SITE_ROOT || '';
+      for (var i in docs) {
+        var url = docs[i].url;
+        if (typeof url === 'string' && url.charAt(0) === '/') {
+          var hash = '';
+          var hashIdx = url.indexOf('#');
+          if (hashIdx !== -1) {
+            hash = url.slice(hashIdx);
+            url = url.slice(0, hashIdx);
+          }
+          url = url.slice(1); // strip leading /
+          if (url.endsWith('/')) {
+            url = url + 'index.html';
+          } else {
+            var lastSlash = url.lastIndexOf('/');
+            var lastSeg = lastSlash === -1 ? url : url.slice(lastSlash + 1);
+            if (lastSeg.indexOf('.') === -1) url = url + '.html';
+          }
+          docs[i].url = siteRoot + url + hash;
+        }
+      }
+
+      lunr.tokenizer.separator = /[\\s\\-\\/]+/;
+
+      var index = lunr(function(){
+        this.ref('id');
+        this.field('title', { boost: 200 });
+        this.field('content', { boost: 2 });
+        this.field('relUrl');
+        this.metadataWhitelist = ['position'];
+
+        for (var i in docs) {
+          this.add({
+            id: i,
+            title: docs[i].title,
+            content: docs[i].content,
+            relUrl: docs[i].relUrl
+          });
+        }
+      });
+
+      searchLoaded(index, docs);
+    }
+  JS
+
+  # Matches the just-the-docs `<script src="...just-the-docs.js">`
+  # tag in a rendered HTML page (after URL rewrite, so the `src`
+  # value is page-relative -- e.g. `../../assets/js/just-the-docs.js`).
+  # The captured group is everything in the src up to and excluding
+  # the `just-the-docs.js` filename, used as the relative-path prefix
+  # for the sibling `search-data.js` we generate. Anchored on
+  # `<script src="..."` to skip incidental occurrences in code
+  # blocks or string literals.
+  JTD_SCRIPT_TAG_RE = /<script\s+src="([^"]*)just-the-docs\.js"/
+
+  # Path of the just-the-docs search index (rendered by Jekyll when
+  # `search_enabled` is true) and the JS-wrapped form we produce.
+  SEARCH_DATA_JSON_REL = "assets/js/search-data.json"
+  SEARCH_DATA_JS_REL   = "assets/js/search-data.js"
 
   def self.run(site, src_dest, out_dest)
     return unless Dir.exist?(src_dest)
@@ -236,9 +341,10 @@ module Offlinify
         content = File.binread(src_path)
         file_dir  = File.dirname(out_path)
         file_segs = file_dir_segs_from_rel(rel)
-        changed, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, mode: :html)
+        changed_url, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, mode: :html)
         unresolved += misses
-        if changed
+        changed_search = inject_search_setup!(content, file_segs)
+        if changed_url || changed_search
           FileUtils.mkdir_p(File.dirname(out_path)) if combined
           File.binwrite(out_path, content)
           rewritten_html += 1
@@ -268,13 +374,15 @@ module Offlinify
       end
     end
 
-    js_patches = patch_jtd_js!(out_dest, disable_search: combined)
+    js_patches = patch_jtd_js!(out_dest)
+    search_data_built = build_search_data_js!(out_dest)
 
     summary = "rewrote #{rewritten_html} HTML and #{rewritten_css} CSS file(s)"
     summary += ", copied #{copied_assets} asset(s)" if combined
     summary += " (#{unresolved} unresolved link(s) left as-is)" if unresolved.positive?
     Jekyll.logger.info "Offlinify:", summary
     Jekyll.logger.info "Offlinify:", "patched just-the-docs.js (#{js_patches.join(", ")})" unless js_patches.empty?
+    Jekyll.logger.info "Offlinify:", "wrote #{SEARCH_DATA_JS_REL} (#{search_data_built} bytes)" if search_data_built
 
     elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(0)
     Jekyll.logger.info "Offlinify:", "Offlinifier ran in #{elapsed_ms}ms."
@@ -287,13 +395,13 @@ module Offlinify
     FileUtils.cp(src_path, out_path)
   end
 
-  # Apply the JS patches to `assets/js/just-the-docs.js` under
+  # Apply both JS patches to `assets/js/just-the-docs.js` under
   # `out_dest`. Returns the list of patch labels applied (for the
-  # summary log line). Always attempts navLink; only attempts the
-  # initSearch call-site comment-out when `disable_search:` is true
-  # (combined mode -- in standalone mode the JS file has no
-  # initSearch in it to begin with).
-  def self.patch_jtd_js!(out_dest, disable_search:)
+  # summary log line). Each substitution is independent; a missing
+  # match leaves the corresponding piece unpatched and emits a
+  # warning -- a likely signal that just-the-docs has shipped a new
+  # function shape.
+  def self.patch_jtd_js!(out_dest)
     js_path = File.join(out_dest, JTD_JS_REL)
     return [] unless File.file?(js_path)
 
@@ -312,23 +420,74 @@ module Offlinify
         "JTD_NAVLINK_RE to match the current just-the-docs version."
     end
 
-    if disable_search
-      new_out = out.sub(JTD_INITSEARCH_CALL_RE, JTD_INITSEARCH_CALL_REPLACEMENT)
-      if new_out != out
-        patches << "initSearch() call site"
-        out = new_out
-      else
-        Jekyll.logger.warn "Offlinify:",
-          "could not locate initSearch() call in #{JTD_JS_REL} -- " \
-          "the failed XHR for search-data.json will appear in the " \
-          "browser console under file:// (harmless, but noisy). " \
-          "Update JTD_INITSEARCH_CALL_RE to match the current " \
-          "just-the-docs version."
-      end
+    new_out = out.sub(JTD_INITSEARCH_FN_RE, JTD_INITSEARCH_FN_REPLACEMENT)
+    if new_out != out
+      patches << "initSearch()"
+      out = new_out
+    else
+      Jekyll.logger.warn "Offlinify:",
+        "could not locate initSearch() body in #{JTD_JS_REL} -- " \
+        "offline search will not work and a failed XHR for " \
+        "search-data.json will be logged to the console. Update " \
+        "JTD_INITSEARCH_FN_RE to match the current just-the-docs " \
+        "version."
     end
 
     File.binwrite(js_path, out) unless patches.empty?
     patches
+  end
+
+  # Inject the offline-search setup script tags into a rendered HTML
+  # page. Two `<script>` elements are inserted right before the
+  # existing `<script src="...just-the-docs.js">` tag:
+  #
+  #   1. `<script>window.OFFLINE_SITE_ROOT="...";</script>` -- the
+  #      per-page relative prefix from the page's directory to the
+  #      offline site root. The patched `initSearch()` reads this to
+  #      rewrite `doc.url` from `/tB/Core/Const` to
+  #      `<root>tB/Core/Const.html` so a search-result click lands on
+  #      the actual file under file://.
+  #   2. `<script src="<prefix>search-data.js"></script>` -- loads
+  #      the lunr index data into `window.SEARCH_DATA`. Classic
+  #      script tags are allowed under file://; the upstream XHR is
+  #      not.
+  #
+  # Both run in source order before just-the-docs.js, so the globals
+  # are set when `initSearch()` fires inside the document-ready
+  # callback. Returns true when the injection happened, false when
+  # the just-the-docs.js script tag wasn't found in the page (e.g.
+  # the 404 redirect stubs that omit the full layout).
+  def self.inject_search_setup!(content, file_segs)
+    new_content = content.sub(JTD_SCRIPT_TAG_RE) do |match|
+      prefix = Regexp.last_match(1)
+      site_root = file_segs.empty? ? "" : "../" * file_segs.length
+      <<~HTML.chomp + match
+        <script>window.OFFLINE_SITE_ROOT="#{site_root}";</script>
+        <script src="#{prefix}search-data.js"></script>
+      HTML
+    end
+    return false if new_content == content
+    content.replace(new_content)
+    true
+  end
+
+  # Convert the rendered `assets/js/search-data.json` into a sibling
+  # `assets/js/search-data.js` that assigns the data to a global. The
+  # JS file is loaded as a `<script src=>` from each page (see
+  # inject_search_setup!) so the data is available synchronously when
+  # `initSearch()` runs. Returns the byte size of the written JS file
+  # (for the summary log line) or false when there is no
+  # search-data.json to convert (e.g. a build that disabled
+  # `search_enabled`).
+  def self.build_search_data_js!(out_dest)
+    json_path = File.join(out_dest, SEARCH_DATA_JSON_REL)
+    return false unless File.file?(json_path)
+
+    json = File.binread(json_path)
+    js = "window.SEARCH_DATA = #{json};\n"
+    js_path = File.join(out_dest, SEARCH_DATA_JS_REL)
+    File.binwrite(js_path, js)
+    js.bytesize
   end
 
   # Mutates `content` in place via gsub. Returns
