@@ -137,11 +137,14 @@ module Offlinify
     dest = site.dest
     return unless Dir.exist?(dest)
 
+    start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
     # Pre-walk the destination once and bucket every file under its
-    # site-rooted forward-slash path. The same nav appears on every
-    # page, so a URL like `/FAQ` is resolved ~1100 times -- without
-    # this cache each one is 2-3 File.file? syscalls (very slow on
-    # Windows). With the cache, each lookup is an O(1) Set probe.
+    # site-rooted forward-slash path (decoded -- the keys mirror
+    # filesystem names, so `/Tutorials/CustomControls/Form Designer.html`
+    # not `Form%20Designer`). Resolution becomes an O(1) Set probe per
+    # candidate, instead of 2-3 File.file? syscalls each (very slow on
+    # Windows).
     site_paths = Set.new
     dest_pn = Pathname.new(dest)
     Dir.glob(File.join(dest, "**", "*"), File::FNM_DOTMATCH).each do |p|
@@ -150,14 +153,29 @@ module Offlinify
       site_paths << "/#{rel}"
     end
 
+    # Lazy global cache: `site_path -> [decoded_segs, encoded_segs]`.
+    # Filled on first reference. Decoded segments drive the LCP walk
+    # (compared against filesystem-derived `file_segs`); encoded
+    # segments are what we emit in the output URL. Most nav targets
+    # are shared across pages, so this hits cache for the bulk of
+    # matches after the first handful of pages.
+    seg_cache = {}
+
+    # Lazy global cache: `"#{file_dir}\x00#{raw}" -> final_rel_url`
+    # (or nil for unresolvable). Subsumes step 1 (raw -> site_path)
+    # and step 2 (site_path -> page-relative URL) so each unique
+    # `(file_dir, raw)` pair is computed exactly once across the build.
+    result_cache = {}
+
     rewritten_html = 0
     rewritten_css  = 0
     unresolved = 0
-    resolve_cache = {}
 
     Dir.glob(File.join(dest, HTML_GLOB)).each do |path|
       content = File.binread(path)
-      changed, misses = rewrite!(content, HTML_ATTR_RE, path, dest, site_paths, resolve_cache, mode: :html)
+      file_dir  = File.dirname(path)
+      file_segs = file_dir_segs(path, dest)
+      changed, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, mode: :html)
       unresolved += misses
       next unless changed
       File.binwrite(path, content)
@@ -166,7 +184,9 @@ module Offlinify
 
     Dir.glob(File.join(dest, CSS_GLOB)).each do |path|
       content = File.binread(path)
-      changed, misses = rewrite!(content, CSS_URL_RE, path, dest, site_paths, resolve_cache, mode: :css)
+      file_dir  = File.dirname(path)
+      file_segs = file_dir_segs(path, dest)
+      changed, misses = rewrite!(content, CSS_URL_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, mode: :css)
       unresolved += misses
       next unless changed
       File.binwrite(path, content)
@@ -177,8 +197,11 @@ module Offlinify
 
     summary = "rewrote #{rewritten_html} HTML and #{rewritten_css} CSS file(s)"
     summary += " (#{unresolved} unresolved link(s) left as-is)" if unresolved.positive?
-    summary += "; patched just-the-docs.js navLink()" if js_patched
     Jekyll.logger.info "Offlinify:", summary
+    Jekyll.logger.info "Offlinify:", "patched just-the-docs.js navLink()" if js_patched
+
+    elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(0)
+    Jekyll.logger.info "Offlinify:", "Offlinifier ran in #{elapsed_ms}ms."
   end
 
   # Replace the bundled `navLink()` function in just-the-docs.js with
@@ -205,25 +228,26 @@ module Offlinify
     true
   end
 
-  # Mutates `content` in place via gsub!. Returns
-  # `[changed_bool, unresolved_count]`.
-  def self.rewrite!(content, regex, file_path, dest, site_paths, resolve_cache, mode:)
-    file_dir = File.dirname(file_path)
+  # Mutates `content` in place via gsub. Returns
+  # `[changed_bool, unresolved_count]`. Per-match work is a single
+  # Hash lookup in `result_cache` -- the heavy lifting (URL resolution,
+  # LCP walk, segment encoding) runs only on cache miss.
+  def self.rewrite!(content, regex, file_dir, file_segs, site_paths, seg_cache, result_cache, mode:)
     misses = 0
     changed = false
 
     new_content = content.gsub(regex) do
       match = Regexp.last_match
       raw = mode == :html ? match[3] : match[2]
-      site_target = resolve_cache.fetch(raw) do
-        resolve_cache[raw] = resolve_to_site_path(raw, site_paths)
+      cache_key = "#{file_dir}\x00#{raw}"
+      rel = result_cache.fetch(cache_key) do
+        result_cache[cache_key] = compute_relative(raw, file_segs, site_paths, seg_cache)
       end
-      if site_target.nil?
+      if rel.nil?
         misses += 1
-        match[0]  # leave the match unchanged
+        match[0]
       else
         changed = true
-        rel = relative_url(site_target, file_dir, dest)
         if mode == :html
           %(#{match[1]}=#{match[2]}#{rel}#{match[2]})
         else
@@ -237,32 +261,82 @@ module Offlinify
     [changed, misses]
   end
 
-  # Resolve `raw` (a root-absolute URL, possibly with `?query`/
-  # `#fragment`) to the canonical site-rooted file path (e.g. `/FAQ`
-  # -> `/FAQ.html`, `/Tutorials/CEF/` -> `/Tutorials/CEF/index.html`)
-  # plus the original query/fragment tail. Returns
-  # `[site_path, sep_and_tail]` or nil when no candidate matches.
-  def self.resolve_to_site_path(raw, site_paths)
+  # Resolve `raw` to a page-relative URL string from a file whose
+  # directory is the segment array `file_segs`. Returns nil when no
+  # candidate file exists in `site_paths`.
+  #
+  # Steps:
+  #   1. Split off `?query` / `#fragment`.
+  #   2. Percent-decode the path.
+  #   3. Probe up to three candidates against `site_paths` in order:
+  #      `<path>` as-is, `<path>.html`, `<path>/index.html` (with
+  #      sensible variants for paths that already end with `/` or
+  #      contain a `.`).
+  #   4. Look up the resolved site_path in `seg_cache`, getting back
+  #      a pair of `[decoded_segs, encoded_segs]` arrays (the cache
+  #      lazily populates on first reference).
+  #   5. Walk the longest common prefix between `file_segs` (decoded
+  #      directory segments of the source file, relative to dest) and
+  #      `decoded_segs` (decoded path segments of the target).
+  #   6. Build `"../" * (file_depth - common) + encoded_segs[common..]
+  #      .join("/")` and re-attach the tail.
+  def self.compute_relative(raw, file_segs, site_paths, seg_cache)
     path, sep, tail = raw.partition(/[?#]/)
     fs_path = decode(path)
 
-    candidates = [fs_path]
-    candidates << "#{fs_path}.html" unless fs_path.end_with?("/") || fs_path.include?(".")
-    candidates << (fs_path.end_with?("/") ? "#{fs_path}index.html" : "#{fs_path}/index.html")
-
-    candidates.each do |c|
-      return [c, "#{sep}#{tail}"] if site_paths.include?(c)
+    candidates = if fs_path.end_with?("/")
+      [fs_path, "#{fs_path}index.html"]
+    elsif fs_path.include?(".")
+      [fs_path, "#{fs_path}/index.html"]
+    else
+      [fs_path, "#{fs_path}.html", "#{fs_path}/index.html"]
     end
-    nil
+
+    site_path = candidates.find { |c| site_paths.include?(c) }
+    return nil unless site_path
+
+    decoded_segs, encoded_segs = seg_cache.fetch(site_path) do
+      seg_cache[site_path] = build_segs(site_path)
+    end
+
+    common = 0
+    fs_len = file_segs.length
+    ts_len = decoded_segs.length
+    common += 1 while common < fs_len && common < ts_len && file_segs[common] == decoded_segs[common]
+
+    ascend = "../" * (fs_len - common)
+    descend = encoded_segs[common..].join("/")
+    rel = ascend + descend
+    rel = "./" if rel.empty?
+    "#{rel}#{sep}#{tail}"
   end
 
-  # Build the page-relative URL from `from_dir` to `site_target`
-  # (a `[site_path, tail]` pair returned by resolve_to_site_path).
-  def self.relative_url(site_target, from_dir, dest)
-    site_path, tail = site_target
-    target_abs = File.join(dest, site_path)
-    rel = Pathname.new(target_abs).relative_path_from(Pathname.new(from_dir)).to_s.tr("\\", "/")
-    "#{encode_path(rel)}#{tail}"
+  # Build the cached `[decoded_segs, encoded_segs]` pair for a
+  # site-rooted path. Decoded segments drive the LCP comparison
+  # against filesystem-derived `file_segs`; encoded segments are what
+  # ends up in the output URL. For URL-safe segments the two arrays
+  # share strings -- only segments containing reserved characters
+  # (e.g. spaces) get a separately-allocated encoded form.
+  def self.build_segs(site_path)
+    decoded = site_path[1..].split("/", -1)
+    encoded = decoded.map do |seg|
+      if seg.match?(PATH_SAFE_RE)
+        seg.b.gsub(PATH_SAFE_RE) { |c| format("%%%02X", c.ord) }
+      else
+        seg
+      end
+    end
+    [decoded, encoded]
+  end
+
+  # Compute a file's directory segments relative to `dest` (the site
+  # root), used as the LCP-comparison input for compute_relative.
+  # Returns an empty array for files at the root of dest.
+  def self.file_dir_segs(file_path, dest)
+    rel = Pathname.new(file_path).relative_path_from(Pathname.new(dest)).to_s.tr("\\", "/")
+    dir = File.dirname(rel)
+    return [] if dir == "." || dir.empty?
+    dir.split("/")
   end
 
   # Percent-decode a URL path. Path components do not use `+` for space
@@ -270,13 +344,6 @@ module Offlinify
   def self.decode(path)
     path.gsub(/%([0-9A-Fa-f]{2})/) { [Regexp.last_match(1)].pack("H*") }
         .force_encoding("UTF-8")
-  end
-
-  # Re-encode each path segment, leaving `/` between segments unencoded.
-  def self.encode_path(path)
-    path.split("/", -1).map do |seg|
-      seg.b.gsub(PATH_SAFE_RE) { |c| format("%%%02X", c.ord) }
-    end.join("/")
   end
 end
 
