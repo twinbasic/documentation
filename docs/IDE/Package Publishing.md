@@ -15,4 +15,4 @@ Once you open a project you will be able to edit the properties.
 
 ![Package Publishing](Images/PackagePublishing_1.png "Package Publishing")
 
-Click the "EDIT" and this will open the [Project Settings](Project%20Settings.md)
+Click the "EDIT" and this will open the [Project Settings](Settings)

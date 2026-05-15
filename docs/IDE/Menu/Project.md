@@ -20,16 +20,16 @@ permalink: /tB/IDE/Project/Menu/Project
 
 ## Add
 
-**Add** is the same as Right Click Add on the [Project Explorer](../Project%20Explorer.md)
+**Add** is the same as Right Click Add on the [Project Explorer](../Explorer)
 
 ![Right-Click Add](../Images/RightClick-Add.png "Right-Click Add")
 
 ## References
 
-See [Project Settings](../Project%20Settings.md) filtered by "project.references".
+See [Project Settings](../Settings) filtered by "project.references".
 
 ![Library References - Project Settings](../Images/ProjectSettings_LibraryReferences.png "Library References - Project Settings")
 
 ## Project Settings
 
-See [Project Settings](../Project%20Settings.md).
+See [Project Settings](../Settings).
