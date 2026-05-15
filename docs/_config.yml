@@ -10,7 +10,7 @@ kramdown:
   parse_span_html: true
   input: GFM
 
-remote_theme: just-the-docs/just-the-docs@v0.10.1
+theme: just-the-docs
 
 highlighter: rouge
 
