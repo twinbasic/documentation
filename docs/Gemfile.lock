@@ -109,7 +109,6 @@ DEPENDENCIES
   jekyll-redirect-from
   jekyll-relative-links
   jekyll-sass-converter (~> 2.2)
-  jekyll-seo-tag
   jekyll-sitemap
   just-the-docs (= 0.10.1)
   logger

@@ -1,0 +1,105 @@
+{%- comment -%}
+  Hand-rolled replacement for jekyll-seo-tag's seo tag.
+
+  Produces byte-identical output to jekyll-seo-tag v2.8.0 for this
+  site's configuration (verified against captured renders, then run
+  through the just-the-docs vendor/compress.html whitespace pass).
+
+  The gem renders per page via:
+    - A fresh Jekyll::SeoTag::Drop allocated each call
+    - A 128-line Liquid template with about 20 conditional branches
+    - A JSONLDDrop walk for the script application/ld+json block
+
+  Of those, this site only exercises: title, canonical / og:url,
+  og:title / twitter:title, og:locale, og:site_name, og:type=website,
+  twitter:card=summary, and the JSON-LD branches with no page.image,
+  page.author, page.date, paginator, site.twitter, site.facebook,
+  or site.webmaster_verifications. The dead branches still pay their
+  AuthorDrop / ImageDrop / conditional-evaluation cost on every
+  render -- about 1.0 s of RENDER time on the ~838-page site.
+
+  Frontmatter inputs read:
+    page.title, page.url
+  Site inputs read:
+    site.title, site.url, site.logo
+    jekyll.version (for the generator meta tag)
+
+  The format-string pipeline (markdownify, strip_html,
+  normalize_whitespace, escape_once) is preserved on both page and
+  site titles to match the gem's handling of markdown syntax or
+  special characters in YAML frontmatter title values. On plain ASCII
+  titles (the case throughout this site) the pipeline is effectively
+  a no-op, but the cost of running it is unavoidable for byte-
+  identical output.
+
+  Final whitespace between tags is normalised by just-the-docs's
+  vendor/compress.html layout (split on " ", join with " "), so
+  the literal newlines / indentation in this template do not need
+  to match the gem's MINIFY_REGEX-stripped template character for
+  character -- only the tags, attribute order, and JSON content
+  need to match.
+{%- endcomment -%}
+
+{%- assign seo_page_title_raw = page.title | markdownify | strip_html | normalize_whitespace | escape_once -%}
+{%- assign seo_site_title = site.title | markdownify | strip_html | normalize_whitespace | escape_once -%}
+{%- if seo_page_title_raw == "" -%}
+  {%- assign seo_page_title = seo_site_title -%}
+{%- else -%}
+  {%- assign seo_page_title = seo_page_title_raw -%}
+{%- endif -%}
+
+{%- if seo_page_title == seo_site_title -%}
+  {%- assign seo_full_title = seo_page_title -%}
+{%- else -%}
+  {%- assign seo_full_title = seo_page_title | append: " | " | append: seo_site_title -%}
+{%- endif -%}
+
+{%- comment -%}
+  Canonical URL: jekyll-seo-tag strips a trailing `/index.html`
+  before applying absolute_url. Liquid has no clean "ends with"
+  test, so we slice the last 11 chars and compare. On this site
+  no permalink resolves to `/index.html`, so the strip is usually
+  a no-op -- the check stays for the rare edge case.
+{%- endcomment -%}
+{%- assign seo_url = page.url -%}
+{%- if seo_url.size >= 11 -%}
+  {%- assign seo_url_tail = seo_url | slice: -11, 11 -%}
+  {%- if seo_url_tail == "/index.html" -%}
+    {%- assign seo_url_len = seo_url.size | minus: 10 -%}
+    {%- assign seo_url = seo_url | slice: 0, seo_url_len -%}
+  {%- endif -%}
+{%- endif -%}
+{%- assign seo_canonical = seo_url | absolute_url -%}
+
+{%- comment -%}
+  Homepage/about test: matches the gem's
+  `HOMEPAGE_OR_ABOUT_REGEX = %r!^/(about/)?(index.html?)?$!`.
+  Liquid lacks regex, so we enumerate the six matching URLs.
+  Only the JSON-LD's `@type` field (WebSite vs WebPage) and the
+  presence of the `name` field depend on this.
+{%- endcomment -%}
+{%- assign seo_is_home = false -%}
+{%- if page.url == "/" or page.url == "/index.html" or page.url == "/index.htm" or page.url == "/about/" or page.url == "/about/index.html" or page.url == "/about/index.htm" -%}
+  {%- assign seo_is_home = true -%}
+{%- endif -%}
+
+{%- assign seo_logo_url = site.logo | absolute_url | uri_escape -%}
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>{{ seo_full_title }}</title>
+<meta name="generator" content="Jekyll v{{ jekyll.version }}" />
+<meta property="og:title" content="{{ seo_page_title }}" />
+<meta property="og:locale" content="en_US" />
+<link rel="canonical" href="{{ seo_canonical }}" />
+<meta property="og:url" content="{{ seo_canonical }}" />
+<meta property="og:site_name" content="{{ seo_site_title }}" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="{{ seo_page_title }}" />
+<script type="application/ld+json">
+{% if seo_is_home -%}
+{"@context":"https://schema.org","@type":"WebSite","headline":{{ seo_page_title | jsonify }},"name":{{ seo_site_title | jsonify }},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":{{ seo_logo_url | jsonify }}}},"url":{{ seo_canonical | jsonify }}}
+{%- else -%}
+{"@context":"https://schema.org","@type":"WebPage","headline":{{ seo_page_title | jsonify }},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":{{ seo_logo_url | jsonify }}}},"url":{{ seo_canonical | jsonify }}}
+{%- endif -%}</script>
+<!-- End Jekyll SEO tag -->
