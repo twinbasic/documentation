@@ -1,0 +1,52 @@
+{%- comment -%}
+  Shadow of just-the-docs's _includes/components/site_nav.html.
+
+  The upstream pipeline (`site_nav.html` -> `nav/pages.html` ->
+  recursive `nav/links.html` / `nav/children.html` / `nav/sorted.html`)
+  costs ~5 s of RENDER time on this site, paid once during the
+  `include_cached` fill from `sidebar.html`. The shadow consumes
+  `site.nav_tree`, the deeply nested array precomputed in Ruby by
+  `_plugins/nav-tree-precompute.rb`, and skips `nav/pages.html`
+  entirely -- the precomputed array is already sorted and
+  nav-filtered.
+
+  Drops the `site.just_the_docs.collections` branch: the site has
+  no `just_the_docs.collections` configured in `_config.yml`. If a
+  future change adds collections, this file must be reverted to the
+  upstream version (or extended to handle collections directly).
+
+  Drops the `pages_top_size > 0` guard: `site.nav_tree` is a
+  non-empty array on this site, so the guard is unnecessary; if a
+  future change empties the nav, an empty `<ul class="nav-list">`
+  renders rather than nothing, which is harmless.
+
+  Drops the `nav_error_report` capture / display: the upstream
+  captures a warning message inside `nav/links.html` when a page
+  shares a title with one of its ancestors, then displays it here
+  if `site.nav_error_report` is set. The shadow `nav/links.html`
+  still emits the infinity link for such pages (matching the
+  upstream visual), but does not capture the message. This site
+  does not set `nav_error_report` in `_config.yml`, so the message
+  would not display either way.
+{%- endcomment -%}
+
+<nav aria-label="Main" id="site-nav" class="site-nav">
+  {%- assign nav_ancestors = "" | split: "" -%}
+  {%- include components/nav/links.html pages=site.nav_tree ancestors=nav_ancestors -%}
+  {%- if site.nav_external_links -%}
+    <ul class="nav-list">
+      {%- for node in site.nav_external_links -%}
+        <li class="nav-list-item external">
+          <a href="{{ node.url | absolute_url }}" class="nav-list-link external"
+            {% if node.opens_in_new_tab or node.opens_in_new_tab == nil and site.nav_external_links_new_tab %}
+              target="_blank" rel="noopener noreferrer"
+            {% endif %}
+          >
+            {{ node.title }}
+            {% unless node.hide_icon %}<svg viewBox="0 0 24 24" aria-labelledby="svg-external-link-title"><use xlink:href="#svg-external-link"></use></svg>{% endunless %}
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  {%- endif -%}
+</nav>
