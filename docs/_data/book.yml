@@ -1,0 +1,34 @@
+# Chapter manifest for the twinBASIC documentation PDF.
+#
+# `chapters` is an ordered list of page URLs (matching each page's
+# `permalink:` frontmatter). The book.html iterator looks each entry up
+# in `site.pages`, drops the page's rendered `content` inside an
+# `<article class="page">` wrapper, and lets pagedjs-cli paginate the
+# concatenated result.
+
+chapters:
+  - /tB/Modules/Interaction/
+  - /tB/Modules/Interaction/AppActivate
+  - /tB/Modules/Interaction/Beep
+  - /tB/Modules/Interaction/CallByDispId
+  - /tB/Modules/Interaction/CallByName
+  - /tB/Modules/Interaction/Choose
+  - /tB/Modules/Interaction/Command
+  - /tB/Modules/Interaction/CreateObject
+  - /tB/Modules/Interaction/DeleteSetting
+  - /tB/Modules/Interaction/DoEvents
+  - /tB/Modules/Interaction/Environ
+  - /tB/Modules/Interaction/GetAllSettings
+  - /tB/Modules/Interaction/GetObject
+  - /tB/Modules/Interaction/GetSetting
+  - /tB/Modules/Interaction/IIf
+  - /tB/Modules/Interaction/If
+  - /tB/Modules/Interaction/InputBox
+  - /tB/Modules/Interaction/MsgBox
+  - /tB/Modules/Interaction/Partition
+  - /tB/Modules/Interaction/RaiseEventByName
+  - /tB/Modules/Interaction/RaiseEventByName2
+  - /tB/Modules/Interaction/SaveSetting
+  - /tB/Modules/Interaction/SendKeys
+  - /tB/Modules/Interaction/Shell
+  - /tB/Modules/Interaction/Switch

@@ -1,0 +1,15 @@
+---
+layout: book-combined
+permalink: /book.html
+sitemap: false
+---
+{% for chapter_url in site.data.book.chapters -%}
+  {%- assign chapter = site.pages | where: "url", chapter_url | first -%}
+  {%- if chapter %}
+<article class="page">
+{{ chapter.content | markdownify }}
+</article>
+  {%- else %}
+<!-- manifest entry not found: {{ chapter_url }} -->
+  {%- endif %}
+{%- endfor %}
