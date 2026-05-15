@@ -159,10 +159,10 @@ div.highlighter-rouge {
   padding: 0.6em 0.8em;
   background: #f6f8fa;
   border-radius: 3pt;
-  break-inside: auto;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  break-inside: auto;
 }
 
 div.highlighter-rouge pre,

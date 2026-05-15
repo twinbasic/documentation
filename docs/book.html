@@ -3,16 +3,54 @@ layout: book-combined
 permalink: /book.html
 sitemap: false
 ---
+{%- comment -%}
+  Whitespace primitives. `sp` is one space; `nl` is one newline,
+  captured between the opening and closing capture tags so the LF is
+  preserved verbatim (trim markers strip only outside-the-capture
+  whitespace).
+
+  Inter-span whitespace patterns: PagedJS drops bare text-node
+  whitespace between sibling elements when it splits a pre across
+  pages, mashing tokens and collapsing line breaks. Wrapping each
+  inter-span whitespace run in a span.w element makes it a structured
+  child that survives the split.
+
+  Variants, longest first so each consumes its bytes before a shorter
+  pattern can fragment them:
+    SP NL SP NL -- blank line between a code-line ending (trailing
+                   space outside the last token's span) and the next.
+    NL SP NL    -- blank line between a comment-line ending (trailing
+                   space already inside the comment span) and the next.
+    SP NL       -- code line directly followed by the next line.
+    NL          -- comment line directly followed by the next line.
+{%- endcomment -%}
+
+{%- assign sp = " " -%}
+{%- capture nl %}
+{% endcapture -%}
+
+{%- assign p1_search   = '</span>'            | append: sp | append: nl | append: sp | append: nl | append: '<span'  -%}
+{%- assign p1_replace  = '</span><span class="w">' | append: sp | append: nl | append: sp | append: nl | append: '</span><span' -%}
+
+{%- assign p2_search   = '</span>'            | append: nl | append: sp | append: nl | append: '<span'               -%}
+{%- assign p2_replace  = '</span><span class="w">' | append: nl | append: sp | append: nl | append: '</span><span'   -%}
+
+{%- assign p3_search   = '</span>'            | append: sp | append: nl | append: '<span'                            -%}
+{%- assign p3_replace  = '</span><span class="w">' | append: sp | append: nl | append: '</span><span'                -%}
+
+{%- assign p4_search   = '</span>'            | append: nl | append: '<span'                                         -%}
+{%- assign p4_replace  = '</span><span class="w">' | append: nl | append: '</span><span'                             -%}
+
 {%- for section in site.data.book.sections -%}
   {%- assign chapters = site.pages | where_exp: "p", "p.url contains section" | sort: "url" -%}
   {%- for chapter in chapters -%}
-    {%- comment %}
-      Strip the leading slash from absolute `src="/..."` attributes so images
-      resolve relative to _site-pdf/book.html (which is what pagedjs-cli reads
-      under file://). Source pages use relative paths in markdown, but the
-      site rewrites them to absolute-from-root for the regular browser site.
-    {% endcomment -%}
-    {%- assign body = chapter.content | replace: 'src="/', 'src="' %}
+    {%- assign body = chapter.content
+        | replace: 'src="/', 'src="'
+        | replace: p1_search, p1_replace
+        | replace: p2_search, p2_replace
+        | replace: p3_search, p3_replace
+        | replace: p4_search, p4_replace
+        | replace: '</span> <span', '</span><span class="w"> </span><span' %}
 <article class="page">
 {{ body }}
 </article>
