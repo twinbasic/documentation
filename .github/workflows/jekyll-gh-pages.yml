@@ -5,8 +5,16 @@ on:
   push:
     branches: ["staging"]
 
-  # Allows you to run this workflow manually from the Actions tab
+  # Allows you to run this workflow manually from the Actions tab.
+  # The manual path additionally cuts a GitHub release with the
+  # offline-browsable site copy attached as a zip; pushes to
+  # `staging` only deploy to Pages.
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (leave blank for auto: docs-YYYY-MM-DD-HHMM in UTC)'
+        required: false
+        type: string
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -65,10 +73,34 @@ jobs:
             ./_site
           workingDirectory: ./docs
           fail: true
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
           path: ./docs/_site
+      # The next two steps run only on manual dispatch -- they
+      # package the offline copy of the site (`docs/_site-offline/`,
+      # produced by the always-on `also_build_offline: true` flag in
+      # `_config.yml` via `_plugins/offlinify.rb`) and ship it as a
+      # workflow artifact for the `release` job to attach to a new
+      # GitHub release. Pushes to `staging` skip this and only
+      # deploy to Pages.
+      - name: Package offline site
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ ! -d ./docs/_site-offline ]; then
+            echo "::error::./docs/_site-offline not found -- ensure also_build_offline is true in _config.yml (or in the JEKYLL_SITE_CONFIG override)"
+            exit 1
+          fi
+          (cd ./docs/_site-offline && zip -rq "${{ runner.temp }}/twinbasic-docs-offline.zip" .)
+      - name: Upload offline-site workflow artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: twinbasic-docs-offline-zip
+          path: ${{ runner.temp }}/twinbasic-docs-offline.zip
+          # Workflow-internal hand-off to the release job; the
+          # release itself carries the long-lived copy of the zip.
+          retention-days: 7
 
   # Deployment job
   deploy:
@@ -81,3 +113,52 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+  # Release job -- runs only on manual dispatch, after a successful
+  # Pages deploy. Each manual deploy cuts a new GitHub release whose
+  # tag tracks a publicly visible documentation snapshot at
+  # https://docs.twinbasic.com, with the offline-browsable copy of
+  # the site attached as twinbasic-docs-offline.zip.
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      # softprops/action-gh-release needs contents:write to create
+      # tags and publish releases. The top-level permissions block
+      # only grants contents:read for the build/deploy path.
+      contents: write
+    steps:
+      - name: Download offline-site workflow artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: twinbasic-docs-offline-zip
+      - name: Compute release tag and name
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+            NAME="$INPUT_TAG"
+          else
+            TAG="docs-$(date -u +'%Y-%m-%d-%H%M')"
+            NAME="Documentation $(date -u +'%Y-%m-%d %H:%M UTC')"
+          fi
+          echo "tag=$TAG"   >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+      - name: Create release with offline-site zip
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            Snapshot of the documentation deployed to <https://docs.twinbasic.com>.
+
+            **Offline copy:** download `twinbasic-docs-offline.zip`, extract anywhere, and open `index.html` in any browser — no server required. URLs, navigation, dark mode, and search all work over `file://`.
+
+            Source commit: ${{ github.sha }}.
+          files: twinbasic-docs-offline.zip
+          fail_on_unmatched_files: true
+          make_latest: 'true'
