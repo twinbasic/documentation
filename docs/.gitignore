@@ -1,6 +1,7 @@
 _site/
 _site-offline/
 _site-pdf/
+_site-pdf-offline/
 _pdf/
 .sass-cache
 .jekyll-cache
