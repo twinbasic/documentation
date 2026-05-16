@@ -110,6 +110,18 @@ gh_edit_branch: "main" # the branch that your docs is served from
 gh_edit_source: docs # the source that your files originate from
 gh_edit_view_mode: "tree" # "tree" or "edit" if you want the user to jump into the editor immediately
 
+# Footer "Download offline copy" link -- points at the offline-site
+# zip attached to the latest GitHub release (cut by the manual
+# `workflow_dispatch` path in .github/workflows/jekyll-gh-pages.yml).
+# Rendered inside the same flex row as the "Edit this page" link,
+# with id="download-offline" on the <a>. Emitted in both the online
+# _site/ and the offline _site-offline/ trees -- online readers use
+# it to fetch the offline copy, offline readers use it to refresh
+# theirs against the latest release.
+gh_offline_link: true
+gh_offline_link_text: "Download offline copy"
+gh_offline_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinbasic-docs-offline.zip"
+
 # When true, the Offlinify plugin (_plugins/offlinify.rb) runs at the
 # end of the build, copies _site/ to _site-offline/, rewrites every
 # URL to a page-relative form, patches a couple of just-the-docs JS
