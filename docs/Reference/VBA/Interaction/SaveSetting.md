@@ -8,7 +8,7 @@ vba_attribution: true
 ---
 
 # SaveSetting
-{: .no-toc }
+{: .no_toc }
 
 Saves or creates an application entry in the application's entry in the Windows registry. <!-- or (on the Macintosh) information in the application's initialization file. -->
 

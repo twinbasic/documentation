@@ -80,14 +80,14 @@ Dim AnotherVar, Choice As Boolean, BirthDate As Date
 Dim DayArray(50) 
  
 ' Matrix is a two-dimensional array of integers. 
-Dim Matrix(3, 4)As Integer 
+Dim Matrix(3, 4) As Integer 
  
 ' MyMatrix is a three-dimensional array of doubles with explicit 
 ' bounds. 
-Dim MyMatrix(1 To 5, 4 To 9, 3 To 5)As Double 
+Dim MyMatrix(1 To 5, 4 To 9, 3 To 5) As Double 
  
 ' BirthDay is an array of dates with indexes from 1 to 10. 
-Dim BirthDay(1 To 10)As Date 
+Dim BirthDay(1 To 10) As Date 
  
 ' MyArray is a dynamic array of variants. 
 Dim MyArray()
