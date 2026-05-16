@@ -21,7 +21,12 @@
 @set EXIT1=%ERRORLEVEL%
 @echo.
 @echo Checking _site-offline/ (offline) ...
-@%LYCHEE% --offline --include-fragments --index-files "index.html,." --root-dir ".\_site-offline" ".\_site-offline" %*
+@rem No `.` in --index-files: under file://, a bare directory URL
+@rem (`Foo/`) requires an actual index.html inside. The online check
+@rem above accepts `.` because GitHub Pages can serve an unstyled
+@rem directory listing or a 404 in that case; offline, there's no
+@rem such fallback, and the link is just broken.
+@%LYCHEE% --offline --include-fragments --index-files "index.html" --root-dir ".\_site-offline" ".\_site-offline" %*
 @set EXIT2=%ERRORLEVEL%
 @if %EXIT1% NEQ 0 exit /b %EXIT1%
 @exit /b %EXIT2%
