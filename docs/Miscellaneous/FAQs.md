@@ -178,6 +178,21 @@ This issue is sometimes encountered on Windows 7. To be used on Windows 7, the O
 </details>
 
 <details markdown=block>
+<summary markdown=span><b>The IDE reports missing files when I try to launch it.</b></summary>
+{: #missing-files }
+
+
+If, when launching the twinBASIC IDE, you are notified of missing files, the most likely reason is that the anti-virus software installed on your PC has quarantined some of the files needed by twinBASIC, mistakenly thinking that they contain a virus or other malware. Such erroneous detections are common with newly released software, so please be assured this is just a false-positive detection --- see also [the previous entry](#false-scanner-alerts) for context.
+
+To get the twinBASIC IDE to launch successfully, configure your anti-virus software to disregard the twinBASIC executable files (EXEs and DLLs) within the root folder, and the `bin` subfolder. This usually means adding the root folder and the `bin` subfolder to an 'exception list' in your anti-virus software.
+
+After restoring the missing EXE and DLL files, you should find that launching the IDE via the `twinBASIC.exe` file works as expected.
+
+Please direct all negative emotions to your overactive anti-virus vendor :)
+
+</details>
+
+<details markdown=block>
 <summary markdown=span><b>How do I install twinBASIC?</b></summary>
 {: #installation }
 
