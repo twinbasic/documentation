@@ -153,6 +153,20 @@ module Offlinify
   # Captures: 1=attribute name, 2=quote char, 3=URL.
   HTML_ATTR_RE = /\b(href|src)=(["'])(\/(?!\/)[^"']*)\2/.freeze
 
+  # Matches `href`/`src` attribute values that are page-relative --
+  # they do not start with `/`, `#`, or a URL scheme. Used to catch
+  # links that come from markdown sources verbatim (e.g.
+  # `[Foo](Foo#section)`), which Jekyll passes through unmodified
+  # and therefore do not get the baseurl prefix that `relative_url`
+  # would have added. These need their `.html` extension added so
+  # they resolve under `file://`.
+  #
+  # Excluded by the lookahead:
+  #   `#...`                    fragment-only (same-page anchors)
+  #   `/...` / `//...`          absolute / protocol-relative (HTML_ATTR_RE)
+  #   `mailto:`, `http:`, etc.  any RFC 3986 URL scheme
+  HTML_REL_HREF_RE = %r{\b(href|src)=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2}.freeze
+
   # Matches `url(...)` in CSS where the URL starts with a single slash.
   # The URL may be bare or wrapped in single/double quotes. Captures:
   # 1=quote char (or empty), 2=URL.
@@ -379,8 +393,10 @@ module Offlinify
         file_segs = file_dir_segs_from_rel(rel)
         changed_url, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, mode: :html)
         unresolved += misses
+        changed_rel, rel_misses = rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache)
+        unresolved += rel_misses
         changed_search = inject_search_setup!(content, file_segs)
-        if changed_url || changed_search
+        if changed_url || changed_rel || changed_search
           FileUtils.mkdir_p(File.dirname(out_path)) if combined
           File.binwrite(out_path, content)
           rewritten_html += 1
@@ -557,6 +573,96 @@ module Offlinify
 
     content.replace(new_content) if changed
     [changed, misses]
+  end
+
+  # Companion to `rewrite!` for page-relative URLs that didn't go
+  # through `relative_url` (e.g. links that came straight from
+  # markdown sources like `[Foo](Foo#section)`). Mutates `content`
+  # in place. Returns `[changed_bool, unresolved_count]`. Shares the
+  # `result_cache` with the absolute-URL pass since the keyed `raw`
+  # values are disjoint (absolute URLs start with `/`, relative ones
+  # don't).
+  def self.rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache)
+    misses = 0
+    changed = false
+
+    new_content = content.gsub(HTML_REL_HREF_RE) do
+      match = Regexp.last_match
+      raw = match[3]
+      cache_key = "#{file_dir}\x00#{raw}"
+      rel = result_cache.fetch(cache_key) do
+        result_cache[cache_key] = compute_rel_url(raw, file_segs, site_paths)
+      end
+      if rel.nil?
+        misses += 1
+        match[0]
+      elsif rel == raw
+        # File already exists at the relative path verbatim; the
+        # link is correct as-is (e.g. `Foo.html` from a sibling
+        # markdown source).
+        match[0]
+      else
+        changed = true
+        %(#{match[1]}=#{match[2]}#{rel}#{match[2]})
+      end
+    end
+
+    content.replace(new_content) if changed
+    [changed, misses]
+  end
+
+  # Resolve a page-relative URL `raw` against the current file's
+  # directory segments `file_segs` (relative to dest). Probes the
+  # filesystem (via `site_paths`) for the target file. If found,
+  # returns the original `raw` with the matching suffix (`.html`,
+  # `/index.html`, or none) appended to its path portion -- the
+  # `#fragment` / `?query` tail is preserved verbatim. Returns nil
+  # when no candidate matches.
+  #
+  # Example: from a file at `tB/Core/Const.html`, raw
+  # `Attributes#description`:
+  #   file_segs    = ["tB", "Core"]
+  #   path/sep/tail = "Attributes" / "#" / "description"
+  #   probed paths  = /tB/Core/Attributes,
+  #                   /tB/Core/Attributes.html,    <- matches
+  #                   /tB/Core/Attributes/index.html
+  #   returns "Attributes.html#description"
+  def self.compute_rel_url(raw, file_segs, site_paths)
+    path, sep, tail = raw.partition(/[?#]/)
+    return nil if path.empty?
+
+    decoded = decode(path)
+    trailing_slash = decoded.end_with?("/")
+    segs = file_segs + decoded.split("/", -1)
+    stack = []
+    segs.each do |seg|
+      case seg
+      when "", "."
+        # current dir / consecutive slashes -- skip
+      when ".."
+        stack.pop
+      else
+        stack.push(seg)
+      end
+    end
+
+    probe_path = "/#{stack.join("/")}"
+    probe_path = "#{probe_path}/" if trailing_slash && !probe_path.end_with?("/")
+
+    candidates = if probe_path.end_with?("/")
+      [["", probe_path], ["index.html", "#{probe_path}index.html"]]
+    elsif probe_path.include?(".")
+      [["", probe_path], ["/index.html", "#{probe_path}/index.html"]]
+    else
+      [["", probe_path], [".html", "#{probe_path}.html"], ["/index.html", "#{probe_path}/index.html"]]
+    end
+
+    candidates.each do |suffix, full|
+      if site_paths.include?(full)
+        return "#{path}#{suffix}#{sep}#{tail}"
+      end
+    end
+    nil
   end
 
   # Resolve `raw` to a page-relative URL string from a file whose
