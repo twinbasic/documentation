@@ -1,7 +1,4 @@
 ---
-# Feel free to add content and custom Front Matter to this file.
-# To modify the layout, see https://jekyllrb.com/docs/themes/#overriding-theme-defaults
-
 layout: home
 title: Welcome
 nav_order: 1
@@ -10,73 +7,79 @@ permalink: /
 
 # Welcome to twinBASIC
 
-## Frequently Asked Questions (FAQ)
+twinBASIC is a new BASIC language and development environment aiming for 100% backward compatibility with VB6 and VBA, while adding modern language features --- generics, native **Interface** and **CoClass** declarations, attributes, and a package system. The compiler and IDE are under active development and currently in beta; the [FAQ](FAQ) covers the project's status, authorship, and what is and isn't implemented today, and downloads live on the [Releases](https://github.com/twinbasic/twinbasic/releases) page of the main GitHub repository.
 
-1. [twinBASIC FAQ](FAQ)
+## New to twinBASIC?
 
-## Wiki
+Start with the [FAQ](FAQ) for orientation --- what twinBASIC is, where it stands today, and what runs on it --- then the [Features overview](Features/) for a tour of everything the language adds on top of VBx. The [Tutorials](#tutorials) section below has step-by-step guides; the [Arrays](Tutorials/Arrays) tutorial assumes no prior twinBASIC experience and is a reasonable first read.
 
-The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplements this documentation with bleeding-edge community  content.
+## Coming from VBA or VB6?
 
-## ActiveX
+Most existing VB6 / VBA code compiles unchanged. The [Features overview](Features/) catalogues every addition --- new data types (**LongLong**, **LongPtr**, **Decimal**), native **Interface** and **CoClass** definitions, **Implements Via** and **Inherits**, generics, method overloading, type inference, attribute syntax, and more. The reference pages flag each twinBASIC-specific deviation from VBx inline with a `> [!NOTE]` callout; most VBA-derived pages are adapted from the Microsoft VBA-Docs sources and remain compatible word-for-word where the semantics did not change.
 
-1. [HOW TO: Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/) _[by Mike Wolfe @nolongerset]_
-2. [HOW TO: Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/) _[by Mike Wolfe @nolongerset]_
+## Looking up a keyword, function, or operator?
+
+The reference section is split into language constructs (the things the compiler parses) and runtime members (functions, properties, types, classes shipped in the built-in packages):
+
+- [**Categorical list**](Reference/Categories) --- statements, procedures, and functions grouped by purpose (compiler control, declarations, control flow, file I/O, ...)
+- [**Statements**](Reference/Statements) --- alphabetical index of every language statement
+- [**Procedures and Functions**](Reference/Procedures-and-Functions) --- alphabetical index of every callable runtime member
+- [**Operators**](Reference/Operators) --- arithmetic, comparison, logical, bitwise, and twinBASIC's added operators
+- [**Compiler Constants**](Reference/Compiler-Constants) --- the `#If` symbols recognised by the compiler
+- [**Attributes**](tB/Core/Attributes) --- `[Documentation(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
+- [**Controls**](tB/Controls) --- the standard UI controls (**CheckBox**, **TextBox**, **CommandButton**, ...) grouped by purpose
+- [**Glossary**](tB/Gloss) --- technical terms used across the docs
+
+## Built-in packages
+
+A *package* groups related code under one namespace and is referenced from a project as a single dependency. The [Packages page](tB/Packages/) lists every built-in package with a one-line description; the headings below group them by what they are for.
+
+**Default packages** --- referenced in every project automatically:
+
+- [**VBA**](tB/Packages/VBA) --- the standard runtime library (`MsgBox`, `CStr`, `Format`, `Mid`, ...) plus the **Collection** and **Err** intrinsics
+- [**VBRUN**](tB/Packages/VBRUN/) --- runtime types (**PropertyBag**, ambient properties, structured error context, drag-and-drop) and the enumerations used by classic VB6 forms and controls
+- [**VB**](tB/Packages/VB/) --- the standard controls (**CheckBox**, **TextBox**, **CommandButton**, ...) and the application-level singletons (**App**, **Screen**, **Clipboard**, **Printer**, ...)
+
+**Additional GUI** --- controls beyond the **VB** defaults:
+
+- [**CustomControls**](tB/Packages/CustomControls/) --- owner-drawn `Waynes…` controls with a DESIGNER framework for authoring new ones
+- [**WinNativeCommonCtls**](tB/Packages/WinNativeCommonCtls/) --- VB6-compatible replacement for `MSCOMCTL.OCX` (**DTPicker**, **ImageList**, **ListView**, **MonthView**, **ProgressBar**, **Slider**, **TreeView**, **UpDown**)
+
+**Web embedding** --- host a browser engine inside a form:
+
+- [**WebView2**](tB/Packages/WebView2/) --- the Microsoft Edge runtime
+- [**CEF**](tB/Packages/CEF/) --- the Chromium Embedded Framework (BETA), with a choice of three Chromium runtimes
+
+**Windows integration** --- thin wrappers over OS facilities:
+
+- [**WinServicesLib**](tB/Packages/WinServicesLib/) --- run a twinBASIC EXE as one or more Windows services
+- [**WinEventLogLib**](tB/Packages/WinEventLogLib/) --- write Windows Event Log entries, with compile-time message-table generation
+- [**WinNamedPipesLib**](tB/Packages/WinNamedPipesLib/) --- IOCP-based asynchronous named-pipe server and client
+
+**Tooling**:
+
+- [**Assert**](tB/Packages/Assert/) --- assertion functions for unit tests, in three modules sharing the same fifteen-member API at different strictness levels
+- [**tbIDE**](tB/Packages/tbIDE/) --- the addin SDK for the twinBASIC IDE itself
 
 ## Tutorials
 
-1. [Arrays](Tutorials/Arrays)
-2. [CustomControls](Tutorials/CustomControls)
-3. [WebView2](Tutorials/WebView2)
+- [**Arrays**](Tutorials/Arrays) --- fixed and dynamic arrays, `Dim`, `ReDim`, multi-dimensional shapes
+- [**CustomControls**](Tutorials/CustomControls) --- building owner-drawn controls with the `Waynes…` framework
+- [**WebView2**](Tutorials/WebView2/) --- embedding the Edge runtime: hosting local assets, JavaScript interop, driving Monaco
+- [**CEF**](Tutorials/CEF/) --- embedding Chromium: building a browser shell, hosting local assets, JavaScript interop, driving Monaco
 
-## Language and IDE Features
-1. [Overview of features new to twinBASIC](Features) (compared to VBx)
-2. [Attributes](Features/Attributes-Intro)
-3. [Language Syntax](Features/Language)
-4. [Project Configuration](Features/Project-Configuration)
-5. [Standard Library](Features/Standard-Library)
-6. [GUI Components](Features/GUI-Components)
-7. [Packages](Features/Packages)
-8. [Advanced Features](Features/Advanced)
-9. [Compiler and IDE Features](Features/Compiler-IDE)
-10. [64bit Compilation](Features/64bit)
+## The twinBASIC IDE
 
-## Reference Section
+The [**IDE section**](tB/IDE) documents the editor, project explorer, debugging panes (call stack, watches, diagnostics, debug console), the [**tbForm**](tB/IDE/Project/Editor/Form) and [**tbReport**](tB/IDE/Project/Editor/Report) designers, and the per-feature side panes. To install third-party addins, see [**Add Ins**](tB/IDE/AddIns/); to author your own, the [**tbIDE package**](tB/Packages/tbIDE/) is the addin SDK.
 
-1. [Categorical List](Reference/Categories) of the core language statements, procedures, functions and properties
-2. [Statements](Reference/Statements), listed alphabetically
-3. [Procedures and Functions](Reference/Procedures-and-Functions) of the core language, listed alphabetically
-4. [List of available compiler constants](Reference/Compiler-Constants)
-5. [List of attributes](tB/Core/Attributes) -- those are things like `[Documentation("...")]`.
-6. [List of built-in controls](tB/Controls)
-7. [Glossary](tB/Gloss) - a glossary of commonly used technical terms
-8. [Modules](tB/Modules) - a list of core modules and their contents
+## Community and external resources
 
-## Documentation Development
+- The [**twinBASIC wiki**](https://github.com/twinbasic/documentation/wiki) on GitHub supplements these docs with community contributions and notes on bleeding-edge features.
+- [**twinBASIC Videos**](Videos/tB) --- the twinBASIC video series. The [**Access DevCon**](Videos/AccessDevCon) archive collects twinBASIC update sessions from the annual Access DevCon conference.
+- Third-party guides by Mike Wolfe at [@nolongerset](https://nolongerset.com):
+  - [Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/)
+  - [Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/)
 
-[Hints about the documentation development process](Documentation/Development)
+## Contributing to the documentation
 
-## twinBASIC IDE
-
-1. [Call Stack](tB/IDE/Project/CallStack)
-2. [Debug Console](tB/IDE/Project/DebugConsole)
-3. [Diagnostics](tB/IDE/Project/Diagnostics)
-4. [Editor](tB/IDE/Project/Editor)
-5. [Menu](tB/IDE/Project/Menu)
-6. [New Project](tB/IDE/Project/New)
-7. [Project Explorer](tB/IDE/Project/Explorer)
-8. [Project Settings](tB/IDE/Project/Settings)
-9. [Properties Pane](tB/IDE/Project/Properties)
-10. [Splash Screen](tB/IDE/Project/Splash)
-11. [Status Bar](tB/IDE/Project/StatusBar)
-12. [Toolbar](tB/IDE/Project/Toolbar)
-13. [Toolbox](tB/IDE/Project/Toolbox)
-14. [Variables](tB/IDE/Project/Variables)
-15. [tbForm](tB/IDE/Project/Editor/Form)
-16. [tbReport](tB/IDE/Project/Editor/Report)
-17. [Add Ins](tB/IDE/AddIns/)
-
-## twinBASIC Videos
-
-- [Access DevCon Videoes](Videos/AccessDevCon)
-- [A series of videos introducing twinBASIC](Videos/tB)
+These docs are open source. See [**Documentation Development**](Documentation/Development) for the build and preview workflow plus the contribution conventions.
