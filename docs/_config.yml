@@ -26,6 +26,14 @@ defaults:
   - scope:
       path: "assets/css"
     values:
+      # Without this override, the global `layout: default` default
+      # above wraps every Liquid-processed .css file in the full page
+      # chrome (sidebar, footer, etc.), so the browser sees HTML at
+      # `<link rel="stylesheet" href=".../just-the-docs-head-nav.css">`,
+      # silently fails to parse, and loses the FOUC-prevention chunk.
+      # .scss files in this same folder are unaffected (jekyll-sass-
+      # converter bypasses the layout system entirely).
+      layout: null
       render_with_liquid: true
 
 # GitHub-style admonitions are supported, but we may wish to add custom
