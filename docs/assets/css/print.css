@@ -43,11 +43,21 @@ article {
   break-before: page;
 }
 
-/* After 1.5a, chapter content's first heading is h2 (the source `# Title`
-   shifted down so part divider's h1 is the only book-level H1). Pin the
-   running-header string-set to that first chapter h2. */
-article.page > h2:first-of-type {
+/* Running-header source. Every chapter emits a hidden `<span
+   class="header-string">` as its first child; that span is the
+   string-set source for the @top-right chapter title. Routing through a
+   single dedicated element avoids pagedjs quirks where `:first-of-type`
+   + class-restricted selectors on h2/h3 left some top-level chapter
+   pages with stale or empty running headers. For top-level chapters the
+   span carries the chapter title; for sub-pages it carries the compound
+   "Parent.Sub" / "Parent - Sub" title (1.6c). */
+article.page > .header-string {
   string-set: chapter-title content();
+  position: absolute;
+  font-size: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 /* The very first article has nothing in front of it. */
@@ -155,16 +165,31 @@ h1 {
   margin-bottom: 0.8em;
 }
 
-/* Chapter title (source h1, now h2 after 1.5a). Same look as the old
-   chapter h1 -- big, bold, no underline -- overriding the generic h2
-   rule's border-bottom and font-size. */
-article.page > h2:first-of-type {
+/* Chapter title for top-level chapters (source h1, now h2 after 1.5a).
+   Big, bold, no underline -- overrides the generic h2 rule. The
+   :not(.sub-chapter) restriction matches the string-set selector above
+   so sub-chapter articles don't apply this rule. */
+article.page:not(.sub-chapter) > h2:first-of-type {
   font-size: 24pt;
   font-weight: 700;
   border-bottom: none;
   padding-bottom: 0;
   margin-top: 0;
   margin-bottom: 0.8em;
+}
+
+/* Sub-page chapter title (source h1, now h3 after 1.5a + 1.6b). Slightly
+   smaller than a top-level chapter (20pt vs 24pt) to signal that this
+   chapter sits below its parent index in the outline hierarchy, but
+   still distinct from in-chapter section headings. Overrides the
+   generic `article.page h3` 18pt-with-border rule. */
+article.page.sub-chapter > h3:first-of-type {
+  font-size: 20pt;
+  font-weight: 700;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0.7em;
 }
 
 /* Generic h2 (only used outside chapters now, e.g. for any future

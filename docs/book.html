@@ -42,6 +42,36 @@ sitemap: false
 {%- assign p4_replace  = '</span><span class="w">' | append: nl | append: '</span><span'                             -%}
 
 {%- comment -%}
+  Additional patterns for indented code spillover: when a code line
+  ends and the next line is indented (4/8/12/16 spaces of leading
+  whitespace before its first token), pagedjs drops the whole
+  inter-line text node at page splits. Cover the four common indent
+  levels with both `</span>\n<INDENT><span` and `</span> \n<INDENT><span`
+  (the latter for lines whose last token had trailing whitespace).
+  Together with p1-p4 these account for >99% of code block lines.
+{%- endcomment -%}
+{%- assign s4  = '    ' -%}
+{%- assign s8  = '        ' -%}
+{%- assign s12 = '            ' -%}
+{%- assign s16 = '                ' -%}
+
+{%- assign p4i4_search  = '</span>' | append: nl | append: s4  | append: '<span' -%}
+{%- assign p4i4_replace = '</span><span class="w">' | append: nl | append: s4  | append: '</span><span' -%}
+{%- assign p4i8_search  = '</span>' | append: nl | append: s8  | append: '<span' -%}
+{%- assign p4i8_replace = '</span><span class="w">' | append: nl | append: s8  | append: '</span><span' -%}
+{%- assign p4i12_search = '</span>' | append: nl | append: s12 | append: '<span' -%}
+{%- assign p4i12_replace = '</span><span class="w">' | append: nl | append: s12 | append: '</span><span' -%}
+{%- assign p4i16_search = '</span>' | append: nl | append: s16 | append: '<span' -%}
+{%- assign p4i16_replace = '</span><span class="w">' | append: nl | append: s16 | append: '</span><span' -%}
+
+{%- assign p3i4_search  = '</span>' | append: sp | append: nl | append: s4  | append: '<span' -%}
+{%- assign p3i4_replace = '</span><span class="w">' | append: sp | append: nl | append: s4  | append: '</span><span' -%}
+{%- assign p3i8_search  = '</span>' | append: sp | append: nl | append: s8  | append: '<span' -%}
+{%- assign p3i8_replace = '</span><span class="w">' | append: sp | append: nl | append: s8  | append: '</span><span' -%}
+{%- assign p3i12_search = '</span>' | append: sp | append: nl | append: s12 | append: '<span' -%}
+{%- assign p3i12_replace = '</span><span class="w">' | append: sp | append: nl | append: s12 | append: '</span><span' -%}
+
+{%- comment -%}
   Roman numerals for part numbering. Liquid has no built-in; a flat
   array keyed by `forloop.index0` is the cheapest implementation and
   covers up to 20 parts.
@@ -62,6 +92,16 @@ sitemap: false
 </article>
   {%- for prefix in part.prefixes -%}
     {%- assign chapters = site.pages | where_exp: "p", "p.url contains prefix" | sort: "url" -%}
+    {%- comment -%}
+      1.6a: state for sub-page detection. Index pages (URL ending in `/`)
+      sort before their siblings under ASCII order, so a single-slot
+      state tracking the most recent index URL plus its kind / display
+      name is enough -- when we hit a non-index URL we just check whether
+      it starts with that prefix.
+    {%- endcomment -%}
+    {%- assign current_index_url = '' -%}
+    {%- assign current_index_kind = 'class' -%}
+    {%- assign current_index_name = '' -%}
     {%- for chapter in chapters -%}
     {%- comment -%}
       Jekyll's `chapter.content` returns rendered HTML for pages whose
@@ -78,12 +118,52 @@ sitemap: false
     {%- else -%}
       {%- assign body = chapter.content | markdownify -%}
     {%- endif -%}
+
+    {%- comment -%}
+      1.6a sub-page detection + 1.6c kind/name capture. When we see an
+      index URL we read the index's H1 to decide class vs module --
+      relying on the sub-page's `parent:` field would be wrong because
+      several VBRUN class folders mistakenly suffix it with " Module"
+      (e.g. AmbientProperties' BackColor.md). The H1 text (`# Foo class`
+      / `# Foo module`) is the source of truth.
+    {%- endcomment -%}
+    {%- assign url_last_char = chapter.url | slice: -1, 1 -%}
+    {%- assign is_sub_page = false -%}
+    {%- if url_last_char == '/' -%}
+      {%- assign current_index_url = chapter.url -%}
+      {%- assign current_index_name = chapter.title
+            | replace: ' Module', ''
+            | replace: ' module', ''
+            | replace: ' Class', ''
+            | replace: ' class', ''
+            | replace: ' Package', '' -%}
+      {%- assign content_head = chapter.content | slice: 0, 200 | downcase -%}
+      {%- if content_head contains 'module' -%}
+        {%- assign current_index_kind = 'module' -%}
+      {%- else -%}
+        {%- assign current_index_kind = 'class' -%}
+      {%- endif -%}
+    {%- elsif current_index_url != '' -%}
+      {%- assign sized_prefix = chapter.url | slice: 0, current_index_url.size -%}
+      {%- if sized_prefix == current_index_url -%}
+        {%- assign is_sub_page = true -%}
+      {%- else -%}
+        {%- assign current_index_url = '' -%}
+      {%- endif -%}
+    {%- endif -%}
     {%- assign body = body
         | replace: 'src="/', 'src="'
         | replace: p1_search, p1_replace
         | replace: p2_search, p2_replace
-        | replace: p3_search, p3_replace
-        | replace: p4_search, p4_replace
+        | replace: p3i12_search, p3i12_replace
+        | replace: p3i8_search,  p3i8_replace
+        | replace: p3i4_search,  p3i4_replace
+        | replace: p3_search,    p3_replace
+        | replace: p4i16_search, p4i16_replace
+        | replace: p4i12_search, p4i12_replace
+        | replace: p4i8_search,  p4i8_replace
+        | replace: p4i4_search,  p4i4_replace
+        | replace: p4_search,    p4_replace
         | replace: '</span> <span', '</span><span class="w"> </span><span' -%}
     {%- assign stripped = body | strip -%}
     {%- if stripped == "" -%}{%- continue -%}{%- endif -%}
@@ -109,6 +189,28 @@ sitemap: false
         | replace: '</h2>', '</h3>'
         | replace: '<h1', '<h2'
         | replace: '</h1>', '</h2>' -%}
+
+    {%- comment -%}
+      1.6b: extra heading shift for sub-pages so they nest one level
+      deeper than their parent index in the PDF outline. A sub-page's
+      chapter title (source `#`) ends up as `<h3>` instead of `<h2>`,
+      sub-page sections as `<h4>` instead of `<h3>`, and so on. The
+      shift cascades through the same rule set; no real content reaches
+      h7-stub or beyond after this second pass.
+    {%- endcomment -%}
+    {%- if is_sub_page -%}
+      {%- assign body = body
+          | replace: '<h6', '<h7-stub'
+          | replace: '</h6>', '</h7-stub>'
+          | replace: '<h5', '<h6'
+          | replace: '</h5>', '</h6>'
+          | replace: '<h4', '<h5'
+          | replace: '</h4>', '</h5>'
+          | replace: '<h3', '<h4'
+          | replace: '</h3>', '</h4>'
+          | replace: '<h2', '<h3'
+          | replace: '</h2>', '</h3>' -%}
+    {%- endif -%}
 
     {%- comment -%}
       1.5b: chapter anchor + per-heading id uniqueness. Derive a
@@ -162,9 +264,36 @@ sitemap: false
         | replace: '<h7-stub class="no_toc" id="', h7_class_prefix
         | replace: '<h7-stub id="',                h7_prefix
         | replace: 'href="#',                      href_prefix -%}
-<article class="page" id="{{ chapter_anchor }}">
+    {%- comment -%}
+      Running header source. Every chapter emits a hidden
+      `<span class="header-string">` as its first child; CSS pins
+      `string-set: chapter-title` to that span (see print.css). Going
+      through a single dedicated element avoids pagedjs quirks with
+      `:first-of-type` + class-restricted selectors that left some
+      top-level chapter pages (Collection, Compilation, the package
+      landings in Parts 2+) with stale or empty running headers.
+
+      For sub-pages the span carries the compound title (1.6c); for
+      top-level chapters it carries just the chapter title.
+    {%- endcomment -%}
+    {%- if is_sub_page -%}
+      {%- if current_index_kind == 'module' -%}
+        {%- assign compound_sep = ' - ' -%}
+      {%- else -%}
+        {%- assign compound_sep = '.' -%}
+      {%- endif -%}
+      {%- assign header_title = current_index_name | append: compound_sep | append: chapter.title -%}
+<article class="page sub-chapter" id="{{ chapter_anchor }}">
+<span class="header-string">{{ header_title }}</span>
 {{ body }}
 </article>
+    {%- else -%}
+      {%- assign header_title = chapter.title -%}
+<article class="page" id="{{ chapter_anchor }}">
+<span class="header-string">{{ header_title }}</span>
+{{ body }}
+</article>
+    {%- endif -%}
     {%- endfor -%}
   {%- endfor -%}
 {%- endfor %}
