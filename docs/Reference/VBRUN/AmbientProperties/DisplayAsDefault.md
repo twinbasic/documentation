@@ -1,6 +1,6 @@
 ---
 title: DisplayAsDefault
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/DisplayAsDefault
 ---
 # DisplayAsDefault

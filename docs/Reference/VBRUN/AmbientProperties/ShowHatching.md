@@ -1,6 +1,6 @@
 ---
 title: ShowHatching
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/ShowHatching
 ---
 # ShowHatching

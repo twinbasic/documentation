@@ -1,6 +1,6 @@
 ---
 title: AvailableFormats
-parent: DataObject Module
+parent: DataObject
 permalink: /tB/Packages/VBRUN/DataObject/AvailableFormats
 ---
 # AvailableFormats

@@ -1,6 +1,6 @@
 ---
 title: AsyncType
-parent: AsyncProperty Module
+parent: AsyncProperty
 permalink: /tB/Packages/VBRUN/AsyncProperty/AsyncType
 ---
 # AsyncType

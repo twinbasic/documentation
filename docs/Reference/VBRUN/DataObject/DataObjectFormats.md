@@ -1,6 +1,6 @@
 ---
 title: DataObjectFormats
-parent: DataObject Module
+parent: DataObject
 permalink: /tB/Packages/VBRUN/DataObject/DataObjectFormats
 ---
 # DataObjectFormats

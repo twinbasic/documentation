@@ -1,6 +1,6 @@
 ---
 title: Bind
-parent: TbExpressionService Module
+parent: TbExpressionService
 permalink: /tB/Modules/TbExpressionService/Bind
 redirect_from:
   - /tB/Modules/ExpressionService/Bind

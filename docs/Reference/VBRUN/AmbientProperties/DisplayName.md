@@ -1,6 +1,6 @@
 ---
 title: DisplayName
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/DisplayName
 ---
 # DisplayName

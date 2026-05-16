@@ -1,6 +1,6 @@
 ---
 title: ForeColor
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/ForeColor
 ---
 # ForeColor

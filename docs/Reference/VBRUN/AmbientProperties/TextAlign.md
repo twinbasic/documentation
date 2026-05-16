@@ -1,6 +1,6 @@
 ---
 title: TextAlign
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/TextAlign
 ---
 # TextAlign

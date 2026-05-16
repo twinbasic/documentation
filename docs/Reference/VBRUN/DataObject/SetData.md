@@ -1,6 +1,6 @@
 ---
 title: SetData
-parent: DataObject Module
+parent: DataObject
 permalink: /tB/Packages/VBRUN/DataObject/SetData
 ---
 # SetData

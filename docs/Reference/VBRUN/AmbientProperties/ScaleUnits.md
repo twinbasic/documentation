@@ -1,6 +1,6 @@
 ---
 title: ScaleUnits
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/ScaleUnits
 ---
 # ScaleUnits
