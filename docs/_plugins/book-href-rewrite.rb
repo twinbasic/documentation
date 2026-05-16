@@ -27,9 +27,17 @@
 # shape as `_plugins/offlinify.rb`.
 
 require "uri"
+require "set"
 
 module BookHrefRewrite
   EXTERNAL_PREFIXES = ["http://", "https://", "mailto:", "#"].freeze
+  # Landing pages live inside a chaptered Part, where the include applies
+  # 1.5a + 1.9-extra-shift to every chapter body. The source H1 therefore
+  # arrives at the post-render HTML as an <h3>, not an <h2>. Stripping
+  # the first <h3> keeps the chapter-divider's H2 as the chapter's sole
+  # outline entry at depth 2 -- without this strip the landing would emit
+  # a redundant H3 with the same title text, just one level deeper.
+  FIRST_LANDING_HEADING_REGEX = /<h3\b[^>]*>.*?<\/h3>/m.freeze
 
   # `url.gsub('/', '-').sub(/^-/, '').sub(/-$/, '')` then prepend "ch-".
   # Matches the chapter anchor scheme established in BOOKPLAN.md 1.5b.
@@ -54,29 +62,68 @@ module BookHrefRewrite
     url.end_with?("/") ? url : url.sub(/[^\/]+\z/, "")
   end
 
-  # Iterates the book manifest's front-matter entries followed by its
-  # parts so both contribute to the chapter map. Each entry behaves
-  # the same way as far as URL gathering goes.
+  # Iterates the book manifest's front-matter entries, the parts'
+  # forewords (1.9), and the parts themselves -- both flat parts
+  # (`prefixes:`/`page:` directly on the part) and chaptered parts'
+  # individual chapter entries (`part.chapters` list, 1.9). Each
+  # yielded entry has the same shape as far as URL gathering goes:
+  # any combination of `page:`, `landing_page:`, and `prefixes:`.
   def self.book_entries(site)
     manifest = site.data["book"]
     return [] unless manifest
-    (manifest["front_matter"] || []) + (manifest["parts"] || [])
+    entries = []
+    entries.concat(manifest["front_matter"] || [])
+    (manifest["parts"] || []).each do |part|
+      entries << part if part["page"] || part["prefixes"]
+      if part["foreword_page"]
+        entries << { "page" => part["foreword_page"], "title" => part["title"] }
+      end
+      (part["chapters"] || []).each { |ch| entries << ch }
+    end
+    entries
   end
 
-  # Pages matched by a single book.yml entry. Supports either
-  # `page:` (exact URL match, for one-chapter sections like the FAQ
-  # or the root index) or `prefixes:` (starts-with match per prefix,
-  # the original schema).
+  # Pages matched by a single book.yml entry. An entry may set any
+  # of `page:` (exact URL match, one-chapter sections like the FAQ
+  # or the root index), `landing_page:` (the chapter's intro page in
+  # a chaptered part; treated like `page:` for map-building), and
+  # `prefixes:` (starts-with match per prefix). The union is returned
+  # de-duplicated since the landing typically also matches one of the
+  # prefixes (e.g. `/tB/Packages/VBRUN/` landing matches the prefix
+  # `/tB/Packages/VBRUN/`).
   def self.entry_pages(entry, site)
+    pages = []
     if entry["page"]
-      site.pages.select { |p| p.url == entry["page"] }
-    elsif entry["prefixes"]
-      entry["prefixes"].flat_map do |prefix|
-        site.pages.select { |p| p.url.start_with?(prefix) }
-      end
-    else
-      []
+      pages.concat(site.pages.select { |p| p.url == entry["page"] })
     end
+    if entry["landing_page"]
+      pages.concat(site.pages.select { |p| p.url == entry["landing_page"] })
+    end
+    if entry["prefixes"]
+      entry["prefixes"].each do |prefix|
+        pages.concat(site.pages.select { |p| p.url.start_with?(prefix) })
+      end
+    end
+    pages.uniq
+  end
+
+  # Set of chapter anchors that correspond to a chaptered part's
+  # `landing_page:`. The plugin strips the first `<h3>...</h3>` (the
+  # source H1 after 1.5a + 1.9 extra shift) from these articles so the
+  # chapter-divider's H2 is the sole outline entry for the chapter at
+  # depth 2 -- without the strip the landing would emit a redundant H3
+  # carrying the same title text one outline level deeper.
+  def self.build_landing_anchors(site)
+    set = Set.new
+    manifest = site.data["book"]
+    return set unless manifest
+    (manifest["parts"] || []).each do |part|
+      (part["chapters"] || []).each do |ch|
+        next unless ch["landing_page"]
+        set << chapter_anchor(ch["landing_page"], ch["title"])
+      end
+    end
+    set
   end
 
   # Build the permalink -> chapter-anchor map. Folder-style index
@@ -179,13 +226,23 @@ module BookHrefRewrite
     return if url_to_anchor.empty?
     parent_map = build_anchor_to_parent(site)
     return if parent_map.empty?
+    landing_anchors = build_landing_anchors(site)
 
     rewritten = 0
+    landings_stripped = 0
     page.output = page.output.gsub(/(<article[^>]*id="(ch-[^"]+)"[^>]*>)(.*?)(<\/article>)/m) do
       article_open = Regexp.last_match(1)
       anchor_id    = Regexp.last_match(2)
       body         = Regexp.last_match(3)
       article_end  = Regexp.last_match(4)
+
+      if landing_anchors.include?(anchor_id)
+        stripped_body = body.sub(FIRST_LANDING_HEADING_REGEX, "")
+        if stripped_body != body
+          body = stripped_body
+          landings_stripped += 1
+        end
+      end
 
       parent_url = parent_map[anchor_id]
       if parent_url
@@ -196,7 +253,7 @@ module BookHrefRewrite
 
       "#{article_open}#{body}#{article_end}"
     end
-    Jekyll.logger.info "BookHrefRewrite:", "rewrote #{rewritten} chapter bodies"
+    Jekyll.logger.info "BookHrefRewrite:", "rewrote #{rewritten} chapter bodies, stripped #{landings_stripped} landing H3s"
   end
 end
 

@@ -146,99 +146,16 @@ sitemap: false
     {%- assign fm_chapters = "" | split: "" -%}
   {%- endif -%}
   {%- for chapter in fm_chapters -%}
-    {%- assign first_char = chapter.content | strip | slice: 0, 1 -%}
-    {%- if first_char == '<' -%}
-      {%- assign body = chapter.content -%}
-    {%- else -%}
-      {%- assign body = chapter.content | markdownify -%}
-    {%- endif -%}
-    {%- assign body = body
-        | replace: 'src="/', 'src="'
-        | replace: p1_search, p1_replace
-        | replace: p2_search, p2_replace
-        | replace: p3i12_search, p3i12_replace
-        | replace: p3i8_search,  p3i8_replace
-        | replace: p3i4_search,  p3i4_replace
-        | replace: p3_search,    p3_replace
-        | replace: p4i16_search, p4i16_replace
-        | replace: p4i12_search, p4i12_replace
-        | replace: p4i8_search,  p4i8_replace
-        | replace: p4i4_search,  p4i4_replace
-        | replace: p4_search,    p4_replace
-        | replace: '</span> <span', '</span><span class="w"> </span><span' -%}
-    {%- assign stripped = body | strip -%}
-    {%- if stripped == "" -%}{%- continue -%}{%- endif -%}
-
-    {%- assign body = body
-        | replace: '<h6', '<h7-stub'
-        | replace: '</h6>', '</h7-stub>'
-        | replace: '<h5', '<h6'
-        | replace: '</h5>', '</h6>'
-        | replace: '<h4', '<h5'
-        | replace: '</h4>', '</h5>'
-        | replace: '<h3', '<h4'
-        | replace: '</h3>', '</h4>'
-        | replace: '<h2', '<h3'
-        | replace: '</h2>', '</h3>'
-        | replace: '<h1', '<h2'
-        | replace: '</h1>', '</h2>' -%}
-
-    {%- comment -%}
-      Chapter anchor. For the root URL `/`, the default
-      slashes-to-dashes derivation collapses to an empty string; use
-      the front-matter entry's title (slugified) as the seed so the
-      anchor reads `ch-introduction` rather than just `ch-`. The
-      plugin uses the same fallback for the URL -> anchor map.
-    {%- endcomment -%}
     {%- if chapter.url == '/' -%}
-      {%- assign chapter_anchor = 'ch-' | append: fm.title | downcase | replace: ' ', '-' -%}
+      {%- assign fm_anchor = 'ch-' | append: fm.title | downcase | replace: ' ', '-' -%}
     {%- else -%}
-      {%- assign url_path = chapter.url | replace: '/', '-' -%}
-      {%- assign first_char = url_path | slice: 0, 1 -%}
-      {%- if first_char == '-' -%}
-        {%- assign url_len = url_path.size | minus: 1 -%}
-        {%- assign url_path = url_path | slice: 1, url_len -%}
-      {%- endif -%}
-      {%- assign last_char = url_path | slice: -1, 1 -%}
-      {%- if last_char == '-' -%}
-        {%- assign url_len = url_path.size | minus: 1 -%}
-        {%- assign url_path = url_path | slice: 0, url_len -%}
-      {%- endif -%}
-      {%- assign chapter_anchor = 'ch-' | append: url_path -%}
+      {%- assign fm_anchor = nil -%}
     {%- endif -%}
-
-    {%- assign h2_class_prefix = '<h2 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h2_prefix       = '<h2 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h3_class_prefix = '<h3 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h3_prefix       = '<h3 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h4_class_prefix = '<h4 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h4_prefix       = '<h4 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h5_class_prefix = '<h5 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h5_prefix       = '<h5 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h6_class_prefix = '<h6 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h6_prefix       = '<h6 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h7_class_prefix = '<h7-stub class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h7_prefix       = '<h7-stub id="'           | append: chapter_anchor | append: '-' -%}
-    {%- assign href_prefix     = 'href="#'                 | append: chapter_anchor | append: '-' -%}
-
-    {%- assign body = body
-        | replace: '<h2 class="no_toc" id="',      h2_class_prefix
-        | replace: '<h2 id="',                     h2_prefix
-        | replace: '<h3 class="no_toc" id="',      h3_class_prefix
-        | replace: '<h3 id="',                     h3_prefix
-        | replace: '<h4 class="no_toc" id="',      h4_class_prefix
-        | replace: '<h4 id="',                     h4_prefix
-        | replace: '<h5 class="no_toc" id="',      h5_class_prefix
-        | replace: '<h5 id="',                     h5_prefix
-        | replace: '<h6 class="no_toc" id="',      h6_class_prefix
-        | replace: '<h6 id="',                     h6_prefix
-        | replace: '<h7-stub class="no_toc" id="', h7_class_prefix
-        | replace: '<h7-stub id="',                h7_prefix
-        | replace: 'href="#',                      href_prefix -%}
-
-<article class="front-matter" id="{{ chapter_anchor }}">
-{{ body }}
-</article>
+    {%- include book-chapter-body.html
+        chapter=chapter
+        article_class_override='front-matter'
+        chapter_anchor_override=fm_anchor
+        skip_sub_page_detection=true -%}
   {%- endfor -%}
 {%- endfor -%}
 {%- endif -%}
@@ -281,209 +198,98 @@ sitemap: false
       name is enough -- when we hit a non-index URL we just check whether
       it starts with that prefix.
     {%- endcomment -%}
+  {%- comment -%}
+    Foreword (1.9). When the part has `foreword_page:`, emit that page
+    as a `<article class="part-foreword">` between the part divider
+    and the first chapter. No running header (CSS suppresses the
+    chrome via the `front-matter`-style named page). The foreword's
+    URL anchor is derived in the include the same way as any other
+    chapter so cross-references like `[Packages](/tB/Packages/)`
+    resolve naturally to `#ch-tB-Packages`.
+  {%- endcomment -%}
+  {%- if part.foreword_page -%}
+    {%- assign fw_chapters = site.pages | where: "url", part.foreword_page -%}
+    {%- for chapter in fw_chapters -%}
+      {%- include book-chapter-body.html
+          chapter=chapter
+          article_class_override='part-foreword'
+          skip_sub_page_detection=true -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  {%- if part.chapters -%}
+    {%- comment -%}
+      Chaptered part (1.9). Each chapter entry gets its own
+      `<article class="chapter-divider">` title page followed by the
+      chapter's pages (landing first, then prefix-matched content in
+      URL order). The sub-page state machine is reset between
+      chapters so each package's class / module folders nest only
+      against their own siblings.
+    {%- endcomment -%}
+    {%- for ch_entry in part.chapters -%}
+      {%- if ch_entry.landing_page -%}
+        {%- assign ch_url_path = ch_entry.landing_page | replace: '/', '-' -%}
+        {%- assign ch_first_char = ch_url_path | slice: 0, 1 -%}
+        {%- if ch_first_char == '-' -%}
+          {%- assign ch_url_len = ch_url_path.size | minus: 1 -%}
+          {%- assign ch_url_path = ch_url_path | slice: 1, ch_url_len -%}
+        {%- endif -%}
+        {%- assign ch_last_char = ch_url_path | slice: -1, 1 -%}
+        {%- if ch_last_char == '-' -%}
+          {%- assign ch_url_len = ch_url_path.size | minus: 1 -%}
+          {%- assign ch_url_path = ch_url_path | slice: 0, ch_url_len -%}
+        {%- endif -%}
+        {%- assign chapter_divider_id = 'chd-' | append: ch_url_path -%}
+      {%- else -%}
+        {%- assign chapter_divider_id = 'chd-' | append: ch_entry.title | downcase | replace: ' ', '-' -%}
+      {%- endif -%}
+<article class="chapter-divider" id="{{ chapter_divider_id }}">
+  <h2 id="{{ chapter_divider_id }}-title">{{ ch_entry.title }}</h2>
+{%- if ch_entry.subtitle %}
+  <p class="chapter-subtitle">{{ ch_entry.subtitle }}</p>
+{%- endif %}
+</article>
+
+      {%- comment -%}
+        Build this chapter's page list: landing first (so it acts as
+        the chapter intro right after the divider), then prefix-
+        matched content sorted by URL with the landing filtered out
+        to avoid double emission when it also matches a prefix
+        (typical: /tB/Packages/Foo/ landing matches prefix
+        /tB/Packages/Foo/).
+      {%- endcomment -%}
+      {%- assign ch_chapters = "" | split: "" -%}
+      {%- if ch_entry.landing_page -%}
+        {%- assign ch_landing = site.pages | where: "url", ch_entry.landing_page -%}
+        {%- assign ch_chapters = ch_chapters | concat: ch_landing -%}
+      {%- endif -%}
+      {%- if ch_entry.prefixes -%}
+        {%- assign ch_rest = "" | split: "" -%}
+        {%- for prefix in ch_entry.prefixes -%}
+          {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
+          {%- assign ch_rest = ch_rest | concat: matched -%}
+        {%- endfor -%}
+        {%- assign ch_rest = ch_rest | sort: "url" -%}
+        {%- if ch_entry.landing_page -%}
+          {%- assign ch_landing_url = ch_entry.landing_page -%}
+          {%- assign ch_rest = ch_rest | where_exp: "p", "p.url != ch_landing_url" -%}
+        {%- endif -%}
+        {%- assign ch_chapters = ch_chapters | concat: ch_rest -%}
+      {%- endif -%}
+
+      {%- assign current_index_url = '' -%}
+      {%- assign current_index_kind = 'class' -%}
+      {%- assign current_index_name = '' -%}
+      {%- for chapter in ch_chapters -%}
+        {%- include book-chapter-body.html chapter=chapter extra_heading_shift=true -%}
+      {%- endfor -%}
+    {%- endfor -%}
+  {%- else -%}
     {%- assign current_index_url = '' -%}
     {%- assign current_index_kind = 'class' -%}
     {%- assign current_index_name = '' -%}
     {%- for chapter in chapters -%}
-    {%- comment -%}
-      Jekyll's `chapter.content` returns rendered HTML for pages whose
-      Renderer#run has already converted them, but raw markdown for
-      pages whose conversion happens after book.html's. The state is a
-      function of Jekyll's internal rendering order and not stable
-      across builds. Detect by leading character and markdownify when
-      we still have raw source -- kramdown's `parse_block_html: true`
-      passes pre-rendered HTML through unchanged.
-    {%- endcomment -%}
-    {%- assign first_char = chapter.content | strip | slice: 0, 1 -%}
-    {%- if first_char == '<' -%}
-      {%- assign body = chapter.content -%}
-    {%- else -%}
-      {%- assign body = chapter.content | markdownify -%}
-    {%- endif -%}
-
-    {%- comment -%}
-      1.6a sub-page detection + 1.6c kind/name capture. When we see an
-      index URL we read the index's H1 to decide class vs module --
-      relying on the sub-page's `parent:` field would be wrong because
-      several VBRUN class folders mistakenly suffix it with " Module"
-      (e.g. AmbientProperties' BackColor.md). The H1 text (`# Foo class`
-      / `# Foo module`) is the source of truth.
-    {%- endcomment -%}
-    {%- assign url_last_char = chapter.url | slice: -1, 1 -%}
-    {%- assign is_sub_page = false -%}
-    {%- if url_last_char == '/' -%}
-      {%- assign current_index_url = chapter.url -%}
-      {%- assign current_index_name = chapter.title
-            | replace: ' Module', ''
-            | replace: ' module', ''
-            | replace: ' Class', ''
-            | replace: ' class', ''
-            | replace: ' Package', '' -%}
-      {%- assign content_head = chapter.content | slice: 0, 200 | downcase -%}
-      {%- if content_head contains 'module' -%}
-        {%- assign current_index_kind = 'module' -%}
-      {%- else -%}
-        {%- assign current_index_kind = 'class' -%}
-      {%- endif -%}
-    {%- elsif current_index_url != '' -%}
-      {%- assign sized_prefix = chapter.url | slice: 0, current_index_url.size -%}
-      {%- if sized_prefix == current_index_url -%}
-        {%- assign is_sub_page = true -%}
-      {%- else -%}
-        {%- assign current_index_url = '' -%}
-      {%- endif -%}
-    {%- endif -%}
-    {%- assign body = body
-        | replace: 'src="/', 'src="'
-        | replace: p1_search, p1_replace
-        | replace: p2_search, p2_replace
-        | replace: p3i12_search, p3i12_replace
-        | replace: p3i8_search,  p3i8_replace
-        | replace: p3i4_search,  p3i4_replace
-        | replace: p3_search,    p3_replace
-        | replace: p4i16_search, p4i16_replace
-        | replace: p4i12_search, p4i12_replace
-        | replace: p4i8_search,  p4i8_replace
-        | replace: p4i4_search,  p4i4_replace
-        | replace: p4_search,    p4_replace
-        | replace: '</span> <span', '</span><span class="w"> </span><span' -%}
-    {%- assign stripped = body | strip -%}
-    {%- if stripped == "" -%}{%- continue -%}{%- endif -%}
-
-    {%- comment -%}
-      1.5a: heading depth shift. Source `# Title` becomes the chapter
-      title; in the book it lives one level below the part divider's
-      H1, so cascade every heading down by one. `<h6` becomes
-      `<h7-stub` since there's no real h7; in practice no chapter
-      content uses h5 or h6, so the stub never appears, but the rule
-      keeps the cascade consistent.
-    {%- endcomment -%}
-    {%- assign body = body
-        | replace: '<h6', '<h7-stub'
-        | replace: '</h6>', '</h7-stub>'
-        | replace: '<h5', '<h6'
-        | replace: '</h5>', '</h6>'
-        | replace: '<h4', '<h5'
-        | replace: '</h4>', '</h5>'
-        | replace: '<h3', '<h4'
-        | replace: '</h3>', '</h4>'
-        | replace: '<h2', '<h3'
-        | replace: '</h2>', '</h3>'
-        | replace: '<h1', '<h2'
-        | replace: '</h1>', '</h2>' -%}
-
-    {%- comment -%}
-      1.6b: extra heading shift for sub-pages so they nest one level
-      deeper than their parent index in the PDF outline. A sub-page's
-      chapter title (source `#`) ends up as `<h3>` instead of `<h2>`,
-      sub-page sections as `<h4>` instead of `<h3>`, and so on. The
-      shift cascades through the same rule set; no real content reaches
-      h7-stub or beyond after this second pass.
-    {%- endcomment -%}
-    {%- if is_sub_page -%}
-      {%- assign body = body
-          | replace: '<h6', '<h7-stub'
-          | replace: '</h6>', '</h7-stub>'
-          | replace: '<h5', '<h6'
-          | replace: '</h5>', '</h6>'
-          | replace: '<h4', '<h5'
-          | replace: '</h4>', '</h5>'
-          | replace: '<h3', '<h4'
-          | replace: '</h3>', '</h4>'
-          | replace: '<h2', '<h3'
-          | replace: '</h2>', '</h3>' -%}
-    {%- endif -%}
-
-    {%- comment -%}
-      1.5b: chapter anchor + per-heading id uniqueness. Derive a
-      stable chapter anchor from the chapter URL (strip leading and
-      trailing slashes, replace inner slashes with dashes); the
-      article element carries the bare anchor as its id so Phase 2
-      cross-references can target `#ch-<anchor>` and land at the
-      chapter's first page. Every heading id and intra-chapter
-      `href="#..."` inside the chapter body gets that anchor
-      prepended so identical kramdown-generated slugs (`see-also`,
-      `example`, ...) don't collapse to one outline destination.
-    {%- endcomment -%}
-    {%- assign url_path = chapter.url | replace: '/', '-' -%}
-    {%- assign first_char = url_path | slice: 0, 1 -%}
-    {%- if first_char == '-' -%}
-      {%- assign url_len = url_path.size | minus: 1 -%}
-      {%- assign url_path = url_path | slice: 1, url_len -%}
-    {%- endif -%}
-    {%- assign last_char = url_path | slice: -1, 1 -%}
-    {%- if last_char == '-' -%}
-      {%- assign url_len = url_path.size | minus: 1 -%}
-      {%- assign url_path = url_path | slice: 0, url_len -%}
-    {%- endif -%}
-    {%- assign chapter_anchor = 'ch-' | append: url_path -%}
-
-    {%- assign h2_class_prefix = '<h2 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h2_prefix       = '<h2 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h3_class_prefix = '<h3 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h3_prefix       = '<h3 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h4_class_prefix = '<h4 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h4_prefix       = '<h4 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h5_class_prefix = '<h5 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h5_prefix       = '<h5 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h6_class_prefix = '<h6 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h6_prefix       = '<h6 id="'                | append: chapter_anchor | append: '-' -%}
-    {%- assign h7_class_prefix = '<h7-stub class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
-    {%- assign h7_prefix       = '<h7-stub id="'           | append: chapter_anchor | append: '-' -%}
-    {%- assign href_prefix     = 'href="#'                 | append: chapter_anchor | append: '-' -%}
-
-    {%- assign body = body
-        | replace: '<h2 class="no_toc" id="',      h2_class_prefix
-        | replace: '<h2 id="',                     h2_prefix
-        | replace: '<h3 class="no_toc" id="',      h3_class_prefix
-        | replace: '<h3 id="',                     h3_prefix
-        | replace: '<h4 class="no_toc" id="',      h4_class_prefix
-        | replace: '<h4 id="',                     h4_prefix
-        | replace: '<h5 class="no_toc" id="',      h5_class_prefix
-        | replace: '<h5 id="',                     h5_prefix
-        | replace: '<h6 class="no_toc" id="',      h6_class_prefix
-        | replace: '<h6 id="',                     h6_prefix
-        | replace: '<h7-stub class="no_toc" id="', h7_class_prefix
-        | replace: '<h7-stub id="',                h7_prefix
-        | replace: 'href="#',                      href_prefix -%}
-
-    {%- comment -%}
-      2.2 cross-reference rewrites (relative-path resolution + map
-      lookup) used to live here; they now run after Liquid renders
-      the whole book.html, in `_plugins/book-href-rewrite.rb`. Hrefs
-      flow through this loop unchanged and get rewritten by the
-      plugin's post-render gsub pass.
-    {%- endcomment -%}
-
-    {%- comment -%}
-      Running header source. Every chapter emits a hidden
-      `<span class="header-string">` as its first child; CSS pins
-      `string-set: chapter-title` to that span (see print.css). Going
-      through a single dedicated element avoids pagedjs quirks with
-      `:first-of-type` + class-restricted selectors that left some
-      top-level chapter pages (Collection, Compilation, the package
-      landings in Parts 2+) with stale or empty running headers.
-
-      For sub-pages the span carries the compound title (1.6c); for
-      top-level chapters it carries just the chapter title.
-    {%- endcomment -%}
-    {%- if is_sub_page -%}
-      {%- if current_index_kind == 'module' -%}
-        {%- assign compound_sep = ' - ' -%}
-      {%- else -%}
-        {%- assign compound_sep = '.' -%}
-      {%- endif -%}
-      {%- assign header_title = current_index_name | append: compound_sep | append: chapter.title -%}
-<article class="page sub-chapter" id="{{ chapter_anchor }}">
-<span class="header-string">{{ header_title }}</span>
-{{ body }}
-</article>
-    {%- else -%}
-      {%- assign header_title = chapter.title -%}
-<article class="page" id="{{ chapter_anchor }}">
-<span class="header-string">{{ header_title }}</span>
-{{ body }}
-</article>
-    {%- endif -%}
+      {%- include book-chapter-body.html chapter=chapter -%}
     {%- endfor -%}
+  {%- endif -%}
 {%- endfor %}

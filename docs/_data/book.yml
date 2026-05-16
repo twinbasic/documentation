@@ -13,15 +13,43 @@
 #               on a numbered part.
 #
 # `parts` is an ordered list of numbered book parts. Each part has:
-#   title    -- shown on the part divider page and in the global TOC.
-#   subtitle -- optional second-line descriptor on the divider.
-#   prefixes -- one or more URL prefixes; the book.html iterator gathers
-#               every page in `site.pages` whose URL starts with one of
-#               them, sorted by URL, and emits each as a chapter.
-#   page     -- single absolute URL alternative to `prefixes`, used for
-#               one-chapter parts (e.g. the FAQ). Match is exact, not
-#               prefix-based, so a one-page section doesn't accidentally
-#               sweep in siblings.
+#   title         -- shown on the part divider page and in the global TOC.
+#   subtitle      -- optional second-line descriptor on the divider.
+#   prefixes      -- one or more URL prefixes; book.html gathers every
+#                    page in `site.pages` whose URL contains a prefix,
+#                    sorts by URL, and emits each as a chapter. Used by
+#                    "flat" parts that map directly to a folder of pages.
+#   page          -- single absolute URL alternative to `prefixes`, used
+#                    for one-chapter parts (e.g. the FAQ). Match is
+#                    exact, not contains-based, so a one-page section
+#                    doesn't accidentally sweep in siblings.
+#   foreword_page -- single absolute URL emitted as a `<article
+#                    class="part-foreword">` right after the part
+#                    divider, before any chapter dividers. No running
+#                    header on these pages (CSS suppresses chrome via a
+#                    named page). Used by the Packages part to surface
+#                    the `/tB/Packages/` landing as introductory
+#                    material for the whole section.
+#   chapters      -- ordered list of per-chapter entries (1.9). Each
+#                    chapter has its own divider page and its own
+#                    chapter-level content; the part becomes a
+#                    container for several distinct subjects rather
+#                    than a flat folder. Each entry has:
+#                      title         -- the chapter divider title.
+#                      subtitle      -- optional descriptor.
+#                      landing_page  -- the chapter's intro page; always
+#                                       emitted first within the
+#                                       chapter, and the plugin strips
+#                                       its source H1 so the chapter
+#                                       divider's H2 is the sole
+#                                       outline entry for the chapter.
+#                      prefixes      -- additional URL prefixes for
+#                                       content pages (members, etc.);
+#                                       sorted by URL after the
+#                                       landing. A page that matches
+#                                       a prefix AND is the landing is
+#                                       emitted only once (as the
+#                                       landing).
 #
 # Index pages (URL ending in `/`) sort before sibling content pages
 # under ASCII lexicographic order, so each part naturally opens with
@@ -65,68 +93,89 @@ parts:
       - /tB/Controls
       - /tB/Gloss
 
-  - title: The VBA Runtime
-    subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
-    # The VBA package landing page lives at /tB/Packages/VBA (added when
-    # Packages was promoted to a top-level nav item in the live site),
-    # while individual module members keep their legacy /tB/Modules/...
-    # URLs. Both prefixes are listed so the landing page and the module
-    # contents end up in the same Part.
-    prefixes:
-      - /tB/Modules/
-      - /tB/Packages/VBA
+  - title: Packages
+    subtitle: The runtime and library packages shipped with twinBASIC
+    # The /tB/Packages/ landing page is the part's foreword; its content
+    # (an overview of all built-in packages) sits between the part divider
+    # and the first chapter divider, with no running header. Each package
+    # below becomes a chapter with a dedicated chapter-divider title
+    # page; the chapter's own source landing page emits next (with its
+    # source H1 stripped by the plugin to avoid the redundancy with the
+    # chapter divider's H2), followed by the package's class / module /
+    # control pages in URL order.
+    foreword_page: /tB/Packages/
+    chapters:
+      - title: VBA Package
+        subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
+        # The VBA landing lives at /tB/Packages/VBA (added when Packages
+        # was promoted to a top-level nav item), while individual module
+        # members keep their legacy /tB/Modules/... URLs.
+        landing_page: /tB/Packages/VBA
+        prefixes:
+          - /tB/Modules/
 
-  - title: The VBRUN Package
-    subtitle: Runtime types for controls, errors, and the property bag
-    prefixes:
-      - /tB/Packages/VBRUN/
+      - title: VBRUN Package
+        subtitle: Runtime types for controls, errors, and the property bag
+        landing_page: /tB/Packages/VBRUN/
+        prefixes:
+          - /tB/Packages/VBRUN/
 
-  - title: The VB Package
-    subtitle: Classic VB6 forms and intrinsic controls
-    prefixes:
-      - /tB/Packages/VB/
+      - title: VB Package
+        subtitle: Classic VB6 forms and intrinsic controls
+        landing_page: /tB/Packages/VB/
+        prefixes:
+          - /tB/Packages/VB/
 
-  - title: The WebView2 Package
-    subtitle: Chromium-based browser control via Microsoft Edge WebView2
-    prefixes:
-      - /tB/Packages/WebView2/
+      - title: WebView2 Package
+        subtitle: Chromium-based browser control via Microsoft Edge WebView2
+        landing_page: /tB/Packages/WebView2/
+        prefixes:
+          - /tB/Packages/WebView2/
 
-  - title: The Assert Package
-    subtitle: Test assertions with Exact, Strict, and Permissive comparison
-    prefixes:
-      - /tB/Packages/Assert/
+      - title: Assert Package
+        subtitle: Test assertions with Exact, Strict, and Permissive comparison
+        landing_page: /tB/Packages/Assert/
+        prefixes:
+          - /tB/Packages/Assert/
 
-  - title: The CustomControls Package
-    subtitle: The WaynesControls suite and its supporting framework
-    prefixes:
-      - /tB/Packages/CustomControls/
+      - title: CustomControls Package
+        subtitle: The WaynesControls suite and its supporting framework
+        landing_page: /tB/Packages/CustomControls/
+        prefixes:
+          - /tB/Packages/CustomControls/
 
-  - title: The CEF Package
-    subtitle: Chromium Embedded Framework browser control
-    prefixes:
-      - /tB/Packages/CEF/
+      - title: CEF Package
+        subtitle: Chromium Embedded Framework browser control
+        landing_page: /tB/Packages/CEF/
+        prefixes:
+          - /tB/Packages/CEF/
 
-  - title: The WinEventLogLib Package
-    subtitle: Windows Event Log integration
-    prefixes:
-      - /tB/Packages/WinEventLogLib/
+      - title: WinEventLogLib Package
+        subtitle: Windows Event Log integration
+        landing_page: /tB/Packages/WinEventLogLib/
+        prefixes:
+          - /tB/Packages/WinEventLogLib/
 
-  - title: The WinNamedPipesLib Package
-    subtitle: Asynchronous named-pipe framework over IOCP
-    prefixes:
-      - /tB/Packages/WinNamedPipesLib/
+      - title: WinNamedPipesLib Package
+        subtitle: Asynchronous named-pipe framework over IOCP
+        landing_page: /tB/Packages/WinNamedPipesLib/
+        prefixes:
+          - /tB/Packages/WinNamedPipesLib/
 
-  - title: The WinServicesLib Package
-    subtitle: Windows Services hosting
-    prefixes:
-      - /tB/Packages/WinServicesLib/
+      - title: WinServicesLib Package
+        subtitle: Windows Services hosting
+        landing_page: /tB/Packages/WinServicesLib/
+        prefixes:
+          - /tB/Packages/WinServicesLib/
 
-  - title: The tbIDE Package
-    subtitle: IDE Extensibility --- the addin SDK
-    prefixes:
-      - /tB/Packages/tbIDE/
+      - title: tbIDE Package
+        subtitle: IDE Extensibility --- the addin SDK
+        landing_page: /tB/Packages/tbIDE/
+        prefixes:
+          - /tB/Packages/tbIDE/
 
-  - title: The WinNativeCommonCtls Package
-    subtitle: VB6-compatible Common Controls replacement on top of Win32 ComCtl32
-    prefixes:
-      - /tB/Packages/WinNativeCommonCtls/
+      - title: WinNativeCommonCtls Package
+        subtitle: VB6-compatible Common Controls replacement on top of Win32 ComCtl32
+        landing_page: /tB/Packages/WinNativeCommonCtls/
+        prefixes:
+          - /tB/Packages/WinNativeCommonCtls/

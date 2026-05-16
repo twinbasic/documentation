@@ -176,6 +176,65 @@ article.front-matter {
 }
 
 
+/* ---- Part foreword + chapter dividers (1.9) -----------------------------
+   A chaptered Part (currently the Packages part) emits two new article
+   shapes in addition to its regular chapter bodies:
+
+     <article class="part-foreword">    -- the part's intro page, sitting
+                                            between the part divider and
+                                            the first chapter divider. No
+                                            running header (named page).
+     <article class="chapter-divider">  -- one per chapter, full-page
+                                            title page styled like a
+                                            scaled-down part divider.
+
+   Chapter dividers use the same vertical centering as part dividers but
+   slightly smaller type, and no chapter number (the chapter ordinal is
+   implicit and doesn't read well at this position). The chapter title
+   on the divider is an H2 so it sits one level under the part divider's
+   H1 in the PDF outline; the corresponding source H1 on the chapter's
+   landing page is stripped by the book-href-rewrite plugin so the
+   outline shows the divider's H2 as the chapter's sole top-level entry. */
+
+article.part-foreword {
+  page: part-foreword;
+  break-before: page;
+}
+
+@page part-foreword {
+  @top-right { content: ""; }
+}
+
+article.chapter-divider {
+  page: chapter-divider;
+  break-before: page;
+  text-align: center;
+  padding-top: 30%;
+}
+
+article.chapter-divider h2 {
+  font-size: 24pt;
+  font-weight: 700;
+  border: none;
+  margin: 0 0 0.5em;
+  break-before: auto;
+  break-after: avoid;
+  line-height: 1.2;
+}
+
+article.chapter-divider .chapter-subtitle {
+  font-size: 13pt;
+  font-style: italic;
+  color: #444;
+  margin: 0 auto;
+  max-width: 28em;
+}
+
+@page chapter-divider {
+  @top-right { content: ""; }
+}
+
+
 /* ---- Base typography ----------------------------------------------- */
 
 html {
@@ -250,6 +309,53 @@ article.page.sub-chapter > h3:first-of-type {
   margin-top: 0;
   margin-bottom: 0.7em;
 }
+
+/* Chaptered-part headings (1.9). Chapters inside a chaptered part get
+   an additional +1 heading shift on top of 1.5a / 1.6b so they nest in
+   the PDF outline below their chapter-divider's H2 rather than as
+   siblings. The result: source-H1 lands at h3 (top-level chapter) or
+   h4 (sub-page), source-H2 lands at h4 or h5, and so on. Visual
+   styling mirrors the flat-part rules above but at one tag deeper. */
+
+/* Top-level chapter in a chaptered part (source h1, now h3). */
+article.page.chaptered:not(.sub-chapter) > h3:first-of-type {
+  font-size: 24pt;
+  font-weight: 700;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0.8em;
+}
+
+/* Sub-page in a chaptered part (source h1, now h4). */
+article.page.chaptered.sub-chapter > h4:first-of-type {
+  font-size: 20pt;
+  font-weight: 700;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0.7em;
+}
+
+/* Section heading inside a chaptered-part chapter (source h2). */
+article.page.chaptered h4 {
+  font-size: 18pt;
+  font-weight: 700;
+  border-bottom: 0.5pt solid #bbb;
+  padding-bottom: 0.2em;
+}
+
+/* Subsection heading inside a chaptered-part chapter (source h3) --
+   Example / See Also / Remarks. */
+article.page.chaptered h5 {
+  font-size: 14pt;
+  font-weight: 600;
+  border: none;
+  padding: 0;
+}
+
+article.page.chaptered h6      { font-size: 12pt; font-weight: 600; }
+article.page.chaptered h7-stub { font-size: 11pt; font-weight: 600; color: #444; }
 
 /* Generic h2 (only used outside chapters now, e.g. for any future
    front-matter sections). Kept for symmetry. */
