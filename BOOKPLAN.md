@@ -13,14 +13,22 @@ bundle exec jekyll build --config _config.yml,_config-pdf.yml
 npx pagedjs-cli _site-pdf/book.html -o _pdf/book.pdf --outline-tags h1,h2,h3 -t 600000
 ```
 
-or `book.bat`. Touch points:
+or `book.bat`. Render is jekyll (~5 s) then pagedjs-cli (~2 min) for the full book; iterate CSS by refreshing `_site-pdf/book.html` directly in a browser (no pagedjs needed) and only re-run pagedjs to confirm pagination.
 
-- [docs/book.html](docs/book.html) — iterator that concatenates every chapter into one HTML document. Liquid filters here transform chapter content before emission.
-- [docs/_layouts/book-combined.html](docs/_layouts/book-combined.html) — wraps book.html in `<html><head>` and links rouge.css + print.css.
-- [docs/_layouts/book.html](docs/_layouts/book.html) — minimal per-page wrapper used when each source page is rendered to its own `_site-pdf/<path>.html`. The combined book.html iterates over those rendered pages via Jekyll's `site.pages` collection.
-- [docs/assets/css/print.css](docs/assets/css/print.css) — the book's design (page geometry, headings, code blocks, tables, admonitions, running header).
-- [docs/_data/book.yml](docs/_data/book.yml) — the manifest book.html iterates over. Currently a flat `sections:` list of URL prefixes.
-- [docs/_config-pdf.yml](docs/_config-pdf.yml) — overlay config that switches the default layout to `book` and the output directory to `_site-pdf`.
+Touch points and what each one already exposes:
+
+- [docs/book.html](docs/book.html) — iterator that concatenates every chapter into one HTML document. Permalink `/book.html`, layout `book-combined`. Contains: whitespace-pattern primitives (p1..p4, indent variants) for the pagedjs whitespace fix; the Roman numerals array; the title-page section (1.3); the per-part loop with chapter loop nested; sub-page state machine (1.6a) tracking the most recent index URL + kind + name; per-chapter heading depth shift (1.5a + sub-page 1.6b); chapter-anchor + heading-id rewrite (1.5b); compound running-header span emission (1.6c). Insertion points for new front matter go **before** the `{%- for part in site.data.book.parts -%}` opener; emitted HTML is included verbatim.
+- [docs/_layouts/book-combined.html](docs/_layouts/book-combined.html) — minimal wrapper: `<html><head>` + `<title>{{ site.title }}</title>` + `rouge.css` + `print.css` + `{{ content }}`. No nav, no JS, no chrome. Pagedjs runs on the rendered output of this layout.
+- [docs/_layouts/book.html](docs/_layouts/book.html) — per-source-page wrapper used when each `Reference/...` page is rendered to its own `_site-pdf/<path>.html`. Not part of the PDF render path itself; the combined `book.html` iterates `site.pages` to gather these as chapters.
+- [docs/assets/css/print.css](docs/assets/css/print.css) — the book's design. Existing structural rules: `@page` (A4, 22mm margins, running header in `@top-right` via `string(chapter-title)`, page number in `@bottom-right`); `@page :first` (suppresses both — used by the title page); `@page divider` (suppresses both, used by part dividers via `page: divider`); `article { break-before: page }`; per-chapter `string-set: chapter-title` on `article.page > .header-string`; the top-level vs sub-chapter heading-size split (`article.page:not(.sub-chapter) > h2:first-of-type` vs `article.page.sub-chapter > h3:first-of-type`).
+- [docs/_data/book.yml](docs/_data/book.yml) — the manifest book.html iterates over. Schema (1.1, done): `parts:` is a list of `{ title, subtitle, prefixes }`. Available in Liquid as `site.data.book.parts`.
+- [docs/_data/build.yml](#) — **not committed**. Build provenance lives in `site.data.build` (populated in memory by the plugin), so the YAML file is never written. The fields exposed are `site.data.build.commit` (short hash) and `site.data.build.commit_date` (ISO date, `%cs`), or `'unknown'` when git is unavailable.
+- [docs/_config.yml](docs/_config.yml) — the regular-site config. Two fields the book reads: `site.title` ("twinBASIC Documentation") and `site.footer_content` (the canonical copyright string, reused by the title page and colophon).
+- [docs/_config-pdf.yml](docs/_config-pdf.yml) — overlay config layered on top of `_config.yml`. Switches `defaults: layout: book` and `destination: _site-pdf`. The full `defaults:` block has to be restated (Jekyll replaces top-level array keys; it does not merge them).
+- [docs/_plugins/build-info.rb](docs/_plugins/build-info.rb) — captures `git rev-parse --short HEAD` and `git log -1 --format=%cs` into `site.data['build']` on `:site, :post_read`. Falls back to `'unknown'` placeholders when git isn't on PATH.
+- [docs/_plugins/build-phase-timing.rb](docs/_plugins/build-phase-timing.rb) — the cleanest hook-pattern example to copy when writing a new `_plugins/` file (uses every `:site, :hook` boundary).
+- [docs/_plugins/offlinify.rb](docs/_plugins/offlinify.rb) — the offline-site link rewriter; reference example for build-time concerns tightly coupled to Jekyll's URL model.
+- [docs/book.bat](docs/book.bat) — invokes `bundle exec jekyll build --config _config.yml,_config-pdf.yml || exit /b` then `npx pagedjs-cli _site-pdf\book.html -o _pdf\book.pdf --outline-tags h1,h2,h3,h4 -t 600000`. Must be run from `cmd.exe`, not PowerShell (see gotchas).
 
 ## Build-time tooling policy
 
@@ -30,12 +38,36 @@ Python scripts are reserved for non-render concerns: one-off content conversion 
 
 Concretely for the PDF book:
 
-- Git-derived build info (commit hash, commit date) → Jekyll plugin (`_plugins/build-info.rb`) that populates `site.data.build` on `:site, :after_reset`. Not a pre-build Python step writing `_data/build.yml`.
+- Git-derived build info (commit hash, commit date) → Jekyll plugin (`_plugins/build-info.rb`) that populates `site.data.build` on `:site, :post_read`. Not a pre-build Python step writing `_data/build.yml`.
 - Chapter manifest → `_data/book.yml` (committed source of truth, hand-edited).
 - Title page, colophon, TOC content → Liquid in `book.html` and the layouts.
 - Heading rewrites and href rewrites → Liquid (existing approach in `book.html`).
 
 The carve-out in WIP.md for `_plugins/offlinify.rb` is the same shape: build-time concerns tightly coupled to Jekyll's internal model belong in `_plugins/`, not in an external script.
+
+## Rendering gotchas
+
+Cumulative discoveries from earlier phases. Read before starting a new task — every entry here is something that already burned cycles once.
+
+### Pagedjs / CSS Paged Media
+
+- **`page:` named-page does not apply to the first element of `<body>`.** Pagedjs opens page 1 before processing the first element, so a `section.title-page { page: title }` declaration is silently ignored — page 1 keeps the default `@page` rule's chrome. Use `@page :first { @top-right { content: ""; } @bottom-right { content: ""; } }` to style page-1 chrome instead. Named pages **do** work for any element with `break-before: page` (e.g. `article.part-divider { page: divider }`), since pagedjs has already processed the break and knows the next page's name before opening it.
+- **A non-article first element is fine** — `<section class="title-page">` at the start of `<body>` inherits the default `@page` rule cleanly and the `:first` pseudo-class targets it.
+- **`article:first-of-type { break-before: avoid }` was a pre-title-page hack.** It prevented a blank page 0 when the first content was the Part I divider. With a title page now sitting on page 1 and the first article (Part I divider) wanting to break to page 2, the rule must be **removed**, not kept — it collides with `section.title-page { break-after: page }` and `article { break-before: page }`.
+- **Whitespace inside `<pre>` is fragile across page breaks.** The `book.html` `p1..p4` and `p4i4..p4i16` replacement chains exist to wrap every inter-token text node in `<span class="w">` so pagedjs doesn't drop the whitespace when it splits a code block. New code that emits `<pre>` content should expect this treatment (or render its code through the same Liquid pipeline).
+- **Adjacent forced breaks collapse to one.** `section.title-page { break-after: page }` plus the next article's `break-before: page` produces a single page break, not two. No blank-page mitigation needed.
+
+### Jekyll plugin patterns
+
+- **Hook ordering: `:after_reset` is BEFORE READ.** Anything set on `site.data` in `:after_reset` gets overwritten when Jekyll loads `_data/*.yml`. Inject `site.data` keys in `:post_read` (or later) for them to survive. This trapped 1.3.
+- **`Open3.capture2` + `Errno::ENOENT` is the right pattern for shell-outs.** See `_plugins/build-info.rb` for the shape — captures exit status, falls back to a sentinel string on `git` not found.
+- **Liquid renders raw HTML entities verbatim through `{{ ... }}`.** `site.footer_content` contains `&copy;` and is emitted as-is by `{{ site.footer_content }}` — no `escape` filter needed.
+- **`{{ site.data.X.Y | default: 'unknown' }}`** is the cleanest way to read a plugin-populated value: returns the fallback if either the data file or the key is missing, so the template doesn't need nil-guards.
+
+### Build environment
+
+- **PowerShell cannot invoke `npx` directly.** Default execution policy blocks `npx.ps1`. `book.bat` (and any future script that wraps `npx pagedjs-cli`) must be run from `cmd.exe`. When invoking through Bash, use `cmd.exe //c ".\\book.bat"` to spawn a cmd subshell.
+- **`bundle exec jekyll build` is ~5 seconds; `pagedjs-cli` is ~2 minutes** (1500-page render). Iterate CSS by refreshing `_site-pdf/book.html` directly in a browser — it has the same `print.css` linked, so layout looks identical to the PDF without paying the pagedjs render. Only re-run pagedjs to confirm pagination boundaries (page breaks, running headers, outline entries).
 
 ## Phase 1 — Structural framing
 
@@ -95,7 +127,7 @@ Front-matter page 1. A single `<section class="title-page">` with:
 - The build date and short commit hash. Build date comes from `site.time` (Jekyll's build timestamp). Git provenance is captured by a small Jekyll plugin (`_plugins/build-info.rb`) into `site.data.build` on the `:site, :after_reset` hook, exposing `site.data.build.commit` and `site.data.build.commit_date`. The plugin falls back to `'unknown'` placeholders when git isn't available so the template renders cleanly without conditional gymnastics on a missing data file.
 - Copyright/attribution line. Sourced from `site.footer_content` in `_config.yml` so the title page and the regular-site footer stay in lock-step.
 
-CSS: pin the section to a named `@page title` so both the running header (`@top-right`) and the page-number footer (`@bottom-right`) are blank on this page — traditional title-page convention. `section.title-page { break-after: page; }` pushes the first part divider onto page 2. The previously-needed `article:first-of-type { break-before: avoid; }` rule is removed in this phase: the title page is now the first content in the document, and the first article (part divider) wants the default forced break.
+CSS: extend `@page :first` to blank both `@top-right` (running header) and `@bottom-right` (page number) — traditional title-page convention. A named `@page title` does **not** work on the first element of `<body>` (see the pagedjs gotchas), so `:first` is the right hook. `section.title-page { break-after: page; }` pushes the first part divider onto page 2. The previously-needed `article:first-of-type { break-before: avoid; }` rule is removed in this phase: the title page is now the first content in the document, and the first article (part divider) wants the default forced break.
 
 Image (logo) optional — `docs/favicon.png` exists but is small. A larger source asset would be nice but is not blocking.
 
@@ -105,9 +137,11 @@ Build-time scripting: capturing git info via a Jekyll plugin (rather than a Pyth
 
 Front-matter page 2. Pulls together:
 
-- Site copyright (already in `_config.yml` as `footer_content`).
-- The CC-BY-4.0 attribution that VBA-derived pages currently emit via `_includes/footer_custom.html`. Promote it to a single book-wide notice.
-- Build provenance — Jekyll version, pagedjs-cli version, the `commit-hash@date` from 1.3.
+- Site copyright — sourced from `site.footer_content` in `_config.yml` (same source the title page uses).
+- The CC-BY-4.0 attribution that VBA-derived pages currently emit via `_includes/footer_custom.html`'s `vba_attribution` branch (the License/Code license/Attribution line with links to the VBA-Docs repo). Promote that exact text to a single book-wide notice in the colophon — no per-chapter footer in the PDF.
+- Build provenance — Jekyll version, pagedjs-cli version, the `commit-hash@date` from 1.3 (`site.data.build.commit` + `site.data.build.commit_date`). Jekyll version is available as `jekyll.version`; pagedjs-cli version isn't exposed to Liquid, hard-code or extend `_plugins/build-info.rb` to capture it from `package-lock.json`.
+
+CSS: emit as `<section class="colophon">` (same shape as `section.title-page`) so it inherits the no-break-before behaviour and lands on page 2 directly after the title page. Suppress page-2 chrome via `@page :nth(2)` if pagedjs supports it; otherwise emit a hidden marker on the section and target it via a named page reachable from a `break-before: page`-bearing parent (see the pagedjs gotcha — first-element page naming is silent).
 
 ### 1.5 Heading hierarchy shift + heading-id uniqueness
 
@@ -317,11 +351,16 @@ Goal: page 3 (or wherever the front matter ends) is a clickable, page-numbered t
 
 Emit, after the colophon and before the first part divider, a `<nav class="book-toc">` block with one `<li>` per part heading and one nested `<li>` per chapter. Each `<a href="#ch-...">` carries the in-book anchor from Phase 2.
 
+Anchor sources to target:
+
+- Part dividers: `id="pt-{{ forloop.index }}"` on the `article.part-divider`, with `id="pt-{{ forloop.index }}-title"` on the inner `<h1>`. Either works as an outline target; the article-level id is the natural one for a TOC line that jumps to the divider page.
+- Chapters: `id="ch-<url-path-with-dashes>"` on each `article.page`, emitted by the 1.5b rewrite. The schema is `ch-` + the chapter's permalink with leading/trailing `/` stripped and inner `/` replaced by `-` (e.g. `/tB/Packages/VBRUN/DataObject/SetData` → `ch-tB-Packages-VBRUN-DataObject-SetData`). Reuse the same logic in book.html when building the TOC list to avoid drift.
+
 ```html
 <nav class="book-toc">
   <h1>Contents</h1>
   <ol>
-    <li><a href="#part-I">Part I — The Core Language</a>
+    <li><a href="#pt-1">Part I — The Core Language</a>
       <ol>
         <li><a href="#ch-tB-Core-AddressOf">AddressOf operator</a></li>
         …
