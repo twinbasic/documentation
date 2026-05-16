@@ -103,24 +103,38 @@ UNMAPPED_SYMBOLS: list[tuple[str, str]] = [
     ("VariableUndeclared",                 "not distinguished from Name"),
 ]
 
-SYMBOL_LINE = re.compile(
-    r"^Symbol([A-Za-z]+?)(Color|FontStyle|FontWeight|TextDecoration)\s*:\s*(.+?)\s*;?\s*$"
-)
+PROPERTY_LINE = re.compile(r"^([A-Za-z][A-Za-z0-9_]*)\s*:\s*(.+?)\s*;?\s*$")
+SYMBOL_PROP = re.compile(r"^Symbol([A-Za-z]+?)(Color|FontStyle|FontWeight|TextDecoration)$")
 
 
-def parse_theme(path: Path) -> dict[str, dict[str, str]]:
-    result: dict[str, dict[str, str]] = {}
+def parse_theme(path: Path) -> dict[str, str]:
+    """Parse a .theme file into a flat `property -> value` dict. Properties with
+    an empty value (the IDE theme's `Name:    ;` fall-back-to-parent form) are
+    omitted."""
+    result: dict[str, str] = {}
     text = re.sub(r"/\*.*?\*/", "", path.read_text(encoding="utf-8"), flags=re.DOTALL)
     for raw in text.splitlines():
-        line = raw.strip()
-        if not line.startswith("Symbol"):
-            continue
-        m = SYMBOL_LINE.match(line)
+        m = PROPERTY_LINE.match(raw.strip())
         if not m:
             continue
-        sym, prop, value = m.group(1), m.group(2), m.group(3).strip().rstrip(";").strip()
-        result.setdefault(sym, {})[prop] = value
+        name, value = m.group(1), m.group(2).strip().rstrip(";").strip()
+        if not value:
+            continue
+        result[name] = value
     return result
+
+
+def symbol_props(theme: dict[str, str]) -> dict[str, dict[str, str]]:
+    """Filter a flat theme dict down to its Symbol* entries, grouped by Symbol
+    name and keyed by the bare property suffix (Color / FontStyle / ...)."""
+    grouped: dict[str, dict[str, str]] = {}
+    for name, value in theme.items():
+        m = SYMBOL_PROP.match(name)
+        if not m:
+            continue
+        sym, prop = m.group(1), m.group(2)
+        grouped.setdefault(sym, {})[prop] = value
+    return grouped
 
 
 def render_css(theme: dict[str, dict[str, str]], header: str) -> str:
@@ -144,7 +158,7 @@ def render_css(theme: dict[str, dict[str, str]], header: str) -> str:
     return "".join(out)
 
 
-def render_scss(theme: dict[str, dict[str, str]], header: str) -> str:
+def render_scss(theme: dict[str, dict[str, str]], header: str, code_bg: str | None = None) -> str:
     out = [f"/* {header} */\n"]
     out.append("/* Selectors are the Rouge HTML formatter classes emitted by docs/_plugins/twinbasic.rb. */\n")
     out.append("/* Scoped under .language-tb .highlight so they only repaint tB fenced code blocks. */\n\n")
@@ -164,31 +178,49 @@ def render_scss(theme: dict[str, dict[str, str]], header: str) -> str:
     out.append("\n".join(rules))
     out.append("}\n")
 
+    if code_bg:
+        out.append("\n")
+        out.append("/* tB CodePanelBackColor scoped to tB code-block containers (.language-tb).    */\n")
+        out.append("/* The .language-tb class lives on the outer .highlighter-rouge div emitted    */\n")
+        out.append("/* by kramdown for ```tb``` fenced blocks, so `.language-tb.highlighter-rouge` */\n")
+        out.append("/* (no space) hits the outer container and `.language-tb <descendant>` hits    */\n")
+        out.append("/* the nested .highlight / pre / etc. The partial is imported inside           */\n")
+        out.append("/* `html.dark-mode { ... }` by just-the-docs-combined.scss, so SCSS nesting    */\n")
+        out.append("/* confines these rules to dark mode automatically.                            */\n")
+        out.append(".language-tb.highlighter-rouge,\n")
+        out.append(".language-tb .highlight,\n")
+        out.append(".language-tb pre.highlight,\n")
+        out.append(".language-tb .highlight pre {\n")
+        out.append(f"  background-color: {code_bg};\n")
+        out.append("}\n")
+
     return "".join(out)
 
 
 def main() -> None:
     light = parse_theme(THEMES_DIR / "Light.theme")
     dark = parse_theme(THEMES_DIR / "Dark.theme")
-    classic_overrides = parse_theme(THEMES_DIR / "Classic.theme")
+    classic = parse_theme(THEMES_DIR / "Classic.theme")
 
-    classic = {sym: dict(props) for sym, props in light.items()}
-    for sym, props in classic_overrides.items():
-        classic.setdefault(sym, {}).update(props)
+    light_syms = symbol_props(light)
+    dark_syms = symbol_props(dark)
+    classic_syms = {sym: dict(props) for sym, props in light_syms.items()}
+    for sym, props in symbol_props(classic).items():
+        classic_syms.setdefault(sym, {}).update(props)
 
     # Flat CSS for inspection.
     CSS_OUT_DIR.mkdir(parents=True, exist_ok=True)
     (CSS_OUT_DIR / "twinbasic-light.css").write_text(
-        render_css(light, "twinBASIC Light theme - Rouge syntax highlighting"),
+        render_css(light_syms, "twinBASIC Light theme - Rouge syntax highlighting"),
         encoding="utf-8",
     )
     (CSS_OUT_DIR / "twinbasic-dark.css").write_text(
-        render_css(dark, "twinBASIC Dark theme - Rouge syntax highlighting"),
+        render_css(dark_syms, "twinBASIC Dark theme - Rouge syntax highlighting"),
         encoding="utf-8",
     )
     (CSS_OUT_DIR / "twinbasic-classic.css").write_text(
         render_css(
-            classic,
+            classic_syms,
             "twinBASIC Classic theme - Rouge syntax highlighting (Light + Classic overrides)",
         ),
         encoding="utf-8",
@@ -197,11 +229,15 @@ def main() -> None:
     # SCSS partials shipped in the site (classic is inspection-only).
     SCSS_OUT_DIR.mkdir(parents=True, exist_ok=True)
     (SCSS_OUT_DIR / "_twinbasic-light.scss").write_text(
-        render_scss(light, "twinBASIC Light theme - Rouge syntax highlighting"),
+        render_scss(light_syms, "twinBASIC Light theme - Rouge syntax highlighting"),
         encoding="utf-8",
     )
     (SCSS_OUT_DIR / "_twinbasic-dark.scss").write_text(
-        render_scss(dark, "twinBASIC Dark theme - Rouge syntax highlighting"),
+        render_scss(
+            dark_syms,
+            "twinBASIC Dark theme - Rouge syntax highlighting",
+            code_bg=dark.get("CodePanelBackColor"),
+        ),
         encoding="utf-8",
     )
 

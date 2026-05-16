@@ -171,3 +171,17 @@
     text-decoration: none;
   }
 }
+
+/* tB CodePanelBackColor scoped to tB code-block containers (.language-tb).    */
+/* The .language-tb class lives on the outer .highlighter-rouge div emitted    */
+/* by kramdown for ```tb``` fenced blocks, so `.language-tb.highlighter-rouge` */
+/* (no space) hits the outer container and `.language-tb <descendant>` hits    */
+/* the nested .highlight / pre / etc. The partial is imported inside           */
+/* `html.dark-mode { ... }` by just-the-docs-combined.scss, so SCSS nesting    */
+/* confines these rules to dark mode automatically.                            */
+.language-tb.highlighter-rouge,
+.language-tb .highlight,
+.language-tb pre.highlight,
+.language-tb .highlight pre {
+  background-color: rgb(33, 33, 33);
+}
