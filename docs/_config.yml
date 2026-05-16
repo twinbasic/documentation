@@ -111,6 +111,23 @@ gh_edit_view_mode: "tree" # "tree" or "edit" if you want the user to jump into t
 # the online _site/ output is unaffected.
 also_build_offline: true
 
+# Patterns for files Jekyll produces in _site/ that have no purpose
+# in the offline tree -- Pages / crawler metadata, jekyll-redirect-
+# from output, Windows batch scripts Jekyll picks up from the source
+# directory. The online _site/ keeps them; offlinify strips them
+# from _site-offline/.
+#
+# Patterns are File.fnmatch-style with FNM_PATHNAME, matched against
+# each file's path relative to the site root. `*` does NOT cross
+# directory separators (so `*.bat` only catches top-level .bat
+# files); use `**/*.bat` to catch them at any depth.
+offline_exclude:
+  - CNAME
+  - robots.txt
+  - sitemap.xml
+  - redirects.json
+  - "*.bat"
+
 # Excludes for both the build (Jekyll won't try to process these as
 # source) and the watcher (`jekyll serve` won't trigger a rebuild
 # when these change). Jekyll already excludes site.destination

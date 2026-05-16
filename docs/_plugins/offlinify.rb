@@ -305,6 +305,17 @@ module Offlinify
   SEARCH_DATA_JSON_REL = "assets/js/search-data.json"
   SEARCH_DATA_JS_REL   = "assets/js/search-data.js"
 
+  # True when `rel` (a file's site-rooted forward-slash path) matches
+  # any of the configured offline-exclude patterns. The patterns come
+  # from `site.config['offline_exclude']` in `_config.yml`; an empty
+  # or missing entry leaves the offline tree untouched. Matched with
+  # `File::FNM_PATHNAME`, so `*` does not cross directory separators
+  # (e.g. `*.bat` excludes only top-level .bat files, while
+  # `**/*.bat` would exclude them at any depth).
+  def self.offline_excluded?(rel, patterns)
+    patterns.any? { |pat| File.fnmatch(pat, rel, File::FNM_PATHNAME) }
+  end
+
   def self.run(site, src_dest, out_dest)
     return unless Dir.exist?(src_dest)
 
@@ -326,6 +337,12 @@ module Offlinify
     # the rendered URLs don't have.
     baseurl = (site.config["baseurl"] || "").to_s.sub(%r{/+\z}, "")
     baseurl = "/#{baseurl}" if !baseurl.empty? && !baseurl.start_with?("/")
+
+    # Patterns for files Jekyll wrote into _site/ that have no purpose
+    # in the offline tree (Pages CNAME, sitemap, robots, etc.). Loaded
+    # from `site.config['offline_exclude']` so the policy lives in
+    # _config.yml; an empty / missing entry skips this step entirely.
+    exclude_patterns = Array(site.config["offline_exclude"]).map(&:to_s)
 
     # In combined mode, wipe the offline output tree but keep the
     # `_site-offline/` directory itself in place. (Deleting and
@@ -361,6 +378,7 @@ module Offlinify
     Dir.glob(File.join(src_dest, "**", "*"), File::FNM_DOTMATCH).each do |p|
       next unless File.file?(p)
       rel = Pathname.new(p).relative_path_from(src_pn).to_s.tr("\\", "/")
+      next if offline_excluded?(rel, exclude_patterns)
       site_paths << "/#{rel}"
     end
 
@@ -379,11 +397,25 @@ module Offlinify
     rewritten_html = 0
     rewritten_css  = 0
     copied_assets  = 0
+    excluded_files = 0
     unresolved = 0
 
     Dir.glob(File.join(src_dest, "**", "*"), File::FNM_DOTMATCH).each do |src_path|
       next unless File.file?(src_path)
       rel = src_path[src_dest.length + 1..]
+
+      if offline_excluded?(rel.tr("\\", "/"), exclude_patterns)
+        # Combined mode: src_dest is _site/, out_dest is _site-offline/.
+        # Skipping the file means it never gets copied, leaving the
+        # online _site/ untouched.
+        # Standalone mode: src_dest IS out_dest. Jekyll already wrote
+        # the file; delete it so the offline-only tree comes out
+        # equivalent to what combined mode produces.
+        File.delete(src_path) unless combined
+        excluded_files += 1
+        next
+      end
+
       out_path = combined ? File.join(out_dest, rel) : src_path
 
       case File.extname(src_path).downcase
@@ -431,6 +463,7 @@ module Offlinify
 
     summary = "rewrote #{rewritten_html} HTML and #{rewritten_css} CSS file(s)"
     summary += ", copied #{copied_assets} asset(s)" if combined
+    summary += ", excluded #{excluded_files} file(s)" if excluded_files.positive?
     summary += " (#{unresolved} unresolved link(s) left as-is)" if unresolved.positive?
     Jekyll.logger.info "Offlinify:", summary
     Jekyll.logger.info "Offlinify:", "patched just-the-docs.js (#{js_patches.join(", ")})" unless js_patches.empty?

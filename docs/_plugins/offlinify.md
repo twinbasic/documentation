@@ -50,6 +50,7 @@ After Jekyll's WRITE phase completes, the hook fires `Offlinify.run(site, src_de
 3. **Normalise `baseurl`.** Read `site.config["baseurl"]`, strip trailing slashes, prepend a leading slash if missing. The result matches the prefix `relative_url` actually emits in the rendered HTML — e.g. `/twinBASIC-docs` on a GitHub Pages project site. Used during URL resolution to strip the prefix before probing `site_paths`.
 
 4. **Walk the source tree.** For each file:
+   - If the file matches a pattern in `site.config["offline_exclude"]` (see [Exclude list](#exclude-list)): skip it. Combined mode never copies it; standalone mode deletes it from out_dest.
    - `.html`: read once, run three transformation passes in order (absolute-URL rewrite, relative-URL rewrite, search-setup injection), write back if any pass changed content.
    - `.css`: read, run the `url()` rewrite, write back.
    - Anything else (images, fonts, JSON, JS): plain `FileUtils.cp` in combined mode; ignored in standalone mode (out_dest is src_dest, no copy needed).
@@ -189,6 +190,37 @@ window.SEARCH_DATA = { ...the JSON contents... };
 A single line is prepended to the JSON contents; the structure is otherwise unchanged. The `.json` file is left in place — it's no longer used by the offline build but removing it has no benefit and keeps the offline tree closer to the online layout.
 
 If `search-data.json` doesn't exist (e.g. someone has set `search_enabled: false` in a custom config overlay), the step is a no-op. The per-page script injection still inserts the `<script src="...search-data.js">` tag; under `file://` it'll 404 silently and the patched `initSearch()` will log a console message and return early.
+
+## Exclude list
+
+Some files Jekyll writes to `_site/` make sense on a live HTTP-served deployment but are pointless under `file://`:
+
+- `CNAME` is GitHub Pages' custom-domain config.
+- `sitemap.xml` and `robots.txt` are for search-engine crawlers.
+- `redirects.json` is jekyll-redirect-from's machine-readable output.
+- `*.bat` are Windows build helpers Jekyll picks up from the source directory and copies into `_site/` because it doesn't know they aren't content.
+
+The offline copy drops these. The list lives in `_config.yml` as `offline_exclude:`, so editing the policy doesn't require touching the plugin:
+
+```yaml
+offline_exclude:
+  - CNAME
+  - robots.txt
+  - sitemap.xml
+  - redirects.json
+  - "*.bat"
+```
+
+Patterns are `File.fnmatch`-style with `File::FNM_PATHNAME`, matched against each file's site-rooted forward-slash path. `*` does **not** cross directory separators, so `*.bat` catches only top-level `.bat` files; use `**/*.bat` to match at any depth. Specific paths like `subdir/foo.txt` also work and match exactly.
+
+A missing or empty `offline_exclude` entry skips the step entirely — the offline tree gets every file Jekyll produced.
+
+The exclude check runs in two places:
+
+1. **Before** the `site_paths` Set is built, so URL-resolution candidates can't point at an excluded target (a stray `<a href="/sitemap.xml">` in the source would simply fail to resolve, instead of resolving to a now-missing file).
+2. **Inside** the main file walk, where combined mode skips the copy and standalone mode deletes the file from `out_dest` (since Jekyll already wrote it there before the plugin ran).
+
+The summary log line reports the count: `… excluded 7 file(s) …`.
 
 ## Caches
 
