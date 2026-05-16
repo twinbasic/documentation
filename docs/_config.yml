@@ -26,6 +26,14 @@ defaults:
   - scope:
       path: "assets/css"
     values:
+      # Without this override, the global `layout: default` default
+      # above wraps every Liquid-processed .css file in the full page
+      # chrome (sidebar, footer, etc.), so the browser sees HTML at
+      # `<link rel="stylesheet" href=".../just-the-docs-head-nav.css">`,
+      # silently fails to parse, and loses the FOUC-prevention chunk.
+      # .scss files in this same folder are unaffected (jekyll-sass-
+      # converter bypasses the layout system entirely).
+      layout: null
       render_with_liquid: true
 
 # GitHub-style admonitions are supported, but we may wish to add custom
@@ -101,3 +109,38 @@ gh_edit_repository: "https://github.com/twinbasic/documentation/" # the github U
 gh_edit_branch: "main" # the branch that your docs is served from
 gh_edit_source: docs # the source that your files originate from
 gh_edit_view_mode: "tree" # "tree" or "edit" if you want the user to jump into the editor immediately
+
+# When true, the Offlinify plugin (_plugins/offlinify.rb) runs at the
+# end of the build, copies _site/ to _site-offline/, rewrites every
+# URL to a page-relative form, patches a couple of just-the-docs JS
+# issues, and wires up the search index to load from a <script src=>
+# instead of XHR. The result is a fully self-contained tree that can
+# be opened directly off disk in a browser. Adds ~3-5s to the build;
+# the online _site/ output is unaffected.
+also_build_offline: true
+
+# Patterns for files Jekyll produces in _site/ that have no purpose
+# in the offline tree -- Pages / crawler metadata, jekyll-redirect-
+# from output, Windows batch scripts Jekyll picks up from the source
+# directory. The online _site/ keeps them; offlinify strips them
+# from _site-offline/.
+#
+# Patterns are File.fnmatch-style with FNM_PATHNAME, matched against
+# each file's path relative to the site root. `*` does NOT cross
+# directory separators (so `*.bat` only catches top-level .bat
+# files); use `**/*.bat` to catch them at any depth.
+offline_exclude:
+  - CNAME
+  - robots.txt
+  - sitemap.xml
+  - redirects.json
+  - "*.bat"
+
+# Excludes for both the build (Jekyll won't try to process these as
+# source) and the watcher (`jekyll serve` won't trigger a rebuild
+# when these change). Jekyll already excludes site.destination
+# (_site/) automatically; we add _site-offline/ here so the
+# Offlinify plugin's writes don't kick the watcher into an infinite
+# rebuild loop. Keep this in sync with also_build_offline above.
+exclude:
+  - _site-offline

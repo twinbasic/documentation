@@ -420,15 +420,16 @@ WIP.md itself (and other files outside `docs/`) is not part of the Jekyll site a
 
 ## Scripts and tooling
 
-Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is.
+Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is. The one carve-out is `_plugins/offlinify.rb`, the link rewriter that powers the offline build (see [Build / preview](#build--preview)); future build-time concerns that are tightly coupled to Jekyll's internal model may go there too, but anything that can stand alone should still be Python.
 
 ## Build / preview
 
 From `docs/`:
 
-- `bundle exec jekyll build` (or `build.bat`) — build to `_site/`.
-- `bundle exec jekyll serve` (or `serve.bat`) — local server at `localhost:4000`.
+- `bundle exec jekyll build` (or `build.bat`) — builds the online copy to `_site/` **and** a `file://`-browsable copy to `_site-offline/` in a single Jekyll run. The offline pass adds ~3-5s on top of the normal ~13s build; activated by `also_build_offline: true` in `_config.yml`. After Jekyll's WRITE phase, `_plugins/offlinify.rb` walks `_site/`, copies binary assets verbatim into `_site-offline/`, and for each HTML and CSS file rewrites every root-absolute `href` / `src` / `url()` to a page-relative path with the resolved file extension (`/FAQ` → `../../FAQ.html`, `/Tutorials/CEF/` → `../../Tutorials/CEF/index.html`). It also patches the offline copy of `assets/js/just-the-docs.js` in two places — `navLink()` to match the active nav entry by resolved DOM `link.href` rather than `document.location.pathname` (the upstream pathname-vs-attribute compare returns no match under `file://`, leaving the sidebar with no `.active` class so the nav appears collapsed on every navigation), and `initSearch()` to read the lunr index from `window.SEARCH_DATA` rather than fetching `search-data.json` over `XMLHttpRequest` (XHR to `file://` resources is blocked by browsers; classic `<script src=>` is not). To support that, the plugin (a) generates `_site-offline/assets/js/search-data.js` once per build by wrapping the rendered `search-data.json` in `window.SEARCH_DATA = {...};`, and (b) injects two `<script>` tags per page right before `just-the-docs.js`: one that sets `window.OFFLINE_SITE_ROOT` to the per-page relative prefix to the offline site root, and one that loads `search-data.js`. The patched `initSearch()` rewrites every `doc.url` from a root-absolute permalink (`/tB/Core/Const`) to a page-relative path (`<OFFLINE_SITE_ROOT>tB/Core/Const.html`) so search-result clicks land on the actual file regardless of which page the user is on.
+- `bundle exec jekyll serve` (or `serve.bat`) — local server at `localhost:4000`. Note that `_site-offline/` is also produced on the initial build, but live-reload only updates `_site/`; manual rebuild needed for offline updates.
 - `check.bat` — link check (offline Lychee against `_site/`).
+- `build-offline.bat` — produce **only** the offline copy, writing directly to `_site-offline/` (no `_site/` is generated). Layers `_config_offline.yml` over `_config.yml` to set `offline_build: true` (activates the plugin's standalone in-place mode) and override `also_build_offline: false`. The output tree is byte-equivalent to what the combined build writes to `_site-offline/` — same URL rewriting, same JS patches, same offline-search wiring. Faster than the combined build when only the offline copy is wanted (no `_site/` rendered, no per-file copy step). Useful for shipping just the offline copy as a downloadable bundle.
 
 ## Site integrity check
 
@@ -449,7 +450,7 @@ Favor concise one-line git commit messages.
 ## Don'ts
 
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
-- Don't touch `_site/` (build output, gitignored).
+- Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — kramdown's smart_quotes does the conversion at build time. `scripts/convert_em_dash_separators.py` normalises any strays.
 - Don't push or force-push without explicit user request.
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
