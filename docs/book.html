@@ -49,9 +49,9 @@ sitemap: false
 {%- assign roman = "I,II,III,IV,V,VI,VII,VIII,IX,X,XI,XII,XIII,XIV,XV,XVI,XVII,XVIII,XIX,XX" | split: "," -%}
 
 {%- for part in site.data.book.parts -%}
-<article class="part-divider">
+<article class="part-divider" id="pt-{{ forloop.index }}">
   <p class="part-number">Part {{ roman[forloop.index0] }}</p>
-  <h1>{{ part.title }}</h1>
+  <h1 id="pt-{{ forloop.index }}-title">{{ part.title }}</h1>
 {%- if part.subtitle -%}
   {%- assign subtitle_html = part.subtitle | markdownify | remove: '<p>' | remove: '</p>' | strip %}
   <p class="part-subtitle">{{ subtitle_html }}</p>
@@ -86,8 +86,83 @@ sitemap: false
         | replace: p4_search, p4_replace
         | replace: '</span> <span', '</span><span class="w"> </span><span' -%}
     {%- assign stripped = body | strip -%}
-    {%- if stripped == "" -%}{%- continue -%}{%- endif %}
-<article class="page">
+    {%- if stripped == "" -%}{%- continue -%}{%- endif -%}
+
+    {%- comment -%}
+      1.5a: heading depth shift. Source `# Title` becomes the chapter
+      title; in the book it lives one level below the part divider's
+      H1, so cascade every heading down by one. `<h6` becomes
+      `<h7-stub` since there's no real h7; in practice no chapter
+      content uses h5 or h6, so the stub never appears, but the rule
+      keeps the cascade consistent.
+    {%- endcomment -%}
+    {%- assign body = body
+        | replace: '<h6', '<h7-stub'
+        | replace: '</h6>', '</h7-stub>'
+        | replace: '<h5', '<h6'
+        | replace: '</h5>', '</h6>'
+        | replace: '<h4', '<h5'
+        | replace: '</h4>', '</h5>'
+        | replace: '<h3', '<h4'
+        | replace: '</h3>', '</h4>'
+        | replace: '<h2', '<h3'
+        | replace: '</h2>', '</h3>'
+        | replace: '<h1', '<h2'
+        | replace: '</h1>', '</h2>' -%}
+
+    {%- comment -%}
+      1.5b: chapter anchor + per-heading id uniqueness. Derive a
+      stable chapter anchor from the chapter URL (strip leading and
+      trailing slashes, replace inner slashes with dashes); the
+      article element carries the bare anchor as its id so Phase 2
+      cross-references can target `#ch-<anchor>` and land at the
+      chapter's first page. Every heading id and intra-chapter
+      `href="#..."` inside the chapter body gets that anchor
+      prepended so identical kramdown-generated slugs (`see-also`,
+      `example`, ...) don't collapse to one outline destination.
+    {%- endcomment -%}
+    {%- assign url_path = chapter.url | replace: '/', '-' -%}
+    {%- assign first_char = url_path | slice: 0, 1 -%}
+    {%- if first_char == '-' -%}
+      {%- assign url_len = url_path.size | minus: 1 -%}
+      {%- assign url_path = url_path | slice: 1, url_len -%}
+    {%- endif -%}
+    {%- assign last_char = url_path | slice: -1, 1 -%}
+    {%- if last_char == '-' -%}
+      {%- assign url_len = url_path.size | minus: 1 -%}
+      {%- assign url_path = url_path | slice: 0, url_len -%}
+    {%- endif -%}
+    {%- assign chapter_anchor = 'ch-' | append: url_path -%}
+
+    {%- assign h2_class_prefix = '<h2 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h2_prefix       = '<h2 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h3_class_prefix = '<h3 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h3_prefix       = '<h3 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h4_class_prefix = '<h4 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h4_prefix       = '<h4 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h5_class_prefix = '<h5 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h5_prefix       = '<h5 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h6_class_prefix = '<h6 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h6_prefix       = '<h6 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h7_class_prefix = '<h7-stub class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h7_prefix       = '<h7-stub id="'           | append: chapter_anchor | append: '-' -%}
+    {%- assign href_prefix     = 'href="#'                 | append: chapter_anchor | append: '-' -%}
+
+    {%- assign body = body
+        | replace: '<h2 class="no_toc" id="',      h2_class_prefix
+        | replace: '<h2 id="',                     h2_prefix
+        | replace: '<h3 class="no_toc" id="',      h3_class_prefix
+        | replace: '<h3 id="',                     h3_prefix
+        | replace: '<h4 class="no_toc" id="',      h4_class_prefix
+        | replace: '<h4 id="',                     h4_prefix
+        | replace: '<h5 class="no_toc" id="',      h5_class_prefix
+        | replace: '<h5 id="',                     h5_prefix
+        | replace: '<h6 class="no_toc" id="',      h6_class_prefix
+        | replace: '<h6 id="',                     h6_prefix
+        | replace: '<h7-stub class="no_toc" id="', h7_class_prefix
+        | replace: '<h7-stub id="',                h7_prefix
+        | replace: 'href="#',                      href_prefix -%}
+<article class="page" id="{{ chapter_anchor }}">
 {{ body }}
 </article>
     {%- endfor -%}
