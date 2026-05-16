@@ -146,6 +146,120 @@ Both rewrites are mechanical text substitutions over the chapter body string, no
 
 `--outline-tags h1,h2,h3` over 13 parts × 698 chapters × ~3 subsections each gives an outline of roughly 2700 entries. Acceptable in PDF readers but the sidebar is busy. If the user finds it overwhelming once unique ids are in place, switch the CLI flag to `--outline-tags h1,h2` to bookmark only parts and chapter titles. That's a single-flag tweak in `book.bat`, reversible per-render.
 
+### 1.6 Sub-page nesting under index chapters
+
+When a folder has an `index.md` plus sibling `.md` files (e.g. `Reference/VBA/Collection/index.md` plus `Add.md`, `Clear.md`, `Count.md`, `Item.md`, …), the siblings are sub-pages of the index. In the rendered book they should:
+
+- Nest under their index in the PDF outline so the bookmark sidebar shows Collection → Add / Clear / Count, not Collection and Add at the same level.
+- Carry a compound running header — `Collection.Add` when the parent index is a class, `Compilation - CompilerVersion` when the parent index is a module.
+
+This phase pulls naturally from the heading-shift machinery already in 1.5 and shares the per-chapter iteration loop in book.html.
+
+#### 1.6a Sub-page detection
+
+In book.html's chapter loop, track the most recent index URL seen during iteration. A chapter is a sub-page when both:
+
+1. Its URL doesn't end in `/`.
+2. Its URL starts with the most recent index URL (i.e., they live in the same folder).
+
+Index pages always sort before their sub-pages under ASCII order (`Foo/` < `Foo/Bar`), so a simple state machine over the sorted iteration works in one pass. Per-chapter state:
+
+```liquid
+{%- assign last_char = chapter.url | slice: -1, 1 -%}
+{%- if last_char == '/' -%}
+  {%- assign current_index_url = chapter.url -%}
+  {%- assign is_sub_page = false -%}
+{%- else -%}
+  {%- assign sized_prefix = chapter.url | slice: 0, current_index_url.size -%}
+  {%- if current_index_url != '' and sized_prefix == current_index_url -%}
+    {%- assign is_sub_page = true -%}
+  {%- else -%}
+    {%- assign current_index_url = '' -%}
+    {%- assign is_sub_page = false -%}
+  {%- endif -%}
+{%- endif -%}
+```
+
+#### 1.6b Outline nesting via extra heading shift
+
+Sub-pages get an additional `+1` heading depth on top of the existing 1.5a `+1` shift, so a sub-page's source `# Title` (h1) ends up as `<h3>` instead of `<h2>`, and its sections cascade down accordingly.
+
+Implementation: a conditional second pass on the body when `is_sub_page` is true. The pass mirrors 1.5a but each rule shifts one extra level (e.g., `<h2` → `<h4`, `<h3` → `<h5`). After the cascade:
+
+| Source depth | Top-level chapter | Sub-page chapter |
+|--------------|-------------------|------------------|
+| `#` (h1)     | h2                | h3               |
+| `##` (h2)    | h3                | h4               |
+| `###` (h3)   | h4                | h5               |
+| `####` (h4)  | h5                | h6               |
+
+Real content stops at `####`, so we don't need `h7-stub`/`h8-stub` for sub-pages in practice.
+
+With `--outline-tags h1,h2,h3,h4` on `pagedjs-cli` (extended from the current `h1,h2,h3`), sub-pages appear as nested h3 outline entries directly under their parent index's h2 entry.
+
+#### 1.6c Compound running headers
+
+Sub-pages need a compound running header. The simple-header approach used today (`string-set: chapter-title content()` on the chapter title h2) doesn't compose, so we need a separate string source.
+
+Determine the parent kind and name from the sub-page's `parent:` frontmatter, which by project convention reads `<Name> class`, `<Name> Module`, or `<Name> module`:
+
+- `parent: Collection class` → kind = class, name = `Collection`, separator = `.`.
+- `parent: Interaction Module` → kind = module, name = `Interaction`, separator = ` - `.
+- Anything else → no compound; emit just the sub-page title (defensive fallback for unexpected frontmatter).
+
+Emit the compound string in a hidden span immediately inside the sub-page article, before the visible chapter heading:
+
+```html
+<article class="page sub-chapter" id="ch-...">
+  <span class="header-string">Collection.Add</span>
+  <h3>Add</h3>
+  ...
+</article>
+```
+
+The hidden span is the string-set source. CSS:
+
+```css
+article.page.sub-chapter .header-string {
+  string-set: chapter-title content();
+  position: absolute;
+  font-size: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+```
+
+Pin the existing `article.page > h2:first-of-type { string-set: chapter-title content(); }` rule to non-sub-chapter articles by tightening the selector to `article.page:not(.sub-chapter) > h2:first-of-type` so the two string-set sources don't fight.
+
+The visible chapter heading inside the sub-page still reads just `Add` — the parent name is in the running header only.
+
+#### 1.6d Visual styling for sub-page chapter titles
+
+Sub-page chapter title (now `<h3>`) should still look like a chapter title (big, no border) but slightly smaller than a top-level chapter title (h2) to signal hierarchy:
+
+- Top-level chapter (`article.page:not(.sub-chapter) > h2:first-of-type`): 24pt, bold, no border. Existing rule.
+- Sub-chapter (`article.page.sub-chapter > h3:first-of-type`): 20pt, bold, no border. New rule, overrides the in-chapter `article.page h3` 18pt-with-border styling.
+
+Internal sub-page section headings (h4 and below) inherit the existing in-chapter heading rules — no change needed.
+
+#### Verification
+
+- Open the rendered PDF outline. Inside "VBA Runtime" (Part II) → "Collection class", confirm nested entries Add, Clear, Count, Item, Items, Keys, Remove.
+- Inside "VBRUN Package" → "Compilation module", confirm nested entries CompilerVersion, BuildConfiguration, … under it.
+- Click "Add" in the outline — jumps to its sub-page.
+- On the Add sub-page, the running header at the top-right reads `Collection.Add`.
+- On a `Compilation/CompilerVersion` sub-page, the running header reads `Compilation - CompilerVersion`.
+- The visible chapter heading inside the sub-page article still reads just `Add` (or `CompilerVersion`) — the parent isn't repeated visually.
+- Cross-references from other chapters' See Also lists still resolve correctly (heading-id uniqueness from 1.5 stays intact, and the additional shift in 1.6b doesn't change the `id="ch-..."` prefix scheme).
+
+#### Tradeoffs / open questions
+
+- **Sub-page detection relies on an index.md being present.** If a folder has sibling `.md` files but no `index.md`, those siblings won't be detected as sub-pages — they'll inherit the previous unrelated index in iteration order, then either match it by URL prefix (wrong) or fall through to standalone (acceptable). Audit during implementation: list folders under `docs/Reference/` that have multiple `.md` siblings and no `index.md`.
+- **`parent:` frontmatter is the source of truth for class/module distinction.** This is already a project convention enforced across the docs; the WIP.md style guide describes it. If any sub-page is missing `parent:`, the running header falls back to just the sub-title — flag during verification.
+- **Outline tag list grows to `h1,h2,h3,h4`.** Combined with `h7-stub` (which is excluded), the outline gets one extra level. Total entries climb from ~2700 to ~3500. Still acceptable; the `h1,h2` narrow-outline fallback noted in 1.5 is also available if needed.
+- **Deeper nesting (sub-sub-pages) is not handled.** No current folder has `index.md` → `Sub/index.md` → `Sub/X.md` three-deep, but if one appears, the state machine would need to track a stack instead of a single most-recent-index pointer.
+
 ## Phase 2 — In-PDF cross-references
 
 Goal: clicking "[SetData](SetData)" inside a "See Also" jumps to the SetData chapter in the PDF, not to `file://.../tB/Packages/VBRUN/DataObject/SetData.html`.
@@ -269,8 +383,16 @@ Verify that, with the whitespace fix in place, code blocks that span page bounda
 Each phase is roughly 1-2 hours of work for me; ~1 working day end-to-end. Recommended commit boundary at the end of each phase.
 
 1. Phase 1 — structural framing. Largest visible change.
+   1.1 schema upgrade. **Done.**
+   1.2 part divider pages. **Done.**
+   1.3 title page.
+   1.4 colophon page.
+   1.5 heading hierarchy shift + heading-id uniqueness. **Done.**
+   1.6 sub-page nesting under index chapters.
 2. Phase 2 — cross-references. Largest navigation improvement.
 3. Phase 3 — global TOC. Builds on Phase 2.
 4. Phase 4 — polish. Small independent fixes.
+
+Within Phase 1, 1.3 / 1.4 (front matter) and 1.6 (sub-page nesting) are independent of each other and can run in any order. 1.6 is most cleanly done right after 1.5 since both work on the same Liquid pass over chapter bodies.
 
 Phase 1 is enough on its own to make the output feel like a book to flip through. Phases 2 and 3 are what make it usable as a reference. Phase 4 is per-issue cleanup.
