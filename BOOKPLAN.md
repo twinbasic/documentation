@@ -17,18 +17,18 @@ or `book.bat`. Render is jekyll (~5 s) then pagedjs-cli (~2 min) for the full bo
 
 Touch points and what each one already exposes:
 
-- [docs/book.html](docs/book.html) — iterator that concatenates every chapter into one HTML document. Permalink `/book.html`, layout `book-combined`. Contains: whitespace-pattern primitives (p1..p4, indent variants) for the pagedjs whitespace fix; the Roman numerals array; the title-page section (1.3); the per-part loop with chapter loop nested; sub-page state machine (1.6a) tracking the most recent index URL + kind + name; per-chapter heading depth shift (1.5a + sub-page 1.6b); chapter-anchor + heading-id rewrite (1.5b); compound running-header span emission (1.6c). Insertion points for new front matter go **before** the `{%- for part in site.data.book.parts -%}` opener; emitted HTML is included verbatim.
+- [docs/book.html](docs/book.html) — iterator that concatenates every chapter into one HTML document. Permalink `/book.html`, layout `book-combined`. Contains: whitespace-pattern primitives (p1..p4, indent variants) for the pagedjs whitespace fix; the Roman numerals array; the title-page section (1.3); the front-matter loop (1.7) that emits `site.data.book.front_matter` entries inline between the title page and Part I; the per-part loop with a per-chapter loop nested; sub-page state machine (1.6a) tracking the most recent index URL + kind + name; per-chapter heading depth shift (1.5a + sub-page 1.6b); chapter-anchor + heading-id rewrite (1.5b); compound running-header span emission (1.6c). The per-part chapter loop accepts either `prefixes:` (URL-prefix starts-with match, folder-style sections) or `page:` (exact-URL match, one-chapter parts like the FAQ). Insertion points for new front matter go **after** the title-page section and **before** the `{%- for part in site.data.book.parts -%}` opener.
 - [docs/_layouts/book-combined.html](docs/_layouts/book-combined.html) — minimal wrapper: `<html><head>` + `<title>{{ site.title }}</title>` + `rouge.css` + `print.css` + `{{ content }}`. No nav, no JS, no chrome. Pagedjs runs on the rendered output of this layout.
 - [docs/_layouts/book.html](docs/_layouts/book.html) — per-source-page wrapper used when each `Reference/...` page is rendered to its own `_site-pdf/<path>.html`. Not part of the PDF render path itself; the combined `book.html` iterates `site.pages` to gather these as chapters.
-- [docs/assets/css/print.css](docs/assets/css/print.css) — the book's design. Existing structural rules: `@page` (A4, 22mm margins, running header in `@top-right` via `string(chapter-title)`, page number in `@bottom-right`); `@page :first` (suppresses both — used by the title page); `@page divider` (suppresses both, used by part dividers via `page: divider`); `article { break-before: page }`; per-chapter `string-set: chapter-title` on `article.page > .header-string`; the top-level vs sub-chapter heading-size split (`article.page:not(.sub-chapter) > h2:first-of-type` vs `article.page.sub-chapter > h3:first-of-type`).
-- [docs/_data/book.yml](docs/_data/book.yml) — the manifest book.html iterates over. Schema (1.1, done): `parts:` is a list of `{ title, subtitle, prefixes }`. Available in Liquid as `site.data.book.parts`.
+- [docs/assets/css/print.css](docs/assets/css/print.css) — the book's design. Existing structural rules: `@page` (A4, 22mm margins, running header in `@top-right` via `string(chapter-title)`, page number in `@bottom-right`); `@page :first` (suppresses both — used by the title page); `@page divider` (suppresses both, used by part dividers via `page: divider`); `@page front-matter` (suppresses both, used by `article.front-matter` for 1.7 Introduction-style sections); `article { break-before: page }`; per-chapter `string-set: chapter-title` on `article.page > .header-string`; the top-level vs sub-chapter heading-size split (`article.page:not(.sub-chapter) > h2:first-of-type` vs `article.page.sub-chapter > h3:first-of-type`).
+- [docs/_data/book.yml](docs/_data/book.yml) — the manifest book.html iterates over. Schema: `parts:` is an ordered list of numbered parts (`{ title, subtitle, prefixes }` or `{ title, subtitle, page }`); `front_matter:` is a sibling list of sections (1.7) that emit before Part I with no divider, same per-entry shape as a part. `prefixes:` is a list of URL substrings matched via `contains` (so multiple prefixes can map to a single Part — used by 1.8 for the Reference Section and for the VBA Runtime, which has its landing page at `/tB/Packages/VBA` and its members at `/tB/Modules/...`); `page:` is a single exact-URL match (used for one-chapter parts like the FAQ and for the root index in `front_matter:`). Available in Liquid as `site.data.book.parts` and `site.data.book.front_matter`.
 - [docs/_data/build.yml](#) — **not committed**. Build provenance lives in `site.data.build` (populated in memory by the plugin), so the YAML file is never written. The fields exposed are `site.data.build.commit` (short hash) and `site.data.build.commit_date` (ISO date, `%cs`), or `'unknown'` when git is unavailable.
 - [docs/_config.yml](docs/_config.yml) — the regular-site config. Two fields the book reads: `site.title` ("twinBASIC Documentation") and `site.footer_content` (the canonical copyright string, reused by the title page and colophon).
 - [docs/_config-pdf.yml](docs/_config-pdf.yml) — overlay config layered on top of `_config.yml`. Switches `defaults: layout: book` and `destination: _site-pdf`. The full `defaults:` block has to be restated (Jekyll replaces top-level array keys; it does not merge them).
 - [docs/_plugins/build-info.rb](docs/_plugins/build-info.rb) — captures `git rev-parse --short HEAD` and `git log -1 --format=%cs` into `site.data['build']` on `:site, :post_read`. Falls back to `'unknown'` placeholders when git isn't on PATH.
 - [docs/_plugins/build-phase-timing.rb](docs/_plugins/build-phase-timing.rb) — the cleanest hook-pattern example to copy when writing a new `_plugins/` file (uses every `:site, :hook` boundary).
 - [docs/_plugins/offlinify.rb](docs/_plugins/offlinify.rb) — the offline-site link rewriter; reference example for build-time concerns tightly coupled to Jekyll's URL model.
-- [docs/_plugins/book-href-rewrite.rb](docs/_plugins/book-href-rewrite.rb) — post-render Ruby pass for Phase 2.2 cross-references. Walks each `<article id="ch-...">` chapter body in the rendered `book.html`, resolves relative-path hrefs against the chapter's URL parent via `URI.merge` (RFC-3986 path normalization comes from the standard library — no manual `../` folding), and rewrites in-book absolute URLs to `#ch-...` anchors using a `Hash` map built from `_data/book.yml` + `site.pages`. Out-of-book hrefs emit in their resolved absolute form so they're greppable as `href="/..."` during verification. Hooked into `:pages, :post_render` and filtered to `page.path == "book.html"`; non-book pages incur no cost. Replaces an earlier in-template Liquid implementation (~21 s of render overhead vs ~50 ms here).
+- [docs/_plugins/book-href-rewrite.rb](docs/_plugins/book-href-rewrite.rb) — post-render Ruby pass for Phase 2.2 cross-references. Walks each `<article id="ch-...">` chapter body in the rendered `book.html`, resolves relative-path hrefs against the chapter's URL parent via `URI.merge` (RFC-3986 path normalization comes from the standard library — no manual `../` folding), and rewrites in-book absolute URLs to `#ch-...` anchors using a `Hash` map built from `_data/book.yml` + `site.pages`. The manifest iteration covers both `front_matter:` and `parts:` (1.7), and each entry contributes pages from either `page:` (exact match) or `prefixes:` (starts-with match). The URL → anchor map symmetrizes the trailing-slash form for folder-style indexes **and** the `.html` suffix (pages without explicit `permalink:` end up at `/X.html`; source markdown is inconsistent about which form it writes in cross-references). Out-of-book hrefs emit in their resolved absolute form so they're greppable as `href="/..."` during verification. Hooked into `:pages, :post_render` and filtered to `page.path == "book.html"`; non-book pages incur no cost. Replaces an earlier in-template Liquid implementation (~21 s of render overhead vs ~50 ms here).
 - [docs/book.bat](docs/book.bat) — invokes `bundle exec jekyll build --config _config.yml,_config-pdf.yml || exit /b` then `npx pagedjs-cli _site-pdf\book.html -o _pdf\book.pdf --outline-tags h1,h2,h3,h4 -t 600000`. Must be run from `cmd.exe`, not PowerShell (see gotchas).
 
 ## Build-time tooling policy
@@ -67,6 +67,7 @@ Cumulative discoveries from earlier phases. Read before starting a new task — 
 - **`{{ site.data.X.Y | default: 'unknown' }}`** is the cleanest way to read a plugin-populated value: returns the fallback if either the data file or the key is missing, so the template doesn't need nil-guards.
 - **`:pages, :post_render` lets you mutate `page.output` in place.** Fires after Liquid + layout have rendered the page but before Jekyll writes it. Cheaper than `:site, :post_write` because there's no re-read from disk and you don't have to track which destination tree to touch. Filter to a specific page with `page.path == "name.html"`; the hook fires for every page otherwise. Used by `_plugins/book-href-rewrite.rb` to rewrite only `book.html` after its chapter-collation Liquid has finished.
 - **`URI.merge` does RFC-3986 path normalization in the standard library.** When you need to resolve a relative href like `../X`, `./X`, `.#frag`, or `..` against a base path inside Ruby, wrap the base as `URI("http://x" + base_path)` (dummy scheme + host so the parser is happy), parse the ref as `URI(ref)`, and call `base.merge(ref)`. `merged.path` gives the normalized absolute path; `merged.fragment` peels off the `#...` suffix. Saves writing — and re-debugging — manual `../` folding plus the bare-dot edge cases.
+- **Jekyll's default permalink for pages without explicit `permalink:` frontmatter ends in `.html`.** A file at `Features/Compiler-IDE/CodeLens.md` with no permalink renders at `/Features/Compiler-IDE/CodeLens.html`; the same file with `permalink: /Features/Compiler-IDE/CodeLens` renders at the cleaner URL. Source markdown is inconsistent about which form it writes in links (`[CodeLens](CodeLens)` vs `[CodeLens](CodeLens.html)`), and only one matches in any given case. The live site smooths over the mismatch with server config; the PDF build does not. Symmetrize both forms in any URL → anchor map (see `_plugins/book-href-rewrite.rb`'s 1.7 changes) so either form resolves.
 
 ### Build environment
 
@@ -315,7 +316,63 @@ Internal sub-page section headings (h4 and below) inherit the existing in-chapte
 - **Sub-page detection relies on an index.md being present.** If a folder has sibling `.md` files but no `index.md`, those siblings won't be detected as sub-pages — they'll inherit the previous unrelated index in iteration order, then either match it by URL prefix (wrong) or fall through to standalone (acceptable). Audit during implementation: list folders under `docs/Reference/` that have multiple `.md` siblings and no `index.md`.
 - **`parent:` frontmatter is the source of truth for class/module distinction.** This is already a project convention enforced across the docs; the WIP.md style guide describes it. If any sub-page is missing `parent:`, the running header falls back to just the sub-title — flag during verification.
 - **Outline tag list grows to `h1,h2,h3,h4`.** Combined with `h7-stub` (which is excluded), the outline gets one extra level. Total entries climb from ~2700 to ~3500. Still acceptable; the `h1,h2` narrow-outline fallback noted in 1.5 is also available if needed.
-- **Deeper nesting (sub-sub-pages) is not handled.** No current folder has `index.md` → `Sub/index.md` → `Sub/X.md` three-deep, but if one appears, the state machine would need to track a stack instead of a single most-recent-index pointer.
+- **Deeper nesting (sub-sub-pages).** As of 1.7, three-deep folder structures exist (`Features/index.md` → `Features/Compiler-IDE/index.md` → `Features/Compiler-IDE/CodeLens.md`). The single-slot state machine handles them by treating each subfolder's `index.md` as a fresh top-level chapter within the part, with its leaves as direct sub-pages of that subfolder index. The compound running header therefore shows only the closest two levels ("Compiler-IDE - CodeLens"), not the full part path ("Features > Compiler-IDE > CodeLens"). Acceptable; a true stack-based state machine would be needed to recover the full path, and the part divider gives the reader the missing top-level context.
+
+### 1.7 Beyond Reference: front matter and supplementary parts
+
+The book.yml shipped with Phase 1.1 only listed the 13 Reference parts. The book also needs the Welcome page (renamed `Introduction` in the book), Features, FAQ, and Tutorials. Order: title page → Introduction (front matter) → Part I Features → Part II Frequently Asked Questions → Part III Tutorials → Parts IV–XVI Reference (Core, VBA Runtime, VBRUN, VB, WebView2, Assert, CustomControls, CEF, WinEventLogLib, WinNamedPipesLib, WinServicesLib, tbIDE, WinNativeCommonCtls).
+
+#### Schema extension
+
+`_data/book.yml` gained two pieces:
+
+- A top-level `front_matter:` list, sibling to `parts:`. Each entry emits its chapter(s) inline between the title page and Part I — no divider, no part number, no running header (CSS suppresses the chrome via `.front-matter` styling). Per-chapter rendering is identical to a part chapter otherwise.
+- A `page:` field on entries, alternative to `prefixes:`. `page:` is a single absolute URL with exact-match semantics, used when a section is exactly one page (the FAQ; the root index for the Introduction). `prefixes:` keeps its existing starts-with-match semantics for folder-based sections.
+
+#### Chapter anchor fallback
+
+The root URL `/` collapses to an empty path under the default `gsub('/', '-').strip-dashes` derivation, leaving a `ch-` anchor that's just `ch-`. Both the Liquid pass in `book.html` and the plugin use the front-matter entry's `title:` (slugified) as a fallback seed when the URL-based seed is empty, so the Introduction lands at `ch-introduction` instead of `ch-`. The two callers compute the same fallback independently so the link map and the article id stay aligned.
+
+#### `.html` suffix symmetrization
+
+Pages without explicit `permalink:` frontmatter render at `/X.html`, while pages with an explicit permalink usually live at `/X` (no extension). Source markdown is inconsistent about which form it writes in cross-references. The plugin now adds both forms to the URL → anchor map (mirroring the trailing-slash symmetrization that already covered folder-style indexes), so a link to `/Features/Compiler-IDE/CodeLens` and `/Features/Compiler-IDE/CodeLens.html` both resolve.
+
+#### Front-matter CSS
+
+`article.front-matter { page: front-matter; break-before: page; }` plus `@page front-matter { @top-right { content: ""; } }` suppresses the running header on Introduction pages, matching the title-page chrome convention. The named-page selector works here because the article has `break-before: page` (per the pagedjs gotcha that first-of-body never gets a named page applied; front matter is never the first element thanks to the preceding `section.title-page`).
+
+#### Known limitations
+
+- The chapter body's H1 (`# Welcome to twinBASIC`) is not rewritten to `# Introduction`; the rename lives only in the section metadata (`book.yml`'s `title:` and the chapter anchor). The PDF outline therefore still reads "Welcome to twinBASIC" for the Introduction chapter. Rewriting body H1 across the Liquid + plugin boundary is fiddly; deferred until there's a clear demand for it.
+- Three-level nesting (Features → Compiler-IDE → CodeLens) is handled by sub-page detection, but the compound running header only shows the closest two levels — see the 1.6 tradeoff bullet above.
+- A handful of Features pages (CodeLens.md, others) lack explicit `permalink:` frontmatter and end up at `/X.html`; the plugin's `.html` symmetrization smooths over the cross-reference mismatch in the book, but the live-site URLs themselves stay inconsistent.
+
+#### Verification
+
+- The rendered PDF has 16 numbered parts in the right order, with an unnumbered Introduction front-matter chapter before Part I.
+- In-book cross-references in the new sections resolve: `[FAQ]` from the Introduction → `#ch-FAQ`; `[Arrays]` → `#ch-Tutorials-Arrays`; deep links like `#ch-Features-Language-Data-Types-longlong` work.
+- The Features part covers ~57 chapters; Tutorials ~22; FAQ exactly one; Introduction exactly one. Total chapter rewrites: 6181 (up from 5812 with Reference only). PDF page count: 1714 (up from 1535). Build wall stays at ~6 s — the plugin scales with chapter count, not chapter-count squared.
+
+### 1.8 Catching up with the live nav: Reference Section + Packages move
+
+The live site reorganised its top-level nav: `Packages` was promoted out of `Reference Section` and now sits as its own top-level item. Side effects:
+
+- A new `VBA` package landing page was added at `/tB/Packages/VBA`. VBA module members keep their legacy `/tB/Modules/...` URLs, so VBA content now lives at two different URL prefixes.
+- `Reference Section` (top-level, permalink `/Reference`) now groups eight alphabetical-index / lookup pages — `Categories`, `Statements`, `Procedures and Functions`, `Operators`, `Compiler Constants`, `Attributes`, `Controls`, and `Glossary` — that previously weren't in the book.
+
+Book changes (committed in `_data/book.yml`):
+
+- **The VBA Runtime** gains a second prefix `/tB/Packages/VBA` so the new landing page emits alongside the module members. The two prefixes can both belong to one Part because the chapter loop's `contains`-match accepts a list and de-duplicates by `sort | uniq` implicitly (each URL appears at most once in `site.pages`).
+- **New `Reference Section` Part inserted between `The Core Language` and `The VBA Runtime`**. Prefixes: `/Reference` (catches the landing and the five `/Reference/<X>` lookup pages), `/tB/Controls`, `/tB/Gloss` (catch the two outliers that live under `/tB/` rather than `/Reference/`). `Attributes` is the only Reference-Section item not pulled in here: its permalink is `/tB/Core/Attributes`, which the existing `The Core Language` part already sweeps up via `/tB/Core/`. Moving it would require an `excludes:` schema for one page — left in Core for now, accepted as a small live-nav-vs-book inconsistency.
+- The structural choice was to **keep the 13 separate per-package Parts** rather than collapse them into a single mega-`Packages` Part. The new top-level "Packages" nav grouping is therefore not visible as a Part boundary in the book; readers see VBA Runtime, VBRUN, VB, WebView2, … as siblings of the Reference Section Part. If a single Packages Part is wanted later, the change is mechanical (consolidate prefixes; let sub-page detection nest each package's landing as a top-level chapter).
+
+#### Verification
+
+- The book now has 17 numbered parts (was 16): Features, FAQ, Tutorials, Core, **Reference Section**, VBA Runtime, VBRUN, VB, WebView2, Assert, CustomControls, CEF, WinEventLogLib, WinNamedPipesLib, WinServicesLib, tbIDE, WinNativeCommonCtls.
+- Reference Section has 8 chapters: `Reference` landing + `Categories` + `Compiler Constants` + `Operators` + `Procedures and Functions` + `Statements` + `Controls` + `Glossary`.
+- VBA Runtime now includes `ch-tB-Packages-VBA` (the landing page) alongside the module members.
+- All `href="/tB/Gloss#..."` links from across the book (Core, Modules, Packages) now resolve to in-book `#ch-tB-Gloss-<term>` anchors. Total chapter cross-reference rewrites: **6918** (up from 6181, +737, almost all from Glossary anchors that previously left as broken absolute URLs). PDF page count: **1776** (up from 1714).
+- Remaining out-of-book absolute links are all legitimate (pages under `/tB/IDE/...` that aren't manifest entries; the `/tB/Packages/` landing page itself, which has no in-book counterpart given the choice to keep packages as separate Parts).
 
 ## Phase 2 — In-PDF cross-references
 
@@ -458,10 +515,12 @@ Each phase is roughly 1-2 hours of work for me; ~1 working day end-to-end. Recom
    1.3 title page. **Done.**
    1.4 colophon page.
    1.5 heading hierarchy shift + heading-id uniqueness. **Done.**
-   1.6 sub-page nesting under index chapters.
+   1.6 sub-page nesting under index chapters. **Done.**
+   1.7 beyond Reference: front matter + supplementary parts. **Done.** (Welcome → Introduction; Features, FAQ, Tutorials added before the Reference parts.)
+   1.8 catching up with the live nav: Reference Section + Packages move. **Done.** (New Reference Section Part; VBA Runtime gains the `/tB/Packages/VBA` landing page.)
 2. Phase 2 — cross-references. Largest navigation improvement.
    2.1 permalink → anchor map. **Done.** (Folded into the `_plugins/book-href-rewrite.rb` `Hash`.)
-   2.2 rewrite chapter-content href attributes. **Done.** (Plugin pass; ~50 ms over ~5800 rewrites.)
+   2.2 rewrite chapter-content href attributes. **Done.** (Plugin pass; ~50 ms over ~6900 rewrites.)
 3. Phase 3 — global TOC. Builds on Phase 2.
 4. Phase 4 — polish. Small independent fixes.
 

@@ -116,6 +116,133 @@ sitemap: false
   </div>
 </section>
 
+{%- comment -%}
+  Front matter sections (book.yml `front_matter:`). Each entry emits
+  its chapter(s) inline -- no part divider, no part number, no running
+  header (CSS suppresses the latter via `.front-matter` styling).
+  Entries use the same per-chapter rendering pipeline as numbered
+  parts (markdownify if needed, whitespace fix, heading shift, 1.5b
+  id uniqueness) but skip the sub-page state machine, since front
+  matter is conceptually flat.
+
+  Each entry has either a single `page:` (one absolute URL) or
+  `prefixes:` (URL-prefix list, same shape as a numbered part). The
+  fm.title is used for the root URL's chapter anchor: `/` collapses
+  to an empty path under the default derivation, so `ch-introduction`
+  (slugified title) is the fallback.
+{%- endcomment -%}
+{%- if site.data.book.front_matter -%}
+{%- for fm in site.data.book.front_matter -%}
+  {%- if fm.page -%}
+    {%- assign fm_chapters = site.pages | where: "url", fm.page -%}
+  {%- elsif fm.prefixes -%}
+    {%- assign fm_chapters = "" | split: "" -%}
+    {%- for prefix in fm.prefixes -%}
+      {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
+      {%- assign fm_chapters = fm_chapters | concat: matched -%}
+    {%- endfor -%}
+    {%- assign fm_chapters = fm_chapters | sort: "url" -%}
+  {%- else -%}
+    {%- assign fm_chapters = "" | split: "" -%}
+  {%- endif -%}
+  {%- for chapter in fm_chapters -%}
+    {%- assign first_char = chapter.content | strip | slice: 0, 1 -%}
+    {%- if first_char == '<' -%}
+      {%- assign body = chapter.content -%}
+    {%- else -%}
+      {%- assign body = chapter.content | markdownify -%}
+    {%- endif -%}
+    {%- assign body = body
+        | replace: 'src="/', 'src="'
+        | replace: p1_search, p1_replace
+        | replace: p2_search, p2_replace
+        | replace: p3i12_search, p3i12_replace
+        | replace: p3i8_search,  p3i8_replace
+        | replace: p3i4_search,  p3i4_replace
+        | replace: p3_search,    p3_replace
+        | replace: p4i16_search, p4i16_replace
+        | replace: p4i12_search, p4i12_replace
+        | replace: p4i8_search,  p4i8_replace
+        | replace: p4i4_search,  p4i4_replace
+        | replace: p4_search,    p4_replace
+        | replace: '</span> <span', '</span><span class="w"> </span><span' -%}
+    {%- assign stripped = body | strip -%}
+    {%- if stripped == "" -%}{%- continue -%}{%- endif -%}
+
+    {%- assign body = body
+        | replace: '<h6', '<h7-stub'
+        | replace: '</h6>', '</h7-stub>'
+        | replace: '<h5', '<h6'
+        | replace: '</h5>', '</h6>'
+        | replace: '<h4', '<h5'
+        | replace: '</h4>', '</h5>'
+        | replace: '<h3', '<h4'
+        | replace: '</h3>', '</h4>'
+        | replace: '<h2', '<h3'
+        | replace: '</h2>', '</h3>'
+        | replace: '<h1', '<h2'
+        | replace: '</h1>', '</h2>' -%}
+
+    {%- comment -%}
+      Chapter anchor. For the root URL `/`, the default
+      slashes-to-dashes derivation collapses to an empty string; use
+      the front-matter entry's title (slugified) as the seed so the
+      anchor reads `ch-introduction` rather than just `ch-`. The
+      plugin uses the same fallback for the URL -> anchor map.
+    {%- endcomment -%}
+    {%- if chapter.url == '/' -%}
+      {%- assign chapter_anchor = 'ch-' | append: fm.title | downcase | replace: ' ', '-' -%}
+    {%- else -%}
+      {%- assign url_path = chapter.url | replace: '/', '-' -%}
+      {%- assign first_char = url_path | slice: 0, 1 -%}
+      {%- if first_char == '-' -%}
+        {%- assign url_len = url_path.size | minus: 1 -%}
+        {%- assign url_path = url_path | slice: 1, url_len -%}
+      {%- endif -%}
+      {%- assign last_char = url_path | slice: -1, 1 -%}
+      {%- if last_char == '-' -%}
+        {%- assign url_len = url_path.size | minus: 1 -%}
+        {%- assign url_path = url_path | slice: 0, url_len -%}
+      {%- endif -%}
+      {%- assign chapter_anchor = 'ch-' | append: url_path -%}
+    {%- endif -%}
+
+    {%- assign h2_class_prefix = '<h2 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h2_prefix       = '<h2 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h3_class_prefix = '<h3 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h3_prefix       = '<h3 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h4_class_prefix = '<h4 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h4_prefix       = '<h4 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h5_class_prefix = '<h5 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h5_prefix       = '<h5 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h6_class_prefix = '<h6 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h6_prefix       = '<h6 id="'                | append: chapter_anchor | append: '-' -%}
+    {%- assign h7_class_prefix = '<h7-stub class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+    {%- assign h7_prefix       = '<h7-stub id="'           | append: chapter_anchor | append: '-' -%}
+    {%- assign href_prefix     = 'href="#'                 | append: chapter_anchor | append: '-' -%}
+
+    {%- assign body = body
+        | replace: '<h2 class="no_toc" id="',      h2_class_prefix
+        | replace: '<h2 id="',                     h2_prefix
+        | replace: '<h3 class="no_toc" id="',      h3_class_prefix
+        | replace: '<h3 id="',                     h3_prefix
+        | replace: '<h4 class="no_toc" id="',      h4_class_prefix
+        | replace: '<h4 id="',                     h4_prefix
+        | replace: '<h5 class="no_toc" id="',      h5_class_prefix
+        | replace: '<h5 id="',                     h5_prefix
+        | replace: '<h6 class="no_toc" id="',      h6_class_prefix
+        | replace: '<h6 id="',                     h6_prefix
+        | replace: '<h7-stub class="no_toc" id="', h7_class_prefix
+        | replace: '<h7-stub id="',                h7_prefix
+        | replace: 'href="#',                      href_prefix -%}
+
+<article class="front-matter" id="{{ chapter_anchor }}">
+{{ body }}
+</article>
+  {%- endfor -%}
+{%- endfor -%}
+{%- endif -%}
+
 {%- for part in site.data.book.parts -%}
 <article class="part-divider" id="pt-{{ forloop.index }}">
   <p class="part-number">Part {{ roman[forloop.index0] }}</p>
@@ -128,8 +255,25 @@ sitemap: false
   <div class="part-intro">{{ part.intro | markdownify }}</div>
 {%- endif %}
 </article>
-  {%- for prefix in part.prefixes -%}
-    {%- assign chapters = site.pages | where_exp: "p", "p.url contains prefix" | sort: "url" -%}
+  {%- comment -%}
+    Gather the part's chapters once. A part has either `page:` (single
+    absolute URL, exact match) or `prefixes:` (list of URL prefixes,
+    contains-match per prefix, union sorted). Pre-2.4 the loop only
+    handled `prefixes:`; `page:` was added so one-chapter parts like
+    the FAQ don't have to invent a folder.
+  {%- endcomment -%}
+  {%- if part.page -%}
+    {%- assign chapters = site.pages | where: "url", part.page -%}
+  {%- elsif part.prefixes -%}
+    {%- assign chapters = "" | split: "" -%}
+    {%- for prefix in part.prefixes -%}
+      {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
+      {%- assign chapters = chapters | concat: matched -%}
+    {%- endfor -%}
+    {%- assign chapters = chapters | sort: "url" -%}
+  {%- else -%}
+    {%- assign chapters = "" | split: "" -%}
+  {%- endif -%}
     {%- comment -%}
       1.6a: state for sub-page detection. Index pages (URL ending in `/`)
       sort before their siblings under ASCII order, so a single-slot
@@ -342,5 +486,4 @@ sitemap: false
 </article>
     {%- endif -%}
     {%- endfor -%}
-  {%- endfor -%}
 {%- endfor %}

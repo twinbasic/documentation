@@ -155,6 +155,27 @@ article.part-divider .part-intro {
 }
 
 
+/* ---- Front matter -------------------------------------------------------
+   Each <article class="front-matter"> is emitted between the title page and
+   the first numbered Part (book.yml's `front_matter:` list). No part
+   divider, no part number; runs as ordinary book content but on a named
+   page that suppresses the running header so it reads as foreword-style
+   front matter rather than a chapter from inside a part. The named-page
+   selector works here because the article has `break-before: page` (per
+   the pagedjs gotcha that first-of-body never gets a named page applied;
+   front matter is never the first element thanks to the preceding
+   title-page section). */
+
+article.front-matter {
+  page: front-matter;
+  break-before: page;
+}
+
+@page front-matter {
+  @top-right { content: ""; }
+}
+
+
 /* ---- Base typography ----------------------------------------------- */
 
 html {

@@ -1,26 +1,80 @@
 # Chapter manifest for the twinBASIC documentation PDF.
 #
-# `parts` is an ordered list of book parts. Each part has:
+# `front_matter` is an ordered list of sections that emit between the
+# title page and the first numbered Part. No divider page, no part
+# number; each entry just contributes its chapter(s) inline. Each
+# entry has:
+#   title    -- the conceptual section name (used by future TOC and as
+#               the anchor seed when the URL would otherwise produce an
+#               empty anchor, e.g. the root `/` page).
+#   page     -- single absolute URL (alternative to `prefixes`); use
+#               when the section is exactly one page (the root index).
+#   prefixes -- URL-prefix list (alternative to `page`); same shape as
+#               on a numbered part.
+#
+# `parts` is an ordered list of numbered book parts. Each part has:
 #   title    -- shown on the part divider page and in the global TOC.
 #   subtitle -- optional second-line descriptor on the divider.
 #   prefixes -- one or more URL prefixes; the book.html iterator gathers
 #               every page in `site.pages` whose URL starts with one of
 #               them, sorted by URL, and emits each as a chapter.
+#   page     -- single absolute URL alternative to `prefixes`, used for
+#               one-chapter parts (e.g. the FAQ). Match is exact, not
+#               prefix-based, so a one-page section doesn't accidentally
+#               sweep in siblings.
 #
 # Index pages (URL ending in `/`) sort before sibling content pages
 # under ASCII lexicographic order, so each part naturally opens with
 # its package landing page followed by the individual symbols.
 
+front_matter:
+  - title: Introduction
+    page: /
+
 parts:
+  - title: Features
+    subtitle: Language additions, attributes, tooling, and packaging
+    prefixes:
+      - /Features/
+
+  - title: Frequently Asked Questions
+    subtitle: Status, scope, and how to get help
+    page: /FAQ
+
+  - title: Tutorials
+    subtitle: Worked examples for CEF, WebView2, and CustomControls
+    prefixes:
+      - /Tutorials/
+
   - title: The Core Language
     subtitle: Statements, operators, and built-in keywords
     prefixes:
       - /tB/Core/
 
+  - title: Reference Section
+    subtitle: Alphabetical indexes of statements, operators, and compiler constants, plus the project glossary
+    # The live site has a top-level "Reference Section" nav item that groups
+    # these alphabetical-index pages. The five Reference/* pages plus the
+    # Controls table and the Glossary live at three different URL prefixes;
+    # `contains`-match catches all of them. (Attributes also belongs here in
+    # the live nav but its permalink is /tB/Core/Attributes, which the Core
+    # part above already sweeps up; we leave it there rather than introduce
+    # an excludes schema for one page.)
+    prefixes:
+      - /Reference
+      - /tB/Controls
+      - /tB/Gloss
+
   - title: The VBA Runtime
     subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
+    # The VBA package landing page lives at /tB/Packages/VBA (added when
+    # Packages was promoted to a top-level nav item in the live site),
+    # while individual module members keep their legacy /tB/Modules/...
+    # URLs. Both prefixes are listed so the landing page and the module
+    # contents end up in the same Part.
     prefixes:
       - /tB/Modules/
+      - /tB/Packages/VBA
 
   - title: The VBRUN Package
     subtitle: Runtime types for controls, errors, and the property bag

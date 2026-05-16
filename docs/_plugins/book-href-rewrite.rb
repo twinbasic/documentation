@@ -33,8 +33,18 @@ module BookHrefRewrite
 
   # `url.gsub('/', '-').sub(/^-/, '').sub(/-$/, '')` then prepend "ch-".
   # Matches the chapter anchor scheme established in BOOKPLAN.md 1.5b.
-  def self.chapter_anchor(url)
-    "ch-" + url.gsub("/", "-").sub(/\A-/, "").sub(/-\z/, "")
+  #
+  # The root URL `/` collapses to an empty path under the default
+  # derivation; fall back to a slug of `fallback_title` (the matching
+  # book.yml entry's `title:`) so the anchor reads `ch-introduction`
+  # instead of just `ch-`. book.html applies the same fallback for
+  # front-matter chapters at `/`.
+  def self.chapter_anchor(url, fallback_title = nil)
+    seed = url.gsub("/", "-").sub(/\A-/, "").sub(/-\z/, "")
+    if seed.empty? && fallback_title && !fallback_title.empty?
+      seed = fallback_title.downcase.gsub(" ", "-")
+    end
+    "ch-" + seed
   end
 
   # Parent URL for the chapter -- the URL itself when it already ends
@@ -44,22 +54,56 @@ module BookHrefRewrite
     url.end_with?("/") ? url : url.sub(/[^\/]+\z/, "")
   end
 
+  # Iterates the book manifest's front-matter entries followed by its
+  # parts so both contribute to the chapter map. Each entry behaves
+  # the same way as far as URL gathering goes.
+  def self.book_entries(site)
+    manifest = site.data["book"]
+    return [] unless manifest
+    (manifest["front_matter"] || []) + (manifest["parts"] || [])
+  end
+
+  # Pages matched by a single book.yml entry. Supports either
+  # `page:` (exact URL match, for one-chapter sections like the FAQ
+  # or the root index) or `prefixes:` (starts-with match per prefix,
+  # the original schema).
+  def self.entry_pages(entry, site)
+    if entry["page"]
+      site.pages.select { |p| p.url == entry["page"] }
+    elsif entry["prefixes"]
+      entry["prefixes"].flat_map do |prefix|
+        site.pages.select { |p| p.url.start_with?(prefix) }
+      end
+    else
+      []
+    end
+  end
+
   # Build the permalink -> chapter-anchor map. Folder-style index
   # pages (URL ending in '/') also get an alt entry without the
   # trailing slash, since source authors sometimes drop it
   # (`[CheckBox](../CheckBox)` instead of `[CheckBox](../CheckBox/)`)
   # and the PDF can't rely on the live site's trailing-slash redirect.
+  #
+  # The `.html` suffix is also symmetrized: pages without explicit
+  # `permalink:` frontmatter end up at `/X.html`, while pages with
+  # an explicit permalink usually end up at `/X` (no extension).
+  # Source markdown is inconsistent about which form it writes in
+  # links, and the live site smooths over the mismatch with server
+  # config the PDF doesn't have. Adding both the `/X` and `/X.html`
+  # forms to the map covers it.
   def self.build_url_to_anchor(site)
     map = {}
-    manifest = site.data["book"]
-    return map unless manifest && manifest["parts"]
-    manifest["parts"].each do |part|
-      (part["prefixes"] || []).each do |prefix|
-        site.pages.each do |page|
-          next unless page.url.start_with?(prefix)
-          anchor = chapter_anchor(page.url)
-          map[page.url] = anchor
-          map[page.url.chomp("/")] = anchor if page.url.end_with?("/")
+    book_entries(site).each do |entry|
+      entry_pages(entry, site).each do |page|
+        anchor = chapter_anchor(page.url, entry["title"])
+        map[page.url] = anchor
+        if page.url.end_with?("/")
+          map[page.url.chomp("/")] = anchor
+        elsif page.url.end_with?(".html")
+          map[page.url.sub(/\.html\z/, "")] = anchor
+        else
+          map[page.url + ".html"] = anchor
         end
       end
     end
@@ -73,14 +117,9 @@ module BookHrefRewrite
   # the anchor was derived from.
   def self.build_anchor_to_parent(site)
     map = {}
-    manifest = site.data["book"]
-    return map unless manifest && manifest["parts"]
-    manifest["parts"].each do |part|
-      (part["prefixes"] || []).each do |prefix|
-        site.pages.each do |page|
-          next unless page.url.start_with?(prefix)
-          map[chapter_anchor(page.url)] = parent_url_of(page.url)
-        end
+    book_entries(site).each do |entry|
+      entry_pages(entry, site).each do |page|
+        map[chapter_anchor(page.url, entry["title"])] = parent_url_of(page.url)
       end
     end
     map
