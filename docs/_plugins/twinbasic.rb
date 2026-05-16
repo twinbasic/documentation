@@ -72,6 +72,7 @@ module Rouge
         rule %r(
             [#]If\b .*? \bThen
           | [#]ElseIf\b .*? \bThen
+          | [#]Else\b
           | [#]End \s+ If
           | [#]Const
           | [#]Region .*? \n
