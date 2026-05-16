@@ -1,6 +1,7 @@
 ---
 title: VbVarType
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbVarType
 redirect_from:
 - /tB/Core/VbVarType

@@ -1,6 +1,6 @@
 ---
 title: SupportsMnemonics
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/SupportsMnemonics
 ---
 # SupportsMnemonics

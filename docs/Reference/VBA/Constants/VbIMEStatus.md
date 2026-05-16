@@ -1,6 +1,7 @@
 ---
 title: VbIMEStatus
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbIMEStatus
 redirect_from:
 - /tB/Core/VbIMEStatus

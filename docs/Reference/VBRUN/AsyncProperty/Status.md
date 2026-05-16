@@ -1,6 +1,6 @@
 ---
 title: Status
-parent: AsyncProperty Module
+parent: AsyncProperty
 permalink: /tB/Packages/VBRUN/AsyncProperty/Status
 ---
 # Status

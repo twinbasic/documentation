@@ -1,6 +1,6 @@
 ---
 title: BackColor
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/BackColor
 ---
 # BackColor

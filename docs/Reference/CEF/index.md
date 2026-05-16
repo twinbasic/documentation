@@ -1,7 +1,6 @@
 ---
 title: CEF Package
 parent: Packages
-grand_parent: Reference Section
 nav_order: 6
 permalink: /tB/Packages/CEF/
 has_toc: false

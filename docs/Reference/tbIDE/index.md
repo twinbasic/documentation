@@ -1,7 +1,6 @@
 ---
 title: tbIDE Package
 parent: Packages
-grand_parent: Reference Section
 nav_order: 11
 permalink: /tB/Packages/tbIDE/
 has_toc: false

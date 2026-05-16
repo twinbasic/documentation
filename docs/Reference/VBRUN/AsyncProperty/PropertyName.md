@@ -1,6 +1,6 @@
 ---
 title: PropertyName
-parent: AsyncProperty Module
+parent: AsyncProperty
 permalink: /tB/Packages/VBRUN/AsyncProperty/PropertyName
 ---
 # PropertyName

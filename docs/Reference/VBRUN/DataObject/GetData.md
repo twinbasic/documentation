@@ -1,6 +1,6 @@
 ---
 title: GetData
-parent: DataObject Module
+parent: DataObject
 permalink: /tB/Packages/VBRUN/DataObject/GetData
 ---
 # GetData

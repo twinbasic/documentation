@@ -1,6 +1,6 @@
 ---
 title: BytesMax
-parent: AsyncProperty Module
+parent: AsyncProperty
 permalink: /tB/Packages/VBRUN/AsyncProperty/BytesMax
 ---
 # BytesMax

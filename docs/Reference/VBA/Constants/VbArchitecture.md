@@ -1,6 +1,7 @@
 ---
 title: VbArchitecture
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbArchitecture
 redirect_from:
 - /tB/Core/VbArchitecture

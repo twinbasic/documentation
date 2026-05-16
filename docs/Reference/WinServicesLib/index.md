@@ -1,7 +1,6 @@
 ---
 title: WinServicesLib Package
 parent: Packages
-grand_parent: Reference Section
 nav_order: 10
 permalink: /tB/Packages/WinServicesLib/
 has_toc: false

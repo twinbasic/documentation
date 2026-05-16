@@ -1,6 +1,6 @@
 ---
 title: UserMode
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/UserMode
 ---
 # UserMode

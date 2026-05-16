@@ -1,6 +1,7 @@
 ---
 title: VbMsgBoxStyle
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbMsgBoxStyle
 redirect_from:
 - /tB/Core/VbMsgBoxStyle

@@ -1,6 +1,6 @@
 ---
 title: ShowGrabHandles
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/ShowGrabHandles
 ---
 # ShowGrabHandles

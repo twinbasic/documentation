@@ -1,6 +1,6 @@
 ---
 title: Updating a Package
-parent: Packages
+parent: Package Management
 grand_parent: Features
 nav_order: 4
 permalink: /Features/Packages/Updating

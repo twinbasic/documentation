@@ -1,6 +1,7 @@
 ---
 title: VbCompareMethod
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbCompareMethod
 redirect_from:
 - /tB/Core/VbCompareMethod

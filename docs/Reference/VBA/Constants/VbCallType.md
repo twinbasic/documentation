@@ -1,6 +1,7 @@
 ---
 title: VbCallType
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbCallType
 redirect_from:
 - /tB/Core/VbCallType

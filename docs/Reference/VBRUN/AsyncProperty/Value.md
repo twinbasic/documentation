@@ -1,6 +1,6 @@
 ---
 title: Value
-parent: AsyncProperty Module
+parent: AsyncProperty
 permalink: /tB/Packages/VBRUN/AsyncProperty/Value
 ---
 # Value

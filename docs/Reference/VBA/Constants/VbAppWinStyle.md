@@ -1,6 +1,7 @@
 ---
 title: VbAppWinStyle
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbAppWinStyle
 redirect_from:
 - /tB/Core/VbAppWinStyle

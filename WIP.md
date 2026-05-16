@@ -443,6 +443,11 @@ build.bat && check.bat
 
 Requires `build.bat` to have produced an up-to-date `_site/`.
 
+The build itself includes an additional guard: `_plugins/nav-integrity-check.rb` runs during the GENERATE phase and aborts the build if any nav-visible page has a `parent:` (or `parent:` + `grand_parent:`) that does not resolve to exactly one page in the nav tree. It catches two failure modes:
+
+- **Ambiguity** — multiple pages share the title declared in `parent:` and `grand_parent:` is either absent or insufficient to disambiguate. The page would silently appear under every matching parent.
+- **Orphan** — no page has the title declared in `parent:`. The page would silently disappear from the navigation sidebar.
+
 ## Repository Use
 
 Favor concise one-line git commit messages.

@@ -1,6 +1,6 @@
 ---
 title: UIDead
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/UIDead
 ---
 # UIDead

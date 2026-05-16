@@ -1,6 +1,6 @@
 ---
 title: RightToLeft
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/RightToLeft
 ---
 # RightToLeft

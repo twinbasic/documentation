@@ -1,6 +1,7 @@
 ---
 title: VbStrConv
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbStrConv
 redirect_from:
 - /tB/Core/VbStrConv

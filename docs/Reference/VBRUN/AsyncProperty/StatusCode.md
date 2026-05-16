@@ -1,6 +1,6 @@
 ---
 title: StatusCode
-parent: AsyncProperty Module
+parent: AsyncProperty
 permalink: /tB/Packages/VBRUN/AsyncProperty/StatusCode
 ---
 # StatusCode

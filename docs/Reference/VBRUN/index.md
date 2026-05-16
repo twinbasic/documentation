@@ -1,7 +1,6 @@
 ---
 title: VBRUN Package
 parent: Packages
-grand_parent: Reference Section
 nav_order: 3
 permalink: /tB/Packages/VBRUN/
 has_toc: false

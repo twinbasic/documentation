@@ -1,6 +1,6 @@
 ---
 title: Palette
-parent: AmbientProperties Module
+parent: AmbientProperties
 permalink: /tB/Packages/VBRUN/AmbientProperties/Palette
 ---
 # Palette
