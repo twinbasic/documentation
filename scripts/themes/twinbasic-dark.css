@@ -1,331 +1,200 @@
-/* twinBASIC Dark theme - syntax highlighting colors */
+/* twinBASIC Dark theme - Rouge syntax highlighting */
+/* Selectors are the Rouge HTML formatter classes emitted by docs/_plugins/twinbasic.rb. */
 
-.SymbolAttribute {
-  color: #5c5c53;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolBuiltInDataType {
-  color: #b1551f;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolClass {
-  color: #e4c685;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolComment {
+.c1 {  /* SymbolComment — ' comments and REM */
   color: #448a63;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolConditionalCompilationDirective {
+.cm {  /* SymbolComment — C-style block comments */
+  color: #448a63;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.cp {  /* SymbolConditionalCompilationDirective — #If / #ElseIf / #Else / #End If / #Const / #Region */
   color: #ad8c98;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolConditionalCompilationExcludedCode {
-  color: #989599;
-  font-style: oblique;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolConstant {
-  color: #6089b4;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolContinuationCharacter {
-  color: #808080;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolDeclareFunction {
-  color: #bb956a;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolDeclareSub {
-  color: #bb956a;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolEnum {
-  color: #738dc5;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolEnumMember {
-  color: #a1adc7;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolField {
-  color: #f59e1b;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolFunction {
-  color: #cf9a5d;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolGenericDataType {
-  color: #eeda83;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolGenericValue {
-  color: #86ee83;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolGlobalVariablePrivate {
-  color: #f38096;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolGlobalVariablePublic {
-  color: #d34056;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolInterface {
-  color: #ab3b4d;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolKeyword {
+.k {  /* SymbolKeyword — Dim, If, End, Sub, ... */
   color: #6c8eda;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLateBoundFunction {
-  color: #e7ac5f;
+.kd {  /* SymbolKeyword — Option Strict / Explicit / Compare / Base */
+  color: #6c8eda;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLibrary {
-  color: #bb6464;
+.kt {  /* SymbolBuiltInDataType — Boolean, Integer, String, ... */
+  color: #b1551f;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLineLabel {
-  color: #ccc6be;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: underline;
-}
-
-.SymbolLineNumber {
-  color: #ccc6be;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: underline;
-}
-
-.SymbolLiteralBoolean {
+.lb {  /* SymbolLiteralBoolean — True, False */
   color: #c495d3;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLiteralDate {
+.lc {  /* SymbolContinuationCharacter — '_' line-continuation marker */
+  color: #808080;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.ld {  /* SymbolLiteralDate — #m/d/yyyy [h:mm:ss am/pm]# date-time literals */
   color: #c495d3;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLiteralEmpty {
+.le {  /* SymbolLiteralEmpty — Empty */
   color: #c495d3;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLiteralNothing {
+.ln {  /* SymbolLiteralNothing — Nothing */
   color: #c495d3;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLiteralNull {
+.lu {  /* SymbolLiteralNull — Null */
   color: #c495d3;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLiteralNumeric {
+.mi {  /* SymbolLiteralNumeric — integer literals */
   color: #aeca89;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolLiteralString {
+.mf {  /* SymbolLiteralNumeric — float literals */
+  color: #aeca89;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.s {  /* SymbolLiteralString — string literals */
   color: #aeca89;
   font-style: oblique;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolMe {
-  color: #a13838;
-  font-style: normal;
+.se {  /* SymbolLiteralString — "" escape inside string literals */
+  color: #aeca89;
+  font-style: oblique;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolModule {
-  color: #a8a887;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolMultiLineSeperator {
-  color: #74384c;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolNamedArgument {
-  color: #74384c;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolNamedOperator {
+.o {  /* SymbolOperator — +, -, =, <, >, &, ... */
   color: #80a1a5;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolOperator {
+.ow {  /* SymbolNamedOperator — And, Or, Not, Is, Mod, ... */
   color: #80a1a5;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolParamByRef {
-  color: #9b79b3;
+.na {  /* SymbolAttribute — [Documentation(...)] attribute names */
+  color: #5c5c53;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolParamByVal {
-  color: #9b79b3;
+.nb {  /* SymbolClass — Debug, Err */
+  color: #e4c685;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolPropertyGet {
-  color: #864f0f;
+.nc {  /* SymbolClass — Class / CoClass / Enum / Interface / Type / Structure names */
+  color: #e4c685;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolPropertyLet {
-  color: #864f0f;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolPropertySet {
-  color: #864f0f;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolReturnValue {
-  color: #ee8391;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
-.SymbolSub {
+.nf {  /* SymbolFunction — Function / Sub / Property names */
   color: #cf9a5d;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolUDT {
-  color: #a5630d;
+.nn {  /* SymbolModule — Module / Namespace / Imports targets */
+  color: #a8a887;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolVariable {
+.nv {  /* SymbolVariable — Dim / Const / ReDim variable names */
   color: #8b8b52;
   font-style: normal;
   font-weight: normal;
   text-decoration: none;
 }
 
-.SymbolVariableUndeclared {
-  color: #b9929c;
-  font-style: normal;
-  font-weight: normal;
-  text-decoration: none;
-}
-
+/* tB Symbols with no dedicated Rouge class in twinbasic.rb: */
+/*   SymbolConditionalCompilationExcludedCode — not tokenized — would need preproc evaluation */
+/*   SymbolConstant — not distinguished from Name */
+/*   SymbolDeclareFunction — not distinguished from Keyword .k */
+/*   SymbolDeclareSub — not distinguished from Keyword .k */
+/*   SymbolEnum — folded into Name::Class .nc */
+/*   SymbolEnumMember — not distinguished from Name */
+/*   SymbolField — not distinguished from Name */
+/*   SymbolGenericDataType — not tokenized */
+/*   SymbolGenericValue — not tokenized */
+/*   SymbolGlobalVariablePrivate — not distinguished from Name */
+/*   SymbolGlobalVariablePublic — not distinguished from Name */
+/*   SymbolInterface — folded into Name::Class .nc */
+/*   SymbolLateBoundFunction — not distinguished from Name */
+/*   SymbolLibrary — not distinguished from Name */
+/*   SymbolLineLabel — not tokenized */
+/*   SymbolLineNumber — not tokenized */
+/*   SymbolMe — folded into Keyword .k */
+/*   SymbolMultiLineSeperator — not tokenized */
+/*   SymbolNamedArgument — not tokenized */
+/*   SymbolParamByRef — not tokenized */
+/*   SymbolParamByVal — not tokenized */
+/*   SymbolPropertyGet — folded into Keyword .k */
+/*   SymbolPropertyLet — folded into Keyword .k */
+/*   SymbolPropertySet — folded into Keyword .k */
+/*   SymbolReturnValue — not tokenized */
+/*   SymbolSub — folded into Name::Function .nf */
+/*   SymbolUDT — folded into Name::Class .nc */
+/*   SymbolVariableUndeclared — not distinguished from Name */
