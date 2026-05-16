@@ -1,0 +1,200 @@
+/* twinBASIC Light theme - Rouge syntax highlighting */
+/* Selectors are the Rouge HTML formatter classes emitted by docs/_plugins/twinbasic.rb. */
+
+.c1 {  /* SymbolComment — ' comments and REM */
+  color: #448a63;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.cm {  /* SymbolComment — C-style block comments */
+  color: #448a63;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.cp {  /* SymbolConditionalCompilationDirective — #If / #ElseIf / #Else / #End If / #Const / #Region */
+  color: #ad8c98;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.k {  /* SymbolKeyword — Dim, If, End, Sub, ... */
+  color: #385ba9;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.kd {  /* SymbolKeyword — Option Strict / Explicit / Compare / Base */
+  color: #385ba9;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.kt {  /* SymbolBuiltInDataType — Boolean, Integer, String, ... */
+  color: #b1551f;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.lb {  /* SymbolLiteralBoolean — True, False */
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.lc {  /* SymbolContinuationCharacter — '_' line-continuation marker */
+  color: #808080;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.ld {  /* SymbolLiteralDate — #m/d/yyyy [h:mm:ss am/pm]# date-time literals */
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.le {  /* SymbolLiteralEmpty — Empty */
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.ln {  /* SymbolLiteralNothing — Nothing */
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.lu {  /* SymbolLiteralNull — Null */
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.mi {  /* SymbolLiteralNumeric — integer literals */
+  color: #457e12;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.mf {  /* SymbolLiteralNumeric — float literals */
+  color: #457e12;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.s {  /* SymbolLiteralString — string literals */
+  color: #679f1e;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.se {  /* SymbolLiteralString — "" escape inside string literals */
+  color: #679f1e;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.o {  /* SymbolOperator — +, -, =, <, >, &, ... */
+  color: #80a1a5;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.ow {  /* SymbolNamedOperator — And, Or, Not, Is, Mod, ... */
+  color: #385ba9;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.na {  /* SymbolAttribute — [Documentation(...)] attribute names */
+  color: #bfbfbf;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.nb {  /* SymbolClass — Debug, Err */
+  color: #a87300;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.nc {  /* SymbolClass — Class / CoClass / Enum / Interface / Type / Structure names */
+  color: #a87300;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.nf {  /* SymbolFunction — Function / Sub / Property names */
+  color: #b96300;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.nn {  /* SymbolModule — Module / Namespace / Imports targets */
+  color: #89894d;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.nv {  /* SymbolVariable — Dim / Const / ReDim variable names */
+  color: #939000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+/* tB Symbols with no dedicated Rouge class in twinbasic.rb: */
+/*   SymbolConditionalCompilationExcludedCode — not tokenized — would need preproc evaluation */
+/*   SymbolConstant — not distinguished from Name */
+/*   SymbolDeclareFunction — not distinguished from Keyword .k */
+/*   SymbolDeclareSub — not distinguished from Keyword .k */
+/*   SymbolEnum — folded into Name::Class .nc */
+/*   SymbolEnumMember — not distinguished from Name */
+/*   SymbolField — not distinguished from Name */
+/*   SymbolGenericDataType — not tokenized */
+/*   SymbolGenericValue — not tokenized */
+/*   SymbolGlobalVariablePrivate — not distinguished from Name */
+/*   SymbolGlobalVariablePublic — not distinguished from Name */
+/*   SymbolInterface — folded into Name::Class .nc */
+/*   SymbolLateBoundFunction — not distinguished from Name */
+/*   SymbolLibrary — not distinguished from Name */
+/*   SymbolLineLabel — not tokenized */
+/*   SymbolLineNumber — not tokenized */
+/*   SymbolMe — folded into Keyword .k */
+/*   SymbolMultiLineSeperator — not tokenized */
+/*   SymbolNamedArgument — not tokenized */
+/*   SymbolParamByRef — not tokenized */
+/*   SymbolParamByVal — not tokenized */
+/*   SymbolPropertyGet — folded into Keyword .k */
+/*   SymbolPropertyLet — folded into Keyword .k */
+/*   SymbolPropertySet — folded into Keyword .k */
+/*   SymbolReturnValue — not tokenized */
+/*   SymbolSub — folded into Name::Function .nf */
+/*   SymbolUDT — folded into Name::Class .nc */
+/*   SymbolVariableUndeclared — not distinguished from Name */

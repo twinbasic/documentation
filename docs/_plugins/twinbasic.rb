@@ -3,6 +3,22 @@
 
 require "rouge"
 
+# Register tB-specific token types so the highlighter can distinguish symbols
+# the way the twinBASIC IDE's theme system does -- e.g. Boolean / Empty /
+# Nothing / Null are each their own slot in tB's Symbol* palette, and the
+# line-continuation '_' has its own SymbolContinuationCharacter colour.
+module Rouge::Token::Tokens
+  [
+    [Literal,     :Boolean,          'lb'],
+    [Literal,     :Empty,            'le'],
+    [Literal,     :Nothing,          'ln'],
+    [Literal,     :Null,             'lu'],
+    [Punctuation, :LineContinuation, 'lc'],
+  ].each do |parent, name, shortname|
+    parent.token(name, shortname) unless parent.const_defined?(name, false)
+  end
+end
+
 module Rouge
   module Lexers
     class TwinBasic < RegexLexer
@@ -17,18 +33,28 @@ module Rouge
         @keywords ||= Set.new %w(
           alias byref byval call case class close coclass const
           continue declare default delegate dim do each else elseif
-          empty end endif enum erase error event exit extends
-          false finally for friend function get global gosub
+          end endif enum erase error event exit extends
+          finally for friend function get global gosub
           goto handles if implements imports inherits input interface
           let lib line lock loop me mid module
-          namespace new next nothing null of on open option optional
+          namespace new next of on open option optional
           overloads paramarray preserve print private property public
           put raiseevent redim resume return select set
           shared static step stop structure sub
-          then throw to true try type unlock until
+          then throw to try type unlock until
           using wend when while width
           with withevents write
         )
+      end
+
+      def self.keyword_constants
+        @keyword_constants ||= {
+          'true'    => Literal::Boolean,
+          'false'   => Literal::Boolean,
+          'empty'   => Literal::Empty,
+          'nothing' => Literal::Nothing,
+          'null'    => Literal::Null,
+        }
       end
 
       def self.keywords_type
@@ -54,7 +80,7 @@ module Rouge
       id = /[a-z_]\w*/i
 
       state :whitespace do
-        rule %r/_[ \t]*\n/, Keyword
+        rule %r/_[ \t]*\n/, Punctuation::LineContinuation
         rule %r/\n/, Text, :bol
         rule %r/[^\S\n]+/, Text
         rule %r/rem\b.*?$/i, Comment::Single
@@ -72,11 +98,14 @@ module Rouge
         rule %r(
             [#]If\b .*? \bThen
           | [#]ElseIf\b .*? \bThen
+          | [#]Else\b
           | [#]End \s+ If
           | [#]Const
           | [#]Region .*? \n
           | [#]End \s+ Region
         )xi, Comment::Preproc
+
+        rule %r/#\d[^#\n]*#/, Literal::Date
 
         rule %r/\[/, Punctuation, :attribute
 
@@ -103,7 +132,9 @@ module Rouge
 
         rule id do |m|
           key = m[0].downcase
-          if self.class.keywords.include? key
+          if (kc = self.class.keyword_constants[key])
+            token kc
+          elsif self.class.keywords.include? key
             token Keyword
           elsif self.class.keywords_type.include? key
             token Keyword::Type
@@ -157,7 +188,9 @@ module Rouge
         rule %r/\d+[%&!#@]?/, Num::Integer
         rule id do |m|
           key = m[0].downcase
-          if self.class.keywords.include? key
+          if (kc = self.class.keyword_constants[key])
+            token kc
+          elsif self.class.keywords.include? key
             token Keyword
           elsif self.class.keywords_type.include? key
             token Keyword::Type
