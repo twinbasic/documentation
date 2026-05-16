@@ -62,9 +62,13 @@ Modernized GUI components featuring:
 - 64-bit support and DPI awareness
 - New controls (QR Code, Multiframe, CheckMark)
 
-### [Packages](Packages/)
+### [Package Management](Packages/)
+
+twinBASIC[^1] has a centralized package repository, called TWINSERV. Users can publish both public and private packages. Package browsing, downloading, and publishing is seamlessly integrated into the IDE.
 
 Packages are collections of components that can be referenced from another twinBASIC project. They are distributed as TWINPACK files that contains everything needed by the components in that package.
+
+[^1]: A service of TWINBASIC LLC offered to the user community.
 
 ### [Advanced Features](Advanced/)
 
