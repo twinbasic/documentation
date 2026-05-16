@@ -44,7 +44,22 @@ sitemap: false
 {%- for section in site.data.book.sections -%}
   {%- assign chapters = site.pages | where_exp: "p", "p.url contains section" | sort: "url" -%}
   {%- for chapter in chapters -%}
-    {%- assign body = chapter.content
+    {%- comment -%}
+      Jekyll's `chapter.content` returns rendered HTML for pages whose
+      Renderer#run has already converted them, but raw markdown for
+      pages whose conversion happens after book.html's. The state is a
+      function of Jekyll's internal rendering order and not stable
+      across builds. Detect by leading character and markdownify when
+      we still have raw source -- kramdown's `parse_block_html: true`
+      passes pre-rendered HTML through unchanged.
+    {%- endcomment -%}
+    {%- assign first_char = chapter.content | strip | slice: 0, 1 -%}
+    {%- if first_char == '<' -%}
+      {%- assign body = chapter.content -%}
+    {%- else -%}
+      {%- assign body = chapter.content | markdownify -%}
+    {%- endif -%}
+    {%- assign body = body
         | replace: 'src="/', 'src="'
         | replace: p1_search, p1_replace
         | replace: p2_search, p2_replace
