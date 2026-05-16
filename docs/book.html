@@ -78,6 +78,34 @@ sitemap: false
 {%- endcomment -%}
 {%- assign roman = "I,II,III,IV,V,VI,VII,VIII,IX,X,XI,XII,XIII,XIV,XV,XVI,XVII,XVIII,XIX,XX" | split: "," -%}
 
+{%- comment -%}
+  1.3: title page. Front-matter page 1 -- book title, subtitle, build
+  provenance (Jekyll's site.time + the git commit captured by the
+  build-info plugin into site.data.build), copyright. CSS pins it to a
+  named `title` page so the running header and page number are
+  suppressed (see print.css).
+{%- endcomment -%}
+<section class="title-page" id="title-page">
+  <div class="title-block">
+    <h1 class="book-title">twinBASIC Documentation</h1>
+    <p class="book-subtitle">Reference Manual &amp; Tutorials</p>
+  </div>
+  <div class="title-footer">
+{%- assign build_commit = site.data.build.commit | default: 'unknown' -%}
+{%- assign build_commit_date = site.data.build.commit_date | default: 'unknown' -%}
+{%- if build_commit != 'unknown' -%}
+{%- if build_commit_date != 'unknown' -%}
+    <p class="build-info">Built {{ site.time | date: "%-d %B %Y" }} from commit {{ build_commit }} ({{ build_commit_date }}).</p>
+{%- else -%}
+    <p class="build-info">Built {{ site.time | date: "%-d %B %Y" }} from commit {{ build_commit }}.</p>
+{%- endif -%}
+{%- else -%}
+    <p class="build-info">Built {{ site.time | date: "%-d %B %Y" }}.</p>
+{%- endif %}
+    <p class="copyright-line">{{ site.footer_content }}</p>
+  </div>
+</section>
+
 {%- for part in site.data.book.parts -%}
 <article class="part-divider" id="pt-{{ forloop.index }}">
   <p class="part-number">Part {{ roman[forloop.index0] }}</p>

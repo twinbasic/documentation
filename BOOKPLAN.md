@@ -390,7 +390,7 @@ Verify that, with the whitespace fix in place, code blocks that span page bounda
 
 ## Open questions
 
-- **Edition / build provenance** — does the title page show a build date (regenerated every build) or a release version (only updated by hand)? Build date is the right default for a continuously-built doc set; release version makes more sense once there's a release cadence.
+- **Edition / build provenance** — resolved in 1.3 as build date + short commit hash + commit date, sourced from `site.time` and the `_plugins/build-info.rb` plugin. Switch to a release version once there's a release cadence.
 - **Part order** — current `_data/book.yml` order is Core → VBA → VBRUN → VB → WebView2 → Assert → CustomControls → CEF → WinEventLogLib → WinNamedPipesLib → WinServicesLib → tbIDE → WinNativeCommonCtls. Reasonable as-is. Could group the three winlibs together (they share idioms; see WIP.md) and pull tbIDE to the end since it's the addin SDK rather than user-facing runtime.
 - **Anchor stability** — path-style anchors break if a permalink is renamed. The redirect_from system in source pages handles this for the live site but not for the book. Acceptable tradeoff because the book is rebuilt every time anyway.
 - **Front-matter page numbering** — title / colophon / TOC are typically Roman numerals (i, ii, iii), then Arabic from page 1 of Part I. Optional polish; matters for citation but not for reading.
@@ -404,7 +404,7 @@ Each phase is roughly 1-2 hours of work for me; ~1 working day end-to-end. Recom
 1. Phase 1 — structural framing. Largest visible change.
    1.1 schema upgrade. **Done.**
    1.2 part divider pages. **Done.**
-   1.3 title page.
+   1.3 title page. **Done.**
    1.4 colophon page.
    1.5 heading hierarchy shift + heading-id uniqueness. **Done.**
    1.6 sub-page nesting under index chapters.

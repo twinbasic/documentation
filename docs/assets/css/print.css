@@ -27,9 +27,13 @@
   }
 }
 
-/* First page of each chapter: drop the running header (the H1 is right there). */
+/* Page 1 of the document is the title page (book.html emits it before any
+   article). Suppress both the running header and the page number on it --
+   traditional title-page convention. `:first` here is the document's first
+   page, not the first page of each chapter. */
 @page :first {
-  @top-right { content: ""; }
+  @top-right    { content: ""; }
+  @bottom-right { content: ""; }
 }
 
 
@@ -60,9 +64,43 @@ article.page > .header-string {
   overflow: hidden;
 }
 
-/* The very first article has nothing in front of it. */
-article:first-of-type {
-  break-before: avoid;
+/* ---- Title page (front matter, page 1) ------------------------------
+   Emitted by book.html as the first element in <body>, so it lands on
+   page 1 without any forced break. Chrome (running header + page number)
+   is blanked through the document-level `@page :first` rule above.
+   The book title sits a little below vertical centre; build provenance
+   and copyright pad down to the page bottom. */
+
+section.title-page {
+  text-align: center;
+  padding-top: 60mm;
+  break-after: page;
+}
+
+section.title-page .book-title {
+  font-size: 36pt;
+  font-weight: 700;
+  border: none;
+  line-height: 1.1;
+  margin: 0 0 0.4em;
+  break-after: avoid;
+}
+
+section.title-page .book-subtitle {
+  font-size: 16pt;
+  font-style: italic;
+  color: #444;
+  margin: 0;
+}
+
+section.title-page .title-footer {
+  margin-top: 130mm;
+  font-size: 9pt;
+  color: #555;
+}
+
+section.title-page .title-footer p {
+  margin: 0.3em 0;
 }
 
 
