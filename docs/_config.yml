@@ -72,6 +72,9 @@ callouts:
 #   - vendor/gems/
 #   - vendor/ruby/
 
+redirect_from:
+  json: false
+
 # For copy button on code
 enable_copy_code_button: true
 
@@ -145,8 +148,6 @@ offline_exclude:
   - CNAME
   - robots.txt
   - sitemap.xml
-  - redirects.json
-  - "*.bat"
 
 # Excludes for both the build (Jekyll won't try to process these as
 # source) and the watcher (`jekyll serve` won't trigger a rebuild
@@ -156,3 +157,5 @@ offline_exclude:
 # rebuild loop. Keep this in sync with also_build_offline above.
 exclude:
   - _site-offline
+  - redirects.json
+  - "*.bat"
