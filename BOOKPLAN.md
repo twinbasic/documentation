@@ -28,6 +28,7 @@ Touch points and what each one already exposes:
 - [docs/_plugins/build-info.rb](docs/_plugins/build-info.rb) — captures `git rev-parse --short HEAD` and `git log -1 --format=%cs` into `site.data['build']` on `:site, :post_read`. Falls back to `'unknown'` placeholders when git isn't on PATH.
 - [docs/_plugins/build-phase-timing.rb](docs/_plugins/build-phase-timing.rb) — the cleanest hook-pattern example to copy when writing a new `_plugins/` file (uses every `:site, :hook` boundary).
 - [docs/_plugins/offlinify.rb](docs/_plugins/offlinify.rb) — the offline-site link rewriter; reference example for build-time concerns tightly coupled to Jekyll's URL model.
+- [docs/_plugins/book-href-rewrite.rb](docs/_plugins/book-href-rewrite.rb) — post-render Ruby pass for Phase 2.2 cross-references. Walks each `<article id="ch-...">` chapter body in the rendered `book.html`, resolves relative-path hrefs against the chapter's URL parent via `URI.merge` (RFC-3986 path normalization comes from the standard library — no manual `../` folding), and rewrites in-book absolute URLs to `#ch-...` anchors using a `Hash` map built from `_data/book.yml` + `site.pages`. Out-of-book hrefs emit in their resolved absolute form so they're greppable as `href="/..."` during verification. Hooked into `:pages, :post_render` and filtered to `page.path == "book.html"`; non-book pages incur no cost. Replaces an earlier in-template Liquid implementation (~21 s of render overhead vs ~50 ms here).
 - [docs/book.bat](docs/book.bat) — invokes `bundle exec jekyll build --config _config.yml,_config-pdf.yml || exit /b` then `npx pagedjs-cli _site-pdf\book.html -o _pdf\book.pdf --outline-tags h1,h2,h3,h4 -t 600000`. Must be run from `cmd.exe`, not PowerShell (see gotchas).
 
 ## Build-time tooling policy
@@ -41,7 +42,8 @@ Concretely for the PDF book:
 - Git-derived build info (commit hash, commit date) → Jekyll plugin (`_plugins/build-info.rb`) that populates `site.data.build` on `:site, :post_read`. Not a pre-build Python step writing `_data/build.yml`.
 - Chapter manifest → `_data/book.yml` (committed source of truth, hand-edited).
 - Title page, colophon, TOC content → Liquid in `book.html` and the layouts.
-- Heading rewrites and href rewrites → Liquid (existing approach in `book.html`).
+- Heading rewrites → Liquid (existing approach in `book.html`). Per-chapter, one-shot, fast.
+- Cross-reference href rewrites → Jekyll plugin (`_plugins/book-href-rewrite.rb`), running on `:pages, :post_render`. The first cut was inline Liquid; the per-(chapter × permalink) loop burned ~21 s of render even after pre-computing per-permalink search/replace strings and gating each permalink on a common-prefix `contains`, vs ~50 ms in Ruby. Rule of thumb: use Liquid for per-chapter shaping; reach for a plugin when the work is N × M with large N and M.
 
 The carve-out in WIP.md for `_plugins/offlinify.rb` is the same shape: build-time concerns tightly coupled to Jekyll's internal model belong in `_plugins/`, not in an external script.
 
@@ -63,6 +65,8 @@ Cumulative discoveries from earlier phases. Read before starting a new task — 
 - **`Open3.capture2` + `Errno::ENOENT` is the right pattern for shell-outs.** See `_plugins/build-info.rb` for the shape — captures exit status, falls back to a sentinel string on `git` not found.
 - **Liquid renders raw HTML entities verbatim through `{{ ... }}`.** `site.footer_content` contains `&copy;` and is emitted as-is by `{{ site.footer_content }}` — no `escape` filter needed.
 - **`{{ site.data.X.Y | default: 'unknown' }}`** is the cleanest way to read a plugin-populated value: returns the fallback if either the data file or the key is missing, so the template doesn't need nil-guards.
+- **`:pages, :post_render` lets you mutate `page.output` in place.** Fires after Liquid + layout have rendered the page but before Jekyll writes it. Cheaper than `:site, :post_write` because there's no re-read from disk and you don't have to track which destination tree to touch. Filter to a specific page with `page.path == "name.html"`; the hook fires for every page otherwise. Used by `_plugins/book-href-rewrite.rb` to rewrite only `book.html` after its chapter-collation Liquid has finished.
+- **`URI.merge` does RFC-3986 path normalization in the standard library.** When you need to resolve a relative href like `../X`, `./X`, `.#frag`, or `..` against a base path inside Ruby, wrap the base as `URI("http://x" + base_path)` (dummy scheme + host so the parser is happy), parse the ref as `URI(ref)`, and call `base.merge(ref)`. `merged.path` gives the normalized absolute path; `merged.fragment` peels off the `#...` suffix. Saves writing — and re-debugging — manual `../` folding plus the bare-dot edge cases.
 
 ### Build environment
 
@@ -325,6 +329,8 @@ Build a parallel-arrays map in book.html before the chapter loop: one array of a
 
 Liquid lacks dict literals; the lookup is `array | index_of: url` (or `where_exp` for the typed variants). Tractable, just verbose.
 
+**Implementation.** Landed first as a Liquid pre-pass in `book.html` building parallel `book_permalinks` / `book_anchors` arrays, with `where_exp` matching `forloop.index0` for lookup. Iterated through three perf passes — pre-computing per-permalink search/replace strings in the pre-pass (Option A, ~10 s saved), gating each permalink's inner block on a common-prefix `contains` check (Option B, ~6 s more), and finally lifting the entire map into Ruby. It now lives in `_plugins/book-href-rewrite.rb` as a `Hash` built from `_data/book.yml` and `site.pages` inside `:pages, :post_render`. The Liquid scaffolding is gone; `book.html` carries only a pointer comment.
+
 ### 2.2 Rewrite chapter-content href attributes
 
 For each chapter body, after markdownify, the inter-span whitespace replacements, and the 1.5 heading rewrites:
@@ -336,6 +342,12 @@ For each chapter body, after markdownify, the inter-span whitespace replacements
 A simpler escape hatch for the relative-resolution step: for each chapter, compute its "URL parent" (everything up to and including the last `/` of its permalink). Prepend that to every `<a href>` that doesn't start with `http`, `mailto`, `#`, or `/`. Then apply the absolute-URL → anchor replacement.
 
 Bracket the work — Phase 2 still has the most "this works on paper but Liquid will hurt" risk because of the relative-path resolution. Heading uniqueness moving to 1.5 takes the riskiest piece (cross-chapter id collision) off Phase 2's plate.
+
+**Implementation.** Both the relative-path resolution and the map lookup live in `_plugins/book-href-rewrite.rb`. The plugin walks each `<article id="ch-...">` in the rendered `book.html` with one regex pass, resolves each href with `URI.merge` (RFC-3986 path normalization from the standard library — no manual `../` folding, no bare-dot / `.#frag` special cases to maintain), and rewrites in-book hits to `href="#ch-<anchor>"` (or `href="#ch-<anchor>-<frag>"` when the href carries a fragment). Out-of-book misses emit the resolved absolute URL so they're greppable as `href="/..."` during verification — both forms are dead in the PDF reader either way, and matching the prior in-template behavior keeps the build byte-comparable.
+
+Folder-style index pages get a no-trailing-slash entry in the map alongside the canonical trailing-slash form. Source authors are inconsistent about the trailing slash on links to folder-style classes (`[CheckBox](../CheckBox)` instead of `[CheckBox](../CheckBox/)`) and the PDF build can't rely on the live site's redirect machinery to fix it post hoc.
+
+The plan's "Liquid will hurt" guess was correct — three rounds of in-template optimization (per-permalink string pre-computation, common-prefix gate `contains`, byte-equivalent output) shaved ~17 s but plateaued at ~3.6 s above the pre-2.2 baseline. The Ruby plugin closes the rest: ~50 ms of `gsub` over ~700 chapters and ~5800 in-book rewrites, with the rest of the prior overhead (Liquid filter dispatch) gone entirely. Build wall is now ~7 s — under the pre-2.2 baseline, because removing the 2.1/2.2 Liquid scaffolding also bought back some unrelated render time.
 
 ### Verification
 
@@ -448,6 +460,8 @@ Each phase is roughly 1-2 hours of work for me; ~1 working day end-to-end. Recom
    1.5 heading hierarchy shift + heading-id uniqueness. **Done.**
    1.6 sub-page nesting under index chapters.
 2. Phase 2 — cross-references. Largest navigation improvement.
+   2.1 permalink → anchor map. **Done.** (Folded into the `_plugins/book-href-rewrite.rb` `Hash`.)
+   2.2 rewrite chapter-content href attributes. **Done.** (Plugin pass; ~50 ms over ~5800 rewrites.)
 3. Phase 3 — global TOC. Builds on Phase 2.
 4. Phase 4 — polish. Small independent fixes.
 
