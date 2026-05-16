@@ -17,6 +17,6 @@ tB will eventually replace all built in controls that you're used to, for now th
 
 ## Alternatives for Unimplemented Controls
 
-The best option is Krool's VBCCR and VBFlexGrid projects. These are now available [from the Package Server](../../Packages/Importing-TWINSERV/) in x64-compatible form, and are also DPI aware and support Visual Styles.
+The best option is Krool's VBCCR and VBFlexGrid projects. These are now available [from the Package Server](../../Packages/Importing-TWINSERV) in x64-compatible form, and are also DPI aware and support Visual Styles.
 
 Additionally, the original OCX controls provided by Microsoft will work fine; however, they're mostly 32-bit only. The x64 version of `MSComCtl.ocx` doesn't come with Windows and isn't legally redistributable but if you have Office 64bit, it works in tB.
