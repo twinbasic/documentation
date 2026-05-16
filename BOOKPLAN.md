@@ -22,6 +22,21 @@ or `book.bat`. Touch points:
 - [docs/_data/book.yml](docs/_data/book.yml) — the manifest book.html iterates over. Currently a flat `sections:` list of URL prefixes.
 - [docs/_config-pdf.yml](docs/_config-pdf.yml) — overlay config that switches the default layout to `book` and the output directory to `_site-pdf`.
 
+## Build-time tooling policy
+
+**Anything that participates in rendering the book or the online / offline site is handled by Jekyll** — Liquid templates, includes, layouts, data files (`_data/*.yml`), and Ruby plugins under `_plugins/`. The book is a Jekyll output; its build provenance, manifest, cross-references, and page assembly all live in the Jekyll pipeline.
+
+Python scripts are reserved for non-render concerns: one-off content conversion (`scripts/convert_em_dash_separators.py`), repo audits, developer tooling, anything that runs *outside* a Jekyll build. They must never be a prerequisite for `bundle exec jekyll build` or `book.bat` — those commands should remain self-contained.
+
+Concretely for the PDF book:
+
+- Git-derived build info (commit hash, commit date) → Jekyll plugin (`_plugins/build-info.rb`) that populates `site.data.build` on `:site, :after_reset`. Not a pre-build Python step writing `_data/build.yml`.
+- Chapter manifest → `_data/book.yml` (committed source of truth, hand-edited).
+- Title page, colophon, TOC content → Liquid in `book.html` and the layouts.
+- Heading rewrites and href rewrites → Liquid (existing approach in `book.html`).
+
+The carve-out in WIP.md for `_plugins/offlinify.rb` is the same shape: build-time concerns tightly coupled to Jekyll's internal model belong in `_plugins/`, not in an external script.
+
 ## Phase 1 — Structural framing
 
 Goal: cover → colophon → Part I divider → Part I chapters → Part II divider → … reads like a book's table of contents shape even before a real TOC exists.
@@ -77,10 +92,14 @@ Front-matter page 1. A single `<section class="title-page">` with:
 
 - The book title — "twinBASIC Documentation".
 - A subtitle line — "Reference Manual & Tutorials".
-- The build date and short commit hash, sourced from `site.time` and a `git` shell-out captured into a Jekyll data file (or hard-coded in `book.yml`).
-- Copyright/attribution line.
+- The build date and short commit hash. Build date comes from `site.time` (Jekyll's build timestamp). Git provenance is captured by a small Jekyll plugin (`_plugins/build-info.rb`) into `site.data.build` on the `:site, :after_reset` hook, exposing `site.data.build.commit` and `site.data.build.commit_date`. The plugin falls back to `'unknown'` placeholders when git isn't available so the template renders cleanly without conditional gymnastics on a missing data file.
+- Copyright/attribution line. Sourced from `site.footer_content` in `_config.yml` so the title page and the regular-site footer stay in lock-step.
+
+CSS: pin the section to a named `@page title` so both the running header (`@top-right`) and the page-number footer (`@bottom-right`) are blank on this page — traditional title-page convention. `section.title-page { break-after: page; }` pushes the first part divider onto page 2. The previously-needed `article:first-of-type { break-before: avoid; }` rule is removed in this phase: the title page is now the first content in the document, and the first article (part divider) wants the default forced break.
 
 Image (logo) optional — `docs/favicon.png` exists but is small. A larger source asset would be nice but is not blocking.
+
+Build-time scripting: capturing git info via a Jekyll plugin (rather than a Python pre-build script that writes a YAML data file) is the rule for *anything that participates in the render*, online or PDF — see "Build-time tooling policy" below.
 
 ### 1.4 Colophon page
 

@@ -420,7 +420,9 @@ WIP.md itself (and other files outside `docs/`) is not part of the Jekyll site a
 
 ## Scripts and tooling
 
-Any new helper script (content conversion, link checks beyond `check.bat`, etc.) should be written in **Python**. Do not add new Ruby code to this repo. The only Ruby allowed is the existing Jekyll/`just-the-docs` build chain (`Gemfile`, `Gemfile.lock`, `_plugins/`) — that stays as-is. The one carve-out is `_plugins/offlinify.rb`, the link rewriter that powers the offline build (see [Build / preview](#build--preview)); future build-time concerns that are tightly coupled to Jekyll's internal model may go there too, but anything that can stand alone should still be Python.
+**Anything that participates in rendering the online site, the offline site, or the PDF book is handled by Jekyll** — Liquid templates, includes, layouts, data files (`_data/*.yml`), and Ruby plugins under `_plugins/`. Build-time concerns tightly coupled to Jekyll's internal model (URL knowledge, page model, render order, `site.data` injection) belong in a `_plugins/*.rb` plugin. Existing examples: `_plugins/offlinify.rb` (the offline-site link rewriter) and `_plugins/build-info.rb` (the git commit-hash capture that stamps the PDF title page). Adding a Python pre-build step that writes a YAML file into `_data/` and then invokes Jekyll is **not** the way — `bundle exec jekyll build` and `book.bat` must remain self-contained.
+
+Python scripts are reserved for non-render concerns: one-off content conversion (e.g. `scripts/convert_em_dash_separators.py`), repo audits, dev tooling, link checks beyond `check.bat`, anything that runs *outside* a Jekyll build. They should never be a prerequisite for the render pipeline.
 
 ## Build / preview
 
