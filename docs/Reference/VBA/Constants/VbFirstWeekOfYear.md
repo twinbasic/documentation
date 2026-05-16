@@ -1,6 +1,7 @@
 ---
 title: VbFirstWeekOfYear
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbFirstWeekOfYear
 redirect_from:
 - /tB/Core/VbFirstWeekOfYear

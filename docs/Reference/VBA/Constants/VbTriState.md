@@ -1,6 +1,7 @@
 ---
 title: VbTriState
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbTriState
 redirect_from:
 - /tB/Core/VbTriState

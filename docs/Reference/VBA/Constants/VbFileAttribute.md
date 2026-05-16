@@ -1,6 +1,7 @@
 ---
 title: VbFileAttribute
 parent: Constants Module
+grand_parent: VBA Package
 permalink: /tB/Modules/Constants/VbFileAttribute
 redirect_from:
 - /tB/Core/VbFileAttribute
