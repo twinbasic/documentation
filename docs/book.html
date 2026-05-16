@@ -336,6 +336,153 @@ sitemap: false
         | replace: '<h7-stub class="no_toc" id="', h7_class_prefix
         | replace: '<h7-stub id="',                h7_prefix
         | replace: 'href="#',                      href_prefix -%}
+
+    {%- comment -%}
+      2.2: cross-reference rewrites. After 1.5b every chapter heading
+      has a unique `id="ch-<chapter>-..."` and the chapter article
+      carries the bare `id="ch-<chapter>"`. This pass walks the body's
+      outgoing hrefs, resolves any relative form to an absolute
+      permalink, and looks the absolute up in the 2.1 map -- on hit,
+      rewrites the href to `#ch-<anchor>` (or `#ch-<anchor>-<frag>` for
+      a heading fragment); on miss, leaves the href as-is.
+
+      Compute the chapter's URL parent plus N levels up so relative
+      paths can be resolved without real RFC-3986 normalization in
+      Liquid. parent_url is the chapter's permalink rounded down to its
+      containing directory (the URL itself when it already ends in
+      `/`); parent_upN is N segments shallower. The clamp keeps a
+      chapter near the root from generating a negative slice length.
+      Depth 5 is one more than the maximum `../../../../` observed in
+      the source.
+    {%- endcomment -%}
+    {%- assign url_last_char = chapter.url | slice: -1, 1 -%}
+    {%- if url_last_char == '/' -%}
+      {%- assign parent_url = chapter.url -%}
+    {%- else -%}
+      {%- assign url_segs = chapter.url | split: '/' -%}
+      {%- assign url_segs_drop_last = url_segs.size | minus: 1 -%}
+      {%- assign parent_url = url_segs | slice: 0, url_segs_drop_last | join: '/' | append: '/' -%}
+    {%- endif -%}
+    {%- assign parent_segs = parent_url | split: '/' -%}
+    {%- assign parent_n = parent_segs.size -%}
+    {%- assign up1_n = parent_n | minus: 1 -%}
+    {%- if up1_n < 1 -%}{%- assign up1_n = 1 -%}{%- endif -%}
+    {%- assign up2_n = parent_n | minus: 2 -%}
+    {%- if up2_n < 1 -%}{%- assign up2_n = 1 -%}{%- endif -%}
+    {%- assign up3_n = parent_n | minus: 3 -%}
+    {%- if up3_n < 1 -%}{%- assign up3_n = 1 -%}{%- endif -%}
+    {%- assign up4_n = parent_n | minus: 4 -%}
+    {%- if up4_n < 1 -%}{%- assign up4_n = 1 -%}{%- endif -%}
+    {%- assign up5_n = parent_n | minus: 5 -%}
+    {%- if up5_n < 1 -%}{%- assign up5_n = 1 -%}{%- endif -%}
+    {%- assign parent_up1 = parent_segs | slice: 0, up1_n | join: '/' | append: '/' -%}
+    {%- assign parent_up2 = parent_segs | slice: 0, up2_n | join: '/' | append: '/' -%}
+    {%- assign parent_up3 = parent_segs | slice: 0, up3_n | join: '/' | append: '/' -%}
+    {%- assign parent_up4 = parent_segs | slice: 0, up4_n | join: '/' | append: '/' -%}
+    {%- assign parent_up5 = parent_segs | slice: 0, up5_n | join: '/' | append: '/' -%}
+
+    {%- assign rep_self = 'href="' | append: parent_url -%}
+    {%- assign rep_up1  = 'href="' | append: parent_up1 -%}
+    {%- assign rep_up2  = 'href="' | append: parent_up2 -%}
+    {%- assign rep_up3  = 'href="' | append: parent_up3 -%}
+    {%- assign rep_up4  = 'href="' | append: parent_up4 -%}
+    {%- assign rep_up5  = 'href="' | append: parent_up5 -%}
+    {%- assign rep_dot_alone    = 'href="' | append: parent_url | append: '"' -%}
+    {%- assign rep_dotdot_alone = 'href="' | append: parent_up1 | append: '"' -%}
+    {%- assign rep_dot_hash     = 'href="' | append: parent_url | append: '#' -%}
+
+    {%- comment -%}
+      Bare-dot forms (no slash) plus the `.#frag` composer. The two
+      alone variants match the closing `"` so they don't collide with
+      the longer prefix-with-slash patterns that the next chain
+      consumes (`href="./X"`, `href="../X"`, ...).
+    {%- endcomment -%}
+    {%- assign body = body
+        | replace: 'href=".#',  rep_dot_hash
+        | replace: 'href="."',  rep_dot_alone
+        | replace: 'href=".."', rep_dotdot_alone -%}
+
+    {%- comment -%}
+      Path-prefix forms; deepest first so a 4-segment pattern isn't
+      half-eaten by a shallower one. Each replacement collapses the
+      leading `../` run into the corresponding ancestor URL.
+    {%- endcomment -%}
+    {%- assign body = body
+        | replace: 'href="../../../../../', rep_up5
+        | replace: 'href="../../../../',    rep_up4
+        | replace: 'href="../../../',       rep_up3
+        | replace: 'href="../../',          rep_up2
+        | replace: 'href="../',             rep_up1
+        | replace: 'href="./',              rep_self -%}
+
+    {%- comment -%}
+      Bare relatives (sibling chapters; e.g. `href="Add"`). Guard the
+      href forms we don't want to touch by breaking the `href="` prefix
+      with a sentinel, run a blanket replace that prepends parent_url
+      to every remaining `href="`, then restore the guarded prefixes.
+      The sentinel avoids the substring overlap a same-text marker
+      would introduce.
+    {%- endcomment -%}
+    {%- assign rep_bare = 'href="' | append: parent_url -%}
+    {%- assign body = body
+        | replace: 'href="http',    'HREFGRD_http'
+        | replace: 'href="mailto:', 'HREFGRD_mailto:'
+        | replace: 'href="#',       'HREFGRD_#'
+        | replace: 'href="/',       'HREFGRD_/'
+        | replace: 'href="',        rep_bare
+        | replace: 'HREFGRD_',      'href="' -%}
+
+    {%- comment -%}
+      Map lookup: each in-book permalink in book_permalinks gets its
+      absolute-href occurrences rewritten to the matching `#ch-` anchor
+      in book_anchors. Two forms per permalink -- exact (whole link is
+      one chapter) and fragment (the heading on that chapter; 1.5b
+      already prefixed every heading id with the chapter anchor, so
+      appending `-` after the rewrite stitches the suffix on correctly).
+      Out-of-map absolute hrefs are left as-is and surface as broken
+      `file://`-style links in the PDF, per the plan.
+
+      Folder-style index pages have permalinks ending in `/` (e.g.
+      `/tB/Packages/VB/CheckBox/`), but source markdown sometimes drops
+      the trailing slash (`[CheckBox](../CheckBox)`). The live site
+      tolerates that via server-side trailing-slash redirects; the PDF
+      build can't. For each trailing-slash permalink we also rewrite
+      the no-slash variant so source-side inconsistency doesn't leave
+      dead links.
+
+      The outer `contains` guard skips the loop entirely when no
+      absolute hrefs survived the relative-resolution chain; the inner
+      `contains` guards avoid the allocation cost of a no-op replace
+      against ~700 non-matching permalinks per chapter.
+    {%- endcomment -%}
+    {%- if body contains 'href="/' -%}
+      {%- for permalink in book_permalinks -%}
+        {%- assign hreplace_exact = 'href="#' | append: book_anchors[forloop.index0] | append: '"' -%}
+        {%- assign hreplace_frag  = 'href="#' | append: book_anchors[forloop.index0] | append: '-' -%}
+        {%- assign hsearch_exact = 'href="' | append: permalink | append: '"' -%}
+        {%- if body contains hsearch_exact -%}
+          {%- assign body = body | replace: hsearch_exact, hreplace_exact -%}
+        {%- endif -%}
+        {%- assign hsearch_frag = 'href="' | append: permalink | append: '#' -%}
+        {%- if body contains hsearch_frag -%}
+          {%- assign body = body | replace: hsearch_frag, hreplace_frag -%}
+        {%- endif -%}
+        {%- assign perm_last = permalink | slice: -1, 1 -%}
+        {%- if perm_last == '/' -%}
+          {%- assign perm_noslash_size = permalink.size | minus: 1 -%}
+          {%- assign permalink_noslash = permalink | slice: 0, perm_noslash_size -%}
+          {%- assign hsearch_alt_exact = 'href="' | append: permalink_noslash | append: '"' -%}
+          {%- if body contains hsearch_alt_exact -%}
+            {%- assign body = body | replace: hsearch_alt_exact, hreplace_exact -%}
+          {%- endif -%}
+          {%- assign hsearch_alt_frag = 'href="' | append: permalink_noslash | append: '#' -%}
+          {%- if body contains hsearch_alt_frag -%}
+            {%- assign body = body | replace: hsearch_alt_frag, hreplace_frag -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+
     {%- comment -%}
       Running header source. Every chapter emits a hidden
       `<span class="header-string">` as its first child; CSS pins
