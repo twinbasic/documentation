@@ -90,7 +90,11 @@ Front-matter page 2. Pulls together:
 - The CC-BY-4.0 attribution that VBA-derived pages currently emit via `_includes/footer_custom.html`. Promote it to a single book-wide notice.
 - Build provenance — Jekyll version, pagedjs-cli version, the `commit-hash@date` from 1.3.
 
-### 1.5 Heading hierarchy shift
+### 1.5 Heading hierarchy shift + heading-id uniqueness
+
+This phase has two coupled responsibilities; both work on the same Liquid pass over chapter content. Folding them together avoids walking the same body string twice.
+
+#### 1.5a Heading depth shift
 
 Today every chapter's first heading is `<h1>` because each source page's `# Title` becomes a top-level heading. In a book this should be `<h2>` so the Part divider's `<h1>` is the only H1 per part.
 
@@ -112,54 +116,59 @@ Mechanism: a Liquid pass in book.html that downgrades headings inside each chapt
 
 `h6` becomes a placeholder tag because there's no `h7`; the placeholder gets styled like `h6` would have been, or simply stripped. Verify which kramdown depths actually appear before deciding — most reference pages stop at `### Subsection`.
 
-print.css updates:
+#### 1.5b Heading-id uniqueness (fixes outline-bookmark collapse)
+
+kramdown auto-generates heading ids from heading text via a slugify rule. Every chapter has `id="see-also"`, `id="example"`, and other names that recur across chapters. Two consequences:
+
+- The PDF outline produced by `pagedjs-cli --outline-tags h1,h2,h3` references heading ids; multiple identical ids collapse to the first occurrence in document order, so every "See Also" bookmark jumps to chapter 1's See Also rather than the chapter the reader was browsing.
+- Phase 2's cross-reference rewriting needs unique anchors per heading anyway — doing it once, here, sets that up.
+
+Fix: rewrite every `id="..."` in chapter content to `id="ch-<chapter-anchor>-<original-id>"`, where `<chapter-anchor>` is derived from the chapter's permalink (e.g. `tB-Packages-VBRUN-DataObject-SetData`). The first heading of each chapter (now `<h2>` after 1.5a) carries the chapter-level anchor `id="ch-<chapter-anchor>"` by convention — strip the redundant `-<original-id>` suffix for the first heading only.
+
+Intra-chapter local links must be rewritten in lock-step. Patterns like `[**Count**](#count)` inside the same chapter render as `<a href="#count">`; after the rewrite, `#count` collides with whatever happens to be Chapter 1's count anchor. Solution: as part of the same Liquid pass, prefix every `href="#..."` in the chapter body the same way — `href="#ch-<chapter-anchor>-count"`.
+
+Both rewrites are mechanical text substitutions over the chapter body string, no parsing required.
+
+#### print.css updates
 
 - `string-set: chapter-title content()` moves from `h1:first-of-type` to `h2:first-of-type`.
-- `break-before: page` moves likewise.
-- `article.page:first-of-type > h1:first-of-type { break-before: avoid; }` becomes `… > h2:first-of-type`.
-- The "first chapter of a part" rule needs `break-before: avoid` on `.part-divider + article.page > h2:first-of-type` so the first chapter doesn't add a redundant page break after the divider.
+- `break-before: page` already lives on `article` (moved there in 1.2) — no change.
+- The "first chapter of a part" rule needs `break-before: avoid` on `article.page:first-of-type > h2:first-of-type` once chapter headings are h2.
 
 ### Verification
 
-Render the PDF. Page 1 is the title page, page 2 is the colophon, page 3 is "Part I: The Core Language", page 4 onwards is Core chapters starting with the existing first Core page (currently AddressOf operator). Running header on chapter pages shows the chapter title; absent on divider pages and the title/colophon pages.
+- Render the PDF. Page 1 is the title page, page 2 is the colophon, page 3 is the global TOC opener, then "Part I: The Core Language" divider, then Core chapters starting with AddressOf operator. Running header on chapter pages shows the chapter title; absent on divider pages and the title/colophon pages.
+- Open the PDF outline. Parts are H1-level entries; chapters are nested H2-level under their part; sub-sections nested H3-level under their chapter. No duplicate "See Also" entries collapsing to one destination.
+- Click the second "See Also" bookmark in the outline; confirm it jumps to the chapter that owns it, not chapter 1's See Also.
+- Click an intra-chapter link (e.g. inside the AddressOf operator page, the body links to `#count` for a `Count` member); confirm the jump lands in the same chapter, not a different chapter's `Count`.
+
+### Outline-width tradeoff
+
+`--outline-tags h1,h2,h3` over 13 parts × 698 chapters × ~3 subsections each gives an outline of roughly 2700 entries. Acceptable in PDF readers but the sidebar is busy. If the user finds it overwhelming once unique ids are in place, switch the CLI flag to `--outline-tags h1,h2` to bookmark only parts and chapter titles. That's a single-flag tweak in `book.bat`, reversible per-render.
 
 ## Phase 2 — In-PDF cross-references
 
 Goal: clicking "[SetData](SetData)" inside a "See Also" jumps to the SetData chapter in the PDF, not to `file://.../tB/Packages/VBRUN/DataObject/SetData.html`.
 
-### 2.1 Permalink → in-book anchor map
+After 1.5b, every chapter heading already carries a unique `id="ch-<chapter-anchor>-..."` and the chapter-title heading carries the bare `id="ch-<chapter-anchor>"`. Phase 2 is the inverse direction: rewrite the chapter body's outgoing `href`s to point at those ids.
 
-In book.html, before the chapter loop, build a Liquid map from each chapter's resolved URL to a stable in-book anchor ID.
+### 2.1 Permalink → anchor map
 
-Two ID-format choices:
+Build a parallel-arrays map in book.html before the chapter loop: one array of absolute permalinks (`/tB/Packages/VBRUN/DataObject/SetData`), one array of chapter anchors (`ch-tB-Packages-VBRUN-DataObject-SetData`). The map is derived from the same iteration that emits chapters in 1.5, so it's free — no extra pass over `site.pages`.
 
-- **Counter-style**: `ch-0001`, `ch-0002`, … assigned in iteration order. Compact; opaque; survives URL rewrites. Easier to debug if the count is reasonable.
-- **Path-style**: derive from the permalink, e.g. `/tB/Packages/VBRUN/DataObject/SetData` → `ch-tB-Packages-VBRUN-DataObject-SetData`. Debuggable; long; reveals structure.
+Liquid lacks dict literals; the lookup is `array | index_of: url` (or `where_exp` for the typed variants). Tractable, just verbose.
 
-Path-style is the better default — debugging "why does this link not resolve" is much easier when the anchor name is readable.
+### 2.2 Rewrite chapter-content href attributes
 
-Build the map by iterating the same `chapters` collection book.html already iterates, capturing `{ url → anchor_id }` in a Liquid object. Liquid doesn't have hash literals, so we use parallel arrays (`urls`, `anchors`) and `array | index_of: url`. Alternative: emit each chapter with a known-format `id=` and let the cross-reference rewrite logic re-derive it from the href target.
+For each chapter body, after markdownify, the inter-span whitespace replacements, and the 1.5 heading rewrites:
 
-### 2.2 Inject the anchor onto each chapter's first heading
-
-Right before `<h2>` (the chapter title after Phase 1's hierarchy shift), prepend `<a id="ch-..."></a>` or splice `id="ch-..."` into the `<h2>` tag itself. Splicing is cleaner — no empty `<a>`.
-
-### 2.3 Rewrite chapter-content href attributes
-
-For each chapter body, after markdownify and the inter-span whitespace replacements:
-
-- Find `<a href="X">` patterns where `X` doesn't start with `http`, `mailto:`, `#`, or `/`.
+- Find `<a href="X">` patterns where `X` doesn't start with `http`, `mailto:`, or `#` (the `#`-anchor rewrite already happened in 1.5 for intra-chapter links).
 - Resolve `X` against the chapter's own URL (so `<a href="../VBRUN/Constants">` from a VBA page resolves to `/tB/Packages/VBRUN/Constants`).
-- Look up the resolved URL in the permalink → anchor map. On hit, rewrite to `<a href="#ch-...">`. On miss, leave alone (probably broken markdown or a link to a page that didn't make it into the book).
+- Look up the resolved URL in the permalink → anchor map. On hit, rewrite to `<a href="#ch-...">`. On miss, leave alone (probably broken markdown or a link to a page that didn't make it into the book — flag during verification).
 
-Liquid can do this with `replace` but the relative-path resolution is the hard part. Options:
+A simpler escape hatch for the relative-resolution step: for each chapter, compute its "URL parent" (everything up to and including the last `/` of its permalink). Prepend that to every `<a href>` that doesn't start with `http`, `mailto`, `#`, or `/`. Then apply the absolute-URL → anchor replacement.
 
-- Pre-build a flat regex of `(absolute-URL) → anchor` and replace per chapter, after first rewriting the relative `<a href>`s to absolute. This is tractable if we know the chapter's `permalink` prefix.
-- Or generate the absolute hrefs at source time via a small Jekyll filter, but that needs Ruby and is excluded.
-
-A simpler escape hatch: in Liquid, for each chapter, compute its "URL parent" (everything up to and including the last `/` of its permalink). Pre-pend that to every `<a href>` that doesn't start with `http`, `mailto`, `#`, or `/`. Then apply the absolute-URL → anchor replacement.
-
-Bracket the work — Phase 2 has the most "this works on paper but Liquid will hurt" risk.
+Bracket the work — Phase 2 still has the most "this works on paper but Liquid will hurt" risk because of the relative-path resolution. Heading uniqueness moving to 1.5 takes the riskiest piece (cross-chapter id collision) off Phase 2's plate.
 
 ### Verification
 

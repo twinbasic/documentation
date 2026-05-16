@@ -41,7 +41,25 @@ sitemap: false
 {%- assign p4_search   = '</span>'            | append: nl | append: '<span'                                         -%}
 {%- assign p4_replace  = '</span><span class="w">' | append: nl | append: '</span><span'                             -%}
 
+{%- comment -%}
+  Roman numerals for part numbering. Liquid has no built-in; a flat
+  array keyed by `forloop.index0` is the cheapest implementation and
+  covers up to 20 parts.
+{%- endcomment -%}
+{%- assign roman = "I,II,III,IV,V,VI,VII,VIII,IX,X,XI,XII,XIII,XIV,XV,XVI,XVII,XVIII,XIX,XX" | split: "," -%}
+
 {%- for part in site.data.book.parts -%}
+<article class="part-divider">
+  <p class="part-number">Part {{ roman[forloop.index0] }}</p>
+  <h1>{{ part.title }}</h1>
+{%- if part.subtitle -%}
+  {%- assign subtitle_html = part.subtitle | markdownify | remove: '<p>' | remove: '</p>' | strip %}
+  <p class="part-subtitle">{{ subtitle_html }}</p>
+{%- endif -%}
+{%- if part.intro %}
+  <div class="part-intro">{{ part.intro | markdownify }}</div>
+{%- endif %}
+</article>
   {%- for prefix in part.prefixes -%}
     {%- assign chapters = site.pages | where_exp: "p", "p.url contains prefix" | sort: "url" -%}
     {%- for chapter in chapters -%}
@@ -66,7 +84,9 @@ sitemap: false
         | replace: p2_search, p2_replace
         | replace: p3_search, p3_replace
         | replace: p4_search, p4_replace
-        | replace: '</span> <span', '</span><span class="w"> </span><span' %}
+        | replace: '</span> <span', '</span><span class="w"> </span><span' -%}
+    {%- assign stripped = body | strip -%}
+    {%- if stripped == "" -%}{%- continue -%}{%- endif %}
 <article class="page">
 {{ body }}
 </article>

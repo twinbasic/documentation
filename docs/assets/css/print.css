@@ -35,14 +35,72 @@
 
 /* ---- Chapter boundaries --------------------------------------------- */
 
-article.page > h1:first-of-type {
-  string-set: chapter-title content();
+/* One page break per article. Putting `break-before: page` on the
+   article itself (rather than on its h1) avoids the stacking-blank
+   issue where pagedjs honours an article-level break AND an inner
+   h1-level break separately. */
+article {
   break-before: page;
 }
 
-/* Don't force a page break before the very first chapter. */
-article.page:first-of-type > h1:first-of-type {
+article.page > h1:first-of-type {
+  string-set: chapter-title content();
+}
+
+/* The very first article has nothing in front of it. */
+article:first-of-type {
   break-before: avoid;
+}
+
+
+/* ---- Part divider pages ---------------------------------------------
+   One <article class="part-divider"> is emitted per part in book.yml.
+   Each gets its own page; the running header is suppressed via the
+   named `divider` page; the page number stays in @bottom-right so the
+   eventual TOC can target the divider correctly. */
+
+article.part-divider {
+  page: divider;
+  text-align: center;
+  padding-top: 35%;
+}
+
+article.part-divider .part-number {
+  font-size: 14pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #555;
+  margin: 0 0 1.2em;
+}
+
+article.part-divider h1 {
+  font-size: 32pt;
+  font-weight: 700;
+  border: none;
+  margin: 0 0 0.4em;
+  break-before: auto;
+  break-after: avoid;
+  line-height: 1.15;
+}
+
+article.part-divider .part-subtitle {
+  font-size: 14pt;
+  font-style: italic;
+  color: #444;
+  margin: 0 0 2em;
+}
+
+article.part-divider .part-intro {
+  max-width: 32em;
+  margin: 2em auto 0;
+  text-align: left;
+  font-size: 10.5pt;
+  color: #333;
+}
+
+@page divider {
+  @top-right { content: ""; }
 }
 
 
