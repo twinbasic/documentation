@@ -1,18 +1,23 @@
 """Extract Symbol* syntax-highlighting properties from twinBASIC IDE .theme files
-and emit Rouge-compatible CSS.
+and emit Rouge-compatible CSS/SCSS.
 
-Produces three CSS files in scripts/themes/ — twinbasic-classic.css,
-twinbasic-dark.css, twinbasic-light.css. Each rule uses the Rouge HTML
-formatter class (e.g. .k, .nc, .cp) that docs/_plugins/twinbasic.rb emits
-for that token, with the colors and font properties taken from the
-corresponding tB theme Symbol.
+Two outputs per run:
+
+1. scripts/themes/twinbasic-{classic,dark,light}.css -- flat CSS for inspection.
+   One rule per Rouge HTML formatter class (e.g. .k, .nc, .cp) that
+   docs/_plugins/twinbasic.rb emits, with colors and font properties taken
+   from the corresponding tB theme Symbol.
+
+2. docs/_sass/custom/_twinbasic-{light,dark}.scss -- SCSS partials shipped in
+   the site, scoped under `.language-tb .highlight` so they only repaint
+   fenced ```tb``` code blocks and leave OneLight/OneDark untouched on every
+   other language. Classic is inspection-only (no SCSS).
 
 The mapping is many-to-one: several tB theme Symbols share a single Rouge
-class because the lexer doesn't distinguish them (e.g. SymbolMe,
-SymbolLiteralBoolean, SymbolLiteralNothing all fall under Rouge Keyword .k
-alongside SymbolKeyword). The mapping below picks the canonical tB Symbol
-per Rouge class; the unmapped Symbols are listed at the bottom of each
-emitted file for reference.
+class because the lexer doesn't distinguish them (e.g. SymbolSub folds into
+.nf alongside SymbolFunction). The mapping below picks the canonical tB
+Symbol per Rouge class; the unmapped Symbols are listed at the bottom of
+each emitted file for reference.
 
 The Classic theme inherits from Light and overrides a subset; the script
 resolves the inheritance so the emitted CSS reflects the effective theme.
@@ -23,7 +28,9 @@ import re
 from pathlib import Path
 
 THEMES_DIR = Path(os.environ["USERPROFILE"]) / "Desktop" / "twinBASIC_IDE_BETA_982" / "themes"
-OUT_DIR = Path(__file__).resolve().parent / "themes"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+CSS_OUT_DIR = REPO_ROOT / "scripts" / "themes"
+SCSS_OUT_DIR = REPO_ROOT / "docs" / "_sass" / "custom"
 
 CSS_PROP = {
     "Color": "color",
@@ -137,6 +144,29 @@ def render_css(theme: dict[str, dict[str, str]], header: str) -> str:
     return "".join(out)
 
 
+def render_scss(theme: dict[str, dict[str, str]], header: str) -> str:
+    out = [f"/* {header} */\n"]
+    out.append("/* Selectors are the Rouge HTML formatter classes emitted by docs/_plugins/twinbasic.rb. */\n")
+    out.append("/* Scoped under .language-tb .highlight so they only repaint tB fenced code blocks. */\n\n")
+    out.append(".language-tb .highlight {\n")
+
+    rules = []
+    for rouge, sym, comment in ROUGE_TO_SYMBOL:
+        props = theme.get(sym)
+        if not props:
+            continue
+        rule = [f"  .{rouge} {{  /* Symbol{sym} — {comment} */\n"]
+        for key in ("Color", "FontStyle", "FontWeight", "TextDecoration"):
+            if key in props:
+                rule.append(f"    {CSS_PROP[key]}: {props[key]};\n")
+        rule.append("  }\n")
+        rules.append("".join(rule))
+    out.append("\n".join(rules))
+    out.append("}\n")
+
+    return "".join(out)
+
+
 def main() -> None:
     light = parse_theme(THEMES_DIR / "Light.theme")
     dark = parse_theme(THEMES_DIR / "Dark.theme")
@@ -146,20 +176,32 @@ def main() -> None:
     for sym, props in classic_overrides.items():
         classic.setdefault(sym, {}).update(props)
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "twinbasic-light.css").write_text(
+    # Flat CSS for inspection.
+    CSS_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    (CSS_OUT_DIR / "twinbasic-light.css").write_text(
         render_css(light, "twinBASIC Light theme - Rouge syntax highlighting"),
         encoding="utf-8",
     )
-    (OUT_DIR / "twinbasic-dark.css").write_text(
+    (CSS_OUT_DIR / "twinbasic-dark.css").write_text(
         render_css(dark, "twinBASIC Dark theme - Rouge syntax highlighting"),
         encoding="utf-8",
     )
-    (OUT_DIR / "twinbasic-classic.css").write_text(
+    (CSS_OUT_DIR / "twinbasic-classic.css").write_text(
         render_css(
             classic,
             "twinBASIC Classic theme - Rouge syntax highlighting (Light + Classic overrides)",
         ),
+        encoding="utf-8",
+    )
+
+    # SCSS partials shipped in the site (classic is inspection-only).
+    SCSS_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    (SCSS_OUT_DIR / "_twinbasic-light.scss").write_text(
+        render_scss(light, "twinBASIC Light theme - Rouge syntax highlighting"),
+        encoding="utf-8",
+    )
+    (SCSS_OUT_DIR / "_twinbasic-dark.scss").write_text(
+        render_scss(dark, "twinBASIC Dark theme - Rouge syntax highlighting"),
         encoding="utf-8",
     )
 
