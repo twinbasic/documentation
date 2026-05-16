@@ -114,6 +114,16 @@ article.part-divider {
   page: divider;
   text-align: center;
   padding-top: 35%;
+  /* Restart page numbering at each Part so each section of the book reads
+     like a self-contained volume. Pagedjs's Counters module picks this up
+     and emits a `data-counter-page-reset` attribute on the element; the
+     `afterPageLayout` hook then injects a per-page rule that resets the
+     `page` counter on the part divider's page. Reset to 0 (not 1) so the
+     first content page after the divider reads "1" once the auto-increment
+     fires. The divider's @page rule suppresses both the running header and
+     the page counter (see @page divider below) so the divider page itself
+     reads as unnumbered, matching traditional book convention. */
+  counter-reset: page 0;
 }
 
 article.part-divider .part-number {
@@ -151,7 +161,8 @@ article.part-divider .part-intro {
 }
 
 @page divider {
-  @top-right { content: ""; }
+  @top-right    { content: ""; }
+  @bottom-right { content: ""; }
 }
 
 
