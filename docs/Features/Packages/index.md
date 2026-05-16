@@ -1,5 +1,5 @@
 ---
-title: Packages
+title: Package Management
 parent: Features
 nav_order: 6
 permalink: /Features/Packages/
