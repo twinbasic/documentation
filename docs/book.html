@@ -41,9 +41,10 @@ sitemap: false
 {%- assign p4_search   = '</span>'            | append: nl | append: '<span'                                         -%}
 {%- assign p4_replace  = '</span><span class="w">' | append: nl | append: '</span><span'                             -%}
 
-{%- for section in site.data.book.sections -%}
-  {%- assign chapters = site.pages | where_exp: "p", "p.url contains section" | sort: "url" -%}
-  {%- for chapter in chapters -%}
+{%- for part in site.data.book.parts -%}
+  {%- for prefix in part.prefixes -%}
+    {%- assign chapters = site.pages | where_exp: "p", "p.url contains prefix" | sort: "url" -%}
+    {%- for chapter in chapters -%}
     {%- comment -%}
       Jekyll's `chapter.content` returns rendered HTML for pages whose
       Renderer#run has already converted them, but raw markdown for
@@ -69,5 +70,6 @@ sitemap: false
 <article class="page">
 {{ body }}
 </article>
+    {%- endfor -%}
   {%- endfor -%}
 {%- endfor %}
