@@ -1,7 +1,6 @@
 ---
 title: VBA Package
 parent: Packages
-grand_parent: Reference Section
 nav_order: 2
 permalink: /tB/Packages/VBA
 redirect_from:

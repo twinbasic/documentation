@@ -1,7 +1,6 @@
 ---
 title: Packages
-parent: Reference Section
-nav_order: 20
+nav_order: 8
 permalink: /tB/Packages/
 has_toc: false
 ---

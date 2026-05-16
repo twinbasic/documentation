@@ -1,7 +1,6 @@
 ---
 title: WinNativeCommonCtls Package
 parent: Packages
-grand_parent: Reference Section
 nav_order: 12
 permalink: /tB/Packages/WinNativeCommonCtls/
 has_toc: false

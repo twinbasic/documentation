@@ -1,7 +1,6 @@
 ---
 title: WinEventLogLib Package
 parent: Packages
-grand_parent: Reference Section
 nav_order: 8
 permalink: /tB/Packages/WinEventLogLib/
 has_toc: false

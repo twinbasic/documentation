@@ -1,7 +1,6 @@
 ---
 title: CustomControls Package
 parent: Packages
-grand_parent: Reference Section
 nav_order: 5
 permalink: /tB/Packages/CustomControls/
 has_toc: false
