@@ -226,25 +226,30 @@ module Offlinify
         console.log('Offlinify: window.SEARCH_DATA not found; ensure search-data.js loads before just-the-docs.js');
         return;
       }
+      // Rebuild each doc.url from doc.relUrl (no baseurl prefix) so
+      // search-result clicks land on the right file regardless of
+      // whatever baseurl the site was built with. Upstream sets
+      // `link.href = doc.url`, so this is the value users navigate
+      // to.
       var siteRoot = window.OFFLINE_SITE_ROOT || '';
       for (var i in docs) {
-        var url = docs[i].url;
-        if (typeof url === 'string' && url.charAt(0) === '/') {
+        var rel = docs[i].relUrl;
+        if (typeof rel === 'string' && rel.charAt(0) === '/') {
           var hash = '';
-          var hashIdx = url.indexOf('#');
+          var hashIdx = rel.indexOf('#');
           if (hashIdx !== -1) {
-            hash = url.slice(hashIdx);
-            url = url.slice(0, hashIdx);
+            hash = rel.slice(hashIdx);
+            rel = rel.slice(0, hashIdx);
           }
-          url = url.slice(1); // strip leading /
-          if (url.endsWith('/')) {
-            url = url + 'index.html';
+          rel = rel.slice(1); // strip leading /
+          if (rel.endsWith('/')) {
+            rel = rel + 'index.html';
           } else {
-            var lastSlash = url.lastIndexOf('/');
-            var lastSeg = lastSlash === -1 ? url : url.slice(lastSlash + 1);
-            if (lastSeg.indexOf('.') === -1) url = url + '.html';
+            var lastSlash = rel.lastIndexOf('/');
+            var lastSeg = lastSlash === -1 ? rel : rel.slice(lastSlash + 1);
+            if (lastSeg.indexOf('.') === -1) rel = rel + '.html';
           }
-          docs[i].url = siteRoot + url + hash;
+          docs[i].url = siteRoot + rel + hash;
         }
       }
 
@@ -291,6 +296,22 @@ module Offlinify
 
     start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     combined = (src_dest != out_dest)
+
+    # Jekyll's `relative_url` filter prepends `site.baseurl` to every
+    # URL it produces, so when baseurl is non-empty (e.g. on a Pages
+    # project site without a custom domain, where configure-pages
+    # outputs a `/repo-name` base_path), the rendered HTML hrefs look
+    # like `/<baseurl>/foo` while files in site_paths are stored
+    # without the prefix. Strip the prefix during resolution so the
+    # offline rewrite works regardless of baseurl. Normalised to
+    # either empty string or `/segment...` with no trailing slash.
+    # Normalise to either empty or `/segment...` with no trailing
+    # slash, matching the form `relative_url` prepends to URLs in the
+    # rendered HTML. The configured value may lack a leading slash
+    # (Jekyll adds one when emitting), and may carry a trailing slash
+    # the rendered URLs don't have.
+    baseurl = (site.config["baseurl"] || "").to_s.sub(%r{/+\z}, "")
+    baseurl = "/#{baseurl}" if !baseurl.empty? && !baseurl.start_with?("/")
 
     # In combined mode, wipe the offline output tree but keep the
     # `_site-offline/` directory itself in place. (Deleting and
@@ -356,7 +377,7 @@ module Offlinify
         content = File.binread(src_path)
         file_dir  = File.dirname(out_path)
         file_segs = file_dir_segs_from_rel(rel)
-        changed_url, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, mode: :html)
+        changed_url, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, mode: :html)
         unresolved += misses
         changed_search = inject_search_setup!(content, file_segs)
         if changed_url || changed_search
@@ -371,7 +392,7 @@ module Offlinify
         content = File.binread(src_path)
         file_dir  = File.dirname(out_path)
         file_segs = file_dir_segs_from_rel(rel)
-        changed, misses = rewrite!(content, CSS_URL_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, mode: :css)
+        changed, misses = rewrite!(content, CSS_URL_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, mode: :css)
         unresolved += misses
         if changed
           FileUtils.mkdir_p(File.dirname(out_path)) if combined
@@ -509,7 +530,7 @@ module Offlinify
   # `[changed_bool, unresolved_count]`. Per-match work is a single
   # Hash lookup in `result_cache` -- the heavy lifting (URL
   # resolution, LCP walk, segment encoding) runs only on cache miss.
-  def self.rewrite!(content, regex, file_dir, file_segs, site_paths, seg_cache, result_cache, mode:)
+  def self.rewrite!(content, regex, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, mode:)
     misses = 0
     changed = false
 
@@ -518,7 +539,7 @@ module Offlinify
       raw = mode == :html ? match[3] : match[2]
       cache_key = "#{file_dir}\x00#{raw}"
       rel = result_cache.fetch(cache_key) do
-        result_cache[cache_key] = compute_relative(raw, file_segs, site_paths, seg_cache)
+        result_cache[cache_key] = compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
       end
       if rel.nil?
         misses += 1
@@ -557,9 +578,22 @@ module Offlinify
   #      `decoded_segs` (decoded path segments of the target).
   #   6. Build `"../" * (file_depth - common) + encoded_segs[common..]
   #      .join("/")` and re-attach the tail.
-  def self.compute_relative(raw, file_segs, site_paths, seg_cache)
+  def self.compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
     path, sep, tail = raw.partition(/[?#]/)
     fs_path = decode(path)
+
+    # Strip the baseurl prefix the `relative_url` filter prepended.
+    # Two forms can occur: an exact match (`/<baseurl>`) or a normal
+    # subpath (`/<baseurl>/foo`). Without this step, `/<baseurl>/foo`
+    # never matches the site_paths entry `/foo.html` and the rewrite
+    # would leave every link as-is.
+    unless baseurl.empty?
+      if fs_path == baseurl
+        fs_path = "/"
+      elsif fs_path.start_with?("#{baseurl}/")
+        fs_path = fs_path[baseurl.length..]
+      end
+    end
 
     candidates = if fs_path.end_with?("/")
       [fs_path, "#{fs_path}index.html"]
