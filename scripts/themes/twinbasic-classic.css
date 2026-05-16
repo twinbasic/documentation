@@ -1,0 +1,331 @@
+/* twinBASIC Classic theme - syntax highlighting colors (Light + Classic overrides) */
+
+.SymbolAttribute {
+  color: #bfbfbf;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolBuiltInDataType {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolClass {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolComment {
+  color: #00801D;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolConditionalCompilationDirective {
+  color: #ad8c98;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolConditionalCompilationExcludedCode {
+  color: #989599;
+  font-style: oblique;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolConstant {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolContinuationCharacter {
+  color: #808080;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolDeclareFunction {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolDeclareSub {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolEnum {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolEnumMember {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolField {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolFunction {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolGenericDataType {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolGenericValue {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolGlobalVariablePrivate {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolGlobalVariablePublic {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolInterface {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolKeyword {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLateBoundFunction {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLibrary {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLineLabel {
+  color: #448f86;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: underline;
+}
+
+.SymbolLineNumber {
+  color: #448f86;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: underline;
+}
+
+.SymbolLiteralBoolean {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralDate {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralEmpty {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralNothing {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralNull {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralNumeric {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralString {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolMe {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolModule {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolMultiLineSeperator {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolNamedArgument {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolNamedOperator {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolOperator {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolParamByRef {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolParamByVal {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolPropertyGet {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolPropertyLet {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolPropertySet {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolReturnValue {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolSub {
+  color: #002DA6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolUDT {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolVariable {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolVariableUndeclared {
+  color: #000000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+

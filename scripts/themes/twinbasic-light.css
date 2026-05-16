@@ -1,0 +1,331 @@
+/* twinBASIC Light theme - syntax highlighting colors */
+
+.SymbolAttribute {
+  color: #bfbfbf;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolBuiltInDataType {
+  color: #b1551f;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolClass {
+  color: #a87300;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolComment {
+  color: #448a63;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolConditionalCompilationDirective {
+  color: #ad8c98;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolConditionalCompilationExcludedCode {
+  color: #989599;
+  font-style: oblique;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolConstant {
+  color: #6089b4;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolContinuationCharacter {
+  color: #808080;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolDeclareFunction {
+  color: #bb956a;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolDeclareSub {
+  color: #bb956a;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolEnum {
+  color: #2360e9;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolEnumMember {
+  color: #205ee6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolField {
+  color: #ea8c00;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolFunction {
+  color: #b96300;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolGenericDataType {
+  color: #eeda83;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolGenericValue {
+  color: #86ee83;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolGlobalVariablePrivate {
+  color: #f38096;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolGlobalVariablePublic {
+  color: #d34056;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolInterface {
+  color: #ab3b4d;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolKeyword {
+  color: #385ba9;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLateBoundFunction {
+  color: #e7ac5f;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLibrary {
+  color: #bb6464;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLineLabel {
+  color: #a6a6a6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: underline;
+}
+
+.SymbolLineNumber {
+  color: #a6a6a6;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: underline;
+}
+
+.SymbolLiteralBoolean {
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralDate {
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralEmpty {
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralNothing {
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralNull {
+  color: #b877ce;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralNumeric {
+  color: #457e12;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolLiteralString {
+  color: #679f1e;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolMe {
+  color: #a13838;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolModule {
+  color: #89894d;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolMultiLineSeperator {
+  color: #74384c;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolNamedArgument {
+  color: #74384c;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolNamedOperator {
+  color: #385ba9;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolOperator {
+  color: #80a1a5;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolParamByRef {
+  color: #9b79b3;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolParamByVal {
+  color: #8d5eaf;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolPropertyGet {
+  color: #864f0f;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolPropertyLet {
+  color: #864f0f;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolPropertySet {
+  color: #864f0f;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolReturnValue {
+  color: #ee8391;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolSub {
+  color: #cf9a5d;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolUDT {
+  color: #a5630d;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolVariable {
+  color: #939000;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+.SymbolVariableUndeclared {
+  color: #b9929c;
+  font-style: normal;
+  font-weight: normal;
+  text-decoration: none;
+}
+
