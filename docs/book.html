@@ -96,6 +96,14 @@ sitemap: false
                             the PDF can't rely on the live site's
                             redirect machinery); empty string at slots
                             for single-file permalinks.
+    book_hsearch_gate     -- `href="<url-without-trailing-slash>`. A
+                            common prefix of all four match patterns
+                            for this permalink: the gate string is one
+                            char shorter than the trailing-slash form,
+                            so a single contains here decides whether
+                            any of the four inner contains can match.
+                            Folds out the second non-matching contains
+                            ~700 permalinks see on the typical chapter.
 
   Pre-computing the four search and two replacement strings once here
   -- rather than rebuilding them per (chapter * permalink) inside the
@@ -117,6 +125,7 @@ sitemap: false
 {%- assign book_hreplace_frag_acc = '' -%}
 {%- assign book_hsearch_alt_exact_acc = '' -%}
 {%- assign book_hsearch_alt_frag_acc = '' -%}
+{%- assign book_hsearch_gate_acc = '' -%}
 {%- for part in site.data.book.parts -%}
   {%- for prefix in part.prefixes -%}
     {%- assign map_chapters = site.pages | where_exp: "p", "p.url contains prefix" | sort: "url" -%}
@@ -145,9 +154,11 @@ sitemap: false
         {%- assign map_url_noslash = chapter.url | slice: 0, map_url_noslash_size -%}
         {%- assign hsearch_alt_exact_str = 'href="' | append: map_url_noslash | append: '"' -%}
         {%- assign hsearch_alt_frag_str  = 'href="' | append: map_url_noslash | append: '#' -%}
+        {%- assign hsearch_gate_str      = 'href="' | append: map_url_noslash -%}
       {%- else -%}
         {%- assign hsearch_alt_exact_str = '' -%}
         {%- assign hsearch_alt_frag_str  = '' -%}
+        {%- assign hsearch_gate_str      = 'href="' | append: chapter.url -%}
       {%- endif -%}
 
       {%- assign book_permalinks_acc        = book_permalinks_acc        | append: chapter.url             | append: '|' -%}
@@ -158,6 +169,7 @@ sitemap: false
       {%- assign book_hreplace_frag_acc     = book_hreplace_frag_acc     | append: hreplace_frag_str       | append: '|' -%}
       {%- assign book_hsearch_alt_exact_acc = book_hsearch_alt_exact_acc | append: hsearch_alt_exact_str   | append: '|' -%}
       {%- assign book_hsearch_alt_frag_acc  = book_hsearch_alt_frag_acc  | append: hsearch_alt_frag_str    | append: '|' -%}
+      {%- assign book_hsearch_gate_acc      = book_hsearch_gate_acc      | append: hsearch_gate_str        | append: '|' -%}
     {%- endfor -%}
   {%- endfor -%}
 {%- endfor -%}
@@ -169,6 +181,7 @@ sitemap: false
 {%- assign book_hreplace_frag     = book_hreplace_frag_acc     | split: '|' -%}
 {%- assign book_hsearch_alt_exact = book_hsearch_alt_exact_acc | split: '|' -%}
 {%- assign book_hsearch_alt_frag  = book_hsearch_alt_frag_acc  | split: '|' -%}
+{%- assign book_hsearch_gate      = book_hsearch_gate_acc      | split: '|' -%}
 
 {%- comment -%}
   1.3: title page. Front-matter page 1 -- book title, subtitle, build
@@ -506,29 +519,34 @@ sitemap: false
       version paid.
 
       The outer `contains` guard skips the loop entirely when no
-      absolute hrefs survived the relative-resolution chain; the inner
-      `contains` guards avoid the allocation cost of a no-op replace
-      against ~700 non-matching permalinks per chapter.
+      absolute hrefs survived the relative-resolution chain. The
+      per-permalink gate (`book_hsearch_gate`) is the common prefix of
+      all four match patterns for that permalink, so a single contains
+      decides whether any of the inner contains can match -- saves the
+      ~half-second-per-second cost of probing every permalink against
+      every chapter's body.
     {%- endcomment -%}
     {%- if body contains 'href="/' -%}
       {%- for permalink in book_permalinks -%}
         {%- assign idx = forloop.index0 -%}
-        {%- assign hs_ex = book_hsearch_exact[idx] -%}
-        {%- if body contains hs_ex -%}
-          {%- assign body = body | replace: hs_ex, book_hreplace_exact[idx] -%}
-        {%- endif -%}
-        {%- assign hs_fr = book_hsearch_frag[idx] -%}
-        {%- if body contains hs_fr -%}
-          {%- assign body = body | replace: hs_fr, book_hreplace_frag[idx] -%}
-        {%- endif -%}
-        {%- assign hs_alt_ex = book_hsearch_alt_exact[idx] -%}
-        {%- if hs_alt_ex != '' -%}
-          {%- if body contains hs_alt_ex -%}
-            {%- assign body = body | replace: hs_alt_ex, book_hreplace_exact[idx] -%}
+        {%- if body contains book_hsearch_gate[idx] -%}
+          {%- assign hs_ex = book_hsearch_exact[idx] -%}
+          {%- if body contains hs_ex -%}
+            {%- assign body = body | replace: hs_ex, book_hreplace_exact[idx] -%}
           {%- endif -%}
-          {%- assign hs_alt_fr = book_hsearch_alt_frag[idx] -%}
-          {%- if body contains hs_alt_fr -%}
-            {%- assign body = body | replace: hs_alt_fr, book_hreplace_frag[idx] -%}
+          {%- assign hs_fr = book_hsearch_frag[idx] -%}
+          {%- if body contains hs_fr -%}
+            {%- assign body = body | replace: hs_fr, book_hreplace_frag[idx] -%}
+          {%- endif -%}
+          {%- assign hs_alt_ex = book_hsearch_alt_exact[idx] -%}
+          {%- if hs_alt_ex != '' -%}
+            {%- if body contains hs_alt_ex -%}
+              {%- assign body = body | replace: hs_alt_ex, book_hreplace_exact[idx] -%}
+            {%- endif -%}
+            {%- assign hs_alt_fr = book_hsearch_alt_frag[idx] -%}
+            {%- if body contains hs_alt_fr -%}
+              {%- assign body = body | replace: hs_alt_fr, book_hreplace_frag[idx] -%}
+            {%- endif -%}
           {%- endif -%}
         {%- endif -%}
       {%- endfor -%}
