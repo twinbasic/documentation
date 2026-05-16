@@ -62,7 +62,7 @@ The [twinBASIC wiki](https://github.com/twinbasic/documentation/wiki) supplement
 2. [Debug Console](tB/IDE/Project/DebugConsole)
 3. [Diagnostics](tB/IDE/Project/Diagnostics)
 4. [Editor](tB/IDE/Project/Editor)
-5. [Menu](tB/IDE/Project/Menu/)
+5. [Menu](tB/IDE/Project/Menu)
 6. [New Project](tB/IDE/Project/New)
 7. [Project Explorer](tB/IDE/Project/Explorer)
 8. [Project Settings](tB/IDE/Project/Settings)
