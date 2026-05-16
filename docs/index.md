@@ -7,7 +7,7 @@ permalink: /
 
 # Welcome to twinBASIC
 
-twinBASIC is a new BASIC language and development environment aiming for 100% backward compatibility with VB6 and VBA, while adding modern language features --- generics, native **Interface** and **CoClass** declarations, attributes, and a package system. The compiler and IDE are under active development and currently in beta; the [FAQ](FAQ) covers the project's status, authorship, and what is and isn't implemented today, and downloads live on the [Releases](https://github.com/twinbasic/twinbasic/releases) page of the main GitHub repository.
+twinBASIC is a new BASIC language and development environment aiming for 100% backward compatibility with VB6 and VBA, while adding modern language features --- generics, native [**Interface**](tB/Core/Interface) and [**CoClass**](tB/Core/CoClass) declarations, attributes, and a package system. The compiler and IDE are under active development and currently in beta; the [FAQ](FAQ) covers the project's status, authorship, and what is and isn't implemented today, and downloads live on the [Releases](https://github.com/twinbasic/twinbasic/releases) page of the main GitHub repository.
 
 ## New to twinBASIC?
 
@@ -15,7 +15,7 @@ Start with the [FAQ](FAQ) for orientation --- what twinBASIC is, where it stands
 
 ## Coming from VBA or VB6?
 
-Most existing VB6 / VBA code compiles unchanged. The [Features overview](Features/) catalogues every addition --- new data types (**LongLong**, **LongPtr**, **Decimal**), native **Interface** and **CoClass** definitions, **Implements Via** and **Inherits**, generics, method overloading, type inference, attribute syntax, and more. The reference pages flag each twinBASIC-specific deviation from VBx inline with a `> [!NOTE]` callout; most VBA-derived pages are adapted from the Microsoft VBA-Docs sources and remain compatible word-for-word where the semantics did not change.
+Most existing VB6 / VBA code compiles unchanged. The [Features overview](Features/) catalogues every addition --- new data types ([**LongLong**](Features/Language/Data-Types#longlong), [**LongPtr**](Features/Language/Data-Types#longptr), [**Decimal**](Features/Language/Data-Types#decimal)), native [**Interface**](tB/Core/Interface) and [**CoClass**](tB/Core/CoClass) definitions, [**Implements Via**](Features/Language/Inheritance#implements-via-for-basic-inheritance) and [**Inherits**](Features/Language/Inheritance#inherits-for-complete-oop), generics, method overloading, type inference, attribute syntax, and more.
 
 ## Looking up a keyword, function, or operator?
 
@@ -27,7 +27,7 @@ The reference section is split into language constructs (the things the compiler
 - [**Operators**](Reference/Operators) --- arithmetic, comparison, logical, bitwise, and twinBASIC's added operators
 - [**Compiler Constants**](Reference/Compiler-Constants) --- the `#If` symbols recognised by the compiler
 - [**Attributes**](tB/Core/Attributes) --- `[Documentation(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
-- [**Controls**](tB/Controls) --- the standard UI controls (**CheckBox**, **TextBox**, **CommandButton**, ...) grouped by purpose
+- [**Controls**](tB/Controls) --- the standard UI controls ([**CheckBox**](tB/Packages/VB/CheckBox/), [**TextBox**](tB/Packages/VB/TextBox/), [**CommandButton**](tB/Packages/VB/CommandButton/), ...) grouped by purpose
 - [**Glossary**](tB/Gloss) --- technical terms used across the docs
 
 ## Built-in packages
@@ -36,14 +36,14 @@ A *package* groups related code under one namespace and is referenced from a pro
 
 **Default packages** --- referenced in every project automatically:
 
-- [**VBA**](tB/Packages/VBA) --- the standard runtime library (`MsgBox`, `CStr`, `Format`, `Mid`, ...) plus the **Collection** and **Err** intrinsics
-- [**VBRUN**](tB/Packages/VBRUN/) --- runtime types (**PropertyBag**, ambient properties, structured error context, drag-and-drop) and the enumerations used by classic VB6 forms and controls
-- [**VB**](tB/Packages/VB/) --- the standard controls (**CheckBox**, **TextBox**, **CommandButton**, ...) and the application-level singletons (**App**, **Screen**, **Clipboard**, **Printer**, ...)
+- [**VBA**](tB/Packages/VBA) --- the standard runtime library (`MsgBox`, `CStr`, `Format`, `Mid`, ...) plus the [**Collection**](tB/Modules/Collection/) and [**Err**](tB/Modules/Information/Err) intrinsics
+- [**VBRUN**](tB/Packages/VBRUN/) --- runtime types ([**PropertyBag**](tB/Packages/VBRUN/PropertyBag/), ambient properties, structured error context, drag-and-drop) and the enumerations used by classic VB6 forms and controls
+- [**VB**](tB/Packages/VB/) --- the standard controls ([**CheckBox**](tB/Packages/VB/CheckBox/), [**TextBox**](tB/Packages/VB/TextBox/), [**CommandButton**](tB/Packages/VB/CommandButton/), ...) and the application-level singletons ([**App**](tB/Packages/VB/App/), [**Screen**](tB/Packages/VB/Screen/), [**Clipboard**](tB/Packages/VB/Clipboard/), [**Printer**](tB/Packages/VB/Printer/), ...)
 
-**Additional GUI** --- controls beyond the **VB** defaults:
+**Additional GUI** --- controls beyond the [**VB**](tB/Packages/VB/) package:
 
 - [**CustomControls**](tB/Packages/CustomControls/) --- owner-drawn `Waynes…` controls with a DESIGNER framework for authoring new ones
-- [**WinNativeCommonCtls**](tB/Packages/WinNativeCommonCtls/) --- VB6-compatible replacement for `MSCOMCTL.OCX` (**DTPicker**, **ImageList**, **ListView**, **MonthView**, **ProgressBar**, **Slider**, **TreeView**, **UpDown**)
+- [**WinNativeCommonCtls**](tB/Packages/WinNativeCommonCtls/) --- VB6-compatible replacement for `MSCOMCTL.OCX` ([**DTPicker**](tB/Packages/WinNativeCommonCtls/DTPicker), [**ImageList**](tB/Packages/WinNativeCommonCtls/ImageList/), [**ListView**](tB/Packages/WinNativeCommonCtls/ListView/), [**MonthView**](tB/Packages/WinNativeCommonCtls/MonthView), [**ProgressBar**](tB/Packages/WinNativeCommonCtls/ProgressBar), [**Slider**](tB/Packages/WinNativeCommonCtls/Slider), [**TreeView**](tB/Packages/WinNativeCommonCtls/TreeView/), [**UpDown**](tB/Packages/WinNativeCommonCtls/UpDown))
 
 **Web embedding** --- host a browser engine inside a form:
 
