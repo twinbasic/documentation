@@ -316,6 +316,48 @@ module Offlinify
     patterns.any? { |pat| File.fnmatch(pat, rel, File::FNM_PATHNAME) }
   end
 
+  # Matches `<code>...</code>` and `<pre>...</pre>` blocks, capturing
+  # the BODY between the tags (group 2). Used to identify regions of
+  # rendered HTML the URL rewrite passes should leave alone -- the
+  # example URLs in tutorial code samples (e.g. `<script src="/script.js">`
+  # shown verbatim in a CEF page) would otherwise be picked up by the
+  # href/src regex even though they aren't real links. Rouge's syntax
+  # highlighter HTML-escapes `<` and `>` inside code but leaves `"`
+  # alone, so `src="/script.js"` survives as a literal substring that
+  # the rewrite regex matches.
+  #
+  # Non-greedy + backreference matches the first closing tag of the
+  # same name. Nested `<code>` doesn't occur in just-the-docs output;
+  # the typical structure is `<pre class="highlight"><code>...</code></pre>`
+  # and matching either outer tag is enough to cover everything
+  # inside.
+  CODE_BLOCK_RE = /<(code|pre)\b[^>]*>(.*?)<\/\1>/m.freeze
+
+  # Sentinel for callers (CSS rewrite) that don't have code-block
+  # context. Avoids allocating a throwaway array per file.
+  EMPTY_RANGES = [].freeze
+
+  # Returns an array of `[body_start, body_end]` byte ranges for every
+  # code-block body in `content`. Empty when there are no code blocks.
+  # Used in conjunction with `in_code_block?` to gate the rewrite
+  # regexes -- matches whose offset falls inside any of these ranges
+  # are left as-is and not counted as unresolved.
+  def self.code_block_ranges(content)
+    ranges = []
+    content.scan(CODE_BLOCK_RE) do
+      m = Regexp.last_match
+      ranges << [m.begin(2), m.end(2)]
+    end
+    ranges
+  end
+
+  # True when `offset` falls inside any of the code-block ranges. The
+  # ranges array is typically small (a handful per page) so a linear
+  # scan is fine; sorting/bisecting would be overkill.
+  def self.in_code_block?(offset, ranges)
+    ranges.any? { |s, e| offset >= s && offset < e }
+  end
+
   def self.run(site, src_dest, out_dest)
     return unless Dir.exist?(src_dest)
 
@@ -423,9 +465,15 @@ module Offlinify
         content = File.binread(src_path)
         file_dir  = File.dirname(out_path)
         file_segs = file_dir_segs_from_rel(rel)
-        changed_url, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, mode: :html)
+        # Compute code-block byte ranges before each rewrite pass.
+        # Pass 1 may shift downstream offsets (it rewrites href/src
+        # attribute values, which usually grow), so Pass 2 needs a
+        # fresh scan against the post-Pass-1 content.
+        code_ranges = code_block_ranges(content)
+        changed_url, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges, mode: :html)
         unresolved += misses
-        changed_rel, rel_misses = rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache)
+        code_ranges = code_block_ranges(content) if changed_url
+        changed_rel, rel_misses = rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache, code_ranges)
         unresolved += rel_misses
         changed_search = inject_search_setup!(content, file_segs)
         if changed_url || changed_rel || changed_search
@@ -440,7 +488,7 @@ module Offlinify
         content = File.binread(src_path)
         file_dir  = File.dirname(out_path)
         file_segs = file_dir_segs_from_rel(rel)
-        changed, misses = rewrite!(content, CSS_URL_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, mode: :css)
+        changed, misses = rewrite!(content, CSS_URL_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, EMPTY_RANGES, mode: :css)
         unresolved += misses
         if changed
           FileUtils.mkdir_p(File.dirname(out_path)) if combined
@@ -579,12 +627,20 @@ module Offlinify
   # `[changed_bool, unresolved_count]`. Per-match work is a single
   # Hash lookup in `result_cache` -- the heavy lifting (URL
   # resolution, LCP walk, segment encoding) runs only on cache miss.
-  def self.rewrite!(content, regex, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, mode:)
+  #
+  # `code_ranges` is an array of `[start, end]` byte ranges covering
+  # the bodies of `<code>` / `<pre>` blocks in `content`; matches
+  # whose offset falls in any range are left untouched and do not
+  # count as unresolved. Pass an empty array (or omit `code_ranges`
+  # for the CSS mode, which has no such concept).
+  def self.rewrite!(content, regex, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges, mode:)
     misses = 0
     changed = false
 
     new_content = content.gsub(regex) do
       match = Regexp.last_match
+      next match[0] if !code_ranges.empty? && in_code_block?(match.begin(0), code_ranges)
+
       raw = mode == :html ? match[3] : match[2]
       cache_key = "#{file_dir}\x00#{raw}"
       rel = result_cache.fetch(cache_key) do
@@ -614,13 +670,16 @@ module Offlinify
   # in place. Returns `[changed_bool, unresolved_count]`. Shares the
   # `result_cache` with the absolute-URL pass since the keyed `raw`
   # values are disjoint (absolute URLs start with `/`, relative ones
-  # don't).
-  def self.rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache)
+  # don't). `code_ranges` excludes matches inside `<code>` / `<pre>`
+  # blocks (same handling as `rewrite!`).
+  def self.rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache, code_ranges)
     misses = 0
     changed = false
 
     new_content = content.gsub(HTML_REL_HREF_RE) do
       match = Regexp.last_match
+      next match[0] if !code_ranges.empty? && in_code_block?(match.begin(0), code_ranges)
+
       raw = match[3]
       cache_key = "#{file_dir}\x00#{raw}"
       rel = result_cache.fetch(cache_key) do

@@ -106,6 +106,13 @@ descend       = "Tutorials/CustomControls/Form%20Designer.html"
 result        = "../../Tutorials/CustomControls/Form%20Designer.html#section"
 ```
 
+**Code-block skip.** Before the rewrite regex runs, the file's content is scanned once for `<code>…</code>` and `<pre>…</pre>` blocks. The byte ranges of their bodies are passed to the regex callback, which returns the match verbatim when the match offset falls inside any range. The skip has two consequences:
+
+- Example URLs in tutorial code samples (e.g. `<script src="/script.js">` displayed verbatim in a CEF page) are not rewritten and **don't count toward the "unresolved" counter**. The unresolved counter is now a real bug signal: anything it reports is either a broken source link or an upstream-theme change.
+- Rouge's syntax highlighter HTML-escapes `<` and `>` inside code but leaves `"` alone, so `src="/foo"` survives literally inside `<code>` bodies and would otherwise match the absolute-URL regex. The code-block skip is what makes this invisible.
+
+The same skip applies to Pass 2 (relative URLs).
+
 ### Pass 2: relative URL rewriting (HTML)
 
 Some links come from markdown sources verbatim, e.g. `[Description](Attributes#description)` in `Const.md`. Jekyll passes these through without applying `relative_url`, so they reach the rendered HTML as page-relative URLs (no leading slash) without a baseurl prefix. The absolute-URL regex from Pass 1 doesn't match them — its alternation requires `\/(?!\/)` at the start.
@@ -126,6 +133,8 @@ Pass 2 catches them. The regex `\b(href|src)=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.
 3. **Append the matching suffix to the *original* relative URL.** Crucially, the output is the original raw plus the suffix that worked — not a freshly computed relative path. From the `Attributes#description` example: the path is already correctly relative to the current page (same directory), the only fix needed is `.html`. So `Attributes` → `Attributes.html` and the original `#description` tail is reattached, giving `Attributes.html#description`.
 
 If the original is already correct (e.g. `href="foo.html"` where `foo.html` exists), the probe of `<path>` matches and the suffix is empty — the URL is left untouched and the match doesn't contribute to the "changed" count. If no candidate matches, the URL is left as-is and the unresolved counter is incremented.
+
+Matches inside code-block bodies are skipped here too (see the note above Pass 2's heading).
 
 ### Pass 3: search-setup injection (HTML)
 
@@ -259,7 +268,7 @@ The workflow has two lychee steps after the build:
 
 1. **Against `_site/`**, with `--fallback-extensions html` and a `--remap` that strips the base_path prefix. This mirrors what GitHub Pages does at request time — extensionless URLs like `/FAQ` get served as `/FAQ.html`. Without `--fallback-extensions html`, every pretty permalink would appear broken in this check.
 
-2. **Against `_site-offline/`**, strict — no extension fallback. Every link must resolve to a real file as written. This catches relative links in markdown sources whose permalink shape doesn't match the rendered filename (e.g. `[Foo](Foo/)` when Jekyll wrote `Foo.html`, not `Foo/index.html`) — the kind of breakage the online check above hides behind the fallback.
+2. **Against `_site-offline/`**, strict — no extension fallback (`--index-files 'index.html'` only; the online check also accepts the bare directory via `,.`). Every link must resolve to a real file as written. This catches relative links in markdown sources whose permalink shape doesn't match the rendered filename (e.g. `[Foo](Foo/)` when Jekyll wrote `Foo.html`, not `Foo/index.html`) — the kind of breakage the online check above hides behind both the fallback and the bare-directory acceptance.
 
 Both checks set `fail: true`. Any unresolved link fails the build, blocks the Pages deploy, and blocks the release upload. After both lychee runs succeed and Pages is deployed, the release job (gated to manual dispatch only) downloads the offline-site workflow artifact, computes a tag like `docs-YYYY-MM-DD-HHMM` (UTC), and creates a GitHub release with `twinbasic-docs-offline.zip` attached via `softprops/action-gh-release@v2`.
 
@@ -267,7 +276,7 @@ Both checks set `fail: true`. Any unresolved link fails the build, blocks the Pa
 
 The plugin surfaces several conditions in its summary log lines:
 
-- **Unresolved links.** `rewrote 837 HTML and 4 CSS file(s), copied 516 asset(s) (N unresolved link(s) left as-is)`. Each match the regex picked up but couldn't resolve against `site_paths` increments the counter. Typical false positives: literal `href`/`src` strings inside `<code>` blocks in the rendered HTML (e.g. `<script src="/script.js">` shown as example code in a CEF tutorial). The link is left as-is and the rendered HTML still displays the example correctly.
+- **Unresolved links.** `rewrote 837 HTML and 4 CSS file(s), copied 516 asset(s) (N unresolved link(s) left as-is)`. Each match the regex picked up but couldn't resolve against `site_paths` increments the counter. The code-block skip described under [Pass 1](#pass-1-absolute-url-rewriting-html) keeps example URLs inside `<code>`/`<pre>` off this counter, so a non-zero value here is a real bug signal — usually a broken source link, or an upstream-theme change that broke a regex.
 
 - **JS regex misses.** `could not locate navLink() in assets/js/just-the-docs.js` (or the equivalent for `initSearch()`). The corresponding patch is skipped. Means just-the-docs has shipped a new version of the function and the regex constant needs updating. The plugin emits a warning pointing at the specific constant to update.
 
@@ -293,7 +302,7 @@ In combined mode there's an additional ~1-2 s of `FileUtils.cp` for the binary a
 
 - **Source-only broken links**, where the markdown points at a permalink shape that doesn't match the rendered filename, can't be fixed by the plugin — `compute_rel_url` correctly identifies the target as nonexistent and leaves the link unchanged. The strict lychee step in CI surfaces these as real errors so they get fixed at the source.
 
-- **`<a href>` values inside `<code>` blocks** are not distinguishable from real links at the regex level. The two false positives in the unresolved counter (`<script src="/script.js">` shown as example code in two CEF/WebView2 tutorials) are benign and stable.
+- **`<a href>` values inside `<code>` blocks** *were* not distinguishable from real links at the regex level; example URLs in tutorial code samples surfaced as false-positive entries in the unresolved counter. The Pass-1/Pass-2 code-block skip (see above) now suppresses them — both the rewrite and the counter increment. Worth keeping an eye on if the upstream syntax highlighter (Rouge) ever switches away from wrapping highlighted code in `<code>` / `<pre>`.
 
 - **The search index is hefty.** `search-data.js` is ~2.8 MB (mostly text content for every page on the site, pretty-printed). It's loaded fresh on every page navigation under `file://` since browsers don't cache aggressively across `file://` documents. The size is acceptable on SSDs but could be a couple-second delay on spinning disks. Minifying the JSON before wrapping would save ~30-40%; the plugin currently doesn't.
 
