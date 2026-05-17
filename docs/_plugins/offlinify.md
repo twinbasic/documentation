@@ -16,44 +16,34 @@ Three things in a stock Jekyll/just-the-docs build assume an HTTP server is in f
 
 Pure Jekyll can't fix any of these. `relative_url` is site-relative, not page-relative — it has no access to the source page's URL when rendering a link, so it can't decide how many `../`s to prepend. Per-page `permalink:` frontmatter overrides any global URL-shape change. And the upstream theme's JS is out of our hands. The fix has to come after render.
 
-## Two modes, one output shape
+## When it runs
 
-The plugin runs in one of two modes, picked by which config flag is true:
-
-| Mode | Activated by | Reads from | Writes to | Use case |
-|------|-------------|------------|-----------|----------|
-| **Combined** | `also_build_offline: true` (the default in `_config.yml`) | `site.dest` (i.e. `_site/`) | `<site.dest>-offline/` | Normal `build.bat` — produces both the online site and the offline copy in one Jekyll run. |
-| **Standalone** | `offline_build: true` (set in `_config_offline.yml`) | `site.dest` | `site.dest` (in place) | `build-offline.bat` — when you only want the offline copy, no `_site/` produced. |
-
-Both modes write a byte-equivalent `_site-offline/` tree. The hook at the bottom of `offlinify.rb` picks the mode:
+Activated by `also_build_offline: true` (the default in `_config.yml`). Reads from `site.dest` (i.e. `_site/`) and writes to `<site.dest>-offline/`. The hook at the bottom of `offlinify.rb`:
 
 ```ruby
 Jekyll::Hooks.register :site, :post_write do |site|
-  if site.config["offline_build"]
-    Offlinify.run(site, site.dest, site.dest)              # standalone
-  elsif site.config["also_build_offline"]
-    Offlinify.run(site, site.dest, "#{site.dest}-offline") # combined
-  end
+  next unless site.config["also_build_offline"]
+  Offlinify.run(site, site.dest, "#{site.dest}-offline")
 end
 ```
 
-`run` itself doesn't branch on a mode flag — it derives the mode from whether `src_dest` equals `out_dest`. Same-dest means in-place rewriting; different-dest means walk the source tree and produce a parallel output tree.
+One Jekyll invocation produces `_site/`, `_site-offline/` (this plugin), and `_site-pdf/` (via `pdfify.rb`). Flip the flag to `false` if you only want the online site.
 
 ## The build flow
 
 After Jekyll's WRITE phase completes, the hook fires `Offlinify.run(site, src_dest, out_dest)`, which does the following:
 
-1. **Wipe the output directory's *contents*** (combined mode only). The directory itself is preserved across builds — recreating it makes Jekyll's watcher report a bare `_site-offline` change event (no trailing slash, since the directory is momentarily absent at notification time) that the YAML exclude entry `_site-offline` doesn't match (jekyll-watch auto-appends a trailing slash to directory excludes, turning the rule into the regex `_site-offline/`), and the result is an infinite rebuild loop on `jekyll serve`.
+1. **Wipe the output directory's *contents***. The directory itself is preserved across builds — recreating it makes Jekyll's watcher report a bare `_site-offline` change event (no trailing slash, since the directory is momentarily absent at notification time) that the YAML exclude entry `_site-offline` doesn't match (jekyll-watch auto-appends a trailing slash to directory excludes, turning the rule into the regex `_site-offline/`), and the result is an infinite rebuild loop on `jekyll serve`.
 
 2. **Build `site_paths`.** Walk `src_dest` once and bucket every file under its site-rooted forward-slash path (`/tB/Core/Const.html`, `/assets/js/just-the-docs.js`, etc.). The keys are *decoded* — filesystem names like `Form Designer.html` go in literally, not `Form%20Designer.html`. Resolution in `compute_relative` is then an O(1) `Set#include?` probe per candidate, instead of 2-3 `File.file?` syscalls each (very slow on Windows). Without this, the offlinify pass takes ~30 s on this site; with it, the pass is ~3 s.
 
 3. **Normalise `baseurl`.** Read `site.config["baseurl"]`, strip trailing slashes, prepend a leading slash if missing. The result matches the prefix `relative_url` actually emits in the rendered HTML — e.g. `/twinBASIC-docs` on a GitHub Pages project site. Used during URL resolution to strip the prefix before probing `site_paths`.
 
 4. **Walk the source tree.** For each file:
-   - If the file matches a pattern in `site.config["offline_exclude"]` (see [Exclude list](#exclude-list)): skip it. Combined mode never copies it; standalone mode deletes it from out_dest.
+   - If the file matches a pattern in `site.config["offline_exclude"]` (see [Exclude list](#exclude-list)): skip the copy so the online `_site/` keeps it and the offline tree doesn't.
    - `.html`: read once, run three transformation passes in order (absolute-URL rewrite, relative-URL rewrite, search-setup injection), write back if any pass changed content.
    - `.css`: read, run the `url()` rewrite, write back.
-   - Anything else (images, fonts, JSON, JS): plain `FileUtils.cp` in combined mode; ignored in standalone mode (out_dest is src_dest, no copy needed).
+   - Anything else (images, fonts, JSON, JS): plain `FileUtils.cp` into the offline tree.
 
 5. **Patch `assets/js/just-the-docs.js`.** Replace the `navLink()` and `initSearch()` function bodies with offline-friendly versions.
 
@@ -227,7 +217,7 @@ A missing or empty `offline_exclude` entry skips the step entirely — the offli
 The exclude check runs in two places:
 
 1. **Before** the `site_paths` Set is built, so URL-resolution candidates can't point at an excluded target (a stray `<a href="/sitemap.xml">` in the source would simply fail to resolve, instead of resolving to a now-missing file).
-2. **Inside** the main file walk, where combined mode skips the copy and standalone mode deletes the file from `out_dest` (since Jekyll already wrote it there before the plugin ran).
+2. **Inside** the main file walk, where the copy is skipped so the file never appears in `_site-offline/`.
 
 The summary log line reports the count: `… excluded 7 file(s) …`.
 
@@ -252,12 +242,10 @@ The offline build touches the following files:
 | `docs/_plugins/offlinify.rb` | The plugin. Hooks `:site, :post_write`, runs all the passes. |
 | `docs/_plugins/offlinify.md` | This file. |
 | `docs/_config.yml` | `also_build_offline: true` (default-on) and `exclude: [_site-offline]` (keeps Jekyll's watcher from rebuilding on the plugin's own output). |
-| `docs/_config_offline.yml` | Standalone-mode overlay: `offline_build: true` and `also_build_offline: false`. |
-| `docs/build.bat` | Plain `bundle exec jekyll build` — combined mode by default. |
-| `docs/build-offline.bat` | `bundle exec jekyll build -d _site-offline --config _config.yml,_config_offline.yml` — standalone mode. |
-| `docs/serve.bat` | `bundle exec jekyll serve` — combined mode, watcher-friendly thanks to the exclude. |
+| `docs/build.bat` | Plain `bundle exec jekyll build` — produces `_site/`, `_site-offline/`, and (via `pdfify.rb`) `_site-pdf/` in one run. |
+| `docs/serve.bat` | `bundle exec jekyll serve` — watcher-friendly thanks to the exclude. |
 | `docs/check.bat` | Dual lychee — strict on `_site-offline/`, permissive (`--fallback-extensions html`) on `_site/`. |
-| `docs/.gitignore` | `_site` and `_site-offline` both excluded from git. |
+| `docs/.gitignore` | `_site`, `_site-offline`, and `_site-pdf` all excluded from git. |
 | `.github/workflows/jekyll-gh-pages.yml` | CI workflow. Builds, runs lychee against both trees, deploys to Pages, and (on manual dispatch) packages `_site-offline/` as a release artifact. |
 
 ## CI integration
@@ -296,7 +284,7 @@ The optimization story is captured in the commit history. Briefly:
 
 That's a ~10× total speedup compared to the naïve version. The remaining ~3 s is dominated by file I/O — reading, regex-substituting, and writing across ~1100 HTML files — plus the regex pass over the SCSS-compiled `just-the-docs-combined.css`.
 
-In combined mode there's an additional ~1-2 s of `FileUtils.cp` for the binary assets (images, fonts, etc.) that don't need rewriting; the in-place standalone mode skips this.
+There's an additional ~1-2 s of `FileUtils.cp` for the binary assets (images, fonts, etc.) that don't need rewriting.
 
 ## Known limitations
 

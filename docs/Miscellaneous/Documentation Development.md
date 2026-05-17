@@ -183,7 +183,7 @@ Also ensure that Jekyll is in the PATH. To adjust the path on Windows, press <kb
 
 ### Building
 
-To build the documentation, i.e. render it from `.md` files to the `_site` folder:
+To build the documentation, i.e. render it from `.md` files into the `_site/` (online), `_site-offline/` (offline mirror), and `_site-pdf/` (sparse PDF source) folders:
 
     bundle exec jekyll build
 
@@ -191,9 +191,7 @@ or, on Windows only:
 
     build.bat
 
-To produce **only** the offline-browsable copy (no `_site/`), writing directly to `_site-offline/`:
-
-    build-offline.bat
+A single Jekyll run produces all three trees; toggle `also_build_offline` / `also_build_pdf` in `_config.yml` to skip a sibling output if you only want `_site/`.
 
 ### Checking Link Integrity
 
