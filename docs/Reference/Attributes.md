@@ -369,7 +369,7 @@ Calculate implicit enum values as a flag set (powers of 2).
 > [!NOTE]
 > To prevent confusion, once an explicit value is used, all remaining values after it must also be explicit)
 
-![image](Images/flags attribute.png)
+![image](Images/flags-attribute.png)
 
 ## FloatingPointErrorChecks  (optional Bool)
 {: #floatingpointerrorchecks }
