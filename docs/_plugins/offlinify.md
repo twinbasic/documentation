@@ -182,6 +182,22 @@ The rewrite regex carries two leading alternatives — `<code\b[^>]*>.*?</code>`
 
 An earlier design ran a separate `<(code|pre)\b[^>]*>(.*?)<\/\1>` regex over the content to produce a list of `[start, end]` byte ranges, then checked each href/src match's offset against the ranges inside the gsub callback. That added a second full-content regex pass plus a linear scan per match. The fused single-regex approach above eliminates both — see the bullet under [Performance](#performance) for the saving.
 
+#### Nav-block caching
+
+The just-the-docs sidebar nav is a ~112 KB block injected into every page by the theme's layout. In the rendered `_site/` output it is byte-identical across the whole build (Jekyll emits root-absolute URLs, and the active-link highlighting is done in patched JS rather than in the markup). Its rewritten form depends only on `file_dir`: the relative paths emerge from the LCP walk between the current page's directory and the link target's path. On a site with ~837 pages and ~200 unique source directories, the same rewritten nav serves an average of ~4 pages.
+
+The optimization is keyed on those two facts. Before the gsub, `rewrite_html!` checks `nav_cache[file_dir]`:
+
+- **Cache hit**: `content.sub!(NAV_RE, NAV_PLACEHOLDER)` swaps the nav body for a tiny HTML comment (`<!--OFFLINIFY_NAV_PLACEHOLDER-->`). The gsub then runs on a ~25 KB string instead of a ~140 KB one. After the gsub, a second `sub!` splices the cached rewritten nav back where the placeholder lives.
+
+- **Cache miss** (first page in this `file_dir`, or no nav at all): the gsub runs on the full content as before. After it completes, `NAV_RE.match(content)` extracts the just-rewritten nav from the output and stores it in `nav_cache[file_dir]` for the rest of the pages in the same directory.
+
+Pages without a nav (the 404 stub, jekyll-redirect-from stubs) fall through to the no-nav branch and are counted under `count_pages_without_nav` so the breakdown shows them separately from real misses.
+
+The placeholder is a literal HTML comment, chosen so that (a) it cannot match `HTML_COMBINED_RE` (which only looks at href/src attributes and code blocks), and (b) it is unlikely to collide with any source content. If it ever did collide, the final `sub!` would still find its placeholder before the colliding string in document order; the failure mode is benign so long as the placeholder string is unique.
+
+This is the single biggest optimization in `rewrite_html` — it eliminates ~84% of gsub callback work (~600 k of the original 720 k per-match callbacks). See the corresponding bullet under [Performance](#performance).
+
 ### Search-setup injection (HTML)
 
 Two `<script>` elements are inserted right before the existing `<script src="...just-the-docs.js">` tag in each rendered HTML:
@@ -281,7 +297,7 @@ The summary log line reports both counts: `… rewrote N redirect stub(s) … ex
 
 ## Caches
 
-Four caches keep the per-match work to a single Hash lookup once warmed up:
+Five caches keep the per-match work to a single Hash lookup once warmed up:
 
 1. **`site_paths`** (`Set` of strings). Built once in `setup` from `site.pages + site.static_files + site.documents`. Every file path that Jekyll will write, keyed by its site-rooted forward-slash form (`/tB/Core/Const.html`). Used by `compute_relative` and `compute_rel_url` to probe candidate paths.
 
@@ -291,7 +307,9 @@ Four caches keep the per-match work to a single Hash lookup once warmed up:
 
 4. **`result_cache`** (nested `Hash[file_dir] → Hash[raw → final_rel_url or nil]`). The end-to-end cache. Composes the work of caches 1-3 plus the per-source-dir LCP walk so each unique `(file_dir, raw)` pair is computed exactly once across the build. The nested shape means per-match work in `rewrite_html!` is one hash lookup on the short `raw` key, after a single outer lookup hoisted to the top of the method that yields the inner hash for the current source directory. Within-page same-URL repeats (e.g. the same nav link referenced from multiple places in a page's rendered HTML) hit the inner hash directly. Without this cache the offlinify pass takes ~7× longer.
 
-The inner hash is shared between the absolute-URL and page-relative-URL dispatches inside the combined HTML pass — the `raw` shapes are disjoint (absolute starts with `/`, relative doesn't), so there's no collision.
+5. **`nav_cache`** (`Hash[file_dir] → rewritten_nav_html`). Stores the ~112 KB rewritten just-the-docs sidebar nav per source directory. The first page in each `file_dir` runs the full gsub (including the nav, populating `result_cache` for every nav link) and seeds `nav_cache[file_dir]` from the rewritten output via a second `NAV_RE.match`. Every subsequent page in the same `file_dir` substitutes the input nav with `NAV_PLACEHOLDER` before the gsub, runs the rewrite on the remaining ~25 KB, and splices the cached nav back in place of the placeholder. Skips ~750 gsub callbacks per cache-hit page; the dominant single optimization in `rewrite_html`. Memory footprint: ~25 MB at the current ~200 unique source directories.
+
+The inner hash in `result_cache` is shared between the absolute-URL and page-relative-URL dispatches inside the combined HTML pass — the `raw` shapes are disjoint (absolute starts with `/`, relative doesn't), so there's no collision.
 
 ## File layout
 
@@ -352,35 +370,40 @@ The optimization story is captured in the commit history. Briefly:
 - **+ fused code-block skip** (folded the `<code>` / `<pre>` skip into the same regex as the href/src rewrite as two extra leading alternatives, eliminating the separate `code_block_ranges` precompute pass and the per-match `in_code_block?` linear scan inside the gsub callback): another ~800 ms off the HTML walk. The regex engine consumes any `<code>…</code>` or `<pre>…</pre>` block atomically and never tries the href/src alternative inside, so example URLs in tutorial code samples stay verbatim and don't reach the rewrite logic. Cumulative ~5.4 s.
 - **+ split resolution cache** (extracted the file-dir-independent half of `compute_relative` into `resolve_raw`, keyed by `raw` alone, so the `partition`/`decode`/baseurl-strip/candidate-probe work runs once per unique URL across the whole build instead of once per `(file_dir, raw)` pair): a further ~50-100 ms off the HTML walk. The saving is modest because the resolution work itself is cheap (a few regex and hash operations); the bigger benefit is structural -- the two halves of URL resolution are now clearly separated, and the per-match cost on a `result_cache` miss is dominated by the LCP walk + string build rather than the resolution probe. Cumulative ~5.3 s.
 - **+ nested `result_cache`** (replaced the composite `Hash[(file_dir, raw)] → rel` with a two-level `Hash[file_dir] → Hash[raw → rel]`, hoisted the outer lookup once per page so per-match work is a single hash lookup on the short `raw` key with no composite-cache-key string allocation): ~280 ms off the HTML walk. The win wasn't visible until adding callback-level instrumentation showed the per-page match count was 854 (not 50): with ~720k callback invocations across the build, the per-match `"#{file_dir}\x00#{raw}"` allocation alone was the dominant unaddressed cost. Cumulative ~5.1 s.
+- **+ misc quick wins** (replaced `Pathname#relative_path_from` in `build_site_paths` with a plain string slice ~200× faster, switched `gsub` to `gsub!` in `rewrite_html!` to mutate in place): ~100 ms across setup + the HTML walk. Cumulative ~5.0 s.
+- **+ per-dir nav-block caching** (the just-the-docs sidebar nav is ~112 KB of identical input HTML on every page and ~750 of each page's ~860 href matches; its rewritten output depends only on `file_dir`. Substitute the nav with an HTML-comment placeholder before the gsub when a cached rewritten nav exists for the current `file_dir`; run the gsub on the remaining ~25 KB; splice the cached nav back. First page in each `file_dir` runs the full gsub including the nav and seeds the cache; every subsequent page short-circuits 750 callbacks): **~1900 ms off the HTML walk**, the biggest single win. Cumulative ~3.1 s. Total Offlinify time has dropped from the original ~6.2 s to ~3.1 s (~50% faster).
 
 ### Profiling
 
 The plugin carries an opt-in per-operation timing breakdown, gated on Jekyll's existing `--profile` build flag. Running `bundle exec jekyll build --profile` adds 16 rows under the `Offlinify:` topic prefix after the existing summary lines, e.g.:
 
 ```
-Offlinify: Offlinifier ran in 4978ms.
-Offlinify:   setup                       294.8ms
-Offlinify:   dest_path                     6.3ms
+Offlinify: Offlinifier ran in 3088ms.
+Offlinify:   setup                       305.9ms
+Offlinify:   dest_path                     6.6ms
 Offlinify:   page.output.dup               1.2ms
-Offlinify:   strip_seo                    33.8ms
-Offlinify:   rewrite_html               3894.6ms
-Offlinify:     (of which time_resolve)   255.3ms
-Offlinify:   inject_search                25.4ms
-Offlinify:   write_html                  504.6ms
+Offlinify:   strip_seo                    31.2ms
+Offlinify:   rewrite_html               2033.0ms
+Offlinify:     (of which time_resolve)   266.4ms
+Offlinify:   inject_search                30.7ms
+Offlinify:   write_html                  509.6ms
 Offlinify:   rewrite_css                   0.5ms
-Offlinify:   write_css                     3.1ms
-Offlinify:   rewrite_redirect              5.4ms
-Offlinify:   write_redirect               65.5ms
-Offlinify:   write_other                   4.8ms
-Offlinify:   copy_static                 114.2ms
+Offlinify:   write_css                     2.9ms
+Offlinify:   rewrite_redirect              4.9ms
+Offlinify:   write_redirect               65.4ms
+Offlinify:   write_other                   3.8ms
+Offlinify:   copy_static                 106.3ms
 Offlinify:   patch_jtd                     0.4ms
-Offlinify:   search_data                   2.8ms
-Offlinify:   rewrite_html details: matches=719996 (href/src=714707, code/pre=5289)
-Offlinify:                         result_cache: hits=615468, misses=99239 (86.1% hit rate)
+Offlinify:   search_data                   2.4ms
+Offlinify:   rewrite_html details: matches=115568 (href/src=110279, code/pre=5289)
+Offlinify:                         result_cache: hits=11040, misses=99239 (10.0% hit rate)
 Offlinify:                         resolver calls: compute_relative=96192, compute_rel_url=3047
+Offlinify:                         nav_cache: hits=723, misses=114, no-nav pages=0
 ```
 
-The detail rows under `rewrite_html details:` are populated from per-callback counters in `rewrite_html!` (aggregated to `@state` once per page to keep the inner-loop work register-local). They expose three useful ratios: how many real href/src matches versus code-block matches, the `result_cache` hit rate, and the split between absolute-URL and page-relative-URL resolvers. The `(of which time_resolve)` row is the cumulative time spent inside `compute_relative` + `compute_rel_url`; the rest of `rewrite_html` is regex scanning, callback dispatch, hash lookups, and replacement-string construction.
+The detail rows under `rewrite_html details:` are populated from per-callback counters in `rewrite_html!` (aggregated to `@state` once per page to keep the inner-loop work register-local). They expose four useful ratios: how many real href/src matches versus code-block matches, the `result_cache` hit rate, the split between absolute-URL and page-relative-URL resolvers, and the `nav_cache` hits/misses (one miss per unique source dir on its first page; one hit per subsequent page in the same dir). The `(of which time_resolve)` row is the cumulative time spent inside `compute_relative` + `compute_rel_url`; the rest of `rewrite_html` is regex scanning, callback dispatch, hash lookups, and replacement-string construction.
+
+Note that after nav caching the `result_cache` hit rate drops from ~86% to ~10%: nearly all the within-build URL repetition came from the nav, and the nav is now skipped on cache hits. The remaining 10% comes from inline links repeated across pages (footer, header, the few links inside each page's main content that point at common targets like the home page). The absolute number of callback work, not the hit rate percentage, is what matters: 720k callbacks (pre-nav-cache) at 86% hit rate vs 115k callbacks (post-nav-cache) at 10% hit rate is an 84% reduction in real work done.
 
 The row labels match the `tick(:time_*)` keys spread across `setup`, `process_page`, and `finish`. The sum of the rows is within ~20 ms of `cumulative_ms` — the gap is hook plumbing not wrapped in a `tick` (the extension dispatch, the `file_dir` computation, the `case` itself).
 
@@ -388,17 +411,17 @@ The instrumentation lives behind a `tick(key) { ... }` helper. With `--profile` 
 
 ### Hot spots (current site shape)
 
-The breakdown above puts the cost of each phase in concrete numbers. The picture:
+After nav-block caching the picture is much flatter:
 
-- **`rewrite_html`** dominates at ~78% of all Offlinify time. The combined HTML regex runs ~860 matches per page × ~830 pages ≈ 720k gsub callbacks. ~99% are real href/src (the just-the-docs sidebar nav alone carries hundreds of `<a href>` per page on a site this size); ~1% are `<code>` / `<pre>` blocks that the callback short-circuits on. Per-match Ruby work (regex callback dispatch, MatchData access, cache lookup, replacement-string interpolation) is the bottleneck, not the regex match engine or the URL resolver. Time-in-resolver (`time_resolve`) is ~6% of `rewrite_html` thanks to the (raw → resolution) cache.
+- **`rewrite_html`** at ~66% of all Offlinify time. The gsub callback fires ~115k times per build (not 720k — the nav cache short-circuits ~600k of them). Per-match work is still ~17 µs on the cache-miss side and ~5 µs on the cache-hit side; with ~115k total, that's ~2 s. `time_resolve` (the resolver block inside) is ~13% of `rewrite_html`, the rest is regex scanning, callback dispatch, and replacement-string construction.
 
-- **`write_html`** at ~10%: 837 `File.binwrite` calls. Windows NTFS file-creation cost dominates over the byte write. Lowering the file count is not an option (each page is a separate file).
+- **`write_html`** at ~16%: 837 `File.binwrite` calls. Windows NTFS file-creation cost dominates over the byte write. Lowering the file count is not an option (each page is a separate file).
 
-- **`setup`** at ~6%: dominated by `Pathname.relative_path_from` in `build_site_paths` over the in-memory page set.
+- **`setup`** at ~10%: now the largest non-rewrite phase. `wipe_out_dest_contents` clears the previous `_site-offline/` tree (variable cost depending on how full the tree was) and `build_site_paths` iterates ~1300 in-memory items.
 
-- **`copy_static`** at ~2%: 221 `FileUtils.cp` calls in `finish` for binary assets that didn't need rewriting.
+- **`copy_static`** at ~3%: 221 `FileUtils.cp` calls in `finish` for binary assets that didn't need rewriting.
 
-What's left in `rewrite_html` is mostly the regex scan over ~110 MB of total HTML and the inner-loop callback dispatch. Per-match work is now ~5.5 µs, with two non-trivial constants: the gsub callback's per-invocation Ruby plumbing (block activation, MatchData lookup, two array reads, the cache hash lookup) and the replacement-string interpolation `%(#{attr_name}=#{quote}#{rel}#{quote})` on a real rewrite. A pure regex scan over the same content with a no-op replacement would give the lower bound; subtracting that from the current `rewrite_html` time would tell us how much headroom is left in the callback body. Possible angles: avoiding the `new_content` allocation that `gsub` always makes (would require hand-rolled `String#scan` + slice-and-concat), caching the full formatted replacement instead of just `rel` (combinatorial over `attr_name` × `quote`, dubious), or accepting that this is roughly where the regex-based approach floors out.
+The two regex passes in `rewrite_html` (the full-content scan on first-page-in-dir, the partial scan on subsequent-pages-in-dir) are now the floor: avoiding them would require either a structural change to how Jekyll lays out pages, or hand-rolled `String#scan`-based rewriting that's unlikely to beat MRI's C-implemented `gsub!`. The natural next levers are (a) widening the nav cache to capture other large boilerplate blocks (header, footer, head section — each smaller than the nav but still meaningful), and (b) chipping at `write_html` if Windows file-creation cost can be shaved (asynchronous writes? batched directory creation? small wins likely).
 
 ## Known limitations
 
@@ -421,7 +444,7 @@ In source order in [`offlinify.rb`](offlinify.rb):
 - `tick(key) { ... }` — opt-in timing helper. When `--profile` is set on the build, wraps the block in two monotonic-clock reads and accumulates the elapsed ms into `@state[key]`; otherwise a pass-through `yield`. Used by every measurable code path in `setup`, `process_page`, and `finish`. See [Profiling](#profiling).
 - `process_page(page)` — `:pages, :post_render` and `:documents, :post_render` hook entry. Transforms `page.output` and writes the offline copy. Dispatches on output extension and on page class (jekyll-redirect-from stubs get a dedicated branch that rewrites their absolute `<site.url>/<path>` URLs to page-relative form).
 - `finish(site)` — `:site, :post_write` hook entry. Copies static files from `_site/` to `_site-offline/`, patches just-the-docs.js, generates search-data.js, logs the summary (with the per-operation breakdown when `--profile` is set, via `log_profile_breakdown`), clears `@state`.
-- `rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)` — the combined HTML pass. Hoists `page_cache = result_cache[file_dir] ||= {}` once. Runs one `gsub` per file over `HTML_COMBINED_RE`, which carries three alternatives: a `<code>` block, a `<pre>` block, or an `href|src=` attribute. The first two are returned verbatim from the gsub callback (group 1 is nil on those branches); the third dispatches on `raw.start_with?("/")` — absolute URLs go through `compute_relative`, page-relative URLs through `compute_rel_url`. Single `page_cache` lookup per real match.
+- `rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache, nav_cache)` — the combined HTML pass. Before the gsub: if `nav_cache[file_dir]` is set, substitute the input nav with `NAV_PLACEHOLDER` so the gsub doesn't scan it. Hoists `page_cache = result_cache[file_dir] ||= {}` once. Runs one `gsub!` per file over `HTML_COMBINED_RE`, which carries three alternatives: a `<code>` block, a `<pre>` block, or an `href|src=` attribute. The first two are returned verbatim from the gsub callback (group 1 is nil on those branches); the third dispatches on `raw.start_with?("/")` — absolute URLs go through `compute_relative`, page-relative URLs through `compute_rel_url`. Single `page_cache` lookup per real match. After the gsub: splice the cached nav back into the placeholder, or, on first-page-in-dir, extract the rewritten nav from the output and seed `nav_cache[file_dir]`.
 - `rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)` — the CSS pass. Same `page_cache` hoist as `rewrite_html!`. One `gsub` per file over `CSS_URL_RE`, dispatched to `compute_relative` (CSS only carries absolute URLs in this codebase). No code-block handling — CSS has no equivalent concept.
 - `inject_search_setup!(content, file_segs)` — the second HTML transformation. Single regex substitution per file: finds the just-the-docs.js script tag and prepends the two new ones.
 - `strip_seo!(content)` — removes the jekyll-seo-tag plugin's output block from a page's `<head>`, keeping only the `<title>` tag. Runs first in the `.html` branch of `process_page` so the rewrite regex sees the post-strip content.

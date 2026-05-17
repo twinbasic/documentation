@@ -247,6 +247,34 @@ module Offlinify
   # preserved verbatim into the stripped output.
   TITLE_RE = /<title>.*?<\/title>/m.freeze
 
+  # Matches the just-the-docs sidebar nav block in a rendered page.
+  # Anchored on `<nav ... id="site-nav" ...>` (a stable opener in
+  # just-the-docs 0.10.x) and the first subsequent `</nav>`. The
+  # block is ~112 KB per page on the current site and carries ~750
+  # of each page's ~860 href/src matches -- the bulk of
+  # `rewrite_html`'s per-match callback work lives inside it. The
+  # input nav HTML is identical across all pages (Jekyll emits
+  # root-absolute URLs that don't depend on the source page), and
+  # the *output* nav after URL rewriting is identical across all
+  # pages within a single source directory (the relative-path
+  # transform depends on `file_dir` and nothing else). The
+  # per-file_dir cache exploits both facts: substitute a placeholder
+  # before the gsub, run the rewrite on the (much smaller) remainder,
+  # then splice the cached rewritten nav back. See
+  # `NAV_PLACEHOLDER`.
+  NAV_RE = /<nav\b[^>]*id="site-nav"[^>]*>.*?<\/nav>/m.freeze
+
+  # Sentinel that takes the nav block's place in `content` during
+  # the gsub! pass when a rewritten nav is already cached for the
+  # current `file_dir`. Chosen as an HTML comment so it (a) cannot
+  # match `HTML_COMBINED_RE` (which only looks at href/src
+  # attributes and `<code>` / `<pre>` blocks), and (b) is impossible
+  # to confuse with content the just-the-docs theme actually emits.
+  # If the placeholder ever appears verbatim in source content the
+  # final `content.sub!` will still find it -- the risk is benign
+  # so long as the string is unique enough not to occur naturally.
+  NAV_PLACEHOLDER = "<!--OFFLINIFY_NAV_PLACEHOLDER-->"
+
   # Path of the just-the-docs JS file relative to the site root.
   JTD_JS_REL = "assets/js/just-the-docs.js"
 
@@ -473,6 +501,14 @@ module Offlinify
       # (absolute starts with `/`, relative doesn't), so there's no
       # collision in the inner hash.
       result_cache: {},
+      # Lazy cache: `file_dir -> rewritten_nav_html`. Populated on
+      # the first page processed in each source directory; reused
+      # for every subsequent page in the same directory. Each entry
+      # is ~112 KB of pre-rewritten nav HTML. The cache size is
+      # bounded by the number of unique source directories
+      # (typically ~200), so total memory is ~25 MB during a build.
+      # See `NAV_RE` and `NAV_PLACEHOLDER`.
+      nav_cache: {},
       rewritten_html: 0,
       rewritten_css: 0,
       rewritten_redirects: 0,
@@ -517,6 +553,9 @@ module Offlinify
       count_cache_misses: 0,
       count_compute_relative: 0,
       count_compute_rel_url: 0,
+      count_nav_cache_hits: 0,
+      count_nav_cache_misses: 0,
+      count_pages_without_nav: 0,
     }
 
     wipe_out_dest_contents(out_dest)
@@ -539,18 +578,23 @@ module Offlinify
 
   # Build the `site_paths` Set from Jekyll's in-memory page set
   # (pages + static_files + documents). Each item's `destination(dest)`
-  # returns the absolute file path it will be written to; converting
-  # to site-rooted forward-slash form yields the same keys the older
-  # filesystem walk produced (e.g. `/tB/Core/Const.html`). Keys are
+  # returns the absolute file path it will be written to; stripping
+  # the site.dest prefix yields the site-rooted forward-slash form
+  # the URL resolver expects (e.g. `/tB/Core/Const.html`). Keys are
   # decoded -- they mirror filesystem names, so `Form Designer.html`
   # goes in literally, not `Form%20Designer.html`.
+  #
+  # Uses a string slice rather than `Pathname#relative_path_from`,
+  # which is ~200x slower on Windows -- ~30ns vs ~5µs per item, and
+  # there are 1300+ items.
   def self.build_site_paths(site, exclude_patterns)
     paths = Set.new
-    dest_pn = Pathname.new(site.dest)
+    dest_root_fs = site.dest.tr("\\", "/")
+    prefix_len = dest_root_fs.length + 1
     items = site.pages + site.static_files + site.documents
     items.each do |item|
-      dest = item.destination(site.dest)
-      rel = Pathname.new(dest).relative_path_from(dest_pn).to_s.tr("\\", "/")
+      abs = item.destination(site.dest).tr("\\", "/")
+      rel = abs[prefix_len..]
       next if offline_excluded?(rel, exclude_patterns)
       paths << "/#{rel}"
     end
@@ -661,7 +705,7 @@ module Offlinify
         content = tick(:time_dispatch_dup) { page.output.dup }
         tick(:time_strip_seo) { @state[:seo_stripped] += 1 if strip_seo!(content) }
         _changed, misses = tick(:time_rewrite_html) do
-          rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], @state[:raw_resolution_cache])
+          rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], @state[:raw_resolution_cache], @state[:nav_cache])
         end
         @state[:unresolved] += misses
         tick(:time_inject_search) { inject_search_setup!(content, file_segs) }
@@ -772,12 +816,17 @@ module Offlinify
     hits = href_src - misses
     cr = @state[:count_compute_relative]
     cru = @state[:count_compute_rel_url]
+    nav_hits = @state[:count_nav_cache_hits]
+    nav_misses = @state[:count_nav_cache_misses]
+    no_nav = @state[:count_pages_without_nav]
     Jekyll.logger.info "Offlinify:",
       "  rewrite_html details:    matches=#{href_src + code_block} (href/src=#{href_src}, code/pre=#{code_block})"
     Jekyll.logger.info "Offlinify:",
       "                           result_cache: hits=#{hits}, misses=#{misses}#{hit_rate_str(hits, href_src)}"
     Jekyll.logger.info "Offlinify:",
       "                           resolver calls: compute_relative=#{cr}, compute_rel_url=#{cru}"
+    Jekyll.logger.info "Offlinify:",
+      "                           nav_cache: hits=#{nav_hits}, misses=#{nav_misses}, no-nav pages=#{no_nav}"
   end
 
   def self.hit_rate_str(hits, total)
@@ -942,7 +991,20 @@ module Offlinify
   # already exists at the relative path verbatim (e.g. `Foo.html`
   # from a sibling markdown source); this is treated as "no rewrite
   # needed, not a miss".
-  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)
+  #
+  # Nav-block caching: the just-the-docs sidebar nav (~112 KB,
+  # ~750 of each page's ~860 href matches) is identical in the
+  # rendered `_site/` output across all pages (Jekyll emits root-
+  # absolute URLs that don't depend on the source page) and its
+  # rewritten form depends only on `file_dir`. The first page in
+  # each source directory does the full gsub including the nav and
+  # caches the rewritten nav in `nav_cache[file_dir]`. Every
+  # subsequent page in the same directory swaps the input nav for
+  # `NAV_PLACEHOLDER` before the gsub, runs the rewrite on the
+  # remaining ~25 KB of content, then splices the cached nav back
+  # in place of the placeholder. Skips ~750 gsub callbacks per
+  # cache-hit page.
+  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache, nav_cache)
     misses = 0
     changed = false
     profile = @state[:profile]
@@ -963,7 +1025,28 @@ module Offlinify
     compute_relative_calls = 0
     compute_rel_url_calls = 0
 
-    new_content = content.gsub(HTML_COMBINED_RE) do
+    # Nav-block caching. If we have a rewritten nav for this
+    # source directory, substitute the input nav with a placeholder
+    # before the gsub so the engine doesn't scan ~112 KB of nav
+    # body for ~750 href matches we already know the answer for.
+    # `String#sub!` returns the modified string on success and nil
+    # otherwise; that's the signal that we need to splice the
+    # cached nav back after the gsub.
+    cached_nav = nav_cache[file_dir]
+    placeholder_inserted = false
+    if cached_nav
+      placeholder_inserted = !content.sub!(NAV_RE, NAV_PLACEHOLDER).nil?
+      @state[:count_nav_cache_hits] += 1 if profile && placeholder_inserted
+    end
+
+    # `gsub!` mutates `content` in place and returns `nil` when no
+    # substitution occurred. The callback returns the literal match
+    # body on every short-circuit path (code/pre blocks, unresolved,
+    # already-correct), so the only "real" changes are the
+    # interpolated replacement strings on the final `else` branch.
+    # `changed` tracks this so the caller knows whether anything
+    # actually moved -- the return value of `gsub!` itself is unused.
+    content.gsub!(HTML_COMBINED_RE) do
       match = Regexp.last_match
       attr_name = match[1]
       if attr_name.nil?  # <code>/<pre> block — leave verbatim
@@ -999,7 +1082,20 @@ module Offlinify
       end
     end
 
-    content.replace(new_content) if changed
+    # Splice the cached nav back where the placeholder lives, or,
+    # if this is the first page seen in `file_dir`, extract the
+    # just-rewritten nav from the output and seed the cache for
+    # subsequent pages in the same directory.
+    if placeholder_inserted
+      content.sub!(NAV_PLACEHOLDER, cached_nav)
+      changed = true
+    elsif (output_nav_match = NAV_RE.match(content))
+      nav_cache[file_dir] = output_nav_match[0]
+      @state[:count_nav_cache_misses] += 1 if profile
+    elsif profile
+      @state[:count_pages_without_nav] += 1
+    end
+
     if profile
       @state[:count_matches_href_src] += matches_href_src
       @state[:count_matches_code_block] += matches_code_block
