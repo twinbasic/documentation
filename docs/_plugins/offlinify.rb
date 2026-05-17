@@ -462,12 +462,16 @@ module Offlinify
       # itself stays in `compute_relative` because its output depends
       # on `file_segs`.
       raw_resolution_cache: {},
-      # Lazy cache: `"#{file_dir}\x00#{raw}" -> final_rel_url` (or
-      # nil for unresolvable). Each unique `(file_dir, raw)` pair is
-      # resolved exactly once across the build. Shared between the
-      # absolute-URL and page-relative dispatches inside the combined
-      # HTML pass -- the cache keys are disjoint because absolute
-      # raws start with `/` and relative ones don't.
+      # Nested lazy cache: `file_dir -> { raw -> final_rel_url or nil }`.
+      # Each unique `(file_dir, raw)` pair is resolved exactly once
+      # across the build. Per-page the outer lookup happens once
+      # (yielding the inner hash for that source directory) and the
+      # per-match work is a single hash lookup on the short `raw`
+      # key -- no composite cache-key string allocation. Shared
+      # between the absolute-URL and page-relative dispatches inside
+      # the combined HTML pass -- the `raw` shapes are disjoint
+      # (absolute starts with `/`, relative doesn't), so there's no
+      # collision in the inner hash.
       result_cache: {},
       rewritten_html: 0,
       rewritten_css: 0,
@@ -491,6 +495,7 @@ module Offlinify
       time_setup: 0.0,
       time_strip_seo: 0.0,
       time_rewrite_html: 0.0,
+      time_resolve: 0.0,
       time_inject_search: 0.0,
       time_write_html: 0.0,
       time_rewrite_css: 0.0,
@@ -503,6 +508,15 @@ module Offlinify
       time_copy_static: 0.0,
       time_patch_jtd: 0.0,
       time_search_data: 0.0,
+      # rewrite_html callback counters. Aggregated per page from
+      # locals to keep the per-match cost a register-bump rather
+      # than a hash lookup. Used by the profile-only details
+      # breakdown emitted after the time rows.
+      count_matches_href_src: 0,
+      count_matches_code_block: 0,
+      count_cache_misses: 0,
+      count_compute_relative: 0,
+      count_compute_rel_url: 0,
     }
 
     wipe_out_dest_contents(out_dest)
@@ -621,11 +635,11 @@ module Offlinify
         else
           file_segs = file_dir_segs_from_rel(rel)
           prefix_re = /#{Regexp.escape(site_url)}(\/[^"' >]*)/
+          page_cache = (@state[:result_cache][file_dir] ||= {})
           content.gsub(prefix_re) do
             raw = Regexp.last_match(1)
-            cache_key = "#{file_dir}\x00#{raw}"
-            rel_url = @state[:result_cache].fetch(cache_key) do
-              @state[:result_cache][cache_key] =
+            rel_url = page_cache.fetch(raw) do
+              page_cache[raw] =
                 compute_relative(raw, file_segs, @state[:site_paths], @state[:seg_cache], @state[:baseurl], @state[:raw_resolution_cache])
             end
             rel_url || "#{site_url}#{raw}"
@@ -735,6 +749,7 @@ module Offlinify
     [:time_dispatch_dup,     "page.output.dup"],
     [:time_strip_seo,        "strip_seo"],
     [:time_rewrite_html,     "rewrite_html"],
+    [:time_resolve,          "  (of which time_resolve)"],
     [:time_inject_search,    "inject_search"],
     [:time_write_html,       "write_html"],
     [:time_rewrite_css,      "rewrite_css"],
@@ -749,8 +764,25 @@ module Offlinify
 
   def self.log_profile_breakdown
     BREAKDOWN_KEYS.each do |key, label|
-      Jekyll.logger.info "Offlinify:", format("  %-18s %7.1fms", label, @state[key])
+      Jekyll.logger.info "Offlinify:", format("  %-26s %7.1fms", label, @state[key])
     end
+    href_src = @state[:count_matches_href_src]
+    code_block = @state[:count_matches_code_block]
+    misses = @state[:count_cache_misses]
+    hits = href_src - misses
+    cr = @state[:count_compute_relative]
+    cru = @state[:count_compute_rel_url]
+    Jekyll.logger.info "Offlinify:",
+      "  rewrite_html details:    matches=#{href_src + code_block} (href/src=#{href_src}, code/pre=#{code_block})"
+    Jekyll.logger.info "Offlinify:",
+      "                           result_cache: hits=#{hits}, misses=#{misses}#{hit_rate_str(hits, href_src)}"
+    Jekyll.logger.info "Offlinify:",
+      "                           resolver calls: compute_relative=#{cr}, compute_rel_url=#{cru}"
+  end
+
+  def self.hit_rate_str(hits, total)
+    return "" if total.zero?
+    format(" (%.1f%% hit rate)", 100.0 * hits / total)
   end
 
   # Copy a file from src to out, creating intermediate directories.
@@ -913,20 +945,43 @@ module Offlinify
   def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)
     misses = 0
     changed = false
+    profile = @state[:profile]
+    # Hoist the outer-cache lookup once per page. The inner hash
+    # accumulates entries for every URL seen from this source
+    # directory; per-match work is then a single hash lookup keyed
+    # by the short `raw` string, with no composite-cache-key
+    # allocation.
+    page_cache = (result_cache[file_dir] ||= {})
+    # Per-page locals aggregated into @state at the end of the
+    # method. Keeps the inner-loop counter bumps register-local
+    # rather than a hash lookup per match, and zeroes the overhead
+    # when --profile is off (the `if profile` checks fold to nothing
+    # under a constant-true branch predictor).
+    matches_href_src = 0
+    matches_code_block = 0
+    cache_misses = 0
+    compute_relative_calls = 0
+    compute_rel_url_calls = 0
 
     new_content = content.gsub(HTML_COMBINED_RE) do
       match = Regexp.last_match
       attr_name = match[1]
-      next match[0] if attr_name.nil?  # <code>/<pre> block — leave verbatim
+      if attr_name.nil?  # <code>/<pre> block — leave verbatim
+        matches_code_block += 1 if profile
+        next match[0]
+      end
+      matches_href_src += 1 if profile
 
       raw = match[3]
-      cache_key = "#{file_dir}\x00#{raw}"
-      rel = result_cache.fetch(cache_key) do
-        result_cache[cache_key] =
+      rel = page_cache.fetch(raw) do
+        cache_misses += 1 if profile
+        page_cache[raw] =
           if raw.start_with?("/")
-            compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)
+            compute_relative_calls += 1 if profile
+            tick(:time_resolve) { compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache) }
           else
-            compute_rel_url(raw, file_segs, site_paths)
+            compute_rel_url_calls += 1 if profile
+            tick(:time_resolve) { compute_rel_url(raw, file_segs, site_paths) }
           end
       end
 
@@ -945,6 +1000,13 @@ module Offlinify
     end
 
     content.replace(new_content) if changed
+    if profile
+      @state[:count_matches_href_src] += matches_href_src
+      @state[:count_matches_code_block] += matches_code_block
+      @state[:count_cache_misses] += cache_misses
+      @state[:count_compute_relative] += compute_relative_calls
+      @state[:count_compute_rel_url] += compute_rel_url_calls
+    end
     [changed, misses]
   end
 
@@ -957,14 +1019,14 @@ module Offlinify
   def self.rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)
     misses = 0
     changed = false
+    page_cache = (result_cache[file_dir] ||= {})
 
     new_content = content.gsub(CSS_URL_RE) do
       match = Regexp.last_match
       raw = match[2]
       quote = match[1]
-      cache_key = "#{file_dir}\x00#{raw}"
-      rel = result_cache.fetch(cache_key) do
-        result_cache[cache_key] = compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)
+      rel = page_cache.fetch(raw) do
+        page_cache[raw] = compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)
       end
       if rel.nil?
         misses += 1
