@@ -45,28 +45,30 @@ require "set"
 #      `site.pages + site.static_files + site.documents`, wipes the
 #      contents of `_site-offline/`, initialises per-build state
 #      (caches, counters, normalised baseurl) on the module's `@state`
-#      ivar so the later hooks can read it, and starts the async
-#      write pool.
+#      ivar so the later hooks can read it, and (on Windows only)
+#      starts the async write pool. See WRITE_POOL_ENABLED for the
+#      platform-gating rationale.
 #
 #   2. `:pages, :post_render` and `:documents, :post_render` -- fire
 #      once per page after Jekyll renders it. `page.output` is the
-#      final HTML/CSS/etc bytes; the plugin transforms it and enqueues
-#      the rewritten content on a small thread pool that does the
-#      actual `mkdir_p` + `binwrite` to `_site-offline/<rel>` off the
-#      main thread. The writes overlap with Jekyll's next-page render
-#      and our own rewrite of subsequent pages. Jekyll's WRITE phase
+#      final HTML/CSS/etc bytes; the plugin transforms it and writes
+#      the result to `_site-offline/<rel>` via `write_or_enqueue!` --
+#      either synchronously on the main thread (Linux/macOS) or
+#      enqueued on the async write pool for off-thread `mkdir_p` +
+#      `binwrite` (Windows, where NTFS file-creation cost makes the
+#      overlap worth the threading overhead). Jekyll's WRITE phase
 #      writes the same `page.output` to `_site/<rel>` a moment later,
 #      so the online and offline files come from the same in-memory
 #      string -- no re-read.
 #
 #   3. `:site, :post_write` -- once Jekyll has finished writing
-#      `_site/`, this hook drains the async write pool (so all
-#      per-page writes are flushed before any read from
-#      `_site-offline/`), copies static files (images, fonts, raw
-#      JS/JSON the theme ships verbatim, the just-the-docs.js asset)
-#      from `_site/` into `_site-offline/`, patches
-#      `_site-offline/assets/js/just-the-docs.js`, and generates
-#      `_site-offline/assets/js/search-data.js` from the
+#      `_site/`, this hook drains the async write pool (no-op on
+#      non-Windows -- so all per-page writes are flushed before any
+#      read from `_site-offline/`), copies static files (images,
+#      fonts, raw JS/JSON the theme ships verbatim, the
+#      just-the-docs.js asset) from `_site/` into `_site-offline/`,
+#      patches `_site-offline/assets/js/just-the-docs.js`, and
+#      generates `_site-offline/assets/js/search-data.js` from the
 #      `search-data.json` produced in phase 2.
 #
 # Two payoffs over the older single-pass walk of `_site/` at
@@ -291,6 +293,20 @@ module Offlinify
   # `close`, `stat`, `mkdir`), so the workers actually parallelise at
   # the OS level. See `write_worker_loop` and `drain_write_pool!`.
   WRITE_POOL_SIZE = 4
+
+  # Whether to use the async write pool. Measured on the current site
+  # (~1130 files): saves ~530 ms on Windows where NTFS file-creation
+  # cost (MFT lock, journaling) dominates and the per-write blocking is
+  # ~0.6 ms × 1130 = ~700 ms total -- moving that off the main thread
+  # is a clear win. On Linux ext4 (and likely macOS APFS) the per-write
+  # cost is much lower; the sync baseline is already small enough that
+  # thread spawn + mutex contention + queue plumbing slightly exceed
+  # the saved blocking time, producing a small regression. Gate on
+  # `Gem.win_platform?` so the pool runs only where it pays. When
+  # disabled, `process_page` falls back to a direct synchronous
+  # `mkdir_p` + `binwrite` wrapped in the original `tick(:time_write_*)`
+  # so the profile breakdown still attributes the cost correctly.
+  WRITE_POOL_ENABLED = Gem.win_platform?
 
   # Matches the upstream `navLink()` function body. Anchored on the
   # function signature and the closing `return null;` comment (a
@@ -589,7 +605,9 @@ module Offlinify
     }
 
     wipe_out_dest_contents(out_dest)
-    @state[:write_workers] = WRITE_POOL_SIZE.times.map { Thread.new { write_worker_loop } }
+    if WRITE_POOL_ENABLED
+      @state[:write_workers] = WRITE_POOL_SIZE.times.map { Thread.new { write_worker_loop } }
+    end
     elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
     @state[:cumulative_ms] += elapsed
     @state[:time_setup] += elapsed if @state[:profile]
@@ -721,7 +739,7 @@ module Offlinify
           end
         end
       end
-      @state[:write_queue] << [out_path, content, :time_write_redirect]
+      write_or_enqueue!(out_path, content, :time_write_redirect)
       @state[:rewritten_redirects] += 1
     else
       out_path = File.join(@state[:out_dest], rel)
@@ -737,7 +755,7 @@ module Offlinify
         end
         @state[:unresolved] += misses
         tick(:time_inject_search) { inject_search_setup!(content, file_segs) }
-        @state[:write_queue] << [out_path, content, :time_write_html]
+        write_or_enqueue!(out_path, content, :time_write_html)
         @state[:rewritten_html] += 1
       when ".css"
         content = tick(:time_dispatch_dup) { page.output.dup }
@@ -745,10 +763,10 @@ module Offlinify
           rewrite_css!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], @state[:raw_resolution_cache])
         end
         @state[:unresolved] += misses
-        @state[:write_queue] << [out_path, content, :time_write_css]
+        write_or_enqueue!(out_path, content, :time_write_css)
         @state[:rewritten_css] += 1
       else
-        @state[:write_queue] << [out_path, page.output, :time_write_other]
+        write_or_enqueue!(out_path, page.output, :time_write_other)
         @state[:copied_files] += 1
       end
     end
@@ -867,6 +885,23 @@ module Offlinify
   def self.copy_asset!(src_path, out_path)
     FileUtils.mkdir_p(File.dirname(out_path))
     FileUtils.cp(src_path, out_path)
+  end
+
+  # Hand `[out_path, content]` to the async write pool when it's
+  # enabled (Windows), or write synchronously on the main thread
+  # otherwise (Linux/macOS). The synchronous branch keeps the
+  # `tick(time_key)` wrapper so the profile breakdown reports the
+  # write cost under the same key the worker accumulator would have
+  # used. See `WRITE_POOL_ENABLED` for the platform-gating rationale.
+  def self.write_or_enqueue!(out_path, content, time_key)
+    if @state[:write_workers]
+      @state[:write_queue] << [out_path, content, time_key]
+    else
+      tick(time_key) do
+        FileUtils.mkdir_p(File.dirname(out_path))
+        File.binwrite(out_path, content)
+      end
+    end
   end
 
   # Body of each async-write worker thread. Pops `[out_path, content,
