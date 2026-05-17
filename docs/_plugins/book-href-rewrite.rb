@@ -243,7 +243,13 @@ module BookHrefRewrite
       if target
         frag_part ? %(href="##{target}-#{frag_part}") : %(href="##{target}")
       else
-        %(href="#{abs}")
+        # Out-of-book target: emit the baseurl-stripped form so the
+        # URL the PDF reader displays is stable across local builds
+        # and the `--baseurl /<repo>` CI deploy path. Dead in the PDF
+        # either way, but the canonical (baseurl-less) form is what
+        # matches the live site URL when read offline.
+        miss_path = frag_part ? "#{lookup_path}##{frag_part}" : lookup_path
+        %(href="#{miss_path}")
       end
     end
   end
