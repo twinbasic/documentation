@@ -68,7 +68,7 @@ twinBASIC[^1] has a centralized package repository, called TWINSERV. Users can p
 
 Packages are collections of components that can be referenced from another twinBASIC project. They are distributed as TWINPACK files that contains everything needed by the components in that package.
 
-[^1]: A service of TWINBASIC LLC offered to the user community.
+[^1]: A service of TWINBASIC LTD offered to the user community.
 
 ### [Advanced Features](Advanced/)
 

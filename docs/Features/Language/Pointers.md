@@ -11,9 +11,9 @@ twinBASIC provides several enhancements for working with pointers.
 
 ## ByVal Nothing
 
-Additionally, while not strictly new syntax, twinBASIC also adds support for `ByVal Nothing`, to override a `ByRef <interface>` argument and pass a null pointer there.
+While not strictly new syntax, twinBASIC also adds support for `ByVal Nothing`, to override a `ByRef <interface>` argument and pass a null pointer there.
 
-## vbNullPtr
+## ByVal vbNullPtr
 
 Allows passing null pointers to UDT members of APIs/interfaces. The equivalent behavior in VBx is to declare them `As Any` and then pass `ByVal 0` at call sites.
 
@@ -26,8 +26,22 @@ End Type
 Public Declare PtrSafe Function MyFunc Lib "MyDLL" (pFoo As Foo) As Long
 
 Private Sub CallMyFunc()
-    Dim ret As Long = MyFunc(vbNullPtr)
+    Dim ret As Long = MyFunc(ByVal vbNullPtr)
 End Sub
+```
+
+## Substitute Pointers for UDTs
+
+More generally, in both APIs and local methods, any argument taking a user-defined type can instead be passed a `ByVal LongPtr`, with the new special constant `vbNullPtr` used for a null pointer:
+
+```tb
+Public Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
+
+hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal vbNullPtr, '...)
+'---or---
+Dim pSec As SECURITY_ATTRIBUTES
+Dim lPtr As LongPtr = VarPtr(pSec)
+hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal lPtr, '...)
 ```
 
 ## CType(Of \<type\>)
@@ -104,20 +118,6 @@ End Sub
 ```
 
 This will print `4`. Free standing use and nesting is also allowed; the above will print `4`. While the examples here are local code only, this is particularly useful for APIs, where you're forced to work with pointers extensively.
-
-## Substitute Pointers for UDTs
-
-In both APIs and local methods, any argument taking a user-defined type can instead be passed a `ByVal LongPtr`, with the new special constant `vbNullPtr` used for a null pointer:
-
-```tb
-Public Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
-
-hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal vbNullPtr, '...)
-'---or---
-Dim pSec As SECURITY_ATTRIBUTES
-Dim lPtr As LongPtr = VarPtr(pSec)
-hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal lPtr, '...)
-```
 
 ## Len/LenB(Of \<type\>) Support
 
