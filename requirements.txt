@@ -1,1 +1,1 @@
-selectolax>=0.4
+selectolax==0.4.9
