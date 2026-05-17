@@ -33,7 +33,7 @@ After Jekyll's WRITE phase completes, the hook fires `Pdfify.run(site, source_ro
 
 2. **Wipe and recreate `<dest_root>/`.** Unlike `offlinify.rb`, which empties the directory contents but keeps the directory itself in place to keep the jekyll-watcher happy, `pdfify.rb` deletes the whole tree. The PDF pass doesn't need watcher friendliness — nobody runs `jekyll serve` and refreshes a `_site-pdf/` page in their browser. The wipe is to ensure no stale images linger after source pages are deleted or renamed.
 
-3. **Copy `book.html`** verbatim into the destination. The byte-equivalence to `_site/book.html` is intentional — both files are produced by the same Liquid pass under the same `book-combined` layout, so pagedjs would see identical input whether it ran against `_site/book.html` or `_site-pdf/book.html`. The plugin doesn't rewrite anything inside `book.html`; relative paths like `Features/Images/foo.png` resolve correctly because the destination tree mirrors the source layout exactly.
+3. **Copy `book.html`** verbatim into the destination. The plugin doesn't rewrite anything inside `book.html`; relative paths like `Features/Images/foo.png` resolve correctly because the destination tree mirrors the source layout exactly.
 
 4. **Copy `REQUIRED_CSS`.** Two files in fixed positions:
 
@@ -46,7 +46,9 @@ After Jekyll's WRITE phase completes, the hook fires `Pdfify.run(site, source_ro
 
 5. **Extract and copy every relative `<img src=>` target.** Scan `book.html` with `IMG_SRC_RE` (see [What gets copied](#what-gets-copied) for the regex), deduplicate, and copy each one. Missing source files increment a `skipped` counter that lands in the summary log line.
 
-6. **Log the summary:**
+6. **Delete `<source_root>/book.html`.** The concatenated document exists in `_site/` only as a hand-off between Jekyll's render pass and this plugin — it's not a public page on the online site. The companion exclusion in `_config.yml` (`offline_exclude: [..., book.html]`) keeps `offlinify.rb` from copying it into `_site-offline/`; the delete here clears it from `_site/` itself. The two safeguards are independent: the exclude pattern fires whether `offlinify.rb` walks `_site/` before or after pdfify's delete (and still applies when `also_build_pdf: false`, when pdfify never runs at all), and pdfify's delete fires whether or not offlinify is enabled. No hook-ordering assumption is required.
+
+7. **Log the summary:**
 
    ```
    Pdfify: wrote .../_site-pdf -- copied 84 file(s) (86 image(s), 5 missing)
@@ -78,7 +80,7 @@ Matches `src="..."` (or single-quoted) where the URL is **page-relative** — do
 
 Captures: group 1 is the quote character (so the trailing quote in the pattern matches the same character), group 2 is the URL.
 
-Each match has its `?query` and `#fragment` stripped — images don't need them, and they would confuse the `File.file?` existence probe — then the path is deduplicated via a `Set` and copied if present in `<source_root>/`. The destination layout mirrors the source paths exactly, so the same `<img src="Features/Images/foo.png">` resolves correctly relative to `book.html` in both `_site/` and `_site-pdf/`.
+Each match has its `?query` and `#fragment` stripped — images don't need them, and they would confuse the `File.file?` existence probe — then the path is deduplicated via a `Set` and copied if present in `<source_root>/`. The destination layout mirrors the source paths exactly, so an `<img src="Features/Images/foo.png">` reference inside `_site-pdf/book.html` resolves to `_site-pdf/Features/Images/foo.png` — the same shape the source `_site/book.html` had against `_site/` before pdfify deleted it.
 
 ## File layout
 

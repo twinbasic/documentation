@@ -41,6 +41,16 @@ require "set"
 # skipped. The output tree mirrors the source paths exactly so book.html
 # can stay byte-identical -- no URL rewriting is needed.
 #
+# After the copy, `<site.dest>/book.html` is deleted: the concatenated
+# document is a build artifact for this plugin alone, not a public page
+# on the online site. The `offline_exclude` entry in _config.yml keeps
+# it out of the offline tree independently. The two safeguards do not
+# rely on each other: the exclude pattern fires whether `offlinify.rb`
+# walks _site/ before or after pdfify's delete (and works even when
+# `also_build_pdf: false`, when pdfify never runs at all), and pdfify's
+# delete fires whether or not offlinify is enabled. No hook ordering
+# is assumed.
+#
 # === Compatibility ===
 #
 # Reads `site.dest` and `site.config['also_build_pdf']`. Writes a fresh
@@ -110,6 +120,16 @@ module Pdfify
         skipped += 1
       end
     end
+
+    # book.html exists in source/ (the online _site/) only as a
+    # build artifact for this plugin -- it's not a page on the
+    # published site and it isn't part of the offline tree (the
+    # `offline_exclude` entry in _config.yml keeps offlinify from
+    # copying it). Remove it now that we've consumed it, so a stale
+    # copy doesn't sit under _site/ between builds and so a serve-
+    # mode `localhost:4000/book.html` correctly 404s instead of
+    # leaking the concatenated document.
+    book_src.delete
 
     Jekyll.logger.info "Pdfify:", "wrote #{dest_root} -- copied #{copied} file(s) (#{image_paths.size} image(s)#{skipped.zero? ? "" : ", #{skipped} missing"})"
   end
