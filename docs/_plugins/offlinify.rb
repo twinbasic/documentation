@@ -211,6 +211,24 @@ module Offlinify
   # percent-encoded byte-by-byte.
   PATH_SAFE_RE = /[^A-Za-z0-9\-_.~!$&'()*+,;=:@]/.freeze
 
+  # Matches the jekyll-seo-tag plugin's output, bracketed by the
+  # `Begin Jekyll SEO tag vX.Y.Z` / `End Jekyll SEO tag` comments
+  # the plugin emits unconditionally. Inside the block live a
+  # `<title>`, generator/OpenGraph/Twitter-Card meta tags, a
+  # `<link rel="canonical">` pointing at the live site, and a
+  # JSON-LD structured-data `<script>`. The whole block is ~900
+  # bytes per page; the contents do nothing offline (search-engine
+  # crawlers and social-media link previewers never see
+  # `_site-offline/`) so all but the `<title>` (the browser tab
+  # label) is stripped. The block is single-line in just-the-docs's
+  # rendered output but the regex uses `.*?` with multiline mode
+  # in case future theme versions reformat it.
+  SEO_BLOCK_RE = /<!-- Begin Jekyll SEO tag.*?<!-- End Jekyll SEO tag -->/m.freeze
+
+  # Matches the `<title>...</title>` tag inside the SEO block,
+  # preserved verbatim into the stripped output.
+  TITLE_RE = /<title>.*?<\/title>/m.freeze
+
   # Path of the just-the-docs JS file relative to the site root.
   JTD_JS_REL = "assets/js/just-the-docs.js"
 
@@ -446,6 +464,7 @@ module Offlinify
       rewritten_html: 0,
       rewritten_css: 0,
       rewritten_redirects: 0,
+      seo_stripped: 0,
       copied_files: 0,
       excluded_files: 0,
       unresolved: 0,
@@ -587,6 +606,7 @@ module Offlinify
       case File.extname(dest_path).downcase
       when ".html"
         content = page.output.dup
+        @state[:seo_stripped] += 1 if strip_seo!(content)
         code_ranges = code_block_ranges(content)
         _changed, misses = rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], code_ranges)
         @state[:unresolved] += misses
@@ -640,6 +660,7 @@ module Offlinify
 
     summary = "rewrote #{@state[:rewritten_html]} HTML and #{@state[:rewritten_css]} CSS file(s), copied #{@state[:copied_files]} asset(s)"
     summary += ", rewrote #{@state[:rewritten_redirects]} redirect stub(s)" if @state[:rewritten_redirects].positive?
+    summary += ", stripped SEO block from #{@state[:seo_stripped]} page(s)" if @state[:seo_stripped].positive?
     summary += ", excluded #{@state[:excluded_files]} file(s)" if @state[:excluded_files].positive?
     summary += " (#{@state[:unresolved]} unresolved link(s) left as-is)" if @state[:unresolved].positive?
     Jekyll.logger.info "Offlinify:", summary
@@ -727,6 +748,33 @@ module Offlinify
         <script>window.OFFLINE_SITE_ROOT="#{site_root}";</script>
         <script src="#{prefix}search-data.js"></script>
       HTML
+    end
+    return false if new_content == content
+    content.replace(new_content)
+    true
+  end
+
+  # Strip the jekyll-seo-tag plugin's output block, keeping only the
+  # `<title>` tag (the browser tab label). The block is ~900 bytes
+  # per page and the rest -- generator tag, OpenGraph/Twitter Card
+  # meta, canonical link pointing at the live site, JSON-LD
+  # structured data -- exists for search-engine crawlers and
+  # social-media link previewers that never see `_site-offline/`.
+  # Stripping also removes ~3 of the `https://docs.twinbasic.com`
+  # references per page that would otherwise need to be carved
+  # around by any "no live-site links" check.
+  #
+  # Runs before the URL rewrite so the rewrite isn't doing work on
+  # URLs we're about to delete, and before the code-block scan so
+  # the byte offsets it produces are valid against the post-strip
+  # content. Returns true when the strip happened, false when the
+  # block wasn't found (e.g. a page without the layout, or a future
+  # build where the plugin is removed).
+  def self.strip_seo!(content)
+    return false unless content.include?("<!-- Begin Jekyll SEO tag")
+    new_content = content.sub(SEO_BLOCK_RE) do |block|
+      title = block.match(TITLE_RE)
+      title ? title[0] : ""
     end
     return false if new_content == content
     content.replace(new_content)

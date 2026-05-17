@@ -77,7 +77,7 @@ For each page:
 3. **Detect jekyll-redirect-from stubs** by class-name string check (`page.class.name == "JekyllRedirectFrom::RedirectPage"`). The stubs are tiny HTML files whose meta-refresh, canonical link, `<script>location=`, and fallback `<a>` all reference an absolute `https://<site.url>/<path>` URL produced by `absolute_url`. Online these redirect to the canonical page; offline they would require network access and land on the live site rather than the local file — defeating the offline scenario. Rewrite each `<site.url><path>` occurrence to its resolved page-relative form via the same `compute_relative` the main HTML pass uses, then write the stub. Counted under `rewritten_redirects` in the summary log line. Some source pages (notably `Miscellaneous/Documentation Development.md`) intentionally link via `redirect_from` URLs as a stable-URL pattern, so the rewritten stubs let those source links navigate locally instead of failing. The class-name string check is used rather than `is_a?` so the plugin still loads if jekyll-redirect-from is removed. If `site.url` is unset (empty) the stub is written verbatim — the path-portion targets still resolve under lychee's offline check the same way the main HTML pass's link targets do.
 
 4. **Dispatch on output extension:**
-   - `.html`: dup `page.output`, scan for code-block ranges, run the combined HTML URL rewrite (see [HTML URL rewriting](#html-url-rewriting)), inject the search-setup script tags, write.
+   - `.html`: dup `page.output`, strip the jekyll-seo-tag block (see [SEO block stripping](#seo-block-stripping)), scan for code-block ranges, run the combined HTML URL rewrite (see [HTML URL rewriting](#html-url-rewriting)), inject the search-setup script tags, write.
    - `.css`: dup `page.output`, run the `url()` rewrite (see [CSS `url()` rewriting](#css-url-rewriting)), write.
    - Anything else (XML feeds, JSON, etc.): write `page.output` verbatim.
 
@@ -98,6 +98,14 @@ Fires at `:site, :post_write` — once after Jekyll's WRITE phase has populated 
 5. **Clear `@state`** so a subsequent build starts with no leftover counters or caches.
 
 ## Transformation passes
+
+### SEO block stripping
+
+The jekyll-seo-tag plugin emits a ~900-byte block at the top of every page's `<head>`, bracketed by `<!-- Begin Jekyll SEO tag vX.Y.Z -->` and `<!-- End Jekyll SEO tag -->` comments. Inside live a `<title>`, a generator tag, OpenGraph and Twitter Card meta, a `<link rel="canonical">` pointing at the live site, and a JSON-LD structured-data `<script>`. All of it exists for search-engine crawlers and social-media link previewers that never see `_site-offline/`.
+
+The whole block is stripped, except the `<title>` (the browser tab label, the only thing in the block a local reader actually uses). The bracketing comments go away too. On the current ~830-page site, the strip saves roughly 750 KB across the offline tree and removes three of the four `https://docs.twinbasic.com` references each page would otherwise contain (the fourth, the JSON-LD `"url"` field, is also inside the SEO block).
+
+Runs first in the `.html` branch of `process_page` so the URL rewrite isn't doing work on URLs we're about to delete, and so the code-block scan's byte offsets are valid against the post-strip content.
 
 ### HTML URL rewriting
 
@@ -292,7 +300,8 @@ The offline build touches the following files:
 | `docs/_config.yml` | `also_build_offline: true` (default-on) and `exclude: [_site-offline]` (keeps Jekyll's watcher from rebuilding on the plugin's own output). |
 | `docs/build.bat` | Plain `bundle exec jekyll build` — produces `_site/`, `_site-offline/`, and (via `pdfify.rb`) `_site-pdf/` in one run. |
 | `docs/serve.bat` | `bundle exec jekyll serve` — watcher-friendly thanks to the exclude. |
-| `docs/check.bat` | Dual lychee — strict on `_site-offline/`, permissive (`--fallback-extensions html`) on `_site/`. |
+| `docs/check.bat` | Local link check (dev-side only; CI runs the two lychee passes directly). Three steps: lychee permissive on `_site/`, lychee strict on `_site-offline/`, and `scripts/check_offline_live_links.py` against `_site-offline/`. Exits non-zero on any failure. |
+| `scripts/check_offline_live_links.py` | Flags any `https://docs.twinbasic.com/<path>` reference that survived offlinify in `_site-offline/` HTML, outside `<code>` / `<pre>` blocks. Skips the bare root (`https://docs.twinbasic.com[/]`) since intentional "go to the live site" links are allowed. Caught locally by `check.bat`; not wired into CI. |
 | `docs/.gitignore` | `_site`, `_site-offline`, and `_site-pdf` all excluded from git. |
 | `.github/workflows/jekyll-gh-pages.yml` | CI workflow. Builds, runs lychee against both trees, deploys to Pages, and (on manual dispatch) packages `_site-offline/` as a release artifact. |
 
@@ -321,6 +330,8 @@ The plugin surfaces several conditions in its summary log lines:
 - **Real broken links in markdown sources.** Caught by the strict lychee step in CI (or by `check.bat` locally). These don't surface in the offlinify summary because the rewrite passes correctly identify them as unresolvable and leave them alone — that's the right behavior, the source markdown needs fixing. Source markdown linking at a `redirect_from` URL is reachable in the offline tree (the redirect stub is rewritten to navigate locally), but a stub that itself references a missing target falls back to the original `https://<site.url>/...` URL and lychee will then surface it as broken — same right-thing-to-do behaviour.
 
 - **`_site-offline/` triggering `jekyll serve` rebuilds.** Was a problem; now handled by two things in combination: `exclude: [_site-offline]` in `_config.yml`, and the "clean contents but keep the directory" trick in the wipe step (which keeps all watcher events under `_site-offline/...` where the exclude matches).
+
+- **Surviving live-site links.** The [SEO block stripping](#seo-block-stripping) pass removes the bulk of `https://docs.twinbasic.com` references each page contains (canonical link, OpenGraph URL, JSON-LD `url`). Anything left in `_site-offline/` is a source link that points at the live docs site -- usually a markdown author writing `https://docs.twinbasic.com/<path>` instead of a relative link or `/tB/...` permalink, which would silently navigate the offline reader back online. `scripts/check_offline_live_links.py` (run by `check.bat` after the offline lychee pass) flags these locally; the bare root `https://docs.twinbasic.com[/]` is exempt since intentional "go to the live site" links are allowed. CI does not run this check.
 
 ## Performance
 
@@ -359,6 +370,7 @@ In source order in [`offlinify.rb`](offlinify.rb):
 - `rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges)` — the combined HTML pass. One `gsub` per file over `HTML_COMBINED_RE`, dispatching on `raw.start_with?("/")`: absolute URLs go through `compute_relative`, page-relative URLs through `compute_rel_url`. Single cache lookup per match.
 - `rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)` — the CSS pass. One `gsub` per file over `CSS_URL_RE`, dispatched to `compute_relative` (CSS only carries absolute URLs in this codebase). No code-block handling — CSS has no equivalent concept.
 - `inject_search_setup!(content, file_segs)` — the second HTML transformation. Single regex substitution per file: finds the just-the-docs.js script tag and prepends the two new ones.
+- `strip_seo!(content)` — removes the jekyll-seo-tag plugin's output block from a page's `<head>`, keeping only the `<title>` tag. Runs first in the `.html` branch of `process_page` so the URL rewrite and code-block scan see the post-strip content.
 - `compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)` — the absolute-URL resolver. Strip baseurl, probe candidates, compute LCP, return final URL.
 - `compute_rel_url(raw, file_segs, site_paths)` — the page-relative-URL resolver. Normalise against the current page's dir, probe candidates, return original raw plus matching suffix.
 - `patch_jtd_js!(out_dest)` — does the `navLink()` and `initSearch()` body substitutions.
