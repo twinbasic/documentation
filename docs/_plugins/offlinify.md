@@ -344,11 +344,51 @@ The optimization story is captured in the commit history. Briefly:
 - **+ `site_paths` Set** (O(1) lookup): down to ~10 s, before further work.
 - **+ `result_cache`, `seg_cache`, manual LCP** (replaced `Pathname.relative_path_from` per match with a string-segment comparison): down to ~7 s as the site grew past 800 pages.
 - **+ combined HTML regex** (single gsub matching both absolute and page-relative URLs in one pass — eliminating the second full file scan and the interim re-scan of code-block ranges that used to sit between two separate passes): down to ~4 s. Roughly 40% off the HTML walk.
-- **+ per-page hook architecture** (`:pages, :post_render` consumes `page.output` in memory rather than re-reading the rendered HTML from `_site/` at `:site, :post_write`): the per-file `File.binread` is eliminated. Cumulative self-time across hooks is ~5-6 s on the current ~830-page site, dominated by per-page Jekyll hook dispatch overhead and the per-page `File.binwrite`. The ~290 jekyll-redirect-from stubs go through a much cheaper code path than the main HTML pass (a single regex over a few hundred bytes, no code-block scan, no search-setup injection) so they're a small slice of the total.
+- **+ per-page hook architecture** (`:pages, :post_render` consumes `page.output` in memory rather than re-reading the rendered HTML from `_site/` at `:site, :post_write`): the per-file `File.binread` is eliminated. Cumulative self-time across hooks is ~5-6 s on the current ~830-page site. The ~290 jekyll-redirect-from stubs go through a much cheaper code path than the main HTML pass (a single regex over a few hundred bytes, no code-block scan, no search-setup injection) so they're a small slice of the total.
 
-The remaining cumulative time is mostly `File.binwrite` across ~830 HTML files (Windows file I/O on NTFS is the dominant cost) plus the regex pass over the SCSS-compiled `just-the-docs-combined.css`.
+### Profiling
 
-The static-file copy in `finish` adds an additional ~200 ms of `FileUtils.cp` for the binary assets (images, fonts, etc.) that don't need rewriting.
+The plugin carries an opt-in per-operation timing breakdown, gated on Jekyll's existing `--profile` build flag. Running `bundle exec jekyll build --profile` adds 16 rows under the `Offlinify:` topic prefix after the existing summary lines, e.g.:
+
+```
+Offlinify: Offlinifier ran in 6236ms.
+Offlinify:   setup                291.2ms
+Offlinify:   dest_path              5.1ms
+Offlinify:   page.output.dup        1.2ms
+Offlinify:   strip_seo             30.4ms
+Offlinify:   code_ranges          688.5ms
+Offlinify:   rewrite_html        4597.7ms
+Offlinify:   inject_search         21.8ms
+Offlinify:   write_html           382.8ms
+Offlinify:   rewrite_css            0.7ms
+Offlinify:   write_css              3.4ms
+Offlinify:   rewrite_redirect       5.5ms
+Offlinify:   write_redirect        74.0ms
+Offlinify:   write_other            3.7ms
+Offlinify:   copy_static          109.5ms
+Offlinify:   patch_jtd              0.5ms
+Offlinify:   search_data            2.4ms
+```
+
+The row labels match the `tick(:time_*)` keys spread across `setup`, `process_page`, and `finish`. The sum of the rows is within ~20 ms of `cumulative_ms` — the gap is hook plumbing not wrapped in a `tick` (the extension dispatch, the `file_dir` computation, the `case` itself).
+
+The instrumentation lives behind a `tick(key) { ... }` helper. With `--profile` off, the helper is a single boolean check plus a block yield — negligible at the per-page rate. With `--profile` on, each callsite reads the monotonic clock twice and accumulates the elapsed ms into `@state[key]`. The breakdown is emitted by `log_profile_breakdown` at the end of `finish`, which walks the `BREAKDOWN_KEYS` constant table.
+
+### Hot spots (current site shape)
+
+The breakdown above puts the cost of each phase in concrete numbers. The picture:
+
+- **`rewrite_html`** dominates at ~70% of all Offlinify time. The combined HTML regex runs ~50 matches per page × ~830 pages ≈ 42k callbacks. Each callback does a code-range linear scan, a cache-key string build, a hash lookup, and a result-string build. Per-match Ruby work, not the regex match itself, is the bottleneck.
+
+- **`code_ranges`** is second at ~12%. The `<(code|pre)\b[^>]*>(.*?)<\/\1>` regex uses a backreference (`\1`) that defeats fast literal-string scanning for the closing tag — the engine has to remember which group matched.
+
+- **`write_html`** at ~7%: 837 `File.binwrite` calls. Windows NTFS file-creation cost dominates over the byte write. Lowering the file count is not an option (each page is a separate file).
+
+- **`setup`** at ~6%: the `Pathname.relative_path_from` walk in `build_site_paths` over the in-memory page set.
+
+- **`copy_static`** at ~2%: 221 `FileUtils.cp` calls in `finish` for binary assets that didn't need rewriting.
+
+The two regex passes (`rewrite_html` + `code_ranges`) together account for ~82% of all Offlinify time and both traverse the same ~130 KB-per-page HTML. Fusing them into a single regex pass — where the engine consumes `<code>`/`<pre>` blocks atomically and never tries the href/src alternative inside — is the largest remaining optimization opportunity.
 
 ## Known limitations
 

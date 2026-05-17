@@ -368,6 +368,24 @@ module Offlinify
     patterns.any? { |pat| File.fnmatch(pat, rel, File::FNM_PATHNAME) }
   end
 
+  # Time the given block and accumulate its elapsed ms into
+  # `@state[key]`, then return the block's value. When the build
+  # was not started with `--profile`, this is a pass-through that
+  # just calls the block -- no clock reads, no map writes. Callsites
+  # therefore pay only one boolean check + one block yield when
+  # profiling is off (negligible at the per-page rate).
+  #
+  # Usage:
+  #   content = tick(:time_dispatch_dup) { page.output.dup }
+  #   _changed, misses = tick(:time_rewrite_html) { rewrite_html!(...) }
+  def self.tick(key)
+    return yield unless @state[:profile]
+    t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    result = yield
+    @state[key] += (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t) * 1000
+    result
+  end
+
   # Matches `<code>...</code>` and `<pre>...</pre>` blocks, capturing
   # the BODY between the tags (group 2). Used to identify regions of
   # rendered HTML the URL rewrite passes should leave alone -- the
@@ -474,10 +492,34 @@ module Offlinify
       # pre_render and post_write (which includes Jekyll's render
       # and write phases between our hooks).
       cumulative_ms: 0.0,
+      # When true (the `--profile` build flag is set), the `tick`
+      # helper measures each instrumented operation and the finish
+      # hook emits a per-operation breakdown alongside Jekyll's own
+      # render-stats table. When false, `tick` is a no-op pass-through
+      # and the per-operation accumulators stay at zero.
+      profile: !!site.config["profile"],
+      time_setup: 0.0,
+      time_strip_seo: 0.0,
+      time_code_ranges: 0.0,
+      time_rewrite_html: 0.0,
+      time_inject_search: 0.0,
+      time_write_html: 0.0,
+      time_rewrite_css: 0.0,
+      time_write_css: 0.0,
+      time_rewrite_redirect: 0.0,
+      time_write_redirect: 0.0,
+      time_write_other: 0.0,
+      time_dispatch_dup: 0.0,
+      time_dest_path: 0.0,
+      time_copy_static: 0.0,
+      time_patch_jtd: 0.0,
+      time_search_data: 0.0,
     }
 
     wipe_out_dest_contents(out_dest)
-    @state[:cumulative_ms] += (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
+    elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
+    @state[:cumulative_ms] += elapsed
+    @state[:time_setup] += elapsed if @state[:profile]
   end
 
   # Normalise the configured baseurl to either empty string or
@@ -549,8 +591,10 @@ module Offlinify
     # Pathname round-trip -- Pathname#relative_path_from is roughly
     # 2ms per call on Windows and would dominate per-page cost on a
     # 1000+ page build.
-    dest_path = page.destination(@state[:dest]).tr("\\", "/")
-    rel = dest_path[(@state[:dest_root_fs].length + 1)..]
+    dest_path, rel = tick(:time_dest_path) do
+      dp = page.destination(@state[:dest]).tr("\\", "/")
+      [dp, dp[(@state[:dest_root_fs].length + 1)..]]
+    end
 
     if offline_excluded?(rel, @state[:exclude_patterns])
       @state[:excluded_files] += 1
@@ -580,23 +624,29 @@ module Offlinify
       # still loads if jekyll-redirect-from is removed.
       out_path = File.join(@state[:out_dest], rel)
       file_dir = File.dirname(out_path)
-      content = page.output.dup
+      content = tick(:time_dispatch_dup) { page.output.dup }
       site_url = @state[:site_url]
-      unless site_url.empty?
-        file_segs = file_dir_segs_from_rel(rel)
-        prefix_re = /#{Regexp.escape(site_url)}(\/[^"' >]*)/
-        content = content.gsub(prefix_re) do
-          raw = Regexp.last_match(1)
-          cache_key = "#{file_dir}\x00#{raw}"
-          rel_url = @state[:result_cache].fetch(cache_key) do
-            @state[:result_cache][cache_key] =
-              compute_relative(raw, file_segs, @state[:site_paths], @state[:seg_cache], @state[:baseurl])
+      content = tick(:time_rewrite_redirect) do
+        if site_url.empty?
+          content
+        else
+          file_segs = file_dir_segs_from_rel(rel)
+          prefix_re = /#{Regexp.escape(site_url)}(\/[^"' >]*)/
+          content.gsub(prefix_re) do
+            raw = Regexp.last_match(1)
+            cache_key = "#{file_dir}\x00#{raw}"
+            rel_url = @state[:result_cache].fetch(cache_key) do
+              @state[:result_cache][cache_key] =
+                compute_relative(raw, file_segs, @state[:site_paths], @state[:seg_cache], @state[:baseurl])
+            end
+            rel_url || "#{site_url}#{raw}"
           end
-          rel_url || "#{site_url}#{raw}"
         end
       end
-      FileUtils.mkdir_p(file_dir)
-      File.binwrite(out_path, content)
+      tick(:time_write_redirect) do
+        FileUtils.mkdir_p(file_dir)
+        File.binwrite(out_path, content)
+      end
       @state[:rewritten_redirects] += 1
     else
       out_path = File.join(@state[:out_dest], rel)
@@ -605,25 +655,35 @@ module Offlinify
 
       case File.extname(dest_path).downcase
       when ".html"
-        content = page.output.dup
-        @state[:seo_stripped] += 1 if strip_seo!(content)
-        code_ranges = code_block_ranges(content)
-        _changed, misses = rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], code_ranges)
+        content = tick(:time_dispatch_dup) { page.output.dup }
+        tick(:time_strip_seo) { @state[:seo_stripped] += 1 if strip_seo!(content) }
+        code_ranges = tick(:time_code_ranges) { code_block_ranges(content) }
+        _changed, misses = tick(:time_rewrite_html) do
+          rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], code_ranges)
+        end
         @state[:unresolved] += misses
-        inject_search_setup!(content, file_segs)
-        FileUtils.mkdir_p(file_dir)
-        File.binwrite(out_path, content)
+        tick(:time_inject_search) { inject_search_setup!(content, file_segs) }
+        tick(:time_write_html) do
+          FileUtils.mkdir_p(file_dir)
+          File.binwrite(out_path, content)
+        end
         @state[:rewritten_html] += 1
       when ".css"
-        content = page.output.dup
-        _changed, misses = rewrite_css!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl])
+        content = tick(:time_dispatch_dup) { page.output.dup }
+        _changed, misses = tick(:time_rewrite_css) do
+          rewrite_css!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl])
+        end
         @state[:unresolved] += misses
-        FileUtils.mkdir_p(file_dir)
-        File.binwrite(out_path, content)
+        tick(:time_write_css) do
+          FileUtils.mkdir_p(file_dir)
+          File.binwrite(out_path, content)
+        end
         @state[:rewritten_css] += 1
       else
-        FileUtils.mkdir_p(file_dir)
-        File.binwrite(out_path, page.output)
+        tick(:time_write_other) do
+          FileUtils.mkdir_p(file_dir)
+          File.binwrite(out_path, page.output)
+        end
         @state[:copied_files] += 1
       end
     end
@@ -641,20 +701,22 @@ module Offlinify
     return unless @state
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-    site.static_files.each do |sf|
-      dest_path = sf.destination(@state[:dest]).tr("\\", "/")
-      rel = dest_path[(@state[:dest_root_fs].length + 1)..]
-      if offline_excluded?(rel, @state[:exclude_patterns])
-        @state[:excluded_files] += 1
-        next
+    tick(:time_copy_static) do
+      site.static_files.each do |sf|
+        dest_path = sf.destination(@state[:dest]).tr("\\", "/")
+        rel = dest_path[(@state[:dest_root_fs].length + 1)..]
+        if offline_excluded?(rel, @state[:exclude_patterns])
+          @state[:excluded_files] += 1
+          next
+        end
+        out_path = File.join(@state[:out_dest], rel)
+        copy_asset!(dest_path, out_path)
+        @state[:copied_files] += 1
       end
-      out_path = File.join(@state[:out_dest], rel)
-      copy_asset!(dest_path, out_path)
-      @state[:copied_files] += 1
     end
 
-    js_patches = patch_jtd_js!(@state[:out_dest])
-    search_data_built = build_search_data_js!(@state[:out_dest])
+    js_patches = tick(:time_patch_jtd) { patch_jtd_js!(@state[:out_dest]) }
+    search_data_built = tick(:time_search_data) { build_search_data_js!(@state[:out_dest]) }
 
     @state[:cumulative_ms] += (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
 
@@ -667,8 +729,41 @@ module Offlinify
     Jekyll.logger.info "Offlinify:", "patched just-the-docs.js (#{js_patches.join(", ")})" unless js_patches.empty?
     Jekyll.logger.info "Offlinify:", "wrote #{SEARCH_DATA_JS_REL} (#{search_data_built} bytes)" if search_data_built
     Jekyll.logger.info "Offlinify:", "Offlinifier ran in #{@state[:cumulative_ms].round(0)}ms."
+    log_profile_breakdown if @state[:profile]
 
     @state = nil
+  end
+
+  # Per-operation timing breakdown emitted at the end of `finish`
+  # when the build was started with `--profile`. The labels match
+  # the `tick(:time_*)` keys spread across setup, process_page, and
+  # finish. The sum of the listed rows is close to (but not exactly
+  # equal to) `cumulative_ms` -- the difference is the per-hook
+  # plumbing (state lookups, dispatch, `tick` overhead, file_dir
+  # computation) that isn't itself wrapped in a `tick`.
+  BREAKDOWN_KEYS = [
+    [:time_setup,            "setup"],
+    [:time_dest_path,        "dest_path"],
+    [:time_dispatch_dup,     "page.output.dup"],
+    [:time_strip_seo,        "strip_seo"],
+    [:time_code_ranges,      "code_ranges"],
+    [:time_rewrite_html,     "rewrite_html"],
+    [:time_inject_search,    "inject_search"],
+    [:time_write_html,       "write_html"],
+    [:time_rewrite_css,      "rewrite_css"],
+    [:time_write_css,        "write_css"],
+    [:time_rewrite_redirect, "rewrite_redirect"],
+    [:time_write_redirect,   "write_redirect"],
+    [:time_write_other,      "write_other"],
+    [:time_copy_static,      "copy_static"],
+    [:time_patch_jtd,        "patch_jtd"],
+    [:time_search_data,      "search_data"],
+  ].freeze
+
+  def self.log_profile_breakdown
+    BREAKDOWN_KEYS.each do |key, label|
+      Jekyll.logger.info "Offlinify:", format("  %-18s %7.1fms", label, @state[key])
+    end
   end
 
   # Copy a file from src to out, creating intermediate directories.
