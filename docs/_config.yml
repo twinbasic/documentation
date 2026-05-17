@@ -134,11 +134,22 @@ gh_offline_link_url: "https://github.com/twinbasic/documentation/releases/latest
 # the online _site/ output is unaffected.
 also_build_offline: true
 
+# When true, the Pdfify plugin (_plugins/pdfify.rb) runs at the end of
+# the build and emits a sparse _site-pdf/ tree containing only the
+# files pagedjs-cli needs: book.html, the two stylesheets the book
+# layout links (print.css, rouge.css), and every image referenced
+# from book.html. book.bat then renders the PDF from _site-pdf/book.html.
+# Adds <1s to the build (it's a few file copies); the online _site/
+# output is unaffected.
+also_build_pdf: true
+
 # Patterns for files Jekyll produces in _site/ that have no purpose
 # in the offline tree -- Pages / crawler metadata, jekyll-redirect-
 # from output, Windows batch scripts Jekyll picks up from the source
-# directory. The online _site/ keeps them; offlinify strips them
-# from _site-offline/.
+# directory, and the concatenated `book.html` that exists only to
+# feed `_plugins/pdfify.rb` (which copies it to _site-pdf/ and deletes
+# the _site/ copy). The online _site/ keeps the metadata files;
+# offlinify strips them from _site-offline/.
 #
 # Patterns are File.fnmatch-style with FNM_PATHNAME, matched against
 # each file's path relative to the site root. `*` does NOT cross
@@ -148,6 +159,7 @@ offline_exclude:
   - CNAME
   - robots.txt
   - sitemap.xml
+  - book.html
 
 # Excludes for both the build (Jekyll won't try to process these as
 # source) and the watcher (`jekyll serve` won't trigger a rebuild
@@ -157,5 +169,6 @@ offline_exclude:
 # rebuild loop. Keep this in sync with also_build_offline above.
 exclude:
   - _site-offline
+  - _site-pdf
   - redirects.json
   - "*.bat"

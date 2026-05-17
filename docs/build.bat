@@ -1,1 +1,1 @@
-bundler exec jekyll build %*
+bundle exec jekyll build %*

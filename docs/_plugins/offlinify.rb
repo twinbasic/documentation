@@ -4,25 +4,15 @@ require "fileutils"
 require "pathname"
 require "set"
 
-# Produces a `file://`-browsable copy of the rendered site. Two modes
-# that produce byte-equivalent offline output (the only difference
-# between them is whether `_site/` is also written):
-#
-#   1. Combined mode (default; `also_build_offline: true` in
-#      `_config.yml`). Plain `bundle exec jekyll build` writes the
-#      online site to `site.dest` (`_site/`) as usual, then this plugin
-#      copies the tree to `<site.dest>-offline` (`_site-offline/`),
-#      rewrites every URL to a page-relative form, patches a couple of
-#      just-the-docs JS issues, and wires up the search index to load
-#      from a `<script src=>` instead of XHR. One Jekyll pipeline run,
-#      two outputs.
-#
-#   2. Standalone mode (`offline_build: true` from `_config_offline.yml`,
-#      via `build-offline.bat`). Jekyll renders directly to
-#      `_site-offline/` with no `_site/` produced, and the plugin
-#      rewrites in place. Faster than combined mode when only the
-#      offline copy is wanted; the result is identical to what combined
-#      mode writes to `_site-offline/`.
+# Produces a `file://`-browsable copy of the rendered site. Activated
+# by `also_build_offline: true` in `_config.yml` (the default). Plain
+# `bundle exec jekyll build` writes the online site to `site.dest`
+# (`_site/`) as usual, then this plugin copies the tree to
+# `<site.dest>-offline` (`_site-offline/`), rewrites every URL to a
+# page-relative form, patches a couple of just-the-docs JS issues, and
+# wires up the search index to load from a `<script src=>` instead of
+# XHR. One Jekyll invocation produces both `_site/` and `_site-offline/`
+# (and, via `_plugins/pdfify.rb`, `_site-pdf/`).
 #
 # === Why post-process at all? ===
 #
@@ -134,18 +124,12 @@ require "set"
 #
 # === Compatibility ===
 #
-# Reads `site.dest`, `site.config['offline_build']`, and
-# `site.config['also_build_offline']`. In combined mode writes a fresh
-# `<site.dest>-offline/` tree (wiping any prior contents); in
-# standalone mode writes back into `site.dest`. Touches no files
-# outside those.
+# Reads `site.dest` and `site.config['also_build_offline']`. Writes a
+# fresh `<site.dest>-offline/` tree (wiping any prior contents).
+# Touches no files outside that.
 #
-# If the plugin is removed: the combined build silently stops
-# producing `_site-offline/` (Jekyll's normal `_site/` output is
-# unaffected); the standalone build produces a `_site-offline/` with
-# unrewritten root-absolute URLs that don't resolve under `file://`,
-# a search box that fires a failed XHR for `search-data.json`, and a
-# nav whose active-section highlighting collapses on every navigation.
+# If the plugin is removed: the build silently stops producing
+# `_site-offline/`; Jekyll's normal `_site/` output is unaffected.
 
 module Offlinify
   # Matches `href="..."` / `href='...'` / `src=...` attribute values
@@ -362,7 +346,6 @@ module Offlinify
     return unless Dir.exist?(src_dest)
 
     start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    combined = (src_dest != out_dest)
 
     # Jekyll's `relative_url` filter prepends `site.baseurl` to every
     # URL it produces, so when baseurl is non-empty (e.g. on a Pages
@@ -386,27 +369,23 @@ module Offlinify
     # _config.yml; an empty / missing entry skips this step entirely.
     exclude_patterns = Array(site.config["offline_exclude"]).map(&:to_s)
 
-    # In combined mode, wipe the offline output tree but keep the
-    # `_site-offline/` directory itself in place. (Deleting and
-    # recreating the directory surfaces in jekyll-watch as a bare
-    # `_site-offline` change event -- no trailing slash, since the
-    # directory was momentarily absent at notification time -- which
-    # the exclude entry's auto-generated `_site\-offline\/` regex
-    # does not match. The result was an infinite rebuild loop on
-    # `jekyll serve`. Cleaning contents in place keeps every event
-    # under `_site-offline/...`, where the exclude does match.)
-    # In-place mode: out_dest IS the dest Jekyll already cleaned and
-    # wrote; nothing to do.
-    if combined
-      if Dir.exist?(out_dest)
-        Dir.glob(File.join(out_dest, "*"), File::FNM_DOTMATCH).each do |entry|
-          basename = File.basename(entry)
-          next if basename == "." || basename == ".."
-          FileUtils.rm_rf(entry)
-        end
-      else
-        FileUtils.mkdir_p(out_dest)
+    # Wipe the offline output tree but keep the `_site-offline/`
+    # directory itself in place. (Deleting and recreating the
+    # directory surfaces in jekyll-watch as a bare `_site-offline`
+    # change event -- no trailing slash, since the directory was
+    # momentarily absent at notification time -- which the exclude
+    # entry's auto-generated `_site\-offline\/` regex does not match.
+    # The result was an infinite rebuild loop on `jekyll serve`.
+    # Cleaning contents in place keeps every event under
+    # `_site-offline/...`, where the exclude does match.)
+    if Dir.exist?(out_dest)
+      Dir.glob(File.join(out_dest, "*"), File::FNM_DOTMATCH).each do |entry|
+        basename = File.basename(entry)
+        next if basename == "." || basename == ".."
+        FileUtils.rm_rf(entry)
       end
+    else
+      FileUtils.mkdir_p(out_dest)
     end
 
     # Pre-walk the source tree once and bucket every file under its
@@ -447,18 +426,14 @@ module Offlinify
       rel = src_path[src_dest.length + 1..]
 
       if offline_excluded?(rel.tr("\\", "/"), exclude_patterns)
-        # Combined mode: src_dest is _site/, out_dest is _site-offline/.
-        # Skipping the file means it never gets copied, leaving the
-        # online _site/ untouched.
-        # Standalone mode: src_dest IS out_dest. Jekyll already wrote
-        # the file; delete it so the offline-only tree comes out
-        # equivalent to what combined mode produces.
-        File.delete(src_path) unless combined
+        # src_dest is _site/, out_dest is _site-offline/. Skipping the
+        # file means it never gets copied, leaving the online _site/
+        # untouched.
         excluded_files += 1
         next
       end
 
-      out_path = combined ? File.join(out_dest, rel) : src_path
+      out_path = File.join(out_dest, rel)
 
       case File.extname(src_path).downcase
       when ".html"
@@ -477,10 +452,10 @@ module Offlinify
         unresolved += rel_misses
         changed_search = inject_search_setup!(content, file_segs)
         if changed_url || changed_rel || changed_search
-          FileUtils.mkdir_p(File.dirname(out_path)) if combined
+          FileUtils.mkdir_p(File.dirname(out_path))
           File.binwrite(out_path, content)
           rewritten_html += 1
-        elsif combined
+        else
           copy_asset!(src_path, out_path)
           copied_assets += 1
         end
@@ -491,26 +466,23 @@ module Offlinify
         changed, misses = rewrite!(content, CSS_URL_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, EMPTY_RANGES, mode: :css)
         unresolved += misses
         if changed
-          FileUtils.mkdir_p(File.dirname(out_path)) if combined
+          FileUtils.mkdir_p(File.dirname(out_path))
           File.binwrite(out_path, content)
           rewritten_css += 1
-        elsif combined
+        else
           copy_asset!(src_path, out_path)
           copied_assets += 1
         end
       else
-        if combined
-          copy_asset!(src_path, out_path)
-          copied_assets += 1
-        end
+        copy_asset!(src_path, out_path)
+        copied_assets += 1
       end
     end
 
     js_patches = patch_jtd_js!(out_dest)
     search_data_built = build_search_data_js!(out_dest)
 
-    summary = "rewrote #{rewritten_html} HTML and #{rewritten_css} CSS file(s)"
-    summary += ", copied #{copied_assets} asset(s)" if combined
+    summary = "rewrote #{rewritten_html} HTML and #{rewritten_css} CSS file(s), copied #{copied_assets} asset(s)"
     summary += ", excluded #{excluded_files} file(s)" if excluded_files.positive?
     summary += " (#{unresolved} unresolved link(s) left as-is)" if unresolved.positive?
     Jekyll.logger.info "Offlinify:", summary
@@ -522,7 +494,7 @@ module Offlinify
   end
 
   # Copy a file from src to out, creating intermediate directories.
-  # Used in combined mode for everything except modified HTML/CSS.
+  # Used for everything in `_site/` that didn't need URL rewriting.
   def self.copy_asset!(src_path, out_path)
     FileUtils.mkdir_p(File.dirname(out_path))
     FileUtils.cp(src_path, out_path)
@@ -859,12 +831,8 @@ module Offlinify
 end
 
 Jekyll::Hooks.register :site, :post_write do |site|
-  if site.config["offline_build"]
-    # Standalone mode: site.dest IS the offline copy; rewrite in place.
-    Offlinify.run(site, site.dest, site.dest)
-  elsif site.config["also_build_offline"]
-    # Combined mode: site.dest is the online copy; produce the offline
-    # variant alongside it at <site.dest>-offline.
-    Offlinify.run(site, site.dest, "#{site.dest}-offline")
-  end
+  next unless site.config["also_build_offline"]
+  # site.dest is the online copy (`_site/`); produce the offline variant
+  # alongside it at `<site.dest>-offline` (`_site-offline/`).
+  Offlinify.run(site, site.dest, "#{site.dest}-offline")
 end

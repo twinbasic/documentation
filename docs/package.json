@@ -1,0 +1,9 @@
+{
+  "name": "twinbasic-docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PDF book pipeline for the twinBASIC documentation",
+  "devDependencies": {
+    "pagedjs-cli": "^0.4.3"
+  }
+}

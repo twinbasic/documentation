@@ -1,0 +1,267 @@
+{%- comment -%}
+  Per-chapter body processing for the book's chapter iteration. Pulled
+  out of book.html so the three call sites (front-matter loop, flat
+  per-part chapter loop, chaptered-part chapter loop) stay in sync.
+
+  Inputs (passed via `{% include ... key=value %}`):
+    chapter                  page object (required).
+    article_class_override   optional. When set, the emitted <article>
+                             uses this class literally; sub-page
+                             detection still affects the internal
+                             heading shift but doesn't add the
+                             " sub-chapter" suffix. Default class is
+                             "page" with " sub-chapter" appended for
+                             sub-pages.
+    chapter_anchor_override  optional. When set, replaces the URL-
+                             derived chapter anchor. Used for the root
+                             URL `/` in front matter where the default
+                             derivation collapses to an empty seed; the
+                             caller supplies an `fm.title`-derived
+                             fallback.
+    skip_sub_page_detection  optional truthy. When set, this chapter
+                             doesn't update or read the
+                             `current_index_*` state machine -- used by
+                             front-matter (where there are no nested
+                             sub-pages) so the root URL `/` doesn't
+                             accidentally make every subsequent chapter
+                             a sub-page of itself.
+    extra_heading_shift      optional truthy. When set, applies an
+                             additional +1 heading depth shift on top
+                             of the standard 1.5a shift (and the 1.6b
+                             sub-page shift, if applicable). Used by
+                             chaptered-part chapters (1.9) so a class
+                             index nests one outline level below its
+                             chapter-divider H2 rather than appearing
+                             as the chapter divider's sibling.
+
+  Reads + mutates outer-scope globals:
+    current_index_url, current_index_kind, current_index_name -- the
+      1.6a sub-page state machine. Caller is responsible for
+      initialising these before its for-loop and resetting between
+      independent chapter sequences (e.g. between chapters of a
+      chaptered Part).
+    p1_search/p1_replace .. p4_search/p4_replace, p3i*/p4i* -- the
+      whitespace patterns defined at the top of book.html.
+
+  Emits one `<article>...</article>` block at the call site. Empty
+  chapter bodies are skipped silently (no article emitted).
+{%- endcomment -%}
+{%- assign first_char = include.chapter.content | strip | slice: 0, 1 -%}
+{%- if first_char == '<' -%}
+  {%- assign body = include.chapter.content -%}
+{%- else -%}
+  {%- assign body = include.chapter.content | markdownify -%}
+{%- endif -%}
+
+{%- comment -%}
+  1.6a sub-page detection + 1.6c kind/name capture. When we see an
+  index URL we read the index's H1 to decide class vs module --
+  relying on the sub-page's `parent:` field would be wrong because
+  several VBRUN class folders mistakenly suffix it with " Module"
+  (e.g. AmbientProperties' BackColor.md). The H1 text (`# Foo class`
+  / `# Foo module`) is the source of truth.
+{%- endcomment -%}
+{%- assign is_sub_page = false -%}
+{%- unless include.skip_sub_page_detection -%}
+  {%- assign url_last_char = include.chapter.url | slice: -1, 1 -%}
+  {%- if url_last_char == '/' -%}
+    {%- assign current_index_url = include.chapter.url -%}
+    {%- assign current_index_name = include.chapter.title
+          | replace: ' Module', ''
+          | replace: ' module', ''
+          | replace: ' Class', ''
+          | replace: ' class', ''
+          | replace: ' Package', '' -%}
+    {%- assign content_head = include.chapter.content | slice: 0, 200 | downcase -%}
+    {%- if content_head contains 'module' -%}
+      {%- assign current_index_kind = 'module' -%}
+    {%- else -%}
+      {%- assign current_index_kind = 'class' -%}
+    {%- endif -%}
+  {%- elsif current_index_url != '' -%}
+    {%- assign sized_prefix = include.chapter.url | slice: 0, current_index_url.size -%}
+    {%- if sized_prefix == current_index_url -%}
+      {%- assign is_sub_page = true -%}
+    {%- else -%}
+      {%- assign current_index_url = '' -%}
+    {%- endif -%}
+  {%- endif -%}
+{%- endunless -%}
+
+{%- assign body = body
+    | replace: 'src="/', 'src="'
+    | replace: p1_search, p1_replace
+    | replace: p2_search, p2_replace
+    | replace: p3i12_search, p3i12_replace
+    | replace: p3i8_search,  p3i8_replace
+    | replace: p3i4_search,  p3i4_replace
+    | replace: p3_search,    p3_replace
+    | replace: p4i16_search, p4i16_replace
+    | replace: p4i12_search, p4i12_replace
+    | replace: p4i8_search,  p4i8_replace
+    | replace: p4i4_search,  p4i4_replace
+    | replace: p4_search,    p4_replace
+    | replace: '</span> <span', '</span><span class="w"> </span><span' -%}
+
+{%- assign stripped = body | strip -%}
+{%- unless stripped == "" -%}
+
+  {%- comment -%}
+    1.5a: heading depth shift. Source `# Title` becomes the chapter
+    title; in the book it lives one level below the part divider's
+    H1, so cascade every heading down by one. `<h6` becomes
+    `<h7-stub` since there's no real h7; in practice no chapter
+    content uses h5 or h6, so the stub never appears, but the rule
+    keeps the cascade consistent.
+  {%- endcomment -%}
+  {%- assign body = body
+      | replace: '<h6', '<h7-stub'
+      | replace: '</h6>', '</h7-stub>'
+      | replace: '<h5', '<h6'
+      | replace: '</h5>', '</h6>'
+      | replace: '<h4', '<h5'
+      | replace: '</h4>', '</h5>'
+      | replace: '<h3', '<h4'
+      | replace: '</h3>', '</h4>'
+      | replace: '<h2', '<h3'
+      | replace: '</h2>', '</h3>'
+      | replace: '<h1', '<h2'
+      | replace: '</h1>', '</h2>' -%}
+
+  {%- comment -%}
+    1.6b: extra heading shift for sub-pages so they nest one level
+    deeper than their parent index in the PDF outline. A sub-page's
+    chapter title (source `#`) ends up as `<h3>` instead of `<h2>`,
+    sub-page sections as `<h4>` instead of `<h3>`, and so on. The
+    shift cascades through the same rule set; no real content reaches
+    h7-stub or beyond after this second pass.
+  {%- endcomment -%}
+  {%- if is_sub_page -%}
+    {%- assign body = body
+        | replace: '<h6', '<h7-stub'
+        | replace: '</h6>', '</h7-stub>'
+        | replace: '<h5', '<h6'
+        | replace: '</h5>', '</h6>'
+        | replace: '<h4', '<h5'
+        | replace: '</h4>', '</h5>'
+        | replace: '<h3', '<h4'
+        | replace: '</h3>', '</h4>'
+        | replace: '<h2', '<h3'
+        | replace: '</h2>', '</h3>' -%}
+  {%- endif -%}
+
+  {%- comment -%}
+    1.9 extra shift: chaptered-part chapters nest under the chapter-
+    divider's H2, so every chapter body needs one more level of
+    demotion on top of 1.5a (and 1.6b, if the chapter is a sub-page).
+    Without this, a class index's source H1 lands at H2 -- the same
+    outline depth as the chapter divider it should sit beneath -- so
+    `AmbientProperties class` appears as a sibling of `VBRUN Package`
+    rather than a child. The shift cascades through the same rule set;
+    real content stops at source-H4 (member sub-page section), which
+    after 1.5a + 1.6b + this pass ends up at h7-stub and is excluded
+    from the outline anyway.
+  {%- endcomment -%}
+  {%- if include.extra_heading_shift -%}
+    {%- assign body = body
+        | replace: '<h6', '<h7-stub'
+        | replace: '</h6>', '</h7-stub>'
+        | replace: '<h5', '<h6'
+        | replace: '</h5>', '</h6>'
+        | replace: '<h4', '<h5'
+        | replace: '</h4>', '</h5>'
+        | replace: '<h3', '<h4'
+        | replace: '</h3>', '</h4>'
+        | replace: '<h2', '<h3'
+        | replace: '</h2>', '</h3>' -%}
+  {%- endif -%}
+
+  {%- comment -%}
+    1.5b: chapter anchor + per-heading id uniqueness. Derive a stable
+    chapter anchor from the chapter URL (strip leading and trailing
+    slashes, replace inner slashes with dashes); the article element
+    carries the bare anchor as its id so Phase 2 cross-references can
+    target `#ch-<anchor>` and land at the chapter's first page. Every
+    heading id and intra-chapter `href="#..."` inside the chapter body
+    gets that anchor prepended so identical kramdown-generated slugs
+    (`see-also`, `example`, ...) don't collapse to one outline
+    destination.
+  {%- endcomment -%}
+  {%- if include.chapter_anchor_override -%}
+    {%- assign chapter_anchor = include.chapter_anchor_override -%}
+  {%- else -%}
+    {%- assign url_path = include.chapter.url | replace: '/', '-' -%}
+    {%- assign anchor_first_char = url_path | slice: 0, 1 -%}
+    {%- if anchor_first_char == '-' -%}
+      {%- assign url_len = url_path.size | minus: 1 -%}
+      {%- assign url_path = url_path | slice: 1, url_len -%}
+    {%- endif -%}
+    {%- assign anchor_last_char = url_path | slice: -1, 1 -%}
+    {%- if anchor_last_char == '-' -%}
+      {%- assign url_len = url_path.size | minus: 1 -%}
+      {%- assign url_path = url_path | slice: 0, url_len -%}
+    {%- endif -%}
+    {%- assign chapter_anchor = 'ch-' | append: url_path -%}
+  {%- endif -%}
+
+  {%- assign h2_class_prefix = '<h2 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+  {%- assign h2_prefix       = '<h2 id="'                | append: chapter_anchor | append: '-' -%}
+  {%- assign h3_class_prefix = '<h3 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+  {%- assign h3_prefix       = '<h3 id="'                | append: chapter_anchor | append: '-' -%}
+  {%- assign h4_class_prefix = '<h4 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+  {%- assign h4_prefix       = '<h4 id="'                | append: chapter_anchor | append: '-' -%}
+  {%- assign h5_class_prefix = '<h5 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+  {%- assign h5_prefix       = '<h5 id="'                | append: chapter_anchor | append: '-' -%}
+  {%- assign h6_class_prefix = '<h6 class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+  {%- assign h6_prefix       = '<h6 id="'                | append: chapter_anchor | append: '-' -%}
+  {%- assign h7_class_prefix = '<h7-stub class="no_toc" id="' | append: chapter_anchor | append: '-' -%}
+  {%- assign h7_prefix       = '<h7-stub id="'           | append: chapter_anchor | append: '-' -%}
+  {%- assign href_prefix     = 'href="#'                 | append: chapter_anchor | append: '-' -%}
+
+  {%- assign body = body
+      | replace: '<h2 class="no_toc" id="',      h2_class_prefix
+      | replace: '<h2 id="',                     h2_prefix
+      | replace: '<h3 class="no_toc" id="',      h3_class_prefix
+      | replace: '<h3 id="',                     h3_prefix
+      | replace: '<h4 class="no_toc" id="',      h4_class_prefix
+      | replace: '<h4 id="',                     h4_prefix
+      | replace: '<h5 class="no_toc" id="',      h5_class_prefix
+      | replace: '<h5 id="',                     h5_prefix
+      | replace: '<h6 class="no_toc" id="',      h6_class_prefix
+      | replace: '<h6 id="',                     h6_prefix
+      | replace: '<h7-stub class="no_toc" id="', h7_class_prefix
+      | replace: '<h7-stub id="',                h7_prefix
+      | replace: 'href="#',                      href_prefix -%}
+
+  {%- comment -%}
+    Pick the article class and running-header text. When the caller
+    overrides the class (front-matter, part-foreword), the override
+    is used as-is and sub-page styling never kicks in. Otherwise
+    sub-pages get the " sub-chapter" suffix and a compound running
+    header ("Module - Member" / "Class.Member").
+  {%- endcomment -%}
+  {%- if include.article_class_override -%}
+    {%- assign article_class = include.article_class_override -%}
+    {%- assign header_title = include.chapter.title -%}
+  {%- else -%}
+    {%- assign article_class = 'page' -%}
+    {%- if is_sub_page -%}
+      {%- assign article_class = article_class | append: ' sub-chapter' -%}
+      {%- if current_index_kind == 'module' -%}
+        {%- assign compound_sep = ' - ' -%}
+      {%- else -%}
+        {%- assign compound_sep = '.' -%}
+      {%- endif -%}
+      {%- assign header_title = current_index_name | append: compound_sep | append: include.chapter.title -%}
+    {%- else -%}
+      {%- assign header_title = include.chapter.title -%}
+    {%- endif -%}
+    {%- if include.extra_heading_shift -%}
+      {%- assign article_class = article_class | append: ' chaptered' -%}
+    {%- endif -%}
+  {%- endif -%}
+<article class="{{ article_class }}" id="{{ chapter_anchor }}">
+<span class="header-string">{{ header_title }}</span>
+{{ body }}
+</article>
+{%- endunless -%}
