@@ -63,13 +63,31 @@ require "set"
 # unaffected.
 
 module Pdfify
-  # Matches `src="..."` / `src='...'` whose URL is page-relative
-  # (doesn't start with `/`, `#`, or a URL scheme). Captures 1=quote
-  # char, 2=URL. `<img src=>` references in book.html all match this
-  # shape -- the include's `replace: 'src="/', 'src="'` already strips
-  # any leading slash so paths arrive here as `Features/Images/foo.png`,
-  # `Tutorials/CEF/Images/bar.svg`, etc.
-  IMG_SRC_RE = %r{\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1}.freeze
+  # Three-alternative regex, matched against the full document with
+  # the `m` flag (`.` spans newlines). Same shape offlinify uses:
+  #
+  #   1. `<code\b[^>]*>.*?</code>` -- a `<code>` block. Atomic match;
+  #      consumes the body so any `src=` inside (e.g. a tutorial
+  #      literal `<img src="foo.png">` shown as a code sample) does
+  #      not get re-scanned by the third branch. Group captures are
+  #      nil for this branch.
+  #   2. `<pre\b[^>]*>.*?</pre>`   -- a `<pre>` block. Same. The two
+  #      separate branches are necessary because Rouge wraps code
+  #      blocks in `<pre>` (Markdown fenced) but inline code in
+  #      `<code>` (single backticks); the syntax highlighter also
+  #      emits `<span class="na">src=</span><span class="s">"X"</span>`
+  #      sequences inside `<pre>` that would otherwise look like a
+  #      real `src="X"` attribute to the third branch.
+  #   3. `\bsrc="..."` -- a real attribute, page-relative URL only
+  #      (no leading `/`, `#`, or `scheme:`). Group 1=quote char,
+  #      group 2=URL. `<img src=>` references in book.html all match
+  #      this shape -- the include's baseurl-aware `src="<baseurl>/'
+  #      strip already removed any leading slash, so paths arrive
+  #      here as `Features/Images/foo.png`, etc.
+  #
+  # `extract_image_paths` skips matches whose group 1 is nil (the
+  # code/pre branches) and harvests the URL from the rest.
+  IMG_SRC_RE = %r{<code\b[^>]*>.*?</code>|<pre\b[^>]*>.*?</pre>|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1}m.freeze
 
   # Stylesheets the book-combined layout links. Order doesn't matter;
   # the set is iterated and each is copied if present.
@@ -142,10 +160,15 @@ module Pdfify
   # Walks book.html for relative `<img src=>` URLs and returns the
   # unique set of paths (in document order, dedup'd). Paths are kept
   # exactly as written so the destination layout mirrors the source.
+  # Skips `<code>`/`<pre>` blocks so syntax-highlighted code samples
+  # (e.g. a tutorial showing a literal `<img src="foo.png">` snippet,
+  # or `<span class="na">src=</span><span class="s">"foo"</span>`
+  # split by Rouge) don't generate spurious "missing" entries.
   def self.extract_image_paths(html)
     seen = Set.new
     out = []
-    html.scan(IMG_SRC_RE) do |_quote, url|
+    html.scan(IMG_SRC_RE) do |quote, url|
+      next if quote.nil? # code/pre branch matched -- nothing to harvest
       # Strip any `?query` / `#fragment` -- images don't need them
       # and they would confuse the file existence check.
       path = url.split(/[?#]/, 2).first
