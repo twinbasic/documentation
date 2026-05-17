@@ -132,24 +132,29 @@ require "set"
 # `_site-offline/`; Jekyll's normal `_site/` output is unaffected.
 
 module Offlinify
-  # Matches `href="..."` / `href='...'` / `src=...` attribute values
-  # whose URL starts with a single slash (not protocol-relative `//`).
-  # Captures: 1=attribute name, 2=quote char, 3=URL.
-  HTML_ATTR_RE = /\b(href|src)=(["'])(\/(?!\/)[^"']*)\2/.freeze
-
-  # Matches `href`/`src` attribute values that are page-relative --
-  # they do not start with `/`, `#`, or a URL scheme. Used to catch
-  # links that come from markdown sources verbatim (e.g.
-  # `[Foo](Foo#section)`), which Jekyll passes through unmodified
-  # and therefore do not get the baseurl prefix that `relative_url`
-  # would have added. These need their `.html` extension added so
-  # they resolve under `file://`.
+  # Matches `href="..."` / `src="..."` attribute values that need
+  # resolution against the site's file set. The URL capture (group 3)
+  # matches either form in a single pass:
   #
-  # Excluded by the lookahead:
+  #   - an absolute path (`/foo`) that does not start `//` (protocol-
+  #     relative); produced by `relative_url`. Goes through
+  #     `compute_relative` to become a page-relative URL.
+  #   - a page-relative path (`Foo`, `Foo#section`) that does not
+  #     start with `/`, `#`, or a URL scheme. These come from
+  #     markdown sources verbatim and go through `compute_rel_url`
+  #     to gain the `.html` / `/index.html` suffix needed under
+  #     `file://`.
+  #
+  # Excluded by the second alternative's lookahead:
   #   `#...`                    fragment-only (same-page anchors)
-  #   `/...` / `//...`          absolute / protocol-relative (HTML_ATTR_RE)
+  #   `/...` / `//...`          handled by the first alternative
   #   `mailto:`, `http:`, etc.  any RFC 3986 URL scheme
-  HTML_REL_HREF_RE = %r{\b(href|src)=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2}.freeze
+  #
+  # Captures: 1=attribute name, 2=quote char, 3=URL. A single
+  # combined regex halves the per-file regex work over an older
+  # split between two separate regexes -- two full gsubs plus an
+  # interim re-scan for code-block ranges between them.
+  HTML_COMBINED_RE = %r{\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2}.freeze
 
   # Matches `url(...)` in CSS where the URL starts with a single slash.
   # The URL may be bare or wrapped in single/double quotes. Captures:
@@ -317,10 +322,6 @@ module Offlinify
   # inside.
   CODE_BLOCK_RE = /<(code|pre)\b[^>]*>(.*?)<\/\1>/m.freeze
 
-  # Sentinel for callers (CSS rewrite) that don't have code-block
-  # context. Avoids allocating a throwaway array per file.
-  EMPTY_RANGES = [].freeze
-
   # Returns an array of `[body_start, body_end]` byte ranges for every
   # code-block body in `content`. Empty when there are no code blocks.
   # Used in conjunction with `in_code_block?` to gate the rewrite
@@ -440,18 +441,11 @@ module Offlinify
         content = File.binread(src_path)
         file_dir  = File.dirname(out_path)
         file_segs = file_dir_segs_from_rel(rel)
-        # Compute code-block byte ranges before each rewrite pass.
-        # Pass 1 may shift downstream offsets (it rewrites href/src
-        # attribute values, which usually grow), so Pass 2 needs a
-        # fresh scan against the post-Pass-1 content.
         code_ranges = code_block_ranges(content)
-        changed_url, misses = rewrite!(content, HTML_ATTR_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges, mode: :html)
+        changed_url, misses = rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges)
         unresolved += misses
-        code_ranges = code_block_ranges(content) if changed_url
-        changed_rel, rel_misses = rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache, code_ranges)
-        unresolved += rel_misses
         changed_search = inject_search_setup!(content, file_segs)
-        if changed_url || changed_rel || changed_search
+        if changed_url || changed_search
           FileUtils.mkdir_p(File.dirname(out_path))
           File.binwrite(out_path, content)
           rewritten_html += 1
@@ -463,7 +457,7 @@ module Offlinify
         content = File.binread(src_path)
         file_dir  = File.dirname(out_path)
         file_segs = file_dir_segs_from_rel(rel)
-        changed, misses = rewrite!(content, CSS_URL_RE, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, EMPTY_RANGES, mode: :css)
+        changed, misses = rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)
         unresolved += misses
         if changed
           FileUtils.mkdir_p(File.dirname(out_path))
@@ -595,25 +589,81 @@ module Offlinify
     js.bytesize
   end
 
-  # Mutates `content` in place via gsub. Returns
-  # `[changed_bool, unresolved_count]`. Per-match work is a single
-  # Hash lookup in `result_cache` -- the heavy lifting (URL
-  # resolution, LCP walk, segment encoding) runs only on cache miss.
+  # Mutates `content` in place via a single gsub matching both
+  # absolute (`/...`) and page-relative (`Foo`, `Foo#frag`) href/src
+  # URLs. Returns `[changed_bool, unresolved_count]`. Per-match work
+  # is a single Hash lookup in `result_cache` -- the heavy lifting
+  # (URL resolution, LCP walk, segment encoding) runs only on cache
+  # miss.
+  #
+  # Dispatches inside the gsub block on whether `raw` starts with
+  # `/`: absolute URLs go through `compute_relative` (resolves to a
+  # page-relative form), page-relative ones go through
+  # `compute_rel_url` (probes the filesystem for `<rel>`,
+  # `<rel>.html`, `<rel>/index.html` and re-attaches the matching
+  # suffix). Both share `result_cache` since their cache keys are
+  # disjoint -- absolute starts with `/`, relative doesn't.
+  #
+  # `compute_rel_url` may return the input unchanged when the file
+  # already exists at the relative path verbatim (e.g. `Foo.html`
+  # from a sibling markdown source); this is treated as "no rewrite
+  # needed, not a miss".
   #
   # `code_ranges` is an array of `[start, end]` byte ranges covering
-  # the bodies of `<code>` / `<pre>` blocks in `content`; matches
-  # whose offset falls in any range are left untouched and do not
-  # count as unresolved. Pass an empty array (or omit `code_ranges`
-  # for the CSS mode, which has no such concept).
-  def self.rewrite!(content, regex, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges, mode:)
+  # the bodies of `<code>` / `<pre>` blocks; matches whose offset
+  # falls inside any range are left untouched and do not count as
+  # unresolved.
+  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges)
     misses = 0
     changed = false
 
-    new_content = content.gsub(regex) do
+    new_content = content.gsub(HTML_COMBINED_RE) do
       match = Regexp.last_match
       next match[0] if !code_ranges.empty? && in_code_block?(match.begin(0), code_ranges)
 
-      raw = mode == :html ? match[3] : match[2]
+      raw = match[3]
+      cache_key = "#{file_dir}\x00#{raw}"
+      rel = result_cache.fetch(cache_key) do
+        result_cache[cache_key] =
+          if raw.start_with?("/")
+            compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
+          else
+            compute_rel_url(raw, file_segs, site_paths)
+          end
+      end
+
+      if rel.nil?
+        misses += 1
+        match[0]
+      elsif rel == raw
+        # File exists at the relative path verbatim; the link is
+        # already correct (relative branch only -- compute_relative
+        # never returns the input unchanged).
+        match[0]
+      else
+        changed = true
+        %(#{match[1]}=#{match[2]}#{rel}#{match[2]})
+      end
+    end
+
+    content.replace(new_content) if changed
+    [changed, misses]
+  end
+
+  # Mutates `content` in place via gsub over `url(...)` references
+  # that start with `/`. Returns `[changed_bool, unresolved_count]`.
+  # Per-match work is a single Hash lookup in `result_cache` -- the
+  # heavy lifting (URL resolution, LCP walk, segment encoding) runs
+  # only on cache miss. CSS has no code-block concept, so there is
+  # no need to gate matches by offset the way `rewrite_html!` does.
+  def self.rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)
+    misses = 0
+    changed = false
+
+    new_content = content.gsub(CSS_URL_RE) do
+      match = Regexp.last_match
+      raw = match[2]
+      quote = match[1]
       cache_key = "#{file_dir}\x00#{raw}"
       rel = result_cache.fetch(cache_key) do
         result_cache[cache_key] = compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
@@ -623,51 +673,7 @@ module Offlinify
         match[0]
       else
         changed = true
-        if mode == :html
-          %(#{match[1]}=#{match[2]}#{rel}#{match[2]})
-        else
-          quote = match[1]
-          "url(#{quote}#{rel}#{quote})"
-        end
-      end
-    end
-
-    content.replace(new_content) if changed
-    [changed, misses]
-  end
-
-  # Companion to `rewrite!` for page-relative URLs that didn't go
-  # through `relative_url` (e.g. links that came straight from
-  # markdown sources like `[Foo](Foo#section)`). Mutates `content`
-  # in place. Returns `[changed_bool, unresolved_count]`. Shares the
-  # `result_cache` with the absolute-URL pass since the keyed `raw`
-  # values are disjoint (absolute URLs start with `/`, relative ones
-  # don't). `code_ranges` excludes matches inside `<code>` / `<pre>`
-  # blocks (same handling as `rewrite!`).
-  def self.rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache, code_ranges)
-    misses = 0
-    changed = false
-
-    new_content = content.gsub(HTML_REL_HREF_RE) do
-      match = Regexp.last_match
-      next match[0] if !code_ranges.empty? && in_code_block?(match.begin(0), code_ranges)
-
-      raw = match[3]
-      cache_key = "#{file_dir}\x00#{raw}"
-      rel = result_cache.fetch(cache_key) do
-        result_cache[cache_key] = compute_rel_url(raw, file_segs, site_paths)
-      end
-      if rel.nil?
-        misses += 1
-        match[0]
-      elsif rel == raw
-        # File already exists at the relative path verbatim; the
-        # link is correct as-is (e.g. `Foo.html` from a sibling
-        # markdown source).
-        match[0]
-      else
-        changed = true
-        %(#{match[1]}=#{match[2]}#{rel}#{match[2]})
+        "url(#{quote}#{rel}#{quote})"
       end
     end
 

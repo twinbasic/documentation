@@ -41,7 +41,7 @@ After Jekyll's WRITE phase completes, the hook fires `Offlinify.run(site, src_de
 
 4. **Walk the source tree.** For each file:
    - If the file matches a pattern in `site.config["offline_exclude"]` (see [Exclude list](#exclude-list)): skip the copy so the online `_site/` keeps it and the offline tree doesn't.
-   - `.html`: read once, run three transformation passes in order (absolute-URL rewrite, relative-URL rewrite, search-setup injection), write back if any pass changed content.
+   - `.html`: read once, run two transformation passes in order (combined HTML URL rewrite, search-setup injection), write back if any pass changed content.
    - `.css`: read, run the `url()` rewrite, write back.
    - Anything else (images, fonts, JSON, JS): plain `FileUtils.cp` into the offline tree.
 
@@ -53,11 +53,22 @@ After Jekyll's WRITE phase completes, the hook fires `Offlinify.run(site, src_de
 
 ## Transformation passes
 
-### Pass 1: absolute URL rewriting (HTML)
+### HTML URL rewriting
 
-Regex: `\b(href|src)=(["'])(\/(?!\/)[^"']*)\2` — captures `href` or `src` attribute values that start with a single `/` (not `//`, which is protocol-relative).
+A single combined regex matches both absolute and page-relative URLs in `href`/`src` attributes:
 
-For each match, `compute_relative` does the following:
+`\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2`
+
+The third capture (the URL) has two alternatives:
+
+- **Absolute** (`\/(?!\/)[^"']*`): starts with a single `/`, not `//` (protocol-relative). Produced by `relative_url`. Goes through `compute_relative`.
+- **Page-relative** (`(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+`): does not start with `#` (fragment-only — leave alone), `/` (handled by the first alternative), or a `scheme:` prefix (`http:`, `mailto:`, `tel:`, `javascript:`, etc.). Comes from markdown sources verbatim (`[Description](Attributes#description)`-style); Jekyll passes these through without applying `relative_url`, so they reach the rendered HTML without a baseurl prefix. Goes through `compute_rel_url`.
+
+The two alternatives are disjoint at the start of the URL, so a single `gsub` handles both. Inside the block, dispatch on `raw.start_with?("/")`. (An earlier two-regex design ran two full gsubs and re-scanned the file for code-block ranges between them; combining them halved the per-file regex work — see [Performance](#performance).)
+
+#### Absolute-URL path: `compute_relative`
+
+For each absolute-URL match, the steps are:
 
 1. **Split off query/fragment.** `#section` and `?foo=bar` are preserved verbatim onto the rewritten URL.
 
@@ -96,37 +107,26 @@ descend       = "Tutorials/CustomControls/Form%20Designer.html"
 result        = "../../Tutorials/CustomControls/Form%20Designer.html#section"
 ```
 
-**Code-block skip.** Before the rewrite regex runs, the file's content is scanned once for `<code>…</code>` and `<pre>…</pre>` blocks. The byte ranges of their bodies are passed to the regex callback, which returns the match verbatim when the match offset falls inside any range. The skip has two consequences:
+#### Page-relative-URL path: `compute_rel_url`
 
-- Example URLs in tutorial code samples (e.g. `<script src="/script.js">` displayed verbatim in a CEF page) are not rewritten and **don't count toward the "unresolved" counter**. The unresolved counter is now a real bug signal: anything it reports is either a broken source link or an upstream-theme change.
-- Rouge's syntax highlighter HTML-escapes `<` and `>` inside code but leaves `"` alone, so `src="/foo"` survives literally inside `<code>` bodies and would otherwise match the absolute-URL regex. The code-block skip is what makes this invisible.
-
-The same skip applies to Pass 2 (relative URLs).
-
-### Pass 2: relative URL rewriting (HTML)
-
-Some links come from markdown sources verbatim, e.g. `[Description](Attributes#description)` in `Const.md`. Jekyll passes these through without applying `relative_url`, so they reach the rendered HTML as page-relative URLs (no leading slash) without a baseurl prefix. The absolute-URL regex from Pass 1 doesn't match them — its alternation requires `\/(?!\/)` at the start.
-
-Pass 2 catches them. The regex `\b(href|src)=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2` matches attribute values that:
-
-- Do **not** start with `#` (fragment-only, leave alone).
-- Do **not** start with `/` (handled by Pass 1).
-- Do **not** start with `scheme:` (where `scheme` is any valid RFC 3986 scheme: `http:`, `mailto:`, `tel:`, `javascript:`, etc.).
-- Have at least one character.
-
-`compute_rel_url` resolves the match in three steps:
+For each page-relative match (e.g. `Attributes#description` in `Const.html`), the steps are:
 
 1. **Normalise the relative path** against the current page's directory segments. `..` pops the stack, `.` and consecutive slashes are skipped, anything else is pushed. The result is an absolute site path (`/tB/Core/Attributes` for the `Attributes` example, starting from `tB/Core/Const.html`).
 
-2. **Probe the same three candidates** as Pass 1.
+2. **Probe the same three candidates** as the absolute path.
 
 3. **Append the matching suffix to the *original* relative URL.** Crucially, the output is the original raw plus the suffix that worked — not a freshly computed relative path. From the `Attributes#description` example: the path is already correctly relative to the current page (same directory), the only fix needed is `.html`. So `Attributes` → `Attributes.html` and the original `#description` tail is reattached, giving `Attributes.html#description`.
 
 If the original is already correct (e.g. `href="foo.html"` where `foo.html` exists), the probe of `<path>` matches and the suffix is empty — the URL is left untouched and the match doesn't contribute to the "changed" count. If no candidate matches, the URL is left as-is and the unresolved counter is incremented.
 
-Matches inside code-block bodies are skipped here too (see the note above Pass 2's heading).
+#### Code-block skip
 
-### Pass 3: search-setup injection (HTML)
+Before the rewrite regex runs, the file's content is scanned once for `<code>…</code>` and `<pre>…</pre>` blocks. The byte ranges of their bodies are passed to the regex callback, which returns the match verbatim when the match offset falls inside any range. The skip has two consequences:
+
+- Example URLs in tutorial code samples (e.g. `<script src="/script.js">` displayed verbatim in a CEF page) are not rewritten and **don't count toward the "unresolved" counter**. The unresolved counter is now a real bug signal: anything it reports is either a broken source link or an upstream-theme change.
+- Rouge's syntax highlighter HTML-escapes `<` and `>` inside code but leaves `"` alone, so `src="/foo"` survives literally inside `<code>` bodies and would otherwise match the URL regex. The code-block skip is what makes this invisible.
+
+### Search-setup injection (HTML)
 
 Two `<script>` elements are inserted right before the existing `<script src="...just-the-docs.js">` tag in each rendered HTML:
 
@@ -141,13 +141,13 @@ Two `<script>` elements are inserted right before the existing `<script src="...
 
 Both run in source order before `just-the-docs.js`, so the globals are populated before the document-ready callback fires `initSearch()`.
 
-The injection finds the just-the-docs.js script tag via a regex that captures the relative-path prefix in the existing tag's `src` attribute (e.g. `../../assets/js/`). The same prefix is reused for the new `search-data.js` reference. This works because Pass 1 has already converted the just-the-docs.js `src` from root-absolute to page-relative form by the time Pass 3 runs.
+The injection finds the just-the-docs.js script tag via a regex that captures the relative-path prefix in the existing tag's `src` attribute (e.g. `../../assets/js/`). The same prefix is reused for the new `search-data.js` reference. This works because the HTML URL rewriting pass has already converted the just-the-docs.js `src` from root-absolute to page-relative form by the time the injection runs.
 
 ### CSS `url()` rewriting
 
 The just-the-docs theme ships `background-image: url("/favicon.png")` for the site logo. Without rewriting, this would fail under `file://`.
 
-The regex `url\(\s*(["']?)(\/(?!\/)[^"'()\s]*)\1\s*\)` matches `url(...)` references whose URL starts with a single slash, optionally wrapped in quotes. The rewrite uses the same `compute_relative` as Pass 1.
+The regex `url\(\s*(["']?)(\/(?!\/)[^"'()\s]*)\1\s*\)` matches `url(...)` references whose URL starts with a single slash, optionally wrapped in quotes. The rewrite uses the same `compute_relative` as the HTML absolute-URL path.
 
 In the CSS file the source dir is `_site-offline/assets/css/` so the rewrite emits `url("../../favicon.png")`.
 
@@ -231,7 +231,7 @@ Three caches keep the per-match work to a single Hash lookup once warmed up:
 
 3. **`result_cache`** (`Hash` of `"#{file_dir}\x00#{raw}"` → `final_rel_url` or `nil`). The big win. Subsumes step 1 (raw → site_path) and step 2 (site_path → page-relative URL) so each unique `(file_dir, raw)` pair is computed exactly once across the build. Every page shares its nav and aux-nav with every other page — those links resolve once on the first page and hit cache on every subsequent page. Without this cache the offlinify pass takes ~7× longer.
 
-The cache is shared between the absolute-URL pass (Pass 1) and the relative-URL pass (Pass 2) — the `raw` shapes are disjoint (absolute starts with `/`, relative doesn't), so there's no collision. The `\x00` separator between `file_dir` and `raw` prevents path-name collisions inside the cache key.
+The cache is shared between the absolute-URL and page-relative-URL dispatches inside the combined HTML pass — the `raw` shapes are disjoint (absolute starts with `/`, relative doesn't), so there's no collision. The `\x00` separator between `file_dir` and `raw` prevents path-name collisions inside the cache key.
 
 ## File layout
 
@@ -264,7 +264,7 @@ Both checks set `fail: true`. Any unresolved link fails the build, blocks the Pa
 
 The plugin surfaces several conditions in its summary log lines:
 
-- **Unresolved links.** `rewrote 837 HTML and 4 CSS file(s), copied 516 asset(s) (N unresolved link(s) left as-is)`. Each match the regex picked up but couldn't resolve against `site_paths` increments the counter. The code-block skip described under [Pass 1](#pass-1-absolute-url-rewriting-html) keeps example URLs inside `<code>`/`<pre>` off this counter, so a non-zero value here is a real bug signal — usually a broken source link, or an upstream-theme change that broke a regex.
+- **Unresolved links.** `rewrote 837 HTML and 4 CSS file(s), copied 516 asset(s) (N unresolved link(s) left as-is)`. Each match the regex picked up but couldn't resolve against `site_paths` increments the counter. The [code-block skip](#code-block-skip) keeps example URLs inside `<code>`/`<pre>` off this counter, so a non-zero value here is a real bug signal — usually a broken source link, or an upstream-theme change that broke a regex.
 
 - **JS regex misses.** `could not locate navLink() in assets/js/just-the-docs.js` (or the equivalent for `initSearch()`). The corresponding patch is skipped. Means just-the-docs has shipped a new version of the function and the regex constant needs updating. The plugin emits a warning pointing at the specific constant to update.
 
@@ -280,9 +280,10 @@ The optimization story is captured in the commit history. Briefly:
 
 - **Naïve first version** (per-file `File.file?` probes for each candidate): ~30 s.
 - **+ `site_paths` Set** (O(1) lookup): down to ~10 s, before further work.
-- **+ `result_cache`, `seg_cache`, manual LCP** (replaced `Pathname.relative_path_from` per match with a string-segment comparison): down to ~3 s.
+- **+ `result_cache`, `seg_cache`, manual LCP** (replaced `Pathname.relative_path_from` per match with a string-segment comparison): down to ~7 s as the site grew past 800 pages.
+- **+ combined HTML regex** (single gsub matching both absolute and page-relative URLs in one pass — eliminating the second full file scan and the interim re-scan of code-block ranges that used to sit between two separate passes): down to ~4 s. Roughly 40% off the HTML walk.
 
-That's a ~10× total speedup compared to the naïve version. The remaining ~3 s is dominated by file I/O — reading, regex-substituting, and writing across ~1100 HTML files — plus the regex pass over the SCSS-compiled `just-the-docs-combined.css`.
+The remaining ~4 s is dominated by file I/O — reading, regex-substituting, and writing across ~830 HTML files — plus the regex pass over the SCSS-compiled `just-the-docs-combined.css`.
 
 There's an additional ~1-2 s of `FileUtils.cp` for the binary assets (images, fonts, etc.) that don't need rewriting.
 
@@ -290,7 +291,7 @@ There's an additional ~1-2 s of `FileUtils.cp` for the binary assets (images, fo
 
 - **Source-only broken links**, where the markdown points at a permalink shape that doesn't match the rendered filename, can't be fixed by the plugin — `compute_rel_url` correctly identifies the target as nonexistent and leaves the link unchanged. The strict lychee step in CI surfaces these as real errors so they get fixed at the source.
 
-- **`<a href>` values inside `<code>` blocks** *were* not distinguishable from real links at the regex level; example URLs in tutorial code samples surfaced as false-positive entries in the unresolved counter. The Pass-1/Pass-2 code-block skip (see above) now suppresses them — both the rewrite and the counter increment. Worth keeping an eye on if the upstream syntax highlighter (Rouge) ever switches away from wrapping highlighted code in `<code>` / `<pre>`.
+- **`<a href>` values inside `<code>` blocks** *were* not distinguishable from real links at the regex level; example URLs in tutorial code samples surfaced as false-positive entries in the unresolved counter. The [code-block skip](#code-block-skip) now suppresses them — both the rewrite and the counter increment. Worth keeping an eye on if the upstream syntax highlighter (Rouge) ever switches away from wrapping highlighted code in `<code>` / `<pre>`.
 
 - **The search index is hefty.** `search-data.js` is ~2.8 MB (mostly text content for every page on the site, pretty-printed). It's loaded fresh on every page navigation under `file://` since browsers don't cache aggressively across `file://` documents. The size is acceptable on SSDs but could be a couple-second delay on spinning disks. Minifying the JSON before wrapping would save ~30-40%; the plugin currently doesn't.
 
@@ -301,11 +302,11 @@ There's an additional ~1-2 s of `FileUtils.cp` for the binary assets (images, fo
 In source order in [`offlinify.rb`](offlinify.rb):
 
 - `run(site, src_dest, out_dest)` — orchestrator. Wipes contents, builds `site_paths`, normalises baseurl, walks the source tree, dispatches files by extension, kicks off the JS patch and search-data.js generation, logs the summary.
-- `rewrite!(content, regex, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, mode:)` — Pass 1 (HTML absolute) and the CSS pass. One `gsub` per file with cache lookup per match.
-- `rewrite_rel!(content, file_dir, file_segs, site_paths, result_cache)` — Pass 2 (HTML relative). Same shape as `rewrite!` but uses `HTML_REL_HREF_RE` and `compute_rel_url`. Shares `result_cache` with Pass 1.
-- `inject_search_setup!(content, file_segs)` — Pass 3. Single regex substitution per file: finds the just-the-docs.js script tag and prepends the two new ones.
+- `rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges)` — the combined HTML pass. One `gsub` per file over `HTML_COMBINED_RE`, dispatching on `raw.start_with?("/")`: absolute URLs go through `compute_relative`, page-relative URLs through `compute_rel_url`. Single cache lookup per match.
+- `rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)` — the CSS pass. One `gsub` per file over `CSS_URL_RE`, dispatched to `compute_relative` (CSS only carries absolute URLs in this codebase). No code-block handling — CSS has no equivalent concept.
+- `inject_search_setup!(content, file_segs)` — the second HTML pass. Single regex substitution per file: finds the just-the-docs.js script tag and prepends the two new ones.
 - `compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)` — the absolute-URL resolver. Strip baseurl, probe candidates, compute LCP, return final URL.
-- `compute_rel_url(raw, file_segs, site_paths)` — the relative-URL resolver. Normalise against the current page's dir, probe candidates, return original raw plus matching suffix.
+- `compute_rel_url(raw, file_segs, site_paths)` — the page-relative-URL resolver. Normalise against the current page's dir, probe candidates, return original raw plus matching suffix.
 - `patch_jtd_js!(out_dest)` — does the `navLink()` and `initSearch()` body substitutions.
 - `build_search_data_js!(out_dest)` — generates `search-data.js` from `search-data.json`.
 
