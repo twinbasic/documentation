@@ -69,7 +69,7 @@ For a full list of all the new features available right now, see the Wiki articl
 {: #to-learn-more }
 [twinBASIC Home Page](https://twinbasic.com)
 
-twinBASIC GitHub: [Main section](https://github.com/twinbasic/twinbasic) \| [Issues](https://github.com/twinbasic/twinbasic/issues) \| [Discussions](https://github.com/twinbasic/twinbasic/discussions) \| [Language Design](https://github.com/twinbasic/lang-design) \| [ Language Specification](https://github.com/twinbasic/lang-spec) \| [Documentation](https://docs.twinbasic.comi)
+twinBASIC GitHub: [Main section](https://github.com/twinbasic/twinbasic) \| [Issues](https://github.com/twinbasic/twinbasic/issues) \| [Discussions](https://github.com/twinbasic/twinbasic/discussions) \| [Language Design](https://github.com/twinbasic/lang-design) \| [ Language Specification](https://github.com/twinbasic/lang-spec) \| [Documentation](https://docs.twinbasic.com)
 
 [twinBASIC Discord](https://discord.gg/UaW9GgKKuE)
 
