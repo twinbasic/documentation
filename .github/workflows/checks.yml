@@ -35,7 +35,7 @@ jobs:
       - name: Build with Jekyll
         run: bundle exec jekyll build
         working-directory: ./docs
-      - name: Run Lychee
+      - name: Check online links (lychee)
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
@@ -46,3 +46,25 @@ jobs:
             ./_site
           workingDirectory: ./docs
           fail: true
+      - name: Set up Python for offline link check
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+      - name: Check offline links (check_links.py)
+        run: >-
+          python scripts/check_links.py
+          --offline --include-fragments
+          --index-files index.html
+          --root-dir docs/_site-offline
+          docs/_site-offline
+      - name: Check for surviving live-site links in offline tree
+        # Flags any https://docs.twinbasic.com/<path> reference left in
+        # _site-offline/ HTML outside <code>/<pre> blocks. After offlinify
+        # strips the jekyll-seo-tag block, anything surviving is a source
+        # link that points at the live site instead of using a relative or
+        # /tB/... permalink that resolves locally. The bare root URL
+        # (https://docs.twinbasic.com[/]) is exempt -- intentional "go to
+        # the live site" links are allowed.
+        run: python scripts/check_offline_live_links.py

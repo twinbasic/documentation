@@ -300,22 +300,25 @@ The offline build touches the following files:
 | `docs/_config.yml` | `also_build_offline: true` (default-on) and `exclude: [_site-offline]` (keeps Jekyll's watcher from rebuilding on the plugin's own output). |
 | `docs/build.bat` | Plain `bundle exec jekyll build` — produces `_site/`, `_site-offline/`, and (via `pdfify.rb`) `_site-pdf/` in one run. |
 | `docs/serve.bat` | `bundle exec jekyll serve` — watcher-friendly thanks to the exclude. |
-| `docs/check.bat` | Local link check (dev-side only; CI runs the two lychee passes directly). Three steps: lychee permissive on `_site/`, lychee strict on `_site-offline/`, and `scripts/check_offline_live_links.py` against `_site-offline/`. Exits non-zero on any failure. |
-| `scripts/check_offline_live_links.py` | Flags any `https://docs.twinbasic.com/<path>` reference that survived offlinify in `_site-offline/` HTML, outside `<code>` / `<pre>` blocks. Skips the bare root (`https://docs.twinbasic.com[/]`) since intentional "go to the live site" links are allowed. Caught locally by `check.bat`; not wired into CI. |
+| `docs/check.bat` | Local link check (CI runs the same three passes via the workflows). Three steps: `scripts/check_links.py` permissive on `_site/`, `scripts/check_links.py` strict on `_site-offline/`, and `scripts/check_offline_live_links.py` against `_site-offline/`. Exits non-zero on any failure. |
+| `scripts/check_offline_live_links.py` | Flags any `https://docs.twinbasic.com/<path>` reference that survived offlinify in `_site-offline/` HTML, outside `<code>` / `<pre>` blocks. Skips the bare root (`https://docs.twinbasic.com[/]`) since intentional "go to the live site" links are allowed. Run by `check.bat` locally and by both CI workflows after the offline link check. |
 | `docs/.gitignore` | `_site`, `_site-offline`, and `_site-pdf` all excluded from git. |
-| `.github/workflows/jekyll-gh-pages.yml` | CI workflow. Builds, runs lychee against both trees, deploys to Pages, and (on manual dispatch) packages `_site-offline/` as a release artifact. |
+| `.github/workflows/jekyll-gh-pages.yml` | Deploy workflow (push to `staging`, manual dispatch). Builds, runs lychee against `_site/`, runs `scripts/check_links.py` against `_site-offline/`, runs `scripts/check_offline_live_links.py` against `_site-offline/`, deploys to Pages, and (on manual dispatch) packages `_site-offline/` as a release artifact. |
+| `.github/workflows/checks.yml` | PR-gating workflow (pull-request to `main`, manual dispatch). Same three link-check steps as the deploy workflow; no deploy or release. |
 
 ## CI integration
 
 `bundle exec jekyll build` in CI passes `--baseurl "${{ steps.pages.outputs.base_path }}"` from `actions/configure-pages`. For a Pages site with a custom domain (CNAME), base_path is empty. For a project page without a custom domain, it's `/repo-name`. Offlinify handles both cases — `normalize_baseurl` in `setup` produces the right prefix to strip.
 
-The workflow has two lychee steps after the build:
+The workflow has three link-check steps after the build:
 
-1. **Against `_site/`**, with `--fallback-extensions html` and a `--remap` that strips the base_path prefix. This mirrors what GitHub Pages does at request time — extensionless URLs like `/FAQ` get served as `/FAQ.html`. Without `--fallback-extensions html`, every pretty permalink would appear broken in this check.
+1. **Lychee against `_site/`**, with `--fallback-extensions html` and a `--remap` that strips the base_path prefix. This mirrors what GitHub Pages does at request time — extensionless URLs like `/FAQ` get served as `/FAQ.html`. Without `--fallback-extensions html`, every pretty permalink would appear broken in this check. Lychee (not `scripts/check_links.py`) handles the online tree because `--remap` isn't implemented in the Python checker; the offline tree below has all baseurl prefixes already stripped by offlinify and doesn't need it.
 
-2. **Against `_site-offline/`**, strict — no extension fallback (`--index-files 'index.html'` only; the online check also accepts the bare directory via `,.`). Every link must resolve to a real file as written. This catches relative links in markdown sources whose permalink shape doesn't match the rendered filename (e.g. `[Foo](Foo/)` when Jekyll wrote `Foo.html`, not `Foo/index.html`) — the kind of breakage the online check above hides behind both the fallback and the bare-directory acceptance.
+2. **`scripts/check_links.py` against `_site-offline/`**, strict — no extension fallback (`--index-files index.html` only; the online check also accepts the bare directory via `,.`). Every link must resolve to a real file as written. This catches relative links in markdown sources whose permalink shape doesn't match the rendered filename (e.g. `[Foo](Foo/)` when Jekyll wrote `Foo.html`, not `Foo/index.html`) — the kind of breakage the online check above hides behind both the fallback and the bare-directory acceptance. The Python checker is roughly 25× faster than lychee on this workload and a bit stricter (catches missing `<script src>` targets and trailing slashes on file-shaped URLs).
 
-Both checks set `fail: true`. Any unresolved link fails the build, blocks the Pages deploy, and blocks the release upload. After both lychee runs succeed and Pages is deployed, the release job (gated to manual dispatch only) downloads the offline-site workflow artifact, computes a tag like `docs-YYYY-MM-DD-HHMM` (UTC), and creates a GitHub release with `twinbasic-docs-offline.zip` attached via `softprops/action-gh-release@v2`.
+3. **`scripts/check_offline_live_links.py` against `_site-offline/`**, flagging any surviving `https://docs.twinbasic.com/<path>` reference outside `<code>` / `<pre>` blocks (the bare root is exempt — see [Failure modes: Surviving live-site links](#failure-modes)).
+
+All three steps fail the build on the first non-zero exit, blocking the Pages deploy and the release upload. After they succeed and Pages is deployed, the release job (gated to manual dispatch only) downloads the offline-site workflow artifact, computes a tag like `docs-YYYY-MM-DD-HHMM` (UTC), and creates a GitHub release with `twinbasic-docs-offline.zip` attached via `softprops/action-gh-release@v2`.
 
 ## Failure modes
 
@@ -331,7 +334,7 @@ The plugin surfaces several conditions in its summary log lines:
 
 - **`_site-offline/` triggering `jekyll serve` rebuilds.** Was a problem; now handled by two things in combination: `exclude: [_site-offline]` in `_config.yml`, and the "clean contents but keep the directory" trick in the wipe step (which keeps all watcher events under `_site-offline/...` where the exclude matches).
 
-- **Surviving live-site links.** The [SEO block stripping](#seo-block-stripping) pass removes the bulk of `https://docs.twinbasic.com` references each page contains (canonical link, OpenGraph URL, JSON-LD `url`). Anything left in `_site-offline/` is a source link that points at the live docs site -- usually a markdown author writing `https://docs.twinbasic.com/<path>` instead of a relative link or `/tB/...` permalink, which would silently navigate the offline reader back online. `scripts/check_offline_live_links.py` (run by `check.bat` after the offline lychee pass) flags these locally; the bare root `https://docs.twinbasic.com[/]` is exempt since intentional "go to the live site" links are allowed. CI does not run this check.
+- **Surviving live-site links.** The [SEO block stripping](#seo-block-stripping) pass removes the bulk of `https://docs.twinbasic.com` references each page contains (canonical link, OpenGraph URL, JSON-LD `url`). Anything left in `_site-offline/` is a source link that points at the live docs site -- usually a markdown author writing `https://docs.twinbasic.com/<path>` instead of a relative link or `/tB/...` permalink, which would silently navigate the offline reader back online. `scripts/check_offline_live_links.py` flags these; the bare root `https://docs.twinbasic.com[/]` is exempt since intentional "go to the live site" links are allowed. Run locally by `check.bat` and in CI by both workflows after the offline link check.
 
 ## Performance
 

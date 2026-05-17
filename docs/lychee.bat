@@ -1,11 +1,5 @@
-@rem Run the Python-based link checker on both build outputs, then scan
+@rem Use lychee to check the links in both build outputs, then scan
 @rem _site-offline/ for live-site links that survived offlinify.
-@rem
-@rem Same arguments as lychee.bat -- only the executable differs. The Python
-@rem script is faster on this workload (~25x on Windows) and a bit stricter:
-@rem it flags <script src> targets that don't exist and rejects trailing
-@rem slashes on file-shaped URLs (e.g. `foo.html/`), both of which lychee
-@rem silently accepts. lychee.bat remains available as a second opinion.
 @rem
 @rem _site/        Online tree. `--fallback-extensions html` mirrors what
 @rem               GitHub Pages does at request time: an extensionless
@@ -29,9 +23,9 @@
 @rem script exits non-zero if any fails (earlier failures take precedence
 @rem in the reported code).
 @setlocal
-@set CHECK=python "%~dp0..\scripts\check_links.py"
+@set LYCHEE="%~dp0..\.claude\lychee.exe"
 @echo Checking _site/ (online) ...
-@%CHECK% --offline --include-fragments --fallback-extensions html --index-files "index.html,." --root-dir ".\_site" ".\_site" %*
+@%LYCHEE% --offline --include-fragments --fallback-extensions html --index-files "index.html,." --root-dir ".\_site" ".\_site" %*
 @set EXIT1=%ERRORLEVEL%
 @echo.
 @echo Checking _site-offline/ (offline) ...
@@ -40,7 +34,7 @@
 @rem above accepts `.` because GitHub Pages can serve an unstyled
 @rem directory listing or a 404 in that case; offline, there's no
 @rem such fallback, and the link is just broken.
-@%CHECK% --offline --include-fragments --index-files "index.html" --root-dir ".\_site-offline" ".\_site-offline" %*
+@%LYCHEE% --offline --include-fragments --index-files "index.html" --root-dir ".\_site-offline" ".\_site-offline" %*
 @set EXIT2=%ERRORLEVEL%
 @echo.
 @echo Checking _site-offline/ for live-site links ...
