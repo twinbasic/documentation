@@ -29,7 +29,7 @@ One Jekyll invocation produces `_site/`, `_site-offline/` (via `offlinify.rb`), 
 
 After Jekyll's WRITE phase completes, the hook fires `Pdfify.run(site, source_root, dest_root)`, which does the following:
 
-1. **Locate `book.html`.** If `<source_root>/book.html` doesn't exist (the `book.html` page didn't render, or was excluded from the build), emit a warning and skip the rest. The plugin never errors the build out.
+1. **Locate `book.html`.** If `<source_root>/book.html` doesn't exist (the `book.html` page didn't render, or was excluded from the build), emit a warning and skip the rest. This particular condition is treated as a warning rather than a fatal — strict mode (step 8) only fires for missing image references inside an otherwise-present `book.html`.
 
 2. **Wipe and recreate `<dest_root>/`.** Unlike `offlinify.rb`, which empties the directory contents but keeps the directory itself in place to keep the jekyll-watcher happy, `pdfify.rb` deletes the whole tree. The PDF pass doesn't need watcher friendliness — nobody runs `jekyll serve` and refreshes a `_site-pdf/` page in their browser. The wipe is to ensure no stale images linger after source pages are deleted or renamed.
 
@@ -44,17 +44,19 @@ After Jekyll's WRITE phase completes, the hook fires `Pdfify.run(site, source_ro
 
    Each is copied if present and warned about if missing. A missing stylesheet doesn't fail the build — pagedjs will render with default styles, which is a useful "the build is structurally OK, the asset just slipped" signal.
 
-5. **Extract and copy every relative `<img src=>` target.** Scan `book.html` with `IMG_SRC_RE` (see [What gets copied](#what-gets-copied) for the regex), deduplicate, and copy each one. Missing source files increment a `skipped` counter that lands in the summary log line.
+5. **Extract and copy every relative `<img src=>` target.** Scan `book.html` with `IMG_SRC_RE` (see [What gets copied](#what-gets-copied) for the regex), deduplicate, and copy each one. The regex skips `<code>` and `<pre>` blocks so syntax-highlighted code samples that happen to contain `src="…"` text don't generate spurious entries. Source files that don't exist on disk are collected into a `missing_paths` list for the strict-mode step below.
 
 6. **Delete `<source_root>/book.html`.** The concatenated document exists in `_site/` only as a hand-off between Jekyll's render pass and this plugin — it's not a public page on the online site. The companion exclusion in `_config.yml` (`offline_exclude: [..., book.html]`) keeps `offlinify.rb` from copying it into `_site-offline/`; the delete here clears it from `_site/` itself. The two safeguards are independent: the exclude pattern fires whether `offlinify.rb` walks `_site/` before or after pdfify's delete (and still applies when `also_build_pdf: false`, when pdfify never runs at all), and pdfify's delete fires whether or not offlinify is enabled. No hook-ordering assumption is required.
 
-7. **Log the summary:**
+7. **Log per-path errors, then the summary.** Each entry in `missing_paths` is logged at `error` level as its own line (`Pdfify: missing image X (referenced from book.html, not present under _site/)`), then the one-line summary:
 
    ```
-   Pdfify: wrote .../_site-pdf -- copied 84 file(s) (86 image(s), 5 missing)
+   Pdfify: wrote .../_site-pdf -- copied 86 file(s) (88 image(s), 2 missing)
    ```
 
-   The "missing" portion is suppressed entirely when every image resolved. The counter is a real bug signal — every miss is an `<img src=>` in source markdown that points at a path Jekyll didn't write, and the rendered PDF will have a broken image placeholder in that spot.
+   The "missing" portion is suppressed entirely when every image resolved. The counter is a real bug signal — every miss is an `<img src=>` in source markdown that points at a path Jekyll didn't write, and the rendered PDF will have a broken-image placeholder in that spot. The code/pre regex skip (step 5) is what makes this contract honest: a non-zero count is always a real broken reference, never a syntax-highlighter artefact.
+
+8. **Strict mode.** A non-zero missing count aborts `jekyll build` via `Jekyll::Errors::FatalException` (exit code 1, CI-gating). `jekyll serve` keeps going — the per-path errors and summary are still logged, but the dev preview stays alive so a mid-edit save that temporarily breaks an image reference doesn't kill the watcher. The two modes are distinguished via `site.config["serving"]`, which Jekyll's own `commands/build.rb` sets to `false` and `commands/serve.rb` sets to `true`.
 
 ## What gets copied
 
@@ -69,18 +71,21 @@ Three categories of file, in this order:
 The image regex:
 
 ```ruby
-IMG_SRC_RE = %r{\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1}
+IMG_SRC_RE = %r{<code\b[^>]*>.*?</code>|<pre\b[^>]*>.*?</pre>|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1}m
 ```
 
-Matches `src="..."` (or single-quoted) where the URL is **page-relative** — doesn't start with `/`, `#`, or a URL scheme. The lookahead excludes:
+Three top-level alternatives, matched against the full document with the `m` flag (`.` spans newlines) — the same shape `offlinify.rb` uses for its href/src rewriter:
 
-- `/...` — root-absolute paths (none reach this regex; the chapter-body include in `book.html` already strips leading slashes via `replace: 'src="/', 'src="'` so the rendered HTML is uniformly relative)
-- `#...` — fragment-only (rare in `<img>` but cheap to exclude)
-- `mailto:...`, `http:...`, etc. — any RFC 3986 URL scheme
+1. `<code\b[^>]*>.*?</code>` — a `<code>` block. Matched atomically, so any `src=` inside (e.g. a tutorial showing a literal `<img src="foo.png">` snippet, or `<span class="na">src=</span><span class="s">"X"</span>` split apart by Rouge) gets consumed before the third branch can scan it. Group captures are nil for this branch.
+2. `<pre\b[^>]*>.*?</pre>` — a `<pre>` block. Same. Rouge wraps Markdown fenced code in `<pre>` and inline code in `<code>`, so both branches are needed.
+3. `\bsrc=(["'])(URL)\1` — a real `src=` attribute, page-relative URL only. The lookahead excludes:
+   - `/...` — root-absolute paths. None should reach this branch under normal operation; the chapter-body include in `book.html` strips the leading `src="<baseurl>/` via a baseurl-aware Liquid `replace`, so the rendered HTML is uniformly relative regardless of whether Jekyll was invoked with `--baseurl /<repo>` (CI) or without (local).
+   - `#...` — fragment-only (rare in `<img>` but cheap to exclude).
+   - `mailto:...`, `http:...`, etc. — any RFC 3986 URL scheme.
 
-Captures: group 1 is the quote character (so the trailing quote in the pattern matches the same character), group 2 is the URL.
+   Group 1 is the quote character (so the trailing quote in the pattern matches the same character), group 2 is the URL.
 
-Each match has its `?query` and `#fragment` stripped — images don't need them, and they would confuse the `File.file?` existence probe — then the path is deduplicated via a `Set` and copied if present in `<source_root>/`. The destination layout mirrors the source paths exactly, so an `<img src="Features/Images/foo.png">` reference inside `_site-pdf/book.html` resolves to `_site-pdf/Features/Images/foo.png` — the same shape the source `_site/book.html` had against `_site/` before pdfify deleted it.
+`extract_image_paths` calls `String#scan` with this regex and inspects each yielded match: when group 1 is nil the match is a code/pre branch and gets skipped; otherwise group 2 is the URL. Query strings and fragments are stripped (`File.file?` would choke on them), then paths are deduplicated via a `Set`. The destination layout mirrors source paths exactly, so an `<img src="Features/Images/foo.png">` reference inside `_site-pdf/book.html` resolves to `_site-pdf/Features/Images/foo.png` — the same shape the source `_site/book.html` had against `_site/` before pdfify deleted it.
 
 ## File layout
 
@@ -106,7 +111,9 @@ The plugin surfaces several conditions:
 
 - **Missing required CSS.** `missing required asset assets/css/print.css; pagedjs render may break`. Means the SCSS pipeline or a sass-converter step didn't write the expected output. The plugin emits a warning but continues copying other files — the PDF render will fall back to browser defaults for that stylesheet's rules.
 
-- **Missing image targets.** Reported as a count in the summary log line: `… copied 84 file(s) (86 image(s), 5 missing)`. The "missing" portion is suppressed when zero. Each miss is an `<img src=>` in source markdown that points at a path Jekyll didn't write — the rendered PDF will show a broken-image placeholder in that spot. Grep `_site/` for the missing filename to identify the source page; the fix is usually a typo in the markdown or a stale path after a file rename.
+- **Missing image targets (strict).** Each broken reference produces an `error`-level log line of its own (`Pdfify: missing image X (referenced from book.html, not present under _site/)`) followed by the usual one-line summary with a non-zero `missing` count. Under `jekyll build` the plugin then raises `Jekyll::Errors::FatalException` and Jekyll exits 1 — CI fails before reaching the deploy step. Under `jekyll serve` the same logs fire but the plugin returns normally, so the watcher and webrick keep running; the next save that fixes the reference clears the state on the next rebuild. The mode split is driven by `site.config["serving"]` (which Jekyll sets in its own `commands/build.rb` / `commands/serve.rb`), so no plugin configuration is required.
+
+  Each miss is an `<img src=>` in source markdown that points at a path Jekyll didn't write. The code/pre regex skip (see [What gets copied](#what-gets-copied)) guarantees this is never a syntax-highlighter false positive — a non-zero count is always a real broken reference. Grep `_site/` for the missing filename to identify the source page; the fix is usually a typo in the markdown, an unencoded space in the filename (Kramdown URL-encodes spaces in image paths to `%20`, but `File.file?` matches the literal disk name), or a stale path after a file rename.
 
 - **Real source images that aren't in `_site/`.** Should never happen — Jekyll copies every non-Markdown file under `docs/` into `_site/` by default unless the path is in `exclude:`. If you see image misses in the summary log line, check `_config.yml`'s `exclude:` for an entry that's accidentally catching the image directory.
 
@@ -114,8 +121,8 @@ The plugin surfaces several conditions:
 
 In source order in [`pdfify.rb`](pdfify.rb):
 
-- `run(site, source_root, dest_root)` — orchestrator. Locates `book.html`, wipes the destination, copies `book.html`, the two stylesheets, and every referenced image. Logs the summary.
-- `extract_image_paths(html)` — scans `book.html` for the `IMG_SRC_RE` regex, strips query/fragment off each match, deduplicates via a `Set`, returns the unique paths in document order.
+- `run(site, source_root, dest_root)` — orchestrator. Locates `book.html`, wipes the destination, copies `book.html`, the two stylesheets, and every referenced image; references that don't resolve on disk go into a `missing_paths` list. Logs per-path errors, then the summary, then the timing line. Under `jekyll build` (`site.config["serving"]` is false) a non-empty `missing_paths` raises `Jekyll::Errors::FatalException`; under `jekyll serve` (`serving` is true) it returns normally.
+- `extract_image_paths(html)` — scans `book.html` for the three-alternative `IMG_SRC_RE` regex, skips matches whose first capture group is nil (the `<code>` / `<pre>` branches), strips query/fragment off each `src=` URL, deduplicates via a `Set`, returns the unique paths in document order.
 - `copy_file(src, dst)` — `FileUtils.mkdir_p` + `FileUtils.cp`. The whole copy path is two lines because the source and destination layouts match by construction.
 
-The whole plugin is ~140 lines of Ruby, ~half of which is doc comments.
+The whole plugin is ~220 lines of Ruby, ~half of which is doc comments.

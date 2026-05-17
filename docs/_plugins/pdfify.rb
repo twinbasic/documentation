@@ -51,11 +51,23 @@ require "set"
 # delete fires whether or not offlinify is enabled. No hook ordering
 # is assumed.
 #
+# === Strict mode ===
+#
+# A non-zero `missing` count aborts the build via
+# `Jekyll::Errors::FatalException` under `jekyll build` but only
+# logs (loudly) under `jekyll serve` -- distinguishing the two via
+# `site.config["serving"]`, which Jekyll sets to true in the serve
+# command and false in build. The split keeps CI gated tight while
+# leaving the dev preview alive for mid-edit saves that temporarily
+# break an image reference. The contract enforced is the one the
+# code/pre regex skip makes honest: every entry in `missing_paths`
+# is a real broken reference, not a syntax-highlighter artefact.
+#
 # === Compatibility ===
 #
-# Reads `site.dest` and `site.config['also_build_pdf']`. Writes a fresh
-# `<site.dest>-pdf/` tree (wiping any prior contents). Touches no files
-# outside that.
+# Reads `site.dest`, `site.config['also_build_pdf']`, and
+# `site.config['serving']`. Writes a fresh `<site.dest>-pdf/` tree
+# (wiping any prior contents). Touches no files outside that.
 #
 # If the plugin is removed: `_site-pdf/` is no longer produced and
 # `book.bat` would fail until either (a) this plugin is restored or
@@ -130,14 +142,14 @@ module Pdfify
     end
 
     image_paths = extract_image_paths(html)
-    skipped = 0
+    missing_paths = []
     image_paths.each do |rel|
       src = source.join(rel)
       if src.file?
         copy_file(src, dest.join(rel))
         copied += 1
       else
-        skipped += 1
+        missing_paths << rel
       end
     end
 
@@ -151,10 +163,30 @@ module Pdfify
     # leaking the concatenated document.
     book_src.delete
 
-    Jekyll.logger.info "Pdfify:", "wrote #{dest_root} -- copied #{copied} file(s) (#{image_paths.size} image(s)#{skipped.zero? ? "" : ", #{skipped} missing"})"
+    # Per-path error logs first so the build log reads details-then-
+    # summary. The code/pre rejection in extract_image_paths means
+    # any entry here is a real broken reference -- a markdown image
+    # whose target Jekyll didn't write -- not a regex artefact.
+    missing_paths.each do |rel|
+      Jekyll.logger.error "Pdfify:", "missing image #{rel} (referenced from book.html, not present under _site/)"
+    end
+
+    Jekyll.logger.info "Pdfify:", "wrote #{dest_root} -- copied #{copied} file(s) (#{image_paths.size} image(s)#{missing_paths.empty? ? "" : ", #{missing_paths.size} missing"})"
 
     elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(0)
     Jekyll.logger.info "Pdfify:", "Pdfifier ran in #{elapsed_ms}ms."
+
+    # `jekyll build` aborts on a non-zero missing count (CI gating).
+    # `jekyll serve` keeps the dev preview alive -- a mid-edit save
+    # that temporarily breaks an image reference shouldn't kill the
+    # watcher; the error logs above are loud enough to catch the
+    # author's eye, and the next save with a working reference will
+    # clear the state. Jekyll sets `config["serving"]` to true in
+    # `commands/serve.rb` and false in `commands/build.rb`, so the
+    # mode detection is reliable.
+    return if missing_paths.empty? || site.config["serving"]
+    raise Jekyll::Errors::FatalException,
+          "Pdfify: #{missing_paths.size} image reference(s) in book.html missing under _site/ -- see error log above"
   end
 
   # Walks book.html for relative `<img src=>` URLs and returns the
