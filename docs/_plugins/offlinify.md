@@ -1,6 +1,6 @@
 # Offlinify
 
-`_plugins/offlinify.rb` produces a `file://`-browsable copy of the rendered site. Every page-to-page link is rewritten to a page-relative path with an explicit file extension; the two just-the-docs JS functions that break under `file://` are patched; the lunr search index is rewired to load from a `<script src=>` instead of an XHR call. The result is a fully self-contained tree that opens cleanly when you double-click `index.html` on disk — no HTTP server required.
+`_plugins/offlinify.rb` produces a `file://`-browsable copy of the rendered site. The plugin hooks into Jekyll's render pipeline per page: it captures each rendered `page.output` in memory, rewrites every page-to-page link to a page-relative path with an explicit file extension, and writes the result straight to `_site-offline/<rel>` — no detour through disk. After Jekyll's WRITE phase, a final hook copies static files (images, fonts, the just-the-docs.js theme asset), patches the two just-the-docs JS functions that break under `file://`, and rewires the lunr search index to load from a `<script src=>` instead of an XHR call. The result is a fully self-contained tree that opens cleanly when you double-click `index.html` on disk — no HTTP server required.
 
 This file sits in `_plugins/` for two reasons: it lives next to the code it documents, and Jekyll's `_plugins/` folder is plugin-only territory, so this Markdown never gets rendered into the public site.
 
@@ -18,38 +18,84 @@ Pure Jekyll can't fix any of these. `relative_url` is site-relative, not page-re
 
 ## When it runs
 
-Activated by `also_build_offline: true` (the default in `_config.yml`). Reads from `site.dest` (i.e. `_site/`) and writes to `<site.dest>-offline/`. The hook at the bottom of `offlinify.rb`:
+Activated by `also_build_offline: true` (the default in `_config.yml`). The plugin registers four hooks that fire across the build:
 
 ```ruby
+Jekyll::Hooks.register :site, :pre_render do |site|
+  next unless site.config["also_build_offline"]
+  Offlinify.setup(site)
+end
+
+Jekyll::Hooks.register :pages, :post_render do |page|
+  Offlinify.process_page(page)
+end
+
+Jekyll::Hooks.register :documents, :post_render do |doc|
+  Offlinify.process_page(doc)
+end
+
 Jekyll::Hooks.register :site, :post_write do |site|
   next unless site.config["also_build_offline"]
-  Offlinify.run(site, site.dest, "#{site.dest}-offline")
+  Offlinify.finish(site)
 end
 ```
 
+`Offlinify.setup` reads from `site.config` and the in-memory `site.pages + site.static_files + site.documents`, wipes `<site.dest>-offline/`, and seeds per-build state on the module's `@state` ivar. The per-page hooks transform `page.output` and write straight to `_site-offline/`. `Offlinify.finish` reads static files from `site.dest` (`_site/`, now fully written by Jekyll's WRITE phase) and copies them across, then patches `just-the-docs.js` and writes `search-data.js`.
+
 One Jekyll invocation produces `_site/`, `_site-offline/` (this plugin), and `_site-pdf/` (via `pdfify.rb`). Flip the flag to `false` if you only want the online site.
+
+**Incremental mode (`--incremental`) is not supported.** The per-page write model writes only the changed pages while the pre_render hook still wipes the offline tree — net result: an incomplete offline build. `setup` detects the flag and emits a warning instead of running. Use plain `jekyll build` for the offline tree.
 
 ## The build flow
 
-After Jekyll's WRITE phase completes, the hook fires `Offlinify.run(site, src_dest, out_dest)`, which does the following:
+Three phases, four hook callbacks.
 
-1. **Wipe the output directory's *contents***. The directory itself is preserved across builds — recreating it makes Jekyll's watcher report a bare `_site-offline` change event (no trailing slash, since the directory is momentarily absent at notification time) that the YAML exclude entry `_site-offline` doesn't match (jekyll-watch auto-appends a trailing slash to directory excludes, turning the rule into the regex `_site-offline/`), and the result is an infinite rebuild loop on `jekyll serve`.
+### Phase 1: setup
 
-2. **Build `site_paths`.** Walk `src_dest` once and bucket every file under its site-rooted forward-slash path (`/tB/Core/Const.html`, `/assets/js/just-the-docs.js`, etc.). The keys are *decoded* — filesystem names like `Form Designer.html` go in literally, not `Form%20Designer.html`. Resolution in `compute_relative` is then an O(1) `Set#include?` probe per candidate, instead of 2-3 `File.file?` syscalls each (very slow on Windows). Without this, the offlinify pass takes ~30 s on this site; with it, the pass is ~3 s.
+Fires at `:site, :pre_render` — once at the start of the build, after Jekyll has read the source tree and generated all pages (including jekyll-redirect-from stubs and SCSS-derived CSS pages) but before any page renders.
 
-3. **Normalise `baseurl`.** Read `site.config["baseurl"]`, strip trailing slashes, prepend a leading slash if missing. The result matches the prefix `relative_url` actually emits in the rendered HTML — e.g. `/twinBASIC-docs` on a GitHub Pages project site. Used during URL resolution to strip the prefix before probing `site_paths`.
+1. **Bail on `--incremental`.** Set `@state = nil` and emit a warning. The per-page write model would leave the offline tree incomplete — the wipe runs unconditionally, but only changed pages re-fire their post_render hook.
 
-4. **Walk the source tree.** For each file:
-   - If the file matches a pattern in `site.config["offline_exclude"]` (see [Exclude list](#exclude-list)): skip the copy so the online `_site/` keeps it and the offline tree doesn't.
-   - `.html`: read once, run two transformation passes in order (combined HTML URL rewrite, search-setup injection), write back if any pass changed content.
-   - `.css`: read, run the `url()` rewrite, write back.
-   - Anything else (images, fonts, JSON, JS): plain `FileUtils.cp` into the offline tree.
+2. **Wipe the output directory's *contents***. The directory itself is preserved across builds — recreating it makes Jekyll's watcher report a bare `_site-offline` change event (no trailing slash, since the directory is momentarily absent at notification time) that the YAML exclude entry `_site-offline` doesn't match (jekyll-watch auto-appends a trailing slash to directory excludes, turning the rule into the regex `_site-offline/`), and the result is an infinite rebuild loop on `jekyll serve`.
 
-5. **Patch `assets/js/just-the-docs.js`.** Replace the `navLink()` and `initSearch()` function bodies with offline-friendly versions.
+3. **Build `site_paths`** from Jekyll's in-memory model (`site.pages + site.static_files + site.documents`). Each item's `destination(site.dest)` gives the absolute file path Jekyll will write; converting to a site-rooted forward-slash form yields keys like `/tB/Core/Const.html`. The keys are *decoded* — filesystem names like `Form Designer.html` go in literally, not `Form%20Designer.html`. Resolution in `compute_relative` is then an O(1) `Set#include?` probe per candidate, instead of 2-3 `File.file?` syscalls each (very slow on Windows).
 
-6. **Generate `assets/js/search-data.js`.** Read the rendered `search-data.json` (it's only present when `search_enabled` is true, which is the default in `_config.yml`), wrap in `window.SEARCH_DATA = {...};`, write next to the JSON.
+4. **Normalise `baseurl`.** Read `site.config["baseurl"]`, strip trailing slashes, prepend a leading slash if missing. The result matches the prefix `relative_url` actually emits in the rendered HTML — e.g. `/twinBASIC-docs` on a GitHub Pages project site. Used during URL resolution to strip the prefix before probing `site_paths`.
 
-7. **Log the summary.** Three or four lines under the `Offlinify:` topic prefix, ending with `Offlinifier ran in Xms.` — same shape as the `build-phase-timing.rb` plugin's lines, so the cost shows up next to Jekyll's own phase timings.
+5. **Seed state** on the module's `@state` ivar so the per-page and finish hooks can pick up where setup left off: caches (`seg_cache`, `result_cache`), counters, normalised baseurl, exclude patterns, dest paths, cumulative timer. Cleared at the end of `finish` so a fresh build starts clean.
+
+### Phase 2: process_page
+
+Fires at `:pages, :post_render` and `:documents, :post_render` — once per page after Jekyll renders it. `page.output` is the final HTML/CSS/etc bytes; the plugin transforms it and writes the result to `_site-offline/<rel>`. Jekyll's WRITE phase writes the same `page.output` to `_site/<rel>` a moment later, so the online and offline files come from the same in-memory string — no re-read.
+
+For each page:
+
+1. **Compute `rel`** from `page.destination(@state[:dest])` via a plain string slice (`dest_path[(@state[:dest_root_fs].length + 1)..]`) rather than a Pathname round-trip. `Pathname#relative_path_from` is roughly 2 ms per call on Windows and would dominate per-page cost on a 1000+ page build.
+
+2. **Check `offline_exclude`** (see [Exclude list](#exclude-list)). Matched files increment the `excluded_files` counter and skip the write.
+
+3. **Detect jekyll-redirect-from stubs** by class-name string check (`page.class.name == "JekyllRedirectFrom::RedirectPage"`). The redirect stubs aren't useful in the offline tree — their meta-refresh, canonical link, and fallback `<a>` all point at the live online URL (`https://docs.twinbasic.com/...` when `site.url` is set), so following one offline requires network access and lands on the live site rather than the local file. Skip the write; count them under `excluded_files`. The class-name string check is used rather than `is_a?` so the plugin still loads if jekyll-redirect-from is removed.
+
+4. **Dispatch on output extension:**
+   - `.html`: dup `page.output`, scan for code-block ranges, run the combined HTML URL rewrite (see [HTML URL rewriting](#html-url-rewriting)), inject the search-setup script tags, write.
+   - `.css`: dup `page.output`, run the `url()` rewrite (see [CSS `url()` rewriting](#css-url-rewriting)), write.
+   - Anything else (XML feeds, JSON, etc.): write `page.output` verbatim.
+
+5. **Accumulate self-time** into `@state[:cumulative_ms]`. The reported total at the end is just Offlinify's CPU time across all hook invocations, not the wall-clock between pre_render and post_write (which would include Jekyll's render and write phases between our hooks).
+
+### Phase 3: finish
+
+Fires at `:site, :post_write` — once after Jekyll's WRITE phase has populated `_site/`.
+
+1. **Copy static files** (`site.static_files`) from `_site/` to `_site-offline/`. Static files don't fire `:pages, :post_render`, so they're handled here. The `offline_exclude` check runs again for each.
+
+2. **Patch `assets/js/just-the-docs.js`** in `_site-offline/`. Replace the `navLink()` and `initSearch()` function bodies with offline-friendly versions.
+
+3. **Generate `assets/js/search-data.js`.** Read the `search-data.json` that Phase 2 wrote (the jekyll-search Page object renders the JSON, which `process_page` captures and writes verbatim), wrap in `window.SEARCH_DATA = {...};`, write next to the JSON.
+
+4. **Log the summary.** Three or four lines under the `Offlinify:` topic prefix, ending with `Offlinifier ran in Xms.` (cumulative self-time, not wall-clock).
+
+5. **Clear `@state`** so a subsequent build starts with no leftover counters or caches.
 
 ## Transformation passes
 
@@ -212,20 +258,22 @@ offline_exclude:
 
 Patterns are `File.fnmatch`-style with `File::FNM_PATHNAME`, matched against each file's site-rooted forward-slash path. `*` does **not** cross directory separators, so `*.bat` catches only top-level `.bat` files; use `**/*.bat` to match at any depth. Specific paths like `subdir/foo.txt` also work and match exactly.
 
-A missing or empty `offline_exclude` entry skips the step entirely — the offline tree gets every file Jekyll produced.
+A missing or empty `offline_exclude` entry skips the pattern check entirely.
 
 The exclude check runs in two places:
 
-1. **Before** the `site_paths` Set is built, so URL-resolution candidates can't point at an excluded target (a stray `<a href="/sitemap.xml">` in the source would simply fail to resolve, instead of resolving to a now-missing file).
-2. **Inside** the main file walk, where the copy is skipped so the file never appears in `_site-offline/`.
+1. **Inside `build_site_paths` in `setup`**, so URL-resolution candidates can't point at an excluded target (a stray `<a href="/sitemap.xml">` in the source would simply fail to resolve, instead of resolving to a now-missing file).
+2. **Inside `process_page` and the static-file loop in `finish`**, where the write is skipped so the file never appears in `_site-offline/`.
 
-The summary log line reports the count: `… excluded 7 file(s) …`.
+In addition to the pattern-based excludes, **jekyll-redirect-from stubs are unconditionally dropped** from the offline tree (detected by the `JekyllRedirectFrom::RedirectPage` class-name check in `process_page`). The stubs contain only a meta-refresh / canonical link / fallback `<a>`, all pointing at the live online URL — following one offline requires network access and lands on the live site, defeating the offline scenario. Source markdown should use the canonical URL directly rather than relying on the redirect; the strict lychee step in CI surfaces any source link that still goes through a redirect.
+
+The summary log line reports the count: `… excluded 294 file(s) …` (pattern-matched + redirect stubs combined).
 
 ## Caches
 
 Three caches keep the per-match work to a single Hash lookup once warmed up:
 
-1. **`site_paths`** (`Set` of strings). Built once at the start of `run`. Every file path under `src_dest`, keyed by its site-rooted forward-slash form (`/tB/Core/Const.html`). Used by `compute_relative` and `compute_rel_url` to probe candidate paths.
+1. **`site_paths`** (`Set` of strings). Built once in `setup` from `site.pages + site.static_files + site.documents`. Every file path that Jekyll will write, keyed by its site-rooted forward-slash form (`/tB/Core/Const.html`). Used by `compute_relative` and `compute_rel_url` to probe candidate paths.
 
 2. **`seg_cache`** (`Hash` of `site_path` → `[decoded_segs, encoded_segs]`). Lazily populated. For each unique target site path that the URL rewriter resolves to, this holds the decoded path segments (used for LCP comparison against filesystem-derived `file_segs`) and the URL-encoded segments (joined for the output URL). Most segments are URL-safe and share strings between the two arrays.
 
@@ -239,7 +287,7 @@ The offline build touches the following files:
 
 | Path | Role |
 |------|------|
-| `docs/_plugins/offlinify.rb` | The plugin. Hooks `:site, :post_write`, runs all the passes. |
+| `docs/_plugins/offlinify.rb` | The plugin. Hooks `:site, :pre_render` (setup), `:pages, :post_render` + `:documents, :post_render` (per-page write), `:site, :post_write` (static files, JS patches, search-data.js). |
 | `docs/_plugins/offlinify.md` | This file. |
 | `docs/_config.yml` | `also_build_offline: true` (default-on) and `exclude: [_site-offline]` (keeps Jekyll's watcher from rebuilding on the plugin's own output). |
 | `docs/build.bat` | Plain `bundle exec jekyll build` — produces `_site/`, `_site-offline/`, and (via `pdfify.rb`) `_site-pdf/` in one run. |
@@ -250,7 +298,7 @@ The offline build touches the following files:
 
 ## CI integration
 
-`bundle exec jekyll build` in CI passes `--baseurl "${{ steps.pages.outputs.base_path }}"` from `actions/configure-pages`. For a Pages site with a custom domain (CNAME), base_path is empty. For a project page without a custom domain, it's `/repo-name`. Offlinify handles both cases — the baseurl normalisation at the start of `run` produces the right prefix to strip.
+`bundle exec jekyll build` in CI passes `--baseurl "${{ steps.pages.outputs.base_path }}"` from `actions/configure-pages`. For a Pages site with a custom domain (CNAME), base_path is empty. For a project page without a custom domain, it's `/repo-name`. Offlinify handles both cases — `normalize_baseurl` in `setup` produces the right prefix to strip.
 
 The workflow has two lychee steps after the build:
 
@@ -270,7 +318,7 @@ The plugin surfaces several conditions in its summary log lines:
 
 - **Missing `search-data.json`.** Silent — the search-data.js generation step is a no-op. The per-page script tag injection still runs, so each page will request `search-data.js` and the browser will log a 404. The patched `initSearch()` will hit its `window.SEARCH_DATA not found` branch and log a console message.
 
-- **Real broken links in markdown sources.** Caught by the strict lychee step in CI (or by `check.bat` locally). These don't surface in the offlinify summary because the rewrite passes correctly identify them as unresolvable and leave them alone — that's the right behavior, the source markdown needs fixing.
+- **Real broken links in markdown sources.** Caught by the strict lychee step in CI (or by `check.bat` locally). These don't surface in the offlinify summary because the rewrite passes correctly identify them as unresolvable and leave them alone — that's the right behavior, the source markdown needs fixing. Since jekyll-redirect-from stubs are dropped from the offline tree, any source markdown linking at a `redirect_from` URL surfaces as a broken offline link until the source link is updated to point at the canonical URL.
 
 - **`_site-offline/` triggering `jekyll serve` rebuilds.** Was a problem; now handled by two things in combination: `exclude: [_site-offline]` in `_config.yml`, and the "clean contents but keep the directory" trick in the wipe step (which keeps all watcher events under `_site-offline/...` where the exclude matches).
 
@@ -282,10 +330,11 @@ The optimization story is captured in the commit history. Briefly:
 - **+ `site_paths` Set** (O(1) lookup): down to ~10 s, before further work.
 - **+ `result_cache`, `seg_cache`, manual LCP** (replaced `Pathname.relative_path_from` per match with a string-segment comparison): down to ~7 s as the site grew past 800 pages.
 - **+ combined HTML regex** (single gsub matching both absolute and page-relative URLs in one pass — eliminating the second full file scan and the interim re-scan of code-block ranges that used to sit between two separate passes): down to ~4 s. Roughly 40% off the HTML walk.
+- **+ per-page hook architecture** (`:pages, :post_render` consumes `page.output` in memory rather than re-reading the rendered HTML from `_site/` at `:site, :post_write`): the per-file `File.binread` is eliminated. Cumulative self-time across hooks is ~5-6 s on the current ~830-page site, dominated by per-page Jekyll hook dispatch overhead and the per-page `File.binwrite`. Skipping the ~290 jekyll-redirect-from stubs (see [Phase 2](#phase-2-process_page)) trims ~400 ms.
 
-The remaining ~4 s is dominated by file I/O — reading, regex-substituting, and writing across ~830 HTML files — plus the regex pass over the SCSS-compiled `just-the-docs-combined.css`.
+The remaining cumulative time is mostly `File.binwrite` across ~830 HTML files (Windows file I/O on NTFS is the dominant cost) plus the regex pass over the SCSS-compiled `just-the-docs-combined.css`.
 
-There's an additional ~1-2 s of `FileUtils.cp` for the binary assets (images, fonts, etc.) that don't need rewriting.
+The static-file copy in `finish` adds an additional ~200 ms of `FileUtils.cp` for the binary assets (images, fonts, etc.) that don't need rewriting.
 
 ## Known limitations
 
@@ -301,13 +350,18 @@ There's an additional ~1-2 s of `FileUtils.cp` for the binary assets (images, fo
 
 In source order in [`offlinify.rb`](offlinify.rb):
 
-- `run(site, src_dest, out_dest)` — orchestrator. Wipes contents, builds `site_paths`, normalises baseurl, walks the source tree, dispatches files by extension, kicks off the JS patch and search-data.js generation, logs the summary.
+- `setup(site)` — `:site, :pre_render` hook entry. Builds `site_paths` from the in-memory page set, wipes the offline tree, seeds per-build state on `@state`. Bails out with a warning if `--incremental` is set.
+- `normalize_baseurl(raw_baseurl)` — helper for `setup`. Coerces the configured baseurl to either empty string or `/segment...` with no trailing slash, matching the form `relative_url` actually prepends.
+- `build_site_paths(site, exclude_patterns)` — helper for `setup`. Iterates `site.pages + site.static_files + site.documents` and builds the URL Set from each item's `destination(site.dest)`, decoded and forward-slash-normalised.
+- `wipe_out_dest_contents(out_dest)` — helper for `setup`. Removes the offline tree contents while leaving the directory itself in place (see [Phase 1](#phase-1-setup)).
+- `process_page(page)` — `:pages, :post_render` and `:documents, :post_render` hook entry. Transforms `page.output` and writes the offline copy. Dispatches on output extension and on page class (skips jekyll-redirect-from stubs entirely).
+- `finish(site)` — `:site, :post_write` hook entry. Copies static files from `_site/` to `_site-offline/`, patches just-the-docs.js, generates search-data.js, logs the summary, clears `@state`.
 - `rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges)` — the combined HTML pass. One `gsub` per file over `HTML_COMBINED_RE`, dispatching on `raw.start_with?("/")`: absolute URLs go through `compute_relative`, page-relative URLs through `compute_rel_url`. Single cache lookup per match.
 - `rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)` — the CSS pass. One `gsub` per file over `CSS_URL_RE`, dispatched to `compute_relative` (CSS only carries absolute URLs in this codebase). No code-block handling — CSS has no equivalent concept.
-- `inject_search_setup!(content, file_segs)` — the second HTML pass. Single regex substitution per file: finds the just-the-docs.js script tag and prepends the two new ones.
+- `inject_search_setup!(content, file_segs)` — the second HTML transformation. Single regex substitution per file: finds the just-the-docs.js script tag and prepends the two new ones.
 - `compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)` — the absolute-URL resolver. Strip baseurl, probe candidates, compute LCP, return final URL.
 - `compute_rel_url(raw, file_segs, site_paths)` — the page-relative-URL resolver. Normalise against the current page's dir, probe candidates, return original raw plus matching suffix.
 - `patch_jtd_js!(out_dest)` — does the `navLink()` and `initSearch()` body substitutions.
 - `build_search_data_js!(out_dest)` — generates `search-data.js` from `search-data.json`.
 
-Together these are ~250 lines of Ruby plus inline JS replacement strings. The rest of the file is doc comments.
+Together these are ~280 lines of Ruby plus inline JS replacement strings. The rest of the file is doc comments.
