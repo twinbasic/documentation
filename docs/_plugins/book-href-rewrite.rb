@@ -228,6 +228,8 @@ module BookHrefRewrite
     return if parent_map.empty?
     landing_anchors = build_landing_anchors(site)
 
+    start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
     rewritten = 0
     landings_stripped = 0
     page.output = page.output.gsub(/(<article[^>]*id="(ch-[^"]+)"[^>]*>)(.*?)(<\/article>)/m) do
@@ -254,6 +256,9 @@ module BookHrefRewrite
       "#{article_open}#{body}#{article_end}"
     end
     Jekyll.logger.info "BookHrefRewrite:", "rewrote #{rewritten} chapter bodies, stripped #{landings_stripped} landing H3s"
+
+    elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(0)
+    Jekyll.logger.info "BookHrefRewrite:", "BookHrefRewriter ran in #{elapsed_ms}ms."
   end
 end
 

@@ -88,6 +88,8 @@ module Pdfify
       return
     end
 
+    start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
     # Wipe the destination tree so previous runs do not leave stale
     # images behind when source pages are deleted or renamed.
     FileUtils.rm_rf(dest)
@@ -132,6 +134,9 @@ module Pdfify
     book_src.delete
 
     Jekyll.logger.info "Pdfify:", "wrote #{dest_root} -- copied #{copied} file(s) (#{image_paths.size} image(s)#{skipped.zero? ? "" : ", #{skipped} missing"})"
+
+    elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(0)
+    Jekyll.logger.info "Pdfify:", "Pdfifier ran in #{elapsed_ms}ms."
   end
 
   # Walks book.html for relative `<img src=>` URLs and returns the
