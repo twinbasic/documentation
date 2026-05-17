@@ -20,4 +20,4 @@ With TWINPACK packages you group common components together into their own names
 
 Please be aware that TWINPACK files currently contain the full source code of your packaged components.  It is planned that we will in future allow for creating binary (compiled) TWINPACK files for developers that hold an Ultimate edition licence of twinBASIC.
 
-[^1]: A service of TWINBASIC LLC offered to the user community.
+[^1]: A service of TWINBASIC LTD offered to the user community.
