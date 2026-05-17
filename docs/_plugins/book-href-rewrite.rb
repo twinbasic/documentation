@@ -189,6 +189,28 @@ module BookHrefRewrite
     nil
   end
 
+  # Normalise `site.config["baseurl"]` to either "" or "/segment..."
+  # (no trailing slash) -- the exact prefix `relative_url` actually
+  # injects into rendered HTML. Mirrors `Offlinify.normalize_baseurl`;
+  # duplicated rather than cross-required to keep plugins independent.
+  def self.normalize_baseurl(raw_baseurl)
+    baseurl = (raw_baseurl || "").to_s.sub(%r{/+\z}, "")
+    baseurl = "/#{baseurl}" if !baseurl.empty? && !baseurl.start_with?("/")
+    baseurl
+  end
+
+  # Strip the baseurl prefix from a root-absolute path so the result
+  # matches the keys in `url_to_anchor` (which are built from
+  # `page.url` -- baseurl-less). Two forms are handled: the exact
+  # baseurl alone (`/twinBASIC-docs` -> `/`), and a normal subpath
+  # (`/twinBASIC-docs/foo` -> `/foo`). Anything else passes through.
+  def self.strip_baseurl(path, baseurl)
+    return path if baseurl.empty?
+    return "/" if path == baseurl
+    return path[baseurl.length..] if path.start_with?(baseurl + "/")
+    path
+  end
+
   # Rewrite every `href="..."` in the article body. External and
   # already-in-book anchor hrefs (`http`, `mailto:`, `#...`) pass
   # through unchanged; the `#...` form has already been chapter-anchor
@@ -202,7 +224,12 @@ module BookHrefRewrite
   # only the map-lookup step was selective). Keeps build output
   # byte-comparable and makes broken out-of-book links easier to grep
   # for during verification.
-  def self.rewrite_body(body, parent_url, url_to_anchor)
+  #
+  # `baseurl` is the normalised `site.config["baseurl"]`; when CI runs
+  # `jekyll build --baseurl /<repo>` the `relative_url`-emitted hrefs
+  # carry that prefix and must be stripped before the lookup, since
+  # `url_to_anchor` keys come from `page.url` (baseurl-less).
+  def self.rewrite_body(body, parent_url, url_to_anchor, baseurl)
     body.gsub(/href="([^"]*)"/) do |whole_match|
       href = Regexp.last_match(1)
       next whole_match if EXTERNAL_PREFIXES.any? { |pfx| href.start_with?(pfx) }
@@ -211,7 +238,8 @@ module BookHrefRewrite
       next whole_match unless abs && abs.start_with?("/")
 
       path_part, frag_part = abs.split("#", 2)
-      target = url_to_anchor[path_part]
+      lookup_path = strip_baseurl(path_part, baseurl)
+      target = url_to_anchor[lookup_path]
       if target
         frag_part ? %(href="##{target}-#{frag_part}") : %(href="##{target}")
       else
@@ -227,6 +255,7 @@ module BookHrefRewrite
     parent_map = build_anchor_to_parent(site)
     return if parent_map.empty?
     landing_anchors = build_landing_anchors(site)
+    baseurl = normalize_baseurl(site.config["baseurl"])
 
     start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
@@ -248,7 +277,7 @@ module BookHrefRewrite
 
       parent_url = parent_map[anchor_id]
       if parent_url
-        new_body = rewrite_body(body, parent_url, url_to_anchor)
+        new_body = rewrite_body(body, parent_url, url_to_anchor, baseurl)
         rewritten += 1 if new_body != body
         body = new_body
       end
