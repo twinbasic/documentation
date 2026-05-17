@@ -452,6 +452,16 @@ module Offlinify
       # Decoded drives the LCP walk against filesystem-derived
       # `file_segs`; encoded is what gets emitted in the output URL.
       seg_cache: {},
+      # Lazy cache: `raw -> [sep, tail, site_path]` for absolute URLs.
+      # `site_path` is nil when no candidate resolved against
+      # site_paths. The expensive part of compute_relative (the
+      # `partition`, `decode`, baseurl strip, and up-to-three-way
+      # candidate probe) is independent of the source file, so it
+      # runs once per unique `raw` URL across the whole build
+      # regardless of how many files reference it. The LCP walk
+      # itself stays in `compute_relative` because its output depends
+      # on `file_segs`.
+      raw_resolution_cache: {},
       # Lazy cache: `"#{file_dir}\x00#{raw}" -> final_rel_url` (or
       # nil for unresolvable). Each unique `(file_dir, raw)` pair is
       # resolved exactly once across the build. Shared between the
@@ -616,7 +626,7 @@ module Offlinify
             cache_key = "#{file_dir}\x00#{raw}"
             rel_url = @state[:result_cache].fetch(cache_key) do
               @state[:result_cache][cache_key] =
-                compute_relative(raw, file_segs, @state[:site_paths], @state[:seg_cache], @state[:baseurl])
+                compute_relative(raw, file_segs, @state[:site_paths], @state[:seg_cache], @state[:baseurl], @state[:raw_resolution_cache])
             end
             rel_url || "#{site_url}#{raw}"
           end
@@ -637,7 +647,7 @@ module Offlinify
         content = tick(:time_dispatch_dup) { page.output.dup }
         tick(:time_strip_seo) { @state[:seo_stripped] += 1 if strip_seo!(content) }
         _changed, misses = tick(:time_rewrite_html) do
-          rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl])
+          rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], @state[:raw_resolution_cache])
         end
         @state[:unresolved] += misses
         tick(:time_inject_search) { inject_search_setup!(content, file_segs) }
@@ -649,7 +659,7 @@ module Offlinify
       when ".css"
         content = tick(:time_dispatch_dup) { page.output.dup }
         _changed, misses = tick(:time_rewrite_css) do
-          rewrite_css!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl])
+          rewrite_css!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], @state[:raw_resolution_cache])
         end
         @state[:unresolved] += misses
         tick(:time_write_css) do
@@ -900,7 +910,7 @@ module Offlinify
   # already exists at the relative path verbatim (e.g. `Foo.html`
   # from a sibling markdown source); this is treated as "no rewrite
   # needed, not a miss".
-  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)
+  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)
     misses = 0
     changed = false
 
@@ -914,7 +924,7 @@ module Offlinify
       rel = result_cache.fetch(cache_key) do
         result_cache[cache_key] =
           if raw.start_with?("/")
-            compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
+            compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)
           else
             compute_rel_url(raw, file_segs, site_paths)
           end
@@ -944,7 +954,7 @@ module Offlinify
   # heavy lifting (URL resolution, LCP walk, segment encoding) runs
   # only on cache miss. CSS has no code-block concept, so there is
   # no need to gate matches by offset the way `rewrite_html!` does.
-  def self.rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)
+  def self.rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)
     misses = 0
     changed = false
 
@@ -954,7 +964,7 @@ module Offlinify
       quote = match[1]
       cache_key = "#{file_dir}\x00#{raw}"
       rel = result_cache.fetch(cache_key) do
-        result_cache[cache_key] = compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
+        result_cache[cache_key] = compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)
       end
       if rel.nil?
         misses += 1
@@ -1042,7 +1052,41 @@ module Offlinify
   #      `decoded_segs` (decoded path segments of the target).
   #   6. Build `"../" * (file_depth - common) + encoded_segs[common..]
   #      .join("/")` and re-attach the tail.
-  def self.compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
+  def self.compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)
+    sep, tail, site_path = raw_resolution_cache.fetch(raw) do
+      raw_resolution_cache[raw] = resolve_raw(raw, site_paths, baseurl)
+    end
+    return nil if site_path.nil?
+
+    decoded_segs, encoded_segs = seg_cache.fetch(site_path) do
+      seg_cache[site_path] = build_segs(site_path)
+    end
+
+    common = 0
+    fs_len = file_segs.length
+    ts_len = decoded_segs.length
+    common += 1 while common < fs_len && common < ts_len && file_segs[common] == decoded_segs[common]
+
+    ascend = "../" * (fs_len - common)
+    descend = encoded_segs[common..].join("/")
+    rel = ascend + descend
+    rel = "./" if rel.empty?
+    "#{rel}#{sep}#{tail}"
+  end
+
+  # File-dir-independent half of `compute_relative`: parses `raw`,
+  # strips any configured baseurl, probes site_paths for the target
+  # file. Returns `[sep, tail, site_path]` -- `site_path` is the
+  # resolved key into `seg_cache` (a string like
+  # `/tB/Core/Const.html`), or `nil` when no candidate exists in
+  # the page set. `sep` and `tail` are the `?query` / `#fragment`
+  # split from raw, preserved verbatim by the caller.
+  #
+  # Called once per unique `raw` URL across the build, via the
+  # `raw_resolution_cache.fetch { ... }` block in `compute_relative`.
+  # The per-page LCP walk + URL build stays in `compute_relative`
+  # because both depend on the source file's `file_segs`.
+  def self.resolve_raw(raw, site_paths, baseurl)
     path, sep, tail = raw.partition(/[?#]/)
     fs_path = decode(path)
 
@@ -1068,22 +1112,7 @@ module Offlinify
     end
 
     site_path = candidates.find { |c| site_paths.include?(c) }
-    return nil unless site_path
-
-    decoded_segs, encoded_segs = seg_cache.fetch(site_path) do
-      seg_cache[site_path] = build_segs(site_path)
-    end
-
-    common = 0
-    fs_len = file_segs.length
-    ts_len = decoded_segs.length
-    common += 1 while common < fs_len && common < ts_len && file_segs[common] == decoded_segs[common]
-
-    ascend = "../" * (fs_len - common)
-    descend = encoded_segs[common..].join("/")
-    rel = ascend + descend
-    rel = "./" if rel.empty?
-    "#{rel}#{sep}#{tail}"
+    [sep, tail, site_path]
   end
 
   # Build the cached `[decoded_segs, encoded_segs]` pair for a

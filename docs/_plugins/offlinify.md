@@ -281,15 +281,17 @@ The summary log line reports both counts: `… rewrote N redirect stub(s) … ex
 
 ## Caches
 
-Three caches keep the per-match work to a single Hash lookup once warmed up:
+Four caches keep the per-match work to a single Hash lookup once warmed up:
 
 1. **`site_paths`** (`Set` of strings). Built once in `setup` from `site.pages + site.static_files + site.documents`. Every file path that Jekyll will write, keyed by its site-rooted forward-slash form (`/tB/Core/Const.html`). Used by `compute_relative` and `compute_rel_url` to probe candidate paths.
 
 2. **`seg_cache`** (`Hash` of `site_path` → `[decoded_segs, encoded_segs]`). Lazily populated. For each unique target site path that the URL rewriter resolves to, this holds the decoded path segments (used for LCP comparison against filesystem-derived `file_segs`) and the URL-encoded segments (joined for the output URL). Most segments are URL-safe and share strings between the two arrays.
 
-3. **`result_cache`** (`Hash` of `"#{file_dir}\x00#{raw}"` → `final_rel_url` or `nil`). The big win. Subsumes step 1 (raw → site_path) and step 2 (site_path → page-relative URL) so each unique `(file_dir, raw)` pair is computed exactly once across the build. Every page shares its nav and aux-nav with every other page — those links resolve once on the first page and hit cache on every subsequent page. Without this cache the offlinify pass takes ~7× longer.
+3. **`raw_resolution_cache`** (`Hash` of `raw` → `[sep, tail, site_path]`). Lazily populated by `compute_relative` through `resolve_raw`. Holds the file-dir-independent half of URL resolution: the `?query` / `#fragment` split, the percent-decoded path, the baseurl-stripped form, and the resolved `site_path` (or `nil` when no candidate matched). Independent of the source file, so each unique `raw` URL runs `resolve_raw` exactly once across the whole build; every other reference to the same `raw` from any other source dir hits this cache and skips straight to the LCP walk.
 
-The cache is shared between the absolute-URL and page-relative-URL dispatches inside the combined HTML pass — the `raw` shapes are disjoint (absolute starts with `/`, relative doesn't), so there's no collision. The `\x00` separator between `file_dir` and `raw` prevents path-name collisions inside the cache key.
+4. **`result_cache`** (`Hash` of `"#{file_dir}\x00#{raw}"` → `final_rel_url` or `nil`). The end-to-end cache. Composes the work of caches 1-3 plus the per-source-dir LCP walk so each unique `(file_dir, raw)` pair is computed exactly once across the build. Within-page same-URL repeats (e.g. the same nav link referenced from multiple places in a page's rendered HTML) hit this cache directly. Without this cache the offlinify pass takes ~7× longer.
+
+The `result_cache` is shared between the absolute-URL and page-relative-URL dispatches inside the combined HTML pass — the `raw` shapes are disjoint (absolute starts with `/`, relative doesn't), so there's no collision. The `\x00` separator between `file_dir` and `raw` prevents path-name collisions inside the cache key.
 
 ## File layout
 
@@ -348,28 +350,29 @@ The optimization story is captured in the commit history. Briefly:
 - **+ combined HTML regex** (single gsub matching both absolute and page-relative URLs in one pass — eliminating the second full file scan and the interim re-scan of code-block ranges that used to sit between two separate passes): down to ~4 s. Roughly 40% off the HTML walk.
 - **+ per-page hook architecture** (`:pages, :post_render` consumes `page.output` in memory rather than re-reading the rendered HTML from `_site/` at `:site, :post_write`): the per-file `File.binread` is eliminated. Cumulative self-time across hooks is ~5-6 s on the current ~830-page site. The ~290 jekyll-redirect-from stubs go through a much cheaper code path than the main HTML pass (a single regex over a few hundred bytes, no code-block scan, no search-setup injection) so they're a small slice of the total.
 - **+ fused code-block skip** (folded the `<code>` / `<pre>` skip into the same regex as the href/src rewrite as two extra leading alternatives, eliminating the separate `code_block_ranges` precompute pass and the per-match `in_code_block?` linear scan inside the gsub callback): another ~800 ms off the HTML walk. The regex engine consumes any `<code>…</code>` or `<pre>…</pre>` block atomically and never tries the href/src alternative inside, so example URLs in tutorial code samples stay verbatim and don't reach the rewrite logic. Cumulative ~5.4 s.
+- **+ split resolution cache** (extracted the file-dir-independent half of `compute_relative` into `resolve_raw`, keyed by `raw` alone, so the `partition`/`decode`/baseurl-strip/candidate-probe work runs once per unique URL across the whole build instead of once per `(file_dir, raw)` pair): a further ~50-100 ms off the HTML walk. The saving is modest because the resolution work itself is cheap (a few regex and hash operations); the bigger benefit is structural -- the two halves of URL resolution are now clearly separated, and the per-match cost on a `result_cache` miss is dominated by the LCP walk + string build rather than the resolution probe. Cumulative ~5.3 s.
 
 ### Profiling
 
 The plugin carries an opt-in per-operation timing breakdown, gated on Jekyll's existing `--profile` build flag. Running `bundle exec jekyll build --profile` adds 16 rows under the `Offlinify:` topic prefix after the existing summary lines, e.g.:
 
 ```
-Offlinify: Offlinifier ran in 5429ms.
-Offlinify:   setup                313.4ms
-Offlinify:   dest_path              6.2ms
-Offlinify:   page.output.dup        1.1ms
+Offlinify: Offlinifier ran in 5379ms.
+Offlinify:   setup                308.8ms
+Offlinify:   dest_path              7.2ms
+Offlinify:   page.output.dup        1.3ms
 Offlinify:   strip_seo             32.9ms
-Offlinify:   rewrite_html        4320.7ms
-Offlinify:   inject_search         30.1ms
-Offlinify:   write_html           498.1ms
+Offlinify:   rewrite_html        4261.5ms
+Offlinify:   inject_search         25.9ms
+Offlinify:   write_html           524.8ms
 Offlinify:   rewrite_css            0.6ms
-Offlinify:   write_css              2.8ms
-Offlinify:   rewrite_redirect       7.4ms
-Offlinify:   write_redirect        78.9ms
+Offlinify:   write_css              2.7ms
+Offlinify:   rewrite_redirect       6.2ms
+Offlinify:   write_redirect        67.3ms
 Offlinify:   write_other            3.3ms
-Offlinify:   copy_static          109.1ms
-Offlinify:   patch_jtd              0.4ms
-Offlinify:   search_data            2.5ms
+Offlinify:   copy_static          109.4ms
+Offlinify:   patch_jtd              0.3ms
+Offlinify:   search_data            3.0ms
 ```
 
 The row labels match the `tick(:time_*)` keys spread across `setup`, `process_page`, and `finish`. The sum of the rows is within ~20 ms of `cumulative_ms` — the gap is hook plumbing not wrapped in a `tick` (the extension dispatch, the `file_dir` computation, the `case` itself).
@@ -388,7 +391,7 @@ The breakdown above puts the cost of each phase in concrete numbers. The picture
 
 - **`copy_static`** at ~2%: 221 `FileUtils.cp` calls in `finish` for binary assets that didn't need rewriting.
 
-The remaining optimization opportunities are mostly inside `rewrite_html`: the per-match callback's cache lookup is the hot path. The cache key `"#{file_dir}\x00#{raw}"` allocates a fresh string per match (~42k allocations per build); splitting it into a `(raw → site_path)` global cache plus a per-page LCP step would let the per-match work be a single small hash lookup. The `dest_path[(@state[:dest_root_fs].length + 1)..]` slice is also a per-page string allocation that the static-file loop could share.
+The remaining optimization opportunities are mostly inside `rewrite_html`. The `result_cache` lookup is the hot path: per match it allocates a `"#{file_dir}\x00#{raw}"` cache key, does one hash lookup, and (on a hit, the common case) returns the cached final URL. A nested-hash structure (`result_cache[file_dir][raw]`) would skip the cache-key string allocation at the cost of two hash lookups instead of one — likely a wash on Ruby 3.x but worth measuring. On a `result_cache` miss the dominant cost is now the LCP walk + string interpolation in `compute_relative`, since the `raw_resolution_cache` has already done the cross-page-shared resolution work.
 
 ## Known limitations
 
@@ -411,11 +414,12 @@ In source order in [`offlinify.rb`](offlinify.rb):
 - `tick(key) { ... }` — opt-in timing helper. When `--profile` is set on the build, wraps the block in two monotonic-clock reads and accumulates the elapsed ms into `@state[key]`; otherwise a pass-through `yield`. Used by every measurable code path in `setup`, `process_page`, and `finish`. See [Profiling](#profiling).
 - `process_page(page)` — `:pages, :post_render` and `:documents, :post_render` hook entry. Transforms `page.output` and writes the offline copy. Dispatches on output extension and on page class (jekyll-redirect-from stubs get a dedicated branch that rewrites their absolute `<site.url>/<path>` URLs to page-relative form).
 - `finish(site)` — `:site, :post_write` hook entry. Copies static files from `_site/` to `_site-offline/`, patches just-the-docs.js, generates search-data.js, logs the summary (with the per-operation breakdown when `--profile` is set, via `log_profile_breakdown`), clears `@state`.
-- `rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)` — the combined HTML pass. One `gsub` per file over `HTML_COMBINED_RE`, which carries three alternatives: a `<code>` block, a `<pre>` block, or an `href|src=` attribute. The first two are returned verbatim from the gsub callback (group 1 is nil on those branches); the third dispatches on `raw.start_with?("/")` — absolute URLs go through `compute_relative`, page-relative URLs through `compute_rel_url`. Single cache lookup per real match.
-- `rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)` — the CSS pass. One `gsub` per file over `CSS_URL_RE`, dispatched to `compute_relative` (CSS only carries absolute URLs in this codebase). No code-block handling — CSS has no equivalent concept.
+- `rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)` — the combined HTML pass. One `gsub` per file over `HTML_COMBINED_RE`, which carries three alternatives: a `<code>` block, a `<pre>` block, or an `href|src=` attribute. The first two are returned verbatim from the gsub callback (group 1 is nil on those branches); the third dispatches on `raw.start_with?("/")` — absolute URLs go through `compute_relative`, page-relative URLs through `compute_rel_url`. Single cache lookup per real match.
+- `rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)` — the CSS pass. One `gsub` per file over `CSS_URL_RE`, dispatched to `compute_relative` (CSS only carries absolute URLs in this codebase). No code-block handling — CSS has no equivalent concept.
 - `inject_search_setup!(content, file_segs)` — the second HTML transformation. Single regex substitution per file: finds the just-the-docs.js script tag and prepends the two new ones.
 - `strip_seo!(content)` — removes the jekyll-seo-tag plugin's output block from a page's `<head>`, keeping only the `<title>` tag. Runs first in the `.html` branch of `process_page` so the rewrite regex sees the post-strip content.
-- `compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)` — the absolute-URL resolver. Strip baseurl, probe candidates, compute LCP, return final URL.
+- `compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)` — the absolute-URL resolver. Looks up the file-dir-independent half via `raw_resolution_cache.fetch { resolve_raw(...) }`, then walks the LCP against `file_segs` and emits the final URL.
+- `resolve_raw(raw, site_paths, baseurl)` — the file-dir-independent half of `compute_relative`: parses raw, strips baseurl, probes candidates. Returns `[sep, tail, site_path]` with `site_path` nil when no candidate resolved. Called once per unique `raw` across the build via `raw_resolution_cache`.
 - `compute_rel_url(raw, file_segs, site_paths)` — the page-relative-URL resolver. Normalise against the current page's dir, probe candidates, return original raw plus matching suffix.
 - `patch_jtd_js!(out_dest)` — does the `navLink()` and `initSearch()` body substitutions.
 - `build_search_data_js!(out_dest)` — generates `search-data.js` from `search-data.json`.
