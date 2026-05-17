@@ -43,20 +43,26 @@ require "set"
 #
 #   1. `:site, :pre_render` -- builds `site_paths` from
 #      `site.pages + site.static_files + site.documents`, wipes the
-#      contents of `_site-offline/`, and initialises per-build state
+#      contents of `_site-offline/`, initialises per-build state
 #      (caches, counters, normalised baseurl) on the module's `@state`
-#      ivar so the later hooks can read it.
+#      ivar so the later hooks can read it, and starts the async
+#      write pool.
 #
 #   2. `:pages, :post_render` and `:documents, :post_render` -- fire
 #      once per page after Jekyll renders it. `page.output` is the
-#      final HTML/CSS/etc bytes; the plugin transforms it and writes
-#      the result to `_site-offline/<rel>`. Jekyll's WRITE phase
+#      final HTML/CSS/etc bytes; the plugin transforms it and enqueues
+#      the rewritten content on a small thread pool that does the
+#      actual `mkdir_p` + `binwrite` to `_site-offline/<rel>` off the
+#      main thread. The writes overlap with Jekyll's next-page render
+#      and our own rewrite of subsequent pages. Jekyll's WRITE phase
 #      writes the same `page.output` to `_site/<rel>` a moment later,
 #      so the online and offline files come from the same in-memory
 #      string -- no re-read.
 #
 #   3. `:site, :post_write` -- once Jekyll has finished writing
-#      `_site/`, this hook copies static files (images, fonts, raw
+#      `_site/`, this hook drains the async write pool (so all
+#      per-page writes are flushed before any read from
+#      `_site-offline/`), copies static files (images, fonts, raw
 #      JS/JSON the theme ships verbatim, the just-the-docs.js asset)
 #      from `_site/` into `_site-offline/`, patches
 #      `_site-offline/assets/js/just-the-docs.js`, and generates
@@ -277,6 +283,14 @@ module Offlinify
 
   # Path of the just-the-docs JS file relative to the site root.
   JTD_JS_REL = "assets/js/just-the-docs.js"
+
+  # Number of worker threads in the async write pool. The pool drains
+  # the per-page output writes off the main thread so they overlap
+  # with Jekyll's next-page render and our own rewrite of subsequent
+  # pages. MRI releases the GIL on IO syscalls (`open`, `write`,
+  # `close`, `stat`, `mkdir`), so the workers actually parallelise at
+  # the OS level. See `write_worker_loop` and `drain_write_pool!`.
+  WRITE_POOL_SIZE = 4
 
   # Matches the upstream `navLink()` function body. Anchored on the
   # function signature and the closing `return null;` comment (a
@@ -509,6 +523,21 @@ module Offlinify
       # (typically ~200), so total memory is ~25 MB during a build.
       # See `NAV_RE` and `NAV_PLACEHOLDER`.
       nav_cache: {},
+      # Async write pool state. `write_queue` carries `[out_path,
+      # content, time_key]` tuples enqueued by process_page; workers
+      # pop and execute the `mkdir_p` + `binwrite`. Errors land on
+      # `write_errors` and are surfaced by `drain_write_pool!` in
+      # finish. `write_time_ms` accumulates per-key worker self-time
+      # under `write_time_mutex` -- rolled into the corresponding
+      # `@state[time_key]` during drain so the profile breakdown
+      # keeps its per-extension granularity even though the actual
+      # writes happened off-thread. `write_workers` is set after
+      # the @state hash is built (see below).
+      write_queue: Queue.new,
+      write_errors: Queue.new,
+      write_time_mutex: Mutex.new,
+      write_time_ms: Hash.new(0.0),
+      write_workers: nil,
       rewritten_html: 0,
       rewritten_css: 0,
       rewritten_redirects: 0,
@@ -539,6 +568,7 @@ module Offlinify
       time_rewrite_redirect: 0.0,
       time_write_redirect: 0.0,
       time_write_other: 0.0,
+      time_write_drain: 0.0,
       time_dispatch_dup: 0.0,
       time_dest_path: 0.0,
       time_copy_static: 0.0,
@@ -559,6 +589,7 @@ module Offlinify
     }
 
     wipe_out_dest_contents(out_dest)
+    @state[:write_workers] = WRITE_POOL_SIZE.times.map { Thread.new { write_worker_loop } }
     elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
     @state[:cumulative_ms] += elapsed
     @state[:time_setup] += elapsed if @state[:profile]
@@ -690,10 +721,7 @@ module Offlinify
           end
         end
       end
-      tick(:time_write_redirect) do
-        FileUtils.mkdir_p(file_dir)
-        File.binwrite(out_path, content)
-      end
+      @state[:write_queue] << [out_path, content, :time_write_redirect]
       @state[:rewritten_redirects] += 1
     else
       out_path = File.join(@state[:out_dest], rel)
@@ -709,10 +737,7 @@ module Offlinify
         end
         @state[:unresolved] += misses
         tick(:time_inject_search) { inject_search_setup!(content, file_segs) }
-        tick(:time_write_html) do
-          FileUtils.mkdir_p(file_dir)
-          File.binwrite(out_path, content)
-        end
+        @state[:write_queue] << [out_path, content, :time_write_html]
         @state[:rewritten_html] += 1
       when ".css"
         content = tick(:time_dispatch_dup) { page.output.dup }
@@ -720,16 +745,10 @@ module Offlinify
           rewrite_css!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], @state[:raw_resolution_cache])
         end
         @state[:unresolved] += misses
-        tick(:time_write_css) do
-          FileUtils.mkdir_p(file_dir)
-          File.binwrite(out_path, content)
-        end
+        @state[:write_queue] << [out_path, content, :time_write_css]
         @state[:rewritten_css] += 1
       else
-        tick(:time_write_other) do
-          FileUtils.mkdir_p(file_dir)
-          File.binwrite(out_path, page.output)
-        end
+        @state[:write_queue] << [out_path, page.output, :time_write_other]
         @state[:copied_files] += 1
       end
     end
@@ -746,6 +765,14 @@ module Offlinify
   def self.finish(site)
     return unless @state
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    # Drain async writes before any read from `_site-offline/`.
+    # build_search_data_js! below reads `assets/js/search-data.json`,
+    # which process_page enqueued via the write_other branch -- if a
+    # worker hasn't flushed it yet, the read would see an incomplete
+    # file. The drain also surfaces any worker exception that occurred
+    # mid-build.
+    tick(:time_write_drain) { drain_write_pool! }
 
     tick(:time_copy_static) do
       site.static_files.each do |sf|
@@ -801,6 +828,7 @@ module Offlinify
     [:time_rewrite_redirect, "rewrite_redirect"],
     [:time_write_redirect,   "write_redirect"],
     [:time_write_other,      "write_other"],
+    [:time_write_drain,      "write_drain"],
     [:time_copy_static,      "copy_static"],
     [:time_patch_jtd,        "patch_jtd"],
     [:time_search_data,      "search_data"],
@@ -839,6 +867,70 @@ module Offlinify
   def self.copy_asset!(src_path, out_path)
     FileUtils.mkdir_p(File.dirname(out_path))
     FileUtils.cp(src_path, out_path)
+  end
+
+  # Body of each async-write worker thread. Pops `[out_path, content,
+  # time_key]` tuples off the shared queue, does the `mkdir_p` +
+  # `binwrite`, and (when profiling is on) accumulates self-time into
+  # `write_time_ms[time_key]` under `write_time_mutex`. A `nil` task
+  # is the shutdown sentinel pushed by `drain_write_pool!`. Exceptions
+  # land on `write_errors`; `drain_write_pool!` raises the first one
+  # after joining the workers. Workers only touch fields established
+  # in setup (the queue, the errors queue, the time mutex/hash, the
+  # profile flag) -- no other @state mutation -- so the main thread's
+  # counters (rewritten_html, unresolved, caches, etc.) stay safely
+  # single-threaded.
+  def self.write_worker_loop
+    queue = @state[:write_queue]
+    errors = @state[:write_errors]
+    time_mutex = @state[:write_time_mutex]
+    time_ms = @state[:write_time_ms]
+    profile = @state[:profile]
+    loop do
+      task = queue.pop
+      break if task.nil?
+      out_path, content, time_key = task
+      begin
+        if profile
+          t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          FileUtils.mkdir_p(File.dirname(out_path))
+          File.binwrite(out_path, content)
+          elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t) * 1000
+          time_mutex.synchronize { time_ms[time_key] += elapsed }
+        else
+          FileUtils.mkdir_p(File.dirname(out_path))
+          File.binwrite(out_path, content)
+        end
+      rescue => e
+        errors << [out_path, e]
+      end
+    end
+  end
+
+  # Shut down the write pool: push one `nil` sentinel per worker,
+  # join them all, then roll the per-key worker self-time into
+  # `@state[time_key]` so the profile breakdown still shows
+  # `time_write_html`, `time_write_css`, etc. as the actual write
+  # cost (just done on workers rather than the main thread). Raises
+  # the first worker exception if any are pending -- a failed write
+  # must abort the build rather than silently produce a half-populated
+  # `_site-offline/` tree. Called once, at the top of `finish`,
+  # before any read from `_site-offline/`.
+  def self.drain_write_pool!
+    workers = @state[:write_workers]
+    return unless workers
+    workers.length.times { @state[:write_queue] << nil }
+    workers.each(&:join)
+    @state[:write_workers] = nil
+
+    if @state[:profile]
+      @state[:write_time_ms].each { |key, ms| @state[key] += ms }
+    end
+
+    return if @state[:write_errors].empty?
+    out_path, err = @state[:write_errors].pop
+    raise "Offlinify async write failed for #{out_path}: " \
+          "#{err.class}: #{err.message}\n#{err.backtrace.join("\n")}"
   end
 
   # Apply both JS patches to `assets/js/just-the-docs.js` under

@@ -64,9 +64,11 @@ Fires at `:site, :pre_render` — once at the start of the build, after Jekyll h
 
 5. **Seed state** on the module's `@state` ivar so the per-page and finish hooks can pick up where setup left off: caches (`seg_cache`, `result_cache`), counters, normalised baseurl, exclude patterns, dest paths, cumulative timer. Cleared at the end of `finish` so a fresh build starts clean.
 
+6. **Start the async write pool** (see [Async write pool](#async-write-pool)). `WRITE_POOL_SIZE` (= 4) worker threads block on the shared `write_queue` waiting for `[out_path, content, time_key]` tuples that `process_page` will enqueue.
+
 ### Phase 2: process_page
 
-Fires at `:pages, :post_render` and `:documents, :post_render` — once per page after Jekyll renders it. `page.output` is the final HTML/CSS/etc bytes; the plugin transforms it and writes the result to `_site-offline/<rel>`. Jekyll's WRITE phase writes the same `page.output` to `_site/<rel>` a moment later, so the online and offline files come from the same in-memory string — no re-read.
+Fires at `:pages, :post_render` and `:documents, :post_render` — once per page after Jekyll renders it. `page.output` is the final HTML/CSS/etc bytes; the plugin transforms it and **enqueues** the result for an async writer thread to flush to `_site-offline/<rel>` (see [Async write pool](#async-write-pool)). Jekyll's WRITE phase writes the same `page.output` to `_site/<rel>` a moment later, so the online and offline files come from the same in-memory string — no re-read.
 
 For each page:
 
@@ -77,25 +79,29 @@ For each page:
 3. **Detect jekyll-redirect-from stubs** by class-name string check (`page.class.name == "JekyllRedirectFrom::RedirectPage"`). The stubs are tiny HTML files whose meta-refresh, canonical link, `<script>location=`, and fallback `<a>` all reference an absolute `https://<site.url>/<path>` URL produced by `absolute_url`. Online these redirect to the canonical page; offline they would require network access and land on the live site rather than the local file — defeating the offline scenario. Rewrite each `<site.url><path>` occurrence to its resolved page-relative form via the same `compute_relative` the main HTML pass uses, then write the stub. Counted under `rewritten_redirects` in the summary log line. Some source pages (notably `Miscellaneous/Documentation Development.md`) intentionally link via `redirect_from` URLs as a stable-URL pattern, so the rewritten stubs let those source links navigate locally instead of failing. The class-name string check is used rather than `is_a?` so the plugin still loads if jekyll-redirect-from is removed. If `site.url` is unset (empty) the stub is written verbatim — the path-portion targets still resolve under lychee's offline check the same way the main HTML pass's link targets do.
 
 4. **Dispatch on output extension:**
-   - `.html`: dup `page.output`, strip the jekyll-seo-tag block (see [SEO block stripping](#seo-block-stripping)), scan for code-block ranges, run the combined HTML URL rewrite (see [HTML URL rewriting](#html-url-rewriting)), inject the search-setup script tags, write.
-   - `.css`: dup `page.output`, run the `url()` rewrite (see [CSS `url()` rewriting](#css-url-rewriting)), write.
-   - Anything else (XML feeds, JSON, etc.): write `page.output` verbatim.
+   - `.html`: dup `page.output`, strip the jekyll-seo-tag block (see [SEO block stripping](#seo-block-stripping)), scan for code-block ranges, run the combined HTML URL rewrite (see [HTML URL rewriting](#html-url-rewriting)), inject the search-setup script tags, enqueue for the write pool.
+   - `.css`: dup `page.output`, run the `url()` rewrite (see [CSS `url()` rewriting](#css-url-rewriting)), enqueue for the write pool.
+   - Anything else (XML feeds, JSON, etc.): enqueue `page.output` verbatim.
 
-5. **Accumulate self-time** into `@state[:cumulative_ms]`. The reported total at the end is just Offlinify's CPU time across all hook invocations, not the wall-clock between pre_render and post_write (which would include Jekyll's render and write phases between our hooks).
+   The enqueue is a single `Queue#<<` call (~µs); the actual `mkdir_p` + `binwrite` happens on the worker. By the time `process_page` returns, the rewritten content is sitting in the queue, not on disk.
+
+5. **Accumulate self-time** into `@state[:cumulative_ms]`. The reported total at the end is just Offlinify's CPU time across all hook invocations, not the wall-clock between pre_render and post_write (which would include Jekyll's render and write phases between our hooks). With async writes, the main-thread per-page cost no longer includes the `mkdir_p` + `binwrite` — that work moves to the workers and overlaps with the next page's render and rewrite.
 
 ### Phase 3: finish
 
 Fires at `:site, :post_write` — once after Jekyll's WRITE phase has populated `_site/`.
 
-1. **Copy static files** (`site.static_files`) from `_site/` to `_site-offline/`. Static files don't fire `:pages, :post_render`, so they're handled here. The `offline_exclude` check runs again for each.
+1. **Drain the async write pool** (see [Async write pool](#async-write-pool)). Push one shutdown sentinel per worker, `join` them all, then surface any worker exception (a write failure must abort the build rather than silently produce a half-populated `_site-offline/`). Must happen before step 3 below, which reads `search-data.json` that `process_page` enqueued via the write_other branch — if the worker hasn't flushed it yet, the read would see an incomplete file. In practice `write_drain` is consistently <1 ms: by the time `finish` fires, all 837 HTML, 5 CSS, 290 redirect, and few-other writes have already been flushed during the ~2 s the main thread spent on rewrite.
 
-2. **Patch `assets/js/just-the-docs.js`** in `_site-offline/`. Replace the `navLink()` and `initSearch()` function bodies with offline-friendly versions.
+2. **Copy static files** (`site.static_files`) from `_site/` to `_site-offline/`. Static files don't fire `:pages, :post_render`, so they're handled here. The `offline_exclude` check runs again for each.
 
-3. **Generate `assets/js/search-data.js`.** Read the `search-data.json` that Phase 2 wrote (the jekyll-search Page object renders the JSON, which `process_page` captures and writes verbatim), wrap in `window.SEARCH_DATA = {...};`, write next to the JSON.
+3. **Patch `assets/js/just-the-docs.js`** in `_site-offline/`. Replace the `navLink()` and `initSearch()` function bodies with offline-friendly versions.
 
-4. **Log the summary.** Three or four lines under the `Offlinify:` topic prefix, ending with `Offlinifier ran in Xms.` (cumulative self-time, not wall-clock).
+4. **Generate `assets/js/search-data.js`.** Read the `search-data.json` that Phase 2 wrote (the jekyll-search Page object renders the JSON, which `process_page` captures and writes verbatim), wrap in `window.SEARCH_DATA = {...};`, write next to the JSON.
 
-5. **Clear `@state`** so a subsequent build starts with no leftover counters or caches.
+5. **Log the summary.** Three or four lines under the `Offlinify:` topic prefix, ending with `Offlinifier ran in Xms.` (cumulative self-time, not wall-clock).
+
+6. **Clear `@state`** so a subsequent build starts with no leftover counters or caches.
 
 ## Transformation passes
 
@@ -311,6 +317,27 @@ Five caches keep the per-match work to a single Hash lookup once warmed up:
 
 The inner hash in `result_cache` is shared between the absolute-URL and page-relative-URL dispatches inside the combined HTML pass — the `raw` shapes are disjoint (absolute starts with `/`, relative doesn't), so there's no collision.
 
+## Async write pool
+
+Per-page `mkdir_p` + `binwrite` is `IO`-bound and MRI releases the GIL on those syscalls (`open`, `write`, `close`, `stat`, `mkdir`). Running them on a small thread pool lets the writes overlap with the next page's render (Jekyll) and rewrite (this plugin) on the main thread.
+
+The pool: `WRITE_POOL_SIZE` (= 4) `Thread`s started at the end of `setup`, blocked on a shared `Queue`. `process_page` pushes `[out_path, content, time_key]` tuples instead of calling `File.binwrite` directly; each worker pops, does `FileUtils.mkdir_p(File.dirname(out_path))` + `File.binwrite(out_path, content)`, and (when `--profile` is set) accumulates elapsed ms into `write_time_ms[time_key]` under `write_time_mutex`. `finish` drains the pool first thing: one `nil` sentinel per worker, then `Thread#join` on each, then surface the first exception from `write_errors` if any are pending.
+
+The expected behaviour, confirmed on the current site:
+
+- **`write_drain` is consistently <1 ms.** Workers finish all ~1130 writes (837 HTML + 290 redirects + 5 CSS + a handful of "other" like XML feeds and the search JSON) during the ~2 s the main thread spent on rewrite. By the time `finish` fires, nothing is left to wait for.
+- **Per-extension `time_write_*` profile rows now report worker self-time, not main-thread wall-clock.** The numbers are *higher* than the synchronous baseline (e.g. `write_html` jumps from ~510 ms to ~1450 ms) — that's the OS-level contention cost of concurrent NTFS file creation (the MFT lock serialises some of the work even though the threads are parallel from MRI's perspective). It's the right thing to measure: it tells you what the workers actually spent, not what the main thread was blocked on.
+- **Main-thread `cumulative_ms` drops by the full sync-write cost.** ~530 ms on the current site (3180 ms → 2651 ms median, with tight ±70 ms variance on both sides). The wall-clock saving is whatever the synchronous writes used to block on — minus the negligible `write_drain` tail.
+
+Correctness invariants worth keeping in mind:
+
+- **Drain happens before any read from `_site-offline/`.** `build_search_data_js!` in `finish` reads `assets/js/search-data.json` (enqueued by the write_other branch). Without the drain at the top of `finish`, that read can race a worker that hasn't flushed yet. Order matters; don't move the drain.
+- **Workers only mutate the queue, the errors queue, and `write_time_ms` (under mutex).** Counters (`rewritten_html`, `unresolved`, etc.) and caches (`result_cache`, `nav_cache`, etc.) stay single-threaded on the main thread. New code in the write path should preserve this — adding shared-state mutation in a worker would introduce race conditions that are subtle to spot.
+- **Exceptions abort the build, not silently truncate the offline tree.** A worker that fails pushes `[out_path, exception]` onto `write_errors` instead of crashing; the drain re-raises the first one after joining. This catches disk-full, permission, and path-length failures and turns them into a normal build error.
+- **`FileUtils.mkdir_p` race between workers is safe** — it handles `Errno::EEXIST` internally for the same path, and NTFS is thread-safe for distinct paths.
+
+Memory footprint at peak: ~30 MB (the queue's content strings before they're written). Manageable. The queue is unbounded; if a future site became massive enough that workers fell badly behind producers, a `SizedQueue.new(N)` would add backpressure but is not needed today.
+
 ## File layout
 
 The offline build touches the following files:
@@ -371,30 +398,32 @@ The optimization story is captured in the commit history. Briefly:
 - **+ split resolution cache** (extracted the file-dir-independent half of `compute_relative` into `resolve_raw`, keyed by `raw` alone, so the `partition`/`decode`/baseurl-strip/candidate-probe work runs once per unique URL across the whole build instead of once per `(file_dir, raw)` pair): a further ~50-100 ms off the HTML walk. The saving is modest because the resolution work itself is cheap (a few regex and hash operations); the bigger benefit is structural -- the two halves of URL resolution are now clearly separated, and the per-match cost on a `result_cache` miss is dominated by the LCP walk + string build rather than the resolution probe. Cumulative ~5.3 s.
 - **+ nested `result_cache`** (replaced the composite `Hash[(file_dir, raw)] → rel` with a two-level `Hash[file_dir] → Hash[raw → rel]`, hoisted the outer lookup once per page so per-match work is a single hash lookup on the short `raw` key with no composite-cache-key string allocation): ~280 ms off the HTML walk. The win wasn't visible until adding callback-level instrumentation showed the per-page match count was 854 (not 50): with ~720k callback invocations across the build, the per-match `"#{file_dir}\x00#{raw}"` allocation alone was the dominant unaddressed cost. Cumulative ~5.1 s.
 - **+ misc quick wins** (replaced `Pathname#relative_path_from` in `build_site_paths` with a plain string slice ~200× faster, switched `gsub` to `gsub!` in `rewrite_html!` to mutate in place): ~100 ms across setup + the HTML walk. Cumulative ~5.0 s.
-- **+ per-dir nav-block caching** (the just-the-docs sidebar nav is ~112 KB of identical input HTML on every page and ~750 of each page's ~860 href matches; its rewritten output depends only on `file_dir`. Substitute the nav with an HTML-comment placeholder before the gsub when a cached rewritten nav exists for the current `file_dir`; run the gsub on the remaining ~25 KB; splice the cached nav back. First page in each `file_dir` runs the full gsub including the nav and seeds the cache; every subsequent page short-circuits 750 callbacks): **~1900 ms off the HTML walk**, the biggest single win. Cumulative ~3.1 s. Total Offlinify time has dropped from the original ~6.2 s to ~3.1 s (~50% faster).
+- **+ per-dir nav-block caching** (the just-the-docs sidebar nav is ~112 KB of identical input HTML on every page and ~750 of each page's ~860 href matches; its rewritten output depends only on `file_dir`. Substitute the nav with an HTML-comment placeholder before the gsub when a cached rewritten nav exists for the current `file_dir`; run the gsub on the remaining ~25 KB; splice the cached nav back. First page in each `file_dir` runs the full gsub including the nav and seeds the cache; every subsequent page short-circuits 750 callbacks): **~1900 ms off the HTML walk**, the biggest single win. Cumulative ~3.1 s.
+- **+ async write pool** (a 4-thread pool drains `mkdir_p` + `binwrite` off the main thread; `process_page` enqueues `[out_path, content, time_key]` tuples on a shared `Queue` instead of calling `File.binwrite` directly; `finish` joins the workers and surfaces any error before reading `_site-offline/`. MRI releases the GIL on IO syscalls so the workers actually parallelise at the OS level. On the current site the workers complete all ~1130 writes during the ~2 s the main thread spent on rewrite, so `write_drain` in `finish` is consistently <1 ms): **~530 ms off cumulative_ms**. Total Offlinify time has dropped from the original ~6.2 s to ~2.65 s (~57% faster). See [Async write pool](#async-write-pool). Worker self-time per extension is *higher* than the old serial cost (e.g. `write_html` 510 ms → 1450 ms) because NTFS MFT serialisation makes concurrent file creation more expensive per call, but it all happens off-thread so the main-thread wall-clock saving is the full sync write time.
 
 ### Profiling
 
-The plugin carries an opt-in per-operation timing breakdown, gated on Jekyll's existing `--profile` build flag. Running `bundle exec jekyll build --profile` adds 16 rows under the `Offlinify:` topic prefix after the existing summary lines, e.g.:
+The plugin carries an opt-in per-operation timing breakdown, gated on Jekyll's existing `--profile` build flag. Running `bundle exec jekyll build --profile` adds 17 rows under the `Offlinify:` topic prefix after the existing summary lines, e.g.:
 
 ```
-Offlinify: Offlinifier ran in 3088ms.
-Offlinify:   setup                       305.9ms
-Offlinify:   dest_path                     6.6ms
-Offlinify:   page.output.dup               1.2ms
-Offlinify:   strip_seo                    31.2ms
-Offlinify:   rewrite_html               2033.0ms
-Offlinify:     (of which time_resolve)   266.4ms
-Offlinify:   inject_search                30.7ms
-Offlinify:   write_html                  509.6ms
+Offlinify: Offlinifier ran in 2514ms.
+Offlinify:   setup                       273.2ms
+Offlinify:   dest_path                     6.1ms
+Offlinify:   page.output.dup               1.5ms
+Offlinify:   strip_seo                    32.3ms
+Offlinify:   rewrite_html               2037.2ms
+Offlinify:     (of which time_resolve)   266.6ms
+Offlinify:   inject_search                33.6ms
+Offlinify:   write_html                 1436.4ms
 Offlinify:   rewrite_css                   0.5ms
-Offlinify:   write_css                     2.9ms
-Offlinify:   rewrite_redirect              4.9ms
-Offlinify:   write_redirect               65.4ms
-Offlinify:   write_other                   3.8ms
-Offlinify:   copy_static                 106.3ms
-Offlinify:   patch_jtd                     0.4ms
-Offlinify:   search_data                   2.4ms
+Offlinify:   write_css                   174.8ms
+Offlinify:   rewrite_redirect              3.5ms
+Offlinify:   write_redirect              709.1ms
+Offlinify:   write_other                 690.7ms
+Offlinify:   write_drain                   0.1ms
+Offlinify:   copy_static                 101.5ms
+Offlinify:   patch_jtd                     0.3ms
+Offlinify:   search_data                   2.5ms
 Offlinify:   rewrite_html details: matches=115568 (href/src=110279, code/pre=5289)
 Offlinify:                         result_cache: hits=11040, misses=99239 (10.0% hit rate)
 Offlinify:                         resolver calls: compute_relative=96192, compute_rel_url=3047
@@ -403,25 +432,27 @@ Offlinify:                         nav_cache: hits=723, misses=114, no-nav pages
 
 The detail rows under `rewrite_html details:` are populated from per-callback counters in `rewrite_html!` (aggregated to `@state` once per page to keep the inner-loop work register-local). They expose four useful ratios: how many real href/src matches versus code-block matches, the `result_cache` hit rate, the split between absolute-URL and page-relative-URL resolvers, and the `nav_cache` hits/misses (one miss per unique source dir on its first page; one hit per subsequent page in the same dir). The `(of which time_resolve)` row is the cumulative time spent inside `compute_relative` + `compute_rel_url`; the rest of `rewrite_html` is regex scanning, callback dispatch, hash lookups, and replacement-string construction.
 
+The `write_*` rows after the async write pool landed report **worker self-time**, not main-thread wall-clock — see [Async write pool](#async-write-pool). The sum across `write_html` / `write_css` / `write_redirect` / `write_other` (~3 s in the example above) is the total cost of all writes done in parallel across the 4 workers; the main thread is not blocked on any of it. `write_drain` is the main-thread time spent in `finish` waiting for outstanding workers to finish — consistently <1 ms on the current site because the workers complete during the ~2 s `rewrite_html` window. The sum-of-rows is therefore *not* close to `cumulative_ms` anymore (the math is `cumulative_ms ≈ rewrite_html + setup + write_drain + small phases`, ignoring the off-thread write rows).
+
 Note that after nav caching the `result_cache` hit rate drops from ~86% to ~10%: nearly all the within-build URL repetition came from the nav, and the nav is now skipped on cache hits. The remaining 10% comes from inline links repeated across pages (footer, header, the few links inside each page's main content that point at common targets like the home page). The absolute number of callback work, not the hit rate percentage, is what matters: 720k callbacks (pre-nav-cache) at 86% hit rate vs 115k callbacks (post-nav-cache) at 10% hit rate is an 84% reduction in real work done.
 
-The row labels match the `tick(:time_*)` keys spread across `setup`, `process_page`, and `finish`. The sum of the rows is within ~20 ms of `cumulative_ms` — the gap is hook plumbing not wrapped in a `tick` (the extension dispatch, the `file_dir` computation, the `case` itself).
+The row labels match the `tick(:time_*)` keys spread across `setup`, `process_page`, and `finish`, plus the per-worker accumulator that `drain_write_pool!` rolls into the `time_write_html` / `time_write_css` / `time_write_redirect` / `time_write_other` keys. Main-thread rows (everything except those four `write_*`) sum to within ~20 ms of `cumulative_ms` — the gap is hook plumbing not wrapped in a `tick` (the extension dispatch, the `file_dir` computation, the `case` itself). The four `write_*` rows are off-thread worker time and live outside `cumulative_ms`.
 
 The instrumentation lives behind a `tick(key) { ... }` helper. With `--profile` off, the helper is a single boolean check plus a block yield — negligible at the per-page rate. With `--profile` on, each callsite reads the monotonic clock twice and accumulates the elapsed ms into `@state[key]`. The breakdown is emitted by `log_profile_breakdown` at the end of `finish`, which walks the `BREAKDOWN_KEYS` constant table.
 
 ### Hot spots (current site shape)
 
-After nav-block caching the picture is much flatter:
+After nav-block caching and the async write pool the picture is even flatter — main-thread cumulative is ~2.65 s and `rewrite_html` is essentially the entire main-thread budget:
 
-- **`rewrite_html`** at ~66% of all Offlinify time. The gsub callback fires ~115k times per build (not 720k — the nav cache short-circuits ~600k of them). Per-match work is still ~17 µs on the cache-miss side and ~5 µs on the cache-hit side; with ~115k total, that's ~2 s. `time_resolve` (the resolver block inside) is ~13% of `rewrite_html`, the rest is regex scanning, callback dispatch, and replacement-string construction.
+- **`rewrite_html`** at ~80% of `cumulative_ms`. The gsub callback fires ~115k times per build (not 720k — the nav cache short-circuits ~600k of them). Per-match work is still ~17 µs on the cache-miss side and ~5 µs on the cache-hit side; with ~115k total, that's ~2 s. `time_resolve` (the resolver block inside) is ~13% of `rewrite_html`, the rest is regex scanning, callback dispatch, and replacement-string construction.
 
-- **`write_html`** at ~16%: 837 `File.binwrite` calls. Windows NTFS file-creation cost dominates over the byte write. Lowering the file count is not an option (each page is a separate file).
+- **`setup`** at ~11%. `wipe_out_dest_contents` clears the previous `_site-offline/` tree (variable cost depending on how full the tree was) and `build_site_paths` iterates ~1300 in-memory items.
 
-- **`setup`** at ~10%: now the largest non-rewrite phase. `wipe_out_dest_contents` clears the previous `_site-offline/` tree (variable cost depending on how full the tree was) and `build_site_paths` iterates ~1300 in-memory items.
+- **`write_drain`** at <0.1%. Workers complete all ~1130 writes during the ~2 s the main thread is in `rewrite_html`, so `finish` doesn't actually wait on anything.
 
-- **`copy_static`** at ~3%: 221 `FileUtils.cp` calls in `finish` for binary assets that didn't need rewriting.
+- **Off-thread:** the worker pool burns ~3 s of CPU on `mkdir_p` + `binwrite` across ~1130 files, but it's parallelised across 4 workers and overlaps with `rewrite_html`, so the main thread doesn't pay for any of it. The `write_html` / `write_css` / `write_redirect` / `write_other` profile rows track this (worker self-time) but it's *outside* `cumulative_ms`.
 
-The two regex passes in `rewrite_html` (the full-content scan on first-page-in-dir, the partial scan on subsequent-pages-in-dir) are now the floor: avoiding them would require either a structural change to how Jekyll lays out pages, or hand-rolled `String#scan`-based rewriting that's unlikely to beat MRI's C-implemented `gsub!`. The natural next levers are (a) widening the nav cache to capture other large boilerplate blocks (header, footer, head section — each smaller than the nav but still meaningful), and (b) chipping at `write_html` if Windows file-creation cost can be shaved (asynchronous writes? batched directory creation? small wins likely).
+`rewrite_html` is the floor for any further main-thread saving. Avoiding the two regex passes (full-content scan on first-page-in-dir, partial scan on subsequent-pages-in-dir) would require either a structural change to how Jekyll lays out pages, or hand-rolled `String#scan`-based rewriting that's unlikely to beat MRI's C-implemented `gsub!`. The natural next levers are (a) widening the nav cache to capture other large boilerplate blocks (header, footer, head section — each smaller than the nav but still meaningful), or (b) accepting current state — at ~2.65 s on a ~13 s build, with the cheap wins exhausted, further chasing has diminishing returns.
 
 ## Known limitations
 
@@ -437,13 +468,15 @@ The two regex passes in `rewrite_html` (the full-content scan on first-page-in-d
 
 In source order in [`offlinify.rb`](offlinify.rb):
 
-- `setup(site)` — `:site, :pre_render` hook entry. Builds `site_paths` from the in-memory page set, wipes the offline tree, seeds per-build state on `@state`. Bails out with a warning if `--incremental` is set.
+- `setup(site)` — `:site, :pre_render` hook entry. Builds `site_paths` from the in-memory page set, wipes the offline tree, starts the async write pool, seeds per-build state on `@state`. Bails out with a warning if `--incremental` is set.
 - `normalize_baseurl(raw_baseurl)` — helper for `setup`. Coerces the configured baseurl to either empty string or `/segment...` with no trailing slash, matching the form `relative_url` actually prepends.
 - `build_site_paths(site, exclude_patterns)` — helper for `setup`. Iterates `site.pages + site.static_files + site.documents` and builds the URL Set from each item's `destination(site.dest)`, decoded and forward-slash-normalised.
 - `wipe_out_dest_contents(out_dest)` — helper for `setup`. Removes the offline tree contents while leaving the directory itself in place (see [Phase 1](#phase-1-setup)).
 - `tick(key) { ... }` — opt-in timing helper. When `--profile` is set on the build, wraps the block in two monotonic-clock reads and accumulates the elapsed ms into `@state[key]`; otherwise a pass-through `yield`. Used by every measurable code path in `setup`, `process_page`, and `finish`. See [Profiling](#profiling).
-- `process_page(page)` — `:pages, :post_render` and `:documents, :post_render` hook entry. Transforms `page.output` and writes the offline copy. Dispatches on output extension and on page class (jekyll-redirect-from stubs get a dedicated branch that rewrites their absolute `<site.url>/<path>` URLs to page-relative form).
-- `finish(site)` — `:site, :post_write` hook entry. Copies static files from `_site/` to `_site-offline/`, patches just-the-docs.js, generates search-data.js, logs the summary (with the per-operation breakdown when `--profile` is set, via `log_profile_breakdown`), clears `@state`.
+- `process_page(page)` — `:pages, :post_render` and `:documents, :post_render` hook entry. Transforms `page.output` and enqueues the offline copy on the async write pool. Dispatches on output extension and on page class (jekyll-redirect-from stubs get a dedicated branch that rewrites their absolute `<site.url>/<path>` URLs to page-relative form).
+- `finish(site)` — `:site, :post_write` hook entry. Drains the async write pool first (so all per-page writes are flushed before any read from `_site-offline/`), then copies static files from `_site/` to `_site-offline/`, patches just-the-docs.js, generates search-data.js, logs the summary (with the per-operation breakdown when `--profile` is set, via `log_profile_breakdown`), clears `@state`.
+- `write_worker_loop` — body of each pool worker. Pops `[out_path, content, time_key]` tuples off `write_queue`, does `mkdir_p` + `binwrite`, accumulates self-time per `time_key` under `write_time_mutex` when profiling. Exceptions go to `write_errors` for `drain_write_pool!` to surface. See [Async write pool](#async-write-pool).
+- `drain_write_pool!` — pushes one `nil` sentinel per worker, `join`s them, rolls per-key worker self-time into `@state[:time_write_html]` etc. for the profile breakdown, raises the first pending worker exception if any. Called once, at the top of `finish`, before any read from `_site-offline/`.
 - `rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache, nav_cache)` — the combined HTML pass. Before the gsub: if `nav_cache[file_dir]` is set, substitute the input nav with `NAV_PLACEHOLDER` so the gsub doesn't scan it. Hoists `page_cache = result_cache[file_dir] ||= {}` once. Runs one `gsub!` per file over `HTML_COMBINED_RE`, which carries three alternatives: a `<code>` block, a `<pre>` block, or an `href|src=` attribute. The first two are returned verbatim from the gsub callback (group 1 is nil on those branches); the third dispatches on `raw.start_with?("/")` — absolute URLs go through `compute_relative`, page-relative URLs through `compute_rel_url`. Single `page_cache` lookup per real match. After the gsub: splice the cached nav back into the placeholder, or, on first-page-in-dir, extract the rewritten nav from the output and seed `nav_cache[file_dir]`.
 - `rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)` — the CSS pass. Same `page_cache` hoist as `rewrite_html!`. One `gsub` per file over `CSS_URL_RE`, dispatched to `compute_relative` (CSS only carries absolute URLs in this codebase). No code-block handling — CSS has no equivalent concept.
 - `inject_search_setup!(content, file_segs)` — the second HTML transformation. Single regex substitution per file: finds the just-the-docs.js script tag and prepends the two new ones.
