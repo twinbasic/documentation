@@ -422,6 +422,14 @@ module Offlinify
       dest_root_fs: site.dest.tr("\\", "/"),
       out_dest: out_dest,
       baseurl: normalize_baseurl(site.config["baseurl"]),
+      # `site.url` with any trailing slash stripped. Used by the
+      # redirect-stub branch in process_page to recognise and rewrite
+      # the absolute `<site.url><path>` URLs that jekyll-redirect-from
+      # bakes into each stub's meta-refresh, canonical link,
+      # `<script>location=`, and fallback `<a>`. Empty when `url:` is
+      # not configured -- the rewrite step short-circuits in that
+      # case and the stub is written verbatim.
+      site_url: site.config["url"].to_s.sub(%r{/+\z}, ""),
       exclude_patterns: exclude_patterns,
       site_paths: build_site_paths(site, exclude_patterns),
       # Lazy cache: `site_path -> [decoded_segs, encoded_segs]`.
@@ -437,6 +445,7 @@ module Offlinify
       result_cache: {},
       rewritten_html: 0,
       rewritten_css: 0,
+      rewritten_redirects: 0,
       copied_files: 0,
       excluded_files: 0,
       unresolved: 0,
@@ -527,19 +536,49 @@ module Offlinify
     if offline_excluded?(rel, @state[:exclude_patterns])
       @state[:excluded_files] += 1
     elsif page.class.name == "JekyllRedirectFrom::RedirectPage"
-      # jekyll-redirect-from stubs aren't useful in the offline tree.
-      # Their meta-refresh / canonical link / fallback `<a>` all point
-      # at the live online URL (e.g. `https://docs.twinbasic.com/...`
-      # when `site.url` is set), so following one offline requires
-      # network access and lands on the live site -- defeating the
-      # offline scenario. And nothing inside the offline tree links
-      # at a redirect_from URL: internal markdown links resolve to
-      # the canonical permalink. The stubs are unreachable from
-      # within `_site-offline/` and useless if reached. Drop them.
+      # jekyll-redirect-from stubs are tiny HTML files whose
+      # meta-refresh, canonical link, `<script>location=`, and
+      # fallback `<a>` all reference an absolute
+      # `https://<site.url>/<path>` URL produced by `absolute_url`.
+      # Online these redirect to the canonical page; offline they
+      # would require network access and land on the live site,
+      # defeating the offline scenario. Some source pages (notably
+      # `Miscellaneous/Documentation Development.md`) intentionally
+      # link via redirect_from URLs as a stable-URL pattern, so the
+      # stubs need to be reachable from inside `_site-offline/`.
+      #
+      # Rewrite each `<site_url><path>` occurrence to its resolved
+      # page-relative form via the same `compute_relative` the main
+      # HTML pass uses. Unresolved matches fall back to the original
+      # absolute URL -- lychee will then flag the source as broken,
+      # which is the right behaviour for a real bug. If `site.url`
+      # is unset (empty), write the stub verbatim: lychee against
+      # _site-offline/ will still find the path-portion targets in
+      # the same way the main HTML pass does, so the stub passes
+      # link-check even though it won't navigate locally.
       #
       # Class-name string check rather than `is_a?` so the plugin
       # still loads if jekyll-redirect-from is removed.
-      @state[:excluded_files] += 1
+      out_path = File.join(@state[:out_dest], rel)
+      file_dir = File.dirname(out_path)
+      content = page.output.dup
+      site_url = @state[:site_url]
+      unless site_url.empty?
+        file_segs = file_dir_segs_from_rel(rel)
+        prefix_re = /#{Regexp.escape(site_url)}(\/[^"' >]*)/
+        content = content.gsub(prefix_re) do
+          raw = Regexp.last_match(1)
+          cache_key = "#{file_dir}\x00#{raw}"
+          rel_url = @state[:result_cache].fetch(cache_key) do
+            @state[:result_cache][cache_key] =
+              compute_relative(raw, file_segs, @state[:site_paths], @state[:seg_cache], @state[:baseurl])
+          end
+          rel_url || "#{site_url}#{raw}"
+        end
+      end
+      FileUtils.mkdir_p(file_dir)
+      File.binwrite(out_path, content)
+      @state[:rewritten_redirects] += 1
     else
       out_path = File.join(@state[:out_dest], rel)
       file_dir = File.dirname(out_path)
@@ -600,6 +639,7 @@ module Offlinify
     @state[:cumulative_ms] += (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
 
     summary = "rewrote #{@state[:rewritten_html]} HTML and #{@state[:rewritten_css]} CSS file(s), copied #{@state[:copied_files]} asset(s)"
+    summary += ", rewrote #{@state[:rewritten_redirects]} redirect stub(s)" if @state[:rewritten_redirects].positive?
     summary += ", excluded #{@state[:excluded_files]} file(s)" if @state[:excluded_files].positive?
     summary += " (#{@state[:unresolved]} unresolved link(s) left as-is)" if @state[:unresolved].positive?
     Jekyll.logger.info "Offlinify:", summary
