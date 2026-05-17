@@ -177,10 +177,18 @@ require "set"
 # `_site-offline/`; Jekyll's normal `_site/` output is unaffected.
 
 module Offlinify
-  # Matches `href="..."` / `src="..."` attribute values that need
-  # resolution against the site's file set. The URL capture (group 3)
-  # matches either form in a single pass:
+  # Single-pass HTML rewrite regex. Three top-level alternatives:
   #
+  #   1. `<code\b[^>]*>.*?</code>`  -- a `<code>` block. Matched
+  #      atomically, returned verbatim by the callback. Group 1 is
+  #      nil for this branch.
+  #   2. `<pre\b[^>]*>.*?</pre>`    -- a `<pre>` block. Same. Group 1
+  #      nil.
+  #   3. `\b(href|src)=(...)...`    -- a real href/src attribute.
+  #      Group 1 is "href" or "src"; group 2 is the quote char; group
+  #      3 is the URL.
+  #
+  # The URL (group 3) is one of:
   #   - an absolute path (`/foo`) that does not start `//` (protocol-
   #     relative); produced by `relative_url`. Goes through
   #     `compute_relative` to become a page-relative URL.
@@ -190,16 +198,26 @@ module Offlinify
   #     to gain the `.html` / `/index.html` suffix needed under
   #     `file://`.
   #
-  # Excluded by the second alternative's lookahead:
+  # Excluded by the second URL alternative's lookahead:
   #   `#...`                    fragment-only (same-page anchors)
   #   `/...` / `//...`          handled by the first alternative
   #   `mailto:`, `http:`, etc.  any RFC 3986 URL scheme
   #
-  # Captures: 1=attribute name, 2=quote char, 3=URL. A single
-  # combined regex halves the per-file regex work over an older
-  # split between two separate regexes -- two full gsubs plus an
-  # interim re-scan for code-block ranges between them.
-  HTML_COMBINED_RE = %r{\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2}.freeze
+  # The code-block branches use no backreference for the closing
+  # tag (just literal `</code>` / `</pre>`), which lets the regex
+  # engine fast-skip to the closing tag instead of remembering which
+  # group matched. Folding them into the same pass as the href/src
+  # match eliminates a separate `<(code|pre)…</\1>` precompute
+  # scan and the per-match `in_code_block?` linear check inside the
+  # gsub callback. Rouge's syntax highlighter HTML-escapes `<` and
+  # `>` inside code but leaves `"` alone, so `src="/script.js"`
+  # survives as a literal substring inside `<code>` bodies that
+  # would otherwise match the href/src alternative -- the atomic
+  # consumption of the code-block alternatives is what makes the
+  # tutorial code samples come through unrewritten.
+  #
+  # Captures (when matched): 1=attribute name, 2=quote char, 3=URL.
+  HTML_COMBINED_RE = %r{<code\b[^>]*>.*?</code>|<pre\b[^>]*>.*?</pre>|\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2}m.freeze
 
   # Matches `url(...)` in CSS where the URL starts with a single slash.
   # The URL may be bare or wrapped in single/double quotes. Captures:
@@ -386,44 +404,6 @@ module Offlinify
     result
   end
 
-  # Matches `<code>...</code>` and `<pre>...</pre>` blocks, capturing
-  # the BODY between the tags (group 2). Used to identify regions of
-  # rendered HTML the URL rewrite passes should leave alone -- the
-  # example URLs in tutorial code samples (e.g. `<script src="/script.js">`
-  # shown verbatim in a CEF page) would otherwise be picked up by the
-  # href/src regex even though they aren't real links. Rouge's syntax
-  # highlighter HTML-escapes `<` and `>` inside code but leaves `"`
-  # alone, so `src="/script.js"` survives as a literal substring that
-  # the rewrite regex matches.
-  #
-  # Non-greedy + backreference matches the first closing tag of the
-  # same name. Nested `<code>` doesn't occur in just-the-docs output;
-  # the typical structure is `<pre class="highlight"><code>...</code></pre>`
-  # and matching either outer tag is enough to cover everything
-  # inside.
-  CODE_BLOCK_RE = /<(code|pre)\b[^>]*>(.*?)<\/\1>/m.freeze
-
-  # Returns an array of `[body_start, body_end]` byte ranges for every
-  # code-block body in `content`. Empty when there are no code blocks.
-  # Used in conjunction with `in_code_block?` to gate the rewrite
-  # regexes -- matches whose offset falls inside any of these ranges
-  # are left as-is and not counted as unresolved.
-  def self.code_block_ranges(content)
-    ranges = []
-    content.scan(CODE_BLOCK_RE) do
-      m = Regexp.last_match
-      ranges << [m.begin(2), m.end(2)]
-    end
-    ranges
-  end
-
-  # True when `offset` falls inside any of the code-block ranges. The
-  # ranges array is typically small (a handful per page) so a linear
-  # scan is fine; sorting/bisecting would be overkill.
-  def self.in_code_block?(offset, ranges)
-    ranges.any? { |s, e| offset >= s && offset < e }
-  end
-
   # Per-build state, populated in `setup` and cleared in `finish`.
   # The :pages, :post_render and :site, :post_write hooks read it
   # via `@state`. Nil between builds, and nil during a build that
@@ -500,7 +480,6 @@ module Offlinify
       profile: !!site.config["profile"],
       time_setup: 0.0,
       time_strip_seo: 0.0,
-      time_code_ranges: 0.0,
       time_rewrite_html: 0.0,
       time_inject_search: 0.0,
       time_write_html: 0.0,
@@ -657,9 +636,8 @@ module Offlinify
       when ".html"
         content = tick(:time_dispatch_dup) { page.output.dup }
         tick(:time_strip_seo) { @state[:seo_stripped] += 1 if strip_seo!(content) }
-        code_ranges = tick(:time_code_ranges) { code_block_ranges(content) }
         _changed, misses = tick(:time_rewrite_html) do
-          rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], code_ranges)
+          rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl])
         end
         @state[:unresolved] += misses
         tick(:time_inject_search) { inject_search_setup!(content, file_segs) }
@@ -746,7 +724,6 @@ module Offlinify
     [:time_dest_path,        "dest_path"],
     [:time_dispatch_dup,     "page.output.dup"],
     [:time_strip_seo,        "strip_seo"],
-    [:time_code_ranges,      "code_ranges"],
     [:time_rewrite_html,     "rewrite_html"],
     [:time_inject_search,    "inject_search"],
     [:time_write_html,       "write_html"],
@@ -895,12 +872,21 @@ module Offlinify
     js.bytesize
   end
 
-  # Mutates `content` in place via a single gsub matching both
-  # absolute (`/...`) and page-relative (`Foo`, `Foo#frag`) href/src
-  # URLs. Returns `[changed_bool, unresolved_count]`. Per-match work
-  # is a single Hash lookup in `result_cache` -- the heavy lifting
-  # (URL resolution, LCP walk, segment encoding) runs only on cache
-  # miss.
+  # Mutates `content` in place via a single gsub matching three
+  # disjoint shapes: a `<code>` block, a `<pre>` block, or an
+  # `href|src=` attribute carrying an absolute (`/...`) or page-
+  # relative (`Foo`, `Foo#frag`) URL. Returns
+  # `[changed_bool, unresolved_count]`. Per-match work for a real
+  # href/src is a single Hash lookup in `result_cache` -- the heavy
+  # lifting (URL resolution, LCP walk, segment encoding) runs only
+  # on cache miss.
+  #
+  # The code-block alternatives are consumed atomically by the regex
+  # engine and returned verbatim from the callback (the engine never
+  # tries the href/src alternative inside a code block, so example
+  # URLs in tutorial code samples are not rewritten and don't count
+  # as unresolved). Group 1 of the match is nil on those branches;
+  # an early `next match[0]` short-circuits before any cache work.
   #
   # Dispatches inside the gsub block on whether `raw` starts with
   # `/`: absolute URLs go through `compute_relative` (resolves to a
@@ -914,18 +900,14 @@ module Offlinify
   # already exists at the relative path verbatim (e.g. `Foo.html`
   # from a sibling markdown source); this is treated as "no rewrite
   # needed, not a miss".
-  #
-  # `code_ranges` is an array of `[start, end]` byte ranges covering
-  # the bodies of `<code>` / `<pre>` blocks; matches whose offset
-  # falls inside any range are left untouched and do not count as
-  # unresolved.
-  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges)
+  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)
     misses = 0
     changed = false
 
     new_content = content.gsub(HTML_COMBINED_RE) do
       match = Regexp.last_match
-      next match[0] if !code_ranges.empty? && in_code_block?(match.begin(0), code_ranges)
+      attr_name = match[1]
+      next match[0] if attr_name.nil?  # <code>/<pre> block — leave verbatim
 
       raw = match[3]
       cache_key = "#{file_dir}\x00#{raw}"
@@ -948,7 +930,7 @@ module Offlinify
         match[0]
       else
         changed = true
-        %(#{match[1]}=#{match[2]}#{rel}#{match[2]})
+        %(#{attr_name}=#{match[2]}#{rel}#{match[2]})
       end
     end
 
