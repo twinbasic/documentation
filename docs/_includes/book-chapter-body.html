@@ -88,8 +88,19 @@
   {%- endif -%}
 {%- endunless -%}
 
+{%- comment -%}
+  Strip the `src="<baseurl>/` prefix that `relative_url` injects when
+  `jekyll build --baseurl /<repo>` is passed (the CI deploy path uses
+  this for Pages project sites without a custom domain). With empty
+  baseurl the prefix collapses to `src="/`, matching the historical
+  leading-slash strip exactly. Once stripped, image paths inside
+  book.html are root-of-_site/-relative, which is what both pdfify's
+  source lookup and pagedjs's render-time fetch expect.
+{%- endcomment -%}
+{%- assign src_baseurl_strip = 'src="' | append: site.baseurl | append: '/' -%}
+
 {%- assign body = body
-    | replace: 'src="/', 'src="'
+    | replace: src_baseurl_strip, 'src="'
     | replace: p1_search, p1_replace
     | replace: p2_search, p2_replace
     | replace: p3i12_search, p3i12_replace

@@ -43,24 +43,32 @@ require "set"
 #
 #   1. `:site, :pre_render` -- builds `site_paths` from
 #      `site.pages + site.static_files + site.documents`, wipes the
-#      contents of `_site-offline/`, and initialises per-build state
+#      contents of `_site-offline/`, initialises per-build state
 #      (caches, counters, normalised baseurl) on the module's `@state`
-#      ivar so the later hooks can read it.
+#      ivar so the later hooks can read it, and (on Windows only)
+#      starts the async write pool. See WRITE_POOL_ENABLED for the
+#      platform-gating rationale.
 #
 #   2. `:pages, :post_render` and `:documents, :post_render` -- fire
 #      once per page after Jekyll renders it. `page.output` is the
 #      final HTML/CSS/etc bytes; the plugin transforms it and writes
-#      the result to `_site-offline/<rel>`. Jekyll's WRITE phase
+#      the result to `_site-offline/<rel>` via `write_or_enqueue!` --
+#      either synchronously on the main thread (Linux/macOS) or
+#      enqueued on the async write pool for off-thread `mkdir_p` +
+#      `binwrite` (Windows, where NTFS file-creation cost makes the
+#      overlap worth the threading overhead). Jekyll's WRITE phase
 #      writes the same `page.output` to `_site/<rel>` a moment later,
 #      so the online and offline files come from the same in-memory
 #      string -- no re-read.
 #
 #   3. `:site, :post_write` -- once Jekyll has finished writing
-#      `_site/`, this hook copies static files (images, fonts, raw
-#      JS/JSON the theme ships verbatim, the just-the-docs.js asset)
-#      from `_site/` into `_site-offline/`, patches
-#      `_site-offline/assets/js/just-the-docs.js`, and generates
-#      `_site-offline/assets/js/search-data.js` from the
+#      `_site/`, this hook drains the async write pool (no-op on
+#      non-Windows -- so all per-page writes are flushed before any
+#      read from `_site-offline/`), copies static files (images,
+#      fonts, raw JS/JSON the theme ships verbatim, the
+#      just-the-docs.js asset) from `_site/` into `_site-offline/`,
+#      patches `_site-offline/assets/js/just-the-docs.js`, and
+#      generates `_site-offline/assets/js/search-data.js` from the
 #      `search-data.json` produced in phase 2.
 #
 # Two payoffs over the older single-pass walk of `_site/` at
@@ -177,10 +185,18 @@ require "set"
 # `_site-offline/`; Jekyll's normal `_site/` output is unaffected.
 
 module Offlinify
-  # Matches `href="..."` / `src="..."` attribute values that need
-  # resolution against the site's file set. The URL capture (group 3)
-  # matches either form in a single pass:
+  # Single-pass HTML rewrite regex. Three top-level alternatives:
   #
+  #   1. `<code\b[^>]*>.*?</code>`  -- a `<code>` block. Matched
+  #      atomically, returned verbatim by the callback. Group 1 is
+  #      nil for this branch.
+  #   2. `<pre\b[^>]*>.*?</pre>`    -- a `<pre>` block. Same. Group 1
+  #      nil.
+  #   3. `\b(href|src)=(...)...`    -- a real href/src attribute.
+  #      Group 1 is "href" or "src"; group 2 is the quote char; group
+  #      3 is the URL.
+  #
+  # The URL (group 3) is one of:
   #   - an absolute path (`/foo`) that does not start `//` (protocol-
   #     relative); produced by `relative_url`. Goes through
   #     `compute_relative` to become a page-relative URL.
@@ -190,16 +206,26 @@ module Offlinify
   #     to gain the `.html` / `/index.html` suffix needed under
   #     `file://`.
   #
-  # Excluded by the second alternative's lookahead:
+  # Excluded by the second URL alternative's lookahead:
   #   `#...`                    fragment-only (same-page anchors)
   #   `/...` / `//...`          handled by the first alternative
   #   `mailto:`, `http:`, etc.  any RFC 3986 URL scheme
   #
-  # Captures: 1=attribute name, 2=quote char, 3=URL. A single
-  # combined regex halves the per-file regex work over an older
-  # split between two separate regexes -- two full gsubs plus an
-  # interim re-scan for code-block ranges between them.
-  HTML_COMBINED_RE = %r{\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2}.freeze
+  # The code-block branches use no backreference for the closing
+  # tag (just literal `</code>` / `</pre>`), which lets the regex
+  # engine fast-skip to the closing tag instead of remembering which
+  # group matched. Folding them into the same pass as the href/src
+  # match eliminates a separate `<(code|pre)…</\1>` precompute
+  # scan and the per-match `in_code_block?` linear check inside the
+  # gsub callback. Rouge's syntax highlighter HTML-escapes `<` and
+  # `>` inside code but leaves `"` alone, so `src="/script.js"`
+  # survives as a literal substring inside `<code>` bodies that
+  # would otherwise match the href/src alternative -- the atomic
+  # consumption of the code-block alternatives is what makes the
+  # tutorial code samples come through unrewritten.
+  #
+  # Captures (when matched): 1=attribute name, 2=quote char, 3=URL.
+  HTML_COMBINED_RE = %r{<code\b[^>]*>.*?</code>|<pre\b[^>]*>.*?</pre>|\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2}m.freeze
 
   # Matches `url(...)` in CSS where the URL starts with a single slash.
   # The URL may be bare or wrapped in single/double quotes. Captures:
@@ -229,8 +255,58 @@ module Offlinify
   # preserved verbatim into the stripped output.
   TITLE_RE = /<title>.*?<\/title>/m.freeze
 
+  # Matches the just-the-docs sidebar nav block in a rendered page.
+  # Anchored on `<nav ... id="site-nav" ...>` (a stable opener in
+  # just-the-docs 0.10.x) and the first subsequent `</nav>`. The
+  # block is ~112 KB per page on the current site and carries ~750
+  # of each page's ~860 href/src matches -- the bulk of
+  # `rewrite_html`'s per-match callback work lives inside it. The
+  # input nav HTML is identical across all pages (Jekyll emits
+  # root-absolute URLs that don't depend on the source page), and
+  # the *output* nav after URL rewriting is identical across all
+  # pages within a single source directory (the relative-path
+  # transform depends on `file_dir` and nothing else). The
+  # per-file_dir cache exploits both facts: substitute a placeholder
+  # before the gsub, run the rewrite on the (much smaller) remainder,
+  # then splice the cached rewritten nav back. See
+  # `NAV_PLACEHOLDER`.
+  NAV_RE = /<nav\b[^>]*id="site-nav"[^>]*>.*?<\/nav>/m.freeze
+
+  # Sentinel that takes the nav block's place in `content` during
+  # the gsub! pass when a rewritten nav is already cached for the
+  # current `file_dir`. Chosen as an HTML comment so it (a) cannot
+  # match `HTML_COMBINED_RE` (which only looks at href/src
+  # attributes and `<code>` / `<pre>` blocks), and (b) is impossible
+  # to confuse with content the just-the-docs theme actually emits.
+  # If the placeholder ever appears verbatim in source content the
+  # final `content.sub!` will still find it -- the risk is benign
+  # so long as the string is unique enough not to occur naturally.
+  NAV_PLACEHOLDER = "<!--OFFLINIFY_NAV_PLACEHOLDER-->"
+
   # Path of the just-the-docs JS file relative to the site root.
   JTD_JS_REL = "assets/js/just-the-docs.js"
+
+  # Number of worker threads in the async write pool. The pool drains
+  # the per-page output writes off the main thread so they overlap
+  # with Jekyll's next-page render and our own rewrite of subsequent
+  # pages. MRI releases the GIL on IO syscalls (`open`, `write`,
+  # `close`, `stat`, `mkdir`), so the workers actually parallelise at
+  # the OS level. See `write_worker_loop` and `drain_write_pool!`.
+  WRITE_POOL_SIZE = 4
+
+  # Whether to use the async write pool. Measured on the current site
+  # (~1130 files): saves ~530 ms on Windows where NTFS file-creation
+  # cost (MFT lock, journaling) dominates and the per-write blocking is
+  # ~0.6 ms × 1130 = ~700 ms total -- moving that off the main thread
+  # is a clear win. On Linux ext4 (and likely macOS APFS) the per-write
+  # cost is much lower; the sync baseline is already small enough that
+  # thread spawn + mutex contention + queue plumbing slightly exceed
+  # the saved blocking time, producing a small regression. Gate on
+  # `Gem.win_platform?` so the pool runs only where it pays. When
+  # disabled, `process_page` falls back to a direct synchronous
+  # `mkdir_p` + `binwrite` wrapped in the original `tick(:time_write_*)`
+  # so the profile breakdown still attributes the cost correctly.
+  WRITE_POOL_ENABLED = Gem.win_platform?
 
   # Matches the upstream `navLink()` function body. Anchored on the
   # function signature and the closing `return null;` comment (a
@@ -368,42 +444,22 @@ module Offlinify
     patterns.any? { |pat| File.fnmatch(pat, rel, File::FNM_PATHNAME) }
   end
 
-  # Matches `<code>...</code>` and `<pre>...</pre>` blocks, capturing
-  # the BODY between the tags (group 2). Used to identify regions of
-  # rendered HTML the URL rewrite passes should leave alone -- the
-  # example URLs in tutorial code samples (e.g. `<script src="/script.js">`
-  # shown verbatim in a CEF page) would otherwise be picked up by the
-  # href/src regex even though they aren't real links. Rouge's syntax
-  # highlighter HTML-escapes `<` and `>` inside code but leaves `"`
-  # alone, so `src="/script.js"` survives as a literal substring that
-  # the rewrite regex matches.
+  # Time the given block and accumulate its elapsed ms into
+  # `@state[key]`, then return the block's value. When the build
+  # was not started with `--profile`, this is a pass-through that
+  # just calls the block -- no clock reads, no map writes. Callsites
+  # therefore pay only one boolean check + one block yield when
+  # profiling is off (negligible at the per-page rate).
   #
-  # Non-greedy + backreference matches the first closing tag of the
-  # same name. Nested `<code>` doesn't occur in just-the-docs output;
-  # the typical structure is `<pre class="highlight"><code>...</code></pre>`
-  # and matching either outer tag is enough to cover everything
-  # inside.
-  CODE_BLOCK_RE = /<(code|pre)\b[^>]*>(.*?)<\/\1>/m.freeze
-
-  # Returns an array of `[body_start, body_end]` byte ranges for every
-  # code-block body in `content`. Empty when there are no code blocks.
-  # Used in conjunction with `in_code_block?` to gate the rewrite
-  # regexes -- matches whose offset falls inside any of these ranges
-  # are left as-is and not counted as unresolved.
-  def self.code_block_ranges(content)
-    ranges = []
-    content.scan(CODE_BLOCK_RE) do
-      m = Regexp.last_match
-      ranges << [m.begin(2), m.end(2)]
-    end
-    ranges
-  end
-
-  # True when `offset` falls inside any of the code-block ranges. The
-  # ranges array is typically small (a handful per page) so a linear
-  # scan is fine; sorting/bisecting would be overkill.
-  def self.in_code_block?(offset, ranges)
-    ranges.any? { |s, e| offset >= s && offset < e }
+  # Usage:
+  #   content = tick(:time_dispatch_dup) { page.output.dup }
+  #   _changed, misses = tick(:time_rewrite_html) { rewrite_html!(...) }
+  def self.tick(key)
+    return yield unless @state[:profile]
+    t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    result = yield
+    @state[key] += (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t) * 1000
+    result
   end
 
   # Per-build state, populated in `setup` and cleared in `finish`.
@@ -454,13 +510,50 @@ module Offlinify
       # Decoded drives the LCP walk against filesystem-derived
       # `file_segs`; encoded is what gets emitted in the output URL.
       seg_cache: {},
-      # Lazy cache: `"#{file_dir}\x00#{raw}" -> final_rel_url` (or
-      # nil for unresolvable). Each unique `(file_dir, raw)` pair is
-      # resolved exactly once across the build. Shared between the
-      # absolute-URL and page-relative dispatches inside the combined
-      # HTML pass -- the cache keys are disjoint because absolute
-      # raws start with `/` and relative ones don't.
+      # Lazy cache: `raw -> [sep, tail, site_path]` for absolute URLs.
+      # `site_path` is nil when no candidate resolved against
+      # site_paths. The expensive part of compute_relative (the
+      # `partition`, `decode`, baseurl strip, and up-to-three-way
+      # candidate probe) is independent of the source file, so it
+      # runs once per unique `raw` URL across the whole build
+      # regardless of how many files reference it. The LCP walk
+      # itself stays in `compute_relative` because its output depends
+      # on `file_segs`.
+      raw_resolution_cache: {},
+      # Nested lazy cache: `file_dir -> { raw -> final_rel_url or nil }`.
+      # Each unique `(file_dir, raw)` pair is resolved exactly once
+      # across the build. Per-page the outer lookup happens once
+      # (yielding the inner hash for that source directory) and the
+      # per-match work is a single hash lookup on the short `raw`
+      # key -- no composite cache-key string allocation. Shared
+      # between the absolute-URL and page-relative dispatches inside
+      # the combined HTML pass -- the `raw` shapes are disjoint
+      # (absolute starts with `/`, relative doesn't), so there's no
+      # collision in the inner hash.
       result_cache: {},
+      # Lazy cache: `file_dir -> rewritten_nav_html`. Populated on
+      # the first page processed in each source directory; reused
+      # for every subsequent page in the same directory. Each entry
+      # is ~112 KB of pre-rewritten nav HTML. The cache size is
+      # bounded by the number of unique source directories
+      # (typically ~200), so total memory is ~25 MB during a build.
+      # See `NAV_RE` and `NAV_PLACEHOLDER`.
+      nav_cache: {},
+      # Async write pool state. `write_queue` carries `[out_path,
+      # content, time_key]` tuples enqueued by process_page; workers
+      # pop and execute the `mkdir_p` + `binwrite`. Errors land on
+      # `write_errors` and are surfaced by `drain_write_pool!` in
+      # finish. `write_time_ms` accumulates per-key worker self-time
+      # under `write_time_mutex` -- rolled into the corresponding
+      # `@state[time_key]` during drain so the profile breakdown
+      # keeps its per-extension granularity even though the actual
+      # writes happened off-thread. `write_workers` is set after
+      # the @state hash is built (see below).
+      write_queue: Queue.new,
+      write_errors: Queue.new,
+      write_time_mutex: Mutex.new,
+      write_time_ms: Hash.new(0.0),
+      write_workers: nil,
       rewritten_html: 0,
       rewritten_css: 0,
       rewritten_redirects: 0,
@@ -474,10 +567,50 @@ module Offlinify
       # pre_render and post_write (which includes Jekyll's render
       # and write phases between our hooks).
       cumulative_ms: 0.0,
+      # When true (the `--profile` build flag is set), the `tick`
+      # helper measures each instrumented operation and the finish
+      # hook emits a per-operation breakdown alongside Jekyll's own
+      # render-stats table. When false, `tick` is a no-op pass-through
+      # and the per-operation accumulators stay at zero.
+      profile: !!site.config["profile"],
+      time_setup: 0.0,
+      time_strip_seo: 0.0,
+      time_rewrite_html: 0.0,
+      time_resolve: 0.0,
+      time_inject_search: 0.0,
+      time_write_html: 0.0,
+      time_rewrite_css: 0.0,
+      time_write_css: 0.0,
+      time_rewrite_redirect: 0.0,
+      time_write_redirect: 0.0,
+      time_write_other: 0.0,
+      time_write_drain: 0.0,
+      time_dispatch_dup: 0.0,
+      time_dest_path: 0.0,
+      time_copy_static: 0.0,
+      time_patch_jtd: 0.0,
+      time_search_data: 0.0,
+      # rewrite_html callback counters. Aggregated per page from
+      # locals to keep the per-match cost a register-bump rather
+      # than a hash lookup. Used by the profile-only details
+      # breakdown emitted after the time rows.
+      count_matches_href_src: 0,
+      count_matches_code_block: 0,
+      count_cache_misses: 0,
+      count_compute_relative: 0,
+      count_compute_rel_url: 0,
+      count_nav_cache_hits: 0,
+      count_nav_cache_misses: 0,
+      count_pages_without_nav: 0,
     }
 
     wipe_out_dest_contents(out_dest)
-    @state[:cumulative_ms] += (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
+    if WRITE_POOL_ENABLED
+      @state[:write_workers] = WRITE_POOL_SIZE.times.map { Thread.new { write_worker_loop } }
+    end
+    elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
+    @state[:cumulative_ms] += elapsed
+    @state[:time_setup] += elapsed if @state[:profile]
   end
 
   # Normalise the configured baseurl to either empty string or
@@ -494,18 +627,23 @@ module Offlinify
 
   # Build the `site_paths` Set from Jekyll's in-memory page set
   # (pages + static_files + documents). Each item's `destination(dest)`
-  # returns the absolute file path it will be written to; converting
-  # to site-rooted forward-slash form yields the same keys the older
-  # filesystem walk produced (e.g. `/tB/Core/Const.html`). Keys are
+  # returns the absolute file path it will be written to; stripping
+  # the site.dest prefix yields the site-rooted forward-slash form
+  # the URL resolver expects (e.g. `/tB/Core/Const.html`). Keys are
   # decoded -- they mirror filesystem names, so `Form Designer.html`
   # goes in literally, not `Form%20Designer.html`.
+  #
+  # Uses a string slice rather than `Pathname#relative_path_from`,
+  # which is ~200x slower on Windows -- ~30ns vs ~5µs per item, and
+  # there are 1300+ items.
   def self.build_site_paths(site, exclude_patterns)
     paths = Set.new
-    dest_pn = Pathname.new(site.dest)
+    dest_root_fs = site.dest.tr("\\", "/")
+    prefix_len = dest_root_fs.length + 1
     items = site.pages + site.static_files + site.documents
     items.each do |item|
-      dest = item.destination(site.dest)
-      rel = Pathname.new(dest).relative_path_from(dest_pn).to_s.tr("\\", "/")
+      abs = item.destination(site.dest).tr("\\", "/")
+      rel = abs[prefix_len..]
       next if offline_excluded?(rel, exclude_patterns)
       paths << "/#{rel}"
     end
@@ -549,8 +687,10 @@ module Offlinify
     # Pathname round-trip -- Pathname#relative_path_from is roughly
     # 2ms per call on Windows and would dominate per-page cost on a
     # 1000+ page build.
-    dest_path = page.destination(@state[:dest]).tr("\\", "/")
-    rel = dest_path[(@state[:dest_root_fs].length + 1)..]
+    dest_path, rel = tick(:time_dest_path) do
+      dp = page.destination(@state[:dest]).tr("\\", "/")
+      [dp, dp[(@state[:dest_root_fs].length + 1)..]]
+    end
 
     if offline_excluded?(rel, @state[:exclude_patterns])
       @state[:excluded_files] += 1
@@ -580,23 +720,26 @@ module Offlinify
       # still loads if jekyll-redirect-from is removed.
       out_path = File.join(@state[:out_dest], rel)
       file_dir = File.dirname(out_path)
-      content = page.output.dup
+      content = tick(:time_dispatch_dup) { page.output.dup }
       site_url = @state[:site_url]
-      unless site_url.empty?
-        file_segs = file_dir_segs_from_rel(rel)
-        prefix_re = /#{Regexp.escape(site_url)}(\/[^"' >]*)/
-        content = content.gsub(prefix_re) do
-          raw = Regexp.last_match(1)
-          cache_key = "#{file_dir}\x00#{raw}"
-          rel_url = @state[:result_cache].fetch(cache_key) do
-            @state[:result_cache][cache_key] =
-              compute_relative(raw, file_segs, @state[:site_paths], @state[:seg_cache], @state[:baseurl])
+      content = tick(:time_rewrite_redirect) do
+        if site_url.empty?
+          content
+        else
+          file_segs = file_dir_segs_from_rel(rel)
+          prefix_re = /#{Regexp.escape(site_url)}(\/[^"' >]*)/
+          page_cache = (@state[:result_cache][file_dir] ||= {})
+          content.gsub(prefix_re) do
+            raw = Regexp.last_match(1)
+            rel_url = page_cache.fetch(raw) do
+              page_cache[raw] =
+                compute_relative(raw, file_segs, @state[:site_paths], @state[:seg_cache], @state[:baseurl], @state[:raw_resolution_cache])
+            end
+            rel_url || "#{site_url}#{raw}"
           end
-          rel_url || "#{site_url}#{raw}"
         end
       end
-      FileUtils.mkdir_p(file_dir)
-      File.binwrite(out_path, content)
+      write_or_enqueue!(out_path, content, :time_write_redirect)
       @state[:rewritten_redirects] += 1
     else
       out_path = File.join(@state[:out_dest], rel)
@@ -605,25 +748,25 @@ module Offlinify
 
       case File.extname(dest_path).downcase
       when ".html"
-        content = page.output.dup
-        @state[:seo_stripped] += 1 if strip_seo!(content)
-        code_ranges = code_block_ranges(content)
-        _changed, misses = rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], code_ranges)
+        content = tick(:time_dispatch_dup) { page.output.dup }
+        tick(:time_strip_seo) { @state[:seo_stripped] += 1 if strip_seo!(content) }
+        _changed, misses = tick(:time_rewrite_html) do
+          rewrite_html!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], @state[:raw_resolution_cache], @state[:nav_cache])
+        end
         @state[:unresolved] += misses
-        inject_search_setup!(content, file_segs)
-        FileUtils.mkdir_p(file_dir)
-        File.binwrite(out_path, content)
+        tick(:time_inject_search) { inject_search_setup!(content, file_segs) }
+        write_or_enqueue!(out_path, content, :time_write_html)
         @state[:rewritten_html] += 1
       when ".css"
-        content = page.output.dup
-        _changed, misses = rewrite_css!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl])
+        content = tick(:time_dispatch_dup) { page.output.dup }
+        _changed, misses = tick(:time_rewrite_css) do
+          rewrite_css!(content, file_dir, file_segs, @state[:site_paths], @state[:seg_cache], @state[:result_cache], @state[:baseurl], @state[:raw_resolution_cache])
+        end
         @state[:unresolved] += misses
-        FileUtils.mkdir_p(file_dir)
-        File.binwrite(out_path, content)
+        write_or_enqueue!(out_path, content, :time_write_css)
         @state[:rewritten_css] += 1
       else
-        FileUtils.mkdir_p(file_dir)
-        File.binwrite(out_path, page.output)
+        write_or_enqueue!(out_path, page.output, :time_write_other)
         @state[:copied_files] += 1
       end
     end
@@ -641,20 +784,30 @@ module Offlinify
     return unless @state
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-    site.static_files.each do |sf|
-      dest_path = sf.destination(@state[:dest]).tr("\\", "/")
-      rel = dest_path[(@state[:dest_root_fs].length + 1)..]
-      if offline_excluded?(rel, @state[:exclude_patterns])
-        @state[:excluded_files] += 1
-        next
+    # Drain async writes before any read from `_site-offline/`.
+    # build_search_data_js! below reads `assets/js/search-data.json`,
+    # which process_page enqueued via the write_other branch -- if a
+    # worker hasn't flushed it yet, the read would see an incomplete
+    # file. The drain also surfaces any worker exception that occurred
+    # mid-build.
+    tick(:time_write_drain) { drain_write_pool! }
+
+    tick(:time_copy_static) do
+      site.static_files.each do |sf|
+        dest_path = sf.destination(@state[:dest]).tr("\\", "/")
+        rel = dest_path[(@state[:dest_root_fs].length + 1)..]
+        if offline_excluded?(rel, @state[:exclude_patterns])
+          @state[:excluded_files] += 1
+          next
+        end
+        out_path = File.join(@state[:out_dest], rel)
+        copy_asset!(dest_path, out_path)
+        @state[:copied_files] += 1
       end
-      out_path = File.join(@state[:out_dest], rel)
-      copy_asset!(dest_path, out_path)
-      @state[:copied_files] += 1
     end
 
-    js_patches = patch_jtd_js!(@state[:out_dest])
-    search_data_built = build_search_data_js!(@state[:out_dest])
+    js_patches = tick(:time_patch_jtd) { patch_jtd_js!(@state[:out_dest]) }
+    search_data_built = tick(:time_search_data) { build_search_data_js!(@state[:out_dest]) }
 
     @state[:cumulative_ms] += (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000
 
@@ -667,8 +820,64 @@ module Offlinify
     Jekyll.logger.info "Offlinify:", "patched just-the-docs.js (#{js_patches.join(", ")})" unless js_patches.empty?
     Jekyll.logger.info "Offlinify:", "wrote #{SEARCH_DATA_JS_REL} (#{search_data_built} bytes)" if search_data_built
     Jekyll.logger.info "Offlinify:", "Offlinifier ran in #{@state[:cumulative_ms].round(0)}ms."
+    log_profile_breakdown if @state[:profile]
 
     @state = nil
+  end
+
+  # Per-operation timing breakdown emitted at the end of `finish`
+  # when the build was started with `--profile`. The labels match
+  # the `tick(:time_*)` keys spread across setup, process_page, and
+  # finish. The sum of the listed rows is close to (but not exactly
+  # equal to) `cumulative_ms` -- the difference is the per-hook
+  # plumbing (state lookups, dispatch, `tick` overhead, file_dir
+  # computation) that isn't itself wrapped in a `tick`.
+  BREAKDOWN_KEYS = [
+    [:time_setup,            "setup"],
+    [:time_dest_path,        "dest_path"],
+    [:time_dispatch_dup,     "page.output.dup"],
+    [:time_strip_seo,        "strip_seo"],
+    [:time_rewrite_html,     "rewrite_html"],
+    [:time_resolve,          "  (of which time_resolve)"],
+    [:time_inject_search,    "inject_search"],
+    [:time_write_html,       "write_html"],
+    [:time_rewrite_css,      "rewrite_css"],
+    [:time_write_css,        "write_css"],
+    [:time_rewrite_redirect, "rewrite_redirect"],
+    [:time_write_redirect,   "write_redirect"],
+    [:time_write_other,      "write_other"],
+    [:time_write_drain,      "write_drain"],
+    [:time_copy_static,      "copy_static"],
+    [:time_patch_jtd,        "patch_jtd"],
+    [:time_search_data,      "search_data"],
+  ].freeze
+
+  def self.log_profile_breakdown
+    BREAKDOWN_KEYS.each do |key, label|
+      Jekyll.logger.info "Offlinify:", format("  %-26s %7.1fms", label, @state[key])
+    end
+    href_src = @state[:count_matches_href_src]
+    code_block = @state[:count_matches_code_block]
+    misses = @state[:count_cache_misses]
+    hits = href_src - misses
+    cr = @state[:count_compute_relative]
+    cru = @state[:count_compute_rel_url]
+    nav_hits = @state[:count_nav_cache_hits]
+    nav_misses = @state[:count_nav_cache_misses]
+    no_nav = @state[:count_pages_without_nav]
+    Jekyll.logger.info "Offlinify:",
+      "  rewrite_html details:    matches=#{href_src + code_block} (href/src=#{href_src}, code/pre=#{code_block})"
+    Jekyll.logger.info "Offlinify:",
+      "                           result_cache: hits=#{hits}, misses=#{misses}#{hit_rate_str(hits, href_src)}"
+    Jekyll.logger.info "Offlinify:",
+      "                           resolver calls: compute_relative=#{cr}, compute_rel_url=#{cru}"
+    Jekyll.logger.info "Offlinify:",
+      "                           nav_cache: hits=#{nav_hits}, misses=#{nav_misses}, no-nav pages=#{no_nav}"
+  end
+
+  def self.hit_rate_str(hits, total)
+    return "" if total.zero?
+    format(" (%.1f%% hit rate)", 100.0 * hits / total)
   end
 
   # Copy a file from src to out, creating intermediate directories.
@@ -676,6 +885,87 @@ module Offlinify
   def self.copy_asset!(src_path, out_path)
     FileUtils.mkdir_p(File.dirname(out_path))
     FileUtils.cp(src_path, out_path)
+  end
+
+  # Hand `[out_path, content]` to the async write pool when it's
+  # enabled (Windows), or write synchronously on the main thread
+  # otherwise (Linux/macOS). The synchronous branch keeps the
+  # `tick(time_key)` wrapper so the profile breakdown reports the
+  # write cost under the same key the worker accumulator would have
+  # used. See `WRITE_POOL_ENABLED` for the platform-gating rationale.
+  def self.write_or_enqueue!(out_path, content, time_key)
+    if @state[:write_workers]
+      @state[:write_queue] << [out_path, content, time_key]
+    else
+      tick(time_key) do
+        FileUtils.mkdir_p(File.dirname(out_path))
+        File.binwrite(out_path, content)
+      end
+    end
+  end
+
+  # Body of each async-write worker thread. Pops `[out_path, content,
+  # time_key]` tuples off the shared queue, does the `mkdir_p` +
+  # `binwrite`, and (when profiling is on) accumulates self-time into
+  # `write_time_ms[time_key]` under `write_time_mutex`. A `nil` task
+  # is the shutdown sentinel pushed by `drain_write_pool!`. Exceptions
+  # land on `write_errors`; `drain_write_pool!` raises the first one
+  # after joining the workers. Workers only touch fields established
+  # in setup (the queue, the errors queue, the time mutex/hash, the
+  # profile flag) -- no other @state mutation -- so the main thread's
+  # counters (rewritten_html, unresolved, caches, etc.) stay safely
+  # single-threaded.
+  def self.write_worker_loop
+    queue = @state[:write_queue]
+    errors = @state[:write_errors]
+    time_mutex = @state[:write_time_mutex]
+    time_ms = @state[:write_time_ms]
+    profile = @state[:profile]
+    loop do
+      task = queue.pop
+      break if task.nil?
+      out_path, content, time_key = task
+      begin
+        if profile
+          t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          FileUtils.mkdir_p(File.dirname(out_path))
+          File.binwrite(out_path, content)
+          elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t) * 1000
+          time_mutex.synchronize { time_ms[time_key] += elapsed }
+        else
+          FileUtils.mkdir_p(File.dirname(out_path))
+          File.binwrite(out_path, content)
+        end
+      rescue => e
+        errors << [out_path, e]
+      end
+    end
+  end
+
+  # Shut down the write pool: push one `nil` sentinel per worker,
+  # join them all, then roll the per-key worker self-time into
+  # `@state[time_key]` so the profile breakdown still shows
+  # `time_write_html`, `time_write_css`, etc. as the actual write
+  # cost (just done on workers rather than the main thread). Raises
+  # the first worker exception if any are pending -- a failed write
+  # must abort the build rather than silently produce a half-populated
+  # `_site-offline/` tree. Called once, at the top of `finish`,
+  # before any read from `_site-offline/`.
+  def self.drain_write_pool!
+    workers = @state[:write_workers]
+    return unless workers
+    workers.length.times { @state[:write_queue] << nil }
+    workers.each(&:join)
+    @state[:write_workers] = nil
+
+    if @state[:profile]
+      @state[:write_time_ms].each { |key, ms| @state[key] += ms }
+    end
+
+    return if @state[:write_errors].empty?
+    out_path, err = @state[:write_errors].pop
+    raise "Offlinify async write failed for #{out_path}: " \
+          "#{err.class}: #{err.message}\n#{err.backtrace.join("\n")}"
   end
 
   # Apply both JS patches to `assets/js/just-the-docs.js` under
@@ -800,12 +1090,21 @@ module Offlinify
     js.bytesize
   end
 
-  # Mutates `content` in place via a single gsub matching both
-  # absolute (`/...`) and page-relative (`Foo`, `Foo#frag`) href/src
-  # URLs. Returns `[changed_bool, unresolved_count]`. Per-match work
-  # is a single Hash lookup in `result_cache` -- the heavy lifting
-  # (URL resolution, LCP walk, segment encoding) runs only on cache
-  # miss.
+  # Mutates `content` in place via a single gsub matching three
+  # disjoint shapes: a `<code>` block, a `<pre>` block, or an
+  # `href|src=` attribute carrying an absolute (`/...`) or page-
+  # relative (`Foo`, `Foo#frag`) URL. Returns
+  # `[changed_bool, unresolved_count]`. Per-match work for a real
+  # href/src is a single Hash lookup in `result_cache` -- the heavy
+  # lifting (URL resolution, LCP walk, segment encoding) runs only
+  # on cache miss.
+  #
+  # The code-block alternatives are consumed atomically by the regex
+  # engine and returned verbatim from the callback (the engine never
+  # tries the href/src alternative inside a code block, so example
+  # URLs in tutorial code samples are not rewritten and don't count
+  # as unresolved). Group 1 of the match is nil on those branches;
+  # an early `next match[0]` short-circuits before any cache work.
   #
   # Dispatches inside the gsub block on whether `raw` starts with
   # `/`: absolute URLs go through `compute_relative` (resolves to a
@@ -820,26 +1119,79 @@ module Offlinify
   # from a sibling markdown source); this is treated as "no rewrite
   # needed, not a miss".
   #
-  # `code_ranges` is an array of `[start, end]` byte ranges covering
-  # the bodies of `<code>` / `<pre>` blocks; matches whose offset
-  # falls inside any range are left untouched and do not count as
-  # unresolved.
-  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, code_ranges)
+  # Nav-block caching: the just-the-docs sidebar nav (~112 KB,
+  # ~750 of each page's ~860 href matches) is identical in the
+  # rendered `_site/` output across all pages (Jekyll emits root-
+  # absolute URLs that don't depend on the source page) and its
+  # rewritten form depends only on `file_dir`. The first page in
+  # each source directory does the full gsub including the nav and
+  # caches the rewritten nav in `nav_cache[file_dir]`. Every
+  # subsequent page in the same directory swaps the input nav for
+  # `NAV_PLACEHOLDER` before the gsub, runs the rewrite on the
+  # remaining ~25 KB of content, then splices the cached nav back
+  # in place of the placeholder. Skips ~750 gsub callbacks per
+  # cache-hit page.
+  def self.rewrite_html!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache, nav_cache)
     misses = 0
     changed = false
+    profile = @state[:profile]
+    # Hoist the outer-cache lookup once per page. The inner hash
+    # accumulates entries for every URL seen from this source
+    # directory; per-match work is then a single hash lookup keyed
+    # by the short `raw` string, with no composite-cache-key
+    # allocation.
+    page_cache = (result_cache[file_dir] ||= {})
+    # Per-page locals aggregated into @state at the end of the
+    # method. Keeps the inner-loop counter bumps register-local
+    # rather than a hash lookup per match, and zeroes the overhead
+    # when --profile is off (the `if profile` checks fold to nothing
+    # under a constant-true branch predictor).
+    matches_href_src = 0
+    matches_code_block = 0
+    cache_misses = 0
+    compute_relative_calls = 0
+    compute_rel_url_calls = 0
 
-    new_content = content.gsub(HTML_COMBINED_RE) do
+    # Nav-block caching. If we have a rewritten nav for this
+    # source directory, substitute the input nav with a placeholder
+    # before the gsub so the engine doesn't scan ~112 KB of nav
+    # body for ~750 href matches we already know the answer for.
+    # `String#sub!` returns the modified string on success and nil
+    # otherwise; that's the signal that we need to splice the
+    # cached nav back after the gsub.
+    cached_nav = nav_cache[file_dir]
+    placeholder_inserted = false
+    if cached_nav
+      placeholder_inserted = !content.sub!(NAV_RE, NAV_PLACEHOLDER).nil?
+      @state[:count_nav_cache_hits] += 1 if profile && placeholder_inserted
+    end
+
+    # `gsub!` mutates `content` in place and returns `nil` when no
+    # substitution occurred. The callback returns the literal match
+    # body on every short-circuit path (code/pre blocks, unresolved,
+    # already-correct), so the only "real" changes are the
+    # interpolated replacement strings on the final `else` branch.
+    # `changed` tracks this so the caller knows whether anything
+    # actually moved -- the return value of `gsub!` itself is unused.
+    content.gsub!(HTML_COMBINED_RE) do
       match = Regexp.last_match
-      next match[0] if !code_ranges.empty? && in_code_block?(match.begin(0), code_ranges)
+      attr_name = match[1]
+      if attr_name.nil?  # <code>/<pre> block — leave verbatim
+        matches_code_block += 1 if profile
+        next match[0]
+      end
+      matches_href_src += 1 if profile
 
       raw = match[3]
-      cache_key = "#{file_dir}\x00#{raw}"
-      rel = result_cache.fetch(cache_key) do
-        result_cache[cache_key] =
+      rel = page_cache.fetch(raw) do
+        cache_misses += 1 if profile
+        page_cache[raw] =
           if raw.start_with?("/")
-            compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
+            compute_relative_calls += 1 if profile
+            tick(:time_resolve) { compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache) }
           else
-            compute_rel_url(raw, file_segs, site_paths)
+            compute_rel_url_calls += 1 if profile
+            tick(:time_resolve) { compute_rel_url(raw, file_segs, site_paths) }
           end
       end
 
@@ -853,11 +1205,31 @@ module Offlinify
         match[0]
       else
         changed = true
-        %(#{match[1]}=#{match[2]}#{rel}#{match[2]})
+        %(#{attr_name}=#{match[2]}#{rel}#{match[2]})
       end
     end
 
-    content.replace(new_content) if changed
+    # Splice the cached nav back where the placeholder lives, or,
+    # if this is the first page seen in `file_dir`, extract the
+    # just-rewritten nav from the output and seed the cache for
+    # subsequent pages in the same directory.
+    if placeholder_inserted
+      content.sub!(NAV_PLACEHOLDER, cached_nav)
+      changed = true
+    elsif (output_nav_match = NAV_RE.match(content))
+      nav_cache[file_dir] = output_nav_match[0]
+      @state[:count_nav_cache_misses] += 1 if profile
+    elsif profile
+      @state[:count_pages_without_nav] += 1
+    end
+
+    if profile
+      @state[:count_matches_href_src] += matches_href_src
+      @state[:count_matches_code_block] += matches_code_block
+      @state[:count_cache_misses] += cache_misses
+      @state[:count_compute_relative] += compute_relative_calls
+      @state[:count_compute_rel_url] += compute_rel_url_calls
+    end
     [changed, misses]
   end
 
@@ -867,17 +1239,17 @@ module Offlinify
   # heavy lifting (URL resolution, LCP walk, segment encoding) runs
   # only on cache miss. CSS has no code-block concept, so there is
   # no need to gate matches by offset the way `rewrite_html!` does.
-  def self.rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl)
+  def self.rewrite_css!(content, file_dir, file_segs, site_paths, seg_cache, result_cache, baseurl, raw_resolution_cache)
     misses = 0
     changed = false
+    page_cache = (result_cache[file_dir] ||= {})
 
     new_content = content.gsub(CSS_URL_RE) do
       match = Regexp.last_match
       raw = match[2]
       quote = match[1]
-      cache_key = "#{file_dir}\x00#{raw}"
-      rel = result_cache.fetch(cache_key) do
-        result_cache[cache_key] = compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
+      rel = page_cache.fetch(raw) do
+        page_cache[raw] = compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)
       end
       if rel.nil?
         misses += 1
@@ -965,7 +1337,41 @@ module Offlinify
   #      `decoded_segs` (decoded path segments of the target).
   #   6. Build `"../" * (file_depth - common) + encoded_segs[common..]
   #      .join("/")` and re-attach the tail.
-  def self.compute_relative(raw, file_segs, site_paths, seg_cache, baseurl)
+  def self.compute_relative(raw, file_segs, site_paths, seg_cache, baseurl, raw_resolution_cache)
+    sep, tail, site_path = raw_resolution_cache.fetch(raw) do
+      raw_resolution_cache[raw] = resolve_raw(raw, site_paths, baseurl)
+    end
+    return nil if site_path.nil?
+
+    decoded_segs, encoded_segs = seg_cache.fetch(site_path) do
+      seg_cache[site_path] = build_segs(site_path)
+    end
+
+    common = 0
+    fs_len = file_segs.length
+    ts_len = decoded_segs.length
+    common += 1 while common < fs_len && common < ts_len && file_segs[common] == decoded_segs[common]
+
+    ascend = "../" * (fs_len - common)
+    descend = encoded_segs[common..].join("/")
+    rel = ascend + descend
+    rel = "./" if rel.empty?
+    "#{rel}#{sep}#{tail}"
+  end
+
+  # File-dir-independent half of `compute_relative`: parses `raw`,
+  # strips any configured baseurl, probes site_paths for the target
+  # file. Returns `[sep, tail, site_path]` -- `site_path` is the
+  # resolved key into `seg_cache` (a string like
+  # `/tB/Core/Const.html`), or `nil` when no candidate exists in
+  # the page set. `sep` and `tail` are the `?query` / `#fragment`
+  # split from raw, preserved verbatim by the caller.
+  #
+  # Called once per unique `raw` URL across the build, via the
+  # `raw_resolution_cache.fetch { ... }` block in `compute_relative`.
+  # The per-page LCP walk + URL build stays in `compute_relative`
+  # because both depend on the source file's `file_segs`.
+  def self.resolve_raw(raw, site_paths, baseurl)
     path, sep, tail = raw.partition(/[?#]/)
     fs_path = decode(path)
 
@@ -991,22 +1397,7 @@ module Offlinify
     end
 
     site_path = candidates.find { |c| site_paths.include?(c) }
-    return nil unless site_path
-
-    decoded_segs, encoded_segs = seg_cache.fetch(site_path) do
-      seg_cache[site_path] = build_segs(site_path)
-    end
-
-    common = 0
-    fs_len = file_segs.length
-    ts_len = decoded_segs.length
-    common += 1 while common < fs_len && common < ts_len && file_segs[common] == decoded_segs[common]
-
-    ascend = "../" * (fs_len - common)
-    descend = encoded_segs[common..].join("/")
-    rel = ascend + descend
-    rel = "./" if rel.empty?
-    "#{rel}#{sep}#{tail}"
+    [sep, tail, site_path]
   end
 
   # Build the cached `[decoded_segs, encoded_segs]` pair for a

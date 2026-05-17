@@ -66,7 +66,7 @@ If one or more controls are not registered for the current architecture then twi
 
 When this occurs, you will see a note in the DEBUG CONSOLE:
 
-<img width="412" height="73" alt="tbFusionDebugConsole" src="Images/569099635-bc9553a6-fcce-487d-a478-dbee557f33b1.png" />
+![tbFusionDebugConsole](Images/569099635-bc9553a6-fcce-487d-a478-dbee557f33b1.png){:width="412" height="73"}
 
 This additional EXE acts as the out-of-process container for those controls and is managed automatically by the twinBASIC IDE
 
@@ -76,7 +76,7 @@ A project-level setting allows you to control where the Fusion host EXE is gener
 
 - **ActiveX Fusion Host EXE Output Path**
 
-<img width="800" height="400" alt="tbFusionProjectSettings" src="Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png" />
+![tbFusionProjectSettings](Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png){:width="800" height="400"}
 
 If left blank (default), the standard build path set in the project settings is used.  Unless overriden, the standard build path is:
 ${SourcePath}\Build${ProjectName}_${Architecture}.${FileExtension}
@@ -91,7 +91,7 @@ This allows Fusion host EXEs to be clearly distinguished from normal build outpu
 
 Each COM reference (type library) exposes Fusion-specific options.
 
-<img width="737" height="323" alt="tbFusionPerLibraryOptions" src="Images/569100769-f1f2790a-0094-4843-809f-a8a9e928fd41.png" />
+![tbFusionPerLibraryOptions](Images/569100769-f1f2790a-0094-4843-809f-a8a9e928fd41.png){:width="737" height="323"}
 
 ### ActiveX Fusion Mode
 
