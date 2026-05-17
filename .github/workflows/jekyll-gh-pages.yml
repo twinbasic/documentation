@@ -57,7 +57,7 @@ jobs:
         env:
           JEKYLL_ENV: production
           PAGES_REPO_NWO: "${{ github.repository }}"
-      - name: Run Lychee against the online tree
+      - name: Check online links (lychee)
         uses: lycheeverse/lychee-action@v2
         with:
           # --remap matches the fully-resolved file URI (not the raw href), so the pattern
@@ -68,6 +68,11 @@ jobs:
           # `--fallback-extensions html` mirrors what GitHub Pages does at request time:
           # an extensionless URL like `/FAQ` is served as `/FAQ.html`. Without the flag
           # lychee would flag every pretty permalink on the site.
+          #
+          # Lychee, not the Python checker, handles the online tree here because the
+          # `--remap` flag isn't implemented by scripts/check_links.py; the offline tree
+          # below has all baseurl prefixes already stripped by the offlinify plugin and
+          # so doesn't need it.
           args: >-
             --offline --include-fragments
             --fallback-extensions html
@@ -77,22 +82,25 @@ jobs:
             ./_site
           workingDirectory: ./docs
           fail: true
-      - name: Run Lychee against the offline tree
-        uses: lycheeverse/lychee-action@v2
+      - name: Set up Python for offline link check
+        uses: actions/setup-python@v5
         with:
-          # Strict check on `_site-offline/`: every link must resolve to an actual file
-          # under `file://`, with no extension fallback. Catches relative links in
-          # markdown sources that point at a permalink that doesn't match the rendered
-          # filename (e.g. `[Foo](Foo/)` when Jekyll wrote `Foo.html`, not
-          # `Foo/index.html`) -- the kind of breakage the online check above hides
-          # behind `--fallback-extensions html`.
-          args: >-
-            --offline --include-fragments
-            --index-files 'index.html'
-            --root-dir ${{ github.workspace }}/docs/_site-offline
-            ./_site-offline
-          workingDirectory: ./docs
-          fail: true
+          python-version: '3.14'
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+      - name: Check offline links (check_links.py)
+        # Strict check on `_site-offline/`: every link must resolve to an actual file
+        # under `file://`, with no extension fallback. Catches relative links in
+        # markdown sources that point at a permalink that doesn't match the rendered
+        # filename (e.g. `[Foo](Foo/)` when Jekyll wrote `Foo.html`, not
+        # `Foo/index.html`) -- the kind of breakage the online check above hides
+        # behind `--fallback-extensions html`.
+        run: >-
+          python scripts/check_links.py
+          --offline --include-fragments
+          --index-files index.html
+          --root-dir docs/_site-offline
+          docs/_site-offline
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:

@@ -35,7 +35,7 @@ jobs:
       - name: Build with Jekyll
         run: bundle exec jekyll build
         working-directory: ./docs
-      - name: Run Lychee
+      - name: Check online links (lychee)
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
@@ -46,3 +46,16 @@ jobs:
             ./_site
           workingDirectory: ./docs
           fail: true
+      - name: Set up Python for offline link check
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+      - name: Check offline links (check_links.py)
+        run: >-
+          python scripts/check_links.py
+          --offline --include-fragments
+          --index-files index.html
+          --root-dir docs/_site-offline
+          docs/_site-offline
