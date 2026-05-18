@@ -17,10 +17,18 @@
 //
 // Usage:
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
+//                    [--cpu-profile] [--cpu-sampling <microseconds>]
 //
 // Defaults:
 //   input  : ../docs/_site-pdf/book.html (relative to this file)
 //   output : perf/results/<ISO timestamp>/
+//
+// --cpu-profile wraps the render phase only (preview() through the
+// .pagedjs_pages selector) in a V8 Profiler trace and writes it to
+// render.cpuprofile in the results folder. Open it in Chrome DevTools
+// via Performance -> "Load profile..." (or just drag onto the panel).
+// --cpu-sampling sets the sampling interval in microseconds; default
+// 1000 (1 ms). Raise it to keep the profile file smaller on long runs.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -39,10 +47,14 @@ const args = process.argv.slice(2);
 let inputArg = null;
 let outArg = null;
 let keepOpen = false;
+let cpuProfile = false;
+let cpuSampling = 1000; // microseconds
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
   else if (a === '--keep-open') keepOpen = true;
+  else if (a === '--cpu-profile') cpuProfile = true;
+  else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -124,6 +136,18 @@ try {
   await page.addScriptTag({ path: handlerPath });
 
   // RENDER ----------------------------------------------------------
+  // Optionally wrap just this phase in a V8 CPU profile. CDP Profiler
+  // attaches to the renderer for this page; we stop before the generate
+  // phase so the trace stays focused on paged.js layout work.
+  let cdp = null;
+  if (cpuProfile) {
+    cdp = await page.createCDPSession();
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: cpuSampling });
+    await cdp.send('Profiler.start');
+    console.log(`[harness] cpu profile: sampling every ${cpuSampling}us`);
+  }
+
   const tRenderStart = Date.now();
   await page.evaluate(async () => {
     if (!window.PagedPolyfill) {
@@ -141,6 +165,17 @@ try {
   await page.waitForSelector('.pagedjs_pages');
   const tRenderEnd = Date.now();
   const renderMs = tRenderEnd - tRenderStart;
+
+  let profilePath = null;
+  if (cdp) {
+    const { profile } = await cdp.send('Profiler.stop');
+    await cdp.detach();
+    profilePath = join(outDir, 'render.cpuprofile');
+    const profileJson = JSON.stringify(profile);
+    writeFileSync(profilePath, profileJson);
+    console.log(`[harness] cpu profile: ${profilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
+
   console.log(`[harness] render   ${fmtMs(renderMs)}`);
 
   // GENERATE --------------------------------------------------------
@@ -213,6 +248,7 @@ try {
     input: inputPath,
     pageCount: timing.pageCount,
     pdfBytes: finalPdf.length,
+    cpuProfile: profilePath,
     phases: {
       render: {
         ms: renderMs,

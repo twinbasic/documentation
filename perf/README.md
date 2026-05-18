@@ -233,22 +233,143 @@ The user-perceived quadratic behaviour is real and lives in the
 render phase. Fixing it would knock 50-80 s off a 200 s build.
 Fixing process is independent and could knock off another 30 s.
 
-## Step 2, when we get there
+## Step 2: CPU profile of the render phase
 
-To take a CPU profile, the plan is to add a `--cpu-profile` flag to
-`measure.mjs` that:
+`measure.mjs --cpu-profile` wraps the render phase only (preview()
+through the `.pagedjs_pages` selector) in a V8 CPU profile via the
+CDP `Profiler` domain, and writes it to `render.cpuprofile` in the
+results folder:
 
-1. Connects to the page's CDP session.
-2. Calls `Profiler.enable` and `Profiler.start` right before
-   `PagedPolyfill.preview()`.
-3. Calls `Profiler.stop` in the `afterRendered` hook and writes the
-   returned profile as `cpuprofile.json` in the results folder.
+```
+run.bat --cpu-profile                          # default 1ms sampling
+run.bat --cpu-profile --cpu-sampling 5000      # 5ms sampling, smaller file
+```
 
-The resulting `.cpuprofile` opens directly in Chrome DevTools
-(Performance tab -> "Load profile..."). The self-time flame graph
-should pin the offending function within a few minutes of staring.
+The profile covers only the render phase deliberately -- generate is
+opaque Chrome internals and process has a clean non-profiling fix, so
+both would dilute the signal.
+
+To view: open Chrome (or Edge) -> DevTools -> **Performance** tab ->
+click **Load profile...** (folder icon) and pick the `.cpuprofile`
+file. Or drag it onto the panel. The bottom-up view sorted by
+self-time pins the hot function fastest.
+
+What to look for, given the heap stayed bounded and per-page cost
+scales linearly with `n`:
+
+- A function whose self-time grows roughly with page index. The
+  bottom-up view aggregates across the whole phase, so a per-page
+  `O(n)` scan shows up as a fat self-time bar.
+- DOM-query hot spots: paged.js calling `querySelectorAll`,
+  `getElementsByTagName`, or `closest` against the whole rendered
+  tree on each new page.
+- Cross-reference / named-flow / footnote resolution that re-walks
+  prior pages.
+
+A 1 ms sampling interval over a 100 s render produces a profile around
+20-50 MB. The render phase itself runs ~5-15% slower while sampling.
 
 If the bottleneck turns out to be in paged.js itself, the next step
-is to either patch our vendored copy or move to one of the active
-forks (e.g. `@sutty/pagedjs`, `pagedjs-fork`) which have already
-fixed several `O(n^2)` issues in the upstream.
+is to patch our vendored copy. There is no widely-known maintained
+fork with the detach-pages optimisation at time of writing -- the
+named "performance forks" of paged.js that turn up in casual
+searches mostly don't exist or haven't shipped a fix. Worth checking
+the upstream issue tracker at
+[pagedjs/pagedjs on GitHub](https://github.com/pagedjs/pagedjs/issues)
+(currently the active home; older threads may still live on
+[Coko's GitLab](https://gitlab.coko.foundation/pagedjs/pagedjs/-/issues))
+before reinventing the fix.
+
+## Findings (CPU profile of render phase)
+
+A profiled run (`--cpu-profile`, 1 ms sampling) over the same
+1638-page book:
+
+```
+samples: 52314   duration: 95.18 s   us/sample: 1819
+
+   self_ms   self_%   function  @  source
+   -------   ------   ----------------------------------------------
+  63525.42   66.82%   getBoundingClientRect   (browser native)
+  19075.46   20.07%   (program)               (V8/Blink native)
+   1941.39    2.04%   findElement             browser.js:638
+   1497.43    1.58%   removeOverflow          browser.js:2196
+   1106.25    1.16%   (anonymous)             browser.js:29501
+   1002.54    1.05%   createBreakToken        browser.js:1796
+    580.42    0.61%   findEndToken            browser.js:2094
+    527.65    0.56%   create                  browser.js:2257
+    442.13    0.47%   afterPageLayout         browser.js:30184
+    ... rest sub-0.5% ...
+```
+
+**67% of render is `getBoundingClientRect`. Another 20% is V8/Blink
+native code -- almost certainly the synchronous layout passes those
+`getBoundingClientRect` calls force.** Together 87% of render is the
+browser doing layout work driven by paged.js measurement calls.
+
+### Why this is `O(n^2)`
+
+The hot caller is `Chunker.findOverflow` at `browser.js:1934`. Its
+loop:
+
+```js
+findOverflow(rendered, bounds, gap) {
+  if (!this.hasOverflow(rendered, bounds)) return;
+  ...
+  let walker = walk(rendered.firstChild, rendered);
+  while (!done) {
+    next = walker.next();
+    node = next.value;
+    if (node) {
+      let pos = getBoundingClientRect(node);   // <-- line 1957
+      ...
+    }
+  }
+}
+```
+
+Per page, paged.js walks the just-rendered fragment node-by-node
+calling `getBoundingClientRect` to find where the content overflows
+the page box. `findOverflow` itself only touches the new fragment, so
+in isolation it should be `O(page_content)`.
+
+The catch: `getBoundingClientRect` is **synchronous**. If the DOM has
+been mutated since the last layout (and paged.js mutates constantly
+-- appending pages, splitting nodes, retrying overflow), each call
+forces Chromium to flush layout. **The cost of that flush scales
+with the live DOM tree**, which is every previously-laid-out page,
+all still attached to the document. Page `n`'s overflow walk pays
+`O(n)` layout cost. Total cost is `O(n^2)`.
+
+This matches everything else we saw:
+
+- Heap stays bounded (10-25 MB): no JS-level retention, just Blink's
+  layout tree growing with page count.
+- Per-page render cost grows ~10x from page 0 to page 1638: the
+  layout-flush cost grows linearly with `n`.
+- Content-driven spikes (the 1100-1199 chapter at 37 ms avg): pages
+  with heavier content do more walker iterations, multiplying the
+  per-iteration sync-layout cost.
+
+### Fix paths, in order of effort
+
+1. **Detach (or `display: none`) finalised pages.** Once a page's
+   layout is committed, take it out of the live document (or hide it
+   via `display: none` / `content-visibility: hidden`) so subsequent
+   sync layouts don't traverse it. Re-attach all pages at
+   `afterRendered` before `page.pdf()` runs. The idea is
+   well-understood and the patch is small (it lives in the chunker /
+   layout glue); collapses the render to roughly `O(n)`.
+
+2. **Batch the walker.** `findOverflow` reads
+   `getBoundingClientRect` on every node and Chromium can't batch
+   reads if they're interleaved with DOM writes. Splitting overflow
+   detection into a write-then-read-then-write phased pass would
+   reduce the number of forced layouts per page, even without
+   detaching previous pages. Smaller win than (1) but compatible
+   with it.
+
+For our pipeline, fix (1) on the vendored bundle would knock 60-80
+seconds off the 100-second render. Combined with skipping the
+pdf-lib roundtrip in Process (the easy win from the previous
+findings section), the total drops from ~207 s to roughly 90 s.
