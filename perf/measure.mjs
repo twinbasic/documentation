@@ -13,16 +13,27 @@
 //   generate  meta extraction + outline DOM walk + page.pdf().
 //             page.pdf() (Chromium serializing the laid-out DOM into
 //             PDF bytes) typically dominates.
-//   process   PDFDocument.load + setMetadata + setOutline + save.
+//   process   default: PDFDocument.load + setMetadata + setOutline + save.
+//             --incremental: applyOutlineAndMetadataIncremental() -- skip
+//             the full pdf-lib parse and append an incremental update
+//             (outline objects + updated Catalog/Info + new xref +
+//             /Prev pointer) on top of Chrome's bytes.
 //
 // Usage:
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
-//                    [--detach-pages]
+//                    [--detach-pages] [--instrument] [--time-hooks]
+//                    [--incremental]
 //
 // --detach-pages also injects detach-pages.js -- a Paged.Handler that
 // hides each completed page from the layout tree -- to test whether
 // the O(n^2) render hotspot disappears.
+//
+// --incremental switches the process phase from a pdf-lib roundtrip to
+// an incremental update against Chrome's bytes. Massively faster (sub-
+// second), but the resulting file is the size of Chrome's raw PDF +
+// outline (~3x bigger than the pdf-lib output, which deflate-compresses
+// content streams during its full re-emit).
 //
 // Defaults:
 //   input  : ../docs/_site-pdf/book.html (relative to this file)
@@ -45,6 +56,7 @@ import { PDFDocument } from 'pdf-lib';
 // "exports" field, which only re-exports the Printer class.
 import { parseOutline, setOutline } from './node_modules/pagedjs-cli/src/outline.js';
 import { setMetadata }              from './node_modules/pagedjs-cli/src/postprocesser.js';
+import { applyOutlineAndMetadataIncremental } from './incremental-pdf.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -57,6 +69,7 @@ let cpuSampling = 1000; // microseconds
 let detachPages = false;
 let instrument = false;
 let timeHooks = false;
+let incremental = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -66,6 +79,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--detach-pages') detachPages = true;
   else if (a === '--instrument') instrument = true;
   else if (a === '--time-hooks') timeHooks = true;
+  else if (a === '--incremental') incremental = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -242,29 +256,51 @@ try {
   console.log(`[harness] generate ${fmtMs(generateMs)}  (parseOutline=${fmtMs(parseOutlineMs)}, page.pdf=${fmtMs(pdfMs)}, ${(rawPdf.length / 1024 / 1024).toFixed(1)}MB)`);
 
   // PROCESS ---------------------------------------------------------
-  // pdf-lib roundtrip: parse Chromium's PDF, attach outline + metadata,
-  // re-serialise. setTrimBoxes is omitted -- our pages have no bleed,
-  // and capturing the page-array from in-browser would need extra wiring
-  // for what is essentially a no-op here.
+  // Two paths:
+  //   default       : pdf-lib roundtrip -- load + setMetadata + setOutline
+  //                   + save. The whole 52 MB Chrome PDF gets parsed and
+  //                   re-emitted just so we can attach an outline.
+  //   --incremental : applyOutlineAndMetadataIncremental -- parse only the
+  //                   trailer, xref, Catalog and Info objects; append a
+  //                   few KB containing the outline tree + updated Catalog
+  //                   and Info + a new xref subsection whose /Prev points
+  //                   at Chrome's original xref. Original bytes untouched.
+  //
+  // Either way we time the full phase plus the meaningful sub-steps so the
+  // breakdown matches across runs.
   const tProcStart = Date.now();
+  let finalPdf;
+  let processBreakdown;
+  if (incremental) {
+    const tIncStart = Date.now();
+    const { bytes, stats } = await applyOutlineAndMetadataIncremental(rawPdf, outline, meta);
+    const incMs = Date.now() - tIncStart;
+    finalPdf = bytes;
+    processBreakdown = { incrementalMs: incMs, ...stats };
+  } else {
+    const tLoadStart = Date.now();
+    const pdfDoc = await PDFDocument.load(rawPdf);
+    const loadMs = Date.now() - tLoadStart;
 
-  const tLoadStart = Date.now();
-  const pdfDoc = await PDFDocument.load(rawPdf);
-  const loadMs = Date.now() - tLoadStart;
+    setMetadata(pdfDoc, meta);
 
-  setMetadata(pdfDoc, meta);
+    const tSetOutlineStart = Date.now();
+    setOutline(pdfDoc, outline, false);
+    const setOutlineMs = Date.now() - tSetOutlineStart;
 
-  const tSetOutlineStart = Date.now();
-  setOutline(pdfDoc, outline, false);
-  const setOutlineMs = Date.now() - tSetOutlineStart;
+    const tSaveStart = Date.now();
+    finalPdf = await pdfDoc.save();
+    const saveMs = Date.now() - tSaveStart;
 
-  const tSaveStart = Date.now();
-  const finalPdf = await pdfDoc.save();
-  const saveMs = Date.now() - tSaveStart;
-
-  const tProcEnd = Date.now();
+    processBreakdown = { loadMs, setOutlineMs, saveMs };
+  }
+  const tProcEnd  = Date.now();
   const processMs = tProcEnd - tProcStart;
-  console.log(`[harness] process  ${fmtMs(processMs)}  (load=${fmtMs(loadMs)}, setOutline=${fmtMs(setOutlineMs)}, save=${fmtMs(saveMs)})`);
+  if (incremental) {
+    console.log(`[harness] process  ${fmtMs(processMs)}  (incremental=${fmtMs(processBreakdown.incrementalMs)}, +${processBreakdown.appendedBytes}B, ${processBreakdown.newObjectCount} new objs)`);
+  } else {
+    console.log(`[harness] process  ${fmtMs(processMs)}  (load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)})`);
+  }
 
   const totalMs = tProcEnd - tRenderStart;
   console.log(`[harness] total    ${fmtMs(totalMs)}`);
@@ -293,9 +329,8 @@ try {
       },
       process: {
         ms: processMs,
-        loadMs,
-        setOutlineMs,
-        saveMs,
+        mode: incremental ? 'incremental' : 'pdf-lib-roundtrip',
+        ...processBreakdown,
       },
     },
     totalMs,
@@ -322,7 +357,7 @@ try {
   summary.push('');
   summary.push(`render       : ${fmtMs(renderMs)}    (per-page layout via paged.js)`);
   summary.push(`generate     : ${fmtMs(generateMs)}    (parseOutline + page.pdf)`);
-  summary.push(`process      : ${fmtMs(processMs)}    (pdf-lib load + setOutline + save)`);
+  summary.push(`process      : ${fmtMs(processMs)}    (${incremental ? 'incremental update (append outline + updated catalog/info)' : 'pdf-lib load + setOutline + save'})`);
   summary.push(`total        : ${fmtMs(totalMs)}`);
   summary.push('');
   if (pages.length >= 4) {

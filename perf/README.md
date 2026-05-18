@@ -56,6 +56,8 @@ DevTools-compatible trace is a few lines.
 | `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree (registered against `finalizePage`). The fix. Injected by `--detach-pages` and by `docs/book.bat`. |
 | `instrument-flush-ops.js` | Wraps `getComputedStyle`, `getBoundingClientRect`, and the `offsetWidth` / `clientWidth` / `scrollWidth` family with counters + per-call timing. Injected by `--instrument`. |
 | `time-hooks.js` | Wraps every task registered to `chunker.hooks.*` and `polisher.hooks.*` with a wall-clock timer. Tells you which handler's hook method is eating render time, per page. Injected by `--time-hooks`. |
+| `incremental-pdf.mjs` | Replaces the pdf-lib load+save roundtrip with a PDF 1.7 §7.5.6 incremental update appended to Chrome's bytes. Used by `--incremental`. |
+| `test-incremental.mjs` | Smoke test for `incremental-pdf.mjs`: renders a tiny probe page, runs the writer, verifies the result parses (via pdf-lib re-load) and that outline + metadata land correctly. |
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
 | `run.bat` | Windows wrapper. Installs deps on first run, then invokes `node measure.mjs`. |
 | `results/` | Output, one timestamped subfolder per run. Git-ignored. |
@@ -99,6 +101,7 @@ run.bat --detach-pages                    # inject the detach-pages fix
 run.bat --cpu-profile                     # CPU-profile the render phase
 run.bat --instrument                      # count + time DOM-accessor calls
 run.bat --time-hooks                      # per-task timing of every chunker/polisher hook
+run.bat --incremental                     # process via incremental update instead of pdf-lib roundtrip
 ```
 
 Flags compose. The CPU profile lands as `render.cpuprofile`
@@ -569,3 +572,108 @@ The `finalizePage` hook is the variant we ship because it makes
 the CPU profile read honestly (no mystery cost inside AtPage) and
 gives AtPage the visible page it expects, not because of a
 measurable speedup.
+
+## Fix applied: `perf/incremental-pdf.mjs`
+
+The direct follow-up from the previous section's "What this didn't
+fix" list: kill the pdf-lib roundtrip that owned the 40 s process
+phase. 99 % of that was `PDFDocument.load` + `pdfDoc.save` on the
+52 MB raw PDF -- just so we can attach an outline tree and override a
+handful of `/Info` fields.
+
+Approach: a **PDF incremental update** (PDF 1.7 §7.5.6). We never
+call `PDFDocument.load`. Instead:
+
+1. Parse only the trailer, xref, Catalog, and Info objects -- using
+   `PDFParser` positioned at known byte offsets. Three small dicts,
+   ~50 ms.
+2. Build outline objects in a fresh `PDFContext`, allocating refs
+   starting from the original `/Size`.
+3. Mutate the parsed Catalog (add `/Outlines`, `/Lang`) and Info
+   (override `/Title`, `/Creator`, dates, ...) **in place**, keeping
+   their original refs.
+4. Append to the original bytes:
+   - The new and updated indirect objects.
+   - A new xref section whose subsections cover only those refs.
+   - A new trailer dict with `/Prev` pointing at the original xref.
+   - `startxref <new-offset>` + `%%EOF`.
+
+Readers chain backward through `/Prev` to resolve any ref we didn't
+touch (`/Pages`, `/Dests`, every font / image / content stream). The
+original 52 MB stays byte-identical; we just append a few hundred KB.
+
+The writer is built on pdf-lib's low-level primitives -- `PDFParser`
+for the few objects we read, `PDFContext` + `PDFDict` for object
+construction, `PDFCrossRefSection` + `PDFTrailerDict` for emitting
+the new xref / trailer. The expensive `PDFDocument.load` (which
+parses every indirect object in the file) is bypassed entirely.
+
+### Results
+
+Same 1638-page book, `--detach-pages` already in effect for both runs:
+
+| Phase    | pdf-lib roundtrip | + incremental | Δ |
+| -------- | ----------------- | ------------- | --- |
+| render   |  50.9 s   |  49.2 s   | unchanged (noise) |
+| generate |  60.2 s   |  60.9 s   | unchanged (noise) |
+| process  |  39.7 s   |   0.25 s  | **-39.4 s (-99%)** |
+| **total**| **150.7 s** | **110.3 s** | **-40.4 s (-27%)** |
+
+Combined with the detach-pages fix, the build is now **110 s vs
+207 s baseline (-47 %)**.
+
+Process-phase breakdown for the incremental path:
+
+```
+incremental    : 250 ms total
+appended       : ~410 KB (vs 52 MB raw Chrome PDF, untouched)
+new objects    : 1776 (outline root + 1773 outline items + Catalog + Info)
+```
+
+The output reparses cleanly under both pdf-lib's full
+`PDFDocument.load` and poppler's `pdfinfo` (PDF 1.4, 1638 pages,
+A4, all metadata intact). Outline navigation works in the viewer.
+
+### The size tradeoff
+
+`pdf-lib`'s `save()` quietly deflate-compresses content streams as a
+side effect of full re-emission. That's why the old output was 17 MB
+even though Chrome's raw PDF is 52 MB. The incremental writer keeps
+Chrome's bytes verbatim, so the final file is essentially "52 MB +
+outline":
+
+| Output mode       | Final PDF size |
+| ---               | --- |
+| pdf-lib roundtrip | 16.9 MB |
+| incremental       | 52.7 MB |
+
+This is the same uncompressed-streams problem the initial findings
+section flagged ("Chrome isn't compressing streams aggressively").
+Two ways to claw the size back without going back to a full parse,
+both independent follow-ups:
+
+1. **qpdf post-pass** -- `qpdf --object-streams=generate
+   --compress-streams=y in.pdf out.pdf` re-emits the file with deflate
+   on every stream, without reifying document semantics. C++,
+   skips object-by-object reconstruction; should be much faster than
+   pdf-lib's load. Adds a binary dependency.
+2. **Deflate inside the writer** -- detect raw streams without
+   `/Filter` in the parsed objects and rewrite them with
+   `/Filter /FlateDecode` + a pako-deflated body. Same engineering
+   shape as qpdf but in JS, and lets the incremental update stay
+   self-contained. Requires walking the full body of the original
+   PDF, which puts back some of the cost we just removed.
+
+The incremental writer ships as-is; pick a size strategy when /
+if file size becomes a concern.
+
+### Production integration
+
+`measure.mjs --incremental` exercises the writer for measurement.
+Wiring it into `docs/book.bat` is a separate step: `pagedjs-cli`
+performs its own pdf-lib roundtrip inside `Printer.pdf()`, and
+`--additional-script` can't intercept that. The cleanest path is to
+replace the `pagedjs-cli` invocation in `book.bat` with a thin Node
+driver -- essentially `measure.mjs` minus the timing scaffolding --
+that uses `puppeteer` + `incremental-pdf.mjs` directly. The harness
+already proves this is a ~30-line script.
