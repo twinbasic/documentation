@@ -89,11 +89,14 @@ module BookHrefRewrite
   # Pages matched by a single book.yml entry. An entry may set any
   # of `page:` (exact URL match, one-chapter sections like the FAQ
   # or the root index), `landing_page:` (the chapter's intro page in
-  # a chaptered part; treated like `page:` for map-building), and
-  # `prefixes:` (starts-with match per prefix). The union is returned
+  # a chaptered part; treated like `page:` for map-building),
+  # `prefixes:` (starts-with match against page.url), and
+  # `nav_prefixes:` (starts-with match against page.data["nav_path"],
+  # populated by _plugins/nav-path.rb). The union is returned
   # de-duplicated since the landing typically also matches one of the
   # prefixes (e.g. `/tB/Packages/VBRUN/` landing matches the prefix
-  # `/tB/Packages/VBRUN/`).
+  # `/tB/Packages/VBRUN/`), and a page can be picked up by both a
+  # URL prefix and a nav prefix.
   def self.entry_pages(entry, site)
     pages = []
     if entry["page"]
@@ -105,6 +108,14 @@ module BookHrefRewrite
     if entry["prefixes"]
       entry["prefixes"].each do |prefix|
         pages.concat(site.pages.select { |p| p.url.start_with?(prefix) })
+      end
+    end
+    if entry["nav_prefixes"]
+      entry["nav_prefixes"].each do |np|
+        pages.concat(site.pages.select { |p|
+          nav_path = p["nav_path"]
+          nav_path && nav_path.start_with?(np)
+        })
       end
     end
     pages.uniq

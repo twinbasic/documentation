@@ -135,15 +135,21 @@ sitemap: false
 {%- for fm in site.data.book.front_matter -%}
   {%- if fm.page -%}
     {%- assign fm_chapters = site.pages | where: "url", fm.page -%}
-  {%- elsif fm.prefixes -%}
-    {%- assign fm_chapters = "" | split: "" -%}
-    {%- for prefix in fm.prefixes -%}
-      {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-      {%- assign fm_chapters = fm_chapters | concat: matched -%}
-    {%- endfor -%}
-    {%- assign fm_chapters = fm_chapters | sort: "url" -%}
   {%- else -%}
     {%- assign fm_chapters = "" | split: "" -%}
+    {%- if fm.prefixes -%}
+      {%- for prefix in fm.prefixes -%}
+        {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
+        {%- assign fm_chapters = fm_chapters | concat: matched -%}
+      {%- endfor -%}
+    {%- endif -%}
+    {%- if fm.nav_prefixes -%}
+      {%- for np in fm.nav_prefixes -%}
+        {%- assign matched = site.pages | where_exp: "p", "p.nav_path contains np" -%}
+        {%- assign fm_chapters = fm_chapters | concat: matched -%}
+      {%- endfor -%}
+    {%- endif -%}
+    {%- assign fm_chapters = fm_chapters | sort_by_nav_order -%}
   {%- endif -%}
   {%- for chapter in fm_chapters -%}
     {%- if chapter.url == '/' -%}
@@ -185,15 +191,21 @@ sitemap: false
   {%- endcomment -%}
   {%- if part.page -%}
     {%- assign chapters = site.pages | where: "url", part.page -%}
-  {%- elsif part.prefixes -%}
-    {%- assign chapters = "" | split: "" -%}
-    {%- for prefix in part.prefixes -%}
-      {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-      {%- assign chapters = chapters | concat: matched -%}
-    {%- endfor -%}
-    {%- assign chapters = chapters | sort: "url" -%}
   {%- else -%}
     {%- assign chapters = "" | split: "" -%}
+    {%- if part.prefixes -%}
+      {%- for prefix in part.prefixes -%}
+        {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
+        {%- assign chapters = chapters | concat: matched -%}
+      {%- endfor -%}
+    {%- endif -%}
+    {%- if part.nav_prefixes -%}
+      {%- for np in part.nav_prefixes -%}
+        {%- assign matched = site.pages | where_exp: "p", "p.nav_path contains np" -%}
+        {%- assign chapters = chapters | concat: matched -%}
+      {%- endfor -%}
+    {%- endif -%}
+    {%- assign chapters = chapters | sort_by_nav_order -%}
   {%- endif -%}
     {%- comment -%}
       1.6a: state for sub-page detection. Index pages (URL ending in `/`)
@@ -269,23 +281,34 @@ sitemap: false
       {%- comment -%}
         Build this chapter's page list: landing first (so it acts as
         the chapter intro right after the divider), then prefix-
-        matched content sorted by URL with the landing filtered out
-        to avoid double emission when it also matches a prefix
-        (typical: /tB/Packages/Foo/ landing matches prefix
-        /tB/Packages/Foo/).
+        matched content sorted via `sort_by_nav_order` (just-the-docs
+        nav_order semantics: folder-style index pages first in URL
+        order, then nav_order pages by nav_order with title tie-break,
+        then nav_order-less pages alphabetically by title). The
+        landing is filtered out to avoid double emission when it
+        also matches a prefix (typical: /tB/Packages/Foo/ landing
+        matches prefix /tB/Packages/Foo/).
       {%- endcomment -%}
       {%- assign ch_chapters = "" | split: "" -%}
       {%- if ch_entry.landing_page -%}
         {%- assign ch_landing = site.pages | where: "url", ch_entry.landing_page -%}
         {%- assign ch_chapters = ch_chapters | concat: ch_landing -%}
       {%- endif -%}
-      {%- if ch_entry.prefixes -%}
+      {%- if ch_entry.prefixes or ch_entry.nav_prefixes -%}
         {%- assign ch_rest = "" | split: "" -%}
-        {%- for prefix in ch_entry.prefixes -%}
-          {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-          {%- assign ch_rest = ch_rest | concat: matched -%}
-        {%- endfor -%}
-        {%- assign ch_rest = ch_rest | sort: "url" -%}
+        {%- if ch_entry.prefixes -%}
+          {%- for prefix in ch_entry.prefixes -%}
+            {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
+            {%- assign ch_rest = ch_rest | concat: matched -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- if ch_entry.nav_prefixes -%}
+          {%- for np in ch_entry.nav_prefixes -%}
+            {%- assign matched = site.pages | where_exp: "p", "p.nav_path contains np" -%}
+            {%- assign ch_rest = ch_rest | concat: matched -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- assign ch_rest = ch_rest | sort_by_nav_order -%}
         {%- if ch_entry.landing_page -%}
           {%- assign ch_landing_url = ch_entry.landing_page -%}
           {%- assign ch_rest = ch_rest | where_exp: "p", "p.url != ch_landing_url" -%}

@@ -21,6 +21,18 @@
 #                        prefix, sorts by URL, and emits each as a
 #                        chapter. Used by "flat" parts that map directly
 #                        to a folder of pages.
+#   nav_prefixes      -- one or more nav-tree prefixes; works just like
+#                        `prefixes:` but matches against each page's
+#                        `nav_path` (the slash-joined
+#                        `grand_parent / parent / title` chain populated
+#                        by _plugins/nav-path.rb) rather than its URL.
+#                        Lets a chapter sweep in pages that share a nav
+#                        position but live at different URL prefixes --
+#                        e.g. `nav_prefixes: - Reference Section/Operators`
+#                        collects the Operators index plus every operator
+#                        page under `/tB/Core/...` in one entry.
+#                        `prefixes:` and `nav_prefixes:` can both be set
+#                        on the same entry; the union is de-duplicated.
 #   page              -- single absolute URL alternative to `prefixes`,
 #                        used for one-chapter parts (e.g. the FAQ).
 #                        Match is exact, not contains-based, so a
@@ -75,6 +87,14 @@
 #                                               the landing is emitted
 #                                               only once (as the
 #                                               landing).
+#                          nav_prefixes      -- nav-tree prefixes (see
+#                                               part-level comment
+#                                               above). Matches against
+#                                               each page's `nav_path`
+#                                               rather than its URL.
+#                                               Combinable with
+#                                               `prefixes:`; union
+#                                               de-duplicated.
 #                          no_outline_entry  -- optional truthy. When
 #                                               set, the chapter
 #                                               divider emits its title
