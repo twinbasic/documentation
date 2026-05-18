@@ -77,7 +77,7 @@ module BookHrefRewrite
     entries = []
     entries.concat(manifest["front_matter"] || [])
     (manifest["parts"] || []).each do |part|
-      if part["page"] || part["prefixes"] || part["nav_prefixes"] || part["landing_page"]
+      if part["page"] || part["nav_page"] || part["prefixes"] || part["nav_prefixes"] || part["landing_page"]
         entries << part
       end
       if part["foreword_page"]
@@ -90,19 +90,23 @@ module BookHrefRewrite
 
   # Pages matched by a single book.yml entry. An entry may set any
   # of `page:` (exact URL match, one-chapter sections like the FAQ
-  # or the root index), `landing_page:` (the chapter's intro page in
-  # a chaptered part; treated like `page:` for map-building),
-  # `prefixes:` (starts-with match against page.url), and
-  # `nav_prefixes:` (starts-with match against page.data["nav_path"],
-  # populated by _plugins/nav-path.rb). The union is returned
-  # de-duplicated since the landing typically also matches one of the
-  # prefixes (e.g. `/tB/Packages/VBRUN/` landing matches the prefix
-  # `/tB/Packages/VBRUN/`), and a page can be picked up by both a
-  # URL prefix and a nav prefix.
+  # or the root index), `nav_page:` (exact match against
+  # `page.data["nav_path"]`; the nav-tree counterpart of `page:`),
+  # `landing_page:` (the chapter's intro page in a chaptered part;
+  # treated like `page:` for map-building), `prefixes:` (starts-with
+  # match against page.url), and `nav_prefixes:` (starts-with match
+  # against page.data["nav_path"], populated by _plugins/nav-path.rb).
+  # The union is returned de-duplicated since the landing typically
+  # also matches one of the prefixes (e.g. `/tB/Packages/VBRUN/`
+  # landing matches the prefix `/tB/Packages/VBRUN/`), and a page can
+  # be picked up by both a URL and a nav-path selector.
   def self.entry_pages(entry, site)
     pages = []
     if entry["page"]
       pages.concat(site.pages.select { |p| p.url == entry["page"] })
+    end
+    if entry["nav_page"]
+      pages.concat(site.pages.select { |p| p["nav_path"] == entry["nav_page"] })
     end
     if entry["landing_page"]
       pages.concat(site.pages.select { |p| p.url == entry["landing_page"] })

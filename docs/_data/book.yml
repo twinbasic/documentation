@@ -38,6 +38,14 @@
 #                        Match is exact, not contains-based, so a
 #                        one-page section doesn't accidentally sweep in
 #                        siblings.
+#   nav_page          -- single nav-tree path; the nav-path counterpart
+#                        of `page:`. Matches against `nav_path` rather
+#                        than `url`, exact match only. Use when the
+#                        part's content is exactly one page identified
+#                        more readably by its nav position than its
+#                        URL. When `page:` or `nav_page:` is set,
+#                        `landing_page:`, `prefixes:`, and
+#                        `nav_prefixes:` on the same entry are ignored.
 #   foreword_page     -- single absolute URL emitted as a `<article
 #                        class="part-foreword">` right after the part
 #                        divider, before any chapter dividers. No
@@ -90,6 +98,25 @@
 #                                               divider's H2 is the
 #                                               sole outline entry for
 #                                               the chapter.
+#                          page              -- single absolute URL,
+#                                               exact match. Use when
+#                                               the chapter is exactly
+#                                               one page -- shorthand
+#                                               for `prefixes: - /X`
+#                                               at chapter scope. When
+#                                               `page:` is set,
+#                                               `landing_page:`,
+#                                               `prefixes:`, and
+#                                               `nav_prefixes:` are
+#                                               ignored (the chapter is
+#                                               exactly the one page).
+#                          nav_page          -- single nav-tree path;
+#                                               nav-path counterpart of
+#                                               `page:`. Exact match
+#                                               against `nav_path`.
+#                                               Same exclusivity --
+#                                               sets the chapter to
+#                                               exactly that page.
 #                          prefixes          -- additional URL prefixes
 #                                               for content pages
 #                                               (members, etc.); sorted
