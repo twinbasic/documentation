@@ -133,26 +133,9 @@ sitemap: false
 {%- endcomment -%}
 {%- if site.data.book.front_matter -%}
 {%- for fm in site.data.book.front_matter -%}
-  {%- if fm.page -%}
-    {%- assign fm_chapters = site.pages | where: "url", fm.page -%}
-  {%- elsif fm.nav_page -%}
-    {%- assign fm_chapters = site.pages | where: "nav_path", fm.nav_page -%}
-  {%- else -%}
-    {%- assign fm_chapters = "" | split: "" -%}
-    {%- if fm.prefixes -%}
-      {%- for prefix in fm.prefixes -%}
-        {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-        {%- assign fm_chapters = fm_chapters | concat: matched -%}
-      {%- endfor -%}
-    {%- endif -%}
-    {%- if fm.nav_prefixes -%}
-      {%- for np in fm.nav_prefixes -%}
-        {%- assign matched = site.pages | where_exp: "p", "p.nav_path contains np" -%}
-        {%- assign fm_chapters = fm_chapters | concat: matched -%}
-      {%- endfor -%}
-    {%- endif -%}
-    {%- assign fm_chapters = fm_chapters | sort_by_nav_order -%}
-  {%- endif -%}
+  {%- assign collected = "" | split: "" -%}
+  {%- include book-collect-matches.html entry=fm -%}
+  {%- assign fm_chapters = collected | sort_by_nav_order -%}
   {%- for chapter in fm_chapters -%}
     {%- if chapter.url == '/' -%}
       {%- assign fm_anchor = 'ch-' | append: fm.title | downcase | replace: ' ', '-' -%}
@@ -185,52 +168,32 @@ sitemap: false
 {%- endif %}
 </article>
   {%- comment -%}
-    Gather the part's chapters once. A part has either `page:` (single
-    absolute URL, exact match) or `prefixes:` (list of URL prefixes,
-    contains-match per prefix, union sorted). Pre-2.4 the loop only
-    handled `prefixes:`; `page:` was added so one-chapter parts like
-    the FAQ don't have to invent a folder.
+    Gather the part's chapters. A part may set any combination of:
+      page:         single URL prefix (alias for `pages: [page]`)
+      pages:        list of URL prefixes; `contains`-match per entry
+      nav_page:     single nav_path prefix (alias for `nav_pages: [...]`)
+      nav_pages:    list of nav_path prefixes; `contains`-match per entry
+      landing_page: single URL emitted first, then filtered out of
+                    the prefix sweep before the sort (so it doesn't
+                    contribute its nav_order to its parent-folder
+                    group's lead, dragging that group to its own slot)
+      no_descent:   switch every page/pages/nav_page/nav_pages match
+                    from `contains` to `==` so a `/Foo/` prefix
+                    matches only the index, not its sub-pages
   {%- endcomment -%}
-  {%- if part.page -%}
-    {%- assign chapters = site.pages | where: "url", part.page -%}
-  {%- elsif part.nav_page -%}
-    {%- assign chapters = site.pages | where: "nav_path", part.nav_page -%}
-  {%- else -%}
-    {%- assign chapters = "" | split: "" -%}
-    {%- if part.landing_page -%}
-      {%- assign part_landing = site.pages | where: "url", part.landing_page -%}
-      {%- assign chapters = chapters | concat: part_landing -%}
-    {%- endif -%}
-    {%- if part.prefixes or part.nav_prefixes -%}
-      {%- assign part_rest = "" | split: "" -%}
-      {%- if part.prefixes -%}
-        {%- for prefix in part.prefixes -%}
-          {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-          {%- assign part_rest = part_rest | concat: matched -%}
-        {%- endfor -%}
-      {%- endif -%}
-      {%- if part.nav_prefixes -%}
-        {%- for np in part.nav_prefixes -%}
-          {%- assign matched = site.pages | where_exp: "p", "p.nav_path contains np" -%}
-          {%- assign part_rest = part_rest | concat: matched -%}
-        {%- endfor -%}
-      {%- endif -%}
-      {%- comment -%}
-        Filter the landing out BEFORE the sort: when the landing URL
-        is also matched by a prefix (typical: `prefixes: - /Features/`
-        sweeps in `/Features/`), the landing would otherwise become
-        the head of its own group inside the sort and contribute its
-        nav_order to the group's lead -- demoting the group to the
-        landing's slot instead of the slot its leaves earn.
-      {%- endcomment -%}
-      {%- if part.landing_page -%}
-        {%- assign part_landing_url = part.landing_page -%}
-        {%- assign part_rest = part_rest | where_exp: "p", "p.url != part_landing_url" -%}
-      {%- endif -%}
-      {%- assign part_rest = part_rest | sort_by_nav_order -%}
-      {%- assign chapters = chapters | concat: part_rest -%}
-    {%- endif -%}
+  {%- assign chapters = "" | split: "" -%}
+  {%- if part.landing_page -%}
+    {%- assign part_landing = site.pages | where: "url", part.landing_page -%}
+    {%- assign chapters = chapters | concat: part_landing -%}
   {%- endif -%}
+  {%- assign collected = "" | split: "" -%}
+  {%- include book-collect-matches.html entry=part -%}
+  {%- if part.landing_page -%}
+    {%- assign part_landing_url = part.landing_page -%}
+    {%- assign collected = collected | where_exp: "p", "p.url != part_landing_url" -%}
+  {%- endif -%}
+  {%- assign part_rest = collected | sort_by_nav_order -%}
+  {%- assign chapters = chapters | concat: part_rest -%}
     {%- comment -%}
       1.6a: state for sub-page detection. Index pages (URL ending in `/`)
       sort before their siblings under ASCII order, so a single-slot
@@ -260,6 +223,35 @@ sitemap: false
         {%- include book-chapter-body.html
             chapter=chapter
             article_class_override='part-foreword'
+            skip_sub_page_detection=true -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  {%- comment -%}
+    Part landing: a regular page article emitted between the part
+    divider (and any foreword) and the first chapter. Renders with
+    normal page styling -- unlike `foreword_page` which gets the
+    `part-foreword` named-page treatment -- and the plugin strips
+    its source H1 so the part divider's H1 stays the part's only
+    top-level outline entry. `skip_sub_page_detection=true` keeps
+    the landing's trailing-slash URL from making subsequent chapter
+    dividers / chapter pages look like its sub-pages. Supported
+    for both flat parts (handled below in the flat-part loop) and
+    chaptered parts (emitted right here, before the chaptered
+    loop).
+  {%- endcomment -%}
+  {%- if part.chapters and part.landing_page -%}
+    {%- assign ld_chapters = site.pages | where: "url", part.landing_page -%}
+    {%- for chapter in ld_chapters -%}
+      {%- if part.no_heading_shift -%}
+        {%- include book-chapter-body.html
+            chapter=chapter
+            skip_sub_page_detection=true
+            skip_base_heading_shift=true -%}
+      {%- else -%}
+        {%- include book-chapter-body.html
+            chapter=chapter
             skip_sub_page_detection=true -%}
       {%- endif -%}
     {%- endfor -%}
@@ -303,59 +295,29 @@ sitemap: false
 </article>
 
       {%- comment -%}
-        Build this chapter's page list. `page:` is an exact-match
-        single-URL shortcut, exclusive of `landing_page:` /
-        `prefixes:` / `nav_prefixes:` -- use it when the chapter is
-        exactly one source page so you don't have to invent a folder
-        prefix. Otherwise the chapter emits its landing first (so it
-        acts as the chapter intro right after the divider), then
-        prefix- / nav_prefix-matched content sorted via
-        `sort_by_nav_order` (just-the-docs nav_order semantics:
-        folder-style index pages first in URL order, then nav_order
-        pages by nav_order with title tie-break, then nav_order-less
-        pages alphabetically by title). The landing is filtered out
-        of the sort input to avoid double emission when it also
-        matches a prefix (typical: /tB/Packages/Foo/ landing matches
-        prefix /tB/Packages/Foo/).
+        Build this chapter's page list. The chapter emits its
+        landing_page first (so it acts as the chapter intro right
+        after the divider), then page/pages/nav_page/nav_pages
+        matches sorted via `sort_by_nav_order`. The landing is
+        filtered out of the match set before the sort so it doesn't
+        double-emit and so it doesn't drag its parent-folder group's
+        lead -- see the matching comment in the flat-part loop above.
+        See _includes/book-collect-matches.html for the selector
+        schema (page/pages/nav_page/nav_pages + no_descent).
       {%- endcomment -%}
       {%- assign ch_chapters = "" | split: "" -%}
-      {%- if ch_entry.page -%}
-        {%- assign ch_one = site.pages | where: "url", ch_entry.page -%}
-        {%- assign ch_chapters = ch_chapters | concat: ch_one -%}
-      {%- elsif ch_entry.nav_page -%}
-        {%- assign ch_one = site.pages | where: "nav_path", ch_entry.nav_page -%}
-        {%- assign ch_chapters = ch_chapters | concat: ch_one -%}
-      {%- else -%}
-        {%- if ch_entry.landing_page -%}
-          {%- assign ch_landing = site.pages | where: "url", ch_entry.landing_page -%}
-          {%- assign ch_chapters = ch_chapters | concat: ch_landing -%}
-        {%- endif -%}
-        {%- if ch_entry.prefixes or ch_entry.nav_prefixes -%}
-          {%- assign ch_rest = "" | split: "" -%}
-          {%- if ch_entry.prefixes -%}
-            {%- for prefix in ch_entry.prefixes -%}
-              {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-              {%- assign ch_rest = ch_rest | concat: matched -%}
-            {%- endfor -%}
-          {%- endif -%}
-          {%- if ch_entry.nav_prefixes -%}
-            {%- for np in ch_entry.nav_prefixes -%}
-              {%- assign matched = site.pages | where_exp: "p", "p.nav_path contains np" -%}
-              {%- assign ch_rest = ch_rest | concat: matched -%}
-            {%- endfor -%}
-          {%- endif -%}
-          {%- comment -%}
-            Filter the landing out BEFORE the sort -- see the matching
-            comment in the flat-part loop above.
-          {%- endcomment -%}
-          {%- if ch_entry.landing_page -%}
-            {%- assign ch_landing_url = ch_entry.landing_page -%}
-            {%- assign ch_rest = ch_rest | where_exp: "p", "p.url != ch_landing_url" -%}
-          {%- endif -%}
-          {%- assign ch_rest = ch_rest | sort_by_nav_order -%}
-          {%- assign ch_chapters = ch_chapters | concat: ch_rest -%}
-        {%- endif -%}
+      {%- if ch_entry.landing_page -%}
+        {%- assign ch_landing = site.pages | where: "url", ch_entry.landing_page -%}
+        {%- assign ch_chapters = ch_chapters | concat: ch_landing -%}
       {%- endif -%}
+      {%- assign collected = "" | split: "" -%}
+      {%- include book-collect-matches.html entry=ch_entry -%}
+      {%- if ch_entry.landing_page -%}
+        {%- assign ch_landing_url = ch_entry.landing_page -%}
+        {%- assign collected = collected | where_exp: "p", "p.url != ch_landing_url" -%}
+      {%- endif -%}
+      {%- assign ch_rest = collected | sort_by_nav_order -%}
+      {%- assign ch_chapters = ch_chapters | concat: ch_rest -%}
 
       {%- assign current_index_url = '' -%}
       {%- assign current_index_kind = 'class' -%}

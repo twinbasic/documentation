@@ -77,11 +77,11 @@ module BookHrefRewrite
     entries = []
     entries.concat(manifest["front_matter"] || [])
     (manifest["parts"] || []).each do |part|
-      if part["page"] || part["nav_page"] || part["prefixes"] || part["nav_prefixes"] || part["landing_page"]
+      if part["page"] || part["pages"] || part["nav_page"] || part["nav_pages"] || part["landing_page"]
         entries << part
       end
       if part["foreword_page"]
-        entries << { "page" => part["foreword_page"], "title" => part["title"] }
+        entries << { "page" => part["foreword_page"], "title" => part["title"], "no_descent" => true }
       end
       (part["chapters"] || []).each { |ch| entries << ch }
     end
@@ -89,41 +89,59 @@ module BookHrefRewrite
   end
 
   # Pages matched by a single book.yml entry. An entry may set any
-  # of `page:` (exact URL match, one-chapter sections like the FAQ
-  # or the root index), `nav_page:` (exact match against
-  # `page.data["nav_path"]`; the nav-tree counterpart of `page:`),
-  # `landing_page:` (the chapter's intro page in a chaptered part;
-  # treated like `page:` for map-building), `prefixes:` (starts-with
-  # match against page.url), and `nav_prefixes:` (starts-with match
-  # against page.data["nav_path"], populated by _plugins/nav-path.rb).
+  # combination of:
+  #   page:         single URL prefix (alias for a one-element
+  #                 `pages:` list).
+  #   pages:        list of URL prefixes. By default each prefix is
+  #                 a starts-with match; when `no_descent: true`
+  #                 each prefix matches by exact URL equality
+  #                 instead.
+  #   nav_page:     single nav_path prefix (alias for a one-element
+  #                 `nav_pages:` list). `nav_path` is populated by
+  #                 _plugins/nav-path.rb as the slash-joined
+  #                 `grand_parent / parent / title` chain.
+  #   nav_pages:    list of nav_path prefixes. Same no_descent
+  #                 semantics as `pages:`.
+  #   landing_page: single URL, exact match. Treated like `page:`
+  #                 for map-building. Carries its own first-emission
+  #                 semantics in book.html which doesn't matter here.
+  #   no_descent:   when truthy, every `page` / `pages` / `nav_page`
+  #                 / `nav_pages` match uses exact equality instead
+  #                 of starts-with. Useful when a prefix like `/Foo/`
+  #                 should match only the index page, not its
+  #                 sub-pages.
   # The union is returned de-duplicated since the landing typically
   # also matches one of the prefixes (e.g. `/tB/Packages/VBRUN/`
-  # landing matches the prefix `/tB/Packages/VBRUN/`), and a page can
-  # be picked up by both a URL and a nav-path selector.
+  # landing matches the prefix `/tB/Packages/VBRUN/`), and a page
+  # can be picked up by both a URL and a nav-path selector.
   def self.entry_pages(entry, site)
     pages = []
-    if entry["page"]
-      pages.concat(site.pages.select { |p| p.url == entry["page"] })
+    no_descent = !!entry["no_descent"]
+
+    url_specs = []
+    url_specs << entry["page"] if entry["page"]
+    url_specs.concat(entry["pages"]) if entry["pages"]
+    url_specs.each do |prefix|
+      pages.concat(site.pages.select { |p|
+        no_descent ? p.url == prefix : p.url.start_with?(prefix)
+      })
     end
-    if entry["nav_page"]
-      pages.concat(site.pages.select { |p| p["nav_path"] == entry["nav_page"] })
+
+    nav_specs = []
+    nav_specs << entry["nav_page"] if entry["nav_page"]
+    nav_specs.concat(entry["nav_pages"]) if entry["nav_pages"]
+    nav_specs.each do |np|
+      pages.concat(site.pages.select { |p|
+        nav_path = p["nav_path"]
+        next false unless nav_path
+        no_descent ? nav_path == np : nav_path.start_with?(np)
+      })
     end
+
     if entry["landing_page"]
       pages.concat(site.pages.select { |p| p.url == entry["landing_page"] })
     end
-    if entry["prefixes"]
-      entry["prefixes"].each do |prefix|
-        pages.concat(site.pages.select { |p| p.url.start_with?(prefix) })
-      end
-    end
-    if entry["nav_prefixes"]
-      entry["nav_prefixes"].each do |np|
-        pages.concat(site.pages.select { |p|
-          nav_path = p["nav_path"]
-          nav_path && nav_path.start_with?(np)
-        })
-      end
-    end
+
     pages.uniq
   end
 

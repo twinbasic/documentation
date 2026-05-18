@@ -1,51 +1,47 @@
 # Chapter manifest for the twinBASIC documentation PDF.
 #
+# Selector schema (shared by front_matter entries, parts, and chapter
+# entries inside chaptered parts):
+#
+#   page          single URL prefix; shorthand for a one-element
+#                 `pages:` list. Default match is `contains` (the
+#                 page's URL contains this string). Combinable with
+#                 `pages:`, `nav_page:`, `nav_pages:`.
+#   pages         list of URL prefixes. Each entry is a `contains`
+#                 match unless `no_descent:` is set on this entry.
+#   nav_page      single nav-path prefix; shorthand for a one-element
+#                 `nav_pages:` list. The page's `nav_path` is the
+#                 slash-joined `grand_parent / parent / title` chain
+#                 populated by `_plugins/nav-path.rb`.
+#   nav_pages     list of nav-path prefixes.
+#   no_descent    optional truthy. Switches every `page` / `pages` /
+#                 `nav_page` / `nav_pages` match on this entry from
+#                 the default `contains` semantics to exact equality
+#                 (`==`). Use it when a prefix like `/Foo/` should
+#                 match only the index, not its sub-pages; or when
+#                 a one-page entry like `page: /` would otherwise
+#                 sweep in every page on the site.
+#
+# `landing_page:` and `foreword_page:` are separate concepts; they
+# always match a single URL by equality and carry their own emission
+# semantics (described below).
+#
 # `front_matter` is an ordered list of sections that emit between the
 # title page and the first numbered Part. No divider page, no part
 # number; each entry just contributes its chapter(s) inline. Each
-# entry has:
-#   title    -- the conceptual section name (used by future TOC and as
-#               the anchor seed when the URL would otherwise produce an
-#               empty anchor, e.g. the root `/` page).
-#   page     -- single absolute URL (alternative to `prefixes`); use
-#               when the section is exactly one page (the root index).
-#   prefixes -- URL-prefix list (alternative to `page`); same shape as
-#               on a numbered part.
+# entry may set `title:` (the conceptual section name, used as the
+# anchor seed when the URL would otherwise collapse to an empty path
+# -- e.g. `/` becomes `ch-introduction`) plus any of the shared
+# selector keys above.
 #
 # `parts` is an ordered list of numbered book parts. Each part has:
 #   title             -- shown on the part divider page and in the
 #                        global TOC.
 #   subtitle          -- optional second-line descriptor on the divider.
-#   prefixes          -- one or more URL prefixes; book.html gathers
-#                        every page in `site.pages` whose URL contains a
-#                        prefix, sorts by URL, and emits each as a
-#                        chapter. Used by "flat" parts that map directly
-#                        to a folder of pages.
-#   nav_prefixes      -- one or more nav-tree prefixes; works just like
-#                        `prefixes:` but matches against each page's
-#                        `nav_path` (the slash-joined
-#                        `grand_parent / parent / title` chain populated
-#                        by _plugins/nav-path.rb) rather than its URL.
-#                        Lets a chapter sweep in pages that share a nav
-#                        position but live at different URL prefixes --
-#                        e.g. `nav_prefixes: - Reference Section/Operators`
-#                        collects the Operators index plus every operator
-#                        page under `/tB/Core/...` in one entry.
-#                        `prefixes:` and `nav_prefixes:` can both be set
-#                        on the same entry; the union is de-duplicated.
-#   page              -- single absolute URL alternative to `prefixes`,
-#                        used for one-chapter parts (e.g. the FAQ).
-#                        Match is exact, not contains-based, so a
-#                        one-page section doesn't accidentally sweep in
-#                        siblings.
-#   nav_page          -- single nav-tree path; the nav-path counterpart
-#                        of `page:`. Matches against `nav_path` rather
-#                        than `url`, exact match only. Use when the
-#                        part's content is exactly one page identified
-#                        more readably by its nav position than its
-#                        URL. When `page:` or `nav_page:` is set,
-#                        `landing_page:`, `prefixes:`, and
-#                        `nav_prefixes:` on the same entry are ignored.
+#   page / pages / nav_page / nav_pages / no_descent
+#                     -- the shared selector schema above.
+#                        Used by "flat" parts that map directly to a
+#                        folder of pages.
 #   foreword_page     -- single absolute URL emitted as a `<article
 #                        class="part-foreword">` right after the part
 #                        divider, before any chapter dividers. No
@@ -86,115 +82,156 @@
 #                        own chapter-level content; the part becomes a
 #                        container for several distinct subjects rather
 #                        than a flat folder. Each entry has:
-#                          title             -- the chapter divider
-#                                               title.
-#                          subtitle          -- optional descriptor.
-#                          landing_page      -- the chapter's intro
-#                                               page; always emitted
-#                                               first within the
-#                                               chapter, and the plugin
-#                                               strips its source H1
-#                                               so the chapter
-#                                               divider's H2 is the
-#                                               sole outline entry for
-#                                               the chapter.
-#                          page              -- single absolute URL,
-#                                               exact match. Use when
-#                                               the chapter is exactly
-#                                               one page -- shorthand
-#                                               for `prefixes: - /X`
-#                                               at chapter scope. When
-#                                               `page:` is set,
-#                                               `landing_page:`,
-#                                               `prefixes:`, and
-#                                               `nav_prefixes:` are
-#                                               ignored (the chapter is
-#                                               exactly the one page).
-#                          nav_page          -- single nav-tree path;
-#                                               nav-path counterpart of
-#                                               `page:`. Exact match
-#                                               against `nav_path`.
-#                                               Same exclusivity --
-#                                               sets the chapter to
-#                                               exactly that page.
-#                          prefixes          -- additional URL prefixes
-#                                               for content pages
-#                                               (members, etc.); sorted
-#                                               by URL after the
-#                                               landing. A page that
-#                                               matches a prefix AND is
-#                                               the landing is emitted
-#                                               only once (as the
-#                                               landing).
-#                          nav_prefixes      -- nav-tree prefixes (see
-#                                               part-level comment
-#                                               above). Matches against
-#                                               each page's `nav_path`
-#                                               rather than its URL.
-#                                               Combinable with
-#                                               `prefixes:`; union
-#                                               de-duplicated.
-#                          no_outline_entry  -- optional truthy. When
-#                                               set, the chapter
-#                                               divider emits its title
-#                                               as
-#                                               `<p class="chapter-title-silent">`
-#                                               instead of an `<h2>`,
-#                                               suppressing the divider
-#                                               bookmark. The divider
-#                                               page still renders.
-#                                               When this flag is set,
-#                                               the landing-page H1
-#                                               strip is skipped (the
-#                                               landing's first heading
-#                                               IS the chapter's
-#                                               bookmark target).
-#                          no_heading_shift  -- optional truthy. When
-#                                               set, this chapter's
-#                                               body skips the 1.9 +1
-#                                               extra shift that
-#                                               chaptered-part chapters
-#                                               normally receive, so
-#                                               its source H1 lands one
-#                                               level shallower. Pair
-#                                               with `no_outline_entry`
-#                                               on the same chapter to
-#                                               collapse the chapter
-#                                               divider's outline slot
-#                                               and promote the
-#                                               content's first heading
-#                                               into it.
+#        title / subtitle  -- chapter divider text.
+#        page / pages /
+#        nav_page /
+#        nav_pages /
+#        no_descent        -- the shared selector schema; same semantics
+#                             as on a part.
+#        landing_page      -- the chapter's intro page; always emitted
+#                             first within the chapter, and the plugin
+#                             strips its source H1 so the chapter
+#                             divider's H2 is the sole outline entry for
+#                             the chapter.
+#        no_outline_entry  -- optional truthy. When set, the chapter
+#                             divider emits its title as
+#                             `<p class="chapter-title-silent">` instead
+#                             of an `<h2>`, suppressing the divider
+#                             bookmark. The divider page still renders.
+#                             When this flag is set, the landing-page H1
+#                             strip is skipped (the landing's first
+#                             heading IS the chapter's bookmark target).
+#        no_heading_shift  -- optional truthy. When set, this chapter's
+#                             body skips the 1.9 +1 extra shift that
+#                             chaptered-part chapters normally receive,
+#                             so its source H1 lands one level shallower.
+#                             Pair with `no_outline_entry` on the same
+#                             chapter to collapse the chapter divider's
+#                             outline slot and promote the content's
+#                             first heading into it.
 #
-# Index pages (URL ending in `/`) sort before sibling content pages
-# under ASCII lexicographic order, so each part naturally opens with
-# its package landing page followed by the individual symbols.
+# Per-chapter and per-part content lists are ordered by the
+# `sort_by_nav_order` Liquid filter (see _plugins/book-sort.rb):
+# folder-style index pages first (URL ends in `/`), then nav_order
+# pages by nav_order ascending with title tie-break, then
+# nav_order-less pages alphabetically by title. Groups by owning
+# index URL so an index's sub-pages stay adjacent to it.
 
 front_matter:
   - title: Introduction
+    no_outline_entry: true
+    no_heading_shift: true
+    no_descent: true
     page: /
 
 parts:
   - title: Features
-    subtitle: Language additions, attributes, tooling, and packaging
-    prefixes:
-      - /Features/
+    subtitle: Language additions, tooling, and packaging
+    # DONE
+    landing_page: /Features/
+    chapters:
+      - title: Attributes
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/Attributes-Intro
+      - title: Language Syntax
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/Language/
+      - title: Project Configuration
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/Project-Configuration/
+      - title: Standard Library
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/Standard-Library/
+      - title: GUI Components
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/GUI-Components/
+      - title: Package Management
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/Packages/
+      - title: Advanced Features
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/Advanced/
+      - title: Compiler and IDE
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/Compiler-IDE/
+      - title: 64-bit Compilation
+        no_outline_entry: true
+        no_heading_shift: true
+        page: /Features/64bit
+      - title: Fusion
+        page: /Features/Fusion
 
   - title: Frequently Asked Questions
     subtitle: Status, scope, and how to get help
     page: /FAQ
 
   - title: Tutorials
-    subtitle: Worked examples for CEF, WebView2, and CustomControls
-    prefixes:
-      - /Tutorials/
+    subtitle: Worked code examples for Arrays, CEF, WebView2, and CustomControls
+    # DONE
+    chapters:
+      - title: Arrays
+        no_outline_entry: true
+        no_heading_shift: true
+        pages:
+          - /Tutorials/Arrays
+      # - title: CEF
+        # subtitle: Chromium Embedded Framework
+        # no_outline_entry: true
+        # no_heading_shift: true
+        # pages:
+          # - /Tutorials/CEF/
+      # - title: Custom Controls
+        # no_outline_entry: true
+        # no_heading_shift: true
+        # pages:
+          # - /Tutorials/CustomControls/
+      # - title: WebView2
+        # no_outline_entry: true
+        # no_heading_shift: true      
+        # pages:
+          # - /Tutorials/WebView2/
 
   - title: The Core Language
     subtitle: Statements, operators, and built-in keywords
-    prefixes:
-      - /tB/Core/
+    chapters:
+      - title: Categorical List
+        no_outline_entry: true
+        no_heading_shift: true
+        pages:
+          - /Reference/Categories
+      # - title: Statements
+        # no_outline_entry: true
+        # no_heading_shift: true
+        # nav_pages:
+          # - Reference Section/Statements
+      # - title: Procedures and Functions
+        # no_outline_entry: true
+        # no_heading_shift: true      
+        # pages:
+          # - /Reference/Procedures-and-Functions
+      # - title: Operators
+        # nav_pages:
+          # - Reference Section/Operators
+      # - title: Compiler Constants
+        # pages:
+          # - Compiler-Constants
+      # - title: Attributes
+        # no_outline_entry: true
+        # no_heading_shift: true          
+        # pages:
+          # - /Core/Attributes
+        
 
-  - title: Reference Section
-    subtitle: Alphabetical indexes of statements, operators, and compiler constants, plus the project glossary
+  # - title: Reference Section
+    # subtitle: Alphabetical indexes of statements, operators, and compiler constants, plus the project glossary
     # The live site has a top-level "Reference Section" nav item that groups
     # these alphabetical-index pages. The five Reference/* pages plus the
     # Controls table and the Glossary live at three different URL prefixes;
@@ -202,13 +239,13 @@ parts:
     # the live nav but its permalink is /tB/Core/Attributes, which the Core
     # part above already sweeps up; we leave it there rather than introduce
     # an excludes schema for one page.)
-    prefixes:
-      - /Reference
-      - /tB/Controls
-      - /tB/Gloss
+    # pages:
+      # - /Reference
+      # - /tB/Controls
+      # - /tB/Gloss
 
-  - title: Packages
-    subtitle: The runtime and library packages shipped with twinBASIC
+  # - title: Packages
+    # subtitle: The runtime and library packages shipped with twinBASIC
     # The /tB/Packages/ landing page is the part's foreword; its content
     # (an overview of all built-in packages) sits between the part divider
     # and the first chapter divider, with no running header. Each package
@@ -217,79 +254,79 @@ parts:
     # source H1 stripped by the plugin to avoid the redundancy with the
     # chapter divider's H2), followed by the package's class / module /
     # control pages in URL order.
-    foreword_page: /tB/Packages/
-    chapters:
-      - title: VBA Package
-        subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
+    # foreword_page: /tB/Packages/
+    # chapters:
+      # - title: VBA Package
+        # subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
         # The VBA landing lives at /tB/Packages/VBA (added when Packages
         # was promoted to a top-level nav item), while individual module
         # members keep their legacy /tB/Modules/... URLs.
-        landing_page: /tB/Packages/VBA
-        prefixes:
-          - /tB/Modules/
+        # landing_page: /tB/Packages/VBA
+        # pages:
+          # - /tB/Modules/
 
-      - title: VBRUN Package
-        subtitle: Runtime types for controls, errors, and the property bag
-        landing_page: /tB/Packages/VBRUN/
-        prefixes:
-          - /tB/Packages/VBRUN/
+      # - title: VBRUN Package
+        # subtitle: Runtime types for controls, errors, and the property bag
+        # landing_page: /tB/Packages/VBRUN/
+        # pages:
+          # - /tB/Packages/VBRUN/
 
-      - title: VB Package
-        subtitle: Classic VB6 forms and intrinsic controls
-        landing_page: /tB/Packages/VB/
-        prefixes:
-          - /tB/Packages/VB/
+      # - title: VB Package
+        # subtitle: Classic VB6 forms and intrinsic controls
+        # landing_page: /tB/Packages/VB/
+        # pages:
+          # - /tB/Packages/VB/
 
-      - title: WebView2 Package
-        subtitle: Chromium-based browser control via Microsoft Edge WebView2
-        landing_page: /tB/Packages/WebView2/
-        prefixes:
-          - /tB/Packages/WebView2/
+      # - title: WebView2 Package
+        # subtitle: Chromium-based browser control via Microsoft Edge WebView2
+        # landing_page: /tB/Packages/WebView2/
+        # pages:
+          # - /tB/Packages/WebView2/
 
-      - title: Assert Package
-        subtitle: Test assertions with Exact, Strict, and Permissive comparison
-        landing_page: /tB/Packages/Assert/
-        prefixes:
-          - /tB/Packages/Assert/
+      # - title: Assert Package
+        # subtitle: Test assertions with Exact, Strict, and Permissive comparison
+        # landing_page: /tB/Packages/Assert/
+        # pages:
+          # - /tB/Packages/Assert/
 
-      - title: CustomControls Package
-        subtitle: The WaynesControls suite and its supporting framework
-        landing_page: /tB/Packages/CustomControls/
-        prefixes:
-          - /tB/Packages/CustomControls/
+      # - title: CustomControls Package
+        # subtitle: The WaynesControls suite and its supporting framework
+        # landing_page: /tB/Packages/CustomControls/
+        # pages:
+          # - /tB/Packages/CustomControls/
 
-      - title: CEF Package
-        subtitle: Chromium Embedded Framework browser control
-        landing_page: /tB/Packages/CEF/
-        prefixes:
-          - /tB/Packages/CEF/
+      # - title: CEF Package
+        # subtitle: Chromium Embedded Framework browser control
+        # landing_page: /tB/Packages/CEF/
+        # pages:
+          # - /tB/Packages/CEF/
 
-      - title: WinEventLogLib Package
-        subtitle: Windows Event Log integration
-        landing_page: /tB/Packages/WinEventLogLib/
-        prefixes:
-          - /tB/Packages/WinEventLogLib/
+      # - title: WinEventLogLib Package
+        # subtitle: Windows Event Log integration
+        # landing_page: /tB/Packages/WinEventLogLib/
+        # pages:
+          # - /tB/Packages/WinEventLogLib/
 
-      - title: WinNamedPipesLib Package
-        subtitle: Asynchronous named-pipe framework over IOCP
-        landing_page: /tB/Packages/WinNamedPipesLib/
-        prefixes:
-          - /tB/Packages/WinNamedPipesLib/
+      # - title: WinNamedPipesLib Package
+        # subtitle: Asynchronous named-pipe framework over IOCP
+        # landing_page: /tB/Packages/WinNamedPipesLib/
+        # pages:
+          # - /tB/Packages/WinNamedPipesLib/
 
-      - title: WinServicesLib Package
-        subtitle: Windows Services hosting
-        landing_page: /tB/Packages/WinServicesLib/
-        prefixes:
-          - /tB/Packages/WinServicesLib/
+      # - title: WinServicesLib Package
+        # subtitle: Windows Services hosting
+        # landing_page: /tB/Packages/WinServicesLib/
+        # pages:
+          # - /tB/Packages/WinServicesLib/
 
-      - title: tbIDE Package
-        subtitle: IDE Extensibility --- the addin SDK
-        landing_page: /tB/Packages/tbIDE/
-        prefixes:
-          - /tB/Packages/tbIDE/
+      # - title: tbIDE Package
+        # subtitle: IDE Extensibility --- the addin SDK
+        # landing_page: /tB/Packages/tbIDE/
+        # pages:
+          # - /tB/Packages/tbIDE/
 
-      - title: WinNativeCommonCtls Package
-        subtitle: VB6-compatible Common Controls replacement on top of Win32 ComCtl32
-        landing_page: /tB/Packages/WinNativeCommonCtls/
-        prefixes:
-          - /tB/Packages/WinNativeCommonCtls/
+      # - title: WinNativeCommonCtls Package
+        # subtitle: VB6-compatible Common Controls replacement on top of Win32 ComCtl32
+        # landing_page: /tB/Packages/WinNativeCommonCtls/
+        # pages:
+          # - /tB/Packages/WinNativeCommonCtls/
