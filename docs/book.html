@@ -161,9 +161,13 @@ sitemap: false
 {%- endif -%}
 
 {%- for part in site.data.book.parts -%}
-<article class="part-divider" id="pt-{{ forloop.index }}">
+<article class="part-divider{% if part.no_outline_entry %} silent{% endif %}" id="pt-{{ forloop.index }}">
   <p class="part-number">Part {{ roman[forloop.index0] }}</p>
+{%- if part.no_outline_entry %}
+  <p class="part-title-silent">{{ part.title }}</p>
+{%- else %}
   <h1 id="pt-{{ forloop.index }}-title">{{ part.title }}</h1>
+{%- endif -%}
 {%- if part.subtitle -%}
   {%- assign subtitle_html = part.subtitle | markdownify | remove: '<p>' | remove: '</p>' | strip %}
   <p class="part-subtitle">{{ subtitle_html }}</p>
@@ -210,10 +214,18 @@ sitemap: false
   {%- if part.foreword_page -%}
     {%- assign fw_chapters = site.pages | where: "url", part.foreword_page -%}
     {%- for chapter in fw_chapters -%}
-      {%- include book-chapter-body.html
-          chapter=chapter
-          article_class_override='part-foreword'
-          skip_sub_page_detection=true -%}
+      {%- if part.no_heading_shift -%}
+        {%- include book-chapter-body.html
+            chapter=chapter
+            article_class_override='part-foreword'
+            skip_sub_page_detection=true
+            skip_base_heading_shift=true -%}
+      {%- else -%}
+        {%- include book-chapter-body.html
+            chapter=chapter
+            article_class_override='part-foreword'
+            skip_sub_page_detection=true -%}
+      {%- endif -%}
     {%- endfor -%}
   {%- endif -%}
 
@@ -243,8 +255,12 @@ sitemap: false
       {%- else -%}
         {%- assign chapter_divider_id = 'chd-' | append: ch_entry.title | downcase | replace: ' ', '-' -%}
       {%- endif -%}
-<article class="chapter-divider" id="{{ chapter_divider_id }}">
+<article class="chapter-divider{% if ch_entry.no_outline_entry %} silent{% endif %}" id="{{ chapter_divider_id }}">
+{%- if ch_entry.no_outline_entry %}
+  <p class="chapter-title-silent">{{ ch_entry.title }}</p>
+{%- else %}
   <h2 id="{{ chapter_divider_id }}-title">{{ ch_entry.title }}</h2>
+{%- endif -%}
 {%- if ch_entry.subtitle %}
   <p class="chapter-subtitle">{{ ch_entry.subtitle }}</p>
 {%- endif %}
@@ -281,7 +297,15 @@ sitemap: false
       {%- assign current_index_kind = 'class' -%}
       {%- assign current_index_name = '' -%}
       {%- for chapter in ch_chapters -%}
-        {%- include book-chapter-body.html chapter=chapter extra_heading_shift=true -%}
+        {%- if part.no_heading_shift and ch_entry.no_heading_shift -%}
+          {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true -%}
+        {%- elsif part.no_heading_shift -%}
+          {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true extra_heading_shift=true -%}
+        {%- elsif ch_entry.no_heading_shift -%}
+          {%- include book-chapter-body.html chapter=chapter -%}
+        {%- else -%}
+          {%- include book-chapter-body.html chapter=chapter extra_heading_shift=true -%}
+        {%- endif -%}
       {%- endfor -%}
     {%- endfor -%}
   {%- else -%}
@@ -289,7 +313,11 @@ sitemap: false
     {%- assign current_index_kind = 'class' -%}
     {%- assign current_index_name = '' -%}
     {%- for chapter in chapters -%}
-      {%- include book-chapter-body.html chapter=chapter -%}
+      {%- if part.no_heading_shift -%}
+        {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true -%}
+      {%- else -%}
+        {%- include book-chapter-body.html chapter=chapter -%}
+      {%- endif -%}
     {%- endfor -%}
   {%- endif -%}
 {%- endfor %}

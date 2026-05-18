@@ -27,17 +27,20 @@
 # shape as `_plugins/offlinify.rb`.
 
 require "uri"
-require "set"
 
 module BookHrefRewrite
   EXTERNAL_PREFIXES = ["http://", "https://", "mailto:", "#"].freeze
   # Landing pages live inside a chaptered Part, where the include applies
-  # 1.5a + 1.9-extra-shift to every chapter body. The source H1 therefore
-  # arrives at the post-render HTML as an <h3>, not an <h2>. Stripping
-  # the first <h3> keeps the chapter-divider's H2 as the chapter's sole
+  # 1.5a + 1.9-extra-shift to every chapter body by default. The source H1
+  # therefore arrives at the post-render HTML as an <h3>. Stripping the
+  # first <h3> keeps the chapter-divider's H2 as the chapter's sole
   # outline entry at depth 2 -- without this strip the landing would emit
   # a redundant H3 with the same title text, just one level deeper.
-  FIRST_LANDING_HEADING_REGEX = /<h3\b[^>]*>.*?<\/h3>/m.freeze
+  #
+  # When the chapter or its containing part sets `no_heading_shift`, the
+  # landing's source H1 lands at a different depth (H2 if one shift is
+  # skipped, H1 if both are), so the strip target is computed per
+  # chapter in `build_landing_strip_targets`.
 
   # `url.gsub('/', '-').sub(/^-/, '').sub(/-$/, '')` then prepend "ch-".
   # Matches the chapter anchor scheme established in BOOKPLAN.md 1.5b.
@@ -107,23 +110,37 @@ module BookHrefRewrite
     pages.uniq
   end
 
-  # Set of chapter anchors that correspond to a chaptered part's
-  # `landing_page:`. The plugin strips the first `<h3>...</h3>` (the
-  # source H1 after 1.5a + 1.9 extra shift) from these articles so the
-  # chapter-divider's H2 is the sole outline entry for the chapter at
-  # depth 2 -- without the strip the landing would emit a redundant H3
-  # carrying the same title text one outline level deeper.
-  def self.build_landing_anchors(site)
-    set = Set.new
+  # Map of chapter-anchor -> heading-tag-to-strip for chaptered chapters
+  # with a `landing_page:`. The strip removes a redundant top-of-body
+  # heading whose text duplicates the chapter-divider's H2.
+  #
+  # Skipped entirely when the chapter sets `no_outline_entry: true` --
+  # without a chapter-divider H2, the landing's first heading IS the
+  # chapter's bookmark and must stay.
+  #
+  # The strip target depends on which shifts apply to the chapter body:
+  #   default (both shifts apply):                            strip h3
+  #   ch_entry.no_heading_shift (skip 1.9 extra shift only):  strip h2
+  #   part.no_heading_shift     (skip 1.5a base shift only):  strip h2
+  #   both flags set (no shifts applied):                     strip h1
+  def self.build_landing_strip_targets(site)
+    map = {}
     manifest = site.data["book"]
-    return set unless manifest
+    return map unless manifest
     (manifest["parts"] || []).each do |part|
+      part_skip_base = !!part["no_heading_shift"]
       (part["chapters"] || []).each do |ch|
         next unless ch["landing_page"]
-        set << chapter_anchor(ch["landing_page"], ch["title"])
+        next if ch["no_outline_entry"]
+        ch_skip_extra = !!ch["no_heading_shift"]
+        level = 1
+        level += 1 unless part_skip_base
+        level += 1 unless ch_skip_extra
+        anchor = chapter_anchor(ch["landing_page"], ch["title"])
+        map[anchor] = "h#{level}"
       end
     end
-    set
+    map
   end
 
   # Build the permalink -> chapter-anchor map. Folder-style index
@@ -260,7 +277,7 @@ module BookHrefRewrite
     return if url_to_anchor.empty?
     parent_map = build_anchor_to_parent(site)
     return if parent_map.empty?
-    landing_anchors = build_landing_anchors(site)
+    landing_strip_targets = build_landing_strip_targets(site)
     baseurl = normalize_baseurl(site.config["baseurl"])
 
     start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -273,8 +290,9 @@ module BookHrefRewrite
       body         = Regexp.last_match(3)
       article_end  = Regexp.last_match(4)
 
-      if landing_anchors.include?(anchor_id)
-        stripped_body = body.sub(FIRST_LANDING_HEADING_REGEX, "")
+      if (level = landing_strip_targets[anchor_id])
+        regex = /<#{level}\b[^>]*>.*?<\/#{level}>/m
+        stripped_body = body.sub(regex, "")
         if stripped_body != body
           body = stripped_body
           landings_stripped += 1

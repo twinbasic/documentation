@@ -13,43 +13,98 @@
 #               on a numbered part.
 #
 # `parts` is an ordered list of numbered book parts. Each part has:
-#   title         -- shown on the part divider page and in the global TOC.
-#   subtitle      -- optional second-line descriptor on the divider.
-#   prefixes      -- one or more URL prefixes; book.html gathers every
-#                    page in `site.pages` whose URL contains a prefix,
-#                    sorts by URL, and emits each as a chapter. Used by
-#                    "flat" parts that map directly to a folder of pages.
-#   page          -- single absolute URL alternative to `prefixes`, used
-#                    for one-chapter parts (e.g. the FAQ). Match is
-#                    exact, not contains-based, so a one-page section
-#                    doesn't accidentally sweep in siblings.
-#   foreword_page -- single absolute URL emitted as a `<article
-#                    class="part-foreword">` right after the part
-#                    divider, before any chapter dividers. No running
-#                    header on these pages (CSS suppresses chrome via a
-#                    named page). Used by the Packages part to surface
-#                    the `/tB/Packages/` landing as introductory
-#                    material for the whole section.
-#   chapters      -- ordered list of per-chapter entries (1.9). Each
-#                    chapter has its own divider page and its own
-#                    chapter-level content; the part becomes a
-#                    container for several distinct subjects rather
-#                    than a flat folder. Each entry has:
-#                      title         -- the chapter divider title.
-#                      subtitle      -- optional descriptor.
-#                      landing_page  -- the chapter's intro page; always
-#                                       emitted first within the
-#                                       chapter, and the plugin strips
-#                                       its source H1 so the chapter
-#                                       divider's H2 is the sole
-#                                       outline entry for the chapter.
-#                      prefixes      -- additional URL prefixes for
-#                                       content pages (members, etc.);
-#                                       sorted by URL after the
-#                                       landing. A page that matches
-#                                       a prefix AND is the landing is
-#                                       emitted only once (as the
-#                                       landing).
+#   title             -- shown on the part divider page and in the
+#                        global TOC.
+#   subtitle          -- optional second-line descriptor on the divider.
+#   prefixes          -- one or more URL prefixes; book.html gathers
+#                        every page in `site.pages` whose URL contains a
+#                        prefix, sorts by URL, and emits each as a
+#                        chapter. Used by "flat" parts that map directly
+#                        to a folder of pages.
+#   page              -- single absolute URL alternative to `prefixes`,
+#                        used for one-chapter parts (e.g. the FAQ).
+#                        Match is exact, not contains-based, so a
+#                        one-page section doesn't accidentally sweep in
+#                        siblings.
+#   foreword_page     -- single absolute URL emitted as a `<article
+#                        class="part-foreword">` right after the part
+#                        divider, before any chapter dividers. No
+#                        running header on these pages (CSS suppresses
+#                        chrome via a named page). Used by the Packages
+#                        part to surface the `/tB/Packages/` landing as
+#                        introductory material for the whole section.
+#   no_outline_entry  -- optional truthy. When set, the part divider
+#                        emits its title as `<p class="part-title-silent">`
+#                        instead of an `<h1>`, so PagedJS skips it for
+#                        the PDF outline. The divider page still
+#                        renders visually; only its bookmark entry is
+#                        suppressed. Pair with `no_heading_shift` to
+#                        also collapse the heading depth contributed by
+#                        the divider, so a chapter content's source H1
+#                        keeps its outline slot.
+#   no_heading_shift  -- optional truthy. When set, every chapter body
+#                        in this part skips the 1.5a +1 base shift, so
+#                        the source H1 of each chapter renders as H1
+#                        (not H2). Use together with `no_outline_entry`
+#                        when a flat part's only content is one page
+#                        whose H1 would otherwise duplicate the
+#                        divider's title.
+#   chapters          -- ordered list of per-chapter entries (1.9).
+#                        Each chapter has its own divider page and its
+#                        own chapter-level content; the part becomes a
+#                        container for several distinct subjects rather
+#                        than a flat folder. Each entry has:
+#                          title             -- the chapter divider
+#                                               title.
+#                          subtitle          -- optional descriptor.
+#                          landing_page      -- the chapter's intro
+#                                               page; always emitted
+#                                               first within the
+#                                               chapter, and the plugin
+#                                               strips its source H1
+#                                               so the chapter
+#                                               divider's H2 is the
+#                                               sole outline entry for
+#                                               the chapter.
+#                          prefixes          -- additional URL prefixes
+#                                               for content pages
+#                                               (members, etc.); sorted
+#                                               by URL after the
+#                                               landing. A page that
+#                                               matches a prefix AND is
+#                                               the landing is emitted
+#                                               only once (as the
+#                                               landing).
+#                          no_outline_entry  -- optional truthy. When
+#                                               set, the chapter
+#                                               divider emits its title
+#                                               as
+#                                               `<p class="chapter-title-silent">`
+#                                               instead of an `<h2>`,
+#                                               suppressing the divider
+#                                               bookmark. The divider
+#                                               page still renders.
+#                                               When this flag is set,
+#                                               the landing-page H1
+#                                               strip is skipped (the
+#                                               landing's first heading
+#                                               IS the chapter's
+#                                               bookmark target).
+#                          no_heading_shift  -- optional truthy. When
+#                                               set, this chapter's
+#                                               body skips the 1.9 +1
+#                                               extra shift that
+#                                               chaptered-part chapters
+#                                               normally receive, so
+#                                               its source H1 lands one
+#                                               level shallower. Pair
+#                                               with `no_outline_entry`
+#                                               on the same chapter to
+#                                               collapse the chapter
+#                                               divider's outline slot
+#                                               and promote the
+#                                               content's first heading
+#                                               into it.
 #
 # Index pages (URL ending in `/`) sort before sibling content pages
 # under ASCII lexicographic order, so each part naturally opens with

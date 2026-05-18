@@ -33,6 +33,16 @@
                              index nests one outline level below its
                              chapter-divider H2 rather than appearing
                              as the chapter divider's sibling.
+    skip_base_heading_shift  optional truthy. When set, skips the
+                             standard 1.5a +1 shift entirely so the
+                             chapter's source headings keep their
+                             original depths. Used together with a
+                             part / chapter divider's `no_outline_entry`
+                             flag to keep the content at the outline
+                             level the suppressed divider would have
+                             occupied. 1.6b sub-page and 1.9
+                             `extra_heading_shift` still apply on top
+                             when their conditions are met.
 
   Reads + mutates outer-scope globals:
     current_index_url, current_index_kind, current_index_name -- the
@@ -124,20 +134,28 @@
     `<h7-stub` since there's no real h7; in practice no chapter
     content uses h5 or h6, so the stub never appears, but the rule
     keeps the cascade consistent.
+
+    `skip_base_heading_shift` skips this pass entirely -- used when
+    the containing part or chapter divider is silent
+    (`no_outline_entry`) and the content should occupy the outline
+    level the divider would have used. 1.6b sub-page and 1.9 extra
+    shifts still cascade on top when their conditions hold.
   {%- endcomment -%}
-  {%- assign body = body
-      | replace: '<h6', '<h7-stub'
-      | replace: '</h6>', '</h7-stub>'
-      | replace: '<h5', '<h6'
-      | replace: '</h5>', '</h6>'
-      | replace: '<h4', '<h5'
-      | replace: '</h4>', '</h5>'
-      | replace: '<h3', '<h4'
-      | replace: '</h3>', '</h4>'
-      | replace: '<h2', '<h3'
-      | replace: '</h2>', '</h3>'
-      | replace: '<h1', '<h2'
-      | replace: '</h1>', '</h2>' -%}
+  {%- unless include.skip_base_heading_shift -%}
+    {%- assign body = body
+        | replace: '<h6', '<h7-stub'
+        | replace: '</h6>', '</h7-stub>'
+        | replace: '<h5', '<h6'
+        | replace: '</h5>', '</h6>'
+        | replace: '<h4', '<h5'
+        | replace: '</h4>', '</h5>'
+        | replace: '<h3', '<h4'
+        | replace: '</h3>', '</h4>'
+        | replace: '<h2', '<h3'
+        | replace: '</h2>', '</h3>'
+        | replace: '<h1', '<h2'
+        | replace: '</h1>', '</h2>' -%}
+  {%- endunless -%}
 
   {%- comment -%}
     1.6b: extra heading shift for sub-pages so they nest one level
