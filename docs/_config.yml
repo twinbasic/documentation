@@ -146,10 +146,16 @@ also_build_pdf: true
 # Patterns for files Jekyll produces in _site/ that have no purpose
 # in the offline tree -- Pages / crawler metadata, jekyll-redirect-
 # from output, Windows batch scripts Jekyll picks up from the source
-# directory, and the concatenated `book.html` that exists only to
-# feed `_plugins/pdfify.rb` (which copies it to _site-pdf/ and deletes
-# the _site/ copy). The online _site/ keeps the metadata files;
-# offlinify strips them from _site-offline/.
+# directory, and the concatenated `book.html` that feeds the PDF
+# build. When `also_build_pdf: true` the pdfify plugin captures
+# book.html in memory at :pages, :post_render and drops it from
+# site.pages at :site, :post_render, so `_site/book.html` is never
+# written -- but offlinify's per-page hook fires for book.html
+# before pdfify's removal, so the exclude pattern is what keeps it
+# out of _site-offline/. When `also_build_pdf: false` book.html
+# renders as a normal page on _site/ and the exclude does the same
+# job from a different angle. The online _site/ keeps the metadata
+# files; offlinify strips them from _site-offline/.
 #
 # Patterns are File.fnmatch-style with FNM_PATHNAME, matched against
 # each file's path relative to the site root. `*` does NOT cross
