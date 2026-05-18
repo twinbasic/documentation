@@ -45,6 +45,18 @@
 #                        chrome via a named page). Used by the Packages
 #                        part to surface the `/tB/Packages/` landing as
 #                        introductory material for the whole section.
+#   landing_page      -- single absolute URL emitted first in the
+#                        part's content list, before any prefix- or
+#                        nav_prefix-swept pages. Filtered out from
+#                        prefix matches so it isn't double-emitted.
+#                        Unlike `foreword_page`, it renders as a
+#                        regular page article (running header, normal
+#                        styling) and its source H1 is stripped by the
+#                        plugin so the part divider's H1 stays the
+#                        part's sole top-level outline entry. The
+#                        strip is skipped when `no_outline_entry:` is
+#                        also set -- in that case the landing's first
+#                        heading IS the part's bookmark target.
 #   no_outline_entry  -- optional truthy. When set, the part divider
 #                        emits its title as `<p class="part-title-silent">`
 #                        instead of an `<h1>`, so PagedJS skips it for

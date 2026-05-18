@@ -77,7 +77,9 @@ module BookHrefRewrite
     entries = []
     entries.concat(manifest["front_matter"] || [])
     (manifest["parts"] || []).each do |part|
-      entries << part if part["page"] || part["prefixes"]
+      if part["page"] || part["prefixes"] || part["nav_prefixes"] || part["landing_page"]
+        entries << part
+      end
       if part["foreword_page"]
         entries << { "page" => part["foreword_page"], "title" => part["title"] }
       end
@@ -121,15 +123,30 @@ module BookHrefRewrite
     pages.uniq
   end
 
-  # Map of chapter-anchor -> heading-tag-to-strip for chaptered chapters
-  # with a `landing_page:`. The strip removes a redundant top-of-body
-  # heading whose text duplicates the chapter-divider's H2.
+  # Map of chapter-anchor -> heading-tag-to-strip for landing pages
+  # that need their redundant top-of-body heading removed. Two
+  # flavours of landing carry the same redundancy:
   #
-  # Skipped entirely when the chapter sets `no_outline_entry: true` --
-  # without a chapter-divider H2, the landing's first heading IS the
-  # chapter's bookmark and must stay.
+  #   * Part-level `landing_page:` on a flat part. The part divider's
+  #     H1 carries the part title; the landing's source H1 would
+  #     repeat it one level deeper (H2 after the 1.5a shift, or H1
+  #     when `no_heading_shift` skips the shift).
+  #   * Chapter-level `landing_page:` on a chaptered-part chapter.
+  #     The chapter divider's H2 carries the chapter title; the
+  #     landing's source H1 lands at h3 by default (1.5a + 1.9 extra
+  #     shifts) and is stripped so the chapter divider's H2 is the
+  #     chapter's sole outline entry at depth 2.
   #
-  # The strip target depends on which shifts apply to the chapter body:
+  # The strip is skipped entirely when the carrying entry sets
+  # `no_outline_entry: true` -- without the divider's heading in the
+  # outline, the landing's first heading IS the entry's bookmark
+  # target and must stay.
+  #
+  # Strip target tag for a part-level landing:
+  #   default:                  strip h2
+  #   part.no_heading_shift:    strip h1
+  #
+  # Strip target tag for a chapter-level landing:
   #   default (both shifts apply):                            strip h3
   #   ch_entry.no_heading_shift (skip 1.9 extra shift only):  strip h2
   #   part.no_heading_shift     (skip 1.5a base shift only):  strip h2
@@ -140,6 +157,13 @@ module BookHrefRewrite
     return map unless manifest
     (manifest["parts"] || []).each do |part|
       part_skip_base = !!part["no_heading_shift"]
+
+      if part["landing_page"] && !part["no_outline_entry"]
+        level = part_skip_base ? 1 : 2
+        anchor = chapter_anchor(part["landing_page"], part["title"])
+        map[anchor] = "h#{level}"
+      end
+
       (part["chapters"] || []).each do |ch|
         next unless ch["landing_page"]
         next if ch["no_outline_entry"]
@@ -319,7 +343,7 @@ module BookHrefRewrite
 
       "#{article_open}#{body}#{article_end}"
     end
-    Jekyll.logger.info "BookHrefRewrite:", "rewrote #{rewritten} chapter bodies, stripped #{landings_stripped} landing H3s"
+    Jekyll.logger.info "BookHrefRewrite:", "rewrote #{rewritten} chapter bodies, stripped #{landings_stripped} landing heading(s)"
 
     elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(0)
     Jekyll.logger.info "BookHrefRewrite:", "BookHrefRewriter ran in #{elapsed_ms}ms."

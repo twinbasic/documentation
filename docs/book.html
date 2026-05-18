@@ -193,19 +193,31 @@ sitemap: false
     {%- assign chapters = site.pages | where: "url", part.page -%}
   {%- else -%}
     {%- assign chapters = "" | split: "" -%}
-    {%- if part.prefixes -%}
-      {%- for prefix in part.prefixes -%}
-        {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-        {%- assign chapters = chapters | concat: matched -%}
-      {%- endfor -%}
+    {%- if part.landing_page -%}
+      {%- assign part_landing = site.pages | where: "url", part.landing_page -%}
+      {%- assign chapters = chapters | concat: part_landing -%}
     {%- endif -%}
-    {%- if part.nav_prefixes -%}
-      {%- for np in part.nav_prefixes -%}
-        {%- assign matched = site.pages | where_exp: "p", "p.nav_path contains np" -%}
-        {%- assign chapters = chapters | concat: matched -%}
-      {%- endfor -%}
+    {%- if part.prefixes or part.nav_prefixes -%}
+      {%- assign part_rest = "" | split: "" -%}
+      {%- if part.prefixes -%}
+        {%- for prefix in part.prefixes -%}
+          {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
+          {%- assign part_rest = part_rest | concat: matched -%}
+        {%- endfor -%}
+      {%- endif -%}
+      {%- if part.nav_prefixes -%}
+        {%- for np in part.nav_prefixes -%}
+          {%- assign matched = site.pages | where_exp: "p", "p.nav_path contains np" -%}
+          {%- assign part_rest = part_rest | concat: matched -%}
+        {%- endfor -%}
+      {%- endif -%}
+      {%- assign part_rest = part_rest | sort_by_nav_order -%}
+      {%- if part.landing_page -%}
+        {%- assign part_landing_url = part.landing_page -%}
+        {%- assign part_rest = part_rest | where_exp: "p", "p.url != part_landing_url" -%}
+      {%- endif -%}
+      {%- assign chapters = chapters | concat: part_rest -%}
     {%- endif -%}
-    {%- assign chapters = chapters | sort_by_nav_order -%}
   {%- endif -%}
     {%- comment -%}
       1.6a: state for sub-page detection. Index pages (URL ending in `/`)
