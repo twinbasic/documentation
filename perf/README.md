@@ -1045,3 +1045,32 @@ total:    130.4s
 (The total includes puppeteer launch + page nav overhead the
 harness elides, so it reads a few seconds higher than the harness's
 105 s headline.)
+
+## Restoring live render progress
+
+Dropping `pagedjs-cli` (above) quietly dropped its ora-driven render
+spinner along with the rest of the CLI. The terminal goes silent for
+the full ~50 s render phase -- on a 200 s build the first quarter
+looks like the process is hung.
+
+Restored via `docs/lib/progress-handler.js`: a small `Paged.Handler`
+subclass that emits a `[render-progress] page=N elapsed=Ns` line
+from `afterPageLayout`. `render-book.mjs` listens on
+`page.on('console')` and re-renders the line as a `\r`-overwritten
+TTY status (`rendering: 234 pages (12.4s)`), or every 100 pages on
+its own line when stdout is piped (CI / log files). The live line
+is cleared just before the final `render: 53.5s (1638 pages)`
+summary is printed.
+
+The handler is a separate in-page script rather than inlined into
+`render-book.mjs` because `addScriptTag({ path })` loads it via
+file:// into the headless page -- it has to be a real file. It's
+structurally parallel to `perf/timing-handler.js`, which uses the
+same hook but additionally retains per-page detail on
+`window.__pagedTiming` for offline analysis. The production version
+stays minimal -- just the log line.
+
+The generate phase is still silent. Open follow-up: `page.pdf()` is
+a single opaque CDP call, so generate progress has to come either
+from streaming the result via `transferMode: 'ReturnAsStream'` +
+chunked `IO.read`, or from a wall-clock heartbeat. Pick pending.

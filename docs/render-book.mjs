@@ -71,10 +71,13 @@ if (!existsSync(inputPath)) {
   process.exit(1);
 }
 
-const pagedScriptPath = resolve(__dirname, 'lib', 'paged.browser.js');
-if (!existsSync(pagedScriptPath)) {
-  console.error(`paged.js bundle not found at ${pagedScriptPath}`);
-  process.exit(1);
+const pagedScriptPath    = resolve(__dirname, 'lib', 'paged.browser.js');
+const progressScriptPath = resolve(__dirname, 'lib', 'progress-handler.js');
+for (const p of [pagedScriptPath, progressScriptPath]) {
+  if (!existsSync(p)) {
+    console.error(`required file not found: ${p}`);
+    process.exit(1);
+  }
 }
 for (const s of additionalScripts) {
   const p = resolve(process.cwd(), s);
@@ -112,6 +115,32 @@ try {
     console.error('[request failed]', req.url(), f && f.errorText);
   });
 
+  // Live render progress. progress-handler.js emits one line per page;
+  // we re-render that as an in-place `\r`-overwritten status on a TTY,
+  // or every 100 pages on its own line when stdout is piped (CI, logs).
+  // Cleared before the final `render: ...` summary is printed.
+  const isTty = !!process.stdout.isTTY;
+  let progressLineLen = 0;
+  const clearProgress = () => {
+    if (isTty && progressLineLen > 0) {
+      process.stdout.write('\r' + ' '.repeat(progressLineLen) + '\r');
+      progressLineLen = 0;
+    }
+  };
+  page.on('console', (msg) => {
+    const t = msg.text();
+    if (!t.startsWith('[render-progress]')) return;
+    const m = t.match(/page=(\d+)\s+elapsed=([\d.]+)/);
+    if (!m) return;
+    const line = `rendering: ${m[1]} pages (${m[2]}s)`;
+    if (isTty) {
+      process.stdout.write('\r' + line.padEnd(progressLineLen, ' '));
+      progressLineLen = line.length;
+    } else if (parseInt(m[1], 10) % 100 === 0) {
+      process.stdout.write(line + '\n');
+    }
+  });
+
   await page.emulateMediaType('print');
   await page.goto(pathToFileURL(inputPath).href, { waitUntil: 'load' });
   await page.evaluate(() => {
@@ -120,6 +149,7 @@ try {
   });
 
   await page.addScriptTag({ path: pagedScriptPath });
+  await page.addScriptTag({ path: progressScriptPath });
   for (const s of additionalScripts) {
     await page.addScriptTag({ path: resolve(process.cwd(), s) });
   }
@@ -143,6 +173,7 @@ try {
   });
   await page.waitForSelector('.pagedjs_pages');
   const pageCount = await page.evaluate(() => document.querySelectorAll('.pagedjs_pages > .pagedjs_page').length);
+  clearProgress();
   console.log(`render:   ${fmtMs(Date.now() - tRender)}  (${pageCount} pages)`);
 
   // Generate -- meta extraction, outline walk, page.pdf().
