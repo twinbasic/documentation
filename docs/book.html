@@ -347,9 +347,26 @@ sitemap: false
     {%- assign current_index_url = '' -%}
     {%- assign current_index_kind = 'class' -%}
     {%- assign current_index_name = '' -%}
+    {%- comment -%}
+      The part landing is the part's intro content, not an index for
+      its sibling chapters -- pass `skip_sub_page_detection=true` so
+      its URL ending in `/` doesn't make subsequent top-level chapters
+      look like its sub-pages. Sub-page detection still kicks in for
+      the per-chapter folder indexes that arrive later in the
+      iteration (each gathered together with its leaves by
+      `sort_by_nav_order`'s folder grouping).
+    {%- endcomment -%}
     {%- for chapter in chapters -%}
-      {%- if part.no_heading_shift -%}
+      {%- assign is_part_landing = false -%}
+      {%- if part.landing_page and chapter.url == part.landing_page -%}
+        {%- assign is_part_landing = true -%}
+      {%- endif -%}
+      {%- if part.no_heading_shift and is_part_landing -%}
+        {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true skip_sub_page_detection=true -%}
+      {%- elsif part.no_heading_shift -%}
         {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true -%}
+      {%- elsif is_part_landing -%}
+        {%- include book-chapter-body.html chapter=chapter skip_sub_page_detection=true -%}
       {%- else -%}
         {%- include book-chapter-body.html chapter=chapter -%}
       {%- endif -%}
