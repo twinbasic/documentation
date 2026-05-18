@@ -23,7 +23,7 @@
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
 //                    [--detach-pages] [--instrument] [--time-hooks]
-//                    [--incremental]
+//                    [--incremental] [--chrome-outline]
 //
 // --detach-pages also injects detach-pages.js -- a Paged.Handler that
 // hides each completed page from the layout tree -- to test whether
@@ -34,6 +34,14 @@
 // second), but the resulting file is the size of Chrome's raw PDF +
 // outline (~3x bigger than the pdf-lib output, which deflate-compresses
 // content streams during its full re-emit).
+//
+// --chrome-outline asks Chrome itself to emit the /Outlines tree (CDP's
+// generateDocumentOutline, M122+, requires --generate-pdf-document-outline
+// at launch -- the harness always passes it). Skips the parseOutline DOM
+// walk and the downstream setOutline injection; both pdf-lib and the
+// incremental path see outline=[] and write nothing, leaving Chrome's
+// outline intact. Chrome walks h1..h6 unconditionally -- no equivalent
+// of our --outline-tags h1..h4 filter.
 //
 // Defaults:
 //   input  : ../docs/_site-pdf/book.html (relative to this file)
@@ -50,7 +58,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 // Deep-import the same outline + post-process helpers pagedjs-cli runs in
 // its own pdf() pipeline. Going via a relative path bypasses the package's
 // "exports" field, which only re-exports the Printer class.
@@ -70,6 +78,7 @@ let detachPages = false;
 let instrument = false;
 let timeHooks = false;
 let incremental = false;
+let chromeOutline = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -80,6 +89,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--instrument') instrument = true;
   else if (a === '--time-hooks') timeHooks = true;
   else if (a === '--incremental') incremental = true;
+  else if (a === '--chrome-outline') chromeOutline = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -129,9 +139,13 @@ const browser = await puppeteer.launch({
   // Match pagedjs-cli's launch args (printer.js). --allow-file-access-from-files
   // is critical: without it paged.js's stylesheet fetch() rejects with
   // ProgressEvent under file://. pagedjs-cli sets it via cli.js:67.
+  //
+  // --export-tagged-pdf and --generate-pdf-document-outline are added by
+  // puppeteer 22+ unconditionally in ChromeLauncher.defaultArgs(), so
+  // we don't need to repeat them here. --chrome-outline below relies on
+  // the latter being present at launch.
   args: [
     '--disable-dev-shm-usage',
-    '--export-tagged-pdf',
     '--allow-file-access-from-files',
     '--enable-precise-memory-info',
   ],
@@ -238,8 +252,11 @@ try {
     return m;
   });
 
+  // Skip the parseOutline DOM walk when Chrome's about to emit the
+  // outline itself -- we'd just be doing redundant work whose result
+  // would get overwritten by Chrome's /Outlines anyway.
   const tParseOutlineStart = Date.now();
-  const outline = await parseOutline(page, outlineTags);
+  const outline = chromeOutline ? [] : await parseOutline(page, outlineTags);
   const parseOutlineMs = Date.now() - tParseOutlineStart;
 
   const tPdfStart = Date.now();
@@ -248,6 +265,13 @@ try {
     displayHeaderFooter: false,
     preferCSSPageSize:   true,
     margin: { top: 0, right: 0, bottom: 0, left: 0 },
+    // outline:true makes Chrome walk h1..h6 once and emit a /Outlines
+    // tree with page-coord destinations. Implies tagged:true (puppeteer
+    // enforces this) and requires --generate-pdf-document-outline at
+    // launch (set above). When on we skip the parseOutline+setOutline
+    // injection below -- that's the whole point of the flag, and leaving
+    // both on would have our setOutline overwrite Chrome's /Outlines.
+    ...(chromeOutline ? { outline: true, tagged: true } : {}),
   });
   const pdfMs = Date.now() - tPdfStart;
 
@@ -278,8 +302,15 @@ try {
     finalPdf = bytes;
     processBreakdown = { incrementalMs: incMs, ...stats };
   } else {
+    // pdf-lib's defaults are catastrophically slow: parseSpeed=Slow (100
+    // objects/tick) and objectsPerTick=50 both yield to the event loop
+    // between batches, turning a ~2s load into ~36s on a 52 MB PDF (~34s
+    // pure idle in the cpuprofile). Override to Fastest/Infinity so the
+    // "baseline" we report reflects the library's actual CPU cost, not
+    // an artefact of yielding cadence. The harness has no parallel work
+    // to make space for, so cooperative yielding is pure overhead here.
     const tLoadStart = Date.now();
-    const pdfDoc = await PDFDocument.load(rawPdf);
+    const pdfDoc = await PDFDocument.load(rawPdf, { parseSpeed: ParseSpeeds.Fastest });
     const loadMs = Date.now() - tLoadStart;
 
     setMetadata(pdfDoc, meta);
@@ -289,7 +320,7 @@ try {
     const setOutlineMs = Date.now() - tSetOutlineStart;
 
     const tSaveStart = Date.now();
-    finalPdf = await pdfDoc.save();
+    finalPdf = await pdfDoc.save({ objectsPerTick: Infinity });
     const saveMs = Date.now() - tSaveStart;
 
     processBreakdown = { loadMs, setOutlineMs, saveMs };

@@ -50,7 +50,7 @@ DevTools-compatible trace is a few lines.
 
 | File | Role |
 | --- | --- |
-| `package.json` | Pins `puppeteer` + `pagedjs-cli` + `patch-package`. |
+| `package.json` | Pins `puppeteer` + `pagedjs-cli`. |
 | `measure.mjs` | Puppeteer harness. Mirrors pagedjs-cli's own `Printer.pdf()` flow, with optional CPU profiling, in-page handler injection, and DOM-accessor instrumentation. |
 | `timing-handler.js` | `Paged.Handler` that records per-page wall time + heap into `window.__pagedTiming` and streams a line per page to the console. Always injected. |
 | `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree (registered against `finalizePage`). The fix. Injected by `--detach-pages` and by `docs/book.bat`. |
@@ -58,6 +58,11 @@ DevTools-compatible trace is a few lines.
 | `time-hooks.js` | Wraps every task registered to `chunker.hooks.*` and `polisher.hooks.*` with a wall-clock timer. Tells you which handler's hook method is eating render time, per page. Injected by `--time-hooks`. |
 | `incremental-pdf.mjs` | Replaces the pdf-lib load+save roundtrip with a PDF 1.7 §7.5.6 incremental update appended to Chrome's bytes. Used by `--incremental`. |
 | `test-incremental.mjs` | Smoke test for `incremental-pdf.mjs`: renders a tiny probe page, runs the writer, verifies the result parses (via pdf-lib re-load) and that outline + metadata land correctly. |
+| `profile-load.mjs` | Standalone profiler for `PDFDocument.load`. Runs the load on a chosen PDF with a chosen `parseSpeed`; intended to be run under `node --cpu-prof`. |
+| `profile-roundtrip.mjs` | Times the full pdf-lib `load + save` roundtrip across the three `parseSpeed` / `objectsPerTick` settings on a chosen PDF. |
+| `probe-chrome-outline.mjs` | Renders a synthetic multi-level h1..h6 document via Chrome's `outline: true` and dumps the resulting `/Outlines` tree. Quick check that the CDP flag is wired correctly in the local Chromium / puppeteer combo. |
+| `compare-outlines.mjs` | Diffs two PDFs' `/Outlines` trees by `(depth, title, target page)`. Used to verify whether Chrome's native outline matches the injected one. |
+| `probe-outline-exclusions.mjs` | Tests which per-element attributes / styles (aria-hidden, role=presentation, hidden, display:none, CSS bookmark-level, ...) make Chrome drop a heading from its outline. |
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
 | `run.bat` | Windows wrapper. Installs deps on first run, then invokes `node measure.mjs`. |
 | `results/` | Output, one timestamped subfolder per run. Git-ignored. |
@@ -102,6 +107,7 @@ run.bat --cpu-profile                     # CPU-profile the render phase
 run.bat --instrument                      # count + time DOM-accessor calls
 run.bat --time-hooks                      # per-task timing of every chunker/polisher hook
 run.bat --incremental                     # process via incremental update instead of pdf-lib roundtrip
+run.bat --chrome-outline                  # let Chrome emit /Outlines (skip parseOutline + setOutline)
 ```
 
 Flags compose. The CPU profile lands as `render.cpuprofile`
@@ -396,7 +402,7 @@ bundle patch** -- a 20-line `Paged.Handler` subclass that sets
 `pageElement.style.display = 'none'` in `afterPageLayout` and
 restores them at `afterRendered` before `page.pdf()` runs. The
 existing `--additional-script` mechanism is exactly the extension
-point this needs, so no fork or patch-package diff is required.
+point this needs, so no fork required.
 
 Wired into production in `docs/book.bat`:
 
@@ -407,12 +413,6 @@ npx pagedjs-cli _site-pdf\book.html -o _pdf\book.pdf ^
 ```
 
 And into the perf harness via the `--detach-pages` flag.
-
-The `patches/` infrastructure (patch-package wired into both
-`docs/package.json` and `perf/package.json`, sharing a single
-`/patches` directory at the repo root) is left in place even
-though we didn't use it -- it's the obvious fallback if a future
-optimisation actually needs to modify the bundle.
 
 ### Results
 
@@ -677,3 +677,300 @@ replace the `pagedjs-cli` invocation in `book.bat` with a thin Node
 driver -- essentially `measure.mjs` minus the timing scaffolding --
 that uses `puppeteer` + `incremental-pdf.mjs` directly. The harness
 already proves this is a ~30-line script.
+
+## Profiling pdf-lib's load: 79 % was idle yielding
+
+The "Fix applied: detach-pages" section above showed the pdf-lib
+roundtrip at 39.7 s for the process phase. After profiling, **most
+of that wasn't pdf-lib doing work -- it was pdf-lib yielding to the
+event loop**.
+
+`PDFDocument.load` defaults to `parseSpeed: ParseSpeeds.Slow = 100`
+objects per tick, with an `await waitForTick()` between batches.
+`pdfDoc.save` does the same with `objectsPerTick: 50`. For our
+~50k-object PDF that's ~500 yields during load, ~1000 during save,
+each costing ~5-10 ms of pure idle on a quiet system.
+
+A CPU profile of `PDFDocument.load` running standalone on the 52 MB
+Chrome output (`node --cpu-prof`, fresh process, no concurrent work):
+
+```
+samples: 3441   duration: 6.09s   us/sample: 1770
+
+   self_ms   self_%   function  @  source
+   -------   ------   ----------------------------------------------
+   4766.25   78.92%   (idle)                  (V8 idle wait)
+    251.41    4.16%   PDFRef.of               PDFRef.js:34
+    196.53    3.25%   (garbage collector)
+    116.85    1.93%   (program)
+     63.74    1.06%   PDFObjectParser.parseString
+     46.03    0.76%   BaseParser.parseRawInt
+     38.95    0.64%   BaseParser.parseRawNumber
+     35.41    0.59%   PDFObjectParser.parseNumberOrRef
+```
+
+On a 6 s load, **4.77 s is V8 sitting on its hands** between
+scheduled batches. Actual parsing self-time is well under a second;
+the rest is GC and V8 internals.
+
+Why such a cautious default? pdf-lib targets the browser too, where
+locking the main thread for 30+ s to parse a big PDF would freeze the
+page. In Node, with the harness having no other work to do, yielding
+is pure overhead.
+
+### Wins from `parseSpeed: Fastest` (objects/tick = Infinity)
+
+Three-variant roundtrip on the same 52 MB PDF, fresh process each
+time (`profile-roundtrip.mjs`):
+
+| parseSpeed / objectsPerTick | load   | save  | total   |
+| ---                         | ---    | ---   | ---     |
+| **Slow / 50 (default)**     | 36.7 s | 3.8 s | 40.5 s  |
+| Fast / 1500                 | 3.0 s  | 2.6 s | 5.6 s   |
+| **Fastest / Infinity**      | **2.0 s** | **2.7 s** | **4.7 s** |
+
+`save` is barely affected by `objectsPerTick` -- its CPU work
+dominates the yield overhead -- but `load` collapses by **18x**.
+
+### Wired into the harness
+
+`measure.mjs`'s default pdf-lib roundtrip path now passes
+`parseSpeed: ParseSpeeds.Fastest` and `objectsPerTick: Infinity`.
+End-to-end on the book (`--detach-pages`, default = pdf-lib path,
+no `--incremental`):
+
+| Phase    | Old pdf-lib defaults | Fast knobs | Δ |
+| -------- | -------------------- | ---------- | --- |
+| render   |  50.9 s   |  45.7 s   | noise |
+| generate |  60.2 s   |  52.4 s   | noise (Chrome variance) |
+| process  |  39.7 s   |   7.8 s   | **-31.9 s (-80 %)** |
+| **total**| **150.7 s** | **105.9 s** | **-44.8 s (-30 %)** |
+
+Result: the pdf-lib roundtrip is now **competitive with the
+incremental writer** (105.9 s vs 110.3 s total) **while still
+producing a 17 MB output** (vs 53 MB for incremental, because
+`save()` flate-compresses content streams as it re-emits them).
+
+### What this reinterprets
+
+The "Fix applied: detach-pages" table is still accurate, but its
+39.7 s process column reflects pdf-lib's default tick-yielding, not
+its actual work. A reader benchmarking pdf-lib on its merits should
+compare against the **7.8 s** number, not 40 s.
+
+The incremental writer (above) still produces the fastest process
+phase by far (0.25 s) and remains useful when sub-second matters
+more than file size. But for the common case the single-line
+`parseSpeed: Fastest` tweak is the immediate win.
+
+## Chromium `Page.printToPDF` knob survey
+
+While we were here, we audited which Chromium / CDP options affect
+PDF output. Partly to confirm "is there something Chrome could
+compress for us?" (no), partly because one option turned out to be
+a real win: `outline: true`.
+
+Verified against `devtools-protocol@0.0.1312386` and
+`puppeteer-core@22.15.0` (both shipped under `perf/node_modules`).
+
+### `outline: true` -- Chrome can emit /Outlines itself
+
+CDP's `Page.printToPDF` accepts `generateDocumentOutline: true` since
+Chrome M122 (Feb 2024). Puppeteer exposes it as `outline: true` since
+v22.x. Behaviour:
+
+- Chrome walks the rendered DOM's `<h1>..<h6>` once and emits a
+  /Outlines tree with **page+coords destinations** (`[N 0 R /XYZ x y z]`)
+  instead of named destinations.
+- Implies `tagged: true` (the outline is built from the accessibility
+  tree). Puppeteer enforces this in `util.ts:395`.
+- Requires the launch flag `--generate-pdf-document-outline`. The
+  harness's `puppeteer.launch` args include it; `pagedjs-cli`'s
+  default args do *not*, so production integration would need a
+  launch-arg change too.
+- **No tag-level filter**: walks `h1..h6` unconditionally. There is
+  no equivalent of our `--outline-tags h1,h2,h3,h4` knob.
+
+Measured cost on the 1638-page book with `--chrome-outline --detach-pages`:
+
+| Phase    | injected outline | Chrome outline | Δ |
+| -------- | ---------------- | -------------- | --- |
+| generate |  52.4 s   |  53.8 s   | +1.4 s (Chrome walking the headings) |
+| process  |   7.8 s   |   5.3 s   | -2.5 s (no outline objects to save) |
+| **total**| **105.9 s** | **107.8 s** | +1.9 s |
+
+Total is roughly a wash -- one cost shifts to another. The real
+benefit is **fewer moving parts**: no `parseOutline`, no
+`setOutline`, no incremental-writer outline objects, just metadata.
+
+### Does Chrome's outline match the injected one?
+
+We diffed the two outputs on the 1638-page book (`compare-outlines.mjs`):
+`results/pdf-lib-fastest/book.pdf` (injected, 1773 entries from
+`--outline-tags h1..h4`) versus `results/chrome-outline-on/book.pdf`
+(Chrome's, 6023 entries total).
+
+Naïvely filtering Chrome's tree to "depth ≤ 3" to approximate our
+h1..h4 view gives 1820 entries -- close to 1773 in count, but **not
+equivalent** structurally. Two reasons:
+
+1. **Chrome walks all h1..h6 unconditionally.** First concrete
+   divergence is at the "Alias Types" section: the source
+   ([book.html:302](docs/_site-pdf/book.html:302)) has
+   `<h5 id="ch-Features-Language-Alias-Types-example">Example</h5>`
+   immediately after the h3 "Alias Types". Our `--outline-tags`
+   filter correctly drops it; Chrome includes it. Every such
+   insertion shifts the rest of the pre-order walk.
+2. **Chrome's tree depth ≠ HTML heading level.** Chrome collapses
+   skipped levels: an `<h5>` directly under an `<h3>` becomes
+   depth+1 (not depth+2). So "filter to depth ≤ 3" does *not*
+   extract "h1..h4 only" -- it extracts the first four levels of
+   *nesting*, which can be any mix of h1..h6 depending on context.
+
+Numerical summary:
+
+| metric                                  | value |
+| ---                                     | --- |
+| injected entries                        | 1773 |
+| Chrome entries (h1..h6, all depths)     | 6023 |
+| Chrome entries filtered to depth ≤ 3    | 1820 |
+| pre-order matches (vs injected)         | 27 / 1820 |
+| same title+depth, different page        | 10 |
+
+The 10 "page-only mismatches" are the smoking gun for structural
+drift: same heading title in both outlines but pointing at different
+sections of the book. The deltas grow as the walk progresses --
+e.g. "Properties" at A=p956 vs B=p883 (Δ = -73 pages), and similar
+near the end of the book. By that point Chrome and our outline are
+literally talking about different headings that happen to share a
+name (every class in the reference docs has its own "Properties"
+sub-heading).
+
+### Selectively excluding headings from Chrome's outline
+
+Chrome's outline is built from the accessibility tree (puppeteer
+enforces `tagged: true` alongside `outline: true` for this reason).
+Anything that hides a heading from a11y excludes it from the outline.
+Tested matrix (`probe-outline-exclusions.mjs`):
+
+**Excluded** -- the heading is dropped from `/Outlines`:
+
+| attribute on the heading or an ancestor | clean? | notes |
+| --- | --- | --- |
+| `role="presentation"`     | yes | Removes heading semantic only. Visual rendering, DOM, anchor `#id` targets all unchanged. **The cleanest knob.** |
+| `role="none"`             | yes | Alias of `presentation`. |
+| `role="generic"`          | yes | Any non-heading role works. |
+| `aria-hidden="true"`      | -   | Excludes the whole subtree from a11y. Heavier -- also affects screen readers. |
+| `hidden` attribute        | no  | Also visually hides. |
+| `display: none`           | no  | Same. |
+| `visibility: hidden`      | no  | Same. |
+
+**No effect** -- Chrome ignores these:
+
+| attribute            | why |
+| ---                  | --- |
+| `bookmark-level: none` (CSS GCPM) | Chrome doesn't implement GCPM. |
+
+**Reverse direction.** `<div role="heading" aria-level="3">Foo</div>`
+*adds* an h3-level entry to Chrome's outline despite not being an
+HTML heading. Useful if you ever want an outline entry that doesn't
+look like a heading on screen.
+
+**Implication for our pipeline.** The "Chrome's outline is too
+noisy" objection above isn't actually structural -- it's one CSS
+selector away from being fixed. A preprocessor step that adds
+`role="presentation"` to every `<h5>` and `<h6>` in the Jekyll
+build would let Chrome's `outline: true` produce the same h1..h4
+view we want today. We haven't done that step yet, so we still
+ship the injected outline -- but the path from "Chrome's outline
+works for measurement only" to "Chrome's outline ships in
+production" is now ~5 lines of Jekyll plugin code, not a
+fundamental redesign.
+
+### Did pagedjs-cli ever try Chrome's outline?
+
+No. Searched (`gh api search/issues`, `gh api search/code`, and
+web search):
+
+- `repo:pagedjs/pagedjs-cli outline` -- 2 hits, both unrelated
+  (TOC page-number bug, rowspan/colspan).
+- `org:pagedjs chromium outline` -- 1 hit (the same TOC bug).
+- `"pagedjs printToPDF outline"` -- 0 hits.
+- `generateDocumentOutline org:pagedjs` (code search) -- 0 hits.
+- `"--generate-pdf-document-outline" org:pagedjs` -- 0 hits.
+
+Timing: Chrome's `generateDocumentOutline` shipped M122 (Feb 2024);
+[pagedjs-cli](https://github.com/pagedjs/pagedjs-cli)'s last
+meaningful change is May 2024 (Docker hyphenation). The project
+is in near-maintenance mode (21 stars). The feature post-dates
+active development, and the unfilterable-outline regression
+(without the `role="presentation"` workaround above) would have
+been a real concern for existing `--outline-tags` users -- so
+even a casual look would probably have ended in "we'll keep
+injecting for now". Nobody appears to have looked.
+
+### What's not exposed in CDP (we checked)
+
+- **No stream-compression flag.** Chromium uses Skia's `SkPDF`,
+  which writes content streams uncompressed. There's a C++-only
+  `SkPDF::Metadata::fPDFA` setting; no CDP plumbing for it. This is
+  *why* `save()` re-emission shrinks 52 MB → 17 MB.
+- **No object-streams flag, no font subsetting / image downsampling
+  knobs, no PDF/A mode.** Skia subsets fonts automatically per face.
+- **No parallelism knob.** Generate's 60 s in `page.pdf()` is
+  single-threaded Skia walking the layout tree.
+
+### What might still be worth trying
+
+- **`tagged: false`** -- drops the StructTreeRoot, saving ~10-20 %
+  of generate time and file size. Loses accessibility *and* the
+  Chrome outline (tagging is a prerequisite). Probably a no for
+  our use; documenting for completeness.
+- **`pageRanges` sharding** -- run `page.pdf()` N times with
+  disjoint ranges on parallel browser pages. Each shard serialises
+  only its slice and they run concurrently. Biggest unused lever
+  for the 60 s generate phase, but requires a PDF concatenation
+  post-pass (pdf-lib can do it).
+- **`transferMode: 'ReturnAsStream'`** -- puppeteer already
+  hard-codes it. Without it Chrome buffers + base64-encodes the
+  whole PDF into one JSON message; very slow and memory-heavy.
+
+## Where this leaves us
+
+The full menu of fixes, all measured against the original 207 s
+baseline:
+
+| Configuration                          | render | generate | process | total | size |
+| ---                                    | ---    | ---      | ---     | ---   | ---  |
+| original                               | 103.8s | 63.6s    | 39.6s   | 207.0s | 17 MB |
+| + detach-pages                         |  50.9s | 60.2s    | 39.7s   | 150.7s | 17 MB |
+| + detach + **parseSpeed:Fastest**      |  45.7s | 52.4s    |  7.8s   | **105.9s** | **17 MB** |
+| + detach + incremental writer          |  49.2s | 60.9s    |  0.25s  | 110.3s | 53 MB |
+| + detach + Chrome outline              |  48.7s | 53.8s    |  5.3s   | 107.8s | 17 MB |
+
+**Practical winner: `+ detach + parseSpeed:Fastest`.** Half the
+original wall time, same output size, one-line change. Ship this
+first regardless of what else gets layered on top.
+
+The incremental writer is still the fastest process phase (0.25 s)
+and remains the right answer if file size doesn't matter and
+sub-second process does.
+
+Chrome's outline is the simplest *architecture* (no parseOutline,
+no setOutline, no incremental outline objects -- just metadata),
+and the "unfilterable h1..h6" objection turns out to be a
+preprocessor change away from being solved: tag every `<h5>` /
+`<h6>` in the Jekyll build with `role="presentation"` and Chrome's
+outline collapses to the same h1..h4 view we want today. With that
+change, the totals look like:
+
+| Configuration                                     | render | generate | process | total | size |
+| ---                                               | ---    | ---      | ---     | ---   | ---  |
+| + detach + parseSpeed:Fastest *(today)*           |  45.7s | 52.4s    |  7.8s   | 105.9s | 17 MB |
+| + detach + parseSpeed:Fastest + Chrome outline    |  48.7s | 53.8s    |  5.3s   | 107.8s | 17 MB |
+| *(latter, with role="presentation" on h5/h6 -- pending)* | | | | | |
+
+The compound win isn't in wall time -- it's in deleting code:
+`parseOutline`, `setOutline`, and the entire outline branch of the
+incremental writer all go away. Worth it if/when someone wants to
+trim the surface area.
