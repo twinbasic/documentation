@@ -59,11 +59,12 @@ import { dirname, resolve, join } from 'node:path';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { PDFDocument, ParseSpeeds } from 'pdf-lib';
-// Deep-import the same outline + post-process helpers pagedjs-cli runs in
-// its own pdf() pipeline. Going via a relative path bypasses the package's
-// "exports" field, which only re-exports the Printer class.
-import { parseOutline, setOutline } from './node_modules/pagedjs-cli/src/outline.js';
-import { setMetadata }              from './node_modules/pagedjs-cli/src/postprocesser.js';
+// Shared with docs/render-book.mjs -- the helpers and the paged.js
+// bundle live under docs/lib/ now that we've dropped the pagedjs-cli
+// dependency. Importing from there guarantees the harness measures the
+// same code that production runs.
+import { parseOutline, setOutline } from '../docs/lib/outline.mjs';
+import { setMetadata }              from '../docs/lib/postprocesser.mjs';
 import { applyOutlineAndMetadataIncremental } from './incremental-pdf.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -104,7 +105,7 @@ if (!existsSync(inputPath)) {
   process.exit(1);
 }
 
-const pagedScriptPath  = resolve(__dirname, 'node_modules', 'pagedjs-cli', 'dist', 'browser.js');
+const pagedScriptPath  = resolve(__dirname, '..', 'docs', 'lib', 'paged.browser.js');
 const handlerPath      = resolve(__dirname, 'timing-handler.js');
 const detachPagesPath  = resolve(__dirname, 'detach-pages.js');
 const instrumentPath   = resolve(__dirname, 'instrument-flush-ops.js');

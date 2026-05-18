@@ -1,17 +1,21 @@
 # PDF render profiling
 
-The book PDF is built by piping `_site-pdf/book.html` through
-`pagedjs-cli` (see `docs/book.bat`). As the book has grown we've
-noticed **quadratic** wall-clock behaviour: time-per-page goes up as
-later pages are laid out, so doubling the page count roughly
-quadruples the total render time.
+The book PDF is built by rendering `_site-pdf/book.html` through
+paged.js + headless Chromium + pdf-lib (see `docs/book.bat`, which
+invokes `docs/render-book.mjs`). The pipeline was historically driven
+by `pagedjs-cli`; we replaced that with our own thin driver after the
+investigations in this folder, so we control pdf-lib's parseSpeed
+without patching upstream (see "Profiling pdf-lib's load" below).
+As the book has grown we noticed **quadratic** wall-clock behaviour:
+time-per-page goes up as later pages are laid out, so doubling the
+page count roughly quadruples the total render time.
 
 This folder holds the tools used to investigate that.
 
 ## The plan
 
-`pagedjs-cli` is a thin Puppeteer wrapper around three phases, each
-of which `cli.js` shows as its own spinner:
+The render pipeline has three phases, matching what `pagedjs-cli`
+historically showed as its three spinners:
 
 1. **Rendering** -- `PagedPolyfill.preview()` does all the per-page
    layout work inside headless Chromium.
@@ -50,8 +54,8 @@ DevTools-compatible trace is a few lines.
 
 | File | Role |
 | --- | --- |
-| `package.json` | Pins `puppeteer` + `pagedjs-cli`. |
-| `measure.mjs` | Puppeteer harness. Mirrors pagedjs-cli's own `Printer.pdf()` flow, with optional CPU profiling, in-page handler injection, and DOM-accessor instrumentation. |
+| `package.json` | Pins `puppeteer` + `pdf-lib` + `html-entities` (the same direct deps `docs/` uses). |
+| `measure.mjs` | Puppeteer harness. Drives the same flow as `docs/render-book.mjs` (loads the vendored paged.js bundle, runs `PagedPolyfill.preview()`, calls `page.pdf()`, then either the pdf-lib roundtrip or the incremental writer), with optional CPU profiling, in-page handler injection, and DOM-accessor instrumentation. |
 | `timing-handler.js` | `Paged.Handler` that records per-page wall time + heap into `window.__pagedTiming` and streams a line per page to the console. Always injected. |
 | `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree (registered against `finalizePage`). The fix. Injected by `--detach-pages` and by `docs/book.bat`. |
 | `instrument-flush-ops.js` | Wraps `getComputedStyle`, `getBoundingClientRect`, and the `offsetWidth` / `clientWidth` / `scrollWidth` family with counters + per-call timing. Injected by `--instrument`. |
@@ -67,14 +71,8 @@ DevTools-compatible trace is a few lines.
 | `run.bat` | Windows wrapper. Installs deps on first run, then invokes `node measure.mjs`. |
 | `results/` | Output, one timestamped subfolder per run. Git-ignored. |
 
-We deliberately do **not** use `pagedjs-cli --additional-script` even
-though that flag exists for exactly this kind of patching: pagedjs-cli
-doesn't forward in-page `console.log` to its own stdout, and we have
-no way to call `page.evaluate()` from outside to pull out the timing
-data at the end. Driving Puppeteer ourselves gets both.
-
-The harness is otherwise a near-line-for-line copy of
-`pagedjs-cli/src/printer.js`'s `render()` flow:
+The harness is structurally a copy of `pagedjs-cli/src/printer.js`'s
+`render()` flow, now living in our own code:
 
 - same `puppeteer.launch({ args: [...] })` flags, including
   **`--allow-file-access-from-files`** -- without it, paged.js's
@@ -86,14 +84,28 @@ The harness is otherwise a near-line-for-line copy of
 - same `page.emulateMediaType('print')` before navigation.
 - same `window.PagedConfig.auto = false` set **after** navigation
   via `page.evaluate()`, not via `evaluateOnNewDocument`.
-- same paged.js bundle: we load `pagedjs-cli/dist/browser.js`, not
-  the npm `pagedjs` package's `paged.polyfill.js`. The two are close
-  cousins (~33k lines each, ~120 lines of divergence) but at 0.4.3
-  only the cli bundle is reliable inside this flow.
+- same paged.js bundle: we vendor `docs/lib/paged.browser.js`, taken
+  from `pagedjs-cli@0.4.3/dist/browser.js`. The npm `pagedjs`
+  package's `paged.polyfill.js` is a close cousin (~33k lines each,
+  ~120 lines of divergence) but at 0.4.3 only the cli bundle is
+  reliable inside this flow.
+- same outline + metadata helpers: `docs/lib/outline.mjs` and
+  `docs/lib/postprocesser.mjs` are MIT-licensed copies of
+  `pagedjs-cli/src/outline.js` and `src/postprocesser.js`, ESM-ified.
 
-The net effect: what we measure tracks what production renders. If
-profiling shows a hot spot, fixing it will move the real `book.bat`
-number too.
+Why vendor rather than depend on `pagedjs-cli`? Two reasons:
+pagedjs-cli's `Printer.pdf()` calls `PDFDocument.load(pdf)` and
+`pdfDoc.save()` with no options and therefore inherits pdf-lib's
+default `parseSpeed: Slow`, which adds ~32 s of pure idle yielding
+to every build (the "Profiling pdf-lib's load" section explains why);
+also, it doesn't forward in-page `console.log` to its own stdout, and
+we have no way to call `page.evaluate()` from outside to pull out the
+timing data at the end. Driving Puppeteer ourselves gets both.
+
+The net effect: what we measure tracks what production renders --
+`docs/render-book.mjs` and `perf/measure.mjs` share the same helpers
+and bundle. If profiling shows a hot spot, fixing it will move the
+real `book.bat` number too.
 
 ## How to run
 
@@ -404,11 +416,21 @@ restores them at `afterRendered` before `page.pdf()` runs. The
 existing `--additional-script` mechanism is exactly the extension
 point this needs, so no fork required.
 
-Wired into production in `docs/book.bat`:
+Wired into production in `docs/book.bat`. Originally:
 
 ```bat
 npx pagedjs-cli _site-pdf\book.html -o _pdf\book.pdf ^
     --outline-tags h1,h2,h3,h4 -t 600000 ^
+    --additional-script ..\perf\detach-pages.js
+```
+
+After the later `pagedjs-cli` removal (see "Dropping pagedjs-cli"
+below) the same `--additional-script` flag carries over to
+`render-book.mjs`:
+
+```bat
+node render-book.mjs _site-pdf\book.html -o _pdf\book.pdf ^
+    --outline-tags h1,h2,h3,h4 ^
     --additional-script ..\perf\detach-pages.js
 ```
 
@@ -670,13 +692,13 @@ if file size becomes a concern.
 ### Production integration
 
 `measure.mjs --incremental` exercises the writer for measurement.
-Wiring it into `docs/book.bat` is a separate step: `pagedjs-cli`
-performs its own pdf-lib roundtrip inside `Printer.pdf()`, and
-`--additional-script` can't intercept that. The cleanest path is to
-replace the `pagedjs-cli` invocation in `book.bat` with a thin Node
-driver -- essentially `measure.mjs` minus the timing scaffolding --
-that uses `puppeteer` + `incremental-pdf.mjs` directly. The harness
-already proves this is a ~30-line script.
+`docs/book.bat` doesn't ship it: production goes through the pdf-lib
+roundtrip path (with `parseSpeed: Fastest`, now ~5 s and gives the
+17 MB compressed output). Switching production to the incremental
+writer is a one-line change in `docs/render-book.mjs` (call
+`applyOutlineAndMetadataIncremental` from `../perf/incremental-pdf.mjs`
+instead of `PDFDocument.load + ... + save`), gated behind whether the
+larger output is acceptable for that pipeline.
 
 ## Profiling pdf-lib's load: 79 % was idle yielding
 
@@ -784,10 +806,9 @@ v22.x. Behaviour:
   instead of named destinations.
 - Implies `tagged: true` (the outline is built from the accessibility
   tree). Puppeteer enforces this in `util.ts:395`.
-- Requires the launch flag `--generate-pdf-document-outline`. The
-  harness's `puppeteer.launch` args include it; `pagedjs-cli`'s
-  default args do *not*, so production integration would need a
-  launch-arg change too.
+- Requires the launch flag `--generate-pdf-document-outline`.
+  Puppeteer 22+ adds it automatically in `ChromeLauncher.defaultArgs()`,
+  so both `measure.mjs` and `docs/render-book.mjs` get it for free.
 - **No tag-level filter**: walks `h1..h6` unconditionally. There is
   no equivalent of our `--outline-tags h1,h2,h3,h4` knob.
 
@@ -974,3 +995,53 @@ The compound win isn't in wall time -- it's in deleting code:
 `parseOutline`, `setOutline`, and the entire outline branch of the
 incremental writer all go away. Worth it if/when someone wants to
 trim the surface area.
+
+## Dropping `pagedjs-cli`
+
+`pagedjs-cli` did three useful things for us and one harmful one. On
+the useful side: it shipped the paged.js browser bundle in
+`dist/browser.js`, the outline + metadata helpers in
+`src/outline.js` and `src/postprocesser.js` (~250 LOC total), and a
+CLI wrapper for the pdf pipeline. On the harmful side, the wrapper
+calls `PDFDocument.load(pdf)` and `pdfDoc.save()` with no options
+and therefore inherits the slow defaults that wasted ~32 s per build
+(see "Profiling pdf-lib's load" above). Patching upstream to fix
+that is plumbing for plumbing's sake; the rest of pagedjs-cli is
+already mostly duplicated by our harness.
+
+So we vendored what we needed and dropped the dep:
+
+- `docs/lib/paged.browser.js` -- `pagedjs-cli@0.4.3/dist/browser.js`,
+  byte-for-byte. MIT-licensed; license header preserved at top of file.
+- `docs/lib/outline.mjs`  -- `src/outline.js`, ESM-ified, attribution
+  in the file header.
+- `docs/lib/postprocesser.mjs` -- `src/postprocesser.js`, same.
+- `docs/render-book.mjs` -- the production driver. Argv-compatible
+  with the subset of `pagedjs-cli` flags `book.bat` actually used
+  (`-o`, `--outline-tags`, `-t`, `--additional-script`). Calls
+  pdf-lib with `parseSpeed: Fastest` + `objectsPerTick: Infinity`
+  inline, no patching required.
+- `docs/book.bat` -- swapped `npx pagedjs-cli ...` for
+  `node render-book.mjs ...`. Same CLI, ~32 s faster (pdf-lib idle
+  yielding gone), one fewer transitive dependency tree.
+
+Both `docs/package.json` and `perf/package.json` now depend directly
+on `puppeteer` + `pdf-lib` + `html-entities` instead of inheriting
+them via `pagedjs-cli`. `perf/measure.mjs` imports from `docs/lib/`
+so the harness and production share the exact same code path through
+the helpers and bundle -- whatever production renders, the harness
+measures.
+
+End-to-end on the 1638-page book through the new driver:
+
+```
+render:   53.5s  (1638 pages)
+generate: 68.8s  (raw 52.3 MB)
+process:  5.1s
+saved:    docs\_pdf\book.pdf  (16.9 MB)
+total:    130.4s
+```
+
+(The total includes puppeteer launch + page nav overhead the
+harness elides, so it reads a few seconds higher than the harness's
+105 s headline.)

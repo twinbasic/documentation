@@ -4,6 +4,8 @@
   "private": true,
   "description": "PDF book pipeline for the twinBASIC documentation",
   "devDependencies": {
-    "pagedjs-cli": "^0.4.3"
+    "html-entities": "^2.5.2",
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^22.15.0"
   }
 }
