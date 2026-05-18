@@ -18,6 +18,11 @@
 // Usage:
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
+//                    [--detach-pages]
+//
+// --detach-pages also injects detach-pages.js -- a Paged.Handler that
+// hides each completed page from the layout tree -- to test whether
+// the O(n^2) render hotspot disappears.
 //
 // Defaults:
 //   input  : ../docs/_site-pdf/book.html (relative to this file)
@@ -49,12 +54,14 @@ let outArg = null;
 let keepOpen = false;
 let cpuProfile = false;
 let cpuSampling = 1000; // microseconds
+let detachPages = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
   else if (a === '--keep-open') keepOpen = true;
   else if (a === '--cpu-profile') cpuProfile = true;
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
+  else if (a === '--detach-pages') detachPages = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -69,9 +76,12 @@ if (!existsSync(inputPath)) {
   process.exit(1);
 }
 
-const pagedScriptPath = resolve(__dirname, 'node_modules', 'pagedjs-cli', 'dist', 'browser.js');
-const handlerPath     = resolve(__dirname, 'timing-handler.js');
-for (const p of [pagedScriptPath, handlerPath]) {
+const pagedScriptPath  = resolve(__dirname, 'node_modules', 'pagedjs-cli', 'dist', 'browser.js');
+const handlerPath      = resolve(__dirname, 'timing-handler.js');
+const detachPagesPath  = resolve(__dirname, 'detach-pages.js');
+const required = [pagedScriptPath, handlerPath];
+if (detachPages) required.push(detachPagesPath);
+for (const p of required) {
   if (!existsSync(p)) {
     console.error(`missing required file: ${p}`);
     console.error('Run "npm install" inside perf/ first.');
@@ -112,7 +122,7 @@ try {
 
   page.on('console', (msg) => {
     const t = msg.text();
-    if (t.startsWith('[paged-timing]')) console.log(t);
+    if (t.startsWith('[paged-timing]') || t.startsWith('[detach-pages]')) console.log(t);
   });
   page.on('pageerror',     (err) => console.error('[page error]', err.message));
   page.on('requestfailed', (req) => {
@@ -134,6 +144,9 @@ try {
 
   await page.addScriptTag({ path: pagedScriptPath });
   await page.addScriptTag({ path: handlerPath });
+  if (detachPages) {
+    await page.addScriptTag({ path: detachPagesPath });
+  }
 
   // RENDER ----------------------------------------------------------
   // Optionally wrap just this phase in a V8 CPU profile. CDP Profiler

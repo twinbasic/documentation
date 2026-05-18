@@ -369,7 +369,103 @@ This matches everything else we saw:
    detaching previous pages. Smaller win than (1) but compatible
    with it.
 
-For our pipeline, fix (1) on the vendored bundle would knock 60-80
-seconds off the 100-second render. Combined with skipping the
-pdf-lib roundtrip in Process (the easy win from the previous
-findings section), the total drops from ~207 s to roughly 90 s.
+For our pipeline, fix (1) would knock 60-80 seconds off the
+100-second render. Combined with skipping the pdf-lib roundtrip in
+Process (the easy win from the previous findings section), the
+total drops from ~207 s to roughly 90 s.
+
+## Fix applied: `perf/detach-pages.js`
+
+We went with fix (1) above, **as a paged.js handler rather than a
+bundle patch** -- a 20-line `Paged.Handler` subclass that sets
+`pageElement.style.display = 'none'` in `afterPageLayout` and
+restores them at `afterRendered` before `page.pdf()` runs. The
+existing `--additional-script` mechanism is exactly the extension
+point this needs, so no fork or patch-package diff is required.
+
+Wired into production in `docs/book.bat`:
+
+```bat
+npx pagedjs-cli _site-pdf\book.html -o _pdf\book.pdf ^
+    --outline-tags h1,h2,h3,h4 -t 600000 ^
+    --additional-script ..\perf\detach-pages.js
+```
+
+And into the perf harness via the `--detach-pages` flag.
+
+The `patches/` infrastructure (patch-package wired into both
+`docs/package.json` and `perf/package.json`, sharing a single
+`/patches` directory at the repo root) is left in place even
+though we didn't use it -- it's the obvious fallback if a future
+optimisation actually needs to modify the bundle.
+
+### Results
+
+Three-phase numbers, same 1638-page book, measured via the harness:
+
+| Phase    | Baseline | + handler | Δ |
+| -------- | -------- | --------- | --- |
+| render   | 103.8 s  |  50.9 s   | **-52.9 s (-51%)** |
+| generate |  63.6 s  |  60.2 s   | -3.4 s |
+| process  |  39.6 s  |  39.7 s   | unchanged |
+| **total**| **207.0 s** | **150.7 s** | **-56.3 s (-27%)** |
+
+Render last-quarter / first-quarter ratio: **4.56x -> 1.65x**.
+The remaining 1.65x is content variance (chapter 1100-1199 has
+dense tables / code blocks). No `n`-driven component remains.
+
+Per-page render curve, bucketed:
+
+```
+                  baseline    +handler
+pages 0-99      :   3.4 ms      6.1 ms
+pages 500-799   : 12-17 ms      5-6 ms       <- now flat
+pages 1100-1199 :  36.7 ms     13.4 ms       <- heaviest chapter, ~3x faster
+pages 1600-1637 :  37.7 ms     10.7 ms       <- ~3.5x faster
+```
+
+CPU profile shift (self-ms):
+
+```
+                                            baseline   +handler
+getBoundingClientRect      (native)            63525      19459
+(program)                  (V8/Blink)          19075       3676
+```
+
+`getBoundingClientRect` self-time dropped 3.3x and `(program)`
+(V8/Blink-internal layout) dropped 5.2x. Both are still in the top
+slots because layout work doesn't go to zero -- but they're now
+in line with the *current* page's content, not the entire growing
+document.
+
+### Production confirmation
+
+`docs/book.bat` (the real production path) reports:
+
+```
+✔ Rendering 1638 pages took 49,547 ms.
+✔ Generated
+✔ Processed
+✔ Saved to docs\_pdf\book.pdf            (10.5 MB)
+total elapsed: 185 s
+```
+
+The render number is within 3% of the harness measurement, no
+errors, PDF written. (The harness's PDF lands at 16.9 MB rather
+than 10.5 MB -- that's an artefact of the harness's slightly
+different post-processing flow, not the handler.)
+
+### What this didn't fix (independent follow-ups)
+
+The handler closes the quadratic-render hole. Remaining costs are
+linear-in-`n` and don't shrink with this change:
+
+1. **Process: 40 s of pdf-lib roundtrip on a 52 MB raw PDF.** Out
+   of that, `setOutline` is 11 ms; the other 39+ seconds is
+   `PDFDocument.load` + `pdfDoc.save` on the big Chrome output.
+   Replacing the load+save with a streaming outline-injection
+   tool (`qpdf`, hand-rolled with pdf-lib's lower-level API)
+   could cut another ~30 s.
+2. **Generate: 60 s in `page.pdf()`.** Chromium internals; mostly
+   opaque. The 52 MB raw size hints at uncompressed streams in
+   Chrome's writer -- worth a glance but not a quick fix.
