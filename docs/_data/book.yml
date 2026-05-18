@@ -119,10 +119,10 @@
 
 front_matter:
   - title: Introduction
+    page: /
     no_outline_entry: true
     no_heading_shift: true
     no_descent: true
-    page: /
 
 parts:
   - title: Features
@@ -131,41 +131,41 @@ parts:
     landing_page: /Features/
     chapters:
       - title: Attributes
-        no_outline_entry: true
-        no_heading_shift: true
         page: /Features/Attributes-Intro
+        no_outline_entry: true
+        no_heading_shift: true
       - title: Language Syntax
-        no_outline_entry: true
-        no_heading_shift: true
         page: /Features/Language/
+        no_outline_entry: true
+        no_heading_shift: true
       - title: Project Configuration
-        no_outline_entry: true
-        no_heading_shift: true
         page: /Features/Project-Configuration/
+        no_outline_entry: true
+        no_heading_shift: true
       - title: Standard Library
-        no_outline_entry: true
-        no_heading_shift: true
         page: /Features/Standard-Library/
+        no_outline_entry: true
+        no_heading_shift: true
       - title: GUI Components
-        no_outline_entry: true
-        no_heading_shift: true
         page: /Features/GUI-Components/
+        no_outline_entry: true
+        no_heading_shift: true
       - title: Package Management
-        no_outline_entry: true
-        no_heading_shift: true
         page: /Features/Packages/
+        no_outline_entry: true
+        no_heading_shift: true
       - title: Advanced Features
-        no_outline_entry: true
-        no_heading_shift: true
         page: /Features/Advanced/
+        no_outline_entry: true
+        no_heading_shift: true
       - title: Compiler and IDE
-        no_outline_entry: true
-        no_heading_shift: true
         page: /Features/Compiler-IDE/
-      - title: 64-bit Compilation
         no_outline_entry: true
         no_heading_shift: true
+      - title: 64-bit Compilation
         page: /Features/64bit
+        no_outline_entry: true
+        no_heading_shift: true
       - title: Fusion
         page: /Features/Fusion
 
@@ -178,74 +178,58 @@ parts:
     # DONE
     chapters:
       - title: Arrays
+        page: /Tutorials/Arrays
         no_outline_entry: true
         no_heading_shift: true
-        pages:
-          - /Tutorials/Arrays
-      # - title: CEF
-        # subtitle: Chromium Embedded Framework
-        # no_outline_entry: true
-        # no_heading_shift: true
-        # pages:
-          # - /Tutorials/CEF/
-      # - title: Custom Controls
-        # no_outline_entry: true
-        # no_heading_shift: true
-        # pages:
-          # - /Tutorials/CustomControls/
-      # - title: WebView2
-        # no_outline_entry: true
-        # no_heading_shift: true      
-        # pages:
-          # - /Tutorials/WebView2/
+      - title: CEF
+        subtitle: Chromium Embedded Framework
+        page: /Tutorials/CEF/
+        no_outline_entry: true
+        no_heading_shift: true
+      - title: Custom Controls
+        page: /Tutorials/CustomControls/
+        no_outline_entry: true
+        no_heading_shift: true
+      - title: WebView2
+        page: /Tutorials/WebView2/
+        no_outline_entry: true
+        no_heading_shift: true      
 
   - title: The Core Language
     subtitle: Statements, operators, and built-in keywords
     chapters:
       - title: Categorical List
+        page: /Reference/Categories
         no_outline_entry: true
         no_heading_shift: true
-        pages:
-          - /Reference/Categories
-      # - title: Statements
-        # no_outline_entry: true
-        # no_heading_shift: true
-        # nav_pages:
-          # - Reference Section/Statements
-      # - title: Procedures and Functions
-        # no_outline_entry: true
-        # no_heading_shift: true      
-        # pages:
-          # - /Reference/Procedures-and-Functions
-      # - title: Operators
-        # nav_pages:
-          # - Reference Section/Operators
-      # - title: Compiler Constants
-        # pages:
-          # - Compiler-Constants
-      # - title: Attributes
-        # no_outline_entry: true
-        # no_heading_shift: true          
-        # pages:
-          # - /Core/Attributes
+      - title: Statements
+        nav_page: Reference Section/Statements
+        no_outline_entry: true
+        no_heading_shift: true
+      - title: Procedures and Functions
+        page: /Reference/Procedures-and-Functions
+        no_outline_entry: true
+        no_heading_shift: true
+      - title: Operators
+        nav_page: Reference Section/Operators
+      - title: Compiler Constants
+        page: /Reference/Compiler-Constants
+      - title: Attributes
+        page: /Core/Attributes
+        no_outline_entry: true
+        no_heading_shift: true
         
 
-  # - title: Reference Section
-    # subtitle: Alphabetical indexes of statements, operators, and compiler constants, plus the project glossary
-    # The live site has a top-level "Reference Section" nav item that groups
-    # these alphabetical-index pages. The five Reference/* pages plus the
-    # Controls table and the Glossary live at three different URL prefixes;
-    # `contains`-match catches all of them. (Attributes also belongs here in
-    # the live nav but its permalink is /tB/Core/Attributes, which the Core
-    # part above already sweeps up; we leave it there rather than introduce
-    # an excludes schema for one page.)
-    # pages:
-      # - /Reference
-      # - /tB/Controls
-      # - /tB/Gloss
+  - title: Reference Section
+    subtitle: Controls and the project glossary
+    chapters:
+      - title: Controls
+        landing_page: /tB/Controls
+      - title: Glossary
+        landing_page: /tB/Gloss
 
-  # - title: Packages
-    # subtitle: The runtime and library packages shipped with twinBASIC
+  - title: Packages
+    subtitle: The runtime and library packages shipped with twinBASIC
     # The /tB/Packages/ landing page is the part's foreword; its content
     # (an overview of all built-in packages) sits between the part divider
     # and the first chapter divider, with no running header. Each package
@@ -255,78 +239,88 @@ parts:
     # chapter divider's H2), followed by the package's class / module /
     # control pages in URL order.
     # foreword_page: /tB/Packages/
-    # chapters:
-      # - title: VBA Package
-        # subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
+    chapters:
+      - title: VBA Package
+        subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
         # The VBA landing lives at /tB/Packages/VBA (added when Packages
         # was promoted to a top-level nav item), while individual module
         # members keep their legacy /tB/Modules/... URLs.
-        # landing_page: /tB/Packages/VBA
-        # pages:
-          # - /tB/Modules/
+        landing_page: /tB/Packages/VBA
+        page: /tB/Modules/
 
-      # - title: VBRUN Package
-        # subtitle: Runtime types for controls, errors, and the property bag
-        # landing_page: /tB/Packages/VBRUN/
-        # pages:
-          # - /tB/Packages/VBRUN/
+      - title: VBRUN Package
+        subtitle: Runtime types for controls, errors, and the property bag
+        #landing_page: /tB/Packages/VBRUN/
+        page: /tB/Packages/VBRUN/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: VB Package
-        # subtitle: Classic VB6 forms and intrinsic controls
-        # landing_page: /tB/Packages/VB/
-        # pages:
-          # - /tB/Packages/VB/
+      - title: VB Package
+        subtitle: Classic VB6 forms and intrinsic controls
+        #landing_page: /tB/Packages/VB/
+        page: /tB/Packages/VB/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: WebView2 Package
-        # subtitle: Chromium-based browser control via Microsoft Edge WebView2
-        # landing_page: /tB/Packages/WebView2/
-        # pages:
-          # - /tB/Packages/WebView2/
+      - title: WebView2 Package
+        subtitle: Chromium-based browser control via Microsoft Edge WebView2
+        #landing_page: /tB/Packages/WebView2/
+        page: /tB/Packages/WebView2/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: Assert Package
-        # subtitle: Test assertions with Exact, Strict, and Permissive comparison
-        # landing_page: /tB/Packages/Assert/
-        # pages:
-          # - /tB/Packages/Assert/
+      - title: Assert Package
+        subtitle: Test assertions with Exact, Strict, and Permissive comparison
+        #landing_page: /tB/Packages/Assert/
+        page: /tB/Packages/Assert/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: CustomControls Package
-        # subtitle: The WaynesControls suite and its supporting framework
-        # landing_page: /tB/Packages/CustomControls/
-        # pages:
-          # - /tB/Packages/CustomControls/
+      - title: CustomControls Package
+        subtitle: The WaynesControls suite and its supporting framework
+        #landing_page: /tB/Packages/CustomControls/
+        page: /tB/Packages/CustomControls/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: CEF Package
-        # subtitle: Chromium Embedded Framework browser control
-        # landing_page: /tB/Packages/CEF/
-        # pages:
-          # - /tB/Packages/CEF/
+      - title: CEF Package
+        subtitle: Chromium Embedded Framework browser control
+        #landing_page: /tB/Packages/CEF/
+        page: /tB/Packages/CEF/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: WinEventLogLib Package
-        # subtitle: Windows Event Log integration
-        # landing_page: /tB/Packages/WinEventLogLib/
-        # pages:
-          # - /tB/Packages/WinEventLogLib/
+      - title: WinEventLogLib Package
+        subtitle: Windows Event Log integration
+        #landing_page: /tB/Packages/WinEventLogLib/
+        page: /tB/Packages/WinEventLogLib/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: WinNamedPipesLib Package
-        # subtitle: Asynchronous named-pipe framework over IOCP
-        # landing_page: /tB/Packages/WinNamedPipesLib/
-        # pages:
-          # - /tB/Packages/WinNamedPipesLib/
+      - title: WinNamedPipesLib Package
+        subtitle: Asynchronous named-pipe framework over IOCP
+        #landing_page: /tB/Packages/WinNamedPipesLib/
+        page: /tB/Packages/WinNamedPipesLib/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: WinServicesLib Package
-        # subtitle: Windows Services hosting
-        # landing_page: /tB/Packages/WinServicesLib/
-        # pages:
-          # - /tB/Packages/WinServicesLib/
+      - title: WinServicesLib Package
+        subtitle: Windows Services hosting
+        #landing_page: /tB/Packages/WinServicesLib/
+        page: /tB/Packages/WinServicesLib/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: tbIDE Package
-        # subtitle: IDE Extensibility --- the addin SDK
-        # landing_page: /tB/Packages/tbIDE/
-        # pages:
-          # - /tB/Packages/tbIDE/
+      - title: tbIDE Package
+        subtitle: IDE Extensibility --- the addin SDK
+        #landing_page: /tB/Packages/tbIDE/
+        page: /tB/Packages/tbIDE/
+        no_outline_entry: true
+        #no_heading_shift: true
 
-      # - title: WinNativeCommonCtls Package
-        # subtitle: VB6-compatible Common Controls replacement on top of Win32 ComCtl32
-        # landing_page: /tB/Packages/WinNativeCommonCtls/
-        # pages:
-          # - /tB/Packages/WinNativeCommonCtls/
+      - title: WinNativeCommonCtls Package
+        subtitle: VB6-compatible Common Controls replacement on top of Win32 ComCtl32
+        #landing_page: /tB/Packages/WinNativeCommonCtls/
+        page: /tB/Packages/WinNativeCommonCtls/
+        no_outline_entry: true
+        #no_heading_shift: true
