@@ -2,23 +2,27 @@
 
 # Liquid filter for ordering a chapter's content pages in book.html.
 #
-# Pages are grouped by their parent folder URL so an index page (URL
+# Pages are grouped by their *owning index* so an index page (URL
 # ending in `/`) and all its leaves stay together in the iteration --
 # the include's sub-page state machine depends on each index appearing
 # in the stream immediately before its sub-pages, otherwise a stray
 # leaf from a different folder will reset the state mid-group and the
-# rest of the index's sub-pages will be promoted to top-level
-# chapters.
+# rest of the index's sub-pages will be promoted to top-level chapters.
 #
 # Group key:
-#   * index (URL ends in `/`)   -> its own URL
-#   * leaf  (no trailing slash) -> the URL up to and including the
-#                                  last slash (the parent folder URL)
+#   * an index page (URL ends in `/`):  its own URL.
+#   * a leaf whose URL starts with one of the present index URLs:
+#     the longest matching index URL.
+#   * an orphan leaf (no present index is a URL prefix):  its own URL
+#     -- the leaf forms a singleton group and sorts independently.
 #
 # So /Features/Language/, /Features/Language/Alias-Types, and
 # /Features/Language/Data-Types all key on /Features/Language/ and
-# form one group, while /Features/Attributes-Intro keys on /Features/
-# and is in a different group.
+# form one group; /Features/Attributes-Intro and /Features/64bit
+# don't match any index and stay independent. Group ordering by the
+# lead's nav_order therefore lets independent top-level chapters
+# interleave with index groups while sub-pages still cluster with
+# their index.
 #
 # Within a group:
 #   1. The index (at most one per group) emits first, in URL order.
@@ -60,7 +64,22 @@ module Jekyll
     def sort_by_nav_order(pages)
       pages = pages.uniq
 
-      groups = pages.group_by { |p| group_key_of(p) }
+      index_urls = pages
+        .select { |p| page_url(p).to_s.end_with?("/") }
+        .map { |p| page_url(p).to_s }
+
+      groups = Hash.new { |h, k| h[k] = [] }
+      pages.each do |p|
+        url = page_url(p).to_s
+        if url.end_with?("/")
+          groups[url] << p
+        else
+          owner = index_urls
+            .select { |iu| url.start_with?(iu) }
+            .max_by(&:length)
+          groups[owner || url] << p
+        end
+      end
 
       sorted_groups = {}
       groups.each do |key, members|
@@ -78,18 +97,6 @@ module Jekyll
     end
 
     private
-
-    # The page's "group" is the URL up to and including the last
-    # slash: for an index URL ending in `/`, that's the URL itself; for
-    # a leaf, it's the parent folder URL. Pages sharing a group key
-    # are siblings (or index + sibling) and stay adjacent in the
-    # iteration so the include's sub-page state machine sees them
-    # as one cluster.
-    def group_key_of(p)
-      url = page_url(p).to_s
-      return url if url.end_with?("/")
-      url.sub(%r{[^/]+\z}, "")
-    end
 
     # In-group order: index first (URL order), then nav_order leaves
     # (nav_order, title tiebreak), then nav_order-less leaves (title).

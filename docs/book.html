@@ -211,11 +211,19 @@ sitemap: false
           {%- assign part_rest = part_rest | concat: matched -%}
         {%- endfor -%}
       {%- endif -%}
-      {%- assign part_rest = part_rest | sort_by_nav_order -%}
+      {%- comment -%}
+        Filter the landing out BEFORE the sort: when the landing URL
+        is also matched by a prefix (typical: `prefixes: - /Features/`
+        sweeps in `/Features/`), the landing would otherwise become
+        the head of its own group inside the sort and contribute its
+        nav_order to the group's lead -- demoting the group to the
+        landing's slot instead of the slot its leaves earn.
+      {%- endcomment -%}
       {%- if part.landing_page -%}
         {%- assign part_landing_url = part.landing_page -%}
         {%- assign part_rest = part_rest | where_exp: "p", "p.url != part_landing_url" -%}
       {%- endif -%}
+      {%- assign part_rest = part_rest | sort_by_nav_order -%}
       {%- assign chapters = chapters | concat: part_rest -%}
     {%- endif -%}
   {%- endif -%}
@@ -320,11 +328,15 @@ sitemap: false
             {%- assign ch_rest = ch_rest | concat: matched -%}
           {%- endfor -%}
         {%- endif -%}
-        {%- assign ch_rest = ch_rest | sort_by_nav_order -%}
+        {%- comment -%}
+          Filter the landing out BEFORE the sort -- see the matching
+          comment in the flat-part loop above.
+        {%- endcomment -%}
         {%- if ch_entry.landing_page -%}
           {%- assign ch_landing_url = ch_entry.landing_page -%}
           {%- assign ch_rest = ch_rest | where_exp: "p", "p.url != ch_landing_url" -%}
         {%- endif -%}
+        {%- assign ch_rest = ch_rest | sort_by_nav_order -%}
         {%- assign ch_chapters = ch_chapters | concat: ch_rest -%}
       {%- endif -%}
 
