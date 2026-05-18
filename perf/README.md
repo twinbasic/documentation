@@ -53,8 +53,9 @@ DevTools-compatible trace is a few lines.
 | `package.json` | Pins `puppeteer` + `pagedjs-cli` + `patch-package`. |
 | `measure.mjs` | Puppeteer harness. Mirrors pagedjs-cli's own `Printer.pdf()` flow, with optional CPU profiling, in-page handler injection, and DOM-accessor instrumentation. |
 | `timing-handler.js` | `Paged.Handler` that records per-page wall time + heap into `window.__pagedTiming` and streams a line per page to the console. Always injected. |
-| `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree. The fix. Injected by `--detach-pages` and by `docs/book.bat`. |
+| `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree (registered against `finalizePage`). The fix. Injected by `--detach-pages` and by `docs/book.bat`. |
 | `instrument-flush-ops.js` | Wraps `getComputedStyle`, `getBoundingClientRect`, and the `offsetWidth` / `clientWidth` / `scrollWidth` family with counters + per-call timing. Injected by `--instrument`. |
+| `time-hooks.js` | Wraps every task registered to `chunker.hooks.*` and `polisher.hooks.*` with a wall-clock timer. Tells you which handler's hook method is eating render time, per page. Injected by `--time-hooks`. |
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
 | `run.bat` | Windows wrapper. Installs deps on first run, then invokes `node measure.mjs`. |
 | `results/` | Output, one timestamped subfolder per run. Git-ignored. |
@@ -97,6 +98,7 @@ run.bat --out my-run                      # explicit output directory
 run.bat --detach-pages                    # inject the detach-pages fix
 run.bat --cpu-profile                     # CPU-profile the render phase
 run.bat --instrument                      # count + time DOM-accessor calls
+run.bat --time-hooks                      # per-task timing of every chunker/polisher hook
 ```
 
 Flags compose. The CPU profile lands as `render.cpuprofile`
@@ -529,22 +531,41 @@ What the numbers say:
    on the kind of margin content we have (bottom-right page
    number, nothing else).
 
-That last point matters for an earlier mistaken explanation. The
-CPU profile of the post-fix run showed `(anonymous) browser.js:29501`
-(the `finalizePage` `["top", "bottom"].forEach` callback)
-growing from 1.1 s of self-time in baseline to 13.7 s after the
-fix. The plausible-sounding story was "those reads were
-free-riding on the chunker's just-flushed layout in baseline,
-and now they're paying full price." The instrumentation rules
-that out: **the function isn't doing more layout-flushing work,
-because it isn't doing any.** Its 13.7 s of profile self-time
-is a CPU-profiler attribution artefact -- V8 inlining and
-sample distribution shift between runs once the dominant frame
-(`getBoundingClientRect`, 67 % of render in baseline) shrinks.
-The actual per-page work that closure does -- 8 `querySelector`
-calls, 3 `getComputedStyle` calls, a few class checks and style
-writes -- didn't change.
+## Why detach-pages.js hooks `finalizePage`, not `afterPageLayout`
 
-The detach handler has no second-order downside; nothing the
-instrumentation can see has shifted besides per-call latency on
-the layout-flushing accessors the chunker already used.
+The chunker's per-page hook order is:
+
+```
+beforePageLayout  ->  afterPageLayout  ->  finalizePage
+```
+
+`AtPage.finalizePage` (built into paged.js) reads `getComputedStyle`
+on margin-box children and writes `el.style["grid-template-columns"]`
+on them. `time-hooks.js` measurements show this method is **11x
+slower per call when run on a `display:none` page**:
+
+| Variant | `chunker.finalizePage::finalizePage` per call |
+| --- | --- |
+| Baseline (no detach) | 0.82 ms |
+| Detach hooked on `afterPageLayout` (hide *before* AtPage) | **9.24 ms** |
+| Detach hooked on `finalizePage` (hide *after* AtPage) | 0.67 ms |
+
+Chromium has fast paths for style reads/writes on visible elements;
+on hidden subtrees the same operations re-cascade each call. So
+hiding the page before AtPage runs makes AtPage pay a slow path
+worth ~8 ms/page over the whole render.
+
+`detach-pages.js` therefore hooks `finalizePage`, registering after
+AtPage so its method runs second. AtPage works on a visible page;
+we hide immediately after. The next chunker iteration sees pages
+0..N-1 hidden, so the original `getBoundingClientRect` saving in
+the chunker is preserved.
+
+**Wall-clock impact: none measurable.** A 4+4 interleaved A/B
+between the two variants showed render medians within ~1 s of
+each other (48.70 s vs 49.83 s un-instrumented; 50.78 s vs 50.90 s
+with `--time-hooks`), well inside the 3-7 s within-variant noise.
+The `finalizePage` hook is the variant we ship because it makes
+the CPU profile read honestly (no mystery cost inside AtPage) and
+gives AtPage the visible page it expects, not because of a
+measurable speedup.

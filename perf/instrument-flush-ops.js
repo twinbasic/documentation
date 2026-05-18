@@ -27,6 +27,13 @@
     'clientHeight',
     'scrollWidth',
     'scrollHeight',
+    // non-flushing but called a lot from finalizePage; useful for
+    // accounting where (anonymous) browser.js:29501 spends its time
+    'querySelector',
+    'querySelectorAll',
+    'classList.contains',
+    'setProperty',          // marginGroup.style.setProperty(...)
+    'style.set',            // marginGroup.style[...] = ... (CSSStyleDeclaration setter)
   ];
   for (const p of props) stats[p] = { count: 0, totalNs: 0, maxNs: 0 };
 
@@ -83,6 +90,52 @@
   for (const p of ['clientWidth', 'clientHeight', 'scrollWidth', 'scrollHeight']) {
     if (!wrapGetter(Element.prototype, p)) wrapGetter(HTMLElement.prototype, p);
   }
+
+  // querySelector / querySelectorAll on Element. These are not
+  // layout-flushing but they're the dominant non-flush operation
+  // in the finalizePage forEach we're investigating.
+  const origQS = Element.prototype.querySelector;
+  Element.prototype.querySelector = function (sel) {
+    const t = now();
+    const r = origQS.call(this, sel);
+    record('querySelector', (now() - t) * 1e6);
+    return r;
+  };
+  const origQSA = Element.prototype.querySelectorAll;
+  Element.prototype.querySelectorAll = function (sel) {
+    const t = now();
+    const r = origQSA.call(this, sel);
+    record('querySelectorAll', (now() - t) * 1e6);
+    return r;
+  };
+
+  // DOMTokenList.contains => classList.contains(...)
+  const origCLC = DOMTokenList.prototype.contains;
+  DOMTokenList.prototype.contains = function (token) {
+    const t = now();
+    const r = origCLC.call(this, token);
+    record('classList.contains', (now() - t) * 1e6);
+    return r;
+  };
+
+  // CSSStyleDeclaration writes: cover both .setProperty(name, val)
+  // and bracket-set `el.style[name] = val` (uses the named setter on
+  // the proxied CSSStyleDeclaration).
+  const origSP = CSSStyleDeclaration.prototype.setProperty;
+  CSSStyleDeclaration.prototype.setProperty = function (n, v, p) {
+    const t = now();
+    const r = origSP.call(this, n, v, p);
+    record('setProperty', (now() - t) * 1e6);
+    return r;
+  };
+  // Most assignments like `el.style["grid-template-columns"] = ...`
+  // go through a Proxy on the CSSStyleDeclaration; wrapping every
+  // setter would require a Proxy of our own. We count the cheap
+  // identifier-name setters by reflecting on known property names
+  // is impractical -- skip and rely on setProperty for explicit
+  // setProperty calls. (Most paged.js margin-box writes use
+  // bracket syntax, so this won't catch them; we'll account
+  // for that in the analysis.)
 
   window.__flushOpStats = stats;
 

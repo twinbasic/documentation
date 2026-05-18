@@ -19,7 +19,18 @@
       super(chunker, polisher, caller);
       this._hidden = [];
     }
-    afterPageLayout(pageElement /* , page, breakToken */) {
+    // Hook into finalizePage rather than afterPageLayout. The chunker
+    // fires beforePageLayout -> afterPageLayout -> finalizePage per
+    // page; AtPage's own finalizePage handler does getComputedStyle
+    // reads and `el.style["grid-template-columns"] = ...` writes on
+    // the page's margin-box children. Doing that on a display:none
+    // subtree takes ~8 ms/page in Chromium (no cached layout box,
+    // style resolution re-cascades). Hiding in finalizePage instead
+    // means we run *after* AtPage on the same page (because our
+    // handler registers last via --additional-script), so AtPage
+    // touches visible elements; the page is hidden immediately after
+    // for the next chunker.findOverflow.
+    finalizePage(pageElement /* , page, breakToken, chunker */) {
       pageElement.style.display = 'none';
       this._hidden.push(pageElement);
     }
@@ -31,5 +42,5 @@
     }
   }
   Paged.registerHandlers(DetachPagesHandler);
-  console.log('[detach-pages] handler registered');
+  console.log('[detach-pages] handler registered (finalizePage variant)');
 })();
