@@ -55,6 +55,7 @@ let keepOpen = false;
 let cpuProfile = false;
 let cpuSampling = 1000; // microseconds
 let detachPages = false;
+let instrument = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -62,6 +63,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--cpu-profile') cpuProfile = true;
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
   else if (a === '--detach-pages') detachPages = true;
+  else if (a === '--instrument') instrument = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -79,8 +81,10 @@ if (!existsSync(inputPath)) {
 const pagedScriptPath  = resolve(__dirname, 'node_modules', 'pagedjs-cli', 'dist', 'browser.js');
 const handlerPath      = resolve(__dirname, 'timing-handler.js');
 const detachPagesPath  = resolve(__dirname, 'detach-pages.js');
+const instrumentPath   = resolve(__dirname, 'instrument-flush-ops.js');
 const required = [pagedScriptPath, handlerPath];
 if (detachPages) required.push(detachPagesPath);
+if (instrument)  required.push(instrumentPath);
 for (const p of required) {
   if (!existsSync(p)) {
     console.error(`missing required file: ${p}`);
@@ -122,7 +126,13 @@ try {
 
   page.on('console', (msg) => {
     const t = msg.text();
-    if (t.startsWith('[paged-timing]') || t.startsWith('[detach-pages]')) console.log(t);
+    if (t.startsWith('[paged-timing]') || t.startsWith('[detach-pages]') ||
+        t.startsWith('[instrument]') || t.startsWith('  op ') ||
+        t.startsWith('  --') || t.startsWith('  getComputedStyle') ||
+        t.startsWith('  getBoundingClientRect') || t.startsWith('  offset') ||
+        t.startsWith('  client') || t.startsWith('  scroll')) {
+      console.log(t);
+    }
   });
   page.on('pageerror',     (err) => console.error('[page error]', err.message));
   page.on('requestfailed', (req) => {
@@ -146,6 +156,9 @@ try {
   await page.addScriptTag({ path: handlerPath });
   if (detachPages) {
     await page.addScriptTag({ path: detachPagesPath });
+  }
+  if (instrument) {
+    await page.addScriptTag({ path: instrumentPath });
   }
 
   // RENDER ----------------------------------------------------------

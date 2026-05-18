@@ -50,9 +50,12 @@ DevTools-compatible trace is a few lines.
 
 | File | Role |
 | --- | --- |
-| `package.json` | Pins `puppeteer` + `pagedjs-cli`. |
-| `measure.mjs` | Puppeteer harness. Mirrors pagedjs-cli's own `Printer.render()` flow, with our timing handler injected as an extra script. |
-| `timing-handler.js` | The "patch". A `Paged.Handler` subclass that records per-page wall time + heap into `window.__pagedTiming` and streams a line per page to the console. |
+| `package.json` | Pins `puppeteer` + `pagedjs-cli` + `patch-package`. |
+| `measure.mjs` | Puppeteer harness. Mirrors pagedjs-cli's own `Printer.pdf()` flow, with optional CPU profiling, in-page handler injection, and DOM-accessor instrumentation. |
+| `timing-handler.js` | `Paged.Handler` that records per-page wall time + heap into `window.__pagedTiming` and streams a line per page to the console. Always injected. |
+| `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree. The fix. Injected by `--detach-pages` and by `docs/book.bat`. |
+| `instrument-flush-ops.js` | Wraps `getComputedStyle`, `getBoundingClientRect`, and the `offsetWidth` / `clientWidth` / `scrollWidth` family with counters + per-call timing. Injected by `--instrument`. |
+| `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
 | `run.bat` | Windows wrapper. Installs deps on first run, then invokes `node measure.mjs`. |
 | `results/` | Output, one timestamped subfolder per run. Git-ignored. |
 
@@ -91,7 +94,14 @@ number too.
 run.bat                                   # defaults to ..\docs\_site-pdf\book.html
 run.bat path\to\some-other.html           # explicit input
 run.bat --out my-run                      # explicit output directory
+run.bat --detach-pages                    # inject the detach-pages fix
+run.bat --cpu-profile                     # CPU-profile the render phase
+run.bat --instrument                      # count + time DOM-accessor calls
 ```
+
+Flags compose. The CPU profile lands as `render.cpuprofile`
+(loadable in Chrome DevTools -> Performance -> "Load profile...");
+`--instrument` prints a per-op table at end-of-render.
 
 You need `_site-pdf\book.html` to exist first -- run `docs\build.bat`
 (which is `bundle exec jekyll build`) if you haven't already.
@@ -469,3 +479,72 @@ linear-in-`n` and don't shrink with this change:
 2. **Generate: 60 s in `page.pdf()`.** Chromium internals; mostly
    opaque. The 52 MB raw size hints at uncompressed streams in
    Chrome's writer -- worth a glance but not a quick fix.
+
+## Confirming the mechanism (instrumentation A/B)
+
+The CPU profile said `getBoundingClientRect` self-time dropped
+3.3x; the wall-clock measurement said render dropped 2x. To
+double-check that's actually due to the smaller layout tree (and
+not a profile-attribution coincidence, or paged.js silently
+skipping work, or new costs appearing elsewhere) the harness has
+an `--instrument` flag that wraps every in-page DOM accessor
+that *can* force a synchronous layout -- `getComputedStyle`,
+`getBoundingClientRect`, the `offsetWidth` / `offsetHeight` /
+`offsetTop` / `offsetLeft` family, and the `clientWidth` /
+`clientHeight` / `scrollWidth` / `scrollHeight` getters -- with
+counters and per-call timing.
+
+Same wrapper overhead in both runs, so absolute totals are
+inflated but the comparison is apples-to-apples.
+
+Two runs, same content, only difference is `--detach-pages`:
+
+| op                      | baseline                  | + detach                  |
+| ---                     | ---                       | ---                       |
+| `getBoundingClientRect` | 260,668 calls, **208 us** avg | 258,940 calls, **70 us** avg |
+| `scrollWidth`           |  37,911 calls,   1.4 us   |  37,047 calls,   1.1 us   |
+| `scrollHeight`          |  37,911 calls,   0.7 us   |  37,047 calls,   0.6 us   |
+| `getComputedStyle`      |   9,179 calls,   1.7 us   |   9,179 calls,   1.8 us   |
+| `offset*` / `client*`   |       **0 calls**         |       **0 calls**         |
+
+Instrumented render wall-clock: 82.1 s baseline -> 47.7 s with
+detach. Same shape as the un-instrumented runs.
+
+What the numbers say:
+
+1. **Call counts are essentially identical.** The detach handler
+   isn't getting paged.js to skip any work -- 260,668 vs 258,940
+   `getBoundingClientRect` calls is a rounding error. The fix
+   makes each call cheaper, not the number of calls smaller.
+
+2. **`getBoundingClientRect` per-call cost dropped 66 %**,
+   208 us -> 70 us. Smaller live layout tree, less to recompute
+   on each forced flush. Total cost on this op alone: 54.3 s ->
+   18.2 s, which is most of the wall-clock render savings.
+
+3. **`offsetWidth` / `offsetHeight` / `offsetTop` / `offsetLeft`
+   / `clientWidth` / `clientHeight` are called zero times** on
+   our content. The auto-width branches inside `finalizePage`'s
+   margin-box `forEach` (where those accesses live) never fire
+   on the kind of margin content we have (bottom-right page
+   number, nothing else).
+
+That last point matters for an earlier mistaken explanation. The
+CPU profile of the post-fix run showed `(anonymous) browser.js:29501`
+(the `finalizePage` `["top", "bottom"].forEach` callback)
+growing from 1.1 s of self-time in baseline to 13.7 s after the
+fix. The plausible-sounding story was "those reads were
+free-riding on the chunker's just-flushed layout in baseline,
+and now they're paying full price." The instrumentation rules
+that out: **the function isn't doing more layout-flushing work,
+because it isn't doing any.** Its 13.7 s of profile self-time
+is a CPU-profiler attribution artefact -- V8 inlining and
+sample distribution shift between runs once the dominant frame
+(`getBoundingClientRect`, 67 % of render in baseline) shrinks.
+The actual per-page work that closure does -- 8 `querySelector`
+calls, 3 `getComputedStyle` calls, a few class checks and style
+writes -- didn't change.
+
+The detach handler has no second-order downside; nothing the
+instrumentation can see has shifted besides per-call latency on
+the layout-flushing accessors the chunker already used.
