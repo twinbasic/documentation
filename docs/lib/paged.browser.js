@@ -2105,16 +2105,18 @@
 			let lastChild = rendered.lastChild;
 
 			let lastNodeIndex;
-			while (lastChild && lastChild.lastChild) {
+			while (lastChild) {
+				const child = lastChild.lastChild;
+				if (!child) break;
 				if (!validNode(lastChild)) {
 					// Only get elements with refs
 					lastChild = lastChild.previousSibling;
-				} else if (!validNode(lastChild.lastChild)) {
+				} else if (!validNode(child)) {
 					// Deal with invalid dom items
-					lastChild = prevValidNode(lastChild.lastChild);
+					lastChild = prevValidNode(child);
 					break;
 				} else {
-					lastChild = lastChild.lastChild;
+					lastChild = child;
 				}
 			}
 
