@@ -11,6 +11,12 @@ gem "logger"
 gem "fiddle"
 gem "bigdecimal"
 
+# Profiling. Not loaded by Jekyll automatically (not in :jekyll_plugins).
+# Activated by _profile/profile.rb via `require "ruby-prof"`.
+# force_ruby_platform: ruby-prof's x64-mingw-ucrt gem ships no
+# precompiled .so for Ruby 3.4+, so we compile from source instead.
+gem "ruby-prof", force_ruby_platform: true
+
 group :jekyll_plugins do
   gem "jekyll-sass-converter", "~> 2.2"
   gem "jekyll-include-cache"

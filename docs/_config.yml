@@ -176,5 +176,6 @@ offline_exclude:
 exclude:
   - _site-offline
   - _site-pdf
+  - _profile
   - redirects.json
   - "*.bat"

@@ -7,3 +7,5 @@ _pdf/
 .jekyll-metadata
 *.af~lock~
 _bak
+_profile/out/
+_profile/rbspy.exe

@@ -433,6 +433,17 @@ From `docs/`:
 - `check.bat` — link check (offline Lychee against `_site/`).
 - `book.bat` — renders the PDF from `_site-pdf/book.html` via `pagedjs-cli` into `_pdf/book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
+### Profiling the build
+
+Two profilers are wired in for diagnosing slow builds. Both run a full Jekyll build with all three trees (`_site/`, `_site-offline/`, `_site-pdf/`) and write results into `_profile/out/` (gitignored).
+
+- `profile-rbspy.bat` — sampling profiler (99 Hz, ~1.7x slowdown). Writes `_profile/out/jekyll-build.speedscope.json`. Drop into [speedscope.app](https://www.speedscope.app/) for timeline / sandwich / left-heavy views — the closest thing to vernier's Firefox-profiler UI you can get on Windows. Requires `_profile/rbspy.exe` (gitignored, ~6 MB); on a fresh checkout grab it from rbspy's [GitHub releases](https://github.com/rbspy/rbspy/releases) — the `rbspy-x86_64-pc-windows-msvc.exe.zip` asset, renamed to `rbspy.exe` and placed in `_profile/`.
+- `profile-rubyprof.bat` — instrumentation profiler (TracePoint-based, ~2.2x slowdown). Writes `_profile/out/callgrind.out.*` (open in KCachegrind / QCachegrind), plus `jekyll-build.flat.txt` and `jekyll-build.graph.txt` for quick text-based inspection. Activated by `gem "ruby-prof", force_ruby_platform: true` in the Gemfile — the platform-precompiled gem ships no `.so` for Ruby 3.4+ on `x64-mingw-ucrt`, so the extension is built from source at `bundle install` time.
+
+The shared runner `_profile/build.rb` invokes `Jekyll::Commands::Build.process({})` directly. rbspy's `CreateProcess`-based launcher on Windows cannot resolve the `bundle.cmd` / `bundle.bat` shims, so both wrappers spawn `ruby.exe` against this script rather than going through `bundle exec`. `_profile/profile.rb` wraps the same `build.rb` in a `RubyProf::Profile`. Neither wrapper auto-activates inside normal `build.bat` / `serve.bat` runs.
+
+The first useful finding from a baseline profile: `Offlinify#rewrite_html!` is the single largest non-library hotspot (~6% self-time, ~3s of a ~30s instrumented build), with `Offlinify#compute_relative` a distant second; everything else is Liquid rendering (`BlockBody#render`, `Context#evaluate`, `Variable#render`) inside the Jekyll/Liquid stack itself.
+
 ## Site integrity check
 
 After a batch of changes, verify the site builds clean and all links resolve. From the `docs/` folder, run:
