@@ -2501,14 +2501,14 @@
 		}
 
 		checkUnderflowAfterResize(contents) {
-			if (!this.listening || !this.layoutMethod) {
+			if (!this.listening || !this.layoutMethod || !this._onUnderflow) {
 				return;
 			}
 
 			let endToken = this.layoutMethod.findEndToken(this.wrapper, contents);
 
 			if (endToken) {
-				this._onUnderflow && this._onUnderflow(endToken);
+				this._onUnderflow(endToken);
 			}
 		}
 
@@ -3248,12 +3248,6 @@
 
 				});
 
-				page.onUnderflow((overflowToken) => {
-					// console.log("underflow on", page.id, overflowToken);
-
-					// page.append(this.source, overflowToken);
-
-				});
 			}
 
 			this.total = this.pages.length;

@@ -1775,9 +1775,10 @@ The full menu of fixes against the original 207 s baseline:
 | pdf-lib `parseSpeed: Fastest`       |    -         |    ~3 s     | yes     |
 | `finalizePage` micro-optimizations  |    ~3 s      |    ~3 s     | yes     |
 | **aggressive detach (removeChild)** | **~22 s**    | **~22 s**   | **yes** |
+| **skip dead `findEndToken` path**   | **~3.5 s**   | **~3.5 s**  | **yes** |
 | pageRanges sharding (generate)      |    -         |  10-40 s    | no      |
 
-Render is now ~26 s on a 1638-page book, down from ~104 s in the
+Render is now ~22 s on a 1638-page book, down from ~104 s in the
 original baseline. The next bottleneck is unambiguously
 `page.pdf()` -- ~60-70 s of Chromium-internal PDF serialisation
 that's only addressable via the `pageRanges` sharding approach
@@ -1851,22 +1852,92 @@ Reverted. The lesson echoes Attempt A above (textBreak): if the
 target branch fires rarely, the dedup's correctness is undeniable
 but its effect is unmeasurable.
 
+### Attempt C: skip `findEndToken` when nobody reads its result
+
+`findEndToken` (3.1 s self) was the top remaining JS-body in the
+post-A profile. Both Attempt A (cache the `.lastChild` access) and
+the speculative validNode-caching extension above tried to make
+it *faster*. Wrong question. The bottom-up profile shows where
+cost lives, but a caller breakdown shows *why* it lives there:
+
+```
+findEndToken: self=3108 ms, total=3652 ms
+callers (attributed total ms):
+   3652.19 ms   checkUnderflowAfterResize@paged.browser.js:2502
+```
+
+`findEndToken` is called from exactly one place:
+[`Page.checkUnderflowAfterResize`](docs/lib/paged.browser.js:2503),
+which fires from a `ResizeObserver` whenever the page wrapper
+*shrinks*. That happens on every overflow extraction during
+normal render. The handler computes an `endToken` and hands it to
+`this._onUnderflow(endToken)`. The only live registration of
+`onUnderflow` in the bundle was an empty callback in
+[`Chunker.addPage`](docs/lib/paged.browser.js:3251) with
+commented-out intent (`// page.append(this.source, overflowToken);`).
+The computed endToken was discarded every time.
+
+The fix is subtraction, not optimization: delete the no-op
+registration so `_onUnderflow` stays `undefined` by default, and
+add an early bail in `checkUnderflowAfterResize` so `findEndToken`
+doesn't run when nobody can consume its result. A future caller
+that wants the path back just calls `page.onUnderflow(realFn)` --
+the presence of a non-default handler is itself the activation
+signal, no flag plumbing required.
+
+Profile diff (paired `--detach-pages --cpu-profile`):
+
+| function       | PRE       | POST      | Δ          |
+| -------------- | --------- | --------- | ---------- |
+| `findEndToken` | 3108.0 ms |     0.0 ms | **-3108** |
+| `findElement`  | 1767.2 ms |  1313.8 ms | **-453**  |
+| **render**     | **25.75 s** | **22.26 s** | **-3.49 s (-14%)** |
+
+The `findElement` drop matches the previously-attributed
+`findEndToken → findElement` total-time edge (~537 ms) within
+noise; rest is jitter. PDF byte-equivalent on all sampled pages.
+Shipped.
+
+### The lesson (again)
+
+Attempt A asked "can this be faster?" and got 162 ms.
+Attempt B asked the same question of an adjacent function and got
+nothing measurable. Attempt C asked "does this need to run at
+all?" and got 22x more savings than A and B combined. Once
+self-time is profile-attributed, the next move isn't always
+"optimize the body" -- sometimes the cheapest path is up the call
+chain to the caller, then to the *caller's* caller, until you can
+ask "what does the value being computed actually do?" Here the
+answer was "nothing," and the optimization was deletion.
+
+In hindsight the textBreak and Page.create-memoize attempts both
+failed for the same reason in the opposite direction: they tried
+to make work cheaper that was structurally unavoidable. The wins
+in this investigation -- aggressive-detach and now skip-findEndToken
+-- both came from eliminating work, not from speeding it up.
+
 ### Where this leaves the picture
 
-`findEndToken` (3.1 s self after Attempt A) is still the largest
-remaining JS-body self-time, but it's already cache-optimal in its
-loop body -- the residual is mostly `validNode` work (`isText` +
-`isElement` + `dataset.ref`). A more invasive rewrite (e.g.
-inlining `validNode` and caching its result across the
-`lastChild = child` step) might claim another ~100 ms but the
-shape is the same as the createBreakToken dedup: the savings are
-in the right direction but the absolute size is below noise.
+With `findEndToken` no longer firing, the JS-body profile flattens
+out:
 
-`findElement` self (1.8 s) is the next-largest JS body but it
-already takes the `doc.indexOfRefs[ref]` fast path; the only way
-to reduce it is to cut its call sites, which is what Attempt B
-tried.
+```
+findElement     self 1314 ms ( 5.9 %)
+createBreakToken self 1016 ms ( 4.6 %)
+removeOverflow  self  471 ms ( 2.1 %)
+afterPageLayout self  221 ms ( 1.0 %)
+```
+
+None of these are individually addressable in the same "delete the
+caller" sense; they're load-bearing work in the per-page break
+loop. `findElement` already takes the dictionary fast path. The
+last sub-second JS body worth a profile look would be
+`removeOverflow`'s `extractContents`, but its work is genuinely
+required.
 
 `pageRanges` sharding of `generate` (~60-70 s of `page.pdf()`)
 remains the only knob with a profile target large enough to move
-the wall-clock total meaningfully.
+the wall-clock total meaningfully. Render is now ~22 s and the
+per-page-ratio is 1.50x (vs 1.43x pre-onUnderflow-skip -- the
+extra resize-observer firings had been slightly flattening the
+curve, ironically).
