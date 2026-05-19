@@ -1176,6 +1176,45 @@ page numbers across several corners) the hoist collapses N forced
 flushes -- one per cell that hits the `if (xContent)` branch in the
 original -- down to 1. The win scales with marginalia density.
 
+### Cross-page memoization
+
+The next layer of duplicate work: `finalizePage`'s computation is a
+pure function of `(page.element.className, this.marginalia, CSS
+@page rules)`. The marginalia map and CSS are static; only the
+className varies. **Two pages with the same className get the same
+four `grid-template-columns` / `grid-template-rows` values.** So we
+cache the result.
+
+Implementation: a `this.__finalizeCache: Map<string, {top, bottom,
+left, right}>` on the AtPage instance, keyed by
+`page.element.className`. The cache check sits between the
+`__mLookup` build and the GCS hoist. On a hit we apply the cached
+values via `__mLookup` and `return` -- Phases B and C never run. On
+a miss the existing code runs and the result is recorded at the end
+of the method by reading back the just-written `.style.grid-
+template-*` values.
+
+Phase A's marginalia `.hasContent` classifier still runs on every
+page (the class has to be added to *this* page's elements so the
+@page-margin CSS rules apply). Only the grid-template
+computation is skipped.
+
+**Assumption.** Cache key is `page.element.className`. Sound as long
+as @page rules don't use position-dependent selectors (e.g.
+`:nth-of-type`) that pick different rules on pages that share a
+className. Common case, true for this book; comment in the bundle
+flags the caveat.
+
+Smoke render (`--detach-pages`, no profile): 1638 pages, **16.9 MB
+output (byte-equivalent to the pre-patch run)**, render 48.27 s.
+Wall-clock impact still in the noise -- same reason as the hoist:
+the flush we skip in `finalizePage` is just deferred to the next
+chunker iteration's `findOverflow`. Total layout work the document
+demands doesn't shrink. What does shrink is the JS-side work --
+~1633 of 1638 pages now skip ~17 `querySelector` lookups, 6
+`classList.contains` reads, and the GCS pass entirely -- but that's
+sub-millisecond per page and disappears into the noise band.
+
 We're not going to keep iterating on `finalizePage`: budget is ~1 s
 total render even when every flush triggers, so further work here is
 cleanup-only.

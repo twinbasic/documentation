@@ -29516,6 +29516,30 @@
 				}
 			}
 
+			// PATCH: cross-page memoization. The grid-template-columns /
+			// grid-template-rows values written by Phases B and C below
+			// depend only on which marginalia map entries match the page's
+			// class signature. Two pages with the same className get the
+			// same result, so we cache the four written values keyed by
+			// className and replay them on subsequent matches. Assumes
+			// @page rules don't use position-dependent selectors
+			// (:nth-of-type etc.) that vary by page index for the same
+			// className -- common case, true for this book.
+			if (!this.__finalizeCache) this.__finalizeCache = new Map();
+			const __cacheKey = page.element.className;
+			const __cached = this.__finalizeCache.get(__cacheKey);
+			if (__cached) {
+				for (const loc of ["top", "bottom"]) {
+					const mg = __mLookup["pagedjs_margin-" + loc];
+					if (mg && __cached[loc] !== undefined) mg.style["grid-template-columns"] = __cached[loc];
+				}
+				for (const loc of ["left", "right"]) {
+					const mg = __mLookup["pagedjs_margin-" + loc];
+					if (mg && __cached[loc] !== undefined) mg.style["grid-template-rows"] = __cached[loc];
+				}
+				return;
+			}
+
 			// PATCH: hoist all max-width / max-height reads here so the
 			// downstream forEach loops can write to style without forcing
 			// a layout flush on the next iteration's read. classList.add
@@ -29759,6 +29783,18 @@
 
 			});
 
+			// PATCH: record what we just wrote so the next page with the
+			// same className skips Phases B and C entirely.
+			const __cacheResult = {};
+			for (const loc of ["top", "bottom"]) {
+				const mg = __mLookup["pagedjs_margin-" + loc];
+				if (mg) __cacheResult[loc] = mg.style["grid-template-columns"];
+			}
+			for (const loc of ["left", "right"]) {
+				const mg = __mLookup["pagedjs_margin-" + loc];
+				if (mg) __cacheResult[loc] = mg.style["grid-template-rows"];
+			}
+			this.__finalizeCache.set(__cacheKey, __cacheResult);
 		}
 
 		// CSS Tree Helpers
