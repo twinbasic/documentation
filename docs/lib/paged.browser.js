@@ -1993,9 +1993,15 @@
 								if (styles.getPropertyValue("break-inside") === "avoid") prev = container;
 							}
 
-							// Check if the node is inside a row with a rowspan
+							// Check if the node is inside a row with a rowspan.
+							// Upstream paged.js wrote [colspan] here, but the variable is
+							// `rowspan`, the comment says rowspan, and the walk below
+							// searches back through rows for one with full column coverage
+							// (the row that started a rowspan group) -- a colspan check
+							// here meant tables with rowspan but no colspan silently
+							// skipped the rowspan-aware break logic.
 							const table = parentOf(tableRow, "TABLE", rendered);
-							const rowspan = table.querySelector("[colspan]");
+							const rowspan = table.querySelector("[rowspan]");
 							if (table && rowspan) {
 								let columnCount = 0;
 								for (const cell of Array.from(table.rows[0].cells)) {
