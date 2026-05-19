@@ -433,6 +433,8 @@ From `docs/`:
 - `check.bat` — link check (offline Lychee against `_site/`).
 - `book.bat` — renders the PDF from `_site-pdf/book.html` via `pagedjs-cli` into `_pdf/book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
+The HTML whitespace compression that wraps every page's render chain is handled by `_plugins/html-compress.rb` rather than the just-the-docs theme's `vendor/compress.html` Liquid layout. The layout is bypassed via `compress_html.ignore.envs: all` in `_config.yml`, so it short-circuits to a `{{ content }}` passthrough; the plugin runs the same pre-block-protected whitespace collapse in Ruby at `:pages, :post_render` / `:documents, :post_render` with `priority :high` (so offlinify and Jekyll's writer see the compressed output). Output is byte-identical to the layout-based version. Gating is per page: a `:site, :pre_render` precompute walks every layout's `data["layout"]` chain and marks those that reach `vendor/compress` -- pages outside that set (jekyll-redirect-from stubs, CSS, JSON, book.html via book-combined) are left untouched, matching exactly what the layout would have processed. The plugin replaces ~2.4s of compress.html Liquid filter dispatch (mostly `split: " " | join: " "` over outside-of-`<pre>` content) with a single `String#split.join` in C.
+
 ### Profiling the build
 
 Two profilers are wired in for diagnosing slow builds. Both run a full Jekyll build with all three trees (`_site/`, `_site-offline/`, `_site-pdf/`) and write results into `_profile/out/` (gitignored).

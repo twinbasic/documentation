@@ -179,3 +179,13 @@ exclude:
   - _profile
   - redirects.json
   - "*.bat"
+
+# Bypass just-the-docs's vendor/compress.html Liquid layout: it spends
+# ~3.5s on a single pre-block-protected whitespace collapse done via
+# Liquid split/join filters. The same compression runs as a Ruby
+# plugin in `_plugins/html-compress.rb`, ~10x faster.
+compress_html:
+  ignore:
+    envs: all
+
+
