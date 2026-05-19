@@ -1783,3 +1783,90 @@ original baseline. The next bottleneck is unambiguously
 that's only addressable via the `pageRanges` sharding approach
 (run multiple `page.pdf()` calls on disjoint page ranges in
 parallel browsers, concatenate with pdf-lib).
+
+## What happened when we tried `createBreakToken` dedup
+
+With render down to ~26 s, the bottom-up profile points at three
+JS bodies still worth looking at:
+
+```
+findEndToken    self 3270 ms (12.4 %)
+findElement     self 1924 ms ( 7.3 %)
+createBreakToken self  996 ms ( 3.8 %)
+```
+
+### Attempt A: cache `lastChild.lastChild` in `findEndToken`
+
+The descend-to-deepest-valid-descendant loop in
+[`findEndToken`](docs/lib/paged.browser.js:2100) reads
+`lastChild.lastChild` up to three times per iteration (while
+condition, `validNode` check, assignment). Cache once.
+
+Profile diff (paired `--detach-pages --cpu-profile`):
+
+| function         | PRE       | POST      | Δ        |
+| ---------------- | --------- | --------- | -------- |
+| `findEndToken`   | 3269.9 ms | 3108.0 ms | **-162** |
+| `createBreakToken` | 995.8 ms |  964.9 ms | -31      |
+| `findElement`    | 1924.0 ms | 1767.2 ms | -157     |
+
+Real, modest win on `findEndToken` self-time. Plausibly the `-157`
+on `findElement` is jitter (`findEndToken` doesn't call it), but
+the `findEndToken` self drop is the only one we'd hang our hat on.
+PDF byte-equivalent on all sampled pages. Shipped.
+
+### Attempt B: dedup `findElement(renderedNode, source)` in `createBreakToken`
+
+In the `!renderedNode` branch of
+[`createBreakToken`](docs/lib/paged.browser.js:1796),
+`findElement(renderedNode, source)` is called once at line 1817
+(inside `if (!temp.nextSibling)`) and again unconditionally at
+line 1830. Hoist + reuse: at most one call per invocation that
+takes this branch.
+
+Profile diff vs the post-Attempt-A baseline:
+
+| edge                                | PRE       | POST      | Δ      |
+| ----------------------------------- | --------- | --------- | ------ |
+| `findElement` self                  | 1767 ms   | 1892 ms   | +125   |
+| `findElement` <- `createBreakToken` | 1232 ms   | 1308 ms   | +76    |
+| `findElement` <- `findEndToken`     |  537 ms   |  580 ms   | +43    |
+
+The change cannot regress (it only ever removes one call), so the
+deltas are jitter, not real cost. The give-away is the
+`findElement <- findEndToken` edge: `findEndToken` wasn't touched
+between the two runs, yet its attributed `findElement` total still
+moved by +43 ms. That fixes the per-edge noise floor at ~40-80 ms
+on this machine, which swallows whatever savings the dedup
+produces.
+
+Read the other way: the `!renderedNode + !temp.nextSibling` branch
+must fire rarely enough that removing one of its two `findElement`
+calls doesn't register above this noise. We don't have call-count
+instrumentation in the cpuprofile to confirm directly (`hitCount`
+is samples-on-stack, not invocations), but a savings below
+noise is functionally indistinguishable from no savings.
+
+Reverted. The lesson echoes Attempt A above (textBreak): if the
+target branch fires rarely, the dedup's correctness is undeniable
+but its effect is unmeasurable.
+
+### Where this leaves the picture
+
+`findEndToken` (3.1 s self after Attempt A) is still the largest
+remaining JS-body self-time, but it's already cache-optimal in its
+loop body -- the residual is mostly `validNode` work (`isText` +
+`isElement` + `dataset.ref`). A more invasive rewrite (e.g.
+inlining `validNode` and caching its result across the
+`lastChild = child` step) might claim another ~100 ms but the
+shape is the same as the createBreakToken dedup: the savings are
+in the right direction but the absolute size is below noise.
+
+`findElement` self (1.8 s) is the next-largest JS body but it
+already takes the `doc.indexOfRefs[ref]` fast path; the only way
+to reduce it is to cut its call sites, which is what Attempt B
+tried.
+
+`pageRanges` sharding of `generate` (~60-70 s of `page.pdf()`)
+remains the only knob with a profile target large enough to move
+the wall-clock total meaningfully.
