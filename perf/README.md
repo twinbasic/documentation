@@ -1046,21 +1046,21 @@ total:    130.4s
 harness elides, so it reads a few seconds higher than the harness's
 105 s headline.)
 
-## Restoring live render progress
+## Restoring live progress
 
-Dropping `pagedjs-cli` (above) quietly dropped its ora-driven render
-spinner along with the rest of the CLI. The terminal goes silent for
-the full ~50 s render phase -- on a 200 s build the first quarter
-looks like the process is hung.
+Dropping `pagedjs-cli` (above) quietly dropped its ora spinners
+along with the rest of the CLI. The terminal goes silent for the
+~50 s render and ~60 s generate phases -- on a 130 s build, most
+of the wall time looks like the process is hung.
 
-Restored via `docs/lib/progress-handler.js`: a small `Paged.Handler`
-subclass that emits a `[render-progress] page=N elapsed=Ns` line
-from `afterPageLayout`. `render-book.mjs` listens on
-`page.on('console')` and re-renders the line as a `\r`-overwritten
-TTY status (`rendering: 234 pages (12.4s)`), or every 100 pages on
-its own line when stdout is piped (CI / log files). The live line
-is cleared just before the final `render: 53.5s (1638 pages)`
-summary is printed.
+Render phase: restored via `docs/lib/progress-handler.js`, a small
+`Paged.Handler` subclass that emits a `[render-progress] page=N
+elapsed=Ns` line from `afterPageLayout`. `render-book.mjs` listens
+on `page.on('console')` and re-renders the line as a
+`\r`-overwritten TTY status (`rendering: 234 pages (12.4s)`), or
+every 100 pages on its own line when stdout is piped (CI / log
+files). The live line is cleared just before the final
+`render: 53.5s (1638 pages)` summary is printed.
 
 The handler is a separate in-page script rather than inlined into
 `render-book.mjs` because `addScriptTag({ path })` loads it via
@@ -1070,7 +1070,22 @@ same hook but additionally retains per-page detail on
 `window.__pagedTiming` for offline analysis. The production version
 stays minimal -- just the log line.
 
-The generate phase is still silent. Open follow-up: `page.pdf()` is
-a single opaque CDP call, so generate progress has to come either
-from streaming the result via `transferMode: 'ReturnAsStream'` +
-chunked `IO.read`, or from a wall-clock heartbeat. Pick pending.
+Generate phase: a 500 ms wall-clock heartbeat in `render-book.mjs`
+writes `generating: 23.4s` to a `\r`-overwritten TTY line during
+the `page.pdf()` wait. Elapsed time only; no byte- or page-count
+signal. The line is cleared before the final
+`generate: 68.8s (raw 52.3 MB)` summary, same shape as the render
+phase.
+
+We initially tried byte-level progress -- drive `page.pdf()` at the
+CDP level with `transferMode: 'ReturnAsStream'` + chunked `IO.read`.
+On the Chromium we ship with, the bytes don't actually stream:
+Chrome's SkPDF writer buffers the whole document internally and
+emits all 52 MB in one tick at the end. The wrapper showed `0.0 MB`
+for ~50 s then flickered `52 MB` for one frame before the summary
+-- the heartbeat was doing all the visible work. Dropped the CDP
+code; the buffer-then-dump finding is preserved in a comment above
+the heartbeat so the next person doesn't re-investigate.
+
+The process phase stays silent. At ~5 s with the fast pdf-lib knobs
+(`parseSpeed: Fastest`) it's not worth a progress signal of its own.

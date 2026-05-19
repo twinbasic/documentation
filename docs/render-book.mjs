@@ -115,10 +115,10 @@ try {
     console.error('[request failed]', req.url(), f && f.errorText);
   });
 
-  // Live render progress. progress-handler.js emits one line per page;
-  // we re-render that as an in-place `\r`-overwritten status on a TTY,
-  // or every 100 pages on its own line when stdout is piped (CI, logs).
-  // Cleared before the final `render: ...` summary is printed.
+  // Live progress. Render and generate both write a per-phase status to
+  // stdout: a `\r`-overwritten line on a TTY, or sparser line-per-N
+  // output when stdout is piped (CI / log files). clearProgress() wipes
+  // the live line before the next phase's summary is printed.
   const isTty = !!process.stdout.isTTY;
   let progressLineLen = 0;
   const clearProgress = () => {
@@ -127,6 +127,8 @@ try {
       progressLineLen = 0;
     }
   };
+  // Render phase: progress-handler.js (loaded via addScriptTag below)
+  // emits `[render-progress] page=N elapsed=Ns` from afterPageLayout.
   page.on('console', (msg) => {
     const t = msg.text();
     if (!t.startsWith('[render-progress]')) return;
@@ -176,7 +178,14 @@ try {
   clearProgress();
   console.log(`render:   ${fmtMs(Date.now() - tRender)}  (${pageCount} pages)`);
 
-  // Generate -- meta extraction, outline walk, page.pdf().
+  // Generate -- meta extraction, outline walk, then Chromium DOM->PDF.
+  //
+  // page.pdf() returns a single buffer with no progress signal: on the
+  // Chromium we ship with, the PDF writer buffers the whole document
+  // internally and dumps it at the very end (verified by streaming the
+  // result via CDP IO.read and watching the chunks pile up only at the
+  // last tick). A 500 ms wall-clock heartbeat keeps an elapsed counter
+  // visible during the ~50 s wait so the terminal doesn't look hung.
   const tGenerate = Date.now();
   const meta = await page.evaluate(() => {
     const m = {};
@@ -190,12 +199,32 @@ try {
     return m;
   });
   const outline = await parseOutline(page, outlineTags);
-  const rawPdf = await page.pdf({
-    printBackground:     true,
-    displayHeaderFooter: false,
-    preferCSSPageSize:   true,
-    margin: { top: 0, right: 0, bottom: 0, left: 0 },
-  });
+
+  const renderGenerateProgress = () => {
+    const elapsed = ((Date.now() - tGenerate) / 1000).toFixed(1);
+    const line = `generating: ${elapsed}s`;
+    if (isTty) {
+      process.stdout.write('\r' + line.padEnd(progressLineLen, ' '));
+      progressLineLen = line.length;
+    }
+  };
+  let heartbeat = null;
+  if (isTty) {
+    renderGenerateProgress();
+    heartbeat = setInterval(renderGenerateProgress, 500);
+  }
+  let rawPdf;
+  try {
+    rawPdf = await page.pdf({
+      printBackground:     true,
+      displayHeaderFooter: false,
+      preferCSSPageSize:   true,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 },
+    });
+  } finally {
+    if (heartbeat) clearInterval(heartbeat);
+    clearProgress();
+  }
   console.log(`generate: ${fmtMs(Date.now() - tGenerate)}  (raw ${(rawPdf.length / 1024 / 1024).toFixed(1)} MB)`);
 
   // Process -- pdf-lib roundtrip with outline + metadata attached.
