@@ -30834,23 +30834,32 @@
 			});
 
 			if (resets.length) {
-				this.styleSheet.insertRule(`[data-page-number="${pageElement.dataset.pageNumber}"] { counter-increment: none; counter-reset: ${resets.join(" ")} }`, this.styleSheet.cssRules.length);
+				// counter-set (not counter-reset) -- the CSS counter scoping rules
+				// (CSS Lists L3 §12.4.2) say counter-reset creates a NEW counter
+				// instance scoped to this element, leaving the .pagedjs_pages
+				// ancestor's counter untouched for sibling pages. That's an
+				// upstream paged.js bug: their per-page reset rule was a no-op
+				// for cross-page numbering, so books that meant to restart at
+				// part dividers (like ours) silently shipped continuous
+				// numbering. counter-set modifies the existing closest-scope
+				// counter, which is what was intended.
+				this.styleSheet.insertRule(`[data-page-number="${pageElement.dataset.pageNumber}"] { counter-increment: none; counter-set: ${resets.join(" ")} }`, this.styleSheet.cssRules.length);
 			}
 
-			// Replicate the *effective* counter(page) behavior in JS for the
-			// displayed page number, since aggressive-detach breaks CSS counter
-			// accumulation across pages. The per-page rule injected just above
-			// fires `counter-increment: none` (which works) and
-			// `counter-reset: page N` (which does NOT work in our book -- a
-			// cascade/specificity issue I haven't diagnosed yet). Shipping
-			// behavior is therefore "skip the increment on reset pages but
-			// don't actually reset the counter," so we mirror exactly that:
-			// don't increment on data-counter-page-reset pages, don't apply
-			// the reset value. Result: byte-equivalent @bottom-right numbers
-			// to the pre-detach build. Fixing the part-restart logic is a
-			// separate change.
-			if (pgreset.length === 0) {
+			// Replicate counter(page) semantics in JS for the displayed page
+			// number, since aggressive-detach breaks CSS counter accumulation
+			// across pages. Sequence per page matches the corrected CSS rule:
+			// `counter-increment: none` on reset pages (skip the +1), then
+			// `counter-set: page N` overrides to N.
+			let pageResetValue = null;
+			pgreset.forEach((reset) => {
+				const parsed = parseInt(reset.dataset.counterPageReset, 10);
+				if (!isNaN(parsed)) pageResetValue = parsed;
+			});
+			if (pageResetValue === null) {
 				this._displayPageCounter += 1;
+			} else {
+				this._displayPageCounter = pageResetValue;
 			}
 			pageElement.style.setProperty("--page-num", `"${this._displayPageCounter}"`);
 		}
