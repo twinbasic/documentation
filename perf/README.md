@@ -1218,3 +1218,122 @@ sub-millisecond per page and disappears into the noise band.
 We're not going to keep iterating on `finalizePage`: budget is ~1 s
 total render even when every flush triggers, so further work here is
 cleanup-only.
+
+### Hoisting grid-template emission to parse time
+
+The cleanup payoff. Three patches in a row -- `__mLookup`, GCS hoist,
+cross-page memoization -- had whittled `finalizePage`'s per-page
+work to ~30 sub-ms ops, then to one Map lookup. The architectural
+move was to **delete the hot spot rather than keep optimizing
+around it**: hoist the grid-template computation out of the
+per-page JS path and into the polisher's @page CSS emission, so the
+rules are emitted once at parse time and the browser applies them
+via cascade for every matching page.
+
+The decision tree's inputs are static at parse time:
+
+- **hasContent** per `(page-class, margin-cell)` -- already recorded
+  in `this.marginalia[sel]` by `addMarginaliaStyles` for Phase A's
+  classifier, and invariant per page-class regardless of page index.
+- **max-width / max-height** per cell -- created by the same walker
+  that copies `width`/`height` declarations to `max-width` /
+  `max-height` on corner cells. The runtime
+  `getComputedStyle(el)["max-width"]` reads return the CSS-cascade
+  result of those rules, which is the value the parser saw. We
+  capture the string at parse time on the marginalia entry,
+  defaulting to `"none"` when no declaration exists.
+
+`AtPage.afterTreeWalk` already runs `addPageClasses`, which
+populates `this.marginalia` and emits the per-cell margin-styling
+rules. We extended it with `emitMarginGridTemplates`: for each page
+entry in `this.pages`, build the effective per-cell `hasContent +
+maxWidth + maxHeight` by unioning across every marginalia entry
+whose page-selector is a subset of the page's class signature
+(matching the runtime Phase A OR-cascade; `maxWidth` follows CSS
+cascade and takes the most-specific declared value). Run the same
+decision tree the runtime did on that snapshot. Emit one rule per
+margin group with `selectorsForPage(page)` as the selector and the
+computed `grid-template-columns` / `-rows` as a Raw value
+declaration. Skip emission for the four offset-fallback branches
+that need `offsetWidth` measurement (they can't be pre-computed --
+they read live layout).
+
+For this book that produces 24 rules total -- 6 page-class
+signatures (`*`, `:first`, `divider`, `front-matter`,
+`part-foreword`, `chapter-divider`) × 4 margin groups -- all with
+the same `0 0 1fr` value (the static branch the decision tree
+produces when only one corner has content and no widths are
+declared):
+
+```css
+.pagedjs_page .pagedjs_margin-top    { grid-template-columns: 0 0 1fr; }
+.pagedjs_page .pagedjs_margin-bottom { grid-template-columns: 0 0 1fr; }
+.pagedjs_page .pagedjs_margin-left   { grid-template-rows:    0 0 1fr; }
+.pagedjs_page .pagedjs_margin-right  { grid-template-rows:    0 0 1fr; }
+... (5 more page-class signatures) ...
+```
+
+`finalizePage` collapses to **Phase A + an offset-only Phase B**:
+
+- **Phase A** unchanged. Per-page DOM, can't be hoisted -- it has to
+  add `.hasContent` to the freshly created margin cells so the
+  base-style `.pagedjs_margin:not(.hasContent) { visibility: hidden
+  }` rule unhides the right ones.
+- **Phase B offset fallbacks.** The four branches in the upstream
+  Phase B that compute `minmax(%, ...)` templates from `offsetWidth`
+  measurements stay -- they read live layout and can't be
+  pre-computed. The forEach loop early-exits via a `couldFire` check
+  (two-or-more cells have content) before any `getComputedStyle` or
+  `querySelector` on the margin group; for this book that gate fails
+  on every page so the forEach is dominated by three `querySelector`
+  calls + three `classList.contains` reads per group.
+- **Phase C** disappears entirely. Every branch in the upstream
+  Phase C (left/right vertical groups) is static at parse time --
+  the upstream code has no offset measurement in those paths.
+- All three prior PATCH blocks come out: `__mLookup` and
+  cross-page memoization had no callers left, and only the GCS
+  hoist stays (preserved as an inline batched read of `max-width`
+  inside the `couldFire` gate, for documents whose marginalia would
+  reach the offset fallbacks).
+
+### Verifying it
+
+Instrumented A/B on the same 1638-page book:
+
+| op                      | pre-emit (3 patches) | post-emit | Δ |
+| ---                     | ---                  | ---       | --- |
+| `getComputedStyle`      | 9,179 calls          | **5,903 calls** | **-3,276 (-36%)** |
+| `getBoundingClientRect` | 258,940              | 258,940   | unchanged (different code path) |
+| `offsetWidth`           | 0                    | 0         | unchanged (gate never fires) |
+| render wall-clock       | 47.6 s               | 46.0-47.0 s | noise |
+| pdf size                | 16.9 MB              | 16.9 MB   | unchanged (±27-bytes timestamp variance) |
+
+The -3,276 GCS drop is exactly two reads per page eliminated -- the
+prior GCS hoist batched the per-cell `max-width` reads on
+`.hasContent` cells (one per `top-right`, one per `bottom-right`
+per page). The new `couldFire` early-exit skips them entirely.
+
+Wall-clock is in the noise, as predicted in the patch brief: this
+moves work from runtime JS to parse-time CSS but the browser still
+does the same cascade + layout work. The value here is **deleting
+the hot spot from the bundle**, not shaving milliseconds.
+
+Smoke render of `book.bat`: 1638 pages, 16.9 MB output (within 54
+bytes of the pre-patch run -- ±27 bytes is the normal run-to-run
+variance from Chrome's `/CreationDate` / `/ModDate` encoding),
+render 45.8 s.
+
+### What's left in `finalizePage`
+
+Two phases, both with clear single-purpose justifications:
+
+```
+Phase A   classify .hasContent per margin cell (per-page DOM)
+Phase B'  offset-fallback for auto-width minmax(%) templates
+          (dead code in this book; live for paged.js compatibility)
+```
+
+For our content Phase B' is dominated by an early `couldFire`
+short-circuit. The method now reads top-to-bottom as "what does the
+runtime *have* to do per page", with all the layered optimizations
+unwound. There's nothing left to hoist.

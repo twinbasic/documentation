@@ -27988,6 +27988,290 @@
 				}
 
 			}
+
+			// PATCH: emit static grid-template-columns / -rows rules for the
+			// four margin groups (top, bottom, left, right) on each page-class.
+			// Hoisted out of finalizePage (per-page JS) so the browser applies
+			// the values via cascade for every matching page. See
+			// perf/README.md "Hoisting grid-template emission to parse time".
+			this.emitMarginGridTemplates(ast, sheet);
+		}
+
+		// PATCH: parse-time emission of margin-group grid-template rules.
+		// Replaces Phases B and C of the runtime finalizePage decision tree.
+		// For each page-class entry, computes the effective hasContent +
+		// max-width / -height per cell by unioning over the marginalia
+		// entries whose page-selector is a subset of this page's class
+		// signature (matching the runtime Phase A OR-cascade), then runs the
+		// same decision tree the runtime did and emits one rule per group.
+		// Branches that genuinely require offsetWidth measurement (when the
+		// relevant max-width / -height resolves to "none"/"auto" *and* the
+		// content pattern would normally trigger an offset measurement) are
+		// skipped here -- the trimmed finalizePage handles them at runtime.
+		emitMarginGridTemplates(ast, sheet) {
+			if (!this.__gridTemplatesEmitted) this.__gridTemplatesEmitted = new Set();
+
+			for (let pgKey in this.pages) {
+				if (this.__gridTemplatesEmitted.has(pgKey)) continue;
+				let p = this.pages[pgKey];
+
+				let pClasses = this._pageClassNames(p);
+				if (!pClasses) continue;  // nth-of-type or other dynamic — let runtime handle
+
+				let effective = this._effectiveMarginalia(p, pClasses);
+
+				let topG = this._gridForHorizontalGroup(effective, "top");
+				let botG = this._gridForHorizontalGroup(effective, "bottom");
+				let lftG = this._gridForVerticalGroup(effective, "left");
+				let rgtG = this._gridForVerticalGroup(effective, "right");
+
+				if (topG && !topG.needsOffset) this._emitGridRule(sheet, p, "top",    "grid-template-columns", topG.value);
+				if (botG && !botG.needsOffset) this._emitGridRule(sheet, p, "bottom", "grid-template-columns", botG.value);
+				if (lftG && !lftG.needsOffset) this._emitGridRule(sheet, p, "left",   "grid-template-rows",    lftG.value);
+				if (rgtG && !rgtG.needsOffset) this._emitGridRule(sheet, p, "right",  "grid-template-rows",    rgtG.value);
+
+				this.__gridTemplatesEmitted.add(pgKey);
+			}
+		}
+
+		_pageClassNames(p) {
+			// Class set for this page's selectorsForPage. Returns null if any
+			// selector is dynamic (e.g. :nth-of-type), in which case the
+			// runtime path must handle the page.
+			let sels = this.selectorsForPage(p);
+			let classes = new Set();
+			let dynamic = false;
+			sels.forEach((s) => {
+				if (s.type === "ClassSelector") {
+					classes.add(s.name);
+				} else {
+					dynamic = true;
+				}
+			});
+			return dynamic ? null : classes;
+		}
+
+		_effectiveMarginalia(p, pClasses) {
+			// Mirror runtime Phase A: hasContent ORs across every marginalia
+			// entry whose page-class set is a subset of pClasses. maxWidth /
+			// maxHeight follows CSS cascade -- take the value from the
+			// most-specific (largest class set) matching entry that declares
+			// one; default "none" otherwise.
+			let out = {};
+			for (let mKey in this.marginalia) {
+				let m = this.marginalia[mKey];
+				let mClasses = this._pageClassNames(m.page);
+				if (!mClasses) continue;
+				let applies = true;
+				for (let c of mClasses) {
+					if (!pClasses.has(c)) { applies = false; break; }
+				}
+				if (!applies) continue;
+
+				let e = out[m.loc];
+				if (!e) {
+					e = out[m.loc] = {
+						hasContent: false,
+						maxWidth: "none",
+						maxHeight: "none",
+						_maxWidthSpec: -1,
+						_maxHeightSpec: -1
+					};
+				}
+				if (m.hasContent) e.hasContent = true;
+				let spec = mClasses.size;
+				if (m.maxWidth !== "none" && spec > e._maxWidthSpec) {
+					e.maxWidth = m.maxWidth;
+					e._maxWidthSpec = spec;
+				}
+				if (m.maxHeight !== "none" && spec > e._maxHeightSpec) {
+					e.maxHeight = m.maxHeight;
+					e._maxHeightSpec = spec;
+				}
+			}
+			return out;
+		}
+
+		_gridForHorizontalGroup(effective, loc) {
+			// Phase B in finalizePage. loc is "top" or "bottom".
+			let leftCell   = effective[loc + "-left"];
+			let centerCell = effective[loc + "-center"];
+			let rightCell  = effective[loc + "-right"];
+
+			let centerContent = centerCell ? centerCell.hasContent : false;
+			let leftContent   = leftCell   ? leftCell.hasContent   : false;
+			let rightContent  = rightCell  ? rightCell.hasContent  : false;
+			let centerWidth   = centerCell ? centerCell.maxWidth   : "none";
+			let leftWidth     = leftCell   ? leftCell.maxWidth     : "none";
+			let rightWidth    = rightCell  ? rightCell.maxWidth    : "none";
+
+			if (centerContent) {
+				if (centerWidth === "none" || centerWidth === "auto") {
+					if (!leftContent && !rightContent) {
+						return { value: "0 1fr 0" };
+					} else if (leftContent) {
+						if (!rightContent) {
+							if (leftWidth !== "none" && leftWidth !== "auto") {
+								return { value: leftWidth + " 1fr " + leftWidth };
+							} else {
+								return { needsOffset: true };
+							}
+						} else {
+							if (leftWidth !== "none" && leftWidth !== "auto") {
+								if (rightWidth !== "none" && rightWidth !== "auto") {
+									return { value: leftWidth + " 1fr " + rightWidth };
+								} else {
+									return { value: leftWidth + " 1fr " + leftWidth };
+								}
+							} else {
+								if (rightWidth !== "none" && rightWidth !== "auto") {
+									return { value: rightWidth + " 1fr " + rightWidth };
+								} else {
+									return { needsOffset: true };
+								}
+							}
+						}
+					} else {
+						if (rightWidth !== "none" && rightWidth !== "auto") {
+							return { value: rightWidth + " 1fr " + rightWidth };
+						} else {
+							return { needsOffset: true };
+						}
+					}
+				} else if (centerWidth !== "none" && centerWidth !== "auto") {
+					if (leftContent && leftWidth !== "none" && leftWidth !== "auto") {
+						return { value: leftWidth + " " + centerWidth + " 1fr" };
+					} else if (rightContent && rightWidth !== "none" && rightWidth !== "auto") {
+						return { value: "1fr " + centerWidth + " " + rightWidth };
+					} else {
+						return { value: "1fr " + centerWidth + " 1fr" };
+					}
+				}
+				return null;
+			} else {
+				if (leftContent) {
+					if (!rightContent) {
+						return { value: "1fr 0 0" };
+					} else {
+						if (leftWidth !== "none" && leftWidth !== "auto") {
+							if (rightWidth !== "none" && rightWidth !== "auto") {
+								return { value: leftWidth + " 1fr " + rightWidth };
+							} else {
+								return { value: leftWidth + " 0 1fr" };
+							}
+						} else {
+							if (rightWidth !== "none" && rightWidth !== "auto") {
+								return { value: "1fr 0 " + rightWidth };
+							} else {
+								return { needsOffset: true };
+							}
+						}
+					}
+				} else {
+					if (rightWidth !== "none" && rightWidth !== "auto") {
+						return { value: "1fr 0 " + rightWidth };
+					} else {
+						return { value: "0 0 1fr" };
+					}
+				}
+			}
+		}
+
+		_gridForVerticalGroup(effective, loc) {
+			// Phase C in finalizePage. loc is "left" or "right".
+			let topCell    = effective[loc + "-top"];
+			let middleCell = effective[loc + "-middle"];
+			let bottomCell = effective[loc + "-bottom"];
+
+			// Runtime: middle is nulled out when not hasContent.
+			let middleHasContent = middleCell ? middleCell.hasContent : false;
+			let topContent       = topCell    ? topCell.hasContent    : false;
+			let bottomContent    = bottomCell ? bottomCell.hasContent : false;
+			let topHeight        = topCell    ? topCell.maxHeight     : "none";
+			let bottomHeight     = bottomCell ? bottomCell.maxHeight  : "none";
+			let middleHeight     = middleHasContent && middleCell ? middleCell.maxHeight : undefined;
+
+			if (middleHasContent) {
+				if (middleHeight === "none" || middleHeight === "auto") {
+					if (!topContent && !bottomContent) {
+						return { value: "0 1fr 0" };
+					} else if (topContent) {
+						if (!bottomContent) {
+							if (topHeight !== "none" && topHeight !== "auto") {
+								return { value: topHeight + " calc(100% - " + topHeight + "*2) " + topHeight };
+							}
+							return null;  // original has no else here
+						} else {
+							if (topHeight !== "none" && topHeight !== "auto") {
+								if (bottomHeight !== "none" && bottomHeight !== "auto") {
+									return { value: topHeight + " calc(100% - " + topHeight + " - " + bottomHeight + ") " + bottomHeight };
+								} else {
+									return { value: topHeight + " calc(100% - " + topHeight + "*2) " + topHeight };
+								}
+							} else {
+								if (bottomHeight !== "none" && bottomHeight !== "auto") {
+									return { value: bottomHeight + " calc(100% - " + bottomHeight + "*2) " + bottomHeight };
+								}
+								return null;
+							}
+						}
+					} else {
+						if (bottomHeight !== "none" && bottomHeight !== "auto") {
+							return { value: bottomHeight + " calc(100% - " + bottomHeight + "*2) " + bottomHeight };
+						}
+						return null;
+					}
+				} else {
+					if (topContent && topHeight !== "none" && topHeight !== "auto") {
+						return { value: topHeight + " " + middleHeight + " calc(100% - (" + topHeight + " + " + middleHeight + "))" };
+					} else if (bottomContent && bottomHeight !== "none" && bottomHeight !== "auto") {
+						return { value: "1fr " + middleHeight + " " + bottomHeight };
+					} else {
+						return { value: "calc((100% - " + middleHeight + ")/2) " + middleHeight + " calc((100% - " + middleHeight + ")/2)" };
+					}
+				}
+			} else {
+				if (topContent) {
+					if (!bottomContent) {
+						return { value: "1fr 0 0" };
+					} else {
+						if (topHeight !== "none" && topHeight !== "auto") {
+							if (bottomHeight !== "none" && bottomHeight !== "auto") {
+								return { value: topHeight + " 1fr " + bottomHeight };
+							} else {
+								return { value: topHeight + " 0 1fr" };
+							}
+						} else {
+							if (bottomHeight !== "none" && bottomHeight !== "auto") {
+								return { value: "1fr 0 " + bottomHeight };
+							} else {
+								return { value: "1fr 0 1fr" };
+							}
+						}
+					}
+				} else {
+					if (bottomHeight !== "none" && bottomHeight !== "auto") {
+						return { value: "1fr 0 " + bottomHeight };
+					} else {
+						return { value: "0 0 1fr" };
+					}
+				}
+			}
+		}
+
+		_emitGridRule(sheet, page, group, property, value) {
+			let selectors = this.selectorsForPage(page);
+			selectors.insertData({ type: "Combinator", name: " " });
+			selectors.insertData({ type: "ClassSelector", name: "pagedjs_margin-" + group });
+			let decl = {
+				type: "Declaration",
+				loc: null,
+				important: false,
+				property: property,
+				value: { type: "Raw", value: value }
+			};
+			let rule = this.createRule(selectors, [decl]);
+			sheet.insertRule(rule);
 		}
 
 		getTypeSelector(ast) {
@@ -28570,6 +28854,15 @@
 			for (let loc in page.marginalia) {
 				let block = csstree.clone(page.marginalia[loc]);
 				let hasContent = false;
+				// PATCH: capture max-width / max-height as strings during the
+				// walk so emitMarginGridTemplates (called from afterTreeWalk)
+				// can run the grid-template decision tree at parse time
+				// without needing a rendered DOM to getComputedStyle. "none"
+				// matches the runtime default when the cell has no width /
+				// height declaration. See perf/README.md "Hoisting
+				// grid-template emission to parse time".
+				let maxWidth = "none";
+				let maxHeight = "none";
 
 				if (block.children.isEmpty()) {
 					continue;
@@ -28613,6 +28906,9 @@
 							let c = csstree.clone(node);
 							c.property = "max-width";
 							list.appendData(c);
+							// PATCH: capture the value string for parse-time
+							// grid-template emission.
+							maxWidth = csstree.generate(node.value);
 						}
 
 						if (node.property === "height" &&
@@ -28625,6 +28921,9 @@
 							let c = csstree.clone(node);
 							c.property = "max-height";
 							list.appendData(c);
+							// PATCH: capture the value string for parse-time
+							// grid-template emission.
+							maxHeight = csstree.generate(node.value);
 						}
 					}
 				});
@@ -28643,7 +28942,11 @@
 					page: page,
 					selector: sel,
 					block: page.marginalia[loc],
-					hasContent: hasContent
+					hasContent: hasContent,
+					// PATCH: parse-time cell metrics for emitMarginGridTemplates.
+					loc: loc,
+					maxWidth: maxWidth,
+					maxHeight: maxHeight
 				};
 
 			}
@@ -29486,6 +29789,11 @@
 		}
 
 		finalizePage(fragment, page, breakToken, chunker) {
+			// Phase A: classify margin cells that have content for this
+			// page's class signature. Required per-page -- has to apply to
+			// the freshly created DOM. The base-style rule
+			// `.pagedjs_margin:not(.hasContent) { visibility: hidden }`
+			// depends on this, and the offset fallbacks below read it.
 			for (let m in this.marginalia) {
 				let margin = this.marginalia[m];
 				let sels = m.split(" ");
@@ -29497,304 +29805,124 @@
 				}
 			}
 
-			// PATCH: consolidate the 16 per-iteration querySelector calls in
-			// the forEach loops below into one querySelectorAll up front. The
-			// bundle is a vendored snapshot (perf/README.md); search for
-			// "PATCH: consolidate" if re-vendoring.
-			const __mLookup = {};
-			for (const el of page.element.querySelectorAll(
-				'.pagedjs_margin-top, .pagedjs_margin-bottom, .pagedjs_margin-left, .pagedjs_margin-right, ' +
-				'.pagedjs_margin-top-center, .pagedjs_margin-top-left, .pagedjs_margin-top-right, ' +
-				'.pagedjs_margin-bottom-center, .pagedjs_margin-bottom-left, .pagedjs_margin-bottom-right, ' +
-				'.pagedjs_margin-left-top, .pagedjs_margin-left-middle, .pagedjs_margin-left-bottom, ' +
-				'.pagedjs_margin-right-top, .pagedjs_margin-right-middle, .pagedjs_margin-right-bottom'
-			)) {
-				for (const cls of el.classList) {
-					if (cls !== 'pagedjs_margin' && cls.startsWith('pagedjs_margin-')) {
-						__mLookup[cls] = el;
-					}
-				}
-			}
-
-			// PATCH: cross-page memoization. The grid-template-columns /
-			// grid-template-rows values written by Phases B and C below
-			// depend only on which marginalia map entries match the page's
-			// class signature. Two pages with the same className get the
-			// same result, so we cache the four written values keyed by
-			// className and replay them on subsequent matches. Assumes
-			// @page rules don't use position-dependent selectors
-			// (:nth-of-type etc.) that vary by page index for the same
-			// className -- common case, true for this book.
-			if (!this.__finalizeCache) this.__finalizeCache = new Map();
-			const __cacheKey = page.element.className;
-			const __cached = this.__finalizeCache.get(__cacheKey);
-			if (__cached) {
-				for (const loc of ["top", "bottom"]) {
-					const mg = __mLookup["pagedjs_margin-" + loc];
-					if (mg && __cached[loc] !== undefined) mg.style["grid-template-columns"] = __cached[loc];
-				}
-				for (const loc of ["left", "right"]) {
-					const mg = __mLookup["pagedjs_margin-" + loc];
-					if (mg && __cached[loc] !== undefined) mg.style["grid-template-rows"] = __cached[loc];
-				}
-				return;
-			}
-
-			// PATCH: hoist all max-width / max-height reads here so the
-			// downstream forEach loops can write to style without forcing
-			// a layout flush on the next iteration's read. classList.add
-			// above dirtied layout; the first GCS below flushes once and
-			// we cache the values for the rest of the method.
-			const __maxW = new Map();
-			const __maxH = new Map();
-			for (const loc of ["top", "bottom"]) {
-				for (const spot of ["left", "center", "right"]) {
-					const el = __mLookup["pagedjs_margin-" + loc + "-" + spot];
-					if (el && el.classList.contains("hasContent")) {
-						__maxW.set(el, window.getComputedStyle(el)["max-width"]);
-					}
-				}
-			}
-			for (const loc of ["left", "right"]) {
-				for (const spot of ["top", "middle", "bottom"]) {
-					const el = __mLookup["pagedjs_margin-" + loc + "-" + spot];
-					if (el && el.classList.contains("hasContent")) {
-						__maxH.set(el, window.getComputedStyle(el)["max-height"]);
-					}
-				}
-			}
-
-			// check center
+			// PATCH: the bulk of Phases B and C (the grid-template-columns
+			// / grid-template-rows decision tree) was hoisted to parse time
+			// via AtPage.emitMarginGridTemplates (called from
+			// afterTreeWalk). The browser applies the resulting rules via
+			// cascade on every matching page, so finalizePage no longer
+			// needs to compute them per-page.
+			//
+			// What remains here is the auto-width fallback in Phase B:
+			// when the relevant max-width resolves to "none"/"auto" *and*
+			// at least two of {left, center, right} have content, paged.js
+			// measures offsetWidth on the rendered cells to compute a
+			// minmax(%) template. That genuinely needs live layout -- it
+			// can't be pre-computed -- so it stays at runtime. The matching
+			// Phase C path doesn't exist (no vertical group has an offset
+			// branch in the upstream code).
+			//
+			// For this book none of the gates below fires (only the
+			// right-corner cells have content; the gates require >= 2 cells
+			// with content), so the forEach is dominated by the early
+			// `couldFire` short-circuit. We keep the code for paged.js
+			// compatibility with content patterns that do require it. See
+			// perf/README.md "Hoisting grid-template emission to parse
+			// time".
 			["top", "bottom"].forEach((loc) => {
-				let marginGroup = __mLookup["pagedjs_margin-" + loc];
-				let center      = __mLookup["pagedjs_margin-" + loc + "-center"];
-				let left        = __mLookup["pagedjs_margin-" + loc + "-left"];
-				let right       = __mLookup["pagedjs_margin-" + loc + "-right"];
+				let center = page.element.querySelector(".pagedjs_margin-" + loc + "-center");
+				let left   = page.element.querySelector(".pagedjs_margin-" + loc + "-left");
+				let right  = page.element.querySelector(".pagedjs_margin-" + loc + "-right");
+				if (!center || !left || !right) return;
 
 				let centerContent = center.classList.contains("hasContent");
-				let leftContent = left.classList.contains("hasContent");
-				let rightContent = right.classList.contains("hasContent");
-				// PATCH: max-width reads hoisted to __maxW above.
-				let leftWidth   = __maxW.get(left);
-				let rightWidth  = __maxW.get(right);
-				let centerWidth = __maxW.get(center);
+				let leftContent   = left.classList.contains("hasContent");
+				let rightContent  = right.classList.contains("hasContent");
+
+				// An offset branch can only fire when the content pattern
+				// triggers a "two-or-more-cells, all widths auto" case in
+				// Phase B's decision tree. Early-exit otherwise; this is
+				// the hot path for documents like ours that put content in
+				// a single corner per group.
+				let couldFire = (centerContent && (leftContent || rightContent))
+				             || (!centerContent && leftContent && rightContent);
+				if (!couldFire) return;
+
+				// PATCH: hoist max-width reads. classList.add in Phase A
+				// dirtied layout; reading max-width here flushes once and
+				// batches the subsequent reads. If every relevant width
+				// has an explicit value, the parse-time CSS rule already
+				// handled the case and we return without writing anything.
+				let leftWidth   = window.getComputedStyle(left)["max-width"];
+				let rightWidth  = window.getComputedStyle(right)["max-width"];
+				let centerWidth = window.getComputedStyle(center)["max-width"];
+
+				let marginGroup = page.element.querySelector(".pagedjs_margin-" + loc);
+				if (!marginGroup) return;
 
 				if (centerContent) {
-					if (centerWidth === "none" || centerWidth === "auto") {
-						if (!leftContent && !rightContent) {
-							marginGroup.style["grid-template-columns"] = "0 1fr 0";
-						} else if (leftContent) {
-							if (!rightContent) {
-								if (leftWidth !== "none" && leftWidth !== "auto") {
-									marginGroup.style["grid-template-columns"] = leftWidth + " 1fr " + leftWidth;
-								} else {
-									marginGroup.style["grid-template-columns"] = "auto auto 1fr";
-									left.style["white-space"] = "nowrap";
-									center.style["white-space"] = "nowrap";
-									let leftOuterWidth = left.offsetWidth;
-									let centerOuterWidth = center.offsetWidth;
-									let outerwidths = leftOuterWidth + centerOuterWidth;
-									let newcenterWidth = centerOuterWidth * 100 / outerwidths;
-									marginGroup.style["grid-template-columns"] = "minmax(16.66%, 1fr) minmax(33%, " + newcenterWidth + "%) minmax(16.66%, 1fr)";
-									left.style["white-space"] = "normal";
-									center.style["white-space"] = "normal";
-								}
-							} else {
-								if (leftWidth !== "none" && leftWidth !== "auto") {
-									if (rightWidth !== "none" && rightWidth !== "auto") {
-										marginGroup.style["grid-template-columns"] = leftWidth + " 1fr " + rightWidth;
-									} else {
-										marginGroup.style["grid-template-columns"] = leftWidth + " 1fr " + leftWidth;
-									}
-								} else {
-									if (rightWidth !== "none" && rightWidth !== "auto") {
-										marginGroup.style["grid-template-columns"] = rightWidth + " 1fr " + rightWidth;
-									} else {
-										marginGroup.style["grid-template-columns"] = "auto auto 1fr";
-										left.style["white-space"] = "nowrap";
-										center.style["white-space"] = "nowrap";
-										right.style["white-space"] = "nowrap";
-										let leftOuterWidth = left.offsetWidth;
-										let centerOuterWidth = center.offsetWidth;
-										let rightOuterWidth = right.offsetWidth;
-										let outerwidths = leftOuterWidth + centerOuterWidth + rightOuterWidth;
-										let newcenterWidth = centerOuterWidth * 100 / outerwidths;
-										if (newcenterWidth > 40) {
-											marginGroup.style["grid-template-columns"] = "minmax(16.66%, 1fr) minmax(33%, " + newcenterWidth + "%) minmax(16.66%, 1fr)";
-										} else {
-											marginGroup.style["grid-template-columns"] = "repeat(3, 1fr)";
-										}
-										left.style["white-space"] = "normal";
-										center.style["white-space"] = "normal";
-										right.style["white-space"] = "normal";
-									}
-								}
-							}
-						} else {
-							if (rightWidth !== "none" && rightWidth !== "auto") {
-								marginGroup.style["grid-template-columns"] = rightWidth + " 1fr " + rightWidth;
-							} else {
-								marginGroup.style["grid-template-columns"] = "auto auto 1fr";
-								right.style["white-space"] = "nowrap";
-								center.style["white-space"] = "nowrap";
-								let rightOuterWidth = right.offsetWidth;
-								let centerOuterWidth = center.offsetWidth;
-								let outerwidths = rightOuterWidth + centerOuterWidth;
-								let newcenterWidth = centerOuterWidth * 100 / outerwidths;
-								marginGroup.style["grid-template-columns"] = "minmax(16.66%, 1fr) minmax(33%, " + newcenterWidth + "%) minmax(16.66%, 1fr)";
-								right.style["white-space"] = "normal";
-								center.style["white-space"] = "normal";
-							}
-						}
-					} else if (centerWidth !== "none" && centerWidth !== "auto") {
-						if (leftContent && leftWidth !== "none" && leftWidth !== "auto") {
-							marginGroup.style["grid-template-columns"] = leftWidth + " " + centerWidth + " 1fr";
-						} else if (rightContent && rightWidth !== "none" && rightWidth !== "auto") {
-							marginGroup.style["grid-template-columns"] = "1fr " + centerWidth + " " + rightWidth;
-						} else {
-							marginGroup.style["grid-template-columns"] = "1fr " + centerWidth + " 1fr";
-						}
+					if (centerWidth !== "none" && centerWidth !== "auto") return;
 
+					if (leftContent && !rightContent) {
+						if (leftWidth !== "none" && leftWidth !== "auto") return;
+						marginGroup.style["grid-template-columns"] = "auto auto 1fr";
+						left.style["white-space"] = "nowrap";
+						center.style["white-space"] = "nowrap";
+						let leftOuterWidth = left.offsetWidth;
+						let centerOuterWidth = center.offsetWidth;
+						let outerwidths = leftOuterWidth + centerOuterWidth;
+						let newcenterWidth = centerOuterWidth * 100 / outerwidths;
+						marginGroup.style["grid-template-columns"] = "minmax(16.66%, 1fr) minmax(33%, " + newcenterWidth + "%) minmax(16.66%, 1fr)";
+						left.style["white-space"] = "normal";
+						center.style["white-space"] = "normal";
+					} else if (leftContent && rightContent) {
+						if (leftWidth !== "none" && leftWidth !== "auto") return;
+						if (rightWidth !== "none" && rightWidth !== "auto") return;
+						marginGroup.style["grid-template-columns"] = "auto auto 1fr";
+						left.style["white-space"] = "nowrap";
+						center.style["white-space"] = "nowrap";
+						right.style["white-space"] = "nowrap";
+						let leftOuterWidth = left.offsetWidth;
+						let centerOuterWidth = center.offsetWidth;
+						let rightOuterWidth = right.offsetWidth;
+						let outerwidths = leftOuterWidth + centerOuterWidth + rightOuterWidth;
+						let newcenterWidth = centerOuterWidth * 100 / outerwidths;
+						if (newcenterWidth > 40) {
+							marginGroup.style["grid-template-columns"] = "minmax(16.66%, 1fr) minmax(33%, " + newcenterWidth + "%) minmax(16.66%, 1fr)";
+						} else {
+							marginGroup.style["grid-template-columns"] = "repeat(3, 1fr)";
+						}
+						left.style["white-space"] = "normal";
+						center.style["white-space"] = "normal";
+						right.style["white-space"] = "normal";
+					} else if (!leftContent && rightContent) {
+						if (rightWidth !== "none" && rightWidth !== "auto") return;
+						marginGroup.style["grid-template-columns"] = "auto auto 1fr";
+						right.style["white-space"] = "nowrap";
+						center.style["white-space"] = "nowrap";
+						let rightOuterWidth = right.offsetWidth;
+						let centerOuterWidth = center.offsetWidth;
+						let outerwidths = rightOuterWidth + centerOuterWidth;
+						let newcenterWidth = centerOuterWidth * 100 / outerwidths;
+						marginGroup.style["grid-template-columns"] = "minmax(16.66%, 1fr) minmax(33%, " + newcenterWidth + "%) minmax(16.66%, 1fr)";
+						right.style["white-space"] = "normal";
+						center.style["white-space"] = "normal";
 					}
-
 				} else {
-					if (leftContent) {
-						if (!rightContent) {
-							marginGroup.style["grid-template-columns"] = "1fr 0 0";
-						} else {
-							if (leftWidth !== "none" && leftWidth !== "auto") {
-								if (rightWidth !== "none" && rightWidth !== "auto") {
-									marginGroup.style["grid-template-columns"] = leftWidth + " 1fr " + rightWidth;
-								} else {
-									marginGroup.style["grid-template-columns"] = leftWidth + " 0 1fr";
-								}
-							} else {
-								if (rightWidth !== "none" && rightWidth !== "auto") {
-									marginGroup.style["grid-template-columns"] = "1fr 0 " + rightWidth;
-								} else {
-									marginGroup.style["grid-template-columns"] = "auto 1fr auto";
-									left.style["white-space"] = "nowrap";
-									right.style["white-space"] = "nowrap";
-									let leftOuterWidth = left.offsetWidth;
-									let rightOuterWidth = right.offsetWidth;
-									let outerwidths = leftOuterWidth + rightOuterWidth;
-									let newLeftWidth = leftOuterWidth * 100 / outerwidths;
-									marginGroup.style["grid-template-columns"] = "minmax(16.66%, " + newLeftWidth + "%) 0 1fr";
-									left.style["white-space"] = "normal";
-									right.style["white-space"] = "normal";
-								}
-							}
-						}
-					} else {
-						if (rightWidth !== "none" && rightWidth !== "auto") {
-							marginGroup.style["grid-template-columns"] = "1fr 0 " + rightWidth;
-						} else {
-							marginGroup.style["grid-template-columns"] = "0 0 1fr";
-						}
-					}
+					// couldFire => leftContent && rightContent here.
+					if (leftWidth !== "none" && leftWidth !== "auto") return;
+					if (rightWidth !== "none" && rightWidth !== "auto") return;
+					marginGroup.style["grid-template-columns"] = "auto 1fr auto";
+					left.style["white-space"] = "nowrap";
+					right.style["white-space"] = "nowrap";
+					let leftOuterWidth = left.offsetWidth;
+					let rightOuterWidth = right.offsetWidth;
+					let outerwidths = leftOuterWidth + rightOuterWidth;
+					let newLeftWidth = leftOuterWidth * 100 / outerwidths;
+					marginGroup.style["grid-template-columns"] = "minmax(16.66%, " + newLeftWidth + "%) 0 1fr";
+					left.style["white-space"] = "normal";
+					right.style["white-space"] = "normal";
 				}
 			});
-
-			// check middle
-			["left", "right"].forEach((loc) => {
-				// PATCH: lookup table from above. Original used
-				// querySelector(".pagedjs_margin-" + loc + "-middle.hasContent")
-				// which returns null when .hasContent is absent; replicate that
-				// with an explicit classList check.
-				let middle = __mLookup["pagedjs_margin-" + loc + "-middle"];
-				if (middle && !middle.classList.contains("hasContent")) middle = null;
-				let marginGroup = __mLookup["pagedjs_margin-" + loc];
-				let top         = __mLookup["pagedjs_margin-" + loc + "-top"];
-				let bottom      = __mLookup["pagedjs_margin-" + loc + "-bottom"];
-				let topContent = top.classList.contains("hasContent");
-				let bottomContent = bottom.classList.contains("hasContent");
-				// PATCH: max-height reads hoisted to __maxH above.
-				let topHeight    = __maxH.get(top);
-				let bottomHeight = __maxH.get(bottom);
-				let middleHeight = middle ? __maxH.get(middle) : undefined;
-
-				if (middle) {
-					if (middleHeight === "none" || middleHeight === "auto") {
-						if (!topContent && !bottomContent) {
-							marginGroup.style["grid-template-rows"] = "0 1fr 0";
-						} else if (topContent) {
-							if (!bottomContent) {
-								if (topHeight !== "none" && topHeight !== "auto") {
-									marginGroup.style["grid-template-rows"] = topHeight + " calc(100% - " + topHeight + "*2) " + topHeight;
-								}
-							} else {
-								if (topHeight !== "none" && topHeight !== "auto") {
-									if (bottomHeight !== "none" && bottomHeight !== "auto") {
-										marginGroup.style["grid-template-rows"] = topHeight + " calc(100% - " + topHeight + " - " + bottomHeight + ") " + bottomHeight;
-									} else {
-										marginGroup.style["grid-template-rows"] = topHeight + " calc(100% - " + topHeight + "*2) " + topHeight;
-									}
-								} else {
-									if (bottomHeight !== "none" && bottomHeight !== "auto") {
-										marginGroup.style["grid-template-rows"] = bottomHeight + " calc(100% - " + bottomHeight + "*2) " + bottomHeight;
-									}
-								}
-							}
-						} else {
-							if (bottomHeight !== "none" && bottomHeight !== "auto") {
-								marginGroup.style["grid-template-rows"] = bottomHeight + " calc(100% - " + bottomHeight + "*2) " + bottomHeight;
-							}
-						}
-					} else {
-						if (topContent && topHeight !== "none" && topHeight !== "auto") {
-							marginGroup.style["grid-template-rows"] = topHeight + " " + middleHeight + " calc(100% - (" + topHeight + " + " + middleHeight + "))";
-						} else if (bottomContent && bottomHeight !== "none" && bottomHeight !== "auto") {
-							marginGroup.style["grid-template-rows"] = "1fr " + middleHeight + " " + bottomHeight;
-						} else {
-							marginGroup.style["grid-template-rows"] = "calc((100% - " + middleHeight + ")/2) " + middleHeight + " calc((100% - " + middleHeight + ")/2)";
-						}
-
-					}
-
-				} else {
-					if (topContent) {
-						if (!bottomContent) {
-							marginGroup.style["grid-template-rows"] = "1fr 0 0";
-						} else {
-							if (topHeight !== "none" && topHeight !== "auto") {
-								if (bottomHeight !== "none" && bottomHeight !== "auto") {
-									marginGroup.style["grid-template-rows"] = topHeight + " 1fr " + bottomHeight;
-								} else {
-									marginGroup.style["grid-template-rows"] = topHeight + " 0 1fr";
-								}
-							} else {
-								if (bottomHeight !== "none" && bottomHeight !== "auto") {
-									marginGroup.style["grid-template-rows"] = "1fr 0 " + bottomHeight;
-								} else {
-									marginGroup.style["grid-template-rows"] = "1fr 0 1fr";
-								}
-							}
-						}
-					} else {
-						if (bottomHeight !== "none" && bottomHeight !== "auto") {
-							marginGroup.style["grid-template-rows"] = "1fr 0 " + bottomHeight;
-						} else {
-							marginGroup.style["grid-template-rows"] = "0 0 1fr";
-						}
-					}
-				}
-
-
-
-			});
-
-			// PATCH: record what we just wrote so the next page with the
-			// same className skips Phases B and C entirely.
-			const __cacheResult = {};
-			for (const loc of ["top", "bottom"]) {
-				const mg = __mLookup["pagedjs_margin-" + loc];
-				if (mg) __cacheResult[loc] = mg.style["grid-template-columns"];
-			}
-			for (const loc of ["left", "right"]) {
-				const mg = __mLookup["pagedjs_margin-" + loc];
-				if (mg) __cacheResult[loc] = mg.style["grid-template-rows"];
-			}
-			this.__finalizeCache.set(__cacheKey, __cacheResult);
 		}
 
 		// CSS Tree Helpers
