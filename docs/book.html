@@ -133,10 +133,14 @@ sitemap: false
 {%- endcomment -%}
 {%- if site.data.book.front_matter -%}
 {%- for fm in site.data.book.front_matter -%}
-  {%- assign collected = "" | split: "" -%}
-  {%- include book-collect-matches.html entry=fm -%}
-  {%- assign fm_chapters = collected | sort_by_nav_order -%}
-  {%- for chapter in fm_chapters -%}
+  {%- comment -%}
+    Chapter list precomputed in `_plugins/book-resolve-chapters.rb`
+    at `:site, :pre_render`. The Liquid `include book-collect-matches`
+    + `where_exp` + `sort_by_nav_order` chain that used to live here
+    folded into the Ruby resolver -- see the plugin's header comment
+    for the savings rationale.
+  {%- endcomment -%}
+  {%- for chapter in fm._chapters -%}
     {%- if chapter.url == '/' -%}
       {%- assign fm_anchor = 'ch-' | append: fm.title | downcase | replace: ' ', '-' -%}
     {%- else -%}
@@ -168,32 +172,16 @@ sitemap: false
 {%- endif %}
 </article>
   {%- comment -%}
-    Gather the part's chapters. A part may set any combination of:
-      page:         single URL prefix (alias for `pages: [page]`)
-      pages:        list of URL prefixes; `contains`-match per entry
-      nav_page:     single nav_path prefix (alias for `nav_pages: [...]`)
-      nav_pages:    list of nav_path prefixes; `contains`-match per entry
-      landing_page: single URL emitted first, then filtered out of
-                    the prefix sweep before the sort (so it doesn't
-                    contribute its nav_order to its parent-folder
-                    group's lead, dragging that group to its own slot)
-      no_descent:   switch every page/pages/nav_page/nav_pages match
-                    from `contains` to `==` so a `/Foo/` prefix
-                    matches only the index, not its sub-pages
+    Flat-part chapter list precomputed in
+    `_plugins/book-resolve-chapters.rb` at `:site, :pre_render`.
+    The plugin applies the same selector schema (page / pages /
+    nav_page / nav_pages / no_descent + landing_page-first ordering
+    + sort_by_nav_order) the Liquid chain used to drive, in one Ruby
+    pass per entry. Chaptered parts (`part.chapters`) get their
+    chapter lists resolved separately under `part.chapters[*]._chapters`
+    -- the part itself has no _chapters in that case.
   {%- endcomment -%}
-  {%- assign chapters = "" | split: "" -%}
-  {%- if part.landing_page -%}
-    {%- assign part_landing = site.pages | where: "url", part.landing_page -%}
-    {%- assign chapters = chapters | concat: part_landing -%}
-  {%- endif -%}
-  {%- assign collected = "" | split: "" -%}
-  {%- include book-collect-matches.html entry=part -%}
-  {%- if part.landing_page -%}
-    {%- assign part_landing_url = part.landing_page -%}
-    {%- assign collected = collected | where_exp: "p", "p.url != part_landing_url" -%}
-  {%- endif -%}
-  {%- assign part_rest = collected | sort_by_nav_order -%}
-  {%- assign chapters = chapters | concat: part_rest -%}
+  {%- assign chapters = part._chapters -%}
     {%- comment -%}
       1.6a: state for sub-page detection. Index pages (URL ending in `/`)
       sort before their siblings under ASCII order, so a single-slot
@@ -295,29 +283,13 @@ sitemap: false
 </article>
 
       {%- comment -%}
-        Build this chapter's page list. The chapter emits its
-        landing_page first (so it acts as the chapter intro right
-        after the divider), then page/pages/nav_page/nav_pages
-        matches sorted via `sort_by_nav_order`. The landing is
-        filtered out of the match set before the sort so it doesn't
-        double-emit and so it doesn't drag its parent-folder group's
-        lead -- see the matching comment in the flat-part loop above.
-        See _includes/book-collect-matches.html for the selector
-        schema (page/pages/nav_page/nav_pages + no_descent).
+        Chapter page list precomputed in
+        `_plugins/book-resolve-chapters.rb`: landing_page first (if
+        set), then prefix-swept rest with landing filtered out, sorted
+        by `sort_by_nav_order`. See the plugin's header comment for
+        the selector schema and the savings rationale.
       {%- endcomment -%}
-      {%- assign ch_chapters = "" | split: "" -%}
-      {%- if ch_entry.landing_page -%}
-        {%- assign ch_landing = site.pages | where: "url", ch_entry.landing_page -%}
-        {%- assign ch_chapters = ch_chapters | concat: ch_landing -%}
-      {%- endif -%}
-      {%- assign collected = "" | split: "" -%}
-      {%- include book-collect-matches.html entry=ch_entry -%}
-      {%- if ch_entry.landing_page -%}
-        {%- assign ch_landing_url = ch_entry.landing_page -%}
-        {%- assign collected = collected | where_exp: "p", "p.url != ch_landing_url" -%}
-      {%- endif -%}
-      {%- assign ch_rest = collected | sort_by_nav_order -%}
-      {%- assign ch_chapters = ch_chapters | concat: ch_rest -%}
+      {%- assign ch_chapters = ch_entry._chapters -%}
 
       {%- assign current_index_url = '' -%}
       {%- assign current_index_kind = 'class' -%}

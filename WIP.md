@@ -446,6 +446,46 @@ The shared runner `_profile/build.rb` invokes `Jekyll::Commands::Build.process({
 
 The first useful finding from a baseline profile: `Offlinify#rewrite_html!` is the single largest non-library hotspot (~6% self-time, ~3s of a ~30s instrumented build), with `Offlinify#compute_relative` a distant second; everything else is Liquid rendering (`BlockBody#render`, `Context#evaluate`, `Variable#render`) inside the Jekyll/Liquid stack itself.
 
+#### Current Liquid filter picture
+
+After the html-compress plugin landed (`vendor/compress.html` short-circuited, the Ruby plugin doing the whitespace pass), the top per-filter costs on a ~39 s ruby-prof run break down as follows. Numbers from `Liquid::Strainer#invoke`'s children in `_profile/out/jekyll-build.graph.txt`:
+
+| Filter | Total time | Calls | µs/call |
+|---|---|---|---|
+| `markdownify` | 4.605 s | 1,802 | 2,555 |
+| `where_exp` | 1.484 s | **37** | **40,108** |
+| `replace` | 0.606 s | 87,991 | 6.9 |
+| `relative_url` | 0.503 s | 11,417 | 44 |
+| `absolute_url` | 0.396 s | 1,675 | 236 |
+| `normalize_whitespace` | 0.329 s | 4,261 | 77 |
+| `strip_html` | 0.248 s | 8,261 | 30 |
+
+Two structurally different outliers in that list:
+
+- **`markdownify` (4.6 s / 11.7 % of build)** -- 1,802 explicit `| markdownify` filter invocations across templates. Only three call sites: `_includes/head_seo.html` (`page.title | markdownify` and `site.title | markdownify`, ~1,674 calls), `_includes/book-chapter-body.html` (`include.chapter.content | markdownify`, ~100 of the 745 chapter passes -- most chapters' content starts with `<` and skips), and `book.html`'s part subtitle / intro (~24). Jekyll's markdown cache deduplicates these (3,146 `Converters::Markdown#convert` calls back only 1,975 actual kramdown parses), so the 4.6 s is mostly **filter dispatch + cache-lookup overhead, not kramdown work**. Of the 836 page titles, only 2 (`*, *=` and `\, \=`) contain markdown-active characters; the other 834 paths through the `markdownify | strip_html | normalize_whitespace | escape_once` pipeline reduce to `escape_once(title)`.
+- **`where_exp` (1.5 s / 37 calls × 40 ms)** -- ~40 ms per call is the per-element Liquid expression interpreter cost on `site.pages` (~837 entries). All 37 calls come from `_includes/book-collect-matches.html` (the `site.pages | where_exp: "p", "p.url contains prefix"` and `"p.nav_path contains np"` sweeps) and one `book.html` site (`collected | where_exp: "p", "p.url != part_landing_url"` to strip a landing page from the prefix sweep).
+
+`replace` is the third bucket worth tracking: 87,991 calls but only 0.6 s -- ~7 µs per call. Of those, ~36 k come from `_includes/book-chapter-body.html`'s heading-shift chains (12 replaces × 3 cascading shift passes) and anchor-id prefix replaces (13 replaces). The per-call cost is tiny but the volume adds up.
+
+#### Investigation plan
+
+Ranked by estimated wall-clock saving on the current Windows machine:
+
+1. **`book-collect-matches.html` → Ruby precompute. [LANDED]** Moved every `where_exp` / `where` / `concat` / `sort_by_nav_order` chain driven by `_data/book.yml` into a `:site, :pre_render` plugin (`_plugins/book-resolve-chapters.rb`) that stashes the resolved chapter array on each front-matter entry / flat part / chaptered-part chapter. `book.html` reads `entry._chapters` directly; `_includes/book-collect-matches.html` deleted. The `Jekyll::Filters#where_exp` row disappears from ruby-prof's filter table (was 1.484 s / 37 calls), and the overall `Liquid::Strainer#invoke` total dropped from 8.902 s to 6.687 s in instrumented runs.
+
+   Wall-clock effect on the current Windows machine (5 `--profile` runs each, before/after; one outlier in the before set inflates its stddev):
+
+   | Phase / template | Before (mean +- sd) | After (mean +- sd) | Delta |
+   |---|---|---|---|
+   | RENDER total | 11.93 +- 2.11 s | 9.53 +- 0.12 s | -2.40 s |
+   | `book.html` | 1.68 +- 1.09 s | 0.58 +- 0.03 s | -1.10 s |
+   | `_includes/book-collect-matches.html` | 0.71 +- 0.46 s | 0.00 s (removed) | -0.71 s |
+   | `_includes/book-chapter-body.html` | 0.81 +- 0.51 s | 0.51 +- 0.03 s | -0.30 s |
+
+   The before-run stddevs are large because one of the 5 baseline runs was a clear 5 s outlier; outlier-excluded, the RENDER delta is closer to -1.4 s. The after-run stddev is tight across the same 5-run sample, so the speedup itself is robust at >1 s. Output is byte-identical to baseline (verified by `diff -rq` on all three of `_site/`, `_site-offline/`, `_site-pdf/`).
+2. **`head_seo.html` markdownify precompute.** Run the `markdownify | strip_html | normalize_whitespace | escape_once` pipeline once per unique title in a `:pages, :pre_render` hook, take a fast `escape_once`-only path for the 834 markdown-inert titles, stash the result on `page.data`. Eliminates ~1,674 of the 1,802 `markdownify` filter calls. Estimated 1.5-2 s real wall.
+3. **`book-chapter-body.html` heading-shift + anchor-prefix `replace` chain → Ruby pass.** ~36 k replaces fold into one string rewrite. Smaller win (~0.3 s) but probably wants to land alongside #2 since both touch the same render path.
+
 ## Site integrity check
 
 After a batch of changes, verify the site builds clean and all links resolve. From the `docs/` folder, run:
