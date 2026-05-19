@@ -499,7 +499,41 @@ Ranked by estimated wall-clock saving on the current Windows machine:
    | `Liquid::Variable#render` total | 10.05 s | 8.96 s | -1.09 s |
 
    The `BlockBody#render` / `Context#stack` / `Variable#render` drops reflect the eliminated `{%- assign -%}` / `{%- if -%}` blocks in head_seo.html (dropped from ~85 lines of Liquid logic to ~20 lines of straight output). The 128 remaining `markdownify` calls come from `book.html`'s part subtitle/intro (~24) and `book-chapter-body.html`'s per-chapter `chapter.content | markdownify` (~100 chapters whose content doesn't start with `<`); both candidates for a follow-up pass (see #3). New `Jekyll::SeoPrecompute#absolute_url` adds 0.44 s for 846 calls, replacing 1,675 filter calls that totalled 0.40 s -- essentially flat, but the absolute_url filter had its own per-build cache, so the swap is a wash on this axis. Output byte-identical to baseline (`diff -rq` clean on all three of `_site/`, `_site-offline/`, `_site-pdf/`).
-3. **`book-chapter-body.html` heading-shift + anchor-prefix `replace` chain → Ruby pass.** ~36 k replaces fold into one string rewrite. Smaller win (~0.3 s) but probably wants to land alongside #2 since both touch the same render path.
+3. **`book-chapter-body.html` heading-shift + anchor-prefix `replace` chain → Ruby pass. [LANDED]** Replaced the per-chapter chain of 0-3 heading-shift cascades (12 replaces each), the 12-pattern whitespace span wrapping, and the 13-replace anchor-id prefix pass with a single Liquid filter `book_chapter_transform` (`_plugins/book-chapter-transform.rb`). The filter takes the body, the site baseurl, a precomputed `heading_shift_n` (0-3, derived in Liquid from `skip_base_heading_shift` / `is_sub_page` / `extra_heading_shift`), and the chapter anchor; does all six passes in one method with no intermediate string allocations beyond what the regex engine produces internally. The dead `p1_search` / `p1_replace` / ... whitespace-pattern declarations were also removed from `book.html`'s prologue.
+
+   The single-pass heading shift (one regex bumping each level by N, capping at h7-stub for source levels above 6) is equivalent to N applications of the bottom-up cascade chain -- each source heading lands at `level + N` or `h7-stub` regardless of how many sequential passes the chain ran, since the cascade structure was an artifact of Liquid not having a bump-by-N primitive, not a semantic requirement.
+
+   Ruby-prof effect (post-SEO baseline vs post-chapter-transform):
+
+   | Metric | Before | After | Delta |
+   |---|---|---|---|
+   | Total instrumented wall | 36.90 s | 34.78 s | -2.12 s |
+   | `Liquid::Strainer#invoke` total | 5.97 s / 179,266 calls | 5.45 s / 122,397 calls | -0.52 s / -56,869 calls |
+   | `Liquid::StandardFilters#replace` calls | 87,991 | 48,577 | -39,414 |
+   | `Liquid::StandardFilters#replace` total | 0.58 s | 0.33 s | -0.25 s |
+   | new `BookChapterTransform#book_chapter_transform` | -- | 0.14 s / 718 calls | +0.14 s |
+   | `Liquid::BlockBody#render` total | 16.14 s | 14.43 s | -1.71 s |
+   | `Liquid::Context#stack` total | 15.50 s | 13.78 s | -1.71 s |
+   | `Liquid::Variable#render` total | 8.96 s | 7.82 s | -1.14 s |
+
+   The Liquid framework drops (`BlockBody#render`, `Context#stack`, `Variable#render`) again outweigh the filter-dispatch drop -- they capture the eliminated `{%- unless -%}` / `{%- if -%}` blocks plus the chained `| replace:` pipeline AST nodes. The new filter does ~190 µs per call across 718 invocations, covering the same work the eliminated 39 k Liquid replaces did. Output byte-identical to baseline (`diff -rq` clean on `_site/`, `_site-offline/`, `_site-pdf/`).
+
+#### Cumulative
+
+The three landed optimizations together (chapter precompute, SEO precompute, chapter-body transform) shrank ruby-prof's instrumented build wall from ~41.7 s (immediately post-html-compress baseline) down to 34.78 s -- about -7 s. The cumulative profile-table picture, comparing the post-html-compress baseline to the post-chapter-transform state:
+
+| Metric | Post-html-compress | Post-CT | Delta |
+|---|---|---|---|
+| Total instrumented wall | 39.30 s | 34.78 s | -4.52 s |
+| `Liquid::Strainer#invoke` total | 8.90 s / 191,365 calls | 5.45 s / 122,397 calls | -3.45 s / -68,968 calls |
+| `where_exp` calls | 37 | 0 | -37 |
+| `markdownify` calls | 1,802 | 128 | -1,674 |
+| `absolute_url` filter calls | 1,675 | 1 | -1,674 |
+| `replace` calls | 87,991 | 48,577 | -39,414 |
+| `Liquid::BlockBody#render` total | 18.38 s | 14.43 s | -3.95 s |
+| `Liquid::Context#stack` total | 18.19 s | 13.78 s | -4.41 s |
+
+What's left of the per-filter table is approximately what kramdown / Rouge actually parse and emit: the 128 remaining `markdownify` calls are the per-chapter `chapter.content | markdownify` in `book-chapter-body.html` plus `book.html`'s part subtitle / intro markdown. Each of those is unique input, so Jekyll's converter cache rarely hits and the kramdown parse itself dominates. Further savings on this axis would need either (a) reusing the already-rendered `_site/<page>.html` instead of re-parsing source markdown for the book, or (b) accepting kramdown's parse cost as the floor and looking elsewhere -- the next-biggest non-library hotspot is `Offlinify#rewrite_html!` at ~2 s of self-time, already heavily optimised (see `_plugins/offlinify.md`).
 
 ## Site integrity check
 
