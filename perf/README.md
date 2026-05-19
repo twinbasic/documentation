@@ -1337,3 +1337,428 @@ For our content Phase B' is dominated by an early `couldFire`
 short-circuit. The method now reads top-to-bottom as "what does the
 runtime *have* to do per page", with all the layered optimizations
 unwound. There's nothing left to hoist.
+
+## Looking past `finalizePage`: where render time goes now
+
+With the `finalizePage` work landed, a fresh `--detach-pages
+--time-hooks --cpu-profile` run on 1638 pages (2026-05-19) shows the
+named handlers we hook -- the surface we own -- now account for
+**under 1 ms/page combined**. Per-page handler costs, top of table:
+
+```
+hook::handler                                count  total_ms  per_page_ms
+chunker.afterPageLayout (detach-pages)        1638     788.5        0.481
+chunker.afterPageLayout (#10)                 1638     249.0        0.152
+chunker.renderNode                           44365     185.6        0.113
+chunker.afterPageLayout (#6)                  1638     100.9        0.062
+chunker.finalizePage                          1638      71.8        0.044
+chunker.beforePageLayout                      1638      68.6        0.042
+```
+
+Render is ~49 s on this hardware (~30 ms/page average). Subtracting
+the ~1 ms/page of handler work leaves ~29 ms/page of **paged.js
+core**: chunking, layout probing, overflow detection, and the
+text-break split. That's what the CPU profile attributes to:
+
+```
+self_ms   self_%   function                     source
+22855     33.0 %   getBoundingClientRect        (native, called from JS)
+19332     27.9 %   (program)                    V8 overhead / idle
+ 9931     14.4 %   removeOverflow               paged.browser.js:2196
+ 4280      6.2 %   findEndToken                 paged.browser.js:2094
+ 2364      3.4 %   findElement                  paged.browser.js:638 (cache hit; cheap)
+ 1456      2.1 %   insertBefore                 native
+ 1228      1.8 %   createBreakToken             paged.browser.js:1796
+  580      0.8 %   afterPageLayout (paged.js)   paged.browser.js:30381
+```
+
+(Counter-check on the ratio: this run reads **5.59 x** rather than
+the usual ~1.6 x. That's instrumentation skew -- both `--time-hooks`
+and `--cpu-profile` wrap hot paths, and the sampling overhead is
+proportionally larger on later pages. The handler totals and
+self-time table are still accurate; the per-page growth curve isn't
+trustworthy on instrumented runs.)
+
+So 33 % of render is `getBoundingClientRect` and another ~20 % is
+inside `removeOverflow` + `findEndToken` -- paged.js's per-page
+overflow-find + text-split path. That work isn't redundant: each
+page genuinely has to decide where its content ends. The remaining
+opportunities aren't *eliminating* work, they're *replacing the
+algorithm* with something the browser can answer in one call.
+
+### Three places non-redundant work could be made simpler
+
+**1. `Layout.textBreak` -- replace per-word `gBCR` loop with a
+single native call.** [paged.browser.js:2136](docs/lib/paged.browser.js:2136)
+walks an overflowing Range word-by-word, calling
+`getBoundingClientRect` on each `Range` to find which word crosses
+the page boundary; if a word straddles it, it descends letter-by-
+letter doing the same. On a long text node that's dozens to
+hundreds of gBCR calls -- and `textBreak` is the inner loop of
+`findOverflow`, so it fires on every page that overflows.
+
+A single `document.caretPositionFromPoint(x, vEnd)` (or
+`caretRangeFromPoint` on Chromium) returns the exact text node +
+offset at the boundary in **one** browser call. Equivalently,
+`range.getClientRects()` returns every line box of the range in one
+call, after which the crossing line is a simple `.find()`. Either
+replaces an `O(words-in-overflow)` scan with `O(1)`.
+
+This is the highest-leverage candidate: even if it cuts only half
+of the `gBCR` time, that's ~10 s off render. The risk is fidelity
+-- we'd need to verify the substitute gives the *same* split point
+as the word-walk on edge cases (RTL, hyphenated words,
+`white-space: pre`, soft hyphens). Worth a prototype + diff against
+the current bundle's output PDF.
+
+**2. `findOverflow` -- collapse three ancestor walks into one.**
+Inside the per-node loop in
+[paged.browser.js:1934](docs/lib/paged.browser.js:1934):
+
+```js
+const insideTableCell = parentOf(node, "TD", rendered);
+// ...
+tableRow = parentOf(node, "TR", rendered);
+// ...
+const table = parentOf(tableRow, "TABLE", rendered);
+```
+
+Three separate ancestor traversals per node visited, each climbing
+from `node` to `rendered`. One walk that emits the nearest TD/TR/
+TABLE together is ~10 lines and visits each ancestor once. Won't
+match #1 for raw savings (this is in the same loop that's already
+calling `getComputedStyle`, so a single-digit % gain at best) but
+it's the easy follow-up.
+
+**3. Cache `getComputedStyle` per page.** Same loop,
+[paged.browser.js:1969, 1974, 1992](docs/lib/paged.browser.js:1969):
+up to four `getComputedStyle` calls per node visited (on the node,
+its TD ancestor, and the parent TBODY/THEAD). The walker revisits
+the same ancestors across many child nodes; a `WeakMap<Element,
+CSSStyleDeclaration>` populated lazily per page would dedupe.
+
+This one *is* deduplication-shaped, but it's the cheapest of the
+three to land (no algorithmic change, no fidelity risk) and a clean
+follow-up if #1 lands.
+
+### Probable bug worth surfacing separately
+
+[paged.browser.js:1998](docs/lib/paged.browser.js:1998):
+
+```js
+const table = parentOf(tableRow, "TABLE", rendered);
+const rowspan = table.querySelector("[colspan]");
+```
+
+The local is named `rowspan` and the surrounding comment is about
+rowspan-aware break handling, but the selector matches `colspan`.
+Looks like a typo that's silently broken the rowspan path since the
+bundle was vendored. Not a perf issue per se, but worth a separate
+fix.
+
+### Strategic note
+
+Render and generate are now within ~20 s of each other (49 s vs
+70 s on this run). Each second shaved off render moves total by
+less than it used to, because `page.pdf()` is now the larger phase.
+Item 1 above is the only remaining render change that plausibly
+returns 10+ s; items 2 and 3 are <5 s each.
+
+After item 1 the remaining levers all live outside render. The
+Chrome-outline experiment above shows generate isn't moved by
+shifting outline work around (Chrome walking `h1..h6` itself costs
+about what `parseOutline` + `setOutline` save -- net was +1.9 s).
+The one generate-side lever we haven't tried is **`pageRanges`
+sharding** -- run `page.pdf()` N times with disjoint page ranges on
+parallel browser pages and concatenate with pdf-lib. Each shard
+serialises only its slice and they run concurrently, so generate
+collapses to roughly `60 s / N` plus a small concat pass. Listed
+under "What might still be worth trying" above; it's the biggest
+untried knob in the pipeline.
+
+## What happened when we tried item 1
+
+The strategic note above was wrong about item 1 -- the binary-search
+replacement for `textBreak` saves nothing, and the reason it saves
+nothing reveals the actual structure of the remaining render cost.
+
+### Attempt A: binary-search `textBreak`
+
+Replaced the per-word-then-per-letter gBCR cascade in
+[`Layout.textBreak`](docs/lib/paged.browser.js:2136) with a binary
+search over offsets using a single-character probe `Range`.
+Semantically equivalent (both return the smallest offset whose
+character satisfies `left >= end || top >= vEnd`), should reduce
+gBCR call count from O(words) to O(log nodeLength).
+
+Paired runs with `--detach-pages`:
+
+| run        | baseline | binsearch |
+| ---------- | -------- | --------- |
+| render (1) |  47.73 s |  51.43 s  |
+| render (2) |  47.10 s |  47.12 s  |
+| **avg**    | **47.4** | **49.3**  |
+
+Wash, possibly small regression. PDF byte size and page count
+identical. Reverted.
+
+### Attempt B: memoize `Page.create`'s `area.getBoundingClientRect`
+
+The CPU profile of attempt A's baseline pointed at a much bigger
+target. Tracing gBCR's native frames up to their JS callers in the
+profile graph:
+
+```
+caller                           gBCR time
+create:2257                      12,947 ms   (69 %)
+hasOverflow:1925                  4,419 ms   (24 %)
+Layout:1443                         586 ms
+...
+total native gBCR                18,424 ms
+```
+
+[`Page.create`](docs/lib/paged.browser.js:2257) does one
+`area.getBoundingClientRect()` per page, right after the fresh
+`insertBefore` / `appendChild` of the page DOM -- so each call
+forces a synchronous layout pass. The `area`'s size is CSS-driven
+and constant per template, so the gBCR should be cacheable.
+
+Memoized the result on the `pageTemplate` node (first page pays,
+all subsequent same-template pages reuse).
+
+Profile diff (same `--detach-pages --cpu-profile` flags, paired):
+
+| caller            | PRE       | POST      | Δ          |
+| ----------------- | --------- | --------- | ---------- |
+| `create:2257`     | 12,947 ms |      2 ms | **-12,945** |
+| `Layout:1443`     |    586 ms | 13,567 ms | **+12,981** |
+| `hasOverflow:1925`|  4,419 ms |  4,533 ms |    +114    |
+| **total**         | 18,424 ms | 18,554 ms |    +130    |
+
+The cost moved, it didn't disappear. The memoization successfully
+eliminated the gBCR at `create:2257` (from 12,947 ms to 2 ms), but
+the layout flush that gBCR was driving still had to happen
+somewhere -- it migrated to the next call in the per-page sequence,
+[`Layout`'s constructor](docs/lib/paged.browser.js:1443):
+
+```js
+this.bounds = this.element.getBoundingClientRect();
+this.parentBounds = this.element.offsetParent.getBoundingClientRect();
+```
+
+Total gBCR self-time barely changed (+130 ms). Per-page ratio got
+worse (1.77x -> 3.07x), probably because the deferred flush
+accumulated more pending mutations before firing. Reverted.
+
+### The lesson
+
+**gBCR self-time in the profile is layout-flush attribution, not
+JS call overhead.** Reducing the *number* of gBCR calls in a hot
+path saves ~nothing if the layout flush they trigger has to fire
+anyway. The cost lives in the flush itself, which is paged.js
+measuring the live layout tree to decide where to break.
+
+Where the residual per-page layout cost actually comes from, after
+`--detach-pages` has already trimmed completed pages out of the
+layout tree, is probably one of:
+
+- **CSS counters** at
+  [`.pagedjs_pages`](docs/lib/paged.browser.js:27213)
+  (`counter-reset: pages ... footnote ...`). Counter resolution
+  walks the document, and counter-affecting elements per page
+  accumulate even when `display: none`.
+- **`offsetParent` lookup** in `Layout`'s constructor. That's a
+  layout-tree walk to find the nearest positioned ancestor; cost
+  can grow with sibling count even when most siblings are
+  display:none.
+
+Neither is fixable by dedup-shaped optimizations in our bundle.
+
+The remaining `findOverflow` opportunities (items 2 and 3 in the
+strategic note above -- collapsing ancestor walks, caching
+`getComputedStyle`) might still be worth doing on their own
+merits, but they're not where the gBCR time lives.
+
+### Methodology: compare profiles, not wall-clock
+
+Both attempts above showed wall-clock results that looked like
+noise (47.7 vs 47.1 vs 51.4 s -- inside the run-to-run jitter band
+on a busy dev machine). The actual structural change was only
+visible by **diffing the bottom-up gBCR-caller breakdown across
+two CPU profiles**. The `+12,981 ms` move from `create:2257` to
+`Layout:1443` would have been invisible in a wall-clock A/B.
+
+For any future render-stage optimization work, the rule is:
+
+1. Run with `--cpu-profile` (paired pre/post, same flags).
+2. Compare bottom-up self-time tables (`analyze-profile.mjs`) and
+   caller breakdowns (the gBCR-callers script under
+   `time-hooks-current` in the repo notes).
+3. Treat the wall-clock totals as a sanity check only -- they
+   confirm "did anything change" but not "where".
+
+This matters because:
+
+- **Render's per-page CPU work is dominated by native (layout,
+  DOM) frames.** V8 self-time deltas from JS-level dedup are
+  small compared to the layout flushes those calls trigger.
+- **CPU sample percentages are stable across machine load.** A
+  busy machine slows the absolute wall-clock but the proportional
+  breakdown (gBCR = ~38 % of render samples) stays the same.
+- **Migrations between attribution sites are common.** Moving a
+  gBCR off one call site usually re-attributes its layout cost to
+  the next caller in the sequence, not to nothing.
+
+For `generate` and `process` the picture is different (Chromium
+internals and pdf-lib parse cost respectively); CPU profiles of
+those phases are less informative because the work happens
+outside the JS we can see, and wall-clock can be a fine
+single-signal A/B. But anything inside paged.js's
+render loop wants a profile diff, not a stopwatch.
+
+## Finding the residual O(n): it's not counters, it's siblings
+
+After the methodology shift to profile-diffing, two more A/Bs
+finally pinned down where the residual per-page layout cost comes
+from. Spoiler: it's not what we expected, and the fix is large.
+
+### Hypothesis 1: CSS counters
+
+The book uses `@bottom-right { content: counter(page); }` for page
+numbers and `article.part-divider { counter-reset: page 0; }` for
+per-part renumbering. paged.js's bundle puts
+`counter-increment: page var(--pagedjs-page-counter-increment);`
+on every `.pagedjs_page`. So on each new page's `@bottom-right`,
+Chromium has to resolve `counter(page)` by walking preceding
+`counter-increment: page` elements.
+
+Per CSS spec (`display: none` elements don't increment counters),
+`--detach-pages`'s `display: none` strategy should already make
+this O(1). But Chromium implementations have historically been
+liberal about which display states still contribute. So: A/B by
+commenting out the `counter-increment: page` rule entirely
+([paged.browser.js:27198](docs/lib/paged.browser.js:27198)) and
+diffing the profile.
+
+Result:
+
+| variant                 | render   | total gBCR | gBCR %/render | ratio |
+| ----------------------- | -------- | ---------- | ------------- | ----- |
+| baseline (counters on)  | 48.51 s  | 18,424 ms  | 38 %          | 1.77x |
+| counters disabled       | 44.72 s  | 21,514 ms  | 48 %          | 2.44x |
+
+Disabling counters did **not** reduce gBCR; it grew. The
+wall-clock drop is run-to-run noise (counter resolution is genuinely
+cheap on `display: none` siblings); the proportional growth means
+removing counter-increment didn't save anything and may have shifted
+work elsewhere. **Counter resolution is not the residual O(n).**
+
+### Hypothesis 2: sibling sweeps over `display: none` pages
+
+Re-reading the README on `--detach-pages`: the claim has always
+been that `display: none` "removes a subtree from the layout tree
+entirely". That's true for *layout* -- but Chromium's per-page
+work also includes **style/selector resolution and rule matching**,
+which walks the sibling list regardless of display state. With
+1638 `.pagedjs_page` siblings under `.pagedjs_pages`, any per-page
+selector evaluation is O(n).
+
+A/B: physically `removeChild` finalized pages instead of just
+`display: none`, then re-append all at `afterRendered` so
+`page.pdf()` sees them. The chunker passes `lastPage.element` to
+`Page.create()` for ordered insertion, so the most recent finalized
+page has to stay in the DOM -- detach one page behind. DOM holds
+at most 2 pages at any moment: the in-flight one being laid out
+plus the most recent finalized one.
+
+Probe modification (in [perf/detach-pages.js](perf/detach-pages.js)),
+not shipped; page numbers come out wrong because `counter(page)`
+doesn't accumulate, but the profile signal is clean.
+
+Result:
+
+| metric              | display:none | removeChild | Δ            |
+| ------------------- | ------------ | ----------- | ------------ |
+| **render**          | **48.5 s**   | **28.0 s**  | **-20.5 s (-42 %)** |
+| total native gBCR   | 18,424 ms    | 7,320 ms    | -11,104 ms   |
+| `create:2257` gBCR  | 12,947 ms    | 1,073 ms    | **-11,874 ms (12x)** |
+| `hasOverflow:1925`  | 4,419 ms     | 5,119 ms    | +700 ms      |
+| `Layout:1443`       | 586 ms       | 562 ms      | flat         |
+| per-page ratio      | 1.77x        | 1.43x       | flatter      |
+
+`Page.create`'s layout flush -- the dominant per-page cost in
+every profile we've seen -- went from 12.9 s to 1.1 s. That's the
+work Chromium does to maintain style/selector state across the
+sibling list, and it's now nearly constant per page. `hasOverflow`
+still has a small residual growth but it's an order of magnitude
+smaller and bounds the next plausible optimization target.
+
+**This is the largest single render-stage win we've found in this
+investigation.** 20+ seconds off render, dropping render from the
+larger phase to the smaller one (vs generate's ~60-70 s).
+
+### What blocks shipping it
+
+The probe leaves the output PDF incorrect in two ways, both
+fixable but neither trivial:
+
+1. **Page numbers.** `counter(page)` no longer accumulates across
+   detached siblings, so every `@bottom-right` reads "1". Cleanest
+   fix: swap `content: counter(page)` for `content: attr(data-page-number)`
+   in [print.css:16](docs/_site-pdf/assets/css/print.css:16).
+   paged.js already writes `page.dataset.pageNumber = index` in
+   [Page.index()](docs/lib/paged.browser.js:2319), so the value is
+   already there -- we just stop routing it through CSS counters.
+   Part-divider restarts (`counter-reset: page 0` at
+   [print.css:126](docs/_site-pdf/assets/css/print.css:126))
+   need a parallel: paged.js writes
+   `data-counter-page-reset="0"` on those elements, and the
+   running per-page rule would need to read that and adjust the
+   number written into `data-page-number`. Doable, ~30 lines in
+   the bundle's Counters handler.
+
+2. **Named strings -- unverified.** `@top-right { content: string(chapter-title); }`
+   reads a named string set by
+   `string-set: chapter-title content();` on the chapter's
+   `<span class="header-string">` element. If Chromium tracks
+   named-string state in its rendering pipeline (it should --
+   the spec calls it a "running string" that persists until
+   reset), detaching the source span after the string has been
+   set won't break anything. If it doesn't, paged.js's hooks let
+   us set the value programmatically.
+
+   This is a single test render away from a clear answer; we just
+   haven't done it yet.
+
+3. **Re-attach order.** The probe appends detached pages at the
+   end of `afterRendered`; the original-order property needs to
+   be preserved so `page.pdf()` reads them correctly. Two lines
+   if we track `nextSibling` at detach time and use `insertBefore`.
+
+4. **Handler audit.** Other paged.js handlers (Counters, Lists,
+   Footnotes, PositionFixed, ...) may assume previously-rendered
+   pages stay in the DOM. The chunker's own state is fine
+   (`this.pages` holds refs), but anything that does
+   `pagesArea.querySelectorAll(...)` needs to be checked. Probably
+   the actual half-day-of-work in this fix.
+
+### Where this leaves the picture
+
+The full menu of fixes against the original 207 s baseline,
+including this projected next step:
+
+| fix                                 | render saved | total saved | shipped |
+| ----------------------------------- | ------------ | ----------- | ------- |
+| `--detach-pages` (display:none)     |   ~55 s      |   ~55 s     | yes     |
+| `--incremental` PDF update          |    -         |   ~32 s     | yes     |
+| pdf-lib `parseSpeed: Fastest`       |    -         |    ~3 s     | yes     |
+| `finalizePage` micro-optimizations  |    ~3 s      |    ~3 s     | yes     |
+| **aggressive detach (removeChild)** | **~20 s**    | **~20 s**   | **no**  |
+| pageRanges sharding (generate)      |    -         |  10-40 s    | no      |
+
+Aggressive detach is the next big lever. After it lands render
+will be ~25-30 s and the project's next bottleneck will
+unambiguously be `page.pdf()` -- which is Chromium-internal and
+needs the `pageRanges` sharding approach (run multiple
+`page.pdf()` calls on disjoint page ranges in parallel browsers,
+concatenate with pdf-lib).
