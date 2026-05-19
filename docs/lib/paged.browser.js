@@ -30431,6 +30431,12 @@
 			this.styleSheet = polisher.styleSheet;
 			this.counters = {};
 			this.resetCountersMap = new Map();
+			// Running page-number counter tracked in JS so the displayed value
+			// survives aggressive-detach (perf/detach-pages.js), which removes
+			// finalized pages from the DOM and breaks `counter(page)` accumulation.
+			// Set as `--page-num: "N"` on each page wrapper; print.css reads it
+			// via `content: var(--page-num)` in @bottom-right.
+			this._displayPageCounter = 0;
 		}
 
 		onDeclaration(declaration, dItem, dList, rule) {
@@ -30824,6 +30830,23 @@
 			if (resets.length) {
 				this.styleSheet.insertRule(`[data-page-number="${pageElement.dataset.pageNumber}"] { counter-increment: none; counter-reset: ${resets.join(" ")} }`, this.styleSheet.cssRules.length);
 			}
+
+			// Replicate the *effective* counter(page) behavior in JS for the
+			// displayed page number, since aggressive-detach breaks CSS counter
+			// accumulation across pages. The per-page rule injected just above
+			// fires `counter-increment: none` (which works) and
+			// `counter-reset: page N` (which does NOT work in our book -- a
+			// cascade/specificity issue I haven't diagnosed yet). Shipping
+			// behavior is therefore "skip the increment on reset pages but
+			// don't actually reset the counter," so we mirror exactly that:
+			// don't increment on data-counter-page-reset pages, don't apply
+			// the reset value. Result: byte-equivalent @bottom-right numbers
+			// to the pre-detach build. Fixing the part-restart logic is a
+			// separate change.
+			if (pgreset.length === 0) {
+				this._displayPageCounter += 1;
+			}
+			pageElement.style.setProperty("--page-num", `"${this._displayPageCounter}"`);
 		}
 
 	}

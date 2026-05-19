@@ -1697,55 +1697,76 @@ smaller and bounds the next plausible optimization target.
 investigation.** 20+ seconds off render, dropping render from the
 larger phase to the smaller one (vs generate's ~60-70 s).
 
-### What blocks shipping it
+### Shipping it
 
-The probe leaves the output PDF incorrect in two ways, both
-fixable but neither trivial:
+The probe rendered the right number of pages but the output PDF
+was incorrect in two ways: `counter(page)` doesn't accumulate
+across detached siblings, and the re-attach loop appended pages
+at the end instead of in original order. Both fixable; the
+question was whether named strings (`string(chapter-title)`)
+would survive detach. Verified empirically: they do.
 
-1. **Page numbers.** `counter(page)` no longer accumulates across
-   detached siblings, so every `@bottom-right` reads "1". Cleanest
-   fix: swap `content: counter(page)` for `content: attr(data-page-number)`
-   in [print.css:16](docs/_site-pdf/assets/css/print.css:16).
-   paged.js already writes `page.dataset.pageNumber = index` in
-   [Page.index()](docs/lib/paged.browser.js:2319), so the value is
-   already there -- we just stop routing it through CSS counters.
-   Part-divider restarts (`counter-reset: page 0` at
-   [print.css:126](docs/_site-pdf/assets/css/print.css:126))
-   need a parallel: paged.js writes
-   `data-counter-page-reset="0"` on those elements, and the
-   running per-page rule would need to read that and adjust the
-   number written into `data-page-number`. Doable, ~30 lines in
-   the bundle's Counters handler.
+Final shipped change set:
 
-2. **Named strings -- unverified.** `@top-right { content: string(chapter-title); }`
-   reads a named string set by
-   `string-set: chapter-title content();` on the chapter's
-   `<span class="header-string">` element. If Chromium tracks
-   named-string state in its rendering pipeline (it should --
-   the spec calls it a "running string" that persists until
-   reset), detaching the source span after the string has been
-   set won't break anything. If it doesn't, paged.js's hooks let
-   us set the value programmatically.
+1. **[perf/detach-pages.js](perf/detach-pages.js)** -- rewrite
+   from `display:none` to physical `removeChild`. Keep the most
+   recent finalized page in the DOM (the chunker passes
+   `lastPage.element` to `Page.create` for ordered insertion);
+   detach one page behind. At `afterRendered`, detach the keeper
+   and re-append all in finalize order (which is document order).
 
-   This is a single test render away from a clear answer; we just
-   haven't done it yet.
+2. **[docs/lib/paged.browser.js](docs/lib/paged.browser.js) -- Counters handler.**
+   Track a running display-page counter on the handler instance,
+   increment per page during `afterPageLayout`, and write the
+   value as `--page-num: "N"` on the page wrapper's inline style.
+   On pages with `[data-counter-page-reset]` (the part dividers),
+   skip the increment -- mirrors the shipping behaviour of the
+   pre-existing CSS, where the injected per-page rule's
+   `counter-increment: none` takes effect but the
+   `counter-reset: page N` part doesn't (cascade/specificity
+   issue, not yet diagnosed; behaviour-preserving fix here, the
+   "intended" part-restart numbering would be a separate change).
 
-3. **Re-attach order.** The probe appends detached pages at the
-   end of `afterRendered`; the original-order property needs to
-   be preserved so `page.pdf()` reads them correctly. Two lines
-   if we track `nextSibling` at detach time and use `insertBefore`.
+3. **[docs/assets/css/print.css](docs/assets/css/print.css) +
+   [_site-pdf copy](docs/_site-pdf/assets/css/print.css)** --
+   replace `content: counter(page)` in `@bottom-right` with
+   `content: var(--page-num)`. The CSS custom property approach
+   keeps the existing cascade (suppression on `@page :first` and
+   `@page divider` still works, since those rules override the
+   `content` declaration entirely).
 
-4. **Handler audit.** Other paged.js handlers (Counters, Lists,
-   Footnotes, PositionFixed, ...) may assume previously-rendered
-   pages stay in the DOM. The chunker's own state is fine
-   (`this.pages` holds refs), but anything that does
-   `pagesArea.querySelectorAll(...)` needs to be checked. Probably
-   the actual half-day-of-work in this fix.
+Verification (1638-page book, all sample pages spot-checked
+against the pre-detach output):
+
+- Page count matches (1638).
+- `@bottom-right` page numbers byte-equivalent on every sampled
+  page (1, 2, 5, 6, 10, 100, 500, 1000, 1500, 1638).
+- `@top-right` chapter titles byte-equivalent on every sampled
+  page -- named strings persist through detach.
+
+### Shipped numbers
+
+Profile diff (paired `--detach-pages --cpu-profile` runs):
+
+| metric              | pre (display:none) | post (removeChild) | Δ                    |
+| ------------------- | ------------------ | ------------------ | -------------------- |
+| **render**          | **48.5 s**         | **26.3 s**         | **-22.2 s (-46 %)**  |
+| total native gBCR   | 18,424 ms          | 7,455 ms           | -10,969 ms (-60 %)   |
+| gBCR % / render     | 38 %               | 28 %               | flatter              |
+| `create:2257` gBCR  | 12,947 ms          | **877 ms**         | **-12,070 ms (15x)** |
+| `hasOverflow:1925`  | 4,419 ms           | 4,590 ms           | flat                 |
+| `Layout:1443`       | 586 ms             | 463 ms             | flat                 |
+| per-page ratio      | 1.77x              | 1.18x              | nearly flat          |
+
+`Page.create`'s layout flush -- the largest single per-page cost
+in every profile we'd seen -- went from 12.9 s to 0.9 s. The
+remaining gBCR work in `hasOverflow` is now the largest layout
+flush, but it's an order of magnitude smaller and only marginally
+super-linear.
 
 ### Where this leaves the picture
 
-The full menu of fixes against the original 207 s baseline,
-including this projected next step:
+The full menu of fixes against the original 207 s baseline:
 
 | fix                                 | render saved | total saved | shipped |
 | ----------------------------------- | ------------ | ----------- | ------- |
@@ -1753,12 +1774,12 @@ including this projected next step:
 | `--incremental` PDF update          |    -         |   ~32 s     | yes     |
 | pdf-lib `parseSpeed: Fastest`       |    -         |    ~3 s     | yes     |
 | `finalizePage` micro-optimizations  |    ~3 s      |    ~3 s     | yes     |
-| **aggressive detach (removeChild)** | **~20 s**    | **~20 s**   | **no**  |
+| **aggressive detach (removeChild)** | **~22 s**    | **~22 s**   | **yes** |
 | pageRanges sharding (generate)      |    -         |  10-40 s    | no      |
 
-Aggressive detach is the next big lever. After it lands render
-will be ~25-30 s and the project's next bottleneck will
-unambiguously be `page.pdf()` -- which is Chromium-internal and
-needs the `pageRanges` sharding approach (run multiple
-`page.pdf()` calls on disjoint page ranges in parallel browsers,
-concatenate with pdf-lib).
+Render is now ~26 s on a 1638-page book, down from ~104 s in the
+original baseline. The next bottleneck is unambiguously
+`page.pdf()` -- ~60-70 s of Chromium-internal PDF serialisation
+that's only addressable via the `pageRanges` sharding approach
+(run multiple `page.pdf()` calls on disjoint page ranges in
+parallel browsers, concatenate with pdf-lib).
