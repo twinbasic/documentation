@@ -29497,12 +29497,31 @@
 				}
 			}
 
+			// PATCH: consolidate the 16 per-iteration querySelector calls in
+			// the forEach loops below into one querySelectorAll up front. The
+			// bundle is a vendored snapshot (perf/README.md); search for
+			// "PATCH: consolidate" if re-vendoring.
+			const __mLookup = {};
+			for (const el of page.element.querySelectorAll(
+				'.pagedjs_margin-top, .pagedjs_margin-bottom, .pagedjs_margin-left, .pagedjs_margin-right, ' +
+				'.pagedjs_margin-top-center, .pagedjs_margin-top-left, .pagedjs_margin-top-right, ' +
+				'.pagedjs_margin-bottom-center, .pagedjs_margin-bottom-left, .pagedjs_margin-bottom-right, ' +
+				'.pagedjs_margin-left-top, .pagedjs_margin-left-middle, .pagedjs_margin-left-bottom, ' +
+				'.pagedjs_margin-right-top, .pagedjs_margin-right-middle, .pagedjs_margin-right-bottom'
+			)) {
+				for (const cls of el.classList) {
+					if (cls !== 'pagedjs_margin' && cls.startsWith('pagedjs_margin-')) {
+						__mLookup[cls] = el;
+					}
+				}
+			}
+
 			// check center
 			["top", "bottom"].forEach((loc) => {
-				let marginGroup = page.element.querySelector(".pagedjs_margin-" + loc);
-				let center = page.element.querySelector(".pagedjs_margin-" + loc + "-center");
-				let left = page.element.querySelector(".pagedjs_margin-" + loc + "-left");
-				let right = page.element.querySelector(".pagedjs_margin-" + loc + "-right");
+				let marginGroup = __mLookup["pagedjs_margin-" + loc];
+				let center      = __mLookup["pagedjs_margin-" + loc + "-center"];
+				let left        = __mLookup["pagedjs_margin-" + loc + "-left"];
+				let right       = __mLookup["pagedjs_margin-" + loc + "-right"];
 
 				let centerContent = center.classList.contains("hasContent");
 				let leftContent = left.classList.contains("hasContent");
@@ -29638,10 +29657,15 @@
 
 			// check middle
 			["left", "right"].forEach((loc) => {
-				let middle = page.element.querySelector(".pagedjs_margin-" + loc + "-middle.hasContent");
-				let marginGroup = page.element.querySelector(".pagedjs_margin-" + loc);
-				let top = page.element.querySelector(".pagedjs_margin-" + loc + "-top");
-				let bottom = page.element.querySelector(".pagedjs_margin-" + loc + "-bottom");
+				// PATCH: lookup table from above. Original used
+				// querySelector(".pagedjs_margin-" + loc + "-middle.hasContent")
+				// which returns null when .hasContent is absent; replicate that
+				// with an explicit classList check.
+				let middle = __mLookup["pagedjs_margin-" + loc + "-middle"];
+				if (middle && !middle.classList.contains("hasContent")) middle = null;
+				let marginGroup = __mLookup["pagedjs_margin-" + loc];
+				let top         = __mLookup["pagedjs_margin-" + loc + "-top"];
+				let bottom      = __mLookup["pagedjs_margin-" + loc + "-bottom"];
 				let topContent = top.classList.contains("hasContent");
 				let bottomContent = bottom.classList.contains("hasContent");
 				let middleHeight, topHeight, bottomHeight;

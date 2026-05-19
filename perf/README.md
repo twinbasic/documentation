@@ -1089,3 +1089,66 @@ the heartbeat so the next person doesn't re-investigate.
 
 The process phase stays silent. At ~5 s with the fast pdf-lib knobs
 (`parseSpeed: Fastest`) it's not worth a progress signal of its own.
+
+## Revisiting `AtPage.finalizePage`
+
+The post-detach CPU profile in the "Fix applied: `perf/detach-pages.js`"
+section above showed an `(anonymous) @ browser.js:29501` row at **13.7 s
+self-time** -- the `["top","bottom"].forEach(...)` lambda inside
+`AtPage.finalizePage`. That looked like a fat target.
+
+It wasn't, for two reasons:
+
+1. **The 13.7 s number was stale.** It came from the *first*
+   detach-pages.js variant, which hooked `afterPageLayout` and hid the
+   page *before* AtPage ran -- so AtPage paid Chromium's slow style-
+   cascade path on a `display:none` subtree (~9 ms/page). The shipping
+   variant hooks `finalizePage` and hides *after* AtPage, so AtPage
+   sees a visible page and the same lambda is **~0.7 ms/page = ~1.1 s
+   total render**. Re-measured on a fresh profile, the lambda is
+   ~1.0 s self-time, not 14 s. The original number is correct for the
+   variant it was measured on, but doesn't reflect current ship.
+2. **Most of that ~1 s isn't query CPU.** Per-page the method does
+   ~17 `querySelector` calls plus a few `getComputedStyle` reads.
+   Native query self-time across the whole render is ~340 ms
+   (`querySelector` ~155 ms + `querySelectorAll` ~185 ms in the
+   unpatched baseline). The rest of the lambda's ~1 s is the
+   downstream layout flush triggered by `getComputedStyle` and the
+   style writes -- unaffected by query consolidation.
+
+We patched it anyway, as a cleanup. `docs/lib/paged.browser.js`'s
+`finalizePage` now builds a `__mLookup` table once per page via a
+single `querySelectorAll` over all 16 known margin-cell + margin-
+group class selectors, then the two forEach loops index that table
+instead of calling `page.element.querySelector(...)` 4× per
+iteration. The patch is marked `// PATCH: consolidate` at each of
+the three touch points so a future re-vendoring of the bundle can
+grep for it.
+
+### A/B results
+
+Interleaved 3+3 (A1 B1 A2 B2 A3 B3), `--detach-pages --cpu-profile`,
+same 1638-page book each run:
+
+| metric                        | A (patched) | B (unpatched) | Δ |
+| ---                           | ---         | ---           | --- |
+| render wall-clock, mean       | 49.45 s     | 49.91 s       | -0.46 s (noise; within-variant range 4-13 s) |
+| `querySelector` self-time     | <50 ms      | 155 ms        | -155 ms |
+| `querySelectorAll` self-time  | 247 ms      | 183 ms        | +64 ms |
+| **query CPU total**           | **~247 ms** | **~338 ms**   | **-91 ms (-27 %)** |
+| finalizePage lambda self-time | 1033 ms     | 1025 ms       | unchanged |
+
+The patch does what it says on the tin: ~91 ms shifts out of native
+`querySelector` and into a single `querySelectorAll`. Wall-clock
+delta is in the noise; the within-variant spread (3-13 s across runs
+of the same variant) drowns it out.
+
+The lambda's self-time being unchanged is the load-bearing
+observation: query consolidation doesn't reduce the layout-flush
+component, which is most of the 1 s. The next lever in this method
+would be **read/write batching** (hoist all `getComputedStyle` reads
+to the top of `finalizePage` before any style writes, so the
+write-then-read pattern stops forcing a flush mid-method) -- but the
+budget is ~1 s, so even a perfect win wouldn't move the headline.
+Probably not worth pursuing further unless we revisit *every*
+sub-second component as a batch.
