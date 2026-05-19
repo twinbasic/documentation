@@ -483,7 +483,22 @@ Ranked by estimated wall-clock saving on the current Windows machine:
    | `_includes/book-chapter-body.html` | 0.81 +- 0.51 s | 0.51 +- 0.03 s | -0.30 s |
 
    The before-run stddevs are large because one of the 5 baseline runs was a clear 5 s outlier; outlier-excluded, the RENDER delta is closer to -1.4 s. The after-run stddev is tight across the same 5-run sample, so the speedup itself is robust at >1 s. Output is byte-identical to baseline (verified by `diff -rq` on all three of `_site/`, `_site-offline/`, `_site-pdf/`).
-2. **`head_seo.html` markdownify precompute.** Run the `markdownify | strip_html | normalize_whitespace | escape_once` pipeline once per unique title in a `:pages, :pre_render` hook, take a fast `escape_once`-only path for the 834 markdown-inert titles, stash the result on `page.data`. Eliminates ~1,674 of the 1,802 `markdownify` filter calls. Estimated 1.5-2 s real wall.
+2. **`head_seo.html` markdownify precompute. [LANDED]** Moved the entire per-page derivation chain (`markdownify | strip_html | normalize_whitespace | escape_once` for page + site title, `absolute_url` for canonical, `absolute_url | uri_escape` for logo, homepage URL test) into a `:site, :pre_render` plugin (`_plugins/seo-precompute.rb`) that stashes the assembled values on `page.data["_seo_*"]` and `site.config["_seo_*"]`. `head_seo.html` then reads them back as `page._seo_full_title` / `site._seo_site_title` etc. via the Drop fallback to data/config -- no per-render filter dispatch.
+
+   Ruby-prof effect (post-chapter-precompute baseline vs post-SEO-precompute, instrumented build):
+
+   | Metric | Before | After | Delta |
+   |---|---|---|---|
+   | Total instrumented wall | 39.28 s | 36.90 s | -2.38 s |
+   | `Liquid::Strainer#invoke` total | 6.69 s / 190,973 calls | 5.97 s / 179,266 calls | -0.72 s / -11,707 calls |
+   | `Jekyll::Filters#markdownify` calls | 1,802 | 128 | -1,674 |
+   | `Jekyll::Filters#markdownify` total | 4.61 s | 3.69 s | -0.92 s |
+   | `Jekyll::Filters::URLFilters#absolute_url` calls | 1,675 | 1 | -1,674 |
+   | `Liquid::BlockBody#render` total | 18.38 s | 16.14 s | -2.24 s |
+   | `Liquid::Context#stack` total | 18.19 s | 15.50 s | -2.70 s |
+   | `Liquid::Variable#render` total | 10.05 s | 8.96 s | -1.09 s |
+
+   The `BlockBody#render` / `Context#stack` / `Variable#render` drops reflect the eliminated `{%- assign -%}` / `{%- if -%}` blocks in head_seo.html (dropped from ~85 lines of Liquid logic to ~20 lines of straight output). The 128 remaining `markdownify` calls come from `book.html`'s part subtitle/intro (~24) and `book-chapter-body.html`'s per-chapter `chapter.content | markdownify` (~100 chapters whose content doesn't start with `<`); both candidates for a follow-up pass (see #3). New `Jekyll::SeoPrecompute#absolute_url` adds 0.44 s for 846 calls, replacing 1,675 filter calls that totalled 0.40 s -- essentially flat, but the absolute_url filter had its own per-build cache, so the swap is a wash on this axis. Output byte-identical to baseline (`diff -rq` clean on all three of `_site/`, `_site-offline/`, `_site-pdf/`).
 3. **`book-chapter-body.html` heading-shift + anchor-prefix `replace` chain → Ruby pass.** ~36 k replaces fold into one string rewrite. Smaller win (~0.3 s) but probably wants to land alongside #2 since both touch the same render path.
 
 ## Site integrity check
