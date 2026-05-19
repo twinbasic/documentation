@@ -1146,9 +1146,36 @@ of the same variant) drowns it out.
 The lambda's self-time being unchanged is the load-bearing
 observation: query consolidation doesn't reduce the layout-flush
 component, which is most of the 1 s. The next lever in this method
-would be **read/write batching** (hoist all `getComputedStyle` reads
-to the top of `finalizePage` before any style writes, so the
-write-then-read pattern stops forcing a flush mid-method) -- but the
-budget is ~1 s, so even a perfect win wouldn't move the headline.
-Probably not worth pursuing further unless we revisit *every*
-sub-second component as a batch.
+would be **read/write batching** -- hoist all `getComputedStyle`
+reads to the top of `finalizePage` before any style writes, so the
+write-then-read pattern stops forcing a flush mid-method.
+
+### Read/write batching
+
+We applied the hoist anyway, as a follow-up cleanup. After the
+`__mLookup` block above, `finalizePage` now reads every relevant
+`max-width` / `max-height` value into two `Map`s (`__maxW`, `__maxH`)
+in a single batch -- gated by the same `.hasContent` check the
+original conditionals used. The two forEach loops then consume
+those cached values instead of calling `getComputedStyle` inline.
+Marked `// PATCH: max-width reads hoisted` / `max-height reads
+hoisted` at each touch point.
+
+**For this book**, the hoist is a no-op behaviourally. Our @page CSS
+sets content on exactly one corner (bottom-right page number), so
+only one `.hasContent` cell exists per page; the original code did
+exactly one `getComputedStyle` per page and therefore one forced
+flush. The hoisted version does the same.
+
+Smoke test, single render with `--detach-pages` (no profiling): 1638
+pages, 16.9 MB output, render 47.98 s, ratio 1.69x. All in the noise
+band from the consolidate-querySelector A/B.
+
+**For docs with multi-cell marginalia** (running headers + footers +
+page numbers across several corners) the hoist collapses N forced
+flushes -- one per cell that hits the `if (xContent)` branch in the
+original -- down to 1. The win scales with marginalia density.
+
+We're not going to keep iterating on `finalizePage`: budget is ~1 s
+total render even when every flush triggers, so further work here is
+cleanup-only.

@@ -29516,6 +29516,30 @@
 				}
 			}
 
+			// PATCH: hoist all max-width / max-height reads here so the
+			// downstream forEach loops can write to style without forcing
+			// a layout flush on the next iteration's read. classList.add
+			// above dirtied layout; the first GCS below flushes once and
+			// we cache the values for the rest of the method.
+			const __maxW = new Map();
+			const __maxH = new Map();
+			for (const loc of ["top", "bottom"]) {
+				for (const spot of ["left", "center", "right"]) {
+					const el = __mLookup["pagedjs_margin-" + loc + "-" + spot];
+					if (el && el.classList.contains("hasContent")) {
+						__maxW.set(el, window.getComputedStyle(el)["max-width"]);
+					}
+				}
+			}
+			for (const loc of ["left", "right"]) {
+				for (const spot of ["top", "middle", "bottom"]) {
+					const el = __mLookup["pagedjs_margin-" + loc + "-" + spot];
+					if (el && el.classList.contains("hasContent")) {
+						__maxH.set(el, window.getComputedStyle(el)["max-height"]);
+					}
+				}
+			}
+
 			// check center
 			["top", "bottom"].forEach((loc) => {
 				let marginGroup = __mLookup["pagedjs_margin-" + loc];
@@ -29526,20 +29550,12 @@
 				let centerContent = center.classList.contains("hasContent");
 				let leftContent = left.classList.contains("hasContent");
 				let rightContent = right.classList.contains("hasContent");
-				let centerWidth, leftWidth, rightWidth;
-
-				if (leftContent) {
-					leftWidth = window.getComputedStyle(left)["max-width"];
-				}
-
-				if (rightContent) {
-					rightWidth = window.getComputedStyle(right)["max-width"];
-				}
-
+				// PATCH: max-width reads hoisted to __maxW above.
+				let leftWidth   = __maxW.get(left);
+				let rightWidth  = __maxW.get(right);
+				let centerWidth = __maxW.get(center);
 
 				if (centerContent) {
-					centerWidth = window.getComputedStyle(center)["max-width"];
-
 					if (centerWidth === "none" || centerWidth === "auto") {
 						if (!leftContent && !rightContent) {
 							marginGroup.style["grid-template-columns"] = "0 1fr 0";
@@ -29668,19 +29684,12 @@
 				let bottom      = __mLookup["pagedjs_margin-" + loc + "-bottom"];
 				let topContent = top.classList.contains("hasContent");
 				let bottomContent = bottom.classList.contains("hasContent");
-				let middleHeight, topHeight, bottomHeight;
-
-				if (topContent) {
-					topHeight = window.getComputedStyle(top)["max-height"];
-				}
-
-				if (bottomContent) {
-					bottomHeight = window.getComputedStyle(bottom)["max-height"];
-				}
+				// PATCH: max-height reads hoisted to __maxH above.
+				let topHeight    = __maxH.get(top);
+				let bottomHeight = __maxH.get(bottom);
+				let middleHeight = middle ? __maxH.get(middle) : undefined;
 
 				if (middle) {
-					middleHeight = window.getComputedStyle(middle)["max-height"];
-
 					if (middleHeight === "none" || middleHeight === "auto") {
 						if (!topContent && !bottomContent) {
 							marginGroup.style["grid-template-rows"] = "0 1fr 0";
