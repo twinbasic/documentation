@@ -2090,3 +2090,350 @@ of `page.pdf()`) is the only remaining knob with a profile target
 large enough to move the wall-clock total meaningfully, and it's
 single-threaded-inaddressable (requires multiple Chromium
 processes + pdf-lib concatenation).
+
+> [!NOTE]
+> The "`findElement` already takes the dictionary fast path" claim
+> above turned out to be wrong. A re-investigation under puppeteer 25
+> (see "findRef wasn't taking the fast path" below) found 39 % of
+> findRef calls falling through to `doc.querySelector("[data-ref='X']")`
+> because the per-page index wasn't populated for rebuilt ancestors
+> and the source tree never had one at all. Fixing both saves ~2.4 s
+> of render.
+
+## Rebaselining after the puppeteer 22 -> 25 bump
+
+`docs/package.json` was bumped from `puppeteer ^22.x` to `^25.0.4`,
+which pulled in a newer bundled Chromium. Same harness, same book
+(now 1651 pages after a small content addition vs the 1638 the
+prior baseline measured), `--detach-pages --cpu-profile`:
+
+| Phase    | Prior (puppeteer 22, post-Attempt-E) | New (puppeteer 25) | Δ |
+| -------- | ------------------------------------ | ------------------ | --- |
+| render   | ~19 s   | 22.0 s | flat (run-to-run noise) |
+| generate | ~60-70 s | **42.7 s** | **-20 to -28 s** |
+| process  | ~5 s    | 4.9 s | flat |
+| **total**| ~95-100 s | **69.6 s** | **-25 to -35 s** |
+| raw Chrome PDF size | 52 MB | **39.3 MB** | -12 MB |
+| render ratio (last/first quarter) | 1.60x | 1.36x | flatter |
+
+The whole wall-clock win is in `generate`. Chrome's PDF writer got
+meaningfully faster, and is now emitting something more compact --
+a 25 % drop in the raw byte stream that previously needed pdf-lib's
+re-emit pass to shrink. The "Chromium `Page.printToPDF` knob survey"
+above noted Skia wrote streams uncompressed; whatever changed at
+the SkPDF level closes part of that gap automatically. The
+final PDF after pdf-lib's `save()` is still ~17 MB either way --
+the re-emit's deflate step was already doing most of the work.
+
+Render itself is unchanged in shape. The same hot paths
+(`hasOverflow`, `Footnotes.afterPageLayout`, `Page.create`,
+`findRef`) sit at roughly the same self-times. Nothing that was
+cheap got expensive; nothing that was expensive got cheap.
+
+Notable side-effect: with `generate` no longer dominating, the
+strategic note at the end of "Where this leaves the picture" above
+("`pageRanges` sharding of `generate` is the only remaining knob
+with a profile target large enough to move the wall-clock total
+meaningfully") is now less true. The shard target shrunk from
+~60 s to ~43 s, so the upper bound on what sharding can save
+shrunk with it. Still the biggest untried knob, but the urgency
+is lower.
+
+The re-baselined bottom-up render profile also surfaced something
+that *was* always there but had been mis-attributed: see the next
+section.
+
+## findRef wasn't taking the fast path
+
+The new-baseline cpu profile's top entries:
+
+```
+   self_ms   self_%   function  @  source
+   5872.93   26.84%   (program)             (V8/Blink internal)
+   4831.83   22.08%   getBoundingClientRect (native)
+   2530.25   11.56%   findRef               paged.browser.js:643
+   2426.14   11.09%   removeChild           (native, called by detach-pages)
+   1007.64    4.60%   (idle)
+    565.17    2.58%   removeOverflow
+```
+
+`findRef` at **11.6 % of render self-time** is the second-largest
+non-native bucket after gBCR. The prior README state's "JS-body
+profile after Attempt E" reported `findElement self 1373 ms (7.1 %)`
+and concluded `findElement` was already fast. Both numbers refer
+to the same call chain -- V8 just attributes time differently
+between the two-line forwarder and its called helper:
+
+```js
+function findElement(node, doc, forceQuery) {
+    const ref = node.getAttribute("data-ref");
+    return findRef(ref, doc, forceQuery);
+}
+
+function findRef(ref, doc, forceQuery) {
+    if (!forceQuery && doc.indexOfRefs && doc.indexOfRefs[ref]) {
+        return doc.indexOfRefs[ref];                              // fast
+    } else {
+        return doc.querySelector(`[data-ref='${ref}']`);          // slow
+    }
+}
+```
+
+The "post-Attempt-E" profile's `findElement` charge was its
+forwarder cost; the actual body work has always been inside
+`findRef`. The new V8 profile splits the attribution honestly,
+with `findElement` reading `self=0.00 ms` and `findRef` carrying
+the 2.5 s.
+
+### Instrumenting per-branch call counts
+
+Wrapped `findRef` with counters keyed by which branch it took:
+fast-path (dict hit), `forceQuery` (caller explicitly asked for
+querySelector), `noDict` (the doc didn't have `indexOfRefs` at all),
+and `dictMiss` (the doc had a dict but no entry for the ref). The
+caller of each branch was captured from `new Error().stack`.
+
+A single instrumented run on the 1651-page book:
+
+```
+findRef.calls         = 47,867
+findRef.fastPath      = 29,300   (8.4 ms total, 0.29 us/call)
+findRef.fallback total = 18,567  (2585.5 ms total)
+  forceQuery          =      2
+  noDict              =  2,739
+  dictMiss            = 15,826
+  fallbackReturnedNull =    892
+
+byCallerLine (top, all attributed to docs/lib/paged.browser.js):
+   15,767  dictMiss   <- Layout.append, `findElement(node.parentNode, dest)`
+      955  noDict     <- Layout.append, same call
+      892  noDict     <- Layout.append, `findElement(node.parentNode, fragment)`
+      848  noDict     <- Layout.createBreakToken, `findElement(*, source)`
+       58  dictMiss   <- Layout.createBreakToken (an `*, rendered` site)
+       42  noDict     <- Layout.createBreakToken, another `*, source` site
+        2  forceQuery <- Layout.rebuildTableFromBreakToken
+```
+
+The fast path is essentially free (0.29 us/call -- a hashed object
+lookup). **The entire 2.5 s lives in the 18,567 fallback calls**.
+Two structural reasons:
+
+### Root cause 1: rebuilt ancestors aren't indexed in `dest`
+
+`Layout.append(node, dest, ...)` writes each leaf clone into
+`dest.indexOfRefs` near the end of the function. But when the
+leaf's parent isn't already in `dest`, `append` calls
+`rebuildAncestors(node)` to clone the source ancestor chain into
+a fresh `DocumentFragment` and appends the fragment to `dest`:
+
+```js
+let fragment = rebuildAncestors(node);
+parent = findElement(node.parentNode, fragment);
+// ... attach clone ...
+dest.appendChild(fragment);   // <-- ancestors now live in dest's DOM
+                              //     but dest.indexOfRefs wasn't updated
+```
+
+The rebuilt ancestors are now in `dest`'s DOM tree, findable by
+`dest.querySelector("[data-ref='X']")`. They are **not** in
+`dest.indexOfRefs`. Every subsequent `append` whose `node`
+descends from one of those rebuilt ancestors hits dictMiss on
+that ancestor and falls through to `dest.querySelector`. With
+~15.7 k such calls per book at ~140 us each -- a small per-page
+wrapper, so querySelector is fast even when it walks -- that's
+about 2.2 s.
+
+The 892 `noDict <- Layout.append, findElement(*, fragment)` calls
+in the byCallerLine table are a related symptom: the second
+`findElement` call inside the rebuild branch -- which looks the
+parent up in the *fragment* before it gets appended to `dest` --
+hits a fragment whose `indexOfRefs` was never created.
+
+### Root cause 2: the source tree never has an index
+
+Six call sites in `Layout.createBreakToken` use
+`findElement(*, source)` to map a rendered node back to its
+position in the original document. `source` is the
+`ContentParser`-wrapped result of the initial document walk in
+`ContentParser.addRefs` -- which walks every element, assigns a
+`data-ref`, and **stops**. No `indexOfRefs` is ever populated.
+Every `findElement(*, source)` therefore falls through to
+`source.querySelector("[data-ref='X']")` against the whole
+~10 k-element source tree.
+
+There are only ~890 such calls per render (they only fire on
+pages where the break landed mid-element), but at ~1.3 ms each
+that's ~1.2 s.
+
+### The fix
+
+Three small patches in `docs/lib/paged.browser.js`, all marked
+`// [PATCH: findRef fast-path]`:
+
+1. **`rebuildAncestors`** -- initialise `fragment.indexOfRefs = {}`
+   at the top, and write each rebuilt clone into it as the loop
+   builds the chain. The second `findElement(*, fragment)` call in
+   `Layout.append`'s rebuild branch then hits the fast path.
+
+2. **`Layout.append`'s rebuild branch** -- after
+   `dest.appendChild(fragment)`, merge `fragment.indexOfRefs` into
+   `dest.indexOfRefs`. Subsequent `findElement(*, dest)` calls on
+   any rebuilt ancestor now hit the fast path too.
+
+3. **`ContentParser.addRefs`** -- initialise `content.indexOfRefs = {}`
+   on entry and write `content.indexOfRefs[ref] = node` inside the
+   tree-walk loop. Every `findElement(*, source)` call site now hits
+   the fast path.
+
+### Results
+
+Instrumented A/B (call counts pre/post on the same 1651-page book):
+
+| metric | pre-fix | post-fix | Δ |
+| ------ | ------- | -------- | --- |
+| findRef calls (total) | 47,867 | 47,867 | (same; this is a per-call cost change, not a count change) |
+| fast path | 29,300 | **46,914** | **+17,614** |
+| fallback total calls | 18,567 | **953** | **-17,614 (-95 %)** |
+| dictMiss | 15,826 | 59 | -15,767 |
+| noDict (`findElement(*, fragment)` in rebuild branch) | 892 | 0 | -892 |
+| noDict (createBreakToken vs source) | 848 + 42 | 0 + 0 | -890 |
+| fallback total time | 2,585 ms | **6.9 ms** | **-2,578 ms** |
+| fallbackReturnedNull | 892 | 892 | unchanged (these are the genuine "no such ref" misses) |
+
+The 892 residual fallbacks are all `findElement(node.parentNode, dest)`
+on a *fresh* per-page `dest` whose dict was just created and only
+contains its own leaf clones, so the parent lookup correctly returns
+null (the parent's first appearance on this page will be in the
+next call's rebuilt fragment). 7 ms total; not worth a third patch.
+
+Wall-clock A/B, paired runs, no instrumentation, no cpu-profile
+(stash the fix, run twice; pop, run twice):
+
+| run | BEFORE render | AFTER render |
+| --- | --- | --- |
+| 1 | 20.73 s | 18.17 s |
+| 2 | 20.54 s | 18.22 s |
+| **avg** | **20.64 s** | **18.20 s** |
+
+**Δ = -2.44 s render (-12 %).**
+
+Profile diff (`--detach-pages --cpu-profile`, single run each --
+between-run noise on cpu-profile self-time is in the 50-150 ms band
+for sub-1 % rows):
+
+| function | PRE | POST | Δ |
+| --- | --- | --- | --- |
+| `findRef`   | 2530 ms (11.56 %) | undetectable (<130 ms) | **-2400 ms** |
+| `findElement` self | 0 ms (forwarder) | 0 ms | unchanged |
+| `addRefs`  | not in top 20 | **157 ms (0.80 %)** | +157 ms (new dict-population cost) |
+| `removeChild` (detach handler) | 2426 ms | 2320 ms | -106 ms (noise) |
+| `getBoundingClientRect` | 4832 ms | 4632 ms | -200 ms (noise) |
+| total render | 22.0 s | 19.8 s | -2.2 s |
+
+PDF byte size is 16-47 bytes apart between any two runs (well inside
+the standard `/CreationDate` / `/ModDate` timestamp drift); content
+is functionally byte-identical.
+
+Shipped.
+
+### Was it the headers/footers change?
+
+A reasonable initial hypothesis was that the recent
+"Get the details of page headers/footers out of paged.js"
+(`c70b83d`) or its precursor "Add the part name as a prefix to
+the page number" (`71aea3d`) had introduced the cost. Neither
+did:
+
+- `71aea3d` added a per-page
+  `pageElement.querySelector("article.part-divider")` in the
+  Counters handler, which would have shown up as extra querySelector
+  work, but it's unrelated to `findRef`'s call path.
+- `c70b83d` removed that querySelector again, moving the part-title
+  capture from per-page JS to a CSS `string-set` / `string()` rule.
+  Net per-page work went *down*, not up.
+
+`findRef`'s slow path was always there -- the README's prior
+post-Attempt-E profile reported the same call chain as
+`findElement self 1373 ms (7.1 %)`. Two things happened to make it
+worth a fresh look:
+
+- **V8's attribution split.** The new V8 charges `findElement` 0 ms
+  and `findRef` 2530 ms instead of attributing the helper's body
+  to its forwarder. Same call chain, different bucket label, much
+  more visible in the bottom-up view.
+- **The cost itself may have grown.** 1.4 s → 2.5 s is more than a
+  V8 attribution shift can explain on a +0.8 % content change. The
+  branch counters above don't tell us the pre-puppeteer-25 split;
+  the most we can claim is "the fallback was clearly the dominant
+  branch by the time we measured." Either way, the fix removes it.
+
+### Methodology
+
+This one had two of the recurring lessons baked in:
+
+1. **Instrument to understand the workload, not just the time.**
+   The CPU profile showed `findRef` at 2.5 s self-time; that's
+   *what*. It needed branch-counting (fast-path vs dictMiss vs
+   noDict, with caller attribution) to find out *why*. Wall-clock
+   A/B alone would have detected the regression; only the per-branch
+   counters explained it.
+
+2. **`new Error().stack` is the cheap way to attribute hot-function
+   calls back to their callers in-browser**, when you can't
+   instrument the call sites individually. The harness already had
+   `find-callers.mjs` for post-hoc cpu-profile attribution, but
+   that aggregates by sample, not by call. Per-call attribution
+   needed the in-page stack walk. Cost ~5 us per call, OK for
+   1-shot diagnostic runs, not OK to ship.
+
+## Where this leaves the picture
+
+Updated cumulative table, all measured against the original 207 s
+puppeteer-22 baseline:
+
+| fix                                 | render saved | total saved | shipped |
+| ----------------------------------- | ------------ | ----------- | ------- |
+| `--detach-pages` (display:none)     |   ~55 s      |   ~55 s     | yes     |
+| `--incremental` PDF update          |    -         |   ~32 s     | yes     |
+| pdf-lib `parseSpeed: Fastest`       |    -         |    ~3 s     | yes     |
+| `finalizePage` micro-optimizations  |    ~3 s      |    ~3 s     | yes     |
+| aggressive detach (`removeChild`)   |   ~22 s      |   ~22 s     | yes     |
+| skip dead `findEndToken` path       |   ~3.5 s     |   ~3.5 s    | yes     |
+| `renderTo` additive backoff         |   ~4.25 s    |   ~4.25 s   | yes     |
+| **puppeteer 22 -> 25 (Chromium bump)** | **-**     | **~20-30 s** *(generate)* | **yes** |
+| **findRef fast-path** (this section) | **~2.4 s** | **~2.4 s**  | **yes** |
+| `pageRanges` sharding (generate)    |    -         |  ~5-20 s    | no      |
+
+Current end-to-end on the 1651-page book, `book.bat` path:
+
+```
+render   :  ~18 s    (was ~104 s in the original baseline)
+generate :  ~43-48 s (was ~64 s; mostly the puppeteer 25 bump)
+process  :  ~5 s
+total    : ~70 s     (was ~207 s, a 3x speedup)
+```
+
+The remaining JS-body profile after the findRef fix:
+
+```
+self_ms   self_%   function                    source
+  ~500    ~2.5 %   removeOverflow              paged.browser.js
+  ~320    ~1.6 %   wrapContent
+  ~200    ~1.0 %   afterPageLayout (paged.js)
+  ~187    ~1.0 %   afterPageLayout (Footnotes)
+  ~157    ~0.8 %   addRefs                     (new -- the fix above)
+  ~130    ~0.7 %   renderTo
+```
+
+None of those individually clear the noise band; the largest
+remaining JS-body bucket is the same scale as the `addRefs` cost
+we just added. Native frames (`getBoundingClientRect` ~23 %,
+`(program)` ~30 %, `removeChild` ~12 %) are now the dominant
+contributors to render, and gBCR's caller breakdown is the same
+flat-per-page shape it's had since aggressive detach landed.
+
+The single biggest untried lever remains `pageRanges` sharding for
+generate. After the puppeteer 25 bump it would save less than the
+earlier estimate (the 64 s -> 43 s gain made the target smaller),
+but it's still the only knob with a profile target large enough to
+move the wall-clock total by 5+ s.

@@ -19,9 +19,9 @@ if not exist _site-pdf\book.html (
     echo _site-pdf\book.html not found. Run build.bat first.
     exit /b 1
 )
-if not exist node_modules\puppeteer\package.json (
-    echo Installing docs\ dependencies...
-    call npm install
+if not exist ..\node_modules\puppeteer\package.json (
+    echo Installing dependencies...
+    pushd .. && call npm install && popd
     if errorlevel 1 exit /b 1
 )
 if not exist _pdf mkdir _pdf
