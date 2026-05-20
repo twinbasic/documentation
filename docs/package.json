@@ -4,8 +4,8 @@
   "private": true,
   "description": "PDF book pipeline for the twinBASIC documentation",
   "devDependencies": {
-    "html-entities": "^2.5.2",
+    "html-entities": "^2.6.0",
     "pdf-lib": "^1.17.1",
-    "puppeteer": "^22.15.0"
+    "puppeteer": "^25.0.4"
   }
 }
