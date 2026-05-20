@@ -340,6 +340,16 @@ native code -- almost certainly the synchronous layout passes those
 `getBoundingClientRect` calls force.** Together 87% of render is the
 browser doing layout work driven by paged.js measurement calls.
 
+> **Terminology**: this doc abbreviates `getBoundingClientRect` as
+> **gBCR** below. It's the DOM method that returns an element's
+> viewport-relative position and size; calling it forces Chromium
+> to synchronously flush any pending layout work before answering,
+> so "gBCR self-time" in a CPU profile is layout-flush attribution
+> charged to the JS frame that asked, not JS computation. The
+> same applies to other layout-reading APIs (`offsetTop`,
+> `clientHeight`, `getComputedStyle`, etc.) -- they're collectively
+> the *layout-flush surface* in the profile.
+
 ### Why this is `O(n^2)`
 
 The hot caller is `Chunker.findOverflow` at `browser.js:1934`. Its
