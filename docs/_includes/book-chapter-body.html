@@ -151,7 +151,7 @@
     overrides the class (front-matter, part-foreword), the override
     is used as-is and sub-page styling never kicks in. Otherwise
     sub-pages get the " sub-chapter" suffix and a compound running
-    header ("Module - Member" / "Class.Member").
+    header ("Parent - Member").
   {%- endcomment -%}
   {%- if include.article_class_override -%}
     {%- assign article_class = include.article_class_override -%}
@@ -160,12 +160,7 @@
     {%- assign article_class = 'page' -%}
     {%- if is_sub_page -%}
       {%- assign article_class = article_class | append: ' sub-chapter' -%}
-      {%- if current_index_kind == 'module' -%}
-        {%- assign compound_sep = ' - ' -%}
-      {%- else -%}
-        {%- assign compound_sep = '.' -%}
-      {%- endif -%}
-      {%- assign header_title = current_index_name | append: compound_sep | append: include.chapter.title -%}
+      {%- assign header_title = current_index_name | append: ' - ' | append: include.chapter.title -%}
     {%- else -%}
       {%- assign header_title = include.chapter.title -%}
     {%- endif -%}
