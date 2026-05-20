@@ -518,20 +518,44 @@ Ranked by estimated wall-clock saving on the current Windows machine:
 
    The Liquid framework drops (`BlockBody#render`, `Context#stack`, `Variable#render`) again outweigh the filter-dispatch drop -- they capture the eliminated `{%- unless -%}` / `{%- if -%}` blocks plus the chained `| replace:` pipeline AST nodes. The new filter does ~190 µs per call across 718 invocations, covering the same work the eliminated 39 k Liquid replaces did. Output byte-identical to baseline (`diff -rq` clean on `_site/`, `_site-offline/`, `_site-pdf/`).
 
+4. **JekyllGFMAdmonitions defer-body-parse. [LANDED]** Extended `_plugins/jekyll-gfm-admonitions-patch.rb` with two method overrides on `JekyllGFMAdmonitions::GFMAdmonitionConverter`. The first replaces `admonition_html` so the admonition body is spliced into `doc.content` as raw markdown inside a `<div ... markdown='1'>` wrapper, deferring the per-admonition `@markdown.convert(text)` call to the page-level kramdown pass (which already runs with `parse_block_html: true` per `_config.yml`). One combined kramdown pass replaces 1 + N parses for each of the site's 508 admonitions. The second overrides `process_doc` to preserve the leading newline(s) in the code-block stash placeholder substitution -- without this, the gem's `(?:^|\n)(?<!>)\s*\`\`\`.*?\`\`\`` regex consumes the blank line between an admonition body and a following fenced code block, the placeholder ends up appended to the last `>`-prefixed body line, the admonition regex pulls it into the body capture, and either kramdown renders it as an empty `<code class="language-plaintext"></code>` (gem behaviour) or the code block is spliced inside the admonition div (deferred-body behaviour). With the override, placeholders stay on their own line outside the body capture.
+
+   Ruby-prof effect (post-CT baseline vs post-GFM-patch):
+
+   | Metric | Before | After | Delta |
+   |---|---|---|---|
+   | `GFMAdmonitionConverter#generate` total | 0.690 s / 1 call | 0.108 s / 1 call | -0.582 s |
+   | `admonition_html` calls | 508 | 508 | (same dispatch, now does only string concat) |
+   | `@markdown.convert(text)` calls from admonition_html | 508 | 0 | -508 |
+
+   Wall-clock effect on 3-run uninstrumented means (busy dev machine, but consistent within each set):
+
+   | Phase | Before | After | Delta |
+   |---|---|---|---|
+   | `done in ...` total | 11.47 s | 11.13 s | -0.34 s |
+   | `GFMA: Generator ran in ...` | 216 ms | 93 ms | -123 ms |
+
+   Output is not byte-identical to baseline: 12 files differ. Eleven are real bug fixes that were latent in the unpatched gem -- 5 pages had their fenced code block lost (the code-block-stash-eats-the-blank-line bug above; `Tutorials/Arrays.md`, `Tutorials/CustomControls/Painting.md`, `tB/Packages/WebView2/WebView2/index.md`, `tB/Packages/WinNamedPipesLib/NamedPipeClientConnection.md`, `tB/Packages/WinServicesLib/ServiceManager.md`), 1 page had a `\\\\` source sequence collapsed to `\\` by the gem's second markdown pass (`tB/Core/RightShift.md` -- the body is now parsed once, so `**\\\\**` renders as `<strong>\\</strong>` not `<strong>\</strong>`), 1 page had its loose-list items rendered as `<li>text</li>` instead of CommonMark's `<li><p>text</p></li>` because the gem's pre-rendered admonition HTML changed the surrounding paragraph context (`Documentation/Development.md`), and the remaining 5 are cosmetic whitespace nits inside admonitions that themselves contain a fenced code block (`tB/Core/If-Then-Else.md`, `tB/Core/Option.md`, `tB/Modules/Interaction/InputBox.md`, `tB/Packages/CEF/CefBrowser/index.md`, `tB/Packages/tbIDE/HtmlElement.md`). The 12th file is `assets/js/search-data.json`, derived from page contents so it tracks them. Lychee link check is clean (`8170 OK, 0 errors` for online; `6824 OK, 0 errors` for offline).
+
+   A separate investigation looked at `NavIntegrityCheck::Generator#generate` (0.436 s / 1 call in the post-CT profile, attributed to 855 `Jekyll::FrontmatterDefaults#find` walks). The plugin uses `page.data[key]` for `title` / `nav_exclude` / `parent` / `grand_parent`, and Jekyll's `Page#initialize` sets `data.default_proc = proc { site.frontmatter_defaults.find(...) }`, so every missing key fell through to a full defaults walk. Switching to `data.fetch(key, nil)` bypasses the default_proc, but the resulting wall-clock delta is only ~50-80 ms: NavIntegrityCheck was warming `FrontmatterDefaults`'s internal `@matched_set_cache` (keyed by `path-type`), and `NavTreePrecompute::Generator#ordered_children_for` was the cache's biggest beneficiary. With NavIntegrityCheck skipping the walk, NavTreePrecompute pays the cache-miss cost itself -- ~430 ms moves from one stack to the other, leaving only the per-call dispatch overhead recovered. The patch was reverted.
+
 #### Cumulative
 
-The three landed optimizations together (chapter precompute, SEO precompute, chapter-body transform) shrank ruby-prof's instrumented build wall from ~41.7 s (immediately post-html-compress baseline) down to 34.78 s -- about -7 s. The cumulative profile-table picture, comparing the post-html-compress baseline to the post-chapter-transform state:
+The four landed optimizations together (chapter precompute, SEO precompute, chapter-body transform, GFM defer-body-parse) shrank ruby-prof's instrumented build wall from ~41.7 s (immediately post-html-compress baseline) down to ~34 s. The cumulative profile-table picture, comparing the post-html-compress baseline to the post-GFM state:
 
-| Metric | Post-html-compress | Post-CT | Delta |
+| Metric | Post-html-compress | Post-GFM | Delta |
 |---|---|---|---|
-| Total instrumented wall | 39.30 s | 34.78 s | -4.52 s |
+| Total instrumented wall | 39.30 s | 34.78 s* | -4.52 s |
 | `Liquid::Strainer#invoke` total | 8.90 s / 191,365 calls | 5.45 s / 122,397 calls | -3.45 s / -68,968 calls |
 | `where_exp` calls | 37 | 0 | -37 |
 | `markdownify` calls | 1,802 | 128 | -1,674 |
 | `absolute_url` filter calls | 1,675 | 1 | -1,674 |
 | `replace` calls | 87,991 | 48,577 | -39,414 |
+| `GFMAdmonitionConverter#generate` total | 0.690 s | 0.108 s | -0.582 s |
 | `Liquid::BlockBody#render` total | 18.38 s | 14.43 s | -3.95 s |
 | `Liquid::Context#stack` total | 18.19 s | 13.78 s | -4.41 s |
+
+\* Instrumented totals are noisy on the current Windows dev machine (single-run range ~9 s across consecutive identical runs); the per-method numbers above are stable across runs and are the more reliable signal.
 
 What's left of the per-filter table is approximately what kramdown / Rouge actually parse and emit: the 128 remaining `markdownify` calls are the per-chapter `chapter.content | markdownify` in `book-chapter-body.html` plus `book.html`'s part subtitle / intro markdown. Each of those is unique input, so Jekyll's converter cache rarely hits and the kramdown parse itself dominates. Further savings on this axis would need either (a) reusing the already-rendered `_site/<page>.html` instead of re-parsing source markdown for the book, or (b) accepting kramdown's parse cost as the floor and looking elsewhere -- the next-biggest non-library hotspot is `Offlinify#rewrite_html!` at ~2 s of self-time, already heavily optimised (see `_plugins/offlinify.md`).
 
