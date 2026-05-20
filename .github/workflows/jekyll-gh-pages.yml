@@ -57,38 +57,29 @@ jobs:
         env:
           JEKYLL_ENV: production
           PAGES_REPO_NWO: "${{ github.repository }}"
-      - name: Check online links (lychee)
-        uses: lycheeverse/lychee-action@v2
-        with:
-          # --remap matches the fully-resolved file URI (not the raw href), so the pattern
-          # must include the file:// scheme and --root-dir prefix. The (/|$) tail handles
-          # both `/twinBASIC-docs/page` and bare `/twinBASIC-docs` — lychee strips trailing
-          # slashes before remap, so we can't require one in the pattern.
-          #
-          # `--fallback-extensions html` mirrors what GitHub Pages does at request time:
-          # an extensionless URL like `/FAQ` is served as `/FAQ.html`. Without the flag
-          # lychee would flag every pretty permalink on the site.
-          #
-          # Lychee, not the Python checker, handles the online tree here because the
-          # `--remap` flag isn't implemented by scripts/check_links.py; the offline tree
-          # below has all baseurl prefixes already stripped by the offlinify plugin and
-          # so doesn't need it.
-          args: >-
-            --offline --include-fragments
-            --fallback-extensions html
-            --index-files 'index.html,.'
-            --remap '^file://${{ github.workspace }}/docs/_site${{ steps.pages.outputs.base_path }}(/|$) file://${{ github.workspace }}/docs/_site/'
-            --root-dir ${{ github.workspace }}/docs/_site
-            ./_site
-          workingDirectory: ./docs
-          fail: true
-      - name: Set up Python for offline link check
+      - name: Set up Python for link checks
         uses: actions/setup-python@v5
         with:
           python-version: '3.14'
           cache: 'pip'
       - name: Install Python deps
         run: pip install -r requirements.txt
+      - name: Check online links (check_links.py)
+        # `--fallback-extensions html` mirrors what GitHub Pages does at request time:
+        # an extensionless URL like `/FAQ` is served as `/FAQ.html`. Without the flag
+        # every pretty permalink on the site would look broken.
+        #
+        # `--base-path` strips the Pages baseurl (e.g. `/twinBASIC-docs`) from absolute
+        # URLs before resolving against `--root-dir`. Equivalent to the `--remap` regex
+        # that lychee used in earlier iterations of this step.
+        run: >-
+          python scripts/check_links.py
+          --offline --include-fragments
+          --fallback-extensions html
+          --index-files 'index.html,.'
+          --base-path '${{ steps.pages.outputs.base_path }}'
+          --root-dir docs/_site
+          docs/_site
       - name: Check offline links (check_links.py)
         # Strict check on `_site-offline/`: every link must resolve to an actual file
         # under `file://`, with no extension fallback. Catches relative links in

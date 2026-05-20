@@ -119,7 +119,42 @@ def extract_fragment_ids(html_path):
     return ids
 
 
-def resolve(href, source_dir_str, source_str, root_str):
+def _normalize_base_path(s):
+    """Coerce a base-path arg into the canonical '/prefix' form (leading
+    slash, no trailing slash). Empty input maps to empty string."""
+    if not s:
+        return ""
+    s = s.strip().rstrip("/")
+    if not s:
+        return ""
+    if not s.startswith("/"):
+        s = "/" + s
+    return s
+
+
+def _strip_base_path(path_str, base_path):
+    """Lop a base-path prefix off an absolute URL path, if it matches.
+
+    A Jekyll build with `--baseurl /twinBASIC-docs` produces hrefs like
+    '/twinBASIC-docs/foo' that resolve, in the deployed site, to '/foo'
+    under the actual root. This mirrors lychee's `--remap` regex but as
+    a clean prefix strip:
+
+      '/twinBASIC-docs/foo' -> '/foo'      (prefix + /...)
+      '/twinBASIC-docs'     -> '/'          (bare prefix, treat as root)
+      '/twinBASIC-docs-other' -> unchanged  (only strip on '/' or end-of-string)
+      '/foo'                -> unchanged    (no prefix match)
+    """
+    if not base_path:
+        return path_str
+    if path_str == base_path:
+        return "/"
+    if path_str.startswith(base_path + "/"):
+        return path_str[len(base_path):]
+    return path_str
+
+
+def resolve(href, source_dir_str, source_str, root_str, base_path=""):
     """Lexically resolve href -> (normalized_target_str, is_dir_link, fragment).
     Returns None for schemes/netlocs we skip. Uses only string ops — no
     filesystem syscalls (Path.resolve is ~110us per call on Windows).
@@ -129,6 +164,10 @@ def resolve(href, source_dir_str, source_str, root_str):
     for resolution: 'foo/' must resolve as a directory (try index files),
     while 'foo' falls through to fallback extensions ('foo.html') if no
     file/dir 'foo' exists.
+
+    base_path is an absolute-URL prefix to strip before resolving against
+    root_str -- e.g. '/twinBASIC-docs' to handle a Jekyll --baseurl build.
+    Only applied to absolute URLs; relative paths are unaffected.
     """
     if "#" in href:
         path_part, frag = href.split("#", 1)
@@ -151,6 +190,7 @@ def resolve(href, source_dir_str, source_str, root_str):
     is_dir_link = path_str.endswith("/") or path_str.endswith("/.")
 
     if path_str.startswith("/"):
+        path_str = _strip_base_path(path_str, base_path)
         target = os.path.normpath(os.path.join(root_str, path_str.lstrip("/")))
     else:
         target = os.path.normpath(os.path.join(source_dir_str, path_str))
@@ -243,6 +283,15 @@ def _build_parser():
         ),
     )
     ap.add_argument(
+        "--base-path", default="", metavar="PREFIX",
+        help=(
+            "URL-path prefix to strip from absolute URLs before resolving "
+            "against --root-dir. Matches a Jekyll build's --baseurl, e.g. "
+            "'/twinBASIC-docs'. Equivalent to a constrained form of "
+            "lychee's --remap. Empty by default (no stripping)."
+        ),
+    )
+    ap.add_argument(
         "--threads", type=int, default=os.cpu_count() or 4, metavar="N",
         help="Worker threads for HTML parsing. Default: CPU count.",
     )
@@ -292,6 +341,7 @@ def main():
     root_str = str(args.root_dir.resolve()) if args.root_dir else ""
     fallback_exts = [e for e in args.fallback_extensions.split(",") if e]
     index_files = [e for e in args.index_files.split(",") if e]
+    base_path = _normalize_base_path(args.base_path)
 
     t0 = time.perf_counter()
     html_files = _collect_html_files(args.inputs)
@@ -317,7 +367,7 @@ def main():
         rk = (src_dir, href)
         r = resolution_cache.get(rk, ...)
         if r is ...:
-            r = resolve(href, src_dir, src_str, root_str)
+            r = resolve(href, src_dir, src_str, root_str, base_path)
             resolution_cache[rk] = r
         if r is None:
             continue
@@ -346,24 +396,28 @@ def main():
                 fragment_cache[f] = ids
     t_fragments = time.perf_counter()
 
-    broken = []
-    for (target_str, is_dir, frag), sources in unique_checks.items():
+    broken = []  # one entry per occurrence; for human-readable report
+    broken_keys = set()  # unique broken (target, is_dir, frag) keys
+    for key, sources in unique_checks.items():
+        target_str, is_dir, frag = key
         resolved = target_resolution.get((target_str, is_dir))
         if resolved is None:
+            broken_keys.add(key)
             for src_str, href in sources:
                 broken.append((src_str, href, "target not found"))
             continue
         if frag and args.include_fragments:
             ids = fragment_cache.get(resolved, set())
             if frag not in ids:
+                broken_keys.add(key)
                 for src_str, href in sources:
                     broken.append((src_str, href, f"fragment #{frag} not found"))
     t_done = time.perf_counter()
 
     total = len(occurrences)
     unique = len(unique_checks)
-    errors = len(broken)
-    ok = unique - errors
+    errors_unique = len(broken_keys)
+    ok_unique = unique - errors_unique
 
     if broken:
         # Group by source file, lychee-style.
@@ -378,8 +432,8 @@ def main():
 
     elapsed = t_done - t0
     print(
-        f"Checked {total} links ({unique} unique) in {elapsed:.3f}s "
-        f"-- {ok} OK, {errors} errors"
+        f"Checked {total} occurrences ({unique} unique) in {elapsed:.3f}s "
+        f"-- {ok_unique} OK, {errors_unique} broken"
     )
 
     if args.verbose:
