@@ -23,10 +23,10 @@ Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas)  _
 You are passed a [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) object that offers the following methods:
 
 ```tb
-Canvas.Width As Long    [Property-Get]
-Canvas.Height As Long   [Property-Get]
-Canvas.Dpi As Long      [Property-Get]
-Canvas.DpiScaleFactor As Double [Property-Get]
+Canvas.Width As Long    ' Property-Get
+Canvas.Height As Long   ' Property-Get]
+Canvas.Dpi As Long      ' Property-Get]
+Canvas.DpiScaleFactor As Double ' Property-Get
 Canvas.AddElement(Descriptor As ElementDescriptor)
 ```
 

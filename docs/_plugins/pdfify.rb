@@ -5,10 +5,8 @@ require "pathname"
 require "set"
 
 # Produces the sparse `_site-pdf/` tree that pagedjs-cli consumes when
-# rendering the PDF book. Runs at `:site, :post_write` -- after Jekyll
-# has written `_site/` (and after `offlinify.rb` has run, if it is
-# active). Combined with the offline plugin this means one Jekyll
-# invocation produces three trees:
+# rendering the PDF book. Combined with the offline plugin this means
+# one Jekyll invocation produces three trees:
 #
 #   _site/          -- the online site
 #   _site-offline/  -- the offline mirror with file://-resolvable URLs
@@ -29,27 +27,56 @@ require "set"
 # whole second Jekyll build, layout-changed, into `_site-pdf/`). That
 # pass produced ~1300 per-page HTML files that pagedjs never opened.
 #
+# === Hook flow ===
+#
+# Four hooks, mirroring offlinify's shape:
+#
+#   :site, :pre_render    -- setup(): flip @enabled on (gated at the
+#                            hook level by `also_build_pdf`); clear
+#                            @captured.
+#   :pages, :post_render  -- maybe_capture(): when the rendered page
+#                            is /book.html, stash its `page.output`
+#                            bytes in @captured. No I/O.
+#   :site, :post_render   -- remove_book_page(): drop /book.html from
+#                            `site.pages` before Jekyll's WRITE phase
+#                            iterates it, so the concatenated document
+#                            never lands in _site/. Runs after every
+#                            per-page hook has fired -- offlinify has
+#                            already seen book.html and skipped it
+#                            via `offline_exclude` -- and before WRITE.
+#   :site, :post_write    -- run(): wipe _site-pdf/, write @captured
+#                            as _site-pdf/book.html, copy the two
+#                            stylesheets, and copy every image
+#                            book.html references (sourced from
+#                            _site/ -- Jekyll's asset pipeline has
+#                            written them there during WRITE).
+#
+# Capturing in :pages, :post_render and removing in :site, :post_render
+# replaces an earlier flow that read _site/book.html via binread and
+# then deleted it post-write. The new flow makes one fewer disk
+# round-trip and means /book.html is never a live URL on the online
+# site at any point during the build.
+#
 # === What gets copied ===
 #
-#   book.html              copied verbatim from <site.dest>/book.html
+#   book.html              the captured page.output bytes
 #   assets/css/print.css   the book design
 #   assets/css/rouge.css   the syntax-highlighter theme
 #   <img src=> targets     every relative image path inside book.html,
 #                          resolved against book.html's directory
 #
-# Anything else in `_site/` is not part of the PDF render path and is
-# skipped. The output tree mirrors the source paths exactly so book.html
+# The destination tree mirrors the source paths exactly so book.html
 # can stay byte-identical -- no URL rewriting is needed.
 #
-# After the copy, `<site.dest>/book.html` is deleted: the concatenated
-# document is a build artifact for this plugin alone, not a public page
-# on the online site. The `offline_exclude` entry in _config.yml keeps
-# it out of the offline tree independently. The two safeguards do not
-# rely on each other: the exclude pattern fires whether `offlinify.rb`
-# walks _site/ before or after pdfify's delete (and works even when
-# `also_build_pdf: false`, when pdfify never runs at all), and pdfify's
-# delete fires whether or not offlinify is enabled. No hook ordering
-# is assumed.
+# === The offline_exclude entry ===
+#
+# `offline_exclude: [book.html]` in _config.yml is still required.
+# When `also_build_pdf: true`, offlinify's :pages, :post_render hook
+# fires for book.html before pdfify's :site, :post_render removes it
+# from site.pages, so the exclude is what makes offlinify skip it.
+# When `also_build_pdf: false`, pdfify never runs at all, book.html
+# is a regular page on _site/, and the exclude is what keeps it out
+# of _site-offline/.
 #
 # === Strict mode ===
 #
@@ -65,14 +92,18 @@ require "set"
 #
 # === Compatibility ===
 #
-# Reads `site.dest`, `site.config['also_build_pdf']`, and
-# `site.config['serving']`. Writes a fresh `<site.dest>-pdf/` tree
-# (wiping any prior contents). Touches no files outside that.
+# Reads `site.config['also_build_pdf']` and `site.config['serving']`,
+# plus each rendered page's `page.output` in memory. Mutates
+# `site.pages` once at :site, :post_render to suppress _site/book.html.
+# Writes a fresh `<site.dest>-pdf/` tree (wiping any prior contents).
+# Touches no files outside _site-pdf/.
 #
 # If the plugin is removed: `_site-pdf/` is no longer produced and
 # `book.bat` would fail until either (a) this plugin is restored or
-# (b) `book.bat` is pointed at `_site/book.html` directly. `_site/` is
-# unaffected.
+# (b) `book.bat` is pointed at `_site/book.html` directly. With this
+# plugin gone, book.html would render as a normal (large) page on
+# the online site; the `offline_exclude` entry would still keep it
+# out of _site-offline/.
 
 module Pdfify
   # Three-alternative regex, matched against the full document with
@@ -108,15 +139,55 @@ module Pdfify
     assets/css/rouge.css
   ].freeze
 
-  def self.run(site, source_root, dest_root)
-    source = Pathname.new(source_root)
-    dest   = Pathname.new(dest_root)
+  # The URL of the page we capture and suppress.
+  BOOK_URL = "/book.html"
 
-    book_src = source.join("book.html")
-    unless book_src.file?
-      Jekyll.logger.warn "Pdfify:", "no #{book_src} found; skipping (did the book.html page render?)"
+  # @enabled flips on at :site, :pre_render when also_build_pdf is
+  # true. @captured holds book.html's rendered output once the
+  # per-page hook has stashed it; nil until then, set back to nil
+  # after run() consumes it.
+  @enabled = false
+  @captured = nil
+
+  # `:site, :pre_render` entry. Only invoked when `also_build_pdf`
+  # is true (the hook gates on the config), so reaching here means
+  # the plugin is on for this build.
+  def self.setup(_site)
+    @enabled = true
+    @captured = nil
+  end
+
+  # `:pages, :post_render` entry. Stashes the rendered HTML of
+  # /book.html in @captured for run() to pick up post-write. No-op
+  # on every other page and when pdfify is disabled.
+  def self.maybe_capture(page)
+    return unless @enabled
+    return unless page.url == BOOK_URL
+    @captured = page.output.dup
+  end
+
+  # `:site, :post_render` entry. Drops /book.html from `site.pages`
+  # so Jekyll's WRITE phase doesn't write it to _site/. Runs after
+  # every :pages, :post_render hook has fired (offlinify has already
+  # seen book.html and skipped it via offline_exclude), and before
+  # the WRITE phase iterates site.pages -- so mutating site.pages
+  # here is safe. No-op when pdfify is disabled or when /book.html
+  # never rendered (in which case run() will warn).
+  def self.remove_book_page(site)
+    return unless @enabled && @captured
+    site.pages.reject! { |p| p.url == BOOK_URL }
+  end
+
+  def self.run(site, dest_root)
+    return unless @enabled
+
+    unless @captured
+      Jekyll.logger.warn "Pdfify:", "no #{BOOK_URL} page rendered; skipping (did its frontmatter change?)"
       return
     end
+
+    source = Pathname.new(site.dest)
+    dest   = Pathname.new(dest_root)
 
     start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
@@ -125,10 +196,12 @@ module Pdfify
     FileUtils.rm_rf(dest)
     FileUtils.mkdir_p(dest)
 
-    html = book_src.binread
+    html = @captured
 
     copied = 0
-    copy_file(book_src, dest.join("book.html"))
+    book_dst = dest.join("book.html")
+    FileUtils.mkdir_p(book_dst.dirname)
+    File.binwrite(book_dst, html)
     copied += 1
 
     REQUIRED_CSS.each do |rel|
@@ -153,16 +226,6 @@ module Pdfify
       end
     end
 
-    # book.html exists in source/ (the online _site/) only as a
-    # build artifact for this plugin -- it's not a page on the
-    # published site and it isn't part of the offline tree (the
-    # `offline_exclude` entry in _config.yml keeps offlinify from
-    # copying it). Remove it now that we've consumed it, so a stale
-    # copy doesn't sit under _site/ between builds and so a serve-
-    # mode `localhost:4000/book.html` correctly 404s instead of
-    # leaking the concatenated document.
-    book_src.delete
-
     # Per-path error logs first so the build log reads details-then-
     # summary. The code/pre rejection in extract_image_paths means
     # any entry here is a real broken reference -- a markdown image
@@ -175,6 +238,8 @@ module Pdfify
 
     elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(0)
     Jekyll.logger.info "Pdfify:", "Pdfifier ran in #{elapsed_ms}ms."
+
+    @captured = nil
 
     # `jekyll build` aborts on a non-zero missing count (CI gating).
     # `jekyll serve` keeps the dev preview alive -- a mid-edit save
@@ -217,7 +282,20 @@ module Pdfify
   end
 end
 
+Jekyll::Hooks.register :site, :pre_render do |site|
+  next unless site.config["also_build_pdf"]
+  Pdfify.setup(site)
+end
+
+Jekyll::Hooks.register :pages, :post_render do |page|
+  Pdfify.maybe_capture(page)
+end
+
+Jekyll::Hooks.register :site, :post_render do |site|
+  Pdfify.remove_book_page(site)
+end
+
 Jekyll::Hooks.register :site, :post_write do |site|
   next unless site.config["also_build_pdf"]
-  Pdfify.run(site, site.dest, "#{site.dest}-pdf")
+  Pdfify.run(site, "#{site.dest}-pdf")
 end

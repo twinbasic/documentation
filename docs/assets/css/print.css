@@ -135,7 +135,8 @@ article.part-divider .part-number {
   margin: 0 0 1.2em;
 }
 
-article.part-divider h1 {
+article.part-divider h1,
+article.part-divider .part-title-silent {
   font-size: 32pt;
   font-weight: 700;
   border: none;
@@ -223,7 +224,8 @@ article.chapter-divider {
   padding-top: 30%;
 }
 
-article.chapter-divider h2 {
+article.chapter-divider h2,
+article.chapter-divider .chapter-title-silent {
   font-size: 24pt;
   font-weight: 700;
   border: none;

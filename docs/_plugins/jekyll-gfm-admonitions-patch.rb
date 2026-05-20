@@ -113,7 +113,8 @@ end
 # generators (this one included) are invisible to it. The wall-clock delta
 # we log here is the gem's full contribution to the GENERATE phase:
 # walking every collection doc and page, running the admonition regex,
-# and re-invoking the markdown converter on each admonition body.
+# and (after the patch below) splicing in HTML that defers body markdown
+# parsing to the page-level kramdown pass.
 module JekyllGFMAdmonitions
   class GFMAdmonitionConverter
     unless method_defined?(:_generate_without_timing)
@@ -123,6 +124,88 @@ module JekyllGFMAdmonitions
         _generate_without_timing(site)
         elapsed_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round(0)
         Jekyll.logger.info "GFMA:", "Generator ran in #{elapsed_ms}ms."
+      end
+    end
+
+    # Skip the per-admonition `@markdown.convert(text)` call by leaving
+    # the body as raw markdown inside the outer alert div. The
+    # site-level kramdown config (`parse_block_html: true` and
+    # `parse_span_html: true` in _config.yml) makes the page-level
+    # kramdown pass descend into the div and parse the body markdown
+    # during RENDER, so the rendered HTML is the same as if the gem had
+    # pre-converted the body itself -- one combined parse instead of
+    # 1 + N (page + one per admonition).
+    #
+    # Two side effects of removing the inline `markdown.convert`
+    # surface as small correctness improvements over the unpatched gem:
+    #
+    #   * Backslash-escapes in body text (e.g. `**\\\\**` for a bold
+    #     pair of backslashes) no longer go through kramdown twice and
+    #     so are no longer collapsed by the second pass. The unpatched
+    #     gem's output of `<strong>\</strong>` (one backslash) becomes
+    #     `<strong>\\</strong>` (two backslashes, what the source asks
+    #     for). Pages affected: any with `\\\\` inside an admonition
+    #     body -- on this site, `Reference/Core/RightShift.md` and a
+    #     handful of others.
+    #
+    #   * Code blocks that follow an admonition with just one blank
+    #     line between them are no longer eaten by the gem's code-block
+    #     stash regex (see `process_doc` override below). The unpatched
+    #     gem's stash regex `(?:^|\n)(?<!>)\s*```.*?```/m` consumes the
+    #     blank line, which pulls the placeholder into the admonition
+    #     body capture, which lets kramdown render it as an empty
+    #     `<code class="language-plaintext"></code>` element and
+    #     prevents the restore step from finding it. Net effect on
+    #     the unpatched gem: the code block disappears from the
+    #     rendered HTML. The override below preserves the leading
+    #     newline(s) so the placeholder stays on its own line outside
+    #     the admonition body capture.
+    #
+    # The body text is bracketed by blank lines so kramdown reads it as
+    # an independent paragraph rather than tangling with the preceding
+    # `<p class="markdown-alert-title">...</p>` block. The outer div
+    # carries `markdown='1'` so kramdown's HTML-block parser keeps the
+    # whole `<div>...</div>` as a single block even though it spans
+    # blank lines internally.
+    unless method_defined?(:_admonition_html_without_deferred_body)
+      alias_method :_admonition_html_without_deferred_body, :admonition_html
+      def admonition_html(type, title, text, icon)
+        "<div class='markdown-alert markdown-alert-#{type}' markdown='1'>\n" \
+          "<p class='markdown-alert-title'>#{icon} #{title}</p>\n\n" \
+          "#{text}\n" \
+        "</div>"
+      end
+    end
+
+    # Override `process_doc` to fix the code-block stash so that the
+    # placeholder substitution preserves the leading newline(s) that
+    # separated the code block from the preceding text. Without this
+    # adjustment, the gem's gsub eats the blank line before the code
+    # block, which causes the placeholder to be appended to the last
+    # admonition body line and then dragged into the body capture by
+    # the admonition regex's `[^\n]*` body-line pattern.
+    #
+    # The body of the method otherwise mirrors the upstream gem
+    # verbatim (see jekyll-gfm-admonitions 1.2.0,
+    # `lib/jekyll-gfm-admonitions.rb#process_doc`).
+    unless method_defined?(:_process_doc_without_leading_ws_preserve)
+      alias_method :_process_doc_without_leading_ws_preserve, :process_doc
+      def process_doc(doc)
+        return if doc.content.empty?
+        doc.content = doc.content.dup unless doc.content.frozen?
+
+        code_blocks = []
+        doc.content.gsub!(/(?:^|\n)(?<!>)\s*```.*?```/m) do |match|
+          code_blocks << match
+          leading = match[/\A\s+/] || ""
+          "#{leading}```{{CODE_BLOCK_#{code_blocks.length - 1}}}```"
+        end
+
+        convert_admonitions(doc)
+
+        doc.content.gsub!(/```\{\{CODE_BLOCK_(\d+)}}```/) do
+          code_blocks[::Regexp.last_match(1).to_i]
+        end
       end
     end
   end

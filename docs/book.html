@@ -4,72 +4,15 @@ permalink: /book.html
 sitemap: false
 ---
 {%- comment -%}
-  Whitespace primitives. `sp` is one space; `nl` is one newline,
-  captured between the opening and closing capture tags so the LF is
-  preserved verbatim (trim markers strip only outside-the-capture
-  whitespace).
-
-  Inter-span whitespace patterns: PagedJS drops bare text-node
-  whitespace between sibling elements when it splits a pre across
-  pages, mashing tokens and collapsing line breaks. Wrapping each
-  inter-span whitespace run in a span.w element makes it a structured
-  child that survives the split.
-
-  Variants, longest first so each consumes its bytes before a shorter
-  pattern can fragment them:
-    SP NL SP NL -- blank line between a code-line ending (trailing
-                   space outside the last token's span) and the next.
-    NL SP NL    -- blank line between a comment-line ending (trailing
-                   space already inside the comment span) and the next.
-    SP NL       -- code line directly followed by the next line.
-    NL          -- comment line directly followed by the next line.
+  The inter-span whitespace patterns the chapter-body transform
+  needs for pagedjs (each whitespace run between adjacent code
+  spans wrapped in a `<span class="w">` so the page splitter
+  doesn't collapse it) used to be declared here as Liquid variables
+  and consumed by `_includes/book-chapter-body.html`. They now live
+  inline in `_plugins/book-chapter-transform.rb`'s
+  `WHITESPACE_PATTERNS` constant -- see that plugin's header
+  comment for the longest-first rationale.
 {%- endcomment -%}
-
-{%- assign sp = " " -%}
-{%- capture nl %}
-{% endcapture -%}
-
-{%- assign p1_search   = '</span>'            | append: sp | append: nl | append: sp | append: nl | append: '<span'  -%}
-{%- assign p1_replace  = '</span><span class="w">' | append: sp | append: nl | append: sp | append: nl | append: '</span><span' -%}
-
-{%- assign p2_search   = '</span>'            | append: nl | append: sp | append: nl | append: '<span'               -%}
-{%- assign p2_replace  = '</span><span class="w">' | append: nl | append: sp | append: nl | append: '</span><span'   -%}
-
-{%- assign p3_search   = '</span>'            | append: sp | append: nl | append: '<span'                            -%}
-{%- assign p3_replace  = '</span><span class="w">' | append: sp | append: nl | append: '</span><span'                -%}
-
-{%- assign p4_search   = '</span>'            | append: nl | append: '<span'                                         -%}
-{%- assign p4_replace  = '</span><span class="w">' | append: nl | append: '</span><span'                             -%}
-
-{%- comment -%}
-  Additional patterns for indented code spillover: when a code line
-  ends and the next line is indented (4/8/12/16 spaces of leading
-  whitespace before its first token), pagedjs drops the whole
-  inter-line text node at page splits. Cover the four common indent
-  levels with both `</span>\n<INDENT><span` and `</span> \n<INDENT><span`
-  (the latter for lines whose last token had trailing whitespace).
-  Together with p1-p4 these account for >99% of code block lines.
-{%- endcomment -%}
-{%- assign s4  = '    ' -%}
-{%- assign s8  = '        ' -%}
-{%- assign s12 = '            ' -%}
-{%- assign s16 = '                ' -%}
-
-{%- assign p4i4_search  = '</span>' | append: nl | append: s4  | append: '<span' -%}
-{%- assign p4i4_replace = '</span><span class="w">' | append: nl | append: s4  | append: '</span><span' -%}
-{%- assign p4i8_search  = '</span>' | append: nl | append: s8  | append: '<span' -%}
-{%- assign p4i8_replace = '</span><span class="w">' | append: nl | append: s8  | append: '</span><span' -%}
-{%- assign p4i12_search = '</span>' | append: nl | append: s12 | append: '<span' -%}
-{%- assign p4i12_replace = '</span><span class="w">' | append: nl | append: s12 | append: '</span><span' -%}
-{%- assign p4i16_search = '</span>' | append: nl | append: s16 | append: '<span' -%}
-{%- assign p4i16_replace = '</span><span class="w">' | append: nl | append: s16 | append: '</span><span' -%}
-
-{%- assign p3i4_search  = '</span>' | append: sp | append: nl | append: s4  | append: '<span' -%}
-{%- assign p3i4_replace = '</span><span class="w">' | append: sp | append: nl | append: s4  | append: '</span><span' -%}
-{%- assign p3i8_search  = '</span>' | append: sp | append: nl | append: s8  | append: '<span' -%}
-{%- assign p3i8_replace = '</span><span class="w">' | append: sp | append: nl | append: s8  | append: '</span><span' -%}
-{%- assign p3i12_search = '</span>' | append: sp | append: nl | append: s12 | append: '<span' -%}
-{%- assign p3i12_replace = '</span><span class="w">' | append: sp | append: nl | append: s12 | append: '</span><span' -%}
 
 {%- comment -%}
   Roman numerals for part numbering. Liquid has no built-in; a flat
@@ -133,19 +76,14 @@ sitemap: false
 {%- endcomment -%}
 {%- if site.data.book.front_matter -%}
 {%- for fm in site.data.book.front_matter -%}
-  {%- if fm.page -%}
-    {%- assign fm_chapters = site.pages | where: "url", fm.page -%}
-  {%- elsif fm.prefixes -%}
-    {%- assign fm_chapters = "" | split: "" -%}
-    {%- for prefix in fm.prefixes -%}
-      {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-      {%- assign fm_chapters = fm_chapters | concat: matched -%}
-    {%- endfor -%}
-    {%- assign fm_chapters = fm_chapters | sort: "url" -%}
-  {%- else -%}
-    {%- assign fm_chapters = "" | split: "" -%}
-  {%- endif -%}
-  {%- for chapter in fm_chapters -%}
+  {%- comment -%}
+    Chapter list precomputed in `_plugins/book-resolve-chapters.rb`
+    at `:site, :pre_render`. The Liquid `include book-collect-matches`
+    + `where_exp` + `sort_by_nav_order` chain that used to live here
+    folded into the Ruby resolver -- see the plugin's header comment
+    for the savings rationale.
+  {%- endcomment -%}
+  {%- for chapter in fm._chapters -%}
     {%- if chapter.url == '/' -%}
       {%- assign fm_anchor = 'ch-' | append: fm.title | downcase | replace: ' ', '-' -%}
     {%- else -%}
@@ -161,9 +99,13 @@ sitemap: false
 {%- endif -%}
 
 {%- for part in site.data.book.parts -%}
-<article class="part-divider" id="pt-{{ forloop.index }}">
+<article class="part-divider{% if part.no_outline_entry %} silent{% endif %}" id="pt-{{ forloop.index }}">
   <p class="part-number">Part {{ roman[forloop.index0] }}</p>
+{%- if part.no_outline_entry %}
+  <p class="part-title-silent">{{ part.title }}</p>
+{%- else %}
   <h1 id="pt-{{ forloop.index }}-title">{{ part.title }}</h1>
+{%- endif -%}
 {%- if part.subtitle -%}
   {%- assign subtitle_html = part.subtitle | markdownify | remove: '<p>' | remove: '</p>' | strip %}
   <p class="part-subtitle">{{ subtitle_html }}</p>
@@ -173,24 +115,16 @@ sitemap: false
 {%- endif %}
 </article>
   {%- comment -%}
-    Gather the part's chapters once. A part has either `page:` (single
-    absolute URL, exact match) or `prefixes:` (list of URL prefixes,
-    contains-match per prefix, union sorted). Pre-2.4 the loop only
-    handled `prefixes:`; `page:` was added so one-chapter parts like
-    the FAQ don't have to invent a folder.
+    Flat-part chapter list precomputed in
+    `_plugins/book-resolve-chapters.rb` at `:site, :pre_render`.
+    The plugin applies the same selector schema (page / pages /
+    nav_page / nav_pages / no_descent + landing_page-first ordering
+    + sort_by_nav_order) the Liquid chain used to drive, in one Ruby
+    pass per entry. Chaptered parts (`part.chapters`) get their
+    chapter lists resolved separately under `part.chapters[*]._chapters`
+    -- the part itself has no _chapters in that case.
   {%- endcomment -%}
-  {%- if part.page -%}
-    {%- assign chapters = site.pages | where: "url", part.page -%}
-  {%- elsif part.prefixes -%}
-    {%- assign chapters = "" | split: "" -%}
-    {%- for prefix in part.prefixes -%}
-      {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-      {%- assign chapters = chapters | concat: matched -%}
-    {%- endfor -%}
-    {%- assign chapters = chapters | sort: "url" -%}
-  {%- else -%}
-    {%- assign chapters = "" | split: "" -%}
-  {%- endif -%}
+  {%- assign chapters = part._chapters -%}
     {%- comment -%}
       1.6a: state for sub-page detection. Index pages (URL ending in `/`)
       sort before their siblings under ASCII order, so a single-slot
@@ -210,10 +144,47 @@ sitemap: false
   {%- if part.foreword_page -%}
     {%- assign fw_chapters = site.pages | where: "url", part.foreword_page -%}
     {%- for chapter in fw_chapters -%}
-      {%- include book-chapter-body.html
-          chapter=chapter
-          article_class_override='part-foreword'
-          skip_sub_page_detection=true -%}
+      {%- if part.no_heading_shift -%}
+        {%- include book-chapter-body.html
+            chapter=chapter
+            article_class_override='part-foreword'
+            skip_sub_page_detection=true
+            skip_base_heading_shift=true -%}
+      {%- else -%}
+        {%- include book-chapter-body.html
+            chapter=chapter
+            article_class_override='part-foreword'
+            skip_sub_page_detection=true -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+
+  {%- comment -%}
+    Part landing: a regular page article emitted between the part
+    divider (and any foreword) and the first chapter. Renders with
+    normal page styling -- unlike `foreword_page` which gets the
+    `part-foreword` named-page treatment -- and the plugin strips
+    its source H1 so the part divider's H1 stays the part's only
+    top-level outline entry. `skip_sub_page_detection=true` keeps
+    the landing's trailing-slash URL from making subsequent chapter
+    dividers / chapter pages look like its sub-pages. Supported
+    for both flat parts (handled below in the flat-part loop) and
+    chaptered parts (emitted right here, before the chaptered
+    loop).
+  {%- endcomment -%}
+  {%- if part.chapters and part.landing_page -%}
+    {%- assign ld_chapters = site.pages | where: "url", part.landing_page -%}
+    {%- for chapter in ld_chapters -%}
+      {%- if part.no_heading_shift -%}
+        {%- include book-chapter-body.html
+            chapter=chapter
+            skip_sub_page_detection=true
+            skip_base_heading_shift=true -%}
+      {%- else -%}
+        {%- include book-chapter-body.html
+            chapter=chapter
+            skip_sub_page_detection=true -%}
+      {%- endif -%}
     {%- endfor -%}
   {%- endif -%}
 
@@ -243,53 +214,68 @@ sitemap: false
       {%- else -%}
         {%- assign chapter_divider_id = 'chd-' | append: ch_entry.title | downcase | replace: ' ', '-' -%}
       {%- endif -%}
-<article class="chapter-divider" id="{{ chapter_divider_id }}">
+<article class="chapter-divider{% if ch_entry.no_outline_entry %} silent{% endif %}" id="{{ chapter_divider_id }}">
+{%- if ch_entry.no_outline_entry %}
+  <p class="chapter-title-silent">{{ ch_entry.title }}</p>
+{%- else %}
   <h2 id="{{ chapter_divider_id }}-title">{{ ch_entry.title }}</h2>
+{%- endif -%}
 {%- if ch_entry.subtitle %}
   <p class="chapter-subtitle">{{ ch_entry.subtitle }}</p>
 {%- endif %}
 </article>
 
       {%- comment -%}
-        Build this chapter's page list: landing first (so it acts as
-        the chapter intro right after the divider), then prefix-
-        matched content sorted by URL with the landing filtered out
-        to avoid double emission when it also matches a prefix
-        (typical: /tB/Packages/Foo/ landing matches prefix
-        /tB/Packages/Foo/).
+        Chapter page list precomputed in
+        `_plugins/book-resolve-chapters.rb`: landing_page first (if
+        set), then prefix-swept rest with landing filtered out, sorted
+        by `sort_by_nav_order`. See the plugin's header comment for
+        the selector schema and the savings rationale.
       {%- endcomment -%}
-      {%- assign ch_chapters = "" | split: "" -%}
-      {%- if ch_entry.landing_page -%}
-        {%- assign ch_landing = site.pages | where: "url", ch_entry.landing_page -%}
-        {%- assign ch_chapters = ch_chapters | concat: ch_landing -%}
-      {%- endif -%}
-      {%- if ch_entry.prefixes -%}
-        {%- assign ch_rest = "" | split: "" -%}
-        {%- for prefix in ch_entry.prefixes -%}
-          {%- assign matched = site.pages | where_exp: "p", "p.url contains prefix" -%}
-          {%- assign ch_rest = ch_rest | concat: matched -%}
-        {%- endfor -%}
-        {%- assign ch_rest = ch_rest | sort: "url" -%}
-        {%- if ch_entry.landing_page -%}
-          {%- assign ch_landing_url = ch_entry.landing_page -%}
-          {%- assign ch_rest = ch_rest | where_exp: "p", "p.url != ch_landing_url" -%}
-        {%- endif -%}
-        {%- assign ch_chapters = ch_chapters | concat: ch_rest -%}
-      {%- endif -%}
+      {%- assign ch_chapters = ch_entry._chapters -%}
 
       {%- assign current_index_url = '' -%}
       {%- assign current_index_kind = 'class' -%}
       {%- assign current_index_name = '' -%}
       {%- for chapter in ch_chapters -%}
-        {%- include book-chapter-body.html chapter=chapter extra_heading_shift=true -%}
+        {%- if part.no_heading_shift and ch_entry.no_heading_shift -%}
+          {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true -%}
+        {%- elsif part.no_heading_shift -%}
+          {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true extra_heading_shift=true -%}
+        {%- elsif ch_entry.no_heading_shift -%}
+          {%- include book-chapter-body.html chapter=chapter -%}
+        {%- else -%}
+          {%- include book-chapter-body.html chapter=chapter extra_heading_shift=true -%}
+        {%- endif -%}
       {%- endfor -%}
     {%- endfor -%}
   {%- else -%}
     {%- assign current_index_url = '' -%}
     {%- assign current_index_kind = 'class' -%}
     {%- assign current_index_name = '' -%}
+    {%- comment -%}
+      The part landing is the part's intro content, not an index for
+      its sibling chapters -- pass `skip_sub_page_detection=true` so
+      its URL ending in `/` doesn't make subsequent top-level chapters
+      look like its sub-pages. Sub-page detection still kicks in for
+      the per-chapter folder indexes that arrive later in the
+      iteration (each gathered together with its leaves by
+      `sort_by_nav_order`'s folder grouping).
+    {%- endcomment -%}
     {%- for chapter in chapters -%}
-      {%- include book-chapter-body.html chapter=chapter -%}
+      {%- assign is_part_landing = false -%}
+      {%- if part.landing_page and chapter.url == part.landing_page -%}
+        {%- assign is_part_landing = true -%}
+      {%- endif -%}
+      {%- if part.no_heading_shift and is_part_landing -%}
+        {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true skip_sub_page_detection=true -%}
+      {%- elsif part.no_heading_shift -%}
+        {%- include book-chapter-body.html chapter=chapter skip_base_heading_shift=true -%}
+      {%- elsif is_part_landing -%}
+        {%- include book-chapter-body.html chapter=chapter skip_sub_page_detection=true -%}
+      {%- else -%}
+        {%- include book-chapter-body.html chapter=chapter -%}
+      {%- endif -%}
     {%- endfor -%}
   {%- endif -%}
 {%- endfor %}
