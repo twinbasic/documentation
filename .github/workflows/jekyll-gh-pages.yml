@@ -102,6 +102,17 @@ jobs:
         # (https://docs.twinbasic.com[/]) is exempt -- intentional "go to
         # the live site" links are allowed.
         run: python scripts/check_offline_live_links.py
+      - name: Check book links (informational)
+        # Failures do not block the build. The book still has absolute
+        # intra-site URLs that the chapter transform has not yet rewritten
+        # and some fragment anchors that are not yet generated. Tracked here
+        # for visibility until those are fixed.
+        continue-on-error: true
+        run: >-
+          python scripts/check_links.py
+          --offline --include-fragments
+          --root-dir docs/_site-pdf
+          docs/_site-pdf/book.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:

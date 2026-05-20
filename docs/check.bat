@@ -46,6 +46,13 @@
 @echo Checking _site-offline/ for live-site links ...
 @python "%~dp0..\scripts\check_offline_live_links.py"
 @set EXIT3=%ERRORLEVEL%
+@echo.
+@echo Checking _site-pdf/book.html (informational -- failures do not block) ...
+@rem Links in the book are not fully resolved (absolute intra-site URLs stay live
+@rem until the book chapter transform rewrites them, and some fragments are still
+@rem missing). Run for visibility; exit code is intentionally not propagated.
+@%CHECK% --offline --include-fragments --root-dir ".\_site-pdf" ".\_site-pdf\book.html" %*
+@echo.
 @if %EXIT1% NEQ 0 exit /b %EXIT1%
 @if %EXIT2% NEQ 0 exit /b %EXIT2%
 @exit /b %EXIT3%
