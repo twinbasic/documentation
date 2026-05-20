@@ -118,12 +118,11 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: docs/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install Node.js dependencies and Chromium
         run: |
           npm ci
-          npx puppeteer browsers install chrome --install-deps
-        working-directory: ./docs
+          sudo npx puppeteer browsers install chrome --install-deps
       - name: Render book PDF
         run: |
           mkdir -p _pdf
