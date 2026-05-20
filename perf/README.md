@@ -1601,9 +1601,11 @@ two CPU profiles**. The `+12,981 ms` move from `create:2257` to
 For any future render-stage optimization work, the rule is:
 
 1. Run with `--cpu-profile` (paired pre/post, same flags).
-2. Compare bottom-up self-time tables (`analyze-profile.mjs`) and
-   caller breakdowns (the gBCR-callers script under
-   `time-hooks-current` in the repo notes).
+2. Compare bottom-up self-time tables ([`analyze-profile.mjs`](perf/analyze-profile.mjs))
+   and caller breakdowns ([`find-callers.mjs`](perf/find-callers.mjs);
+   point it at a profile + a callee name to see which frames are
+   paying for that callee's time -- essential for spotting gBCR
+   migration between callers).
 3. Treat the wall-clock totals as a sanity check only -- they
    confirm "did anything change" but not "where".
 
