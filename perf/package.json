@@ -1,0 +1,15 @@
+{
+  "name": "tbasic-docs-perf",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Profiling harness for the paged.js PDF render.",
+  "type": "module",
+  "scripts": {
+    "measure": "node measure.mjs"
+  },
+  "devDependencies": {
+    "html-entities": "^2.5.2",
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^22.15.0"
+  }
+}

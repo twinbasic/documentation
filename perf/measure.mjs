@@ -1,0 +1,425 @@
+// Per-page timing harness for the paged.js PDF render.
+//
+// Mirrors pagedjs-cli's full Printer.pdf() pipeline -- launch flags,
+// media emulation, paged.js bundle, page.pdf() settings, and pdf-lib
+// post-processing (outline + metadata via the same helpers pagedjs-cli
+// uses) -- so phase numbers map directly onto book.bat's behaviour.
+//
+// Three phases are reported, matching the spinners in pagedjs-cli/cli.js:
+//
+//   render    page.evaluate(PagedPolyfill.preview()) -- per-page paged.js
+//             layout. Per-page detail is recorded by timing-handler.js
+//             on window.__pagedTiming.
+//   generate  meta extraction + outline DOM walk + page.pdf().
+//             page.pdf() (Chromium serializing the laid-out DOM into
+//             PDF bytes) typically dominates.
+//   process   default: PDFDocument.load + setMetadata + setOutline + save.
+//             --incremental: applyOutlineAndMetadataIncremental() -- skip
+//             the full pdf-lib parse and append an incremental update
+//             (outline objects + updated Catalog/Info + new xref +
+//             /Prev pointer) on top of Chrome's bytes.
+//
+// Usage:
+//   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
+//                    [--cpu-profile] [--cpu-sampling <microseconds>]
+//                    [--detach-pages] [--instrument] [--time-hooks]
+//                    [--incremental] [--chrome-outline]
+//
+// --detach-pages also injects detach-pages.js -- a Paged.Handler that
+// hides each completed page from the layout tree -- to test whether
+// the O(n^2) render hotspot disappears.
+//
+// --incremental switches the process phase from a pdf-lib roundtrip to
+// an incremental update against Chrome's bytes. Massively faster (sub-
+// second), but the resulting file is the size of Chrome's raw PDF +
+// outline (~3x bigger than the pdf-lib output, which deflate-compresses
+// content streams during its full re-emit).
+//
+// --chrome-outline asks Chrome itself to emit the /Outlines tree (CDP's
+// generateDocumentOutline, M122+, requires --generate-pdf-document-outline
+// at launch -- the harness always passes it). Skips the parseOutline DOM
+// walk and the downstream setOutline injection; both pdf-lib and the
+// incremental path see outline=[] and write nothing, leaving Chrome's
+// outline intact. Chrome walks h1..h6 unconditionally -- no equivalent
+// of our --outline-tags h1..h4 filter.
+//
+// Defaults:
+//   input  : ../docs/_site-pdf/book.html (relative to this file)
+//   output : perf/results/<ISO timestamp>/
+//
+// --cpu-profile wraps the render phase only (preview() through the
+// .pagedjs_pages selector) in a V8 Profiler trace and writes it to
+// render.cpuprofile in the results folder. Open it in Chrome DevTools
+// via Performance -> "Load profile..." (or just drag onto the panel).
+// --cpu-sampling sets the sampling interval in microseconds; default
+// 1000 (1 ms). Raise it to keep the profile file smaller on long runs.
+
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { dirname, resolve, join } from 'node:path';
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import puppeteer from 'puppeteer';
+import { PDFDocument, ParseSpeeds } from 'pdf-lib';
+// Shared with docs/render-book.mjs -- the helpers and the paged.js
+// bundle live under docs/lib/ now that we've dropped the pagedjs-cli
+// dependency. Importing from there guarantees the harness measures the
+// same code that production runs.
+import { parseOutline, setOutline } from '../docs/lib/outline.mjs';
+import { setMetadata }              from '../docs/lib/postprocesser.mjs';
+import { applyOutlineAndMetadataIncremental } from './incremental-pdf.mjs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const args = process.argv.slice(2);
+let inputArg = null;
+let outArg = null;
+let keepOpen = false;
+let cpuProfile = false;
+let cpuSampling = 1000; // microseconds
+let detachPages = false;
+let instrument = false;
+let timeHooks = false;
+let incremental = false;
+let chromeOutline = false;
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (a === '--out') outArg = args[++i];
+  else if (a === '--keep-open') keepOpen = true;
+  else if (a === '--cpu-profile') cpuProfile = true;
+  else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
+  else if (a === '--detach-pages') detachPages = true;
+  else if (a === '--instrument') instrument = true;
+  else if (a === '--time-hooks') timeHooks = true;
+  else if (a === '--incremental') incremental = true;
+  else if (a === '--chrome-outline') chromeOutline = true;
+  else if (!inputArg) inputArg = a;
+  else { console.error(`unknown arg: ${a}`); process.exit(2); }
+}
+
+const inputPath = inputArg
+  ? resolve(process.cwd(), inputArg)
+  : resolve(__dirname, '..', 'docs', '_site-pdf', 'book.html');
+
+if (!existsSync(inputPath)) {
+  console.error(`book HTML not found: ${inputPath}`);
+  console.error('Build it first with docs/build.bat.');
+  process.exit(1);
+}
+
+const pagedScriptPath  = resolve(__dirname, '..', 'docs', 'lib', 'paged.browser.js');
+const handlerPath      = resolve(__dirname, 'timing-handler.js');
+const detachPagesPath  = resolve(__dirname, 'detach-pages.js');
+const instrumentPath   = resolve(__dirname, 'instrument-flush-ops.js');
+const timeHooksPath    = resolve(__dirname, 'time-hooks.js');
+const required = [pagedScriptPath, handlerPath];
+if (detachPages) required.push(detachPagesPath);
+if (instrument)  required.push(instrumentPath);
+if (timeHooks)   required.push(timeHooksPath);
+for (const p of required) {
+  if (!existsSync(p)) {
+    console.error(`missing required file: ${p}`);
+    console.error('Run "npm install" inside perf/ first.');
+    process.exit(1);
+  }
+}
+
+const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+const outDir = outArg
+  ? resolve(process.cwd(), outArg)
+  : resolve(__dirname, 'results', stamp);
+mkdirSync(outDir, { recursive: true });
+
+const outlineTags = ['h1', 'h2', 'h3', 'h4']; // matches docs/book.bat
+
+const fmtMs = (ms) => (ms / 1000).toFixed(2) + 's';
+
+console.log(`[harness] input : ${inputPath}`);
+console.log(`[harness] output: ${outDir}`);
+
+const browser = await puppeteer.launch({
+  headless: true,
+  // Match pagedjs-cli's launch args (printer.js). --allow-file-access-from-files
+  // is critical: without it paged.js's stylesheet fetch() rejects with
+  // ProgressEvent under file://. pagedjs-cli sets it via cli.js:67.
+  //
+  // --export-tagged-pdf and --generate-pdf-document-outline are added by
+  // puppeteer 22+ unconditionally in ChromeLauncher.defaultArgs(), so
+  // we don't need to repeat them here. --chrome-outline below relies on
+  // the latter being present at launch.
+  args: [
+    '--disable-dev-shm-usage',
+    '--allow-file-access-from-files',
+    '--enable-precise-memory-info',
+  ],
+});
+
+let exitCode = 0;
+try {
+  const page = await browser.newPage();
+  page.setDefaultTimeout(0);
+
+  page.on('console', (msg) => {
+    const t = msg.text();
+    if (t.startsWith('[paged-timing]') || t.startsWith('[detach-pages]') ||
+        t.startsWith('[instrument]') || t.startsWith('  ')) {
+      console.log(t);
+    }
+  });
+  page.on('pageerror',     (err) => console.error('[page error]', err.message));
+  page.on('requestfailed', (req) => {
+    const f = req.failure();
+    console.error('[request failed]', req.url(), f && f.errorText);
+  });
+
+  await page.emulateMediaType('print');
+
+  const url = pathToFileURL(inputPath).href;
+  const navStart = Date.now();
+  await page.goto(url, { waitUntil: 'load' });
+  console.log(`[harness] page loaded in ${Date.now() - navStart}ms`);
+
+  await page.evaluate(() => {
+    window.PagedConfig = window.PagedConfig || {};
+    window.PagedConfig.auto = false;
+  });
+
+  await page.addScriptTag({ path: pagedScriptPath });
+  await page.addScriptTag({ path: handlerPath });
+  if (detachPages) {
+    await page.addScriptTag({ path: detachPagesPath });
+  }
+  if (instrument) {
+    await page.addScriptTag({ path: instrumentPath });
+  }
+  if (timeHooks) {
+    await page.addScriptTag({ path: timeHooksPath });
+  }
+
+  // RENDER ----------------------------------------------------------
+  // Optionally wrap just this phase in a V8 CPU profile. CDP Profiler
+  // attaches to the renderer for this page; we stop before the generate
+  // phase so the trace stays focused on paged.js layout work.
+  let cdp = null;
+  if (cpuProfile) {
+    cdp = await page.createCDPSession();
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: cpuSampling });
+    await cdp.send('Profiler.start');
+    console.log(`[harness] cpu profile: sampling every ${cpuSampling}us`);
+  }
+
+  const tRenderStart = Date.now();
+  await page.evaluate(async () => {
+    if (!window.PagedPolyfill) {
+      throw new Error('paged.js bundle did not expose window.PagedPolyfill');
+    }
+    try {
+      await window.PagedPolyfill.preview();
+    } catch (err) {
+      const e = err && err.target
+        ? new Error(`${err.type || 'event'} on ${err.target.tagName || '?'}: ${err.target.src || err.target.href || ''}`)
+        : err;
+      throw e;
+    }
+  });
+  await page.waitForSelector('.pagedjs_pages');
+  const tRenderEnd = Date.now();
+  const renderMs = tRenderEnd - tRenderStart;
+
+  let profilePath = null;
+  if (cdp) {
+    const { profile } = await cdp.send('Profiler.stop');
+    await cdp.detach();
+    profilePath = join(outDir, 'render.cpuprofile');
+    const profileJson = JSON.stringify(profile);
+    writeFileSync(profilePath, profileJson);
+    console.log(`[harness] cpu profile: ${profilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
+
+  console.log(`[harness] render   ${fmtMs(renderMs)}`);
+
+  // GENERATE --------------------------------------------------------
+  // meta extraction + outline DOM walk + Chromium DOM->PDF.
+  const tGenStart = Date.now();
+
+  const meta = await page.evaluate(() => {
+    const m = {};
+    const t = document.querySelector('title');
+    if (t) m.title = t.textContent.trim();
+    const lang = document.querySelector('html').getAttribute('lang');
+    if (lang) m.lang = lang;
+    for (const tag of document.querySelectorAll('meta')) {
+      if (tag.name) m[tag.name] = tag.content;
+    }
+    return m;
+  });
+
+  // Skip the parseOutline DOM walk when Chrome's about to emit the
+  // outline itself -- we'd just be doing redundant work whose result
+  // would get overwritten by Chrome's /Outlines anyway.
+  const tParseOutlineStart = Date.now();
+  const outline = chromeOutline ? [] : await parseOutline(page, outlineTags);
+  const parseOutlineMs = Date.now() - tParseOutlineStart;
+
+  const tPdfStart = Date.now();
+  const rawPdf = await page.pdf({
+    printBackground:     true,
+    displayHeaderFooter: false,
+    preferCSSPageSize:   true,
+    margin: { top: 0, right: 0, bottom: 0, left: 0 },
+    // outline:true makes Chrome walk h1..h6 once and emit a /Outlines
+    // tree with page-coord destinations. Implies tagged:true (puppeteer
+    // enforces this) and requires --generate-pdf-document-outline at
+    // launch (set above). When on we skip the parseOutline+setOutline
+    // injection below -- that's the whole point of the flag, and leaving
+    // both on would have our setOutline overwrite Chrome's /Outlines.
+    ...(chromeOutline ? { outline: true, tagged: true } : {}),
+  });
+  const pdfMs = Date.now() - tPdfStart;
+
+  const tGenEnd = Date.now();
+  const generateMs = tGenEnd - tGenStart;
+  console.log(`[harness] generate ${fmtMs(generateMs)}  (parseOutline=${fmtMs(parseOutlineMs)}, page.pdf=${fmtMs(pdfMs)}, ${(rawPdf.length / 1024 / 1024).toFixed(1)}MB)`);
+
+  // PROCESS ---------------------------------------------------------
+  // Two paths:
+  //   default       : pdf-lib roundtrip -- load + setMetadata + setOutline
+  //                   + save. The whole 52 MB Chrome PDF gets parsed and
+  //                   re-emitted just so we can attach an outline.
+  //   --incremental : applyOutlineAndMetadataIncremental -- parse only the
+  //                   trailer, xref, Catalog and Info objects; append a
+  //                   few KB containing the outline tree + updated Catalog
+  //                   and Info + a new xref subsection whose /Prev points
+  //                   at Chrome's original xref. Original bytes untouched.
+  //
+  // Either way we time the full phase plus the meaningful sub-steps so the
+  // breakdown matches across runs.
+  const tProcStart = Date.now();
+  let finalPdf;
+  let processBreakdown;
+  if (incremental) {
+    const tIncStart = Date.now();
+    const { bytes, stats } = await applyOutlineAndMetadataIncremental(rawPdf, outline, meta);
+    const incMs = Date.now() - tIncStart;
+    finalPdf = bytes;
+    processBreakdown = { incrementalMs: incMs, ...stats };
+  } else {
+    // pdf-lib's defaults are catastrophically slow: parseSpeed=Slow (100
+    // objects/tick) and objectsPerTick=50 both yield to the event loop
+    // between batches, turning a ~2s load into ~36s on a 52 MB PDF (~34s
+    // pure idle in the cpuprofile). Override to Fastest/Infinity so the
+    // "baseline" we report reflects the library's actual CPU cost, not
+    // an artefact of yielding cadence. The harness has no parallel work
+    // to make space for, so cooperative yielding is pure overhead here.
+    const tLoadStart = Date.now();
+    const pdfDoc = await PDFDocument.load(rawPdf, { parseSpeed: ParseSpeeds.Fastest });
+    const loadMs = Date.now() - tLoadStart;
+
+    setMetadata(pdfDoc, meta);
+
+    const tSetOutlineStart = Date.now();
+    setOutline(pdfDoc, outline, false);
+    const setOutlineMs = Date.now() - tSetOutlineStart;
+
+    const tSaveStart = Date.now();
+    finalPdf = await pdfDoc.save({ objectsPerTick: Infinity });
+    const saveMs = Date.now() - tSaveStart;
+
+    processBreakdown = { loadMs, setOutlineMs, saveMs };
+  }
+  const tProcEnd  = Date.now();
+  const processMs = tProcEnd - tProcStart;
+  if (incremental) {
+    console.log(`[harness] process  ${fmtMs(processMs)}  (incremental=${fmtMs(processBreakdown.incrementalMs)}, +${processBreakdown.appendedBytes}B, ${processBreakdown.newObjectCount} new objs)`);
+  } else {
+    console.log(`[harness] process  ${fmtMs(processMs)}  (load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)})`);
+  }
+
+  const totalMs = tProcEnd - tRenderStart;
+  console.log(`[harness] total    ${fmtMs(totalMs)}`);
+
+  // Persist results -------------------------------------------------
+  const timing = await page.evaluate(() => window.__pagedTiming);
+  const pdfPath = join(outDir, 'book.pdf');
+  writeFileSync(pdfPath, Buffer.from(finalPdf));
+
+  const record = {
+    input: inputPath,
+    pageCount: timing.pageCount,
+    pdfBytes: finalPdf.length,
+    cpuProfile: profilePath,
+    phases: {
+      render: {
+        ms: renderMs,
+        perPage: timing.pages,
+        phaseMarks: timing.phases,
+      },
+      generate: {
+        ms: generateMs,
+        parseOutlineMs,
+        pagePdfMs: pdfMs,
+        rawPdfBytes: rawPdf.length,
+      },
+      process: {
+        ms: processMs,
+        mode: incremental ? 'incremental' : 'pdf-lib-roundtrip',
+        ...processBreakdown,
+      },
+    },
+    totalMs,
+  };
+  writeFileSync(join(outDir, 'timing.json'), JSON.stringify(record, null, 2));
+
+  const csv = ['page,dur_ms,heap_start_mb,heap_end_mb,elapsed_s'];
+  for (const p of timing.pages) {
+    csv.push([
+      p.idx,
+      p.dur.toFixed(2),
+      (p.heapStart / 1024 / 1024).toFixed(2),
+      (p.heapEnd   / 1024 / 1024).toFixed(2),
+      (p.elapsed   / 1000).toFixed(3),
+    ].join(','));
+  }
+  writeFileSync(join(outDir, 'timing.csv'), csv.join('\n'));
+
+  const pages = timing.pages;
+  const summary = [];
+  summary.push(`input        : ${inputPath}`);
+  summary.push(`pages        : ${pages.length}`);
+  summary.push(`pdf size     : ${(finalPdf.length / 1024 / 1024).toFixed(1)} MB`);
+  summary.push('');
+  summary.push(`render       : ${fmtMs(renderMs)}    (per-page layout via paged.js)`);
+  summary.push(`generate     : ${fmtMs(generateMs)}    (parseOutline + page.pdf)`);
+  summary.push(`process      : ${fmtMs(processMs)}    (${incremental ? 'incremental update (append outline + updated catalog/info)' : 'pdf-lib load + setOutline + save'})`);
+  summary.push(`total        : ${fmtMs(totalMs)}`);
+  summary.push('');
+  if (pages.length >= 4) {
+    const q = Math.max(1, Math.floor(pages.length / 4));
+    const avg = (a) => a.reduce((s, p) => s + p.dur, 0) / a.length;
+    const first = avg(pages.slice(0, q));
+    const last  = avg(pages.slice(-q));
+    summary.push(`render: first ${q}-page avg per-page: ${first.toFixed(1)}ms`);
+    summary.push(`render: last  ${q}-page avg per-page: ${last.toFixed(1)}ms`);
+    summary.push(`render: ratio (last / first)         : ${(last / first).toFixed(2)}x`);
+    summary.push('');
+    summary.push('A ratio near 1.0 means flat per-page cost (linear total).');
+    summary.push('A ratio that scales roughly with pages_total / pages_first');
+    summary.push('means per-page cost is O(n), i.e. total cost is O(n^2).');
+  }
+  const summaryStr = summary.join('\n');
+  writeFileSync(join(outDir, 'summary.txt'), summaryStr + '\n');
+  console.log('---');
+  console.log(summaryStr);
+
+  if (keepOpen) {
+    console.log('---');
+    console.log('[harness] --keep-open: browser left running. Ctrl+C to exit.');
+    await new Promise(() => {});
+  }
+} catch (err) {
+  console.error('[harness] error:', err);
+  exitCode = 1;
+} finally {
+  if (!keepOpen) await browser.close();
+}
+
+process.exit(exitCode);

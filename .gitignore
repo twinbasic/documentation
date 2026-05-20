@@ -2,3 +2,8 @@
 CLAUDE.md
 /.htmltest.yml
 node_modules/
+
+# perf/measure.mjs --out targets at repo root (book.pdf + render.cpuprofile + timing.*)
+/before/
+/after-*/
+/findoverflow-baseline/
