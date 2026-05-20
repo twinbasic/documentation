@@ -32071,10 +32071,20 @@
 					
 				}
 
-				fragment.style.setProperty(`--pagedjs-string-first-${name}`, `"${cleanPseudoContent(varFirst)}`);
-				fragment.style.setProperty(`--pagedjs-string-last-${name}`, `"${cleanPseudoContent(varLast)}`);
-				fragment.style.setProperty(`--pagedjs-string-start-${name}`, `"${cleanPseudoContent(varStart)}`);
-				fragment.style.setProperty(`--pagedjs-string-first-except-${name}`, `"${cleanPseudoContent(varFirstExcept)}`);
+				// Local patch: trailing `"` on each value. Upstream pagedjs
+				// writes `"${...}` (no closing quote); CSS auto-closes
+				// unterminated strings at the declaration boundary, so
+				// `content: var(--pagedjs-string-first-X)` alone works.
+				// But mixing `string()` with other values (e.g.
+				// `content: string(X) " - " var(--page-num)`) breaks --
+				// the substituted `"value` swallows the literal `" - "`
+				// as part of its unterminated string and the browser
+				// drops the declaration. Closing the quote here makes
+				// `string()` composable with sibling content values.
+				fragment.style.setProperty(`--pagedjs-string-first-${name}`, `"${cleanPseudoContent(varFirst)}"`);
+				fragment.style.setProperty(`--pagedjs-string-last-${name}`, `"${cleanPseudoContent(varLast)}"`);
+				fragment.style.setProperty(`--pagedjs-string-start-${name}`, `"${cleanPseudoContent(varStart)}"`);
+				fragment.style.setProperty(`--pagedjs-string-first-except-${name}`, `"${cleanPseudoContent(varFirstExcept)}"`);
 				
 		
 			}
