@@ -28,22 +28,26 @@
 # === Approach ===
 #
 # `book_chapter_transform(body, baseurl, heading_shift_n, chapter_anchor)`
-# does all six passes in one method:
+# does all seven passes in one method:
 #
 #   * Step 1 uses a single literal `gsub!` keyed on the live
 #     `site.baseurl` value (passed as the second filter argument so
 #     the constant isn't baked into the plugin at load time).
-#   * Step 2 walks a frozen `WHITESPACE_PATTERNS` table of 12
+#   * Step 2 strips `<details>`, `</details>`, `<summary>`, and
+#     `</summary>` tags so collapsible sections (FAQ) render as
+#     flat content in the PDF.
+#   * Step 3 walks a frozen `WHITESPACE_PATTERNS` table of 12
 #     literal `[search, replacement]` pairs and applies them in
 #     longest-first order, matching the Liquid chain's order
 #     exactly. Literal `gsub!` on each.
-#   * Steps 3-5 collapse into a single regex pass keyed on
-#     `heading_shift_n` (= 0, 1, 2, or 3 -- precomputed in Liquid
-#     from `skip_base_heading_shift`, `is_sub_page`, and
-#     `extra_heading_shift`). The N-pass cascade of the Liquid
-#     chain is equivalent to a one-pass regex that bumps each
-#     heading level by N, capping at `h7-stub` for levels above 6.
-#   * Step 6 replaces the 13 literal `replace` calls with one regex
+#   * Steps 4 collapses the three heading-shift cascades into a
+#     single regex pass keyed on `heading_shift_n` (= 0, 1, 2, or
+#     3 -- precomputed in Liquid from `skip_base_heading_shift`,
+#     `is_sub_page`, and `extra_heading_shift`). The N-pass cascade
+#     of the Liquid chain is equivalent to a one-pass regex that
+#     bumps each heading level by N, capping at `h7-stub` for
+#     levels above 6.
+#   * Step 5 replaces the 13 literal `replace` calls with one regex
 #     for heading-id injection (matches `<h[2-6]` and `<h7-stub`,
 #     with and without `class="no_toc"`) and one literal `gsub!`
 #     for `href="#`.
@@ -121,6 +125,14 @@ module Jekyll
     # Heading-shift regex. Captures the optional `/` for closing
     # tags and the level digit (1..6). The `\b` after the digit
     # prevents accidental matches on hypothetical `<h12...>`.
+    # <details>/<summary> unwrapping regexes. The FAQ (and potentially
+    # other pages) uses collapsible sections that must read as flat
+    # content in the PDF -- Chromium's internal <details> mechanism
+    # can't be overridden with CSS alone.
+    DETAILS_OPEN_RE  = %r{<details[^>]*>\n?}i.freeze
+    DETAILS_CLOSE_RE = %r{</details>\n?}i.freeze
+    SUMMARY_RE       = %r{<summary[^>]*>|</summary>\n?}i.freeze
+
     HEADING_SHIFT_RE = /<(\/?)h([1-6])\b/.freeze
 
     # Heading-id prefix regex. Matches both `<h[2-6]` and
@@ -137,12 +149,17 @@ module Jekyll
       strip = %(src="#{baseurl}/)
       result.gsub!(strip, %(src=")) if result.include?(strip)
 
-      # Step 2: whitespace span wrapping.
+      # Step 2: unwrap <details>/<summary> for print layout.
+      result.gsub!(DETAILS_OPEN_RE, "")
+      result.gsub!(DETAILS_CLOSE_RE, "")
+      result.gsub!(SUMMARY_RE, "")
+
+      # Step 3: whitespace span wrapping.
       WHITESPACE_PATTERNS.each do |search, replacement|
         result.gsub!(search, replacement)
       end
 
-      # Step 3: heading shift cascade by N levels (0..3).
+      # Step 4: heading shift cascade by N levels (0..3).
       n = heading_shift_n.to_i
       if n > 0
         result.gsub!(HEADING_SHIFT_RE) do
@@ -153,7 +170,7 @@ module Jekyll
         end
       end
 
-      # Step 4: anchor-id prefix on every heading id + intra-chapter href.
+      # Step 5: anchor-id prefix on every heading id + intra-chapter href.
       if chapter_anchor && !chapter_anchor.to_s.empty?
         prefix = "#{chapter_anchor}-"
         result.gsub!(HEADING_ID_RE) do
