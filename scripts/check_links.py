@@ -423,10 +423,10 @@ def main():
         # Group by source file, lychee-style.
         by_source = {}
         for src_str, href, reason in broken:
-            by_source.setdefault(src_str, []).append((href, reason))
+            by_source.setdefault(src_str, set()).add((href, reason))
         for src_str in sorted(by_source):
             print(f"\n[{src_str}]:")
-            for href, reason in by_source[src_str]:
+            for href, reason in sorted(by_source[src_str]):
                 print(f"  ERROR  {href} -- {reason}")
         print()
 
