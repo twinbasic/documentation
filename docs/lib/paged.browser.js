@@ -30450,10 +30450,9 @@
 			// Running page-number counter tracked in JS so the displayed value
 			// survives aggressive-detach (perf/detach-pages.js), which removes
 			// finalized pages from the DOM and breaks `counter(page)` accumulation.
-			// Set as `--page-num: "Title - N"` on each page wrapper; print.css
-			// reads it via `content: var(--page-num)` in @bottom-right.
+			// Set as `--page-num: "N"` on each page wrapper; print.css reads it
+			// via `content: var(--page-num)` in @bottom-right.
 			this._displayPageCounter = 0;
-			this._displayPartTitle = "";
 		}
 
 		onDeclaration(declaration, dItem, dList, rule) {
@@ -30867,24 +30866,12 @@
 				const parsed = parseInt(reset.dataset.counterPageReset, 10);
 				if (!isNaN(parsed)) pageResetValue = parsed;
 			});
-			// When a part divider resets the page counter, capture the part
-			// title from its h1 or .part-title-silent so subsequent pages
-			// display "Title - N" instead of a bare number.
-			let partDivider = pageElement.querySelector("article.part-divider");
-			if (partDivider) {
-				let titleEl = partDivider.querySelector("h1") || partDivider.querySelector(".part-title-silent");
-				if (titleEl) this._displayPartTitle = titleEl.textContent.trim();
-			}
-
 			if (pageResetValue === null) {
 				this._displayPageCounter += 1;
 			} else {
 				this._displayPageCounter = pageResetValue;
 			}
-			let displayNum = this._displayPartTitle
-				? `${this._displayPartTitle} - ${this._displayPageCounter}`
-				: `${this._displayPageCounter}`;
-			pageElement.style.setProperty("--page-num", `"${displayNum}"`);
+			pageElement.style.setProperty("--page-num", `"${this._displayPageCounter}"`);
 		}
 
 	}
@@ -32084,10 +32071,20 @@
 					
 				}
 
-				fragment.style.setProperty(`--pagedjs-string-first-${name}`, `"${cleanPseudoContent(varFirst)}`);
-				fragment.style.setProperty(`--pagedjs-string-last-${name}`, `"${cleanPseudoContent(varLast)}`);
-				fragment.style.setProperty(`--pagedjs-string-start-${name}`, `"${cleanPseudoContent(varStart)}`);
-				fragment.style.setProperty(`--pagedjs-string-first-except-${name}`, `"${cleanPseudoContent(varFirstExcept)}`);
+				// Local patch: trailing `"` on each value. Upstream pagedjs
+				// writes `"${...}` (no closing quote); CSS auto-closes
+				// unterminated strings at the declaration boundary, so
+				// `content: var(--pagedjs-string-first-X)` alone works.
+				// But mixing `string()` with other values (e.g.
+				// `content: string(X) " - " var(--page-num)`) breaks --
+				// the substituted `"value` swallows the literal `" - "`
+				// as part of its unterminated string and the browser
+				// drops the declaration. Closing the quote here makes
+				// `string()` composable with sibling content values.
+				fragment.style.setProperty(`--pagedjs-string-first-${name}`, `"${cleanPseudoContent(varFirst)}"`);
+				fragment.style.setProperty(`--pagedjs-string-last-${name}`, `"${cleanPseudoContent(varLast)}"`);
+				fragment.style.setProperty(`--pagedjs-string-start-${name}`, `"${cleanPseudoContent(varStart)}"`);
+				fragment.style.setProperty(`--pagedjs-string-first-except-${name}`, `"${cleanPseudoContent(varFirstExcept)}"`);
 				
 		
 			}

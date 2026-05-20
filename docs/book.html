@@ -100,6 +100,7 @@ sitemap: false
 
 {%- for part in site.data.book.parts -%}
 <article class="part-divider{% if part.no_outline_entry %} silent{% endif %}" id="pt-{{ forloop.index }}">
+  <span class="part-title-string">{{ part.title }}</span>
   <p class="part-number">Part {{ roman[forloop.index0] }}</p>
 {%- if part.no_outline_entry %}
   <p class="part-title-silent">{{ part.title }}</p>
