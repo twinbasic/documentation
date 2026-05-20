@@ -312,6 +312,14 @@
 		let added = [];
 
 		let fragment = document.createDocumentFragment();
+		// [PATCH: findRef fast-path] Carry an indexOfRefs alongside the
+		// fragment so callers' findElement(*, fragment) lookups hit the
+		// fast path, and so the caller can merge this into dest.indexOfRefs
+		// in one pass after dest.appendChild(fragment). Without this, every
+		// findElement(rebuiltAncestor, dest) on a subsequent append() call
+		// falls through to dest.querySelector("[data-ref='...']") — measured
+		// as 15,767 dictMiss calls ≈ 2.5 s of render on the 1651-page book.
+		fragment.indexOfRefs = {};
 
 		// Handle rowspan on table
 		if (node.nodeName === "TR") {
@@ -384,6 +392,14 @@
 				fragment.appendChild(parent);
 			}
 			added.push(parent);
+
+			// [PATCH: findRef fast-path] Record the rebuilt clone in the
+			// fragment's indexOfRefs so findElement(*, fragment) hits the
+			// fast path and so dest.indexOfRefs can be updated cheaply by
+			// the caller (see Layout.append's rebuild branch).
+			if (parent.dataset && parent.dataset.ref) {
+				fragment.indexOfRefs[parent.dataset.ref] = parent;
+			}
 
 			// rebuild table rows
 			if (parent.nodeName === "TD" && ancestor.parentElement.contains(ancestor)) {
@@ -1716,6 +1732,17 @@
 					}
 
 					dest.appendChild(fragment);
+
+					// [PATCH: findRef fast-path] Merge the rebuilt fragment's
+					// indexOfRefs into dest's. Without this, every subsequent
+					// findElement(rebuiltAncestor, dest) on this page misses
+					// the dict and falls through to dest.querySelector.
+					if (fragment.indexOfRefs) {
+						if (!dest.indexOfRefs) dest.indexOfRefs = {};
+						for (const k in fragment.indexOfRefs) {
+							dest.indexOfRefs[k] = fragment.indexOfRefs[k];
+						}
+					}
 				} else {
 					dest.appendChild(clone);
 				}
@@ -2587,6 +2614,14 @@
 				false
 			);
 
+			// [PATCH: findRef fast-path] Populate content.indexOfRefs as we walk
+			// so every later findElement(*, source) call hits the dict instead
+			// of falling through to source.querySelector("[data-ref='X']"),
+			// which scans the entire source DOM (thousands of nodes). Measured
+			// as 848 + 42 noDict calls in createBreakToken ≈ 1+ s of render on
+			// the 1651-page book.
+			if (!content.indexOfRefs) content.indexOfRefs = {};
+
 			let node = treeWalker.nextNode();
 			while(node) {
 
@@ -2602,6 +2637,10 @@
 				// node.setAttribute("data-children", node.childNodes.length);
 
 				// node.setAttribute("data-text", node.textContent.trim().length);
+
+				// [PATCH: findRef fast-path] record after data-ref is guaranteed.
+				content.indexOfRefs[node.getAttribute("data-ref")] = node;
+
 				node = treeWalker.nextNode();
 			}
 		}
