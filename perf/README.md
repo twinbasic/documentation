@@ -1898,23 +1898,83 @@ The `findElement` drop matches the previously-attributed
 noise; rest is jitter. PDF byte-equivalent on all sampled pages.
 Shipped.
 
-### The lesson (again)
+### Attempt D: skip `Footnotes.afterPageLayout` when no `float: footnote`
+
+After Attempt C the next gBCR caller worth looking at was
+[`Footnotes.afterPageLayout`](docs/lib/paged.browser.js:31477) at
+~1114 ms attributed gBCR. The handler implements the CSS
+`float: footnote` / `@footnote`-margin-box feature; the per-page
+work begins with `noteContent.getBoundingClientRect()`, then
+sets the inner content's `columnWidth`, then constructs a `Layout`
+and runs `findOverflow` on the (for our document, empty)
+`pagedjs_footnote_inner_content`.
+
+Our stylesheet declares `float: footnote` nowhere
+(`grep -r "float: footnote" docs/_site-pdf/`), so the handler's
+`this.footnotes` dict stays `{}` for the whole render and the
+per-page work is in service of nothing. Same shape as Attempt C:
+gate at the top with `if (Object.keys(this.footnotes).length === 0) return;`.
+
+Profile diff (paired `--detach-pages --cpu-profile`):
+
+| metric                          | PRE       | POST      | Δ          |
+| ------------------------------- | --------- | --------- | ---------- |
+| total gBCR (attribution)        | 7925 ms   | 7756 ms   | **-169**   |
+| ↳ Footnotes `afterPageLayout`   | 1114 ms   |    0 ms   | -1114      |
+| ↳ `hasOverflow`                 | 4687 ms   | 4961 ms   | **+274**   |
+| ↳ `create`                      |  913 ms   | 1019 ms   | **+106**   |
+| ↳ `Layout`                      |  446 ms   |  543 ms   | **+97**    |
+| ↳ next-page `afterPageLayout`   |    0 ms   |  431 ms   | **+431**   |
+| **render wall-clock**           | **22.26 s** | **23.14 s** | **+880 ms** |
+| **per-page ratio (last/first)** | **1.50x** | **1.75x** | **worse**  |
+
+Net gBCR reduction is only ~170 ms even though we eliminated 1114 ms
+of attributed gBCR at the Footnotes call site. The missing ~944 ms
+re-attributed to the next gBCR callers in the per-page sequence
+(`hasOverflow`, `create`, `Layout`, and a previously-invisible
+`afterPageLayout` at line 31986). And the per-page ratio went from
+1.50x to 1.75x -- the late pages got *more* expensive, not less.
+
+That ratio regression is the give-away. The Footnotes' small
+gBCR was apparently absorbing pending DOM mutations that, when
+not flushed there, accumulated until the next gBCR (typically a
+larger one) had to flush more state at once. This is the same
+shape as the Page.create memoize trap documented above: removing
+a layout flush at point A makes the flush at point B more
+expensive, and the cost is super-linear in the deferred mutation
+count.
+
+Reverted.
+
+### The lesson (twice more, ad nauseam)
 
 Attempt A asked "can this be faster?" and got 162 ms.
 Attempt B asked the same question of an adjacent function and got
 nothing measurable. Attempt C asked "does this need to run at
-all?" and got 22x more savings than A and B combined. Once
-self-time is profile-attributed, the next move isn't always
-"optimize the body" -- sometimes the cheapest path is up the call
-chain to the caller, then to the *caller's* caller, until you can
-ask "what does the value being computed actually do?" Here the
-answer was "nothing," and the optimization was deletion.
+all?" and got 22x more savings than A and B combined. Attempt D
+asked the same question of the next handler down and got a
+**regression** because the gBCR work was layout flush, not JS.
 
-In hindsight the textBreak and Page.create-memoize attempts both
-failed for the same reason in the opposite direction: they tried
-to make work cheaper that was structurally unavoidable. The wins
-in this investigation -- aggressive-detach and now skip-findEndToken
--- both came from eliminating work, not from speeding it up.
+The lesson splits into two halves:
+
+- **For JS-body self-time**: walk up the call chain. If the
+  consumer doesn't use the value, delete the production. Attempts
+  3 (aggressive-detach), 5 (findEndToken cache), and 7 (skip
+  findEndToken via onUnderflow) all worked this way; the wins
+  compounded because JS work is genuinely additive.
+
+- **For gBCR self-time**: this same approach is a *trap*, because
+  the gBCR self-time is layout-flush attribution and the flush
+  has to happen regardless. Attempt B (Page.create memoize)
+  taught this once; Attempt D taught it a second time. The right
+  question for gBCR isn't "can we skip this gBCR" but "can we
+  avoid the mutation that requires the flush" -- which is what
+  aggressive-detach did at the chunker level by physically
+  removing finalized pages from the layout tree.
+
+Going forward: profile-attributed gBCR self-times are not
+addressable by skipping the calling JS unless the underlying
+mutation pattern also changes.
 
 ### Where this leaves the picture
 
