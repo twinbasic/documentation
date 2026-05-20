@@ -1788,9 +1788,10 @@ The full menu of fixes against the original 207 s baseline:
 | `finalizePage` micro-optimizations  |    ~3 s      |    ~3 s     | yes     |
 | **aggressive detach (removeChild)** | **~22 s**    | **~22 s**   | **yes** |
 | **skip dead `findEndToken` path**   | **~3.5 s**   | **~3.5 s**  | **yes** |
+| **renderTo additive backoff**       | **~4.25 s**  | **~4.25 s** | **yes** |
 | pageRanges sharding (generate)      |    -         |  10-40 s    | no      |
 
-Render is now ~22 s on a 1638-page book, down from ~104 s in the
+Render is now ~19 s on a 1638-page book, down from ~104 s in the
 original baseline. The next bottleneck is unambiguously
 `page.pdf()` -- ~60-70 s of Chromium-internal PDF serialisation
 that's only addressable via the `pageRanges` sharding approach
@@ -1958,58 +1959,134 @@ count.
 
 Reverted.
 
-### The lesson (twice more, ad nauseam)
+### Attempt E: additive backoff on `renderTo`'s overflow check
 
-Attempt A asked "can this be faster?" and got 162 ms.
-Attempt B asked the same question of an adjacent function and got
-nothing measurable. Attempt C asked "does this need to run at
-all?" and got 22x more savings than A and B combined. Attempt D
-asked the same question of the next handler down and got a
-**regression** because the gBCR work was layout flush, not JS.
+After Attempt D the lesson seemed to be "gBCR self-time is
+layout-flush attribution; you can't skip a gBCR without the flush
+migrating." Then re-reading the per-page render loop turned up a
+case the migration framing doesn't actually cover.
 
-The lesson splits into two halves:
+[`Layout.renderTo`](docs/lib/paged.browser.js:1478) calls
+`findBreakToken` (→ `findOverflow` → `hasOverflow` → gBCR) when
+the cumulative text length of appended nodes crosses `maxChars`
+(default 1500). The gate looks like batching, but the reset is
+asymmetric:
 
-- **For JS-body self-time**: walk up the call chain. If the
-  consumer doesn't use the value, delete the production. Attempts
-  3 (aggressive-detach), 5 (findEndToken cache), and 7 (skip
-  findEndToken via onUnderflow) all worked this way; the wins
-  compounded because JS work is genuinely additive.
+```js
+if (length >= this.maxChars) {
+  // ... layout hook, await images ...
+  newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
+  if (newBreakToken) {
+    length = 0;                                    // only reset on overflow found
+    this.rebuildTableFromBreakToken(newBreakToken, wrapper);
+  }
+}
+```
 
-- **For gBCR self-time**: this same approach is a *trap*, because
-  the gBCR self-time is layout-flush attribution and the flush
-  has to happen regardless. Attempt B (Page.create memoize)
-  taught this once; Attempt D taught it a second time. The right
-  question for gBCR isn't "can we skip this gBCR" but "can we
-  avoid the mutation that requires the flush" -- which is what
-  aggressive-detach did at the chunker level by physically
-  removing finalized pages from the layout tree.
+When no overflow is found, `length` doesn't reset -- it stays
+above `maxChars` and the very next iteration's appended node
+triggers another `findBreakToken`. The check fires *every
+iteration past `maxChars`* until overflow trips. On a typical
+~3000-char page that's ~30+ findBreakToken calls (each one a
+hasOverflow gBCR = layout flush) before the actual break point.
 
-Going forward: profile-attributed gBCR self-times are not
-addressable by skipping the calling JS unless the underlying
-mutation pattern also changes.
+Replace with **additive backoff**: track a moving baseline
+`lengthAtLastCheck` and only fire the check when `length -
+lengthAtLastCheck >= maxChars`. Advance the baseline when no
+overflow yet; reset both on overflow. Per-page check count drops
+from O(nodes-past-maxChars) to O(page-chars / maxChars), typically
+2-3 instead of 30+.
+
+Correctness rests on findBreakToken handling arbitrary overshoot:
+`findOverflow` walks the wrapper to identify the overflowing
+Range regardless of how much excess was appended past it,
+`removeOverflow` extracts the excess via `extractContents`, and
+`createBreakToken` returns a BreakToken at the right source
+position. The chunker builds a fresh walker from `breakToken.node`
+on the next page, so the trimmed content gets re-laid-out from
+its correct source position. (The `break-inside: avoid` worry --
+that containers with extra trailing content might make different
+break decisions -- turned out to be empirically unfounded.)
+
+Profile diff (paired `--detach-pages --cpu-profile`):
+
+| metric                      | PRE       | POST      | Δ                |
+| --------------------------- | --------- | --------- | ---------------- |
+| **render wall-clock**       | **23.73 s** | **19.48 s** | **-4.25 s (-18 %)** |
+| total gBCR (attribution)    | 8024 ms   | 5705 ms   | -2319 (-29 %)    |
+| ↳ `hasOverflow` gBCR        | 4837 ms   | 2725 ms   | **-2112 (-44 %)** |
+| ↳ `findOverflow` per-node   |  438 ms   |  166 ms   | -272             |
+| ↳ `create` / `Layout` / Footn. | unchanged within jitter                  |
+| `removeOverflow` self       |  457 ms   |  370 ms   | **-87 (improved)** |
+| per-page ratio (last/first) | 1.64x     | 1.60x     | improved         |
+
+No migration: Footnotes (1127 ms), create (955), Layout (534)
+all flat. `removeOverflow` *dropped* despite the over-append
+overshoot concern, because fewer findBreakToken invocations means
+fewer extractContents passes, not larger ones -- the per-call
+overshoot is bounded by maxChars (~1500 chars), small relative to
+page capacity.
+
+Full pdftotext-MD5 match on pages 6, 100, 500, 1000, 1500, 1638.
+Page count 1638. PDF byte size 126 bytes apart (metadata).
+
+Shipped.
+
+### The deeper lesson (a third pattern)
+
+Attempts B and D taught that you can't elide a *single* gBCR
+because the layout flush migrates to the next caller. Attempt E
+shows the framing was too narrow: you can't elide one flush, but
+you can do *fewer total flushes* if you batch observations across
+mutations.
+
+The three working patterns for render perf, distinguished:
+
+- **Reduce per-flush cost**: aggressive-detach (-22 s). Shrink the
+  layout tree by physically removing finalized pages so each
+  remaining flush has less style/selector state to maintain.
+
+- **Reduce flush count**: renderTo additive backoff (-4.25 s).
+  When mutations between observations don't independently need
+  observing, query once per batch instead of per-mutation. The
+  per-flush cost grows slightly with deferred mutations but
+  amortizes well below the linear scan.
+
+- **Delete dead JS**: skip-findEndToken (-3.5 s), Page.create
+  hoisted CSS, etc. Walk up the call chain; if the consumer
+  doesn't read the value, delete the production. Works whenever
+  the JS self-time is genuinely JS, not flush attribution.
+
+What *doesn't* work: try to elide one specific gBCR while
+preserving the mutation pattern around it (Attempts B and D). The
+flush re-attributes to the next gBCR in the per-page sequence,
+which then has to flush a larger backlog -- net wash or
+regression.
+
+The diagnostic question to tell these apart: *what does the
+mutation rhythm look like between consecutive gBCR calls?* If it's
+"mutation, gBCR, mutation, gBCR, ..." (renderTo's per-iteration
+check), batching wins. If it's "one mutation, multiple gBCRs"
+(Page.create memoize, Footnotes skip), each gBCR is on the same
+mutation state and the flush has to happen for the *next*
+mutation regardless of which JS asks.
 
 ### Where this leaves the picture
 
-With `findEndToken` no longer firing, the JS-body profile flattens
-out:
+Render is now ~19 s on a 1638-page book, down from ~104 s in the
+original baseline. The JS-body profile after Attempt E:
 
 ```
-findElement     self 1314 ms ( 5.9 %)
-createBreakToken self 1016 ms ( 4.6 %)
-removeOverflow  self  471 ms ( 2.1 %)
-afterPageLayout self  221 ms ( 1.0 %)
+findElement     self 1373 ms ( 7.1 %)
+createBreakToken self 1027 ms ( 5.3 %)
+removeOverflow  self  370 ms ( 1.9 %)
+afterPageLayout self  239 ms ( 1.2 %)
 ```
 
-None of these are individually addressable in the same "delete the
-caller" sense; they're load-bearing work in the per-page break
-loop. `findElement` already takes the dictionary fast path. The
-last sub-second JS body worth a profile look would be
-`removeOverflow`'s `extractContents`, but its work is genuinely
-required.
-
-`pageRanges` sharding of `generate` (~60-70 s of `page.pdf()`)
-remains the only knob with a profile target large enough to move
-the wall-clock total meaningfully. Render is now ~22 s and the
-per-page-ratio is 1.50x (vs 1.43x pre-onUnderflow-skip -- the
-extra resize-observer firings had been slightly flattening the
-curve, ironically).
+None of these are individually addressable -- they're load-bearing
+work in the per-page break loop. `findElement` already takes the
+dictionary fast path. `pageRanges` sharding of `generate` (~60-70 s
+of `page.pdf()`) is the only remaining knob with a profile target
+large enough to move the wall-clock total meaningfully, and it's
+single-threaded-inaddressable (requires multiple Chromium
+processes + pdf-lib concatenation).

@@ -1488,6 +1488,17 @@
 			let newBreakToken;
 
 			let length = 0;
+			// Additive backoff for overflow checks. Without this, every
+			// node appended past maxChars triggers findBreakToken -> gBCR,
+			// linear-scanning past the actual overflow point. Instead,
+			// only fire the check once per maxChars of NEW content, which
+			// reduces hasOverflow gBCR calls from O(nodes-past-maxChars)
+			// to O(page-chars / maxChars). findBreakToken handles any
+			// overshoot correctly: it walks the wrapper, extracts the
+			// excess via removeOverflow, and returns a BreakToken
+			// pointing at the right source resume position, so the only
+			// observable difference is fewer gBCR-driven layout flushes.
+			let lengthAtLastCheck = 0;
 
 			let prevBreakToken = breakToken || new BreakToken(start);
 
@@ -1600,8 +1611,8 @@
 					break;
 				}
 
-				// Only check x characters
-				if (length >= this.maxChars) {
+				// Only check overflow once per maxChars of new content.
+				if (length - lengthAtLastCheck >= this.maxChars) {
 
 					this.hooks && this.hooks.layout.trigger(wrapper, this);
 
@@ -1614,7 +1625,10 @@
 
 					if (newBreakToken) {
 						length = 0;
+						lengthAtLastCheck = 0;
 						this.rebuildTableFromBreakToken(newBreakToken, wrapper);
+					} else {
+						lengthAtLastCheck = length;
 					}
 
 					if (newBreakToken && newBreakToken.equals(prevBreakToken)) {
