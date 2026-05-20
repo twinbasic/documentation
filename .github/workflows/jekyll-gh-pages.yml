@@ -113,6 +113,22 @@ jobs:
           --offline --include-fragments
           --root-dir docs/_site-pdf
           docs/_site-pdf/book.html
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: docs/package-lock.json
+      - name: Install Node.js dependencies and Chromium
+        run: |
+          npm ci
+          npx puppeteer browsers install chrome --install-deps
+        working-directory: ./docs
+      - name: Render book PDF
+        run: |
+          mkdir -p _pdf
+          node render-book.mjs _site-pdf/book.html -o _pdf/book.pdf --outline-tags h1,h2,h3,h4 --additional-script ../perf/detach-pages.js
+        working-directory: ./docs
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
@@ -141,6 +157,11 @@ jobs:
           # Workflow-internal hand-off to the release job; the
           # release itself carries the long-lived copy of the zip.
           retention-days: 7
+      - name: Upload book PDF workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: twinbasic-docs-book-pdf
+          path: ./docs/_pdf/book.pdf
 
   # Deployment job
   deploy:
@@ -173,6 +194,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: twinbasic-docs-offline-zip
+      - name: Download book PDF workflow artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: twinbasic-docs-book-pdf
       - name: Compute release tag and name
         id: tag
         env:
@@ -198,7 +223,11 @@ jobs:
 
             **Offline copy:** download `twinbasic-docs-offline.zip`, extract anywhere, and open `index.html` in any browser — no server required. URLs, navigation, dark mode, and search all work over `file://`.
 
+            **PDF book:** download `book.pdf` for an offline-readable, printable copy of the full reference.
+
             Source commit: ${{ github.sha }}.
-          files: twinbasic-docs-offline.zip
+          files: |
+            twinbasic-docs-offline.zip
+            book.pdf
           fail_on_unmatched_files: true
           make_latest: 'true'

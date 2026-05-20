@@ -100,6 +100,7 @@ const browser = await puppeteer.launch({
   // automatically in ChromeLauncher.defaultArgs(), so we don't repeat
   // them here.
   args: [
+    '--no-sandbox',
     '--disable-dev-shm-usage',
     '--allow-file-access-from-files',
   ],
