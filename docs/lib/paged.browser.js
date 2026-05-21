@@ -1293,11 +1293,25 @@
 		}
 
 		/**
-	   * Triggers a hook to run all functions synchronously
-	   * @example this.content.trigger(args).then(function(){...});
-	   * @return {Array} results
+	   * Triggers a hook to run all functions synchronously.
+	   * @return {Array|undefined} results array, or undefined when no
+	   *   handlers are registered (callers can skip their reducer
+	   *   forEach with a simple truthy check).
+	   *
+	   * [PATCH: hook-fast-path-sync] Mirrors the async `trigger()` patch:
+	   * skip the results-array alloc and the empty-forEach indirection
+	   * when this.hooks is empty. In the per-page hot path, onOverflow
+	   * and onBreakToken have zero registered handlers in this build,
+	   * so every call to those two hooks via triggerSync was pure
+	   * dispatch overhead -- ~3300 calls per render on the 1650-page
+	   * book. Callers in those reducer sites now read:
+	   *
+	   *   let r = hook.triggerSync(...);
+	   *   if (r) r.forEach(...);
 	   */
 		triggerSync(){
+			if (this.hooks.length === 0) return undefined;
+
 			var args = arguments;
 			var context = this.context;
 			var results = [];
@@ -1549,7 +1563,7 @@
 				offset
 			);
 			let breakHooks = this.hooks.onBreakToken.triggerSync(newBreakToken, undefined, node, this);
-			breakHooks.forEach((newToken) => {
+			if (breakHooks) breakHooks.forEach((newToken) => {
 				if (typeof newToken != "undefined") {
 					newBreakToken = newToken;
 				}
@@ -1638,7 +1652,7 @@
 			}
 
 			let nodeHooks = this.hooks.renderNode.triggerSync(clone, node, this);
-			nodeHooks.forEach((newNode) => {
+			if (nodeHooks) nodeHooks.forEach((newNode) => {
 				if (typeof newNode != "undefined") {
 					clone = newNode;
 				}
@@ -1803,7 +1817,7 @@
 			let breakToken, breakLetter;
 
 			let overflowHooks = this.hooks.onOverflow.triggerSync(overflow, rendered, bounds, this);
-			overflowHooks.forEach((newOverflow) => {
+			if (overflowHooks) overflowHooks.forEach((newOverflow) => {
 				if (typeof newOverflow != "undefined") {
 					overflow = newOverflow;
 				}
@@ -1813,7 +1827,7 @@
 				breakToken = this.createBreakToken(overflow, rendered, source);
 				// breakToken is nullable
 				let breakHooks = this.hooks.onBreakToken.triggerSync(breakToken, overflow, rendered, this);
-				breakHooks.forEach((newToken) => {
+				if (breakHooks) breakHooks.forEach((newToken) => {
 					if (typeof newToken != "undefined") {
 						breakToken = newToken;
 					}
