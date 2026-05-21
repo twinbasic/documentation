@@ -1012,32 +1012,6 @@
 		return true;
 	};
 
-	var isImplemented$7 = function () {
-		var assign = Object.assign, obj;
-		if (typeof assign !== "function") return false;
-		obj = { foo: "raz" };
-		assign(obj, { bar: "dwa" }, { trzy: "trzy" });
-		return obj.foo + obj.bar + obj.trzy === "razdwatrzy";
-	};
-
-	var isImplemented$6;
-	var hasRequiredIsImplemented$2;
-
-	function requireIsImplemented$2 () {
-		if (hasRequiredIsImplemented$2) return isImplemented$6;
-		hasRequiredIsImplemented$2 = 1;
-
-		isImplemented$6 = function () {
-			try {
-				Object.keys("primitive");
-				return true;
-			} catch (e) {
-				return false;
-			}
-		};
-		return isImplemented$6;
-	}
-
 	// eslint-disable-next-line no-empty-function
 	var noop$4 = function () {};
 
@@ -1045,71 +1019,12 @@
 
 	var isValue$4 = function (val) { return val !== _undefined && val !== null; };
 
-	var shim$5;
-	var hasRequiredShim$5;
-
-	function requireShim$5 () {
-		if (hasRequiredShim$5) return shim$5;
-		hasRequiredShim$5 = 1;
-
-		var isValue = isValue$4;
-
-		var keys = Object.keys;
-
-		shim$5 = function (object) { return keys(isValue(object) ? Object(object) : object); };
-		return shim$5;
-	}
-
-	var keys;
-	var hasRequiredKeys;
-
-	function requireKeys () {
-		if (hasRequiredKeys) return keys;
-		hasRequiredKeys = 1;
-
-		keys = requireIsImplemented$2()() ? Object.keys : requireShim$5();
-		return keys;
-	}
-
 	var isValue$3 = isValue$4;
 
 	var validValue = function (value) {
 		if (!isValue$3(value)) throw new TypeError("Cannot use null or undefined");
 		return value;
 	};
-
-	var shim$4;
-	var hasRequiredShim$4;
-
-	function requireShim$4 () {
-		if (hasRequiredShim$4) return shim$4;
-		hasRequiredShim$4 = 1;
-
-		var keys  = requireKeys()
-		  , value = validValue
-		  , max   = Math.max;
-
-		shim$4 = function (dest, src /*, …srcn*/) {
-			var error, i, length = max(arguments.length, 2), assign;
-			dest = Object(value(dest));
-			assign = function (key) {
-				try {
-					dest[key] = src[key];
-				} catch (e) {
-					if (!error) error = e;
-				}
-			};
-			for (i = 1; i < length; ++i) {
-				src = arguments[i];
-				keys(src).forEach(assign);
-			}
-			if (error !== undefined) throw error;
-			return dest;
-		};
-		return shim$4;
-	}
-
-	var assign$2 = isImplemented$7() ? Object.assign : requireShim$4();
 
 	var isValue$2 = isValue$4;
 
@@ -1130,35 +1045,9 @@
 		return result;
 	};
 
-	var str = "razdwatrzy";
-
-	var isImplemented$5 = function () {
-		if (typeof str.contains !== "function") return false;
-		return str.contains("dwa") === true && str.contains("foo") === false;
-	};
-
-	var shim$3;
-	var hasRequiredShim$3;
-
-	function requireShim$3 () {
-		if (hasRequiredShim$3) return shim$3;
-		hasRequiredShim$3 = 1;
-
-		var indexOf = String.prototype.indexOf;
-
-		shim$3 = function (searchString /*, position*/) {
-			return indexOf.call(this, searchString, arguments[1]) > -1;
-		};
-		return shim$3;
-	}
-
-	var contains$1 = isImplemented$5() ? String.prototype.contains : requireShim$3();
-
 	var isValue$1         = is$4
 	  , isPlainFunction = is
-	  , assign$1          = assign$2
-	  , normalizeOpts   = normalizeOptions
-	  , contains        = contains$1;
+	  , normalizeOpts   = normalizeOptions;
 
 	var d$1 = (d$2.exports = function (dscr, value/*, options*/) {
 		var c, e, w, options, desc;
@@ -1170,16 +1059,16 @@
 			options = arguments[2];
 		}
 		if (isValue$1(dscr)) {
-			c = contains.call(dscr, "c");
-			e = contains.call(dscr, "e");
-			w = contains.call(dscr, "w");
+			c = dscr.includes("c");
+			e = dscr.includes("e");
+			w = dscr.includes("w");
 		} else {
 			c = w = true;
 			e = false;
 		}
 
 		desc = { value: value, configurable: c, enumerable: e, writable: w };
-		return !options ? desc : assign$1(normalizeOpts(options), desc);
+		return !options ? desc : Object.assign(normalizeOpts(options), desc);
 	});
 
 	d$1.gs = function (dscr, get, set/*, options*/) {
@@ -1204,15 +1093,15 @@
 			set = undefined;
 		}
 		if (isValue$1(dscr)) {
-			c = contains.call(dscr, "c");
-			e = contains.call(dscr, "e");
+			c = dscr.includes("c");
+			e = dscr.includes("e");
 		} else {
 			c = true;
 			e = false;
 		}
 
 		desc = { get: get, set: set, configurable: c, enumerable: e };
-		return !options ? desc : assign$1(normalizeOpts(options), desc);
+		return !options ? desc : Object.assign(normalizeOpts(options), desc);
 	};
 
 	var dExports = d$2.exports;
