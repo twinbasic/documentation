@@ -5250,11 +5250,10 @@
 	};
 
 	var MIN_SIZE = 16 * 1024;
-	var SafeUint32Array = typeof Uint32Array !== 'undefined' ? Uint32Array : Array; // fallback on Array when TypedArray is not supported
 
 	var adoptBuffer$2 = function adoptBuffer(buffer, size) {
 	    if (buffer === null || buffer.length < size) {
-	        return new SafeUint32Array(Math.max(size + 1024, MIN_SIZE));
+	        return new Uint32Array(Math.max(size + 1024, MIN_SIZE));
 	    }
 
 	    return buffer;
@@ -10650,10 +10649,6 @@
 	 * http://opensource.org/licenses/BSD-3-Clause
 	 */
 
-	var util$2 = util$3;
-	var has$1 = Object.prototype.hasOwnProperty;
-	var hasNativeMap = typeof Map !== "undefined";
-
 	/**
 	 * A data structure which is a combination of an array and a set. Adding a new
 	 * member is O(1), testing for membership is O(1), and finding the index of an
@@ -10662,7 +10657,7 @@
 	 */
 	function ArraySet$1() {
 	  this._array = [];
-	  this._set = hasNativeMap ? new Map() : Object.create(null);
+	  this._set = new Map();
 	}
 
 	/**
@@ -10683,7 +10678,7 @@
 	 * @returns Number
 	 */
 	ArraySet$1.prototype.size = function ArraySet_size() {
-	  return hasNativeMap ? this._set.size : Object.getOwnPropertyNames(this._set).length;
+	  return this._set.size;
 	};
 
 	/**
@@ -10692,18 +10687,13 @@
 	 * @param String aStr
 	 */
 	ArraySet$1.prototype.add = function ArraySet_add(aStr, aAllowDuplicates) {
-	  var sStr = hasNativeMap ? aStr : util$2.toSetString(aStr);
-	  var isDuplicate = hasNativeMap ? this.has(aStr) : has$1.call(this._set, sStr);
+	  var isDuplicate = this.has(aStr);
 	  var idx = this._array.length;
 	  if (!isDuplicate || aAllowDuplicates) {
 	    this._array.push(aStr);
 	  }
 	  if (!isDuplicate) {
-	    if (hasNativeMap) {
-	      this._set.set(aStr, idx);
-	    } else {
-	      this._set[sStr] = idx;
-	    }
+	    this._set.set(aStr, idx);
 	  }
 	};
 
@@ -10713,12 +10703,7 @@
 	 * @param String aStr
 	 */
 	ArraySet$1.prototype.has = function ArraySet_has(aStr) {
-	  if (hasNativeMap) {
-	    return this._set.has(aStr);
-	  } else {
-	    var sStr = util$2.toSetString(aStr);
-	    return has$1.call(this._set, sStr);
-	  }
+	  return this._set.has(aStr);
 	};
 
 	/**
@@ -10727,18 +10712,10 @@
 	 * @param String aStr
 	 */
 	ArraySet$1.prototype.indexOf = function ArraySet_indexOf(aStr) {
-	  if (hasNativeMap) {
-	    var idx = this._set.get(aStr);
-	    if (idx >= 0) {
-	        return idx;
-	    }
-	  } else {
-	    var sStr = util$2.toSetString(aStr);
-	    if (has$1.call(this._set, sStr)) {
-	      return this._set[sStr];
-	    }
+	  var idx = this._set.get(aStr);
+	  if (idx >= 0) {
+	      return idx;
 	  }
-
 	  throw new Error('"' + aStr + '" is not in the set.');
 	};
 
