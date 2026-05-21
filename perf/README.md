@@ -2437,3 +2437,440 @@ generate. After the puppeteer 25 bump it would save less than the
 earlier estimate (the 64 s -> 43 s gain made the target smaller),
 but it's still the only knob with a profile target large enough to
 move the wall-clock total by 5+ s.
+
+## Can we make `removeChild` cheaper?
+
+After the findRef fix, `removeChild` sits at ~12 % of render
+self-time. The detach-pages handler attribution is clean -- 1651
+detaches for 1651 pages, exactly one per page, with the only
+other removeChild callers being `filterTree` at startup (9,192
+ignorable-text-node strips totalling 2.3 ms; not a hot path).
+
+Per-call cost on the 1651-page book, with `Element.prototype.removeChild`
+wrapped to measure each call:
+
+```
+[instrument] page-detach avg:      1.009 ms/call
+[instrument] page-detach median:   0.900 ms/call
+[instrument] page-detach p90:      2.000 ms/call
+[instrument] page-detach p99:      3.000 ms/call
+[instrument] avg descendants/page: 147.7
+```
+
+That's ~5-7 us per descendant LayoutObject torn down, multiplied
+by ~150 descendants per page, multiplied by ~1651 pages = ~1.7 s
+total. The distribution is tight and scales linearly with
+descendant count -- this looks like ordinary Blink teardown work
+rather than a pathological slow path.
+
+To verify, two structural variants both tested at the same
+instrumentation harness:
+
+### Variant B: graveyard DocumentFragment
+
+Replace `parent.removeChild(page)` with
+`graveyard.appendChild(page)`, where `graveyard` is a fresh
+`DocumentFragment` held by the handler. Hypothesis: the
+move-to-out-of-document-fragment path might skip some
+LayoutObject teardown work because the destination is itself
+disconnected.
+
+| metric | A (removeChild) | B (graveyard) |
+| ------ | --------------- | ------------- |
+| avg per call | **1.009 ms** | 1.082 ms (+7 %) |
+| median | 0.900 ms | 0.900 ms |
+| p90 | 2.000 ms | 2.200 ms |
+| p99 | 3.000 ms | 3.100 ms |
+| total page wall | 1666 ms | 1785 ms |
+| render wall-clock | ~16.1 s | ~15.2 s (run-to-run noise) |
+
+The graveyard move is **slightly slower** per call. Blink tears
+down the LayoutObjects regardless of where the node lands; there's
+no fast-path for "moved to a detached parent". No win.
+
+### Variant C: `contain: layout style` on `.pagedjs_page`
+
+Inject `<style>.pagedjs_page { contain: layout style; }</style>`
+into the document before render. Hypothesis: removing a contained
+subtree might skip style/layout invalidation propagation because
+Blink already knows the subtree didn't influence its siblings or
+parent.
+
+Also tested `contain: strict` (which adds `paint` and `size`
+containment -- pages already have explicit dimensions via @page
+CSS so this is safe).
+
+| metric | A (no contain) | C (layout style) | C-strict |
+| ------ | -------------- | ---------------- | -------- |
+| avg per call | **1.009 ms** | 1.017 ms | 0.991 ms |
+| median | 0.900 ms | 0.900 ms | 0.900 ms |
+| p90 | 2.000 ms | 1.900 ms | 1.900 ms |
+| total page wall | 1666 ms | 1678 ms | 1634 ms |
+| render wall-clock | ~16.1 s | ~15.0 s | ~14.8 s |
+
+All four runs are within ~5 % of each other on per-call cost --
+well inside the run-to-run noise band. Containment doesn't unlock
+a faster removeChild path either.
+
+### Conclusion (variants B + C)
+
+The 1.7 s of `removeChild` is intrinsic Blink LayoutObject
+teardown work. The math checks out at ~5-7 us per descendant ×
+~150 descendants × 1651 pages, and three different framings
+(plain removeChild, move-to-fragment, contain + removeChild) all
+land within ~10 % of each other. The destination of the move and
+the containment metadata don't change Blink's teardown rate.
+
+The one thing we *don't* do is "remove less per page" -- removing
+a page's content as N individual leaf removals would be strictly
+worse (N × overhead instead of 1 × overhead, same teardown total).
+Each removeChild call carries DOM-mutation, style-invalidation,
+and notify overhead beyond the per-descendant cost, so consolidating
+to one removal per page is already the optimal framing.
+
+### Variant D: don't detach at all, just `contain: strict`
+
+A natural follow-up: if the per-page cost of having siblings
+around really comes from style/selector traversal, maybe Blink
+will skip a *contained* sibling subtree even when it can't skip
+a `display: none` one. Containment is a stronger signal -- it
+explicitly tells the engine "no observable interaction crosses
+this boundary" -- so the renderer ought to be able to short-circuit
+sibling-walks more aggressively.
+
+Implementation: replace the detach handler with one that sets
+`pageElement.style.contain = 'strict'` at finalizePage and clears
+the property for every page at afterRendered (so `page.pdf()`
+serializes the right paint state).
+
+Result:
+
+| metric | current detach | variant D (contain:strict, no detach) |
+| ------ | -------------- | --------------------------------------- |
+| **render wall-clock** | **~16 s** | **89.3 s** |
+| `Page.create` gBCR | ~764 ms | **31,142 ms** |
+| `hasOverflow` gBCR | ~2,478 ms | 10,922 ms |
+| total gBCR | ~4,832 ms | 45,413 ms |
+| per-page ratio (last/first) | 1.36x | 4.11x |
+
+Worse than the README's display:none baseline (`Page.create`
+gBCR 12,947 ms / render 48.5 s). Containment metadata adds work
+to per-sibling evaluation rather than removing it. **Definitive
+no.** Containment is a hint about what's inside the box; it
+doesn't make the box invisible to neighbours.
+
+### Variant E: empty the wrapper, leave it in place
+
+A second framing of the same idea: keep the page wrapper as a
+sibling, but move its children to a stash so the wrapper itself
+is a leaf (no descendants for Blink to walk through). Restore
+the children at afterRendered. This isolates the "what costs
+what" question: does sibling-walk cost depend on descendant
+count, or just on sibling count?
+
+Implementation: at finalizePage, for the previous-finalized page
+(one behind, mirroring the keep-one-back pattern), move each
+child into an array via `wrapper.removeChild(wrapper.firstChild)`,
+set `min-height: 297mm` so the wrapper still occupies its slot,
+and stash the children. At afterRendered, restore.
+
+Result:
+
+| metric | current detach | variant E (empty wrapper) |
+| ------ | -------------- | --------------------------- |
+| **render wall-clock** | **~16 s** | **21.9 s** |
+| `Page.create` gBCR | ~764 ms | 2,628 ms (+1,864) |
+| `hasOverflow` gBCR | ~2,478 ms | 5,024 ms (+2,546) |
+| `Layout` gBCR | ~294 ms | 937 ms |
+| total gBCR | ~4,832 ms | **10,127 ms (+5,295)** |
+| `removeChild` self | 2,426 ms | **854 ms (-1,572)** |
+| per-page ratio (last/first) | 1.36x | 2.93x |
+
+The removeChild *savings* are real -- with no wrapper to tear
+down, just ~150 child removals per page at sub-microsecond each.
+But the gBCR *cost* roughly doubles because the wrappers are
+still siblings, and gBCR firings have to walk them. Net is +5 s
+render, *worse* than the current detach.
+
+This experiment yields a clean cost-model decomposition. Pulling
+the gBCR deltas apart against the wrapper-vs-content split:
+
+```
+display:none baseline (full content):       gBCR(Page.create) ≈ 12,947 ms
+variant E (empty wrappers, n=1651):         gBCR(Page.create) ≈  2,628 ms
+current detach (no siblings):               gBCR(Page.create) ≈    764 ms
+```
+
+Subtracting:
+
+- (variant E - current detach) = 1,864 ms for 1,651 sibling wrappers
+  → ~1.1 us per wrapper-sibling per `Page.create` gBCR call
+- (display:none - variant E) = 10,319 ms for 1,651 × 150 ≈
+  247,650 sibling descendants
+  → ~42 us per sibling-descendant per `Page.create` gBCR call
+
+Both wrappers and their descendants contribute to the per-call
+cost. Removing the descendants helps -- variant E really is
+substantially cheaper than display:none -- but the wrapper cost
+alone is enough to lose. To zero out both contributions you have
+to take both the wrapper and its descendants out of the sibling
+list, which is exactly what the current detach does.
+
+### Variant F: `content-visibility: hidden`, no detach
+
+The CSS spec's `content-visibility: hidden` is the closest
+property to "freeze in place without disposing" -- per spec,
+rendering work is "skipped" but cached state is preserved for
+cheap restoration. Conceptually nearer to a freeze than
+`display: none` or `contain: strict` were.
+
+Implementation: at finalizePage, set
+`pageElement.style.contentVisibility = 'hidden'` and
+`containIntrinsicSize = '210mm 297mm'` (the size hint Blink uses
+when content-visibility skips a subtree). At afterRendered,
+clear both.
+
+Result:
+
+| metric | current detach | variant F (cv:hidden) |
+| ------ | -------------- | ----------------------- |
+| **render wall-clock** | **~16 s** | **95.2 s** |
+| `Page.create` gBCR | ~764 ms | **29,656 ms** |
+| `hasOverflow` gBCR | ~2,478 ms | 17,558 ms |
+| total gBCR | ~4,832 ms | 52,899 ms |
+| per-page ratio (last/first) | 1.36x | 5.12x |
+
+Worse than every other variant. The spec's "skip rendering work"
+clause covers painting and composition; it does **not** make the
+subtree invisible to sibling-walks during style and selector
+matching that gBCR forces. Three "leave in place" properties
+(`display: none`, `contain: strict`, `content-visibility: hidden`)
+have now been tested and none of them short-circuit the
+sibling-walk.
+
+### Conclusion across all six variants
+
+| variant | render | net vs current |
+| ------- | ------ | -------------- |
+| A current (removeChild, no contain) | ~16.1 s | (baseline) |
+| B graveyard fragment | ~15.2 s | flat (noise) |
+| C `contain: layout style` + removeChild | ~15.0 s | flat (noise) |
+| C-strict `contain: strict` + removeChild | ~14.8 s | flat (noise) |
+| **D `contain: strict`, no detach** | **89.3 s** | **+73 s** |
+| **E empty wrappers, no detach** | **21.9 s** | **+5.9 s** |
+| **F `content-visibility: hidden`, no detach** | **95.2 s** | **+79 s** |
+
+The flat band (A/B/C/C-strict) is the cost-of-doing-business --
+~1 ms × 1651 pages = ~1.7 s of intrinsic Blink LayoutObject
+teardown. Variations on the framing don't move it. The
+catastrophic band (D, E) confirms that any path where the page
+wrapper stays in the live sibling list pays meaningfully more
+than the teardown cost would have been -- ~1.1 us per
+wrapper-sibling × 1651 wrappers × several gBCR call sites per
+page comes out to several seconds of extra render even when the
+wrapper is otherwise empty and contained.
+
+The 1.7 s is the bill we pay for shrinking the live DOM from
+~150 × 1651 ≈ 250k nodes back down to 2 nodes (in-flight page +
+keeper), which is what kept `Page.create`'s gBCR flat per page
+(see "Hypothesis 2: sibling sweeps over `display: none` pages"
+above). Net savings vs the display:none variant was ~22 s render;
+the 1.7 s removeChild cost is roughly 8 % of that win paid back
+to Blink for cleanup. Worth keeping.
+
+### Aside: it's not GC, and JS references don't help
+
+A reasonable follow-up question to all of this is "can we just
+hold a reference to the detached children to avoid disposal,
+or turn off GC to skip the cleanup?" Neither applies to what
+we're measuring.
+
+Chromium maintains two trees:
+
+- **DOM tree** -- `Node` objects, JS-visible, referenceable.
+- **Render tree** -- `LayoutObject` / `LayoutBox` / `LayoutText`
+  etc., Blink-internal, NOT JS-visible.
+
+`removeChild` keeps the DOM Node alive (JS reference holders --
+including the handler's `this._detached` array -- prevent
+collection). But the corresponding LayoutObject in the render
+tree is **destroyed immediately**, synchronously, at the
+removeChild call. Re-attaching via appendChild later builds a
+new LayoutObject from scratch.
+
+There is no JS-level API to keep a LayoutObject alive across
+detach + reattach. Holding DOM references doesn't change the
+render-tree lifecycle. The 1.7 s lives entirely in
+LayoutObject teardown -- which is Blink-internal C++ work
+attributed to the `removeChild` native frame in the profile,
+not to GC.
+
+V8's GC is a separate concern and isn't the bottleneck. The
+profile reads:
+
+```
+   self_ms   self_%   function
+    195.21    0.89%   (garbage collector)
+```
+
+~200 ms over a ~22 s render. Even if it could be disabled
+(it can't -- Node would OOM), it would barely register.
+
+The asymmetry between variants B and E makes this concrete.
+Variant B (graveyard fragment) moves the page from
+`.pagedjs_pages` to a detached DocumentFragment; variant E
+(empty wrapper) keeps the page in `.pagedjs_pages` but moves
+its children out. The fragment-move path *does* trigger
+LayoutObject teardown (you can see the 1.08 ms / call in
+variant B's instrumentation) even though the DOM Node lives on
+in a JS-visible fragment -- because the destination is itself
+not attached to the document, so there's no live render-tree
+parent. Conversely, variant E's wrapper stays in
+`.pagedjs_pages` with a live LayoutObject the whole time, so
+the wrapper's render-tree slot doesn't get torn down; only
+its child LayoutObjects do (as the children move out). The
+"keep render objects alive" idea would have to mean keeping
+the wrapper in `.pagedjs_pages` with all its children, which
+is the display:none baseline -- ~48 s render.
+
+The trade-off is therefore not "keep things alive vs. let GC
+collect them"; it's "be a live render-tree sibling vs. not".
+Anything that keeps the wrapper as a live sibling pays the
+~1.1 us per wrapper-sibling per gBCR call shown above, and the
+gBCR firings compound that into seconds across 1651 pages.
+
+## Chasing the residual `(idle)` to requestAnimationFrame
+
+A second axis of the same investigation. The post-findRef-fix
+profile showed `(idle) 735 ms (4.6 %)` -- not huge, but non-zero
+and worth understanding. `(idle)` in a V8 CPU profile means
+samples taken while the main thread had nothing scheduled --
+waiting on async/await, microtask queue settling, requestAnimationFrame
+ticks, or other browser-internal yields.
+
+### Hypothesis 1: microtask boundaries from `await Hook.trigger(...)`
+
+The chunker's per-page loop has 5-6 `await this.hooks.X.trigger(...)`
+calls per page. `Hook.trigger()` wraps every sync handler in a fresh
+Promise and returns `Promise.all(promises)`, so the caller always
+awaits a thenable -- a microtask boundary per await even when every
+handler resolved synchronously. 5 boundaries × 1651 pages ≈ 8,255
+yields; if each yield is ~85 us in V8 it lines up with the 735 ms.
+
+Patched it: `Hook.trigger()` returns `undefined` when no handler
+returned a thenable, callers do
+`let p = hook.trigger(...); if (p) await p;` to skip the await on
+the sync fast path. Patched at four hot per-page sites (3 in
+`chunker.layout`, 3 in `chunker.handleBreaks`).
+
+Result: render went **up** by ~0.35 s on a 2-run paired A/B
+(14.57 s -> 14.92 s avg). `(idle)` in the profile went **up too**
+(735 ms -> 1223 ms in absolute terms). Microtask boundaries are
+~30 us each at the JIT level; the V8 sampler at 1 ms intervals
+hardly catches them, so they show up as `(program)` rather than
+`(idle)`. The patch shaved microtask scheduling cost in the
+single-digit percent range but added a branch on every Hook.trigger
+call -- net wash, slight regression. **Reverted.**
+
+### Hypothesis 2: ResizeObserver firing per page
+
+Per page, `Page.addResizeObserver` creates a fresh `ResizeObserver`
+that fires its callback asynchronously from the compositor thread
+back to main. The callback wraps work in `requestAnimationFrame`,
+so each RO firing schedules a frame-tick wait. 1651 pages × ~0.5 ms
+per RO-rAF round-trip ≈ ~800 ms. Plausible.
+
+Two-step probe:
+1. **Skip the rAF wrap inside the RO callback**, run synchronously.
+   Result: `(idle) 902 ms`. No improvement, possibly slightly worse.
+2. **Disable the ResizeObserver entirely** (early-return in
+   `addResizeObserver`). Result: `(idle) 1,074 ms`. Still no
+   improvement.
+
+Neither helped. The RO isn't the source -- the per-page
+`addResizeObserver` overhead is real, but it doesn't show up in
+the `(idle)` bucket. Restored upstream behaviour.
+
+### Hypothesis 3: the chunker's `Queue.tick` is `requestAnimationFrame`
+
+The chunker drives its per-page work through a `Queue` class
+(`paged.browser.js:2666`). The queue's constructor sets:
+
+```js
+this.tick = requestAnimationFrame;
+```
+
+and `Queue.run()` schedules each iteration via
+`this.tick.call(window, () => { ... });`. Chunker's `render()`
+loops over `this.q.enqueue(() => this.renderAsync(renderer))`
+once per page. Every per-page iteration therefore waits one rAF
+tick before processing.
+
+`requestAnimationFrame` waits for the next animation frame. In
+headless puppeteer with no display, rAF still delivers callbacks
+on a regular cadence (Chromium's headless mode default is around
+60 Hz off-screen / ~16 ms per frame, with the scheduler often
+batching tighter than that). Either way, per-page rAF waits
+across 1651 pages add up to several hundred milliseconds of pure
+main-thread idle.
+
+The fix is one line:
+
+```js
+this.tick = (cb) => queueMicrotask(cb);
+```
+
+`queueMicrotask` schedules the callback on the microtask queue --
+runs before returning to the event loop, microsecond-scale latency
+instead of millisecond-scale. The `Queue` doesn't depend on rAF
+semantics (no paint coordination, no frame-budget yielding --
+it's just a serializer that wants to run tasks back-to-back).
+
+Verification (paired 2-run A/B, `--detach-pages`, no
+instrumentation, no cpu-profile):
+
+| run | BEFORE render | AFTER render |
+| --- | --- | --- |
+| 1 | 14.62 s | 11.86 s |
+| 2 | 14.51 s | 12.12 s |
+| **avg** | **14.57 s** | **11.99 s** |
+
+**Δ = -2.58 s render (-18 %).** Larger than the 735 ms `(idle)`
+that prompted the look -- because rAF was costing real (program)
+work too (V8 scheduler, microtask queue draining around the rAF
+boundary), not just idle wait. CPU profile of the fixed render:
+
+```
+   self_ms   self_%   function
+   -------   ------   ----------------------------------------------
+   4355.74   34.75%   getBoundingClientRect
+   1935.89   15.45%   removeChild
+   1934.11   15.43%   (program)             (was 5872 -- down ~4 s)
+    636.43    5.08%   removeOverflow
+    -- (idle) absent from the top 10, < 130 ms (1 %)
+```
+
+`(idle)` dropped out of the top 10 (< 130 ms / 1 %), `(program)`
+dropped from 5872 ms to 1934 ms (-4 s), `removeChild` dropped
+slightly (2426 ms -> 1935 ms; smaller render = same per-call cost
+× same call count, so this is sampling artefact, not a real
+change). PDF byte size unchanged (within standard timestamp
+drift). Shipped.
+
+### What the three hypotheses together teach
+
+`(idle)` in a V8 CPU profile attribution table is **not** primarily
+microtask scheduling -- those are too fast to sample. It's
+genuinely-waiting time, where the main thread had no V8 work to do.
+The dominant source of waiting in our render was not async/await,
+not ResizeObserver coalescing, but a `requestAnimationFrame`
+buried in the chunker's task queue. Replacing it with
+`queueMicrotask` collapses the per-page wait, and additionally
+shrinks the surrounding V8 scheduler work because each rAF
+callback came with its own setup / teardown overhead.
+
+The pattern to remember: if a profile shows non-trivial `(idle)`
+in a render-style workload, hunt for explicit `requestAnimationFrame`
+/ `setTimeout` / `requestIdleCallback` calls in the hot path before
+investigating microtask machinery. The frame-paced scheduler is a
+much bigger lever than the microtask scheduler.

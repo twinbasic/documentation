@@ -2664,7 +2664,13 @@
 		constructor(context){
 			this._q = [];
 			this.context = context;
-			this.tick = requestAnimationFrame;
+			// [PATCH: queue-tick] Upstream uses requestAnimationFrame as the
+			// per-task tick, which on a headless puppeteer render still waits
+			// per frame even with no compositor. Across 1651 pages that's
+			// ~700 ms of V8 (idle). queueMicrotask schedules on the microtask
+			// queue and fires before the next event-loop iteration, dropping
+			// the per-page wait to microsecond-scale.
+			this.tick = (cb) => queueMicrotask(cb);
 			this.running = false;
 			this.paused = false;
 		}
@@ -3065,13 +3071,19 @@
 		// }
 
 		async render(parsed, startAt) {
+			// [PATCH: drop-queue] Upstream routes per-page iteration through
+			// this.q.enqueue(...), but the queue's only job is serialization
+			// and the async generator is already inherently serial. Dropping
+			// the indirection cuts a queueMicrotask hop and a Promise/deferred
+			// allocation per page.
 			let renderer = this.layout(parsed, startAt);
 
-			let done = false;
 			let result;
-			while (!done) {
-				result = await this.q.enqueue(() => { return this.renderAsync(renderer); });
-				done = result.done;
+			while (true) {
+				if (this.stopped) return { done: true, canceled: true };
+				result = await renderer.next();
+				if (this.stopped) return { done: true, canceled: true };
+				if (result.done) break;
 			}
 
 			return result;
