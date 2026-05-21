@@ -27534,11 +27534,39 @@
 			this.polisher = polisher;
 			this.caller = caller;
 
+			// [PATCH: handler-self-disable] Track each (hook, bound) pair we
+			// register so handlers that find nothing to do for a given render
+			// can splice themselves back out. Footnotes uses this to disappear
+			// when the document and CSS produced no footnote-marked nodes;
+			// combined with Hook.trigger/triggerSync's empty-handlers fast
+			// path, the per-page and per-node dispatches then short-circuit.
+			this._registered = {};
+
 			for (let name in hooks) {
 				if (name in this) {
 					let hook = hooks[name];
-					hook.register(this[name].bind(this));
+					let bound = this[name].bind(this);
+					this._registered[name] = { hook, bound };
+					hook.register(bound);
 				}
+			}
+		}
+
+		/**
+		 * Remove this handler's registered callbacks from every hook it
+		 * subscribed to. Pass the name of the hook the caller is currently
+		 * inside (e.g. `"afterParsed"`) to skip its own entry -- splicing
+		 * the array we're iterating would cause the surrounding `trigger()`
+		 * loop to skip a sibling handler. The skipped entry is harmless on
+		 * one-shot hooks; on recurring hooks the caller can re-call later.
+		 */
+		_unregisterAll(except) {
+			for (const name in this._registered) {
+				if (name === except) continue;
+				const { hook, bound } = this._registered[name];
+				const idx = hook.hooks.indexOf(bound);
+				if (idx >= 0) hook.hooks.splice(idx, 1);
+				delete this._registered[name];
 			}
 		}
 	}
@@ -31178,6 +31206,18 @@
 
 		afterParsed(parsed) {
 			this.processFootnotes(parsed, this.footnotes);
+
+			// [PATCH: footnotes-self-disable] If neither source HTML nor CSS
+			// `float: footnote` rules produced any footnote-marked nodes, the
+			// remaining hooks (renderNode per element-node, afterPageLayout +
+			// beforePageLayout + afterOverflowRemoved per page) have nothing
+			// to do for the rest of this render. Unregister them so the
+			// empty-handlers fast-path in Hook.triggerSync short-circuits.
+			// afterParsed itself is skipped via `except` -- it's a one-shot
+			// and the surrounding trigger() loop is still iterating it.
+			if (!parsed.querySelector("[data-note='footnote']")) {
+				this._unregisterAll("afterParsed");
+			}
 		}
 
 		processFootnotes(parsed, notes) {
