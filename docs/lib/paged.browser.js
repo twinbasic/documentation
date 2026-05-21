@@ -3166,7 +3166,7 @@
 				_assertSync(this.hooks.finalizePage.trigger(page.element, page, undefined, this), "finalizePage");
 				this.emit("renderedPage", page);
 
-				this.recoredCharLength(page.wrapper.textContent.length);
+				this.recordCharLength(page.wrapper.textContent.length);
 
 				yield breakToken;
 
@@ -3176,7 +3176,7 @@
 
 		}
 
-		recoredCharLength(length) {
+		recordCharLength(length) {
 			if (length === 0) {
 				return;
 			}
