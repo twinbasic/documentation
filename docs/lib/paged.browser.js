@@ -1376,6 +1376,18 @@
 			this.settings = options || {};
 
 			this.maxChars = this.settings.maxChars || MAX_CHARS_PER_BREAK;
+
+			// [PATCH: parent-lookup-cache] One-entry memo of the last
+			// (sourceParent, dest) -> destParent resolution from append().
+			// Consecutive siblings in the source tree all resolve to the
+			// same destParent, so caching the previous result lets the
+			// per-call findElement / indexOfRefs lookup short-circuit.
+			// Invalidated at the start of every renderTo; safe within a
+			// single renderTo loop because append() never detaches DOM
+			// from dest (removeOverflow only fires after the loop exits).
+			this._lastSrcParent = null;
+			this._lastDest = null;
+			this._lastDestParent = null;
 			this.forceRenderBreak = false;
 		}
 
@@ -1384,6 +1396,15 @@
 		// removes the per-page Promise allocation that was returned from
 		// page.layout / chunker.layout up the chain.
 		renderTo(wrapper, source, breakToken, bounds = this.bounds) {
+			// [PATCH: parent-lookup-cache] Invalidate the per-Layout
+			// parent memo. The previous renderTo on this Layout instance
+			// (same Page, multiple renderTo calls) may have run
+			// findBreakToken -> removeOverflow at exit, leaving the
+			// cached destParent detached.
+			this._lastSrcParent = null;
+			this._lastDest = null;
+			this._lastDestParent = null;
+
 			let start = this.getStart(source, breakToken);
 			let walker = walk$2(start, source);
 
@@ -1607,7 +1628,16 @@
 			let clone = cloneNode(node, !shallow);
 
 			if (node.parentNode && isElement(node.parentNode)) {
-				let parent = findElement(node.parentNode, dest);
+				const srcParent = node.parentNode;
+				// [PATCH: parent-lookup-cache] Consecutive sibling appends
+				// share the same source parent; reuse the prior result
+				// instead of walking dest.indexOfRefs again.
+				let parent;
+				if (srcParent === this._lastSrcParent && dest === this._lastDest) {
+					parent = this._lastDestParent;
+				} else {
+					parent = findElement(srcParent, dest);
+				}
 				// Rebuild chain
 				if (parent) {
 					parent.appendChild(clone);
@@ -1639,6 +1669,16 @@
 					dest.appendChild(clone);
 				}
 
+				// [PATCH: parent-lookup-cache] Cache the resolved (or
+				// rebuilt-and-attached) parent so the next sibling can
+				// skip the lookup. Skip on the no-rebuild fall-through
+				// where parent stayed null -- a later call with the same
+				// srcParent should still attempt the lookup.
+				if (parent) {
+					this._lastSrcParent = srcParent;
+					this._lastDest = dest;
+					this._lastDestParent = parent;
+				}
 
 			} else {
 				dest.appendChild(clone);

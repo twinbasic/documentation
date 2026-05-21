@@ -3378,17 +3378,107 @@ PDF output remained byte-identical to the previous build
 on this content (16.1 MB, same checksum on the raw
 Chromium output).
 
+### `Layout.append` parent-lookup cache
+
+When the source walker emits consecutive children of the
+same parent, `findElement(node.parentNode, dest)` in
+`append()` gets called repeatedly with the same input.
+For a parent with N children that's N - 1 redundant
+lookups -- each one cheap (`getAttribute("data-ref")` +
+`dest.indexOfRefs[ref]` is an O(1) dict hit on the fast
+path), but the call count is north of 100k per render.
+
+Patch: a three-property memo on `Layout` -- last
+`srcParent`, last `dest`, last `destParent`. Hit check at
+the top of `append`, writeback at the bottom after the
+parent is resolved (whether via direct lookup or via the
+rebuild-ancestors branch, since the rebuild attaches the
+cloned ancestor into `dest`).
+
+Invalidation: reset all three at the top of every
+`renderTo`. The cache is safe within a single `renderTo`
+loop because `append()` never detaches DOM from `dest`,
+and `removeOverflow` (the one thing that does) only fires
+at loop exit. Across `renderTo` calls on the same `Layout`
+instance the previous run's `removeOverflow` may have
+detached the cached parent, so the explicit reset is the
+correctness guard.
+
+Profile delta (post-self-disable vs post-parent-cache):
+
+| metric | post-self-disable | post-parent-cache | Δ |
+| ------ | ----------------- | ----------------- | --- |
+| render wall | 11.77 s | 11.72 s | flat (within noise) |
+| samples | 21,809 | 21,688 | -121 (~65 ms) |
+| `(program)` self | 2,198 ms | 2,169 ms | -29 ms |
+| `getAttribute` (native) | 43 ms | off-list (<40 ms) | -3 ms+ |
+| `querySelector` (native) | 63 ms | 59 ms | -4 ms |
+| `Layout.append` self | 69 ms | 70 ms | flat |
+
+Order ~50-100 ms saved depending on the row chosen, fully
+below the run-to-run wall-clock noise band but visible in
+the cpuprofile rows. The math checks: ~100k append calls
+× ~80 % sibling-cache-hit rate × ~1 us per skipped
+findElement ≈ 80 ms.
+
+PDF output byte-identical.
+
+### What didn't land: the `_ref` expando
+
+One sibling candidate to the parent-lookup cache was
+tried and reverted. The idea: mirror `data-ref` onto a
+plain JS property `_ref` at decoration time (in
+`ContentParser.addRefs`), propagate via the `cloneNode`
+helper, and read it in `findElement` and `append`'s
+postlude instead of `getAttribute("data-ref")` /
+`clone.dataset.ref`. Both reads in the hot path become
+plain JS property loads instead of going through C++ DOM
+attribute fetches or the `DOMStringMap` proxy.
+
+Measured win on the per-row breakdown:
+
+- `Layout.append` self 69 -> 47 ms (-22 ms).
+- `getAttribute` native 43 ms -> off-list (-3+ ms).
+
+About 25 ms of real per-call work removed. Reverted: the
+saving is genuinely smaller than the diff's surface --
+`cloneNode` helper has to propagate an extra property,
+the `data-ref` attribute has to stay for CSS selectors
+and the `querySelector` fallback in `findRef`, `findElement`
+needs a `||` fallback to keep direct `.cloneNode()`
+callers in `rebuildAncestors` working unchanged, and any
+future code that wants the ref has two places it could
+read from. Not worth maintaining for a saving that
+doesn't move single-run wall-clock.
+
+Lesson worth carrying forward: at this point in the
+codebase, per-call findElement / `dataset.ref` work has
+been ground down close enough to its floor that any
+further shave produces savings in the 20-50 ms band, well
+below the run-to-run wall-clock noise on this machine.
+Reading the cpuprofile per-row deltas is the only way to
+tell whether such a change is genuine; reading wall-clock
+isn't. And the bar for landing scales with the size of
+the diff -- the parent-cache landed because it's three
+property writes and one branch; the expando didn't
+because it's a propagation pattern that ripples through
+the bundle.
+
 ### Cumulative effect
 
-Across all three landings:
+Across all four landings:
 
-| metric | pre-investigation | post-self-disable | Δ |
+| metric | pre-investigation | post-parent-cache | Δ |
 | ------ | ----------------- | ----------------- | --- |
-| render wall | 12.63 s | 11.77 s | **-0.86 s (-6.8 %)** |
-| samples | 23,313 | 21,809 | -1,504 |
-| `getBoundingClientRect` self | 4,825 ms | 4,198 ms | -627 ms |
-| `removeChild` self | 1,954 ms | 1,898 ms | -56 ms |
-| `removeOverflow` self | 636 ms | 568 ms | -68 ms |
+| render wall | 12.63 s | 11.72 s | **-0.91 s (-7.2 %)** |
+| samples | 23,313 | 21,688 | -1,625 |
+| `getBoundingClientRect` self | 4,825 ms | 4,194 ms | -631 ms |
+| `removeChild` self | 1,954 ms | 1,897 ms | -57 ms |
+| `removeOverflow` self | 636 ms | 583 ms | -53 ms |
+| `getAttribute` (native) | ~125 ms* | off-list (<40 ms) | -85 ms+ |
+
+\* Inferred from the post-tojson baseline rank; not
+explicitly tabulated in the top-25 cut at that time.
 
 The `Handler._registered` + `_unregisterAll(except)` plumbing
 is reusable: any future handler that determines at
