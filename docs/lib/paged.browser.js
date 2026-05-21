@@ -8,6 +8,12 @@
 	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.PagedPolyfill = factory());
 })(this, (function () { 'use strict';
 
+	// Dispatch helpers: Element has getBoundingClientRect / getClientRects
+	// natively; Text and other non-Element nodes don't, so they get wrapped
+	// in a Range. Both call sites (Layout.findOverflow's per-node, per-word,
+	// per-letter walkers; the isText branch in findRoute) feed in nodes the
+	// walker may yield as either type, so this dispatch is load-bearing,
+	// not backcompat.
 	function getBoundingClientRect(element) {
 		if (!element) {
 			return;
@@ -44,10 +50,7 @@
 	 * @returns {string} uuid
 	 */
 	function UUID() {
-		var d = new Date().getTime();
-		if (typeof performance !== "undefined" && typeof performance.now === "function") {
-			d += performance.now(); //use high-precision timer if available
-		}
+		var d = new Date().getTime() + performance.now();
 		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
 			var r = (d + Math.random() * 16) % 16 | 0;
 			d = Math.floor(d / 16);
@@ -177,8 +180,6 @@
 		});
 		Object.freeze(this);
 	}
-
-	const requestIdleCallback = typeof window !== "undefined" && ("requestIdleCallback" in window ? window.requestIdleCallback : window.requestAnimationFrame);
 
 	function CSSValueToString(obj) {
 		return obj.value + (obj.unit || "");
@@ -2520,14 +2521,7 @@
 		}
 
 		addListeners(contents) {
-			if (typeof ResizeObserver !== "undefined") {
-				this.addResizeObserver(contents);
-			} else {
-				this._checkOverflowAfterResize = this.checkOverflowAfterResize.bind(this, contents);
-				this.element.addEventListener("overflow", this._checkOverflowAfterResize, false);
-				this.element.addEventListener("underflow", this._checkOverflowAfterResize, false);
-			}
-			// TODO: fall back to mutation observer?
+			this.addResizeObserver(contents);
 
 			this._onScroll = function () {
 				if (this.listening) {
@@ -2546,11 +2540,8 @@
 		removeListeners() {
 			this.listening = false;
 
-			if (typeof ResizeObserver !== "undefined" && this.ro) {
+			if (this.ro) {
 				this.ro.disconnect();
-			} else if (this.element) {
-				this.element.removeEventListener("overflow", this._checkOverflowAfterResize, false);
-				this.element.removeEventListener("underflow", this._checkOverflowAfterResize, false);
 			}
 
 			this.element && this.element.removeEventListener("scroll", this._onScroll);
