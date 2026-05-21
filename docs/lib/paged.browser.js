@@ -2273,7 +2273,25 @@
 
 		removeOverflow(overflow, breakLetter) {
 			let {startContainer} = overflow;
-			let extracted = overflow.extractContents();
+
+			// [PATCH: extract-vs-delete] Range.extractContents() builds a
+			// DocumentFragment of the removed nodes and reattaches them;
+			// Range.deleteContents() just removes. The only consumer of
+			// the returned fragment is Footnotes.afterOverflowRemoved,
+			// which iterates the rendered area's footnotes and for each
+			// looks up its [data-footnote-call=...] in the removed fragment.
+			// So extractContents is only useful if the rendered area
+			// contained any footnote-call elements. Check via a cheap
+			// querySelector on `this.element` (the page content area --
+			// `.pagedjs_page_content`); when no calls are present we
+			// skip the fragment build entirely.
+			let extracted;
+			if (this.element && this.element.querySelector("[data-footnote-call]")) {
+				extracted = overflow.extractContents();
+			} else {
+				overflow.deleteContents();
+				extracted = null;
+			}
 
 			this.hyphenateAtBreak(startContainer, breakLetter);
 
@@ -31679,8 +31697,14 @@
 			let notes = area.querySelectorAll(".pagedjs_footnote_area [data-note='footnote']");
 			for (let n = 0; n < notes.length; n++) {
 				const note = notes[n];
-				// Check if the call for that footnote has been removed with the overflow
-				let call = removed.querySelector(`[data-footnote-call="${note.dataset.ref}"]`);
+				// [PATCH: extract-vs-delete] Guard `removed` access -- when
+				// removeOverflow took the deleteContents fast path (no
+				// footnotes in the rendered area), `removed` is null. In
+				// that case there are no rendered footnotes for the loop
+				// to iterate either, so we never actually enter this body.
+				// The guard is for future content where the area DOES have
+				// rendered footnotes but removeOverflow's pre-check changes.
+				let call = removed && removed.querySelector(`[data-footnote-call="${note.dataset.ref}"]`);
 				if (call) {
 					note.remove();
 				}
