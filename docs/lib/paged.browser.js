@@ -1549,7 +1549,7 @@
 
 			let prevBreakToken = breakToken || new BreakToken(start);
 
-			this.hooks && this.hooks.onPageLayout.trigger(wrapper, prevBreakToken, this);
+			if (this.hooks) _assertSync(this.hooks.onPageLayout.trigger(wrapper, prevBreakToken, this), "onPageLayout");
 
 			while (!done && !newBreakToken) {
 				next = walker.next();
@@ -1558,7 +1558,7 @@
 				done = next.done;
 
 				if (!node) {
-					this.hooks && this.hooks.layout.trigger(wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.layout.trigger(wrapper, this), "layout");
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
@@ -1569,21 +1569,21 @@
 
 					if (newBreakToken && newBreakToken.equals(prevBreakToken)) {
 						console.warn("Unable to layout item: ", prevNode);
-						this.hooks && this.hooks.beforeRenderResult.trigger(undefined, wrapper, this);
+						if (this.hooks) _assertSync(this.hooks.beforeRenderResult.trigger(undefined, wrapper, this), "beforeRenderResult");
 						return new RenderResult(undefined, new OverflowContentError("Unable to layout item", [prevNode]));
 					}
 
 					this.rebuildTableFromBreakToken(newBreakToken, wrapper);
 
-					this.hooks && this.hooks.beforeRenderResult.trigger(newBreakToken, wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.beforeRenderResult.trigger(newBreakToken, wrapper, this), "beforeRenderResult");
 					return new RenderResult(newBreakToken);
 				}
 
-				this.hooks && this.hooks.layoutNode.trigger(node);
+				if (this.hooks) _assertSync(this.hooks.layoutNode.trigger(node), "layoutNode");
 
 				// Check if the rendered element has a break set
 				if (hasRenderedContent && this.shouldBreak(node, start)) {
-					this.hooks && this.hooks.layout.trigger(wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.layout.trigger(wrapper, this), "layout");
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
@@ -1642,7 +1642,7 @@
 				}
 
 				if (this.forceRenderBreak) {
-					this.hooks && this.hooks.layout.trigger(wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.layout.trigger(wrapper, this), "layout");
 
 					newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
 
@@ -1661,7 +1661,7 @@
 				// Only check overflow once per maxChars of new content.
 				if (length - lengthAtLastCheck >= this.maxChars) {
 
-					this.hooks && this.hooks.layout.trigger(wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.layout.trigger(wrapper, this), "layout");
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
@@ -1684,7 +1684,7 @@
 						if (after) {
 							newBreakToken = new BreakToken(after);
 						} else {
-							this.hooks && this.hooks.beforeRenderResult.trigger(undefined, wrapper, this);
+							if (this.hooks) _assertSync(this.hooks.beforeRenderResult.trigger(undefined, wrapper, this), "beforeRenderResult");
 							return new RenderResult(undefined, new OverflowContentError("Unable to layout item", [node]));
 						}
 					}
@@ -1692,7 +1692,7 @@
 
 			}
 
-			this.hooks && this.hooks.beforeRenderResult.trigger(newBreakToken, wrapper, this);
+			if (this.hooks) _assertSync(this.hooks.beforeRenderResult.trigger(newBreakToken, wrapper, this), "beforeRenderResult");
 			return new RenderResult(newBreakToken);
 		}
 
@@ -26611,7 +26611,7 @@
 			csstree.walk(ast, {
 				visit: "Url",
 				enter: (node, item, list) => {
-					this.hooks.onUrl.trigger(node, item, list);
+					_assertSync(this.hooks.onUrl.trigger(node, item, list), "onUrl");
 				}
 			});
 		}
@@ -26623,17 +26623,17 @@
 					const basename = csstree.keyword(node.name).basename;
 
 					if (basename === "page") {
-						this.hooks.onAtPage.trigger(node, item, list);
+						_assertSync(this.hooks.onAtPage.trigger(node, item, list), "onAtPage");
 						this.declarations(node, item, list);
 					}
 
 					if (basename === "media") {
-						this.hooks.onAtMedia.trigger(node, item, list);
+						_assertSync(this.hooks.onAtMedia.trigger(node, item, list), "onAtMedia");
 						this.declarations(node, item, list);
 					}
 
 					if (basename === "import") {
-						this.hooks.onImport.trigger(node, item, list);
+						_assertSync(this.hooks.onImport.trigger(node, item, list), "onImport");
 						this.imports(node, item, list);
 					}
 				}
@@ -26646,7 +26646,7 @@
 				visit: "Rule",
 				enter: (ruleNode, ruleItem, rulelist) => {
 
-					this.hooks.onRule.trigger(ruleNode, ruleItem, rulelist);
+					_assertSync(this.hooks.onRule.trigger(ruleNode, ruleItem, rulelist), "onRule");
 					this.declarations(ruleNode, ruleItem, rulelist);
 					this.onSelector(ruleNode, ruleItem, rulelist);
 
@@ -26659,13 +26659,13 @@
 				visit: "Declaration",
 				enter: (declarationNode, dItem, dList) => {
 
-					this.hooks.onDeclaration.trigger(declarationNode, dItem, dList, {ruleNode, ruleItem, rulelist});
+					_assertSync(this.hooks.onDeclaration.trigger(declarationNode, dItem, dList, {ruleNode, ruleItem, rulelist}), "onDeclaration");
 
 					if (declarationNode.property === "content") {
 						csstree.walk(declarationNode, {
 							visit: "Function",
 							enter: (funcNode, fItem, fList) => {
-								this.hooks.onContent.trigger(funcNode, fItem, fList, {declarationNode, dItem, dList}, {ruleNode, ruleItem, rulelist});
+								_assertSync(this.hooks.onContent.trigger(funcNode, fItem, fList, {declarationNode, dItem, dList}, {ruleNode, ruleItem, rulelist}), "onContent");
 							}
 						});
 					}
@@ -26679,13 +26679,13 @@
 			csstree.walk(ruleNode, {
 				visit: "Selector",
 				enter: (selectNode, selectItem, selectList) => {
-					this.hooks.onSelector.trigger(selectNode, selectItem, selectList, {ruleNode, ruleItem, rulelist});
+					_assertSync(this.hooks.onSelector.trigger(selectNode, selectItem, selectList, {ruleNode, ruleItem, rulelist}), "onSelector");
 
 					if (selectNode.children.forEach(node => {if (node.type === "PseudoElementSelector") {
 						csstree.walk(node, {
 							visit: "PseudoElementSelector",
 							enter: (pseudoNode, pItem, pList) => {
-								this.hooks.onPseudoSelector.trigger(pseudoNode, pItem, pList, {selectNode, selectItem, selectList}, {ruleNode, ruleItem, rulelist});
+								_assertSync(this.hooks.onPseudoSelector.trigger(pseudoNode, pItem, pList, {selectNode, selectItem, selectList}, {ruleNode, ruleItem, rulelist}), "onPseudoSelector");
 							}
 						});
 					}}));
