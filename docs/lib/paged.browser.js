@@ -31219,7 +31219,12 @@
 
 				if (node.dataset.note === "footnote") {
 					notes = [node];
-				} else if (node.dataset.hasNotes || node.querySelectorAll("[data-note='footnote']")) {
+				} else if (node.dataset.hasNotes) {
+					// Upstream wrote `|| node.querySelectorAll(...)` here, but a
+					// NodeList is always truthy (even empty), so the right arm
+					// of the || always ran and the next line ran querySelectorAll
+					// again -- two subtree scans per element-node clone for any
+					// document that doesn't use data-note='footnote'.
 					notes = node.querySelectorAll("[data-note='footnote']");
 				}
 
