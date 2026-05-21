@@ -23,7 +23,13 @@
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
 //                    [--detach-pages] [--instrument] [--time-hooks]
-//                    [--incremental] [--chrome-outline]
+//                    [--incremental] [--chrome-outline] [--no-timing]
+//
+// --no-timing skips the per-page timing-handler.js injection. The handler
+// adds a per-page console.log relayed via CDP that costs ~2% of render
+// self-time on the 1638-page book. Use when profiling for the cleanest
+// possible bottom-up table; loses the per-page CSV and the first/last
+// quartile summary in return.
 //
 // --detach-pages also injects detach-pages.js -- a Paged.Handler that
 // hides each completed page from the layout tree -- to test whether
@@ -80,6 +86,7 @@ let instrument = false;
 let timeHooks = false;
 let incremental = false;
 let chromeOutline = false;
+let noTiming = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -91,6 +98,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--time-hooks') timeHooks = true;
   else if (a === '--incremental') incremental = true;
   else if (a === '--chrome-outline') chromeOutline = true;
+  else if (a === '--no-timing') noTiming = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -110,7 +118,8 @@ const handlerPath      = resolve(__dirname, 'timing-handler.js');
 const detachPagesPath  = resolve(__dirname, 'detach-pages.js');
 const instrumentPath   = resolve(__dirname, 'instrument-flush-ops.js');
 const timeHooksPath    = resolve(__dirname, 'time-hooks.js');
-const required = [pagedScriptPath, handlerPath];
+const required = [pagedScriptPath];
+if (!noTiming)  required.push(handlerPath);
 if (detachPages) required.push(detachPagesPath);
 if (instrument)  required.push(instrumentPath);
 if (timeHooks)   required.push(timeHooksPath);
@@ -183,7 +192,9 @@ try {
   });
 
   await page.addScriptTag({ path: pagedScriptPath });
-  await page.addScriptTag({ path: handlerPath });
+  if (!noTiming) {
+    await page.addScriptTag({ path: handlerPath });
+  }
   if (detachPages) {
     await page.addScriptTag({ path: detachPagesPath });
   }
@@ -338,7 +349,9 @@ try {
   console.log(`[harness] total    ${fmtMs(totalMs)}`);
 
   // Persist results -------------------------------------------------
-  const timing = await page.evaluate(() => window.__pagedTiming);
+  const timing = noTiming
+    ? { pages: [], phases: {}, pageCount: null }
+    : await page.evaluate(() => window.__pagedTiming);
   const pdfPath = join(outDir, 'book.pdf');
   writeFileSync(pdfPath, Buffer.from(finalPdf));
 
