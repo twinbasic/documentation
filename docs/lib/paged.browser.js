@@ -1366,6 +1366,25 @@
 	 * @param {any} context scope of this
 	 * @example this.content = new Hook(this);
 	 */
+	// [PATCH: sync-chain] Used by the chunker hot path to confirm that
+	// Hook.trigger() returned the sync sentinel (undefined). If a handler
+	// returned a thenable, the chunker dropping it here would silently
+	// lose async work -- so we throw instead. Limitation of this fork:
+	// the per-page hooks (beforePageLayout / afterPageLayout /
+	// finalizePage / handleBreaks / *layout / page.layout etc.) must
+	// have all-synchronous handlers. Bundle ships with no async handlers
+	// for these on our pipeline; document and assert.
+	function _assertSync(triggerResult, hookName) {
+		if (triggerResult && typeof triggerResult.then === "function") {
+			throw new Error(
+				"paged.js (forked): async handler registered for hook '" + hookName + "'. " +
+				"This bundle's per-page hot path is synchronous; async handlers " +
+				"must be registered for the once-per-render hooks (beforeParsed, " +
+				"afterParsed, afterRendered) instead, or the chain re-asyncified."
+			);
+		}
+	}
+
 	class Hook {
 		constructor(context){
 			this.context = context || this;
@@ -1499,7 +1518,11 @@
 			this.forceRenderBreak = false;
 		}
 
-		async renderTo(wrapper, source, breakToken, bounds = this.bounds) {
+		// [PATCH: sync-chain] renderTo no longer needs to be async because
+		// waitForImages is now sync (see its comment). Removing `async`
+		// removes the per-page Promise allocation that was returned from
+		// page.layout / chunker.layout up the chain.
+		renderTo(wrapper, source, breakToken, bounds = this.bounds) {
 			let start = this.getStart(source, breakToken);
 			let walker = walk$2(start, source);
 
@@ -1539,7 +1562,7 @@
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
-						await this.waitForImages(imgs);
+						this.waitForImages(imgs);
 					}
 
 					newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
@@ -1564,7 +1587,7 @@
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
-						await this.waitForImages(imgs);
+						this.waitForImages(imgs);
 					}
 
 					newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
@@ -1642,7 +1665,7 @@
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
-						await this.waitForImages(imgs);
+						this.waitForImages(imgs);
 					}
 
 					newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
@@ -1794,29 +1817,27 @@
 			}
 		}
 
-		async waitForImages(imgs) {
-			let results = Array.from(imgs).map(async (img) => {
-				return this.awaitImageLoaded(img);
-			});
-			await Promise.all(results);
-		}
-
-		async awaitImageLoaded(image) {
-			return new Promise(resolve => {
-				if (image.complete !== true) {
-					image.onload = function () {
-						let {width, height} = window.getComputedStyle(image);
-						resolve(width, height);
-					};
-					image.onerror = function (e) {
-						let {width, height} = window.getComputedStyle(image);
-						resolve(width, height, e);
-					};
-				} else {
-					let {width, height} = window.getComputedStyle(image);
-					resolve(width, height);
+		// [PATCH: sync-chain] waitForImages used to wrap every image in
+		// `new Promise(resolve => ...)` and await `Promise.all(...)`, so
+		// `renderTo` was forced to be async even when every image was
+		// already loaded (which is our case -- page.goto(url, {
+		// waitUntil: "load" }) settles before paged.js starts rendering).
+		//
+		// In our headless pipeline image.complete is always true at this
+		// point. If a future caller hits this with a not-yet-loaded
+		// image, that's a pipeline bug and we throw immediately rather
+		// than silently making the rest of the layout chain async again.
+		waitForImages(imgs) {
+			for (const img of imgs) {
+				if (img.complete !== true) {
+					throw new Error(
+						"paged.js (forked): image not loaded at render time. " +
+						"This branch dropped async image-loading support; the " +
+						"render pipeline must finish loading all images before " +
+						"calling paged.js. Image: " + (img.src || img.outerHTML)
+					);
 				}
-			});
+			}
 		}
 
 		avoidBreakInside(node, limiter) {
@@ -2411,7 +2432,10 @@
 		}
 		*/
 
-		async layout(contents, breakToken, maxChars) {
+		// [PATCH: sync-chain] page.layout / append no longer await
+		// renderTo (which is now sync). Removing `async` removes the
+		// Promise allocation around each return.
+		layout(contents, breakToken, maxChars) {
 
 			this.clear();
 
@@ -2424,7 +2448,7 @@
 
 			this.layoutMethod = new Layout(this.area, this.hooks, settings);
 
-			let renderResult = await this.layoutMethod.renderTo(this.wrapper, contents, breakToken);
+			let renderResult = this.layoutMethod.renderTo(this.wrapper, contents, breakToken);
 			let newBreakToken = renderResult.breakToken;
 
 			this.addListeners(contents);
@@ -2434,13 +2458,13 @@
 			return newBreakToken;
 		}
 
-		async append(contents, breakToken) {
+		append(contents, breakToken) {
 
 			if (!this.layoutMethod) {
 				return this.layout(contents, breakToken);
 			}
 
-			let renderResult = await this.layoutMethod.renderTo(this.wrapper, contents, breakToken);
+			let renderResult = this.layoutMethod.renderTo(this.wrapper, contents, breakToken);
 			let newBreakToken = renderResult.breakToken;
 
 			this.endToken = newBreakToken;
@@ -3078,18 +3102,18 @@
 		// 	}
 		// }
 
+		// [PATCH: sync-chain] *layout is a sync generator now, so
+		// renderer.next() returns synchronously -- no per-page await.
+		// render() itself stays `async` because callers (flow()) await
+		// it and other once-per-render awaits in flow() (loadFonts,
+		// beforeParsed / afterParsed / afterRendered) still need it.
 		async render(parsed, startAt) {
-			// [PATCH: drop-queue] Upstream routes per-page iteration through
-			// this.q.enqueue(...), but the queue's only job is serialization
-			// and the async generator is already inherently serial. Dropping
-			// the indirection cuts a queueMicrotask hop and a Promise/deferred
-			// allocation per page.
 			let renderer = this.layout(parsed, startAt);
 
 			let result;
 			while (true) {
 				if (this.stopped) return { done: true, canceled: true };
-				result = await renderer.next();
+				result = renderer.next();
 				if (this.stopped) return { done: true, canceled: true };
 				if (result.done) break;
 			}
@@ -3107,35 +3131,18 @@
 			// this.q.clear();
 		}
 
-		renderOnIdle(renderer) {
-			return new Promise(resolve => {
-				requestIdleCallback(async () => {
-					if (this.stopped) {
-						return resolve({ done: true, canceled: true });
-					}
-					let result = await renderer.next();
-					if (this.stopped) {
-						resolve({ done: true, canceled: true });
-					} else {
-						resolve(result);
-					}
-				});
-			});
-		}
+		// [PATCH: sync-chain] renderOnIdle and renderAsync removed --
+		// both wrapped renderer.next() (now sync) in async machinery,
+		// and the only caller (render() via this.q.enqueue) was already
+		// removed in the drop-queue change.
 
-		async renderAsync(renderer) {
-			if (this.stopped) {
-				return { done: true, canceled: true };
-			}
-			let result = await renderer.next();
-			if (this.stopped) {
-				return { done: true, canceled: true };
-			} else {
-				return result;
-			}
-		}
-
-		async handleBreaks(node, force) {
+		// [PATCH: sync-chain] handleBreaks no longer awaits hook triggers
+		// (Hook.trigger returns undefined on the all-sync path, which is
+		// our only path). If a future caller registers an async handler
+		// for any of these hooks, Hook.trigger will return a Promise and
+		// dropping it here will silently lose the work -- we assert that
+		// instead. The `_assertSync` helper lives below.
+		handleBreaks(node, force) {
 			let currentPage = this.total + 1;
 			let currentPosition = currentPage % 2 === 0 ? "left" : "right";
 			// TODO: Recto and Verso should reverse for rtl languages
@@ -3181,39 +3188,39 @@
 			}
 
 			if (page) {
-				// [PATCH: hook-fast-path] conditional await -- see Hook.trigger
-				let _p = this.hooks.beforePageLayout.trigger(page, undefined, undefined, this);
-				if (_p) await _p;
+				_assertSync(this.hooks.beforePageLayout.trigger(page, undefined, undefined, this), "beforePageLayout");
 				this.emit("page", page);
-				_p = this.hooks.afterPageLayout.trigger(page.element, page, undefined, this);
-				if (_p) await _p;
-				_p = this.hooks.finalizePage.trigger(page.element, page, undefined, this);
-				if (_p) await _p;
+				_assertSync(this.hooks.afterPageLayout.trigger(page.element, page, undefined, this), "afterPageLayout");
+				_assertSync(this.hooks.finalizePage.trigger(page.element, page, undefined, this), "finalizePage");
 				this.emit("renderedPage", page);
 			}
 		}
 
-		async *layout(content, startAt) {
+		// [PATCH: sync-chain] *layout is now a sync generator, not an
+		// async generator. With handleBreaks, page.layout, renderTo, and
+		// every per-page hook trigger all synchronous in our pipeline,
+		// nothing inside this generator needs to await. The sync form
+		// avoids ~1651 Promise allocations per render (one per
+		// `renderer.next()` call) and the matching microtask boundaries.
+		*layout(content, startAt) {
 			let breakToken = startAt || false;
 			let tokens = [];
 
 			while (breakToken !== undefined && (true)) {
 
 				if (breakToken && breakToken.node) {
-					await this.handleBreaks(breakToken.node);
+					this.handleBreaks(breakToken.node);
 				} else {
-					await this.handleBreaks(content.firstChild);
+					this.handleBreaks(content.firstChild);
 				}
 
 				let page = this.addPage();
 
-				// [PATCH: hook-fast-path] conditional await -- see Hook.trigger
-				let _p = this.hooks.beforePageLayout.trigger(page, content, breakToken, this);
-				if (_p) await _p;
+				_assertSync(this.hooks.beforePageLayout.trigger(page, content, breakToken, this), "beforePageLayout");
 				this.emit("page", page);
 
 				// Layout content in the page, starting from the breakToken
-				breakToken = await page.layout(content, breakToken, this.maxChars);
+				breakToken = page.layout(content, breakToken, this.maxChars);
 
 				if (breakToken) {
 					let newToken = breakToken.toJSON(true);
@@ -3227,10 +3234,8 @@
 					}
 				}
 
-				_p = this.hooks.afterPageLayout.trigger(page.element, page, breakToken, this);
-				if (_p) await _p;
-				_p = this.hooks.finalizePage.trigger(page.element, page, undefined, this);
-				if (_p) await _p;
+				_assertSync(this.hooks.afterPageLayout.trigger(page.element, page, breakToken, this), "afterPageLayout");
+				_assertSync(this.hooks.finalizePage.trigger(page.element, page, undefined, this), "finalizePage");
 				this.emit("renderedPage", page);
 
 				this.recoredCharLength(page.wrapper.textContent.length);

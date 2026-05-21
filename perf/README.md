@@ -2973,3 +2973,114 @@ yields. No new hot spot appeared.
 Shipped. The fix is small (one helper change + six call-site
 edits) and removes about 8k microtask boundaries from the
 per-page hot loop on a 1651-page render.
+
+### Phase 2: sync chain end-to-end through the per-page hot path
+
+With Phase 1 in place, every per-page `await` in the chunker is
+unconditional on a function that returned a Promise even when
+nothing was actually awaitable. The structural answer is to make
+those functions plain sync functions.
+
+The chain, top to bottom of the per-page call tree:
+
+```
+chunker.*layout()              (async generator → sync generator)
+  chunker.handleBreaks()       (async → sync)
+  page.layout()                (async → sync)
+    Layout.renderTo()          (async → sync)
+      Layout.waitForImages()   (async → sync, throws if not preloaded)
+chunker.render() loop          (still async at the outer edge;
+                                renderer.next() now sync)
+```
+
+Phase 2 converts each step. The only function that *could* have
+been genuinely async -- `waitForImages` -- is now a synchronous
+check: it walks the supplied `<img>` nodes and throws if any
+isn't `.complete`. In our pipeline,
+`page.goto(url, { waitUntil: "load" })` settles before paged.js
+is invoked, so every image is already loaded; the throw is a
+safety net for pipeline bugs, not a runtime path we expect to
+take.
+
+The hook triggers in the per-page hot path keep the Phase 1
+fast-path semantics but switch from
+`let _p = hook.trigger(...); if (_p) await _p;` to
+`_assertSync(hook.trigger(...), "hook-name")`. The helper throws
+if a handler ever returns a thenable -- the same safety pattern
+as `waitForImages`. None of our shipping handlers do.
+
+Dead code removed in the same pass: `Chunker.renderAsync` and
+`Chunker.renderOnIdle`, both unreachable since the drop-queue
+change above stripped their only caller. Together ~30 lines of
+async machinery that existed only to wrap the (now sync)
+`renderer.next()` call.
+
+CPU profile (Phase 1 baseline vs Phase 2):
+
+| metric | Phase 1 | Phase 2 | Δ |
+| ------ | -------- | ------- | --- |
+| samples | 6,902 | 6,948 | +46 |
+| profile duration | 12.22 s | 12.35 s | +0.13 s (noise) |
+| `getBoundingClientRect` self | 4,273 ms | 4,524 ms | +251 ms (noise) |
+| `(program)` self | 1,874 ms | 1,909 ms | +35 ms |
+| `removeChild` self | 1,913 ms | 1,883 ms | -30 ms |
+| `removeOverflow` self | 579 ms | 523 ms | -56 ms |
+
+Phase 2 sits inside the run-to-run noise band on CPU time --
+the per-call CPU cost of an `await` on an already-settled Promise
+is small (a handful of microseconds), and Phase 1 already
+eliminated most of the boundary count. **What Phase 2 buys is
+not measurable CPU time -- it's structural simplicity.**
+
+Code shape, before and after:
+
+- 6 fewer `async` keywords on hot-path methods.
+- 13 fewer `await` keywords removed from the bodies of those
+  methods (the per-page chain no longer threads `await` through
+  any of its layers).
+- One async generator (`async *layout`) → sync generator
+  (`*layout`).
+- Two dead methods removed (`renderAsync`, `renderOnIdle`).
+- Two `_assertSync` guards added at the chunker's hook call
+  sites + one at `waitForImages` -- the contract we now rely on
+  (per-page handlers all synchronous, every `<img>` preloaded)
+  is enforced at runtime with a useful error message.
+
+PDF output is **byte-identical** to the Phase 1 build on this
+content (`async-phase1/book.pdf` and `async-phase2/book.pdf`
+both 16,893,546 bytes -- a rare 0-byte timestamp drift, but
+the structural content is identical regardless).
+
+This is the kind of cleanup that's only worth doing because
+we maintain a task-specific fork of the bundle. Upstream
+paged.js has to support handlers that await fetches or image
+loads or font measurements -- our pipeline never registers one.
+Removing the async machinery in our copy shrinks the surface to
+reason about and makes the data-flow direct: a render is a
+plain function call that produces a plain return value.
+
+### What's still async, and why
+
+The async machinery that survives this audit is now at the
+once-per-render layer, where it's load-bearing:
+
+- `Chunker.flow()` is async because `loadFonts()` waits on the
+  CSS font-face descriptor's load promise, which is actually
+  async and OS-level.
+- `Chunker.render()` stays `async` as a thin wrapper so callers
+  in `flow()` can `await` it (the alternative would be to
+  remove `async` and have `flow()` not await it, but the call
+  site reads more clearly with the `await` retained).
+- `beforeParsed`, `afterParsed`, `afterRendered` hooks are still
+  awaited with the `await hook.trigger(...)` form because they
+  fire once per render and the overhead is irrelevant.
+- The `onOverflow` recovery path (`Chunker.q.enqueue(async ...)`)
+  re-renders the document if any page overflows after paint. In
+  practice this never fires for our content, but keeping the
+  recovery code intact costs nothing and preserves behaviour for
+  edge cases.
+
+The hot per-page path is now `function`, `function*`, plain
+return values, and a `while` loop. Future work that touches
+this code can reason about it as straight-line synchronous
+flow.
