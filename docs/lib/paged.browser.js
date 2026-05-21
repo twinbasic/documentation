@@ -3204,7 +3204,12 @@
 		// `renderer.next()` call) and the matching microtask boundaries.
 		*layout(content, startAt) {
 			let breakToken = startAt || false;
-			let tokens = [];
+			// [PATCH: tokens-set] Loop-detection used `tokens.lastIndexOf(...)`
+			// on an array, which scans up to N entries per page -- O(n^2)
+			// across a render. A Set gives O(1) lookup. The absolute saving
+			// on our 1651-page book is small (~80 us per late page) but the
+			// algorithmic shape is the load-bearing change.
+			let tokens = new Set();
 
 			while (breakToken !== undefined && (true)) {
 
@@ -3224,13 +3229,13 @@
 
 				if (breakToken) {
 					let newToken = breakToken.toJSON(true);
-					if (tokens.lastIndexOf(newToken) > -1) {
+					if (tokens.has(newToken)) {
 						// loop
 						let err = new OverflowContentError("Layout repeated", [breakToken.node]);
 						console.error("Layout repeated at: ", breakToken.node);
 						return err;
 					} else {
-						tokens.push(newToken);
+						tokens.add(newToken);
 					}
 				}
 
