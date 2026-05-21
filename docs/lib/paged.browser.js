@@ -32648,29 +32648,21 @@
 		UndisplayedFilter
 	];
 
-	var sign$1 = Math.sign;
-
-	var sign  = sign$1
-	  , abs$1   = Math.abs
+	var abs$1   = Math.abs
 	  , floor$1 = Math.floor;
 
-	var toInteger$1 = function (value) {
+	var toInteger = function (value) {
 		if (isNaN(value)) return 0;
 		value = Number(value);
 		if (value === 0 || !isFinite(value)) return value;
-		return sign(value) * floor$1(abs$1(value));
+		return Math.sign(value) * floor$1(abs$1(value));
 	};
 
-	var toInteger = toInteger$1
-	  , max       = Math.max;
+	var max = Math.max;
 
 	var toPosInteger = function (value) { return max(0, toInteger(value)); };
 
-	var from = Array.from;
-
-	var isNan = Number.isNaN;
-
-	var numberIsNaN       = isNan
+	var numberIsNaN       = Number.isNaN
 	  , toPosInt          = toPosInteger
 	  , value$1             = validValue
 	  , indexOf$1           = Array.prototype.indexOf
@@ -32702,7 +32694,7 @@
 	  , splice  = Array.prototype.splice;
 
 	// eslint-disable-next-line no-unused-vars
-	var remove$1 = function (itemToRemove /*, …item*/) {
+	var remove = function (itemToRemove /*, …item*/) {
 		forEach.call(
 			arguments,
 			function (item) {
@@ -32717,17 +32709,14 @@
 
 	var map = { function: true, object: true };
 
-	var isObject$1 = function (value) { return (isValue(value) && map[typeof value]) || false; };
-
-	var isObject = isObject$1;
+	var isObject = function (value) { return (isValue(value) && map[typeof value]) || false; };
 
 	var validObject = function (value) {
 		if (!isObject(value)) throw new TypeError(value + " is not an Object");
 		return value;
 	};
 
-	var aFrom          = from
-	  , remove         = remove$1
+	var aFrom          = Array.from
 	  , value          = validObject
 	  , d              = dExports
 	  , emit           = eventEmitterExports.methods.emit
