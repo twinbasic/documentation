@@ -1391,31 +1391,39 @@
 		}
 
 		/**
-		 * Triggers a hook to run all functions
-		 * @example this.content.trigger(args).then(function(){...});
-		 * @return {Promise} results
+		 * Triggers a hook to run all functions.
+		 * @return {Promise|undefined} A Promise that resolves when all
+		 *   thenable-returning handlers settle, OR `undefined` if no
+		 *   handler returned a thenable (the all-synchronous fast path).
+		 *
+		 * [PATCH: hook-fast-path] Upstream always wrapped sync handler
+		 * results in `new Promise(resolve => resolve(...))` and returned
+		 * `Promise.all(promises)`, so callers' `await trigger(...)` was a
+		 * mandatory microtask boundary even when every handler resolved
+		 * synchronously. We return `undefined` on the all-sync path so
+		 * callers can write:
+		 *
+		 *   let p = hook.trigger(...);
+		 *   if (p) await p;
+		 *
+		 * and skip the microtask boundary entirely. Per-page hot-loop
+		 * sites in the chunker do this; one-shot callers can keep the
+		 * `await trigger(...)` form (`await undefined` still works, just
+		 * with a cycle).
 		 */
 		trigger(){
 			var args = arguments;
 			var context = this.context;
-			var promises = [];
+			var promises;
 
-			this.hooks.forEach(function(task) {
-				var executing = task.apply(context, args);
-
-				if(executing && typeof executing["then"] === "function") {
-					// Task is a function that returns a promise
-					promises.push(executing);
-				} else {
-					// Otherwise Task resolves immediately, add resolved promise with result
-					promises.push(new Promise((resolve, reject) => {
-						resolve(executing);
-					}));
+			for (var i = 0; i < this.hooks.length; i++) {
+				var executing = this.hooks[i].apply(context, args);
+				if (executing && typeof executing["then"] === "function") {
+					(promises = promises || []).push(executing);
 				}
-			});
+			}
 
-
-			return Promise.all(promises);
+			return promises ? Promise.all(promises) : undefined;
 		}
 
 		/**
@@ -3173,11 +3181,14 @@
 			}
 
 			if (page) {
-				await this.hooks.beforePageLayout.trigger(page, undefined, undefined, this);
+				// [PATCH: hook-fast-path] conditional await -- see Hook.trigger
+				let _p = this.hooks.beforePageLayout.trigger(page, undefined, undefined, this);
+				if (_p) await _p;
 				this.emit("page", page);
-				// await this.hooks.layout.trigger(page.element, page, undefined, this);
-				await this.hooks.afterPageLayout.trigger(page.element, page, undefined, this);
-				await this.hooks.finalizePage.trigger(page.element, page, undefined, this);
+				_p = this.hooks.afterPageLayout.trigger(page.element, page, undefined, this);
+				if (_p) await _p;
+				_p = this.hooks.finalizePage.trigger(page.element, page, undefined, this);
+				if (_p) await _p;
 				this.emit("renderedPage", page);
 			}
 		}
@@ -3196,7 +3207,9 @@
 
 				let page = this.addPage();
 
-				await this.hooks.beforePageLayout.trigger(page, content, breakToken, this);
+				// [PATCH: hook-fast-path] conditional await -- see Hook.trigger
+				let _p = this.hooks.beforePageLayout.trigger(page, content, breakToken, this);
+				if (_p) await _p;
 				this.emit("page", page);
 
 				// Layout content in the page, starting from the breakToken
@@ -3214,8 +3227,10 @@
 					}
 				}
 
-				await this.hooks.afterPageLayout.trigger(page.element, page, breakToken, this);
-				await this.hooks.finalizePage.trigger(page.element, page, undefined, this);
+				_p = this.hooks.afterPageLayout.trigger(page.element, page, breakToken, this);
+				if (_p) await _p;
+				_p = this.hooks.finalizePage.trigger(page.element, page, undefined, this);
+				if (_p) await _p;
 				this.emit("renderedPage", page);
 
 				this.recoredCharLength(page.wrapper.textContent.length);

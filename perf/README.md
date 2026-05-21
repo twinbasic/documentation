@@ -2874,3 +2874,102 @@ in a render-style workload, hunt for explicit `requestAnimationFrame`
 / `setTimeout` / `requestIdleCallback` calls in the hot path before
 investigating microtask machinery. The frame-paced scheduler is a
 much bigger lever than the microtask scheduler.
+
+### Follow-up: the `Queue` itself was unnecessary indirection
+
+The chunker's `render()` routes each per-page iteration through
+`this.q.enqueue(() => this.renderAsync(renderer))`. The queue's
+job is to serialize tasks -- but an async generator is already
+inherently serial (you can't call `.next()` twice in parallel).
+With the rAF-tick fix above, the queue was reduced to a
+`queueMicrotask` hop plus a Promise/deferred allocation per page,
+for no purpose.
+
+Dropped the indirection: `render()` now iterates `renderer.next()`
+directly. The `Queue` class still exists in the bundle for the
+`onOverflow` re-render path (which is rare in practice), but the
+hot per-page loop bypasses it.
+
+This is a structural simplification more than a measurable speedup
+-- the queueMicrotask hop was already cheap and the deferred
+allocation amortizes. But it removes a layer that was doing
+nothing useful for our use case, which is the point of
+maintaining a fork.
+
+## Stripping headless-irrelevant async machinery
+
+paged.js was designed to be fully usable in interactive browser
+work. The async coordination patterns it carries -- always
+returning Promises from hook triggers, awaiting microtask
+boundaries between every phase, deferring tasks via animation
+frames -- pay off when the same engine is rendering inside a
+visible page that needs to stay responsive, coordinate with the
+compositor, and tolerate handlers that load external resources.
+
+In our headless puppeteer pipeline, none of that is true:
+
+- The page is offscreen; no compositor to coordinate with.
+- We don't care if any individual page-render blocks for tens of
+  milliseconds, because the browser isn't trying to repaint.
+- Every handler we register is synchronous. No hook needs to
+  await anything.
+- The book HTML is loaded before render starts (`page.goto(url,
+  { waitUntil: "load" })`), so every image's `.complete` flag is
+  already true. No image-loading awaits ever actually wait.
+
+Each remaining async wrapper is overhead we pay for a flexibility
+we never use. We're maintaining a task-specific fork; we can keep
+peeling layers as long as the simplifications don't change observed
+output.
+
+### Phase 1: hook fast-path
+
+`Hook.trigger()` upstream always wraps sync handler results in
+`new Promise(resolve => resolve(executing))` and returns
+`Promise.all(promises)`. The chunker's per-page loop awaits each
+of `beforePageLayout`, `afterPageLayout`, and `finalizePage`. With
+all six of our registered handlers running synchronously,
+`await trigger(...)` was a no-work microtask boundary per call.
+
+Patch: `Hook.trigger()` returns `undefined` when no handler
+returned a thenable. Callers in the per-page hot path become:
+
+```js
+let _p = this.hooks.X.trigger(...);
+if (_p) await _p;
+```
+
+The microtask boundary is skipped entirely on the sync fast
+path. Patched at six per-page sites (three in `chunker.layout`,
+three in `chunker.handleBreaks`).
+
+CPU profile comparison (post-queue-tick + drop-queue baseline vs
+post-Phase-1):
+
+| metric | baseline | Phase 1 | Δ |
+| ------ | -------- | ------- | --- |
+| samples | 7,353 | 6,902 | -451 |
+| profile duration | 13.07 s | 12.22 s | **-0.85 s (-6.5 %)** |
+| `getBoundingClientRect` self | 4,622 ms | 4,273 ms | -349 ms |
+| `(program)` self | 1,873 ms | 1,874 ms | flat |
+| `removeChild` self | 1,885 ms | 1,913 ms | flat |
+| `removeOverflow` self | 592 ms | 579 ms | flat |
+| `(idle)` self | n/a (< 130 ms) | n/a (< 130 ms) | flat |
+
+The 451 fewer samples account for ~800 ms of saved CPU work.
+`getBoundingClientRect`'s self-time dropped by ~350 ms; the rest
+is distributed across many small hot spots that all shrank
+slightly because they were each preceded by fewer microtask
+yields. No new hot spot appeared.
+
+> [!NOTE]
+> We compare CPU-profile sample counts and self-times here, not
+> wall-clock. Wall-clock includes I/O variance and system load on
+> the dev machine; CPU profile sample times are independent of
+> those and more reliable for "did this actually change CPU work."
+> Wall-clock numbers from these runs are noted where useful for
+> sanity-checking but aren't the primary signal.
+
+Shipped. The fix is small (one helper change + six call-site
+edits) and removes about 8k microtask boundaries from the
+per-page hot loop on a 1651-page render.
