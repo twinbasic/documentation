@@ -3646,3 +3646,176 @@ it can be replaced with a cheaper equivalent.
 `find-callees.mjs` was added for this investigation and
 sits alongside `find-callers.mjs`; the two together cover
 both directions of the V8 attribution edge.
+
+## The per-page overflow-check rhythm: two bugs in the adaptive `maxChars`
+
+The "Attempt E: additive backoff" section above describes
+the per-page rhythm of `renderTo`'s overflow checks: append
+nodes, fire `findBreakToken` every `maxChars` chars of
+appended content, break out when it returns a non-null
+breakToken. `maxChars` defaults to 1500 and is meant to
+adapt up or down based on observed page capacity.
+
+The post-wrapContent profile showed `findOverflow` total
+2.24 s, almost all of it (1.96 s) in `hasOverflow`'s single
+gate gBCR -- one call per `findBreakToken`. Was the call
+count high because the page actually needs that many
+probes, or was the rhythm wrong?
+
+Instrumenting with `window.__breakCheckStats` and
+`window.__layoutMaxChars` answered it:
+
+```
+findBreakToken checks: 7,764  hits: 862  nulls: 6,902
+renderTo calls: 1651  checks/call avg: 4.70
+Layout.maxChars: first=1500  median=177  last=177  min=177  max=1500
+```
+
+Four findings:
+
+1. **89 % of checks (6,902 / 7,764) return null.** They're
+   "no overflow yet, keep appending" probes. Each is still
+   a full layout-flush gBCR. The actual overflow detections
+   are 862, slightly more than half of the 1651 pages
+   (the rest end naturally, or via CSS-driven breaks).
+
+2. **`Layout.maxChars` was locked at 177 for the entire
+   render** after page 1. That's an order of magnitude
+   below a typical page's capacity (which the @page CSS,
+   font size, and content density determine -- closer to
+   4000-4500 chars of body text on this book). Page 1 ran
+   with the default 1500; pages 2-1651 ran with 177.
+
+3. The reason was a propagation gate in `Page.layout`:
+   ```js
+   if (!settings.maxChars && maxChars) {
+       settings.maxChars = maxChars;
+   }
+   ```
+   `settings` is shared across all pages (one object, set
+   by reference in the Chunker constructor). The chunker
+   maintains a running estimate in `this.maxChars` via
+   `recordCharLength` and passes it into each page's
+   `layout(..., maxChars)`. But `!settings.maxChars` is
+   only truthy on the first page that gets a defined value
+   -- the rest see settings.maxChars already populated and
+   skip the update. Whatever value page 2 picked up (177,
+   from a freak short page 1 that had been recorded as
+   capacity), every subsequent page kept.
+
+4. The recording itself is biased. `recordCharLength` pushes
+   `page.wrapper.textContent.length` after every layout and
+   averages the last 4 values. Short pages -- chapter
+   endings, part dividers -- get recorded alongside full
+   pages, dragging the average well below true capacity.
+   Even with propagation fixed, the average would land
+   around 1200, not 4500.
+
+### The fix
+
+Two patches in `docs/lib/paged.browser.js`, marked
+`// [PATCH: maxChars-propagate]` and `// [PATCH: maxChars-
+running-max]`:
+
+1. **`Page.layout`'s gate drops the staleness check**:
+   `if (maxChars) settings.maxChars = maxChars;`. Each page
+   now picks up the chunker's current estimate.
+
+2. **`Chunker.recordCharLength` tracks the running max over
+   the last 16 pages** instead of the running average over
+   4. Max biases toward "the largest page recently seen,"
+   which approximates true capacity for our content. Short
+   pages still get pushed into the window but don't pull
+   the estimate down. The window of 16 is wide enough that
+   a transient stretch of short pages doesn't collapse the
+   estimate before a full page restores it.
+
+### Results
+
+Paired A/B, 2 runs each, `--detach-pages --no-timing`, no
+profiling:
+
+| run | pre | post |
+| --- | --- | --- |
+| 1 | 10.08 s | 8.15 s |
+| 2 | 11.86 s | 7.98 s |
+| **avg** | **10.97 s** | **8.07 s** |
+
+**Δ = -2.90 s render (-26 %).** CPU profile (single run,
+within noise band on the smaller rows):
+
+| metric                   | pre        | post       | Δ |
+| ------------------------ | ---------- | ---------- | --- |
+| `findOverflow` total     | 2,236 ms   | 1,690 ms   | **-546 ms** |
+| ↳ `hasOverflow` total    | 1,957 ms   | 1,597 ms   | -360 ms |
+| ↳ ↳ `gBCR` native        | 1,945 ms   | 1,587 ms   | -358 ms |
+| ↳ `findOverflow` self    | 142 ms     | 47 ms      | -95 ms |
+| ↳ walker-loop callees    | ~135 ms    | ~46 ms     | -89 ms |
+| `removeOverflow` self    | 353 ms     | 122 ms     | **-231 ms** |
+| `removeChild` self       | 1,731 ms   | 1,637 ms   | flat (noise) |
+| `(program)` self         | 2,152 ms   | 2,215 ms   | flat (noise) |
+
+The `removeOverflow` drop was the surprise. Going in, the
+concern was that bigger `maxChars` (now ~4500 instead of
+177) would mean larger overshoot when overflow fired -- so
+`extractContents` / `deleteContents` would have more nodes
+to detach. The opposite happened: `removeOverflow` self
+dropped two-thirds. The reason is the call count, not the
+per-call size. With `maxChars=177` the renderTo loop
+checked at every 177-char interval, but many of those
+checks were *near* the page boundary, where the walker in
+`findOverflow` did real work even when returning null
+(walking nodes to test text-break candidates that don't
+quite fit). With `maxChars=4500`, the very first check on
+most pages fires right at the overflow point; the walker
+runs once per page instead of several times, and the per-
+call work it does is roughly the same as before.
+
+PDF output is byte-identical to the pre-fix build
+(16.1 MB, same checksum on the raw Chromium output).
+
+### Why the average was the wrong statistic
+
+The textbook reason to track a running average is to
+estimate a stationary quantity in the presence of noise.
+The thing being estimated here -- "how many chars fit on a
+full page" -- is a tight ceiling, not a noisy reading: each
+page's textContent.length either equals page capacity
+(because the page broke for overflow) or is well below it
+(because content ran out / a CSS break fired). The
+distribution is bimodal, and the average sits between the
+modes -- exactly where it's worst as an estimator of
+either.
+
+The running max, by contrast, finds the upper mode and
+sticks to it. It only moves down if the entire window is
+sub-capacity pages, which means the document genuinely
+doesn't have full pages anymore (end of book, perhaps), at
+which point the estimate doesn't matter much.
+
+### Where this leaves the picture
+
+Render is now ~8 s on the 1651-page book, down from ~11 s
+post-wrapContent, down from ~104 s in the original
+baseline. Updated cumulative table:
+
+| fix                                 | render saved | shipped |
+| ----------------------------------- | ------------ | ------- |
+| `--detach-pages` (display:none)     |   ~55 s      | yes     |
+| aggressive detach (`removeChild`)   |   ~22 s      | yes     |
+| `renderTo` additive backoff         |   ~4.25 s    | yes     |
+| skip dead `findEndToken` path       |   ~3.5 s     | yes     |
+| `findRef` fast-path                 |   ~2.4 s     | yes     |
+| queue-tick: rAF -> queueMicrotask   |   ~2.6 s     | yes     |
+| `finalizePage` micro-optimisations  |   ~3 s       | yes     |
+| `wrapContent` move (skip innerHTML) |   ~0.9 s     | yes     |
+| **`maxChars` propagation + max**    | **~2.9 s**   | **yes** |
+| (others, smaller)                   |   ~3 s       | yes     |
+
+The strategic conclusion at the bottom of "Where this
+leaves the picture" updates accordingly: render is now
+roughly half the size of generate (~8 s vs ~32 s wall on
+the production build), and `pageRanges` sharding remains
+the only knob with a profile target large enough to move
+the wall-clock total meaningfully -- and that target is
+generate, not render.

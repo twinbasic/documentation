@@ -2375,7 +2375,17 @@
 			this.startToken = breakToken;
 
 			let settings = this.settings;
-			if (!settings.maxChars && maxChars) {
+			// [PATCH: maxChars-propagate] Upstream gated this on
+			// `!settings.maxChars`, which froze the chunker's running
+			// estimate at whatever value the first non-empty page produced.
+			// On a book whose first real page happens to be short, the
+			// estimate locked in tiny (e.g. 177 chars) and every later page
+			// fell back to checking overflow every 177 chars of new
+			// content -- ~5 hasOverflow / gBCR layout flushes per page on
+			// average, where 1-2 would suffice. Always propagate so each
+			// page picks up the most recent estimate; the chunker's
+			// recordCharLength still drives that value.
+			if (maxChars) {
 				settings.maxChars = maxChars;
 			}
 
@@ -3183,12 +3193,26 @@
 
 			this.charsPerBreak.push(length);
 
-			// Keep the length of the last few breaks
-			if (this.charsPerBreak.length > 4) {
+			// [PATCH: maxChars-running-max] Upstream tracked the running
+			// average over the last 4 page text-content lengths and used
+			// it as `maxChars`, the renderTo overflow-check period.
+			// Average is the wrong statistic: short pages (chapter ends,
+			// part dividers) get recorded alongside full pages, dragging
+			// the estimate well below true page capacity. The check then
+			// fires several times per full page when one call would have
+			// sufficed -- each call is a hasOverflow / gBCR layout flush.
+			// The running max over a wider window biases toward true
+			// capacity (the largest page recently seen), so overflow
+			// pages typically resolve in a single check.
+			if (this.charsPerBreak.length > 16) {
 				this.charsPerBreak.shift();
 			}
 
-			this.maxChars = this.charsPerBreak.reduce((a, b) => a + b, 0) / (this.charsPerBreak.length);
+			let m = 0;
+			for (let i = 0; i < this.charsPerBreak.length; i++) {
+				if (this.charsPerBreak[i] > m) m = this.charsPerBreak[i];
+			}
+			this.maxChars = m;
 		}
 
 		removePages(fromIndex=0) {
