@@ -3084,3 +3084,318 @@ The hot per-page path is now `function`, `function*`, plain
 return values, and a `while` loop. Future work that touches
 this code can reason about it as straight-line synchronous
 flow.
+
+## Doing less work in `Layout.append()`
+
+Picking the next hotspot after the async cleanup, BreakToken
+JSON, gBCR wrapper inline, and UUID-counter changes had all
+landed. Fresh profile from a clean baseline at 100us sampling
+(V8 effectively clamped this to ~543us/sample on this Node/
+Chromium build), `--no-timing --detach-pages`, render-only:
+
+```
+   self_ms   self_%   function  @  source
+   -------   ------   --------------------------------------------------
+   4825.28   38.22%   getBoundingClientRect       (native)
+   2021.89   16.02%   (program)                   (native)
+   1954.01   15.48%   removeChild                 (native)
+    635.95    5.04%   removeOverflow              paged.browser.js
+    288.38    2.28%   wrapContent                 paged.browser.js
+    255.25    2.02%   insertBefore                (native)
+    227.01    1.80%   appendChild                 (native)
+    164.01    1.30%   findOverflow                paged.browser.js
+    140.66    1.11%   (garbage collector)         (native)
+    138.49    1.10%   afterPageLayout             paged.browser.js (Splits)
+    129.25    1.02%   cloneNode                   (native)
+    125.99    1.00%   addRefs                     paged.browser.js
+     90.15    0.71%   renderTo                    paged.browser.js
+     81.46    0.65%   filterTree                  paged.browser.js
+     80.92    0.64%   importNode                  (native)
+     80.38    0.64%   setAttribute                (native)
+     72.77    0.58%   append                      paged.browser.js
+     ...
+```
+
+The four heavy hitters are unchanged from earlier reports.
+`Layout.append` itself shows only 73 ms of self-time, but
+inclusively it owns a large fraction of the per-source-node
+work: `cloneNode`, `appendChild`/`insertBefore`, the
+`findElement` chain (`querySelector` + `getAttribute`), the
+`renderNode` hook dispatch, and `rebuildAncestors` at page
+boundaries all flow through it. With ~100k+ source-node
+clones per render, anything per-call adds up.
+
+Reading the body of `append()`, three things stood out as
+potentially-reducible:
+
+1. The `renderNode` hook dispatch fires for every cloned
+   node. Even if no handler is registered, `triggerSync`
+   still allocates a results array, runs `this.hooks.forEach`
+   over zero entries, and returns the empty array; the
+   caller then runs its own `.forEach` over that empty array.
+2. The `findElement(node.parentNode, dest)` lookup goes
+   through `getAttribute("data-ref")` on the parent. The
+   ref is also set on every source element at decoration
+   time, so the value could be stashed on a plain JS expando.
+3. `clone.dataset.ref` is read a second time at the end of
+   `append()` to register the clone in `dest.indexOfRefs`.
+   Same expando trick applies.
+
+Following the (1) thread first uncovered two separable wins:
+a bug inside the only registered `renderNode` handler, and
+the broader empty-handlers dispatch overhead.
+
+### `Footnotes.renderNode`: always-truthy NodeList condition
+
+The grep for `renderNode` method definitions in the bundle
+returns exactly one match: `Footnotes.renderNode` (in the
+package's footnotes-handling class). Every `append()` call
+goes through it. Its body:
+
+```js
+renderNode(node) {
+    if (node.nodeType == 1) {
+        let notes;
+        if (!node.dataset) return;
+
+        if (node.dataset.note === "footnote") {
+            notes = [node];
+        } else if (node.dataset.hasNotes ||
+                   node.querySelectorAll("[data-note='footnote']")) {
+            notes = node.querySelectorAll("[data-note='footnote']");
+        }
+
+        if (notes && notes.length) {
+            this.findVisibleFootnotes(notes, node);
+        }
+    }
+}
+```
+
+The `else if` condition has an upstream bug: a `NodeList` is
+always truthy (even an empty one -- it's an object), so when
+`dataset.hasNotes` is undefined the right arm of the `||`
+runs `querySelectorAll`, the condition evaluates true, and
+the next line then runs `querySelectorAll` **a second time**.
+Two subtree scans per element-node clone, for any document
+that doesn't author `data-note='footnote'` directly.
+
+`grep -c 'data-note' docs/_site-pdf/book.html` returns 0 --
+every one of those scans on every clone of every page of
+the book was dead work.
+
+The fix narrows the `else if` to the original intent:
+
+```js
+} else if (node.dataset.hasNotes) {
+    notes = node.querySelectorAll("[data-note='footnote']");
+}
+```
+
+Profile delta (post-tojson baseline vs surgical fix):
+
+| metric | baseline | post-fix | Δ |
+| ------ | -------- | -------- | --- |
+| render wall | 12.63 s | 12.63 s | flat (within noise) |
+| `querySelectorAll` self | 67.9 ms | 52.8 ms | -15 ms |
+| samples | 23,313 | 23,250 | -63 |
+
+A small saving in absolute terms: most of the eliminated
+`querySelectorAll` calls were against tiny leaf subtrees
+that terminate in microseconds when no matches are present.
+The bug fix is upstream-clean and correct; the perf-relevant
+takeaway was that *most* of the work `append()` pays for the
+`renderNode` hook is in the dispatch wrapping the handler,
+not in the handler's body. That motivated (2).
+
+### `Hook.triggerSync` empty-handlers fast-path
+
+Mirrors the README's earlier "Phase 1: hook fast-path" for
+the async `trigger()` path. `Hook.triggerSync` previously:
+
+```js
+triggerSync() {
+    var args = arguments;
+    var context = this.context;
+    var results = [];
+    this.hooks.forEach(function (task) {
+        var executing = task.apply(context, args);
+        results.push(executing);
+    });
+    return results;
+}
+```
+
+…and the four reducer call sites in `Layout` always did:
+
+```js
+let r = this.hooks.X.triggerSync(...);
+r.forEach((newVal) => { if (newVal !== undefined) target = newVal; });
+```
+
+Walking the bundle to see which of those four hook arrays
+are actually populated in our build:
+
+| call site | hook | handlers registered |
+| --------- | ---- | ------------------- |
+| `breakAt` (line 1551) | `onBreakToken` | 0 |
+| `append` (line 1640) | `renderNode` | 1 (`Footnotes`) |
+| `findBreakToken` (line 1805) | `onOverflow` | 0 |
+| `findBreakToken` (line 1815) | `onBreakToken` | 0 |
+| `Chunker.flow` (line 2910) | `filter` | 4 |
+
+Three of the four hot sites are dispatching against an empty
+handler array every call. `onOverflow` and the two
+`onBreakToken` sites all fire from the per-page break-
+detection path, which can run more than once per page when
+overflow-and-retry happens.
+
+Patch: `triggerSync` returns `undefined` on the empty path,
+callers guard their reducer `forEach` with a truthy check.
+
+```js
+triggerSync() {
+    if (this.hooks.length === 0) return undefined;
+    // ...existing body
+}
+```
+
+```js
+let r = this.hooks.X.triggerSync(...);
+if (r) r.forEach((newVal) => { ... });
+```
+
+Profile delta (post-surgical vs post-fast-path):
+
+| metric | post-surgical | post-fast-path | Δ |
+| ------ | ------------- | -------------- | --- |
+| render wall | 12.63 s | **12.14 s** | **-0.49 s** |
+| samples | 23,250 | 22,433 | -817 |
+| `getBoundingClientRect` self | 4,819 ms | 4,714 ms | -105 ms |
+| `removeChild` self | 1,962 ms | 1,902 ms | -60 ms |
+| `removeOverflow` self | 634 ms | 552 ms | -82 ms |
+| `querySelectorAll` self | 52.8 ms | 43.4 ms | -10 ms |
+
+The wall-clock drop (~490 ms) and sample drop (817 × 542 us
+≈ 443 ms) line up cleanly, so the saving is real, not run-
+to-run noise. The reductions spread across rows because the
+per-call cost of an empty `triggerSync` -- an array alloc, a
+forEach over zero entries, a return, and the caller's own
+forEach over the returned `[]` -- creates pressure on the
+allocator and the V8 inliner that compounds on the per-page
+hot path even though no single line attributes the cost.
+
+The `renderNode` site at line 1640 does **not** hit the fast
+path in this build -- `Footnotes` still occupies it with one
+handler, so `hooks.length === 1` and the body runs as
+before. The savings come entirely from the three zero-
+handler sites.
+
+### `Footnotes` self-disables when no footnotes are in source
+
+That left the per-element `Footnotes.renderNode` dispatch
+still firing on every cloned node, plus four other hook
+methods `Footnotes` registers via the `Handler` base auto-
+wiring. Inventory of what `Footnotes` is doing on a render
+with zero footnote-marked nodes:
+
+| method | fires | what it does on a footnote-free doc |
+| ------ | ----- | ----------------------------------- |
+| `onDeclaration` | per CSS declaration | quick property-name checks. Cheap. |
+| `renderNode` | per element-node clone | short-circuits after surgical fix. |
+| `beforePageLayout` | once per page | checks `this.needsLayout.length` (always 0). Cheap. |
+| `afterPageLayout` | once per page | **3 `querySelector`s + `getBoundingClientRect` + `new Layout(...)` (which does 2 more `getBoundingClientRect`s + `getComputedStyle` in its constructor) + `findOverflow()` on the footnote-inner-content area.** Real work. |
+| `afterOverflowRemoved` | per overflow detection | `querySelectorAll` returning empty. Cheap-ish. |
+
+The big hidden cost was `afterPageLayout` -- ~1,650 calls per
+render, each measuring an empty footnote area through several
+DOM ops and constructing a transient `Layout` instance whose
+constructor itself does multiple gBCRs.
+
+The detect-and-disable plan:
+
+1. Footnotes is the *only* registrant for each of its hook
+   methods (`onDeclaration` aside -- it's a polisher-time
+   hook with other registrants, but it's also cheap).
+2. By the time `afterParsed` fires, both the CSS-driven
+   selectors (populated by `onDeclaration` calls into
+   `this.footnotes`) and any source-HTML `data-note` markers
+   are accounted for. `Footnotes.afterParsed` already runs
+   `processFootnotes(parsed, this.footnotes)` which writes
+   `data-note='footnote'` on any element matching a CSS
+   selector. So a single `parsed.querySelector(
+   "[data-note='footnote']")` at the end of that pass is
+   conclusive.
+3. If null, splice `Footnotes`'s bound functions back out
+   of each hook array. With the empty-handlers fast-path
+   from (2) already landed, the per-page and per-node
+   dispatches then return `undefined` immediately and
+   callers skip their reducer `forEach`.
+
+To enable (3), the `Handler` base class gets a small
+addition: each `(hook, bound)` pair from auto-registration
+is stashed under its hook name on `this._registered`, and a
+new `_unregisterAll(except)` method splices each entry back
+out. The `except` argument lets the caller skip the hook
+it's currently inside (`afterParsed` in this case) --
+splicing the array we're iterating would cause the
+surrounding `trigger()` loop to skip a sibling handler.
+The skipped entry stays in `this._registered` forever, but
+it's a one-shot anyway: harmless.
+
+`Footnotes.afterParsed` then becomes:
+
+```js
+afterParsed(parsed) {
+    this.processFootnotes(parsed, this.footnotes);
+    if (!parsed.querySelector("[data-note='footnote']")) {
+        this._unregisterAll("afterParsed");
+    }
+}
+```
+
+Profile delta (post-fast-path vs post-self-disable):
+
+| metric | post-fast-path | post-self-disable | Δ |
+| ------ | -------------- | ----------------- | --- |
+| render wall | 12.14 s | **11.77 s** | **-0.37 s** |
+| samples | 22,433 | 21,809 | -624 |
+| **`getBoundingClientRect` self** | **4,714 ms** | **4,198 ms** | **-516 ms** |
+| `removeChild` self | 1,902 ms | 1,898 ms | flat |
+| `(program)` self | 2,022 ms | 2,198 ms | +176 ms |
+| `append` self | 76 ms | 69 ms | -7 ms |
+
+The 516 ms `getBoundingClientRect` drop is exactly the
+`Footnotes.afterPageLayout` cost that the inventory
+predicted -- one gBCR on `noteContent` plus two more in
+the `new Layout(noteArea, ...)` constructor plus internal
+gBCRs from `findOverflow()`, multiplied by ~1,650 pages.
+The `(program)` row growing by 176 ms is V8 reattributing
+work between native and self-time as the dispatch pattern
+changes; not new work, just a different breakdown.
+
+PDF output remained byte-identical to the previous build
+on this content (16.1 MB, same checksum on the raw
+Chromium output).
+
+### Cumulative effect
+
+Across all three landings:
+
+| metric | pre-investigation | post-self-disable | Δ |
+| ------ | ----------------- | ----------------- | --- |
+| render wall | 12.63 s | 11.77 s | **-0.86 s (-6.8 %)** |
+| samples | 23,313 | 21,809 | -1,504 |
+| `getBoundingClientRect` self | 4,825 ms | 4,198 ms | -627 ms |
+| `removeChild` self | 1,954 ms | 1,898 ms | -56 ms |
+| `removeOverflow` self | 636 ms | 568 ms | -68 ms |
+
+The `Handler._registered` + `_unregisterAll(except)` plumbing
+is reusable: any future handler that determines at
+parse/decoration time that it has nothing to do for a given
+render can self-disable the same way, and the
+empty-handlers fast-path will swallow the per-call dispatch
+cost for free. That's the pattern this work leaves behind --
+combine "detect once at a known-quiet point" with "remove
+yourself from the dispatch chain" and you pay zero
+ongoing cost for inactive handlers.
