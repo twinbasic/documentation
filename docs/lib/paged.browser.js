@@ -1985,7 +1985,12 @@
 
 				if (breakToken && breakToken.node && extract) {
 					let removed = this.removeOverflow(overflow, breakLetter);
-					this.hooks && this.hooks.afterOverflowRemoved.trigger(removed, rendered, this);
+					// [PATCH: assert-sync] Guard against silent async-handler
+					// drop. Upstream fired the trigger without `await`, so any
+					// async handler's work would have been lost. _assertSync
+					// throws instead if a handler returns a thenable -- the
+					// fork's per-page hot path is synchronous, see Hook.trigger.
+					if (this.hooks) _assertSync(this.hooks.afterOverflowRemoved.trigger(removed, rendered, this), "afterOverflowRemoved");
 				}
 
 			}
