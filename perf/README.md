@@ -68,6 +68,9 @@ DevTools-compatible trace is a few lines.
 | `compare-outlines.mjs` | Diffs two PDFs' `/Outlines` trees by `(depth, title, target page)`. Used to verify whether Chrome's native outline matches the injected one. |
 | `probe-outline-exclusions.mjs` | Tests which per-element attributes / styles (aria-hidden, role=presentation, hidden, display:none, CSS bookmark-level, ...) make Chrome drop a heading from its outline. |
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
+| `find-callers.mjs` | "Who paid for this callee's time?" -- walks a `.cpuprofile` and attributes a target function's total time back to each direct caller. Used throughout the post-mortems to detect gBCR migration between callers. |
+| `find-callees.mjs` | The other direction of `find-callers.mjs`: splits a function's self+descendant time across its direct callees. Surfaces the cases where V8 has rolled native DOM work back into the calling JS frame (Range deletion in `removeOverflow`, HTML parser in `wrapContent`). |
+| `grep-profile.mjs` | Lists every node in a `.cpuprofile` whose `functionName` matches a regex, with self-time and location. Quick check for "is this frame in the profile at all, and what's it called?" |
 | `run.bat` | Windows wrapper. Installs deps on first run, then invokes `node measure.mjs`. |
 | `results/` | Output, one timestamped subfolder per run. Git-ignored. |
 
@@ -3489,3 +3492,157 @@ cost for free. That's the pattern this work leaves behind --
 combine "detect once at a known-quiet point" with "remove
 yourself from the dispatch chain" and you pay zero
 ongoing cost for inactive handlers.
+
+## Skipping the `wrapContent` innerHTML round-trip
+
+The post-append-cache profile's 5th-largest JS row was
+`wrapContent` at 260 ms. It's called once per render, right
+at the top of `Chunker.flow`, so unlike the previous fixes it
+has no per-page hot path -- the absolute size is the whole
+story.
+
+`Layout.wrapContent` lifts the entire `<body>` into a
+`<template data-ref='pagedjs-content'>` so the chunker can
+iterate the source without disturbing the live DOM. Original:
+
+```js
+template.innerHTML = body.innerHTML;
+body.innerHTML = "";
+body.appendChild(template);
+```
+
+Two heavy halves, both linear in document size:
+
+1. **`body.innerHTML` getter**: walks every node in the body
+   and serialises the entire subtree to one HTML string.
+2. **`template.innerHTML = ...` setter**: hands the string to
+   the HTML parser, which reparses it into a fresh tree
+   inside the template's contents-owner document.
+
+On our 5.5 MB book, the round-trip is exactly 260 ms.
+`find-callees.mjs` confirms 99 % of that lives in the JS frame
+itself (the C++ serialiser/parser get attributed back to the
+calling frame, same trick `removeOverflow`'s `Range`
+deletion uses):
+
+```
+wrapContent: self=259.97ms, total=262.15ms (callees=2.18ms)
+per direct callee (subtree total ms):
+      2.18 ms   querySelector  @  (native):0
+```
+
+The fix moves children directly into a plain
+`DocumentFragment`, no string round-trip:
+
+```js
+let fragment = document.createDocumentFragment();
+while (body.firstChild) fragment.appendChild(body.firstChild);
+template = document.createElement("template");
+template.dataset.ref = "pagedjs-content";
+template._pagedjsContent = fragment;  // re-entrancy stash
+body.appendChild(template);
+return fragment;
+```
+
+### Why a plain fragment, not `template.content`
+
+The first cut moved children into the template's content,
+which is the obvious shape since `wrapContent` was already
+returning `template.content`. It crashed on the first page:
+
+```
+paged.js (forked): image not loaded at render time.
+Image: file:///.../Features/Images/b0724fe2-....png
+   at Layout.waitForImages
+   at Layout.renderTo
+```
+
+The reason is in the spec. A `<template>`'s `content` fragment
+is owned by a separate "template contents owner document"
+that has no browsing context -- resources inside it never
+load. Moving a live `<img>` into `template.content` triggers
+`adoptNode` to that inert document, which then runs the
+"update the image data" algorithm, creates a fresh request
+in state "unavailable", and flips `.complete` to false. The
+source image is now stuck in that state; clones into the live
+page wrappers inherit it without the synchronous cache-hit
+path firing in time for the sync `[PATCH: assert-sync]`
+`waitForImages` check.
+
+The `innerHTML` round-trip avoids this incidentally: the
+freshly-parsed `<img>` elements in `template.content` are
+brand new (never live), they have no prior load state to
+disturb, and when their clones land in the live page wrappers
+Chromium's file:// cache lookup resolves them synchronously.
+
+A plain `DocumentFragment` is owned by the live document.
+Moving children into it is a same-document append -- no
+adoption, no "update the image data", no `.complete` reset.
+Clones from the fragment into the live page wrappers then
+take the same fast cache path the round-trip's parsed images
+did.
+
+### Re-entrancy
+
+The original returned `template.content`, so a second call
+finding the existing template just returned that same
+fragment. Under the move strategy `template.content` is
+empty (the children live in the plain fragment we returned),
+so the re-entrant branch reads the fragment back off a
+`template._pagedjsContent` expando on the marker template.
+Functionally equivalent for the one-call-per-render case
+that's actually exercised; preserves the multi-call contract
+in case anyone leans on it later.
+
+### Results
+
+Paired A/B, 2 runs each, `--detach-pages --no-timing
+--cpu-profile --cpu-sampling 100`:
+
+| run | pre | post |
+| --- | --- | --- |
+| 1 | 11.92 s | 10.72 s |
+| 2 | 11.60 s | 11.06 s |
+| **avg** | **11.76 s** | **10.89 s** |
+
+**Δ = -0.87 s render (-7.4 %).** Larger than the 260 ms the
+profile attributed to `wrapContent` itself -- the round-trip
+also allocated a transient 5.5 MB string that pushed GC and
+distributed sample noise into the surrounding rows; removing
+the allocation relieves pressure across the whole per-page
+hot path. The cpuprofile rows breakdown:
+
+| function | pre | post | Δ |
+| -------- | --- | ---- | --- |
+| `wrapContent` self | 260 ms | off-list (<25 ms) | **-260 ms+** |
+| `getBoundingClientRect` self | 4,281 ms | 4,036 ms | -245 ms |
+| `removeOverflow` self | 560 ms | 353 ms | -207 ms |
+| `removeChild` self | 1,871 ms | 1,730 ms | -141 ms |
+| `(program)` self | 2,298 ms | 2,152 ms | -146 ms |
+
+The `wrapContent` row is the only one outside the single-run
+noise band (the README's earlier methodology section pins
+that at 50-150 ms for sub-1 % rows on this machine). The
+others are plausibly real but inseparable from noise without
+more runs; the sample-count delta (-2,100 samples × 542 us
+= ~1,135 ms) matches the wall-clock delta closely enough that
+the distributed component is probably real GC-pressure
+relief, not just sampler jitter.
+
+PDF byte-equivalent to the pre-fix build (16.1 MB).
+
+### What the pattern leaves behind
+
+`removeOverflow` and `wrapContent` are both cases where V8
+rolled native DOM work (`Range.deleteContents`,
+HTML serialiser+parser) into the calling JS frame's
+self-time. The diagnostic move is the same one we used for
+gBCR attribution: `find-callees.mjs` on the suspect frame.
+If self-time is ~100 % of total, the work is happening
+inside a native callee the sampler didn't name -- read the
+JS body to find which DOM API is doing the work and whether
+it can be replaced with a cheaper equivalent.
+
+`find-callees.mjs` was added for this investigation and
+sits alongside `find-callers.mjs`; the two together cover
+both directions of the V8 attribution edge.

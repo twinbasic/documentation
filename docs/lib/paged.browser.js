@@ -32929,16 +32929,39 @@
 			let template;
 			template = body.querySelector(":scope > template[data-ref='pagedjs-content']");
 
-			if (!template) {
-				// Otherwise create one
-				template = document.createElement("template");
-				template.dataset.ref = "pagedjs-content";
-				template.innerHTML = body.innerHTML;
-				body.innerHTML = "";
-				body.appendChild(template);
+			if (template) {
+				// [PATCH: wrap-content-move] Re-entrant call: the fragment we
+				// returned previously was stashed on the marker template's
+				// `_pagedjsContent` expando (template.content stays empty under
+				// the move strategy below).
+				return template._pagedjsContent || template.content;
 			}
 
-			return template.content;
+			// [PATCH: wrap-content-move] Move children into a plain
+			// DocumentFragment owned by the live document instead of round-
+			// tripping through innerHTML (serialise the entire body to a
+			// string, reparse into a template). The round-trip is O(document
+			// size) twice over; the move is one O(n) detach/attach pass with
+			// no string work.
+			//
+			// Why a plain DocumentFragment and not template.content: a
+			// template's content fragment is owned by the inert "template
+			// contents owner document", and moving live <img> elements into
+			// it triggers adoptNode which runs the spec's "update the image
+			// data" algorithm. That resets .complete and leaves the source
+			// image in a state where later cloning into the live page wrapper
+			// doesn't synchronously cache-hit -- our sync waitForImages check
+			// then throws. A plain fragment stays in the live document so
+			// adoption is a no-op and image state is preserved.
+			let fragment = document.createDocumentFragment();
+			while (body.firstChild) {
+				fragment.appendChild(body.firstChild);
+			}
+			template = document.createElement("template");
+			template.dataset.ref = "pagedjs-content";
+			template._pagedjsContent = fragment;
+			body.appendChild(template);
+			return fragment;
 		}
 
 		removeStyles(doc=document) {
