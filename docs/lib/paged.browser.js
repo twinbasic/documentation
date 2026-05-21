@@ -8,42 +8,6 @@
 	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.PagedPolyfill = factory());
 })(this, (function () { 'use strict';
 
-	// Dispatch helpers: Element has getBoundingClientRect / getClientRects
-	// natively; Text and other non-Element nodes don't, so they get wrapped
-	// in a Range. Both call sites (Layout.findOverflow's per-node, per-word,
-	// per-letter walkers; the isText branch in findRoute) feed in nodes the
-	// walker may yield as either type, so this dispatch is load-bearing,
-	// not backcompat.
-	function getBoundingClientRect(element) {
-		if (!element) {
-			return;
-		}
-		let rect;
-		if (typeof element.getBoundingClientRect !== "undefined") {
-			rect = element.getBoundingClientRect();
-		} else {
-			let range = document.createRange();
-			range.selectNode(element);
-			rect = range.getBoundingClientRect();
-		}
-		return rect;
-	}
-
-	function getClientRects(element) {
-		if (!element) {
-			return;
-		}
-		let rect;
-		if (typeof element.getClientRects !== "undefined") {
-			rect = element.getClientRects();
-		} else {
-			let range = document.createRange();
-			range.selectNode(element);
-			rect = range.getClientRects();
-		}
-		return rect;
-	}
-
 	/**
 	 * Returns a unique-within-render id as a base36 string.
 	 * Replaced the prior RFC 4122 v4 UUID generator -- our pipeline only
@@ -1919,7 +1883,14 @@
 				br = undefined;
 
 				if (node) {
-					let pos = getBoundingClientRect(node);
+					let pos;
+					if (node.nodeType === 1) {
+						pos = node.getBoundingClientRect();
+					} else {
+						let range = document.createRange();
+						range.selectNode(node);
+						pos = range.getBoundingClientRect();
+					}
 					let left = Math.round(pos.left);
 					let right = Math.floor(pos.right);
 					let top = Math.round(pos.top);
@@ -2016,7 +1987,9 @@
 						node.textContent.trim().length &&
 						!breakInsideAvoidParentNode(node.parentNode)) {
 
-						let rects = getClientRects(node);
+						let textRange = document.createRange();
+						textRange.selectNode(node);
+						let rects = textRange.getClientRects();
 						let rect;
 						left = 0;
 						top = 0;
@@ -2123,7 +2096,7 @@
 					break;
 				}
 
-				pos = getBoundingClientRect(word);
+				pos = word.getBoundingClientRect();
 
 				left = Math.floor(pos.left);
 				right = Math.floor(pos.right);
@@ -2148,7 +2121,7 @@
 							break;
 						}
 
-						pos = getBoundingClientRect(letter);
+						pos = letter.getBoundingClientRect();
 						left = Math.floor(pos.left);
 						top = Math.floor(pos.top);
 
