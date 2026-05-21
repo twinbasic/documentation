@@ -868,28 +868,21 @@
 			return true;
 		}
 
+		// Cheap loop-detection key for the chunker's per-page Set.
+		// Common case (Element with its own data-ref): "ref|offset". Falls
+		// back to "parentRef|siblingIndex|offset" for Text/Comment nodes
+		// where the ref lives on the parent. The string is opaque to all
+		// callers other than chunker.flow's loop guard, so the format only
+		// needs to be unique-per-break-point, not human-readable.
 		toJSON(hash) {
-			let node;
-			let index = 0;
-			if (!this.node) {
-				return {};
-			}
+			if (!this.node) return "";
 			if (isElement(this.node) && this.node.dataset.ref) {
-				node = this.node.dataset.ref;
-			} else if (hash) {
-				node = this.node.parentElement.dataset.ref;
+				return this.node.dataset.ref + "|" + (this.offset || 0);
 			}
-
-			if (this.node.parentElement) {
-				const children = Array.from(this.node.parentElement.childNodes);
-				index = children.indexOf(this.node);
-			}
-
-			return JSON.stringify({
-				"node": node,
-				"index" : index,
-				"offset": this.offset
-			});
+			const parent = this.node.parentElement;
+			const parentRef = parent ? parent.dataset.ref : "";
+			const index = parent ? Array.prototype.indexOf.call(parent.childNodes, this.node) : 0;
+			return parentRef + "|" + index + "|" + (this.offset || 0);
 		}
 
 	}
