@@ -148,8 +148,6 @@
 
 		this.reject = null;
 
-		this.id = UUID();
-
 		this.promise = new Promise((resolve, reject) => {
 			this.resolve = resolve;
 			this.reject = reject;
@@ -26505,10 +26503,6 @@
 
 			// Replace urls
 			this.replaceUrls(this.ast);
-
-			// Scope
-			this.id = UUID();
-			// this.addScope(this.ast, this.uuid);
 
 			// Replace IDs with data-id
 			this.replaceIds(this.ast);
