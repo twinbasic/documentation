@@ -12,6 +12,34 @@ page count roughly quadruples the total render time.
 
 This folder holds the tools used to investigate that.
 
+## Profiling `paged.browser.js`: canonical command
+
+The command we reach for whenever CPU-profiling paged.js:
+
+```
+node measure.mjs --detach-pages --no-timing --cpu-profile --cpu-sampling 100
+```
+
+(`run.bat` forwards the same args.) Flag rationale:
+
+- `--detach-pages` -- inject the shipping fix. The profile reflects
+  what production actually pays, not the old O(n^2) baseline.
+- `--no-timing` -- skip the per-page `console.log` relay from
+  `timing-handler.js`. The relay costs ~2 % of render self-time on
+  the 1638-page book and muddies the bottom-up view.
+- `--cpu-profile` -- write `render.cpuprofile` (render phase only)
+  into the timestamped `results/` folder. Open in Chrome DevTools via
+  Performance -> "Load profile...", or interrogate from the terminal
+  with `analyze-profile.mjs` / `find-callers.mjs` / `find-callees.mjs`
+  / `grep-profile.mjs`.
+- `--cpu-sampling 100` -- 100 us sampling, 10x denser than the 1 ms
+  default. Resolves frames in paged.js's sub-millisecond inner loops
+  where most remaining cost lives (see "Looking past `finalizePage`"
+  and later sections). Larger profile file in return.
+
+The rest of this README is the long-form narrative -- baseline
+findings, each landed optimisation, and the residual hotspots.
+
 ## The plan
 
 The render pipeline has three phases, matching what `pagedjs-cli`
