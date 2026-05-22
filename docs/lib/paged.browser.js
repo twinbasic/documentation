@@ -9,24 +9,28 @@
 })(this, (function () { 'use strict';
 
 	/**
-	 * Returns a unique-within-render id as a decimal string.
+	 * Returns a unique-within-render id as a base36 string.
 	 * Replaced the prior RFC 4122 v4 UUID generator -- our pipeline only
 	 * needs uniqueness within a single render (data-ref attributes,
 	 * generated CSS variable / selector names, internal object identity),
-	 * not globally. Counter + toString shaves the per-call cost from
-	 * ~3us (Date.now + per-char replace closure) to ~50ns.
+	 * not globally. Counter + base36 shaves the per-call cost from
+	 * ~3us (Date.now + per-char replace closure) to ~50ns and keeps IDs
+	 * short (max ~5 chars for the ~50k DOM nodes in a typical book).
 	 *
-	 * [PATCH: source-indexOfRefs-array] Emits decimal rather than base36
-	 * so V8 auto-coerces the ref string to an integer index when used
-	 * against `source.indexOfRefs` (initialized as an Array in addRefs).
-	 * Base36 strings like "1z" would fall into dictionary mode on array
-	 * access; decimal strings stay in PACKED_ELEMENTS, saving ~2-3 MB
-	 * vs the previous string-keyed dict. The +2-char attribute size on
-	 * 50k nodes (max "50000" vs "12s") is ~100 KB DOM-side overhead,
-	 * well under the JS-heap saving.
+	 * UUIDDecimal() below shares the same counter but returns the
+	 * decimal representation -- needed at addRefs (the data-ref
+	 * writer) so V8 auto-coerces the ref string to an integer index
+	 * when used against `source.indexOfRefs` (an Array). Base36 strings
+	 * like "1z" would force that array into dictionary mode; decimal
+	 * keeps it in PACKED_ELEMENTS, saving ~2-3 MB vs the previous
+	 * string-keyed dict. Every other UUID caller goes through UUID()
+	 * because their consumers don't index a JS array with the result.
 	 */
 	var __pagedjsCounter = 0;
 	function UUID() {
+		return (++__pagedjsCounter).toString(36);
+	}
+	function UUIDDecimal() {
 		return (++__pagedjsCounter).toString();
 	}
 
@@ -2616,7 +2620,7 @@
 				// A/B at 4 KB sampling).
 				let uuid = node.getAttribute("data-ref");
 				if (!uuid) {
-					uuid = UUID();
+					uuid = UUIDDecimal();
 					node.setAttribute("data-ref", uuid);
 				}
 
