@@ -1694,11 +1694,19 @@
 				dest.appendChild(clone);
 			}
 
-			if (clone.dataset && clone.dataset.ref) {
+			// [PATCH: append-ref-local] Cache clone.dataset.ref in a
+			// local. Each .ref access goes through getAttribute and
+			// allocates a fresh JS string; the existence check + dict
+			// write were two reads of the same value. Saves one string
+			// allocation per ~50k append calls on the book (~1.5 MB
+			// heap per paired heap-sampling A/B at 512 B sampling).
+			// Same shape as PATCH: addRefs-uuid-local above.
+			const ref = clone.dataset && clone.dataset.ref;
+			if (ref) {
 				if (!dest.indexOfRefs) {
 					dest.indexOfRefs = {};
 				}
-				dest.indexOfRefs[clone.dataset.ref] = clone;
+				dest.indexOfRefs[ref] = clone;
 			}
 
 			let nodeHooks = this.hooks.renderNode.triggerSync(clone, node, this);
