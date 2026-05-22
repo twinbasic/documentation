@@ -9,17 +9,25 @@
 })(this, (function () { 'use strict';
 
 	/**
-	 * Returns a unique-within-render id as a base36 string.
+	 * Returns a unique-within-render id as a decimal string.
 	 * Replaced the prior RFC 4122 v4 UUID generator -- our pipeline only
 	 * needs uniqueness within a single render (data-ref attributes,
 	 * generated CSS variable / selector names, internal object identity),
-	 * not globally. Counter + base36 keeps IDs short (max ~5 chars for
-	 * the ~50k DOM nodes in the book) and shaves the per-call cost from
+	 * not globally. Counter + toString shaves the per-call cost from
 	 * ~3us (Date.now + per-char replace closure) to ~50ns.
+	 *
+	 * [PATCH: source-indexOfRefs-array] Emits decimal rather than base36
+	 * so V8 auto-coerces the ref string to an integer index when used
+	 * against `source.indexOfRefs` (initialized as an Array in addRefs).
+	 * Base36 strings like "1z" would fall into dictionary mode on array
+	 * access; decimal strings stay in PACKED_ELEMENTS, saving ~2-3 MB
+	 * vs the previous string-keyed dict. The +2-char attribute size on
+	 * 50k nodes (max "50000" vs "12s") is ~100 KB DOM-side overhead,
+	 * well under the JS-heap saving.
 	 */
 	var __pagedjsCounter = 0;
 	function UUID() {
-		return (++__pagedjsCounter).toString(36);
+		return (++__pagedjsCounter).toString();
 	}
 
 	function attr(element, attributes) {
@@ -2585,7 +2593,15 @@
 			// which scans the entire source DOM (thousands of nodes). Measured
 			// as 848 + 42 noDict calls in createBreakToken ≈ 1+ s of render on
 			// the 1651-page book.
-			if (!content.indexOfRefs) content.indexOfRefs = {};
+			//
+			// [PATCH: source-indexOfRefs-array] Use an Array (dense, sequential
+			// integer keys via the decimal UUID counter -- see UUID()) instead
+			// of a dict. V8 stores it as PACKED_ELEMENTS: ~8 B per slot vs
+			// ~40-50 B per dict entry. dest/fragment.indexOfRefs (sparse) stay
+			// dicts at their own init sites. `findRef` does `arr[ref]` either
+			// way -- V8 coerces the decimal-string ref to an array index
+			// transparently, so no caller-side branch is needed.
+			if (!content.indexOfRefs) content.indexOfRefs = [];
 
 			let node = treeWalker.nextNode();
 			while(node) {
