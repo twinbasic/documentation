@@ -2611,7 +2611,17 @@
 			// dicts at their own init sites. `findRef` does `arr[ref]` either
 			// way -- V8 coerces the decimal-string ref to an array index
 			// transparently, so no caller-side branch is needed.
-			if (!content.indexOfRefs) content.indexOfRefs = [];
+			//
+			// [PATCH: source-indexOfRefs-presize] Size the array up front
+			// from the live HTMLCollection's .length. V8 grows arrays
+			// geometrically -- writing slots 1..N via doubling does
+			// log2(N) backing-store reallocations, each allocating the
+			// new store and orphaning the old (transient bytes ~= 2x the
+			// final size). Pre-sizing skips all of that.
+			if (!content.indexOfRefs) {
+				const elementCount = content.getElementsByTagName ? content.getElementsByTagName("*").length : 0;
+				content.indexOfRefs = new Array(elementCount + 1);
+			}
 
 			let node = treeWalker.nextNode();
 			while(node) {
