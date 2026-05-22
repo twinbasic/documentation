@@ -17,7 +17,7 @@ This folder holds the tools used to investigate that.
 The command we reach for whenever CPU-profiling paged.js:
 
 ```
-node measure.mjs --detach-pages --no-timing --cpu-profile --cpu-sampling 100
+node measure.mjs --detach-pages --no-timing --render-only --cpu-profile --cpu-sampling 100
 ```
 
 (`run.bat` forwards the same args.) Flag rationale:
@@ -27,6 +27,12 @@ node measure.mjs --detach-pages --no-timing --cpu-profile --cpu-sampling 100
 - `--no-timing` -- skip the per-page `console.log` relay from
   `timing-handler.js`. The relay costs ~2 % of render self-time on
   the 1638-page book and muddies the bottom-up view.
+- `--render-only` -- bail out after `PagedPolyfill.preview()`
+  returns. Skips meta extraction, `parseOutline`, `page.pdf`, and
+  the pdf-lib roundtrip / incremental writer. ~47 s saved per run
+  on the book (~55 s full -> ~8 s render-only), with no effect on
+  what the `--cpu-profile` trace captures (it already covered only
+  the render phase).
 - `--cpu-profile` -- write `render.cpuprofile` (render phase only)
   into the timestamped `results/` folder. Open in Chrome DevTools via
   Performance -> "Load profile...", or interrogate from the terminal
@@ -36,6 +42,10 @@ node measure.mjs --detach-pages --no-timing --cpu-profile --cpu-sampling 100
   default. Resolves frames in paged.js's sub-millisecond inner loops
   where most remaining cost lives (see "Looking past `finalizePage`"
   and later sections). Larger profile file in return.
+
+Drop `--render-only` whenever you need to also measure generate /
+process (e.g. confirming a fix doesn't shift cost into `page.pdf()`
+or pdf-lib), or to write `book.pdf` for behavioural verification.
 
 The rest of this README is the long-form narrative -- baseline
 findings, each landed optimisation, and the residual hotspots.
@@ -88,6 +98,7 @@ DevTools-compatible trace is a few lines.
 | `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree (registered against `finalizePage`). The fix. Injected by `--detach-pages` and by `docs/book.bat`. |
 | `instrument-flush-ops.js` | Wraps `getComputedStyle`, `getBoundingClientRect`, and the `offsetWidth` / `clientWidth` / `scrollWidth` family with counters + per-call timing. Injected by `--instrument`. |
 | `time-hooks.js` | Wraps every task registered to `chunker.hooks.*` and `polisher.hooks.*` with a wall-clock timer. Tells you which handler's hook method is eating render time, per page. Injected by `--time-hooks`. |
+| `instrument-clones.js` | Wraps `Layout.prototype.append` to tag every source-walker clone, then walks each finalized page at `finalizePage` counting tagged survivors. Reports total appendCalls vs. survivors and the per-page overshoot distribution -- the share of clones rolled back by `removeOverflow`. Requires a one-line `window.PagedLayout = Layout` patch near the bottom of `docs/lib/paged.browser.js` (it's a private class otherwise). Injected by `--clone-count`. |
 | `incremental-pdf.mjs` | Replaces the pdf-lib load+save roundtrip with a PDF 1.7 §7.5.6 incremental update appended to Chrome's bytes. Used by `--incremental`. |
 | `test-incremental.mjs` | Smoke test for `incremental-pdf.mjs`: renders a tiny probe page, runs the writer, verifies the result parses (via pdf-lib re-load) and that outline + metadata land correctly. |
 | `profile-load.mjs` | Standalone profiler for `PDFDocument.load`. Runs the load on a chosen PDF with a chosen `parseSpeed`; intended to be run under `node --cpu-prof`. |
@@ -147,6 +158,8 @@ run.bat path\to\some-other.html           # explicit input
 run.bat --out my-run                      # explicit output directory
 run.bat --detach-pages                    # inject the detach-pages fix
 run.bat --cpu-profile                     # CPU-profile the render phase
+run.bat --render-only                     # bail out after render (skip generate + process, ~47s saved)
+run.bat --clone-count                     # report Layout.append clones appended vs survivors per page
 run.bat --instrument                      # count + time DOM-accessor calls
 run.bat --time-hooks                      # per-task timing of every chunker/polisher hook
 run.bat --incremental                     # process via incremental update instead of pdf-lib roundtrip
