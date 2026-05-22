@@ -108,6 +108,7 @@ DevTools-compatible trace is a few lines.
 | `probe-outline-exclusions.mjs` | Tests which per-element attributes / styles (aria-hidden, role=presentation, hidden, display:none, CSS bookmark-level, ...) make Chrome drop a heading from its outline. |
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
 | `analyze-trace.mjs` | Bottom-up self-time analyzer for Chrome traces (`trace.json` from `--tracing`). Computes per-event self-time on the renderer's main thread (`CrRendererMain` by default) by walking nested `X`-phase events. Cracks the cpu profile's `(program)` bucket open into named Blink / V8 events (`Layout`, `RecalcStyle`, `RunMicrotasks`, `V8.GC_*`, ...). |
+| `ab-aggregate.mjs` | Per-row mean + SD aggregator across 6 paired cpu profiles (`ab-A1..A3.cpuprofile` and `ab-B1..B3.cpuprofile`). Use when wall-clock noise drowns a structural change: capture 3+3 interleaved profiles via `measure.mjs --cpu-profile` with the change toggled on/off between runs, then point this at the 6 files for a mean-with-SD table that surfaces deltas wall-clock can't see (e.g. ~6 σ shifts on rows that move from 88 ms to 2 ms). See the "Disabling the filter outright" section in this README for the methodology. |
 | `find-callers.mjs` | "Who paid for this callee's time?" -- walks a `.cpuprofile` and attributes a target function's total time back to each direct caller. Used throughout the post-mortems to detect gBCR migration between callers. |
 | `find-callees.mjs` | The other direction of `find-callers.mjs`: splits a function's self+descendant time across its direct callees. Surfaces the cases where V8 has rolled native DOM work back into the calling JS frame (Range deletion in `removeOverflow`, HTML parser in `wrapContent`). |
 | `grep-profile.mjs` | Lists every node in a `.cpuprofile` whose `functionName` matches a regex, with self-time and location. Quick check for "is this frame in the profile at all, and what's it called?" |
@@ -4410,15 +4411,194 @@ unchanged:
 
 - `pageRanges` sharding for the generate phase (biggest
   untried knob, generate is now the larger phase).
-- WhiteSpaceFilter algorithmic restructuring (~0.3 s,
-  render) -- not a short-circuit, since the filter does
-  real work; would need a hand-rolled traversal that
-  avoids the per-node C++→JS dispatch.
+- WhiteSpaceFilter -- the trace and a follow-up cpu-
+  profile A/B (see next section) eventually showed this
+  *is* skippable for our pipeline once html-compress has
+  done the work at Jekyll time. Worth ~600 ms / 6 %.
 - Everything else lives below the noise floor.
 
-Render-stage optimization headroom is exhausted. The
-cpu profile's `(program)` row isn't a structural smell
-or a missed microtask -- it's the fixed cost of V8
+The cpu profile's `(program)` row isn't a structural
+smell or a missed microtask -- it's the fixed cost of V8
 running the JavaScript we already have, accounted for
 honestly by the trace and accounted for opaquely by
 the JS sampler.
+
+## Disabling the filter outright: paired cpu-profile A/B
+
+The "actionable finding that wasn't" + "and we did fix
+it, on the Jekyll side" pair above closed with two
+conclusions:
+
+1. WhiteSpaceFilter does real work on book.html
+   (37k DOM mutations pre-compression, 0 post-).
+2. Post-compression the filter is essentially a no-op
+   visit over 181k text nodes, and skipping it doesn't
+   save measurable wall-clock -- a 3+3 wall-clock A/B
+   showed 8.78 s avg with filter vs 8.53 s without, well
+   inside the 1.17 s within-variant noise band.
+
+Conclusion (1) is correct. Conclusion (2) was wrong --
+specifically the "no measurable saving" claim and the
+flush-migration explanation I attached to the ~+180 ms
+gBCR move that appeared in a single-run profile pair.
+
+A reader pointed out the flush-migration reasoning was
+incoherent: `WhiteSpaceFilter.filter` runs *once* in
+`Chunker.flow()` *before* any page is created. The body
+of `filterEmpty` reads `textContent`, walks parents via
+`closest("pre")`, and walks siblings -- none of which
+read layout-flushing properties (`gBCR`, `offsetTop`,
+computed style, etc.). There is no flush for migration
+to migrate from. Whatever the +180 ms gBCR move in the
+single-run pair was, it wasn't "the filter's flush load
+deferring to the next gBCR." It was single-run noise on
+a 38 % row -- which has a much wider noise band than
+the README's "50-150 ms for sub-1 % rows" methodology
+note covers.
+
+### The proper A/B
+
+Three filter-on (A) and three filter-off (B) cpu-profile
+runs, interleaved A1 B1 A2 B2 A3 B3 so system-load
+variance hits both sides equally. The probe is a one-line
+`return;` at the top of `WhiteSpaceFilter.filter` --
+skip the TreeWalker entirely. Toggle is a single edit
+between runs. Both states are otherwise identical
+(post-compression book.html, current bundle).
+
+Per-run totals from
+[`perf/ab-aggregate.mjs`](ab-aggregate.mjs):
+
+| run | total CPU |
+| --- | --- |
+| A1 (filter ON)  | 11,120 ms |
+| A2 (filter ON)  | 10,270 ms |
+| A3 (filter ON)  |  9,727 ms |
+| **A mean**      | **10,372 ms** |
+| B1 (filter OFF) |  9,744 ms |
+| B2 (filter OFF) | 10,189 ms |
+| B3 (filter OFF) |  9,180 ms |
+| **B mean**      |  **9,705 ms** |
+| **Δ (B - A)**   |   **-668 ms (-6.4 %)** |
+
+The within-group ranges are ~1.3 s (A) and ~1.0 s (B),
+so the -668 ms total-CPU delta sits at roughly 1 σ of
+within-variant spread. By itself, that's a soft signal.
+
+But per-row breakdown is tighter:
+
+| row | A mean ± sd | B mean ± sd | Δ |
+| --- | --- | --- | --- |
+| `getBoundingClientRect`         | 4128 ± 309 | 3791 ± 163 | **-338 ms** |
+| `(program)`                     | 2243 ± 56  | 2328 ± 173 | +85 ms (noisy) |
+| `removeChild`                   | 1619 ± 63  | 1564 ± 43  | -55 ms |
+| `afterPageLayout` @ paged.js    |  150 ± 26  |  119 ± 17  | -32 ms |
+| **`filterTree` self**           | **88 ± 14** |  **2 ± 1** | **-86 ms** |
+| `(garbage collector)`           |  103 ± 6   |   92 ± 4   | -11 ms |
+| `handleAlignment`               |   70 ± 5   |   56 ± 7   | -14 ms |
+| `create` (`Page.create`)        |   66 ± 7   |   50 ± 4   | -15 ms |
+| `sortDisplayedSelectors`        |   60 ± 10  |   46 ± 1   | -14 ms |
+| **`filterEmpty` self**          | **37 ± 2** |    **0**   | **-37 ms** |
+
+Direct attribution (the filter rows that vanish in B):
+
+- `filterTree` self: -86 ms
+- `filterEmpty` self: -37 ms
+- ~123 ms
+
+Indirect attribution (rows that shrink in B despite
+unchanged call counts -- see the trace data above
+where Document::UpdateStyleAndLayout, recalcStyle and
+performLayout all run ~14-15 % cheaper per call with
+filter off):
+
+- `getBoundingClientRect`: -338 ms
+- `removeChild`: -55 ms
+- `afterPageLayout @ paged.js:30458` (paged.js core): -32 ms
+- `create`: -15 ms
+- `handleAlignment`: -14 ms
+- `sortDisplayedSelectors`: -14 ms
+- `(garbage collector)`: -11 ms
+- smaller rows: ~50 ms
+- ~529 ms
+
+Direct + indirect ≈ 652 ms, in the neighbourhood of
+the -668 ms total-CPU delta. They corroborate.
+
+### Why the filter has indirect cost
+
+The single-trace measurement above (filter-off trace
+captured for the same render) made the indirect path
+visible: with filter off, `Document::UpdateStyleAndLayout`
+total dropped by 574 ms across an *unchanged* 39,437
+call count -- ~14 µs less per call. `recalcStyle` and
+`performLayout` similarly dropped ~14 % per call.
+Plausibly:
+
+- V8's polymorphic inline caches stay warmer on the
+  per-page hot path when 181 k extra C++→JS
+  dispatches haven't been churning them.
+- Blink's main-thread scheduler has fewer task
+  boundaries to bookkeep across.
+- Allocator/GC pressure is lower (the filter walk
+  allocates per-callback closures and intermediate
+  strings, even when each callback just returns
+  FILTER_REJECT).
+
+None of those are "the filter triggers a layout
+flush." Layout work *itself* gets cheaper because the
+ambient V8/Blink state is less polluted. Same per-call
+mechanics, slightly faster main-thread context.
+
+### The fix: config flag, default off
+
+`window.PagedConfig.runWhitespaceFilter` gates the
+walk. Default is undefined (falsy) -- our pipeline runs
+`html-compress` on book.html, so the filter has
+nothing to do and skipping it saves the ~600 ms.
+
+Anyone running paged.js against an uncompressed
+document can set the flag before `PagedPolyfill.preview()`
+to opt back in. The class itself is unchanged so the
+opt-in path is byte-equivalent to the original.
+
+The opt-in semantic is the conservative choice: paged.js
+upstream and many downstream users feed it untouched
+HTML (with inter-element indentation surviving), where
+the filter does meaningful cleanup. Disabling it for
+*every* caller of this bundle would be a regression for
+those use cases. Disabling it by default for *our*
+pipeline is fine because we control the input
+end-to-end.
+
+Cost: zero per-page work (the gate is one `&&`-chain
+check at startup), structural correctness for clean
+documents, opt-in safety valve for everyone else.
+
+### Methodology note
+
+The wall-clock A/B was correct in claiming "the saving
+is below the wall-clock noise floor for short N." It
+was wrong in concluding "therefore no saving exists."
+Two corrections:
+
+1. Aggregate CPU work across paired profiles. Wall-clock
+   noise is ~1 s per run on this machine; CPU sample
+   totals are also ~1 s per run but the row-by-row
+   self-time deltas can be much tighter. The
+   `filterTree` row goes from 88 ms (sd 14) to 2 ms (sd
+   1) -- a 6 σ shift. Per-row analysis can see signals
+   that per-run totals lose.
+
+2. Use *enough* paired runs that within-group SD lets
+   you compute mean ± SD honestly. 3+3 is the bare
+   minimum (gives 1 σ confidence on row-level deltas
+   for things that change by 5+ σ). 5+5 or 10+10 would
+   tighten the gBCR delta confidence further -- worth
+   doing for finer signals.
+
+The probe + aggregator are reusable
+([`perf/ab-aggregate.mjs`](ab-aggregate.mjs)): point at
+6 `ab-*.cpuprofile` files and it prints the mean ± SD
+table. Pattern fits any future "does this change save
+CPU?" question where wall-clock noise is the obstacle.

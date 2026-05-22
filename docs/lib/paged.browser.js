@@ -32445,12 +32445,31 @@
 		TargetText
 	];
 
+	// [PATCH: whitespace-filter-opt-in] Default off because our Jekyll
+	// pipeline runs html-compress on `book.html` (see _plugins/html-
+	// compress.rb's three-tier hook ordering: book-combined is in the
+	// compress-eligible set), so inter-element whitespace is already
+	// collapsed by the time paged.js sees the document. The filter
+	// would visit every text node in the parsed DOM (~181 k callbacks
+	// on the 1651-page book) and -- post-compression -- find essentially
+	// nothing to mutate. A paired cpu-profile A/B (3+3 runs, see
+	// perf/README.md) showed the no-op walk still costs ~600 ms of CPU
+	// per render: ~125 ms direct (filterTree / filterEmpty self) plus
+	// ~480 ms indirect (gBCR + downstream Blink layout / style work that
+	// runs cheaper when V8's IC + Blink scheduler aren't being churned
+	// by 181 k C++->JS callback dispatches). The cost is small per call
+	// but compounds because the walk lives inside the same microtask
+	// continuation as the per-page render loop. Set
+	// `window.PagedConfig.runWhitespaceFilter = true` before
+	// PagedPolyfill.preview() if processing a document whose source
+	// HTML wasn't compressed at build time.
 	class WhiteSpaceFilter extends Handler {
 		constructor(chunker, polisher, caller) {
 			super(chunker, polisher, caller);
 		}
 
 		filter(content) {
+			if (!(typeof window !== "undefined" && window.PagedConfig && window.PagedConfig.runWhitespaceFilter)) return;
 
 			filterTree(content, (node) => {
 				return this.filterEmpty(node);
