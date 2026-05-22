@@ -2486,29 +2486,22 @@
 		}
 
 		addResizeObserver(contents) {
-			let wrapper = this.wrapper;
-			let prevHeight = wrapper.getBoundingClientRect().height;
-			this.ro = new ResizeObserver(entries => {
-
-				if (!this.listening) {
-					return;
-				}
-				requestAnimationFrame(() => {
-					for (let entry of entries) {
-						const cr = entry.contentRect;
-
-						if (cr.height > prevHeight) {
-							this.checkOverflowAfterResize(contents);
-							prevHeight = wrapper.getBoundingClientRect().height;
-						} else if (cr.height < prevHeight) { // TODO: calc line height && (prevHeight - cr.height) >= 22
-							this.checkUnderflowAfterResize(contents);
-							prevHeight = cr.height;
-						}
-					}
-				});
-			});
-
-			this.ro.observe(wrapper);
+			// [PATCH: disable-resize-observer] The RO existed to catch
+			// post-layout content reflow -- late-loading fonts, image
+			// dimensions resolving after layout, etc. -- by re-running
+			// findBreakToken whenever the wrapper grew/shrunk after
+			// renderTo returned. Our pipeline navigates with
+			// `waitUntil: "load"` and uses embedded fonts; nothing
+			// resizes after layout. The `_onOverflow` rescue path
+			// (Chunker.addPage line 3296) only fires while
+			// `!chunker.rendered`, and would emit a console.warn
+			// before re-rendering, so a regression would be loud.
+			// Disabling the RO removes a per-page allocation plus the
+			// stream of async findBreakToken / gBCR calls its callback
+			// would otherwise drive after every page's renderTo.
+			// checkUnderflowAfterResize is already gated by an absent
+			// _onUnderflow (see README "Attempt C"); checkOverflowAfterResize
+			// was the only live consumer.
 		}
 
 		checkOverflowAfterResize(contents) {
