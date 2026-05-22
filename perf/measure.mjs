@@ -22,6 +22,7 @@
 // Usage:
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
+//                    [--heap-profile] [--heap-sampling <bytes>]
 //                    [--detach-pages] [--instrument] [--time-hooks]
 //                    [--incremental] [--chrome-outline] [--no-timing]
 //                    [--clone-count] [--render-only]
@@ -88,6 +89,8 @@ let outArg = null;
 let keepOpen = false;
 let cpuProfile = false;
 let cpuSampling = 1000; // microseconds
+let heapProfile = false;
+let heapSampling = 32768; // bytes between samples (CDP default)
 let detachPages = false;
 let instrument = false;
 let timeHooks = false;
@@ -102,6 +105,8 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--keep-open') keepOpen = true;
   else if (a === '--cpu-profile') cpuProfile = true;
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
+  else if (a === '--heap-profile') heapProfile = true;
+  else if (a === '--heap-sampling') heapSampling = parseInt(args[++i], 10);
   else if (a === '--detach-pages') detachPages = true;
   else if (a === '--instrument') instrument = true;
   else if (a === '--time-hooks') timeHooks = true;
@@ -223,16 +228,24 @@ try {
   }
 
   // RENDER ----------------------------------------------------------
-  // Optionally wrap just this phase in a V8 CPU profile. CDP Profiler
-  // attaches to the renderer for this page; we stop before the generate
-  // phase so the trace stays focused on paged.js layout work.
+  // Optionally wrap just this phase in a V8 CPU and/or heap sampling
+  // profile. CDP attaches to the renderer for this page; we stop
+  // before the generate phase so the traces stay focused on paged.js
+  // layout work.
   let cdp = null;
-  if (cpuProfile) {
+  if (cpuProfile || heapProfile) {
     cdp = await page.createCDPSession();
+  }
+  if (cpuProfile) {
     await cdp.send('Profiler.enable');
     await cdp.send('Profiler.setSamplingInterval', { interval: cpuSampling });
     await cdp.send('Profiler.start');
     console.log(`[harness] cpu profile: sampling every ${cpuSampling}us`);
+  }
+  if (heapProfile) {
+    await cdp.send('HeapProfiler.enable');
+    await cdp.send('HeapProfiler.startSampling', { samplingInterval: heapSampling });
+    console.log(`[harness] heap profile: sampling every ${heapSampling} bytes`);
   }
 
   const tRenderStart = Date.now();
@@ -254,13 +267,24 @@ try {
   const renderMs = tRenderEnd - tRenderStart;
 
   let profilePath = null;
+  let heapProfilePath = null;
   if (cdp) {
-    const { profile } = await cdp.send('Profiler.stop');
+    if (cpuProfile) {
+      const { profile } = await cdp.send('Profiler.stop');
+      profilePath = join(outDir, 'render.cpuprofile');
+      const profileJson = JSON.stringify(profile);
+      writeFileSync(profilePath, profileJson);
+      console.log(`[harness] cpu profile: ${profilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
+    }
+    if (heapProfile) {
+      const { profile } = await cdp.send('HeapProfiler.stopSampling');
+      heapProfilePath = join(outDir, 'render.heapprofile');
+      const profileJson = JSON.stringify(profile);
+      writeFileSync(heapProfilePath, profileJson);
+      const totalBytes = profile.samples.reduce((s, x) => s + x.size, 0);
+      console.log(`[harness] heap profile: ${heapProfilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB, ${profile.samples.length} samples, ${(totalBytes / 1024 / 1024).toFixed(1)} MB allocated)`);
+    }
     await cdp.detach();
-    profilePath = join(outDir, 'render.cpuprofile');
-    const profileJson = JSON.stringify(profile);
-    writeFileSync(profilePath, profileJson);
-    console.log(`[harness] cpu profile: ${profilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
   }
 
   console.log(`[harness] render   ${fmtMs(renderMs)}`);
