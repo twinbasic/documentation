@@ -23,6 +23,7 @@
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
 //                    [--heap-profile] [--heap-sampling <bytes>]
+//                    [--tracing]
 //                    [--detach-pages] [--instrument] [--time-hooks]
 //                    [--incremental] [--chrome-outline] [--no-timing]
 //                    [--clone-count] [--render-only]
@@ -67,6 +68,15 @@
 // via Performance -> "Load profile..." (or just drag onto the panel).
 // --cpu-sampling sets the sampling interval in microseconds; default
 // 1000 (1 ms). Raise it to keep the profile file smaller on long runs.
+//
+// --tracing wraps the render phase in a Chrome trace via CDP's Tracing
+// domain (page.tracing.start) and writes trace.json to the results
+// folder. The trace categorises Blink work as Layout / UpdateLayoutTree
+// / ParseHTML / Composite / FunctionCall / V8.* etc -- the named buckets
+// hiding inside the cpu profile's (program) frame. Load the file in
+// chrome://tracing or perfetto.dev, or run analyze-trace.mjs against it
+// for a top-N self-time table grouped by event name. Composable with
+// --cpu-profile; uses an independent CDP domain.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -99,6 +109,7 @@ let chromeOutline = false;
 let noTiming = false;
 let cloneCount = false;
 let renderOnly = false;
+let tracing = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -115,6 +126,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--no-timing') noTiming = true;
   else if (a === '--clone-count') cloneCount = true;
   else if (a === '--render-only') renderOnly = true;
+  else if (a === '--tracing') tracing = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -247,6 +259,29 @@ try {
     await cdp.send('HeapProfiler.startSampling', { samplingInterval: heapSampling });
     console.log(`[harness] heap profile: sampling every ${heapSampling} bytes`);
   }
+  let tracePath = null;
+  if (tracing) {
+    // Independent of Profiler / HeapProfiler -- different CDP domain.
+    // Categories chosen to crack open the cpu profile's (program) bucket:
+    // devtools.timeline gives Layout / RecalcStyles / ParseHTML /
+    // FunctionCall / EvaluateScript; disabled-by-default-devtools.timeline
+    // adds UpdateLayoutTree / InvalidateLayout / ScheduleStyleRecalc /
+    // HitTest; blink covers internal Blink events; v8 + v8.execute cover
+    // V8.GC* / V8.CompileCode / V8.RunMicrotasks / V8.Execute.
+    tracePath = join(outDir, 'trace.json');
+    await page.tracing.start({
+      path: tracePath,
+      screenshots: false,
+      categories: [
+        'devtools.timeline',
+        'disabled-by-default-devtools.timeline',
+        'blink',
+        'v8',
+        'v8.execute',
+      ],
+    });
+    console.log(`[harness] tracing: ${tracePath}`);
+  }
 
   const tRenderStart = Date.now();
   await page.evaluate(async () => {
@@ -265,6 +300,15 @@ try {
   await page.waitForSelector('.pagedjs_pages');
   const tRenderEnd = Date.now();
   const renderMs = tRenderEnd - tRenderStart;
+
+  if (tracing) {
+    await page.tracing.stop();
+    try {
+      const { statSync } = await import('node:fs');
+      const sz = statSync(tracePath).size;
+      console.log(`[harness] tracing: ${tracePath} (${(sz / 1024 / 1024).toFixed(1)} MB)`);
+    } catch { /* size reporting is best-effort */ }
+  }
 
   let profilePath = null;
   let heapProfilePath = null;
