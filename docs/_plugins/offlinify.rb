@@ -1443,11 +1443,13 @@ Jekyll::Hooks.register :site, :pre_render do |site|
   Offlinify.setup(site)
 end
 
-Jekyll::Hooks.register :pages, :post_render do |page|
+# :low so these READERS see page.output after html-compress (:normal)
+# has run. See html-compress.rb's priority convention.
+Jekyll::Hooks.register :pages, :post_render, priority: :low do |page|
   Offlinify.process_page(page)
 end
 
-Jekyll::Hooks.register :documents, :post_render do |doc|
+Jekyll::Hooks.register :documents, :post_render, priority: :low do |doc|
   Offlinify.process_page(doc)
 end
 

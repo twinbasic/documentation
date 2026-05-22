@@ -72,6 +72,12 @@ module HtmlCompress
         cur_name = cur ? cur.data["layout"] : nil
       end
     end
+    # book-combined is a minimal layout with no parent, so the walk
+    # above doesn't reach it. Compressing its only consumer (book.html)
+    # at Jekyll time saves paged.js's WhiteSpaceFilter ~37k DOM
+    # mutations and ~300-400 ms once per render -- see
+    # perf/README.md "WhiteSpaceFilter that wasn't" section.
+    @compress_layouts << "book-combined" if site.layouts.key?("book-combined")
   end
 
   # True when `page` (or document) uses a layout chain ending in
@@ -117,16 +123,43 @@ Jekyll::Hooks.register :site, :pre_render do |site|
   HtmlCompress.precompute_compress_layouts!(site)
 end
 
-# Run before offlinify (default :normal priority) so the offline-tree
-# rewrites see the compressed page.output, and before Jekyll's
-# `:site, :post_write` writes _site/ for the same reason.
-Jekyll::Hooks.register :pages, :post_render, priority: :high do |page|
+# Priority convention for :pages, :post_render hooks in this site:
+#
+#   :high   = MUTATORS. Plugins that modify page.output. Run first so
+#             their mutations are visible to compress and downstream
+#             readers. Examples: book-href-rewrite (landing heading
+#             strip + in-book href rewrites).
+#
+#   :normal = COMPRESS. This plugin. The cleanup pass, sandwiched
+#             between mutators and readers so any whitespace runs left
+#             behind by a mutator's gsub get collapsed before anyone
+#             reads the final bytes.
+#
+#   :low    = READERS. Plugins that snapshot or consume page.output
+#             after all mutations and the compress pass. Run last so
+#             they see final output. Examples: pdfify (captures
+#             book.html for the PDF pipeline), offlinify (rewrites
+#             root-absolute hrefs and writes to _site-offline/).
+#
+# Without this layering, a mutator running after compress leaves
+# adjacent whitespace runs that no downstream pass collapses; a
+# reader running before compress captures uncompressed bytes. Both
+# regressions surfaced when book-href-rewrite (default :normal) ran
+# after html-compress (originally :high) -- its 3 landing-heading
+# strips left double-space artifacts that paged.js's WhiteSpaceFilter
+# had to handle at render time.
+#
+# Offlinify also runs at :site, :post_write (a later phase entirely),
+# where it always sees the final compressed bytes regardless of
+# per-page priority. The :low designation here governs its per-page
+# capture hook specifically.
+Jekyll::Hooks.register :pages, :post_render, priority: :normal do |page|
   next unless page.output.is_a?(String)
   next unless HtmlCompress.compress?(page)
   HtmlCompress.compress!(page.output)
 end
 
-Jekyll::Hooks.register :documents, :post_render, priority: :high do |doc|
+Jekyll::Hooks.register :documents, :post_render, priority: :normal do |doc|
   next unless doc.output.is_a?(String)
   next unless HtmlCompress.compress?(doc)
   HtmlCompress.compress!(doc.output)

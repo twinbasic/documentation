@@ -4121,3 +4121,304 @@ those operations didn't have a Blink layout-tree
 mutation step downstream. Mutations are where the cost
 that *looks* like JS allocation actually lives in this
 codebase.
+
+## Cracking `(program)` open with a Blink-category trace
+
+The cpu profile's `(program)` row sat at ~2.2 s (23 %) of
+render and resisted attribution -- `find-callers.mjs` puts
+it directly under `(root)`, the V8 sampler's structural
+floor for "isolate is on-CPU but no JS frame on top." To
+see *what* native code was running there, the harness gained
+a `--tracing` flag and a companion `analyze-trace.mjs`.
+
+The flag wraps the render phase in `page.tracing.start()`
+with Blink-relevant categories (`devtools.timeline`,
+`disabled-by-default-devtools.timeline`, `blink`, `v8`,
+`v8.execute`) and writes `trace.json` to the results
+folder. `analyze-trace.mjs` walks the trace's complete-phase
+events on `CrRendererMain`, computes self-time per event
+name via a nested-event stack walk (same shape as
+`analyze-profile.mjs` for cpuprofiles), and prints a
+top-N table. A `--children <name>` mode breaks any
+parent event into its direct callees, mirroring
+`find-callees.mjs`.
+
+### What's on the main thread
+
+Top events by self-time on a fresh `--detach-pages
+--no-timing --render-only --tracing` run, 1651-page book,
+9.07 s render:
+
+| event                                    | self_ms | self_% |
+| ---------------------------------------- | ------- | ------ |
+| `RunMicrotasks`                          | 3039.42 | 33.5 % |
+| `LocalFrameView::performLayout`          | 1800.31 | 19.9 % |
+| `Document::recalcStyle`                  | 1785.55 | 19.7 % |
+| `InlineNode::ShapeTextIncludingFirstLine`|  526.64 |  5.8 % |
+| `Document::rebuildLayoutTree`            |  484.88 |  5.4 % |
+| `FunctionCall`                           |  285.89 |  3.2 % |
+| `v8.callFunction`                        |  251.48 |  2.8 % |
+| `Blink.CompositingInputs.UpdateTime`     |  130.77 |  1.4 % |
+| `Blink.PrePaint.UpdateTime`              |  118.90 |  1.3 % |
+| `Document::updateStyle`                  |  101.65 |  1.1 % |
+| ... 189 smaller events ...               |         |        |
+
+Mapping these onto the cpu profile's labels:
+
+| cpu profile row | trace decomposition |
+| --- | --- |
+| `getBoundingClientRect` self 3.7 s | `performLayout` 1.8 s + `recalcStyle` 1.8 s -- the layout flush gBCR triggers, which the cpu profile lumps under the native frame. |
+| `removeChild` self 1.6 s | `rebuildLayoutTree` 0.5 s + portions of `recalcStyle` / `performLayout` -- each removeChild dirties style and layout. |
+| `(program)` self 2.2 s | `RunMicrotasks` 3.0 s mostly. The cpu profile attributes a chunk of this to neighbour rows; what's left under `(program)` is the V8 runtime plumbing that has no JS frame on top. |
+| `(garbage collector)` 100 ms | Sum of `V8.GC_*` events ≈ 135 ms. |
+
+So `(program)` is essentially **the V8 runtime inside a
+microtask continuation**. The natural follow-up is "which
+microtask, and what's it doing?"
+
+### Inside `RunMicrotasks`
+
+`--children RunMicrotasks` shows the parent fired only
+**15 times** across the whole render, totalling 7.14 s:
+
+```
+parent: RunMicrotasks  hits: 15  total: 7142.49ms  self: 3039.42ms (42.6%)
+
+   total_ms  total_%     hits   child
+   --------  -------   ------   --------------------------------
+   3442.01   48.19%    39437   Document::UpdateStyleAndLayout
+   3039.42   42.55%       15   (self / unattributed)
+    547.98    7.67%   181106   v8.callFunction
+     50.99    0.71%      892   Blink.Style.UpdateTime
+     34.88    0.49%      205   V8.StackGuard
+     17.05    0.24%        6   MinorGC
+```
+
+Listing the 15 events by duration:
+
+```
+rm[0]   70.89 ms   -- one early-render burst (the parser)
+rm[1..3]  < 1 ms  -- empty-trigger settle ticks
+rm[4]  7071.14 ms  -- THE render loop
+rm[5..14]  < 1 ms each  -- post-render cleanup
+```
+
+**One event accounts for 99.0 % of the parent total.**
+rm[4] envelopes essentially the whole render. V8 batches
+the ~6 `await` boundaries inside `Chunker.flow()`
+(beforeParsed / filter / afterParsed / loadFonts /
+render / afterRendered) -- all of which Phase 1 of the
+async cleanup turned into `await undefined` fast-paths --
+into a single drained microtask continuation. There is
+**no per-page microtask cost**. The async stripping did
+its job.
+
+### The 181,106 `v8.callFunction` callbacks
+
+The first thing that looked like a smoking gun --
+"181k dispatches sounds per-page-shaped" -- turned out
+to be **one DOM walk**. Aggregating FunctionCall events
+by `args.data.functionName + lineNumber`:
+
+```
+hits      dur_ms   functionName:line
+181041    296.54   (anon):32455  (paged.browser.js)
+     2      0.25   request.onload:27495
+```
+
+paged.browser.js:32455 is `WhiteSpaceFilter.filter`'s
+TreeWalker callback:
+
+```js
+filterTree(content, (node) => {
+    return this.filterEmpty(node);
+}, NodeFilter.SHOW_TEXT);
+```
+
+The walker visits every text node in the parsed
+document and calls the lambda. For our 5.5 MB book
+that's 181,041 invocations, all clustered in the first
+685 ms of rm[4]. Same `(node) => this.filterEmpty(...)`
+arrow allocated once but called from C++→JS 181k times,
+so V8 emits a `v8.callFunction` event each invocation.
+
+These aren't 181k microtasks. They're 181k synchronous
+TreeWalker callbacks nested inside the one big
+continuation. The "callbacks per page" framing was a
+mirage produced by dividing 181k by page count.
+
+### What's actually in `(program)`'s 2.2 s
+
+Triangulating the trace and cpu profile:
+
+- **~1.7 s** is V8 dispatch glue for the 181k filter
+  walk callbacks + remaining native→JS transitions
+  inside the continuation. V8 charges this to
+  `RunMicrotasks` self in the trace; the cpu profile
+  splits it between `(program)` and rows like `v8.callFunction`.
+- **~0.3 s** is V8 IC / inline-cache miss handling on
+  the per-page hot path. Each polymorphic call site
+  pays a stub-call indirection that lands in `(program)`.
+- **~0.1 s** is Blink microtask checkpoint code -- the
+  auto-style-and-layout pass that fires whenever a
+  microtask drains. The `Document::UpdateStyleAndLayout`
+  events under `RunMicrotasks` (3.44 s) attribute the
+  work *itself* to named Blink rows; the C++ glue
+  bracketing each call lands in `(program)`.
+- The remainder is V8 scheduler bookkeeping, microtask
+  queue drain machinery, and small unnamed natives.
+
+None of this is a *per-page* cost. Reducing further
+would require either (a) eliminating the filter walk,
+or (b) reducing the per-page hot path's native→JS
+transition count -- which is dominated by gBCR-driven
+layout flushes that we've already pushed against
+unsuccessfully in earlier sections (Attempts B, D from
+the "createBreakToken dedup" investigation).
+
+### The "actionable finding" that wasn't: WhiteSpaceFilter
+
+The whitespace filter walk costs **~685 ms once per
+render** -- 296 ms inside the JS callback bodies plus
+~390 ms in TreeWalker dispatch overhead. The initial
+read was "this is doing nothing useful for compressed
+HTML, short-circuit it." Wrong on both counts.
+
+Branch-counting the filter via a one-shot probe (count
+every branch in `filterEmpty`, dump to the harness
+console):
+
+```
+total:        181,106  every text node visited
+  length === 0:       0
+  length === 1:  38,685  (21.4%)  collapsed inter-element spaces
+  length > 1, !ignorable: 101,930  (56.3%)  real content -- hot path
+  length > 1, ignorable:  40,491  (22.4%)  whitespace-only, body runs
+    inside <pre>:        3,408   no-op (REJECT)
+    middle position:    27,901   textContent = " " (mutated)
+    left edge:           5,405   removeChild (accepted)
+    right edge:          3,777   removeChild (accepted)
+    orphan:                  0
+```
+
+**22.4 % of calls entered the body** and 37,083 actual
+DOM mutations happened: 9,182 nodes removed +
+27,901 nodes overwritten to single spaces. Far from
+zero.
+
+The premise was based on a misreading of html-compress:
+the plugin does collapse inter-element whitespace, but
+the `:site, :pre_render` gate that picks which pages it
+processes explicitly excludes `book.html` (which uses
+the minimal `book-combined` layout that doesn't reach
+`vendor/compress`; same README's html-compress section
+calls this out). Source indentation is preserved in
+the PDF input, so paged.js sees the raw multi-char
+whitespace text nodes. The filter is load-bearing --
+its mutations are what subsequent chunker walkers
+rely on to skip whitespace cheaply.
+
+The 0.83 % of calls that exceeded 4 us in the trace's
+dur histogram came from this body running; the
+histogram undercounted body entries because the
+short-branch (`closest("pre")` → REJECT) takes only
+~2-3 us, indistinguishable from the hot path in the
+0-4 us buckets. Branch counters were needed to reveal
+the true split.
+
+There's still optimisation headroom (the per-call
+TreeWalker dispatch is ~3 us of which only ~1.5 us is
+the body), but it requires changing the algorithm
+rather than skipping it: e.g. a hand-rolled JS recursion
+that avoids the C++→JS transition per node, or
+folding WhiteSpaceFilter + CommentsFilter + ScriptsFilter
+into a single TreeWalker pass with `SHOW_TEXT | SHOW_COMMENT`
+and a dispatcher. Net saving probably ~300-400 ms once
+per render; not investigated.
+
+The methodology lesson: a histogram of per-call dur
+**cannot** distinguish a fast body branch from a hot
+path -- both compile to 2-3 µs on V8. Branch
+instrumentation is the only way to count what each
+call actually did. The histogram suggested "0.8 %
+body entries"; reality was 22.4 %.
+
+### And we did fix it, on the Jekyll side
+
+The premise that motivated the original "actionable
+finding" -- that book.html should already be
+whitespace-collapsed when paged.js sees it -- was true
+in spirit, just wrong about whether it was being done.
+The fix landed in two parts:
+
+1. **Extend `html-compress.rb` to book.html.** The
+   layout-chain precompute now explicitly adds
+   `book-combined` to `@compress_layouts` at the end of
+   `precompute_compress_layouts!`. book.html therefore
+   passes through `compress!` once per build (~480 ms
+   of `String#split` work on the ~5.5 MB document), and
+   paged.js sees a document with inter-element
+   whitespace already collapsed to single spaces.
+
+2. **Reorder hook priorities** so that adding compress
+   to book.html composes cleanly with the other
+   `:pages, :post_render` plugins. The original
+   `:high`-priority compress ran *before*
+   `book-href-rewrite` -- whose landing-heading strip
+   removed `<h2>` blocks from three chapter openings,
+   leaving the (already-collapsed) single spaces on
+   either side adjacent and producing literal `>  <`
+   blobs. The fix is a three-tier convention: mutators
+   at `:high` (run first), compress at `:normal` (the
+   cleanup), readers at `:low` (snapshot final bytes).
+   See `_plugins/html-compress.md` for the full table.
+
+Verified: 0 outside-pre multi-whitespace runs in the
+regenerated book.html (was 3 with the
+landing-heading-strip artifacts; was 37,087 without
+compress at all). Branch-counting the WhiteSpaceFilter
+after the fix shows body entries drop from ~40 k to
+the 3,408 in-pre cases that the filter is structurally
+required to visit (and immediately REJECTs via
+`closest("pre")`). DOM mutations drop from ~37 k to 0.
+PDF output is byte-equivalent within timestamp drift.
+
+Net wall-clock is approximately neutral on full builds
+(~480 ms added to Jekyll, ~300-500 ms saved at paged.js
+render time), and a small win for incremental Jekyll
+workflows that skip the PDF (`also_build_pdf: false`):
+the compress cost is paid once per Jekyll build, the
+render saving is paid every PDF build, and decoupling
+the two is the structural improvement.
+
+A ruby-prof A/B (post-change vs pre-change with a
+single stashed-changes revert) confirmed that the only
+attributable Jekyll-side cost is exactly one extra
+`compress!` invocation (837 → 838) and its downstream
+`String#split` calls (+819 from book.html's non-pre
+segments). No plugin's call count or self-time changed
+beyond the noise floor; the priority shuffle is
+CPU-invariant for everything except the new compress
+pass on book.html.
+
+### What the trace doesn't change
+
+Nothing about the cpu profile's bottom-up table is
+wrong; the trace just resolves what `(program)` masked.
+After this exercise, the menu of remaining levers is
+unchanged:
+
+- `pageRanges` sharding for the generate phase (biggest
+  untried knob, generate is now the larger phase).
+- WhiteSpaceFilter algorithmic restructuring (~0.3 s,
+  render) -- not a short-circuit, since the filter does
+  real work; would need a hand-rolled traversal that
+  avoids the per-node C++→JS dispatch.
+- Everything else lives below the noise floor.
+
+Render-stage optimization headroom is exhausted. The
+cpu profile's `(program)` row isn't a structural smell
+or a missed microtask -- it's the fixed cost of V8
+running the JavaScript we already have, accounted for
+honestly by the trace and accounted for opaquely by
+the JS sampler.

@@ -1,6 +1,6 @@
 # HtmlCompress
 
-`_plugins/html-compress.rb` runs the HTML whitespace compression that wraps every page's render chain — the same job just-the-docs's vendor/compress.html Liquid layout was doing, but in Ruby instead of Liquid filters. Output is byte-identical to the layout-based version (verified by recursive diff of every file in `_site/` against a vendor/compress.html baseline). The Liquid layout is short-circuited to a `{{ content }}` passthrough via `compress_html.ignore.envs: all` in `_config.yml`; the plugin then runs at `:pages, :post_render` / `:documents, :post_render` with `priority :high`, so the compressed bytes are what offlinify and Jekyll's writer see.
+`_plugins/html-compress.rb` runs the HTML whitespace compression that wraps every page's render chain — the same job just-the-docs's vendor/compress.html Liquid layout was doing, but in Ruby instead of Liquid filters. Output is byte-identical to the layout-based version for the 837 vendor/compress-reaching pages (verified by recursive diff of every file in `_site/` against a vendor/compress.html baseline). The Liquid layout is short-circuited to a `{{ content }}` passthrough via `compress_html.ignore.envs: all` in `_config.yml`; the plugin then runs at `:pages, :post_render` / `:documents, :post_render` with `priority :normal` as the *cleanup* step in a three-tier `:high` → `:normal` → `:low` ordering (mutators → compress → readers — see [Hook priority convention](#hook-priority-convention) below). It also picks up one page the original layout didn't process, `book.html`, via an explicit `book-combined` addition to the compress-eligible set — see [book.html inclusion](#bookhtml-inclusion).
 
 This file sits in `_plugins/` for the same reasons as `offlinify.md` and `pdfify.md`: it lives next to the code it documents, and Jekyll's `_plugins/` folder is plugin-only territory, so this Markdown never gets rendered into the public site.
 
@@ -74,7 +74,7 @@ page.md   (layout: default)
         └── vendor/compress.html (no layout)
 ```
 
-Pages that don't use any of these layouts — jekyll-redirect-from stubs, the SCSS-derived CSS pages, `assets/js/zzzz-search-data.json`, `book.html` (which uses the minimal `book-combined` layout that has no parent) — were left untouched by the layout. The plugin has to match that gating, otherwise it would compress files that compress.html doesn't, breaking byte-identity.
+Pages that don't use any of these layouts — jekyll-redirect-from stubs, the SCSS-derived CSS pages, `assets/js/zzzz-search-data.json` — were left untouched by the layout. The plugin has to match that gating, otherwise it would compress files that compress.html doesn't, breaking byte-identity. `book.html` (which uses the minimal `book-combined` layout that has no parent) was originally in this list, but is now explicitly added to the compress-eligible set — see [book.html inclusion](#bookhtml-inclusion).
 
 The gate is precomputed once at `:site, :pre_render`:
 
@@ -114,20 +114,42 @@ Jekyll::Hooks.register :site, :pre_render do |site|
   HtmlCompress.precompute_compress_layouts!(site)
 end
 
-Jekyll::Hooks.register :pages, :post_render, priority: :high do |page|
+Jekyll::Hooks.register :pages, :post_render, priority: :normal do |page|
   next unless page.output.is_a?(String)
   next unless HtmlCompress.compress?(page)
   HtmlCompress.compress!(page.output)
 end
 
-Jekyll::Hooks.register :documents, :post_render, priority: :high do |doc|
+Jekyll::Hooks.register :documents, :post_render, priority: :normal do |doc|
   next unless doc.output.is_a?(String)
   next unless HtmlCompress.compress?(doc)
   HtmlCompress.compress!(doc.output)
 end
 ```
 
-The `priority: :high` is what places the plugin *before* `offlinify.rb` and `pdfify.rb` in the per-page render-hook order — both of those use the default `:normal` priority and rely on reading the final compressed `page.output`. Jekyll runs `:post_render` hooks in descending priority, so `:high` (30) fires before `:normal` (20). Without the priority annotation the order would be insertion-order across all `.rb` files in `_plugins/`, which is not a stable contract.
+## Hook priority convention
+
+The `priority: :normal` is the middle tier of a three-level ordering for `:pages, :post_render` and `:documents, :post_render` hooks across the plugin set. Jekyll runs hooks in descending priority (`:high` (30) → `:normal` (20) → `:low` (10)), and the three tiers carry distinct roles:
+
+| Tier | Role | Plugins |
+| --- | --- | --- |
+| `:high` (30) | **Mutators.** Modify `page.output` so the final bytes reflect this pass. | `book-href-rewrite` (chapter href rewrites + landing-heading strip on `book.html`). |
+| `:normal` (20) | **Compress.** The cleanup pass. Sandwiched between mutators and readers so any whitespace runs left behind by a mutator's `gsub` get collapsed before any reader captures the bytes. | `html-compress` (this plugin). |
+| `:low` (10) | **Readers.** Snapshot or consume `page.output` after the cleanup pass. | `pdfify` (captures `book.html` for the PDF pipeline), `offlinify` (per-page href / src rewrites + write to `_site-offline/`). |
+
+The layering was originally implicit: the plugin sat at `:high` next to no other priority-annotated `:post_render` hooks. That worked until `book-href-rewrite` joined the set at default `:normal`. Its landing-heading strip ran *after* compress, removing `<h2>` blocks but leaving the (already-collapsed) single-space runs on either side adjacent — producing literal `>  <` blobs in three chapter openings that paged.js's WhiteSpaceFilter then had to handle at render time. Promoting `book-href-rewrite` to `:high` and demoting compress to `:normal` makes the invariant "compress is the last cleanup step among mutators" hold by construction; demoting the readers to `:low` makes "readers see the final compressed output" hold by construction. Future plugins choose their tier by their role and the ordering composes automatically.
+
+The full priority story is documented as a comment block above the `Jekyll::Hooks.register` calls in [`html-compress.rb`](html-compress.rb); each of the four affected plugins (this one, `book-href-rewrite`, `pdfify`, `offlinify`) carries a one-line note pointing back to that block.
+
+## book.html inclusion
+
+The layout-chain walk above only marks layouts that reach `vendor/compress`. `book.html` uses the minimal `book-combined` layout, which has no parent, so the walk never reaches it and the page was originally skipped (matching the layout's behaviour). After investigation of paged.js's per-render `WhiteSpaceFilter` work (see [`perf/README.md`](../../perf/README.md)) showed it doing ~37k DOM mutations at render time to handle whitespace text nodes that *would* have been collapsed if the page had been compressed at Jekyll build time, the precompute was extended to mark `book-combined` explicitly:
+
+```ruby
+@compress_layouts << "book-combined" if site.layouts.key?("book-combined")
+```
+
+at the end of `precompute_compress_layouts!`. Output: `book.html` now passes through `compress!` once per build (~480 ms of additional `String#split` work on the ~5.5 MB document), saving roughly the same wall-clock at paged.js render time (~28k `textContent` overwrites + ~9k `removeChild` calls eliminated). Net is approximately wall-clock-neutral for full builds, and a small net win for incremental Jekyll workflows that skip the PDF (`also_build_pdf: false`) — the compress cost is paid once per Jekyll build, the render saving is paid every PDF build, and decoupling the two is the structural improvement.
 
 ## Verification
 
@@ -157,6 +179,6 @@ In source order in [`html-compress.rb`](html-compress.rb):
 
 - `precompute_compress_layouts!(site)` — `:site, :pre_render` entry. Walks every layout chain via `data["layout"]`, marks each layout on the path as compress-ending the moment the walk hits `vendor/compress`. Idempotent; the resulting `@compress_layouts` set persists across builds in `jekyll serve` and gets rebuilt fresh each `:pre_render`.
 
-- `compress?(page)` — gate check. Returns `true` when the page's `data["layout"]` is in `@compress_layouts`. Pages without a layout (jekyll-redirect-from stubs, SCSS-derived CSS, JSON-via-page-rendering, `book.html` via `book-combined`) return `false` and skip the compression entirely.
+- `compress?(page)` — gate check. Returns `true` when the page's `data["layout"]` is in `@compress_layouts`. Pages without a layout (jekyll-redirect-from stubs, SCSS-derived CSS, JSON-via-page-rendering) return `false` and skip the compression entirely. `book.html` (which uses `book-combined`, a minimal layout with no parent) used to land here too; it is now explicitly added to the set by `precompute_compress_layouts!` — see [book.html inclusion](#bookhtml-inclusion).
 
 - `compress!(content)` — the actual compression, in place. Captures the trailing-newline state, splits by `PRE_BLOCK_RE` with the capture group so pre bodies are preserved in the result array, runs `split(" ").join(" ")` on every outside-of-pre segment, joins, restores the trailing newline if needed, then mutates the input string via `String#replace`. The `replace` is what lets us hand back the same string object the caller passed in — Jekyll's writer reads `page.output` after `:post_render`, so in-place mutation is the cheapest way to update what gets written.
