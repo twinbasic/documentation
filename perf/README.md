@@ -3860,3 +3860,262 @@ the production build), and `pageRanges` sharding remains
 the only knob with a profile target large enough to move
 the wall-clock total meaningfully -- and that target is
 generate, not render.
+
+## What happened when we tried move-not-clone
+
+A fresh `--detach-pages --no-timing --cpu-profile
+--cpu-sampling 100` baseline run showed `cloneNode` at
+~146 ms self-time, all of it inside `Layout.append`'s per-
+source-node clone path. `Layout.append`'s body for the
+`!shallow` (deep-cloned leaf) yields was:
+
+```js
+let clone = cloneNode(node, !shallow);  // deep clone
+// ... attach clone to dest ...
+return clone;
+```
+
+The user's question: source's read-only-template contract
+is just an artifact of paged.js's break-and-resume model.
+We're doing offline layout -- nothing reads source after
+the render finishes. Could we MOVE the source node into
+dest instead of cloning it, and avoid the allocation cost
+entirely? Best-case ceiling estimated at ~300-450 ms /
+~3-5 % of render (the cloneNode self plus distributed GC-
+pressure relief from not allocating ~250 k duplicate DOM
+nodes).
+
+### What the refactor required
+
+Three load-bearing assumptions in the chunker break the
+moment source is mutated:
+
+1. The walker traverses via live links
+   (`node.firstChild` / `nextSibling` / `parentNode`).
+   After a leaf yield, `walker = walk$2(nodeAfter(node,
+   source), source)` reads `nodeAfter` AFTER `append` has
+   moved `node` into dest -- the reads now go into dest's
+   tree, not source's. Fix: capture `nodeAfter(node,
+   source)` BEFORE the append call and pass it to the
+   walker reset.
+
+2. `BreakToken.node` stores a source-tree reference for
+   the next page's `getStart(source, breakToken)` to
+   resume from. `createBreakToken`'s four
+   `findElement(*, source)` call sites map rendered
+   (clone) nodes back to source via shared `data-ref`.
+   With moves, source has lost the leaves and findElement
+   returns the moved node now living in dest. Fix:
+   bypass `createBreakToken` entirely. Compute the
+   resume point from the extract-and-restore step
+   instead (see `restoreOverflow` below).
+
+3. `removeOverflow`'s `deleteContents` would drop the
+   moved content forever. In the clone model that was
+   fine -- source still held a pristine copy. In the
+   move model, source needs the overflow content back so
+   the next page can render it. Fix: replace with
+   `restoreOverflow` -- `extractContents` the overflow
+   range, walk the fragment depth-first collecting leaf
+   elements, and reinsert each leaf at its stashed
+   `_srcParent` / `_srcNextSibling` position. For the
+   boundary leaf that's partially overflowing,
+   `extractContents` produces a shallow clone of the
+   leaf in the fragment; we inherit its source position
+   via `source.indexOfRefs[ref]` (which still points at
+   the original-now-in-dest, which carries the stash).
+   Reverse-order iteration so each leaf's `_srcNextSibling`
+   target is back in source by the time we insert.
+
+### The bug that taught the real story
+
+First pass rendered the book to 1740 pages -- 89 more
+than the 1651-page baseline. Content was byte-identical
+modulo timestamps. Per-page char counts in the FAQ
+section showed pages 127+ with only ~50-500 chars each:
+
+```
+[BL p127] 3045 chars      [EX p127] 438 chars
+[BL p128] 3732 chars      [EX p128] 185 chars
+```
+
+Some FAQ pages had a single short paragraph. Instrumenting
+`shouldBreak` revealed it was returning true on every
+non-first yield inside the FAQ article:
+
+```
+[instrument] shouldBreak true: tag=P  ref=6bv pba=- prevNode=ARTICLE
+[instrument] shouldBreak true: tag=B  ref=6bx pba=- prevNode=ARTICLE
+[instrument] shouldBreak true: tag=P  ref=6by pba=- prevNode=ARTICLE
+... (one per FAQ paragraph)
+```
+
+The `<p>` elements have no `data-break-before` and no
+`data-previous-break-after`, so the fire is via
+`needsPageBreak(node, previousNode)` -- which checks
+whether `node`'s effective `data-page` differs from
+`previousNode`'s.
+
+`previousNode` is computed via
+`nodeBefore(node, limiter)`, which walks
+`node.previousSibling` then climbs via `parentNode` if
+no significant sibling exists. In the move model, after
+the previous yield was moved out of source, the current
+yield's `previousSibling` is `null` (the previous one no
+longer lives in source). The climb continues up:
+FAQ article (no `data-page`) -> looks at its previous
+sibling -> finds the **part-divider article** sitting
+right before the FAQ article in source, which DOES carry
+`data-page="divider"` (set by processBreaks for the CSS
+`page: divider;` rule on `article.part-divider`).
+
+So `needsPageBreak` saw a transition from
+`page="divider"` to (effectively) no page, fired true,
+and the chunker started a fresh page for every paragraph
+in the FAQ section. The chapter article's normal
+"siblings share the same effective page-name" property
+broke because the sibling-walk now escapes the chapter
+into the prior part-divider.
+
+### Fix: track previousLeaf in renderTo
+
+The chunker already knows the right answer: the last
+leaf it actually appended this page. Threaded through
+`shouldBreak` as a third argument, used by the
+`needsPageBreak` branch only (`needsBreakBefore` and the
+`parentBreakBefore` logic still use `nodeBefore`):
+
+```js
+let _moveLastLeaf = null;
+// ... in the loop ...
+if (hasRenderedContent &&
+    this.shouldBreak(node, start, _moveLastLeaf)) { ... }
+// ... after append ...
+if (!shallow) _moveLastLeaf = node;
+```
+
+In `shouldBreak`:
+
+```js
+let pageBreakRef = previousLeaf || nodeBefore(node, limiter);
+return ... || needsPageBreak(node, pageBreakRef);
+```
+
+With that, page count went 1740 -> 1653 (within 2 of
+baseline) and per-page content matched. PDF
+byte-equivalent to baseline within timestamp drift.
+
+### Profile diff
+
+Both runs `--detach-pages --cpu-profile --cpu-sampling
+100`, sample-time absolute, single run each (wall-clock
+on this machine is too noisy to be a useful signal --
+see "Methodology: compare profiles, not wall-clock"
+above):
+
+| function | baseline | move | Δ |
+| --- | --- | --- | --- |
+| `getBoundingClientRect` | 3539 ms | 4036 ms | **+497** |
+| `appendChild` | 137 ms | 390 ms | **+253** |
+| `restoreOverflow` (new) | -- | 168 ms | +168 |
+| `removeChild` | 1536 ms | 1635 ms | +99 |
+| `insertBefore` | <50 ms | 87 ms | ~+87 |
+| `getNodeWithNamedPage` | <50 ms | 108 ms | ~+85 |
+| `afterPageLayout` (AtPage) | 105 ms | 182 ms | +77 |
+| `(program)` | 2196 ms | 2266 ms | +70 |
+| `Layout` ctor | 23 ms | 31 ms | +8 |
+| `cloneNode` | 146 ms | <130 ms | **-146** |
+| `removeOverflow` | 124 ms | -- (replaced) | -124 |
+| **samples** | **17,481** | **19,590** | **+2,109** |
+| **CPU work** | **9.48 s** | **10.74 s** | **+1.26 s** |
+
+Net **+1.26 s of CPU work** -- the change is a clear
+regression in the opposite direction from the prediction.
+
+### Why the prediction was wrong
+
+The cloneNode self-time saving (-146 ms) shows up as
+expected, but three structural costs dwarf it:
+
+1. **`appendChild` on an attached node is roughly 2x
+   the cost of `appendChild` on a fresh clone (+253 ms).**
+   A move is internally detach-from-source-parent +
+   attach-to-dest-parent; both touch Blink's child-list
+   bookkeeping. cloneNode produces an unparented node,
+   so the subsequent attach is one-sided. Intrinsic to
+   any move-based design -- no implementation choice
+   avoids it.
+
+2. **Each move dirties Blink's layout state more than
+   each clone does, distributing cost into gBCR
+   (+497 ms).** The increase is spread across every
+   gBCR call site -- `Page.create` (+225 ms),
+   `hasOverflow` (+152 ms), `Layout` ctor (+58 ms),
+   `afterPageLayout` (+31 ms), `addResizeObserver`
+   (+31 ms) -- not localized to any new code. Each
+   gBCR call flushes pending mutations; with every move
+   counting as two mutations vs one for clone+append,
+   each flush has more to do. Same migration pattern
+   the README's "Attempt B: memoize `Page.create`'s gBCR"
+   documented above -- DOM mutation cost doesn't go
+   away by elimination, it migrates to whichever frame
+   next forces a layout flush.
+
+3. **The extract-and-restore cycle adds ~340 ms of new
+   JS work.** `restoreOverflow` (168 ms) builds an
+   `extractContents` fragment + walks it for leaves +
+   inserts each back into source. `previousLeaf` makes
+   `shouldBreak` call `getNodeWithNamedPage` (108 ms)
+   on every leaf yield (it climbs parent chains looking
+   for `data-page`). `insertBefore` (87 ms) is the
+   per-restore reinsertion.
+
+The deeper structural reason: paged.js's break-and-
+resume model touches each source leaf O(pages-spanning-
+that-leaf) times in the move model -- moved into page N,
+extracted to the fragment, reinserted into source,
+moved into page N+1. Each touch is a DOM mutation. The
+clone model touches each node O(1) times -- allocated
+once, attached, thrown away with the page. Cumulative
+mutation count is structurally higher under moves.
+
+The cloneNode time the profile attributes to its native
+frame is just the *allocator* portion of cloning work --
+not the total cost of "duplicating a subtree". The rest
+hides in V8 / Blink native frames not labeled
+`cloneNode`, and that rest doesn't disappear when you
+switch to moves; it shows up as appendChild +
+invalidation cost instead.
+
+### Where this leaves the picture
+
+Reverted. The cumulative table from the previous
+section is unchanged. No row added.
+
+The pattern this attempt taught is the inverse of the
+"distributed savings often exceed direct estimates"
+heuristic the README documents elsewhere: sometimes a
+change with a direct cost saving has bigger distributed
+*regressions* that aren't visible until you measure.
+The cloneNode saving was real; the appendChild + gBCR +
+restoreOverflow overhead was bigger.
+
+The only design that would avoid all three costs is one
+that never re-moves the same node -- a single-pass
+paginator with no break-and-resume. That's not paged.js;
+it's a different algorithm. Not a small refactor.
+
+The buffer variant (pre-clone source once at startup,
+move from buffer to dest) was considered and not
+prototyped: it'd shift the cloneNode allocation cost to
+one big startup call but every per-page move would
+still hit the same appendChild + gBCR dynamic that ate
+the savings here. No structural win.
+
+This experiment also clarifies why the "Profiling
+pdf-lib's load" and "Findings: removeChild" sections
+saw allocation savings show up as wall-clock gains:
+those operations didn't have a Blink layout-tree
+mutation step downstream. Mutations are where the cost
+that *looks* like JS allocation actually lives in this
+codebase.
