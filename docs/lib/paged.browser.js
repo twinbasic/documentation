@@ -8,51 +8,30 @@
 	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.PagedPolyfill = factory());
 })(this, (function () { 'use strict';
 
-	function getBoundingClientRect(element) {
-		if (!element) {
-			return;
-		}
-		let rect;
-		if (typeof element.getBoundingClientRect !== "undefined") {
-			rect = element.getBoundingClientRect();
-		} else {
-			let range = document.createRange();
-			range.selectNode(element);
-			rect = range.getBoundingClientRect();
-		}
-		return rect;
-	}
-
-	function getClientRects(element) {
-		if (!element) {
-			return;
-		}
-		let rect;
-		if (typeof element.getClientRects !== "undefined") {
-			rect = element.getClientRects();
-		} else {
-			let range = document.createRange();
-			range.selectNode(element);
-			rect = range.getClientRects();
-		}
-		return rect;
-	}
-
 	/**
-	 * Generates a UUID
-	 * based on: http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
-	 * @returns {string} uuid
+	 * Returns a unique-within-render id as a base36 string.
+	 * Replaced the prior RFC 4122 v4 UUID generator -- our pipeline only
+	 * needs uniqueness within a single render (data-ref attributes,
+	 * generated CSS variable / selector names, internal object identity),
+	 * not globally. Counter + base36 shaves the per-call cost from
+	 * ~3us (Date.now + per-char replace closure) to ~50ns and keeps IDs
+	 * short (max ~5 chars for the ~50k DOM nodes in a typical book).
+	 *
+	 * UUIDDecimal() below shares the same counter but returns the
+	 * decimal representation -- needed at addRefs (the data-ref
+	 * writer) so V8 auto-coerces the ref string to an integer index
+	 * when used against `source.indexOfRefs` (an Array). Base36 strings
+	 * like "1z" would force that array into dictionary mode; decimal
+	 * keeps it in PACKED_ELEMENTS, saving ~2-3 MB vs the previous
+	 * string-keyed dict. Every other UUID caller goes through UUID()
+	 * because their consumers don't index a JS array with the result.
 	 */
+	var __pagedjsCounter = 0;
 	function UUID() {
-		var d = new Date().getTime();
-		if (typeof performance !== "undefined" && typeof performance.now === "function") {
-			d += performance.now(); //use high-precision timer if available
-		}
-		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-			var r = (d + Math.random() * 16) % 16 | 0;
-			d = Math.floor(d / 16);
-			return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
-		});
+		return (++__pagedjsCounter).toString(36);
+	}
+	function UUIDDecimal() {
+		return (++__pagedjsCounter).toString();
 	}
 
 	function attr(element, attributes) {
@@ -169,16 +148,12 @@
 
 		this.reject = null;
 
-		this.id = UUID();
-
 		this.promise = new Promise((resolve, reject) => {
 			this.resolve = resolve;
 			this.reject = reject;
 		});
 		Object.freeze(this);
 	}
-
-	const requestIdleCallback = typeof window !== "undefined" && ("requestIdleCallback" in window ? window.requestIdleCallback : window.requestAnimationFrame);
 
 	function CSSValueToString(obj) {
 		return obj.value + (obj.unit || "");
@@ -903,28 +878,21 @@
 			return true;
 		}
 
+		// Cheap loop-detection key for the chunker's per-page Set.
+		// Common case (Element with its own data-ref): "ref|offset". Falls
+		// back to "parentRef|siblingIndex|offset" for Text/Comment nodes
+		// where the ref lives on the parent. The string is opaque to all
+		// callers other than chunker.flow's loop guard, so the format only
+		// needs to be unique-per-break-point, not human-readable.
 		toJSON(hash) {
-			let node;
-			let index = 0;
-			if (!this.node) {
-				return {};
-			}
+			if (!this.node) return "";
 			if (isElement(this.node) && this.node.dataset.ref) {
-				node = this.node.dataset.ref;
-			} else if (hash) {
-				node = this.node.parentElement.dataset.ref;
+				return this.node.dataset.ref + "|" + (this.offset || 0);
 			}
-
-			if (this.node.parentElement) {
-				const children = Array.from(this.node.parentElement.childNodes);
-				index = children.indexOf(this.node);
-			}
-
-			return JSON.stringify({
-				"node": node,
-				"index" : index,
-				"offset": this.offset
-			});
+			const parent = this.node.parentElement;
+			const parentRef = parent ? parent.dataset.ref : "";
+			const index = parent ? Array.prototype.indexOf.call(parent.childNodes, this.node) : 0;
+			return parentRef + "|" + index + "|" + (this.offset || 0);
 		}
 
 	}
@@ -1011,32 +979,6 @@
 		return true;
 	};
 
-	var isImplemented$7 = function () {
-		var assign = Object.assign, obj;
-		if (typeof assign !== "function") return false;
-		obj = { foo: "raz" };
-		assign(obj, { bar: "dwa" }, { trzy: "trzy" });
-		return obj.foo + obj.bar + obj.trzy === "razdwatrzy";
-	};
-
-	var isImplemented$6;
-	var hasRequiredIsImplemented$2;
-
-	function requireIsImplemented$2 () {
-		if (hasRequiredIsImplemented$2) return isImplemented$6;
-		hasRequiredIsImplemented$2 = 1;
-
-		isImplemented$6 = function () {
-			try {
-				Object.keys("primitive");
-				return true;
-			} catch (e) {
-				return false;
-			}
-		};
-		return isImplemented$6;
-	}
-
 	// eslint-disable-next-line no-empty-function
 	var noop$4 = function () {};
 
@@ -1044,71 +986,12 @@
 
 	var isValue$4 = function (val) { return val !== _undefined && val !== null; };
 
-	var shim$5;
-	var hasRequiredShim$5;
-
-	function requireShim$5 () {
-		if (hasRequiredShim$5) return shim$5;
-		hasRequiredShim$5 = 1;
-
-		var isValue = isValue$4;
-
-		var keys = Object.keys;
-
-		shim$5 = function (object) { return keys(isValue(object) ? Object(object) : object); };
-		return shim$5;
-	}
-
-	var keys;
-	var hasRequiredKeys;
-
-	function requireKeys () {
-		if (hasRequiredKeys) return keys;
-		hasRequiredKeys = 1;
-
-		keys = requireIsImplemented$2()() ? Object.keys : requireShim$5();
-		return keys;
-	}
-
 	var isValue$3 = isValue$4;
 
 	var validValue = function (value) {
 		if (!isValue$3(value)) throw new TypeError("Cannot use null or undefined");
 		return value;
 	};
-
-	var shim$4;
-	var hasRequiredShim$4;
-
-	function requireShim$4 () {
-		if (hasRequiredShim$4) return shim$4;
-		hasRequiredShim$4 = 1;
-
-		var keys  = requireKeys()
-		  , value = validValue
-		  , max   = Math.max;
-
-		shim$4 = function (dest, src /*, …srcn*/) {
-			var error, i, length = max(arguments.length, 2), assign;
-			dest = Object(value(dest));
-			assign = function (key) {
-				try {
-					dest[key] = src[key];
-				} catch (e) {
-					if (!error) error = e;
-				}
-			};
-			for (i = 1; i < length; ++i) {
-				src = arguments[i];
-				keys(src).forEach(assign);
-			}
-			if (error !== undefined) throw error;
-			return dest;
-		};
-		return shim$4;
-	}
-
-	var assign$2 = isImplemented$7() ? Object.assign : requireShim$4();
 
 	var isValue$2 = isValue$4;
 
@@ -1129,35 +1012,9 @@
 		return result;
 	};
 
-	var str = "razdwatrzy";
-
-	var isImplemented$5 = function () {
-		if (typeof str.contains !== "function") return false;
-		return str.contains("dwa") === true && str.contains("foo") === false;
-	};
-
-	var shim$3;
-	var hasRequiredShim$3;
-
-	function requireShim$3 () {
-		if (hasRequiredShim$3) return shim$3;
-		hasRequiredShim$3 = 1;
-
-		var indexOf = String.prototype.indexOf;
-
-		shim$3 = function (searchString /*, position*/) {
-			return indexOf.call(this, searchString, arguments[1]) > -1;
-		};
-		return shim$3;
-	}
-
-	var contains$1 = isImplemented$5() ? String.prototype.contains : requireShim$3();
-
 	var isValue$1         = is$4
 	  , isPlainFunction = is
-	  , assign$1          = assign$2
-	  , normalizeOpts   = normalizeOptions
-	  , contains        = contains$1;
+	  , normalizeOpts   = normalizeOptions;
 
 	var d$1 = (d$2.exports = function (dscr, value/*, options*/) {
 		var c, e, w, options, desc;
@@ -1169,16 +1026,16 @@
 			options = arguments[2];
 		}
 		if (isValue$1(dscr)) {
-			c = contains.call(dscr, "c");
-			e = contains.call(dscr, "e");
-			w = contains.call(dscr, "w");
+			c = dscr.includes("c");
+			e = dscr.includes("e");
+			w = dscr.includes("w");
 		} else {
 			c = w = true;
 			e = false;
 		}
 
 		desc = { value: value, configurable: c, enumerable: e, writable: w };
-		return !options ? desc : assign$1(normalizeOpts(options), desc);
+		return !options ? desc : Object.assign(normalizeOpts(options), desc);
 	});
 
 	d$1.gs = function (dscr, get, set/*, options*/) {
@@ -1203,15 +1060,15 @@
 			set = undefined;
 		}
 		if (isValue$1(dscr)) {
-			c = contains.call(dscr, "c");
-			e = contains.call(dscr, "e");
+			c = dscr.includes("c");
+			e = dscr.includes("e");
 		} else {
 			c = true;
 			e = false;
 		}
 
 		desc = { get: get, set: set, configurable: c, enumerable: e };
-		return !options ? desc : assign$1(normalizeOpts(options), desc);
+		return !options ? desc : Object.assign(normalizeOpts(options), desc);
 	};
 
 	var dExports = d$2.exports;
@@ -1366,6 +1223,25 @@
 	 * @param {any} context scope of this
 	 * @example this.content = new Hook(this);
 	 */
+	// [PATCH: sync-chain] Used by the chunker hot path to confirm that
+	// Hook.trigger() returned the sync sentinel (undefined). If a handler
+	// returned a thenable, the chunker dropping it here would silently
+	// lose async work -- so we throw instead. Limitation of this fork:
+	// the per-page hooks (beforePageLayout / afterPageLayout /
+	// finalizePage / handleBreaks / *layout / page.layout etc.) must
+	// have all-synchronous handlers. Bundle ships with no async handlers
+	// for these on our pipeline; document and assert.
+	function _assertSync(triggerResult, hookName) {
+		if (triggerResult && typeof triggerResult.then === "function") {
+			throw new Error(
+				"paged.js (forked): async handler registered for hook '" + hookName + "'. " +
+				"This bundle's per-page hot path is synchronous; async handlers " +
+				"must be registered for the once-per-render hooks (beforeParsed, " +
+				"afterParsed, afterRendered) instead, or the chain re-asyncified."
+			);
+		}
+	}
+
 	class Hook {
 		constructor(context){
 			this.context = context || this;
@@ -1391,39 +1267,61 @@
 		}
 
 		/**
-		 * Triggers a hook to run all functions
-		 * @example this.content.trigger(args).then(function(){...});
-		 * @return {Promise} results
+		 * Triggers a hook to run all functions.
+		 * @return {Promise|undefined} A Promise that resolves when all
+		 *   thenable-returning handlers settle, OR `undefined` if no
+		 *   handler returned a thenable (the all-synchronous fast path).
+		 *
+		 * [PATCH: hook-fast-path] Upstream always wrapped sync handler
+		 * results in `new Promise(resolve => resolve(...))` and returned
+		 * `Promise.all(promises)`, so callers' `await trigger(...)` was a
+		 * mandatory microtask boundary even when every handler resolved
+		 * synchronously. We return `undefined` on the all-sync path so
+		 * callers can write:
+		 *
+		 *   let p = hook.trigger(...);
+		 *   if (p) await p;
+		 *
+		 * and skip the microtask boundary entirely. Per-page hot-loop
+		 * sites in the chunker do this; one-shot callers can keep the
+		 * `await trigger(...)` form (`await undefined` still works, just
+		 * with a cycle).
 		 */
 		trigger(){
 			var args = arguments;
 			var context = this.context;
-			var promises = [];
+			var promises;
 
-			this.hooks.forEach(function(task) {
-				var executing = task.apply(context, args);
-
-				if(executing && typeof executing["then"] === "function") {
-					// Task is a function that returns a promise
-					promises.push(executing);
-				} else {
-					// Otherwise Task resolves immediately, add resolved promise with result
-					promises.push(new Promise((resolve, reject) => {
-						resolve(executing);
-					}));
+			for (var i = 0; i < this.hooks.length; i++) {
+				var executing = this.hooks[i].apply(context, args);
+				if (executing && typeof executing["then"] === "function") {
+					(promises = promises || []).push(executing);
 				}
-			});
+			}
 
-
-			return Promise.all(promises);
+			return promises ? Promise.all(promises) : undefined;
 		}
 
 		/**
-	   * Triggers a hook to run all functions synchronously
-	   * @example this.content.trigger(args).then(function(){...});
-	   * @return {Array} results
+	   * Triggers a hook to run all functions synchronously.
+	   * @return {Array|undefined} results array, or undefined when no
+	   *   handlers are registered (callers can skip their reducer
+	   *   forEach with a simple truthy check).
+	   *
+	   * [PATCH: hook-fast-path-sync] Mirrors the async `trigger()` patch:
+	   * skip the results-array alloc and the empty-forEach indirection
+	   * when this.hooks is empty. In the per-page hot path, onOverflow
+	   * and onBreakToken have zero registered handlers in this build,
+	   * so every call to those two hooks via triggerSync was pure
+	   * dispatch overhead -- ~3300 calls per render on the 1650-page
+	   * book. Callers in those reducer sites now read:
+	   *
+	   *   let r = hook.triggerSync(...);
+	   *   if (r) r.forEach(...);
 	   */
 		triggerSync(){
+			if (this.hooks.length === 0) return undefined;
+
 			var args = arguments;
 			var context = this.context;
 			var results = [];
@@ -1488,10 +1386,35 @@
 			this.settings = options || {};
 
 			this.maxChars = this.settings.maxChars || MAX_CHARS_PER_BREAK;
+
+			// [PATCH: parent-lookup-cache] One-entry memo of the last
+			// (sourceParent, dest) -> destParent resolution from append().
+			// Consecutive siblings in the source tree all resolve to the
+			// same destParent, so caching the previous result lets the
+			// per-call findElement / indexOfRefs lookup short-circuit.
+			// Invalidated at the start of every renderTo; safe within a
+			// single renderTo loop because append() never detaches DOM
+			// from dest (removeOverflow only fires after the loop exits).
+			this._lastSrcParent = null;
+			this._lastDest = null;
+			this._lastDestParent = null;
 			this.forceRenderBreak = false;
 		}
 
-		async renderTo(wrapper, source, breakToken, bounds = this.bounds) {
+		// [PATCH: sync-chain] renderTo no longer needs to be async because
+		// waitForImages is now sync (see its comment). Removing `async`
+		// removes the per-page Promise allocation that was returned from
+		// page.layout / chunker.layout up the chain.
+		renderTo(wrapper, source, breakToken, bounds = this.bounds) {
+			// [PATCH: parent-lookup-cache] Invalidate the per-Layout
+			// parent memo. The previous renderTo on this Layout instance
+			// (same Page, multiple renderTo calls) may have run
+			// findBreakToken -> removeOverflow at exit, leaving the
+			// cached destParent detached.
+			this._lastSrcParent = null;
+			this._lastDest = null;
+			this._lastDestParent = null;
+
 			let start = this.getStart(source, breakToken);
 			let walker = walk$2(start, source);
 
@@ -1518,7 +1441,7 @@
 
 			let prevBreakToken = breakToken || new BreakToken(start);
 
-			this.hooks && this.hooks.onPageLayout.trigger(wrapper, prevBreakToken, this);
+			if (this.hooks) _assertSync(this.hooks.onPageLayout.trigger(wrapper, prevBreakToken, this), "onPageLayout");
 
 			while (!done && !newBreakToken) {
 				next = walker.next();
@@ -1527,36 +1450,36 @@
 				done = next.done;
 
 				if (!node) {
-					this.hooks && this.hooks.layout.trigger(wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.layout.trigger(wrapper, this), "layout");
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
-						await this.waitForImages(imgs);
+						this.waitForImages(imgs);
 					}
 
 					newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
 
 					if (newBreakToken && newBreakToken.equals(prevBreakToken)) {
 						console.warn("Unable to layout item: ", prevNode);
-						this.hooks && this.hooks.beforeRenderResult.trigger(undefined, wrapper, this);
+						if (this.hooks) _assertSync(this.hooks.beforeRenderResult.trigger(undefined, wrapper, this), "beforeRenderResult");
 						return new RenderResult(undefined, new OverflowContentError("Unable to layout item", [prevNode]));
 					}
 
 					this.rebuildTableFromBreakToken(newBreakToken, wrapper);
 
-					this.hooks && this.hooks.beforeRenderResult.trigger(newBreakToken, wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.beforeRenderResult.trigger(newBreakToken, wrapper, this), "beforeRenderResult");
 					return new RenderResult(newBreakToken);
 				}
 
-				this.hooks && this.hooks.layoutNode.trigger(node);
+				if (this.hooks) _assertSync(this.hooks.layoutNode.trigger(node), "layoutNode");
 
 				// Check if the rendered element has a break set
 				if (hasRenderedContent && this.shouldBreak(node, start)) {
-					this.hooks && this.hooks.layout.trigger(wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.layout.trigger(wrapper, this), "layout");
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
-						await this.waitForImages(imgs);
+						this.waitForImages(imgs);
 					}
 
 					newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
@@ -1611,7 +1534,7 @@
 				}
 
 				if (this.forceRenderBreak) {
-					this.hooks && this.hooks.layout.trigger(wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.layout.trigger(wrapper, this), "layout");
 
 					newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
 
@@ -1630,11 +1553,11 @@
 				// Only check overflow once per maxChars of new content.
 				if (length - lengthAtLastCheck >= this.maxChars) {
 
-					this.hooks && this.hooks.layout.trigger(wrapper, this);
+					if (this.hooks) _assertSync(this.hooks.layout.trigger(wrapper, this), "layout");
 
 					let imgs = wrapper.querySelectorAll("img");
 					if (imgs.length) {
-						await this.waitForImages(imgs);
+						this.waitForImages(imgs);
 					}
 
 					newBreakToken = this.findBreakToken(wrapper, source, bounds, prevBreakToken);
@@ -1653,7 +1576,7 @@
 						if (after) {
 							newBreakToken = new BreakToken(after);
 						} else {
-							this.hooks && this.hooks.beforeRenderResult.trigger(undefined, wrapper, this);
+							if (this.hooks) _assertSync(this.hooks.beforeRenderResult.trigger(undefined, wrapper, this), "beforeRenderResult");
 							return new RenderResult(undefined, new OverflowContentError("Unable to layout item", [node]));
 						}
 					}
@@ -1661,7 +1584,7 @@
 
 			}
 
-			this.hooks && this.hooks.beforeRenderResult.trigger(newBreakToken, wrapper, this);
+			if (this.hooks) _assertSync(this.hooks.beforeRenderResult.trigger(newBreakToken, wrapper, this), "beforeRenderResult");
 			return new RenderResult(newBreakToken);
 		}
 
@@ -1671,7 +1594,7 @@
 				offset
 			);
 			let breakHooks = this.hooks.onBreakToken.triggerSync(newBreakToken, undefined, node, this);
-			breakHooks.forEach((newToken) => {
+			if (breakHooks) breakHooks.forEach((newToken) => {
 				if (typeof newToken != "undefined") {
 					newBreakToken = newToken;
 				}
@@ -1715,7 +1638,16 @@
 			let clone = cloneNode(node, !shallow);
 
 			if (node.parentNode && isElement(node.parentNode)) {
-				let parent = findElement(node.parentNode, dest);
+				const srcParent = node.parentNode;
+				// [PATCH: parent-lookup-cache] Consecutive sibling appends
+				// share the same source parent; reuse the prior result
+				// instead of walking dest.indexOfRefs again.
+				let parent;
+				if (srcParent === this._lastSrcParent && dest === this._lastDest) {
+					parent = this._lastDestParent;
+				} else {
+					parent = findElement(srcParent, dest);
+				}
 				// Rebuild chain
 				if (parent) {
 					parent.appendChild(clone);
@@ -1747,20 +1679,38 @@
 					dest.appendChild(clone);
 				}
 
+				// [PATCH: parent-lookup-cache] Cache the resolved (or
+				// rebuilt-and-attached) parent so the next sibling can
+				// skip the lookup. Skip on the no-rebuild fall-through
+				// where parent stayed null -- a later call with the same
+				// srcParent should still attempt the lookup.
+				if (parent) {
+					this._lastSrcParent = srcParent;
+					this._lastDest = dest;
+					this._lastDestParent = parent;
+				}
 
 			} else {
 				dest.appendChild(clone);
 			}
 
-			if (clone.dataset && clone.dataset.ref) {
+			// [PATCH: append-ref-local] Cache clone.dataset.ref in a
+			// local. Each .ref access goes through getAttribute and
+			// allocates a fresh JS string; the existence check + dict
+			// write were two reads of the same value. Saves one string
+			// allocation per ~50k append calls on the book (~1.5 MB
+			// heap per paired heap-sampling A/B at 512 B sampling).
+			// Same shape as PATCH: addRefs-uuid-local above.
+			const ref = clone.dataset && clone.dataset.ref;
+			if (ref) {
 				if (!dest.indexOfRefs) {
 					dest.indexOfRefs = {};
 				}
-				dest.indexOfRefs[clone.dataset.ref] = clone;
+				dest.indexOfRefs[ref] = clone;
 			}
 
 			let nodeHooks = this.hooks.renderNode.triggerSync(clone, node, this);
-			nodeHooks.forEach((newNode) => {
+			if (nodeHooks) nodeHooks.forEach((newNode) => {
 				if (typeof newNode != "undefined") {
 					clone = newNode;
 				}
@@ -1786,29 +1736,27 @@
 			}
 		}
 
-		async waitForImages(imgs) {
-			let results = Array.from(imgs).map(async (img) => {
-				return this.awaitImageLoaded(img);
-			});
-			await Promise.all(results);
-		}
-
-		async awaitImageLoaded(image) {
-			return new Promise(resolve => {
-				if (image.complete !== true) {
-					image.onload = function () {
-						let {width, height} = window.getComputedStyle(image);
-						resolve(width, height);
-					};
-					image.onerror = function (e) {
-						let {width, height} = window.getComputedStyle(image);
-						resolve(width, height, e);
-					};
-				} else {
-					let {width, height} = window.getComputedStyle(image);
-					resolve(width, height);
+		// [PATCH: sync-chain] waitForImages used to wrap every image in
+		// `new Promise(resolve => ...)` and await `Promise.all(...)`, so
+		// `renderTo` was forced to be async even when every image was
+		// already loaded (which is our case -- page.goto(url, {
+		// waitUntil: "load" }) settles before paged.js starts rendering).
+		//
+		// In our headless pipeline image.complete is always true at this
+		// point. If a future caller hits this with a not-yet-loaded
+		// image, that's a pipeline bug and we throw immediately rather
+		// than silently making the rest of the layout chain async again.
+		waitForImages(imgs) {
+			for (const img of imgs) {
+				if (img.complete !== true) {
+					throw new Error(
+						"paged.js (forked): image not loaded at render time. " +
+						"This branch dropped async image-loading support; the " +
+						"render pipeline must finish loading all images before " +
+						"calling paged.js. Image: " + (img.src || img.outerHTML)
+					);
 				}
-			});
+			}
 		}
 
 		avoidBreakInside(node, limiter) {
@@ -1927,7 +1875,7 @@
 			let breakToken, breakLetter;
 
 			let overflowHooks = this.hooks.onOverflow.triggerSync(overflow, rendered, bounds, this);
-			overflowHooks.forEach((newOverflow) => {
+			if (overflowHooks) overflowHooks.forEach((newOverflow) => {
 				if (typeof newOverflow != "undefined") {
 					overflow = newOverflow;
 				}
@@ -1937,7 +1885,7 @@
 				breakToken = this.createBreakToken(overflow, rendered, source);
 				// breakToken is nullable
 				let breakHooks = this.hooks.onBreakToken.triggerSync(breakToken, overflow, rendered, this);
-				breakHooks.forEach((newToken) => {
+				if (breakHooks) breakHooks.forEach((newToken) => {
 					if (typeof newToken != "undefined") {
 						breakToken = newToken;
 					}
@@ -1956,7 +1904,12 @@
 
 				if (breakToken && breakToken.node && extract) {
 					let removed = this.removeOverflow(overflow, breakLetter);
-					this.hooks && this.hooks.afterOverflowRemoved.trigger(removed, rendered, this);
+					// [PATCH: assert-sync] Guard against silent async-handler
+					// drop. Upstream fired the trigger without `await`, so any
+					// async handler's work would have been lost. _assertSync
+					// throws instead if a handler returns a thenable -- the
+					// fork's per-page hot path is synchronous, see Hook.trigger.
+					if (this.hooks) _assertSync(this.hooks.afterOverflowRemoved.trigger(removed, rendered, this), "afterOverflowRemoved");
 				}
 
 			}
@@ -1995,7 +1948,14 @@
 				br = undefined;
 
 				if (node) {
-					let pos = getBoundingClientRect(node);
+					let pos;
+					if (node.nodeType === 1) {
+						pos = node.getBoundingClientRect();
+					} else {
+						let range = document.createRange();
+						range.selectNode(node);
+						pos = range.getBoundingClientRect();
+					}
 					let left = Math.round(pos.left);
 					let right = Math.floor(pos.right);
 					let top = Math.round(pos.top);
@@ -2092,7 +2052,9 @@
 						node.textContent.trim().length &&
 						!breakInsideAvoidParentNode(node.parentNode)) {
 
-						let rects = getClientRects(node);
+						let textRange = document.createRange();
+						textRange.selectNode(node);
+						let rects = textRange.getClientRects();
 						let rect;
 						left = 0;
 						top = 0;
@@ -2199,7 +2161,7 @@
 					break;
 				}
 
-				pos = getBoundingClientRect(word);
+				pos = word.getBoundingClientRect();
 
 				left = Math.floor(pos.left);
 				right = Math.floor(pos.right);
@@ -2224,7 +2186,7 @@
 							break;
 						}
 
-						pos = getBoundingClientRect(letter);
+						pos = letter.getBoundingClientRect();
 						left = Math.floor(pos.left);
 						top = Math.floor(pos.top);
 
@@ -2244,7 +2206,25 @@
 
 		removeOverflow(overflow, breakLetter) {
 			let {startContainer} = overflow;
-			let extracted = overflow.extractContents();
+
+			// [PATCH: extract-vs-delete] Range.extractContents() builds a
+			// DocumentFragment of the removed nodes and reattaches them;
+			// Range.deleteContents() just removes. The only consumer of
+			// the returned fragment is Footnotes.afterOverflowRemoved,
+			// which iterates the rendered area's footnotes and for each
+			// looks up its [data-footnote-call=...] in the removed fragment.
+			// So extractContents is only useful if the rendered area
+			// contained any footnote-call elements. Check via a cheap
+			// querySelector on `this.element` (the page content area --
+			// `.pagedjs_page_content`); when no calls are present we
+			// skip the fragment build entirely.
+			let extracted;
+			if (this.element && this.element.querySelector("[data-footnote-call]")) {
+				extracted = overflow.extractContents();
+			} else {
+				overflow.deleteContents();
+				extracted = null;
+			}
 
 			this.hyphenateAtBreak(startContainer, breakLetter);
 
@@ -2403,20 +2383,33 @@
 		}
 		*/
 
-		async layout(contents, breakToken, maxChars) {
+		// [PATCH: sync-chain] page.layout / append no longer await
+		// renderTo (which is now sync). Removing `async` removes the
+		// Promise allocation around each return.
+		layout(contents, breakToken, maxChars) {
 
 			this.clear();
 
 			this.startToken = breakToken;
 
 			let settings = this.settings;
-			if (!settings.maxChars && maxChars) {
+			// [PATCH: maxChars-propagate] Upstream gated this on
+			// `!settings.maxChars`, which froze the chunker's running
+			// estimate at whatever value the first non-empty page produced.
+			// On a book whose first real page happens to be short, the
+			// estimate locked in tiny (e.g. 177 chars) and every later page
+			// fell back to checking overflow every 177 chars of new
+			// content -- ~5 hasOverflow / gBCR layout flushes per page on
+			// average, where 1-2 would suffice. Always propagate so each
+			// page picks up the most recent estimate; the chunker's
+			// recordCharLength still drives that value.
+			if (maxChars) {
 				settings.maxChars = maxChars;
 			}
 
 			this.layoutMethod = new Layout(this.area, this.hooks, settings);
 
-			let renderResult = await this.layoutMethod.renderTo(this.wrapper, contents, breakToken);
+			let renderResult = this.layoutMethod.renderTo(this.wrapper, contents, breakToken);
 			let newBreakToken = renderResult.breakToken;
 
 			this.addListeners(contents);
@@ -2426,13 +2419,13 @@
 			return newBreakToken;
 		}
 
-		async append(contents, breakToken) {
+		append(contents, breakToken) {
 
 			if (!this.layoutMethod) {
 				return this.layout(contents, breakToken);
 			}
 
-			let renderResult = await this.layoutMethod.renderTo(this.wrapper, contents, breakToken);
+			let renderResult = this.layoutMethod.renderTo(this.wrapper, contents, breakToken);
 			let newBreakToken = renderResult.breakToken;
 
 			this.endToken = newBreakToken;
@@ -2465,14 +2458,7 @@
 		}
 
 		addListeners(contents) {
-			if (typeof ResizeObserver !== "undefined") {
-				this.addResizeObserver(contents);
-			} else {
-				this._checkOverflowAfterResize = this.checkOverflowAfterResize.bind(this, contents);
-				this.element.addEventListener("overflow", this._checkOverflowAfterResize, false);
-				this.element.addEventListener("underflow", this._checkOverflowAfterResize, false);
-			}
-			// TODO: fall back to mutation observer?
+			this.addResizeObserver(contents);
 
 			this._onScroll = function () {
 				if (this.listening) {
@@ -2491,11 +2477,8 @@
 		removeListeners() {
 			this.listening = false;
 
-			if (typeof ResizeObserver !== "undefined" && this.ro) {
+			if (this.ro) {
 				this.ro.disconnect();
-			} else if (this.element) {
-				this.element.removeEventListener("overflow", this._checkOverflowAfterResize, false);
-				this.element.removeEventListener("underflow", this._checkOverflowAfterResize, false);
 			}
 
 			this.element && this.element.removeEventListener("scroll", this._onScroll);
@@ -2620,13 +2603,40 @@
 			// which scans the entire source DOM (thousands of nodes). Measured
 			// as 848 + 42 noDict calls in createBreakToken ≈ 1+ s of render on
 			// the 1651-page book.
-			if (!content.indexOfRefs) content.indexOfRefs = {};
+			//
+			// [PATCH: source-indexOfRefs-array] Use an Array (dense, sequential
+			// integer keys via the decimal UUID counter -- see UUID()) instead
+			// of a dict. V8 stores it as PACKED_ELEMENTS: ~8 B per slot vs
+			// ~40-50 B per dict entry. dest/fragment.indexOfRefs (sparse) stay
+			// dicts at their own init sites. `findRef` does `arr[ref]` either
+			// way -- V8 coerces the decimal-string ref to an array index
+			// transparently, so no caller-side branch is needed.
+			//
+			// [PATCH: source-indexOfRefs-presize] Size the array up front
+			// from the live HTMLCollection's .length. V8 grows arrays
+			// geometrically -- writing slots 1..N via doubling does
+			// log2(N) backing-store reallocations, each allocating the
+			// new store and orphaning the old (transient bytes ~= 2x the
+			// final size). Pre-sizing skips all of that.
+			if (!content.indexOfRefs) {
+				const elementCount = content.getElementsByTagName ? content.getElementsByTagName("*").length : 0;
+				content.indexOfRefs = new Array(elementCount + 1);
+			}
 
 			let node = treeWalker.nextNode();
 			while(node) {
 
-				if (!node.hasAttribute("data-ref")) {
-					let uuid = UUID();
+				// [PATCH: addRefs-uuid-local] Read data-ref once via
+				// getAttribute (null-tested as the existence check),
+				// reuse the local string for indexOfRefs. Previously
+				// hasAttribute + setAttribute + getAttribute on the
+				// new-uuid branch caused one extra DOM read and one
+				// duplicate string allocation per ~50k source nodes
+				// (~460 KB heap on the book per paired heap-sampling
+				// A/B at 4 KB sampling).
+				let uuid = node.getAttribute("data-ref");
+				if (!uuid) {
+					uuid = UUIDDecimal();
 					node.setAttribute("data-ref", uuid);
 				}
 
@@ -2638,8 +2648,7 @@
 
 				// node.setAttribute("data-text", node.textContent.trim().length);
 
-				// [PATCH: findRef fast-path] record after data-ref is guaranteed.
-				content.indexOfRefs[node.getAttribute("data-ref")] = node;
+				content.indexOfRefs[uuid] = node;
 
 				node = treeWalker.nextNode();
 			}
@@ -2664,7 +2673,13 @@
 		constructor(context){
 			this._q = [];
 			this.context = context;
-			this.tick = requestAnimationFrame;
+			// [PATCH: queue-tick] Upstream uses requestAnimationFrame as the
+			// per-task tick, which on a headless puppeteer render still waits
+			// per frame even with no compositor. Across 1651 pages that's
+			// ~700 ms of V8 (idle). queueMicrotask schedules on the microtask
+			// queue and fires before the next event-loop iteration, dropping
+			// the per-page wait to microsecond-scale.
+			this.tick = (cb) => queueMicrotask(cb);
 			this.running = false;
 			this.paused = false;
 		}
@@ -3064,14 +3079,20 @@
 		// 	}
 		// }
 
+		// [PATCH: sync-chain] *layout is a sync generator now, so
+		// renderer.next() returns synchronously -- no per-page await.
+		// render() itself stays `async` because callers (flow()) await
+		// it and other once-per-render awaits in flow() (loadFonts,
+		// beforeParsed / afterParsed / afterRendered) still need it.
 		async render(parsed, startAt) {
 			let renderer = this.layout(parsed, startAt);
 
-			let done = false;
 			let result;
-			while (!done) {
-				result = await this.q.enqueue(() => { return this.renderAsync(renderer); });
-				done = result.done;
+			while (true) {
+				if (this.stopped) return { done: true, canceled: true };
+				result = renderer.next();
+				if (this.stopped) return { done: true, canceled: true };
+				if (result.done) break;
 			}
 
 			return result;
@@ -3087,35 +3108,18 @@
 			// this.q.clear();
 		}
 
-		renderOnIdle(renderer) {
-			return new Promise(resolve => {
-				requestIdleCallback(async () => {
-					if (this.stopped) {
-						return resolve({ done: true, canceled: true });
-					}
-					let result = await renderer.next();
-					if (this.stopped) {
-						resolve({ done: true, canceled: true });
-					} else {
-						resolve(result);
-					}
-				});
-			});
-		}
+		// [PATCH: sync-chain] renderOnIdle and renderAsync removed --
+		// both wrapped renderer.next() (now sync) in async machinery,
+		// and the only caller (render() via this.q.enqueue) was already
+		// removed in the drop-queue change.
 
-		async renderAsync(renderer) {
-			if (this.stopped) {
-				return { done: true, canceled: true };
-			}
-			let result = await renderer.next();
-			if (this.stopped) {
-				return { done: true, canceled: true };
-			} else {
-				return result;
-			}
-		}
-
-		async handleBreaks(node, force) {
+		// [PATCH: sync-chain] handleBreaks no longer awaits hook triggers
+		// (Hook.trigger returns undefined on the all-sync path, which is
+		// our only path). If a future caller registers an async handler
+		// for any of these hooks, Hook.trigger will return a Promise and
+		// dropping it here will silently lose the work -- we assert that
+		// instead. The `_assertSync` helper lives below.
+		handleBreaks(node, force) {
 			let currentPage = this.total + 1;
 			let currentPosition = currentPage % 2 === 0 ? "left" : "right";
 			// TODO: Recto and Verso should reverse for rtl languages
@@ -3161,52 +3165,62 @@
 			}
 
 			if (page) {
-				await this.hooks.beforePageLayout.trigger(page, undefined, undefined, this);
+				_assertSync(this.hooks.beforePageLayout.trigger(page, undefined, undefined, this), "beforePageLayout");
 				this.emit("page", page);
-				// await this.hooks.layout.trigger(page.element, page, undefined, this);
-				await this.hooks.afterPageLayout.trigger(page.element, page, undefined, this);
-				await this.hooks.finalizePage.trigger(page.element, page, undefined, this);
+				_assertSync(this.hooks.afterPageLayout.trigger(page.element, page, undefined, this), "afterPageLayout");
+				_assertSync(this.hooks.finalizePage.trigger(page.element, page, undefined, this), "finalizePage");
 				this.emit("renderedPage", page);
 			}
 		}
 
-		async *layout(content, startAt) {
+		// [PATCH: sync-chain] *layout is now a sync generator, not an
+		// async generator. With handleBreaks, page.layout, renderTo, and
+		// every per-page hook trigger all synchronous in our pipeline,
+		// nothing inside this generator needs to await. The sync form
+		// avoids ~1651 Promise allocations per render (one per
+		// `renderer.next()` call) and the matching microtask boundaries.
+		*layout(content, startAt) {
 			let breakToken = startAt || false;
-			let tokens = [];
+			// [PATCH: tokens-set] Loop-detection used `tokens.lastIndexOf(...)`
+			// on an array, which scans up to N entries per page -- O(n^2)
+			// across a render. A Set gives O(1) lookup. The absolute saving
+			// on our 1651-page book is small (~80 us per late page) but the
+			// algorithmic shape is the load-bearing change.
+			let tokens = new Set();
 
 			while (breakToken !== undefined && (true)) {
 
 				if (breakToken && breakToken.node) {
-					await this.handleBreaks(breakToken.node);
+					this.handleBreaks(breakToken.node);
 				} else {
-					await this.handleBreaks(content.firstChild);
+					this.handleBreaks(content.firstChild);
 				}
 
 				let page = this.addPage();
 
-				await this.hooks.beforePageLayout.trigger(page, content, breakToken, this);
+				_assertSync(this.hooks.beforePageLayout.trigger(page, content, breakToken, this), "beforePageLayout");
 				this.emit("page", page);
 
 				// Layout content in the page, starting from the breakToken
-				breakToken = await page.layout(content, breakToken, this.maxChars);
+				breakToken = page.layout(content, breakToken, this.maxChars);
 
 				if (breakToken) {
 					let newToken = breakToken.toJSON(true);
-					if (tokens.lastIndexOf(newToken) > -1) {
+					if (tokens.has(newToken)) {
 						// loop
 						let err = new OverflowContentError("Layout repeated", [breakToken.node]);
 						console.error("Layout repeated at: ", breakToken.node);
 						return err;
 					} else {
-						tokens.push(newToken);
+						tokens.add(newToken);
 					}
 				}
 
-				await this.hooks.afterPageLayout.trigger(page.element, page, breakToken, this);
-				await this.hooks.finalizePage.trigger(page.element, page, undefined, this);
+				_assertSync(this.hooks.afterPageLayout.trigger(page.element, page, breakToken, this), "afterPageLayout");
+				_assertSync(this.hooks.finalizePage.trigger(page.element, page, undefined, this), "finalizePage");
 				this.emit("renderedPage", page);
 
-				this.recoredCharLength(page.wrapper.textContent.length);
+				this.recordCharLength(page.wrapper.textContent.length);
 
 				yield breakToken;
 
@@ -3216,19 +3230,33 @@
 
 		}
 
-		recoredCharLength(length) {
+		recordCharLength(length) {
 			if (length === 0) {
 				return;
 			}
 
 			this.charsPerBreak.push(length);
 
-			// Keep the length of the last few breaks
-			if (this.charsPerBreak.length > 4) {
+			// [PATCH: maxChars-running-max] Upstream tracked the running
+			// average over the last 4 page text-content lengths and used
+			// it as `maxChars`, the renderTo overflow-check period.
+			// Average is the wrong statistic: short pages (chapter ends,
+			// part dividers) get recorded alongside full pages, dragging
+			// the estimate well below true page capacity. The check then
+			// fires several times per full page when one call would have
+			// sufficed -- each call is a hasOverflow / gBCR layout flush.
+			// The running max over a wider window biases toward true
+			// capacity (the largest page recently seen), so overflow
+			// pages typically resolve in a single check.
+			if (this.charsPerBreak.length > 16) {
 				this.charsPerBreak.shift();
 			}
 
-			this.maxChars = this.charsPerBreak.reduce((a, b) => a + b, 0) / (this.charsPerBreak.length);
+			let m = 0;
+			for (let i = 0; i < this.charsPerBreak.length; i++) {
+				if (this.charsPerBreak[i] > m) m = this.charsPerBreak[i];
+			}
+			this.maxChars = m;
 		}
 
 		removePages(fromIndex=0) {
@@ -5199,11 +5227,10 @@
 	};
 
 	var MIN_SIZE = 16 * 1024;
-	var SafeUint32Array = typeof Uint32Array !== 'undefined' ? Uint32Array : Array; // fallback on Array when TypedArray is not supported
 
 	var adoptBuffer$2 = function adoptBuffer(buffer, size) {
 	    if (buffer === null || buffer.length < size) {
-	        return new SafeUint32Array(Math.max(size + 1024, MIN_SIZE));
+	        return new Uint32Array(Math.max(size + 1024, MIN_SIZE));
 	    }
 
 	    return buffer;
@@ -10599,10 +10626,6 @@
 	 * http://opensource.org/licenses/BSD-3-Clause
 	 */
 
-	var util$2 = util$3;
-	var has$1 = Object.prototype.hasOwnProperty;
-	var hasNativeMap = typeof Map !== "undefined";
-
 	/**
 	 * A data structure which is a combination of an array and a set. Adding a new
 	 * member is O(1), testing for membership is O(1), and finding the index of an
@@ -10611,7 +10634,7 @@
 	 */
 	function ArraySet$1() {
 	  this._array = [];
-	  this._set = hasNativeMap ? new Map() : Object.create(null);
+	  this._set = new Map();
 	}
 
 	/**
@@ -10632,7 +10655,7 @@
 	 * @returns Number
 	 */
 	ArraySet$1.prototype.size = function ArraySet_size() {
-	  return hasNativeMap ? this._set.size : Object.getOwnPropertyNames(this._set).length;
+	  return this._set.size;
 	};
 
 	/**
@@ -10641,18 +10664,13 @@
 	 * @param String aStr
 	 */
 	ArraySet$1.prototype.add = function ArraySet_add(aStr, aAllowDuplicates) {
-	  var sStr = hasNativeMap ? aStr : util$2.toSetString(aStr);
-	  var isDuplicate = hasNativeMap ? this.has(aStr) : has$1.call(this._set, sStr);
+	  var isDuplicate = this.has(aStr);
 	  var idx = this._array.length;
 	  if (!isDuplicate || aAllowDuplicates) {
 	    this._array.push(aStr);
 	  }
 	  if (!isDuplicate) {
-	    if (hasNativeMap) {
-	      this._set.set(aStr, idx);
-	    } else {
-	      this._set[sStr] = idx;
-	    }
+	    this._set.set(aStr, idx);
 	  }
 	};
 
@@ -10662,12 +10680,7 @@
 	 * @param String aStr
 	 */
 	ArraySet$1.prototype.has = function ArraySet_has(aStr) {
-	  if (hasNativeMap) {
-	    return this._set.has(aStr);
-	  } else {
-	    var sStr = util$2.toSetString(aStr);
-	    return has$1.call(this._set, sStr);
-	  }
+	  return this._set.has(aStr);
 	};
 
 	/**
@@ -10676,18 +10689,10 @@
 	 * @param String aStr
 	 */
 	ArraySet$1.prototype.indexOf = function ArraySet_indexOf(aStr) {
-	  if (hasNativeMap) {
-	    var idx = this._set.get(aStr);
-	    if (idx >= 0) {
-	        return idx;
-	    }
-	  } else {
-	    var sStr = util$2.toSetString(aStr);
-	    if (has$1.call(this._set, sStr)) {
-	      return this._set[sStr];
-	    }
+	  var idx = this._set.get(aStr);
+	  if (idx >= 0) {
+	      return idx;
 	  }
-
 	  throw new Error('"' + aStr + '" is not in the set.');
 	};
 
@@ -26517,10 +26522,6 @@
 			// Replace urls
 			this.replaceUrls(this.ast);
 
-			// Scope
-			this.id = UUID();
-			// this.addScope(this.ast, this.uuid);
-
 			// Replace IDs with data-id
 			this.replaceIds(this.ast);
 
@@ -26551,7 +26552,7 @@
 			csstree.walk(ast, {
 				visit: "Url",
 				enter: (node, item, list) => {
-					this.hooks.onUrl.trigger(node, item, list);
+					_assertSync(this.hooks.onUrl.trigger(node, item, list), "onUrl");
 				}
 			});
 		}
@@ -26563,17 +26564,17 @@
 					const basename = csstree.keyword(node.name).basename;
 
 					if (basename === "page") {
-						this.hooks.onAtPage.trigger(node, item, list);
+						_assertSync(this.hooks.onAtPage.trigger(node, item, list), "onAtPage");
 						this.declarations(node, item, list);
 					}
 
 					if (basename === "media") {
-						this.hooks.onAtMedia.trigger(node, item, list);
+						_assertSync(this.hooks.onAtMedia.trigger(node, item, list), "onAtMedia");
 						this.declarations(node, item, list);
 					}
 
 					if (basename === "import") {
-						this.hooks.onImport.trigger(node, item, list);
+						_assertSync(this.hooks.onImport.trigger(node, item, list), "onImport");
 						this.imports(node, item, list);
 					}
 				}
@@ -26586,7 +26587,7 @@
 				visit: "Rule",
 				enter: (ruleNode, ruleItem, rulelist) => {
 
-					this.hooks.onRule.trigger(ruleNode, ruleItem, rulelist);
+					_assertSync(this.hooks.onRule.trigger(ruleNode, ruleItem, rulelist), "onRule");
 					this.declarations(ruleNode, ruleItem, rulelist);
 					this.onSelector(ruleNode, ruleItem, rulelist);
 
@@ -26599,13 +26600,13 @@
 				visit: "Declaration",
 				enter: (declarationNode, dItem, dList) => {
 
-					this.hooks.onDeclaration.trigger(declarationNode, dItem, dList, {ruleNode, ruleItem, rulelist});
+					_assertSync(this.hooks.onDeclaration.trigger(declarationNode, dItem, dList, {ruleNode, ruleItem, rulelist}), "onDeclaration");
 
 					if (declarationNode.property === "content") {
 						csstree.walk(declarationNode, {
 							visit: "Function",
 							enter: (funcNode, fItem, fList) => {
-								this.hooks.onContent.trigger(funcNode, fItem, fList, {declarationNode, dItem, dList}, {ruleNode, ruleItem, rulelist});
+								_assertSync(this.hooks.onContent.trigger(funcNode, fItem, fList, {declarationNode, dItem, dList}, {ruleNode, ruleItem, rulelist}), "onContent");
 							}
 						});
 					}
@@ -26619,13 +26620,13 @@
 			csstree.walk(ruleNode, {
 				visit: "Selector",
 				enter: (selectNode, selectItem, selectList) => {
-					this.hooks.onSelector.trigger(selectNode, selectItem, selectList, {ruleNode, ruleItem, rulelist});
+					_assertSync(this.hooks.onSelector.trigger(selectNode, selectItem, selectList, {ruleNode, ruleItem, rulelist}), "onSelector");
 
 					if (selectNode.children.forEach(node => {if (node.type === "PseudoElementSelector") {
 						csstree.walk(node, {
 							visit: "PseudoElementSelector",
 							enter: (pseudoNode, pItem, pList) => {
-								this.hooks.onPseudoSelector.trigger(pseudoNode, pItem, pList, {selectNode, selectItem, selectList}, {ruleNode, ruleItem, rulelist});
+								_assertSync(this.hooks.onPseudoSelector.trigger(pseudoNode, pItem, pList, {selectNode, selectItem, selectList}, {ruleNode, ruleItem, rulelist}), "onPseudoSelector");
 							}
 						});
 					}}));
@@ -27637,11 +27638,39 @@
 			this.polisher = polisher;
 			this.caller = caller;
 
+			// [PATCH: handler-self-disable] Track each (hook, bound) pair we
+			// register so handlers that find nothing to do for a given render
+			// can splice themselves back out. Footnotes uses this to disappear
+			// when the document and CSS produced no footnote-marked nodes;
+			// combined with Hook.trigger/triggerSync's empty-handlers fast
+			// path, the per-page and per-node dispatches then short-circuit.
+			this._registered = {};
+
 			for (let name in hooks) {
 				if (name in this) {
 					let hook = hooks[name];
-					hook.register(this[name].bind(this));
+					let bound = this[name].bind(this);
+					this._registered[name] = { hook, bound };
+					hook.register(bound);
 				}
+			}
+		}
+
+		/**
+		 * Remove this handler's registered callbacks from every hook it
+		 * subscribed to. Pass the name of the hook the caller is currently
+		 * inside (e.g. `"afterParsed"`) to skip its own entry -- splicing
+		 * the array we're iterating would cause the surrounding `trigger()`
+		 * loop to skip a sibling handler. The skipped entry is harmless on
+		 * one-shot hooks; on recurring hooks the caller can re-call later.
+		 */
+		_unregisterAll(except) {
+			for (const name in this._registered) {
+				if (name === except) continue;
+				const { hook, bound } = this._registered[name];
+				const idx = hook.hooks.indexOf(bound);
+				if (idx >= 0) hook.hooks.splice(idx, 1);
+				delete this._registered[name];
 			}
 		}
 	}
@@ -31281,6 +31310,18 @@
 
 		afterParsed(parsed) {
 			this.processFootnotes(parsed, this.footnotes);
+
+			// [PATCH: footnotes-self-disable] If neither source HTML nor CSS
+			// `float: footnote` rules produced any footnote-marked nodes, the
+			// remaining hooks (renderNode per element-node, afterPageLayout +
+			// beforePageLayout + afterOverflowRemoved per page) have nothing
+			// to do for the rest of this render. Unregister them so the
+			// empty-handlers fast-path in Hook.triggerSync short-circuits.
+			// afterParsed itself is skipped via `except` -- it's a one-shot
+			// and the surrounding trigger() loop is still iterating it.
+			if (!parsed.querySelector("[data-note='footnote']")) {
+				this._unregisterAll("afterParsed");
+			}
 		}
 
 		processFootnotes(parsed, notes) {
@@ -31336,7 +31377,12 @@
 
 				if (node.dataset.note === "footnote") {
 					notes = [node];
-				} else if (node.dataset.hasNotes || node.querySelectorAll("[data-note='footnote']")) {
+				} else if (node.dataset.hasNotes) {
+					// Upstream wrote `|| node.querySelectorAll(...)` here, but a
+					// NodeList is always truthy (even empty), so the right arm
+					// of the || always ran and the next line ran querySelectorAll
+					// again -- two subtree scans per element-node clone for any
+					// document that doesn't use data-note='footnote'.
 					notes = node.querySelectorAll("[data-note='footnote']");
 				}
 
@@ -31642,8 +31688,14 @@
 			let notes = area.querySelectorAll(".pagedjs_footnote_area [data-note='footnote']");
 			for (let n = 0; n < notes.length; n++) {
 				const note = notes[n];
-				// Check if the call for that footnote has been removed with the overflow
-				let call = removed.querySelector(`[data-footnote-call="${note.dataset.ref}"]`);
+				// [PATCH: extract-vs-delete] Guard `removed` access -- when
+				// removeOverflow took the deleteContents fast path (no
+				// footnotes in the rendered area), `removed` is null. In
+				// that case there are no rendered footnotes for the loop
+				// to iterate either, so we never actually enter this body.
+				// The guard is for future content where the area DOES have
+				// rendered footnotes but removeOverflow's pre-check changes.
+				let call = removed && removed.querySelector(`[data-footnote-call="${note.dataset.ref}"]`);
 				if (call) {
 					note.remove();
 				}
@@ -32725,599 +32777,21 @@
 		UndisplayedFilter
 	];
 
-	var isImplemented$4 = function () {
-		var from = Array.from, arr, result;
-		if (typeof from !== "function") return false;
-		arr = ["raz", "dwa"];
-		result = from(arr);
-		return Boolean(result && result !== arr && result[1] === "dwa");
-	};
-
-	var isImplemented$3;
-	var hasRequiredIsImplemented$1;
-
-	function requireIsImplemented$1 () {
-		if (hasRequiredIsImplemented$1) return isImplemented$3;
-		hasRequiredIsImplemented$1 = 1;
-
-		isImplemented$3 = function () {
-			if (typeof globalThis !== "object") return false;
-			if (!globalThis) return false;
-			return globalThis.Array === Array;
-		};
-		return isImplemented$3;
-	}
-
-	var implementation;
-	var hasRequiredImplementation;
-
-	function requireImplementation () {
-		if (hasRequiredImplementation) return implementation;
-		hasRequiredImplementation = 1;
-		var naiveFallback = function () {
-			if (typeof self === "object" && self) return self;
-			if (typeof window === "object" && window) return window;
-			throw new Error("Unable to resolve global `this`");
-		};
-
-		implementation = (function () {
-			if (this) return this;
-
-			// Unexpected strict mode (may happen if e.g. bundled into ESM module)
-
-			// Thanks @mathiasbynens -> https://mathiasbynens.be/notes/globalthis
-			// In all ES5+ engines global object inherits from Object.prototype
-			// (if you approached one that doesn't please report)
-			try {
-				Object.defineProperty(Object.prototype, "__global__", {
-					get: function () { return this; },
-					configurable: true
-				});
-			} catch (error) {
-				// Unfortunate case of Object.prototype being sealed (via preventExtensions, seal or freeze)
-				return naiveFallback();
-			}
-			try {
-				// Safari case (window.__global__ is resolved with global context, but __global__ does not)
-				if (!__global__) return naiveFallback();
-				return __global__;
-			} finally {
-				delete Object.prototype.__global__;
-			}
-		})();
-		return implementation;
-	}
-
-	var globalThis_1;
-	var hasRequiredGlobalThis;
-
-	function requireGlobalThis () {
-		if (hasRequiredGlobalThis) return globalThis_1;
-		hasRequiredGlobalThis = 1;
-
-		globalThis_1 = requireIsImplemented$1()() ? globalThis : requireImplementation();
-		return globalThis_1;
-	}
-
-	var isImplemented$2;
-	var hasRequiredIsImplemented;
-
-	function requireIsImplemented () {
-		if (hasRequiredIsImplemented) return isImplemented$2;
-		hasRequiredIsImplemented = 1;
-
-		var global     = requireGlobalThis()
-		  , validTypes = { object: true, symbol: true };
-
-		isImplemented$2 = function () {
-			var Symbol = global.Symbol;
-			var symbol;
-			if (typeof Symbol !== "function") return false;
-			symbol = Symbol("test symbol");
-			try { String(symbol); }
-			catch (e) { return false; }
-
-			// Return 'true' also for polyfills
-			if (!validTypes[typeof Symbol.iterator]) return false;
-			if (!validTypes[typeof Symbol.toPrimitive]) return false;
-			if (!validTypes[typeof Symbol.toStringTag]) return false;
-
-			return true;
-		};
-		return isImplemented$2;
-	}
-
-	var isSymbol;
-	var hasRequiredIsSymbol;
-
-	function requireIsSymbol () {
-		if (hasRequiredIsSymbol) return isSymbol;
-		hasRequiredIsSymbol = 1;
-
-		isSymbol = function (value) {
-			if (!value) return false;
-			if (typeof value === "symbol") return true;
-			if (!value.constructor) return false;
-			if (value.constructor.name !== "Symbol") return false;
-			return value[value.constructor.toStringTag] === "Symbol";
-		};
-		return isSymbol;
-	}
-
-	var validateSymbol;
-	var hasRequiredValidateSymbol;
-
-	function requireValidateSymbol () {
-		if (hasRequiredValidateSymbol) return validateSymbol;
-		hasRequiredValidateSymbol = 1;
-
-		var isSymbol = requireIsSymbol();
-
-		validateSymbol = function (value) {
-			if (!isSymbol(value)) throw new TypeError(value + " is not a symbol");
-			return value;
-		};
-		return validateSymbol;
-	}
-
-	var generateName;
-	var hasRequiredGenerateName;
-
-	function requireGenerateName () {
-		if (hasRequiredGenerateName) return generateName;
-		hasRequiredGenerateName = 1;
-
-		var d = dExports;
-
-		var create = Object.create, defineProperty = Object.defineProperty, objPrototype = Object.prototype;
-
-		var created = create(null);
-		generateName = function (desc) {
-			var postfix = 0, name, ie11BugWorkaround;
-			while (created[desc + (postfix || "")]) ++postfix;
-			desc += postfix || "";
-			created[desc] = true;
-			name = "@@" + desc;
-			defineProperty(
-				objPrototype,
-				name,
-				d.gs(null, function (value) {
-					// For IE11 issue see:
-					// https://connect.microsoft.com/IE/feedbackdetail/view/1928508/
-					//    ie11-broken-getters-on-dom-objects
-					// https://github.com/medikoo/es6-symbol/issues/12
-					if (ie11BugWorkaround) return;
-					ie11BugWorkaround = true;
-					defineProperty(this, name, d(value));
-					ie11BugWorkaround = false;
-				})
-			);
-			return name;
-		};
-		return generateName;
-	}
-
-	var standardSymbols;
-	var hasRequiredStandardSymbols;
-
-	function requireStandardSymbols () {
-		if (hasRequiredStandardSymbols) return standardSymbols;
-		hasRequiredStandardSymbols = 1;
-
-		var d            = dExports
-		  , NativeSymbol = requireGlobalThis().Symbol;
-
-		standardSymbols = function (SymbolPolyfill) {
-			return Object.defineProperties(SymbolPolyfill, {
-				// To ensure proper interoperability with other native functions (e.g. Array.from)
-				// fallback to eventual native implementation of given symbol
-				hasInstance: d(
-					"", (NativeSymbol && NativeSymbol.hasInstance) || SymbolPolyfill("hasInstance")
-				),
-				isConcatSpreadable: d(
-					"",
-					(NativeSymbol && NativeSymbol.isConcatSpreadable) ||
-						SymbolPolyfill("isConcatSpreadable")
-				),
-				iterator: d("", (NativeSymbol && NativeSymbol.iterator) || SymbolPolyfill("iterator")),
-				match: d("", (NativeSymbol && NativeSymbol.match) || SymbolPolyfill("match")),
-				replace: d("", (NativeSymbol && NativeSymbol.replace) || SymbolPolyfill("replace")),
-				search: d("", (NativeSymbol && NativeSymbol.search) || SymbolPolyfill("search")),
-				species: d("", (NativeSymbol && NativeSymbol.species) || SymbolPolyfill("species")),
-				split: d("", (NativeSymbol && NativeSymbol.split) || SymbolPolyfill("split")),
-				toPrimitive: d(
-					"", (NativeSymbol && NativeSymbol.toPrimitive) || SymbolPolyfill("toPrimitive")
-				),
-				toStringTag: d(
-					"", (NativeSymbol && NativeSymbol.toStringTag) || SymbolPolyfill("toStringTag")
-				),
-				unscopables: d(
-					"", (NativeSymbol && NativeSymbol.unscopables) || SymbolPolyfill("unscopables")
-				)
-			});
-		};
-		return standardSymbols;
-	}
-
-	var symbolRegistry;
-	var hasRequiredSymbolRegistry;
-
-	function requireSymbolRegistry () {
-		if (hasRequiredSymbolRegistry) return symbolRegistry;
-		hasRequiredSymbolRegistry = 1;
-
-		var d              = dExports
-		  , validateSymbol = requireValidateSymbol();
-
-		var registry = Object.create(null);
-
-		symbolRegistry = function (SymbolPolyfill) {
-			return Object.defineProperties(SymbolPolyfill, {
-				for: d(function (key) {
-					if (registry[key]) return registry[key];
-					return (registry[key] = SymbolPolyfill(String(key)));
-				}),
-				keyFor: d(function (symbol) {
-					var key;
-					validateSymbol(symbol);
-					for (key in registry) {
-						if (registry[key] === symbol) return key;
-					}
-					return undefined;
-				})
-			});
-		};
-		return symbolRegistry;
-	}
-
-	var polyfill;
-	var hasRequiredPolyfill;
-
-	function requirePolyfill () {
-		if (hasRequiredPolyfill) return polyfill;
-		hasRequiredPolyfill = 1;
-
-		var d                    = dExports
-		  , validateSymbol       = requireValidateSymbol()
-		  , NativeSymbol         = requireGlobalThis().Symbol
-		  , generateName         = requireGenerateName()
-		  , setupStandardSymbols = requireStandardSymbols()
-		  , setupSymbolRegistry  = requireSymbolRegistry();
-
-		var create = Object.create
-		  , defineProperties = Object.defineProperties
-		  , defineProperty = Object.defineProperty;
-
-		var SymbolPolyfill, HiddenSymbol, isNativeSafe;
-
-		if (typeof NativeSymbol === "function") {
-			try {
-				String(NativeSymbol());
-				isNativeSafe = true;
-			} catch (ignore) {}
-		} else {
-			NativeSymbol = null;
-		}
-
-		// Internal constructor (not one exposed) for creating Symbol instances.
-		// This one is used to ensure that `someSymbol instanceof Symbol` always return false
-		HiddenSymbol = function Symbol(description) {
-			if (this instanceof HiddenSymbol) throw new TypeError("Symbol is not a constructor");
-			return SymbolPolyfill(description);
-		};
-
-		// Exposed `Symbol` constructor
-		// (returns instances of HiddenSymbol)
-		polyfill = SymbolPolyfill = function Symbol(description) {
-			var symbol;
-			if (this instanceof Symbol) throw new TypeError("Symbol is not a constructor");
-			if (isNativeSafe) return NativeSymbol(description);
-			symbol = create(HiddenSymbol.prototype);
-			description = description === undefined ? "" : String(description);
-			return defineProperties(symbol, {
-				__description__: d("", description),
-				__name__: d("", generateName(description))
-			});
-		};
-
-		setupStandardSymbols(SymbolPolyfill);
-		setupSymbolRegistry(SymbolPolyfill);
-
-		// Internal tweaks for real symbol producer
-		defineProperties(HiddenSymbol.prototype, {
-			constructor: d(SymbolPolyfill),
-			toString: d("", function () { return this.__name__; })
-		});
-
-		// Proper implementation of methods exposed on Symbol.prototype
-		// They won't be accessible on produced symbol instances as they derive from HiddenSymbol.prototype
-		defineProperties(SymbolPolyfill.prototype, {
-			toString: d(function () { return "Symbol (" + validateSymbol(this).__description__ + ")"; }),
-			valueOf: d(function () { return validateSymbol(this); })
-		});
-		defineProperty(
-			SymbolPolyfill.prototype,
-			SymbolPolyfill.toPrimitive,
-			d("", function () {
-				var symbol = validateSymbol(this);
-				if (typeof symbol === "symbol") return symbol;
-				return symbol.toString();
-			})
-		);
-		defineProperty(SymbolPolyfill.prototype, SymbolPolyfill.toStringTag, d("c", "Symbol"));
-
-		// Proper implementaton of toPrimitive and toStringTag for returned symbol instances
-		defineProperty(
-			HiddenSymbol.prototype, SymbolPolyfill.toStringTag,
-			d("c", SymbolPolyfill.prototype[SymbolPolyfill.toStringTag])
-		);
-
-		// Note: It's important to define `toPrimitive` as last one, as some implementations
-		// implement `toPrimitive` natively without implementing `toStringTag` (or other specified symbols)
-		// And that may invoke error in definition flow:
-		// See: https://github.com/medikoo/es6-symbol/issues/13#issuecomment-164146149
-		defineProperty(
-			HiddenSymbol.prototype, SymbolPolyfill.toPrimitive,
-			d("c", SymbolPolyfill.prototype[SymbolPolyfill.toPrimitive])
-		);
-		return polyfill;
-	}
-
-	var es6Symbol;
-	var hasRequiredEs6Symbol;
-
-	function requireEs6Symbol () {
-		if (hasRequiredEs6Symbol) return es6Symbol;
-		hasRequiredEs6Symbol = 1;
-
-		es6Symbol = requireIsImplemented()()
-			? requireGlobalThis().Symbol
-			: requirePolyfill();
-		return es6Symbol;
-	}
-
-	var isArguments;
-	var hasRequiredIsArguments;
-
-	function requireIsArguments () {
-		if (hasRequiredIsArguments) return isArguments;
-		hasRequiredIsArguments = 1;
-
-		var objToString = Object.prototype.toString
-		  , id = objToString.call((function () { return arguments; })());
-
-		isArguments = function (value) { return objToString.call(value) === id; };
-		return isArguments;
-	}
-
-	var isFunction;
-	var hasRequiredIsFunction;
-
-	function requireIsFunction () {
-		if (hasRequiredIsFunction) return isFunction;
-		hasRequiredIsFunction = 1;
-
-		var objToString = Object.prototype.toString
-		  , isFunctionStringTag = RegExp.prototype.test.bind(/^[object [A-Za-z0-9]*Function]$/);
-
-		isFunction = function (value) {
-			return typeof value === "function" && isFunctionStringTag(objToString.call(value));
-		};
-		return isFunction;
-	}
-
-	var isImplemented$1 = function () {
-		var sign = Math.sign;
-		if (typeof sign !== "function") return false;
-		return sign(10) === 1 && sign(-20) === -1;
-	};
-
-	var shim$2;
-	var hasRequiredShim$2;
-
-	function requireShim$2 () {
-		if (hasRequiredShim$2) return shim$2;
-		hasRequiredShim$2 = 1;
-
-		shim$2 = function (value) {
-			value = Number(value);
-			if (isNaN(value) || value === 0) return value;
-			return value > 0 ? 1 : -1;
-		};
-		return shim$2;
-	}
-
-	var sign$1 = isImplemented$1() ? Math.sign : requireShim$2();
-
-	var sign  = sign$1
-	  , abs$1   = Math.abs
+	var abs$1   = Math.abs
 	  , floor$1 = Math.floor;
 
-	var toInteger$1 = function (value) {
+	var toInteger = function (value) {
 		if (isNaN(value)) return 0;
 		value = Number(value);
 		if (value === 0 || !isFinite(value)) return value;
-		return sign(value) * floor$1(abs$1(value));
+		return Math.sign(value) * floor$1(abs$1(value));
 	};
 
-	var toInteger = toInteger$1
-	  , max       = Math.max;
+	var max = Math.max;
 
 	var toPosInteger = function (value) { return max(0, toInteger(value)); };
 
-	var isString;
-	var hasRequiredIsString;
-
-	function requireIsString () {
-		if (hasRequiredIsString) return isString;
-		hasRequiredIsString = 1;
-
-		var objToString = Object.prototype.toString, id = objToString.call("");
-
-		isString = function (value) {
-			return (
-				typeof value === "string" ||
-				(value &&
-					typeof value === "object" &&
-					(value instanceof String || objToString.call(value) === id)) ||
-				false
-			);
-		};
-		return isString;
-	}
-
-	var shim$1;
-	var hasRequiredShim$1;
-
-	function requireShim$1 () {
-		if (hasRequiredShim$1) return shim$1;
-		hasRequiredShim$1 = 1;
-
-		var iteratorSymbol = requireEs6Symbol().iterator
-		  , isArguments    = requireIsArguments()
-		  , isFunction     = requireIsFunction()
-		  , toPosInt       = toPosInteger
-		  , callable       = validCallable
-		  , validValue$1     = validValue
-		  , isValue        = isValue$4
-		  , isString       = requireIsString()
-		  , isArray        = Array.isArray
-		  , call           = Function.prototype.call
-		  , desc           = { configurable: true, enumerable: true, writable: true, value: null }
-		  , defineProperty = Object.defineProperty;
-
-		// eslint-disable-next-line complexity, max-lines-per-function
-		shim$1 = function (arrayLike /*, mapFn, thisArg*/) {
-			var mapFn = arguments[1]
-			  , thisArg = arguments[2]
-			  , Context
-			  , i
-			  , j
-			  , arr
-			  , length
-			  , code
-			  , iterator
-			  , result
-			  , getIterator
-			  , value;
-
-			arrayLike = Object(validValue$1(arrayLike));
-
-			if (isValue(mapFn)) callable(mapFn);
-			if (!this || this === Array || !isFunction(this)) {
-				// Result: Plain array
-				if (!mapFn) {
-					if (isArguments(arrayLike)) {
-						// Source: Arguments
-						length = arrayLike.length;
-						if (length !== 1) return Array.apply(null, arrayLike);
-						arr = new Array(1);
-						arr[0] = arrayLike[0];
-						return arr;
-					}
-					if (isArray(arrayLike)) {
-						// Source: Array
-						arr = new Array((length = arrayLike.length));
-						for (i = 0; i < length; ++i) arr[i] = arrayLike[i];
-						return arr;
-					}
-				}
-				arr = [];
-			} else {
-				// Result: Non plain array
-				Context = this;
-			}
-
-			if (!isArray(arrayLike)) {
-				if ((getIterator = arrayLike[iteratorSymbol]) !== undefined) {
-					// Source: Iterator
-					iterator = callable(getIterator).call(arrayLike);
-					if (Context) arr = new Context();
-					result = iterator.next();
-					i = 0;
-					while (!result.done) {
-						value = mapFn ? call.call(mapFn, thisArg, result.value, i) : result.value;
-						if (Context) {
-							desc.value = value;
-							defineProperty(arr, i, desc);
-						} else {
-							arr[i] = value;
-						}
-						result = iterator.next();
-						++i;
-					}
-					length = i;
-				} else if (isString(arrayLike)) {
-					// Source: String
-					length = arrayLike.length;
-					if (Context) arr = new Context();
-					for (i = 0, j = 0; i < length; ++i) {
-						value = arrayLike[i];
-						if (i + 1 < length) {
-							code = value.charCodeAt(0);
-							// eslint-disable-next-line max-depth
-							if (code >= 0xd800 && code <= 0xdbff) value += arrayLike[++i];
-						}
-						value = mapFn ? call.call(mapFn, thisArg, value, j) : value;
-						if (Context) {
-							desc.value = value;
-							defineProperty(arr, j, desc);
-						} else {
-							arr[j] = value;
-						}
-						++j;
-					}
-					length = j;
-				}
-			}
-			if (length === undefined) {
-				// Source: array or array-like
-				length = toPosInt(arrayLike.length);
-				if (Context) arr = new Context(length);
-				for (i = 0; i < length; ++i) {
-					value = mapFn ? call.call(mapFn, thisArg, arrayLike[i], i) : arrayLike[i];
-					if (Context) {
-						desc.value = value;
-						defineProperty(arr, i, desc);
-					} else {
-						arr[i] = value;
-					}
-				}
-			}
-			if (Context) {
-				desc.value = null;
-				arr.length = length;
-			}
-			return arr;
-		};
-		return shim$1;
-	}
-
-	var from = isImplemented$4() ? Array.from : requireShim$1();
-
-	var isImplemented = function () {
-		var numberIsNaN = Number.isNaN;
-		if (typeof numberIsNaN !== "function") return false;
-		return !numberIsNaN({}) && numberIsNaN(NaN) && !numberIsNaN(34);
-	};
-
-	var shim;
-	var hasRequiredShim;
-
-	function requireShim () {
-		if (hasRequiredShim) return shim;
-		hasRequiredShim = 1;
-
-		shim = function (value) {
-			// eslint-disable-next-line no-self-compare
-			return value !== value;
-		};
-		return shim;
-	}
-
-	var isNan = isImplemented() ? Number.isNaN : requireShim();
-
-	var numberIsNaN       = isNan
+	var numberIsNaN       = Number.isNaN
 	  , toPosInt          = toPosInteger
 	  , value$1             = validValue
 	  , indexOf$1           = Array.prototype.indexOf
@@ -33349,7 +32823,7 @@
 	  , splice  = Array.prototype.splice;
 
 	// eslint-disable-next-line no-unused-vars
-	var remove$1 = function (itemToRemove /*, …item*/) {
+	var remove = function (itemToRemove /*, …item*/) {
 		forEach.call(
 			arguments,
 			function (item) {
@@ -33364,17 +32838,14 @@
 
 	var map = { function: true, object: true };
 
-	var isObject$1 = function (value) { return (isValue(value) && map[typeof value]) || false; };
-
-	var isObject = isObject$1;
+	var isObject = function (value) { return (isValue(value) && map[typeof value]) || false; };
 
 	var validObject = function (value) {
 		if (!isObject(value)) throw new TypeError(value + " is not an Object");
 		return value;
 	};
 
-	var aFrom          = from
-	  , remove         = remove$1
+	var aFrom          = Array.from
 	  , value          = validObject
 	  , d              = dExports
 	  , emit           = eventEmitterExports.methods.emit
@@ -33522,16 +32993,39 @@
 			let template;
 			template = body.querySelector(":scope > template[data-ref='pagedjs-content']");
 
-			if (!template) {
-				// Otherwise create one
-				template = document.createElement("template");
-				template.dataset.ref = "pagedjs-content";
-				template.innerHTML = body.innerHTML;
-				body.innerHTML = "";
-				body.appendChild(template);
+			if (template) {
+				// [PATCH: wrap-content-move] Re-entrant call: the fragment we
+				// returned previously was stashed on the marker template's
+				// `_pagedjsContent` expando (template.content stays empty under
+				// the move strategy below).
+				return template._pagedjsContent || template.content;
 			}
 
-			return template.content;
+			// [PATCH: wrap-content-move] Move children into a plain
+			// DocumentFragment owned by the live document instead of round-
+			// tripping through innerHTML (serialise the entire body to a
+			// string, reparse into a template). The round-trip is O(document
+			// size) twice over; the move is one O(n) detach/attach pass with
+			// no string work.
+			//
+			// Why a plain DocumentFragment and not template.content: a
+			// template's content fragment is owned by the inert "template
+			// contents owner document", and moving live <img> elements into
+			// it triggers adoptNode which runs the spec's "update the image
+			// data" algorithm. That resets .complete and leaves the source
+			// image in a state where later cloning into the live page wrapper
+			// doesn't synchronously cache-hit -- our sync waitForImages check
+			// then throws. A plain fragment stays in the live document so
+			// adoption is a no-op and image state is preserved.
+			let fragment = document.createDocumentFragment();
+			while (body.firstChild) {
+				fragment.appendChild(body.firstChild);
+			}
+			template = document.createElement("template");
+			template.dataset.ref = "pagedjs-content";
+			template._pagedjsContent = fragment;
+			body.appendChild(template);
+			return fragment;
 		}
 
 		removeStyles(doc=document) {

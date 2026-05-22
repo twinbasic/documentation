@@ -22,8 +22,22 @@
 // Usage:
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
+//                    [--heap-profile] [--heap-sampling <bytes>]
 //                    [--detach-pages] [--instrument] [--time-hooks]
-//                    [--incremental] [--chrome-outline]
+//                    [--incremental] [--chrome-outline] [--no-timing]
+//                    [--clone-count] [--render-only]
+//
+// --render-only bails out after the render phase. Skips meta extraction,
+// parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
+// Useful for cpu-profile / instrumentation runs where only the render
+// phase matters; trims ~45s off the full ~55s book run. No book.pdf is
+// written, and the timing.json / summary.txt omit generate/process.
+//
+// --no-timing skips the per-page timing-handler.js injection. The handler
+// adds a per-page console.log relayed via CDP that costs ~2% of render
+// self-time on the 1638-page book. Use when profiling for the cleanest
+// possible bottom-up table; loses the per-page CSV and the first/last
+// quartile summary in return.
 //
 // --detach-pages also injects detach-pages.js -- a Paged.Handler that
 // hides each completed page from the layout tree -- to test whether
@@ -75,22 +89,32 @@ let outArg = null;
 let keepOpen = false;
 let cpuProfile = false;
 let cpuSampling = 1000; // microseconds
+let heapProfile = false;
+let heapSampling = 32768; // bytes between samples (CDP default)
 let detachPages = false;
 let instrument = false;
 let timeHooks = false;
 let incremental = false;
 let chromeOutline = false;
+let noTiming = false;
+let cloneCount = false;
+let renderOnly = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
   else if (a === '--keep-open') keepOpen = true;
   else if (a === '--cpu-profile') cpuProfile = true;
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
+  else if (a === '--heap-profile') heapProfile = true;
+  else if (a === '--heap-sampling') heapSampling = parseInt(args[++i], 10);
   else if (a === '--detach-pages') detachPages = true;
   else if (a === '--instrument') instrument = true;
   else if (a === '--time-hooks') timeHooks = true;
   else if (a === '--incremental') incremental = true;
   else if (a === '--chrome-outline') chromeOutline = true;
+  else if (a === '--no-timing') noTiming = true;
+  else if (a === '--clone-count') cloneCount = true;
+  else if (a === '--render-only') renderOnly = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -110,10 +134,13 @@ const handlerPath      = resolve(__dirname, 'timing-handler.js');
 const detachPagesPath  = resolve(__dirname, 'detach-pages.js');
 const instrumentPath   = resolve(__dirname, 'instrument-flush-ops.js');
 const timeHooksPath    = resolve(__dirname, 'time-hooks.js');
-const required = [pagedScriptPath, handlerPath];
+const cloneCountPath   = resolve(__dirname, 'instrument-clones.js');
+const required = [pagedScriptPath];
+if (!noTiming)  required.push(handlerPath);
 if (detachPages) required.push(detachPagesPath);
 if (instrument)  required.push(instrumentPath);
 if (timeHooks)   required.push(timeHooksPath);
+if (cloneCount)  required.push(cloneCountPath);
 for (const p of required) {
   if (!existsSync(p)) {
     console.error(`missing required file: ${p}`);
@@ -160,7 +187,8 @@ try {
   page.on('console', (msg) => {
     const t = msg.text();
     if (t.startsWith('[paged-timing]') || t.startsWith('[detach-pages]') ||
-        t.startsWith('[instrument]') || t.startsWith('  ')) {
+        t.startsWith('[instrument]') || t.startsWith('[clone-count]') ||
+        t.startsWith('  ')) {
       console.log(t);
     }
   });
@@ -183,7 +211,9 @@ try {
   });
 
   await page.addScriptTag({ path: pagedScriptPath });
-  await page.addScriptTag({ path: handlerPath });
+  if (!noTiming) {
+    await page.addScriptTag({ path: handlerPath });
+  }
   if (detachPages) {
     await page.addScriptTag({ path: detachPagesPath });
   }
@@ -193,18 +223,29 @@ try {
   if (timeHooks) {
     await page.addScriptTag({ path: timeHooksPath });
   }
+  if (cloneCount) {
+    await page.addScriptTag({ path: cloneCountPath });
+  }
 
   // RENDER ----------------------------------------------------------
-  // Optionally wrap just this phase in a V8 CPU profile. CDP Profiler
-  // attaches to the renderer for this page; we stop before the generate
-  // phase so the trace stays focused on paged.js layout work.
+  // Optionally wrap just this phase in a V8 CPU and/or heap sampling
+  // profile. CDP attaches to the renderer for this page; we stop
+  // before the generate phase so the traces stay focused on paged.js
+  // layout work.
   let cdp = null;
-  if (cpuProfile) {
+  if (cpuProfile || heapProfile) {
     cdp = await page.createCDPSession();
+  }
+  if (cpuProfile) {
     await cdp.send('Profiler.enable');
     await cdp.send('Profiler.setSamplingInterval', { interval: cpuSampling });
     await cdp.send('Profiler.start');
     console.log(`[harness] cpu profile: sampling every ${cpuSampling}us`);
+  }
+  if (heapProfile) {
+    await cdp.send('HeapProfiler.enable');
+    await cdp.send('HeapProfiler.startSampling', { samplingInterval: heapSampling });
+    console.log(`[harness] heap profile: sampling every ${heapSampling} bytes`);
   }
 
   const tRenderStart = Date.now();
@@ -226,17 +267,39 @@ try {
   const renderMs = tRenderEnd - tRenderStart;
 
   let profilePath = null;
+  let heapProfilePath = null;
   if (cdp) {
-    const { profile } = await cdp.send('Profiler.stop');
+    if (cpuProfile) {
+      const { profile } = await cdp.send('Profiler.stop');
+      profilePath = join(outDir, 'render.cpuprofile');
+      const profileJson = JSON.stringify(profile);
+      writeFileSync(profilePath, profileJson);
+      console.log(`[harness] cpu profile: ${profilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
+    }
+    if (heapProfile) {
+      const { profile } = await cdp.send('HeapProfiler.stopSampling');
+      heapProfilePath = join(outDir, 'render.heapprofile');
+      const profileJson = JSON.stringify(profile);
+      writeFileSync(heapProfilePath, profileJson);
+      const totalBytes = profile.samples.reduce((s, x) => s + x.size, 0);
+      console.log(`[harness] heap profile: ${heapProfilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB, ${profile.samples.length} samples, ${(totalBytes / 1024 / 1024).toFixed(1)} MB allocated)`);
+    }
     await cdp.detach();
-    profilePath = join(outDir, 'render.cpuprofile');
-    const profileJson = JSON.stringify(profile);
-    writeFileSync(profilePath, profileJson);
-    console.log(`[harness] cpu profile: ${profilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
   }
 
   console.log(`[harness] render   ${fmtMs(renderMs)}`);
 
+  // Declared outside the generate/process blocks so the persistence /
+  // summary code can read them either way. --render-only leaves them null.
+  let generateMs = null;
+  let parseOutlineMs = null;
+  let pdfMs = null;
+  let rawPdfBytes = null;
+  let processMs = null;
+  let processBreakdown = null;
+  let finalPdf = null;
+
+  if (!renderOnly) {
   // GENERATE --------------------------------------------------------
   // meta extraction + outline DOM walk + Chromium DOM->PDF.
   const tGenStart = Date.now();
@@ -258,7 +321,7 @@ try {
   // would get overwritten by Chrome's /Outlines anyway.
   const tParseOutlineStart = Date.now();
   const outline = chromeOutline ? [] : await parseOutline(page, outlineTags);
-  const parseOutlineMs = Date.now() - tParseOutlineStart;
+  parseOutlineMs = Date.now() - tParseOutlineStart;
 
   const tPdfStart = Date.now();
   const rawPdf = await page.pdf({
@@ -274,10 +337,11 @@ try {
     // both on would have our setOutline overwrite Chrome's /Outlines.
     ...(chromeOutline ? { outline: true, tagged: true } : {}),
   });
-  const pdfMs = Date.now() - tPdfStart;
+  pdfMs = Date.now() - tPdfStart;
+  rawPdfBytes = rawPdf.length;
 
   const tGenEnd = Date.now();
-  const generateMs = tGenEnd - tGenStart;
+  generateMs = tGenEnd - tGenStart;
   console.log(`[harness] generate ${fmtMs(generateMs)}  (parseOutline=${fmtMs(parseOutlineMs)}, page.pdf=${fmtMs(pdfMs)}, ${(rawPdf.length / 1024 / 1024).toFixed(1)}MB)`);
 
   // PROCESS ---------------------------------------------------------
@@ -294,8 +358,6 @@ try {
   // Either way we time the full phase plus the meaningful sub-steps so the
   // breakdown matches across runs.
   const tProcStart = Date.now();
-  let finalPdf;
-  let processBreakdown;
   if (incremental) {
     const tIncStart = Date.now();
     const { bytes, stats } = await applyOutlineAndMetadataIncremental(rawPdf, outline, meta);
@@ -327,25 +389,30 @@ try {
     processBreakdown = { loadMs, setOutlineMs, saveMs };
   }
   const tProcEnd  = Date.now();
-  const processMs = tProcEnd - tProcStart;
+  processMs = tProcEnd - tProcStart;
   if (incremental) {
     console.log(`[harness] process  ${fmtMs(processMs)}  (incremental=${fmtMs(processBreakdown.incrementalMs)}, +${processBreakdown.appendedBytes}B, ${processBreakdown.newObjectCount} new objs)`);
   } else {
     console.log(`[harness] process  ${fmtMs(processMs)}  (load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)})`);
   }
+  }  // end if (!renderOnly)
 
-  const totalMs = tProcEnd - tRenderStart;
+  const totalMs = Date.now() - tRenderStart;
   console.log(`[harness] total    ${fmtMs(totalMs)}`);
 
   // Persist results -------------------------------------------------
-  const timing = await page.evaluate(() => window.__pagedTiming);
-  const pdfPath = join(outDir, 'book.pdf');
-  writeFileSync(pdfPath, Buffer.from(finalPdf));
+  const timing = noTiming
+    ? { pages: [], phases: {}, pageCount: null }
+    : await page.evaluate(() => window.__pagedTiming);
+  if (finalPdf) {
+    const pdfPath = join(outDir, 'book.pdf');
+    writeFileSync(pdfPath, Buffer.from(finalPdf));
+  }
 
   const record = {
     input: inputPath,
     pageCount: timing.pageCount,
-    pdfBytes: finalPdf.length,
+    pdfBytes: finalPdf ? finalPdf.length : null,
     cpuProfile: profilePath,
     phases: {
       render: {
@@ -353,20 +420,22 @@ try {
         perPage: timing.pages,
         phaseMarks: timing.phases,
       },
-      generate: {
-        ms: generateMs,
-        parseOutlineMs,
-        pagePdfMs: pdfMs,
-        rawPdfBytes: rawPdf.length,
-      },
-      process: {
-        ms: processMs,
-        mode: incremental ? 'incremental' : 'pdf-lib-roundtrip',
-        ...processBreakdown,
-      },
     },
     totalMs,
   };
+  if (!renderOnly) {
+    record.phases.generate = {
+      ms: generateMs,
+      parseOutlineMs,
+      pagePdfMs: pdfMs,
+      rawPdfBytes,
+    };
+    record.phases.process = {
+      ms: processMs,
+      mode: incremental ? 'incremental' : 'pdf-lib-roundtrip',
+      ...processBreakdown,
+    };
+  }
   writeFileSync(join(outDir, 'timing.json'), JSON.stringify(record, null, 2));
 
   const csv = ['page,dur_ms,heap_start_mb,heap_end_mb,elapsed_s'];
@@ -385,11 +454,17 @@ try {
   const summary = [];
   summary.push(`input        : ${inputPath}`);
   summary.push(`pages        : ${pages.length}`);
-  summary.push(`pdf size     : ${(finalPdf.length / 1024 / 1024).toFixed(1)} MB`);
+  if (finalPdf) {
+    summary.push(`pdf size     : ${(finalPdf.length / 1024 / 1024).toFixed(1)} MB`);
+  }
   summary.push('');
   summary.push(`render       : ${fmtMs(renderMs)}    (per-page layout via paged.js)`);
-  summary.push(`generate     : ${fmtMs(generateMs)}    (parseOutline + page.pdf)`);
-  summary.push(`process      : ${fmtMs(processMs)}    (${incremental ? 'incremental update (append outline + updated catalog/info)' : 'pdf-lib load + setOutline + save'})`);
+  if (!renderOnly) {
+    summary.push(`generate     : ${fmtMs(generateMs)}    (parseOutline + page.pdf)`);
+    summary.push(`process      : ${fmtMs(processMs)}    (${incremental ? 'incremental update (append outline + updated catalog/info)' : 'pdf-lib load + setOutline + save'})`);
+  } else {
+    summary.push(`(generate + process skipped: --render-only)`);
+  }
   summary.push(`total        : ${fmtMs(totalMs)}`);
   summary.push('');
   if (pages.length >= 4) {
