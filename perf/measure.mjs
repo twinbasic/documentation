@@ -299,6 +299,7 @@ let fastDictOnebuf = false;
 let instrumentParsedict = false;
 let dumpRawPdf = null;
 let measurePass = false;
+let instrumentSlotTypes = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -339,6 +340,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--instrument-parsedict') instrumentParsedict = true;
   else if (a === '--dump-raw-pdf') dumpRawPdf = args[++i];
   else if (a === '--measure-pass') measurePass = true;
+  else if (a === '--instrument-slot-types') instrumentSlotTypes = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -399,6 +401,14 @@ if (measurePass && incremental) {
 }
 if (measurePass && renderOnly) {
   console.error('--measure-pass needs the process phase; --render-only skips it.');
+  process.exit(2);
+}
+if (instrumentSlotTypes && !fastDictOnebuf) {
+  console.error('--instrument-slot-types reads fast-dict-onebuf\'s main buffer; pass --fast-dict-onebuf too.');
+  process.exit(2);
+}
+if (instrumentSlotTypes && (incremental || renderOnly)) {
+  console.error('--instrument-slot-types needs the process phase; not compatible with --incremental or --render-only.');
   process.exit(2);
 }
 
@@ -476,6 +486,17 @@ if (measurePass) {
     return counts;
   };
   console.log('[harness] measure-pass: no-allocate prelude, pre-sizes fast-dict-onebuf mainBuf to measured dict-slot count');
+}
+
+// --instrument-slot-types loads the slot-type classifier; called after
+// setOutline, before save.
+let _classifySlots = null;
+let _printSlotHistogram = null;
+if (instrumentSlotTypes) {
+  const m = await import('./instrument-slot-types.mjs');
+  _classifySlots = m.classifySlots;
+  _printSlotHistogram = m.printHistogram;
+  console.log('[harness] instrument-slot-types: classify main[] slots by PDFObject subtype after setOutline');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -800,6 +821,16 @@ try {
     const tSetOutlineStart = Date.now();
     setOutline(pdfDoc, outline, false);
     const setOutlineMs = Date.now() - tSetOutlineStart;
+
+    if (_classifySlots) {
+      const tClassifyStart = Date.now();
+      const slotCounts = _classifySlots();
+      const classifyMs = Date.now() - tClassifyStart;
+      console.log(`[harness] instrument-slot-types: classify took ${classifyMs}ms`);
+      console.log('');
+      _printSlotHistogram(slotCounts, 'main after load+setOutline');
+      console.log('');
+    }
 
     const tSaveStart = Date.now();
     let parallelStreamCount = 0;

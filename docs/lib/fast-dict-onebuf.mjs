@@ -71,6 +71,12 @@ const MAIN_INITIAL_CAP = 2400000;
 const main = new Array(MAIN_INITIAL_CAP);
 let mainLen = 0;
 
+// Exposed for measurement-only consumers (perf/instrument-*.mjs).
+// The encoded `d` values held by PDFDict instances reference main by
+// (start, length); reading the slots requires access to main itself.
+export { main };
+export function getMainLen() { return mainLen; }
+
 // Replace `main` with an exact-sized backing array. Must be called
 // before any parseDict / withContext / fromMapWithContext (i.e. while
 // mainLen is still 0). `slack` is a multiplier on `slots`; default 1.0

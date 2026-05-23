@@ -3388,6 +3388,66 @@ outline nodes, matching titles) holds. Heap is flat as expected
 -- this is a code simplification, not an allocation-pattern
 change.
 
+## Slot-type histogram for mainBuf
+
+The next attack surface on GC self-time -- the ~150 ms left after
+fast-dict-onebuf -- is converting `main` from `Array` (Object
+references that V8 must mark) to `Float64Array` (Number slots
+that V8 ignores during mark). That only works if every slot
+value can be encoded as a Number, or pooled into a side table
+where the marker count is small.
+
+To scope that work, [`perf/instrument-slot-types.mjs`](../instrument-slot-types.mjs)
+walks `main[0..mainLen)` after setOutline and classifies each
+slot by PDFObject subtype. The instrumentation hangs off two new
+exports on fast-dict-onebuf (the `main` Array itself and a
+`getMainLen()` getter) and runs behind a new
+`--instrument-slot-types` flag on `measure.mjs` that requires
+`--fast-dict-onebuf` and skips the incremental / render-only
+paths.
+
+Distribution on the book (production shim set + `--measure-pass`,
+total slots = 2 358 630, keys = 1 179 315, values = 1 179 315):
+
+```
+type           keys      key%       values    value%   total%
+-----------------------------------------------------------------
+PDFName        1179315   100.00%    493256    41.83%   70.91%
+PDFRef               0     0.00%    435217    36.90%   18.45%
+PDFNumber            0     0.00%    162325    13.76%    6.88%
+PDFArray             0     0.00%     79468     6.74%    3.37%
+PDFDict              0     0.00%      5660     0.48%    0.24%
+PDFHexString         0     0.00%      1776     0.15%    0.08%
+PDFString            0     0.00%      1601     0.14%    0.07%
+PDFBool.True         0     0.00%        12     0.00%   0.0005%
+PDFBool.False        0     0.00%         0     0.00%        0
+PDFNull              0     0.00%         0     0.00%        0
+```
+
+Key findings:
+
+1. **Keys are 100 % PDFName** -- the even/odd invariant the
+   parser maintains holds. Encoding keys as the name's pool
+   index is unambiguous.
+2. **Four big pools (Name, Ref, Number, Dict) cover 96.4 % of
+   all slots.** Encoding them directly as Numbers in a
+   Float64 mainBuf collapses ~96 % of slot-mark traversals.
+3. **Side-pool fallback for unpooled types (Array, String,
+   HexString) is ~3.5 %** -- ~82 800 slots that V8 would
+   still mark via the side `Object[]`, vs ~2.34 M today.
+4. **Nested PDFDicts as slot values are only 5 660** -- most
+   dicts are referenced via PDFRef rather than embedded inline.
+5. **Bool / Null / RawStream in dict slots are essentially zero**
+   -- tag-only encoding (a few reserved sentinel Numbers)
+   covers them.
+
+Classification cost: 39 ms (single pass over 2.36 M slots).
+
+This shape is informative even though it doesn't itself ship a
+change. The subsequent Phase 2 / Phase 3 prototypes (next two
+sections) use these numbers to predict their wins; both turn out
+not to ship for reasons documented there.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
