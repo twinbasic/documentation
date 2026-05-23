@@ -30,6 +30,8 @@
 //                    [--clone-count] [--render-only]
 //                    [--fast-refs] [--parallel-deflate]
 //                    [--fast-decode-name] [--fast-number-to-string]
+//                    [--fast-size-in-bytes] [--fast-inflate]
+//                    [--fast-parse-number]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -114,6 +116,27 @@
 // when String(num) already lacks an `e`. Skips a redundant toString,
 // split, and parseInt per call; only the rare exponential-notation
 // tail still falls through to the original implementation.
+//
+// --fast-size-in-bytes replaces pdf-lib's utils.sizeInBytes -- which
+// allocates `n.toString(2)` just to count its bit length -- with a
+// non-allocating short-circuit ladder. Called ~300 k times per save
+// from PDFCrossRefStream's xref writer; the dominant inputs are
+// 1-2 byte values (type, gen, index, small obj-stream refs) so a
+// `n < 0x100 ? 1 : ...` ladder is the right shape.
+//
+// --fast-inflate swaps pako.inflate for node:zlib.inflateSync on
+// pdf-lib's one remaining pako call site (PDFCrossRefStreamParser
+// inflating the compressed cross-reference stream during
+// PDFDocument.load). One call per load, negligible wall-clock; flag
+// exists so paired A/Bs can compare against pure-pdf-lib behaviour.
+// Production runs through it.
+//
+// --fast-parse-number replaces pdf-lib's BaseParser.parseRawNumber
+// and parseRawInt with direct-integer accumulators (n = n*10 +
+// (byte - 0x30)) that skip per-byte string concatenation and the
+// trailing Number() round-trip. Every numeric token in a parsed
+// PDF flows through these; hundreds of thousands of calls per load
+// on the book. Production runs through it.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -160,6 +183,9 @@ let fastRefs = false;
 let parallelDeflate = false;
 let fastDecodeName = false;
 let fastNumberToString = false;
+let fastSizeInBytes = false;
+let fastInflate = false;
+let fastParseNumber = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -185,6 +211,9 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--parallel-deflate') parallelDeflate = true;
   else if (a === '--fast-decode-name') fastDecodeName = true;
   else if (a === '--fast-number-to-string') fastNumberToString = true;
+  else if (a === '--fast-size-in-bytes') fastSizeInBytes = true;
+  else if (a === '--fast-inflate') fastInflate = true;
+  else if (a === '--fast-parse-number') fastParseNumber = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -237,6 +266,18 @@ if (fastDecodeName) {
 if (fastNumberToString) {
   await import('../docs/lib/fast-number-to-string.mjs');
   console.log('[harness] fast-number-to-string: skip redundant toString/split when no exponential');
+}
+if (fastSizeInBytes) {
+  await import('../docs/lib/fast-size-in-bytes.mjs');
+  console.log('[harness] fast-size-in-bytes: non-allocating ladder for xref byte-width');
+}
+if (fastInflate) {
+  await import('../docs/lib/fast-inflate.mjs');
+  console.log('[harness] fast-inflate: swap pako.inflate for node:zlib.inflateSync');
+}
+if (fastParseNumber) {
+  await import('../docs/lib/fast-parse-number.mjs');
+  console.log('[harness] fast-parse-number: direct-integer accumulator for parseRawNumber/parseRawInt');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');

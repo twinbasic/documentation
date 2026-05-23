@@ -1046,6 +1046,145 @@ Lesson for the next pdf-lib shim of a free function (rather than a
 class method): check `tslib.__exportStar`'s shape before assuming
 a single-site patch works.
 
+## `sizeInBytes`: stop allocating a base-2 string just to count its bits
+
+A fresh process-phase profile under the post-`fast-decode-name` /
+`fast-number-to-string` shipping set (1638-page book, `--fast-refs
+--parallel-deflate --fast-decode-name --fast-number-to-string
+--cpu-profile-process --cpu-sampling 100`) put process at 1.95 s
+and showed an oddly-shaped row in the top-15:
+
+```
+   self_ms   self_%   function  @  source
+   -------   ------   ----------------------------------------------
+    213.02   10.97%   (garbage collector)
+    171.60    8.83%   PDFDict.entries          pdf-lib/PDFDict.js:22
+    144.16    7.42%   PDFRef.of                pdf-lib/PDFRef.js:34
+    ...
+     56.48    2.91%   exports.sizeInBytes      pdf-lib/utils/numbers.js:37
+```
+
+`sizeInBytes` is a four-line utility:
+
+```js
+exports.sizeInBytes = function (n) { return Math.ceil(n.toString(2).length / 8); };
+```
+
+It computes how many bytes a non-negative integer takes by
+stringifying it as base-2, counting characters, and dividing by 8.
+The string is thrown away immediately.
+
+`find-callers.mjs` attributed the 56 ms across two callers, both
+inside the xref-stream writer:
+
+| caller | attributed |
+| --- | --- |
+| `bytesFor` (`utils/numbers.js:49`) -- sizes the `Uint8Array` that gets filled byte-by-byte | 29.6 ms |
+| `PDFCrossRefStream.computeMaxEntryByteWidths` (`structures/PDFCrossRefStream.js:66`) -- 3 calls per xref entry to compute the `/W` widths | 26.9 ms |
+
+For a ~50 k-object PDF that's roughly 300 k `n.toString(2)` calls
+per save, each allocating a short-lived 1-to-32-char string.
+Likely a contributor to the 213 ms GC at the top of the table too.
+
+### The shim
+
+`docs/lib/fast-size-in-bytes.mjs` replaces `utils.sizeInBytes`
+with a non-allocating short-circuit ladder:
+
+```js
+function fastSizeInBytes(n) {
+  if (n < 0x100) return 1;
+  if (n < 0x10000) return 2;
+  if (n < 0x1000000) return 3;
+  if (n < 0x100000000) return 4;
+  return 4 + Math.ceil((32 - Math.clz32(Math.floor(n / 0x100000000))) / 8);
+}
+```
+
+The ladder shape matches the actual value distribution in
+`computeEntryTuples`. The xref entry tuples are
+`(type, second, third)` where:
+
+- `type` is 0, 1, or 2 (1 byte, always)
+- `gen` / `index` are small (1-2 bytes)
+- `offset` for uncompressed entries reaches 3-4 bytes on a 16 MB
+  PDF
+- `nextFreeObjectNumber` for deleted entries is small
+
+So most calls take the very first branch. A `Math.clz32`-based
+alternative would be simpler but slower in the common case,
+because it always pays for the native call + sub + div + ceil.
+The ladder exits in one compare for the dominant case.
+
+Triple-patch shape mirrors `fast-number-to-string.mjs` -- pdf-lib
+ships compiled against tslib 1.x whose `__exportStar` value-copies
+re-exports rather than installing live getters, so consumers that
+read `sizeInBytes` through a barrel (`PDFCrossRefStream` does:
+`utils_1.sizeInBytes(...)`) hold a captured reference. Patch the
+source module, the utils/index barrel, and the top-level index to
+cover every observed call site. `utils.bytesFor` reads
+`exports.sizeInBytes` at call time from the same module object we
+mutate first, so it picks up the fast path without a separate
+patch.
+
+### Results
+
+A/B (2 runs each, `--fast-refs --parallel-deflate
+--fast-decode-name --fast-number-to-string --cpu-profile-process
+--cpu-sampling 100`, with `--fast-size-in-bytes` the only
+difference):
+
+| run | PRE | POST |
+| --- | --- | --- |
+| 1 | 1.95 s | 1.91 s |
+| 2 | 2.01 s | 1.93 s |
+| **avg** | **1.98 s** | **1.92 s** |
+| save sub-phase avg | 0.80 s | 0.73 s |
+
+**Δ = -60 ms process (-3.0 %).** The save sub-phase carries
+-70 ms of that -- exactly where `sizeInBytes` lives (xref writer
+fires during save, not load), so the attribution lines up.
+
+Profile self-time, POST run:
+
+- `exports.sizeInBytes` row: 56.48 ms → undetectable. V8 inlined
+  the ladder into both callers; `fastSizeInBytes` doesn't appear
+  in the profile by name either.
+- GC: 213 ms → 201 ms (-12 ms, consistent with no longer
+  allocating ~300 k short-lived base-2 strings per save).
+- No cost migration to other rows. The surrounding parser /
+  writer rows are flat within noise.
+
+PDF byte-equivalent (31-byte `/CreationDate` drift between PRE
+and POST -- well inside the standard timestamp band).
+
+### Side finding: the harness flag set wasn't tracking production
+
+While landing this change, the harness flag set was audited
+against `render-book.mjs`'s imports. `render-book.mjs` was
+importing five `fast-*` shims (`fast-refs`, `fast-inflate`,
+`fast-parse-number`, `fast-decode-name`, `fast-number-to-string`),
+but `measure.mjs` only exposed three of them as flags
+(`--fast-refs`, `--fast-decode-name`, `--fast-number-to-string`).
+So the canonical process-profile command was measuring a *subset*
+of what production actually runs -- two production shims
+(`fast-inflate` and `fast-parse-number`) had been on for
+production and silently off for the perf harness.
+
+Wall-clock impact of that gap is small in absolute terms (the two
+missing shims target the load sub-phase, which is ~1.2 s out of
+the 1.95 s process total), but the bottom-up table in the
+canonical command was attributing time to functions that don't
+run that way in production. Fixed in the same change: `measure.mjs`
+now exposes `--fast-inflate` and `--fast-parse-number`, and the
+canonical command in the README lists all five production shims
+plus `--fast-size-in-bytes`.
+
+The general lesson: when a new shim lands, audit the harness's
+flag set against `render-book.mjs`'s import list. A flag missing
+on the harness side silently moves the harness baseline away from
+production -- and the divergence accumulates over time.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -1072,7 +1211,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-deflate                       | ~2.5 s  | ~1.5s| ~1 s |
 | + fast-refs                          | ~2.3 s  | ~1.3 s | ~1 s |
 | + parallel-deflate                   | ~2.0 s  | ~1.3 s | ~0.7 s |
-| **+ fast-decode-name + fast-number-to-string (this section)** | **~1.6 s** | **~1.0 s** | **~0.6 s** |
+| + fast-decode-name + fast-number-to-string | ~1.6 s  | ~1.0 s | ~0.6 s |
+| **+ fast-size-in-bytes (this section)** | **~1.5 s** | **~1.0 s** | **~0.5 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

@@ -54,11 +54,16 @@ import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 //     `String(num)` already lacks an `e` (i.e. for every PDF number
 //     that's not in the exponential-notation tail). Skips a
 //     redundant toString + split + parseInt per call.
+//   fast-size-in-bytes -- replace utils.sizeInBytes (which allocates
+//     `n.toString(2)` just to count its bit length) with a non-
+//     allocating short-circuit ladder. Called ~300 k times per save
+//     from PDFCrossRefStream's xref writer.
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
 import './lib/fast-decode-name.mjs';
 import './lib/fast-number-to-string.mjs';
+import './lib/fast-size-in-bytes.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 import { parallelSave }             from './lib/parallel-deflate.mjs';
