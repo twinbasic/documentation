@@ -12,9 +12,11 @@
 //   - At afterRendered, summarise totals + per-page distribution.
 //
 // Cost: O(1) per append + one tree walk per finalized page. Run with
-//   --no-timing --additional-script ..\perf\instrument-clones.js
+//   --additional-script ..\perf\instrument-clones.js
 // from a measure.mjs invocation. (detach-pages.js is on by default;
-// add --no-detach-pages to compare against the pre-fix baseline.)
+// add --no-detach-pages to compare against the pre-fix baseline.
+// The timing handler is off by default; if you also pass --timing,
+// its per-page console relay will mix with this probe's output.)
 // Numbers are reported via console.log which measure.mjs forwards
 // to stdout.
 

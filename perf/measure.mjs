@@ -25,7 +25,7 @@
 //                    [--heap-profile] [--heap-sampling <bytes>]
 //                    [--tracing]
 //                    [--no-detach-pages] [--instrument] [--time-hooks]
-//                    [--incremental] [--chrome-outline] [--no-timing]
+//                    [--incremental] [--chrome-outline] [--timing]
 //                    [--clone-count] [--render-only]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
@@ -34,11 +34,13 @@
 // phase matters; trims ~45s off the full ~55s book run. No book.pdf is
 // written, and the timing.json / summary.txt omit generate/process.
 //
-// --no-timing skips the per-page timing-handler.js injection. The handler
-// adds a per-page console.log relayed via CDP that costs ~2% of render
-// self-time on the 1638-page book. Use when profiling for the cleanest
-// possible bottom-up table; loses the per-page CSV and the first/last
-// quartile summary in return.
+// --timing injects timing-handler.js. The handler records per-page wall
+// time + heap to window.__pagedTiming (so the harness can emit
+// timing.csv and the first/last-quartile summary) and streams a per-page
+// console.log relayed via CDP. The relay costs ~2 % of render self-time
+// on the 1638-page book, which is why the handler isn't on by default --
+// profile-clean runs and most A/B comparisons don't need it. Pass it
+// when you want the per-page CSV.
 //
 // detach-pages.js is injected by default -- a Paged.Handler that hides
 // each completed page from the layout tree. This is the shipping fix
@@ -115,7 +117,7 @@ let instrument = false;
 let timeHooks = false;
 let incremental = false;
 let chromeOutline = false;
-let noTiming = false;
+let timing = false;
 let cloneCount = false;
 let renderOnly = false;
 let tracing = false;
@@ -133,7 +135,8 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--time-hooks') timeHooks = true;
   else if (a === '--incremental') incremental = true;
   else if (a === '--chrome-outline') chromeOutline = true;
-  else if (a === '--no-timing') noTiming = true;
+  else if (a === '--timing') timing = true;
+  else if (a === '--no-timing') timing = false;             // accepted for backwards compat; default since the relay cost was measured
   else if (a === '--clone-count') cloneCount = true;
   else if (a === '--render-only') renderOnly = true;
   else if (a === '--tracing') tracing = true;
@@ -159,7 +162,7 @@ const instrumentPath   = resolve(__dirname, 'instrument-flush-ops.js');
 const timeHooksPath    = resolve(__dirname, 'time-hooks.js');
 const cloneCountPath   = resolve(__dirname, 'instrument-clones.js');
 const required = [pagedScriptPath];
-if (!noTiming)  required.push(handlerPath);
+if (timing)     required.push(handlerPath);
 if (detachPages) required.push(detachPagesPath);
 if (instrument)  required.push(instrumentPath);
 if (timeHooks)   required.push(timeHooksPath);
@@ -241,7 +244,7 @@ try {
   });
 
   await page.addScriptTag({ path: pagedScriptPath });
-  if (!noTiming) {
+  if (timing) {
     await page.addScriptTag({ path: handlerPath });
   }
   if (detachPages) {
@@ -471,9 +474,9 @@ try {
   console.log(`[harness] total    ${fmtMs(totalMs)}`);
 
   // Persist results -------------------------------------------------
-  const timing = noTiming
-    ? { pages: [], phases: {}, pageCount: null }
-    : await page.evaluate(() => window.__pagedTiming);
+  const timingData = timing
+    ? await page.evaluate(() => window.__pagedTiming)
+    : { pages: [], phases: {}, pageCount: null };
   if (finalPdf) {
     const pdfPath = join(outDir, 'book.pdf');
     writeFileSync(pdfPath, Buffer.from(finalPdf));
@@ -481,14 +484,14 @@ try {
 
   const record = {
     input: inputPath,
-    pageCount: timing.pageCount,
+    pageCount: timingData.pageCount,
     pdfBytes: finalPdf ? finalPdf.length : null,
     cpuProfile: profilePath,
     phases: {
       render: {
         ms: renderMs,
-        perPage: timing.pages,
-        phaseMarks: timing.phases,
+        perPage: timingData.pages,
+        phaseMarks: timingData.phases,
       },
     },
     totalMs,
@@ -509,7 +512,7 @@ try {
   writeFileSync(join(outDir, 'timing.json'), JSON.stringify(record, null, 2));
 
   const csv = ['page,dur_ms,heap_start_mb,heap_end_mb,elapsed_s'];
-  for (const p of timing.pages) {
+  for (const p of timingData.pages) {
     csv.push([
       p.idx,
       p.dur.toFixed(2),
@@ -520,10 +523,14 @@ try {
   }
   writeFileSync(join(outDir, 'timing.csv'), csv.join('\n'));
 
-  const pages = timing.pages;
+  const pages = timingData.pages;
   const summary = [];
   summary.push(`input        : ${inputPath}`);
-  summary.push(`pages        : ${pages.length}`);
+  if (timing) {
+    summary.push(`pages        : ${pages.length}`);
+  } else {
+    summary.push(`pages        : (per-page timing not collected; pass --timing for the CSV)`);
+  }
   if (finalPdf) {
     summary.push(`pdf size     : ${(finalPdf.length / 1024 / 1024).toFixed(1)} MB`);
   }
