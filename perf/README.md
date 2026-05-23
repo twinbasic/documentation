@@ -61,6 +61,26 @@ Drop `--render-only` whenever you need to also measure generate /
 process (e.g. confirming a fix doesn't shift cost into `page.pdf()`
 or pdf-lib), or to write `book.pdf` for behavioural verification.
 
+## Profiling pdf-lib (process phase): canonical command
+
+The mirror command for CPU-profiling the pdf-lib roundtrip:
+
+```
+node measure.mjs --cpu-profile-process --cpu-sampling 100
+```
+
+`--cpu-profile-process` is the symmetric counterpart of
+`--cpu-profile`. The render-side profile attaches to Chromium's V8
+via CDP because paged.js runs there; the process-side profile
+attaches to Node's V8 via `node:inspector/promises` because pdf-lib
+runs locally. Both produce the same `.cpuprofile` JSON shape, so
+`analyze-profile.mjs` / `find-callers.mjs` / `find-callees.mjs` /
+`grep-profile.mjs` work against either one. The two flags compose
+when you want both phases captured in a single run.
+
+See [notes/08-pdf-lib.md](notes/08-pdf-lib.md) for the process-phase
+investigations the flag enabled.
+
 ## What's in this folder
 
 The harness and core probes:
@@ -172,7 +192,8 @@ run.bat path\to\some-other.html           # explicit input
 run.bat --out my-run                      # explicit output directory
 run.bat --no-detach-pages                 # opt out of the detach-pages fix (measure pre-fix O(n²) baseline)
 run.bat --timing                          # collect per-page wall time + heap (writes timing.csv + quartile summary)
-run.bat --cpu-profile                     # CPU-profile the render phase
+run.bat --cpu-profile                     # CPU-profile the render phase (CDP, Chromium-side)
+run.bat --cpu-profile-process             # CPU-profile the process phase (Node inspector, Node-side)
 run.bat --render-only                     # bail out after render (skip generate + process, ~47s saved)
 run.bat --clone-count                     # report Layout.append clones appended vs survivors per page
 run.bat --instrument                      # count + time DOM-accessor calls
@@ -180,10 +201,12 @@ run.bat --time-hooks                      # per-task timing of every chunker/pol
 run.bat --incremental                     # process via incremental update instead of pdf-lib roundtrip
 run.bat --chrome-outline                  # let Chrome emit /Outlines (skip parseOutline + setOutline)
 run.bat --tracing                         # capture a hybrid Chrome trace (Blink events + embedded V8 cpu samples)
+run.bat --fast-deflate                    # route pdf-lib's deflate through node:zlib (ships in render-book.mjs by default; opt-in here for A/B)
 ```
 
 Flags compose. The CPU profile lands as `render.cpuprofile`
 (loadable in Chrome DevTools -> Performance -> "Load profile...");
+`--cpu-profile-process` writes `process.cpuprofile` alongside it;
 `--instrument` prints a per-op table at end-of-render.
 
 You need `_site-pdf\book.html` to exist first -- run `docs\build.bat`
@@ -285,6 +308,7 @@ file documenting each:
 | Disable WhiteSpaceFilter | [05](notes/05-blink-trace.md) | ~0.7 s render |
 | Full sync chain (RunMicrotasks → 0) | [06](notes/06-microtasks-pageranges-css.md) | re-attribution |
 | `--disable-gpu` + `--in-process-gpu` | [07](notes/07-memory.md) | ~200 MB memory |
+| `pako.deflate` → `node:zlib.deflateSync` | [08](notes/08-pdf-lib.md) | ~1.5 s process (save -58 %) |
 
 What was tried and didn't ship:
 
@@ -298,7 +322,7 @@ What was tried and didn't ship:
 
 ## Investigation log
 
-The seven phase files in [`notes/`](notes/) cover the full investigation
+The phase files in [`notes/`](notes/) cover the full investigation
 narrative. Each is self-contained but they're written in chronological
 order; later ones reference earlier ones for context.
 
@@ -311,3 +335,4 @@ order; later ones reference earlier ones for context.
 | [05-blink-trace.md](notes/05-blink-trace.md) | What happened when we tried move-not-clone (a `previousLeaf` cache shipped instead of move); cracking the cpu profile's `(program)` row open with a Blink-category trace; the WhiteSpaceFilter paired-A/B that found it wasn't worth its layout cost in our pipeline. |
 | [06-microtasks-pageranges-css.md](notes/06-microtasks-pageranges-css.md) | Following `RunMicrotasks` down to zero (chunker fully sync); why `pageRanges` sharding is off the table; CSS cost attribution showing print.css's individual sections are all below the noise floor. |
 | [07-memory.md](notes/07-memory.md) | Where the renderer's 1.9 GB goes -- process-tree footprint, per-allocator + per-Blink-class breakdown, `--disable-gpu` + `--in-process-gpu` saving ~200 MB, a GC-pass probe finding 180 MB of unswept Oilpan garbage. |
+| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; finding pako's per-stream init dominates with ~4 500 small streams; routing `pako.deflate` through `node:zlib` (save -58 %, GC -383 ms). |

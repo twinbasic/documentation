@@ -21,12 +21,13 @@
 //
 // Usage:
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
-//                    [--cpu-profile] [--cpu-sampling <microseconds>]
+//                    [--cpu-profile] [--cpu-profile-process]
+//                    [--cpu-sampling <microseconds>]
 //                    [--heap-profile] [--heap-sampling <bytes>]
 //                    [--tracing]
 //                    [--no-detach-pages] [--instrument] [--time-hooks]
 //                    [--incremental] [--chrome-outline] [--timing]
-//                    [--clone-count] [--render-only]
+//                    [--clone-count] [--render-only] [--fast-deflate]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -82,10 +83,24 @@
 // chrome://tracing or perfetto.dev, or run analyze-trace.mjs against it
 // for a top-N self-time table grouped by event name. Composable with
 // --cpu-profile; uses an independent CDP domain.
+//
+// --cpu-profile-process wraps the process phase only (pdf-lib roundtrip
+// or incremental writer) in a V8 Profiler trace via Node's inspector
+// module -- the process phase runs in Node, not Chromium, so CDP's
+// Profiler can't see it. Writes process.cpuprofile alongside render's.
+// Honours --cpu-sampling. Composable with --cpu-profile when you want
+// both phases captured in one run.
+//
+// --fast-deflate routes pdf-lib's PDFFlateStream compression through
+// Node's zlib (C++) instead of pako (pure JS). Same wire format
+// (PDF /FlateDecode = RFC 1950 zlib), ~5-10x faster on big inputs.
+// Save phase only -- load uses pako.inflate, which the profile shows
+// isn't a hot path for our content.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { Session } from 'node:inspector/promises';
 import puppeteer from 'puppeteer';
 import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 // Shared with docs/render-book.mjs -- the helpers and the paged.js
@@ -109,6 +124,7 @@ let inputArg = null;
 let outArg = null;
 let keepOpen = false;
 let cpuProfile = false;
+let cpuProfileProcess = false;
 let cpuSampling = 1000; // microseconds
 let heapProfile = false;
 let heapSampling = 32768; // bytes between samples (CDP default)
@@ -121,11 +137,13 @@ let timing = false;
 let cloneCount = false;
 let renderOnly = false;
 let tracing = false;
+let fastDeflate = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
   else if (a === '--keep-open') keepOpen = true;
   else if (a === '--cpu-profile') cpuProfile = true;
+  else if (a === '--cpu-profile-process') cpuProfileProcess = true;
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
   else if (a === '--heap-profile') heapProfile = true;
   else if (a === '--heap-sampling') heapSampling = parseInt(args[++i], 10);
@@ -141,6 +159,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--render-only') renderOnly = true;
   else if (a === '--tracing') tracing = true;
   else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
+  else if (a === '--fast-deflate') fastDeflate = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -173,6 +192,20 @@ for (const p of required) {
     console.error('Run "npm install" at the repo root first (run.bat does this automatically).');
     process.exit(1);
   }
+}
+
+if (cpuProfileProcess && renderOnly) {
+  console.error('--cpu-profile-process is incompatible with --render-only (the process phase is skipped).');
+  process.exit(2);
+}
+
+// Install the Node-zlib override for pdf-lib's PDFFlateStream compression
+// before any pdf-lib operation. Side-effecting import; idempotent. The
+// override only kicks in on pako.deflate calls (i.e. save()), so render-
+// only runs that never reach the pdf-lib path are unaffected either way.
+if (fastDeflate) {
+  await import('../docs/lib/fast-deflate.mjs');
+  console.log('[harness] fast-deflate: pako.deflate -> node:zlib.deflateSync');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -370,6 +403,7 @@ try {
   let rawPdfBytes = null;
   let processMs = null;
   let processBreakdown = null;
+  let processProfilePath = null;
   let finalPdf = null;
 
   if (!renderOnly) {
@@ -430,6 +464,22 @@ try {
   //
   // Either way we time the full phase plus the meaningful sub-steps so the
   // breakdown matches across runs.
+  //
+  // --cpu-profile-process attaches Node's inspector Profiler around this
+  // block. The render phase profiles via CDP because the work happens in
+  // Chromium; the process phase profiles via Node's inspector because
+  // pdf-lib runs locally. Output file shape (V8 .cpuprofile JSON) is the
+  // same either way.
+  let inspectorSession = null;
+  if (cpuProfileProcess) {
+    inspectorSession = new Session();
+    inspectorSession.connect();
+    await inspectorSession.post('Profiler.enable');
+    await inspectorSession.post('Profiler.setSamplingInterval', { interval: cpuSampling });
+    await inspectorSession.post('Profiler.start');
+    console.log(`[harness] process cpu profile: sampling every ${cpuSampling}us`);
+  }
+
   const tProcStart = Date.now();
   if (incremental) {
     const tIncStart = Date.now();
@@ -463,6 +513,15 @@ try {
   }
   const tProcEnd  = Date.now();
   processMs = tProcEnd - tProcStart;
+  if (inspectorSession) {
+    const { profile } = await inspectorSession.post('Profiler.stop');
+    await inspectorSession.post('Profiler.disable');
+    inspectorSession.disconnect();
+    processProfilePath = join(outDir, 'process.cpuprofile');
+    const profileJson = JSON.stringify(profile);
+    writeFileSync(processProfilePath, profileJson);
+    console.log(`[harness] process cpu profile: ${processProfilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
   if (incremental) {
     console.log(`[harness] process  ${fmtMs(processMs)}  (incremental=${fmtMs(processBreakdown.incrementalMs)}, +${processBreakdown.appendedBytes}B, ${processBreakdown.newObjectCount} new objs)`);
   } else {
@@ -506,6 +565,7 @@ try {
     record.phases.process = {
       ms: processMs,
       mode: incremental ? 'incremental' : 'pdf-lib-roundtrip',
+      cpuProfile: processProfilePath,
       ...processBreakdown,
     };
   }
