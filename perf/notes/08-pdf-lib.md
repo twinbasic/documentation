@@ -1462,6 +1462,244 @@ is a bigger code change for a smaller individual win. Worth
 revisiting if a future optimisation moves the floor and parseDict
 becomes a larger relative share.
 
+## Strip the parse-speed machinery: synchronify the load path
+
+After the eight `--fast-*` patches above had nibbled the process
+phase from 7.8 s down to 1.66 s, the next interesting thing in the
+profile wasn't *a function* -- it was *function scaffolding*.
+Three top-15 rows were the tslib `__awaiter` / `__generator`
+machinery that pdf-lib's TypeScript downlevel emits for its
+`async`-marked parser methods:
+
+```
+   self_ms   self_%   function                                  source
+   -------   ------   ----------------------------------------------
+     51.66    3.12%   (anonymous)  (parseIndirectObject body)   PDFParser.js:126
+     43.05    2.60%   step         (generator runner)           tslib.js:123
+     40.90    2.47%   (anonymous)  (parseIndirectObjects body)  PDFParser.js:190
+```
+
+Together ~135 ms / ~8 % of process self-time, sitting on top of
+the parsing work that's already attributed to the named frames
+below them.
+
+### What that scaffolding was for
+
+pdf-lib targets browsers as well as Node. On a browser, locking
+the main thread for the seconds it takes to parse a big PDF would
+freeze the page, so pdf-lib has a knob -- `parseSpeed`, also
+exposed as `objectsPerTick` -- that controls how many indirect
+objects the parser processes before yielding to the event loop via
+`await waitForTick()`. The default is the cautious
+`ParseSpeeds.Slow = 100`. The mechanism is a constructor-installed
+predicate (`PDFParser.js:31`):
+
+```js
+this.shouldWaitForTick = function () {
+  this.parsedObjects += 1;
+  return this.parsedObjects % this.objectsPerTick === 0;
+};
+```
+
+…queried at the bottom of every `parseIndirectObjects` iteration
+(`PDFParser.js:215`) and every `parseIntoContext` iteration in
+`PDFObjectStreamParser.js:42`, gating an `await waitForTick()`
+(= `setImmediate`).
+
+`render-book.mjs` already passed `parseSpeed: ParseSpeeds.Fastest`
+to `PDFDocument.load`, which is `objectsPerTick: Infinity`, which
+makes `shouldWaitForTick()` return `false` on every call: the
+modulo never hits zero, the yield never fires. The
+`Fastest`-vs-`Slow` speedup we'd measured years earlier (see
+[01-baseline-and-detach.md](01-baseline-and-detach.md))
+was precisely removing those yields' wall-clock contribution.
+
+But removing the *yields* didn't remove the **scaffolding**. Even
+with `objectsPerTick: Infinity`, every call to
+`parseIndirectObject` still:
+
+1. Allocates a Promise (the `__awaiter` return).
+2. Allocates a generator object (the inner `__generator` return).
+3. Allocates an activation record (the closed-over `_a` state).
+4. Enters the tslib `step` runner, which calls the generator
+   body, which enters `switch (_a.label) { case 0: ... }`, runs
+   all the synchronous work, falls through to `return [2 /*return*/, ref]`,
+   which `step` unpacks and resolves the Promise with.
+5. The caller `await`s that Promise (one microtask hop).
+
+For ~50 k indirect objects on the book that's 50 k of each.
+Roughly ~135 ms of attributed self-time (the three rows above)
+plus an unknowable but non-trivial fraction of the 240 ms GC row
+(Promise + generator + activation are all short-lived heap
+allocations).
+
+The same shape applies to `parseIndirectObjects` (which calls
+`parseIndirectObject`), `parseDocumentSection` (which calls
+`parseIndirectObjects`), `parseDocument` (which calls
+`parseDocumentSection`), and `PDFDocument.load` (which calls
+`parseDocument`). Five `async` wrappers around code that, on the
+hot path, runs synchronously.
+
+### Why bother on the ObjStm branch too
+
+`parseIndirectObject` *does* have one genuinely-await-ing branch
+at `PDFParser.js:142`: if the parsed object is an object stream
+(PDF 1.5 §7.5.7, type `ObjStm`), it dispatches to
+`PDFObjectStreamParser.parseIntoContext()`, which itself is
+`async`. But `parseIntoContext`'s only `await` is the same kind
+of conditionally-gated `waitForTick` -- and `shouldWaitForTick`
+is passed in from the parent parser, so it's still `() => false`
+under our config. The whole sub-stream walk is already morally
+synchronous; just no upstream code path ever constructs a parser
+without `shouldWaitForTick`.
+
+(Aside: Chrome's `SkPDF` writer doesn't emit ObjStm at all -- it
+writes every indirect object at its own xref offset and uses the
+classic xref table. So on our pipeline the ObjStm branch of
+`parseIndirectObject` doesn't even fire. But pdf-lib loads have
+to work generically; the patch handles the branch correctly.)
+
+### The shim
+
+`docs/lib/fast-sync-load.mjs` replaces six prototype methods with
+synchronous twins:
+
+```
+PDFParser.prototype.parseDocument
+PDFParser.prototype.parseDocumentSection
+PDFParser.prototype.parseIndirectObjects
+PDFParser.prototype.parseIndirectObject
+PDFObjectStreamParser.prototype.parseIntoContext
+PDFDocument.load   (static)
+```
+
+The bodies are line-by-line ports of the upstream `case`-blocks --
+same loop, same `parseObject` / `context.assign` / `parseHeader` /
+`maybeParseCrossRefSection` / `maybeParseTrailerDict` /
+`maybeParseTrailer` / `skipJibberish` calls in the same order --
+with three changes:
+
+1. No `__awaiter` / `__generator` wrapper. The function returns
+   directly.
+2. No `shouldWaitForTick` check, no `waitForTick` yield.
+3. The three `PDFName.of(...)` calls in `parseIndirectObject`'s
+   type-dispatch tail (`'Type'`, `'ObjStm'`, `'XRef'`) are hoisted
+   to module-level constants -- same trick as
+   [`fast-parse-dict.mjs`](#parsedict-hoist-the-sentinel-pdfnames-out-of-the-type-dispatch-tail),
+   since pool-dedup makes the `PDFName` instances reference-stable.
+
+The patches have to land together: each method awaits the next
+one down, so desugaring any one in isolation still leaves a
+Promise chain dangling.
+
+`PDFDocument.load`'s signature is preserved -- still callable as
+`await PDFDocument.load(bytes)`. `await` on a non-Promise resolves
+to the value immediately, so existing call sites need no change.
+The `parseSpeed` option is now silently ignored (no yield gate
+left to tune).
+
+The shim's correctness depends on the upstream pdf-lib source
+being structurally what the line-by-line port assumed. `pdf-lib`
+1.17.1 (Hopding's last release, abandoned) is byte-stable on npm
+and that's what we ship against; `package.json` is updated in
+this change to pin to `1.17.1` exact (was `^1.17.1`), similarly
+for `puppeteer` `25.0.4`, so a stray `npm update` can't silently
+swap upstream from under the shim.
+
+### Results
+
+Paired process-phase profiles, same harness config except
+`--fast-sync-load`:
+
+| metric                                  | PRE       | POST      | Δ                |
+| ---                                     | ---       | ---       | ---              |
+| **process wall-clock**                  | **1.66 s** | **1.30 s** | **-0.36 s (-22 %)** |
+| ↳ load                                  | 1.09 s    | 0.81 s    | -0.28 s (-26 %)  |
+| ↳ save                                  | 0.56 s    | 0.48 s    | -0.08 s (noise; writer not touched) |
+| GC self-time                            | 240 ms    | 187 ms    | -53 ms (-22 %)   |
+| `(anonymous) @ PDFParser.js:126`        | 51.66 ms  | gone      | -51.66 ms        |
+| `step @ tslib.js:123`                   | 43.05 ms  | gone      | -43.05 ms        |
+| `(anonymous) @ PDFParser.js:190`        | 40.90 ms  | gone      | -40.90 ms        |
+| **scaffolding total**                   | **~135 ms** | **0**   | **-135 ms (eliminated)** |
+
+The wall-clock delta is larger than the sum of the eliminated
+rows because the GC win is real time too: the per-object Promise
++ generator + activation allocations weren't free in V8's
+internals either, just not attributed to any named frame.
+
+Output PDF: byte-count identical (16,077,319 bytes both runs);
+MD5 differs only because Chrome's `page.pdf()` embeds a fresh
+`/CreationDate` + `/ModDate` per run (same ±27-byte timestamp
+jitter `docs/book.bat` output has always had).
+
+### Extending to the save side
+
+The shim covers the writers too, by symmetry. Three more methods:
+
+```
+PDFWriter.prototype.serializeToBuffer
+PDFWriter.prototype.computeBufferSize
+PDFStreamWriter.prototype.computeBufferSize
+```
+
+Only `serializeToBuffer` actually runs on our pipeline --
+`ParallelStreamWriter extends PDFStreamWriter` overrides
+`computeBufferSize` with its own three-phase parallel-deflate
+version (genuinely async because of `await Promise.all(deflated)`
+over libuv's thread pool, which we keep). But the inherited
+`serializeToBuffer` still had a dead `shouldWaitForTick` gate in
+its main loop. Same shape as the load side: per-object dispatch,
+no actual yield because `objectsPerTick` is effectively `Infinity`,
+but every iteration pays the generator-machine + Promise cost.
+
+`serializeToBuffer` stays `async` (it has to `await
+this.computeBufferSize()`, which is the genuinely-async override).
+The change is: drop the `__awaiter` / `__generator` wrapper, use
+ES `async function` with one real `await`, strip the
+`shouldWaitForTick` gate. `computeBufferSize` on both base and
+stream writers becomes fully synchronous (their only async
+ingredient was the same dead yield).
+
+Measured wins on the writer side: **none reliably above noise**.
+The save phase dropped from 0.56 s before the load-side patches
+to 0.48 s after, and the writer patches don't move it further
+(0.50 s in the post-extension profile, within the run-to-run
+band). No writer frame ever broke into the top 15 in the first
+place -- the overhead was real but distributed across
+unattributed scaffolding and `(program)` time, not big enough to
+register individually.
+
+The reason to ship it anyway is structural, not performance: with
+load patched, the only remaining
+`shouldWaitForTick` / `waitForTick` references in our hot path
+were on the save side, and leaving them would defeat the "rip out
+the machinery" intent. With the save patches landed, neither
+phase routes through tslib `__awaiter` scaffolding except where
+there's a legitimate `await` underneath.
+
+### Dropping the flags
+
+The companion change is to drop the `parseSpeed` / `objectsPerTick`
+options from all our call sites, since with the shim in effect
+neither does anything:
+
+- `docs/render-book.mjs` drops `parseSpeed: ParseSpeeds.Fastest`
+  from `PDFDocument.load` and `objectsPerTick: Infinity` from
+  `parallelSave`. The `ParseSpeeds` import goes with them.
+- `docs/lib/parallel-deflate.mjs` drops `objectsPerTick` from
+  `parallelSave`'s public options object and from
+  `ParallelStreamWriter`'s constructor parameters. `PDFWriter`'s
+  base constructor still takes `objectsPerTick` as positional
+  arg 2 -- vestigial after `fast-sync-load`, but we pass
+  `Infinity` explicitly to make the constructor chain happy.
+- `perf/measure.mjs` removes the same options from
+  `PDFDocument.load`, `parallelSave`, and `pdfDoc.save`.
+
+`perf/profile-roundtrip.mjs` keeps its `parseSpeed` /
+`objectsPerTick` knob comparison -- that file's whole purpose is
+to A/B pdf-lib's defaults against `Fastest`, and it runs against
+vanilla pdf-lib without the shim by design.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -1491,7 +1729,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-decode-name + fast-number-to-string | ~1.6 s  | ~1.0 s | ~0.6 s |
 | + fast-size-in-bytes                 | ~1.5 s  | ~1.0 s | ~0.5 s |
 | + fast-dict-iter                     | ~1.4 s  | ~1.0 s | ~0.4 s |
-| **+ fast-parse-dict (this section)** | **~1.4 s** | **~1.0 s** | **~0.4 s** |
+| + fast-parse-dict                    | ~1.4 s  | ~1.0 s | ~0.4 s |
+| **+ fast-sync-load (this section)**  | **~1.3 s** | **~0.8 s** | **~0.5 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

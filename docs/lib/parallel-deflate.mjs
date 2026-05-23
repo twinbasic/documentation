@@ -48,8 +48,12 @@ import {
 const deflateAsync = promisify(deflate);
 
 class ParallelStreamWriter extends PDFStreamWriter {
-  constructor(context, objectsPerTick, encodeStreams, objectsPerStream, parallel) {
-    super(context, objectsPerTick, encodeStreams, objectsPerStream);
+  constructor(context, encodeStreams, objectsPerStream, parallel) {
+    // PDFWriter's second ctor param is objectsPerTick -- the yield knob
+    // that drives shouldWaitForTick. fast-sync-load.mjs rips out every
+    // caller of shouldWaitForTick on both the parser and writer sides,
+    // so the value here is vestigial. Pass Infinity for explicitness.
+    super(context, Infinity, encodeStreams, objectsPerStream);
     this._lastPrecompressed = 0;
     this._parallel = parallel;
   }
@@ -153,7 +157,6 @@ class ParallelStreamWriter extends PDFStreamWriter {
  */
 export async function parallelSave(pdfDoc, options = {}) {
   const {
-    objectsPerTick = Infinity,
     addDefaultPage = true,
     updateFieldAppearances = true,
     objectsPerStream = 50,
@@ -170,7 +173,6 @@ export async function parallelSave(pdfDoc, options = {}) {
 
   const writer = new ParallelStreamWriter(
     pdfDoc.context,
-    objectsPerTick,
     encodeStreams,
     objectsPerStream,
     parallel,

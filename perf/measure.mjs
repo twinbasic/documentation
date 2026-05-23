@@ -32,6 +32,7 @@
 //                    [--fast-decode-name] [--fast-number-to-string]
 //                    [--fast-size-in-bytes] [--fast-inflate]
 //                    [--fast-parse-number] [--fast-parse-dict]
+//                    [--fast-sync-load]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -145,13 +146,30 @@
 // --fast-decode-name each lookup is still a Map.get on fastCache.
 // Pool-dedup makes the canonical PDFNames reference-stable, so
 // captured constants replace the four calls verbatim.
+//
+// --fast-sync-load rips pdf-lib's parseSpeed / objectsPerTick /
+// shouldWaitForTick / waitForTick machinery out of both the load
+// path (PDFDocument.load + PDFParser.parseDocument / parseDocumentSection
+// / parseIndirectObjects / parseIndirectObject +
+// PDFObjectStreamParser.parseIntoContext) and the save path
+// (PDFWriter.serializeToBuffer / computeBufferSize +
+// PDFStreamWriter.computeBufferSize). pdf-lib's TS downlevel wraps
+// each in tslib __awaiter / __generator so on browsers they can
+// `await waitForTick()` every `objectsPerTick` objects; with
+// objectsPerTick: Infinity (or the load path's parseSpeed: Fastest)
+// the gate never fires, but every indirect object still pays the
+// generator state-machine + Promise allocation. The shim removes
+// the scaffolding and the waitForTick yields entirely. Production
+// runs through it; the parseSpeed / objectsPerTick options are
+// dropped from PDFDocument.load / parallelSave / pdfDoc.save call
+// sites in step with this shim.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { Session } from 'node:inspector/promises';
 import puppeteer from 'puppeteer';
-import { PDFDocument, ParseSpeeds } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 // Shared with docs/render-book.mjs -- the helpers and the paged.js
 // bundle live under docs/lib/ now that we've dropped the pagedjs-cli
 // dependency. Importing from there guarantees the harness measures the
@@ -196,6 +214,7 @@ let fastInflate = false;
 let fastParseNumber = false;
 let fastDictIter = false;
 let fastParseDict = false;
+let fastSyncLoad = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -226,6 +245,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-parse-number') fastParseNumber = true;
   else if (a === '--fast-dict-iter') fastDictIter = true;
   else if (a === '--fast-parse-dict') fastParseDict = true;
+  else if (a === '--fast-sync-load') fastSyncLoad = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -298,6 +318,10 @@ if (fastDictIter) {
 if (fastParseDict) {
   await import('../docs/lib/fast-parse-dict.mjs');
   console.log('[harness] fast-parse-dict: hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict');
+}
+if (fastSyncLoad) {
+  await import('../docs/lib/fast-sync-load.mjs');
+  console.log('[harness] fast-sync-load: synchronify PDFParser load path, strip waitForTick machinery');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -580,15 +604,17 @@ try {
     finalPdf = bytes;
     processBreakdown = { incrementalMs: incMs, ...stats };
   } else {
-    // pdf-lib's defaults are catastrophically slow: parseSpeed=Slow (100
-    // objects/tick) and objectsPerTick=50 both yield to the event loop
-    // between batches, turning a ~2s load into ~36s on a 52 MB PDF (~34s
-    // pure idle in the cpuprofile). Override to Fastest/Infinity so the
-    // "baseline" we report reflects the library's actual CPU cost, not
-    // an artefact of yielding cadence. The harness has no parallel work
-    // to make space for, so cooperative yielding is pure overhead here.
+    // Upstream pdf-lib's load yields to the event loop every
+    // `parseSpeed` objects via `await waitForTick()`; the save side
+    // does the same every `objectsPerTick`. With --fast-sync-load on
+    // (the production default) both yield gates are ripped out -- the
+    // option arguments are silently ignored, so we don't bother
+    // passing them. Without --fast-sync-load, the run measures pdf-lib's
+    // cautious defaults (parseSpeed: Slow, objectsPerTick: 50) which
+    // yield ~500 / ~1000 times per phase on the book; that's pdf-lib's
+    // out-of-the-box behaviour, useful as a baseline for A/B work.
     const tLoadStart = Date.now();
-    const pdfDoc = await PDFDocument.load(rawPdf, { parseSpeed: ParseSpeeds.Fastest });
+    const pdfDoc = await PDFDocument.load(rawPdf);
     const loadMs = Date.now() - tLoadStart;
 
     setMetadata(pdfDoc, meta);
@@ -600,11 +626,11 @@ try {
     const tSaveStart = Date.now();
     let parallelStreamCount = 0;
     if (parallelDeflate) {
-      const { bytes, streamCount } = await parallelSave(pdfDoc, { objectsPerTick: Infinity, objectsPerStream: 500 });
+      const { bytes, streamCount } = await parallelSave(pdfDoc, { objectsPerStream: 500 });
       finalPdf = bytes;
       parallelStreamCount = streamCount;
     } else {
-      finalPdf = await pdfDoc.save({ objectsPerTick: Infinity });
+      finalPdf = await pdfDoc.save();
     }
     const saveMs = Date.now() - tSaveStart;
 

@@ -66,7 +66,7 @@ or pdf-lib), or to write `book.pdf` for behavioural verification.
 The mirror command for CPU-profiling the pdf-lib roundtrip:
 
 ```
-node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-iter --fast-parse-dict --cpu-profile-process --cpu-sampling 100
+node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-iter --fast-parse-dict --fast-sync-load --cpu-profile-process --cpu-sampling 100
 ```
 
 Flag rationale:
@@ -142,6 +142,18 @@ Flag rationale:
   `fastOf` was still the #4 row in the profile -- removing the
   calls pulls ~17 ms (~22 %) off `fastOf` self-time. Production
   runs through it.
+- `--fast-sync-load` -- inject
+  [docs/lib/fast-sync-load.mjs](../docs/lib/fast-sync-load.mjs),
+  replacing nine `__awaiter`-wrapped methods across pdf-lib's load
+  and save paths with awaiterless twins. Each upstream method is
+  wrapped in tslib `__awaiter` / `__generator` so on browsers it
+  can `await waitForTick()` every `objectsPerTick` objects; in
+  Node the yield gate never fires (objectsPerTick: Infinity), but
+  every indirect object still pays the generator state-machine
+  dispatch + Promise allocation. The shim removes the scaffolding
+  entirely. The `parseSpeed` / `objectsPerTick` options drop off
+  `PDFDocument.load`, `parallelSave`, and `pdfDoc.save` call sites
+  in step. Production runs through it.
 - `--cpu-profile-process` -- attach Node's `inspector/promises`
   Profiler around the process phase only (skips render and generate).
   Writes `process.cpuprofile` into the timestamped `results/` folder.
@@ -301,6 +313,7 @@ run.bat --fast-inflate                    # swap pako.inflate for node:zlib.infl
 run.bat --fast-parse-number               # direct-integer accumulator for parseRawNumber/parseRawInt (also ships; opt-in here for A/B)
 run.bat --fast-dict-iter                  # in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto (also ships; opt-in here for A/B)
 run.bat --fast-parse-dict                 # hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict (also ships; opt-in here for A/B)
+run.bat --fast-sync-load                  # synchronify PDFDocument.load + parser; strip waitForTick machinery (also ships; opt-in here for A/B)
 ```
 
 Flags compose. The CPU profile lands as `render.cpuprofile`
@@ -415,6 +428,7 @@ file documenting each:
 | `sizeInBytes` short-circuit ladder (no base-2 string) | [08](notes/08-pdf-lib.md) | ~60 ms process (save -70 ms) |
 | `PDFDict` iter (Map.forEach with hoisted callbacks) | [08](notes/08-pdf-lib.md) | ~80 ms process (dict path -6 pp) |
 | `parseDict` sentinel-PDFName hoist (Type/Catalog/Pages/Page) | [08](notes/08-pdf-lib.md) | ~17 ms profile (fastOf -22 %) |
+| Synchronify pdf-lib load + save (strip `__awaiter` scaffolding) | [08](notes/08-pdf-lib.md) | ~0.36 s process (load -26 %, GC -53 ms) |
 
 What was tried and didn't ship:
 
@@ -441,4 +455,4 @@ order; later ones reference earlier ones for context.
 | [05-blink-trace.md](notes/05-blink-trace.md) | What happened when we tried move-not-clone (a `previousLeaf` cache shipped instead of move); cracking the cpu profile's `(program)` row open with a Blink-category trace; the WhiteSpaceFilter paired-A/B that found it wasn't worth its layout cost in our pipeline. |
 | [06-microtasks-pageranges-css.md](notes/06-microtasks-pageranges-css.md) | Following `RunMicrotasks` down to zero (chunker fully sync); why `pageRanges` sharding is off the table; CSS cost attribution showing print.css's individual sections are all below the noise floor. |
 | [07-memory.md](notes/07-memory.md) | Where the renderer's 1.9 GB goes -- process-tree footprint, per-allocator + per-Blink-class breakdown, `--disable-gpu` + `--in-process-gpu` saving ~200 MB, a GC-pass probe finding 180 MB of unswept Oilpan garbage. |
-| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; pako's per-stream init dominates with ~4 500 small streams (routing pdf-lib's `deflate` + `inflate` through `node:zlib` saves ~1.5 s); `PDFRef.of`'s string-keyed Map lookup at 1.2 M calls per load (dense-array gen=0 cache saves ~0.2 s); parallelising save's per-stream deflate on libuv's pool with `objectsPerStream: 500` (~0.3 s off the main thread; PDF -5 %); `decodeName`'s regex scan on 2.76 M `PDFName.of` calls per load with a 0.0001 % hit rate (no-`#` cache saves ~0.5 s); `numberToString`'s redundant `toString`/`split`/`parseInt` on the 100 % no-`e` path; `sizeInBytes` allocating `n.toString(2)` on ~300 k xref-writer calls (short-circuit ladder saves ~60 ms); `PDFDict.entries` allocating `Array.from(map.entries())` on every dict serialisation (`Map.forEach` with hoisted callbacks saves ~80 ms); `parseDict`'s type-dispatch tail re-running `PDFName.of('Type'/'Catalog'/'Pages'/'Page')` per dict (hoisted sentinel constants drop `fastOf` self-time by 22 %). |
+| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; pako's per-stream init dominates with ~4 500 small streams (routing pdf-lib's `deflate` + `inflate` through `node:zlib` saves ~1.5 s); `PDFRef.of`'s string-keyed Map lookup at 1.2 M calls per load (dense-array gen=0 cache saves ~0.2 s); parallelising save's per-stream deflate on libuv's pool with `objectsPerStream: 500` (~0.3 s off the main thread; PDF -5 %); `decodeName`'s regex scan on 2.76 M `PDFName.of` calls per load with a 0.0001 % hit rate (no-`#` cache saves ~0.5 s); `numberToString`'s redundant `toString`/`split`/`parseInt` on the 100 % no-`e` path; `sizeInBytes` allocating `n.toString(2)` on ~300 k xref-writer calls (short-circuit ladder saves ~60 ms); `PDFDict.entries` allocating `Array.from(map.entries())` on every dict serialisation (`Map.forEach` with hoisted callbacks saves ~80 ms); `parseDict`'s type-dispatch tail re-running `PDFName.of('Type'/'Catalog'/'Pages'/'Page')` per dict (hoisted sentinel constants drop `fastOf` self-time by 22 %); pdf-lib's `__awaiter`/`__generator` scaffolding on nine load + save methods costing ~135 ms of attributed self-time + ~50 ms GC (synchronified twins save 0.36 s of process). |

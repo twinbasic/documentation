@@ -31,7 +31,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { PDFDocument, ParseSpeeds } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 // Side-effecting imports. Mutate pdf-lib's live module exports
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
@@ -70,6 +70,20 @@ import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 //     per-dict on every load; pool-dedup makes the canonical
 //     PDFNames reference-stable, so captured constants replace
 //     the calls verbatim. Pulls ~17 ms off fastOf self-time.
+//   fast-sync-load -- rip the parseSpeed / objectsPerTick /
+//     shouldWaitForTick / waitForTick machinery out of both pdf-lib's
+//     load path (PDFDocument.load + five PDFParser /
+//     PDFObjectStreamParser methods underneath it) and its save path
+//     (PDFWriter.serializeToBuffer + computeBufferSize, plus the
+//     unreachable PDFStreamWriter.computeBufferSize patched for
+//     consistency). Each upstream method is wrapped in __awaiter so
+//     on browsers it can yield to the event loop every objectsPerTick
+//     objects; in Node the gate never fires but every indirect object
+//     still paid for the generator state machine + Promise
+//     allocation. ~135 ms of attributed parser self-time + ~40 ms
+//     writer + an unknowable chunk of the GC row removed; the
+//     parseSpeed / objectsPerTick options drop off all our call sites
+//     in step with this shim.
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
@@ -78,6 +92,7 @@ import './lib/fast-number-to-string.mjs';
 import './lib/fast-size-in-bytes.mjs';
 import './lib/fast-dict-iter.mjs';
 import './lib/fast-parse-dict.mjs';
+import './lib/fast-sync-load.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 import { parallelSave }             from './lib/parallel-deflate.mjs';
@@ -292,12 +307,13 @@ try {
   console.log(`generate: ${fmtMs(Date.now() - tGenerate)}  (raw ${(rawPdf.length / 1024 / 1024).toFixed(1)} MB)`);
 
   // Process -- pdf-lib roundtrip with outline + metadata attached.
-  // parseSpeed: Fastest and objectsPerTick: Infinity are critical:
-  // pdf-lib's defaults yield to the event loop between every 100/50
-  // objects, turning a ~5 s round-trip into ~40 s on a 50 MB PDF
-  // (~35 s of which is pure V8 idle).
+  // fast-sync-load strips the waitForTick yield gates on both load
+  // and save sides entirely (load was ~40 s under pdf-lib's Slow
+  // default that yields every 100 objects; ~5 s on Fastest; now
+  // ~1 s with the gates ripped out -- so parseSpeed / objectsPerTick
+  // no longer matter and drop from the call sites).
   //
-  // parallelSave (vs the default pdfDoc.save) does two things:
+  // parallelSave (vs the default pdfDoc.save):
   //  - objectsPerStream: 500 -- larger object-stream chunks compress
   //    better (shared deflate window), 5 % smaller output PDF, and
   //    cuts the per-chunk dispatch overhead 10x.
@@ -306,10 +322,10 @@ try {
   //    thread. Moves ~300 ms of zlib work off-CPU on the book.
   // See perf/notes/08-pdf-lib.md.
   const tProcess = Date.now();
-  const pdfDoc = await PDFDocument.load(rawPdf, { parseSpeed: ParseSpeeds.Fastest });
+  const pdfDoc = await PDFDocument.load(rawPdf);
   setMetadata(pdfDoc, meta);
   await setOutline(pdfDoc, outline, false);
-  const { bytes: finalPdf } = await parallelSave(pdfDoc, { objectsPerTick: Infinity, objectsPerStream: 500 });
+  const { bytes: finalPdf } = await parallelSave(pdfDoc, { objectsPerStream: 500 });
   console.log(`process:  ${fmtMs(Date.now() - tProcess)}`);
 
   writeFileSync(outputPath, Buffer.from(finalPdf));
