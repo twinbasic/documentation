@@ -7,11 +7,10 @@
 // ever read from main, so the bufIdx field disappears from the
 // packed value -- frees up bits.
 //
-// 53-bit packed Number layout (within Number.MAX_SAFE_INTEGER):
+// 38-bit packed Number layout (well within Number.MAX_SAFE_INTEGER):
 //   bits  0-23: start  (24 bits, max 16 M slots in main)
 //   bits 24-37: length (14 bits, max 16 384 slots; max observed 8 706)
-//   bit  38   : owned flag
-//   bits 39-52: spare (14 bits)
+//   bits 38-52: spare (15 bits)
 //
 // Recursion. Outer parseDict pushes entries onto temp. Calling
 // this.parseObject() to parse a value may recurse to inner
@@ -23,17 +22,20 @@
 // inner's ranges in main do not overlap; each was committed as a
 // single contiguous block at distinct points in time.
 //
-// Mutations. The shared range is read-only after parse. First
-// mutation:
-//   - set with existing key: in-place replace (safe; doesn't shift slots)
-//   - set with new key, dict at main's high-water mark: in-place push (extend the range)
+// Mutations:
+//   - set with existing key: in-place replace (safe; no shifts)
+//   - set with new key, dict at main's high-water mark: in-place
+//     push (extend the range)
 //   - set with new key, dict NOT at high-water mark: COW (copy
 //     range to main's tail, then push the new pair, update encoded
 //     value to the new range)
 //   - delete: COW (copy range minus deleted entry to tail)
-// On second+ mutations the dict is already 'owned'; same rules
-// apply but the COW step is skipped when we're at the high-water
-// mark.
+// The at-HWM check fully determines whether extending is safe;
+// each dict's range is unique to that dict (no slot sharing), so
+// extending past the dict's end at HWM never disturbs anything.
+// An earlier design tracked an owned/shared bit to gate this; it
+// was redundant -- shared dicts at HWM extend just as safely as
+// owned ones.
 //
 // Singleton PDFContext (one PDFDocument.load per process in our
 // pipeline; throws if a second distinct context appears).
@@ -92,24 +94,20 @@ export function setExpectedDictSlots(slots, slack = 1.0) {
 // ---- Bit-packing helpers --------------------------------------------
 
 const POW_24 = 16777216;          // 2^24
-const POW_38 = 274877906944;      // 2^38
 const MASK_24 = 0xFFFFFF;
 const MASK_14 = 0x3FFF;
 
 const MAX_START  = POW_24;          // exclusive
 const MAX_LENGTH = 1 << 14;         // 16384, exclusive
 
-function pack(start, length, owned) {
+function pack(start, length) {
   if (start  >= MAX_START)  throw new Error(`fast-dict-onebuf: start ${start} exceeds 24-bit budget`);
   if (length >= MAX_LENGTH) throw new Error(`fast-dict-onebuf: length ${length} exceeds 14-bit budget`);
-  return start
-    + length * POW_24
-    + (owned ? POW_38 : 0);
+  return start + length * POW_24;
 }
 
 function _start(d)  { return d & MASK_24; }
 function _length(d) { return Math.floor(d / POW_24) & MASK_14; }
-function _owned(d)  { return Math.floor(d / POW_38) & 1; }
 
 // ---- Singleton context ---------------------------------------------
 
@@ -139,38 +137,25 @@ function _appendArray(arr) {
 }
 
 // COW: copy this dict's range to main's tail, return the new packed
-// value (now owned, anchored at the new range).
+// value anchored at the new range. If we're already at the HWM,
+// nothing to copy -- return d unchanged.
 function _cow(pd) {
   const d = pd.d;
-  if (_owned(d)) {
-    // Already owned and somewhere in main. If we're at the high-water
-    // mark we can mutate in place; otherwise we need to COW (the
-    // dict was created earlier, other dicts have been appended
-    // since, so we no longer abut the tail).
-    const start = _start(d);
-    const length = _length(d);
-    if (start + length === mainLen) return d;   // at HWM
-    const newStart = mainLen;
-    for (let i = 0; i < length; i++) main[mainLen + i] = main[start + i];
-    mainLen += length;
-    return pack(newStart, length, 1);
-  } else {
-    // Shared range. COW to tail.
-    const start = _start(d);
-    const length = _length(d);
-    const newStart = mainLen;
-    for (let i = 0; i < length; i++) main[mainLen + i] = main[start + i];
-    mainLen += length;
-    return pack(newStart, length, 1);
-  }
+  const start = _start(d);
+  const length = _length(d);
+  if (start + length === mainLen) return d;   // at HWM, extend in place
+  const newStart = mainLen;
+  for (let i = 0; i < length; i++) main[mainLen + i] = main[start + i];
+  mainLen += length;
+  return pack(newStart, length);
 }
 
 // ---- Construction ---------------------------------------------------
 
-function _makeFromRange(ProtoClass, start, length, owned, ctx) {
+function _makeFromRange(ProtoClass, start, length, ctx) {
   _registerContext(ctx);
   const pd = Object.create(ProtoClass.prototype);
-  pd.d = pack(start, length, owned ? 1 : 0);
+  pd.d = pack(start, length);
   if (ProtoClass === PDFPageLeaf) {
     pd.normalized = false;
     pd.autoNormalizeCTM = true;
@@ -178,10 +163,10 @@ function _makeFromRange(ProtoClass, start, length, owned, ctx) {
   return pd;
 }
 
-function _ownedFromArray(ProtoClass, arr, ctx) {
+function _makeFromAppend(ProtoClass, arr, ctx) {
   const start = mainLen;
   _appendArray(arr);
-  return _makeFromRange(ProtoClass, start, arr.length, true, ctx);
+  return _makeFromRange(ProtoClass, start, arr.length, ctx);
 }
 
 function mapToArray(map) {
@@ -234,14 +219,14 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     }
     // Append: requires the dict to be at main's high-water mark, OR we COW.
     let dNow = d0;
-    if (!_owned(d0) || start0 + length0 !== mainLen) {
+    if (start0 + length0 !== mainLen) {
       dNow = _cow(this);
     }
-    // After _cow (or if we were already at HWM owned), we abut the tail.
+    // After _cow (or if we were already at HWM), we abut the tail.
     main[mainLen++] = key;
     main[mainLen++] = value;
     const start = _start(dNow);
-    this.d = pack(start, length0 + 2, 1);
+    this.d = pack(start, length0 + 2);
   };
 
   PDFDict.prototype.get = function (key, preservePDFNull) {
@@ -288,7 +273,7 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
       if (i === foundIdx || i === foundIdx + 1) continue;
       main[mainLen++] = main[start0 + i];
     }
-    this.d = pack(newStart, length0 - 2, 1);
+    this.d = pack(newStart, length0 - 2);
     return true;
   };
 
@@ -310,7 +295,7 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     mainLen += length;
     _registerContext(context || _singletonContext);
     const c = Object.create(PDFDict.prototype);
-    c.d = pack(newStart, length, 1);
+    c.d = pack(newStart, length);
     return c;
   };
 
@@ -364,29 +349,29 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
   // ---- PDFDict factories --------------------------------------------
 
   PDFDict.withContext = function (context) {
-    return _ownedFromArray(PDFDict, [], context);
+    return _makeFromAppend(PDFDict, [], context);
   };
   PDFDict.fromMapWithContext = function (map, context) {
-    return _ownedFromArray(PDFDict, mapToArray(map), context);
+    return _makeFromAppend(PDFDict, mapToArray(map), context);
   };
 
   PDFCatalog.withContextAndPages = function (context, pages) {
-    return _ownedFromArray(
+    return _makeFromAppend(
       PDFCatalog,
       [PDFName.of('Type'), CatalogName, PagesName, pages],
       context,
     );
   };
   PDFCatalog.fromMapWithContext = function (map, context) {
-    return _ownedFromArray(PDFCatalog, mapToArray(map), context);
+    return _makeFromAppend(PDFCatalog, mapToArray(map), context);
   };
 
   PDFPageTree.fromMapWithContext = function (map, context) {
-    return _ownedFromArray(PDFPageTree, mapToArray(map), context);
+    return _makeFromAppend(PDFPageTree, mapToArray(map), context);
   };
 
   PDFPageLeaf.fromMapWithContext = function (map, context, autoNormalizeCTM) {
-    const d = _ownedFromArray(PDFPageLeaf, mapToArray(map), context);
+    const d = _makeFromAppend(PDFPageLeaf, mapToArray(map), context);
     if (autoNormalizeCTM !== undefined) d.autoNormalizeCTM = autoNormalizeCTM;
     return d;
   };
@@ -440,10 +425,10 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     for (let i = start; i < end; i += 2) {
       if (main[i] === TypeName) { Type = main[i + 1]; break; }
     }
-    if (Type === CatalogName) return _makeFromRange(PDFCatalog,  start, frameLen, false, this.context);
-    if (Type === PagesName)   return _makeFromRange(PDFPageTree, start, frameLen, false, this.context);
-    if (Type === PageName)    return _makeFromRange(PDFPageLeaf, start, frameLen, false, this.context);
-    return _makeFromRange(PDFDict, start, frameLen, false, this.context);
+    if (Type === CatalogName) return _makeFromRange(PDFCatalog,  start, frameLen, this.context);
+    if (Type === PagesName)   return _makeFromRange(PDFPageTree, start, frameLen, this.context);
+    if (Type === PageName)    return _makeFromRange(PDFPageLeaf, start, frameLen, this.context);
+    return _makeFromRange(PDFDict, start, frameLen, this.context);
   };
 
   PDFDict.prototype.__fastDictOnebufInstalled = true;

@@ -3347,6 +3347,47 @@ is left alone -- it's the historical record of the viability
 gate, intentionally self-contained even though it now duplicates
 the walker.
 
+## Dropping the owned bit (post-Phase-1 cleanup)
+
+The One-buffer PDFDict layout above carried an `owned` flag at
+bit 38, distinguishing parser-created ("shared") ranges from
+factory-created ("owned") ones. Its only behavioural effect was
+gating the `set` append path: a dict was allowed to extend in
+place at the high-water mark only if `owned`.
+
+Re-reading the safety argument: each parseDict commits a
+contiguous frame to main and mainLen advances past it. No two
+PDFDict instances share slots. So if a dict's range satisfies
+`start + length === mainLen`, nothing past mainLen is initialised
+and the slots are free to claim -- *regardless* of whether the
+range came from the parser or a factory call. The owned/shared
+distinction doesn't correspond to anything the safety check
+needs.
+
+Dropping it:
+
+- `pack(start, length)` -- third arg gone, no OR-in of `POW_38`.
+- `_owned`, `POW_38` -- deleted.
+- `_cow` -- collapses to one branch (was two identical-except-
+  for-the-HWM-early-return paths).
+- `set` -- the gating condition simplifies from
+  `!_owned(d0) || start0 + length0 !== mainLen` to just
+  `start0 + length0 !== mainLen`.
+- `_makeFromRange(ProtoClass, start, length, ctx)` -- owned param
+  gone; `_ownedFromArray` renamed `_makeFromAppend` for accuracy.
+- Bit 38 is now spare; spare grows from 14 to 15 bits.
+
+Net behavioural change: shared dicts that still abut the HWM at
+first `set` now extend in place instead of COWing, saving ~5-10
+slot copies per such mutation. Tiny win, but in the right
+direction.
+
+Validated byte-identical on both the no-measure-pass path and
+the `--measure-pass` path; structural diff (1 651 pages, 1 773
+outline nodes, matching titles) holds. Heap is flat as expected
+-- this is a code simplification, not an allocation-pattern
+change.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
