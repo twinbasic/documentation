@@ -63,10 +63,22 @@ or pdf-lib), or to write `book.pdf` for behavioural verification.
 
 ## Profiling pdf-lib (process phase): canonical command
 
-The mirror command for CPU-profiling the pdf-lib roundtrip:
+The mirror command for CPU-profiling the pdf-lib roundtrip (run from
+`perf/`):
 
 ```
-node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-onebuf --fast-parse-object --fast-sync-load --fast-indirect-objects --fast-pdfnumber-pool --cpu-profile-process --cpu-sampling 100
+node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-onebuf --fast-parse-object --fast-sync-load --fast-indirect-objects --fast-pdfnumber-pool --cpu-profile-process --cpu-sampling 100 --out results/<label>
+```
+
+`--out results/<label>` is optional but recommended: omit it and the
+run lands in `results/<ISO-timestamp>/`, which is fine for one-off
+captures but awkward to refer to later. For A/B work, label both
+sides (`results/pre-foo`, `results/post-foo`).
+
+Then read the bottom-up table:
+
+```
+node analyze-profile.mjs results/<label>/process.cpuprofile --top 15
 ```
 
 Flag rationale:
@@ -239,10 +251,19 @@ no-profile A/B as a sanity check.
 
 The companion command for the **sampling heap profile** of the
 process phase -- "where is pdf-lib allocating bytes?" rather than
-"where is it spending cycles?":
+"where is it spending cycles?" (run from `perf/`):
 
 ```
-node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-onebuf --fast-parse-object --fast-sync-load --fast-indirect-objects --fast-pdfnumber-pool --heap-profile-process --heap-sampling 512
+node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-onebuf --fast-parse-object --fast-sync-load --fast-indirect-objects --fast-pdfnumber-pool --heap-profile-process --heap-sampling 512 --out results/<label>
+```
+
+Same `--out` / labelling note as the CPU command above: omit it for a
+timestamped folder, pass it for a stable name.
+
+Then read the bottom-up table:
+
+```
+node analyze-heap-profile.mjs results/<label>/process.heapprofile --top 15
 ```
 
 Same `--fast-*` set as the CPU command (production is the baseline
