@@ -17,6 +17,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PDFDocument, ParseSpeeds } from 'pdf-lib';
+import { pinCpuIfWindows } from './pin-cpu.mjs';
+
+// On Windows, re-launch under `start /affinity 0x5500 /high` to stabilise
+// timing. See pin-cpu.mjs. Pass --no-affinity to skip.
+pinCpuIfWindows({ toolName: 'profile-load' });
 
 const arg = process.argv[2];
 if (!arg) {

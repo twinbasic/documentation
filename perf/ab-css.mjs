@@ -38,41 +38,13 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
+import { pinCpuIfWindows } from './pin-cpu.mjs';
 
-// ---- Windows: auto-relaunch with CPU affinity + High priority --------
-// CPU sample-time has ~15-25% single-run variance on a stock Windows dev
-// box where background processes share cores with our benchmark. Pinning
-// to a fixed subset of logical processors (and raising priority class)
-// cuts that to ~2-4%. `start /affinity HEX /high` is the simplest tool;
-// child processes (puppeteer's Chromium and its renderer / utility
-// children) inherit the mask from us.
-//
-// Default mask 0x5500 = LPs 8, 10, 12, 14 on Windows enumeration: on an
-// 8-core / 16-thread AMD Ryzen 7 (Zen 1..4) that's physical cores 4..7,
-// thread 0 of each pair only -- no SMT contention. Sets it explicitly
-// rather than relying on the OS to balance. Override with the
-// AB_CSS_AFFINITY env var (any hex mask); set --no-affinity to skip.
-if (process.platform === 'win32'
-    && !process.env.AB_CSS_PINNED
-    && !process.argv.includes('--no-affinity')) {
-  const mask = process.env.AB_CSS_AFFINITY || '5500';
-  const argv0 = process.argv[1];
-  const userArgs = process.argv.slice(2)
-    .map(a => /[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a)
-    .join(' ');
-  console.error(`[ab-css] Re-launching with /affinity 0x${mask} /high to stabilise measurements.`);
-  console.error(`[ab-css] Override mask: AB_CSS_AFFINITY=<hex>. Skip pinning: --no-affinity.`);
-  // Note: empty "" after start is a window-title placeholder. Without
-  // it, start consumes the first quoted token as the title and corrupts
-  // the script path. shell:true so cmd.exe handles quoting (Node's CRT
-  // would otherwise escape the inner quotes and break start's parsing).
-  const cmdLine = `set AB_CSS_PINNED=1 && start "" /affinity ${mask} /high /wait /b node "${argv0}" ${userArgs}`;
-  const r = spawnSync(cmdLine, { shell: true, stdio: 'inherit' });
-  process.exit(r.status ?? 0);
-}
-if (process.env.AB_CSS_PINNED) {
-  console.error(`[ab-css] Running pinned (AB_CSS_PINNED=1).`);
-}
+// On Windows, re-launch under `start /affinity 0x5500 /high` to stabilise
+// CPU sample-time. See pin-cpu.mjs for the rationale; the default mask
+// targets cores 4..7 on an 8C16T Ryzen 7.
+pinCpuIfWindows({ toolName: 'ab-css' });
+if (process.env.PERF_PINNED) console.error(`[ab-css] Running pinned (PERF_PINNED=1).`);
 
 // ---- CLI -------------------------------------------------------------
 let outRoot = 'ab-css';

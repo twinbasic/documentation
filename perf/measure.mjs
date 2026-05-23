@@ -90,6 +90,12 @@ import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 import { parseOutline, setOutline } from '../docs/lib/outline.mjs';
 import { setMetadata }              from '../docs/lib/postprocesser.mjs';
 import { applyOutlineAndMetadataIncremental } from './incremental-pdf.mjs';
+import { pinCpuIfWindows } from './pin-cpu.mjs';
+
+// On Windows, re-launch under `start /affinity 0x5500 /high` to stabilise
+// CPU sample-time. See pin-cpu.mjs. Cuts run-to-run variance from
+// ~15-25 % to ~3 % on this Ryzen 7 dev box. Pass --no-affinity to skip.
+pinCpuIfWindows({ toolName: 'measure.mjs' });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -127,6 +133,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--clone-count') cloneCount = true;
   else if (a === '--render-only') renderOnly = true;
   else if (a === '--tracing') tracing = true;
+  else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
