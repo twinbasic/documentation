@@ -3,31 +3,34 @@
 // thread pool. Sole exported entry point: `parallelSave(pdfDoc, opts)`.
 //
 // Why: pdf-lib's PDFStreamWriter.computeBufferSize creates one
-// PDFObjectStream per 50-object chunk, then immediately calls
+// PDFObjectStream per chunk, then immediately calls
 // computeIndirectObjectSize on each. sizeInBytes() walks the Cache,
-// which lazy-populates via pako.deflate(unencodedContents). The whole
-// pass is synchronous, so ~1000 chunks × ~0.3 ms of zlib work runs
-// serially -- accounts for ~30 % of save() wall time on the book.
+// which lazy-populates via a deflate of the unencoded contents. The
+// whole pass is synchronous, so the per-chunk zlib work runs serially
+// -- accounted for ~30 % of save() wall time on the book before this.
 //
 // What: same construction logic as PDFStreamWriter, split into three
 // phases:
 //   1. classify uncompressed vs compressed (same as upstream)
 //   2. instantiate every PDFObjectStream up-front, then `await
-//      Promise.all` an async zlib.deflate per stream so libuv's thread
-//      pool (default 4) runs them concurrently
+//      Promise.all` an async node:zlib.deflate per stream so libuv's
+//      thread pool (default 4) runs them concurrently
 //   3. size + emit (same as upstream, but every cache.access() is a hit)
-// The xrefStream itself is one more PDFFlateStream; we deflate it
-// serially in phase 3 since its contents depend on phase-3 offsets.
+// The xrefStream is one more PDFFlateStream whose contents depend on
+// the offsets computed in phase 3; we pre-deflate it once via
+// node:zlib.deflateSync right after those offsets are pinned, so even
+// that final stream never falls back to pdf-lib's pure-JS deflate.
 //
 // Output: byte-near-equivalent to pdfDoc.save({ useObjectStreams: true }).
-// zlib vs pako deflate may pick different LZ77 matches → 1-byte-level
-// stream diffs and matching /Length deltas; viewer-invisible.
+// node:zlib's match choices in the LZ77 inner loop may differ from
+// pdf-lib's default deflate library, producing 1-byte-level stream
+// content and matching /Length deltas; viewer-invisible.
 //
 // Parallelism is bounded by UV_THREADPOOL_SIZE (default 4). Bump it via
 // `process.env.UV_THREADPOOL_SIZE = '8'` before any libuv work fires
 // if you want more concurrency.
 
-import { deflate } from 'node:zlib';
+import { deflate, deflateSync } from 'node:zlib';
 import { promisify } from 'node:util';
 import {
   PDFStreamWriter,
@@ -118,11 +121,19 @@ class ParallelStreamWriter extends PDFStreamWriter {
       uncompressedObjects.push([ref, objectStream]);
     }
 
-    // ----- xrefStream wrap-up (serial deflate; contents depend on offsets above) -----
+    // ----- xrefStream wrap-up -----
+    // Its contents depend on the offsets computed above, so we can only
+    // populate them now. One stream -- deflate sync via node:zlib and
+    // pre-populate the cache so the subsequent computeIndirectObjectSize
+    // is a cache hit (otherwise pdf-lib's lazy populate would run its
+    // own deflate library on the main thread).
     const xrefStreamRef = PDFRef.of(objectNumber++);
     xrefStream.dict.set(PDFName.of('Size'), PDFNumber.of(objectNumber));
     xrefStream.addUncompressedEntry(xrefStreamRef, size);
     const xrefOffset = size;
+    if (this.encodeStreams) {
+      xrefStream.contentsCache.value = deflateSync(xrefStream.getUnencodedContents());
+    }
     size += this.computeIndirectObjectSize([xrefStreamRef, xrefStream]);
     uncompressedObjects.push([xrefStreamRef, xrefStream]);
 

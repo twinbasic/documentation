@@ -534,14 +534,19 @@ phases:
    is a hit, so save's loop never touches deflate.
 
 The xrefStream is one more `PDFFlateStream` but its contents
-depend on the offsets computed in phase 3, so we let it deflate
-serially at the end (one stream; `fast-deflate`'s `deflateSync`
-handles it).
+depend on the offsets computed in phase 3, so we pre-deflate it
+via `node:zlib.deflateSync` right after those offsets are pinned
+-- one stream, sync is fine, and pre-populating its cache means
+`computeIndirectObjectSize` later is a hit too. The net effect:
+every deflate that happens during a save goes through `node:zlib`,
+and pdf-lib's pure-JS fallback never runs.
 
 Exposed as `parallelSave(pdfDoc, options)`. Drop-in for
 `pdfDoc.save` when `useObjectStreams: true` -- same pre-serialize
-hooks (addDefaultPage, updateFieldAppearances, flush), same
-byte-level output modulo zlib-vs-pako match choices.
+hooks (addDefaultPage, updateFieldAppearances, flush),
+byte-near-equivalent output (zlib's LZ77 match choices may differ
+from pdf-lib's default deflate library at the byte level, but the
+wire format is identical).
 
 ### First try with default `objectsPerStream=50` was slower
 
@@ -614,6 +619,65 @@ runs.
 
 The harness exposes the same via `--parallel-deflate` (which calls
 `parallelSave` with the same defaults).
+
+### Retiring `fast-deflate.mjs`
+
+Once `parallelSave` also pre-deflates the xrefStream, pdf-lib's
+lazy `cache.populate()` deflate path is **never invoked at
+runtime**. Every `PDFObjectStream` is parallel-deflated in phase 2;
+the xrefStream is sync-deflated in phase 3. Both go through
+`node:zlib`. There's no remaining call site for pdf-lib's pure-JS
+fallback during a save.
+
+The `fast-deflate.mjs` shim that used to monkey-patch
+`pako.deflate` is therefore redundant -- it was a per-call dispatch
+optimisation for a code path we no longer take. Deleted:
+
+- `docs/lib/fast-deflate.mjs` -- removed.
+- `import './lib/fast-deflate.mjs'` -- removed from
+  `render-book.mjs`.
+- `--fast-deflate` -- removed from the `measure.mjs` flag set.
+
+Smoke profile after removal (`--parallel-deflate --fast-refs
+--cpu-profile-process`, no fast-deflate import anywhere): 0 frames
+matching `pako`, 0 matches for `computeContents`, 0 for
+`fastDeflate`. Process phase 2.34 s, output 15.3 MB.
+
+The deletion is purely a cleanup -- profile-equivalent to before
+-- but it removes 38 lines of indirection and one transitive
+concern.
+
+### Routing inflate through `node:zlib` too
+
+One call site on the load side still went through pdf-lib's pako:
+`PDFCrossRefStreamParser` decompresses the xref stream's payload
+via `pako.inflate` during `PDFDocument.load`. Cost is tiny -- one
+inflate per load, ~3 ms -- but it's the last pdf-lib → pako edge
+in the runtime, and the dispatch story for the README is cleaner
+when "every zlib call goes through `node:zlib`" is true on both
+sides.
+
+`docs/lib/fast-inflate.mjs` is the symmetric counterpart to the
+retired `fast-deflate.mjs`:
+
+```js
+import { inflateSync } from "node:zlib";
+import pako from "pako";
+
+if (!pako.__fastInflateInstalled) {
+  const original = pako.inflate;
+  pako.inflate = function fastInflate(data, options) {
+    if (options) return original.call(pako, data, options);
+    return inflateSync(data);
+  };
+  pako.__fastInflateInstalled = true;
+}
+```
+
+`render-book.mjs` imports it unconditionally next to `fast-refs`.
+No harness flag -- the per-load cost is below the profile noise
+floor; this lands for the architectural reason, not a measurable
+win.
 
 ## Where this leaves the picture
 
