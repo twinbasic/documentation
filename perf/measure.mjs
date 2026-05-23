@@ -286,6 +286,7 @@ let fastIndirectObjects = false;
 let fastPdfnumberPool = false;
 let fastDictOnebuf = false;
 let instrumentParsedict = false;
+let dumpRawPdf = null;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -324,6 +325,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-pdfnumber-pool') fastPdfnumberPool = true;
   else if (a === '--fast-dict-onebuf') fastDictOnebuf = true;
   else if (a === '--instrument-parsedict') instrumentParsedict = true;
+  else if (a === '--dump-raw-pdf') dumpRawPdf = args[++i];
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -676,6 +678,13 @@ try {
   });
   pdfMs = Date.now() - tPdfStart;
   rawPdfBytes = rawPdf.length;
+
+  if (dumpRawPdf) {
+    const dumpPath = resolve(process.cwd(), dumpRawPdf);
+    mkdirSync(dirname(dumpPath), { recursive: true });
+    writeFileSync(dumpPath, Buffer.from(rawPdf));
+    console.log(`[harness] dumped raw Chrome PDF: ${dumpPath} (${(rawPdf.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
 
   const tGenEnd = Date.now();
   generateMs = tGenEnd - tGenStart;

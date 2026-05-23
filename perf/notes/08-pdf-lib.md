@@ -2993,6 +2993,192 @@ stays in the tree as an A/B baseline; the `--fast-dict-onebuf`
 mutex in `measure.mjs` rejects combining either with the other
 dict-shape shims.
 
+## Two-pass measure-allocate-work: Phase 0 viability gate
+
+After fast-dict-onebuf, GC self-time settled at ~150 ms / 15 % of
+the process phase. V8-flag knobs (`--max-semi-space-size`,
+`--max-old-space-size`, `--no-incremental-marking`,
+`--gc-interval=-1`) didn't move it -- mark cost is dominated by
+walking the live set, not by allocation rate. The remaining
+attack surface is **shrink the live set V8 has to mark**, ideally
+by representing dict slots as Numbers (a Float64Array mainBuf)
+rather than Object references.
+
+That option needs an encoding scheme for every value type that
+can live in a dict slot. Names, refs, numbers, and nested dicts
+are already pooled or naturally Number-encodable. PDFArray,
+PDFString, and PDFHexString are not pooled today, so they'd need
+a side `Object[]` fallback -- which V8 still marks. The fallback
+would shrink mark cost in proportion to how many slots are
+pooled, but not eliminate it.
+
+The cleaner version sidesteps the encoding-headroom question
+entirely by **measuring before allocating**:
+
+1. **Measure pass** -- walk the bytes as a state machine, no
+   PDFObject instantiation. Produce only counts and small
+   interning tables (Map<name, id>, dense ref array).
+2. **Allocate pass** -- every pool sized exactly: mainBuf as
+   `Float64Array(exact_slot_count)`, name/ref/number pools as
+   exact-sized arrays, string buffer as one exact-sized
+   `Uint8Array`. No growth, no slack.
+3. **Work pass** -- re-parse, this time encoding each value as a
+   pool-index Number into mainBuf. Every pool's size is known so
+   the encoding scheme is trivial (3 bits of type tag + N bits
+   of pool index, all fitting comfortably in 53 bits). All of
+   mainBuf is Float64; V8 marks nothing in it.
+
+The catch: a second parse is more CPU. Today's load is ~1.2 s on
+the 39 MB Chrome input; if measure-pass were 600 ms we'd regress
+on CPU even if GC dropped to zero. Phase 0 is a viability gate:
+implement the no-allocate measure pass, time it, decide whether
+the architecture is worth the engineering surface.
+
+### The walker
+
+[`perf/phase0-measure.mjs`](../phase0-measure.mjs) is a
+no-allocate byte walker that recognises the PDF grammar:
+indirect-object headers, dicts (`<< ... >>`), arrays
+(`[ ... ]`), names (`/foo`), strings (`(...)`), hex strings
+(`<...>`), numbers (integer and real, with or without a leading
+integer part), refs (`X Y R`), streams (detected as `dict`
+followed by `stream` keyword), and ObjStms (detected via
+`/Type /ObjStm` and inflated to recurse).
+
+Allocation discipline:
+
+- No string concat anywhere. Names, numbers, and strings are
+  skipped by advancing the byte cursor without keeping bytes.
+- Counters and per-frame dict captures live on typed-array
+  stacks (`Int32Array`, `Uint8Array`), depth-indexed to a max
+  of 64 (observed max recursion is 4).
+- ObjStm offset arrays are reusable `Int32Array(512)` instances,
+  grown on demand. The inflate destination is a fresh Buffer
+  per ObjStm (Chrome's raw output has zero ObjStms anyway; book.pdf
+  has 453 of them after pdf-lib's save bundles them).
+- Per-dict capture stack stores `/Length`, `/Type` (matched
+  against `ObjStm`), `/N`, `/First` -- enough to detect streams
+  and seek through them without a fallback scan in the common case.
+  Key disambiguation is inline byte comparison against the four
+  known stream-related names; everything else falls through to
+  unconditional name-body skip.
+
+### Two corners worth remembering
+
+- **PDF reals can omit the integer part.** `.251` is a valid
+  number; the first cut required `>= 1` integer digit and threw
+  on `<</CA .251 ...>>` (Chrome emits `/CA` and `/ca` alpha
+  values this way). Fix: accept `[sign?][digits?][. [digits?]]?`
+  with the constraint that at least one digit (int OR frac)
+  appears. pdf-lib's `parseRawNumber` handles this natively;
+  custom byte walkers have to remember.
+- **fast-dict-onebuf is singleton-context.** A second
+  `PDFDocument.load` in the same process throws. The Phase 0
+  comparison runs measure-pass N times (independent) but the
+  pdf-lib load only once.
+
+### Measured cost
+
+Input: `perf/raw.pdf` (39.3 MB, Chrome's raw output for the book,
+saved via the new `--dump-raw-pdf` flag below).
+
+| Pass                           | Time              | Notes                                |
+|--------------------------------|------------------:|--------------------------------------|
+| Measure pass (min of 5)        |          **135 ms** | runs were 135 / 143 / 147 / 152 / 156 |
+| `PDFDocument.load` (1 run)     |         **1238 ms** | production shim set imported         |
+| **ratio measure / load**       |        **0.109**  | ~9x cheaper                          |
+
+Throughput cross-check: book.pdf is 15.3 MB but the measure pass
+inflates 23.2 MB of ObjStm content, so effective bytes walked is
+~38.5 MB. raw.pdf walks 39.3 MB. Both clock ~290 MB/sec; the
+work-per-byte is consistent across two very different physical
+layouts.
+
+### What the counts unlock
+
+Per-run summary (raw.pdf, last run):
+
+```
+  indirect objects:  226 417
+  dicts:             260 966   slots: 2 340 522   max single: 8 706
+  arrays:             81 191   slots:   495 639   max single: 25 308
+  refs (appearances):       749 779
+  names (appearances):    1 679 151
+  numbers (appearances):    284 104
+  strings (literal/hex):    7 375 / 0
+  streams:                    2 061   ~11 MB content
+  objstms:                        0
+  max recursion depth:            4
+```
+
+Direct consequences for Phase 1+:
+
+- `mainBuf` would be `Float64Array(2 340 522 + slack)` -- a hard
+  upper bound, no growth ever.
+- Array-side mainBuf would be `Float64Array(495 639 + slack)`.
+- Recursion stack peaks at 4; no need to overallocate the temp.
+- Single largest dict is 8 706 slots, single largest array is
+  25 308 slots -- both well below the 14-bit length field
+  fast-dict-onebuf already uses.
+
+Three caveats on the counts:
+
+- **Appearance counts, not unique.** 1.68 M name appearances
+  resolve to a few thousand unique strings after interning. The
+  measure pass needs an interning Map<string, id> for names
+  (and similar for refs) to produce the *unique* pool sizes
+  needed for exact allocation. That's a Phase 1 addition --
+  cheap to add, will slightly raise measure-pass cost.
+- **Counts are physical-layout-independent.** raw.pdf has
+  226 k flat indirect objects and zero ObjStms; book.pdf has
+  2.5 k indirect objects of which 453 are ObjStms bundling 226 k
+  dicts. The *dict* count is identical (~261 k) either way.
+  This is the right invariant: pool sizing tracks the logical
+  document, not Chrome's vs pdf-lib's packing decision.
+- **Stream-length capture is fast-path-only.** When `/Length`
+  is a direct integer (the common case) we seek by it. When it's
+  a ref (`/Length 5 0 R`) we fall back to scanning for
+  `endstream`. We don't currently count fallbacks; would need to
+  add a counter if it ever looks like a non-trivial fraction.
+
+### Decision
+
+Architecture cleared. Measure-pass at ~11 % of load leaves
+plenty of headroom: even if the work pass came out at 80 % of
+current load (~990 ms) we'd land at 135 + 990 = 1 125 ms vs the
+current 1 238 ms -- net win on CPU before any GC reduction. The
+Float64Array mainBuf in the work pass should compound on top of
+that.
+
+### Wiring
+
+- **[`perf/measure.mjs`](../measure.mjs)** gains a `--dump-raw-pdf
+  <path>` flag. When set, the harness writes the raw Chrome
+  output (the input to pdf-lib's load) to the given path right
+  after `page.pdf()` returns. Used once to capture the canonical
+  input; not part of any routine run.
+- **`perf/raw.pdf`** (gitignored) is the canonical 39.3 MB
+  Chrome-output PDF, captured with the production shim set and
+  the new flag. The reference input for measure / heap-profile
+  investigations going forward.
+- **[`perf/phase0-measure.mjs`](../phase0-measure.mjs)** is the
+  prototype walker. Takes a PDF path and `--runs N`, runs the
+  measure pass N times, then runs `PDFDocument.load` once
+  (singleton-context), prints counts and the measure / load
+  ratio. Defaults to the most recent `perf/results/*/book.pdf`
+  if no path is given.
+
+Run it via:
+
+```
+node perf/phase0-measure.mjs perf/raw.pdf --runs 5
+```
+
+The prototype is measurement-only -- it doesn't ship in any
+production path. Phase 1 (next section) wires the measure-pass
+into production by using the dict-slot count to pre-size
+fast-dict-onebuf's mainBuf in place.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
