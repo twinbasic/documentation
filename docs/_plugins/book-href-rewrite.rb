@@ -372,7 +372,11 @@ module BookHrefRewrite
   end
 end
 
-Jekyll::Hooks.register :pages, :post_render do |page|
+# :high so this MUTATOR runs before html-compress (priority :normal).
+# Otherwise the landing-heading strip leaves a double-space run that
+# no downstream pass cleans up. See html-compress.rb's priority
+# convention comment for the full layering.
+Jekyll::Hooks.register :pages, :post_render, priority: :high do |page|
   next unless page.path == "book.html"
   BookHrefRewrite.process(page)
 end

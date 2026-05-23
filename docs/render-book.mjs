@@ -99,10 +99,20 @@ const browser = await puppeteer.launch({
   // tagged-pdf and outline launch flags are added by puppeteer 22+
   // automatically in ChromeLauncher.defaultArgs(), so we don't repeat
   // them here.
+  //
+  // --disable-gpu + --disable-software-rasterizer: shrinks the GPU
+  // process from ~100 MB to ~16 MB (Chromium keeps a stub even with
+  // these flags -- only --in-process-gpu kills it entirely, but that
+  // serialises GPU work onto the main thread and costs ~15 s on the
+  // render+generate wall clock). With just the disable pair the
+  // renderer is also ~120 MB lighter and generate runs ~5 s faster
+  // (Skia skips a GPU init path). PDF output is byte-identical.
   args: [
     '--no-sandbox',
     '--disable-dev-shm-usage',
     '--allow-file-access-from-files',
+    '--disable-gpu',
+    '--disable-software-rasterizer',
   ],
 });
 
@@ -158,13 +168,19 @@ try {
   }
 
   // Render -- paged.js per-page layout.
+  // PagedPolyfill.preview() is fully synchronous in our forked bundle
+  // (the entire chain preview -> chunker.flow -> render -> *layout is
+  // now sync; loadFonts is a sync assertion that page.goto's
+  // waitUntil:'load' already satisfied; stylesheets are loaded via
+  // synchronous XHR). Inner IIFE is a plain sync arrow; outer await
+  // is just the CDP round-trip puppeteer needs to ferry the result.
   const tRender = Date.now();
-  await page.evaluate(async () => {
+  await page.evaluate(() => {
     if (!window.PagedPolyfill) {
       throw new Error('paged.js bundle did not expose window.PagedPolyfill');
     }
     try {
-      await window.PagedPolyfill.preview();
+      window.PagedPolyfill.preview();
     } catch (err) {
       // Unwrap the undecorated ProgressEvent paged.js throws on fetch
       // failures so the message includes the offending URL.

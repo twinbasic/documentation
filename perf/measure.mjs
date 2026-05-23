@@ -23,8 +23,9 @@
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
 //                    [--heap-profile] [--heap-sampling <bytes>]
-//                    [--detach-pages] [--instrument] [--time-hooks]
-//                    [--incremental] [--chrome-outline] [--no-timing]
+//                    [--tracing]
+//                    [--no-detach-pages] [--instrument] [--time-hooks]
+//                    [--incremental] [--chrome-outline] [--timing]
 //                    [--clone-count] [--render-only]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
@@ -33,15 +34,20 @@
 // phase matters; trims ~45s off the full ~55s book run. No book.pdf is
 // written, and the timing.json / summary.txt omit generate/process.
 //
-// --no-timing skips the per-page timing-handler.js injection. The handler
-// adds a per-page console.log relayed via CDP that costs ~2% of render
-// self-time on the 1638-page book. Use when profiling for the cleanest
-// possible bottom-up table; loses the per-page CSV and the first/last
-// quartile summary in return.
+// --timing injects timing-handler.js. The handler records per-page wall
+// time + heap to window.__pagedTiming (so the harness can emit
+// timing.csv and the first/last-quartile summary) and streams a per-page
+// console.log relayed via CDP. The relay costs ~2 % of render self-time
+// on the 1638-page book, which is why the handler isn't on by default --
+// profile-clean runs and most A/B comparisons don't need it. Pass it
+// when you want the per-page CSV.
 //
-// --detach-pages also injects detach-pages.js -- a Paged.Handler that
-// hides each completed page from the layout tree -- to test whether
-// the O(n^2) render hotspot disappears.
+// detach-pages.js is injected by default -- a Paged.Handler that hides
+// each completed page from the layout tree. This is the shipping fix
+// for the O(n^2) render hotspot (see notes/01-baseline-and-detach.md);
+// matching it in the harness keeps measurements aligned with what
+// production renders. Pass --no-detach-pages to measure the pre-fix
+// O(n^2) baseline.
 //
 // --incremental switches the process phase from a pdf-lib roundtrip to
 // an incremental update against Chrome's bytes. Massively faster (sub-
@@ -67,6 +73,15 @@
 // via Performance -> "Load profile..." (or just drag onto the panel).
 // --cpu-sampling sets the sampling interval in microseconds; default
 // 1000 (1 ms). Raise it to keep the profile file smaller on long runs.
+//
+// --tracing wraps the render phase in a Chrome trace via CDP's Tracing
+// domain (page.tracing.start) and writes trace.json to the results
+// folder. The trace categorises Blink work as Layout / UpdateLayoutTree
+// / ParseHTML / Composite / FunctionCall / V8.* etc -- the named buckets
+// hiding inside the cpu profile's (program) frame. Load the file in
+// chrome://tracing or perfetto.dev, or run analyze-trace.mjs against it
+// for a top-N self-time table grouped by event name. Composable with
+// --cpu-profile; uses an independent CDP domain.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -80,6 +95,12 @@ import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 import { parseOutline, setOutline } from '../docs/lib/outline.mjs';
 import { setMetadata }              from '../docs/lib/postprocesser.mjs';
 import { applyOutlineAndMetadataIncremental } from './incremental-pdf.mjs';
+import { pinCpuIfWindows } from './pin-cpu.mjs';
+
+// On Windows, re-launch under `start /affinity 0x5500 /high` to stabilise
+// CPU sample-time. See pin-cpu.mjs. Cuts run-to-run variance from
+// ~15-25 % to ~3 % on this Ryzen 7 dev box. Pass --no-affinity to skip.
+pinCpuIfWindows({ toolName: 'measure.mjs' });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -91,14 +112,15 @@ let cpuProfile = false;
 let cpuSampling = 1000; // microseconds
 let heapProfile = false;
 let heapSampling = 32768; // bytes between samples (CDP default)
-let detachPages = false;
+let detachPages = true;
 let instrument = false;
 let timeHooks = false;
 let incremental = false;
 let chromeOutline = false;
-let noTiming = false;
+let timing = false;
 let cloneCount = false;
 let renderOnly = false;
+let tracing = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -107,14 +129,18 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
   else if (a === '--heap-profile') heapProfile = true;
   else if (a === '--heap-sampling') heapSampling = parseInt(args[++i], 10);
-  else if (a === '--detach-pages') detachPages = true;
+  else if (a === '--detach-pages') detachPages = true;       // accepted for backwards compat; default since the fix landed
+  else if (a === '--no-detach-pages') detachPages = false;
   else if (a === '--instrument') instrument = true;
   else if (a === '--time-hooks') timeHooks = true;
   else if (a === '--incremental') incremental = true;
   else if (a === '--chrome-outline') chromeOutline = true;
-  else if (a === '--no-timing') noTiming = true;
+  else if (a === '--timing') timing = true;
+  else if (a === '--no-timing') timing = false;             // accepted for backwards compat; default since the relay cost was measured
   else if (a === '--clone-count') cloneCount = true;
   else if (a === '--render-only') renderOnly = true;
+  else if (a === '--tracing') tracing = true;
+  else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -136,7 +162,7 @@ const instrumentPath   = resolve(__dirname, 'instrument-flush-ops.js');
 const timeHooksPath    = resolve(__dirname, 'time-hooks.js');
 const cloneCountPath   = resolve(__dirname, 'instrument-clones.js');
 const required = [pagedScriptPath];
-if (!noTiming)  required.push(handlerPath);
+if (timing)     required.push(handlerPath);
 if (detachPages) required.push(detachPagesPath);
 if (instrument)  required.push(instrumentPath);
 if (timeHooks)   required.push(timeHooksPath);
@@ -144,7 +170,7 @@ if (cloneCount)  required.push(cloneCountPath);
 for (const p of required) {
   if (!existsSync(p)) {
     console.error(`missing required file: ${p}`);
-    console.error('Run "npm install" inside perf/ first.');
+    console.error('Run "npm install" at the repo root first (run.bat does this automatically).');
     process.exit(1);
   }
 }
@@ -172,10 +198,17 @@ const browser = await puppeteer.launch({
   // puppeteer 22+ unconditionally in ChromeLauncher.defaultArgs(), so
   // we don't need to repeat them here. --chrome-outline below relies on
   // the latter being present at launch.
+  //
+  // --disable-gpu + --disable-software-rasterizer mirror production
+  // (docs/render-book.mjs). Shrinks the GPU process from ~100 MB to
+  // ~16 MB and the renderer ~120 MB; generate ~5 s faster; PDF byte-
+  // identical. See perf/README.md "Disabling the GPU process".
   args: [
     '--disable-dev-shm-usage',
     '--allow-file-access-from-files',
     '--enable-precise-memory-info',
+    '--disable-gpu',
+    '--disable-software-rasterizer',
   ],
 });
 
@@ -211,7 +244,7 @@ try {
   });
 
   await page.addScriptTag({ path: pagedScriptPath });
-  if (!noTiming) {
+  if (timing) {
     await page.addScriptTag({ path: handlerPath });
   }
   if (detachPages) {
@@ -247,14 +280,45 @@ try {
     await cdp.send('HeapProfiler.startSampling', { samplingInterval: heapSampling });
     console.log(`[harness] heap profile: sampling every ${heapSampling} bytes`);
   }
+  let tracePath = null;
+  if (tracing) {
+    // Independent of Profiler / HeapProfiler -- different CDP domain.
+    // Categories chosen to crack open the cpu profile's (program) bucket:
+    // devtools.timeline gives Layout / RecalcStyles / ParseHTML /
+    // FunctionCall / EvaluateScript; disabled-by-default-devtools.timeline
+    // adds UpdateLayoutTree / InvalidateLayout / ScheduleStyleRecalc /
+    // HitTest; blink covers internal Blink events; v8 + v8.execute cover
+    // V8.GC* / V8.CompileCode / V8.RunMicrotasks / V8.Execute.
+    // disabled-by-default-v8.cpu_profiler embeds V8 sampling-profile data
+    // as Profile / ProfileChunk events inline with the trace, giving JS
+    // call stacks aligned with Blink events when loaded in Chrome
+    // DevTools Performance or perfetto.dev (the hybrid view).
+    tracePath = join(outDir, 'trace.json');
+    await page.tracing.start({
+      path: tracePath,
+      screenshots: false,
+      categories: [
+        'devtools.timeline',
+        'disabled-by-default-devtools.timeline',
+        'blink',
+        'v8',
+        'v8.execute',
+        'disabled-by-default-v8.cpu_profiler',
+      ],
+    });
+    console.log(`[harness] tracing: ${tracePath}`);
+  }
 
   const tRenderStart = Date.now();
-  await page.evaluate(async () => {
+  // [PATCH: sync-chain] PagedPolyfill.preview() is fully synchronous in
+  // our forked bundle, so the IIFE here is a plain sync arrow. Outer
+  // `await` is for puppeteer's CDP round-trip back from page.evaluate.
+  await page.evaluate(() => {
     if (!window.PagedPolyfill) {
       throw new Error('paged.js bundle did not expose window.PagedPolyfill');
     }
     try {
-      await window.PagedPolyfill.preview();
+      window.PagedPolyfill.preview();
     } catch (err) {
       const e = err && err.target
         ? new Error(`${err.type || 'event'} on ${err.target.tagName || '?'}: ${err.target.src || err.target.href || ''}`)
@@ -265,6 +329,15 @@ try {
   await page.waitForSelector('.pagedjs_pages');
   const tRenderEnd = Date.now();
   const renderMs = tRenderEnd - tRenderStart;
+
+  if (tracing) {
+    await page.tracing.stop();
+    try {
+      const { statSync } = await import('node:fs');
+      const sz = statSync(tracePath).size;
+      console.log(`[harness] tracing: ${tracePath} (${(sz / 1024 / 1024).toFixed(1)} MB)`);
+    } catch { /* size reporting is best-effort */ }
+  }
 
   let profilePath = null;
   let heapProfilePath = null;
@@ -401,9 +474,9 @@ try {
   console.log(`[harness] total    ${fmtMs(totalMs)}`);
 
   // Persist results -------------------------------------------------
-  const timing = noTiming
-    ? { pages: [], phases: {}, pageCount: null }
-    : await page.evaluate(() => window.__pagedTiming);
+  const timingData = timing
+    ? await page.evaluate(() => window.__pagedTiming)
+    : { pages: [], phases: {}, pageCount: null };
   if (finalPdf) {
     const pdfPath = join(outDir, 'book.pdf');
     writeFileSync(pdfPath, Buffer.from(finalPdf));
@@ -411,14 +484,14 @@ try {
 
   const record = {
     input: inputPath,
-    pageCount: timing.pageCount,
+    pageCount: timingData.pageCount,
     pdfBytes: finalPdf ? finalPdf.length : null,
     cpuProfile: profilePath,
     phases: {
       render: {
         ms: renderMs,
-        perPage: timing.pages,
-        phaseMarks: timing.phases,
+        perPage: timingData.pages,
+        phaseMarks: timingData.phases,
       },
     },
     totalMs,
@@ -439,7 +512,7 @@ try {
   writeFileSync(join(outDir, 'timing.json'), JSON.stringify(record, null, 2));
 
   const csv = ['page,dur_ms,heap_start_mb,heap_end_mb,elapsed_s'];
-  for (const p of timing.pages) {
+  for (const p of timingData.pages) {
     csv.push([
       p.idx,
       p.dur.toFixed(2),
@@ -450,10 +523,14 @@ try {
   }
   writeFileSync(join(outDir, 'timing.csv'), csv.join('\n'));
 
-  const pages = timing.pages;
+  const pages = timingData.pages;
   const summary = [];
   summary.push(`input        : ${inputPath}`);
-  summary.push(`pages        : ${pages.length}`);
+  if (timing) {
+    summary.push(`pages        : ${pages.length}`);
+  } else {
+    summary.push(`pages        : (per-page timing not collected; pass --timing for the CSV)`);
+  }
   if (finalPdf) {
     summary.push(`pdf size     : ${(finalPdf.length / 1024 / 1024).toFixed(1)} MB`);
   }

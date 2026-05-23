@@ -287,7 +287,9 @@ Jekyll::Hooks.register :site, :pre_render do |site|
   Pdfify.setup(site)
 end
 
-Jekyll::Hooks.register :pages, :post_render do |page|
+# :low so this READER captures page.output after html-compress
+# (:normal) has run. See html-compress.rb's priority convention.
+Jekyll::Hooks.register :pages, :post_render, priority: :low do |page|
   Pdfify.maybe_capture(page)
 end
 

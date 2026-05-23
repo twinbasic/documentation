@@ -2486,29 +2486,22 @@
 		}
 
 		addResizeObserver(contents) {
-			let wrapper = this.wrapper;
-			let prevHeight = wrapper.getBoundingClientRect().height;
-			this.ro = new ResizeObserver(entries => {
-
-				if (!this.listening) {
-					return;
-				}
-				requestAnimationFrame(() => {
-					for (let entry of entries) {
-						const cr = entry.contentRect;
-
-						if (cr.height > prevHeight) {
-							this.checkOverflowAfterResize(contents);
-							prevHeight = wrapper.getBoundingClientRect().height;
-						} else if (cr.height < prevHeight) { // TODO: calc line height && (prevHeight - cr.height) >= 22
-							this.checkUnderflowAfterResize(contents);
-							prevHeight = cr.height;
-						}
-					}
-				});
-			});
-
-			this.ro.observe(wrapper);
+			// [PATCH: disable-resize-observer] The RO existed to catch
+			// post-layout content reflow -- late-loading fonts, image
+			// dimensions resolving after layout, etc. -- by re-running
+			// findBreakToken whenever the wrapper grew/shrunk after
+			// renderTo returned. Our pipeline navigates with
+			// `waitUntil: "load"` and uses embedded fonts; nothing
+			// resizes after layout. The `_onOverflow` rescue path
+			// (Chunker.addPage line 3296) only fires while
+			// `!chunker.rendered`, and would emit a console.warn
+			// before re-rendering, so a regression would be loud.
+			// Disabling the RO removes a per-page allocation plus the
+			// stream of async findBreakToken / gBCR calls its callback
+			// would otherwise drive after every page's renderTo.
+			// checkUnderflowAfterResize is already gated by an absent
+			// _onUnderflow (see README "Attempt C"); checkOverflowAfterResize
+			// was the only live consumer.
 		}
 
 		checkOverflowAfterResize(contents) {
@@ -3008,10 +3001,21 @@
 
 		}
 
-		async flow(content, renderTo) {
+		// [PATCH: sync-chain] flow() is now synchronous. All five await
+		// sites turn into sync calls:
+		//   - beforeParsed / afterParsed / afterRendered hooks: handlers
+		//     on our pipeline are all sync, so _assertSync guards them
+		//     the same way the per-page hot path does.
+		//   - loadFonts: now a sync assert (throws if any face isn't
+		//     loaded; page.goto waitUntil:'load' ensures they are).
+		//   - render: now a plain sync function.
+		// This was the last load-bearing await in the bundle. With
+		// flow() sync, the entire per-render call chain executes
+		// without yielding to a microtask boundary.
+		flow(content, renderTo) {
 			let parsed;
 
-			await this.hooks.beforeParsed.trigger(content, this);
+			_assertSync(this.hooks.beforeParsed.trigger(content, this), "beforeParsed");
 
 			parsed = new ContentParser(content);
 
@@ -3029,20 +3033,20 @@
 
 			this.emit("rendering", parsed);
 
-			await this.hooks.afterParsed.trigger(parsed, this);
+			_assertSync(this.hooks.afterParsed.trigger(parsed, this), "afterParsed");
 
-			await this.loadFonts();
+			this.loadFonts();
 
-			let rendered = await this.render(parsed, this.breakToken);
+			let rendered = this.render(parsed, this.breakToken);
 			while (rendered.canceled) {
 				this.start();
-				rendered = await this.render(parsed, this.breakToken);
+				rendered = this.render(parsed, this.breakToken);
 			}
 
 			this.rendered = true;
 			this.pagesArea.style.setProperty("--pagedjs-page-count", this.total);
 
-			await this.hooks.afterRendered.trigger(this.pages, this);
+			_assertSync(this.hooks.afterRendered.trigger(this.pages, this), "afterRendered");
 
 			this.emit("rendered", this.pages);
 
@@ -3079,12 +3083,11 @@
 		// 	}
 		// }
 
-		// [PATCH: sync-chain] *layout is a sync generator now, so
-		// renderer.next() returns synchronously -- no per-page await.
-		// render() itself stays `async` because callers (flow()) await
-		// it and other once-per-render awaits in flow() (loadFonts,
-		// beforeParsed / afterParsed / afterRendered) still need it.
-		async render(parsed, startAt) {
+		// [PATCH: sync-chain] render() is now plain sync. *layout is a
+		// sync generator (renderer.next() returns synchronously), and
+		// flow() no longer awaits this call -- the entire per-render
+		// chain (preview -> flow -> render) is sync end to end.
+		render(parsed, startAt) {
 			let renderer = this.layout(parsed, startAt);
 
 			let result;
@@ -3374,7 +3377,12 @@
 		}
 		*/
 
-		async clonePage(originalPage) {
+		// [PATCH: sync-chain] clonePage is now synchronous. Only caller
+		// is the Footnotes handler (line ~31625) which is itself gated
+		// out for documents without `[data-note='footnote']` -- dead
+		// path on our content but kept sync-clean for consistency with
+		// the rest of the per-page hook surface.
+		clonePage(originalPage) {
 			let lastPage = this.pages[this.pages.length - 1];
 
 			let page = new Page(this.pagesArea, this.pageTemplate, false, this.hooks);
@@ -3386,7 +3394,7 @@
 
 			page.index(this.total);
 
-			await this.hooks.beforePageLayout.trigger(page, undefined, undefined, this);
+			_assertSync(this.hooks.beforePageLayout.trigger(page, undefined, undefined, this), "beforePageLayout");
 			this.emit("page", page);
 
 			for (const className of originalPage.element.classList) {
@@ -3395,26 +3403,31 @@
 				}
 			}
 
-			await this.hooks.afterPageLayout.trigger(page.element, page, undefined, this);
-			await this.hooks.finalizePage.trigger(page.element, page, undefined, this);
+			_assertSync(this.hooks.afterPageLayout.trigger(page.element, page, undefined, this), "afterPageLayout");
+			_assertSync(this.hooks.finalizePage.trigger(page.element, page, undefined, this), "finalizePage");
 			this.emit("renderedPage", page);
 		}
 
+		// [PATCH: sync-chain] loadFonts is now a synchronous assertion.
+		// Upstream walked document.fonts and kicked off fontFace.load()
+		// for any not-yet-loaded face, returning a Promise.all. Our
+		// headless pipeline drives `page.goto(url, { waitUntil: "load" })`
+		// before paged.js runs, which settles document.fonts.ready --
+		// every face is already in state "loaded" by the time we get
+		// here. The walk is a safety check: if a face is still loading
+		// (or hit an error), pipeline assumptions are broken and we
+		// should fail loudly rather than silently re-asyncify.
 		loadFonts() {
-			let fontPromises = [];
 			(document.fonts || []).forEach((fontFace) => {
 				if (fontFace.status !== "loaded") {
-					let fontLoaded = fontFace.load().then((r) => {
-						return fontFace.family;
-					}, (r) => {
-						console.warn("Failed to preload font-family:", fontFace.family);
-						return fontFace.family;
-					});
-					fontPromises.push(fontLoaded);
+					throw new Error(
+						"paged.js (forked): font-face '" + fontFace.family +
+						"' is not yet loaded (status=" + fontFace.status +
+						"). The headless pipeline expects every font to be " +
+						"loaded before PagedPolyfill.preview() runs; ensure " +
+						"page.goto uses { waitUntil: 'load' } or 'networkidle0'."
+					);
 				}
-			});
-			return Promise.all(fontPromises).catch((err) => {
-				console.warn(err);
 			});
 		}
 
@@ -26508,16 +26521,22 @@
 
 
 
-		// parse
-		async parse(text) {
+		// [PATCH: sync-chain] parse() is now synchronous. Upstream awaited
+		// the three Polisher.hooks.{beforeTreeParse, beforeTreeWalk,
+		// afterTreeWalk} triggers; with our pipeline registering no async
+		// handlers for any of them, the awaits were pure microtask
+		// boundaries. _assertSync throws if anyone ever does register a
+		// thenable-returning handler -- same safety pattern the chunker's
+		// per-page hot path uses.
+		parse(text) {
 			this.text = text;
 
-			await this.hooks.beforeTreeParse.trigger(this.text, this);
+			_assertSync(this.hooks.beforeTreeParse.trigger(this.text, this), "beforeTreeParse");
 
 			// send to csstree
 			this.ast = csstree.parse(this._text);
 
-			await this.hooks.beforeTreeWalk.trigger(this.ast);
+			_assertSync(this.hooks.beforeTreeWalk.trigger(this.ast), "beforeTreeWalk");
 
 			// Replace urls
 			this.replaceUrls(this.ast);
@@ -26532,7 +26551,7 @@
 			this.rules(this.ast);
 			this.atrules(this.ast);
 
-			await this.hooks.afterTreeWalk.trigger(this.ast, this);
+			_assertSync(this.hooks.afterTreeWalk.trigger(this.ast, this), "afterTreeWalk");
 
 			// return ast
 			return this.ast;
@@ -27487,28 +27506,30 @@
 }
 `;
 
-	async function request(url, options={}) {
-		return new Promise(function(resolve, reject) {
-			let request = new XMLHttpRequest();
-
-			request.open(options.method || "get", url, true);
-
-			for (let i in options.headers) {
-				request.setRequestHeader(i, options.headers[i]);
-			}
-
-			request.withCredentials = options.credentials === "include";
-
-			request.onload = () => {
-				// Chrome returns a status code of 0 for local files
-				const status = request.status === 0 && url.startsWith("file://") ? 200 : request.status;
-				resolve(new Response(request.responseText, {status}));
-			};
-
-			request.onerror = reject;
-
-			request.send(options.body || null);
-		});
+	// [PATCH: sync-chain] Synchronous XHR returning body text directly.
+	// Upstream paged.js used async XHR + Promise + Response wrapper to
+	// keep the interactive-browser main thread responsive while
+	// stylesheets loaded. Our headless pipeline doesn't share that
+	// constraint: every stylesheet is a local file:// URL, fetches are
+	// sub-ms, and we want the polisher's stylesheet ingestion off the
+	// microtask queue so the whole render chain stays sync. Both
+	// callers (Polisher.add / convertViaSheet) only ever consumed
+	// response.text(), which is itself async per spec -- returning the
+	// text directly skips that boundary too. Throws on HTTP error.
+	function request(url, options={}) {
+		let req = new XMLHttpRequest();
+		req.open(options.method || "get", url, false);
+		for (let i in options.headers) {
+			req.setRequestHeader(i, options.headers[i]);
+		}
+		req.withCredentials = options.credentials === "include";
+		req.send(options.body || null);
+		// Chrome returns status 0 for successful local-file loads.
+		const status = req.status === 0 && url.startsWith("file://") ? 200 : req.status;
+		if (status < 200 || status >= 300) {
+			throw new Error("paged.js (forked): request " + url + " failed with status " + status);
+		}
+		return req.responseText;
 	}
 
 	class Polisher {
@@ -27545,53 +27566,43 @@
 			return this.styleSheet;
 		}
 
-		async add() {
-			let fetched = [];
-			let urls = [];
-
-			for (var i = 0; i < arguments.length; i++) {
-				let f;
-
-				if (typeof arguments[i] === "object") {
-					for (let url in arguments[i]) {
-						let obj = arguments[i];
-						f = new Promise(function(resolve, reject) {
-							urls.push(url);
-							resolve(obj[url]);
-						});
-					}
-				} else {
-					urls.push(arguments[i]);
-					f = request(arguments[i]).then((response) => {
-						return response.text();
-					});
-				}
-
-
-				fetched.push(f);
-			}
-
-			return await Promise.all(fetched)
-				.then(async (originals) => {
-					let text = "";
-					for (let index = 0; index < originals.length; index++) {
-						text = await this.convertViaSheet(originals[index], urls[index]);
+		// [PATCH: sync-chain] add() is now synchronous. Upstream collected
+		// every input as a Promise (Promise.all + then-chain), even when
+		// inputs were inline {url:text} objects with no fetch needed.
+		// With request() returning text directly and convertViaSheet now
+		// sync, we just walk the arguments once and feed each to the
+		// pipeline. Same return semantics: the converted-and-inserted
+		// text of the last stylesheet.
+		add() {
+			let text = "";
+			for (let i = 0; i < arguments.length; i++) {
+				let arg = arguments[i];
+				if (typeof arg === "object") {
+					for (let url in arg) {
+						text = this.convertViaSheet(arg[url], url);
 						this.insert(text);
 					}
-					return text;
-				});
+				} else {
+					let url = arg;
+					let cssStr = request(url);
+					text = this.convertViaSheet(cssStr, url);
+					this.insert(text);
+				}
+			}
+			return text;
 		}
 
-		async convertViaSheet(cssStr, href) {
+		// [PATCH: sync-chain] convertViaSheet is now synchronous.
+		// sheet.parse is sync; request() now returns body text directly
+		// (sync XHR + responseText, no Response wrapper).
+		convertViaSheet(cssStr, href) {
 			let sheet = new Sheet(href, this.hooks);
-			await sheet.parse(cssStr);
+			sheet.parse(cssStr);
 
 			// Insert the imported sheets first
 			for (let url of sheet.imported) {
-				let str = await request(url).then((response) => {
-					return response.text();
-				});
-				let text = await this.convertViaSheet(str, url);
+				let str = request(url);
+				let text = this.convertViaSheet(str, url);
 				this.insert(text);
 			}
 
@@ -32452,12 +32463,31 @@
 		TargetText
 	];
 
+	// [PATCH: whitespace-filter-opt-in] Default off because our Jekyll
+	// pipeline runs html-compress on `book.html` (see _plugins/html-
+	// compress.rb's three-tier hook ordering: book-combined is in the
+	// compress-eligible set), so inter-element whitespace is already
+	// collapsed by the time paged.js sees the document. The filter
+	// would visit every text node in the parsed DOM (~181 k callbacks
+	// on the 1651-page book) and -- post-compression -- find essentially
+	// nothing to mutate. A paired cpu-profile A/B (3+3 runs, see
+	// perf/README.md) showed the no-op walk still costs ~600 ms of CPU
+	// per render: ~125 ms direct (filterTree / filterEmpty self) plus
+	// ~480 ms indirect (gBCR + downstream Blink layout / style work that
+	// runs cheaper when V8's IC + Blink scheduler aren't being churned
+	// by 181 k C++->JS callback dispatches). The cost is small per call
+	// but compounds because the walk lives inside the same microtask
+	// continuation as the per-page render loop. Set
+	// `window.PagedConfig.runWhitespaceFilter = true` before
+	// PagedPolyfill.preview() if processing a document whose source
+	// HTML wasn't compressed at build time.
 	class WhiteSpaceFilter extends Handler {
 		constructor(chunker, polisher, caller) {
 			super(chunker, polisher, caller);
 		}
 
 		filter(content) {
+			if (!(typeof window !== "undefined" && window.PagedConfig && window.PagedConfig.runWhitespaceFilter)) return;
 
 			filterTree(content, (node) => {
 				return this.filterEmpty(node);
@@ -33062,9 +33092,18 @@
 				});
 		}
 
-		async preview(content, stylesheets, renderTo) {
+		// [PATCH: sync-chain] preview() is now synchronous end-to-end.
+		// beforePreview / afterPreview hooks are once-per-render so the
+		// _assertSync guard is the same shape as the chunker's per-page
+		// hot path uses. polisher.add and chunker.flow are sync above.
+		// External callers (perf/measure.mjs, docs/render-book.mjs) now
+		// call this without `await` -- the page.evaluate IIFE wrapping
+		// the call is also sync, so the entire script execution runs
+		// inside one EvaluateScript frame instead of being scheduled
+		// across multiple microtask continuations.
+		preview(content, stylesheets, renderTo) {
 
-			await this.hooks.beforePreview.trigger(content, renderTo);
+			_assertSync(this.hooks.beforePreview.trigger(content, renderTo), "beforePreview");
 
 			if (!content) {
 				content = this.wrapContent();
@@ -33078,12 +33117,12 @@
 
 			this.handlers = this.initializeHandlers();
 
-			await this.polisher.add(...stylesheets);
+			this.polisher.add(...stylesheets);
 
 			let startTime = performance.now();
 
 			// Render flow
-			let flow = await this.chunker.flow(content, renderTo);
+			let flow = this.chunker.flow(content, renderTo);
 
 			let endTime = performance.now();
 
@@ -33092,7 +33131,7 @@
 
 			this.emit("rendered", flow);
 
-			await this.hooks.afterPreview.trigger(flow.pages);
+			_assertSync(this.hooks.afterPreview.trigger(flow.pages), "afterPreview");
 
 			return flow;
 		}
