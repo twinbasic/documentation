@@ -1,39 +1,39 @@
-// Per-section CSS cost attribution.
+// CSS cost attribution: print.css extras + rouge.css.
 //
-// Parses docs/_site-pdf/assets/css/print.css into themed sections by its
-// existing `/* ---- Section name ---- */` dividers, then renders the book
-// per variant (full CSS, minimal-required CSS, and full minus each
-// individual section in turn -- or minimal plus each section in turn).
-// For each render we capture a hybrid trace and pull on-CPU time from
-// the embedded V8 cpu profile -- NOT wall-clock, which is too noisy at
-// single-run granularity.
+// Renders the book per variant, capturing a hybrid trace and pulling
+// on-CPU time from the embedded V8 cpu profile (NOT wall-clock, which
+// is too noisy at single-run granularity). For each metric of interest
+// (cpu_total, recalcStyle, performLayout, ...) the tool computes the
+// mean paired difference (baseline - variant) across N pairs and its
+// SD. Paired differencing + Windows /affinity pinning (auto-relaunch
+// below) brings per-pair variance down to ~3 % of baseline.
 //
-// **CPU sample-time on this machine has ~15-25 % single-run variance**,
-// large enough to drown per-section deltas below ~10 % of recalcStyle.
-// The tool defaults to 3 paired runs per variant interleaved with the
-// baseline (A B A B A B ...), then reports the mean paired difference
-// + SD across the N pairs. Paired differencing cancels machine-state
-// drift far better than independent runs, so 3 pairs gives reliable
-// rankings even when individual run-to-run variance is ~20 %.
+// **Default variants** (always run):
+//   baseline-full       = print.css (all sections) + rouge.css
+//   drop-rouge          = print.css (all sections); no rouge.css
+//   drop-print-extras   = print.css (always-kept sections only) + rouge.css
+//   baseline-minimal    = print.css (always-kept sections only); no rouge.css
 //
-// Output columns:
+// "Always-kept" print.css sections (paged.js needs them to paginate at
+// the right page count): preamble + "Page geometry, running header,
+// page numbers" + "Chapter boundaries".
 //
-//   total_cpu_ms = mean CPU sample-time for the variant (informational)
-//   Δrecalc_ms   = mean of (A.recalc - B.recalc) across paired runs;
-//                  positive = "this section costs about this much"
-//   Δrecalc_sd   = SD of the paired differences across the N pairs
-//   Δtotal_ms    = same for total CPU
+// With these four variants the pairwise differences reveal:
+//   baseline-full - drop-rouge        = rouge.css contribution
+//   baseline-full - drop-print-extras = print.css extras contribution
+//   baseline-full - baseline-minimal  = total CSS contribution
+//
+// **Optional per-section print.css sweep** (`--per-print-section`):
+// adds one drop-print-<section> variant per `/* ---- Section ---- */`
+// divider in print.css. Slower; previous runs showed all per-section
+// deltas below the noise floor for this book, so off by default.
 //
 // Usage:
-//   node ab-css.mjs                # subtractive sweep, 3 pairs/variant
-//   node ab-css.mjs --runs 5       # tighter SD if you can spare the time
-//   node ab-css.mjs --mode add     # additive (minimal + 1 section)
-//   node ab-css.mjs --only typography,headings  # filter variants
-//   node ab-css.mjs --out my-run   # results folder name (default: ab-css)
-//
-// Always-kept sections (required for paged.js to paginate at roughly
-// the right page count): preamble, "Page geometry, running header,
-// page numbers", "Chapter boundaries".
+//   node ab-css.mjs                       # 4 variants, 3 pairs each
+//   node ab-css.mjs --runs 5              # tighter SD, longer wall time
+//   node ab-css.mjs --per-print-section   # also sweep each print.css section
+//   node ab-css.mjs --out my-run          # results folder (default: ab-css)
+//   node ab-css.mjs --no-affinity         # skip Windows CPU pinning
 
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -75,19 +75,23 @@ if (process.env.AB_CSS_PINNED) {
 }
 
 // ---- CLI -------------------------------------------------------------
-let mode = 'subtract';
 let outRoot = 'ab-css';
-let onlyFilter = null;
 let pairs = 3;
+let perPrintSection = false;
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--mode') mode = args[++i];
-  else if (args[i] === '--out') outRoot = args[++i];
-  else if (args[i] === '--only') onlyFilter = args[++i].split(',').map(s => s.trim().toLowerCase());
+  if (args[i] === '--out') outRoot = args[++i];
   else if (args[i] === '--runs') pairs = parseInt(args[++i], 10);
+  else if (args[i] === '--per-print-section') perPrintSection = true;
   else if (args[i] === '--no-affinity') { /* handled in the relaunch shim above */ }
   else if (args[i] === '-h' || args[i] === '--help') {
-    console.error('usage: node ab-css.mjs [--runs N] [--mode subtract|add] [--out DIR] [--only NAME[,NAME...]]');
+    console.error('usage: node ab-css.mjs [--runs N] [--out DIR] [--per-print-section]');
+    console.error('');
+    console.error('  Default: 3 top-level variants per stylesheet (baseline-full,');
+    console.error('  drop-rouge, drop-print-extras, baseline-minimal). Run with');
+    console.error('  --per-print-section to additionally sweep each /* ---- ---- */');
+    console.error('  section of print.css (slower; per-section deltas tend to be');
+    console.error('  below the noise floor on this book).');
     process.exit(0);
   } else {
     console.error('unknown arg: ' + args[i]);
@@ -95,19 +99,21 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 if (pairs < 1) { console.error('--runs must be >= 1'); process.exit(2); }
-if (mode !== 'subtract' && mode !== 'add') {
-  console.error('--mode must be "subtract" or "add"');
-  process.exit(2);
-}
 
 // ---- File paths ------------------------------------------------------
 const SITE_PDF = resolve('../docs/_site-pdf');
 const PRINT_CSS_PATH = join(SITE_PDF, 'assets/css/print.css');
+const ROUGE_CSS_PATH = join(SITE_PDF, 'assets/css/rouge.css');
 const BOOK_HTML_PATH = join(SITE_PDF, 'book.html');
+// Single generated CSS that book-ab.html links to. Per-variant we write
+// it with whatever combination of print.css sections + rouge.css we want
+// to test; book-ab.html drops the rouge.css link, so the only stylesheet
+// the document loads is print-ab.css.
 const SWAP_CSS_PATH = join(SITE_PDF, 'assets/css/print-ab.css');
 const SWAP_HTML_PATH = join(SITE_PDF, 'book-ab.html');
 
 const PRINT_CSS = readFileSync(PRINT_CSS_PATH, 'utf8');
+const ROUGE_CSS = readFileSync(ROUGE_CSS_PATH, 'utf8');
 const BOOK_HTML = readFileSync(BOOK_HTML_PATH, 'utf8');
 
 // ---- Parse print.css into sections -----------------------------------
@@ -143,33 +149,41 @@ const ALWAYS_KEEP = new Set([
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'unnamed';
 
 // ---- Variant list ----------------------------------------------------
-// "baseline-full" + "baseline-minimal" run unconditionally for comparison.
-// Then, for each non-kept section, either drop it (subtract) or add it on
-// top of minimal (add).
+// Each variant carries a `build()` that returns the full CSS string to
+// be written into print-ab.css for that run. Always-kept print.css
+// sections come from `sections.filter(s => ALWAYS_KEEP.has(s.name))`;
+// "extras" means print.css minus always-kept.
+const printAll       = sections.map(s => s.text).join('\n');
+const printMinimal   = sections.filter(s => ALWAYS_KEEP.has(s.name)).map(s => s.text).join('\n');
+const ROUGE_HEADER   = '\n/* ---- rouge.css inlined (concatenated by ab-css.mjs) ---- */\n';
+
 const variants = [];
-variants.push({ label: 'baseline-full',    keep: () => sections.map(s => s.name) });
-variants.push({ label: 'baseline-minimal', keep: () => sections.filter(s => ALWAYS_KEEP.has(s.name)).map(s => s.name) });
-for (const s of sections) {
-  if (ALWAYS_KEEP.has(s.name)) continue;
-  if (onlyFilter && !onlyFilter.some(f => s.name.toLowerCase().includes(f))) continue;
-  if (mode === 'subtract') {
+// Top-level variants -- always run.
+variants.push({ label: 'baseline-full',       build: () => printAll     + ROUGE_HEADER + ROUGE_CSS });
+variants.push({ label: 'drop-rouge',          build: () => printAll });
+variants.push({ label: 'drop-print-extras',   build: () => printMinimal + ROUGE_HEADER + ROUGE_CSS });
+variants.push({ label: 'baseline-minimal',    build: () => printMinimal });
+
+// Optional per-section print.css sweep (opt-in via --per-print-section).
+// Each drop-<section> keeps full rouge.css and full print.css minus the
+// named section.
+if (perPrintSection) {
+  for (const s of sections) {
+    if (ALWAYS_KEEP.has(s.name)) continue;
     variants.push({
-      label: 'drop-' + slug(s.name),
-      keep: () => sections.filter(x => x.name !== s.name).map(x => x.name),
-    });
-  } else {
-    variants.push({
-      label: 'add-' + slug(s.name),
-      keep: () => [...sections.filter(x => ALWAYS_KEEP.has(x.name)).map(x => x.name), s.name],
+      label: 'drop-print-' + slug(s.name),
+      build: () => sections.filter(x => x.name !== s.name).map(x => x.text).join('\n') + ROUGE_HEADER + ROUGE_CSS,
     });
   }
 }
 
-const cssFor = (keepNames) => sections.filter(s => keepNames.includes(s.name)).map(s => s.text).join('\n');
-const swappedHtml = BOOK_HTML.replace(
-  '<link rel="stylesheet" href="assets/css/print.css">',
-  '<link rel="stylesheet" href="assets/css/print-ab.css">',
-);
+// Swap book.html: replace the print.css link with print-ab.css, and
+// drop the rouge.css link (its content is inlined into print-ab.css
+// when the variant calls for it).
+let swappedHtml = BOOK_HTML
+  .replace('<link rel="stylesheet" href="assets/css/print.css">',
+           '<link rel="stylesheet" href="assets/css/print-ab.css">')
+  .replace(/\s*<link rel="stylesheet" href="assets\/css\/rouge\.css">/, '');
 if (swappedHtml === BOOK_HTML) {
   console.error('failed to swap <link href=print.css> in book.html; aborting');
   process.exit(3);
@@ -342,7 +356,7 @@ function cpuStatsFromTrace(tracePath) {
 // back-to-back (baseline render, then variant render). Paired
 // differences cancel machine-state drift far better than averaging
 // independent runs.
-const baselineLabel = mode === 'subtract' ? 'baseline-full' : 'baseline-minimal';
+const baselineLabel = 'baseline-full';
 const baseline = variants.find(v => v.label === baselineLabel);
 const others = variants.filter(v => v.label !== baselineLabel);
 // Hold the baseline's stats per pair-index; baseline is sampled once
@@ -352,7 +366,7 @@ function runVariant(v, pairIdx) {
   const dirName = pairs > 1 ? `${v.label}-r${pairIdx + 1}` : v.label;
   const outDir = resolve(outRoot, dirName);
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(SWAP_CSS_PATH, cssFor(v.keep()));
+  writeFileSync(SWAP_CSS_PATH, v.build());
   writeFileSync(SWAP_HTML_PATH, swappedHtml);
   runOnce(outDir);
   return cpuStatsFromTrace(join(outDir, 'trace.json'));
@@ -410,17 +424,14 @@ function meanSD(xs) {
   return { mean, sd };
 }
 
-const sign = mode === 'subtract' ? +1 : +1;  // both modes: positive Δ = "this section costs this much"
-// In subtract mode the paired diff is (baseline - variant); positive means
-// dropping the section saved time, i.e. the section was costly.
-// In add mode the paired diff is (variant - minimal); positive means
-// adding the section costs this much. Same sign convention either way.
+// Paired diff is (baseline - variant). Positive Δ means dropping the
+// thing saved time, i.e. that thing was costly.
 
 const H_LABEL = 36, H_NUM = 11;
 const hdr = (s, w) => String(s).padStart(w);
 
 console.log('');
-console.log(`mode=${mode}  pairs=${pairs}  (CPU sample-time from embedded V8 profile)`);
+console.log(`pairs=${pairs}  per-print-section=${perPrintSection}  (CPU sample-time from embedded V8 profile)`);
 console.log('Δ = mean of paired (baseline − variant) across N pairs, ± SD');
 console.log('');
 

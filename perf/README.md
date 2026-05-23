@@ -109,7 +109,7 @@ DevTools-compatible trace is a few lines.
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
 | `analyze-trace.mjs` | Bottom-up self-time analyzer for Chrome traces (`trace.json` from `--tracing`). Computes per-event self-time on the renderer's main thread (`CrRendererMain` by default) by walking nested `X`-phase events. Cracks the cpu profile's `(program)` bucket open into named Blink / V8 events (`Layout`, `RecalcStyle`, `RunMicrotasks`, `V8.GC_*`, ...). Operates on the Blink trace events only -- ignores any embedded V8 cpu samples (`Profile` / `ProfileChunk`). |
 | `analyze-hybrid.mjs` | Bottom-up analyzer that *combines* the V8 cpu samples and the Blink trace events from a hybrid `trace.json`. Builds a `[JS root..leaf] ++ [Blink outer..inner]` stack at each sample (filtering V8's virtual frames and JS-entry wrapper events) and prints either top-N self-time mixing JS function names with Blink/V8 event names, or `--callees <label>` direct-callees for any name on either axis. Lets you walk a single causation chain from a JS function down through the Blink layout / style work it triggered via gBCR (`hasOverflow -> getBoundingClientRect -> Document::UpdateStyleAndLayout -> Blink.ForcedStyleAndLayout.UpdateTime -> ...`). |
-| `ab-css.mjs` | Per-section CSS cost attribution. Parses `docs/_site-pdf/assets/css/print.css` into themed sections by its `/* ---- ---- */` dividers, renders the book once per variant (full / minimal / each-section-dropped), and reports per-variant **CPU sample-time** totals (sum of V8 sample deltas) plus per-`Document::recalcStyle` / `LocalFrameView::performLayout` / `rebuildLayoutTree` / `ShapeText` totals. CPU sample-time is preemption-free and machine-load-independent, so single runs per variant are clean enough. Defaults to subtractive sweep; `--mode add` for additive. |
+| `ab-css.mjs` | CSS cost attribution for `docs/_site-pdf/assets/css/print.css` + `rouge.css`. Renders the book per variant (full / drop-rouge / drop-print-extras / baseline-minimal) and reports **paired-difference** CPU sample-time across N pairs (default 3), with the baseline re-measured immediately before each variant pair to cancel machine-state drift. Pulls per-`Document::recalcStyle` / `LocalFrameView::performLayout` / `rebuildLayoutTree` / `ShapeText` total time from the embedded V8 cpu profile in the hybrid trace; prints mean ± SD per variant so noise-floor rows are visible. On Windows it auto-relaunches under `start /affinity 0x5500 /high` (cores 4-7 physical, thread 0 only on an 8C16T AMD Ryzen 7) which cuts single-run variance from ~15-25 % to ~3 %. Optional `--per-print-section` adds one drop-print-`<section>` variant per `/* ---- ---- */` divider in print.css; individual sections of print.css turned out to be below the noise floor on this book, so off by default. |
 | `ab-aggregate.mjs` | Per-row mean + SD aggregator across 6 paired cpu profiles (`ab-A1..A3.cpuprofile` and `ab-B1..B3.cpuprofile`). Use when wall-clock noise drowns a structural change: capture 3+3 interleaved profiles via `measure.mjs --cpu-profile` with the change toggled on/off between runs, then point this at the 6 files for a mean-with-SD table that surfaces deltas wall-clock can't see (e.g. ~6 σ shifts on rows that move from 88 ms to 2 ms). See the "Disabling the filter outright" section in this README for the methodology. |
 | `find-callers.mjs` | "Who paid for this callee's time?" -- walks a `.cpuprofile` and attributes a target function's total time back to each direct caller. Used throughout the post-mortems to detect gBCR migration between callers. |
 | `find-callees.mjs` | The other direction of `find-callers.mjs`: splits a function's self+descendant time across its direct callees. Surfaces the cases where V8 has rolled native DOM work back into the calling JS frame (Range deletion in `removeOverflow`, HTML parser in `wrapContent`). |
@@ -5018,20 +5018,123 @@ the largest remaining target if priorities change (e.g.
 the book grows past 3000 pages, or a CI runtime cap
 forces it). It's just not the next thing to build.
 
-## What the next thing is, instead
+## CSS cost attribution
 
-Render is at ~11 s on a 1651-page book, down from ~104 s
+Render is at ~10 s on a 1651-page book, down from ~104 s
 in the original baseline. The bottom-up profile after
 all of the above changes shows no individual JS body
 above ~250 ms self-time; the dominant rows are native
 Blink work (`recalcStyle` 2.4 s, `performLayout` 2.2 s,
 `removeChild` 1.7 s) that's intrinsic to laying out and
-detaching 1651 pages of content.
+detaching 1651 pages of content. The remaining question:
+is any of that recalcStyle work *avoidable* via CSS
+pruning?
 
-The A/B against a stripped print.css (next section)
-confirms `recalcStyle` is doing real work, not duplicate
-work -- and bounds what CSS pruning could save. Further
-optimization, if pursued, would mean selectively
-pruning rules from `print.css` based on per-section
-cost attribution. The `ab-css.mjs` tool measures that
-attribution.
+`ab-css.mjs` automates the answer. It renders the book
+under four variants -- baseline-full (print.css +
+rouge.css), drop-rouge, drop-print-extras (only the
+always-kept Page-geometry + Chapter-boundaries sections
+of print.css), and baseline-minimal (both stripped) --
+then reports the **paired difference** of CPU sample-time
+(`Document::recalcStyle` total in particular) between
+baseline-full and each variant. Pairing immediately
+interleaves baseline + variant runs so machine-state
+drift cancels across the diff. On Windows the harness
+auto-relaunches itself under `start /affinity 0x5500
+/high` to pin to a fixed subset of cores, which on a
+Ryzen 7 cuts run-to-run variance from ~15-25 % to ~3 %.
+
+### Methodology calibration
+
+We learned the variance story the hard way. The first
+sweep used single runs per variant and CPU sample-time,
+on the theory that profile time would be machine-load-
+independent. It wasn't on this Windows dev box: four
+identical-content runs of baseline-full spanned
+9.47-16.89 s (the 16.89 was an outlier; even excluding
+it, the remaining three varied by ~12 %). At that noise
+floor, the per-section "drop-X saves N ms" rankings the
+tool was emitting were ~75 % noise. The fix had two
+parts:
+
+1. **CPU pinning via `start /affinity`** -- shipped as
+   the auto-relaunch shim in `ab-css.mjs`. Reduced
+   baseline SD on recalcStyle total from ~12-25 % to
+   ~3 %.
+2. **Paired interleaved measurement** -- run baseline
+   immediately before each variant, pair the two, take
+   the difference. Mean paired difference and SD across
+   N pairs let noise-floor rows show themselves honestly
+   (mean within ~2 σ of zero). Default N=3 pairs; bump
+   to `--runs 5` for tighter SD at the cost of wall
+   time.
+
+The original "stripping CSS saves ~740 ms" finding from
+a single manual A/B turned out to be partly real, partly
+noise, and partly confounded by what "minimal" meant.
+The manual A/B's "minimal" was just `@page` +
+`article{break-before:page}`; the tool's "baseline-
+minimal" keeps the preamble + Page-geometry +
+Chapter-boundaries sections (paged.js needs the
+string-set / @top-right / @bottom-right machinery for
+running headers and page numbers). The earlier signal
+was real, but spread across pieces the tool can and
+can't isolate.
+
+### Findings
+
+With pinning + paired diffs (3 pairs per variant):
+
+| variant | Δrecalc ms | ± SD | mean/SD | verdict |
+| --- | --- | --- | --- | --- |
+| **drop-print-extras** | **237** | **60** | **3.95** | **real signal** |
+| baseline-minimal | 193 | 246 | 0.78 | noise |
+| drop-rouge | 66 | 124 | 0.53 | noise |
+| (baseline-full mean) | 2038 | 108 SD | -- | reference |
+
+Read this as:
+
+- **print.css extras (everything beyond the always-kept
+  Page-geometry + Chapter-boundaries sections) contribute
+  ~237 ms of recalcStyle**: ~11 % of recalcStyle, ~2.4 %
+  of render. All three pairs gave Δrecalc 202, 307, 202 --
+  consistent direction and magnitude, ~4 σ from zero.
+- **rouge.css contribution is at the noise floor**
+  (66 ± 124 ms). The earlier hypothesis ("rouge.css is
+  the big spender via per-span cascade work in code
+  blocks") was wrong; the per-pair Δrecalc values were
+  38, 202, -42 -- variance too high to claim signal at
+  N=3.
+- **baseline-minimal** stripping both still lands inside
+  the noise band on this tool's run. The original manual
+  A/B's larger delta came from removing more than this
+  tool removes -- specifically the Page-geometry section
+  that the tool keeps.
+
+The per-section sweep behind `--per-print-section`
+confirmed the methodology lesson the hard way: when each
+print.css section is dropped individually, every Δrecalc
+lands within ~2 σ of zero. The 237 ms of print.css cost
+is structurally non-additive -- selectors interact in
+the cascade, the style sharing cache hits differently
+when rule count drops, and Blink's invalidation walks
+change shape based on what rules exist. Any single
+section's marginal contribution is too small to surface
+above ~60 ms of paired-diff noise; the sum-of-extras
+effect is the only real signal.
+
+### Where this leaves render
+
+Render is structurally near its floor. The biggest
+plausible CSS prune (drop-print-extras) saves ~240 ms of
+recalcStyle ≈ ~2.4 % of render, but would mean losing
+the typography that makes the PDF look like a book. The
+remaining levers all live outside render:
+
+- `pageRanges` sharding (~5-20 s in generate): off the
+  table for now (see previous section).
+- Chrome's `outline: true` (~5 s in process): one
+  `role="presentation"` preprocessor pass away from
+  shipping, but not pursued.
+
+No structurally promising next target inside render.
