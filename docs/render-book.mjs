@@ -119,17 +119,31 @@ import { PDFDocument } from 'pdf-lib';
 //     ~15 MB of PDFNumber allocations to ~0.8 MB. Total process-phase
 //     heap traffic drops ~13 % (123 MB -> 107 MB). PDFNumber is
 //     immutable so sharing is safe.
+//   measure-pass (Phase 1) -- no-allocate byte walker
+//     (docs/lib/measure-pass.mjs) that runs in front of
+//     PDFDocument.load on the raw Chrome PDF and counts dictSlots.
+//     The count drives setExpectedDictSlots() on fast-dict-onebuf,
+//     which pre-sizes the module-level main Array to the exact
+//     slot count (no V8 growth resizes during load). Net wall-clock
+//     is ~+40 ms on the book (walker costs ~60 ms; load saves ~20).
+//     The bound on mainBuf isn't material on its own (~60 K slots
+//     out of 2.4 M) but commits the two-pass shape. Phase 2/3/3β
+//     (Float64Array mainBuf + encoded slots) were explored and
+//     didn't ship -- per-slot encode/decode cost exceeded the
+//     mark-phase savings. See "Phase 1: pre-size mainBuf via
+//     measure-pass" in perf/notes/08-pdf-lib.md.
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
 import './lib/fast-decode-name.mjs';
 import './lib/fast-number-to-string.mjs';
 import './lib/fast-size-in-bytes.mjs';
-import './lib/fast-dict-onebuf.mjs';
+import { setExpectedDictSlots }     from './lib/fast-dict-onebuf.mjs';
 import './lib/fast-parse-object.mjs';
 import './lib/fast-sync-load.mjs';
 import './lib/fast-indirect-objects.mjs';
 import './lib/fast-pdfnumber-pool.mjs';
+import { measure as measureRawPdf } from './lib/measure-pass.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 import { parallelSave }             from './lib/parallel-deflate.mjs';
@@ -357,8 +371,13 @@ try {
   //  - dispatches every chunk's deflate to libuv's thread pool via
   //    async zlib.deflate instead of running serially on the main
   //    thread. Moves ~300 ms of zlib work off-CPU on the book.
+  //
+  // measureRawPdf walks rawPdf once with no allocations and hands
+  // the exact dictSlot count to fast-dict-onebuf so its main Array
+  // is pre-sized; eliminates V8 growth resizes during load.
   // See perf/notes/08-pdf-lib.md.
   const tProcess = Date.now();
+  setExpectedDictSlots(measureRawPdf(rawPdf).dictSlots);
   const pdfDoc = await PDFDocument.load(rawPdf);
   setMetadata(pdfDoc, meta);
   await setOutline(pdfDoc, outline, false);

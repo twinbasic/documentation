@@ -3333,19 +3333,24 @@ doesn't see.
 
 ### Where this lands
 
-`--measure-pass` lives behind a flag in the harness. Even at just
-~40 ms net regression, there's no current consumer of the
-measured counts that wins anything back on its own -- pre-sizing
-mainBuf exact saves nothing material in isolation. Phase 1
-commits to the wire-up shape; a separate later commit flips the
-flag into production once the architecture has another consumer.
+`--measure-pass` ships behind a harness flag at first, then gets
+wired into [`docs/render-book.mjs`](../../docs/render-book.mjs)'s
+production import chain in a subsequent commit (the "enable
+Phase 1 measure-pass in production" change). The decision to
+ship it was bounded: it's the smallest of the four Phases we
+evaluated and the only one whose tradeoff is acceptable for
+production. Phase 2 is a net regression on its own; Phase 3 /
+3β recover most of it for a ~7 MB heap win that doesn't justify
+the CPU cost. Phase 1's bound on mainBuf isn't material on its
+own (~60 K slots out of 2.4 M of slack), but it lays the
+plumbing for any future shape change to ship without re-doing
+the wiring.
 
 [`docs/lib/measure-pass.mjs`](../../docs/lib/measure-pass.mjs)
-ships as a library (the production home of the walker). Imported
-only when `--measure-pass` is passed. `perf/phase0-measure.mjs`
-is left alone -- it's the historical record of the viability
-gate, intentionally self-contained even though it now duplicates
-the walker.
+ships as a library (the production home of the walker).
+`perf/phase0-measure.mjs` is left alone -- it's the historical
+record of the viability gate, intentionally self-contained even
+though it now duplicates the walker.
 
 ## Dropping the owned bit (post-Phase-1 cleanup)
 
@@ -3793,7 +3798,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-refs miss bypass              | ~1.0 s  | ~0.6 s | ~0.4 s |
 | + fast-pdfnumber-pool                | ~1.0 s  | ~0.6 s | ~0.4 s |
 | + parseDict pre-sized array          | ~1.0 s  | ~0.6 s | ~0.4 s |
-| **+ fast-dict-onebuf (this section)** | **~1.0 s** | **~0.6 s** | **~0.4 s** |
+| + fast-dict-onebuf                   | ~1.0 s  | ~0.6 s | ~0.4 s |
+| **+ measure-pass Phase 1 (this section)** | **~1.0 s** | **~0.7 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
