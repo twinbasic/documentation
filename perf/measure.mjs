@@ -284,12 +284,15 @@ try {
   }
 
   const tRenderStart = Date.now();
-  await page.evaluate(async () => {
+  // [PATCH: sync-chain] PagedPolyfill.preview() is fully synchronous in
+  // our forked bundle, so the IIFE here is a plain sync arrow. Outer
+  // `await` is for puppeteer's CDP round-trip back from page.evaluate.
+  await page.evaluate(() => {
     if (!window.PagedPolyfill) {
       throw new Error('paged.js bundle did not expose window.PagedPolyfill');
     }
     try {
-      await window.PagedPolyfill.preview();
+      window.PagedPolyfill.preview();
     } catch (err) {
       const e = err && err.target
         ? new Error(`${err.type || 'event'} on ${err.target.tagName || '?'}: ${err.target.src || err.target.href || ''}`)

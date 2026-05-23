@@ -158,13 +158,19 @@ try {
   }
 
   // Render -- paged.js per-page layout.
+  // PagedPolyfill.preview() is fully synchronous in our forked bundle
+  // (the entire chain preview -> chunker.flow -> render -> *layout is
+  // now sync; loadFonts is a sync assertion that page.goto's
+  // waitUntil:'load' already satisfied; stylesheets are loaded via
+  // synchronous XHR). Inner IIFE is a plain sync arrow; outer await
+  // is just the CDP round-trip puppeteer needs to ferry the result.
   const tRender = Date.now();
-  await page.evaluate(async () => {
+  await page.evaluate(() => {
     if (!window.PagedPolyfill) {
       throw new Error('paged.js bundle did not expose window.PagedPolyfill');
     }
     try {
-      await window.PagedPolyfill.preview();
+      window.PagedPolyfill.preview();
     } catch (err) {
       // Unwrap the undecorated ProgressEvent paged.js throws on fetch
       // failures so the message includes the offending URL.
