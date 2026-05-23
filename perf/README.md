@@ -5406,29 +5406,34 @@ Next memory targets, in rough order of effort vs payoff:
    inert wrappers, collapse nested spans) is the most
    accessible lever; we own the Jekyll pipeline end to
    end.
-2. **Chase the dangling references** that the GC probe
-   surfaced (see next subsection). 180+ MB of Blink
-   objects exist post-render but are unreachable from
-   anything user-visible; if we can find what's holding
-   them in the JS-level state (paged.js hooks?
-   detach-pages closures? jQuery-style retained
-   references?), the renderer peak shrinks without any
-   runtime GC cost.
+2. **Layout-intermediate garbage** that Oilpan doesn't
+   sweep during the synchronous render loop. ~75-225
+   MB of `CachedMatchedProperties`, sub-`ComputedStyle`
+   data, `GridItemData`, text-shape intermediates --
+   not retained by anything, just unswept. See the
+   "GC-pass probe" subsection for the per-class
+   breakdown; the only direct mitigation is forcing
+   GC (rejected, costs ~1 s), and the indirect lever
+   is upstream DOM size (item 1 above).
 3. **Page-template grid replacement** in vendored
    paged.js -- ~132 MB potential. Largest single target
    but an invasive rewrite of paged.js's `@page` area
    handler.
 
-### GC-pass probe: 180 MB of dangling Blink objects
+### GC-pass probe: 180 MB of unswept Oilpan garbage
 
 Forcing a `window.gc()` pass between render and generate
 frees ~180 MB of `blink_objects` (the typed view of the
 Oilpan heap) without touching anything user-visible.
-That means there's a clear shape of dangling references
-in our post-render state -- objects unreachable from any
-DOM, layout, or print-preview anchor, but still held by
-some JS-level retention somewhere in the paged.js /
-detach-pages chain.
+Initial framing: "dangling references somewhere in the
+paged.js / detach-pages chain". Investigation (see "What
+the GC actually freed" subsection below) shows the
+framing was wrong -- there is no JS-side retention.
+What the GC frees is per-page layout intermediate state
+(style sharing caches, `ComputedStyle` sub-data, grid
+item data, text-shape views) that's already unreachable
+from anything but stays in Oilpan because nothing forces
+a major GC during the synchronous render loop.
 
 Probe: `perf/probe-renderer-mem.mjs --gc-passes N`.
 Launches with `--js-flags=--expose-gc`, runs N V8
@@ -5483,52 +5488,114 @@ PDF output is byte-identical across all variants
 (41,076,362 bytes; SHA differs only in metadata).
 
 **Not shipped.** 1 second per render is meaningful when
-multiplied across CI builds, and the GC pass is masking
-a real defect (the dangling references) rather than
-fixing it. The cleaner direction is to find what's
-retaining those objects and release them at the JS
-level, which would shrink the peak without any GC cost.
+multiplied across CI builds, and after investigating
+what the GC actually freed (below) it's clear there's
+no underlying defect to fix -- this is Blink's normal
+allocation behaviour, with Oilpan's normal sweep
+behaviour, just observed in a workload that doesn't
+give Oilpan an idle moment to sweep.
 
 The probe and the `--gc-passes` flag stay in
 [probe-renderer-mem.mjs](probe-renderer-mem.mjs) for
-future use -- either as a measurement baseline when
-investigating the retention, or as a one-off escape
-hatch if a future bigger book ever hits a CI memory
-ceiling.
+future use -- either as a measurement baseline if a
+future bigger book ever hits a CI memory ceiling, or as
+an A/B reference if Blink's allocation pattern changes
+with a Chromium upgrade.
 
-#### What might be holding the references
+#### What the GC actually freed
 
-Hypotheses for where to look first when chasing this:
+Two analyses, both negative for the "dangling references"
+hypothesis, both positive for "Oilpan didn't sweep":
 
-- **paged.js hook chains** keep handler references on
-  the global `window.Paged.Hooks` object, and each hook
-  is called with per-page context (the page wrapper,
-  the chunker, the layout result). If a hook closure
-  captures a page-local value it can keep that page's
-  state alive past `finalizePage`. The render chain is
-  fully synchronous now (see [Stripping
-  headless-irrelevant async machinery](#stripping-headless-irrelevant-async-machinery))
-  so there are no awaited promises holding stale
-  closures; the suspect is closure capture in synchronous
-  hooks.
-- **detach-pages.js** removes the page DOM from the
-  visible tree but the handler itself retains a
-  per-page reference in its own arrays/maps; check the
-  handler's instance state for accumulating per-page
-  entries that should be cleared after the detach.
-- **Chunker / Layout instance fields** on
-  `window.PagedPolyfill.chunker` -- the chunker keeps
-  `pages[]`, `layout`, `breakToken`, etc. After
-  `preview()` returns the last page's state might be
-  retained on these fields and root the whole tree
-  through them.
-- **EventTarget retained listeners** on the document or
-  on `window` -- paged.js installs a few
-  `resize`/`afterPageLayout`/etc. event listeners that
-  capture closures; their references survive even after
-  the layout work is done.
+**V8 heap snapshot diff (pre-gc vs post-gc):** byte-
+identical. Same 2,938,992 nodes, same 108.9 MB self_size,
+same per-category counts. The diff is zero across every
+node category in V8. Whatever the GC freed was invisible
+to V8's snapshot, which means it had no V8 wrapper --
+which means no JS reference can be holding it. Probe:
+[analyze-heap-snapshot.mjs](analyze-heap-snapshot.mjs)
+in single-snapshot or diff mode.
 
-#### `--heap-snapshot`: extract V8 retainer chains
+**Per-Blink-class diff (memory-infra dumps):** the
+freed memory is concentrated in style-system caches and
+layout intermediates. Top freed classes between dump 0
+(post-render) and dump 1 (post-gc), 1-pass GC run:
+
+| class                                            | a_count | a_MB | b_count | b_MB | freed |
+| ------------------------------------------------ | ------- | ---- | ------- | ---- | ----- |
+| `CachedMatchedProperties`                        | 122,110 | 12.1 |     355 |  0.0 | **-12.1 MB** (~100%) |
+| `ComputedStyle`                                  | 380,974 | 26.2 | 244,772 | 16.8 |  -9.4 MB (~36%)      |
+| `ComputedStyleBase::StyleMisc2Data`              |  24,649 |  8.3 |   6,911 |  2.3 |  -6.0 MB             |
+| `ComputedStyleBase::StyleBoxData`                |  94,867 | 15.9 |  63,937 | 10.7 |  -5.2 MB             |
+| `ComputedStyleBase::StyleSurroundData`           |  32,350 |  9.6 |  15,101 |  4.5 |  -5.1 MB             |
+| `GridItemData`                                   |  27,508 |  5.0 |       0 |  0.0 | **-5.0 MB** (~100%)  |
+| `ShapeResultView`                                | 225,299 | 15.5 | 170,366 | 11.7 |  -3.8 MB             |
+| `HeapVectorBacking<HarfBuzzRunGlyphData>`        | 163,864 | 19.2 | 149,993 | 16.4 |  -2.9 MB             |
+| `LayoutResult::RareData`                         |  71,960 |  8.8 |  48,955 |  6.0 |  -2.8 MB             |
+| `ConstraintSpace::RareData`                      |  79,445 |  9.1 |  55,209 |  6.3 |  -2.8 MB             |
+| `ComputedStyleBase::StyleMisc1Data`              |  19,034 |  3.0 |   1,958 |  0.3 |  -2.7 MB             |
+| `ComputedStyleBase::StyleMiscData`               |  64,838 |  5.4 |  39,653 |  3.3 |  -2.1 MB             |
+| `LayoutResult`                                   | 179,728 | 13.7 | 155,052 | 11.8 |  -1.9 MB             |
+| ... (smaller)                                    |         |      |         |      |  -16  MB             |
+| **total**                                        |         |      |         |      | **-76 MB** (this run; -226 MB on a different run -- noisy) |
+
+The two ~100% freed categories tell the cleanest story:
+
+- **`CachedMatchedProperties`** is Blink's style-sharing
+  cache -- "which CSS rules matched element X, so that
+  similar element Y can reuse the resolved style". After
+  layout completes, it's dead state. Only useful if the
+  document gets relaid out, which our pipeline never
+  does.
+- **`GridItemData`** is per-item layout state for CSS
+  Grid. Paged.js puts each `@page` area inside a grid
+  to position the running headers / footers / margin
+  boxes; once the page is laid out, the `GridItemData`
+  for that page's items is dead.
+
+Everything else is style sub-structures
+(`ComputedStyleBase::Style*Data`) and text-shape
+intermediates (`ShapeResultView`, `HarfBuzzRunGlyphData`,
+`ShapeResultRun`) that get freed when their owning
+`ComputedStyle` or layout fragment becomes unreachable.
+All Blink-internal allocations driven by layout.
+
+What this means for the leak question:
+
+- **Not a leak.** Nothing holds these objects after
+  layout. They're unreachable from the moment their
+  page is finalised; they sit in Oilpan because
+  Chromium doesn't run a major GC during the
+  synchronous render loop.
+- **Not a JS-side retention.** detach-pages.js,
+  paged.js's chunker, hook chains, and event listeners
+  were the suspect list. The V8 snapshot diff rules
+  them all out -- if any of them held the layout state,
+  the snapshot would change between pre-gc and post-gc.
+- **It's a real over-allocation in the sense that we
+  hold ~75-225 MB longer than necessary**, but the cost
+  to fix it (force a GC: 1 s wall clock) exceeds the
+  CI memory headroom it would buy at our current book
+  size.
+
+The indirect lever still works: reducing the input DOM
+size reduces both peak working set AND this garbage
+fraction proportionally. That's the DOM-shape audit
+item in "Next memory targets".
+
+Tooling produced by this investigation, kept in
+[perf/](.) for re-use:
+
+- [analyze-heap-snapshot.mjs](analyze-heap-snapshot.mjs)
+  -- single-snapshot summary (top type x name by
+  aggregate bytes, detached subset) and pairwise diff
+  between two snapshots.
+- [diff-blink-classes.mjs](diff-blink-classes.mjs) --
+  per-Blink-class diff between two memory-infra dumps
+  in the same trace. Strips the per-dump GUID suffix
+  from class names so the diff lines up across dumps.
+
+#### `--heap-snapshot`: V8 visibility check
 
 `probe-renderer-mem.mjs --heap-snapshot` captures a V8
 heap snapshot at post-render via CDP
@@ -5538,38 +5605,43 @@ heap snapshot at post-render via CDP
 second snapshot `post-gc.heapsnapshot` is taken right
 after the GC pass.
 
-DevTools workflow to chase the retention:
+The original intent was a retainer-chain investigation
+to find what JS-side state was holding the Blink
+objects the GC frees. The result of that investigation
+(see "What the GC actually freed" above) is that
+**nothing on the V8 side holds them** -- the snapshot
+diff is byte-identical pre-gc vs post-gc, ruling out
+JS retention entirely. The freed memory is Oilpan-only,
+invisible to V8's snapshot.
 
-1. Run `node perf/probe-renderer-mem.mjs --gc-passes 1
-   --heap-snapshot`. ~80 s wall clock; output dir
-   echoed to stdout.
-2. Open Chrome DevTools (any tab) -> Memory tab.
-3. Load `post-render.heapsnapshot` (the "Load profile"
-   icon). Switch to **Comparison** view, base = the
-   post-gc snapshot. The `# Deleted` and `Freed size`
-   columns show which V8-visible object categories the
-   GC was able to release.
-4. Switch the dropdown to **Summary** on the
-   post-render snapshot and filter by "Detached" --
-   detached `HTMLDivElement` / `Text` / etc. are DOM
-   nodes still held by JS after their owning page was
-   removed from the visible tree. Each row's
-   **Retainers** pane shows the exact JS-object chain
-   keeping the node alive (paged.js hook closure,
-   chunker `pages[]` entry, retained event listener,
-   etc.).
-5. For Oilpan-only objects (`PhysicalBoxFragment`,
-   `LogicalLineItems`, `ConstraintSpace::RareData` --
-   no V8 wrapper) the snapshot won't show them
-   directly. They're typically owned by a DOM node
-   that *is* in the snapshot; trace the detached DOM
-   from step 4 to its layout state via the C++
-   ownership graph in the memory-infra dump
-   (`blink_gc/main/blink::...` paths in the per-
-   allocator breakdown -- the analyzer above prints
-   the top-N classes).
+The snapshot tooling is still useful as a visibility
+check -- "is the renderer holding what I expect?" --
+and for finding any actual JS-side retention if one
+ever surfaces. CLI analysis:
 
-The snapshot itself is JS-side only. The complete
-picture is heap-snapshot (V8 reachability) + memory-
-infra dump (per-allocator + per-type sizes) =
-"what's there" + "what's keeping it there".
+- `node perf/analyze-heap-snapshot.mjs <snap>` --
+  single-snapshot summary (top type x name by aggregate
+  bytes, plus actually-detached subset).
+- `node perf/analyze-heap-snapshot.mjs <a> <b>` --
+  pairwise diff: what categories grew or shrank.
+
+DevTools workflow (more interactive, for following
+specific retention chains):
+
+1. Open Chrome DevTools (any tab) -> Memory tab.
+2. Load `<...>.heapsnapshot` (the "Load profile" icon).
+   Browse the **Summary** view for the largest object
+   categories.
+3. For any object of interest, the **Retainers** pane
+   shows the chain of JS references holding it. Filter
+   by name (e.g. `Detached HTMLDivElement`) or by class.
+
+Oilpan-only objects (`CachedMatchedProperties`,
+`ComputedStyleBase::*Data`, `GridItemData`,
+`ShapeResultView`, layout fragments, etc.) do not appear
+in the V8 snapshot -- they have no V8 wrapper. The
+memory-infra dump + `diff-blink-classes.mjs` is the
+right tool for those. The complete picture is
+heap-snapshot (V8 reachability) + memory-infra dump
+(per-allocator + per-Blink-class sizes) = "what JS sees"
++ "what's actually in the renderer".
