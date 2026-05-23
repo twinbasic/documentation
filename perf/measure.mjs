@@ -32,7 +32,7 @@
 //                    [--fast-decode-name] [--fast-number-to-string]
 //                    [--fast-size-in-bytes] [--fast-inflate]
 //                    [--fast-parse-number] [--fast-parse-dict]
-//                    [--fast-sync-load]
+//                    [--fast-parse-object] [--fast-sync-load]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -147,6 +147,15 @@
 // Pool-dedup makes the canonical PDFNames reference-stable, so
 // captured constants replace the four calls verbatim.
 //
+// --fast-parse-object replaces PDFObjectParser.prototype.parseObject
+// with a first-byte-dispatch version that gates the three
+// matchKeyword (true / false / null) scans behind a byte check.
+// parseObject fires per dict value / array element / indirect
+// object body (hundreds of thousands of calls on the book); the
+// upstream version pays three speculative matchKeyword fail-and-
+// rewind costs on every invocation. Same semantics, dispatch
+// reordered by observed frequency in dict-value position.
+//
 // --fast-sync-load rips pdf-lib's parseSpeed / objectsPerTick /
 // shouldWaitForTick / waitForTick machinery out of both the load
 // path (PDFDocument.load + PDFParser.parseDocument / parseDocumentSection
@@ -214,6 +223,7 @@ let fastInflate = false;
 let fastParseNumber = false;
 let fastDictIter = false;
 let fastParseDict = false;
+let fastParseObject = false;
 let fastSyncLoad = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -245,6 +255,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-parse-number') fastParseNumber = true;
   else if (a === '--fast-dict-iter') fastDictIter = true;
   else if (a === '--fast-parse-dict') fastParseDict = true;
+  else if (a === '--fast-parse-object') fastParseObject = true;
   else if (a === '--fast-sync-load') fastSyncLoad = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
@@ -318,6 +329,10 @@ if (fastDictIter) {
 if (fastParseDict) {
   await import('../docs/lib/fast-parse-dict.mjs');
   console.log('[harness] fast-parse-dict: hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict');
+}
+if (fastParseObject) {
+  await import('../docs/lib/fast-parse-object.mjs');
+  console.log('[harness] fast-parse-object: first-byte dispatch in parseObject, gate true/false/null matchKeyword behind byte check');
 }
 if (fastSyncLoad) {
   await import('../docs/lib/fast-sync-load.mjs');

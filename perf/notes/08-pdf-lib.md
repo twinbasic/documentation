@@ -1462,6 +1462,141 @@ is a bigger code change for a smaller individual win. Worth
 revisiting if a future optimisation moves the floor and parseDict
 becomes a larger relative share.
 
+## `parseObject`: dispatch by first byte, gate the keyword scans
+
+After `fast-parse-dict` shipped, `PDFObjectParser.parseObject` was
+the next obvious row in the bottom-up table:
+
+```
+   self_ms   self_%   function  @  source
+    213.28   13.41%   (garbage collector)
+    113.05    7.11%   fastParseDict
+     99.12    6.23%   fastOf
+     86.87    5.46%   PDFRef.of
+     86.32    5.43%   PDFObjectParser.parseName
+     81.86    5.15%   PDFObjectParser.parseObject     <-- this row
+     ...
+```
+
+`parseObject` is the dispatch hub of the PDF object parser. It's
+called once per dict value, per array element, and per
+indirect-object body -- same call density as `fastParseDict` two
+rows above (every dict that fastParseDict builds calls parseObject
+N times for its N values).
+
+### What parseObject was doing
+
+The upstream body (`PDFObjectParser.js:36`):
+
+```js
+parseObject() {
+  this.skipWhitespaceAndComments();
+  if (this.matchKeyword(Keywords.true))  return PDFBool.True;
+  if (this.matchKeyword(Keywords.false)) return PDFBool.False;
+  if (this.matchKeyword(Keywords.null))  return PDFNull;
+  const byte = this.bytes.peek();
+  if (byte === LessThan && this.bytes.peekAhead(1) === LessThan) return this.parseDictOrStream();
+  if (byte === LessThan)          return this.parseHexString();
+  if (byte === LeftParen)         return this.parseString();
+  if (byte === ForwardSlash)      return this.parseName();
+  if (byte === LeftSquareBracket) return this.parseArray();
+  if (IsNumeric[byte])            return this.parseNumberOrRef();
+  throw new PDFObjectParsingError(this.bytes.position(), byte);
+}
+```
+
+Three speculative `matchKeyword` calls run on every invocation,
+before the dispatch byte is ever peeked. `matchKeyword`
+(`BaseParser.js:97`) on a fast-fail mismatch does `bytes.offset()`,
+then `bytes.next()` on the first byte of the keyword, comparison,
+then `bytes.moveTo(initialOffset)` to restore. Three of those per
+`parseObject` call -- multiplied by the hundreds of thousands of
+calls per book load -- adds up.
+
+`true` / `false` / `null` are extraordinarily rare in real PDFs.
+The bulk of dict values are refs (`N N R`), numbers, names,
+sub-dicts, and arrays. Putting the dispatch-byte test *before*
+the keyword scans, and only entering `matchKeyword` when the
+first byte could plausibly start one of the three keywords,
+skips three method calls + a `moveTo` per `parseObject` on the
+overwhelming majority of inputs.
+
+### The shim
+
+`docs/lib/fast-parse-object.mjs` replaces
+`PDFObjectParser.prototype.parseObject` with:
+
+```js
+parseObject() {
+  this.skipWhitespaceAndComments();
+  const bytes = this.bytes;
+  const byte = bytes.peek();
+  if (IsNumeric[byte]) return this.parseNumberOrRef();
+  if (byte === LessThan) {
+    if (bytes.peekAhead(1) === LessThan) return this.parseDictOrStream();
+    return this.parseHexString();
+  }
+  if (byte === ForwardSlash)      return this.parseName();
+  if (byte === LeftSquareBracket) return this.parseArray();
+  if (byte === LeftParen)         return this.parseString();
+  if (byte === t_code && this.matchKeyword(KwTrue))  return PDFBool.True;
+  if (byte === f_code && this.matchKeyword(KwFalse)) return PDFBool.False;
+  if (byte === n_code && this.matchKeyword(KwNull))  return PDFNull;
+  throw new PDFObjectParsingError(bytes.position(), byte);
+}
+```
+
+Three changes from upstream:
+
+1. Peek the first byte once, up front.
+2. Dispatch order reshuffled for dict-value frequency: numbers /
+   refs first (`IsNumeric[byte]` is a Uint8Array index, the
+   cheapest possible test), then `<<` / `<` (collapsed into one
+   `LessThan` branch with the `peekAhead` lookup inside), then
+   names, arrays, strings.
+3. The three keyword paths are gated -- `byte === t` / `f` / `n`
+   guards each `matchKeyword` call, so a non-keyword input never
+   pays for the speculative scan + rewind.
+
+Correctness: a value starting with `t`/`f`/`n` that isn't
+`true`/`false`/`null` falls through to the same
+`PDFObjectParsingError` the upstream code would throw. Dict keys
+can't reach parseObject (`parseDict` calls `parseName()` for
+keys, parseObject only for values), and names always start with
+`/`. Numbers can't start with letters. So the only valid values
+that hit the gated keyword branches are the three keywords
+themselves.
+
+`PDFObjectParser` isn't re-exported from pdf-lib's index, so the
+shim reaches in via `pdf-lib/cjs/core/parser/PDFObjectParser.js`
+through `createRequire` -- same shape as `fast-parse-dict.mjs`.
+
+### Results
+
+Profile diff, both runs `--detach-pages --no-timing` with every
+other shipping shim active, 100 us sampling:
+
+| metric                                  | pre        | post       | Δ                  |
+| ---                                     | ---        | ---        | ---                |
+| `parseObject` / `fastParseObject` self  | 81.86 ms (5.15 %) | 40.25 ms (3.07 %) | **-41.6 ms (-51 %)** |
+| `fastOf` self                           | 99.12 ms (6.23 %) | 64.18 ms (4.90 %) | -34.9 ms           |
+| `fastParseDict` self                    | 113.05 ms (7.11 %) | 65.26 ms (4.98 %) | -47.8 ms           |
+
+The targeted row roughly halves in self-time, as the model
+predicts (three `matchKeyword` calls collapsed to first-byte
+dispatch). The `fastOf` and `fastParseDict` drops aren't from
+this shim doing less work in those frames -- they're profile
+attribution shifting around once `parseObject` is no longer
+dominating its own children's sampling window (sampled duration
+fell from 1.58 s to 1.34 s overall).
+
+Wall-clock is too noisy on this machine to read at this scale --
+the mechanism-confirmed ~42 ms via profile attribution is the
+honest number.
+
+PDF output is byte-equivalent: same dispatch decisions, same
+fallthrough behaviour, same error shape.
+
 ## Strip the parse-speed machinery: synchronify the load path
 
 After the eight `--fast-*` patches above had nibbled the process
@@ -1730,6 +1865,7 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-size-in-bytes                 | ~1.5 s  | ~1.0 s | ~0.5 s |
 | + fast-dict-iter                     | ~1.4 s  | ~1.0 s | ~0.4 s |
 | + fast-parse-dict                    | ~1.4 s  | ~1.0 s | ~0.4 s |
+| + fast-parse-object                  | ~1.4 s  | ~1.0 s | ~0.4 s |
 | **+ fast-sync-load (this section)**  | **~1.3 s** | **~0.8 s** | **~0.5 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's

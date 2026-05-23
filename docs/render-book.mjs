@@ -70,6 +70,13 @@ import { PDFDocument } from 'pdf-lib';
 //     per-dict on every load; pool-dedup makes the canonical
 //     PDFNames reference-stable, so captured constants replace
 //     the calls verbatim. Pulls ~17 ms off fastOf self-time.
+//   fast-parse-object -- replace PDFObjectParser.prototype.parseObject
+//     with a first-byte-dispatch version that gates the three
+//     matchKeyword (true / false / null) scans behind a byte check.
+//     parseObject fires per dict value / array element / indirect
+//     object body; the upstream version pays three speculative
+//     matchKeyword fail-and-rewind costs on every invocation. Same
+//     semantics, dispatch reordered by observed frequency.
 //   fast-sync-load -- rip the parseSpeed / objectsPerTick /
 //     shouldWaitForTick / waitForTick machinery out of both pdf-lib's
 //     load path (PDFDocument.load + five PDFParser /
@@ -92,6 +99,7 @@ import './lib/fast-number-to-string.mjs';
 import './lib/fast-size-in-bytes.mjs';
 import './lib/fast-dict-iter.mjs';
 import './lib/fast-parse-dict.mjs';
+import './lib/fast-parse-object.mjs';
 import './lib/fast-sync-load.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
