@@ -2812,6 +2812,187 @@ a single per-parser mainBuf, which folds the bufIdx field away
 and lets a tighter bit layout track the (mainBuf-relative) start
 + length directly. That's what ends up shipping.
 
+## One-buffer PDFDict
+
+After the fast-dict-double prototype, the heap picture showed
+~1 780 backing arrays in flight: 3 per-depth parser buffers,
+~1 773 owned buffers created by setOutline's factory calls (one
+per outline node), plus a few during save. Each owned buffer
+has Array-header overhead; each parser-buffer needed its own
+slot in the `_buffers` registry. And `bufIdx` in the packed
+value had to be wide enough to address all of them -- 15 bits.
+
+Using **one buffer** for every committed PDFDict entry across the
+whole document would:
+
+- drop ~1 780 Array headers to 1
+- drop `bufIdx` from the packed value entirely (always 0)
+- keep all dict data in contiguous memory (better cache behavior)
+
+This is what ships as
+[fast-dict-onebuf.mjs](../../docs/lib/fast-dict-onebuf.mjs). It
+takes the place of fast-dict-array on the production import in
+`render-book.mjs`. Earlier dict-shape shims (fast-dict-array,
+fast-dict-iter, fast-parse-dict) stay in the tree as A/B
+baselines; the harness mutex rejects combining them.
+
+### The recursion gotcha (again)
+
+A single shared buffer breaks naive parseDict recursion exactly
+like it did when the view-based prototype first hit the same
+question: inner recursion writes into the middle of outer's
+entries, breaking outer's contiguous range.
+
+The fix is a **two-area split**:
+
+- `main` -- one long-lived buffer for committed entries. Append-only.
+- `temp` -- small per-parser working area for active parseDict
+  frames. Reused across all parseDict calls on the parser.
+
+```
+parseDict invocation (at any recursion depth):
+  frameStart = temp.length
+  while (parsing) {
+    key   = parseName()
+    value = parseObject()      // may recurse; temp grows then pops
+    temp.push(key, value)       // ON TOP of anything recursion left
+  }
+  // Commit this frame to main in one contiguous append
+  start = main.length
+  for entry in temp[frameStart..temp.length]:
+    main.push(entry)
+  // Pop our frame off temp
+  temp.length = frameStart
+  return PDFDict with view (start, length)
+```
+
+Outer's entries stay parked in `temp[frameStart..]` while inner
+recurses. Inner appends ON TOP of outer, commits its frame to
+`main` in one append, and pops its frame off `temp`. Outer's
+frame is intact at the top of `temp` again; outer continues
+pushing. When outer commits, its entries are contiguous in `temp`
+and commit contiguously to `main`. Outer's and inner's ranges in
+`main` are at distinct, non-overlapping offsets.
+
+`temp` is tiny -- max recursion depth × max single-dict size = a
+couple dozen slots peak on the book.
+
+### Mutations
+
+The shared (parser-created) range is read-only after parse. The
+ownership flag in `d` distinguishes shared from owned dicts:
+
+- **`set` with existing key**: in-place replace at `main[start +
+  i + 1]`. Safe for both shared and owned; no shifts.
+- **`set` with new key, dict at main's high-water mark**: just
+  `main.push(key, value)` and extend the range by 2. Common for
+  owned dicts that have just been created and are being filled
+  with `.set` calls (the outline construction pattern).
+- **`set` with new key, dict not at high-water mark**: COW. Copy
+  the range to `main`'s tail, append new pair, update encoded
+  value. Happens when other dicts were created between this dict's
+  creation and the `.set` call.
+- **`delete`**: always COW (shifting slots in `main` would corrupt
+  other dicts that point into the affected region).
+
+For setOutline's pattern -- create outline dict, recurse to build
+children, then call `.set(Prev/Next/First/Last/Count)` on it --
+the first `.set` after the recursion COWs the dict to the tail.
+Subsequent `.set`s on the same dict extend in place. Net: ~one
+COW per outline dict, ~5 entry copies each = ~9 k pair copies
+total. Negligible.
+
+### Bit layout
+
+With `bufIdx` gone, the packed value shrinks:
+
+```
+bits  0-23: start  (24 bits, max 16 M slots in main)
+bits 24-37: length (14 bits, max 16 384 slots; max observed 8 706)
+bit  38   : owned flag
+bits 39-52: spare (14 bits)
+```
+
+37 bits used. Still above Smi range (so V8 stores `d` as a
+DoubleField or HeapNumber), but with plenty of headroom and a
+much cleaner layout.
+
+### Measured wins
+
+Heap profile (paired `--heap-profile-process --heap-sampling 512`,
+fast-dict-double baseline vs + fast-dict-onebuf):
+
+| Allocator                          | Pre (KB)  | Post (KB) | Delta             |
+|------------------------------------|----------:|----------:|------------------:|
+| `fastParseDictDouble` / `*OneBuf`  |  18 913.63 |       — (out of top 10) | **-18.9 MB**   |
+| `_makeFromView` / `_makeFromRange` |  16 429.68 |  16 613.10 | flat              |
+| PDFObjectParser.parseArray         |  19 502.52 |  19 512.08 | flat              |
+| Total sampled                      |  83.68 MB |  65.55 MB | **-18.1 MB (-22 %)** |
+
+The dominant change: `fastParseDictDouble` had 18.9 MB of self-
+attributed allocations (the 3 parser per-depth buffers' growth +
+the per-dict array creation in factory paths). With fast-dict-
+onebuf, those are gone entirely -- everything appends to `main`,
+which is allocated once.
+
+CPU profile (same paired methodology, with the wall-clock-is-noisy
+caveat):
+
+| Row                              | Pre (ms) | Post (ms) | Delta              |
+|----------------------------------|---------:|----------:|-------------------:|
+| (garbage collector)              |   128.81 |    151.05 | +22.2 ms           |
+| `fastParseDictDouble` / `*OneBuf` |    44.36 |     53.44 | +9.1 ms            |
+| Total profile duration           |   0.97 s |    1.05 s | +80 ms (~8 %, within machine noise) |
+
+GC self-time bumped up a bit. The `main` buffer is one giant
+~19 MB live object now; V8's mark phase scans it every cycle even
+though we're allocating less new garbage. Heap throughput went
+down 22 %, but live-heap mark cost went up modestly. On this
+machine wall-clock isn't a reliable signal anyway; the heap
+reduction is the headline.
+
+### Cumulative arc
+
+| State                            | Total sampled | Change vs prior |
+|----------------------------------|--------------:|----------------:|
+| Map-backed (pre-fast-dict-array) |   152 MB      | -               |
+| fast-dict-array                  |    92 MB      | -60 MB          |
+| fast-dict-view  (explored)       |    90 MB      | -2 MB           |
+| fast-dict-double (explored)      |    84 MB      | -6 MB           |
+| **fast-dict-onebuf**             |    **66 MB**  | **-18 MB**      |
+
+**-57 % cumulative reduction since the start of this PDFDict
+storage-shape work.** Staging's chain skips the two intermediate
+shims and goes from fast-dict-array straight to fast-dict-onebuf;
+the heap drop on that direct hop is 92 → 66 MB (-28 %).
+
+### Caveats
+
+- **Single context.** Same singleton-PDFContext assumption that
+  fast-dict-double introduced: throws if a second PDFContext is
+  constructed in the process. Fine for our build pipeline (one
+  `PDFDocument.load` per build); a general-purpose variant would
+  need an array + small ctxIdx field.
+- **Single 24-bit start budget.** If `main` exceeds 16 M slots
+  (8 M entries) the next pack() throws. The book's `main` peaks
+  at ~2.4 M slots; 6x headroom.
+- **COW on delete.** Always. Cheap for small dicts; could be slow
+  for huge dicts with frequent deletes. Not a pattern we see.
+- **Live `main` is bigger than the prior approach's transient
+  allocations.** GC mark phase pays for that. The tradeoff -- less
+  *allocation* (heap throughput) but slightly more *live* (mark
+  cost) -- shows in the modestly higher GC time. Profile both
+  signals when evaluating.
+
+### Shipped
+
+`docs/render-book.mjs` imports
+[`./lib/fast-dict-onebuf.mjs`](../../docs/lib/fast-dict-onebuf.mjs)
+in place of the prior `./lib/fast-dict-array.mjs`. fast-dict-array
+stays in the tree as an A/B baseline; the `--fast-dict-onebuf`
+mutex in `measure.mjs` rejects combining either with the other
+dict-shape shims.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -2848,7 +3029,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-indirect-objects              | ~1.1 s  | ~0.7 s | ~0.4 s |
 | + fast-refs miss bypass              | ~1.0 s  | ~0.6 s | ~0.4 s |
 | + fast-pdfnumber-pool                | ~1.0 s  | ~0.6 s | ~0.4 s |
-| **+ parseDict pre-sized array (this section)** | **~1.0 s** | **~0.6 s** | **~0.4 s** |
+| + parseDict pre-sized array          | ~1.0 s  | ~0.6 s | ~0.4 s |
+| **+ fast-dict-onebuf (this section)** | **~1.0 s** | **~0.6 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

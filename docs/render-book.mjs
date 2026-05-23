@@ -58,19 +58,26 @@ import { PDFDocument } from 'pdf-lib';
 //     `n.toString(2)` just to count its bit length) with a non-
 //     allocating short-circuit ladder. Called ~300 k times per save
 //     from PDFCrossRefStream's xref writer.
-//   fast-dict-array -- replace PDFDict's backing Map with a flat
-//     alternating array [k0, v0, k1, v1, ...]. The sampling heap
-//     profile of the process phase put `new Map()` + Map.prototype.set
-//     at ~80 MB combined (50 % of total allocations), 80 % of that
-//     traffic from the parser's per-dict accumulator. The flat-array
-//     shape is one allocation per dict, no hash-table arena; PDF dicts
-//     are tiny enough that linear lookup beats Map hashing. Subsumes
-//     both fast-dict-iter (sizeInBytes / copyBytesInto iterate the
-//     array in place, no Map.forEach context object) and
-//     fast-parse-dict (parser's hot loop accumulates into the array
-//     directly, Type-sentinel dispatch is a short linear scan). Drops
-//     Map+set heap traffic by ~80 %, GC self-time by ~20 %, process
-//     wall-clock by ~4 % (~48 ms / 1.18 s).
+//   fast-dict-onebuf -- one long-lived buffer for every committed
+//     PDFDict entry across the whole document. Parser uses a small
+//     per-instance temp array as a stack of recursion frames; each
+//     parseDict invocation appends to temp, commits its frame to
+//     main in one contiguous append, and pops temp back. PDFDicts
+//     only ever read from main, so a packed (start, length, owned)
+//     Number is the whole instance state -- no separate bufIdx.
+//     Owned dicts (factory-created post-parse) also append to main.
+//     Mutations: in-place replace for existing keys, COW (copy
+//     range to tail, push new pair) for new keys or delete.
+//     PDFContext is a singleton -- one PDFDocument.load per
+//     process; a second distinct context throws. Subsumes
+//     fast-dict-array. Process-phase heap traffic drops from the
+//     Map-backed baseline of ~152 MB down to ~66 MB (-57%); -22%
+//     beyond fast-dict-array. See "One-buffer PDFDict" in
+//     perf/notes/08-pdf-lib.md.
+//
+//     Earlier dict-shape shims (fast-dict-array, fast-dict-iter,
+//     fast-parse-dict) stay in the tree as A/B baselines but are
+//     mutually exclusive with --fast-dict-onebuf in measure.mjs.
 //   fast-parse-object -- replace PDFObjectParser.prototype.parseObject
 //     with a first-byte-dispatch version that gates the three
 //     matchKeyword (true / false / null) scans behind a byte check.
@@ -118,7 +125,7 @@ import './lib/fast-parse-number.mjs';
 import './lib/fast-decode-name.mjs';
 import './lib/fast-number-to-string.mjs';
 import './lib/fast-size-in-bytes.mjs';
-import './lib/fast-dict-array.mjs';
+import './lib/fast-dict-onebuf.mjs';
 import './lib/fast-parse-object.mjs';
 import './lib/fast-sync-load.mjs';
 import './lib/fast-indirect-objects.mjs';

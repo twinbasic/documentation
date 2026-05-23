@@ -175,7 +175,22 @@
 // but PDF dicts are tiny (typically <= 10 entries). Subsumes
 // --fast-parse-dict and --fast-dict-iter (the parser's hot loop
 // accumulates into the array directly; sizeInBytes / copyBytesInto
-// iterate in place). Production runs through it.
+// iterate in place). Now superseded by --fast-dict-onebuf; kept as
+// an A/B baseline.
+//
+// --fast-dict-onebuf collapses the per-dict array allocation into
+// ONE long-lived mainBuf shared across every committed PDFDict
+// entry. A small per-parser temp array acts as a stack of parseDict
+// recursion frames so outer's range stays contiguous when inner
+// recurses. PDFDict instance state packs into one 53-bit Number
+// (24-bit start + 14-bit length + 1-bit owned), no per-dict array
+// header. Owned dicts (factory-created post-parse) append to main
+// and mutate in place / COW to the tail. PDFContext is a singleton
+// in our pipeline (one PDFDocument.load per process); a second
+// distinct context throws. Mutually exclusive with --fast-dict-array
+// and the other dict-shape shims. ~57 % cumulative heap reduction
+// since the original Map-backed PDFDict (152 -> 66 MB). Production
+// runs through it.
 //
 // --fast-indirect-objects replaces PDFContext.indirectObjects
 // (Map<PDFRef, PDFObject>) with a dense array indexed by
@@ -269,6 +284,7 @@ let fastSyncLoad = false;
 let fastDictArray = false;
 let fastIndirectObjects = false;
 let fastPdfnumberPool = false;
+let fastDictOnebuf = false;
 let instrumentParsedict = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -306,6 +322,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-dict-array') fastDictArray = true;
   else if (a === '--fast-indirect-objects') fastIndirectObjects = true;
   else if (a === '--fast-pdfnumber-pool') fastPdfnumberPool = true;
+  else if (a === '--fast-dict-onebuf') fastDictOnebuf = true;
   else if (a === '--instrument-parsedict') instrumentParsedict = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
@@ -351,6 +368,10 @@ if (heapProfileProcess && renderOnly) {
 }
 if (fastDictArray && (fastParseDict || fastDictIter)) {
   console.error('--fast-dict-array subsumes --fast-parse-dict and --fast-dict-iter (Map-backed shims). Pick one shape.');
+  process.exit(2);
+}
+if (fastDictOnebuf && (fastDictArray || fastParseDict || fastDictIter)) {
+  console.error('--fast-dict-onebuf subsumes the other dict-shape shims (different storage shape). Pick one.');
   process.exit(2);
 }
 
@@ -407,6 +428,10 @@ if (fastIndirectObjects) {
 if (fastPdfnumberPool) {
   await import('../docs/lib/fast-pdfnumber-pool.mjs');
   console.log('[harness] fast-pdfnumber-pool: value-keyed cache in front of PDFNumber.of');
+}
+if (fastDictOnebuf) {
+  await import('../docs/lib/fast-dict-onebuf.mjs');
+  console.log('[harness] fast-dict-onebuf: ONE long-lived buffer for all PDFDict entries + small per-parser temp');
 }
 if (instrumentParsedict) {
   await import('./instrument-parsedict.mjs');
