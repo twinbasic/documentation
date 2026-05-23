@@ -3448,6 +3448,126 @@ change. The subsequent Phase 2 / Phase 3 prototypes (next two
 sections) use these numbers to predict their wins; both turn out
 not to ship for reasons documented there.
 
+## Phase 2: Float64Array mainBuf + encoded slots (explored, didn't ship)
+
+The next architectural step from Phase 1. `main` becomes a
+`Float64Array`; every entry (key and value alike) is encoded as
+a 4-bit type tag + 49-bit pool id / payload packed into a single
+Float64. The hypothesis was that V8 would stop marking the 2.34 M
+Object-ref slots in `main` during GC, dropping mark-phase cost.
+
+Prototyped as `fast-dict-encoded.mjs`. Outcome: **wash.** The
+slot-mark-cost win is real (mainBuf's 2.34 M Object-ref slots →
+Float64 slots → V8 marks zero of them) but the cost wasn't large
+enough to matter -- pointer-array marks are fast in V8. The
+encoding overhead (per-slot encode at parse, per-slot decode at
+save) roughly cancels the savings; heap goes up ~3 MB from the
+new pool Maps (numberByValue, stringByValue, hexByValue,
+refGnByKey). The code was kept in faraday as opt-in (foundation
+for Phase 3) but is not pulled into staging; the design rationale
+below is the takeaway worth preserving.
+
+### Encoding scheme
+
+```
+Float64 slot (within Number.MAX_SAFE_INTEGER = 2^53 - 1):
+  bits 49-52  : type tag (4 bits, 16 possible, 11 used)
+  bits  0-48  : payload (49 bits)
+
+Tags:
+  0   PDFNull       (payload = 0)
+  1   PDFBool.False (payload = 0)
+  2   PDFBool.True  (payload = 0)
+  3   PDFName       (payload = name pool id)
+  4   PDFRef gen=0  (payload = objectNumber)
+  5   PDFRef gen!=0 (payload = side pool id)
+  6   PDFNumber     (payload = number pool id)
+  7   PDFDict       (payload = packed (start, length) -- the
+                    existing 38-bit fast-dict-onebuf encoding)
+  8   PDFArray      (payload = array pool id)
+  9   PDFString     (payload = string pool id, value-dedup)
+  10  PDFHexString  (payload = hex pool id, value-dedup)
+  11-15  reserved
+```
+
+### Pool subsumption
+
+The shim absorbs three existing pool shims under one umbrella:
+
+- `PDFRef.of` -- patched to assign `_encId` to each instance;
+  gen=0 uses `objectNumber` as id (dense `refByObjNum[]`); gen!=0
+  uses a sequential side-pool. Would subsume **`--fast-refs`**.
+- `PDFNumber.of` -- patched to assign `_encId`; value-dedup via
+  `numberByValue` Map + parallel `numberById[]`. Would subsume
+  **`--fast-pdfnumber-pool`**.
+- `PDFName.of` -- pdf-lib already pools by string; extended
+  with `_encId` assignment + `nameById[]` for decode.
+- `PDFArray`, `PDFString`, `PDFHexString` -- new pools (none
+  existed). `PDFArray` is mutable so no value-dedup, just
+  sequential id. Strings/HexStrings are immutable so dedup by
+  `value`.
+
+Mutually exclusive with `--fast-dict-onebuf`, `--fast-refs`,
+`--fast-pdfnumber-pool`, and the older dict-shape shims.
+
+### A trap worth recording: eager dictByPayload caching
+
+The first cut of `_makeFromRange` registered every parse-created
+PDFDict in a `dictByPayload` Map so `decodeValue(TAG_DICT)` would
+return the same instance. That writes 261 k Map entries during
+parse -- `set @ (no url):0` shot to **15.4 MB / 29 %** of the
+heap profile, and total sampled heap went 65 → 92 MB (+27 MB).
+
+The fix is the same kind of insight as the lazy materialization
+pattern that surfaced earlier: top-level dicts (226 k) live in
+`PDFContext.indirectObjects` and are never decoded via
+`TAG_DICT` (their entries are in main, but they themselves
+aren't slot values). Only nested dicts (~5 660) are accessed via
+`TAG_DICT` decode. Caching them lazily on first access caps
+`dictByPayload` at ~5 660 entries (~360 KB) and collapses the
+regression. Same shape of bug as the IC-invalidation gotcha in
+Phase 1: a plausible-looking eager cache landed an enormous heap
+regression that only made sense once you saw which population
+was actually being decoded vs only being written.
+
+### Mixed measured result
+
+| Metric | Phase 1 | Phase 2 | Delta |
+|---|---:|---:|---:|
+| Process wall (clean run) | 1.16 s | 1.18 s | ~+20 ms (noise) |
+| GC self-time (CPU profile) | 151 ms | 149 ms | ~0 ms |
+| GC total (`--trace-gc` full process) | 190 ms | 159 ms | -31 ms |
+| Mark-Compact events | 8 | 10 | +2 |
+| Scavenge events | 26 | 26 | 0 |
+| Heap allocation sampled | 65.4 MB | 68.5 MB | **+3 MB** |
+| Live mainBuf slots V8 marks | ~2.34 M | ~0 (Float64Array) | -100 % |
+| Structural output | byte-identical | byte-identical | -- |
+
+**Phase 2 is a wash.** The encoding overhead roughly cancels the
+mark-phase savings, and the new pool Maps cost more than the
+slot-mark reduction is worth.
+
+The first CPU profile of P2 showed +39 ms GC and +130 ms wall,
+but reruns landed it back near Phase 1. The original numbers were
+single-run noise (slow Scavenge cluster on a busy machine).
+
+### Why faraday kept it as opt-in, and why staging doesn't
+
+Two reasons faraday left it in tree:
+
+1. **Pool ID infrastructure is reusable.** Phase 3 (PDFArray
+   storage refactor) uses the same encoding scheme, same pools,
+   same `encodeValue` / `decodeValue` -- it piggybacks on
+   Phase 2 for free.
+2. **Validates the architecture.** Float64Array mainBuf works,
+   byte-identical, no correctness issues. If a future workload
+   stresses mainBuf mark cost more, Phase 2 would be ready.
+
+Phase 3 also doesn't ship (next section), so the dependency
+chain doesn't earn its keep on staging. Dropping Phase 2's code
+keeps the production import chain narrow; the design notes here
+are the part worth preserving.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
