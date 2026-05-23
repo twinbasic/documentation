@@ -34,6 +34,7 @@
 //                    [--fast-size-in-bytes] [--fast-inflate]
 //                    [--fast-parse-number] [--fast-parse-dict]
 //                    [--fast-parse-object] [--fast-sync-load]
+//                    [--fast-dict-array]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -164,6 +165,17 @@
 // rewind costs on every invocation. Same semantics, dispatch
 // reordered by observed frequency in dict-value position.
 //
+// --fast-dict-array replaces PDFDict's backing Map with a flat
+// alternating array [k0, v0, k1, v1, ...]. The sampling heap profile
+// showed `new Map()` + `Map.prototype.set` accounting for half the
+// process-phase allocations (~63 MB combined), 80 % of that traffic
+// from the parser's per-dict accumulator. The flat array is one
+// allocation per dict, no hash-table arena; lookups are linear scans
+// but PDF dicts are tiny (typically <= 10 entries). Subsumes
+// --fast-parse-dict and --fast-dict-iter (the parser's hot loop
+// accumulates into the array directly; sizeInBytes / copyBytesInto
+// iterate in place). Production runs through it.
+//
 // --fast-sync-load rips pdf-lib's parseSpeed / objectsPerTick /
 // shouldWaitForTick / waitForTick machinery out of both the load
 // path (PDFDocument.load + PDFParser.parseDocument / parseDocumentSection
@@ -234,6 +246,7 @@ let fastDictIter = false;
 let fastParseDict = false;
 let fastParseObject = false;
 let fastSyncLoad = false;
+let fastDictArray = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -267,6 +280,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-parse-dict') fastParseDict = true;
   else if (a === '--fast-parse-object') fastParseObject = true;
   else if (a === '--fast-sync-load') fastSyncLoad = true;
+  else if (a === '--fast-dict-array') fastDictArray = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -307,6 +321,10 @@ if (cpuProfileProcess && renderOnly) {
 }
 if (heapProfileProcess && renderOnly) {
   console.error('--heap-profile-process is incompatible with --render-only (the process phase is skipped).');
+  process.exit(2);
+}
+if (fastDictArray && (fastParseDict || fastDictIter)) {
+  console.error('--fast-dict-array subsumes --fast-parse-dict and --fast-dict-iter (Map-backed shims). Pick one shape.');
   process.exit(2);
 }
 
@@ -351,6 +369,10 @@ if (fastParseObject) {
 if (fastSyncLoad) {
   await import('../docs/lib/fast-sync-load.mjs');
   console.log('[harness] fast-sync-load: synchronify PDFParser load path, strip waitForTick machinery');
+}
+if (fastDictArray) {
+  await import('../docs/lib/fast-dict-array.mjs');
+  console.log('[harness] fast-dict-array: PDFDict backed by flat alternating array (subsumes fast-parse-dict + fast-dict-iter)');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');

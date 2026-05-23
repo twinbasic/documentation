@@ -1850,6 +1850,203 @@ neither does anything:
 to A/B pdf-lib's defaults against `Fastest`, and it runs against
 vanilla pdf-lib without the shim by design.
 
+## Replace `PDFDict`'s backing `Map` with a flat array
+
+With `fast-dict-iter` and `fast-parse-dict` both shipping, the
+process-phase CPU profile read tidy enough that the next move was
+to look at the *other* side of the ledger: the sampling heap
+profile rather than CPU. The motivating run, captured with the
+canonical heap command (`--heap-profile-process --heap-sampling
+512`):
+
+```
+   self_kb   self_%   function  @  source
+  54315.27   34.75%   set                                  (V8 builtin)
+  24804.17   15.87%   Map                                  (V8 builtin)
+  19488.12   12.47%   PDFObjectParser.parseArray
+  16786.41   10.74%   PDFParser.parseIndirectObjectHeader
+  15329.21    9.81%   PDFObjectParser.parseNumberOrRef
+   9599.45    6.14%   fastParseDict        (fast-parse-dict.mjs)
+   9581.25    6.13%   fastOf               (fast-decode-name.mjs)
+   ...
+```
+
+`set` and `Map` together at ~80 MB -- **half of all process-phase
+allocations** -- were the natural place to start.
+`find-heap-callers.mjs` attributed them cleanly:
+
+```
+$ node find-heap-callers.mjs process.heapprofile set
+set: total=53.04 MB
+  39107.27 KB   fastParseDict @ fast-parse-dict.mjs:62
+   7168.04 KB   PDFParser.parseIndirectObjectHeader
+   7168.04 KB   parseIndirectObjectSync @ fast-sync-load.mjs:140
+    ...
+
+$ node find-heap-callers.mjs process.heapprofile Map
+Map: total=24.22 MB
+  24691.51 KB   fastParseDict @ fast-parse-dict.mjs:62
+    112.13 KB   buildPdfObjectsForOutline
+```
+
+84 % of the combined Map+set traffic was one site, the parser's
+per-dict accumulator inside `fastParseDict`:
+
+```js
+const dict = new Map();             // 24 MB of Map() constructors here
+while (...) {
+  const key = this.parseName();
+  const value = this.parseObject();
+  dict.set(key, value);             // 38 MB of set() entries here
+  ...
+}
+return PDFDict.fromMapWithContext(dict, this.context);
+```
+
+One `new Map()` + N `Map.prototype.set` calls per parsed dict,
+then the Map gets stored as `PDFDict.dict` and consulted later by
+all the `PDFDict` methods. Every Map allocates a header + a
+hash-table backing arena + per-entry bucket objects; on the book
+that's ~9 k dicts each paying for an arena it doesn't need,
+because PDF dicts are **tiny** (typical has <= 10 entries, most
+have 2-3) and nothing in pdf-lib's API touches a parsed dict
+often enough for the hash to pay back.
+
+The remaining 16 % was `context.assign` populating
+`PDFContext.indirectObjects` (a Map<PDFRef, PDFObject>) -- that's
+a single Map shared across the load, not addressed here.
+
+### The shape
+
+Replace the Map with a flat alternating array:
+
+```js
+// before
+this.dict = new Map([[key0, value0], [key1, value1], ...]);
+// after
+this.dict = [key0, value0, key1, value1, ...];
+```
+
+One allocation per dict (the array; the entries are stored inline
+in the array's backing store, no per-entry boxes). Lookups become
+linear scans:
+
+```js
+function indexOfKey(arr, key) {
+  for (let i = 0, len = arr.length; i < len; i += 2) {
+    if (arr[i] === key) return i;
+  }
+  return -1;
+}
+```
+
+For 5-entry dicts (the dominant size class), a 5-iteration linear
+scan with strict-equality comparison beats `Map.prototype.get`
+(which has to hash the key, then walk a hash-bucket chain) on
+every V8 microbench checked. The crossover is somewhere around
+20-30 entries; PDF dicts almost never get there.
+
+### Compatibility
+
+`PDFDict`'s public method surface is
+`.keys / .values / .entries / .set / .get / .has / .delete /
+.lookup / .lookupMaybe / .asMap / .clone / .toString /
+.sizeInBytes / .copyBytesInto / .uniqueKey`. Grepping the rest of
+pdf-lib confirmed every consumer goes through that surface --
+`viewerPrefs.dict.set(...)`, `widgetAnnot.dict.get(...)`,
+`xrefStream.dict.set(...)`, etc. all call `PDFDict.prototype.set`/
+`.get`, which we re-implement against the array. Nobody in the
+codebase touches `dict.dict` expecting Map-specific iterators.
+The single direct-Map use, `asMap()`, still returns a fresh
+`new Map(...)` for any caller that wants one.
+
+The seam factories that take a `Map` argument
+(`fromMapWithContext`, `withContextAndPages`, `PDFPageLeaf.clone`'s
+`new Map()` initializer) get small wrappers that convert at the
+boundary. They're called a handful of times per document --
+catalog + page tree + page leaves -- so the conversion is free
+relative to the parser's ~9 k dicts.
+
+### Subsumes two earlier shims
+
+The two existing dict-shape shims are no longer useful in front of
+the array shape:
+
+- `fast-dict-iter` patched `PDFDict.sizeInBytes` and `copyBytesInto`
+  to call `this.dict.forEach((value, key) => ...)` instead of
+  `Array.from(this.dict.entries())`. With `this.dict` as a flat
+  array, both methods become `for (let i = 0; i < arr.length; i += 2)`
+  -- no `forEach`, no `thisArg` context object, no callback
+  allocation.
+- `fast-parse-dict` patched `parseDict` to hoist the
+  Type/Catalog/Pages/Page sentinel `PDFName.of` calls into
+  module-level constants. The new `parseDict` (in
+  `fast-dict-array.mjs`) keeps the hoisted constants and also
+  accumulates into the flat array directly. The Type-sentinel
+  dispatch becomes a short linear scan over the array; PDF
+  convention places `/Type` at index 0 or 2, so it's effectively
+  O(1) per dict.
+
+`fast-dict-array.mjs` carries both behaviours inline. The two
+older shims stay in the tree as opt-in flags on `measure.mjs`
+(useful for A/B against the `Map` shape) but are mutually
+exclusive with `--fast-dict-array` (the harness errors if you
+combine them).
+
+### Measured wins
+
+Heap profile (paired `--heap-profile-process --heap-sampling 512`,
+same canonical command otherwise):
+
+| Allocator        | Map shape (before) | Array shape (after) | Delta   |
+|------------------|-------------------:|--------------------:|--------:|
+| `set` builtin    |          54.3 MB   |             14.8 MB | -73 %   |
+| `Map` builtin    |          24.8 MB   |    < 1 MB (off top) | -96 %   |
+| `push` builtin   |              -     |              2.8 MB | +2.8 MB |
+| Total sampled    |         152.6 MB   |            140.1 MB | -8 %    |
+
+The total-allocation drop is smaller than the Map+set drop
+because the sampling profiler reattributes the array contents
+(`PDFObject` references that used to sit inside Map bucket
+allocations) to the `fastParseDictArray` frame that allocates the
+array -- the allocations are still there, just attributed
+differently. The **real** win is the absence of Map header +
+hash-table arena per dict, which the profile shows by the `Map`
+row collapsing.
+
+CPU profile (paired `--cpu-profile-process --cpu-sampling 100`):
+
+| Row                                | Before  | After   |
+|------------------------------------|--------:|--------:|
+| `(garbage collector)`              | 213 ms  | 170 ms  |
+| `fastParseDict` / `fastParseDictArray` | 113 ms  |  40 ms  |
+| `PDFDict.copyBytesInto` + `_copyBytesIntoEntry` | 60 ms |  26 ms  |
+
+Wall-clock (paired no-profile, 4 runs each, mean process phase):
+
+| Shape        | Process (mean) | Range          |
+|--------------|---------------:|----------------|
+| Map (before) |        1.180 s | 1.15 - 1.20 s  |
+| Array (after)|        1.132 s | 1.11 - 1.15 s  |
+
+**~48 ms saved on the 1.18 s process phase (~4 %).** The
+profile-time delta is bigger than the wall-clock delta because
+the CPU profiler's sampling overhead falls disproportionately on
+hot allocator paths -- a familiar caveat. The honest signal is
+the no-profile A/B.
+
+The output PDF is structurally identical (1651 pages, 1773
+outline nodes, same title / creator metadata), within the build's
+intrinsic timestamp/random-ID noise (the build is
+non-deterministic between runs anyway -- two consecutive no-shim
+runs differ by ~30 bytes too).
+
+`docs/render-book.mjs` swaps `./lib/fast-dict-iter.mjs` +
+`./lib/fast-parse-dict.mjs` for the single
+`./lib/fast-dict-array.mjs` import. The two older shims stay in
+the tree for A/B; the harness rejects combining them with
+`--fast-dict-array`.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -1881,7 +2078,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-dict-iter                     | ~1.4 s  | ~1.0 s | ~0.4 s |
 | + fast-parse-dict                    | ~1.4 s  | ~1.0 s | ~0.4 s |
 | + fast-parse-object                  | ~1.4 s  | ~1.0 s | ~0.4 s |
-| **+ fast-sync-load (this section)**  | **~1.3 s** | **~0.8 s** | **~0.5 s** |
+| + fast-sync-load                     | ~1.3 s  | ~0.8 s | ~0.5 s |
+| **+ fast-dict-array (this section)** | **~1.1 s** | **~0.7 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

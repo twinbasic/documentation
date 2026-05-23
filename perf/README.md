@@ -66,7 +66,7 @@ or pdf-lib), or to write `book.pdf` for behavioural verification.
 The mirror command for CPU-profiling the pdf-lib roundtrip:
 
 ```
-node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-iter --fast-parse-dict --fast-parse-object --fast-sync-load --cpu-profile-process --cpu-sampling 100
+node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-array --fast-parse-object --fast-sync-load --cpu-profile-process --cpu-sampling 100
 ```
 
 Flag rationale:
@@ -119,29 +119,25 @@ Flag rationale:
   trip. Every numeric token parsed during `PDFDocument.load`
   flows through these -- hundreds of thousands of calls per load
   on the book. Production runs through it.
-- `--fast-dict-iter` -- inject
-  [docs/lib/fast-dict-iter.mjs](../docs/lib/fast-dict-iter.mjs),
-  replacing `PDFDict.sizeInBytes` and `PDFDict.copyBytesInto` with
-  versions that iterate the underlying Map in place via
-  `forEach((value, key), thisArg)` instead of materialising a fresh
-  Array of `[key, value]` tuples via `this.entries()` on every call.
-  The save path fires both consumers on every dict (~100 k
-  `Array.from` calls feeding the GC), so this was the largest
-  non-GC row in the profile (~10 % of process self-time charged to
-  `PDFDict.entries`). ~80 ms saved per process run. Production runs
-  through it.
-- `--fast-parse-dict` -- inject
-  [docs/lib/fast-parse-dict.mjs](../docs/lib/fast-parse-dict.mjs),
-  replacing `PDFObjectParser.prototype.parseDict` with a version
-  that hoists the four sentinel `PDFName.of` calls (`'Type'`,
-  `'Catalog'`, `'Pages'`, `'Page'`) out of the type-dispatch tail
-  and substitutes module-level captured constants. Pool-dedup
-  guarantees the canonical `PDFName`s are reference-stable for the
-  whole load. With `--fast-decode-name` already in effect the four
-  calls were collapsing to `fastCache.get` hits per dict, but
-  `fastOf` was still the #4 row in the profile -- removing the
-  calls pulls ~17 ms (~22 %) off `fastOf` self-time. Production
-  runs through it.
+- `--fast-dict-array` -- inject
+  [docs/lib/fast-dict-array.mjs](../docs/lib/fast-dict-array.mjs),
+  replacing `PDFDict`'s backing `Map` with a flat alternating
+  `[k0, v0, k1, v1, ...]` array and patching every `PDFDict`
+  prototype method (and the parser's `parseDict`) to read it. The
+  sampling heap profile of the process phase put `new Map()` +
+  `Map.prototype.set` at ~80 MB combined (50 % of total allocations
+  on the book), 80 % of that traffic from the parser's per-dict
+  accumulator. The flat-array shape is one allocation per dict, no
+  hash-table arena; PDF dicts are tiny (typically <= 10 entries) so
+  linear lookup beats Map hashing. Subsumes `--fast-dict-iter`
+  (`sizeInBytes` / `copyBytesInto` iterate the array in place, no
+  `Map.forEach` context object) and `--fast-parse-dict` (parser's
+  hot loop accumulates into the array directly, Type-sentinel
+  dispatch is a short linear scan -- PDF convention places `/Type`
+  first, so the scan is effectively O(1) per dict). ~80 % drop in
+  `Map`+`set` heap traffic, ~20 % drop in process GC self-time,
+  ~4 % drop in process wall-clock (~48 ms / 1.18 s). Production
+  runs through it; the two old shims stay on disk as A/B baselines.
 - `--fast-parse-object` -- inject
   [docs/lib/fast-parse-object.mjs](../docs/lib/fast-parse-object.mjs),
   replacing `PDFObjectParser.prototype.parseObject` with a
@@ -204,7 +200,7 @@ process phase -- "where is pdf-lib allocating bytes?" rather than
 "where is it spending cycles?":
 
 ```
-node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-iter --fast-parse-dict --fast-parse-object --fast-sync-load --heap-profile-process --heap-sampling 512
+node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-array --fast-parse-object --fast-sync-load --heap-profile-process --heap-sampling 512
 ```
 
 Same `--fast-*` set as the CPU command (production is the baseline
@@ -365,8 +361,9 @@ run.bat --fast-number-to-string           # skip numberToString redundant toStri
 run.bat --fast-size-in-bytes              # non-allocating ladder for xref byte-width (also ships; opt-in here for A/B)
 run.bat --fast-inflate                    # swap pako.inflate for node:zlib.inflateSync (also ships; opt-in here for A/B)
 run.bat --fast-parse-number               # direct-integer accumulator for parseRawNumber/parseRawInt (also ships; opt-in here for A/B)
-run.bat --fast-dict-iter                  # in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto (also ships; opt-in here for A/B)
-run.bat --fast-parse-dict                 # hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict (also ships; opt-in here for A/B)
+run.bat --fast-dict-iter                  # in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto (Map-shape baseline; subsumed by --fast-dict-array in production)
+run.bat --fast-parse-dict                 # hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict (Map-shape baseline; subsumed by --fast-dict-array in production)
+run.bat --fast-dict-array                 # replace PDFDict's backing Map with a flat [k,v,k,v,...] array; subsumes --fast-dict-iter + --fast-parse-dict (also ships; opt-in here for A/B)
 run.bat --fast-parse-object               # first-byte dispatch in parseObject; gate true/false/null matchKeyword behind byte check (also ships; opt-in here for A/B)
 run.bat --fast-sync-load                  # synchronify PDFDocument.load + parser; strip waitForTick machinery (also ships; opt-in here for A/B)
 ```
@@ -487,6 +484,7 @@ file documenting each:
 | `parseDict` sentinel-PDFName hoist (Type/Catalog/Pages/Page) | [08](notes/08-pdf-lib.md) | ~17 ms profile (fastOf -22 %) |
 | Synchronify pdf-lib load + save (strip `__awaiter` scaffolding) | [08](notes/08-pdf-lib.md) | ~0.36 s process (load -26 %, GC -53 ms) |
 | `parseObject` first-byte dispatch + gated keyword scans | [08](notes/08-pdf-lib.md) | ~42 ms profile (parseObject -51 %) |
+| `PDFDict` flat-array storage (subsumes iter + parseDict shims) | [08](notes/08-pdf-lib.md) | ~48 ms process (Map+set heap -80 %, GC -20 %) |
 
 What was tried and didn't ship:
 
@@ -513,4 +511,4 @@ order; later ones reference earlier ones for context.
 | [05-blink-trace.md](notes/05-blink-trace.md) | What happened when we tried move-not-clone (a `previousLeaf` cache shipped instead of move); cracking the cpu profile's `(program)` row open with a Blink-category trace; the WhiteSpaceFilter paired-A/B that found it wasn't worth its layout cost in our pipeline. |
 | [06-microtasks-pageranges-css.md](notes/06-microtasks-pageranges-css.md) | Following `RunMicrotasks` down to zero (chunker fully sync); why `pageRanges` sharding is off the table; CSS cost attribution showing print.css's individual sections are all below the noise floor. |
 | [07-memory.md](notes/07-memory.md) | Where the renderer's 1.9 GB goes -- process-tree footprint, per-allocator + per-Blink-class breakdown, `--disable-gpu` + `--in-process-gpu` saving ~200 MB, a GC-pass probe finding 180 MB of unswept Oilpan garbage. |
-| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; pako's per-stream init dominates with ~4 500 small streams (routing pdf-lib's `deflate` + `inflate` through `node:zlib` saves ~1.5 s); `PDFRef.of`'s string-keyed Map lookup at 1.2 M calls per load (dense-array gen=0 cache saves ~0.2 s); parallelising save's per-stream deflate on libuv's pool with `objectsPerStream: 500` (~0.3 s off the main thread; PDF -5 %); `decodeName`'s regex scan on 2.76 M `PDFName.of` calls per load with a 0.0001 % hit rate (no-`#` cache saves ~0.5 s); `numberToString`'s redundant `toString`/`split`/`parseInt` on the 100 % no-`e` path; `sizeInBytes` allocating `n.toString(2)` on ~300 k xref-writer calls (short-circuit ladder saves ~60 ms); `PDFDict.entries` allocating `Array.from(map.entries())` on every dict serialisation (`Map.forEach` with hoisted callbacks saves ~80 ms); `parseDict`'s type-dispatch tail re-running `PDFName.of('Type'/'Catalog'/'Pages'/'Page')` per dict (hoisted sentinel constants drop `fastOf` self-time by 22 %); pdf-lib's `__awaiter`/`__generator` scaffolding on nine load + save methods costing ~135 ms of attributed self-time + ~50 ms GC (synchronified twins save 0.36 s of process); `parseObject`'s three speculative `matchKeyword(true/false/null)` scans on every dispatch (first-byte peek + gated keyword scans halve `parseObject` self-time). |
+| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; pako's per-stream init dominates with ~4 500 small streams (routing pdf-lib's `deflate` + `inflate` through `node:zlib` saves ~1.5 s); `PDFRef.of`'s string-keyed Map lookup at 1.2 M calls per load (dense-array gen=0 cache saves ~0.2 s); parallelising save's per-stream deflate on libuv's pool with `objectsPerStream: 500` (~0.3 s off the main thread; PDF -5 %); `decodeName`'s regex scan on 2.76 M `PDFName.of` calls per load with a 0.0001 % hit rate (no-`#` cache saves ~0.5 s); `numberToString`'s redundant `toString`/`split`/`parseInt` on the 100 % no-`e` path; `sizeInBytes` allocating `n.toString(2)` on ~300 k xref-writer calls (short-circuit ladder saves ~60 ms); `PDFDict.entries` allocating `Array.from(map.entries())` on every dict serialisation (`Map.forEach` with hoisted callbacks saves ~80 ms); `parseDict`'s type-dispatch tail re-running `PDFName.of('Type'/'Catalog'/'Pages'/'Page')` per dict (hoisted sentinel constants drop `fastOf` self-time by 22 %); pdf-lib's `__awaiter`/`__generator` scaffolding on nine load + save methods costing ~135 ms of attributed self-time + ~50 ms GC (synchronified twins save 0.36 s of process); `parseObject`'s three speculative `matchKeyword(true/false/null)` scans on every dispatch (first-byte peek + gated keyword scans halve `parseObject` self-time); the sampling heap profile pointing at `new Map()` + `Map.prototype.set` at ~50 % of process-phase allocations (replacing `PDFDict`'s backing `Map` with a flat alternating `[k,v,k,v,...]` array drops Map+set heap traffic ~80 % and subsumes the earlier `fast-dict-iter` + `fast-parse-dict` shims). |

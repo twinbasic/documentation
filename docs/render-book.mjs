@@ -58,18 +58,19 @@ import { PDFDocument } from 'pdf-lib';
 //     `n.toString(2)` just to count its bit length) with a non-
 //     allocating short-circuit ladder. Called ~300 k times per save
 //     from PDFCrossRefStream's xref writer.
-//   fast-dict-iter -- replace PDFDict.sizeInBytes / copyBytesInto
-//     with versions that iterate the underlying Map in place via
-//     forEach, instead of materialising a fresh Array of [key, value]
-//     tuples via this.entries() on every call. ~80 ms saved per
-//     process run on the book + eliminates the largest non-GC row
-//     (PDFDict.entries was ~10 % of process self-time).
-//   fast-parse-dict -- hoist the four sentinel PDFName.of calls
-//     (Type / Catalog / Pages / Page) out of the type-dispatch tail
-//     in PDFObjectParser.prototype.parseDict. The dispatch fires
-//     per-dict on every load; pool-dedup makes the canonical
-//     PDFNames reference-stable, so captured constants replace
-//     the calls verbatim. Pulls ~17 ms off fastOf self-time.
+//   fast-dict-array -- replace PDFDict's backing Map with a flat
+//     alternating array [k0, v0, k1, v1, ...]. The sampling heap
+//     profile of the process phase put `new Map()` + Map.prototype.set
+//     at ~80 MB combined (50 % of total allocations), 80 % of that
+//     traffic from the parser's per-dict accumulator. The flat-array
+//     shape is one allocation per dict, no hash-table arena; PDF dicts
+//     are tiny enough that linear lookup beats Map hashing. Subsumes
+//     both fast-dict-iter (sizeInBytes / copyBytesInto iterate the
+//     array in place, no Map.forEach context object) and
+//     fast-parse-dict (parser's hot loop accumulates into the array
+//     directly, Type-sentinel dispatch is a short linear scan). Drops
+//     Map+set heap traffic by ~80 %, GC self-time by ~20 %, process
+//     wall-clock by ~4 % (~48 ms / 1.18 s).
 //   fast-parse-object -- replace PDFObjectParser.prototype.parseObject
 //     with a first-byte-dispatch version that gates the three
 //     matchKeyword (true / false / null) scans behind a byte check.
@@ -97,8 +98,7 @@ import './lib/fast-parse-number.mjs';
 import './lib/fast-decode-name.mjs';
 import './lib/fast-number-to-string.mjs';
 import './lib/fast-size-in-bytes.mjs';
-import './lib/fast-dict-iter.mjs';
-import './lib/fast-parse-dict.mjs';
+import './lib/fast-dict-array.mjs';
 import './lib/fast-parse-object.mjs';
 import './lib/fast-sync-load.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
