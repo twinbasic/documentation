@@ -165,7 +165,7 @@ if (swappedHtml === BOOK_HTML) {
 function runOnce(outDir) {
   const r = spawnSync('node', [
     'measure.mjs', SWAP_HTML_PATH,
-    '--detach-pages', '--no-timing', '--render-only', '--tracing',
+    '--no-timing', '--render-only', '--tracing',
     '--out', outDir,
   ], { stdio: ['ignore', 'pipe', 'pipe'] });
   const err = r.stderr?.toString() ?? '';

@@ -9,10 +9,11 @@
 // ideally be cleanest, but the harness loads paged.js first; we then
 // register a Paged.Handler so we can dump results at afterRendered.
 //
-// Run with: node measure.mjs --instrument [--detach-pages]
-// Compare runs with and without --detach-pages to see whether the
-// detach handler changed the count of layout-flushing calls, the
-// per-call cost, or both.
+// Run with: node measure.mjs --instrument
+// (detach-pages.js is injected by default; pass --no-detach-pages to
+// compare against the pre-fix baseline -- useful for seeing whether
+// the detach handler changed the count of layout-flushing calls, the
+// per-call cost, or both.)
 
 (() => {
   const stats = {};

@@ -23,13 +23,17 @@ at the bottom of this file.
 The command we reach for whenever CPU-profiling paged.js:
 
 ```
-node measure.mjs --detach-pages --no-timing --render-only --cpu-profile --cpu-sampling 100
+node measure.mjs --no-timing --render-only --cpu-profile --cpu-sampling 100
 ```
 
-(`run.bat` forwards the same args.) Flag rationale:
+(`run.bat` forwards the same args.) The detach-pages handler is now
+injected by default, since it's the shipping fix and matching
+production is the right baseline for any profiling work. Pass
+`--no-detach-pages` if you specifically need the pre-fix O(n²)
+baseline for an A/B against the original quadratic.
 
-- `--detach-pages` -- inject the shipping fix. The profile reflects
-  what production actually pays, not the old O(n^2) baseline.
+Flag rationale:
+
 - `--no-timing` -- skip the per-page `console.log` relay from
   `timing-handler.js`. The relay costs ~2 % of render self-time on
   the 1638-page book and muddies the bottom-up view.
@@ -63,7 +67,7 @@ The harness and core probes:
 | `measure.mjs` | Puppeteer harness. Drives the same flow as `docs/render-book.mjs` (loads the vendored paged.js bundle, runs `PagedPolyfill.preview()`, calls `page.pdf()`, then either the pdf-lib roundtrip or the incremental writer), with optional CPU profiling, in-page handler injection, and DOM-accessor instrumentation. Auto-pins to a fixed core mask on Windows via `pin-cpu.mjs` (see below) for stable measurements; pass `--no-affinity` to opt out. |
 | `pin-cpu.mjs` | Shared shim used by `measure.mjs`, `profile-load.mjs`, `profile-roundtrip.mjs`, and `ab-css.mjs`. On Windows, auto-relaunches the parent Node process under `start /affinity 0x5500 /high` (cores 4-7 physical, thread 0 each, on an 8C16T AMD Ryzen 7) so puppeteer's Chromium children inherit the mask + priority at spawn time. Reduces single-run CPU sample-time variance from ~15-25 % on a stock dev box to ~3 %. No-op on non-Windows; opt out per-invocation with `--no-affinity` or `PERF_PINNED=1`; override mask with `PERF_AFFINITY=<hex>`. |
 | `timing-handler.js` | `Paged.Handler` that records per-page wall time + heap into `window.__pagedTiming` and streams a line per page to the console. Always injected. |
-| `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree (registered against `finalizePage`). The fix. Injected by `--detach-pages` and by `docs/book.bat`. |
+| `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree (registered against `finalizePage`). The shipping fix. Injected by default (both by `measure.mjs` and by `docs/book.bat`); pass `--no-detach-pages` to measure the pre-fix baseline. |
 | `instrument-flush-ops.js` | Wraps `getComputedStyle`, `getBoundingClientRect`, and the `offsetWidth` / `clientWidth` / `scrollWidth` family with counters + per-call timing. Injected by `--instrument`. |
 | `instrument-detach.js` | Counters around `detach-pages.js`'s removeChild / restore cycle. |
 | `time-hooks.js` | Wraps every task registered to `chunker.hooks.*` and `polisher.hooks.*` with a wall-clock timer. Tells you which handler's hook method is eating render time, per page. Injected by `--time-hooks`. |
@@ -163,7 +167,7 @@ real `book.bat` number too.
 run.bat                                   # defaults to ..\docs\_site-pdf\book.html
 run.bat path\to\some-other.html           # explicit input
 run.bat --out my-run                      # explicit output directory
-run.bat --detach-pages                    # inject the detach-pages fix
+run.bat --no-detach-pages                 # opt out of the detach-pages fix (measure pre-fix O(n²) baseline)
 run.bat --cpu-profile                     # CPU-profile the render phase
 run.bat --render-only                     # bail out after render (skip generate + process, ~47s saved)
 run.bat --clone-count                     # report Layout.append clones appended vs survivors per page

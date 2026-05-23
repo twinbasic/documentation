@@ -24,7 +24,7 @@
 //                    [--cpu-profile] [--cpu-sampling <microseconds>]
 //                    [--heap-profile] [--heap-sampling <bytes>]
 //                    [--tracing]
-//                    [--detach-pages] [--instrument] [--time-hooks]
+//                    [--no-detach-pages] [--instrument] [--time-hooks]
 //                    [--incremental] [--chrome-outline] [--no-timing]
 //                    [--clone-count] [--render-only]
 //
@@ -40,9 +40,12 @@
 // possible bottom-up table; loses the per-page CSV and the first/last
 // quartile summary in return.
 //
-// --detach-pages also injects detach-pages.js -- a Paged.Handler that
-// hides each completed page from the layout tree -- to test whether
-// the O(n^2) render hotspot disappears.
+// detach-pages.js is injected by default -- a Paged.Handler that hides
+// each completed page from the layout tree. This is the shipping fix
+// for the O(n^2) render hotspot (see notes/01-baseline-and-detach.md);
+// matching it in the harness keeps measurements aligned with what
+// production renders. Pass --no-detach-pages to measure the pre-fix
+// O(n^2) baseline.
 //
 // --incremental switches the process phase from a pdf-lib roundtrip to
 // an incremental update against Chrome's bytes. Massively faster (sub-
@@ -107,7 +110,7 @@ let cpuProfile = false;
 let cpuSampling = 1000; // microseconds
 let heapProfile = false;
 let heapSampling = 32768; // bytes between samples (CDP default)
-let detachPages = false;
+let detachPages = true;
 let instrument = false;
 let timeHooks = false;
 let incremental = false;
@@ -124,7 +127,8 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
   else if (a === '--heap-profile') heapProfile = true;
   else if (a === '--heap-sampling') heapSampling = parseInt(args[++i], 10);
-  else if (a === '--detach-pages') detachPages = true;
+  else if (a === '--detach-pages') detachPages = true;       // accepted for backwards compat; default since the fix landed
+  else if (a === '--no-detach-pages') detachPages = false;
   else if (a === '--instrument') instrument = true;
   else if (a === '--time-hooks') timeHooks = true;
   else if (a === '--incremental') incremental = true;
@@ -163,7 +167,7 @@ if (cloneCount)  required.push(cloneCountPath);
 for (const p of required) {
   if (!existsSync(p)) {
     console.error(`missing required file: ${p}`);
-    console.error('Run "npm install" inside perf/ first.');
+    console.error('Run "npm install" at the repo root first (run.bat does this automatically).');
     process.exit(1);
   }
 }
