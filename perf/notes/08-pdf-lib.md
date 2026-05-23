@@ -3179,6 +3179,174 @@ production path. Phase 1 (next section) wires the measure-pass
 into production by using the dict-slot count to pre-size
 fast-dict-onebuf's mainBuf in place.
 
+## Phase 1: pre-size mainBuf via measure-pass
+
+The narrow first step of the two-pass architecture. Productionises
+Phase 0's walker, exposes a `setExpectedDictSlots()` hook on
+fast-dict-onebuf, and wires the two together. Replaces
+`new Array(MAIN_INITIAL_CAP = 2_400_000)` with
+`new Array(measuredDictSlots)` -- exact, no slack, no V8 growth.
+
+This is plumbing, not a perf win. The mainBuf savings are
+trivial (~60 K slots of slack on a 2.34 M-slot backing store)
+and the measure pass itself costs ~60 ms inline. Net cost on
+the book is ~40 ms (the measure-pass time minus run-to-run
+noise on load). What Phase 1 buys is **landing the two-pass
+pipeline byte-identical** so a future Phase 2 (Float64Array
+mainBuf) can convert the storage type without re-doing the
+plumbing.
+
+### The shim
+
+- [`docs/lib/measure-pass.mjs`](../../docs/lib/measure-pass.mjs)
+  -- a direct port of the Phase 0 `Measurer` class as a
+  production library. Exports the class and a
+  `measure(bytes) -> counts` convenience wrapper. No
+  dependencies on any `fast-*` shim or on pdf-lib itself; it's
+  a stand-alone byte walker.
+- [`docs/lib/fast-dict-onebuf.mjs`](../../docs/lib/fast-dict-onebuf.mjs)
+  -- gains `setExpectedDictSlots(slots, slack = 1.0)`. Resizes
+  the module-level `main` in place via
+  `main.length = ceil(slots * slack)`. Throws if called after
+  `mainLen > 0` (i.e. after any dict has been committed). Used
+  by the measure-pass wiring; harmless to ignore.
+- [`perf/measure.mjs`](../measure.mjs) `--measure-pass` --
+  runs the walker on rawPdf, calls
+  `setExpectedDictSlots(counts.dictSlots)`, then proceeds to
+  `PDFDocument.load`. Mutex-checked against `--incremental`,
+  `--render-only`, and the (required) `--fast-dict-onebuf`.
+
+### A V8 IC-invalidation gotcha (worth the diversion)
+
+First implementation reassigned the module binding:
+
+```js
+let main = new Array(MAIN_INITIAL_CAP);  // module load
+// ...
+export function setExpectedDictSlots(slots) {
+  main = new Array(slots);                // setter
+}
+```
+
+JS closures see the current binding value -- the reassignment
+*works correctly* in the language sense, and structural validation
+passes. But the heap profile showed `_appendEntries` jumping from
+below-threshold (~430 KB) to **27 MB / 29 %** of total samples,
+with sampled heap going **65 → 92 MB (+27 MB)**.
+
+Hypothesis trail:
+- First guess: HOLEY_SMI_ELEMENTS → HOLEY_ELEMENTS transition on
+  first Object-pointer write, reallocating the ~18 MB backing
+  store. Pre-filling with `arr.fill(null)` to force the transition
+  at allocation time -- *no change*.
+- Second guess: V8's inline caches in `_appendEntries`,
+  `PDFDict.prototype.get`, etc. specialised for the original
+  `main` object (its hidden class, element kind, address).
+  Rebinding `main` to a fresh Array makes the IC slots stale;
+  every call deopts, recompiles, and accumulates allocation
+  overhead attributed to the running frame.
+
+Fix: keep the same Array identity, just resize.
+
+```js
+const main = new Array(MAIN_INITIAL_CAP);  // module load, back to const
+export function setExpectedDictSlots(slots) {
+  main.length = slots;                     // in-place resize
+}
+```
+
+That collapses the regression to noise (+0.14 MB heap, ~0 ms
+CPU). Lesson: **never rebind a module-level value that hot
+closures specialise against, even if the language semantics
+allow it.** Mutate in place.
+
+### Validation: byte-identical output
+
+Two full-pipeline runs through the production shim set, one
+with `--measure-pass` and one without. Both produce a 1 651-page,
+1 773-outline-node, "twinBASIC Documentation"-titled PDF; bytes
+differ by 31 due to Chrome's per-run rawPdf timestamps, which
+propagate through `pdfDoc.save`. Structural identity confirmed.
+
+| Field                | baseline           | with measure-pass  |
+|----------------------|--------------------|--------------------|
+| pages                | 1 651              | 1 651              |
+| outline nodes        | 1 773              | 1 773              |
+| title                | "twinBASIC Documentation" | "twinBASIC Documentation" |
+| bytes                | 16 077 319         | 16 077 288         |
+
+### Measured cost (after the in-place-resize fix)
+
+Paired runs, production shim set, on the book (39 MB rawPdf):
+
+| Phase             | Without measure-pass | With measure-pass | Delta |
+|-------------------|---------------------:|------------------:|------:|
+| measure-pass      | -                    | 60 ms             | +60   |
+| load              | 520 ms               | 500 ms            | -20   |
+| save              | 420 ms               | 420 ms            |   0   |
+| **process total** | **950 ms**           | **990 ms**        | **+40** |
+
+The 60 ms inline-measure number is faster than the 135 ms
+standalone Phase 0 number, almost certainly because rawPdf is
+still hot in CPU caches from `page.pdf()`. Standalone phase0-
+measure.mjs reads it cold from disk into a Buffer first.
+
+The -20 ms on load is within run-to-run noise on this machine.
+The honest summary: Phase 1 adds the cost of the measure pass
+itself (~60 ms) and not much else.
+
+### Measured heap
+
+Paired heap-profile runs (`--heap-profile-process --heap-sampling
+512`), top frames:
+
+| Frame                                | Baseline (KB) | With measure (KB) | Delta |
+|--------------------------------------|--------------:|------------------:|------:|
+| `PDFObjectParser.parseArray`         |     19 583.67 |         19 435.74 | flat  |
+| `_makeFromRange`                     |     16 510.94 |         16 657.94 | flat  |
+| `parseIndirectObjectHeader`          |     13 510.65 |         13 558.62 | flat  |
+| `fastOf`                             |      7 695.92 |          7 817.85 | flat  |
+| `parseIndirectObjectSync`            |      2 101.19 |          2 102.32 | flat  |
+| `_appendEntries` (post-fix)          |          ~430 |              ~430 | flat  |
+| **total sampled**                    |  **65.27 MB** |      **65.41 MB** | **+0.14 MB** |
+
+Flat as expected. Phase 1 doesn't change what gets allocated --
+only the initial capacity of the backing Array, which is a
+one-time module-load-time cost that the process-phase profile
+doesn't see.
+
+### Caveats
+
+- **Requires --fast-dict-onebuf.** The only shim that consumes
+  `setExpectedDictSlots` so far. The mutex check enforces this.
+- **Singleton context inherited.** Phase 1 doesn't loosen
+  fast-dict-onebuf's "one PDFContext per process" constraint --
+  same throw-on-second-load behaviour.
+- **Pre-sizing assumes the measure and load see the same bytes.**
+  Always true for our pipeline (rawPdf is computed once, both
+  measure and load read it). Would break if the bytes mutated
+  between measure and load -- not a pattern we have.
+- **Counts are appearances, not unique.** Phase 1 only needs
+  dict-slot count, which is an appearance count (every slot is
+  one). Any later phase 2+ pool sizing would need unique counts
+  and would add interning to the walker.
+
+### Where this lands
+
+`--measure-pass` lives behind a flag in the harness. Even at just
+~40 ms net regression, there's no current consumer of the
+measured counts that wins anything back on its own -- pre-sizing
+mainBuf exact saves nothing material in isolation. Phase 1
+commits to the wire-up shape; a separate later commit flips the
+flag into production once the architecture has another consumer.
+
+[`docs/lib/measure-pass.mjs`](../../docs/lib/measure-pass.mjs)
+ships as a library (the production home of the walker). Imported
+only when `--measure-pass` is passed. `perf/phase0-measure.mjs`
+is left alone -- it's the historical record of the viability
+gate, intentionally self-contained even though it now duplicates
+the walker.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an

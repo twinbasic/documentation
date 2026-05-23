@@ -62,10 +62,32 @@ const PageName    = PDFName.of('Page');
 
 // Pre-sized to total entries + slack measured on the book. Other
 // workloads grow it naturally (V8-amortized array growth from this
-// starting size).
+// starting size). When the measure-pass shim runs first, it calls
+// setExpectedDictSlots() before parse, which resizes `main` to exact
+// measured demand via `main.length = N`.
 const MAIN_INITIAL_CAP = 2400000;
 const main = new Array(MAIN_INITIAL_CAP);
 let mainLen = 0;
+
+// Replace `main` with an exact-sized backing array. Must be called
+// before any parseDict / withContext / fromMapWithContext (i.e. while
+// mainLen is still 0). `slack` is a multiplier on `slots`; default 1.0
+// (exact). Use a small slack only if the measure pass is approximate.
+export function setExpectedDictSlots(slots, slack = 1.0) {
+  if (mainLen > 0) {
+    throw new Error(
+      `fast-dict-onebuf: setExpectedDictSlots called after parse started (mainLen=${mainLen})`,
+    );
+  }
+  const sized = Math.ceil(slots * slack);
+  // Resize in place rather than reassigning. Reassigning the module-
+  // level `main` binding invalidates V8's inline-cache slots in every
+  // closure that reads it -- the closures get deopted on first call
+  // and recompile against the new array, with a parse-time allocation
+  // spike attributed to _appendEntries (~27 MB sampled on the book).
+  // `main.length = N` keeps the same Array identity; ICs stay valid.
+  main.length = sized;
+}
 
 // ---- Bit-packing helpers --------------------------------------------
 

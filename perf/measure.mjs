@@ -211,6 +211,17 @@
 // allocations to a few thousand cached instances. PDFNumber is
 // immutable so sharing is safe. Production runs through it.
 //
+// --measure-pass runs the no-allocate measure pass from
+// docs/lib/measure-pass.mjs against the raw Chrome PDF before
+// pdf-lib's load, and uses the measured dict-slot count to
+// pre-size fast-dict-onebuf's mainBuf to exact demand (no
+// V8-amortized growth, no slack). Phase 1 of the two-pass
+// measure-allocate-work architecture -- the win is purely the
+// plumbing landing byte-identical; Phase 2 (Float64Array mainBuf)
+// is where the GC mark cost actually drops. Requires
+// --fast-dict-onebuf (the only consumer of setExpectedDictSlots
+// so far). Adds ~135 ms to the process phase on the book.
+//
 // --fast-sync-load rips pdf-lib's parseSpeed / objectsPerTick /
 // shouldWaitForTick / waitForTick machinery out of both the load
 // path (PDFDocument.load + PDFParser.parseDocument / parseDocumentSection
@@ -287,6 +298,7 @@ let fastPdfnumberPool = false;
 let fastDictOnebuf = false;
 let instrumentParsedict = false;
 let dumpRawPdf = null;
+let measurePass = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -326,6 +338,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-dict-onebuf') fastDictOnebuf = true;
   else if (a === '--instrument-parsedict') instrumentParsedict = true;
   else if (a === '--dump-raw-pdf') dumpRawPdf = args[++i];
+  else if (a === '--measure-pass') measurePass = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -374,6 +387,18 @@ if (fastDictArray && (fastParseDict || fastDictIter)) {
 }
 if (fastDictOnebuf && (fastDictArray || fastParseDict || fastDictIter)) {
   console.error('--fast-dict-onebuf subsumes the other dict-shape shims (different storage shape). Pick one.');
+  process.exit(2);
+}
+if (measurePass && !fastDictOnebuf) {
+  console.error('--measure-pass requires --fast-dict-onebuf (the only shim that consumes setExpectedDictSlots so far).');
+  process.exit(2);
+}
+if (measurePass && incremental) {
+  console.error('--measure-pass operates on the pdf-lib load path; --incremental skips that path entirely.');
+  process.exit(2);
+}
+if (measurePass && renderOnly) {
+  console.error('--measure-pass needs the process phase; --render-only skips it.');
   process.exit(2);
 }
 
@@ -437,6 +462,20 @@ if (fastDictOnebuf) {
 }
 if (instrumentParsedict) {
   await import('./instrument-parsedict.mjs');
+}
+
+// --measure-pass loads the measure walker and the setter; both are
+// invoked in-flight (after rawPdf is in hand, before PDFDocument.load).
+let _runMeasurePass = null;
+if (measurePass) {
+  const { measure } = await import('../docs/lib/measure-pass.mjs');
+  const { setExpectedDictSlots } = await import('../docs/lib/fast-dict-onebuf.mjs');
+  _runMeasurePass = (bytes) => {
+    const counts = measure(bytes);
+    setExpectedDictSlots(counts.dictSlots);
+    return counts;
+  };
+  console.log('[harness] measure-pass: no-allocate prelude, pre-sizes fast-dict-onebuf mainBuf to measured dict-slot count');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -743,6 +782,15 @@ try {
     // cautious defaults (parseSpeed: Slow, objectsPerTick: 50) which
     // yield ~500 / ~1000 times per phase on the book; that's pdf-lib's
     // out-of-the-box behaviour, useful as a baseline for A/B work.
+    let measurePassMs = 0;
+    let measureCounts = null;
+    if (_runMeasurePass) {
+      const tMeasureStart = Date.now();
+      measureCounts = _runMeasurePass(rawPdf);
+      measurePassMs = Date.now() - tMeasureStart;
+      console.log(`[harness] measure-pass ${fmtMs(measurePassMs)}  (dicts=${measureCounts.dicts}, dictSlots=${measureCounts.dictSlots}, maxRecursion=${measureCounts.maxRecursion})`);
+    }
+
     const tLoadStart = Date.now();
     const pdfDoc = await PDFDocument.load(rawPdf);
     const loadMs = Date.now() - tLoadStart;
@@ -764,7 +812,8 @@ try {
     }
     const saveMs = Date.now() - tSaveStart;
 
-    processBreakdown = { loadMs, setOutlineMs, saveMs, parallelStreamCount };
+    processBreakdown = { measurePassMs, loadMs, setOutlineMs, saveMs, parallelStreamCount };
+    if (measureCounts) processBreakdown.measureCounts = measureCounts;
   }
   const tProcEnd  = Date.now();
   processMs = tProcEnd - tProcStart;
@@ -791,7 +840,10 @@ try {
     const parTag = processBreakdown.parallelStreamCount
       ? ` (parallel-deflate: ${processBreakdown.parallelStreamCount} streams)`
       : '';
-    console.log(`[harness] process  ${fmtMs(processMs)}  (load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)}${parTag})`);
+    const measureTag = processBreakdown.measurePassMs
+      ? `measure=${fmtMs(processBreakdown.measurePassMs)}, `
+      : '';
+    console.log(`[harness] process  ${fmtMs(processMs)}  (${measureTag}load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)}${parTag})`);
   }
   }  // end if (!renderOnly)
 
