@@ -264,27 +264,35 @@ if (!PDFDict.prototype.__fastDictArrayInstalled) {
   // a short linear scan; PDF convention places /Type first, so it's
   // effectively O(1) per dict.
 
-  // Pre-sized accumulator: instrumented histogram on the book parse
-  // shows 5-entry dicts dominant (52 %, exactly 10 push slots),
-  // 4-entry next (28 %, 8 slots), then a long tail to 7-8 entries.
-  // SCRATCH = 10 is an exact fit for the median case; smaller dicts
-  // (2/3/4 entries) waste a few slots, larger ones (7+) take one
-  // growth via push. Cuts ~70 bytes of FixedArray-header allocation
-  // per dict vs SCRATCH=16 -- on 261 k dict invocations that adds up.
-  const SCRATCH = 10;
+  // Initial capacity for the per-dict accumulator. NOT a scratch
+  // buffer (the array isn't reused across calls -- it's allocated
+  // fresh each dict, filled with parsed entries, and handed to the
+  // PDFDict constructor where it lives as `pdfDict.dict` for the
+  // document's lifetime). Just a pre-sized initial capacity that
+  // skips push-grow's reallocation chain.
+  //
+  // Histogram from the book parse (see instrument-parsedict.mjs):
+  // 5-entry dicts dominate (52 %, exactly 10 push slots), 4-entry
+  // next (28 %, 8 slots), long tail to 7-8 entries. INITIAL_SLOTS =
+  // 10 is exact-fit for the median case; smaller dicts (2/3/4
+  // entries) waste a few slots, larger ones (7+) take one growth
+  // via push. Cuts ~70 bytes of FixedArray-header allocation per
+  // dict vs INITIAL_SLOTS=16 -- on 261 k dict invocations that
+  // adds up.
+  const INITIAL_SLOTS = 10;
   PDFObjectParser.prototype.parseDict = function fastParseDictArray() {
     const bytes = this.bytes;
     bytes.assertNext(CharCodes.LessThan);
     bytes.assertNext(CharCodes.LessThan);
     this.skipWhitespaceAndComments();
-    const arr = new Array(SCRATCH);
+    const arr = new Array(INITIAL_SLOTS);
     let len = 0;
     while (!bytes.done() &&
            bytes.peek() !== CharCodes.GreaterThan &&
            bytes.peekAhead(1) !== CharCodes.GreaterThan) {
       const key = this.parseName();
       const value = this.parseObject();
-      if (len < SCRATCH) {
+      if (len < INITIAL_SLOTS) {
         arr[len]     = key;
         arr[len + 1] = value;
       } else {

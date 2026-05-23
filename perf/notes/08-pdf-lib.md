@@ -2427,13 +2427,16 @@ direct indexing with a `len` counter; fall back to push only for
 the rare overflow case.
 
 ```js
-const SCRATCH = 10;   // median = 5 entries = 10 push slots
-const arr = new Array(SCRATCH);
+// Pre-sized permanent backing array (not a scratch buffer --
+// the array is what we hand to PDFDict, just with capacity set
+// to the median dict size up front to skip the growth chain).
+const INITIAL_SLOTS = 10;   // median = 5 entries = 10 push slots
+const arr = new Array(INITIAL_SLOTS);
 let len = 0;
 while (...) {
   const key = this.parseName();
   const value = this.parseObject();
-  if (len < SCRATCH) {
+  if (len < INITIAL_SLOTS) {
     arr[len]     = key;
     arr[len + 1] = value;
   } else {
@@ -2445,24 +2448,24 @@ while (...) {
 arr.length = len;            // trim hole tail
 ```
 
-### Picking SCRATCH
+### Picking `INITIAL_SLOTS`
 
-`SCRATCH = 16` was the first try (covers 4-7 entry dicts without
-growth -- 96 % of cases). It saved only ~5.6 MB instead of an
-estimated ~22 MB. The reason: `new Array(16)` allocates a
+`INITIAL_SLOTS = 16` was the first try (covers 4-7 entry dicts
+without growth -- 96 % of cases). It saved only ~5.6 MB instead
+of an estimated ~22 MB. The reason: `new Array(16)` allocates a
 176-byte FixedArray *for every dict*, including the 9 % of
 2-entry dicts that previously needed only 64 bytes. The cap-16
 baseline is itself ~46 MB across 261 k calls.
 
-`SCRATCH = 10` is exact-fit for the 52 % dominant 5-entry case
-(no growth, no waste), small waste for 2/3/4-entry dicts (4-6
-unused slots), and one growth for the 5 % at 7 entries plus the
-~2 % above that. Best balance for this workload.
+`INITIAL_SLOTS = 10` is exact-fit for the 52 % dominant 5-entry
+case (no growth, no waste), small waste for 2/3/4-entry dicts
+(4-6 unused slots), and one growth for the 5 % at 7 entries
+plus the ~2 % above that. Best balance for this workload.
 
 ### Measured wins
 
 Heap profile (paired `--heap-profile-process --heap-sampling 512`,
-post-fast-pdfnumber-pool baseline vs + SCRATCH=10):
+post-fast-pdfnumber-pool baseline vs + `INITIAL_SLOTS = 10`):
 
 | Allocator                | Pre (KB)   | Post (KB)  | Delta              |
 |--------------------------|-----------:|-----------:|-------------------:|
@@ -2470,25 +2473,27 @@ post-fast-pdfnumber-pool baseline vs + SCRATCH=10):
 | `push` builtin           |   2 843.44 |   1 621.62 | -1.2 MB            |
 | Total sampled            | 107.21 MB  |  92.13 MB  | **-15.1 MB (-14 %)** |
 
-Two-step path through SCRATCH:
+Two-step path through `INITIAL_SLOTS`:
 
-| Step                  | Total sampled | fastParseDictArray |
-|-----------------------|--------------:|-------------------:|
-| No pre-size           |     107.21 MB |          58.20 MB  |
-| `SCRATCH = 16`        |     101.61 MB |          55.03 MB  |
-| `SCRATCH = 10`        |  **92.13 MB** |       **43.82 MB** |
+| Step                        | Total sampled | fastParseDictArray |
+|-----------------------------|--------------:|-------------------:|
+| No pre-size                 |     107.21 MB |          58.20 MB  |
+| `INITIAL_SLOTS = 16`        |     101.61 MB |          55.03 MB  |
+| `INITIAL_SLOTS = 10`        |  **92.13 MB** |       **43.82 MB** |
 
-### What about a parser-wide scratch buffer?
+### What about a true scratch buffer?
 
 The "escalation" alternative was a single long-lived backing
-array on the parser instance, append-then-slice per dict. It
-would eliminate the per-call `new Array(10)` allocation. But the
-slice result is still a fresh per-dict allocation, sized exactly
--- which for the median 5-entry case is ~104 B (same as cap-10).
-The only net savings would be on small dicts (1-3 entries) where
-the slice is smaller than 10 slots; that's maybe ~2-3 MB across
-36 k small dicts. Not worth the recursion-safe length-pointer
-save/restore plumbing.
+array on the parser instance, append-then-slice per dict. That
+would actually be a scratch buffer -- reused across calls,
+sliced off into a fresh `PDFDict` storage per dict. It would
+eliminate the per-call `new Array(10)` allocation. But the slice
+result is still a fresh per-dict allocation, sized exactly --
+which for the median 5-entry case is ~104 B (same as cap-10).
+The only net savings would be on small dicts (1-3 entries)
+where the slice is smaller than 10 slots; that's maybe ~2-3 MB
+across 36 k small dicts. Not worth the recursion-safe
+length-pointer save/restore plumbing.
 
 The edit is local to `docs/lib/fast-dict-array.mjs`; no
 production import change needed since `fast-dict-array` was
