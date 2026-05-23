@@ -31,7 +31,7 @@
 //                    [--fast-refs] [--parallel-deflate]
 //                    [--fast-decode-name] [--fast-number-to-string]
 //                    [--fast-size-in-bytes] [--fast-inflate]
-//                    [--fast-parse-number]
+//                    [--fast-parse-number] [--fast-parse-dict]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -137,6 +137,14 @@
 // trailing Number() round-trip. Every numeric token in a parsed
 // PDF flows through these; hundreds of thousands of calls per load
 // on the book. Production runs through it.
+//
+// --fast-parse-dict hoists the four sentinel PDFName.of calls
+// (Type / Catalog / Pages / Page) out of the type-dispatch tail
+// in PDFObjectParser.prototype.parseDict. The dispatch fires
+// per-dict (tens of thousands on the book) and even with
+// --fast-decode-name each lookup is still a Map.get on fastCache.
+// Pool-dedup makes the canonical PDFNames reference-stable, so
+// captured constants replace the four calls verbatim.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -187,6 +195,7 @@ let fastSizeInBytes = false;
 let fastInflate = false;
 let fastParseNumber = false;
 let fastDictIter = false;
+let fastParseDict = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -216,6 +225,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-inflate') fastInflate = true;
   else if (a === '--fast-parse-number') fastParseNumber = true;
   else if (a === '--fast-dict-iter') fastDictIter = true;
+  else if (a === '--fast-parse-dict') fastParseDict = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -284,6 +294,10 @@ if (fastParseNumber) {
 if (fastDictIter) {
   await import('../docs/lib/fast-dict-iter.mjs');
   console.log('[harness] fast-dict-iter: in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto');
+}
+if (fastParseDict) {
+  await import('../docs/lib/fast-parse-dict.mjs');
+  console.log('[harness] fast-parse-dict: hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');

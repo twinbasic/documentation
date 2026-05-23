@@ -1336,6 +1336,132 @@ upside is the profile reads cleanly and the perf shape is robust
 to JIT changes. Worth doing whenever the callback's state
 outlives a single iteration.
 
+## `parseDict`: hoist the sentinel `PDFName`s out of the type-dispatch tail
+
+With every other process-phase shim in place, the top of the
+bottom-up table looked like:
+
+```
+   self_ms   self_%   function  @  source
+    194.12   12.49%   (garbage collector)
+    127.05    8.18%   PDFRef.of
+     86.70    5.58%   PDFObjectParser.parseName
+     80.70    5.19%   fastOf                       (fast-decode-name)
+     74.70    4.81%   PDFObjectParser.parseDict
+     ...
+```
+
+`fastOf` -- the cache in front of `PDFName.of` -- shouldn't be
+this high. The whole point of `fast-decode-name` is to collapse
+`PDFName.of` to a `Map.get` per call. So the question is why so
+many calls still hit it.
+
+Reading `PDFObjectParser.parseDict`
+(`pdf-lib/.../parser/PDFObjectParser.js:141`) shows the
+type-dispatch tail at the bottom:
+
+```js
+var Type = dict.get(PDFName.of('Type'));
+if (Type === PDFName.of('Catalog')) return PDFCatalog.fromMapWithContext(...);
+else if (Type === PDFName.of('Pages')) return PDFPageTree.fromMapWithContext(...);
+else if (Type === PDFName.of('Page'))  return PDFPageLeaf.fromMapWithContext(...);
+else                                   return PDFDict.fromMapWithContext(...);
+```
+
+Four `PDFName.of` calls per dict, **including** the dicts that
+have no `/Type` entry at all (resource dicts, font descriptors,
+content-stream dicts -- the bulk of what a real PDF contains).
+With `fast-decode-name` each call is a `fastCache.get` on a 4-byte
+string, which is cheap individually -- but on a 1638-page book
+that's tens of thousands of dicts × 4 calls = hundreds of
+thousands of cache lookups for the same handful of canonical
+`PDFName`s.
+
+### The shim
+
+`docs/lib/fast-parse-dict.mjs` replaces
+`PDFObjectParser.prototype.parseDict` with a version that
+captures the four sentinel `PDFName`s once at shim-load:
+
+```js
+const TypeName    = PDFName.of('Type');
+const CatalogName = PDFName.of('Catalog');
+const PagesName   = PDFName.of('Pages');
+const PageName    = PDFName.of('Page');
+```
+
+and references them directly in the type-dispatch tail:
+
+```js
+const Type = dict.get(TypeName);
+if (Type === CatalogName) return PDFCatalog.fromMapWithContext(dict, this.context);
+if (Type === PagesName)   return PDFPageTree.fromMapWithContext(dict, this.context);
+if (Type === PageName)    return PDFPageLeaf.fromMapWithContext(dict, this.context);
+return PDFDict.fromMapWithContext(dict, this.context);
+```
+
+The rest of the function body (the `<< ... >>` parse loop, the
+`dict.set` calls, the whitespace skipping) is verbatim. Pool-dedup
+guarantees the captured `PDFName`s are `===` to whatever the
+parser would have built via the slow `PDFName.of` calls, so the
+dispatch identity comparisons work unchanged.
+
+`PDFObjectParser` isn't re-exported from pdf-lib's index, so the
+shim reaches in via `pdf-lib/cjs/core/parser/PDFObjectParser.js`
+through `createRequire` -- same shape as `fast-parse-number.mjs`
+and `fast-dict-iter.mjs`.
+
+### Results
+
+Profile diff, both runs `--detach-pages --no-timing` with every
+other shipping shim active, 100 us sampling:
+
+| metric                              | pre        | post       | Δ                  |
+| ---                                 | ---        | ---        | ---                |
+| `fastOf` self                       | 80.70 ms (5.19 %) | 63.20 ms (4.43 %) | **-17.5 ms (-22 %)** |
+| `parseDict` / `fastParseDict` self  | 74.70 ms (4.81 %) | 77.79 ms (5.45 %) | flat (noise)       |
+| process wall-clock                  | 1.55 s     | 1.42 s     | -0.13 s (~noise floor) |
+
+The cleanest signal is the `fastOf` drop: removing four
+`PDFName.of` calls per dict re-attributes ~17 ms away from the
+cache layer. `parseDict`'s own self-time is essentially unchanged
+because the four `PDFName.of` calls were already being charged to
+`fastOf`, not to `parseDict` (child frames don't roll into parent
+self-time). So the optimisation reads as "fastOf got cheaper"
+rather than "parseDict got faster," but it's the same removed
+work either way.
+
+The 130 ms wall-clock delta is mostly within run-to-run noise on a
+1.5 s phase. The mechanism-confirmed ~17 ms via profile
+attribution is the honest number.
+
+PDF output is byte-equivalent: same Map iteration order, same
+dispatch decisions, same canonical `PDFName` instances.
+
+### Why this is the bottom of the easy wins on parseDict
+
+`fastParseDict` is still in the top 15 (5.45 %), which suggests
+more juice in the function. The next-tier targets are all in the
+inner loop:
+
+- `!bytes.done() && bytes.peek() !== 0x3E && bytes.peekAhead(1) !== 0x3E`
+  -- three method calls per iteration, all reading the underlying
+  `Uint8Array`. Inlining would cut method-dispatch overhead but
+  requires reaching into `ByteStream`'s internals.
+- `dict.set(key, value)` -- Map entry allocation. Could be swapped
+  for a plain object via `Object.create(null)`, but
+  `PDFDict.fromMapWithContext` and the existing `fast-dict-iter`
+  shim both assume a Map, so it's a larger surgery.
+- `this.skipWhitespaceAndComments()` -- already on the top-15 list
+  in its own right (~32 ms / 2 %). Two-method-call body
+  (`skipWhitespace` + `skipComment` loop); inlining at parseDict's
+  call site would shed one method-dispatch per loop iteration.
+
+None of these are as clean as the sentinel-hoist patch, and each
+is a bigger code change for a smaller individual win. Worth
+revisiting if a future optimisation moves the floor and parseDict
+becomes a larger relative share.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -1364,7 +1490,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + parallel-deflate                   | ~2.0 s  | ~1.3 s | ~0.7 s |
 | + fast-decode-name + fast-number-to-string | ~1.6 s  | ~1.0 s | ~0.6 s |
 | + fast-size-in-bytes                 | ~1.5 s  | ~1.0 s | ~0.5 s |
-| **+ fast-dict-iter (this section)**  | **~1.4 s** | **~1.0 s** | **~0.4 s** |
+| + fast-dict-iter                     | ~1.4 s  | ~1.0 s | ~0.4 s |
+| **+ fast-parse-dict (this section)** | **~1.4 s** | **~1.0 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
