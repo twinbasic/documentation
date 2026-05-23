@@ -34,7 +34,7 @@
 //                    [--fast-size-in-bytes] [--fast-inflate]
 //                    [--fast-parse-number] [--fast-parse-dict]
 //                    [--fast-parse-object] [--fast-sync-load]
-//                    [--fast-dict-array]
+//                    [--fast-dict-array] [--fast-indirect-objects]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -176,6 +176,16 @@
 // accumulates into the array directly; sizeInBytes / copyBytesInto
 // iterate in place). Production runs through it.
 //
+// --fast-indirect-objects replaces PDFContext.indirectObjects
+// (Map<PDFRef, PDFObject>) with a dense array indexed by
+// objectNumber for the gen=0 path -- mirror of the fast-refs trick
+// on the value side. After fast-dict-array shipped, that Map was
+// the last remaining hot Map.set in the heap profile (~14 MB of set
+// traffic from PDFContext.assign, fired once per indirect object
+// during load). gen!=0 PDFRefs fall through to the original Map.
+// enumerateIndirectObjects skips its sort when the gen!=0 Map is
+// empty (the parsed-PDF common case). Production runs through it.
+//
 // --fast-sync-load rips pdf-lib's parseSpeed / objectsPerTick /
 // shouldWaitForTick / waitForTick machinery out of both the load
 // path (PDFDocument.load + PDFParser.parseDocument / parseDocumentSection
@@ -247,6 +257,7 @@ let fastParseDict = false;
 let fastParseObject = false;
 let fastSyncLoad = false;
 let fastDictArray = false;
+let fastIndirectObjects = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -281,6 +292,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-parse-object') fastParseObject = true;
   else if (a === '--fast-sync-load') fastSyncLoad = true;
   else if (a === '--fast-dict-array') fastDictArray = true;
+  else if (a === '--fast-indirect-objects') fastIndirectObjects = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -373,6 +385,10 @@ if (fastSyncLoad) {
 if (fastDictArray) {
   await import('../docs/lib/fast-dict-array.mjs');
   console.log('[harness] fast-dict-array: PDFDict backed by flat alternating array (subsumes fast-parse-dict + fast-dict-iter)');
+}
+if (fastIndirectObjects) {
+  await import('../docs/lib/fast-indirect-objects.mjs');
+  console.log('[harness] fast-indirect-objects: PDFContext.indirectObjects dense-array cache for gen=0 PDFRefs');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');

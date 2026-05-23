@@ -2047,6 +2047,103 @@ runs differ by ~30 bytes too).
 the tree for A/B; the harness rejects combining them with
 `--fast-dict-array`.
 
+## Replace `PDFContext.indirectObjects` with a dense array
+
+With `fast-dict-array` shipping, the per-dict `new Map()` +
+`Map.prototype.set` traffic was gone -- but the heap profile
+still showed ~14.5 MB of `set` self-size. `find-heap-callers`
+localized it cleanly to one remaining site, attributed to two
+V8-inlined parent frames:
+
+```
+$ node find-heap-callers.mjs <post-dict-array>.heapprofile set
+set: total=14.49 MB
+  7168.04 KB   PDFParser.parseIndirectObjectHeader
+  7168.04 KB   parseIndirectObjectSync @ fast-sync-load.mjs:140
+```
+
+Both rows are the same logical call: `this.indirectObjects.set(ref, object)`
+inside `PDFContext.assign` (`pdf-lib/.../PDFContext.js:34`), fired
+once per indirect object during load. On the book that's ~9 k
+entries; V8's Map grows the underlying hash table through ~14
+doubling steps to fit them (4 -> 8 -> ... -> 16384), discarding
+each intermediate arena. The 14 MB total is final arena + bucket
+allocations + all the discarded growth arenas.
+
+`PDFRef`s are overwhelmingly gen=0 (rare gen!=0 cases come from
+revisions / incremental updates). `fast-refs` already uses a
+dense array indexed by `objectNumber` for the **key** side --
+`PDFRef.of`'s gen=0 pool. The same trick applies on the **value**
+side for `indirectObjects`: dense array keyed by `objectNumber`.
+
+### The shim
+
+`docs/lib/fast-indirect-objects.mjs` patches
+`PDFContext.prototype.assign / lookup / lookupMaybe / delete /
+getObjectRef / enumerateIndirectObjects` to consult an auxiliary
+`this._objArr` (dense array indexed by `objectNumber`) for gen=0
+`PDFRef`s first, falling back to the original Map for gen!=0.
+Lazy init on first `assign` -- no constructor patching needed.
+The original Map sits at `this.indirectObjects` unchanged; gen=0
+entries skip it entirely.
+
+```js
+PDFContext.prototype.assign = function (ref, object) {
+  if (ref.generationNumber === 0) {
+    if (!this._objArr) this._objArr = [];
+    this._objArr[ref.objectNumber] = object;     // dense store, no Map
+  } else {
+    this.indirectObjects.set(ref, object);       // gen!=0 fallback
+  }
+  if (ref.objectNumber > this.largestObjectNumber) {
+    this.largestObjectNumber = ref.objectNumber;
+  }
+};
+```
+
+`lookup` / `lookupMaybe` resolve the ref the same way then run
+the original type-check tail verbatim. `delete` nulls the slot
+(not splices -- subsequent objectNumbers retain their slots).
+`getObjectRef` linear-scans the dense array first, then the Map.
+The interesting one is `enumerateIndirectObjects`: dense-array
+iteration is already in ascending objectNumber order, so when
+the gen!=0 Map is empty (the parsed-PDF common case) the method
+returns without sorting -- the upstream
+`Array.from(this.indirectObjects.entries()).sort(byAscendingObjectNumber)`
+becomes a single linear pass with no `Array.from` materialization
+and no sort.
+
+### Measured wins
+
+CPU profile (paired `--cpu-profile-process --cpu-sampling 100`,
+fast-dict-array baseline vs + fast-indirect-objects):
+
+| Row                     | Pre (ms) | Post (ms) | Note               |
+|-------------------------|---------:|----------:|--------------------|
+| (garbage collector)     |   162.50 |    176.83 | within noise       |
+| **PDFContext.assign**   | **41.83**| **out of top 15** | **drops off**  |
+| PDFRef.of               |   124.42 |    118.24 | within noise       |
+| Total profile duration  |  1.21 s  |   1.14 s  | -70 ms             |
+
+The headline is `PDFContext.assign` exiting the top 15.
+Everything else moves within the sample-count noise band.
+
+Heap profile (paired `--heap-profile-process --heap-sampling 512`):
+
+| Allocator         | Pre (KB)  | Post (KB) | Delta                |
+|-------------------|----------:|----------:|---------------------:|
+| `set` builtin     | 14 840.20 |  7 674.41 | -7 166 KB (-48 %)    |
+| Total sampled     | 140.15 MB |  135.00 MB| -5.15 MB (-3.7 %)    |
+
+The remaining 7 MB of `set` is **not** `PDFContext.assign`
+anymore -- `find-heap-callers` on the post profile shows it's the
+upstream `PDFRef.of`'s `pool.set(tag, instance)` on cache miss.
+Even with `fast-refs`'s dense-array short-circuit on the LOOKUP
+side, the first time each unique objectNumber is encountered the
+shim calls through to the original `PDFRef.of`, which constructs
+the `PDFRef` AND populates the upstream `Map<string, PDFRef>`
+pool. That's the next target.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -2079,7 +2176,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-parse-dict                    | ~1.4 s  | ~1.0 s | ~0.4 s |
 | + fast-parse-object                  | ~1.4 s  | ~1.0 s | ~0.4 s |
 | + fast-sync-load                     | ~1.3 s  | ~0.8 s | ~0.5 s |
-| **+ fast-dict-array (this section)** | **~1.1 s** | **~0.7 s** | **~0.4 s** |
+| + fast-dict-array                    | ~1.1 s  | ~0.7 s | ~0.4 s |
+| **+ fast-indirect-objects (this section)** | **~1.1 s** | **~0.7 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

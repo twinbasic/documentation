@@ -92,6 +92,17 @@ import { PDFDocument } from 'pdf-lib';
 //     writer + an unknowable chunk of the GC row removed; the
 //     parseSpeed / objectsPerTick options drop off all our call sites
 //     in step with this shim.
+//   fast-indirect-objects -- replace PDFContext.indirectObjects
+//     (Map<PDFRef, PDFObject>) with a dense array indexed by
+//     objectNumber for the gen=0 path. After fast-dict-array shipped,
+//     PDFContext.assign's `this.indirectObjects.set(ref, object)` was
+//     the only hot Map.set left in the heap profile (~7 MB of set
+//     traffic from the parser's once-per-indirect-object assign).
+//     Mirror of the fast-refs trick on the value side: dense array
+//     for gen=0, Map fallback for gen!=0. enumerateIndirectObjects
+//     skips its sort when the gen!=0 Map is empty (the common case).
+//     Drops PDFContext.assign out of the CPU top-15 and halves the
+//     remaining set heap traffic.
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
@@ -101,6 +112,7 @@ import './lib/fast-size-in-bytes.mjs';
 import './lib/fast-dict-array.mjs';
 import './lib/fast-parse-object.mjs';
 import './lib/fast-sync-load.mjs';
+import './lib/fast-indirect-objects.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 import { parallelSave }             from './lib/parallel-deflate.mjs';
