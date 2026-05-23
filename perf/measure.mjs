@@ -186,6 +186,7 @@ let fastNumberToString = false;
 let fastSizeInBytes = false;
 let fastInflate = false;
 let fastParseNumber = false;
+let fastDictIter = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -214,6 +215,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-size-in-bytes') fastSizeInBytes = true;
   else if (a === '--fast-inflate') fastInflate = true;
   else if (a === '--fast-parse-number') fastParseNumber = true;
+  else if (a === '--fast-dict-iter') fastDictIter = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -278,6 +280,10 @@ if (fastInflate) {
 if (fastParseNumber) {
   await import('../docs/lib/fast-parse-number.mjs');
   console.log('[harness] fast-parse-number: direct-integer accumulator for parseRawNumber/parseRawInt');
+}
+if (fastDictIter) {
+  await import('../docs/lib/fast-dict-iter.mjs');
+  console.log('[harness] fast-dict-iter: in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');

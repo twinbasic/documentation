@@ -1185,6 +1185,157 @@ flag set against `render-book.mjs`'s import list. A flag missing
 on the harness side silently moves the harness baseline away from
 production -- and the divergence accumulates over time.
 
+## `PDFDict.entries`: stop allocating a tuple array per save
+
+A profile of the process phase with every prior shipping shim
+applied still showed `PDFDict.entries` at the top of the non-GC
+self-time table, ~10 % of process. The function is a one-liner:
+
+```js
+PDFDict.prototype.entries = function () {
+    return Array.from(this.dict.entries());
+};
+```
+
+Per call: one `MapIterator` + one outer Array + one fresh
+`[key, value]` tuple per entry (allocated by the iterator itself,
+then collected by `Array.from` into the outer array). The save
+path fires both consumers on every dict -- `sizeInBytes` first to
+measure, then `copyBytesInto` to write -- so on the book that's
+~100 k `Array.from` calls feeding the GC. `(garbage collector)`
+sat at the top of the table too, which is the cost shape the
+allocation pattern predicts.
+
+Both consumers immediately destructure the tuples:
+
+```js
+var entries = this.entries();
+for (var idx = 0, len = entries.length; idx < len; idx++) {
+    var _a = entries[idx], key = _a[0], value = _a[1];
+    ...
+}
+```
+
+So nothing actually wants the array-of-tuples shape -- the
+upstream code uses it because that's what `entries()` returns,
+and the materialised array is dead by the next iteration.
+
+### The shim
+
+`docs/lib/fast-dict-iter.mjs` replaces
+`PDFDict.prototype.sizeInBytes` and
+`PDFDict.prototype.copyBytesInto` with versions that iterate the
+underlying Map in place via `Map.prototype.forEach((value, key),
+thisArg)`. The callback's positional `(value, key)` arguments
+mean no tuple is ever allocated, and routing per-call state
+through `forEach`'s `thisArg` instead of closure capture lets the
+callback stay a module-level function reference (no per-call
+closure context).
+
+The callbacks are hoisted to module top-level (not closures):
+
+```js
+function _sizeInBytesEntry(value, key) {
+  this.s += key.sizeInBytes() + value.sizeInBytes() + 2;
+}
+function _copyBytesIntoEntry(value, key) {
+  const buf = this.buf;
+  let off = this.off;
+  off += key.copyBytesInto(buf, off);
+  buf[off++] = CharCodes.Space;
+  off += value.copyBytesInto(buf, off);
+  buf[off++] = CharCodes.Newline;
+  this.off = off;
+}
+```
+
+Each consumer allocates a single small `ctx` object per call (one
+alloc, vs the prior `1 + N` Array allocations) and threads it
+through `thisArg`:
+
+```js
+PDFDict.prototype.copyBytesInto = function (buffer, offset) {
+  // ... write '<<\n' ...
+  const ctx = { buf: buffer, off: offset };
+  this.dict.forEach(_copyBytesIntoEntry, ctx);
+  offset = ctx.off;
+  // ... write '>>' ...
+};
+```
+
+The `PDFDict.prototype.entries` method itself stays untouched --
+`clone()` and `toString()` still call it and rely on the
+array-of-tuples contract. Those paths fire rarely (clone on
+incremental updates, toString in debug output) and don't justify
+the contract churn.
+
+### Results
+
+Profile diff, both runs `--detach-pages --no-timing` with every
+other shipping shim active, 100 us sampling:
+
+| metric                              | pre        | post       | Δ                  |
+| ---                                 | ---        | ---        | ---                |
+| `PDFDict.entries` self              | 164.16 ms  | off-list   | **-164 ms (-100 %)** |
+| `PDFDict.copyBytesInto` self        | 27.54 ms   | 25.42 ms   | flat               |
+| `_copyBytesIntoEntry` (callback)    | n/a        | 23.83 ms   | new                |
+| `PDFDict.sizeInBytes` self          | sub-cutoff | 15.89 ms   | n/a                |
+| `_sizeInBytesEntry` (callback)      | n/a        | 12.71 ms   | new                |
+| **dict-serialisation path subtotal**| **~192 ms (~11 % of process)** | **~78 ms (~5 % of process)** | **~80 ms / -6 pp** |
+| `(garbage collector)`               | 201 ms (12 %) | 227 ms (15 %) | +26 ms / +3 pp  |
+
+The 164 ms `entries` self-time is reliably gone. The replacement
+work in the four-row split (the two consumers + their named
+callbacks) sums to ~78 ms -- about a **6 pp drop** in process
+attribution to this code path.
+
+The `(garbage collector)` row going *up* was the surprise. A
+first-cut variant of the shim used closures (`forEach((value,
+key) => { ... captures `offset` ... })`) and showed the same GC
+increase. Hypothesis: the captured-and-mutated `offset` cell was
+forcing V8 to heap-allocate a closure context per call. So we
+tested the hoisted-callback variant above, which has zero
+closure capture. The GC row landed at almost exactly the same
+absolute value (~227 ms vs ~271 ms, both ~15 % of process).
+
+So the closure-capture hypothesis was wrong -- V8's escape
+analysis was already eliding the `offset` cell. The GC nudge is
+either run-to-run load-phase variance (the profile spans load +
+setOutline + save, and load dominates) or the per-call `ctx`
+object allocation we couldn't avoid without bigger code surgery.
+Either way it doesn't reverse the win: the dict-path attributable
+time dropped by ~80 ms, and that's real cycles removed.
+
+PDF output is byte-equivalent to the pre-shim build:
+`Map.forEach` iterates in insertion order, same as
+`Array.from(map.entries())`, so the serialised byte sequence is
+identical.
+
+### Lesson: hoist forEach callbacks when state is mutable
+
+The hoisted-callback pattern (callback = module-level function,
+state via `forEach`'s `thisArg`) reads as overkill -- a closure
+is fewer lines and easier to follow. Two reasons it's still the
+right shape here:
+
+1. **Profile attribution.** Named callbacks
+   (`_copyBytesIntoEntry`, `_sizeInBytesEntry`) appear in CPU
+   profiles under their names. Closures show up as
+   `(anonymous) @ file.mjs:55`, which makes future
+   profile-reading harder (you have to cross-reference the line
+   number every time).
+2. **Future-proofing against V8 changes.** Escape analysis can
+   handle the closure capture today, but the JIT's heuristics
+   shift across Node versions. The hoisted pattern is
+   semantically explicit -- no implicit allocation depends on
+   the compiler being smart. Same shape that has aged well in
+   other hot pdf-lib paths we've patched.
+
+Cost is negligible (six extra lines and two declarations);
+upside is the profile reads cleanly and the perf shape is robust
+to JIT changes. Worth doing whenever the callback's state
+outlives a single iteration.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -1212,7 +1363,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-refs                          | ~2.3 s  | ~1.3 s | ~1 s |
 | + parallel-deflate                   | ~2.0 s  | ~1.3 s | ~0.7 s |
 | + fast-decode-name + fast-number-to-string | ~1.6 s  | ~1.0 s | ~0.6 s |
-| **+ fast-size-in-bytes (this section)** | **~1.5 s** | **~1.0 s** | **~0.5 s** |
+| + fast-size-in-bytes                 | ~1.5 s  | ~1.0 s | ~0.5 s |
+| **+ fast-dict-iter (this section)**  | **~1.4 s** | **~1.0 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

@@ -58,12 +58,19 @@ import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 //     `n.toString(2)` just to count its bit length) with a non-
 //     allocating short-circuit ladder. Called ~300 k times per save
 //     from PDFCrossRefStream's xref writer.
+//   fast-dict-iter -- replace PDFDict.sizeInBytes / copyBytesInto
+//     with versions that iterate the underlying Map in place via
+//     forEach, instead of materialising a fresh Array of [key, value]
+//     tuples via this.entries() on every call. ~80 ms saved per
+//     process run on the book + eliminates the largest non-GC row
+//     (PDFDict.entries was ~10 % of process self-time).
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
 import './lib/fast-decode-name.mjs';
 import './lib/fast-number-to-string.mjs';
 import './lib/fast-size-in-bytes.mjs';
+import './lib/fast-dict-iter.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 import { parallelSave }             from './lib/parallel-deflate.mjs';
