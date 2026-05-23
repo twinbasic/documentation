@@ -23,7 +23,8 @@
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
 //                    [--cpu-profile] [--cpu-profile-process]
 //                    [--cpu-sampling <microseconds>]
-//                    [--heap-profile] [--heap-sampling <bytes>]
+//                    [--heap-profile] [--heap-profile-process]
+//                    [--heap-sampling <bytes>]
 //                    [--tracing]
 //                    [--no-detach-pages] [--instrument] [--time-hooks]
 //                    [--incremental] [--chrome-outline] [--timing]
@@ -95,6 +96,13 @@
 // Profiler can't see it. Writes process.cpuprofile alongside render's.
 // Honours --cpu-sampling. Composable with --cpu-profile when you want
 // both phases captured in one run.
+//
+// --heap-profile-process wraps the process phase in V8's sampling heap
+// profiler (Inspector's HeapProfiler domain) and writes
+// process.heapprofile alongside the cpu one. --heap-sampling sets the
+// sampling interval in bytes; default 32768 (V8's default). Drop to
+// 512 for finer-grained attribution on short phases. Composable with
+// --cpu-profile-process; both share one inspector session.
 //
 // --fast-refs replaces PDFRef.of's string-keyed Map lookup with a
 // dense-array cache for the gen=0 case (82 % of ~1.2 M calls on the
@@ -204,7 +212,8 @@ let cpuProfile = false;
 let cpuProfileProcess = false;
 let cpuSampling = 1000; // microseconds
 let heapProfile = false;
-let heapSampling = 32768; // bytes between samples (CDP default)
+let heapProfileProcess = false;
+let heapSampling = 32768; // bytes between samples (V8 default; used by both CDP render-side and inspector process-side)
 let detachPages = true;
 let instrument = false;
 let timeHooks = false;
@@ -233,6 +242,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--cpu-profile-process') cpuProfileProcess = true;
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
   else if (a === '--heap-profile') heapProfile = true;
+  else if (a === '--heap-profile-process') heapProfileProcess = true;
   else if (a === '--heap-sampling') heapSampling = parseInt(args[++i], 10);
   else if (a === '--detach-pages') detachPages = true;       // accepted for backwards compat; default since the fix landed
   else if (a === '--no-detach-pages') detachPages = false;
@@ -293,6 +303,10 @@ for (const p of required) {
 
 if (cpuProfileProcess && renderOnly) {
   console.error('--cpu-profile-process is incompatible with --render-only (the process phase is skipped).');
+  process.exit(2);
+}
+if (heapProfileProcess && renderOnly) {
+  console.error('--heap-profile-process is incompatible with --render-only (the process phase is skipped).');
   process.exit(2);
 }
 
@@ -535,6 +549,7 @@ try {
   let processMs = null;
   let processBreakdown = null;
   let processProfilePath = null;
+  let processHeapProfilePath = null;
   let finalPdf = null;
 
   if (!renderOnly) {
@@ -602,13 +617,20 @@ try {
   // pdf-lib runs locally. Output file shape (V8 .cpuprofile JSON) is the
   // same either way.
   let inspectorSession = null;
-  if (cpuProfileProcess) {
+  if (cpuProfileProcess || heapProfileProcess) {
     inspectorSession = new Session();
     inspectorSession.connect();
+  }
+  if (cpuProfileProcess) {
     await inspectorSession.post('Profiler.enable');
     await inspectorSession.post('Profiler.setSamplingInterval', { interval: cpuSampling });
     await inspectorSession.post('Profiler.start');
     console.log(`[harness] process cpu profile: sampling every ${cpuSampling}us`);
+  }
+  if (heapProfileProcess) {
+    await inspectorSession.post('HeapProfiler.enable');
+    await inspectorSession.post('HeapProfiler.startSampling', { samplingInterval: heapSampling });
+    console.log(`[harness] process heap profile: sampling every ${heapSampling}B`);
   }
 
   const tProcStart = Date.now();
@@ -653,15 +675,23 @@ try {
   }
   const tProcEnd  = Date.now();
   processMs = tProcEnd - tProcStart;
-  if (inspectorSession) {
+  if (heapProfileProcess) {
+    const { profile } = await inspectorSession.post('HeapProfiler.stopSampling');
+    await inspectorSession.post('HeapProfiler.disable');
+    processHeapProfilePath = join(outDir, 'process.heapprofile');
+    const profileJson = JSON.stringify(profile);
+    writeFileSync(processHeapProfilePath, profileJson);
+    console.log(`[harness] process heap profile: ${processHeapProfilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
+  if (cpuProfileProcess) {
     const { profile } = await inspectorSession.post('Profiler.stop');
     await inspectorSession.post('Profiler.disable');
-    inspectorSession.disconnect();
     processProfilePath = join(outDir, 'process.cpuprofile');
     const profileJson = JSON.stringify(profile);
     writeFileSync(processProfilePath, profileJson);
     console.log(`[harness] process cpu profile: ${processProfilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
   }
+  if (inspectorSession) inspectorSession.disconnect();
   if (incremental) {
     console.log(`[harness] process  ${fmtMs(processMs)}  (incremental=${fmtMs(processBreakdown.incrementalMs)}, +${processBreakdown.appendedBytes}B, ${processBreakdown.newObjectCount} new objs)`);
   } else {
@@ -709,6 +739,7 @@ try {
       ms: processMs,
       mode: incremental ? 'incremental' : 'pdf-lib-roundtrip',
       cpuProfile: processProfilePath,
+      heapProfile: processHeapProfilePath,
       ...processBreakdown,
     };
   }

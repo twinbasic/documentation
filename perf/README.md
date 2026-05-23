@@ -197,6 +197,42 @@ of hot functions called millions of times (`PDFRef.of` in
 particular). For "did this wall-clock change," do a paired
 no-profile A/B as a sanity check.
 
+## Profiling pdf-lib heap allocation (process phase): canonical command
+
+The companion command for the **sampling heap profile** of the
+process phase -- "where is pdf-lib allocating bytes?" rather than
+"where is it spending cycles?":
+
+```
+node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-iter --fast-parse-dict --fast-parse-object --fast-sync-load --heap-profile-process --heap-sampling 512
+```
+
+Same `--fast-*` set as the CPU command (production is the baseline
+we care about); the new flags:
+
+- `--heap-profile-process` -- attach Node's `inspector/promises`
+  `HeapProfiler` around the process phase only. Writes
+  `process.heapprofile` into the timestamped `results/` folder.
+  Output is V8's sampling-heap-profile JSON (a tree of
+  `{ callFrame, selfSize, children }` rooted at `head`), not the
+  flat-nodes shape that `.cpuprofile` uses, so the cpu analyzers
+  don't apply. Use `analyze-heap-profile.mjs` instead, which walks
+  the tree and aggregates `selfSize` by `(functionName + url:line)`:
+  `node analyze-heap-profile.mjs results/<run>/process.heapprofile --top 10`.
+- `--heap-sampling 512` -- 512-byte sampling interval. V8's default
+  is 32768 (32 KB); on the ~150 MB process-phase allocation total
+  that's only ~5 k samples and the bottom-up table runs coarse.
+  512 B yields ~250 k samples on the book, plenty of resolution
+  for "which frame allocated this Map?". Caveat: 512 B sampling
+  inflates process wall-clock substantially (the sampler's
+  per-allocation bookkeeping fires 64x more often). Read the
+  attribution, not the timing, from heap-profiled runs.
+
+`--heap-profile-process` composes with `--cpu-profile-process` --
+both attach to the same inspector session, so you can capture cpu
+and heap in a single run if you want. The same `--render-only`
+incompatibility applies (no process phase to profile).
+
 See [notes/08-pdf-lib.md](notes/08-pdf-lib.md) for the process-phase
 investigations these flags enabled.
 
@@ -313,6 +349,7 @@ run.bat --no-detach-pages                 # opt out of the detach-pages fix (mea
 run.bat --timing                          # collect per-page wall time + heap (writes timing.csv + quartile summary)
 run.bat --cpu-profile                     # CPU-profile the render phase (CDP, Chromium-side)
 run.bat --cpu-profile-process             # CPU-profile the process phase (Node inspector, Node-side)
+run.bat --heap-profile-process            # sampling heap-profile the process phase (Node inspector HeapProfiler); pair with --heap-sampling 512 for fine attribution
 run.bat --render-only                     # bail out after render (skip generate + process, ~47s saved)
 run.bat --clone-count                     # report Layout.append clones appended vs survivors per page
 run.bat --instrument                      # count + time DOM-accessor calls
@@ -336,7 +373,9 @@ run.bat --fast-sync-load                  # synchronify PDFDocument.load + parse
 Flags compose. The CPU profile lands as `render.cpuprofile`
 (loadable in Chrome DevTools -> Performance -> "Load profile...");
 `--cpu-profile-process` writes `process.cpuprofile` alongside it;
-`--instrument` prints a per-op table at end-of-render.
+`--heap-profile-process` writes `process.heapprofile` (loadable in
+Chrome DevTools -> Memory -> "Load profile..."); `--instrument`
+prints a per-op table at end-of-render.
 
 You need `_site-pdf\book.html` to exist first -- run `docs\build.bat`
 (which is `bundle exec jekyll build`) if you haven't already.

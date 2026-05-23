@@ -11,16 +11,31 @@ no bottom-up table to point at: CDP's `Profiler` attaches to Chromium
 and the process phase runs in Node, so `--cpu-profile` couldn't see
 it.
 
-## `--cpu-profile-process`
+## `--cpu-profile-process` (and `--heap-profile-process`)
 
 Added to `measure.mjs`: opens an in-process V8 Profiler via
 `node:inspector/promises`, brackets the process phase the same way
 `--cpu-profile` brackets render, and writes `process.cpuprofile`
-alongside `render.cpuprofile`. Same `.cpuprofile` JSON shape, so the
-existing `analyze-profile.mjs` / `find-callers.mjs` /
+alongside `render.cpuprofile`. Same `.cpuprofile` JSON shape, so
+the existing `analyze-profile.mjs` / `find-callers.mjs` /
 `find-callees.mjs` work unchanged. See the *Profiling pdf-lib
 (process phase): canonical command* section in [the README](../README.md)
 for the operational form.
+
+The heap counterpart -- `--heap-profile-process` -- arrived later
+(once allocation became the obvious next thing to attack: GC was
+sitting at the top of every CPU profile in this phase). It shares
+the same inspector session, so capturing both in one run is one
+flag away. Output is a `.heapprofile`, a tree of
+`{ callFrame, selfSize, children }` rooted at `head` -- *not* the
+flat `.cpuprofile` shape -- so `analyze-heap-profile.mjs` handles
+it instead of the cpu analyzers. See *Profiling pdf-lib heap
+allocation (process phase): canonical command* in
+[the README](../README.md) for the operational form. The findings
+this tool enabled are folded into the per-shim sections below
+(decodeName / sizeInBytes / PDFDict.entries / ...) -- each names
+which path it came from when the heap profile, not the cpu
+profile, was the diagnostic that pointed at the function.
 
 First run on the 1638-page book (`--detach-pages --no-timing
 --cpu-profile-process --cpu-sampling 100`), process 4.66 s (load
