@@ -3679,6 +3679,83 @@ architecture stays off staging.
   same pattern as nested dicts; `arrayByPayload` caps at the
   number of distinct nested-array payloads (small).
 
+## Phase 3β: hand-inline decodeValue at the save hot path (explored, didn't ship)
+
+The Phase 3 CPU regression was almost entirely per-slot decode
+during save -- `PDFDict.copyBytesInto`, `PDFDict.sizeInBytes`,
+`PDFArray.copyBytesInto`, `PDFArray.sizeInBytes` together
+iterate ~3 M slots, each calling `decodeValue` (10-case switch
++ pool lookup). V8 doesn't inline the function across the
+prototype-method boundary; ~100 ns × 3 M ≈ +300 ms.
+
+Phase 3β hand-inlines `decodeValue`'s switch into all four hot
+methods. The switch body is copy-pasted verbatim into each
+loop, giving V8 a monomorphic `.copyBytesInto` /
+`.sizeInBytes` call site per case branch.
+
+### Measured
+
+| Frame | P1 baseline | P3 (pre-inline) | **P3β** | β vs P1 |
+|---|---:|---:|---:|---:|
+| `(garbage collector)` | 149 ms | 144 ms | **130 ms** | **-19 ms (win)** |
+| `PDFObjectParser.parseName` | 87 ms | 106 ms | **70 ms** | **-17 ms (win)** |
+| `fastParseDict*` | 40 ms | 59 ms | 63 ms | +23 ms (encode at parse) |
+| `PDFDict.copyBytesInto` | 27 ms | 57 ms | **49 ms** | +22 ms |
+| `PDFDict.sizeInBytes` | (<top15) | (<top15) | 33 ms | new |
+| Heap sampled | 65.4 MB | 57.8 MB | **58.0 MB** | **-7.4 MB (win)** |
+| Structural | byte-identical | byte-identical | byte-identical | -- |
+
+The wins (GC -19 ms, parseName -17 ms) are real. parseName's
+drop is surprising but consistent across reruns -- the
+inlined switch made some call sites monomorphic that weren't
+before, and V8 re-optimized parseName as a downstream effect.
+
+The losses (encode-at-parse +23 ms, copyBytesInto +22 ms,
+sizeInBytes +33 ms) come from the inlined 11-case switch
+itself. Each iteration in the hot loop pays for the tag
+dispatch.
+
+### Architectural conclusion (Phase 2 + 3 + β closeout)
+
+Float64Array encoded storage **does work** -- byte-identical
+output, mainBuf and arrayBuf mark cost goes to zero, ~7.4 MB
+heap saved, GC drops ~20 ms. But it doesn't pull its weight
+on this workload because:
+
+1. **V8 marks pointer arrays fast.** mainBuf's 2.34 M
+   Object[] slots cost ~10-20 ms of mark time, not the 100+ ms
+   we assumed. The slot-mark savings are real but small.
+2. **The encoding scheme adds per-slot work that exceeds the
+   savings.** Encode at parse + decode at save = ~50 ms net
+   loss in the hot loops, even with hand-inlining.
+3. **The original polymorphic `main[i].copyBytesInto()` was
+   actually fine.** V8's megamorphic IC handled it well.
+   Replacing with explicit switch + monomorphic per-case
+   dispatch *helps slightly* in GC and parseName but
+   *hurts in dict hot paths*.
+
+The work isn't wasted -- the design notes here quantify *why*
+this approach isn't the right lever, and the pool ID
+infrastructure could be reused if a future optimization needs
+cross-type instance lookup. If a future workload stresses
+mainBuf mark cost more (much larger documents, more aggressive
+GC pressure, or a different V8 version) the encoded path is a
+known-correct starting point.
+
+Production stays on:
+
+- `--fast-dict-onebuf` (Object[] mainBuf with packed view)
+- `--fast-refs`, `--fast-pdfnumber-pool` (the pool shims that
+  fast-dict-encoded would have subsumed)
+- All other shipped `--fast-*` shims unchanged
+
+The next move on the same theme is the much narrower
+"one-buffer for PDFArray" -- skip the encoded scheme entirely
+and just mirror fast-dict-onebuf's shape onto PDFArray, keeping
+the Object[] storage and inheriting the same low-overhead
+view-with-packed-payload trick. That's the fast-array-onebuf
+section below; it does ship.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
