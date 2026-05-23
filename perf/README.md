@@ -5528,13 +5528,48 @@ Hypotheses for where to look first when chasing this:
   capture closures; their references survive even after
   the layout work is done.
 
-A heap profile snapshot taken at post-render, opened in
-Chrome DevTools' "Retainers" view, would surface the
-exact chain for the largest object categories
-(`PhysicalBoxFragment`, `LogicalLineItems`,
-`ConstraintSpace::RareData`) and point at which JS
-object is keeping them alive. CDP's `HeapProfiler.
-takeHeapSnapshot` is the entry point;
-`probe-renderer-mem.mjs` already has a CDP session and
-could be extended with a `--heap-snapshot` flag if this
-becomes the next investigation.
+#### `--heap-snapshot`: extract V8 retainer chains
+
+`probe-renderer-mem.mjs --heap-snapshot` captures a V8
+heap snapshot at post-render via CDP
+`HeapProfiler.takeHeapSnapshot` and writes it as
+`outDir/post-render.heapsnapshot` (~200 MB on the
+1651-page book). Combined with `--gc-passes N`, a
+second snapshot `post-gc.heapsnapshot` is taken right
+after the GC pass.
+
+DevTools workflow to chase the retention:
+
+1. Run `node perf/probe-renderer-mem.mjs --gc-passes 1
+   --heap-snapshot`. ~80 s wall clock; output dir
+   echoed to stdout.
+2. Open Chrome DevTools (any tab) -> Memory tab.
+3. Load `post-render.heapsnapshot` (the "Load profile"
+   icon). Switch to **Comparison** view, base = the
+   post-gc snapshot. The `# Deleted` and `Freed size`
+   columns show which V8-visible object categories the
+   GC was able to release.
+4. Switch the dropdown to **Summary** on the
+   post-render snapshot and filter by "Detached" --
+   detached `HTMLDivElement` / `Text` / etc. are DOM
+   nodes still held by JS after their owning page was
+   removed from the visible tree. Each row's
+   **Retainers** pane shows the exact JS-object chain
+   keeping the node alive (paged.js hook closure,
+   chunker `pages[]` entry, retained event listener,
+   etc.).
+5. For Oilpan-only objects (`PhysicalBoxFragment`,
+   `LogicalLineItems`, `ConstraintSpace::RareData` --
+   no V8 wrapper) the snapshot won't show them
+   directly. They're typically owned by a DOM node
+   that *is* in the snapshot; trace the detached DOM
+   from step 4 to its layout state via the C++
+   ownership graph in the memory-infra dump
+   (`blink_gc/main/blink::...` paths in the per-
+   allocator breakdown -- the analyzer above prints
+   the top-N classes).
+
+The snapshot itself is JS-side only. The complete
+picture is heap-snapshot (V8 reachability) + memory-
+infra dump (per-allocator + per-type sizes) =
+"what's there" + "what's keeping it there".

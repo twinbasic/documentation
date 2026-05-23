@@ -19,9 +19,19 @@
 // only fires the pressure notification. --gc is shorthand for
 // --gc-passes 5.
 //
+// --heap-snapshot takes a V8/Blink heap snapshot at post-render via
+// CDP HeapProfiler.takeHeapSnapshot, written to outDir as
+// post-render.heapsnapshot. Combined with --gc-passes, a second
+// snapshot post-gc.heapsnapshot is taken right after the GC pass.
+// Load both in Chrome DevTools (Memory -> Load profile) -- the
+// diff between them shows exactly which objects the GC freed, and
+// the Retainers view on the largest object classes shows what's
+// keeping the dangling references alive in JS-land.
+//
 // Usage:
 //   node probe-renderer-mem.mjs [path/to/book.html]
 //                               [--gc | --gc-passes N]
+//                               [--heap-snapshot]
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -34,10 +44,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 let inputArg = null;
 let gcPasses = -1;
+let heapSnap = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--gc') gcPasses = 5;
   else if (a === '--gc-passes') gcPasses = parseInt(args[++i], 10);
+  else if (a === '--heap-snapshot') heapSnap = true;
   else if (!inputArg && !a.startsWith('-')) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -73,9 +85,10 @@ const fmtMB = (b) => {
   return (b / 1024 / 1024).toFixed(0).padStart(5) + ' MB';
 };
 
-console.log(`[probe] input    : ${inputPath}`);
-console.log(`[probe] output   : ${outDir}`);
-console.log(`[probe] gc-passes: ${forceGc ? gcPasses : '(off)'}`);
+console.log(`[probe] input        : ${inputPath}`);
+console.log(`[probe] output       : ${outDir}`);
+console.log(`[probe] gc-passes    : ${forceGc ? gcPasses : '(off)'}`);
+console.log(`[probe] heap-snapshot: ${heapSnap}`);
 
 // Match production launch args (docs/render-book.mjs). --expose-gc
 // is added when --gc is set so window.gc() inside the page works;
@@ -139,7 +152,36 @@ try {
     dumpRequests.push({ label, guid: r.dumpGuid });
   };
 
+  // V8/Blink heap snapshot via CDP. Streams chunks; concatenated text
+  // is a JSON document DevTools recognises as a .heapsnapshot. The
+  // snapshot itself is reachable from JS-land roots only -- it does
+  // not see Oilpan-only objects that have no JS reference. That's
+  // why dangling Blink objects show up as "Detached HTMLElement" or
+  // similar in DevTools' Retainers view: the V8 wrapper exists, and
+  // the path back to it is what we need to find.
+  const takeHeapSnapshot = async (label) => {
+    const t0 = Date.now();
+    await cdp.send('HeapProfiler.enable');
+    const chunks = [];
+    const onChunk = ({ chunk }) => chunks.push(chunk);
+    cdp.on('HeapProfiler.addHeapSnapshotChunk', onChunk);
+    try {
+      await cdp.send('HeapProfiler.takeHeapSnapshot', {
+        reportProgress:            false,
+        treatGlobalObjectsAsRoots: true,
+        captureNumericValue:       false,
+      });
+    } finally {
+      cdp.off('HeapProfiler.addHeapSnapshotChunk', onChunk);
+    }
+    const snap = chunks.join('');
+    const path = join(outDir, `${label}.heapsnapshot`);
+    writeFileSync(path, snap);
+    console.log(`heap snapshot ${label}: ${path} (${(snap.length / 1024 / 1024).toFixed(1)} MB, ${((Date.now() - t0) / 1000).toFixed(2)}s)`);
+  };
+
   await dumpAt('post-render');
+  if (heapSnap) await takeHeapSnapshot('post-render');
 
   if (forceGc) {
     const tGc = Date.now();
@@ -162,6 +204,7 @@ try {
     await new Promise((r) => setTimeout(r, 500));
     console.log(`gc-pass(${passes}): ${((tAfterGc - tGc) / 1000).toFixed(2)}s  total(+pressure): ${((Date.now() - tGc) / 1000).toFixed(2)}s`);
     await dumpAt('post-gc');
+    if (heapSnap) await takeHeapSnapshot('post-gc');
   }
 
   const midTimer = setTimeout(() => { dumpAt('mid-generate').catch(() => {}); }, 25000);
