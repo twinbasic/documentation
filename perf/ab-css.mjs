@@ -2,53 +2,99 @@
 //
 // Parses docs/_site-pdf/assets/css/print.css into themed sections by its
 // existing `/* ---- Section name ---- */` dividers, then renders the book
-// once per variant (full CSS, minimal-required CSS, and full minus each
+// per variant (full CSS, minimal-required CSS, and full minus each
 // individual section in turn -- or minimal plus each section in turn).
 // For each render we capture a hybrid trace and pull on-CPU time from
 // the embedded V8 cpu profile -- NOT wall-clock, which is too noisy at
-// single-run granularity. CPU sample-time is machine-load-independent
-// (preempted intervals don't sample), so one run per variant is enough.
+// single-run granularity.
 //
-// Output is a table of per-section deltas:
+// **CPU sample-time on this machine has ~15-25 % single-run variance**,
+// large enough to drown per-section deltas below ~10 % of recalcStyle.
+// The tool defaults to 3 paired runs per variant interleaved with the
+// baseline (A B A B A B ...), then reports the mean paired difference
+// + SD across the N pairs. Paired differencing cancels machine-state
+// drift far better than independent runs, so 3 pairs gives reliable
+// rankings even when individual run-to-run variance is ~20 %.
 //
-//   cpu_total_ms = sum of all V8 cpu sample deltas (whole render)
-//   recalc_ms    = sum of deltas where Document::recalcStyle is in the
-//                  hybrid stack (V8 lineage + Blink event nest)
-//   layout_ms    = same for LocalFrameView::performLayout
-//   Δ*           = baseline-full minus variant (subtract) or variant
-//                  minus baseline-minimal (add)
+// Output columns:
+//
+//   total_cpu_ms = mean CPU sample-time for the variant (informational)
+//   Δrecalc_ms   = mean of (A.recalc - B.recalc) across paired runs;
+//                  positive = "this section costs about this much"
+//   Δrecalc_sd   = SD of the paired differences across the N pairs
+//   Δtotal_ms    = same for total CPU
 //
 // Usage:
-//   node ab-css.mjs                # subtractive sweep, 1 run/variant
+//   node ab-css.mjs                # subtractive sweep, 3 pairs/variant
+//   node ab-css.mjs --runs 5       # tighter SD if you can spare the time
 //   node ab-css.mjs --mode add     # additive (minimal + 1 section)
 //   node ab-css.mjs --only typography,headings  # filter variants
 //   node ab-css.mjs --out my-run   # results folder name (default: ab-css)
 //
-// Always-kept sections (not dropped/added; required for paged.js to
-// paginate at roughly the right page count): preamble, "Page geometry,
-// running header, page numbers", "Chapter boundaries".
+// Always-kept sections (required for paged.js to paginate at roughly
+// the right page count): preamble, "Page geometry, running header,
+// page numbers", "Chapter boundaries".
 
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 
+// ---- Windows: auto-relaunch with CPU affinity + High priority --------
+// CPU sample-time has ~15-25% single-run variance on a stock Windows dev
+// box where background processes share cores with our benchmark. Pinning
+// to a fixed subset of logical processors (and raising priority class)
+// cuts that to ~2-4%. `start /affinity HEX /high` is the simplest tool;
+// child processes (puppeteer's Chromium and its renderer / utility
+// children) inherit the mask from us.
+//
+// Default mask 0x5500 = LPs 8, 10, 12, 14 on Windows enumeration: on an
+// 8-core / 16-thread AMD Ryzen 7 (Zen 1..4) that's physical cores 4..7,
+// thread 0 of each pair only -- no SMT contention. Sets it explicitly
+// rather than relying on the OS to balance. Override with the
+// AB_CSS_AFFINITY env var (any hex mask); set --no-affinity to skip.
+if (process.platform === 'win32'
+    && !process.env.AB_CSS_PINNED
+    && !process.argv.includes('--no-affinity')) {
+  const mask = process.env.AB_CSS_AFFINITY || '5500';
+  const argv0 = process.argv[1];
+  const userArgs = process.argv.slice(2)
+    .map(a => /[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a)
+    .join(' ');
+  console.error(`[ab-css] Re-launching with /affinity 0x${mask} /high to stabilise measurements.`);
+  console.error(`[ab-css] Override mask: AB_CSS_AFFINITY=<hex>. Skip pinning: --no-affinity.`);
+  // Note: empty "" after start is a window-title placeholder. Without
+  // it, start consumes the first quoted token as the title and corrupts
+  // the script path. shell:true so cmd.exe handles quoting (Node's CRT
+  // would otherwise escape the inner quotes and break start's parsing).
+  const cmdLine = `set AB_CSS_PINNED=1 && start "" /affinity ${mask} /high /wait /b node "${argv0}" ${userArgs}`;
+  const r = spawnSync(cmdLine, { shell: true, stdio: 'inherit' });
+  process.exit(r.status ?? 0);
+}
+if (process.env.AB_CSS_PINNED) {
+  console.error(`[ab-css] Running pinned (AB_CSS_PINNED=1).`);
+}
+
 // ---- CLI -------------------------------------------------------------
 let mode = 'subtract';
 let outRoot = 'ab-css';
 let onlyFilter = null;
+let pairs = 3;
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--mode') mode = args[++i];
   else if (args[i] === '--out') outRoot = args[++i];
   else if (args[i] === '--only') onlyFilter = args[++i].split(',').map(s => s.trim().toLowerCase());
+  else if (args[i] === '--runs') pairs = parseInt(args[++i], 10);
+  else if (args[i] === '--no-affinity') { /* handled in the relaunch shim above */ }
   else if (args[i] === '-h' || args[i] === '--help') {
-    console.error('usage: node ab-css.mjs [--mode subtract|add] [--out DIR] [--only NAME[,NAME...]]');
+    console.error('usage: node ab-css.mjs [--runs N] [--mode subtract|add] [--out DIR] [--only NAME[,NAME...]]');
     process.exit(0);
   } else {
     console.error('unknown arg: ' + args[i]);
     process.exit(2);
   }
 }
+if (pairs < 1) { console.error('--runs must be >= 1'); process.exit(2); }
 if (mode !== 'subtract' && mode !== 'add') {
   console.error('--mode must be "subtract" or "add"');
   process.exit(2);
@@ -292,22 +338,52 @@ function cpuStatsFromTrace(tracePath) {
 }
 
 // ---- Main loop -------------------------------------------------------
-const results = [];
+// Paired interleaving: for each variant, capture N (A, variant) pairs
+// back-to-back (baseline render, then variant render). Paired
+// differences cancel machine-state drift far better than averaging
+// independent runs.
+const baselineLabel = mode === 'subtract' ? 'baseline-full' : 'baseline-minimal';
+const baseline = variants.find(v => v.label === baselineLabel);
+const others = variants.filter(v => v.label !== baselineLabel);
+// Hold the baseline's stats per pair-index; baseline is sampled once
+// per variant per pair (so it's re-measured under similar machine
+// state to each variant). This costs more runs but yields paired data.
+function runVariant(v, pairIdx) {
+  const dirName = pairs > 1 ? `${v.label}-r${pairIdx + 1}` : v.label;
+  const outDir = resolve(outRoot, dirName);
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(SWAP_CSS_PATH, cssFor(v.keep()));
+  writeFileSync(SWAP_HTML_PATH, swappedHtml);
+  runOnce(outDir);
+  return cpuStatsFromTrace(join(outDir, 'trace.json'));
+}
+
+const results = []; // { label, perPair: [{statsBase, statsVariant} or {stats}] }
 try {
-  for (const v of variants) {
-    const keep = v.keep();
-    const cssText = cssFor(keep);
-    const outDir = resolve(outRoot, v.label);
-    mkdirSync(outDir, { recursive: true });
-    writeFileSync(SWAP_CSS_PATH, cssText);
-    writeFileSync(SWAP_HTML_PATH, swappedHtml);
-    runOnce(outDir);
-    const stats = cpuStatsFromTrace(join(outDir, 'trace.json'));
-    results.push({ label: v.label, kept: keep, stats });
-    const totalMs = stats.totalCpuUs / 1000;
-    const recMs = (stats.labelUs.get('Document::recalcStyle') || 0) / 1000;
-    const layMs = (stats.labelUs.get('LocalFrameView::performLayout') || 0) / 1000;
-    console.error(`  ${v.label}: cpu_total=${totalMs.toFixed(0)}ms  recalc=${recMs.toFixed(0)}ms  layout=${layMs.toFixed(0)}ms  (${stats.nSamples} samples)`);
+  // Run the baselines separately first (no pairing for baselines vs themselves).
+  const baselineRuns = [];
+  for (let p = 0; p < pairs; p++) {
+    const stats = runVariant(baseline, p);
+    baselineRuns.push(stats);
+    console.error(`  ${baseline.label} pair${p + 1}: cpu=${(stats.totalCpuUs/1000).toFixed(0)}ms recalc=${((stats.labelUs.get('Document::recalcStyle')||0)/1000).toFixed(0)}ms`);
+  }
+  results.push({ label: baseline.label, baselineRuns, isBaseline: true });
+
+  for (const v of others) {
+    const pairsData = [];
+    for (let p = 0; p < pairs; p++) {
+      // Re-measure baseline immediately before each variant pair to
+      // pair the two against the same machine state.
+      const statsBase = runVariant(baseline, p + pairs);  // separate dir
+      const statsVar  = runVariant(v, p);
+      pairsData.push({ statsBase, statsVariant: statsVar });
+      const dB = statsBase.totalCpuUs / 1000;
+      const dV = statsVar.totalCpuUs / 1000;
+      const rB = (statsBase.labelUs.get('Document::recalcStyle') || 0) / 1000;
+      const rV = (statsVar.labelUs.get('Document::recalcStyle') || 0) / 1000;
+      console.error(`  ${v.label} pair${p + 1}: baseline cpu=${dB.toFixed(0)}/recalc=${rB.toFixed(0)}  variant cpu=${dV.toFixed(0)}/recalc=${rV.toFixed(0)}  Δcpu=${(dB-dV).toFixed(0)} Δrecalc=${(rB-rV).toFixed(0)}`);
+    }
+    results.push({ label: v.label, pairsData });
   }
 } finally {
   for (const p of [SWAP_CSS_PATH, SWAP_HTML_PATH]) {
@@ -316,71 +392,99 @@ try {
 }
 
 // ---- Report ----------------------------------------------------------
-const baseFull = results.find(r => r.label === 'baseline-full');
-const baseMin  = results.find(r => r.label === 'baseline-minimal');
-const baseFor  = mode === 'subtract' ? baseFull : baseMin;
-
 const ms = (us) => (us || 0) / 1000;
-const labelMs = (r, name) => ms(r.stats.labelUs.get(name));
+const metricMs = (stats, name) => name === 'cpu_total' ? ms(stats.totalCpuUs) : ms(stats.labelUs.get(name));
+const METRICS = [
+  ['cpu_total',                              'cpu'],
+  ['Document::recalcStyle',                  'recalc'],
+  ['LocalFrameView::performLayout',          'layout'],
+  ['Document::rebuildLayoutTree',            'rebuild'],
+  ['InlineNode::ShapeTextIncludingFirstLine','shape'],
+];
+function meanSD(xs) {
+  const n = xs.length;
+  if (!n) return { mean: 0, sd: 0 };
+  const mean = xs.reduce((s, x) => s + x, 0) / n;
+  if (n < 2) return { mean, sd: 0 };
+  const sd = Math.sqrt(xs.reduce((s, x) => s + (x - mean) ** 2, 0) / (n - 1));
+  return { mean, sd };
+}
 
-const H_LABEL = 38, H_NUM = 10;
+const sign = mode === 'subtract' ? +1 : +1;  // both modes: positive Δ = "this section costs this much"
+// In subtract mode the paired diff is (baseline - variant); positive means
+// dropping the section saved time, i.e. the section was costly.
+// In add mode the paired diff is (variant - minimal); positive means
+// adding the section costs this much. Same sign convention either way.
+
+const H_LABEL = 36, H_NUM = 11;
 const hdr = (s, w) => String(s).padStart(w);
 
 console.log('');
-console.log(`mode=${mode}  delta-baseline=${baseFor?.label || 'none'}  (CPU sample-time from embedded V8 profile)`);
+console.log(`mode=${mode}  pairs=${pairs}  (CPU sample-time from embedded V8 profile)`);
+console.log('Δ = mean of paired (baseline − variant) across N pairs, ± SD');
 console.log('');
-console.log(
-  'variant'.padEnd(H_LABEL) +
-  hdr('cpu_total', H_NUM) +
-  hdr('recalc', H_NUM) +
-  hdr('layout', H_NUM) +
-  hdr('rebuild', H_NUM) +
-  hdr('shape', H_NUM) +
-  hdr('Δtotal', H_NUM) +
-  hdr('Δrecalc', H_NUM)
-);
-console.log('-'.repeat(H_LABEL + H_NUM * 7));
 
-const sign = mode === 'subtract' ? -1 : 1;
-const baseTotal  = baseFor ? ms(baseFor.stats.totalCpuUs) : 0;
-const baseRecalc = baseFor ? labelMs(baseFor, 'Document::recalcStyle') : 0;
-const variantRows = results.filter(r => r !== baseFull && r !== baseMin);
+const variantRows = results.filter(r => !r.isBaseline);
+// Compute paired diffs per variant per metric.
+function diffStats(v) {
+  const out = new Map();
+  for (const [metric] of METRICS) {
+    const diffs = v.pairsData.map(p => metricMs(p.statsBase, metric) - metricMs(p.statsVariant, metric));
+    out.set(metric, meanSD(diffs));
+  }
+  // Also store mean of variant's own metric across pairs (informational).
+  const variantOwn = new Map();
+  for (const [metric] of METRICS) {
+    variantOwn.set(metric, meanSD(v.pairsData.map(p => metricMs(p.statsVariant, metric))));
+  }
+  return { diffs: out, own: variantOwn };
+}
+const variantStats = new Map(variantRows.map(v => [v.label, diffStats(v)]));
+
+// Sort by mean Δrecalc descending (largest claimed cost first).
 variantRows.sort((a, b) => {
-  const da = sign * (ms(a.stats.totalCpuUs) - baseTotal);
-  const db = sign * (ms(b.stats.totalCpuUs) - baseTotal);
+  const da = variantStats.get(a.label).diffs.get('Document::recalcStyle').mean;
+  const db = variantStats.get(b.label).diffs.get('Document::recalcStyle').mean;
   return db - da;
 });
-const display = [baseFull, baseMin, ...variantRows].filter(Boolean);
 
-for (const r of display) {
-  const total  = ms(r.stats.totalCpuUs);
-  const recalc = labelMs(r, 'Document::recalcStyle');
-  const layout = labelMs(r, 'LocalFrameView::performLayout');
-  const rebuild = labelMs(r, 'Document::rebuildLayoutTree');
-  const shape   = labelMs(r, 'InlineNode::ShapeTextIncludingFirstLine');
-  let dTotal = '-', dRecalc = '-';
-  if (baseFor && r !== baseFor) {
-    dTotal  = (sign * (total - baseTotal)).toFixed(0);
-    dRecalc = (sign * (recalc - baseRecalc)).toFixed(0);
-  }
+// Baseline row first (for context).
+const baselineResult = results.find(r => r.isBaseline);
+const baselineOwn = new Map();
+for (const [metric] of METRICS) {
+  baselineOwn.set(metric, meanSD(baselineResult.baselineRuns.map(s => metricMs(s, metric))));
+}
+
+console.log(
+  'variant'.padEnd(H_LABEL) +
+  METRICS.map(([_, short]) => hdr('Δ' + short, H_NUM)).join('') +
+  hdr('  ± Δrecalc SD', 16)
+);
+console.log('-'.repeat(H_LABEL + H_NUM * METRICS.length + 16));
+
+// Baseline row: own values, no Δ.
+console.log(
+  (baselineResult.label + ' (mean)').padEnd(H_LABEL) +
+  METRICS.map(([metric]) => hdr(baselineOwn.get(metric).mean.toFixed(0), H_NUM)).join('') +
+  ''
+);
+console.log(
+  (baselineResult.label + ' (SD)').padEnd(H_LABEL) +
+  METRICS.map(([metric]) => hdr(baselineOwn.get(metric).sd.toFixed(0), H_NUM)).join('') +
+  ''
+);
+
+for (const v of variantRows) {
+  const s = variantStats.get(v.label);
+  const recalcSD = s.diffs.get('Document::recalcStyle').sd;
   console.log(
-    r.label.padEnd(H_LABEL) +
-    hdr(total.toFixed(0), H_NUM) +
-    hdr(recalc.toFixed(0), H_NUM) +
-    hdr(layout.toFixed(0), H_NUM) +
-    hdr(rebuild.toFixed(0), H_NUM) +
-    hdr(shape.toFixed(0), H_NUM) +
-    hdr(dTotal, H_NUM) +
-    hdr(dRecalc, H_NUM)
+    v.label.padEnd(H_LABEL) +
+    METRICS.map(([metric]) => hdr(s.diffs.get(metric).mean.toFixed(0), H_NUM)).join('') +
+    hdr('± ' + recalcSD.toFixed(0), 16)
   );
 }
 
 console.log('');
-console.log(`All columns are CPU sample-time in ms (sum of V8 sample timeDeltas).`);
-console.log(`recalc / layout / rebuild / shape = total-time of each Blink event`);
-console.log(`  (any sample whose hybrid stack contains the label).`);
-console.log(`Δ columns = ${mode === 'subtract'
-  ? 'baseline-full MINUS variant  (positive = "this section costs about this much")'
-  : 'variant MINUS baseline-minimal  (positive = "adding this section adds about this much")'}`);
-console.log(`Always-kept sections: preamble + Page geometry + Chapter boundaries.`);
+console.log(`All numbers are CPU sample-time in ms (sum of V8 sample timeDeltas).`);
+console.log(`Variant Δrecalc < 2*SD is consistent with zero -- below the noise floor.`);
 console.log(`Per-variant traces saved under: ${resolve(outRoot)}/`);
