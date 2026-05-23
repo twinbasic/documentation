@@ -108,6 +108,7 @@ DevTools-compatible trace is a few lines.
 | `probe-outline-exclusions.mjs` | Tests which per-element attributes / styles (aria-hidden, role=presentation, hidden, display:none, CSS bookmark-level, ...) make Chrome drop a heading from its outline. |
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
 | `analyze-trace.mjs` | Bottom-up self-time analyzer for Chrome traces (`trace.json` from `--tracing`). Computes per-event self-time on the renderer's main thread (`CrRendererMain` by default) by walking nested `X`-phase events. Cracks the cpu profile's `(program)` bucket open into named Blink / V8 events (`Layout`, `RecalcStyle`, `RunMicrotasks`, `V8.GC_*`, ...). Operates on the Blink trace events only -- ignores any embedded V8 cpu samples (`Profile` / `ProfileChunk`). |
+| `analyze-hybrid.mjs` | Bottom-up analyzer that *combines* the V8 cpu samples and the Blink trace events from a hybrid `trace.json`. Builds a `[JS root..leaf] ++ [Blink outer..inner]` stack at each sample (filtering V8's virtual frames and JS-entry wrapper events) and prints either top-N self-time mixing JS function names with Blink/V8 event names, or `--callees <label>` direct-callees for any name on either axis. Lets you walk a single causation chain from a JS function down through the Blink layout / style work it triggered via gBCR (`hasOverflow -> getBoundingClientRect -> Document::UpdateStyleAndLayout -> Blink.ForcedStyleAndLayout.UpdateTime -> ...`). |
 | `ab-aggregate.mjs` | Per-row mean + SD aggregator across 6 paired cpu profiles (`ab-A1..A3.cpuprofile` and `ab-B1..B3.cpuprofile`). Use when wall-clock noise drowns a structural change: capture 3+3 interleaved profiles via `measure.mjs --cpu-profile` with the change toggled on/off between runs, then point this at the 6 files for a mean-with-SD table that surfaces deltas wall-clock can't see (e.g. ~6 σ shifts on rows that move from 88 ms to 2 ms). See the "Disabling the filter outright" section in this README for the methodology. |
 | `find-callers.mjs` | "Who paid for this callee's time?" -- walks a `.cpuprofile` and attributes a target function's total time back to each direct caller. Used throughout the post-mortems to detect gBCR migration between callers. |
 | `find-callees.mjs` | The other direction of `find-callers.mjs`: splits a function's self+descendant time across its direct callees. Surfaces the cases where V8 has rolled native DOM work back into the calling JS frame (Range deletion in `removeOverflow`, HTML parser in `wrapContent`). |
@@ -4166,8 +4167,10 @@ name via a nested-event stack walk (same shape as
 top-N table. A `--children <name>` mode breaks any
 parent event into its direct callees, mirroring
 `find-callees.mjs`. It ignores the embedded V8 cpu samples
--- those are consumed separately by the viewers above (or
-by a forthcoming hybrid analyzer in this folder).
+-- those are consumed by the viewers above (DevTools /
+Perfetto) or, for terminal use, by `analyze-hybrid.mjs`,
+which combines V8 sample stacks with Blink event nests
+into a single bottom-up / callees view.
 
 ### What's on the main thread
 
