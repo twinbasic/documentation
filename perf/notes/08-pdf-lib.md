@@ -2500,6 +2500,155 @@ production import change needed since `fast-dict-array` was
 already wired up. The `--instrument-parsedict` flag stays on
 `measure.mjs` for future dict-workload investigations.
 
+## View-based PDFDict (explored, didn't ship)
+
+After fast-dict-array pre-sized its per-dict accumulator to median
+size, the `fastParseDictArray` row was still 43.8 MB on the heap
+profile (48 % of total) -- mostly the irreducible floor of "one
+`new Array(10)` + one PDFDict instance per parsed dict, 261 k
+times". The natural next move: stop allocating per-dict storage at
+all, share one backing array across many dicts via a `(buf, start,
+end)` view.
+
+Prototyped as `fast-dict-view.mjs`. Each PDFDict carried a `(buf,
+start, end)` window into a parser-wide per-depth shared array,
+append-only across all dicts at that depth. The win on heap was
+only ~2.5 MB -- the fatter PDFDict instance (5 fields vs 2) ate
+back most of the buffer-sharing saving. Subsequently superseded
+by the one-buffer approach below, which packs the entire dict
+storage into a single mainBuf and shrinks the PDFDict instance
+back down. The view-based shim doesn't ship; the notes here are
+preserved as the thinking that led to one-buffer.
+
+### Why "not scratch"
+
+The earlier comment about "scratch buffer" was wrong vocabulary.
+A scratch buffer is a temporary workspace -- you write, use, and
+discard. Nothing here qualifies: every parsed entry lives until
+the PDFDocument is dropped. What we actually want is a *shared
+backing array* where each PDFDict claims a contiguous range,
+written once and kept. The buffer is append-only; slots are never
+rewritten.
+
+### The recursion gotcha
+
+A naive single shared buffer breaks under parseDict recursion. If
+outer parseDict appends entries to `buf` while parsing a value
+that recurses into inner parseDict, inner's entries get
+interleaved into outer's range. Outer's view would wrongly
+include inner's entries:
+
+```
+outer parseDict starts at len=0
+  outer parses keyA, valueA       -> buf[0,1], len=2
+  outer parses keyB, value=<<...>> -> calls inner parseDict
+    inner appends 3 entries        -> buf[2..7], len=8
+    inner returns view {start:2, end:8}
+  outer wants to write keyB,valueB at buf[8,9] -> len=10
+  outer parses keyC,valueC         -> buf[10,11], len=12
+outer's range: {start:0, end:12}  ← includes inner's entries!
+```
+
+Fix: **one buffer per parseDict-recursion-depth**, not one shared
+globally. Instrumentation
+([perf/instrument-parsedict.mjs](../instrument-parsedict.mjs))
+showed max parseDict depth = 3 on the book, so 3-4 buffers per
+parser. Each buffer is append-only across all dicts at that depth.
+Inner recursion writes to a different buffer than outer, so
+outer's range stays contiguous.
+
+### Copy-on-write for mutations
+
+Shared buffers are correct as long as nobody mutates the entries.
+But `pdfDoc.catalog.set(PDFName.of('Outlines'), outlineRef)` does
+happen in our pipeline (during setOutline). The shim added a COW
+hook to `PDFDict.prototype.set` and `.delete`: first mutation
+copies the (start..end) range into a private array, swaps the
+view to point at that copy with `_dictOwned = true`. Subsequent
+mutations on that dict operate in place. Other dicts sharing the
+original buffer are unaffected.
+
+### Pre-sizing the per-depth buffers
+
+Without pre-sizing the per-depth buffers, V8 doubles their
+backing FixedArray from cap 0 up to (depth 0 case) ~2.1M slots --
+~20 doublings, with each old arena becoming garbage. That growth
+garbage alone was 6.5 MB of the regression observed when first
+prototyping.
+
+Instrumented to measure the final per-depth lengths on a book
+parse:
+
+```
+=== fast-dict-view: depth stats ===
+parser instances seen: 1
+  depth 0: total 2 155 544 slots, max-per-parser 2 155 544 slots
+  depth 1: total   158 260 slots, max-per-parser   158 260 slots
+  depth 2: total    26 724 slots, max-per-parser    26 724 slots
+```
+
+Hardcoded the caps + 10 slack in the shim's `DEPTH_BUF_CAPS`,
+sized to skip all growth on the book. For other workloads the
+buffers grow naturally from these starting sizes;
+oversizing-by-2x doesn't hurt much because there's only one
+buffer per depth per parser.
+
+### Bug-hunt: the depth-reset gotcha
+
+The first version of the shim used `if (!this._dictDepth)` to
+lazy-init the per-parser buffer stack. `!this._dictDepth` is true
+when `_dictDepth = 0` -- which is exactly the state at the *end*
+of every top-level parseDict call (the depth counter was just
+decremented back to zero). The buffers were getting reset between
+every top-level dict; each one was effectively allocating fresh.
+
+Fix: `if (this._dictBufs === undefined)` -- explicit
+undefined-on-construction check. Easy to spot in retrospect, less
+easy to spot when looking at a regression that doesn't make
+sense.
+
+### Why the win is "only" 2.5 MB
+
+Even with perfect pre-sized buffers and the bug fix, fast-dict-view
+beats fast-dict-array by only ~2.5 MB on heap. The expected
+saving was bigger -- one shared buffer should beat 261 k separate
+ones by a lot.
+
+The reason: the PDFDict *instance* in fast-dict-view is itself
+larger. Where fast-dict-array stores `{dict, context}` (2 named
+slots, ~32 B per instance with V8's inline-properties packing),
+fast-dict-view stores `{_dictBuf, _dictStart, _dictEnd, _dictOwned,
+context}` (5 named slots, ~96 B per instance). Across 261 k
+dicts that's ~16 MB of extra per-instance storage that offsets
+most of the buffer-sharing win:
+
+| Per-dict allocation | fast-dict-array (INITIAL_SLOTS=10) | fast-dict-view (pre-sized) |
+|---------------------|-----------------------------------:|----------------------------:|
+| Backing storage     | 104 B per-dict `new Array(10)`     | ~16 B share of shared buf   |
+| PDFDict instance    | ~32 B (inlined constructor)        | ~96 B (Object.create + 5 fields) |
+| **Total / dict**    |                          **~136 B**|                  **~112 B** |
+
+The buffer sharing saves ~88 B per dict on storage, but the
+fatter PDFDict instance eats ~64 B back. Net ~24 B per dict =
+~6 MB structural win, of which ~2.5 MB shows in the heap profile
+after V8 internal overhead variance.
+
+### Measured wins
+
+Heap profile (paired `--heap-profile-process --heap-sampling 512`,
+fast-dict-array baseline vs + fast-dict-view):
+
+| Allocator                          | Pre (KB)  | Post (KB) | Delta          |
+|------------------------------------|----------:|----------:|---------------:|
+| `fastParseDictArray` / `*View`     |  43 817.77 |  40 955.37 | -2.86 MB       |
+| Total sampled                      |  92.13 MB  |  89.68 MB  | **-2.45 MB**   |
+
+Modest. The takeaway is structural: a view-based shape is the
+right direction, but the PDFDict instance shape itself is now
+the dominant per-dict cost -- so the next prototype needs to
+shrink the instance too. That's the one-buffer + packed-pointer
+work in the following sections.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
