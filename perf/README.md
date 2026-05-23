@@ -66,20 +66,48 @@ or pdf-lib), or to write `book.pdf` for behavioural verification.
 The mirror command for CPU-profiling the pdf-lib roundtrip:
 
 ```
-node measure.mjs --cpu-profile-process --cpu-sampling 100
+node measure.mjs --fast-deflate --fast-refs --cpu-profile-process --cpu-sampling 100
 ```
 
-`--cpu-profile-process` is the symmetric counterpart of
-`--cpu-profile`. The render-side profile attaches to Chromium's V8
-via CDP because paged.js runs there; the process-side profile
-attaches to Node's V8 via `node:inspector/promises` because pdf-lib
-runs locally. Both produce the same `.cpuprofile` JSON shape, so
-`analyze-profile.mjs` / `find-callers.mjs` / `find-callees.mjs` /
-`grep-profile.mjs` work against either one. The two flags compose
-when you want both phases captured in a single run.
+Flag rationale:
+
+- `--fast-deflate` -- inject the
+  [docs/lib/fast-deflate.mjs](../docs/lib/fast-deflate.mjs) shipping
+  fix (`pako.deflate` -> `node:zlib.deflateSync`). Production runs
+  through it; the profile should too.
+- `--fast-refs` -- inject the
+  [docs/lib/fast-refs.mjs](../docs/lib/fast-refs.mjs) shipping fix
+  (dense-array cache for `PDFRef.of`'s gen=0 path). Same logic.
+- `--cpu-profile-process` -- attach Node's `inspector/promises`
+  Profiler around the process phase only (skips render and generate).
+  Writes `process.cpuprofile` into the timestamped `results/` folder.
+  The render-phase `--cpu-profile` is CDP / Chromium; this one is
+  Node / Node's V8 -- different runtimes, same `.cpuprofile` JSON
+  shape, so `analyze-profile.mjs` / `find-callers.mjs` /
+  `find-callees.mjs` / `grep-profile.mjs` work against either.
+- `--cpu-sampling 100` -- 100 us sampling. The process phase is now
+  ~2.3 s; at 1 ms default sampling that's only ~2300 samples and the
+  bottom-up table runs noisy. 100 us is the right resolution for
+  this length.
+
+The command intentionally **does not** pass `--cpu-profile`. There's
+no rule against running both at once -- they attach to different V8s
+and don't interfere -- but the render profile dilutes the bottom-up
+view of "what's left in pdf-lib," and the trace files are large.
+Profile one phase at a time.
+
+Why no `--render-only`? `--cpu-profile-process` requires the process
+phase to run; the harness errors out if you combine them.
+
+To compare against upstream pdf-lib (e.g. when proposing a change
+upstream), drop `--fast-deflate` and `--fast-refs`. Caveat for
+A/B work: profiler-on attribution overstates the cost of hot
+functions called millions of times (`PDFRef.of` in particular). For
+"did this wall-clock change," do a paired no-profile A/B as a
+sanity check.
 
 See [notes/08-pdf-lib.md](notes/08-pdf-lib.md) for the process-phase
-investigations the flag enabled.
+investigations these flags enabled.
 
 ## What's in this folder
 
@@ -202,6 +230,7 @@ run.bat --incremental                     # process via incremental update inste
 run.bat --chrome-outline                  # let Chrome emit /Outlines (skip parseOutline + setOutline)
 run.bat --tracing                         # capture a hybrid Chrome trace (Blink events + embedded V8 cpu samples)
 run.bat --fast-deflate                    # route pdf-lib's deflate through node:zlib (ships in render-book.mjs by default; opt-in here for A/B)
+run.bat --fast-refs                       # dense-array cache for PDFRef.of's gen=0 path (also ships; opt-in here for A/B)
 ```
 
 Flags compose. The CPU profile lands as `render.cpuprofile`
@@ -309,6 +338,7 @@ file documenting each:
 | Full sync chain (RunMicrotasks → 0) | [06](notes/06-microtasks-pageranges-css.md) | re-attribution |
 | `--disable-gpu` + `--in-process-gpu` | [07](notes/07-memory.md) | ~200 MB memory |
 | `pako.deflate` → `node:zlib.deflateSync` | [08](notes/08-pdf-lib.md) | ~1.5 s process (save -58 %) |
+| `PDFRef.of` dense-array cache (gen=0) | [08](notes/08-pdf-lib.md) | ~0.2 s process (load -16 %) |
 
 What was tried and didn't ship:
 
@@ -335,4 +365,4 @@ order; later ones reference earlier ones for context.
 | [05-blink-trace.md](notes/05-blink-trace.md) | What happened when we tried move-not-clone (a `previousLeaf` cache shipped instead of move); cracking the cpu profile's `(program)` row open with a Blink-category trace; the WhiteSpaceFilter paired-A/B that found it wasn't worth its layout cost in our pipeline. |
 | [06-microtasks-pageranges-css.md](notes/06-microtasks-pageranges-css.md) | Following `RunMicrotasks` down to zero (chunker fully sync); why `pageRanges` sharding is off the table; CSS cost attribution showing print.css's individual sections are all below the noise floor. |
 | [07-memory.md](notes/07-memory.md) | Where the renderer's 1.9 GB goes -- process-tree footprint, per-allocator + per-Blink-class breakdown, `--disable-gpu` + `--in-process-gpu` saving ~200 MB, a GC-pass probe finding 180 MB of unswept Oilpan garbage. |
-| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; finding pako's per-stream init dominates with ~4 500 small streams; routing `pako.deflate` through `node:zlib` (save -58 %, GC -383 ms). |
+| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; pako's per-stream init dominates with ~4 500 small streams (routing `pako.deflate` through `node:zlib` saves ~1.5 s); `PDFRef.of`'s string-keyed Map lookup at 1.2 M calls per load (dense-array gen=0 cache saves ~0.2 s). |

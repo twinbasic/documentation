@@ -32,10 +32,17 @@ import { dirname, resolve } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { PDFDocument, ParseSpeeds } from 'pdf-lib';
-// Side-effecting import: swaps pdf-lib's pako.deflate (pure JS) for
-// node:zlib.deflateSync (C). Save phase only, same /FlateDecode output,
-// ~1.5 s saved on the book. See perf/notes/08-pdf-lib.md.
+// Side-effecting imports. Order doesn't matter; both mutate live
+// module exports before any pdf-lib operation. See
+// perf/notes/08-pdf-lib.md.
+//
+//   fast-deflate -- swaps pdf-lib's pako.deflate (pure JS) for
+//     node:zlib.deflateSync (C). ~1.5 s saved on the save phase.
+//   fast-refs    -- dense-array cache in front of PDFRef.of for the
+//     gen=0 case (82 % of ~1.2 M calls per load). ~0.2 s saved on
+//     load.
 import './lib/fast-deflate.mjs';
+import './lib/fast-refs.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 

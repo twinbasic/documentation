@@ -268,7 +268,7 @@ total ~50 s vs the prior ~70 s baseline. Output PDF byte size
 unchanged from the pre-shim build (16.1 MB; standard `/CreationDate`
 drift between runs).
 
-## What this didn't fix
+## After the shim: what's left
 
 After the shim the bottom-up profile points at the next two
 JS-attributable buckets:
@@ -277,17 +277,214 @@ JS-attributable buckets:
   string key `<num> <gen> R` per call and Map-looks it up; the
   string allocation per call is the cost. A drop-in fix would
   replace the `Map<string>` pool with a flat array for the gen=0
-  case (the overwhelming majority) and a fallback Map for gen ≠ 0.
-  Estimated ~300 ms saved.
+  case and a fallback Map for gen ≠ 0. Followed up below.
 - `(garbage collector)` at 262 ms (9 %). Tied to `PDFRef.of` and
-  the per-object dict allocations in the writer; would likely
+  the per-object dict allocations in the writer; expected to
   shrink along with the first item.
 
-Neither moves the wall-clock total meaningfully on its own --
-process is now 2.77 s of a ~50 s build -- so they're left in place
-unless or until they become the bottleneck.
+## `PDFRef.of`: dense-array cache for the gen=0 path
 
-The strategic note from earlier phases still stands: `pageRanges`
-sharding of generate is the only remaining knob with a profile
-target large enough to move total wall-clock by more than a few
-seconds.
+The upstream implementation:
+
+```js
+var pool = new Map();
+PDFRef.of = function (objectNumber, generationNumber) {
+    if (generationNumber === void 0) { generationNumber = 0; }
+    var tag = objectNumber + " " + generationNumber + " R";   // alloc
+    var instance = pool.get(tag);                              // hash
+    if (!instance) {
+        instance = new PDFRef(ENFORCER, objectNumber, generationNumber);
+        pool.set(tag, instance);
+    }
+    return instance;
+};
+```
+
+Per call: build a fresh `<obj> <gen> R` string, hand it to a
+`Map<string>` lookup that has to hash it, branch on miss. The
+string allocation is the cost we care about -- the dedup pool
+itself works correctly, it's just paying for its key on every read.
+
+### Workload shape
+
+Instrumented `PDFRef.of` and re-ran the harness through load + save:
+
+```
+total PDFRef.of calls     : 1,231,643
+  gen=0 (or undefined)    : 1,010,034  (82 %)
+  gen != 0                :   221,608  (18 %)
+gen=N value distribution (top, 4523 calls each):
+  gen=1, gen=2, ... gen=50: 4523 calls/value
+```
+
+The 1.2 M gen=0 calls are what the parser does for every
+encountered `N 0 R` reference and every per-object PDFRef
+construction. The 221 k gen != 0 calls are pdf-lib's xref-stream
+bookkeeping for PDF 1.5+ compressed-object entries: in a
+cross-reference stream's type-2 entry, the spec uses the
+"generation number" field to store the **index of the object
+within its ObjStm**, and pdf-lib feeds that index straight to
+`PDFRef.of` (`PDFXRefStreamParser.js:74-80`). 4,523 ObjStms × 50
+entries each ≈ the observed 221 k.
+
+So 82 % of calls have generationNumber=0. That's the path worth
+optimising.
+
+### The shim
+
+`docs/lib/fast-refs.mjs` is the symmetric side-effecting import to
+`fast-deflate`:
+
+```js
+import { PDFRef } from "pdf-lib";
+
+if (!PDFRef.__fastPoolInstalled) {
+  const original = PDFRef.of;
+  const pool0 = [];
+  PDFRef.of = function fastOf(objectNumber, generationNumber) {
+    if (generationNumber === undefined || generationNumber === 0) {
+      const existing = pool0[objectNumber];
+      if (existing) return existing;
+      const fresh = original.call(PDFRef, objectNumber, 0);
+      pool0[objectNumber] = fresh;
+      return fresh;
+    }
+    return original.call(PDFRef, objectNumber, generationNumber);
+  };
+  PDFRef.__fastPoolInstalled = true;
+}
+```
+
+Dense-array indexed by `objectNumber` for the gen=0 case -- no
+string alloc, no Map hash, just an array read. gen != 0 passes
+through to the original (which still allocates the tag and runs
+the Map lookup, but that's only 18 % of calls).
+
+The cache is **in front of** the original `PDFRef.of`, not a
+replacement: on a miss we call the original to produce the PDFRef
+instance, then cache it. That dodges the module-private `ENFORCER`
+token the upstream constructor demands. Memory cost is a second
+reference per PDFRef on top of the upstream pool's entry -- ~228 k
+tiny objects, negligible.
+
+The interning contract is preserved: `PDFRef.of(42) === PDFRef.of(42, 0)`
+and both `!== PDFRef.of(42, 1)`, as before.
+
+### Results: profiler-on vs profiler-off matters
+
+First A/B with the process-phase profiler attached (paired,
+`--detach-pages --no-timing --cpu-profile-process --cpu-sampling 100
+--fast-deflate [--fast-refs]`):
+
+| metric    | pre (no fast-refs) | post (+ fast-refs) | Δ |
+| ---       | ---                | ---                | --- |
+| process   | 2.94 s             | 2.52 s             | **-0.42 s (-14 %)** |
+| ↳ load    | 1.81 s             | 1.42 s             | -0.39 s |
+| ↳ save    | 1.12 s             | 1.08 s             | flat |
+| `PDFRef.of` self in profile | 336 ms (12 %) | 148 ms (5.9 %) | -188 ms |
+| `(garbage collector)` self  | 262 ms (9 %) | 194 ms (7.8 %) | -68 ms |
+
+`PDFRef.of`'s self-time roughly halved, GC pressure dropped, and
+the wall-clock saving (390 ms on load) looked like a clean win.
+
+But: paired A/B *without* the profiler attached told a different
+story:
+
+| metric    | pre (no fast-refs) | post (+ fast-refs) | Δ |
+| ---       | ---                | ---                | --- |
+| process   | 2.48 s             | 2.26 s             | **-0.22 s (-9 %)** |
+| ↳ load    | 1.51 s             | 1.27 s             | **-0.24 s (-16 %)** |
+| ↳ save    | 0.96 s             | 0.98 s             | flat |
+
+**Real wall-clock saving is ~240 ms**, not 390 ms. The remaining
+~150 ms of the profiler-on delta was profiler-attribution overhead
+that our shim removed by making the hot function shorter -- fewer
+samples landing on `PDFRef.of`, less per-sample tax. The profiler
+isn't lying about which function is expensive; it's overstating
+*how much* that expense will move wall-clock once you fix it.
+
+The diagnostic question to tell these apart: *what's the call
+rate?* At 1.2 M calls per load, even a few microseconds of
+sampling overhead per call adds up to hundreds of milliseconds in
+the profile. Functions called millions of times need a no-profile
+A/B as a sanity check before claiming the wall-clock saving the
+profile implied. Functions called a few times per page (or once
+per render) don't.
+
+Both numbers are real -- the bottom-up profile is the right
+*target* for "what's worth fixing," but a no-profile A/B is the
+right *measurement* for "how big the win was."
+
+### Production confirmation
+
+`book.bat` with both shims, two consecutive runs:
+
+```
+render:   9.1s   (1651 pages)
+generate: 37.5s
+process:  2.3s
+saved:    docs\_pdf\book.pdf  (16.1 MB)
+total:    50.7s
+```
+
+Process dropped from the prior 2.5 s (with just `fast-deflate`) to
+2.3 s. `book.bat` rounds to 0.1 s and is single-run so individual
+phase numbers carry some run-to-run jitter, but the harness's
+2.48 → 2.26 paired-A/B confirms the ~200 ms move is real.
+
+### What this didn't fix
+
+The post-`fast-refs` bottom-up table:
+
+```
+samples: 4668   duration: 2.53s   us/sample: 542
+
+   self_ms   self_%   function                   source
+   -------   ------   --------------------------------------------------
+    341.17   13.59%   writeSync                  (Node libuv -- zlib's C++ work)
+    194.41    7.75%   (garbage collector)
+    181.96    7.25%   PDFDict.entries            pdf-lib/.../PDFDict.js:22
+    172.21    6.86%   decodeName                 pdf-lib/.../PDFName.js:9
+    147.84    5.89%   PDFRef.of                  pdf-lib/.../PDFRef.js:34  (the 18 % gen != 0 residue)
+     96.40    3.84%   parseName
+     95.31    3.80%   parseRawNumber
+     78.52    3.13%   parseDict
+     ...
+```
+
+`PDFRef.of` is still on the list at 148 ms -- that's the 221 k
+gen != 0 calls still going through the upstream string-keyed Map.
+Optimising those would require either: (a) a 2D structure keyed by
+gen first then objectNumber, or (b) accepting that the in-ObjStm
+"index as generation" usage is short-lived bookkeeping (the parser
+creates these refs once to populate xref tables, then mostly
+re-resolves the actual `N 0 R` form). Neither moves the wall-clock
+total enough to justify -- 150 ms of a 50 s build is the noise floor.
+
+Above `PDFRef.of`, the load-phase costs (`decodeName`, `parseName`,
+`parseRawNumber`, `parseDict`, etc.) are pdf-lib's actual parser
+work. Those are O(input size) and pretty close to fundamental --
+shrinking them would mean rewriting the parser.
+
+### Where this leaves the picture
+
+Cumulative process-phase cost, baseline → after both shims:
+
+| state                              | process | load | save |
+| ---                                | ---     | ---  | ---  |
+| original (Slow / 50 defaults)      | ~40 s   | ~36 s| ~4 s |
+| + parseSpeed:Fastest               | ~5 s    | ~2 s | ~3 s |
+| + fast-deflate                     | ~2.5 s  | ~1.5s| ~1 s |
+| **+ fast-refs (this section)**     | **~2.3 s** | **~1.3 s** | **~1 s** |
+
+The pdf-lib roundtrip path is now ~2.3 s of a ~50 s build. The
+incremental writer's 0.25 s process phase (see
+[01-baseline-and-detach.md](01-baseline-and-detach.md)) is still
+strictly faster on process alone, but the pdf-lib path delivers a
+16.1 MB output vs incremental's 53 MB, and the 2 s gap on a 50 s
+build doesn't justify the file-size cost for our pipeline.
+
+The strategic note from earlier phases still stands: generate's
+~38 s in `page.pdf()` is the remaining lever, and `pageRanges`
+sharding is the only knob plausibly large enough to move the
+wall-clock total by more than a few seconds.

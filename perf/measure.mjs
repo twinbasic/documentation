@@ -27,7 +27,8 @@
 //                    [--tracing]
 //                    [--no-detach-pages] [--instrument] [--time-hooks]
 //                    [--incremental] [--chrome-outline] [--timing]
-//                    [--clone-count] [--render-only] [--fast-deflate]
+//                    [--clone-count] [--render-only]
+//                    [--fast-deflate] [--fast-refs]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -96,6 +97,12 @@
 // (PDF /FlateDecode = RFC 1950 zlib), ~5-10x faster on big inputs.
 // Save phase only -- load uses pako.inflate, which the profile shows
 // isn't a hot path for our content.
+//
+// --fast-refs replaces PDFRef.of's string-keyed Map lookup with a
+// dense-array cache for the gen=0 case (82 % of ~1.2 M calls on the
+// book). Eliminates the per-call `<obj> <gen> R` string allocation
+// and Map hash. gen != 0 calls (pdf-lib's xref-stream bookkeeping
+// for compressed objects) pass through unchanged.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -138,6 +145,7 @@ let cloneCount = false;
 let renderOnly = false;
 let tracing = false;
 let fastDeflate = false;
+let fastRefs = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -160,6 +168,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--tracing') tracing = true;
   else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
   else if (a === '--fast-deflate') fastDeflate = true;
+  else if (a === '--fast-refs') fastRefs = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -206,6 +215,10 @@ if (cpuProfileProcess && renderOnly) {
 if (fastDeflate) {
   await import('../docs/lib/fast-deflate.mjs');
   console.log('[harness] fast-deflate: pako.deflate -> node:zlib.deflateSync');
+}
+if (fastRefs) {
+  await import('../docs/lib/fast-refs.mjs');
+  console.log('[harness] fast-refs: PDFRef.of dense-array cache for gen=0');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
