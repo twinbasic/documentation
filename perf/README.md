@@ -109,6 +109,7 @@ DevTools-compatible trace is a few lines.
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
 | `analyze-trace.mjs` | Bottom-up self-time analyzer for Chrome traces (`trace.json` from `--tracing`). Computes per-event self-time on the renderer's main thread (`CrRendererMain` by default) by walking nested `X`-phase events. Cracks the cpu profile's `(program)` bucket open into named Blink / V8 events (`Layout`, `RecalcStyle`, `RunMicrotasks`, `V8.GC_*`, ...). Operates on the Blink trace events only -- ignores any embedded V8 cpu samples (`Profile` / `ProfileChunk`). |
 | `analyze-hybrid.mjs` | Bottom-up analyzer that *combines* the V8 cpu samples and the Blink trace events from a hybrid `trace.json`. Builds a `[JS root..leaf] ++ [Blink outer..inner]` stack at each sample (filtering V8's virtual frames and JS-entry wrapper events) and prints either top-N self-time mixing JS function names with Blink/V8 event names, or `--callees <label>` direct-callees for any name on either axis. Lets you walk a single causation chain from a JS function down through the Blink layout / style work it triggered via gBCR (`hasOverflow -> getBoundingClientRect -> Document::UpdateStyleAndLayout -> Blink.ForcedStyleAndLayout.UpdateTime -> ...`). |
+| `ab-css.mjs` | Per-section CSS cost attribution. Parses `docs/_site-pdf/assets/css/print.css` into themed sections by its `/* ---- ---- */` dividers, renders the book once per variant (full / minimal / each-section-dropped), and reports per-variant **CPU sample-time** totals (sum of V8 sample deltas) plus per-`Document::recalcStyle` / `LocalFrameView::performLayout` / `rebuildLayoutTree` / `ShapeText` totals. CPU sample-time is preemption-free and machine-load-independent, so single runs per variant are clean enough. Defaults to subtractive sweep; `--mode add` for additive. |
 | `ab-aggregate.mjs` | Per-row mean + SD aggregator across 6 paired cpu profiles (`ab-A1..A3.cpuprofile` and `ab-B1..B3.cpuprofile`). Use when wall-clock noise drowns a structural change: capture 3+3 interleaved profiles via `measure.mjs --cpu-profile` with the change toggled on/off between runs, then point this at the 6 files for a mean-with-SD table that surfaces deltas wall-clock can't see (e.g. ~6 σ shifts on rows that move from 88 ms to 2 ms). See the "Disabling the filter outright" section in this README for the methodology. |
 | `find-callers.mjs` | "Who paid for this callee's time?" -- walks a `.cpuprofile` and attributes a target function's total time back to each direct caller. Used throughout the post-mortems to detect gBCR migration between callers. |
 | `find-callees.mjs` | The other direction of `find-callers.mjs`: splits a function's self+descendant time across its direct callees. Surfaces the cases where V8 has rolled native DOM work back into the calling JS frame (Range deletion in `removeOverflow`, HTML parser in `wrapContent`). |
@@ -4968,3 +4969,69 @@ named children are unchanged: `UpdateStyleAndLayout`,
 `rebuildLayoutTree`. Same work, honest labels.
 
 Shipped.
+
+## `pageRanges` sharding: off the table for now
+
+Several sections above flag `pageRanges` sharding as
+"the biggest untried lever" for the `generate` phase --
+run `page.pdf()` N times over disjoint page ranges in
+parallel headless browsers, concatenate the resulting
+PDFs with pdf-lib, divide generate's ~43 s wall-clock by
+N. The arithmetic is appealing; the engineering isn't.
+
+A separate investigation (not in this repo) found enough
+pitfalls to make the work not worth pursuing at current
+scale. Sketch of what bit:
+
+- Each shard re-loads `book.html` and re-runs `paged.js`
+  rendering for *its* range, which means the per-shard
+  render is **not** 1/N of the original render -- paged.js
+  has to lay out all preceding pages to position the slice
+  correctly (named strings, counters, footnote numbering,
+  cross-references). Several "fixes" (skip-to-page hooks,
+  pre-rendered state injection) each broke in subtle ways
+  on the book's actual content.
+- PDF concatenation via pdf-lib reintroduces the full
+  `PDFDocument.load` cost the incremental writer avoided
+  -- need a streaming concatenator or qpdf binary
+  dependency to keep the process phase cheap.
+- Page numbers, named strings (`string(chapter-title)`),
+  and the running header rely on per-page state that the
+  Counters handler and `addEnvFunctions` rebuild from
+  document order. Sharding loses that order and breaks
+  the header on every shard boundary unless the per-shard
+  paged.js render is given the right starting state, which
+  is itself a research project.
+- Outline injection has to know cross-shard page numbers,
+  so either Chrome's native outline (which we don't ship)
+  or a post-concat outline rebuild is required.
+
+Net: even with aggressive engineering, the realistic win
+on a 1651-page book at N=4 shards is ~15-25 s of
+`generate` saved -- not the 32 s / 75 % the naive math
+suggests -- against a maintenance cost of a sharding
+harness that wraps puppeteer launch + IPC + pdf concat
++ per-shard state setup. Below the cost/benefit bar.
+
+The lever is documented in this README because it *is*
+the largest remaining target if priorities change (e.g.
+the book grows past 3000 pages, or a CI runtime cap
+forces it). It's just not the next thing to build.
+
+## What the next thing is, instead
+
+Render is at ~11 s on a 1651-page book, down from ~104 s
+in the original baseline. The bottom-up profile after
+all of the above changes shows no individual JS body
+above ~250 ms self-time; the dominant rows are native
+Blink work (`recalcStyle` 2.4 s, `performLayout` 2.2 s,
+`removeChild` 1.7 s) that's intrinsic to laying out and
+detaching 1651 pages of content.
+
+The A/B against a stripped print.css (next section)
+confirms `recalcStyle` is doing real work, not duplicate
+work -- and bounds what CSS pruning could save. Further
+optimization, if pursued, would mean selectively
+pruning rules from `print.css` based on per-section
+cost attribution. The `ab-css.mjs` tool measures that
+attribution.
