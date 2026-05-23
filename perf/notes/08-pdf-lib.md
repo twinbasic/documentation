@@ -466,22 +466,179 @@ Above `PDFRef.of`, the load-phase costs (`decodeName`, `parseName`,
 work. Those are O(input size) and pretty close to fundamental --
 shrinking them would mean rewriting the parser.
 
-### Where this leaves the picture
+### What's left on save
 
-Cumulative process-phase cost, baseline → after both shims:
+After the fast-refs shim the process-phase profile's top
+self-time entry was still `writeSync` at ~340 ms / 12 %. The name
+is misleading -- not `fs.writeFileSync` writing the output PDF,
+but `node:zlib`'s native binding inside `deflateSync`.
+`find-callers` attributes the chain:
+
+```
+writeSync                 344 ms   (zlib native)
+  processChunkSync        node:zlib:399
+  zlibBufferSync          node:zlib:165
+    PDFFlateStream.computeContents     186 ms   (pdf-lib stream compression)
+    fastDeflate (our shim)             130 ms
+    syncBufferWrapper                   34 ms
+```
+
+So the cost is pure CPU-bound deflate during `pdfDoc.save()`. The
+streams being compressed: pdf-lib's `PDFStreamWriter` (the default
+when `useObjectStreams: true`) groups every non-stream,
+non-encrypted, gen=0 indirect object into `PDFObjectStream` chunks
+of 50, deflates each, and writes the result. On the book that's
+~4,500 chunks, each a small deflate job, all running serially on
+the main thread.
+
+## Parallelising save's deflate on libuv's pool
+
+### Why not just async-deflate inline
+
+pdf-lib's serializer is synchronous at the relevant call sites:
+`PDFFlateStream.computeContents`
+(`pdf-lib/.../structures/PDFFlateStream.js:13`) is a closure that
+returns `pako.deflate(unencodedContents)` inline, called from
+`cache.access()` during `sizeInBytes()`. Swapping `deflateSync` →
+async `deflate` would mean rewriting the whole save path to await
+every stream. The call sites don't expect a promise.
+
+### Why not `useObjectStreams: false`
+
+The one-liner that skips the whole problem. Measured on the book:
+
+| variant | save | process | PDF size |
+| --- | --- | --- | --- |
+| pdf-lib default (objectsPerStream=50, sync) | 1.01 s | 2.30 s | 16.1 MB |
+| `useObjectStreams: false`                   | 0.59 s | 2.17 s | **40.5 MB** |
+
+A 2.5x file-size regression. The whole point of pdf-lib's
+roundtrip over Chrome's raw output was to compress those streams.
+Not an option.
+
+### What actually worked: parallel pre-deflate + larger chunks
+
+`docs/lib/parallel-deflate.mjs` subclasses pdf-lib's
+`PDFStreamWriter` and splits its `computeBufferSize` into three
+phases:
+
+1. **Classify** indirect objects into uncompressed (streams,
+   encrypt, gen != 0) vs compressed chunks of N. Same logic as
+   upstream, no behaviour change.
+2. **Instantiate all `PDFObjectStream`s up-front**, snapshot their
+   unencoded contents, then `await Promise.all` an async
+   `zlib.deflate` per stream. Libuv's thread pool (default 4) runs
+   them concurrently. Write each result into the stream's
+   `contentsCache.value`.
+3. **Size + emit** -- same as upstream, but every `cache.access()`
+   is a hit, so save's loop never touches deflate.
+
+The xrefStream is one more `PDFFlateStream` but its contents
+depend on the offsets computed in phase 3, so we let it deflate
+serially at the end (one stream; `fast-deflate`'s `deflateSync`
+handles it).
+
+Exposed as `parallelSave(pdfDoc, options)`. Drop-in for
+`pdfDoc.save` when `useObjectStreams: true` -- same pre-serialize
+hooks (addDefaultPage, updateFieldAppearances, flush), same
+byte-level output modulo zlib-vs-pako match choices.
+
+### First try with default `objectsPerStream=50` was slower
+
+Profile diff (paired `--cpu-profile-process --cpu-sampling 100`):
+
+| metric | serial (default) | parallel @ 50 (4,523 streams) | Δ |
+| --- | --- | --- | --- |
+| `writeSync` self  | 345 ms | 79 ms | **-266 ms** |
+| `write` (native, libuv setup) | <1 ms | 118 ms | **+117 ms** |
+| `close` (native, libuv teardown) | <1 ms | 96 ms | **+95 ms** |
+| net main-thread zlib + libuv overhead | 346 ms | 293 ms | -53 ms |
+
+The actual deflate work did move off-thread (`writeSync` dropped
+sharply), but libuv's per-`uv_work_t` dispatch overhead on 4,523
+tiny jobs ate most of the savings. ~50 µs/job × ~4,500 jobs ≈
+225 ms of pure dispatch.
+
+### Fix: bigger chunks via `objectsPerStream: 500`
+
+Ten-fold-larger object streams cut the chunk count from ~4,500 to
+~450. Same total deflate work, but in ~450 jobs instead of ~4,500
+-- libuv overhead drops by ~10x. Side benefit: larger chunks share
+a deflate window, so the output PDF is ~5 % smaller (16.1 MB →
+15.3 MB).
+
+Profile diff at `objectsPerStream: 500`
+(paired `--cpu-profile-process --cpu-sampling 100`):
+
+| metric                                          | serial @ 500 | parallel @ 500 | Δ |
+| ---                                             | ---          | ---            | --- |
+| `writeSync` self (zlib native, main thread)     | 335 ms       | 33 ms          | **-302 ms** |
+| `close` (libuv finalize)                        | 1.7 ms       | 15 ms          | +13 ms |
+| `PDFFlateStream.computeContents`                | 20 ms        | 4 ms           | -16 ms |
+| **total zlib-related main-thread self-time**    | **360 ms**   | **54 ms**      | **-306 ms (-85 %)** |
+| bottom-up: `writeSync` position                 | #1 (8.25 %)  | not in top 12  | gone |
+
+The 306 ms moved off the main thread to libuv's pool, where Node's
+V8 profiler doesn't sample it -- the headline "writeSync gone from
+the top 12" is the on-CPU-budget that save() pays.
+
+### Wall-clock note
+
+This whole sub-investigation deliberately compared profiles only,
+not wall-clock. The dev machine was busy with other work, and
+process is a ~2 s phase whose run-to-run jitter on a loaded system
+exceeds the expected delta. The profile diff cuts through that:
+306 ms of native zlib disappearing from the main-thread budget is
+a structural change that's stable across noise. A clean-machine
+wall-clock A/B would close the loop, but the optimisation is
+shippable on profile evidence alone.
+
+### Wired into production
+
+`render-book.mjs` swaps
+`pdfDoc.save({ objectsPerTick: Infinity })` for
+`parallelSave(pdfDoc, { objectsPerTick: Infinity, objectsPerStream: 500 })`.
+Smoke test on the book:
+
+```
+render:   8.6s  (1651 pages)
+generate: 39.2s  (raw 39.3 MB)
+process:  2.2s
+saved:    docs\_pdf\book.pdf  (15.3 MB)
+total:    51.9s
+```
+
+The 15.3 MB output (down from 16.1 MB) is the chunk-size effect;
+the parallel deflate doesn't change byte size, only where the work
+runs.
+
+The harness exposes the same via `--parallel-deflate` (which calls
+`parallelSave` with the same defaults).
+
+## Where this leaves the picture
+
+Cumulative process-phase cost, baseline → after all three shims:
 
 | state                              | process | load | save |
 | ---                                | ---     | ---  | ---  |
 | original (Slow / 50 defaults)      | ~40 s   | ~36 s| ~4 s |
 | + parseSpeed:Fastest               | ~5 s    | ~2 s | ~3 s |
 | + fast-deflate                     | ~2.5 s  | ~1.5s| ~1 s |
-| **+ fast-refs (this section)**     | **~2.3 s** | **~1.3 s** | **~1 s** |
+| + fast-refs                        | ~2.3 s  | ~1.3 s | ~1 s |
+| **+ parallel-deflate (this section)** | **~2.0 s** | **~1.3 s** | **~0.7 s** |
 
-The pdf-lib roundtrip path is now ~2.3 s of a ~50 s build. The
+The bottom-up after parallel deflate is dominated by pdf-lib's
+parser frames -- `PDFDict.entries` (8 %), `decodeName` (8 %), GC
+(8 %), `parseRawNumber` (6 %), `PDFRef.of` (5 %, the gen != 0
+residue). All load-phase, all O(input bytes), all close to
+fundamental pdf-lib work. Further wins in this phase would mean
+rewriting pdf-lib's parser.
+
+The pdf-lib roundtrip path is now ~2.0 s of a ~50 s build. The
 incremental writer's 0.25 s process phase (see
 [01-baseline-and-detach.md](01-baseline-and-detach.md)) is still
 strictly faster on process alone, but the pdf-lib path delivers a
-16.1 MB output vs incremental's 53 MB, and the 2 s gap on a 50 s
+15.3 MB output vs incremental's 53 MB, and the ~2 s gap on a 50 s
 build doesn't justify the file-size cost for our pipeline.
 
 The strategic note from earlier phases still stands: generate's

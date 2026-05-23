@@ -118,6 +118,7 @@ import { parseOutline, setOutline } from '../docs/lib/outline.mjs';
 import { setMetadata }              from '../docs/lib/postprocesser.mjs';
 import { applyOutlineAndMetadataIncremental } from './incremental-pdf.mjs';
 import { pinCpuIfWindows } from './pin-cpu.mjs';
+import { parallelSave } from '../docs/lib/parallel-deflate.mjs';
 
 // On Windows, re-launch under `start /affinity 0x5500 /high` to stabilise
 // CPU sample-time. See pin-cpu.mjs. Cuts run-to-run variance from
@@ -146,6 +147,7 @@ let renderOnly = false;
 let tracing = false;
 let fastDeflate = false;
 let fastRefs = false;
+let parallelDeflate = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -169,6 +171,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
   else if (a === '--fast-deflate') fastDeflate = true;
   else if (a === '--fast-refs') fastRefs = true;
+  else if (a === '--parallel-deflate') parallelDeflate = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -519,10 +522,17 @@ try {
     const setOutlineMs = Date.now() - tSetOutlineStart;
 
     const tSaveStart = Date.now();
-    finalPdf = await pdfDoc.save({ objectsPerTick: Infinity });
+    let parallelStreamCount = 0;
+    if (parallelDeflate) {
+      const { bytes, streamCount } = await parallelSave(pdfDoc, { objectsPerTick: Infinity, objectsPerStream: 500 });
+      finalPdf = bytes;
+      parallelStreamCount = streamCount;
+    } else {
+      finalPdf = await pdfDoc.save({ objectsPerTick: Infinity });
+    }
     const saveMs = Date.now() - tSaveStart;
 
-    processBreakdown = { loadMs, setOutlineMs, saveMs };
+    processBreakdown = { loadMs, setOutlineMs, saveMs, parallelStreamCount };
   }
   const tProcEnd  = Date.now();
   processMs = tProcEnd - tProcStart;
@@ -538,7 +548,10 @@ try {
   if (incremental) {
     console.log(`[harness] process  ${fmtMs(processMs)}  (incremental=${fmtMs(processBreakdown.incrementalMs)}, +${processBreakdown.appendedBytes}B, ${processBreakdown.newObjectCount} new objs)`);
   } else {
-    console.log(`[harness] process  ${fmtMs(processMs)}  (load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)})`);
+    const parTag = processBreakdown.parallelStreamCount
+      ? ` (parallel-deflate: ${processBreakdown.parallelStreamCount} streams)`
+      : '';
+    console.log(`[harness] process  ${fmtMs(processMs)}  (load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)}${parTag})`);
   }
   }  // end if (!renderOnly)
 

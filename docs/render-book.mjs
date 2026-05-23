@@ -45,6 +45,7 @@ import './lib/fast-deflate.mjs';
 import './lib/fast-refs.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
+import { parallelSave }             from './lib/parallel-deflate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -259,12 +260,21 @@ try {
   // parseSpeed: Fastest and objectsPerTick: Infinity are critical:
   // pdf-lib's defaults yield to the event loop between every 100/50
   // objects, turning a ~5 s round-trip into ~40 s on a 50 MB PDF
-  // (~35 s of which is pure V8 idle). See perf/README.md.
+  // (~35 s of which is pure V8 idle).
+  //
+  // parallelSave (vs the default pdfDoc.save) does two things:
+  //  - objectsPerStream: 500 -- larger object-stream chunks compress
+  //    better (shared deflate window), 5 % smaller output PDF, and
+  //    cuts the per-chunk dispatch overhead 10x.
+  //  - dispatches every chunk's deflate to libuv's thread pool via
+  //    async zlib.deflate instead of running serially on the main
+  //    thread. Moves ~300 ms of zlib work off-CPU on the book.
+  // See perf/notes/08-pdf-lib.md.
   const tProcess = Date.now();
   const pdfDoc = await PDFDocument.load(rawPdf, { parseSpeed: ParseSpeeds.Fastest });
   setMetadata(pdfDoc, meta);
   await setOutline(pdfDoc, outline, false);
-  const finalPdf = await pdfDoc.save({ objectsPerTick: Infinity });
+  const { bytes: finalPdf } = await parallelSave(pdfDoc, { objectsPerTick: Infinity, objectsPerStream: 500 });
   console.log(`process:  ${fmtMs(Date.now() - tProcess)}`);
 
   writeFileSync(outputPath, Buffer.from(finalPdf));
