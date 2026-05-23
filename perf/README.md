@@ -5194,6 +5194,15 @@ budget matters. This section measures one render's peak
 memory and breaks it down by allocator, so we know what
 levers exist if the book grows.
 
+> **Note.** Approaches that involve Chromium internals --
+> patching the binary, intercepting the SkPicture stream
+> via Frida, spawning standalone PrintCompositors via
+> Mojo, building a Chromium-linked helper binary -- were
+> researched but not shipped. They're documented
+> separately in [CHROMIUM.md](CHROMIUM.md). This section
+> covers only what's measurable from the outside through
+> public APIs.
+
 `perf/probe-memory.mjs` is the harness. It runs the full
 pipeline (load + render + generate) in a single browser
 and watches the chrome.exe process tree at 500 ms
