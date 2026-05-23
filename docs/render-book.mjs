@@ -36,15 +36,20 @@ import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
 //
-//   fast-refs    -- dense-array cache in front of PDFRef.of for the
-//     gen=0 case (82 % of ~1.2 M calls per load). ~0.2 s saved on
-//     load.
-//   fast-inflate -- swaps pako.inflate for node:zlib.inflateSync on
-//     the one pdf-lib call site that uses it (PDFCrossRefStreamParser
-//     during load). Negligible cost shift, but eliminates the last
-//     pdf-lib -> pako call at runtime.
+//   fast-refs         -- dense-array cache in front of PDFRef.of for
+//     the gen=0 case (82 % of ~1.2 M calls per load). ~0.2 s saved
+//     on load.
+//   fast-inflate      -- swaps pako.inflate for node:zlib.inflateSync
+//     on the one pdf-lib call site that uses it
+//     (PDFCrossRefStreamParser during load). Negligible cost shift,
+//     but eliminates the last pdf-lib -> pako call at runtime.
+//   fast-parse-number -- direct-integer accumulator in front of
+//     BaseParser.parseRawNumber, skipping per-byte string concat
+//     and the trailing Number() round-trip. Touches every numeric
+//     token parsed during PDFDocument.load.
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
+import './lib/fast-parse-number.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 import { parallelSave }             from './lib/parallel-deflate.mjs';

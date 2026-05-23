@@ -679,6 +679,70 @@ No harness flag -- the per-load cost is below the profile noise
 floor; this lands for the architectural reason, not a measurable
 win.
 
+## `BaseParser.parseRawNumber`: direct-integer accumulator
+
+After `fast-deflate` + `fast-refs` + `parallel-deflate`, the load
+side of the bottom-up table shifted onto the parser frames. One of
+them is `BaseParser.parseRawNumber`, called once per numeric token
+encountered during `PDFDocument.load` and twice per `N gen R`
+indirect reference -- so on the book it fires several hundred
+thousand times per load.
+
+The upstream implementation
+(`pdf-lib/.../parser/BaseParser.js:33`) builds the number as a
+string, one character at a time, then converts:
+
+```js
+let value = '';
+while (!this.bytes.done() && IsDigit[this.bytes.peek()]) {
+  value += charFromCode(this.bytes.next());
+}
+// ... fractional part, sign handling ...
+const numberValue = Number(value);
+if (!isFinite(numberValue) || numberValue > Number.MAX_SAFE_INTEGER) { ... }
+return numberValue;
+```
+
+Every call allocates a throwaway string of length 1..N (one `+=`
+allocation per digit), then runs `Number(value)` to parse the
+string back into a double, then runs guards. The string allocation
++ `Number()` round-trip is the cost we care about.
+
+### The shim
+
+`docs/lib/fast-parse-number.mjs` mutates
+`BaseParser.prototype.parseRawNumber` to accumulate the integer
+directly (`n = n * 10 + (byte - 0x30)`), descending into decimal
+handling only when a period appears. Falls back to the original
+for:
+
+- **More than 15 integer digits** -- direct accumulation could
+  exceed `Number.MAX_SAFE_INTEGER` (16 digits) and silently lose
+  precision. Upstream's `Number(value)` retains correctly-rounded
+  double precision in that range and emits the spec-mandated
+  overflow warning, so we rewind and delegate.
+- **Empty-digit cases** (e.g. `+`, `.`, bare sign) -- rewind and
+  let upstream throw `NumberParsingError` with full diagnostic
+  context. Both fallback paths are vanishingly rare on real PDFs.
+
+`BaseParser` isn't re-exported by pdf-lib's index, so we reach it
+via the package's CJS internal path through `createRequire`:
+
+```js
+const require = createRequire(import.meta.url);
+const BaseParser = require('pdf-lib/cjs/core/parser/BaseParser.js').default;
+```
+
+Mutating `BaseParser.prototype` propagates to every subclass --
+`PDFParser`, `PDFObjectParser`, `PDFObjectStreamParser`,
+`PDFXRefStreamParser`. One side-effecting import covers them all.
+
+`render-book.mjs` imports it unconditionally next to `fast-refs`.
+No harness flag yet; the win is small per-call but the call rate
+is high enough to matter -- to be measured later when the
+follow-on work (size-in-bytes / iterator / parseDict shims) makes
+the parser side worth quantifying as a group.
+
 ## Where this leaves the picture
 
 Cumulative process-phase cost, baseline → after all three shims:
