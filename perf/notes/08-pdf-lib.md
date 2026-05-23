@@ -2144,6 +2144,103 @@ shim calls through to the original `PDFRef.of`, which constructs
 the `PDFRef` AND populates the upstream `Map<string, PDFRef>`
 pool. That's the next target.
 
+## Skip `PDFRef` `pool.set` on the gen=0 miss path
+
+With `fast-indirect-objects` shipping, the heap profile showed
+one last hot `set` source: the upstream `PDFRef.of`'s own pool
+(`pdf-lib/.../objects/PDFRef.js:34`):
+
+```js
+PDFRef.of = function (objectNumber, generationNumber) {
+    ...
+    var tag = objectNumber + " " + generationNumber + " R";
+    var instance = pool.get(tag);
+    if (!instance) {
+        instance = new PDFRef(ENFORCER, objectNumber, generationNumber);
+        pool.set(tag, instance);                  // ← 7 MB of set on the book
+    }
+    return instance;
+};
+```
+
+`fast-refs` already short-circuited the LOOKUP side with a dense
+array indexed by `objectNumber`. But on a gen=0 cache miss (~9 k
+unique objectNumbers per book), the shim was calling
+`original.call(PDFRef, objectNumber, 0)`, which dutifully built
+the tag string, looked it up in the upstream Map, missed,
+allocated a new `PDFRef`, AND populated the upstream pool --
+redundantly, since the dense array `pool0` is the authoritative
+cache from now on.
+
+Each `pool.set` over the load grew the Map's hash table through
+~14 doubling steps (4 -> 8 -> ... -> 16384), discarding each
+intermediate arena. Total: ~7 MB of `set` self-size in the heap
+profile, plus the matching ~93 ms of `PDFRef.of` CPU self-time
+(the function body that does the set is hot enough that V8
+charges all that growth to `PDFRef.of`'s frame).
+
+### The upgrade
+
+Replace the original-delegation on the gen=0 miss path with
+direct construction:
+
+```js
+PDFRef.of = function fastOf(objectNumber, generationNumber) {
+  if (generationNumber === undefined || generationNumber === 0) {
+    const existing = pool0[objectNumber];
+    if (existing) return existing;
+    const fresh = Object.create(PDFRef.prototype);
+    fresh.objectNumber = objectNumber;
+    fresh.generationNumber = 0;
+    fresh.tag = objectNumber + ' 0 R';
+    pool0[objectNumber] = fresh;
+    return fresh;
+  }
+  return original.call(PDFRef, objectNumber, generationNumber);
+};
+```
+
+Safety: `PDFRef`'s super class (`PDFObject`) has a no-op
+constructor (`pdf-lib/.../PDFObject.js:5`) so skipping
+`_super.call(this)` is fine. The only instance fields the
+prototype methods read are `objectNumber`, `generationNumber`,
+and `tag` (used by `toString` / `sizeInBytes` / `copyBytesInto`);
+direct field init covers them. The `ENFORCER` check exists to
+make `PDFRef.of` the single legitimate factory -- we already are
+that factory, so bypassing it doesn't violate any invariant.
+
+gen!=0 keeps the original delegation (rare on freshly-parsed
+PDFs; its `Map.set` traffic is negligible at gen!=0 volume).
+
+### Measured wins
+
+CPU profile (paired `--cpu-profile-process --cpu-sampling 100`,
+fast-indirect-objects baseline vs + this upgrade):
+
+| Row                  | Pre (ms) | Post (ms) | Note                       |
+|----------------------|---------:|----------:|----------------------------|
+| (garbage collector)  |   176.83 |    166.71 | -10 ms                     |
+| **PDFRef.of**        | **118.24** | **out of top 15** | **drops off (~93 ms saved)** |
+| fastOf @ fast-refs   |        - |     25.19 | new row (was inside `PDFRef.of`) |
+| Total profile        |  1.14 s  |   1.03 s  | -110 ms (-9.6 %)           |
+
+Heap profile (paired `--heap-profile-process --heap-sampling 512`):
+
+| Allocator         | Pre (KB)  | Post (KB) | Delta                |
+|-------------------|----------:|----------:|---------------------:|
+| `set` builtin     |  7 674.41 |    504.77 | **-7 170 KB (-93 %)** |
+| fastOf @ fast-refs|  9 367.39 |  7 734.79 | -1 633 KB             |
+| Total sampled     | 135.00 MB | 123.11 MB | -11.89 MB (-8.8 %)    |
+
+The residual 504 KB of `set` is `fastCache.set` in `PDFName`
+interning (~448 KB) plus a sliver of `__awaiter` machinery in
+`PDFDocument`; both are static-size and harmless. There is no
+longer any materially-hot `Map.prototype.set` in the process-phase
+heap profile.
+
+The edit is local to `docs/lib/fast-refs.mjs`; no production
+import change needed since `fast-refs` was already wired up.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -2177,7 +2274,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-parse-object                  | ~1.4 s  | ~1.0 s | ~0.4 s |
 | + fast-sync-load                     | ~1.3 s  | ~0.8 s | ~0.5 s |
 | + fast-dict-array                    | ~1.1 s  | ~0.7 s | ~0.4 s |
-| **+ fast-indirect-objects (this section)** | **~1.1 s** | **~0.7 s** | **~0.4 s** |
+| + fast-indirect-objects              | ~1.1 s  | ~0.7 s | ~0.4 s |
+| **+ fast-refs miss bypass (this section)** | **~1.0 s** | **~0.6 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

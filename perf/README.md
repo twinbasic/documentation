@@ -72,9 +72,17 @@ node measure.mjs --fast-refs --parallel-deflate --fast-decode-name --fast-number
 Flag rationale:
 
 - `--fast-refs` -- inject the
-  [docs/lib/fast-refs.mjs](../docs/lib/fast-refs.mjs) shipping fix
-  (dense-array cache for `PDFRef.of`'s gen=0 path). Production runs
-  through it; the profile should too.
+  [docs/lib/fast-refs.mjs](../docs/lib/fast-refs.mjs) shipping
+  fix (dense-array cache for `PDFRef.of`'s gen=0 path). On miss,
+  constructs the `PDFRef` directly via
+  `Object.create(PDFRef.prototype)` + manual field init, bypassing
+  the upstream `pool.set(tag, instance)` -- after
+  `--fast-indirect-objects` shipped, that pool was the last hot
+  `Map.set` in the heap profile. The `PDFRef.of` row drops out of
+  the CPU top-15 and the `set` builtin row collapses from ~7.5 MB
+  to ~0.5 MB (the residual is `PDFName` interning's
+  `fastCache.set`, harmless). Production runs through it; the
+  profile should too.
 - `--parallel-deflate` -- swap `pdfDoc.save()` for `parallelSave`
   from [docs/lib/parallel-deflate.mjs](../docs/lib/parallel-deflate.mjs),
   which pre-deflates object streams in parallel on libuv's pool with
@@ -504,6 +512,7 @@ file documenting each:
 | `parseObject` first-byte dispatch + gated keyword scans | [08](notes/08-pdf-lib.md) | ~42 ms profile (parseObject -51 %) |
 | `PDFDict` flat-array storage (subsumes iter + parseDict shims) | [08](notes/08-pdf-lib.md) | ~48 ms process (Map+set heap -80 %, GC -20 %) |
 | `PDFContext.indirectObjects` dense gen=0 array | [08](notes/08-pdf-lib.md) | `assign` off CPU top-15; remaining `set` heap -48 % |
+| `PDFRef.of` direct-construct on cache miss (skip upstream `pool.set`) | [08](notes/08-pdf-lib.md) | `PDFRef.of` off CPU top-15 (~93 ms); `set` heap 7.7 MB → 0.5 MB |
 
 What was tried and didn't ship:
 
@@ -530,4 +539,4 @@ order; later ones reference earlier ones for context.
 | [05-blink-trace.md](notes/05-blink-trace.md) | What happened when we tried move-not-clone (a `previousLeaf` cache shipped instead of move); cracking the cpu profile's `(program)` row open with a Blink-category trace; the WhiteSpaceFilter paired-A/B that found it wasn't worth its layout cost in our pipeline. |
 | [06-microtasks-pageranges-css.md](notes/06-microtasks-pageranges-css.md) | Following `RunMicrotasks` down to zero (chunker fully sync); why `pageRanges` sharding is off the table; CSS cost attribution showing print.css's individual sections are all below the noise floor. |
 | [07-memory.md](notes/07-memory.md) | Where the renderer's 1.9 GB goes -- process-tree footprint, per-allocator + per-Blink-class breakdown, `--disable-gpu` + `--in-process-gpu` saving ~200 MB, a GC-pass probe finding 180 MB of unswept Oilpan garbage. |
-| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; pako's per-stream init dominates with ~4 500 small streams (routing pdf-lib's `deflate` + `inflate` through `node:zlib` saves ~1.5 s); `PDFRef.of`'s string-keyed Map lookup at 1.2 M calls per load (dense-array gen=0 cache saves ~0.2 s); parallelising save's per-stream deflate on libuv's pool with `objectsPerStream: 500` (~0.3 s off the main thread; PDF -5 %); `decodeName`'s regex scan on 2.76 M `PDFName.of` calls per load with a 0.0001 % hit rate (no-`#` cache saves ~0.5 s); `numberToString`'s redundant `toString`/`split`/`parseInt` on the 100 % no-`e` path; `sizeInBytes` allocating `n.toString(2)` on ~300 k xref-writer calls (short-circuit ladder saves ~60 ms); `PDFDict.entries` allocating `Array.from(map.entries())` on every dict serialisation (`Map.forEach` with hoisted callbacks saves ~80 ms); `parseDict`'s type-dispatch tail re-running `PDFName.of('Type'/'Catalog'/'Pages'/'Page')` per dict (hoisted sentinel constants drop `fastOf` self-time by 22 %); pdf-lib's `__awaiter`/`__generator` scaffolding on nine load + save methods costing ~135 ms of attributed self-time + ~50 ms GC (synchronified twins save 0.36 s of process); `parseObject`'s three speculative `matchKeyword(true/false/null)` scans on every dispatch (first-byte peek + gated keyword scans halve `parseObject` self-time); the sampling heap profile pointing at `new Map()` + `Map.prototype.set` at ~50 % of process-phase allocations (replacing `PDFDict`'s backing `Map` with a flat alternating `[k,v,k,v,...]` array drops Map+set heap traffic ~80 % and subsumes the earlier `fast-dict-iter` + `fast-parse-dict` shims); the only hot `Map.set` left being `PDFContext.assign`'s `indirectObjects.set(ref, object)` (replacing the Map with a dense gen=0 array indexed by `objectNumber` drops `assign` out of the CPU top-15 and halves the remaining `set` heap traffic). |
+| [08-pdf-lib.md](notes/08-pdf-lib.md) | Profiling the process phase via `--cpu-profile-process`; pako's per-stream init dominates with ~4 500 small streams (routing pdf-lib's `deflate` + `inflate` through `node:zlib` saves ~1.5 s); `PDFRef.of`'s string-keyed Map lookup at 1.2 M calls per load (dense-array gen=0 cache saves ~0.2 s); parallelising save's per-stream deflate on libuv's pool with `objectsPerStream: 500` (~0.3 s off the main thread; PDF -5 %); `decodeName`'s regex scan on 2.76 M `PDFName.of` calls per load with a 0.0001 % hit rate (no-`#` cache saves ~0.5 s); `numberToString`'s redundant `toString`/`split`/`parseInt` on the 100 % no-`e` path; `sizeInBytes` allocating `n.toString(2)` on ~300 k xref-writer calls (short-circuit ladder saves ~60 ms); `PDFDict.entries` allocating `Array.from(map.entries())` on every dict serialisation (`Map.forEach` with hoisted callbacks saves ~80 ms); `parseDict`'s type-dispatch tail re-running `PDFName.of('Type'/'Catalog'/'Pages'/'Page')` per dict (hoisted sentinel constants drop `fastOf` self-time by 22 %); pdf-lib's `__awaiter`/`__generator` scaffolding on nine load + save methods costing ~135 ms of attributed self-time + ~50 ms GC (synchronified twins save 0.36 s of process); `parseObject`'s three speculative `matchKeyword(true/false/null)` scans on every dispatch (first-byte peek + gated keyword scans halve `parseObject` self-time); the sampling heap profile pointing at `new Map()` + `Map.prototype.set` at ~50 % of process-phase allocations (replacing `PDFDict`'s backing `Map` with a flat alternating `[k,v,k,v,...]` array drops Map+set heap traffic ~80 % and subsumes the earlier `fast-dict-iter` + `fast-parse-dict` shims); the only hot `Map.set` left being `PDFContext.assign`'s `indirectObjects.set(ref, object)` (replacing the Map with a dense gen=0 array indexed by `objectNumber` drops `assign` out of the CPU top-15 and halves the remaining `set` heap traffic); the residual `set` after that being the upstream `PDFRef.of` pool.set on cache miss (directly constructing the `PDFRef` via `Object.create(PDFRef.prototype)` on the gen=0 miss path bypasses the redundant upstream pool entirely, dropping `set` heap traffic from 7.7 MB to 0.5 MB and saving another ~93 ms on `PDFRef.of` CPU). |
