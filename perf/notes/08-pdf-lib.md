@@ -3568,6 +3568,117 @@ chain doesn't earn its keep on staging. Dropping Phase 2's code
 keeps the production import chain narrow; the design notes here
 are the part worth preserving.
 
+## Phase 3: PDFArray storage refactor (explored, didn't ship)
+
+Phase 2's `fast-dict-encoded.mjs` grew a sibling structure for
+PDFArray. Each PDFArray instance becomes a view into a shared
+`arrayBuf` Float64Array, with `this.d` packing `(start, length)`
+-- same shape as PDFDict in Phase 2, with one more length bit
+(max single array is 25 308 elements vs max single dict 8 706
+slots). Per-instance `this.array = []` allocation goes away.
+
+Same opt-in story as Phase 2 (and same don't-ship verdict on
+staging): heap win is real but the CPU regression at save time
+dominates.
+
+### The mechanism
+
+| | PDFDict (Phase 2) | PDFArray (Phase 3) |
+|---|---|---|
+| Backing buffer | `main` Float64Array | `arrayBuf` Float64Array |
+| Per-instance | `this.d` = packed `(start, length)` | same |
+| Bit budget | 24 + 14 = 38 bits | 24 + 15 = 39 bits |
+| Slot encoding | 4-bit tag + 49-bit payload | same scheme |
+| Lazy cache | `dictByPayload` | `arrayByPayload` |
+| Parser temp | `_dictTemp` (Float64Array) | `_arrayTemp` (Float64Array) |
+| TAG_ARRAY slot | was `OFF_ARRAY + arrayId` | now `OFF_ARRAY + arr.d` |
+
+Phase 2's `_assignArrayId` and `arrayById[]` pool are gone -- the
+view-payload encoding makes them obsolete. Phase 2's encoding
+scheme for TAG_ARRAY changes from a pool-id payload to the
+direct `(start, length)` payload that mirrors TAG_DICT.
+
+### Mutation paths
+
+`PDFArray.prototype` methods rewritten:
+
+- `size` -- reads length from `this.d`
+- `push` -- extend in place at HWM, else COW (same pattern as
+  PDFDict.set's append case)
+- `get(i)` / `set(i, v)` -- decode/encode at `arrayBuf[start + i]`
+- `insert(i, v)` / `remove(i)` -- always COW (would corrupt
+  neighbouring arrays' ranges otherwise)
+- `indexOf` -- compare encoded payloads, no decode needed
+- `asArray` / `clone` / `toString` / `sizeInBytes` /
+  `copyBytesInto` -- decode each element
+
+`PDFArray.withContext` bypasses the inherited constructor's
+`this.array = []` allocation by `Object.create`-ing the
+instance and setting `this.d` directly.
+
+### parseArray patch
+
+Same temp-then-commit pattern as parseDict. Each parser instance
+gets its own `_arrayTemp` Float64Array; parseArray pushes
+encoded elements onto temp, commits the frame to `arrayBuf` in
+one contiguous `arrayBuf.set(...)`, pops temp back. Recursion
+across dicts and arrays is fine because `_dictTemp` and
+`_arrayTemp` are separate.
+
+### Measured result: heap win + CPU regression
+
+Combined Phase 2+3 vs Phase 1 baseline (paired, production set):
+
+| Metric | Phase 1 baseline | Phase 2+3 | Delta |
+|---|---:|---:|---:|
+| Heap sampled | 65.4 MB | **57.8 MB** | **-7.6 MB (-12 %)** |
+| `parseArray` self-attribution | 19.6 MB | ~0 (out of top 10) | **-19.6 MB**, replaced by arrayBuf-mediated writes |
+| `_makeFromRange` | 16.5 MB | 14.3 MB | -2.2 MB |
+| GC self-time (CPU profile) | 149 ms | 144 ms | -5 ms (flat) |
+| Process duration | 1.09 s | 1.45 s | **+360 ms (+33 %)** |
+| Structural output | byte-identical | byte-identical | -- |
+
+The heap win is what we hoped for: PDFArrays stop allocating
+per-instance `[]` backing arrays (79 k of them), and parseArray
+stops attribution because writes go to the shared `arrayBuf`.
+
+The CPU regression is the killer. The cost comes from per-slot
+decode during save -- `PDFDict.copyBytesInto` and
+`PDFArray.copyBytesInto` together iterate ~3 M slots, calling
+`decodeValue` once per slot. `decodeValue` is a 10-case switch
+plus a pool lookup; V8 doesn't inline it across the prototype
+boundary. ~100 ns per call × 3 M = ~300 ms. GC didn't move
+much. The slot-mark savings from Float64Array `arrayBuf` are
+real, but as with Phase 2 they're small relative to total mark
+cost. V8 marks pointer arrays fast.
+
+### Why faraday kept it as opt-in, and why staging doesn't
+
+Phase 3 validates the architecture for both data structures
+(Float64Array storage works for dicts AND arrays, byte-identical,
+no correctness issues) and the heap win is real (-7.6 MB / -12 %
+is not nothing). It also sets up an obvious follow-up:
+hand-inline the common decode cases at the hot copyBytesInto /
+sizeInBytes call sites. That's Phase 3β below -- which recovers
+much of the 300 ms but the net win still doesn't justify the
+engineering surface for our pipeline, so the whole encoded
+architecture stays off staging.
+
+### Caveats / known limitations
+
+- Direct `new PDFArray(context)` (rather than the
+  `PDFArray.withContext` factory) would leave `this.d` undefined
+  and methods would misbehave. pdf-lib's parser and our
+  setOutline go through the factory, but a hypothetical caller
+  using `new` would need the factory or a defensive init guard.
+- `PDFArray.scalePDFNumbers` (in pdf-lib's PDFArray; not
+  rewritten here) goes through `get`/`set` and so would work
+  transparently via the encoded path. Not exercised in the book
+  build.
+- PDFArrays nested in PDFArrays via `TAG_ARRAY` decode lazily,
+  same pattern as nested dicts; `arrayByPayload` caps at the
+  number of distinct nested-array payloads (small).
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
