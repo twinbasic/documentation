@@ -1,24 +1,28 @@
-// Replace pdf-lib's BaseParser.parseRawNumber with a direct-integer
-// accumulator that skips per-byte string concatenation, charFromCode
-// calls, and the trailing Number() string-parse round-trip.
+// Replace pdf-lib's BaseParser.parseRawNumber and BaseParser.parseRawInt
+// with direct-integer accumulators that skip per-byte string
+// concatenation, charFromCode calls, and the trailing Number()
+// string-parse round-trip.
 //
-// The upstream implementation
-// ([BaseParser.js:33](node_modules/pdf-lib/cjs/core/parser/BaseParser.js:33))
-// builds `value` one character at a time via `value += charFromCode(byte)`,
-// then calls `Number(value)` to convert the string back to a number,
-// then performs `isFinite` + MAX_SAFE_INTEGER guards on every call.
-// Every numeric token in a PDF flows through this path
-// (PDFObjectParser.parseNumberOrRef invokes it once per number, twice
-// per indirect ref), so on the book it fires hundreds of thousands of
-// times and allocates a throwaway string per call.
+// The upstream implementations
+// ([BaseParser.js:17 + :33](node_modules/pdf-lib/cjs/core/parser/BaseParser.js:17))
+// build `value` one character at a time via `value += charFromCode(byte)`,
+// then call `Number(value)` to convert the string back to a number,
+// then perform `isFinite` (and for parseRawNumber, MAX_SAFE_INTEGER)
+// guards on every call. Every numeric token in a PDF flows through
+// these paths: parseRawNumber via PDFObjectParser.parseNumberOrRef
+// (once per number, twice per indirect ref), parseRawInt via
+// PDFParser.parseIndirectObjectHeader (twice per indirect object) and
+// PDFObjectStreamParser (twice per object inside an ObjStm). On the
+// book this fires hundreds of thousands of times and allocates a
+// throwaway string per call.
 //
 // The fast path accumulates the integer directly (n = n*10 + (byte -
-// 0x30)) and only descends into decimal handling when a period appears.
-// Falls back to the original for:
+// 0x30)). parseRawNumber additionally descends into decimal handling
+// when a period appears. Both fall back to the original for:
 //   - Numbers with > 15 integer digits (where direct accumulation
 //     could exceed Number.MAX_SAFE_INTEGER and lose precision).
-//   - Empty-digit cases (e.g., "."), so upstream's NumberParsingError
-//     keeps its diagnostic context.
+//   - Empty-digit cases (e.g., bare sign or lone "."), so upstream's
+//     NumberParsingError keeps its diagnostic context.
 // Both fallback paths are vanishingly rare on real PDFs.
 //
 // Mechanism: BaseParser isn't re-exported by pdf-lib's index, so we
@@ -49,6 +53,31 @@ const MAX_SAFE_INT_DIGITS = 15;
 
 if (!BaseParser.__fastParseNumberInstalled) {
   const origParseRawNumber = BaseParser.prototype.parseRawNumber;
+  const origParseRawInt = BaseParser.prototype.parseRawInt;
+
+  BaseParser.prototype.parseRawInt = function fastParseRawInt() {
+    const bytes = this.bytes;
+    const start = bytes.offset();
+
+    let n = 0;
+    let digits = 0;
+    let byte = bytes.peek();
+    while (!bytes.done() && IsDigit[byte]) {
+      if (digits >= MAX_SAFE_INT_DIGITS) {
+        bytes.moveTo(start);
+        return origParseRawInt.call(this);
+      }
+      n = n * 10 + (byte - ZERO);
+      digits++;
+      bytes.next();
+      byte = bytes.peek();
+    }
+    if (digits === 0) {
+      bytes.moveTo(start);
+      return origParseRawInt.call(this);
+    }
+    return n;
+  };
 
   BaseParser.prototype.parseRawNumber = function fastParseRawNumber() {
     const bytes = this.bytes;

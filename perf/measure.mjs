@@ -29,6 +29,7 @@
 //                    [--incremental] [--chrome-outline] [--timing]
 //                    [--clone-count] [--render-only]
 //                    [--fast-refs] [--parallel-deflate]
+//                    [--fast-decode-name] [--fast-number-to-string]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -103,6 +104,16 @@
 // parallel on libuv's thread pool with objectsPerStream=500 (vs
 // pdf-lib's serial save with default 50). Moves ~300 ms of zlib work
 // off the main thread on the book.
+//
+// --fast-decode-name installs a parallel cache in front of PDFName.of
+// that skips the decodeName regex scan when the raw name contains
+// no `#` hex escape (which is 99.999 % of the ~2.8 M PDFName.of
+// calls per load on the book). ~150 ms saved on process load.
+//
+// --fast-number-to-string short-circuits pdf-lib's numberToString
+// when String(num) already lacks an `e`. Skips a redundant toString,
+// split, and parseInt per call; only the rare exponential-notation
+// tail still falls through to the original implementation.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -147,6 +158,8 @@ let renderOnly = false;
 let tracing = false;
 let fastRefs = false;
 let parallelDeflate = false;
+let fastDecodeName = false;
+let fastNumberToString = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -170,6 +183,8 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
   else if (a === '--fast-refs') fastRefs = true;
   else if (a === '--parallel-deflate') parallelDeflate = true;
+  else if (a === '--fast-decode-name') fastDecodeName = true;
+  else if (a === '--fast-number-to-string') fastNumberToString = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -214,6 +229,14 @@ if (cpuProfileProcess && renderOnly) {
 if (fastRefs) {
   await import('../docs/lib/fast-refs.mjs');
   console.log('[harness] fast-refs: PDFRef.of dense-array cache for gen=0');
+}
+if (fastDecodeName) {
+  await import('../docs/lib/fast-decode-name.mjs');
+  console.log('[harness] fast-decode-name: skip decodeName regex when name has no #');
+}
+if (fastNumberToString) {
+  await import('../docs/lib/fast-number-to-string.mjs');
+  console.log('[harness] fast-number-to-string: skip redundant toString/split when no exponential');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');

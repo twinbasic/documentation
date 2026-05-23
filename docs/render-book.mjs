@@ -43,13 +43,22 @@ import { PDFDocument, ParseSpeeds } from 'pdf-lib';
 //     on the one pdf-lib call site that uses it
 //     (PDFCrossRefStreamParser during load). Negligible cost shift,
 //     but eliminates the last pdf-lib -> pako call at runtime.
-//   fast-parse-number -- direct-integer accumulator in front of
-//     BaseParser.parseRawNumber, skipping per-byte string concat
-//     and the trailing Number() round-trip. Touches every numeric
-//     token parsed during PDFDocument.load.
+//   fast-parse-number -- direct-integer accumulators in front of
+//     BaseParser.parseRawNumber + parseRawInt, skipping per-byte
+//     string concat and the trailing Number() round-trip. Touches
+//     every numeric token parsed during PDFDocument.load.
+//   fast-decode-name -- cache in front of PDFName.of that skips
+//     the decodeName regex scan when the input has no `#` (which
+//     is 99.999 % of the ~2.8 M PDFName.of calls per load).
+//   fast-number-to-string -- short-circuit numberToString when
+//     `String(num)` already lacks an `e` (i.e. for every PDF number
+//     that's not in the exponential-notation tail). Skips a
+//     redundant toString + split + parseInt per call.
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
+import './lib/fast-decode-name.mjs';
+import './lib/fast-number-to-string.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 import { parallelSave }             from './lib/parallel-deflate.mjs';

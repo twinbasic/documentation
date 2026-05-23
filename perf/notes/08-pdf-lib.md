@@ -679,14 +679,15 @@ No harness flag -- the per-load cost is below the profile noise
 floor; this lands for the architectural reason, not a measurable
 win.
 
-## `BaseParser.parseRawNumber`: direct-integer accumulator
+## `BaseParser.parseRawNumber` + `parseRawInt`: direct-integer accumulators
 
 After `fast-deflate` + `fast-refs` + `parallel-deflate`, the load
-side of the bottom-up table shifted onto the parser frames. One of
-them is `BaseParser.parseRawNumber`, called once per numeric token
-encountered during `PDFDocument.load` and twice per `N gen R`
-indirect reference -- so on the book it fires several hundred
-thousand times per load.
+side of the bottom-up table shifted onto the parser frames. Two of
+them are `BaseParser.parseRawNumber` (called once per numeric
+token, twice per `N gen R` indirect reference) and
+`BaseParser.parseRawInt` (called twice per indirect-object header
+and twice per object inside an `ObjStm`). Between them they fire
+hundreds of thousands of times per load on the book.
 
 The upstream implementation
 (`pdf-lib/.../parser/BaseParser.js:33`) builds the number as a
@@ -710,11 +711,12 @@ string back into a double, then runs guards. The string allocation
 
 ### The shim
 
-`docs/lib/fast-parse-number.mjs` mutates
-`BaseParser.prototype.parseRawNumber` to accumulate the integer
-directly (`n = n * 10 + (byte - 0x30)`), descending into decimal
-handling only when a period appears. Falls back to the original
-for:
+`docs/lib/fast-parse-number.mjs` mutates both
+`BaseParser.prototype.parseRawNumber` and
+`BaseParser.prototype.parseRawInt` to accumulate the integer
+directly (`n = n * 10 + (byte - 0x30)`). The number variant
+additionally descends into decimal handling when a period appears.
+Both fall back to the original for:
 
 - **More than 15 integer digits** -- direct accumulation could
   exceed `Number.MAX_SAFE_INTEGER` (16 digits) and silently lose
@@ -743,31 +745,351 @@ is high enough to matter -- to be measured later when the
 follow-on work (size-in-bytes / iterator / parseDict shims) makes
 the parser side worth quantifying as a group.
 
+## `decodeName`: skip the regex on the 99.999 % no-`#` path
+
+The earlier closing summary above wrote off `decodeName` as "close
+to fundamental pdf-lib work." Re-reading the function on a later
+pass disproved that.
+
+`pdf-lib/.../objects/PDFName.js:9`:
+
+```js
+var decodeName = function (name) {
+    return name.replace(/#([\dABCDEF]{2})/g, function (_, hex) {
+        return utils_1.charFromHexCode(hex);
+    });
+};
+```
+
+PDF spec (ISO 32000-1 §7.3.5) requires `#XX` hex-escape for any
+byte outside the printable-ASCII regular range plus delimiters /
+whitespace. `decodeName` reverses that on every `PDFName.of(name)`
+call so the pool key is the canonical decoded form, dedup'ing
+`/foo#20bar` and `/foo bar` to the same instance.
+
+The catch: the regex has to scan every byte of every name looking
+for `#`, even when there is none.
+
+### Workload shape
+
+Instrumented `PDFName.of` on the book, counting calls and how
+often the input contains a `#`:
+
+```
+PDFName.of calls       : 2,759,635
+  raw input has # char : 2 (0.000%)
+```
+
+Two. In 2.76 million calls. The other 2,759,633 are regex scans
+against strings like `Type`, `S`, `P`, `Pg`, `StructElem`, `Kids`,
+`Count`, `Filter`, `FlateDecode` -- ordinary PDF names that need
+no escaping. We measured ~214 ms (7 %) of process self-time on
+`decodeName` and another ~91 ms on `PDFName.of`'s body that calls
+it.
+
+### The shim
+
+`docs/lib/fast-decode-name.mjs` follows the `fast-refs.mjs` shape:
+cache in front of `PDFName.of` rather than replacing it. The key
+insight is that when `name` has no `#`, the decoded form equals
+the raw form, so the raw `name` is already a valid pool key for
+pdf-lib's internal dedup pool -- a fast-side `Map<string, PDFName>`
+keyed by the raw input returns the same `PDFName` instance pdf-lib
+would have produced after a regex scan + pool lookup, without ever
+running the regex.
+
+```js
+import { PDFName } from "pdf-lib";
+
+if (!PDFName.__fastDecodeNameInstalled) {
+  const original = PDFName.of;
+  const fastCache = new Map();
+  PDFName.of = function fastOf(name) {
+    if (name.indexOf("#") === -1) {
+      const cached = fastCache.get(name);
+      if (cached) return cached;
+      const instance = original.call(PDFName, name);
+      fastCache.set(name, instance);
+      return instance;
+    }
+    return original.call(PDFName, name);
+  };
+  PDFName.__fastDecodeNameInstalled = true;
+}
+```
+
+Names with `#` fall through to the original -- the dual canonical-
+form contract is preserved exactly. Static `PDFName.Length`,
+`PDFName.FlateDecode`, ... initialisers ran when pdf-lib's module
+body executed (before the shim imports), so pdf-lib's pool is
+already populated with the canonical instances; the parser then
+hits the fast cache on every subsequent reference.
+
+### Results
+
+Paired A/B, four interleaved runs (`pre1 post1 pre2 post2`),
+`--detach-pages --no-timing --fast-refs --parallel-deflate
+--cpu-profile-process --cpu-sampling 100`, same 1651-page book:
+
+| metric        | pre avg | post avg | Δ                |
+| ------------- | ------- | -------- | ---------------- |
+| **process**   | **2.74 s** | **2.21 s** | **-0.53 s (-19 %)** |
+| ↳ load        | 1.69 s  | 1.40 s   | -0.29 s (-17 %) |
+| ↳ setOutline  | 0.01 s  | 0.01 s   | unchanged |
+| ↳ save        | 1.04 s  | 0.81 s   | -0.23 s (-22 %) |
+| pdf size      | 16.1 MB | 16.1 MB  | byte-identical pairwise (pre1↔post1, pre2↔post2; 31 B intra-pair drift is `/CreationDate`) |
+
+The load drop is what the instrumentation predicted. The save drop
+was a surprise -- save doesn't call `PDFName.of` to build outline
+metadata in the hot path, so the saving is almost certainly GC
+pressure relief from no longer allocating ~2.76 M regex-match
+objects during load.
+
+Profile diff (single run each, same flags):
+
+| function | PRE | POST | Δ |
+| --- | --- | --- | --- |
+| `decodeName`             | 214 ms (7.4 %) | not in top 15 | **-214 ms** |
+| `PDFName.of`             |  91 ms (3.1 %) | not in top 15 | **-91 ms** |
+| `fastOf` (the shim body) | n/a            |  91 ms (4.1 %) | +91 ms |
+| `(garbage collector)`    | 339 ms (11.7 %) | 238 ms (10.8 %) | -101 ms |
+| profile duration         | 2.92 s         | 2.22 s | -0.70 s |
+
+The `fastOf` row sits at the same self-time as the old
+`PDFName.of` forwarder (~91 ms) -- that's the per-call cost of the
+`indexOf` check + `fastCache.get` + return, which all calls now
+pay. The 214 ms `decodeName` row is gone entirely (regex never
+runs on the fast path), and the GC drop is the allocator relief.
+
+### Production confirmation
+
+Two consecutive `book.bat` runs with all four shims live
+(`fast-refs`, `fast-parse-number`, `parallel-deflate`,
+`fast-decode-name`):
+
+| metric | run 1 | run 2 |
+| --- | --- | --- |
+| render   | 8.9 s | 8.3 s |
+| generate | 39.3 s | 37.6 s |
+| process  | **1.6 s** | **1.6 s** |
+| total    | 51.8 s | 50.0 s |
+
+Process is now ~1.6 s on the production path, off the profiler.
+The harness numbers above are higher (~2.2 s post-fix) because of
+profiler-on attribution overhead at 100 us sampling -- the same
+caveat the `PDFRef.of` section flagged. The paired-A/B delta from
+the harness (-0.53 s) is the correct measure of the shim's win;
+the absolute 1.6 s is the production floor.
+
+### Methodology note
+
+This one almost didn't get found. The earlier "what's left" summary
+explicitly wrote `decodeName` off as "close to fundamental" parser
+work, on the strength of it living in a single regex line. The
+actual investigation took 30 seconds: read the function, ask
+"what's the hit rate of that regex on real PDF names?", instrument
+with a one-liner counter, find that the answer is 0.0001 %. Worth
+re-checking the "fundamental" label on remaining JS-body rows
+whenever a small change to the workload might invert it.
+
+## `numberToString`: skip the redundant toString/split on the 100 % no-`e` path
+
+`pdf-lib/.../utils/numbers.js:13` is pdf-lib's `.toString()`
+replacement that suppresses exponential notation -- PDF syntax
+requires plain decimal in the object body (`1e-7` is invalid), so
+every numeric token written into the file goes through:
+
+```js
+exports.numberToString = function (num) {
+    var numStr = String(num);
+    if (Math.abs(num) < 1.0) {
+        var e = parseInt(num.toString().split('e-')[1]);
+        if (e) { /* expand "1e-7" -> "0.0000001" */ }
+    } else {
+        var e = parseInt(num.toString().split('+')[1]);
+        if (e > 20) { /* expand "1e+21" -> "100...0" */ }
+    }
+    return numStr;
+};
+```
+
+`numStr` is computed up front via `String(num)`. Then -- regardless
+of whether `numStr` actually contains an `e` -- the function calls
+`num.toString()` *again*, allocates a `.split(...)` array, and
+runs `parseInt` on the (almost always undefined) result. Pure
+overhead on every call where `String(num)` already returned a
+plain decimal, which on a real PDF is every call.
+
+### Workload shape
+
+Instrumented `numberToString` on the book, counting fast-path
+(`String(num).indexOf('e') === -1`) vs slow-path hits:
+
+```
+numberToString calls : 290,231
+  String(num) has 'e' : 0 (0.000 %)
+```
+
+Zero. Of 290 k calls. `String(num)` returns exponential notation
+only when `|num| < 1e-6` or `|num| >= 1e21`, and a PDF's object
+refs, generations, byte offsets, content-stream coordinates,
+`/Size`, `/Length` etc. never land in either tail. The credit-card
+trick guarding the `e` cases is paid 290 k times to handle 0.
+
+### The shim
+
+`docs/lib/fast-number-to-string.mjs` short-circuits the no-`e`
+case and delegates the rare exponential cases to the original
+implementation unchanged:
+
+```js
+const fastNumberToString = function fastNumberToString(num) {
+  const numStr = String(num);
+  if (numStr.indexOf('e') === -1) return numStr;
+  return original(num);
+};
+numbers.numberToString     = fastNumberToString;
+utilsBarrel.numberToString = fastNumberToString;
+topBarrel.numberToString   = fastNumberToString;
+```
+
+### Wiring gotcha: tslib 1.x value-copy re-exports
+
+pdf-lib ships compiled against `tslib@1.14.1`, whose
+`__exportStar` is:
+
+```js
+function (m, exports) {
+    for (var p in m) if (p !== "default" && !exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+```
+
+A plain value-copy. tslib 2.x replaced this with a live getter
+(`Object.defineProperty(o, p, { get: () => m[p] })`), so on modern
+compilations a single `numbers.numberToString = fast` patch would
+propagate through every re-export automatically. On 1.x it
+doesn't.
+
+`PDFNumber`'s call site -- the only consumer of `numberToString`
+in pdf-lib's source -- reads from the utils-barrel, not from
+`numbers.js` directly:
+
+```js
+// PDFNumber.js
+var index_1 = require("../../utils/index");
+...
+_this.stringValue = index_1.numberToString(value);   // <-- captured copy
+```
+
+Because `import { PDFDocument } from 'pdf-lib'` runs *before* the
+shim's dynamic import, the barrel has already executed
+`__exportStar(numbersModule, exports)` and stamped its own copy of
+the original function. Mutating `numbers.numberToString`
+afterwards is invisible to `PDFNumber`. The first iteration of
+this shim looked installed (the standalone test showed the patched
+function on the barrel, because that test imported the barrel
+*after* the shim) but the harness counter recorded 0 hits on the
+patched body -- the upstream function was still hot in the profile
+under its original name.
+
+Fix: patch every re-export in the chain that captures by value:
+`utils/numbers` (the source), `utils/index` (the barrel
+`PDFNumber` reads from), and `cjs/index` (pdf-lib's top-level,
+which `__exportStar`s the utils barrel onward to anyone importing
+from `'pdf-lib'`). All three get the same `fastNumberToString`
+reference.
+
+The `fast-decode-name` / `fast-refs` / `fast-parse-number` shims
+don't hit this trap because their targets are class-static methods
+(`PDFName.of`, `PDFRef.of`) or `BaseParser.prototype` methods --
+all looked up at call time via the class/prototype object, not via
+a captured value. `numberToString` is the first free function
+we've patched in pdf-lib.
+
+### Results
+
+Paired A/B, two interleaved runs each (`pre1 post1 pre2 post2`),
+`--detach-pages --no-timing --fast-refs --parallel-deflate
+--fast-decode-name --cpu-profile-process --cpu-sampling 100`,
+same 1638-page book:
+
+| metric                                  | pre1   | pre2   | post1  | post2  |
+| ---                                     | ---    | ---    | ---    | ---    |
+| upstream `numberToString` self-time     | 45 ms  | 51 ms  | 0 ms   | 0 ms   |
+| shim `fastNumberToString` self-time     | n/a    | n/a    | 5 ms   | 12 ms  |
+| **combined self-time on this function** | **45 ms** | **51 ms** | **5 ms** | **12 ms** |
+| slow-path delegations to original       | n/a    | n/a    | 0      | 0      |
+
+The `String(num).indexOf('e') === -1` short-circuit fires on 100 %
+of calls; the upstream function is unreachable in practice.
+Function-level self-time drops by ~80 % (~40 ms saved on the hot
+function), the redundant `num.toString()` + `.split(...)` +
+`parseInt(...)` work gone from the trace.
+
+Wall-clock process-phase numbers on this dev machine bounce around
+enough run-to-run (~±0.15 s) that the ~40 ms function-level saving
+is invisible at the phase total -- both pre and post sit near
+2.05 s. The profile-level evidence is the real signal: the cycles
+were redundant, they're not being spent any more.
+
+### Methodology note
+
+The first cut of this shim mutated `numbers.numberToString` only,
+following the assumption that pdf-lib's re-exports would propagate
+the change. The hit counter (`fast=0 slow=0` on a full book run)
+caught the mistake before the README evidence was written -- a
+shim that *looks* installed but never actually runs would have
+shown identical "before" and "after" profile numbers within noise,
+indistinguishable from a no-op patch.
+
+Lesson for the next pdf-lib shim of a free function (rather than a
+class method): check `tslib.__exportStar`'s shape before assuming
+a single-site patch works.
+
+## `@cantoo/pdf-lib`: not a drop-in replacement
+
+Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
+alternative to Hopding's abandoned `pdf-lib` 1.17.1. Source-diff:
+the four hot paths our shims address (`PDFRef.of`'s string-keyed
+pool, `decodeName`'s unconditional regex, `parseRawInt` /
+`parseRawNumber`'s per-byte string concat,
+`PDFFlateStream.computeContents`'s synchronous pako call) are
+byte-identical to upstream. Paired A/B on the book confirmed:
+cantoo without shims runs the process phase in ~150 s vs our ~1.5 s
+with shims, and has its own footguns (silent compression-disable
+on PDF < 1.5, separate save-path pathology with `useObjectStreams:
+true` that wasn't chased). Not a drop-in replacement; staying on
+Hopding + shims.
+
 ## Where this leaves the picture
 
-Cumulative process-phase cost, baseline → after all three shims:
+Cumulative process-phase cost, baseline → after the shims to date:
 
-| state                              | process | load | save |
-| ---                                | ---     | ---  | ---  |
-| original (Slow / 50 defaults)      | ~40 s   | ~36 s| ~4 s |
-| + parseSpeed:Fastest               | ~5 s    | ~2 s | ~3 s |
-| + fast-deflate                     | ~2.5 s  | ~1.5s| ~1 s |
-| + fast-refs                        | ~2.3 s  | ~1.3 s | ~1 s |
-| **+ parallel-deflate (this section)** | **~2.0 s** | **~1.3 s** | **~0.7 s** |
+| state                                | process | load | save |
+| ---                                  | ---     | ---  | ---  |
+| original (Slow / 50 defaults)        | ~40 s   | ~36 s| ~4 s |
+| + parseSpeed:Fastest                 | ~5 s    | ~2 s | ~3 s |
+| + fast-deflate                       | ~2.5 s  | ~1.5s| ~1 s |
+| + fast-refs                          | ~2.3 s  | ~1.3 s | ~1 s |
+| + parallel-deflate                   | ~2.0 s  | ~1.3 s | ~0.7 s |
+| **+ fast-decode-name + fast-number-to-string (this section)** | **~1.6 s** | **~1.0 s** | **~0.6 s** |
 
-The bottom-up after parallel deflate is dominated by pdf-lib's
-parser frames -- `PDFDict.entries` (8 %), `decodeName` (8 %), GC
-(8 %), `parseRawNumber` (6 %), `PDFRef.of` (5 %, the gen != 0
-residue). All load-phase, all O(input bytes), all close to
-fundamental pdf-lib work. Further wins in this phase would mean
-rewriting pdf-lib's parser.
+The bottom-up after the latest pair is what's left of pdf-lib's
+genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
+`PDFObjectParser.parseDict`, GC, with no remaining JS-body row
+sitting on "regex scanning for something that's never there" or
+"redundant `toString` round-trip" shape. The `fastOf` row at
+~91 ms is a real floor for any cache-in-front approach: the
+`indexOf` + `Map.get` cost ~33 ns per call across 2.76 M calls.
 
-The pdf-lib roundtrip path is now ~2.0 s of a ~50 s build. The
-incremental writer's 0.25 s process phase (see
-[01-baseline-and-detach.md](01-baseline-and-detach.md)) is still
-strictly faster on process alone, but the pdf-lib path delivers a
-15.3 MB output vs incremental's 53 MB, and the ~2 s gap on a 50 s
-build doesn't justify the file-size cost for our pipeline.
+The pdf-lib roundtrip path is now ~1.6 s on production
+(profiler-off; the harness reports ~2.0-2.2 s with profiler-on
+attribution overhead). The incremental writer's 0.25 s process
+phase (see [01-baseline-and-detach.md](01-baseline-and-detach.md))
+is still strictly faster on process alone, but the pdf-lib path
+delivers a 15.3 MB output vs incremental's 53 MB, and the ~1.4 s
+gap on a 50 s build doesn't justify the file-size cost for our
+pipeline.
 
 The strategic note from earlier phases still stands: generate's
 ~38 s in `page.pdf()` is the remaining lever, and `pageRanges`
