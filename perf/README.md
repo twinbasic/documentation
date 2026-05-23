@@ -107,7 +107,7 @@ DevTools-compatible trace is a few lines.
 | `compare-outlines.mjs` | Diffs two PDFs' `/Outlines` trees by `(depth, title, target page)`. Used to verify whether Chrome's native outline matches the injected one. |
 | `probe-outline-exclusions.mjs` | Tests which per-element attributes / styles (aria-hidden, role=presentation, hidden, display:none, CSS bookmark-level, ...) make Chrome drop a heading from its outline. |
 | `analyze-profile.mjs` | Bottom-up self-time analyzer for `.cpuprofile` files. Same shape as DevTools' Performance bottom-up view, in the terminal. |
-| `analyze-trace.mjs` | Bottom-up self-time analyzer for Chrome traces (`trace.json` from `--tracing`). Computes per-event self-time on the renderer's main thread (`CrRendererMain` by default) by walking nested `X`-phase events. Cracks the cpu profile's `(program)` bucket open into named Blink / V8 events (`Layout`, `RecalcStyle`, `RunMicrotasks`, `V8.GC_*`, ...). |
+| `analyze-trace.mjs` | Bottom-up self-time analyzer for Chrome traces (`trace.json` from `--tracing`). Computes per-event self-time on the renderer's main thread (`CrRendererMain` by default) by walking nested `X`-phase events. Cracks the cpu profile's `(program)` bucket open into named Blink / V8 events (`Layout`, `RecalcStyle`, `RunMicrotasks`, `V8.GC_*`, ...). Operates on the Blink trace events only -- ignores any embedded V8 cpu samples (`Profile` / `ProfileChunk`). |
 | `ab-aggregate.mjs` | Per-row mean + SD aggregator across 6 paired cpu profiles (`ab-A1..A3.cpuprofile` and `ab-B1..B3.cpuprofile`). Use when wall-clock noise drowns a structural change: capture 3+3 interleaved profiles via `measure.mjs --cpu-profile` with the change toggled on/off between runs, then point this at the 6 files for a mean-with-SD table that surfaces deltas wall-clock can't see (e.g. ~6 σ shifts on rows that move from 88 ms to 2 ms). See the "Disabling the filter outright" section in this README for the methodology. |
 | `find-callers.mjs` | "Who paid for this callee's time?" -- walks a `.cpuprofile` and attributes a target function's total time back to each direct caller. Used throughout the post-mortems to detect gBCR migration between callers. |
 | `find-callees.mjs` | The other direction of `find-callers.mjs`: splits a function's self+descendant time across its direct callees. Surfaces the cases where V8 has rolled native DOM work back into the calling JS frame (Range deletion in `removeOverflow`, HTML parser in `wrapContent`). |
@@ -166,7 +166,7 @@ run.bat --instrument                      # count + time DOM-accessor calls
 run.bat --time-hooks                      # per-task timing of every chunker/polisher hook
 run.bat --incremental                     # process via incremental update instead of pdf-lib roundtrip
 run.bat --chrome-outline                  # let Chrome emit /Outlines (skip parseOutline + setOutline)
-run.bat --tracing                         # capture a Chrome trace of the render phase
+run.bat --tracing                         # capture a hybrid Chrome trace (Blink events + embedded V8 cpu samples)
 ```
 
 Flags compose. The CPU profile lands as `render.cpuprofile`
@@ -4147,14 +4147,27 @@ a `--tracing` flag and a companion `analyze-trace.mjs`.
 The flag wraps the render phase in `page.tracing.start()`
 with Blink-relevant categories (`devtools.timeline`,
 `disabled-by-default-devtools.timeline`, `blink`, `v8`,
-`v8.execute`) and writes `trace.json` to the results
-folder. `analyze-trace.mjs` walks the trace's complete-phase
+`v8.execute`, `disabled-by-default-v8.cpu_profiler`) and
+writes `trace.json` to the results folder. The
+`v8.cpu_profiler` category embeds V8 sampling-profile data
+as `Profile` / `ProfileChunk` events inline with the Blink
+trace events, so the single trace file is *hybrid*: loaded
+in Chrome DevTools Performance or [ui.perfetto.dev](https://ui.perfetto.dev)
+it renders JS call stacks aligned with Blink events on the
+same timeline (the de facto answer to "what was `(program)`
+doing?"). Cost: ~2x file size (e.g. 22 MB -> 52 MB on the
+1651-page book) and ~0.4 s wall-clock for the extra sampler
+work -- both noise on the analysis side.
+
+`analyze-trace.mjs` walks the trace's complete-phase
 events on `CrRendererMain`, computes self-time per event
 name via a nested-event stack walk (same shape as
 `analyze-profile.mjs` for cpuprofiles), and prints a
 top-N table. A `--children <name>` mode breaks any
 parent event into its direct callees, mirroring
-`find-callees.mjs`.
+`find-callees.mjs`. It ignores the embedded V8 cpu samples
+-- those are consumed separately by the viewers above (or
+by a forthcoming hybrid analyzer in this folder).
 
 ### What's on the main thread
 

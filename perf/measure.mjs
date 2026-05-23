@@ -268,6 +268,10 @@ try {
     // adds UpdateLayoutTree / InvalidateLayout / ScheduleStyleRecalc /
     // HitTest; blink covers internal Blink events; v8 + v8.execute cover
     // V8.GC* / V8.CompileCode / V8.RunMicrotasks / V8.Execute.
+    // disabled-by-default-v8.cpu_profiler embeds V8 sampling-profile data
+    // as Profile / ProfileChunk events inline with the trace, giving JS
+    // call stacks aligned with Blink events when loaded in Chrome
+    // DevTools Performance or perfetto.dev (the hybrid view).
     tracePath = join(outDir, 'trace.json');
     await page.tracing.start({
       path: tracePath,
@@ -278,6 +282,7 @@ try {
         'blink',
         'v8',
         'v8.execute',
+        'disabled-by-default-v8.cpu_profiler',
       ],
     });
     console.log(`[harness] tracing: ${tracePath}`);
