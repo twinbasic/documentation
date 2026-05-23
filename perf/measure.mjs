@@ -269,6 +269,7 @@ let fastSyncLoad = false;
 let fastDictArray = false;
 let fastIndirectObjects = false;
 let fastPdfnumberPool = false;
+let instrumentParsedict = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
@@ -305,6 +306,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-dict-array') fastDictArray = true;
   else if (a === '--fast-indirect-objects') fastIndirectObjects = true;
   else if (a === '--fast-pdfnumber-pool') fastPdfnumberPool = true;
+  else if (a === '--instrument-parsedict') instrumentParsedict = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -405,6 +407,9 @@ if (fastIndirectObjects) {
 if (fastPdfnumberPool) {
   await import('../docs/lib/fast-pdfnumber-pool.mjs');
   console.log('[harness] fast-pdfnumber-pool: value-keyed cache in front of PDFNumber.of');
+}
+if (instrumentParsedict) {
+  await import('./instrument-parsedict.mjs');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');

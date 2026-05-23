@@ -2363,6 +2363,138 @@ structure (page-tree dicts contain Kids arrays of Page dicts that
 contain Resources dicts...), not something a shim can shrink.
 The tool stays for future investigations.
 
+## Pre-size `parseDict`'s backing array
+
+After `fast-pdfnumber-pool` shipped, `fastParseDictArray` was
+53 % of the residual heap profile (~58 MB self-size). Three
+components in that frame:
+
+```js
+const arr = [];                                  // (1) array alloc + cap-4 FixedArray
+while (...) {
+  arr.push(key, value);                          // (2) growth via doubling
+}
+return new PDFDict(arr, this.context);           // (3) PDFDict instance
+```
+
+Without per-call counts, the 58 MB could plausibly be 10 k huge
+dicts or 300 k tiny ones. So we instrumented
+(`perf/instrument-parsedict.mjs`), which wraps the shim's
+`parseDict` to count invocations and size-distribution on exit.
+The book's workload:
+
+```
+total calls       : 260 967
+total entries     : 1 170 264
+avg entries/dict  : 4.48
+max entries/dict  : 4 353
+max recursion     : 3
+entries-per-dict histogram:
+     1 :     822
+     2 :  22 551
+     3 :  13 372
+     4 :  73 936    (28 %)
+     5 : 135 438    (52 %)   <-- median
+     6 :     231
+     7 :  12 458
+     8 :   1 644
+     9..31:  ~530
+   32+ :       2
+```
+
+**80 % of dicts have exactly 4 or 5 entries; 96 % have <= 7. Max
+recursion only 3 deep.** That maps cleanly onto V8's array
+growth behavior: a 5-entry dict's `arr.push(key, value)` chain
+grows the backing FixedArray from cap 4 -> 8 -> 16, discarding
+the two intermediate stores as garbage:
+
+| Dict entries | Push slots | Growth path | FixedArray bytes (incl. discards) |
+|-------------:|-----------:|-------------|----------------------------------:|
+|  4 (28 %)    |   8        | 4 -> 8      | 64 + 96 = 160 B                   |
+|  5 (52 %)    |  10        | 4 -> 8 -> 16 | 64 + 96 + 152 = 312 B           |
+|  7 (5 %)     |  14        | 4 -> 8 -> 16 | 312 B                             |
+|  2 (9 %)     |   4        | 4           | 64 B                              |
+
+Weighted average ~220 B of FixedArray throughput per dict.
+Across 261 k dicts: ~57 MB -- matching the observed 58 MB
+self-row almost exactly. **~85 % of the row is growth garbage
+from not pre-sizing.**
+
+### The fix
+
+Allocate the accumulator at the median size up front and use
+direct indexing with a `len` counter; fall back to push only for
+the rare overflow case.
+
+```js
+const SCRATCH = 10;   // median = 5 entries = 10 push slots
+const arr = new Array(SCRATCH);
+let len = 0;
+while (...) {
+  const key = this.parseName();
+  const value = this.parseObject();
+  if (len < SCRATCH) {
+    arr[len]     = key;
+    arr[len + 1] = value;
+  } else {
+    arr.length = len;
+    arr.push(key, value);   // rare: 7+ entry dicts grow from 10
+  }
+  len += 2;
+}
+arr.length = len;            // trim hole tail
+```
+
+### Picking SCRATCH
+
+`SCRATCH = 16` was the first try (covers 4-7 entry dicts without
+growth -- 96 % of cases). It saved only ~5.6 MB instead of an
+estimated ~22 MB. The reason: `new Array(16)` allocates a
+176-byte FixedArray *for every dict*, including the 9 % of
+2-entry dicts that previously needed only 64 bytes. The cap-16
+baseline is itself ~46 MB across 261 k calls.
+
+`SCRATCH = 10` is exact-fit for the 52 % dominant 5-entry case
+(no growth, no waste), small waste for 2/3/4-entry dicts (4-6
+unused slots), and one growth for the 5 % at 7 entries plus the
+~2 % above that. Best balance for this workload.
+
+### Measured wins
+
+Heap profile (paired `--heap-profile-process --heap-sampling 512`,
+post-fast-pdfnumber-pool baseline vs + SCRATCH=10):
+
+| Allocator                | Pre (KB)   | Post (KB)  | Delta              |
+|--------------------------|-----------:|-----------:|-------------------:|
+| **fastParseDictArray**   |  58 203.30 |  43 817.77 | **-14.4 MB (-25 %)** |
+| `push` builtin           |   2 843.44 |   1 621.62 | -1.2 MB            |
+| Total sampled            | 107.21 MB  |  92.13 MB  | **-15.1 MB (-14 %)** |
+
+Two-step path through SCRATCH:
+
+| Step                  | Total sampled | fastParseDictArray |
+|-----------------------|--------------:|-------------------:|
+| No pre-size           |     107.21 MB |          58.20 MB  |
+| `SCRATCH = 16`        |     101.61 MB |          55.03 MB  |
+| `SCRATCH = 10`        |  **92.13 MB** |       **43.82 MB** |
+
+### What about a parser-wide scratch buffer?
+
+The "escalation" alternative was a single long-lived backing
+array on the parser instance, append-then-slice per dict. It
+would eliminate the per-call `new Array(10)` allocation. But the
+slice result is still a fresh per-dict allocation, sized exactly
+-- which for the median 5-entry case is ~104 B (same as cap-10).
+The only net savings would be on small dicts (1-3 entries) where
+the slice is smaller than 10 slots; that's maybe ~2-3 MB across
+36 k small dicts. Not worth the recursion-safe length-pointer
+save/restore plumbing.
+
+The edit is local to `docs/lib/fast-dict-array.mjs`; no
+production import change needed since `fast-dict-array` was
+already wired up. The `--instrument-parsedict` flag stays on
+`measure.mjs` for future dict-workload investigations.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -2398,7 +2530,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-dict-array                    | ~1.1 s  | ~0.7 s | ~0.4 s |
 | + fast-indirect-objects              | ~1.1 s  | ~0.7 s | ~0.4 s |
 | + fast-refs miss bypass              | ~1.0 s  | ~0.6 s | ~0.4 s |
-| **+ fast-pdfnumber-pool (this section)** | **~1.0 s** | **~0.6 s** | **~0.4 s** |
+| + fast-pdfnumber-pool                | ~1.0 s  | ~0.6 s | ~0.4 s |
+| **+ parseDict pre-sized array (this section)** | **~1.0 s** | **~0.6 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
