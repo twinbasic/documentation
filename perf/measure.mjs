@@ -191,10 +191,17 @@ const browser = await puppeteer.launch({
   // puppeteer 22+ unconditionally in ChromeLauncher.defaultArgs(), so
   // we don't need to repeat them here. --chrome-outline below relies on
   // the latter being present at launch.
+  //
+  // --disable-gpu + --disable-software-rasterizer mirror production
+  // (docs/render-book.mjs). Shrinks the GPU process from ~100 MB to
+  // ~16 MB and the renderer ~120 MB; generate ~5 s faster; PDF byte-
+  // identical. See perf/README.md "Disabling the GPU process".
   args: [
     '--disable-dev-shm-usage',
     '--allow-file-access-from-files',
     '--enable-precise-memory-info',
+    '--disable-gpu',
+    '--disable-software-rasterizer',
   ],
 });
 
