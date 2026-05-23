@@ -2649,6 +2649,169 @@ the dominant per-dict cost -- so the next prototype needs to
 shrink the instance too. That's the one-buffer + packed-pointer
 work in the following sections.
 
+## Single-double PDFDict (explored, didn't ship)
+
+fast-dict-view's win was capped by the PDFDict instance footprint:
+5 named slots (`_dictBuf`, `_dictStart`, `_dictEnd`, `_dictOwned`,
+`context`) at ~96 B per instance. Across 261 k dicts that's ~25 MB
+of per-dict object header.
+
+The instance shape is what was costing us. Most of those fields are
+small: `start` fits in 22 bits, `length` in 14 bits, `bufIdx` in
+~15 bits (counting setOutline's owned dicts), `owned` is 1 bit. The
+fields that *can't* obviously be made small are the `buf` and
+`context` *references* -- but `buf` already gets reference-by-index
+in fast-dict-view's design (via `_buffers[bufIdx]`), and `context`
+is a *singleton* in our pipeline.
+
+Prototyped as `fast-dict-double.mjs`. The idea: pack the whole
+instance state into one 53-bit Number stored as PDFDict's single
+`d` field, and treat the PDFContext as a module-level singleton.
+Heap dropped 90 MB → 84 MB (-6 MB / -7 %); GC self-time
+166.7 ms → 128.8 ms (-23 %). Promising, but the next move --
+also packing the entries into one shared buffer -- gives a
+cleaner overall shape and made fast-dict-double an opt-in
+stepping stone rather than a shipping target. The shim doesn't
+ship; the notes here document the design.
+
+### One PDFContext per process
+
+PDFContexts are created by `PDFParser.forBytesWithOptions` inside
+`PDFDocument.load`. In our pipeline `PDFDocument.load` is called
+exactly once per build (in `docs/render-book.mjs`), so exactly one
+PDFContext exists during the process phase. The shim stashed that
+one PDFContext in a module-level `_singletonContext` variable; the
+`PDFDict.prototype.context` getter just returned it. Any second
+distinct context would throw -- intentional bailout for workloads
+this shim isn't a fit for (e.g. merging two PDFs in one process).
+
+### 53-bit packed layout
+
+That leaves everything else fitting in one Number:
+
+```
+bits  0-21: start   (22 bits, max 4 M slots; depth-0 hits 2.16 M)
+bits 22-35: length  (14 bits, max 16 384 slots; max observed 8 706)
+bits 36-50: bufIdx  (15 bits, max 32 768 buffers; book uses ~1 800
+                    once setOutline creates per-outline-node
+                    owned dicts via the factory)
+bit  51   : owned flag
+bit  52   : spare
+```
+
+Stored as a single `d` field on each PDFDict instance. Reads use a
+mix of bitwise (for fields entirely below bit 32) and arithmetic
+(for fields straddling or above 32, since JS bitwise ops cast to
+int32):
+
+```js
+function _start(d)  { return d & MASK_22; }                  // bitwise
+function _length(d) { return Math.floor(d / POW_22) & MASK_14; }
+function _bufIdx(d) { return Math.floor(d / POW_36) & MASK_15; }
+function _owned(d)  { return Math.floor(d / POW_51) & 1; }
+```
+
+Writes:
+
+```js
+function pack(start, length, bufIdx, owned) {
+  if (start  >= MAX_START)  throw new Error('start overflow');
+  if (length >= MAX_LENGTH) throw new Error('length overflow');
+  if (bufIdx >= MAX_BUFIDX) throw new Error('bufIdx overflow');
+  return start + length * POW_22 + bufIdx * POW_36 + (owned ? POW_51 : 0);
+}
+```
+
+Overflow guards: if any field exceeds its budget, the shim throws
+with a clear message. The budgets are sized 2-5x the book's
+observed workload, so this is a guardrail for surprise inputs
+rather than a hot path.
+
+### V8 representation
+
+A property whose values consistently fall outside Smi range (which
+`d` does, since `bufIdx * 2**36` immediately exceeds 2^31) gets
+stored either inline as DoubleField (8 B inline double) or via
+TaggedField (8 B pointer + ~16-24 B HeapNumber). Empirically the
+heap drop was consistent with most instances using DoubleField:
+the `fastParseDictView` row's combined self+`_makeFromView` self
+dropped from 40.96 MB to 35.34 MB (an extra ~5 MB beyond what
+plain buffer-sharing achieved).
+
+### Subclasses
+
+PDFCatalog and PDFPageTree add no instance fields beyond `d`.
+PDFPageLeaf still needs `normalized` and `autoNormalizeCTM` as
+separate slots; that's ~1.6 k page leaves out of 261 k total dicts
+on the book, a small fraction.
+
+### Measured wins
+
+Heap profile (paired `--heap-profile-process --heap-sampling 512`,
+fast-dict-view baseline vs + fast-dict-double):
+
+| Allocator                          | Pre (KB)  | Post (KB) | Delta             |
+|------------------------------------|----------:|----------:|------------------:|
+| `fastParseDictView` / `*Double`    |  40 955.37 |  18 913.63 | -22.0 MB         |
+| `_makeFromView` (separate child row)|    773.09 |  16 429.68 | +15.7 MB         |
+| Combined (fastParse* + _makeFromView)| 41 728.46 |  35 343.31 | **-6.4 MB**      |
+| Total sampled                      |  89.68 MB |  83.68 MB | **-6.0 MB (-7 %)** |
+
+(`_makeFromView` shows up as a bigger separate row because V8
+de-inlined it slightly differently for fast-dict-double, but the
+combined "PDFDict construction overhead" dropped ~6 MB.)
+
+CPU profile (paired `--cpu-profile-process --cpu-sampling 100`):
+
+| Row                          | Pre (ms) | Post (ms) | Delta                |
+|------------------------------|---------:|----------:|---------------------:|
+| (garbage collector)          |   166.71 |    128.81 | **-37.9 ms (-23 %)** |
+| `fastParseDictView` / `*Double` |    28.95 |     44.36 | +15.4 ms (incl COW + pack/unpack) |
+| Total profile duration       |   1.03 s |    0.97 s | -60 ms (-6 %)        |
+
+The GC self-time drop is the headline: less heap allocation
+directly translates to less GC work. The fastParseDict* row went
+up a bit (more arithmetic in unpack), but the saving on GC and
+elsewhere comfortably outweighs it.
+
+### Cumulative arc
+
+Starting from the original Map-backed PDFDict:
+
+| State                            | Total sampled | Change vs prior |
+|----------------------------------|--------------:|----------------:|
+| Map-backed (pre-fast-dict-array) |   152 MB      | -               |
+| fast-dict-array (INITIAL_SLOTS=10)|    92 MB     | -60 MB          |
+| fast-dict-view (shared buffers)  |    90 MB      | -2 MB           |
+| **fast-dict-double**             |    **84 MB**  | **-6 MB**       |
+
+**-45 % cumulative reduction in process-phase heap traffic.**
+
+### Caveats
+
+- **Single context assumption.** If you load a second PDFDocument
+  in the same process the shim throws. For our build pipeline this
+  is fine; for general pdf-lib use a multi-context variant would
+  need an array + small ctxIdx field.
+- **Bit budgets.** Sized for the book and similar PDFs. A PDF with
+  a top-level dict count exceeding 4 M entries (very large book or
+  pathological generator) would trip the start budget; a PDF with
+  a single dict larger than 8 192 entries would trip length;
+  setOutline producing more than 32 k owned dicts would trip
+  bufIdx. All three are deliberate guards rather than expected
+  failures.
+- **Arithmetic in hot path.** Each read of a high-bit field is one
+  `Math.floor(d / 2**n) & mask`. V8 optimizes division by
+  powers-of-2 well, but it's not free. The 23 % GC drop is the
+  empirical confirmation that the heap savings outweigh the
+  unpack cost.
+
+The next prototype (one-buffer PDFDict) keeps the
+"packed-into-Number" idea but moves the entries themselves into
+a single per-parser mainBuf, which folds the bufIdx field away
+and lets a tighter bit layout track the (mainBuf-relative) start
++ length directly. That's what ends up shipping.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
