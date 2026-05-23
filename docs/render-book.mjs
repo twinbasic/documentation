@@ -103,6 +103,15 @@ import { PDFDocument } from 'pdf-lib';
 //     skips its sort when the gen!=0 Map is empty (the common case).
 //     Drops PDFContext.assign out of the CPU top-15 and halves the
 //     remaining set heap traffic.
+//   fast-pdfnumber-pool -- value-keyed cache in front of PDFNumber.of.
+//     Dense array for non-negative integers in [0, 16384), Map
+//     fallback for floats / negatives / out-of-range. PDFs reuse the
+//     same numeric values (page indices, /Count, /N, /MediaBox
+//     dimensions) hundreds of thousands of times against only a few
+//     thousand unique values; pooling collapses parseNumberOrRef's
+//     ~15 MB of PDFNumber allocations to ~0.8 MB. Total process-phase
+//     heap traffic drops ~13 % (123 MB -> 107 MB). PDFNumber is
+//     immutable so sharing is safe.
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
@@ -113,6 +122,7 @@ import './lib/fast-dict-array.mjs';
 import './lib/fast-parse-object.mjs';
 import './lib/fast-sync-load.mjs';
 import './lib/fast-indirect-objects.mjs';
+import './lib/fast-pdfnumber-pool.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
 import { parallelSave }             from './lib/parallel-deflate.mjs';

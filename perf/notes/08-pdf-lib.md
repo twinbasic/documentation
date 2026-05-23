@@ -2241,6 +2241,128 @@ heap profile.
 The edit is local to `docs/lib/fast-refs.mjs`; no production
 import change needed since `fast-refs` was already wired up.
 
+## Pool `PDFNumber` instances by value
+
+With every `Map.set` in the load path either eliminated or
+reduced to its irreducible floor (`PDFName` fastCache, ~0.5 MB),
+the next-largest bucket in the heap profile was
+`parseNumberOrRef` at 15 MB -- mostly inlined `new PDFNumber(value)`
+from the parser's number branch:
+
+```js
+function PDFNumber(value) {
+  var _this = _super.call(this) || this;
+  _this.numberValue = value;
+  _this.stringValue = numberToString(value);     // alloc per instance
+  return _this;
+}
+PDFNumber.of = function (value) { return new PDFNumber(value); };
+```
+
+No pool. Every `PDFNumber.of(N)` returns a fresh instance, even
+for the same `N`. PDFs reuse a handful of integer values
+*constantly*: the book has 1 651 page entries (each contributing
+`/MediaBox` dimensions like 612, 792, integer indices, `/Count`,
+`/N` totals), plus content-stream numeric literals, font sizes,
+and bit widths. Hundreds of thousands of `PDFNumber.of` calls
+against maybe a few thousand unique values.
+
+A `PDFNumber` is also conceptually immutable: `numberValue` and
+`stringValue` are written once in the constructor and never
+mutated. Pooling by value is therefore safe.
+
+### Could we just store a raw `number`?
+
+In principle yes. `PDFNumber` exists structurally to satisfy
+pdf-lib's polymorphic dispatch on every dict / array value
+(`value.copyBytesInto(buffer, offset)`, `value.sizeInBytes()`,
+`value.asNumber()`). Replacing it with a primitive would
+require:
+
+- Type-branching in `PDFDict.copyBytesInto` /
+  `PDFArray.copyBytesInto` / `sizeInBytes`: `typeof === 'number'`
+  fast-path that writes the number's string form directly.
+- Updating ~53 consumer sites in pdf-lib's API code (everything
+  that does `lookup(name, PDFNumber).asNumber()` or
+  `value instanceof PDFNumber`) to handle bare numbers.
+- A V8 deopt risk: the serializer's previously-monomorphic
+  `.copyBytesInto` call site becomes polymorphic across two
+  representations.
+
+That's a much bigger surgery for a similar magnitude of win,
+because pooling already collapses every repeated-value
+allocation to a single shared instance. So we ship the pool
+first; if a post-pool heap profile still showed `PDFNumber` as a
+top allocator, stripping would have been worth the API surgery.
+It doesn't.
+
+### The shim
+
+`docs/lib/fast-pdfnumber-pool.mjs` installs the cache. Same
+shape as `fast-refs`: dense array indexed by `value` for
+non-negative integers in `[0, 16384)` (covers every observed
+integer value in the book by a wide margin), Map fallback for
+floats, negatives, and out-of-range integers. Map's
+`SameValueZero` handles `NaN` / `-0` correctly, no special-casing
+needed.
+
+```js
+PDFNumber.of = function fastNumberOf(value) {
+  if (value >= 0 && value < POOL_SIZE && (value | 0) === value) {
+    let pn = intPool[value];
+    if (pn !== undefined) return pn;
+    pn = original.call(PDFNumber, value);
+    intPool[value] = pn;
+    return pn;
+  }
+  let pn = otherPool.get(value);
+  if (pn !== undefined) return pn;
+  pn = original.call(PDFNumber, value);
+  otherPool.set(value, pn);
+  return pn;
+};
+```
+
+### Measured wins
+
+Heap profile (paired `--heap-profile-process --heap-sampling 512`,
+fast-refs upgrade baseline vs + pool):
+
+| Allocator                | Pre (KB)  | Post (KB)            | Delta                |
+|--------------------------|----------:|---------------------:|---------------------:|
+| **parseNumberOrRef**     | 15 388.73 | **out of top 10**    | **-15+ MB**          |
+| `String` builtin         |  1 202.23 | out of top 10        | -                    |
+| `PDFNumber.of` (pool miss)|        - |               818.92 | new, ~unique count   |
+| Total sampled            | 123.11 MB |            107.21 MB | **-15.9 MB (-13 %)** |
+
+`parseNumberOrRef`'s row collapsed off the top 10. The new
+`PDFNumber.of` row at 0.8 MB is the floor -- one `PDFNumber` per
+unique value across the whole load. The `String` builtin row
+(`stringValue` allocations) also collapsed because they're now
+allocated once per unique value, not once per use site.
+
+CPU profile (same paired methodology): GC self-time effectively
+flat (166.71 ms -> 165.54 ms), total profile duration within
+sample-count noise (1.03 s -> 1.09 s). Pool cost per call is a
+branch + array index, which V8 inlines into the hot
+`parseNumberOrRef` path. CPU is a wash; the win is pure heap.
+
+### A companion analyzer: `find-heap-callees.mjs`
+
+Adding this shim also surfaced the question "what's
+`fastParseDictArray` actually allocating at its 58 MB self-row?".
+`find-heap-callers` answers "who calls X?"; the inverse --
+"what does X allocate?" -- needed a new tool. `find-heap-callees.mjs`
+walks the `.heapprofile` tree and lists a target frame's direct
+children with their (self + subtree) byte totals.
+
+Used here, it cracked open the `fastParseDictArray` row: most of
+the 58 MB was recursive `parseDict` invocations across nesting
+levels, not a single allocator. That's intrinsic to the document
+structure (page-tree dicts contain Kids arrays of Page dicts that
+contain Resources dicts...), not something a shim can shrink.
+The tool stays for future investigations.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -2275,7 +2397,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-sync-load                     | ~1.3 s  | ~0.8 s | ~0.5 s |
 | + fast-dict-array                    | ~1.1 s  | ~0.7 s | ~0.4 s |
 | + fast-indirect-objects              | ~1.1 s  | ~0.7 s | ~0.4 s |
-| **+ fast-refs miss bypass (this section)** | **~1.0 s** | **~0.6 s** | **~0.4 s** |
+| + fast-refs miss bypass              | ~1.0 s  | ~0.6 s | ~0.4 s |
+| **+ fast-pdfnumber-pool (this section)** | **~1.0 s** | **~0.6 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
