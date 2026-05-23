@@ -121,17 +121,29 @@ import { PDFDocument } from 'pdf-lib';
 //     immutable so sharing is safe.
 //   measure-pass (Phase 1) -- no-allocate byte walker
 //     (docs/lib/measure-pass.mjs) that runs in front of
-//     PDFDocument.load on the raw Chrome PDF and counts dictSlots.
-//     The count drives setExpectedDictSlots() on fast-dict-onebuf,
-//     which pre-sizes the module-level main Array to the exact
-//     slot count (no V8 growth resizes during load). Net wall-clock
-//     is ~+40 ms on the book (walker costs ~60 ms; load saves ~20).
-//     The bound on mainBuf isn't material on its own (~60 K slots
-//     out of 2.4 M) but commits the two-pass shape. Phase 2/3/3β
-//     (Float64Array mainBuf + encoded slots) were explored and
-//     didn't ship -- per-slot encode/decode cost exceeded the
-//     mark-phase savings. See "Phase 1: pre-size mainBuf via
-//     measure-pass" in perf/notes/08-pdf-lib.md.
+//     PDFDocument.load on the raw Chrome PDF and counts dictSlots
+//     + arraySlots. The counts drive setExpectedDictSlots() on
+//     fast-dict-onebuf and setExpectedArraySlots() on
+//     fast-array-onebuf, pre-sizing each shim's backing Array to
+//     the exact measured demand (no V8 growth resizes during load).
+//     Net wall-clock is ~+40 ms on the book (walker costs ~60 ms;
+//     load saves ~20). The bound on mainBuf isn't material on its
+//     own (~60 K slots out of 2.4 M) but commits the two-pass
+//     shape. Phase 2/3/3β (Float64Array mainBuf + encoded slots)
+//     were explored and didn't ship -- per-slot encode/decode cost
+//     exceeded the mark-phase savings. See "Phase 1: pre-size
+//     mainBuf via measure-pass" in perf/notes/08-pdf-lib.md.
+//   fast-array-onebuf -- same range-view pattern as fast-dict-onebuf
+//     applied to PDFArray. Each PDFArray's per-instance
+//     `this.array = []` goes away; instances become views into a
+//     shared arrayMain (plain JS Array, heterogeneous slots holding
+//     the original PDFObject references). Reads are direct -- no
+//     decode, unlike the explored-but-didn't-ship encoded approach
+//     which encoded slots into a Float64Array and paid ~300 ms of
+//     decodeValue dispatch during save. ~19 MB of process-phase
+//     heap traffic from parseArray collapses (the `this.array`
+//     allocation + grow doublings across ~79 k PDFArrays). See
+//     "One-buffer PDFArray" in perf/notes/08-pdf-lib.md.
 import './lib/fast-refs.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
@@ -139,6 +151,7 @@ import './lib/fast-decode-name.mjs';
 import './lib/fast-number-to-string.mjs';
 import './lib/fast-size-in-bytes.mjs';
 import { setExpectedDictSlots }     from './lib/fast-dict-onebuf.mjs';
+import { setExpectedArraySlots }    from './lib/fast-array-onebuf.mjs';
 import './lib/fast-parse-object.mjs';
 import './lib/fast-sync-load.mjs';
 import './lib/fast-indirect-objects.mjs';
@@ -373,11 +386,14 @@ try {
   //    thread. Moves ~300 ms of zlib work off-CPU on the book.
   //
   // measureRawPdf walks rawPdf once with no allocations and hands
-  // the exact dictSlot count to fast-dict-onebuf so its main Array
-  // is pre-sized; eliminates V8 growth resizes during load.
+  // the exact dictSlot + arraySlot counts to fast-dict-onebuf /
+  // fast-array-onebuf so each shim's backing Array is pre-sized;
+  // eliminates V8 growth resizes during load.
   // See perf/notes/08-pdf-lib.md.
   const tProcess = Date.now();
-  setExpectedDictSlots(measureRawPdf(rawPdf).dictSlots);
+  const counts = measureRawPdf(rawPdf);
+  setExpectedDictSlots(counts.dictSlots);
+  setExpectedArraySlots(counts.arraySlots);
   const pdfDoc = await PDFDocument.load(rawPdf);
   setMetadata(pdfDoc, meta);
   await setOutline(pdfDoc, outline, false);

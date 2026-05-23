@@ -296,6 +296,7 @@ let fastDictArray = false;
 let fastIndirectObjects = false;
 let fastPdfnumberPool = false;
 let fastDictOnebuf = false;
+let fastArrayOnebuf = false;
 let instrumentParsedict = false;
 let dumpRawPdf = null;
 let measurePass = false;
@@ -337,6 +338,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-indirect-objects') fastIndirectObjects = true;
   else if (a === '--fast-pdfnumber-pool') fastPdfnumberPool = true;
   else if (a === '--fast-dict-onebuf') fastDictOnebuf = true;
+  else if (a === '--fast-array-onebuf') fastArrayOnebuf = true;
   else if (a === '--instrument-parsedict') instrumentParsedict = true;
   else if (a === '--dump-raw-pdf') dumpRawPdf = args[++i];
   else if (a === '--measure-pass') measurePass = true;
@@ -470,6 +472,10 @@ if (fastDictOnebuf) {
   await import('../docs/lib/fast-dict-onebuf.mjs');
   console.log('[harness] fast-dict-onebuf: ONE long-lived buffer for all PDFDict entries + small per-parser temp');
 }
+if (fastArrayOnebuf) {
+  await import('../docs/lib/fast-array-onebuf.mjs');
+  console.log('[harness] fast-array-onebuf: ONE long-lived buffer for all PDFArray elements + small per-parser temp');
+}
 if (instrumentParsedict) {
   await import('./instrument-parsedict.mjs');
 }
@@ -480,12 +486,22 @@ let _runMeasurePass = null;
 if (measurePass) {
   const { measure } = await import('../docs/lib/measure-pass.mjs');
   const { setExpectedDictSlots } = await import('../docs/lib/fast-dict-onebuf.mjs');
+  let setExpectedArraySlots = null;
+  if (fastArrayOnebuf) {
+    const ma = await import('../docs/lib/fast-array-onebuf.mjs');
+    setExpectedArraySlots = ma.setExpectedArraySlots;
+  }
   _runMeasurePass = (bytes) => {
     const counts = measure(bytes);
     setExpectedDictSlots(counts.dictSlots);
+    if (setExpectedArraySlots) setExpectedArraySlots(counts.arraySlots);
     return counts;
   };
-  console.log('[harness] measure-pass: no-allocate prelude, pre-sizes fast-dict-onebuf mainBuf to measured dict-slot count');
+  console.log(
+    setExpectedArraySlots
+      ? '[harness] measure-pass: no-allocate prelude, pre-sizes dict + array main buffers to measured slot counts'
+      : '[harness] measure-pass: no-allocate prelude, pre-sizes fast-dict-onebuf mainBuf to measured dict-slot count',
+  );
 }
 
 // --instrument-slot-types loads the slot-type classifier; called after

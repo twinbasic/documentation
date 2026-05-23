@@ -3761,6 +3761,123 @@ the Object[] storage and inheriting the same low-overhead
 view-with-packed-payload trick. That's the fast-array-onebuf
 section below; it does ship.
 
+## One-buffer PDFArray
+
+Mirror of fast-dict-onebuf's strategy applied to PDFArray. Every
+committed element lives in a single append-only `arrayMain` JS
+Array, kept for the document's lifetime. Each PDFArray instance
+is a view via packed `(start, length)` in `d`. Per-instance
+`this.array = []` allocation goes away; ~79 k PDFArrays stop
+allocating per-instance backing arrays + grow doublings.
+
+Storage is a plain heterogeneous JS Array -- slots hold the
+original PDFObject references, reads are `arrayMain[start + i]`
+with no decode. This is the explored-but-didn't-ship Phase 3
+shape (PDFArray as a view into a shared backing) minus the
+Float64Array encoding: Phase 3 paid ~300 ms of `decodeValue`
+dispatch on save's `copyBytesInto` (~3 M slots × 10-case switch
++ pool lookup). The plain-reference shape skips that entirely
+and is what makes fast-array-onebuf cheap to ship.
+
+### Parser temp + commit
+
+Per-parser `_arrayTemp` + length cursor as a recursion stack,
+parallel to fast-dict-onebuf's `_dictTemp`. Each `parseArray`
+invocation pushes onto temp, commits its frame to `arrayMain`
+in one contiguous append, and pops temp back. Dict and array
+temps are independent so cross-recursion is fine.
+
+### Mutations
+
+- `set(i, v)` -- in-place replace at `arrayMain[start + i]`.
+  Safe for any array; no shifts.
+- `push(v)` -- in-place extend at HWM (`arrayMain.push(v)` +
+  length += 1) when `start + length === arrayMain.length`;
+  COW otherwise.
+- `insert(i, v)` / `remove(i)` -- always COW. Shifting slots
+  in `arrayMain` would corrupt other arrays' ranges.
+
+Same at-HWM safety logic as fast-dict-onebuf; no owned bit
+needed (`start + length === arrayMain.length` is sufficient).
+
+### Bit layout
+
+```
+bits  0-23: start  (24 bits, max 16 M slots)
+bits 24-39: length (16 bits, max 65 536 elements; max observed
+                    ~25 k on the book)
+```
+
+40 bits used, well within `Number.MAX_SAFE_INTEGER`. One more
+length bit than fast-dict-onebuf's 14-bit dict length, because
+arrays can be larger than dicts on this workload.
+
+### Singleton context (duplicated)
+
+Same singleton-PDFContext assumption as fast-dict-onebuf, but
+the ~10 lines of context-stash machinery are duplicated rather
+than shared, so each shim stays independently injectable. A
+caller can opt into one without the other; both are independent
+side-effecting imports.
+
+### Production wiring
+
+- [`docs/render-book.mjs`](../../docs/render-book.mjs) -- imports
+  `setExpectedArraySlots` alongside `setExpectedDictSlots`, calls
+  both after `measureRawPdf` returns and before `PDFDocument.load`.
+- [`perf/measure.mjs`](../measure.mjs) -- adds `--fast-array-onebuf`
+  flag. Composes with `--fast-dict-onebuf`; `--measure-pass` also
+  drives `setExpectedArraySlots` when the array shim is on.
+- The harness's `--fast-array-onebuf` is opt-in alongside the
+  production path, the same arrangement as `--fast-dict-onebuf`.
+
+### Measured wins
+
+Heap impact (process phase, 512 B sampling, paired runs vs the
+Phase 1 baseline that was the immediate predecessor of this
+shim):
+
+| Allocator                | P1 baseline | + fast-array-onebuf | Delta              |
+|--------------------------|------------:|--------------------:|-------------------:|
+| `parseArray`             |    19.6 MB  |             ~0 (off top 15) | **-19.6 MB**  |
+| new shim row (PDFArray wrappers) | -   |             4.2 MB   | +4.2 MB           |
+| Total sampled            |    65.6 MB  |            **51.9 MB**       | **-13.7 MB (-21 %)** |
+
+CPU impact (process wall, pinned 0x5500 / High, no profiler,
+3 paired runs each side):
+
+| State            | median | mean   |
+|------------------|-------:|-------:|
+| P1 only          | 1.07 s | 1.09 s |
+| P1 + this shim   | 1.02 s | 1.01 s |
+
+Mean shifts +0.08 s -- this shim slightly faster, well within
+noise on this machine.
+
+The CPU regression that showed up under
+`--cpu-profile-process` (paired with the encoded-storage
+prototype) was profiler-induced noise; the sampler's per-allocation
+bookkeeping interacts badly with this shape. Gone once we pin
+CPU and drop the sampler. Worth remembering: when the only
+signal saying "this is slower" is the profiler, run the same
+code without the profiler before accepting the verdict.
+
+### Cumulative arc (final)
+
+Heap, starting from the original Map-backed PDFDict:
+
+| State                             | Total sampled | Change vs prior |
+|-----------------------------------|--------------:|----------------:|
+| Map-backed (pre-fast-dict-array)  |   152 MB      | -               |
+| fast-dict-array                   |    92 MB      | -60 MB          |
+| fast-dict-onebuf                  |    66 MB      | -26 MB          |
+| **fast-array-onebuf**             |    **52 MB**  | **-14 MB**      |
+
+**-66 % cumulative reduction in process-phase heap traffic.**
+The final state of this storage-shape work. The endpoint of
+the dict + array allocator refactors that this notes file has
+been chasing for the last ~22 sections.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -3799,7 +3916,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-pdfnumber-pool                | ~1.0 s  | ~0.6 s | ~0.4 s |
 | + parseDict pre-sized array          | ~1.0 s  | ~0.6 s | ~0.4 s |
 | + fast-dict-onebuf                   | ~1.0 s  | ~0.6 s | ~0.4 s |
-| **+ measure-pass Phase 1 (this section)** | **~1.0 s** | **~0.7 s** | **~0.4 s** |
+| + measure-pass Phase 1               | ~1.0 s  | ~0.7 s | ~0.4 s |
+| **+ fast-array-onebuf (this section)** | **~1.0 s** | **~0.7 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
