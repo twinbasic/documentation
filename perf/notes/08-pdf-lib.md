@@ -4160,6 +4160,108 @@ construction style is the whole point of the comparison, so being
 able to flip back to the older shape with a flag is worth the
 20 lines of duplication.
 
+## Class-constructor `PDFDict` shape
+
+The same shape change `fast-refs-class` applied to PDFRef (above),
+now applied to the four PDFDict subclasses fast-dict-onebuf
+constructs: `PDFDict`, `PDFCatalog`, `PDFPageTree`, `PDFPageLeaf`.
+
+### Where fast-dict-onebuf was paying the same V8 tax
+
+`_makeFromRange` and the COW path inside `set` both build the
+wrapper instance via `Object.create(ProtoClass.prototype) + pd.d
+= ...` (plus `pd.normalized = false` / `pd.autoNormalizeCTM = true`
+for the PageLeaf case). On the book that's 260 k+ wrapper
+instances per load -- the dominant remaining heap row even after
+all the prior storage-shape work, with `_makeFromRange (dict)`
+showing 16.5 MB on the post-`fast-refs-class` profile.
+
+### The shim
+
+One plain-function constructor per subclass with the field
+assignments in the body. Aliasing each one's prototype to the
+upstream prototype keeps `instanceof` and method dispatch
+unchanged.
+
+```js
+function _FastDict(d) { this.d = d; }
+_FastDict.prototype = PDFDict.prototype;
+
+function _FastCatalog(d) { this.d = d; }
+_FastCatalog.prototype = PDFCatalog.prototype;
+
+function _FastPageTree(d) { this.d = d; }
+_FastPageTree.prototype = PDFPageTree.prototype;
+
+function _FastPageLeaf(d) {
+  this.d = d;
+  this.normalized = false;
+  this.autoNormalizeCTM = true;
+}
+_FastPageLeaf.prototype = PDFPageLeaf.prototype;
+
+function _makeFromRange(ProtoClass, start, length, ctx) {
+  _registerContext(ctx);
+  const d = pack(start, length);
+  if (ProtoClass === PDFDict)      return new _FastDict(d);
+  if (ProtoClass === PDFPageLeaf)  return new _FastPageLeaf(d);
+  if (ProtoClass === PDFCatalog)   return new _FastCatalog(d);
+  if (ProtoClass === PDFPageTree)  return new _FastPageTree(d);
+  // Defensive fallback for any unknown subclass.
+  const pd = Object.create(ProtoClass.prototype);
+  pd.d = d;
+  return pd;
+}
+```
+
+PageLeaf carries the extra `normalized` / `autoNormalizeCTM`
+fields -- they're assigned in the constructor body so V8 still sees
+a fixed shape per subclass. The COW path in `set` is updated in
+the same way (`return new _FastDict(pack(newStart, length))`).
+Unknown PDFDict subclasses fall back to the original Object.create
+path; nothing in our pipeline hits it (defensive only).
+
+### Measured heap
+
+Paired profile, `fast-refs-class` baseline vs + this change:
+
+| Allocator                       | Pre        | Post       | Delta              |
+|---------------------------------|-----------:|-----------:|-------------------:|
+| Total sampled                   |  41.39 MB  |  35.41 MB  | **-5.98 MB (-14.4 %)** |
+| `_makeFromRange` (dict)         |  16 484 KB |  11 404 KB | -5 080 KB          |
+| `create` (builtin)              |   2 627 KB |     921 KB | -1 706 KB          |
+| `_FastDict` (new row)           |     —      |     621 KB | +621 KB            |
+
+Per-PDFDict saving: ~20 B/instance × 260 k = ~5.2 MB. Matches the
+`_makeFromRange` delta + the builtin's drop minus the new
+constructor-frame attribution.
+
+**Cumulative since `fast-refs-class`**: total sampled 45.26 MB →
+35.41 MB = **-9.85 MB (-22 %)** over two shape-change commits.
+Bringing the cumulative heap reduction since the Map-backed
+baseline to ~77 % (152 MB → 35.4 MB).
+
+### Measured CPU
+
+Roughly flat -- process wall-clock 0.99 s → 1.03 s under cpu
+profile, within noise. GC self-time +18 ms (82 → 101 ms),
+consistent with the existing `fast-dict-onebuf` trade-off
+documented in the README: the dominant GC cost on this workload
+is the live `mainBuf` scan, not allocation rate, so cutting
+allocation doesn't move single-shot mark time. The
+allocation-rate reduction still matters for sustained-load
+memory pressure even when it doesn't show on a one-shot
+wall-clock.
+
+### Validation
+
+Output PDF byte-identical modulo `/CreationDate` + `/ModDate`
+timestamps -- only the JS object shape used to wrap the parsed
+dict range changed, not any content path. The change is local to
+[`docs/lib/fast-dict-onebuf.mjs`](../../docs/lib/fast-dict-onebuf.mjs);
+no production import or flag change needed since
+`--fast-dict-onebuf` was already wired up.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -4202,7 +4304,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-array-onebuf                  | ~1.0 s  | ~0.7 s | ~0.4 s |
 | + fast-refs tag drop                 | ~1.0 s  | ~0.7 s | ~0.4 s |
 | + skipJibberish digit fast-path      | ~0.95 s | ~0.6 s | ~0.4 s |
-| **+ fast-refs-class (this section)** | **~0.9 s** | **~0.55 s** | **~0.4 s** |
+| + fast-refs-class                    | ~0.9 s  | ~0.55 s | ~0.4 s |
+| **+ fast-dict-onebuf class shape (this section)** | **~0.9 s** | **~0.55 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

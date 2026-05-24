@@ -157,15 +157,51 @@ function _cow(pd) {
 }
 
 // ---- Construction ---------------------------------------------------
+//
+// Use plain-function constructors with the prototype aliased to the
+// upstream PDFDict / PDFCatalog / PDFPageTree / PDFPageLeaf prototypes
+// instead of `Object.create(proto) + property writes`. V8 gives
+// `new`-built instances a stable hidden class derived from the
+// assignment order in the constructor body, and per-instance heap cost
+// drops materially vs the slow-property path taken by Object.create +
+// later writes (the same shape change that fast-refs-class made for
+// PDFRef: ~60 B/instance -> ~44 B). For the 260 k+ dicts on the book
+// the per-instance gap × instance count is the dominant remaining heap
+// row.
+//
+// One constructor per subclass so V8 sees a single fixed shape per
+// kind. PDFPageLeaf carries extra fields (normalized,
+// autoNormalizeCTM) -- they're assigned in the constructor body so
+// the shape stays fixed. Any unknown PDFDict subclass falls back to
+// the original Object.create path so the shim doesn't crash on
+// downstream extensions (none in our pipeline; defensive only).
+
+function _FastDict(d) { this.d = d; }
+_FastDict.prototype = PDFDict.prototype;
+
+function _FastCatalog(d) { this.d = d; }
+_FastCatalog.prototype = PDFCatalog.prototype;
+
+function _FastPageTree(d) { this.d = d; }
+_FastPageTree.prototype = PDFPageTree.prototype;
+
+function _FastPageLeaf(d) {
+  this.d = d;
+  this.normalized = false;
+  this.autoNormalizeCTM = true;
+}
+_FastPageLeaf.prototype = PDFPageLeaf.prototype;
 
 function _makeFromRange(ProtoClass, start, length, ctx) {
   _registerContext(ctx);
+  const d = pack(start, length);
+  if (ProtoClass === PDFDict)      return new _FastDict(d);
+  if (ProtoClass === PDFPageLeaf)  return new _FastPageLeaf(d);
+  if (ProtoClass === PDFCatalog)   return new _FastCatalog(d);
+  if (ProtoClass === PDFPageTree)  return new _FastPageTree(d);
+  // Defensive fallback for any unknown subclass.
   const pd = Object.create(ProtoClass.prototype);
-  pd.d = pack(start, length);
-  if (ProtoClass === PDFPageLeaf) {
-    pd.normalized = false;
-    pd.autoNormalizeCTM = true;
-  }
+  pd.d = d;
   return pd;
 }
 
@@ -300,9 +336,7 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     for (let i = 0; i < length; i++) main[mainLen + i] = main[start + i];
     mainLen += length;
     _registerContext(context || _singletonContext);
-    const c = Object.create(PDFDict.prototype);
-    c.d = pack(newStart, length);
-    return c;
+    return new _FastDict(pack(newStart, length));
   };
 
   PDFDict.prototype.toString = function () {
