@@ -4913,6 +4913,138 @@ The change is local to
 no production import or flag change needed since
 `--fast-dict-onebuf` was already wired up.
 
+## Two-shape `PDFRef`: gen=0 single-slot
+
+`fast-refs-class`'s single-shape constructor still allocates two
+inline slots per PDFRef -- `objectNumber` and `generationNumber`.
+On fresh-Chrome workloads `generationNumber` is **always zero**
+except for the xref "free" entry at object 0; the slot is dead
+weight on 226 k of 226 k instances.
+
+### The shim
+
+Split `_FastRef` into two constructors keyed on whether
+`generationNumber` is needed:
+
+```js
+// gen=0 instances: single inline `objectNumber` slot.
+// `generationNumber` is supplied as a data-property default on
+// PDFRef.prototype (set below), so reads return 0 without any
+// accessor dispatch.
+function _FastRef(objectNumber) {
+  this.objectNumber = objectNumber;
+}
+_FastRef.prototype = PDFRef.prototype;
+
+// gen!=0 instances: both fields as own data properties, shadowing
+// the prototype default. V8 sees a second hidden class -- bounded
+// 2-shape polymorphism, well-handled by inline caches.
+function _FastRefGen(objectNumber, generationNumber) {
+  this.objectNumber = objectNumber;
+  this.generationNumber = generationNumber;
+}
+_FastRefGen.prototype = PDFRef.prototype;
+
+// Default generationNumber on the prototype. _FastRef instances
+// inherit this (no own property); _FastRefGen instances shadow it
+// with their own data property. Both look like data-property reads
+// to V8's IC.
+PDFRef.prototype.generationNumber = 0;
+```
+
+The critical design point: **prototype default, not accessor**. A
+data-property default on the prototype keeps `.generationNumber`
+reads on the hot path as plain data-property loads. V8's monomorphic
+IC for `.generationNumber` covers both shapes uniformly -- the
+property is "present and readable as data" at the same offset in
+the IC's mental model, whether it lives on the instance or one hop
+up the prototype chain.
+
+### The accessor variant that didn't work
+
+A first attempt packed `(objectNumber, generationNumber)` into a
+single `d` field with `objectNumber` / `generationNumber` as
+getter accessors on the prototype:
+
+```js
+// rejected
+function _FastRefPacked(d) { this.d = d; }
+Object.defineProperty(PDFRef.prototype, 'objectNumber', {
+  get() { return this.d & MASK_obj; },
+});
+Object.defineProperty(PDFRef.prototype, 'generationNumber', {
+  get() { return this.d >>> SHIFT_gen; },
+});
+```
+
+Result: **+1.6 MB heap and +70 ms CPU** vs the two-shape variant.
+The accessor-property boundary broke V8's monomorphic ICs at every
+upstream pdf-lib call site that reads `ref.objectNumber` /
+`ref.generationNumber` -- `PDFCrossRefSection.append`,
+`PDFCrossRefStream` entry tuples, `PDFWriter.serializeToBuffer`,
+our `fast-indirect-objects` shim, plus all the small `{ref, offset,
+deleted}` literals in `addEntry`. V8 couldn't elide those object
+literals as aggressively once the property read became an accessor
+dispatch; recompilation paths landed with worse code than the
+two-slot baseline. **Same property name, same return value, but a
+different IC slot type -- and the difference shows up at every
+caller.**
+
+The two-shape variant pays for the win in a bounded place (one
+extra hidden class for the rare gen!=0 path) without touching any
+caller's IC.
+
+### Pool changes
+
+gen=0: same dense array indexed by `objectNumber` (unchanged).
+
+gen!=0: instead of falling back to the upstream `PDFRef.of`'s
+Map-based pool, the shim now keeps its own `poolGenN` Map keyed by
+`"N M"`. This means we never call into upstream PDFRef.of at all
+-- the entire `PDFRef.of` factory is ours. Path is dead on
+fresh-Chrome workloads except for the xref free entry at object 0,
+so the Map stays tiny.
+
+### Measured heap
+
+Paired heap profile (single-shape baseline vs + this change):
+
+| Allocator       | Pre        | Post       | Delta            |
+|-----------------|-----------:|-----------:|-----------------:|
+| Total sampled   |   34.96 MB |   33.08 MB | **-1.88 MB**     |
+
+Per-instance arithmetic: V8 aligns object headers + inline slots
+to 8-byte boundaries. Two-slot `_FastRefGen`-shape: 8 B header +
+2×4 B slots = 16 B raw, aligned to **24 B**. One-slot `_FastRef`
+shape: 8 B header + 1×4 B slot = 12 B raw, aligned to **16 B**.
+8 B saved per gen=0 instance × 226 k unique = ~1.8 MB. Matches
+the measured delta.
+
+### Measured CPU
+
+CPU is essentially flat -- no-profile wall-clock 0.70 s vs ~0.83 s
+pre, but the variance overlaps and the heap-saving lane isn't the
+source of CPU movement. PDF output byte-identical.
+
+### Validation
+
+Output PDF byte-identical -- same `PDFRef` identity per logical
+ref, same prototype methods, all callers see what they always did
+(`ref.objectNumber`, `ref.generationNumber`, `ref.toString()`,
+`ref.copyBytesInto(...)` all work). The change is local to
+[`docs/lib/fast-refs-class.mjs`](../../docs/lib/fast-refs-class.mjs);
+no production import or flag change needed since
+`--fast-refs-class` was already wired up.
+
+### What this teaches
+
+The shape change is interior to PDFRef construction; the IC story
+is at every caller. A two-shape polymorphism on one class is cheap
+when V8 sees it; an accessor-property change on a hot read is
+expensive everywhere that read happens. Prefer adding shape
+variants over swapping data properties for accessors when the
+property is hot.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -4960,7 +5092,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-array-onebuf class shape      | ~0.8 s  | ~0.5 s  | ~0.35 s |
 | + fast-parse-name                    | ~0.75 s | ~0.4 s  | ~0.35 s |
 | + pipeline-deflate                   | ~0.7 s  | ~0.4 s  | ~0.3 s  |
-| **+ PageLeaf flag-packing (this section)** | **~0.7 s** | **~0.4 s** | **~0.3 s** |
+| + PageLeaf flag-packing              | ~0.7 s  | ~0.4 s  | ~0.3 s  |
+| **+ two-shape PDFRef (this section)** | **~0.7 s** | **~0.4 s** | **~0.3 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
