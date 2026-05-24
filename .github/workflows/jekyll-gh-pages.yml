@@ -70,13 +70,16 @@ jobs:
         run: |
           npm ci
           sudo npx puppeteer browsers install chrome --install-deps
-      - name: Check online links (check_links.mjs)
-        # `--fallback-extensions html` mirrors what GitHub Pages does at request time:
-        # an extensionless URL like `/FAQ` is served as `/FAQ.html`. Without the flag
-        # every pretty permalink on the site would look broken.
-        #
-        # `--base-path` strips the Pages baseurl (e.g. `/twinBASIC-docs`) from absolute
-        # URLs before resolving against `--root-dir`.
+      - name: Check links (check_links.mjs)
+        # Three passes run in parallel via /sep/:
+        #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
+        #      extensionless-URL behaviour.  --base-path strips the Pages baseurl
+        #      (e.g. `/twinBASIC-docs`) from absolute URLs before resolving.
+        #   2. Offline (_site-offline/): strict, no extension fallback.  --forbid
+        #      catches any surviving https://docs.twinbasic.com/<path> link the
+        #      offlinify rewrite missed (bare root URL is exempt).
+        #   3. Book (_site-pdf/book.html): --no-fail makes failures informational
+        #      (some links are not yet fully resolved).
         run: >-
           node scripts/check_links.mjs
           --offline --include-fragments
@@ -85,29 +88,14 @@ jobs:
           --base-path '${{ steps.pages.outputs.base_path }}'
           --root-dir docs/_site
           docs/_site
-      - name: Check offline links and live-link survivors (check_links.mjs)
-        # Strict check on `_site-offline/`: every link must resolve to an actual file
-        # under `file://`, with no extension fallback. `--forbid` also fails the build
-        # if any extracted link still points at https://docs.twinbasic.com/<path> --
-        # i.e. any live-site reference the offlinify rewrite missed. The bare root
-        # URL (https://docs.twinbasic.com[/]) is exempt, since intentional "go to the
-        # live site" links are allowed.
-        run: >-
-          node scripts/check_links.mjs
+          /sep/
           --offline --include-fragments
           --index-files index.html
           --forbid 'https://docs.twinbasic.com'
           --root-dir docs/_site-offline
           docs/_site-offline
-      - name: Check book links (informational)
-        # Failures do not block the build. The book still has absolute
-        # intra-site URLs that the chapter transform has not yet rewritten
-        # and some fragment anchors that are not yet generated. Tracked here
-        # for visibility until those are fixed.
-        continue-on-error: true
-        run: >-
-          node scripts/check_links.mjs
-          --offline --include-fragments
+          /sep/
+          --offline --no-fail --include-fragments
           --root-dir docs/_site-pdf
           docs/_site-pdf/book.html
       - name: Render book PDF

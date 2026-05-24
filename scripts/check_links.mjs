@@ -1,16 +1,24 @@
 // Offline link checker for static sites.
 //
-// Typical invocation, from docs/check.bat:
+// Typical invocation (single pass), from docs/check.bat:
 //
 //     node scripts/check_links.mjs --offline --include-fragments
 //         --fallback-extensions html --index-files "index.html,."
 //         --root-dir docs/_site docs/_site
 //
+// Multiple passes can run in parallel by separating them with /sep/:
+//
+//     node scripts/check_links.mjs <args1...> /sep/ <args2...>
+//
+// Each /sep/-separated segment is dispatched to a worker_threads
+// Worker (libuv threadpool).  Results are collected and printed in
+// order with headers.  A single segment (no /sep/) runs inline.
+//
 // On this site (~733k link occurrences, ~12k unique targets across
-// 1127 HTML files / 124 MB) the script runs in ~2.2 s single-threaded
-// on the dev box. It dedupes (target, frag) up front so each unique
-// filesystem and fragment check fires exactly once regardless of how
-// many pages link to the same target.
+// 1127 HTML files / 124 MB) each pass runs in ~2.2 s on the dev box.
+// It dedupes (target, frag) up front so each unique filesystem and
+// fragment check fires exactly once regardless of how many pages
+// link to the same target.
 //
 // Online (network) link checking is not implemented. --offline is
 // therefore required; the script exits non-zero if it is absent.
@@ -31,6 +39,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 import { Parser } from "htmlparser2";
+import { isMainThread, parentPort, workerData, Worker } from "node:worker_threads";
 
 // tag -> [attr, ...]. SAX walker dispatches on tag name; for each
 // matching attr present on that tag, the value becomes one or more
@@ -257,9 +266,14 @@ function checkPath(targetStr, isDirLink, fallbackExts, indexFiles) {
 
 function printHelp() {
   process.stdout.write(`Usage: node check_links.mjs [options] <inputs...>
+       node check_links.mjs <args1...> /sep/ <args2...> [/sep/ ...]
 
 Offline link checker for static sites. Only offline checking is
 implemented; --offline is required.
+
+Multiple check passes can be combined in one invocation by separating
+them with /sep/.  Each segment runs on its own worker thread; results
+are printed in order with headers.
 
 Options:
   --offline                  REQUIRED. Skip network checks.
@@ -276,11 +290,11 @@ Options:
   --forbid PREFIX            Fail if any extracted link starts with this
                              URL prefix. The bare prefix and 'prefix/'
                              are exempt (intentional "go to live site"
-                             links). Repeatable. Used by the offline
-                             pass to catch live-site references the
-                             offlinify rewrite missed.
-  --threads N                Accepted for CLI compatibility; the Node
-                             port is currently single-threaded.
+                             links). Repeatable.
+  --no-fail                  Always exit 0, even if errors are found.
+                             Errors are still printed. Useful for
+                             informational checks that should not block.
+  --threads N                Accepted for CLI compatibility; ignored.
   -v, --verbose              Print per-stage timing breakdown.
   -h, --help                 Show this help and exit.
 
@@ -298,15 +312,13 @@ function parseArgs(argv) {
     rootDir: null,
     basePath: "",
     forbid: [],
+    noFail: false,
     verbose: false,
   };
   const inputs = [];
   const unknown = [];
   const need = (flag, i) => {
-    if (i >= argv.length) {
-      process.stderr.write(`error: ${flag} requires a value\n`);
-      process.exit(2);
-    }
+    if (i >= argv.length) throw new Error(`${flag} requires a value`);
     return argv[i];
   };
 
@@ -320,9 +332,10 @@ function parseArgs(argv) {
     else if (a === "--root-dir") opts.rootDir = need(a, i++);
     else if (a === "--base-path") opts.basePath = need(a, i++);
     else if (a === "--forbid") opts.forbid.push(need(a, i++));
+    else if (a === "--no-fail") opts.noFail = true;
     else if (a === "--threads") { need(a, i++); /* accepted, ignored */ }
     else if (a === "-v" || a === "--verbose") opts.verbose = true;
-    else if (a === "-h" || a === "--help") { printHelp(); process.exit(0); }
+    else if (a === "-h" || a === "--help") { /* handled before dispatch */ }
     else if (a.startsWith("--")) {
       // Tolerate unknown flags passed through via check.bat's %*.
       // Consume an attached value if present.
@@ -341,46 +354,59 @@ function parseArgs(argv) {
 }
 
 function collectHtmlFiles(inputs) {
-  const out = [];
+  const files = [];
+  const warnings = [];
   for (const inp of inputs) {
     const s = statSafe(inp);
     if (!s) {
-      process.stderr.write(`warning: input not found: ${inp}\n`);
+      warnings.push(`warning: input not found: ${inp}\n`);
       continue;
     }
     if (s.isFile()) {
-      out.push(inp);
+      files.push(inp);
     } else if (s.isDirectory()) {
       const entries = fs.readdirSync(inp, { recursive: true, withFileTypes: true });
       for (const e of entries) {
         if (e.isFile() && e.name.endsWith(".html")) {
-          out.push(path.join(e.parentPath || inp, e.name));
+          files.push(path.join(e.parentPath || inp, e.name));
         }
       }
     }
   }
-  return out;
+  return { files, warnings };
 }
 
-function main() {
-  const { opts, inputs, unknown } = parseArgs(process.argv.slice(2));
+// Run a single check pass.  All output is collected into a buffer;
+// nothing is written to stdout/stderr.  Returns { output, exitCode }.
+function runCheck(argv) {
+  const buf = [];
+  const write = (s) => buf.push(s);
+
+  let parsed;
+  try {
+    parsed = parseArgs(argv);
+  } catch (e) {
+    write(`error: ${e.message}\n`);
+    return { output: buf.join(""), exitCode: 2 };
+  }
+  const { opts, inputs, unknown } = parsed;
 
   if (unknown.length) {
-    process.stderr.write(
+    write(
       `warning: ignoring unrecognised arguments: ${unknown.join(" ")}\n`
     );
   }
 
   if (!opts.offline) {
-    process.stderr.write(
+    write(
       "error: --offline is required. Online (network) checking is not " +
       "implemented by this tool.\n"
     );
-    process.exit(2);
+    return { output: buf.join(""), exitCode: 2 };
   }
   if (!inputs.length) {
-    process.stderr.write("error: at least one input file or directory is required\n");
-    process.exit(2);
+    write("error: at least one input file or directory is required\n");
+    return { output: buf.join(""), exitCode: 2 };
   }
 
   // Keep --root-dir in its caller-supplied shape (no path.resolve) so
@@ -396,7 +422,8 @@ function main() {
   const basePath = normalizeBasePath(opts.basePath);
 
   const t0 = performance.now();
-  const htmlFiles = collectHtmlFiles(inputs);
+  const { files: htmlFiles, warnings: walkWarnings } = collectHtmlFiles(inputs);
+  for (const w of walkWarnings) write(w);
   const tWalk = performance.now();
 
   // Per-file: extract once, then group hrefs by (source_dir, href) so we
@@ -570,7 +597,7 @@ function main() {
       }
     }
     lines.push("");
-    process.stdout.write(lines.join("\n") + "\n");
+    write(lines.join("\n") + "\n");
   }
 
   let forbiddenCount = 0;
@@ -583,25 +610,114 @@ function main() {
   const okUnique = unique - errorsUnique;
   const elapsed = (tDone - t0) / 1000;
   const forbidNote = forbidPrefixes ? `, ${forbiddenCount} forbidden` : "";
-  process.stdout.write(
+  write(
     `Checked ${total} occurrences (${unique} unique) in ${elapsed.toFixed(3)}s ` +
     `-- ${okUnique} OK, ${errorsUnique} broken${forbidNote}\n`
   );
 
   if (opts.verbose) {
     const fmt = (a, b) => `${((b - a) / 1000).toFixed(3)}s`;
-    process.stdout.write("\n");
-    process.stdout.write(`  Files scanned:        ${htmlFiles.length}\n`);
-    process.stdout.write(`  Fragment targets:     ${filesForFragments.length}\n`);
-    process.stdout.write(`  Walk:        ${fmt(t0, tWalk)}\n`);
-    process.stdout.write(`  Extract:     ${fmt(tWalk, tExtract)}\n`);
-    process.stdout.write(`  Resolve:     ${fmt(tExtract, tResolve)}\n`);
-    process.stdout.write(`  Check paths: ${fmt(tResolve, tCheckPaths)}\n`);
-    process.stdout.write(`  Fragments:   ${fmt(tCheckPaths, tFragments)}\n`);
-    process.stdout.write(`  Report:      ${fmt(tFragments, tDone)}\n`);
+    write("\n");
+    write(`  Files scanned:        ${htmlFiles.length}\n`);
+    write(`  Fragment targets:     ${filesForFragments.length}\n`);
+    write(`  Walk:        ${fmt(t0, tWalk)}\n`);
+    write(`  Extract:     ${fmt(tWalk, tExtract)}\n`);
+    write(`  Resolve:     ${fmt(tExtract, tResolve)}\n`);
+    write(`  Check paths: ${fmt(tResolve, tCheckPaths)}\n`);
+    write(`  Fragments:   ${fmt(tCheckPaths, tFragments)}\n`);
+    write(`  Report:      ${fmt(tFragments, tDone)}\n`);
   }
 
-  if (broken.length || forbiddenCount) process.exit(1);
+  let exitCode = (broken.length || forbiddenCount) ? 1 : 0;
+  if (opts.noFail) exitCode = 0;
+  return { output: buf.join(""), exitCode };
 }
 
-main();
+// ── Module entry ────────────────────────────────────────────────
+
+if (!isMainThread) {
+  const result = runCheck(workerData.argv);
+  parentPort.postMessage(result);
+} else {
+  const rawArgv = process.argv.slice(2);
+
+  if (rawArgv.includes("-h") || rawArgv.includes("--help")) {
+    printHelp();
+    process.exit(0);
+  }
+
+  // Split on /sep/ into separate command lines.
+  const commands = [];
+  let current = [];
+  for (const arg of rawArgv) {
+    if (arg === "/sep/") {
+      commands.push(current);
+      current = [];
+    } else {
+      current.push(arg);
+    }
+  }
+  commands.push(current);
+  const segments = commands.filter(c => c.length > 0);
+
+  if (segments.length === 0) {
+    printHelp();
+    process.exit(2);
+  }
+
+  if (segments.length === 1) {
+    // Single command -- run inline, no worker overhead.
+    const { output, exitCode } = runCheck(segments[0]);
+    process.stdout.write(output);
+    process.exit(exitCode);
+  }
+
+  // Multiple commands -- dispatch to worker threads.
+  const t0 = performance.now();
+  const n = segments.length;
+  process.stdout.write(`Running ${n} checks in parallel...\n`);
+
+  const promises = segments.map((cmd) =>
+    new Promise((resolve, reject) => {
+      const w = new Worker(new URL(import.meta.url), {
+        workerData: { argv: cmd },
+      });
+      let result;
+      w.on("message", (msg) => { result = msg; });
+      w.on("error", reject);
+      w.on("exit", () => {
+        if (result) resolve(result);
+        else reject(new Error("worker exited without posting a result"));
+      });
+    })
+  );
+
+  const settled = await Promise.allSettled(promises);
+  const elapsed = ((performance.now() - t0) / 1000).toFixed(3);
+
+  const HEADER_WIDTH = 78;
+  let exitCode = 0;
+  for (let i = 0; i < settled.length; i++) {
+    const tag = `[${i + 1}/${n}]`;
+    const prefix = `== ${tag} `;
+    const header = prefix + "=".repeat(Math.max(3, HEADER_WIDTH - prefix.length));
+    const cmdLine = segments[i].join(" ");
+
+    process.stdout.write(`\n${header}\n${cmdLine}\n\n`);
+
+    if (settled[i].status === "fulfilled") {
+      const r = settled[i].value;
+      process.stdout.write(r.output);
+      if (r.exitCode !== 0 && exitCode === 0) exitCode = r.exitCode;
+    } else {
+      process.stdout.write(`INTERNAL ERROR: ${settled[i].reason}\n`);
+      if (exitCode === 0) exitCode = 1;
+    }
+  }
+
+  const summaryPrefix = `== ${n} checks completed in ${elapsed}s `;
+  const summary = summaryPrefix + "=".repeat(Math.max(3, HEADER_WIDTH - summaryPrefix.length));
+  process.stdout.write(`\n${summary}\n`);
+
+  process.exit(exitCode);
+}
