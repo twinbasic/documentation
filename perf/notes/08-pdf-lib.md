@@ -4818,6 +4818,101 @@ flag continues to flip the whole `parallelSave` path on, no new
 knob. `render-book.mjs` already calls `parallelSave` so the
 change is live in production without a new import.
 
+## Pack `PDFPageLeaf` flags into `d`'s gap bits
+
+`fast-dict-onebuf`'s class-shape change (above) left PDFPageLeaf as
+the only subclass with extra fields: `normalized` (default false) +
+`autoNormalizeCTM` (default true), both written in the
+`_FastPageLeaf` constructor body. V8 sees a fixed shape per
+subclass but PageLeaf instances are ~24 B larger than plain
+`_FastDict` (the two boolean slots plus their map entries). 1 651
+PageLeaves on the book × ~24 B = ~26 KB -- sub-row at the 512 B
+sampler resolution, but the same tax was waiting on every other
+`Object.create + writes`-style wrapper we'd want to apply this
+shape to.
+
+The packed `d` had 15 unused bits between the 14-bit length field
+and the 53-bit `Number.MAX_SAFE_INTEGER` ceiling. Two booleans fit
+in two bits.
+
+### The new layout
+
+```
+bits  0-22: start  (23 bits, max 8.4 M slots; mainLen ~2.3 M today)
+bit     23: PDFPageLeaf `normalized` flag (zero on all other subtypes)
+bit     24: PDFPageLeaf `autoNormalizeCTM` flag (zero on all other subtypes)
+bits 25-40: length (16 bits, max 65 535 slots; observed max 8 706)
+bits 41-52: spare (12 bits; available headroom)
+```
+
+`start` drops 24 → 23 bits (8.4 M slots, well above the ~2.3 M
+mainLen seen today); `length` grows 14 → 16 bits (65 535,
+comfortable headroom over the observed max).
+
+PDFPageLeaf collapses to the same single-`d` shape as plain
+PDFDict; `normalized` and `autoNormalizeCTM` become prototype
+getters/setters that mask in/out of bits 23-24.
+
+### The V8 Smi gotcha (worth recording)
+
+V8's Smi (31-bit signed integer) range covers values up to 2^30.
+`start + length * 2^25` stays Smi iff `length < 32`; beyond that
+`d` boxes to a HeapNumber. Two consequences:
+
+1. **Reads stay correct.** `d & MASK_23` lives in the low 32 bits;
+   V8 coerces `d` to Int32 for the `&`, which reads bits 0..30
+   correctly even when `d` is HeapNumber-boxed.
+   `Math.floor(d / POW_25) & MASK_16` operates on the full Number
+   range before the mask truncates.
+2. **Writes must use arithmetic, not bitwise OR.** `d | NORM_BIT`
+   on a HeapNumber'd d truncates to Int32 and loses the high bits
+   (the length). Use `d + NORM_BIT` / `d - NORM_BIT` gated on the
+   current bit state -- arithmetic addition operates on the full
+   Number range.
+
+The setters all follow the pattern:
+
+```js
+set(v) {
+  const d = this.d;
+  const has = (d & NORM_BIT) !== 0;
+  if (v && !has)      this.d = d + NORM_BIT;
+  else if (!v && has) this.d = d - NORM_BIT;
+}
+```
+
+`_cow`, `set` (the COW-on-mutation path), and `delete` all preserve
+the gap bits when they repack `d` by adding `(d & GAP_MASK)` back
+into the freshly packed value. For non-PageLeaf dicts the mask is
+zero so the add is a no-op; for PageLeaf the flags survive any
+backing-buffer move.
+
+### Constructor default
+
+`_FastPageLeaf` defaults `autoNormalizeCTM` to `true` (upstream
+behavior). Since `pack(start, length)` produces a value with bits
+23-24 cleared, the constructor sets bit 24 via addition:
+
+```js
+function _FastPageLeaf(d) { this.d = d + AUTO_BIT; }
+```
+
+Addition not `|` for the same reason -- if `length >= 32`, `d`
+exceeds 2^30 and the boxed Number's high bits would be lost to
+Int32 coercion via `|`.
+
+### Measured
+
+Heap saving on the 1 651 page leaves is sub-row at the 512 B
+sampler resolution but real (~26 KB by per-instance arithmetic).
+Output PDF byte-identical to baseline. CPU flat -- no PDFPageLeaf
+mutation paths fire on the book's render-only workflow.
+
+The change is local to
+[`docs/lib/fast-dict-onebuf.mjs`](../../docs/lib/fast-dict-onebuf.mjs);
+no production import or flag change needed since
+`--fast-dict-onebuf` was already wired up.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -4864,7 +4959,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-dict-onebuf class shape       | ~0.9 s  | ~0.55 s | ~0.4 s |
 | + fast-array-onebuf class shape      | ~0.8 s  | ~0.5 s  | ~0.35 s |
 | + fast-parse-name                    | ~0.75 s | ~0.4 s  | ~0.35 s |
-| **+ pipeline-deflate (this section)** | **~0.7 s** | **~0.4 s** | **~0.3 s** |
+| + pipeline-deflate                   | ~0.7 s  | ~0.4 s  | ~0.3 s  |
+| **+ PageLeaf flag-packing (this section)** | **~0.7 s** | **~0.4 s** | **~0.3 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

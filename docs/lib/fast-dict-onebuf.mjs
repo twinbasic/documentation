@@ -7,10 +7,23 @@
 // ever read from main, so the bufIdx field disappears from the
 // packed value -- frees up bits.
 //
-// 38-bit packed Number layout (well within Number.MAX_SAFE_INTEGER):
-//   bits  0-23: start  (24 bits, max 16 M slots in main)
-//   bits 24-37: length (14 bits, max 16 384 slots; max observed 8 706)
-//   bits 38-52: spare (15 bits)
+// 41-bit packed Number layout (well within Number.MAX_SAFE_INTEGER):
+//   bits  0-22: start  (23 bits, max 8.4 M slots in main; mainLen ~2.3 M today)
+//   bit     23: PDFPageLeaf `normalized` flag (zero on all other dict subtypes)
+//   bit     24: PDFPageLeaf `autoNormalizeCTM` flag (zero on all other dict subtypes)
+//   bits 25-40: length (16 bits, max 65 535 slots; max observed 8 706)
+//   bits 41-52: spare (12 bits; unused, available headroom)
+//
+// V8 Smi (31-bit signed) covers values < 2^30. start + length*2^25 stays
+// Smi iff length < 32 (the 2^30 boundary). Beyond that, `d` boxes to a
+// HeapNumber but bit math via `& MASK_*` and `+`/`-` continues to work --
+// reads still extract bits 0..30 correctly via Int32 coercion, writes
+// use arithmetic so high bits survive.
+//
+// PDFPageLeaf collapses to the same single-`d` field as plain PDFDict;
+// `normalized` and `autoNormalizeCTM` are gettters/setters that mask
+// in/out of `d`'s bits 23 and 24. Heap floor matches `_FastDict` (no
+// separate boolean property slots).
 //
 // Recursion. Outer parseDict pushes entries onto temp. Calling
 // this.parseObject() to parse a value may recurse to inner
@@ -99,21 +112,30 @@ export function setExpectedDictSlots(slots, slack = 1.0) {
 
 // ---- Bit-packing helpers --------------------------------------------
 
-const POW_24 = 16777216;          // 2^24
-const MASK_24 = 0xFFFFFF;
-const MASK_14 = 0x3FFF;
+const POW_23  = 1 << 23;            // 8 388 608  -- gap-bit base / start ceiling
+const POW_25  = 1 << 25;            // 33 554 432 -- length multiplier
+const MASK_23 = 0x7FFFFF;           // 23-bit start mask
+const MASK_16 = 0xFFFF;             // 16-bit length mask
 
-const MAX_START  = POW_24;          // exclusive
-const MAX_LENGTH = 1 << 14;         // 16384, exclusive
+const NORM_BIT = POW_23;            // bit 23: PDFPageLeaf `normalized`
+const AUTO_BIT = POW_23 * 2;        // bit 24: PDFPageLeaf `autoNormalizeCTM`
+const GAP_MASK = NORM_BIT | AUTO_BIT;
+
+const MAX_START  = POW_23;          // exclusive
+const MAX_LENGTH = 1 << 16;         // 65536, exclusive
 
 function pack(start, length) {
-  if (start  >= MAX_START)  throw new Error(`fast-dict-onebuf: start ${start} exceeds 24-bit budget`);
-  if (length >= MAX_LENGTH) throw new Error(`fast-dict-onebuf: length ${length} exceeds 14-bit budget`);
-  return start + length * POW_24;
+  if (start  >= MAX_START)  throw new Error(`fast-dict-onebuf: start ${start} exceeds 23-bit budget`);
+  if (length >= MAX_LENGTH) throw new Error(`fast-dict-onebuf: length ${length} exceeds 16-bit budget`);
+  return start + length * POW_25;
 }
 
-function _start(d)  { return d & MASK_24; }
-function _length(d) { return Math.floor(d / POW_24) & MASK_14; }
+// Read start (bits 0-22) and length (bits 25-40). Both work on
+// HeapNumber'd d: `& MASK_23` lives in low 32 bits (Int32 coercion
+// reads it correctly); `Math.floor(d / POW_25)` operates on the full
+// Number range before the `& MASK_16` truncates.
+function _start(d)  { return d & MASK_23; }
+function _length(d) { return Math.floor(d / POW_25) & MASK_16; }
 
 // ---- Singleton context ---------------------------------------------
 
@@ -145,6 +167,11 @@ function _appendArray(arr) {
 // COW: copy this dict's range to main's tail, return the new packed
 // value anchored at the new range. If we're already at the HWM,
 // nothing to copy -- return d unchanged.
+//
+// Gap bits (bits 23-24, used by PDFPageLeaf for normalized /
+// autoNormalizeCTM) are preserved across the repack. For non-PageLeaf
+// dicts the mask is zero, so `+ (d & GAP_MASK)` is a no-op. Addition
+// is used instead of `|` so the high bits of HeapNumber'd d survive.
 function _cow(pd) {
   const d = pd.d;
   const start = _start(d);
@@ -153,7 +180,7 @@ function _cow(pd) {
   const newStart = mainLen;
   for (let i = 0; i < length; i++) main[mainLen + i] = main[start + i];
   mainLen += length;
-  return pack(newStart, length);
+  return pack(newStart, length) + (d & GAP_MASK);
 }
 
 // ---- Construction ---------------------------------------------------
@@ -170,11 +197,15 @@ function _cow(pd) {
 // row.
 //
 // One constructor per subclass so V8 sees a single fixed shape per
-// kind. PDFPageLeaf carries extra fields (normalized,
-// autoNormalizeCTM) -- they're assigned in the constructor body so
-// the shape stays fixed. Any unknown PDFDict subclass falls back to
-// the original Object.create path so the shim doesn't crash on
-// downstream extensions (none in our pipeline; defensive only).
+// kind. PDFPageLeaf collapses to the same single-`d` shape as plain
+// PDFDict; `normalized` defaults to false (gap bit 23 clear) and
+// `autoNormalizeCTM` defaults to true (gap bit 24 set) -- the bit
+// is OR'd in by the constructor below via addition (so HeapNumber'd
+// d doesn't lose high bits to Int32 coercion). Both flags become
+// prototype getters/setters that mask in/out of bits 23-24.
+// Any unknown PDFDict subclass falls back to the original
+// Object.create path so the shim doesn't crash on downstream
+// extensions (none in our pipeline; defensive only).
 
 function _FastDict(d) { this.d = d; }
 _FastDict.prototype = PDFDict.prototype;
@@ -185,11 +216,11 @@ _FastCatalog.prototype = PDFCatalog.prototype;
 function _FastPageTree(d) { this.d = d; }
 _FastPageTree.prototype = PDFPageTree.prototype;
 
-function _FastPageLeaf(d) {
-  this.d = d;
-  this.normalized = false;
-  this.autoNormalizeCTM = true;
-}
+// d arrives from pack(start, length) so bits 23-24 are zero;
+// `+ AUTO_BIT` sets bit 24 unconditionally (autoNormalizeCTM = true
+// default). Use addition not `|`: if length >= 32, d > 2^30 (HeapNumber)
+// and `|` would truncate to Int32 losing high bits.
+function _FastPageLeaf(d) { this.d = d + AUTO_BIT; }
 _FastPageLeaf.prototype = PDFPageLeaf.prototype;
 
 function _makeFromRange(ProtoClass, start, length, ctx) {
@@ -268,7 +299,9 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     main[mainLen++] = key;
     main[mainLen++] = value;
     const start = _start(dNow);
-    this.d = pack(start, length0 + 2);
+    // Preserve gap bits (PageLeaf flags) from dNow into the freshly
+    // packed value. Zero for non-PageLeaf dicts.
+    this.d = pack(start, length0 + 2) + (dNow & GAP_MASK);
   };
 
   PDFDict.prototype.get = function (key, preservePDFNull) {
@@ -315,7 +348,8 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
       if (i === foundIdx || i === foundIdx + 1) continue;
       main[mainLen++] = main[start0 + i];
     }
-    this.d = pack(newStart, length0 - 2);
+    // Preserve gap bits (PageLeaf flags); zero for non-PageLeaf dicts.
+    this.d = pack(newStart, length0 - 2) + (d0 & GAP_MASK);
     return true;
   };
 
@@ -383,6 +417,37 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
   Object.defineProperty(PDFDict.prototype, 'context', {
     get() { return _singletonContext; },
     set(_ctx) { /* singleton is source of truth */ },
+    configurable: true,
+  });
+
+  // ---- PDFPageLeaf flag accessors -----------------------------------
+  //
+  // `normalized` and `autoNormalizeCTM` live in bits 23 and 24 of
+  // `d`. Reads use `& BIT` -- safe on HeapNumber'd d because both
+  // bits are in the low 32 (Int32 coercion reads them correctly).
+  // Writes use arithmetic (`d + BIT` / `d - BIT`) gated on the
+  // current bit state, so high bits of HeapNumber'd d survive.
+  // No-ops when the flag is already in the requested state.
+
+  Object.defineProperty(PDFPageLeaf.prototype, 'normalized', {
+    get() { return (this.d & NORM_BIT) !== 0; },
+    set(v) {
+      const d = this.d;
+      const has = (d & NORM_BIT) !== 0;
+      if (v && !has)      this.d = d + NORM_BIT;
+      else if (!v && has) this.d = d - NORM_BIT;
+    },
+    configurable: true,
+  });
+
+  Object.defineProperty(PDFPageLeaf.prototype, 'autoNormalizeCTM', {
+    get() { return (this.d & AUTO_BIT) !== 0; },
+    set(v) {
+      const d = this.d;
+      const has = (d & AUTO_BIT) !== 0;
+      if (v && !has)      this.d = d + AUTO_BIT;
+      else if (!v && has) this.d = d - AUTO_BIT;
+    },
     configurable: true,
   });
 
