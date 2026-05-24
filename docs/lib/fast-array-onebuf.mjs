@@ -138,12 +138,23 @@ function _cow(pa) {
 }
 
 // ---- Construction --------------------------------------------------
+//
+// Use a plain-function constructor (`_FastArray`) with the prototype
+// aliased to PDFArray.prototype instead of `Object.create + writes`.
+// Same shape change fast-refs-class and fast-dict-onebuf made: V8
+// gives `new`-built instances a stable hidden class from the first
+// instance and drops per-instance cost vs the slow-property path
+// taken by Object.create + later property writes.
+//
+// No subclass dispatch needed -- PDFArray has no subclasses in
+// pdf-lib (unlike PDFDict's PDFCatalog / PDFPageTree / PDFPageLeaf).
+
+function _FastArray(d) { this.d = d; }
+_FastArray.prototype = PDFArray.prototype;
 
 function _makeFromRange(start, length, ctx) {
   _registerContext(ctx);
-  const pa = Object.create(PDFArray.prototype);
-  pa.d = pack(start, length);
-  return pa;
+  return new _FastArray(pack(start, length));
 }
 
 function _makeFromAppend(arr, ctx) {
@@ -238,9 +249,7 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
     for (let i = 0; i < length; i++) arrayMain[arrayMainLen + i] = arrayMain[start + i];
     arrayMainLen += length;
     _registerContext(context || _singletonContext);
-    const c = Object.create(PDFArray.prototype);
-    c.d = pack(newStart, length);
-    return c;
+    return new _FastArray(pack(newStart, length));
   };
 
   PDFArray.prototype.toString = function () {

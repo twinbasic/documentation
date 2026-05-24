@@ -4262,6 +4262,85 @@ dict range changed, not any content path. The change is local to
 no production import or flag change needed since
 `--fast-dict-onebuf` was already wired up.
 
+## Class-constructor `PDFArray` shape
+
+The same shape change applied to PDFArray's factory paths. PDFArray
+has no subclasses in pdf-lib (unlike PDFDict), so a single
+`_FastArray` constructor covers both `_makeFromRange` and the COW
+path inside `set`:
+
+```js
+function _FastArray(d) { this.d = d; }
+_FastArray.prototype = PDFArray.prototype;
+
+function _makeFromRange(start, length, ctx) {
+  _registerContext(ctx);
+  return new _FastArray(pack(start, length));
+}
+```
+
+### Measured heap
+
+Paired profile, prior commit's dict-class baseline vs + this
+change:
+
+| Allocator                       | Pre        | Post       | Delta              |
+|---------------------------------|-----------:|-----------:|-------------------:|
+| Total sampled                   |  35.41 MB  |  33.68 MB  | **-1.73 MB (-4.9 %)** |
+| `fastParseArrayOneBuf` row      |   4 372 KB |   3 334 KB | -1 038 KB          |
+| `create` (builtin)              |     921 KB | out of top 15 | -921 KB        |
+
+Per-PDFArray saving: ~22 B/instance × ~80 k = ~1.7 MB. Matches the
+row delta + builtin drop.
+
+### Measured CPU -- the unexpected GC win
+
+| Row                | Pre       | Post     | Delta              |
+|--------------------|----------:|---------:|-------------------:|
+| Process wall-clock | 1.03 s    | 0.90 s   | **-130 ms (-13 %)** |
+| GC self-time       | 100.9 ms  | 58.7 ms  | **-42 ms (-42 %)**  |
+
+A surprising GC + wall-clock win for the smallest of the three
+heap drops. The likely reason is that with all three shape changes
+in place, V8 sees fully monomorphic call sites for PDFRef /
+PDFDict / PDFArray construction *and* method dispatch -- before
+the array change there was still one slow-property shape in the
+mix dragging IC perf. Confirmed by the cumulative process arc:
+
+| State                                  | process  | GC     |
+|----------------------------------------|---------:|-------:|
+| baseline (fast-refs)                   | 1.13 s   | 87 ms  |
+| + fast-refs-class                      | 0.99 s   | 82 ms  |
+| + fast-dict-onebuf class shape         | 1.03 s   | 101 ms |
+| + fast-array-onebuf class shape        | **0.90 s** | **59 ms** |
+
+The dict-only state had a slight CPU regression (+40 ms vs
+fast-refs-class) that the array change undid and then some.
+Argues strongly for shipping the full combo, not just the two
+big-heap-row ones.
+
+### Cumulative across the three shape-change commits
+
+Baseline (`fast-refs`) → all-three (`fast-array-onebuf class
+shape`):
+
+| Metric              | Pre        | Post       | Delta                |
+|---------------------|-----------:|-----------:|---------------------:|
+| Process wall-clock  | 1.13 s     | 0.90 s     | **-230 ms (-20 %)**  |
+| Total sampled heap  | 45.26 MB   | 33.68 MB   | **-11.58 MB (-25.6 %)** |
+| GC self-time        | 87 ms      | 59 ms      | **-32 %**            |
+
+Cumulative process-phase heap reduction since the Map-backed
+PDFDict baseline now stands at **~78 %** (152 MB → 33.7 MB).
+
+### Validation
+
+Output PDF byte-identical modulo `/CreationDate` + `/ModDate`
+timestamps. The change is local to
+[`docs/lib/fast-array-onebuf.mjs`](../../docs/lib/fast-array-onebuf.mjs);
+no production import or flag change needed since
+`--fast-array-onebuf` was already wired up.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -4305,7 +4384,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-refs tag drop                 | ~1.0 s  | ~0.7 s | ~0.4 s |
 | + skipJibberish digit fast-path      | ~0.95 s | ~0.6 s | ~0.4 s |
 | + fast-refs-class                    | ~0.9 s  | ~0.55 s | ~0.4 s |
-| **+ fast-dict-onebuf class shape (this section)** | **~0.9 s** | **~0.55 s** | **~0.4 s** |
+| + fast-dict-onebuf class shape       | ~0.9 s  | ~0.55 s | ~0.4 s |
+| **+ fast-array-onebuf class shape (this section)** | **~0.8 s** | **~0.5 s** | **~0.35 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
