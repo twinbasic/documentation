@@ -424,6 +424,12 @@ WIP.md itself (and other files outside `docs/`) is not part of the Jekyll site a
 
 Python scripts are reserved for non-render concerns: one-off content conversion (e.g. `scripts/convert_em_dash_separators.py`), repo audits, dev tooling, link checks beyond `check.bat`, anything that runs *outside* a Jekyll build. They should never be a prerequisite for the render pipeline.
 
+## JS builder port (in progress)
+
+The Jekyll + Ruby build pipeline is being ported to a custom single-purpose Node.js tool that lives at the repo root in [builder/](builder/) (sibling of `docs/`, not inside it). The port targets functionally equivalent output for all three trees (`docs/_site/`, `docs/_site-offline/`, `docs/_site-pdf/`) with no content-file changes. See [builder/PLAN.md](builder/PLAN.md) for the full implementation plan -- architecture, phase specs, verification strategy, and implementation order -- and [builder/PLAN-1.md](builder/PLAN-1.md) for the detailed Phase 1 (DISCOVER) spec.
+
+While the port is in progress, the Jekyll pipeline below remains the canonical build path.
+
 ## Build / preview
 
 From `docs/`:
