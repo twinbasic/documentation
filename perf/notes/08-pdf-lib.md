@@ -3982,6 +3982,84 @@ Output PDF is byte-identical to baseline modulo `/CreationDate`
 production import or flag change needed since `--fast-refs` was
 already wired up.
 
+## `skipJibberish` digit-byte fast path
+
+The same `find-heap-callers.mjs` chain that surfaced the `PDFRef.tag`
+churn (previous section) named another redundancy worth chasing on
+the CPU side:
+
+```
+parseIndirectObjectHeader  → skipJibberish (14.2 MB)
+  → matchIndirectObjectHeader (try/catch wrapper)
+    → parseIndirectObjectHeader → fastOf
+```
+
+`skipJibberish` runs after every successful indirect object parse
+and exists only to recover from invalid PDFs that wedge garbage
+between indirect objects. Its hot path fires ~150 k times per load
+on the book, each call speculatively running:
+
+1. `matchKeyword('xref' / 'trailer' / 'startxref')` -- all fail on a
+   digit byte.
+2. `matchIndirectObjectHeader` -- a `try` / `catch` around
+   `parseIndirectObjectHeader` → `parseRawInt` × 2 →
+   `matchKeyword('obj')` → `fastOf` round-trip. The speculation
+   succeeds every time on a valid PDF, the cursor rewinds, and the
+   outer `while`'s `IsDigit` check confirms what the speculation
+   already proved.
+
+### Where the speculation lives
+
+`PDFParser.parseDocument`'s inner loop already calls
+`skipWhitespaceAndComments` between indirect objects. Patch a
+single-byte peek in front of `skipJibberish`:
+
+```js
+if (!this.bytes.done() && IsDigit[this.bytes.peek()]) continue;
+this.skipJibberish();
+```
+
+When the next byte is a digit (start of the next `N M obj` header
+on every valid PDF), `continue` skips straight to the next
+`parseIndirectObject`. Anything else (`xref` / `trailer` /
+`startxref` keyword starts, or real jibberish between indirect-object
+sections) falls through to `skipJibberish` unchanged.
+
+The once-per-section `skipJibberish` in `parseDocumentSection`
+(after `maybeParseTrailer`) is unaffected -- it handles boundaries
+between PDF revisions / EOF where stray bytes are spec-legal.
+
+### Measured CPU
+
+Pinned 0x5500 / High, no profiler, 4 paired runs:
+
+| State                | median  | mean    |
+|----------------------|--------:|--------:|
+| without fast path    | 1.07 s  | 1.053 s |
+| with fast path       | 0.995 s | 0.985 s |
+| Δ                    | ~67 ms faster (mean), ~6 % of process phase |
+
+Phase breakdown isolates the win to load (mean 0.518 → 0.455 s,
+-62 ms); save is flat as expected -- the fast path is load-side
+only.
+
+### Heap
+
+Unchanged (0 MB delta). The `PDFRef` instances the speculation
+allocated were already attribution-shifted to the real
+`parseIndirectObject`'s cache miss, not new allocations. The
+fast-path skips the speculation's `try` / `catch` + dispatch
+overhead, not its allocation tail.
+
+### Validation
+
+Output PDF byte-identical to the pre-patch baseline (verified by
+inflating + diffing all 453 ObjStm streams modulo `/CreationDate`
++ `/ModDate` timestamps). The change is local to
+[`docs/lib/fast-sync-load.mjs`](../../docs/lib/fast-sync-load.mjs);
+no production import or flag change needed since `--fast-sync-load`
+was already wired up.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -4022,7 +4100,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-dict-onebuf                   | ~1.0 s  | ~0.6 s | ~0.4 s |
 | + measure-pass Phase 1               | ~1.0 s  | ~0.7 s | ~0.4 s |
 | + fast-array-onebuf                  | ~1.0 s  | ~0.7 s | ~0.4 s |
-| **+ fast-refs tag drop (this section)** | **~1.0 s** | **~0.7 s** | **~0.4 s** |
+| + fast-refs tag drop                 | ~1.0 s  | ~0.7 s | ~0.4 s |
+| **+ skipJibberish digit fast-path (this section)** | **~0.95 s** | **~0.6 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

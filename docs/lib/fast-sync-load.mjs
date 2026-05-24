@@ -133,6 +133,20 @@ if (!PDFParser.prototype.__fastSyncLoadInstalled) {
         this.tryToParseInvalidIndirectObject();
       }
       this.skipWhitespaceAndComments();
+      // Fast path: on valid PDFs the next byte is almost always a digit
+      // (start of the next `N M obj` header). skipJibberish only exists
+      // to recover from invalid PDFs that wedge garbage between indirect
+      // objects, but its hot path -- 150 k calls per load on the book --
+      // speculatively runs matchKeyword(xref/trailer/startxref) (all fail
+      // on a digit) and then matchIndirectObjectHeader (a try/catch
+      // around parseIndirectObjectHeader + parseRawInt x2 + matchKeyword
+      // + fastOf round-trip). All to confirm what the outer while's
+      // IsDigit check already knew. Short-circuit when the cursor is on
+      // a digit; fall through to skipJibberish on anything else
+      // (xref / trailer / startxref keyword starts, or real jibberish).
+      // The once-per-section skipJibberish in parseDocumentSection
+      // (after maybeParseTrailer) is unaffected.
+      if (!this.bytes.done() && IsDigit[this.bytes.peek()]) continue;
       this.skipJibberish();
     }
   };
