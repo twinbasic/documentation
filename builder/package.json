@@ -1,0 +1,15 @@
+{
+  "name": "tbdocs-builder",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Custom static site generator for twinBASIC documentation (Jekyll port).",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "build": "node index.mjs"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3",
+    "gray-matter": "^4.0"
+  }
+}
