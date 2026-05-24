@@ -3878,6 +3878,110 @@ The final state of this storage-shape work. The endpoint of
 the dict + array allocator refactors that this notes file has
 been chasing for the last ~22 sections.
 
+## Drop the per-instance `PDFRef.tag` string
+
+With `fast-array-onebuf` shipping, the process-phase sampling heap
+profile flipped to `PDFParser.parseIndirectObjectHeader` at 13.7 MB
+/ 25 % of total. Attribution chain (via
+`perf/find-heap-callers.mjs`):
+
+```
+parseIndirectObjectHeader  → skipJibberish (14.2 MB)
+  → matchIndirectObjectHeader (try/catch wrapper)
+    → parseIndirectObjectHeader → fastOf
+```
+
+`skipJibberish` runs after every successful indirect object parse
+and speculatively calls `matchIndirectObjectHeader` to detect the
+next `N M obj` header. On valid PDFs the speculation always
+succeeds, so `fastOf` fires once per indirect-object boundary,
+populating the dense-array cache; the subsequent "real"
+`parseIndirectObject` is then a cache hit. V8 inlines `fastOf` at
+this call site (small + hot from speculation) so the attribution
+lands on the caller -- 13.7 MB of which was the tag-string churn
+(`objectNumber + ' 0 R'`): V8 builds 1-2 intermediate concat
+strings + the final ~25-35 B tag, ~150 k times.
+
+### Upstream
+
+`PDFRef` (`pdf-lib/.../objects/PDFRef.js`) caches the
+`<obj> <gen> R` string on each instance:
+
+```js
+function PDFRef(objectNumber, generationNumber) {
+  var _this = this;
+  ...
+  _this.tag = objectNumber + ' ' + generationNumber + ' R';
+}
+```
+
+so that `toString` / `sizeInBytes` / `copyBytesInto` can read it
+back -- the three prototype methods are then trivial (`this.tag`,
+`this.tag.length`, `copyStringIntoBuffer(this.tag, ...)`). The
+earlier `fast-refs` shim already constructs the gen=0 PDFRef via
+`Object.create(PDFRef.prototype)` + manual field init, so it
+populated `tag` itself to preserve those reads.
+
+### The shim
+
+Drop the field entirely. The three prototype methods compute their
+results from `objectNumber` / `generationNumber` directly:
+
+- `copyBytesInto`: writes digits straight into the output buffer
+  via a no-allocation `_writeUint` helper
+  (divide-and-write-backwards into the caller's buffer). No
+  `copyStringIntoBuffer` call.
+- `sizeInBytes`: returns `_digitCount(obj) + _digitCount(gen) + 3`
+  (the trailing 3 covers " " + " R"). `_digitCount` is a ladder
+  catching the common small-number cases without arithmetic.
+- `toString`: builds on demand. Debug-only path, no caching needed.
+
+Both gen=0 (no tag set; `fastOf` skips the upstream constructor)
+and gen!=0 (tag set by upstream's constructor but our overrides
+ignore it) work. The gen!=0 path's tag string is
+allocated-then-wasted (~18 % of refs × ~50 K instances × ~30 B
+= ~1 MB), bounded enough not to be worth patching the upstream
+constructor for.
+
+### Measured heap
+
+Process phase, 512 B sampling, paired runs vs the
+`fast-array-onebuf` baseline:
+
+| Allocator                       | Pre (MB) | Post (MB) | Delta              |
+|---------------------------------|---------:|----------:|-------------------:|
+| `parseIndirectObjectHeader`     |    13.7  |     9.3   | **-4.3 MB**        |
+| `fastOf` (refs)                 |     7.7  |     4.8   | **-2.9 MB**        |
+| Total sampled                   |    51.9  |    45.2   | **-6.7 MB (-13 %)** |
+
+The `parseArray` row was already collapsed by `fast-array-onebuf`,
+so this round attacks the next-largest remaining attribution. The
+residual 9.3 MB at `parseIndirectObjectHeader` and 4.8 MB at
+`fastOf` are the `PDFRef` instances themselves (`Object.create` +
+`objectNumber` + `generationNumber` fields, ~32-48 B × ~150 k)
+plus V8 inlining leakage from the `fastOf` speculation call site.
+Hard floor without dropping per-PDFRef wrappers entirely (which
+the class-shape round below picks up).
+
+### Measured CPU
+
+Pinned 0x5500 / High, no profiler, 4 runs each side:
+
+| State    |  median  |   mean   |
+|----------|---------:|---------:|
+| with-tag | 1.045 s  | 1.045 s  |
+| tagless  | 1.030 s  | 1.030 s  |
+| Δ        | ~15 ms tagless faster (in the noise but trending) |
+
+### Validation
+
+Output PDF is byte-identical to baseline modulo `/CreationDate`
++ `/ModDate` timestamps -- verified by inflating + diffing all
+453 ObjStm streams. The change is local to
+[`docs/lib/fast-refs.mjs`](../../docs/lib/fast-refs.mjs); no
+production import or flag change needed since `--fast-refs` was
+already wired up.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -3917,7 +4021,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + parseDict pre-sized array          | ~1.0 s  | ~0.6 s | ~0.4 s |
 | + fast-dict-onebuf                   | ~1.0 s  | ~0.6 s | ~0.4 s |
 | + measure-pass Phase 1               | ~1.0 s  | ~0.7 s | ~0.4 s |
-| **+ fast-array-onebuf (this section)** | **~1.0 s** | **~0.7 s** | **~0.4 s** |
+| + fast-array-onebuf                  | ~1.0 s  | ~0.7 s | ~0.4 s |
+| **+ fast-refs tag drop (this section)** | **~1.0 s** | **~0.7 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
