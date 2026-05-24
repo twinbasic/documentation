@@ -4341,6 +4341,102 @@ timestamps. The change is local to
 no production import or flag change needed since
 `--fast-array-onebuf` was already wired up.
 
+## Class-constructor round: closing the picture
+
+Recap of the three commits that just landed (PDFRef, PDFDict,
+PDFArray wrapper-shape changes): same attack, same constructor +
+prototype-aliasing trick. The per-instance numbers, before vs
+after, in one table:
+
+| Wrapper       | Before | After | Saved/inst | Count   | Total saved |
+|---------------|-------:|------:|-----------:|--------:|------------:|
+| PDFRef        |  ~60 B | ~44 B |     ~16 B  | 226 k   |   ~3.7 MB   |
+| PDFDict       |  ~64 B | ~44 B |     ~20 B  | 260 k   |   ~5.2 MB   |
+| PDFArray      |  ~54 B | ~32 B |     ~22 B  |  80 k   |   ~1.7 MB   |
+
+PDFRef stops at ~44 B because it carries 2 fields (`objectNumber`,
+`generationNumber`); PDFDict / PDFArray stop at ~32-44 B with 1
+field (the packed `d`). PDFPageLeaf carries 3 fields (d,
+normalized, autoNormalizeCTM) so it's slightly higher, but the
+constructor body still gives V8 the stable shape -- the 1 651
+PDFPageLeaf instances are a small tail.
+
+### Investigation aside: `parseIndirectObjectHeader` was a labelling artifact
+
+The hypothesis chain that led to the constructor-shape attack:
+
+1. Start: heap profile shows `parseIndirectObjectHeader` at 9.1 MB
+   self-attribution. Looks like a parser hot spot worth attacking.
+2. Hand-inline the entire function body (whitespace skip +
+   `parseRawInt` × 2 + `matchKeyword` + `PDFRef.of`) into a single
+   no-call body. Heap row barely moved (9.2 MB), CPU unchanged --
+   the row wasn't the call overhead.
+3. Disable V8 inlining with `node --no-turbo-inlining`. Heap row
+   collapses (9.2 MB → out of top 20). `fastOf` row jumps from
+   4.7 MB to 13.8 MB. Total sampled unchanged.
+
+Diagnosis: V8 inlines small hot leaf functions (like `fastOf`,
+when called from a hot caller) and attributes their allocations
+to the inliner's frame. The `parseIndirectObjectHeader` row name
+was misleading; the actual allocation source was the PDFRef
+instances being constructed downstream. Attacking the right thing
+(the wrapper shape) made the row drop too.
+
+The hand-inlined attempt (`fast-pioh.mjs`) was deleted after
+proving the negative; the call-counting instrumentation lives in
+[`perf/instrument-pioh.mjs`](../instrument-pioh.mjs). Both kept
+around in the writeup as the path to the right answer rather than
+the answer itself.
+
+### Caveats
+
+- **Singleton subclass set.** `fast-dict-onebuf` dispatches by
+  `ProtoClass === PDFDict | PDFCatalog | PDFPageTree |
+  PDFPageLeaf` to pick the right constructor. Any new PDFDict
+  subclass added in user code falls back to the original
+  `Object.create` path (defensive; nothing in our pipeline
+  triggers it). If the upstream PDFDict hierarchy grows, the
+  dispatch chain needs a new entry.
+- **Shared prototype.** `_FastRef.prototype = PDFRef.prototype`
+  means a `new _FastRef(...)` instance is indistinguishable from
+  a `new PDFRef(...)` instance via `instanceof` and method
+  dispatch. No code in our pipeline cares about constructor
+  identity (`obj.constructor === PDFRef` -- absent in pdf-lib +
+  our shims).
+- **Method dispatch stays polymorphic for gen != 0 PDFRefs.** The
+  `--fast-refs-class` shim only routes gen=0 through the
+  `_FastRef` constructor; gen != 0 falls back to upstream
+  `PDFRef.of` which uses its own Map-based pool and
+  `new PDFRef(...)`. Both shapes share `PDFRef.prototype` so
+  methods dispatch uniformly; V8 may see 2 maps but the path is
+  rare (~18 % of refs).
+
+### Where this leaves heap
+
+After the three commits, the top-5 heap rows are:
+
+| # | Self KB | Frame                                                              |
+|--:|--------:|--------------------------------------------------------------------|
+| 1 | 11 474  | `_makeFromRange` (PDFDict) -- 260 k × ~44 B floor                  |
+| 2 |  7 450  | `parseIndirectObjectHeader` -- V8 attribution of the next row      |
+| 3 |  3 411  | `fastClassOf` (PDFRef) -- 226 k × ~44 B floor                      |
+| 4 |  3 334  | `fastParseArrayOneBuf` (PDFArray) -- 80 k × ~32 B floor            |
+| 5 |  2 098  | `parseIndirectObjectSync` -- per-call attribution residual         |
+
+The big rows are now at the per-instance floor for V8 objects
+with 1-2 inline fields. Further heap reduction requires either:
+
+1. **Eliminate the wrapper entirely** -- PDFRef / PDFDict /
+   PDFArray become bare packed Numbers, every consumer rewritten
+   to call free functions instead of methods. Biggest remaining
+   win (~11 MB on PDFDict alone), largest engineering surface.
+2. **Smaller targeted shrinks** -- PDFNumber drops eager
+   `stringValue` cache, etc. Each at ~hundreds of KB,
+   accumulating slowly.
+
+Neither has been started; this section closes the per-instance
+constructor-shape round.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
