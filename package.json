@@ -5,7 +5,7 @@
   "description": "PDF book pipeline and profiling harness for the twinBASIC documentation",
   "devDependencies": {
     "html-entities": "^2.6.0",
-    "pdf-lib": "^1.17.1",
-    "puppeteer": "^25.0.4"
+    "pdf-lib": "1.17.1",
+    "puppeteer": "25.0.4"
   }
 }

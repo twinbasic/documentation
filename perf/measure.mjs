@@ -21,12 +21,21 @@
 //
 // Usage:
 //   node measure.mjs [path/to/book.html] [--out <dir>] [--keep-open]
-//                    [--cpu-profile] [--cpu-sampling <microseconds>]
-//                    [--heap-profile] [--heap-sampling <bytes>]
+//                    [--cpu-profile] [--cpu-profile-process]
+//                    [--cpu-sampling <microseconds>]
+//                    [--heap-profile] [--heap-profile-process]
+//                    [--heap-sampling <bytes>]
 //                    [--tracing]
 //                    [--no-detach-pages] [--instrument] [--time-hooks]
 //                    [--incremental] [--chrome-outline] [--timing]
 //                    [--clone-count] [--render-only]
+//                    [--fast-refs] [--parallel-deflate]
+//                    [--fast-decode-name] [--fast-number-to-string]
+//                    [--fast-size-in-bytes] [--fast-inflate]
+//                    [--fast-parse-number] [--fast-parse-dict]
+//                    [--fast-parse-object] [--fast-sync-load]
+//                    [--fast-dict-array] [--fast-indirect-objects]
+//                    [--fast-pdfnumber-pool]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
 // parseOutline, page.pdf, and the pdf-lib roundtrip / incremental writer.
@@ -82,12 +91,160 @@
 // chrome://tracing or perfetto.dev, or run analyze-trace.mjs against it
 // for a top-N self-time table grouped by event name. Composable with
 // --cpu-profile; uses an independent CDP domain.
+//
+// --cpu-profile-process wraps the process phase only (pdf-lib roundtrip
+// or incremental writer) in a V8 Profiler trace via Node's inspector
+// module -- the process phase runs in Node, not Chromium, so CDP's
+// Profiler can't see it. Writes process.cpuprofile alongside render's.
+// Honours --cpu-sampling. Composable with --cpu-profile when you want
+// both phases captured in one run.
+//
+// --heap-profile-process wraps the process phase in V8's sampling heap
+// profiler (Inspector's HeapProfiler domain) and writes
+// process.heapprofile alongside the cpu one. --heap-sampling sets the
+// sampling interval in bytes; default 32768 (V8's default). Drop to
+// 512 for finer-grained attribution on short phases. Composable with
+// --cpu-profile-process; both share one inspector session.
+//
+// --fast-refs replaces PDFRef.of's string-keyed Map lookup with a
+// dense-array cache for the gen=0 case (82 % of ~1.2 M calls on the
+// book). Eliminates the per-call `<obj> <gen> R` string allocation
+// and Map hash. gen != 0 calls (pdf-lib's xref-stream bookkeeping
+// for compressed objects) pass through unchanged.
+//
+// --parallel-deflate replaces pdfDoc.save() with parallelSave from
+// docs/lib/parallel-deflate.mjs: object streams are pre-deflated in
+// parallel on libuv's thread pool with objectsPerStream=500 (vs
+// pdf-lib's serial save with default 50). Moves ~300 ms of zlib work
+// off the main thread on the book.
+//
+// --fast-decode-name installs a parallel cache in front of PDFName.of
+// that skips the decodeName regex scan when the raw name contains
+// no `#` hex escape (which is 99.999 % of the ~2.8 M PDFName.of
+// calls per load on the book). ~150 ms saved on process load.
+//
+// --fast-number-to-string short-circuits pdf-lib's numberToString
+// when String(num) already lacks an `e`. Skips a redundant toString,
+// split, and parseInt per call; only the rare exponential-notation
+// tail still falls through to the original implementation.
+//
+// --fast-size-in-bytes replaces pdf-lib's utils.sizeInBytes -- which
+// allocates `n.toString(2)` just to count its bit length -- with a
+// non-allocating short-circuit ladder. Called ~300 k times per save
+// from PDFCrossRefStream's xref writer; the dominant inputs are
+// 1-2 byte values (type, gen, index, small obj-stream refs) so a
+// `n < 0x100 ? 1 : ...` ladder is the right shape.
+//
+// --fast-inflate swaps pako.inflate for node:zlib.inflateSync on
+// pdf-lib's one remaining pako call site (PDFCrossRefStreamParser
+// inflating the compressed cross-reference stream during
+// PDFDocument.load). One call per load, negligible wall-clock; flag
+// exists so paired A/Bs can compare against pure-pdf-lib behaviour.
+// Production runs through it.
+//
+// --fast-parse-number replaces pdf-lib's BaseParser.parseRawNumber
+// and parseRawInt with direct-integer accumulators (n = n*10 +
+// (byte - 0x30)) that skip per-byte string concatenation and the
+// trailing Number() round-trip. Every numeric token in a parsed
+// PDF flows through these; hundreds of thousands of calls per load
+// on the book. Production runs through it.
+//
+// --fast-parse-dict hoists the four sentinel PDFName.of calls
+// (Type / Catalog / Pages / Page) out of the type-dispatch tail
+// in PDFObjectParser.prototype.parseDict. The dispatch fires
+// per-dict (tens of thousands on the book) and even with
+// --fast-decode-name each lookup is still a Map.get on fastCache.
+// Pool-dedup makes the canonical PDFNames reference-stable, so
+// captured constants replace the four calls verbatim.
+//
+// --fast-parse-object replaces PDFObjectParser.prototype.parseObject
+// with a first-byte-dispatch version that gates the three
+// matchKeyword (true / false / null) scans behind a byte check.
+// parseObject fires per dict value / array element / indirect
+// object body (hundreds of thousands of calls on the book); the
+// upstream version pays three speculative matchKeyword fail-and-
+// rewind costs on every invocation. Same semantics, dispatch
+// reordered by observed frequency in dict-value position.
+//
+// --fast-dict-array replaces PDFDict's backing Map with a flat
+// alternating array [k0, v0, k1, v1, ...]. The sampling heap profile
+// showed `new Map()` + `Map.prototype.set` accounting for half the
+// process-phase allocations (~63 MB combined), 80 % of that traffic
+// from the parser's per-dict accumulator. The flat array is one
+// allocation per dict, no hash-table arena; lookups are linear scans
+// but PDF dicts are tiny (typically <= 10 entries). Subsumes
+// --fast-parse-dict and --fast-dict-iter (the parser's hot loop
+// accumulates into the array directly; sizeInBytes / copyBytesInto
+// iterate in place). Now superseded by --fast-dict-onebuf; kept as
+// an A/B baseline.
+//
+// --fast-dict-onebuf collapses the per-dict array allocation into
+// ONE long-lived mainBuf shared across every committed PDFDict
+// entry. A small per-parser temp array acts as a stack of parseDict
+// recursion frames so outer's range stays contiguous when inner
+// recurses. PDFDict instance state packs into one 53-bit Number
+// (24-bit start + 14-bit length + 1-bit owned), no per-dict array
+// header. Owned dicts (factory-created post-parse) append to main
+// and mutate in place / COW to the tail. PDFContext is a singleton
+// in our pipeline (one PDFDocument.load per process); a second
+// distinct context throws. Mutually exclusive with --fast-dict-array
+// and the other dict-shape shims. ~57 % cumulative heap reduction
+// since the original Map-backed PDFDict (152 -> 66 MB). Production
+// runs through it.
+//
+// --fast-indirect-objects replaces PDFContext.indirectObjects
+// (Map<PDFRef, PDFObject>) with a dense array indexed by
+// objectNumber for the gen=0 path -- mirror of the fast-refs trick
+// on the value side. After fast-dict-array shipped, that Map was
+// the last remaining hot Map.set in the heap profile (~14 MB of set
+// traffic from PDFContext.assign, fired once per indirect object
+// during load). gen!=0 PDFRefs fall through to the original Map.
+// enumerateIndirectObjects skips its sort when the gen!=0 Map is
+// empty (the parsed-PDF common case). Production runs through it.
+//
+// --fast-pdfnumber-pool installs a value-keyed cache in front of
+// PDFNumber.of. Dense array for non-negative integers in
+// [0, 16384), Map fallback for floats / negatives / out-of-range.
+// PDFs reuse the same numeric values (page indices, /Count, /N,
+// /MediaBox dimensions) tens-to-hundreds of thousands of times;
+// pooling collapses parseNumberOrRef's ~15 MB of PDFNumber
+// allocations to a few thousand cached instances. PDFNumber is
+// immutable so sharing is safe. Production runs through it.
+//
+// --measure-pass runs the no-allocate measure pass from
+// docs/lib/measure-pass.mjs against the raw Chrome PDF before
+// pdf-lib's load, and uses the measured dict-slot count to
+// pre-size fast-dict-onebuf's mainBuf to exact demand (no
+// V8-amortized growth, no slack). Phase 1 of the two-pass
+// measure-allocate-work architecture -- the win is purely the
+// plumbing landing byte-identical; Phase 2 (Float64Array mainBuf)
+// is where the GC mark cost actually drops. Requires
+// --fast-dict-onebuf (the only consumer of setExpectedDictSlots
+// so far). Adds ~135 ms to the process phase on the book.
+//
+// --fast-sync-load rips pdf-lib's parseSpeed / objectsPerTick /
+// shouldWaitForTick / waitForTick machinery out of both the load
+// path (PDFDocument.load + PDFParser.parseDocument / parseDocumentSection
+// / parseIndirectObjects / parseIndirectObject +
+// PDFObjectStreamParser.parseIntoContext) and the save path
+// (PDFWriter.serializeToBuffer / computeBufferSize +
+// PDFStreamWriter.computeBufferSize). pdf-lib's TS downlevel wraps
+// each in tslib __awaiter / __generator so on browsers they can
+// `await waitForTick()` every `objectsPerTick` objects; with
+// objectsPerTick: Infinity (or the load path's parseSpeed: Fastest)
+// the gate never fires, but every indirect object still pays the
+// generator state-machine + Promise allocation. The shim removes
+// the scaffolding and the waitForTick yields entirely. Production
+// runs through it; the parseSpeed / objectsPerTick options are
+// dropped from PDFDocument.load / parallelSave / pdfDoc.save call
+// sites in step with this shim.
 
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { Session } from 'node:inspector/promises';
 import puppeteer from 'puppeteer';
-import { PDFDocument, ParseSpeeds } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 // Shared with docs/render-book.mjs -- the helpers and the paged.js
 // bundle live under docs/lib/ now that we've dropped the pagedjs-cli
 // dependency. Importing from there guarantees the harness measures the
@@ -96,6 +253,7 @@ import { parseOutline, setOutline } from '../docs/lib/outline.mjs';
 import { setMetadata }              from '../docs/lib/postprocesser.mjs';
 import { applyOutlineAndMetadataIncremental } from './incremental-pdf.mjs';
 import { pinCpuIfWindows } from './pin-cpu.mjs';
+import { parallelSave } from '../docs/lib/parallel-deflate.mjs';
 
 // On Windows, re-launch under `start /affinity 0x5500 /high` to stabilise
 // CPU sample-time. See pin-cpu.mjs. Cuts run-to-run variance from
@@ -109,9 +267,11 @@ let inputArg = null;
 let outArg = null;
 let keepOpen = false;
 let cpuProfile = false;
+let cpuProfileProcess = false;
 let cpuSampling = 1000; // microseconds
 let heapProfile = false;
-let heapSampling = 32768; // bytes between samples (CDP default)
+let heapProfileProcess = false;
+let heapSampling = 32768; // bytes between samples (V8 default; used by both CDP render-side and inspector process-side)
 let detachPages = true;
 let instrument = false;
 let timeHooks = false;
@@ -121,13 +281,37 @@ let timing = false;
 let cloneCount = false;
 let renderOnly = false;
 let tracing = false;
+let fastRefs = false;
+let fastRefsClass = false;
+let parallelDeflate = false;
+let fastDecodeName = false;
+let fastNumberToString = false;
+let fastSizeInBytes = false;
+let fastInflate = false;
+let fastParseNumber = false;
+let fastDictIter = false;
+let fastParseDict = false;
+let fastParseObject = false;
+let fastParseName = false;
+let fastSyncLoad = false;
+let fastDictArray = false;
+let fastIndirectObjects = false;
+let fastPdfnumberPool = false;
+let fastDictOnebuf = false;
+let fastArrayOnebuf = false;
+let instrumentParsedict = false;
+let dumpRawPdf = null;
+let measurePass = false;
+let instrumentSlotTypes = false;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--out') outArg = args[++i];
   else if (a === '--keep-open') keepOpen = true;
   else if (a === '--cpu-profile') cpuProfile = true;
+  else if (a === '--cpu-profile-process') cpuProfileProcess = true;
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
   else if (a === '--heap-profile') heapProfile = true;
+  else if (a === '--heap-profile-process') heapProfileProcess = true;
   else if (a === '--heap-sampling') heapSampling = parseInt(args[++i], 10);
   else if (a === '--detach-pages') detachPages = true;       // accepted for backwards compat; default since the fix landed
   else if (a === '--no-detach-pages') detachPages = false;
@@ -141,6 +325,28 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--render-only') renderOnly = true;
   else if (a === '--tracing') tracing = true;
   else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
+  else if (a === '--fast-refs') fastRefs = true;
+  else if (a === '--fast-refs-class') fastRefsClass = true;
+  else if (a === '--parallel-deflate') parallelDeflate = true;
+  else if (a === '--fast-decode-name') fastDecodeName = true;
+  else if (a === '--fast-number-to-string') fastNumberToString = true;
+  else if (a === '--fast-size-in-bytes') fastSizeInBytes = true;
+  else if (a === '--fast-inflate') fastInflate = true;
+  else if (a === '--fast-parse-number') fastParseNumber = true;
+  else if (a === '--fast-dict-iter') fastDictIter = true;
+  else if (a === '--fast-parse-dict') fastParseDict = true;
+  else if (a === '--fast-parse-object') fastParseObject = true;
+  else if (a === '--fast-parse-name') fastParseName = true;
+  else if (a === '--fast-sync-load') fastSyncLoad = true;
+  else if (a === '--fast-dict-array') fastDictArray = true;
+  else if (a === '--fast-indirect-objects') fastIndirectObjects = true;
+  else if (a === '--fast-pdfnumber-pool') fastPdfnumberPool = true;
+  else if (a === '--fast-dict-onebuf') fastDictOnebuf = true;
+  else if (a === '--fast-array-onebuf') fastArrayOnebuf = true;
+  else if (a === '--instrument-parsedict') instrumentParsedict = true;
+  else if (a === '--dump-raw-pdf') dumpRawPdf = args[++i];
+  else if (a === '--measure-pass') measurePass = true;
+  else if (a === '--instrument-slot-types') instrumentSlotTypes = true;
   else if (!inputArg) inputArg = a;
   else { console.error(`unknown arg: ${a}`); process.exit(2); }
 }
@@ -173,6 +379,156 @@ for (const p of required) {
     console.error('Run "npm install" at the repo root first (run.bat does this automatically).');
     process.exit(1);
   }
+}
+
+if (cpuProfileProcess && renderOnly) {
+  console.error('--cpu-profile-process is incompatible with --render-only (the process phase is skipped).');
+  process.exit(2);
+}
+if (heapProfileProcess && renderOnly) {
+  console.error('--heap-profile-process is incompatible with --render-only (the process phase is skipped).');
+  process.exit(2);
+}
+if (fastDictArray && (fastParseDict || fastDictIter)) {
+  console.error('--fast-dict-array subsumes --fast-parse-dict and --fast-dict-iter (Map-backed shims). Pick one shape.');
+  process.exit(2);
+}
+if (fastDictOnebuf && (fastDictArray || fastParseDict || fastDictIter)) {
+  console.error('--fast-dict-onebuf subsumes the other dict-shape shims (different storage shape). Pick one.');
+  process.exit(2);
+}
+if (measurePass && !fastDictOnebuf) {
+  console.error('--measure-pass requires --fast-dict-onebuf (the only shim that consumes setExpectedDictSlots so far).');
+  process.exit(2);
+}
+if (measurePass && incremental) {
+  console.error('--measure-pass operates on the pdf-lib load path; --incremental skips that path entirely.');
+  process.exit(2);
+}
+if (measurePass && renderOnly) {
+  console.error('--measure-pass needs the process phase; --render-only skips it.');
+  process.exit(2);
+}
+if (instrumentSlotTypes && !fastDictOnebuf) {
+  console.error('--instrument-slot-types reads fast-dict-onebuf\'s main buffer; pass --fast-dict-onebuf too.');
+  process.exit(2);
+}
+if (instrumentSlotTypes && (incremental || renderOnly)) {
+  console.error('--instrument-slot-types needs the process phase; not compatible with --incremental or --render-only.');
+  process.exit(2);
+}
+
+// Install the dense-array cache for PDFRef.of's gen=0 path before any
+// pdf-lib operation. Side-effecting import; idempotent.
+if (fastRefs && fastRefsClass) {
+  console.error('--fast-refs and --fast-refs-class are mutually exclusive (both shim PDFRef.of).');
+  process.exit(2);
+}
+if (fastRefs) {
+  await import('../docs/lib/fast-refs.mjs');
+  console.log('[harness] fast-refs: PDFRef.of dense-array cache for gen=0');
+}
+if (fastRefsClass) {
+  await import('../docs/lib/fast-refs-class.mjs');
+  console.log('[harness] fast-refs-class: PDFRef.of dense-array cache + class-constructor shape');
+}
+if (fastDecodeName) {
+  await import('../docs/lib/fast-decode-name.mjs');
+  console.log('[harness] fast-decode-name: skip decodeName regex when name has no #');
+}
+if (fastNumberToString) {
+  await import('../docs/lib/fast-number-to-string.mjs');
+  console.log('[harness] fast-number-to-string: skip redundant toString/split when no exponential');
+}
+if (fastSizeInBytes) {
+  await import('../docs/lib/fast-size-in-bytes.mjs');
+  console.log('[harness] fast-size-in-bytes: non-allocating ladder for xref byte-width');
+}
+if (fastInflate) {
+  await import('../docs/lib/fast-inflate.mjs');
+  console.log('[harness] fast-inflate: swap pako.inflate for node:zlib.inflateSync');
+}
+if (fastParseNumber) {
+  await import('../docs/lib/fast-parse-number.mjs');
+  console.log('[harness] fast-parse-number: direct-integer accumulator for parseRawNumber/parseRawInt');
+}
+if (fastDictIter) {
+  await import('../docs/lib/fast-dict-iter.mjs');
+  console.log('[harness] fast-dict-iter: in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto');
+}
+if (fastParseDict) {
+  await import('../docs/lib/fast-parse-dict.mjs');
+  console.log('[harness] fast-parse-dict: hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict');
+}
+if (fastParseObject) {
+  await import('../docs/lib/fast-parse-object.mjs');
+  console.log('[harness] fast-parse-object: first-byte dispatch in parseObject, gate true/false/null matchKeyword behind byte check');
+}
+if (fastParseName) {
+  await import('../docs/lib/fast-parse-name.mjs');
+  console.log('[harness] fast-parse-name: byte-slice + String.fromCharCode build for PDFObjectParser.parseName');
+}
+if (fastSyncLoad) {
+  await import('../docs/lib/fast-sync-load.mjs');
+  console.log('[harness] fast-sync-load: synchronify PDFParser load path, strip waitForTick machinery');
+}
+if (fastDictArray) {
+  await import('../docs/lib/fast-dict-array.mjs');
+  console.log('[harness] fast-dict-array: PDFDict backed by flat alternating array (subsumes fast-parse-dict + fast-dict-iter)');
+}
+if (fastIndirectObjects) {
+  await import('../docs/lib/fast-indirect-objects.mjs');
+  console.log('[harness] fast-indirect-objects: PDFContext.indirectObjects dense-array cache for gen=0 PDFRefs');
+}
+if (fastPdfnumberPool) {
+  await import('../docs/lib/fast-pdfnumber-pool.mjs');
+  console.log('[harness] fast-pdfnumber-pool: value-keyed cache in front of PDFNumber.of');
+}
+if (fastDictOnebuf) {
+  await import('../docs/lib/fast-dict-onebuf.mjs');
+  console.log('[harness] fast-dict-onebuf: ONE long-lived buffer for all PDFDict entries + small per-parser temp');
+}
+if (fastArrayOnebuf) {
+  await import('../docs/lib/fast-array-onebuf.mjs');
+  console.log('[harness] fast-array-onebuf: ONE long-lived buffer for all PDFArray elements + small per-parser temp');
+}
+if (instrumentParsedict) {
+  await import('./instrument-parsedict.mjs');
+}
+
+// --measure-pass loads the measure walker and the setter; both are
+// invoked in-flight (after rawPdf is in hand, before PDFDocument.load).
+let _runMeasurePass = null;
+if (measurePass) {
+  const { measure } = await import('../docs/lib/measure-pass.mjs');
+  const { setExpectedDictSlots } = await import('../docs/lib/fast-dict-onebuf.mjs');
+  let setExpectedArraySlots = null;
+  if (fastArrayOnebuf) {
+    const ma = await import('../docs/lib/fast-array-onebuf.mjs');
+    setExpectedArraySlots = ma.setExpectedArraySlots;
+  }
+  _runMeasurePass = (bytes) => {
+    const counts = measure(bytes);
+    setExpectedDictSlots(counts.dictSlots);
+    if (setExpectedArraySlots) setExpectedArraySlots(counts.arraySlots);
+    return counts;
+  };
+  console.log(
+    setExpectedArraySlots
+      ? '[harness] measure-pass: no-allocate prelude, pre-sizes dict + array main buffers to measured slot counts'
+      : '[harness] measure-pass: no-allocate prelude, pre-sizes fast-dict-onebuf mainBuf to measured dict-slot count',
+  );
+}
+
+// --instrument-slot-types loads the slot-type classifier; called after
+// setOutline, before save.
+let _classifySlots = null;
+let _printSlotHistogram = null;
+if (instrumentSlotTypes) {
+  const m = await import('./instrument-slot-types.mjs');
+  _classifySlots = m.classifySlots;
+  _printSlotHistogram = m.printHistogram;
+  console.log('[harness] instrument-slot-types: classify main[] slots by PDFObject subtype after setOutline');
 }
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -370,6 +726,8 @@ try {
   let rawPdfBytes = null;
   let processMs = null;
   let processBreakdown = null;
+  let processProfilePath = null;
+  let processHeapProfilePath = null;
   let finalPdf = null;
 
   if (!renderOnly) {
@@ -413,6 +771,13 @@ try {
   pdfMs = Date.now() - tPdfStart;
   rawPdfBytes = rawPdf.length;
 
+  if (dumpRawPdf) {
+    const dumpPath = resolve(process.cwd(), dumpRawPdf);
+    mkdirSync(dirname(dumpPath), { recursive: true });
+    writeFileSync(dumpPath, Buffer.from(rawPdf));
+    console.log(`[harness] dumped raw Chrome PDF: ${dumpPath} (${(rawPdf.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
+
   const tGenEnd = Date.now();
   generateMs = tGenEnd - tGenStart;
   console.log(`[harness] generate ${fmtMs(generateMs)}  (parseOutline=${fmtMs(parseOutlineMs)}, page.pdf=${fmtMs(pdfMs)}, ${(rawPdf.length / 1024 / 1024).toFixed(1)}MB)`);
@@ -430,6 +795,29 @@ try {
   //
   // Either way we time the full phase plus the meaningful sub-steps so the
   // breakdown matches across runs.
+  //
+  // --cpu-profile-process attaches Node's inspector Profiler around this
+  // block. The render phase profiles via CDP because the work happens in
+  // Chromium; the process phase profiles via Node's inspector because
+  // pdf-lib runs locally. Output file shape (V8 .cpuprofile JSON) is the
+  // same either way.
+  let inspectorSession = null;
+  if (cpuProfileProcess || heapProfileProcess) {
+    inspectorSession = new Session();
+    inspectorSession.connect();
+  }
+  if (cpuProfileProcess) {
+    await inspectorSession.post('Profiler.enable');
+    await inspectorSession.post('Profiler.setSamplingInterval', { interval: cpuSampling });
+    await inspectorSession.post('Profiler.start');
+    console.log(`[harness] process cpu profile: sampling every ${cpuSampling}us`);
+  }
+  if (heapProfileProcess) {
+    await inspectorSession.post('HeapProfiler.enable');
+    await inspectorSession.post('HeapProfiler.startSampling', { samplingInterval: heapSampling });
+    console.log(`[harness] process heap profile: sampling every ${heapSampling}B`);
+  }
+
   const tProcStart = Date.now();
   if (incremental) {
     const tIncStart = Date.now();
@@ -438,15 +826,26 @@ try {
     finalPdf = bytes;
     processBreakdown = { incrementalMs: incMs, ...stats };
   } else {
-    // pdf-lib's defaults are catastrophically slow: parseSpeed=Slow (100
-    // objects/tick) and objectsPerTick=50 both yield to the event loop
-    // between batches, turning a ~2s load into ~36s on a 52 MB PDF (~34s
-    // pure idle in the cpuprofile). Override to Fastest/Infinity so the
-    // "baseline" we report reflects the library's actual CPU cost, not
-    // an artefact of yielding cadence. The harness has no parallel work
-    // to make space for, so cooperative yielding is pure overhead here.
+    // Upstream pdf-lib's load yields to the event loop every
+    // `parseSpeed` objects via `await waitForTick()`; the save side
+    // does the same every `objectsPerTick`. With --fast-sync-load on
+    // (the production default) both yield gates are ripped out -- the
+    // option arguments are silently ignored, so we don't bother
+    // passing them. Without --fast-sync-load, the run measures pdf-lib's
+    // cautious defaults (parseSpeed: Slow, objectsPerTick: 50) which
+    // yield ~500 / ~1000 times per phase on the book; that's pdf-lib's
+    // out-of-the-box behaviour, useful as a baseline for A/B work.
+    let measurePassMs = 0;
+    let measureCounts = null;
+    if (_runMeasurePass) {
+      const tMeasureStart = Date.now();
+      measureCounts = _runMeasurePass(rawPdf);
+      measurePassMs = Date.now() - tMeasureStart;
+      console.log(`[harness] measure-pass ${fmtMs(measurePassMs)}  (dicts=${measureCounts.dicts}, dictSlots=${measureCounts.dictSlots}, maxRecursion=${measureCounts.maxRecursion})`);
+    }
+
     const tLoadStart = Date.now();
-    const pdfDoc = await PDFDocument.load(rawPdf, { parseSpeed: ParseSpeeds.Fastest });
+    const pdfDoc = await PDFDocument.load(rawPdf);
     const loadMs = Date.now() - tLoadStart;
 
     setMetadata(pdfDoc, meta);
@@ -455,18 +854,59 @@ try {
     setOutline(pdfDoc, outline, false);
     const setOutlineMs = Date.now() - tSetOutlineStart;
 
+    if (_classifySlots) {
+      const tClassifyStart = Date.now();
+      const slotCounts = _classifySlots();
+      const classifyMs = Date.now() - tClassifyStart;
+      console.log(`[harness] instrument-slot-types: classify took ${classifyMs}ms`);
+      console.log('');
+      _printSlotHistogram(slotCounts, 'main after load+setOutline');
+      console.log('');
+    }
+
     const tSaveStart = Date.now();
-    finalPdf = await pdfDoc.save({ objectsPerTick: Infinity });
+    let parallelStreamCount = 0;
+    if (parallelDeflate) {
+      const { bytes, streamCount } = await parallelSave(pdfDoc, { objectsPerStream: 500 });
+      finalPdf = bytes;
+      parallelStreamCount = streamCount;
+    } else {
+      finalPdf = await pdfDoc.save();
+    }
     const saveMs = Date.now() - tSaveStart;
 
-    processBreakdown = { loadMs, setOutlineMs, saveMs };
+    processBreakdown = { measurePassMs, loadMs, setOutlineMs, saveMs, parallelStreamCount };
+    if (measureCounts) processBreakdown.measureCounts = measureCounts;
   }
   const tProcEnd  = Date.now();
   processMs = tProcEnd - tProcStart;
+  if (heapProfileProcess) {
+    const { profile } = await inspectorSession.post('HeapProfiler.stopSampling');
+    await inspectorSession.post('HeapProfiler.disable');
+    processHeapProfilePath = join(outDir, 'process.heapprofile');
+    const profileJson = JSON.stringify(profile);
+    writeFileSync(processHeapProfilePath, profileJson);
+    console.log(`[harness] process heap profile: ${processHeapProfilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
+  if (cpuProfileProcess) {
+    const { profile } = await inspectorSession.post('Profiler.stop');
+    await inspectorSession.post('Profiler.disable');
+    processProfilePath = join(outDir, 'process.cpuprofile');
+    const profileJson = JSON.stringify(profile);
+    writeFileSync(processProfilePath, profileJson);
+    console.log(`[harness] process cpu profile: ${processProfilePath} (${(profileJson.length / 1024 / 1024).toFixed(1)} MB)`);
+  }
+  if (inspectorSession) inspectorSession.disconnect();
   if (incremental) {
     console.log(`[harness] process  ${fmtMs(processMs)}  (incremental=${fmtMs(processBreakdown.incrementalMs)}, +${processBreakdown.appendedBytes}B, ${processBreakdown.newObjectCount} new objs)`);
   } else {
-    console.log(`[harness] process  ${fmtMs(processMs)}  (load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)})`);
+    const parTag = processBreakdown.parallelStreamCount
+      ? ` (parallel-deflate: ${processBreakdown.parallelStreamCount} streams)`
+      : '';
+    const measureTag = processBreakdown.measurePassMs
+      ? `measure=${fmtMs(processBreakdown.measurePassMs)}, `
+      : '';
+    console.log(`[harness] process  ${fmtMs(processMs)}  (${measureTag}load=${fmtMs(processBreakdown.loadMs)}, setOutline=${fmtMs(processBreakdown.setOutlineMs)}, save=${fmtMs(processBreakdown.saveMs)}${parTag})`);
   }
   }  // end if (!renderOnly)
 
@@ -506,6 +946,8 @@ try {
     record.phases.process = {
       ms: processMs,
       mode: incremental ? 'incremental' : 'pdf-lib-roundtrip',
+      cpuProfile: processProfilePath,
+      heapProfile: processHeapProfilePath,
       ...processBreakdown,
     };
   }

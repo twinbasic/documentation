@@ -31,9 +31,171 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { PDFDocument, ParseSpeeds } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
+// Side-effecting imports. Mutate pdf-lib's live module exports
+// before any pdf-lib operation -- order doesn't matter. See
+// perf/notes/08-pdf-lib.md.
+//
+//   fast-refs-class   -- dense-array cache in front of PDFRef.of for
+//     the gen=0 case (82 % of ~1.2 M calls per load) PLUS a
+//     class-constructor shape for the PDFRef instance, AND drops
+//     the per-instance `tag` string (toString / sizeInBytes /
+//     copyBytesInto compute from objectNumber / generationNumber
+//     directly via _writeUint + _digitCount helpers). Replaces the
+//     `Object.create(PDFRef.prototype) + property writes` pattern of
+//     the older fast-refs.mjs shim, which V8 routes through the
+//     slow-property path: PDFRef ended up at ~60 B/instance vs
+//     PDFName's ~31 B (`new PDFName(...)`-built). The constructor
+//     gives V8 a stable hidden class from the first instance and
+//     drops per-instance cost to ~44 B. On the book (226 k unique
+//     PDFRefs) the combined effect is ~3.87 MB heap (-8.5 % of
+//     total process-phase allocation) and ~140 ms wall-clock (-12 %
+//     of process) on top of the tag-drop refinement that already
+//     trimmed parseIndirectObjectHeader by ~4.3 MB. Same prototype
+//     methods, same instanceof semantics; the only change is the
+//     construction style. See "fast-refs-class" in
+//     perf/notes/08-pdf-lib.md. fast-refs.mjs stays in the tree as
+//     an A/B baseline (mutex-checked in measure.mjs).
+//   fast-inflate     -- swaps pako.inflate for node:zlib.inflateSync
+//     on the one pdf-lib call site that uses it
+//     (PDFCrossRefStreamParser during load). Negligible cost shift,
+//     but eliminates the last pdf-lib -> pako call at runtime.
+//   fast-parse-number -- direct-integer accumulators in front of
+//     BaseParser.parseRawNumber + parseRawInt, skipping per-byte
+//     string concat and the trailing Number() round-trip. Touches
+//     every numeric token parsed during PDFDocument.load.
+//   fast-decode-name -- cache in front of PDFName.of that skips
+//     the decodeName regex scan when the input has no `#` (which
+//     is 99.999 % of the ~2.8 M PDFName.of calls per load).
+//   fast-number-to-string -- short-circuit numberToString when
+//     `String(num)` already lacks an `e` (i.e. for every PDF number
+//     that's not in the exponential-notation tail). Skips a
+//     redundant toString + split + parseInt per call.
+//   fast-size-in-bytes -- replace utils.sizeInBytes (which allocates
+//     `n.toString(2)` just to count its bit length) with a non-
+//     allocating short-circuit ladder. Called ~300 k times per save
+//     from PDFCrossRefStream's xref writer.
+//   fast-dict-onebuf -- one long-lived buffer for every committed
+//     PDFDict entry across the whole document. Parser uses a small
+//     per-instance temp array as a stack of recursion frames; each
+//     parseDict invocation appends to temp, commits its frame to
+//     main in one contiguous append, and pops temp back. PDFDicts
+//     only ever read from main, so a packed (start, length, owned)
+//     Number is the whole instance state -- no separate bufIdx.
+//     Owned dicts (factory-created post-parse) also append to main.
+//     Mutations: in-place replace for existing keys, COW (copy
+//     range to tail, push new pair) for new keys or delete.
+//     PDFContext is a singleton -- one PDFDocument.load per
+//     process; a second distinct context throws. Subsumes
+//     fast-dict-array. Process-phase heap traffic drops from the
+//     Map-backed baseline of ~152 MB down to ~66 MB (-57%); -22%
+//     beyond fast-dict-array. See "One-buffer PDFDict" in
+//     perf/notes/08-pdf-lib.md.
+//
+//     Earlier dict-shape shims (fast-dict-array, fast-dict-iter,
+//     fast-parse-dict) stay in the tree as A/B baselines but are
+//     mutually exclusive with --fast-dict-onebuf in measure.mjs.
+//   fast-parse-object -- replace PDFObjectParser.prototype.parseObject
+//     with a first-byte-dispatch version that gates the three
+//     matchKeyword (true / false / null) scans behind a byte check.
+//     parseObject fires per dict value / array element / indirect
+//     object body; the upstream version pays three speculative
+//     matchKeyword fail-and-rewind costs on every invocation. Same
+//     semantics, dispatch reordered by observed frequency.
+//   fast-parse-name -- byte-keyed cache in front of
+//     PDFObjectParser.parseName. Upstream builds the name body via
+//     `name += charFromCode(byte)` per byte then hands the result
+//     to PDFName.of (fast-decode-name's string-keyed Map). 99.7 % of
+//     the 1.68 M calls per load on the book are cache hits -- the
+//     same ~5 k unique names show up over and over (Type, Length,
+//     Pages, MediaBox, ...) -- so the per-call string build + hash
+//     is pure overhead on the hot path. The shim scans bytes with
+//     direct buffer access, accumulates a small Smi hash, and
+//     looks up a `Map<hash, PDFName>` keyed by byte content. On
+//     hit (~99.7 %) it returns the PDFName with zero string
+//     allocation; on miss it builds the string in one shot via
+//     String.fromCharCode and routes through the upstream
+//     PDFName.of (which is fast-decode-name's cache on this stack)
+//     so both caches converge on the same PDFName instance. ~80 ms
+//     of process wall-clock saved (-9 %) on the book, mostly on
+//     load (0.41 s -> 0.33 s). +1.3 MB long-lived heap for the
+//     cache itself, a small price for the load-time reduction.
+//   fast-sync-load -- rip the parseSpeed / objectsPerTick /
+//     shouldWaitForTick / waitForTick machinery out of both pdf-lib's
+//     load path (PDFDocument.load + five PDFParser /
+//     PDFObjectStreamParser methods underneath it) and its save path
+//     (PDFWriter.serializeToBuffer + computeBufferSize, plus the
+//     unreachable PDFStreamWriter.computeBufferSize patched for
+//     consistency). Each upstream method is wrapped in __awaiter so
+//     on browsers it can yield to the event loop every objectsPerTick
+//     objects; in Node the gate never fires but every indirect object
+//     still paid for the generator state machine + Promise
+//     allocation. ~135 ms of attributed parser self-time + ~40 ms
+//     writer + an unknowable chunk of the GC row removed; the
+//     parseSpeed / objectsPerTick options drop off all our call sites
+//     in step with this shim.
+//   fast-indirect-objects -- replace PDFContext.indirectObjects
+//     (Map<PDFRef, PDFObject>) with a dense array indexed by
+//     objectNumber for the gen=0 path. After fast-dict-array shipped,
+//     PDFContext.assign's `this.indirectObjects.set(ref, object)` was
+//     the only hot Map.set left in the heap profile (~7 MB of set
+//     traffic from the parser's once-per-indirect-object assign).
+//     Mirror of the fast-refs trick on the value side: dense array
+//     for gen=0, Map fallback for gen!=0. enumerateIndirectObjects
+//     skips its sort when the gen!=0 Map is empty (the common case).
+//     Drops PDFContext.assign out of the CPU top-15 and halves the
+//     remaining set heap traffic.
+//   fast-pdfnumber-pool -- value-keyed cache in front of PDFNumber.of.
+//     Dense array for non-negative integers in [0, 16384), Map
+//     fallback for floats / negatives / out-of-range. PDFs reuse the
+//     same numeric values (page indices, /Count, /N, /MediaBox
+//     dimensions) hundreds of thousands of times against only a few
+//     thousand unique values; pooling collapses parseNumberOrRef's
+//     ~15 MB of PDFNumber allocations to ~0.8 MB. Total process-phase
+//     heap traffic drops ~13 % (123 MB -> 107 MB). PDFNumber is
+//     immutable so sharing is safe.
+//   measure-pass (Phase 1) -- no-allocate byte walker
+//     (docs/lib/measure-pass.mjs) that runs in front of
+//     PDFDocument.load on the raw Chrome PDF and counts dictSlots
+//     + arraySlots. The counts drive setExpectedDictSlots() on
+//     fast-dict-onebuf and setExpectedArraySlots() on
+//     fast-array-onebuf, pre-sizing each shim's backing Array to
+//     the exact measured demand (no V8 growth resizes during load).
+//     Net wall-clock is ~+40 ms on the book (walker costs ~60 ms;
+//     load saves ~20). The bound on mainBuf isn't material on its
+//     own (~60 K slots out of 2.4 M) but commits the two-pass
+//     shape. Phase 2/3/3β (Float64Array mainBuf + encoded slots)
+//     were explored and didn't ship -- per-slot encode/decode cost
+//     exceeded the mark-phase savings. See "Phase 1: pre-size
+//     mainBuf via measure-pass" in perf/notes/08-pdf-lib.md.
+//   fast-array-onebuf -- same range-view pattern as fast-dict-onebuf
+//     applied to PDFArray. Each PDFArray's per-instance
+//     `this.array = []` goes away; instances become views into a
+//     shared arrayMain (plain JS Array, heterogeneous slots holding
+//     the original PDFObject references). Reads are direct -- no
+//     decode, unlike the explored-but-didn't-ship encoded approach
+//     which encoded slots into a Float64Array and paid ~300 ms of
+//     decodeValue dispatch during save. ~19 MB of process-phase
+//     heap traffic from parseArray collapses (the `this.array`
+//     allocation + grow doublings across ~79 k PDFArrays). See
+//     "One-buffer PDFArray" in perf/notes/08-pdf-lib.md.
+import './lib/fast-refs-class.mjs';
+import './lib/fast-inflate.mjs';
+import './lib/fast-parse-number.mjs';
+import './lib/fast-decode-name.mjs';
+import './lib/fast-number-to-string.mjs';
+import './lib/fast-size-in-bytes.mjs';
+import { setExpectedDictSlots }     from './lib/fast-dict-onebuf.mjs';
+import { setExpectedArraySlots }    from './lib/fast-array-onebuf.mjs';
+import './lib/fast-parse-object.mjs';
+import './lib/fast-parse-name.mjs';
+import './lib/fast-sync-load.mjs';
+import './lib/fast-indirect-objects.mjs';
+import './lib/fast-pdfnumber-pool.mjs';
+import { measure as measureRawPdf } from './lib/measure-pass.mjs';
 import { parseOutline, setOutline } from './lib/outline.mjs';
 import { setMetadata }              from './lib/postprocesser.mjs';
+import { parallelSave }             from './lib/parallel-deflate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -245,15 +407,33 @@ try {
   console.log(`generate: ${fmtMs(Date.now() - tGenerate)}  (raw ${(rawPdf.length / 1024 / 1024).toFixed(1)} MB)`);
 
   // Process -- pdf-lib roundtrip with outline + metadata attached.
-  // parseSpeed: Fastest and objectsPerTick: Infinity are critical:
-  // pdf-lib's defaults yield to the event loop between every 100/50
-  // objects, turning a ~5 s round-trip into ~40 s on a 50 MB PDF
-  // (~35 s of which is pure V8 idle). See perf/README.md.
+  // fast-sync-load strips the waitForTick yield gates on both load
+  // and save sides entirely (load was ~40 s under pdf-lib's Slow
+  // default that yields every 100 objects; ~5 s on Fastest; now
+  // ~1 s with the gates ripped out -- so parseSpeed / objectsPerTick
+  // no longer matter and drop from the call sites).
+  //
+  // parallelSave (vs the default pdfDoc.save):
+  //  - objectsPerStream: 500 -- larger object-stream chunks compress
+  //    better (shared deflate window), 5 % smaller output PDF, and
+  //    cuts the per-chunk dispatch overhead 10x.
+  //  - dispatches every chunk's deflate to libuv's thread pool via
+  //    async zlib.deflate instead of running serially on the main
+  //    thread. Moves ~300 ms of zlib work off-CPU on the book.
+  //
+  // measureRawPdf walks rawPdf once with no allocations and hands
+  // the exact dictSlot + arraySlot counts to fast-dict-onebuf /
+  // fast-array-onebuf so each shim's backing Array is pre-sized;
+  // eliminates V8 growth resizes during load.
+  // See perf/notes/08-pdf-lib.md.
   const tProcess = Date.now();
-  const pdfDoc = await PDFDocument.load(rawPdf, { parseSpeed: ParseSpeeds.Fastest });
+  const counts = measureRawPdf(rawPdf);
+  setExpectedDictSlots(counts.dictSlots);
+  setExpectedArraySlots(counts.arraySlots);
+  const pdfDoc = await PDFDocument.load(rawPdf);
   setMetadata(pdfDoc, meta);
   await setOutline(pdfDoc, outline, false);
-  const finalPdf = await pdfDoc.save({ objectsPerTick: Infinity });
+  const { bytes: finalPdf } = await parallelSave(pdfDoc, { objectsPerStream: 500 });
   console.log(`process:  ${fmtMs(Date.now() - tProcess)}`);
 
   writeFileSync(outputPath, Buffer.from(finalPdf));
