@@ -1,15 +1,20 @@
-// tbdocs orchestrator. Phase 1 only: resolves the source root and runs
-// DISCOVER. Subsequent phases plug into this same entry point.
+// tbdocs orchestrator. Phases 1+2: DISCOVER + COMPUTE.
 //
 // Usage: node builder/index.mjs [--src <path>]
 //
-// Default --src is "docs" relative to the current working directory
-// (so the canonical invocation is `node builder/index.mjs` from the
-// repo root). The flag exists for tests pointing at fixture trees.
+// Default --src is "docs" relative to the current working directory.
+// The flag exists for tests pointing at fixture trees.
 
+import { promises as fs } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import yaml from "js-yaml";
+
 import { discover } from "./discover.mjs";
+import { computeNav } from "./nav.mjs";
+import { precomputeSeo } from "./seo.mjs";
+import { loadBookData, resolveBookChapters } from "./book.mjs";
+import { captureBuildInfo } from "./build-info.mjs";
 
 function parseArgs(argv) {
   const args = { src: "docs" };
@@ -26,22 +31,60 @@ function parseArgs(argv) {
   return args;
 }
 
+function makeTimer() {
+  const laps = [];
+  let last = Date.now();
+  return {
+    lap(label) {
+      const now = Date.now();
+      laps.push({ label, ms: now - last });
+      last = now;
+    },
+    summary() {
+      return laps.map(l => `${l.label}=${l.ms}ms`).join(" ");
+    },
+  };
+}
+
 async function main() {
   const { src } = parseArgs(process.argv.slice(2));
   const srcRoot = path.resolve(process.cwd(), src);
 
-  const t0 = Date.now();
+  const t = makeTimer();
   const { pages, staticFiles } = await discover(srcRoot);
-  const dt = Date.now() - t0;
+  t.lap("discover");
 
-  console.log(`discover: pages=${pages.length} static=${staticFiles.length} (${dt} ms)`);
+  // Issue build-info immediately so the git shell-outs overlap with the
+  // CPU-bound nav work.
+  const buildInfoPromise = captureBuildInfo();
 
-  // Drift guard from PLAN-1.md §1 -- if this fires, either the exclude
-  // logic regressed or content really shrank; either case warrants a look.
+  const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
+  const { navTree } = computeNav(pages, config);
+  t.lap("nav");
+
+  const { seoSiteTitle, seoLogoUrl } = precomputeSeo(pages, config);
+  t.lap("seo");
+
+  const bookData = await loadBookData(srcRoot);
+  resolveBookChapters(bookData, pages);
+  t.lap("book");
+
+  const buildInfo = await buildInfoPromise;
+  t.lap("buildInfo");
+
+  const site = { config, navTree, seoSiteTitle, seoLogoUrl, buildInfo, bookData };
+
+  console.log(`Phase 1+2 done: ${pages.length} pages, ${staticFiles.length} static files`);
+  console.log(t.summary());
+
+  // Drift guard from PLAN-1.md §1.
   if (pages.length < 836) {
     console.error(`WARN: page count ${pages.length} below baseline 836`);
     process.exitCode = 1;
   }
+
+  // Phase 3+ chains in here.
+  return { pages, staticFiles, site };
 }
 
 main().catch((err) => {

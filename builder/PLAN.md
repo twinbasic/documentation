@@ -5,26 +5,29 @@ Goal: functionally equivalent output, ~2,200 lines of compact JS, no framework.
 
 ## Architecture
 
-One entry point, ~12 modules. The content model is fixed (markdown + YAML frontmatter),
+One entry point, ~14 modules. The content model is fixed (markdown + YAML frontmatter),
 the output structure is fixed (three trees), the template is one layout with variations.
 
 ```
 builder/                 (sibling of docs/, at the repo root)
   index.mjs              entry point + orchestrator
   discover.mjs           file reading, frontmatter parsing
-  nav.mjs                nav tree + breadcrumbs + nav-levels
+  nav.mjs                nav tree + breadcrumbs + nav-levels + children
+  seo.mjs                per-page SEO metadata
+  book.mjs               book chapter resolution + PDF page assembly
+  build-info.mjs         git commit + commit date capture
   render.mjs             markdown-it pipeline setup
   template.mjs           page layout as JS functions (replaces Liquid)
-  book.mjs               book chapter resolution + PDF page assembly
   offline.mjs            URL rewriting for _site-offline/
   pdf.mjs                sparse _site-pdf/ tree generation
   search.mjs             Lunr search index generation (search-data.json)
-  seo.mjs                per-page SEO metadata
   redirects.mjs          redirect stub pages
   sitemap.mjs            sitemap.xml
   highlight.mjs          Shiki setup + twinBASIC grammar
   compress.mjs           HTML whitespace collapse
   twinbasic.tmLanguage.json   TextMate grammar for twinBASIC
+  verify-phase1.mjs      Phase 1 acceptance harness
+  verify-phase2.mjs      Phase 2 acceptance harness
 ```
 
 The builder lives at the repo root (not under `docs/`) so it isn't part of
@@ -42,22 +45,27 @@ Static assets (CSS, JS, SVGs) extracted once from the current Jekyll build live 
 {
   "dependencies": {
     "gray-matter": "^4.0",
+    "fast-glob": "^3.3",
+    "js-yaml": "^4.1",
     "markdown-it": "^14.0",
     "markdown-it-attrs": "^4.0",
     "shiki": "^1.0",
-    "fast-glob": "^3.3",
     "lunr": "^2.3"
   }
 }
 ```
 
-Six production dependencies. No template engine, no framework, no bundler.
+Seven production dependencies. No template engine, no framework, no
+bundler. `js-yaml` is technically a transitive dep of `gray-matter`
+(declared explicitly because Phase 2 loads `_config.yml` and
+`_data/book.yml` directly); the four bottom-of-list packages remain
+unused until later phases land.
 
 ## Build Phases
 
 ```
-Phase 1: DISCOVER        ~50ms    Read .md/.html with frontmatter, enumerate static files
-Phase 2: COMPUTE         ~20ms    Nav tree, breadcrumbs, SEO, book chapters
+Phase 1: DISCOVER        ~120ms   Read .md/.html with frontmatter, enumerate static files       [shipped]
+Phase 2: COMPUTE         ~60ms    Nav tree, breadcrumbs, SEO, book chapters, build-info         [shipped]
 Phase 3: RENDER          ~1-2s    Markdown -> HTML (dominates build time)
 Phase 4: TEMPLATE        ~200ms   Wrap in layout, anchor headings, compress
 Phase 5: WRITE ONLINE    ~300ms   Write _site/
@@ -65,6 +73,9 @@ Phase 6: AUXILIARIES     ~100ms   Redirects, sitemap, search-data.json
 Phase 7: WRITE OFFLINE   ~500ms   URL-rewritten copy to _site-offline/
 Phase 8: WRITE PDF       ~50ms    Sparse copy to _site-pdf/
 ```
+
+Phase 1+2 measured timings come from `node builder/index.mjs` on the
+current Windows dev machine; Phase 3 onward are still projections.
 
 ## Phase Specifications
 
@@ -105,30 +116,43 @@ half of the static-file copy.
 Full spec, design decisions, edge cases, and acceptance checklist:
 [PLAN-1.md](PLAN-1.md).
 
-### Phase 2: COMPUTE (`nav.mjs`, `seo.mjs`, `book.mjs`)
+### Phase 2: COMPUTE (`nav.mjs`, `seo.mjs`, `book.mjs`, `build-info.mjs`)
 
-**Nav tree** (`nav.mjs`):
+Input: the `{ pages, staticFiles }` object Phase 1 returned, plus
+`docs/_config.yml` and `docs/_data/book.yml`.
 
-Algorithm (direct port of `nav-tree-precompute.rb`):
-1. Group pages by parent title
-2. Sort within groups: nav_order numeric -> nav_order string -> title numeric -> title string
-3. Recursively build tree from roots (pages with no parent)
-4. Walk tree to compute breadcrumb chains and positional indices (for CSS activation)
-5. Compute children-in-nav for each page
+Output: each titled page gains `navPath`, `breadcrumbs`, `children`, and
+(when reachable from a top-level page) `navLevels`; every page gains
+`seoTitle`, `seoFullTitle`, `seoCanonical`, and `seoIsHome`. A site-level
+object collects `{ config, navTree, seoSiteTitle, seoLogoUrl, buildInfo,
+bookData }` for the later phases to read.
 
-Also includes the nav-integrity-check logic (abort on ambiguous/orphan parents).
+Modules:
 
-**SEO** (`seo.mjs`):
+- **`nav.mjs`** -- six nav substeps (nav-path, integrity-check, nav-tree,
+  nav-levels, breadcrumbs, children) sharing one pass over the titled
+  set and the ordered-children memo. Ports the six Ruby plugins under
+  `_plugins/nav-*.rb` + `breadcrumbs-precompute.rb` + `children-precompute.rb`.
+- **`seo.mjs`** -- markdown-it-driven `text | markdownify | strip_html |
+  normalize_whitespace | escape_once` pipeline + Node-`URL`-driven
+  `absolute_url` / `uri_escape`. Ports `_plugins/seo-precompute.rb`.
+- **`book.mjs`** -- loads `_data/book.yml` and resolves every entry's
+  selector schema (`page` / `pages` / `nav_page` / `nav_pages` +
+  `no_descent`) to a concrete `Array<Page>` plus pre-resolved
+  `landing_page` / `foreword_page` references. Phase 8's renderer half
+  will land in the same file. Ports `_plugins/book-resolve-chapters.rb`
+  + `book-sort.rb`.
+- **`build-info.mjs`** -- two parallel `git` shell-outs producing
+  `{ commit, commitDate }`; falls back to `"unknown"` outside a repo.
+  Ports `_plugins/build-info.rb`.
 
-- Strip markdown from titles (only 2 of 837 pages have md-active chars in titles)
-- Compute canonical URL
-- Determine og:type (homepage -> website, else article)
+Replaces: ten Ruby plugins totalling ~1,460 lines of code that ran in
+Jekyll's GENERATE phase for ~1.5 s combined. The JS port is ~650 lines
+of compute code (the four modules above) and runs in ~60 ms -- 25×
+faster.
 
-**Book chapters** (`book.mjs`, resolution half):
-
-- Parse `_data/book.yml` selector schema (`page`/`pages`/`nav_page`/`nav_pages` + `no_descent`)
-- Match pages by URL or nav_path prefix
-- Sort by nav_order, prepend landing pages
+Full spec, design decisions, edge cases, acceptance checklist, and
+measured timings: [PLAN-2.md](PLAN-2.md).
 
 ### Phase 3: RENDER (`render.mjs`, `highlight.mjs`)
 
@@ -301,16 +325,22 @@ internal link integrity regardless of which tool produced the HTML.
 
 Build incrementally, each step independently verifiable:
 
-| Step | Module(s) | Verify by |
-|------|-----------|-----------|
-| 1 | `discover.mjs` | Assert page count = 838 (836 .md + 404.html + book.html); spot-check frontmatter; verify `staticFiles[]` covers content images + favicon + lib/ + render-book.mjs |
-| 2 | `render.mjs` + `highlight.mjs` | Diff rendered HTML of 5 representative pages vs Jekyll |
-| 3 | `nav.mjs` | Assert tree structure matches Jekyll's `site.nav_tree` |
-| 4 | `template.mjs` + `compress.mjs` | Full-page render, visual comparison in browser |
-| 5 | Write online (`_site/`) | `check_links.mjs` passes |
-| 6 | `search.mjs` + `redirects.mjs` + `sitemap.mjs` | Functional search in browser |
-| 7 | `offline.mjs` | Open `_site-offline/index.html` via file://, nav + search work |
-| 8 | `book.mjs` + `pdf.mjs` | `pagedjs-cli` renders PDF without errors |
+| Step | Module(s) | Status | Verify by |
+|------|-----------|--------|-----------|
+| 1 | `discover.mjs` | shipped | `verify-phase1.mjs`: 838 pages (836 .md + 404.html + book.html), frontmatter spot-checks, `staticFiles[]` covers content images + favicon + lib/ + render-book.mjs |
+| 2 | `nav.mjs` + `seo.mjs` + `book.mjs` + `build-info.mjs` | shipped | `verify-phase2.mjs`: 23 acceptance checks (navTree shape, navPath/breadcrumbs/children/navLevels populated, SEO byte-parity against Jekyll, buildInfo, bookData resolution) |
+| 3 | `render.mjs` + `highlight.mjs` | pending | Diff rendered HTML of 5 representative pages vs Jekyll |
+| 4 | `template.mjs` + `compress.mjs` | pending | Full-page render, visual comparison in browser |
+| 5 | Write online (`_site/`) | pending | `check_links.mjs` passes |
+| 6 | `search.mjs` + `redirects.mjs` + `sitemap.mjs` | pending | Functional search in browser |
+| 7 | `offline.mjs` | pending | Open `_site-offline/index.html` via file://, nav + search work |
+| 8 | `book.mjs` renderer half + `pdf.mjs` | pending | `pagedjs-cli` renders PDF without errors |
+
+Phase 2 shipped ahead of `render.mjs` (the originally-projected step 2)
+because the COMPUTE outputs don't depend on rendered markdown -- doing
+them first means RENDER and TEMPLATE can both consume the full per-page
+field set from day one without an "if `page.navLevels` is set yet"
+guard.
 
 ## Expected Outcome
 
