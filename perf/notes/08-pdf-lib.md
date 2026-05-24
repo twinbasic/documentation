@@ -4692,6 +4692,132 @@ shim imports. The shim is idempotent on import and global on
 install -- no opt-out at production, the `--fast-parse-name`
 flag exists for A/B harness work.
 
+## Pipeline the deflate: overlap buffer-build with libuv
+
+After `fast-parse-name` shipped, the CPU profile of the process
+phase showed `PDFObjectStream.getUnencodedContents` at #4 (45.97
+ms self, 123.75 ms with callees) and a fat `(idle)` row at
+31.82 ms / 3.4 %. The two are joined at the hip:
+`parallel-deflate.mjs`'s phase 2 ran the build and the deflate
+in two strictly serial passes:
+
+```js
+// before
+const unencoded = objectStreams.map(os => os.getUnencodedContents());        // ~120 ms main-thread block
+const deflated = await Promise.all(unencoded.map(buf => deflateAsync(buf))); // ~30 ms main-thread idle
+```
+
+Pass 1 built all 453 buffers on the main thread (the
+`getUnencodedContents` total subtree). Pass 2 fired all 453
+deflates into libuv at once and awaited them as a batch. The
+`(idle)` row was the main thread sleeping during that await.
+
+### The fix: fold the two `.map`s
+
+```js
+// after
+const deflated = await Promise.all(
+  objectStreams.map(os => deflateAsync(os.getUnencodedContents())),
+);
+```
+
+`.map` still iterates 453 times sequentially on the main thread,
+but each iteration now does build + dispatch in one step.
+`deflateAsync(buf)` returns a Promise immediately and the libuv
+worker picks up the buffer while the main thread starts building
+the next one. By the time the build loop finishes at ~120 ms,
+the first ~430 deflates have already run on the 4-worker pool
+(each takes ~0.3 ms compute); only the last handful are still in
+flight. The `await Promise.all` resolves almost immediately.
+
+### Why the savings are bounded
+
+The build loop is ~120 ms of main-thread JS; the total deflate
+compute is ~130 ms across 4 libuv threads, i.e. ~33 ms of wall.
+Pipelining overlaps the 33 ms of deflate-wall with the 120 ms of
+build-wall. Max possible win: the 33 ms idle. Build itself stays
+single-threaded -- pipelining can't shrink that.
+
+A bigger win would require putting the build itself on workers,
+but `getUnencodedContents` dispatches `.copyBytesInto()` on
+PDFDict / PDFArray / PDFNumber / PDFName / PDFRef / PDFString /
+PDFStream wrappers, and JS object wrappers can't cross
+`worker_threads` boundaries (the byte ranges live in `mainBuf` /
+`arrayMain`, but the dispatch logic is in pdf-lib + our shims).
+Either we duplicate ~500 lines of byte-emission into a worker
+file with SharedArrayBuffer views of the buffers, or we rewrite
+it as a native addon. Neither pays for itself at this row size.
+
+### Measured wins
+
+A/B on the book, 3 runs each, same shipped flag set, paired
+`--cpu-profile-process` (Windows /affinity-pinned):
+
+| Run                | process | load   | setOutline | save   |
+|--------------------|--------:|-------:|-----------:|-------:|
+| baseline A         |  0.89 s | 0.34 s |    0.01 s  | 0.48 s |
+| baseline B         |  0.90 s | 0.35 s |    0.01 s  | 0.47 s |
+| baseline C         |  0.87 s | 0.35 s |    0.01 s  | 0.45 s |
+| **baseline avg**   | **0.887 s** | 0.347 s | 0.010 s | **0.467 s** |
+| pipelined A        |  0.84 s | 0.34 s |    0.01 s  | 0.43 s |
+| pipelined B        |  0.83 s | 0.34 s |    0.01 s  | 0.42 s |
+| pipelined C        |  0.83 s | 0.34 s |    0.01 s  | 0.41 s |
+| **pipelined avg**  | **0.833 s** | 0.340 s | 0.010 s | **0.420 s** |
+| **delta**          | **-54 ms (-6.1 %)** | flat | flat | **-47 ms (-10.1 %)** |
+
+Load is flat (as expected -- no change touched it). Save dropped
+47 ms consistently across all 3 runs. The smoking gun in the CPU
+profile: baseline's `(idle)` row sat at 21 ms / 2.8 % (rank #9 of
+top 15); after pipelining the row drops out of the top 15
+entirely. That's the deflate-await idle being absorbed into the
+build wall, exactly as predicted.
+
+`getUnencodedContents` self-time also dropped (31.56 → 22.25 ms
+in the paired profiles), probably because in the baseline its
+samples were sandwiched between a sync build and a sync await
+with no other work to attribute against; in the pipelined version
+V8 task scheduling between the build and the fire-and-forget
+Promise creation absorbs some of that attribution. Either way the
+row stays in the top 15 -- the build itself is unchanged.
+
+### Why estimate (~32 ms) and actual (~47 ms) differ
+
+The estimate was derived from the `(idle)` row alone. The actual
+save delta is larger because the await also paid for:
+
+- Microtask-queue drain at the `Promise.all` gate (a few ms
+  across 453 settled promises).
+- libuv callback marshalling for the batch (the 24.75 ms
+  `writeSync` row in the baseline -- the inspector's name for
+  the deflate-result callback, not `fs.writeFileSync`). In the
+  pipelined version those callbacks fire spread out during the
+  build loop instead of bunched at the end.
+
+Both are small but real. Together they explain the gap between
+the 32 ms idle estimate and the 47 ms save delta.
+
+### What this teaches
+
+Two serial `.map`s with an `await` between them is almost always
+a missed pipeline. The fix is mechanical (fold into one `.map`),
+but the win only shows up when the second stage runs on a
+different execution context -- here, libuv's thread pool. For two
+main-thread stages there'd be no overlap to harvest and the diff
+would be a wash.
+
+The `(idle)` row in a CPU profile is the cheapest "next win" to
+spot: any time it's >2 %, there's an `await` somewhere that
+finished before its inputs were ready. Worth grepping for.
+
+### Shipped
+
+In-place edit to
+[`docs/lib/parallel-deflate.mjs`](../../docs/lib/parallel-deflate.mjs)
+at the `parallelSave` path; the harness's `--parallel-deflate`
+flag continues to flip the whole `parallelSave` path on, no new
+knob. `render-book.mjs` already calls `parallelSave` so the
+change is live in production without a new import.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -4737,7 +4863,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + fast-refs-class                    | ~0.9 s  | ~0.55 s | ~0.4 s |
 | + fast-dict-onebuf class shape       | ~0.9 s  | ~0.55 s | ~0.4 s |
 | + fast-array-onebuf class shape      | ~0.8 s  | ~0.5 s  | ~0.35 s |
-| **+ fast-parse-name (this section)** | **~0.75 s** | **~0.4 s** | **~0.35 s** |
+| + fast-parse-name                    | ~0.75 s | ~0.4 s  | ~0.35 s |
+| **+ pipeline-deflate (this section)** | **~0.7 s** | **~0.4 s** | **~0.3 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
