@@ -35,41 +35,40 @@ jobs:
       - name: Build with Jekyll
         run: bundle exec jekyll build
         working-directory: ./docs
-      - name: Set up Python for link checks
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.14'
-          cache: 'pip'
-      - name: Install Python deps
-        run: pip install -r requirements.txt
-      - name: Check online links (check_links.py)
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - name: Install Node.js dependencies
+        run: npm ci
+      - name: Check online links (check_links.mjs)
         # `--fallback-extensions html` mirrors what GitHub Pages does at request time:
         # an extensionless URL like `/FAQ` is served as `/FAQ.html`. This workflow's
         # Jekyll build runs without --baseurl (no Pages prefix), so no --base-path is
         # needed -- contrast with jekyll-gh-pages.yml.
         run: >-
-          python scripts/check_links.py
+          node scripts/check_links.mjs
           --offline --include-fragments
           --fallback-extensions html
           --index-files 'index.html,.'
           --root-dir docs/_site
           docs/_site
-      - name: Check offline links (check_links.py)
+      - name: Check offline links and live-link survivors (check_links.mjs)
+        # Strict check on `_site-offline/`: every link must resolve to an actual file
+        # under `file://`, with no extension fallback. `--forbid` also fails the build
+        # if any extracted link still points at https://docs.twinbasic.com/<path> --
+        # i.e. any live-site reference the offlinify rewrite missed. The bare root
+        # URL (https://docs.twinbasic.com[/]) is exempt, since intentional "go to the
+        # live site" links are allowed.
         run: >-
-          python scripts/check_links.py
+          node scripts/check_links.mjs
           --offline --include-fragments
           --index-files index.html
+          --forbid 'https://docs.twinbasic.com'
           --root-dir docs/_site-offline
           docs/_site-offline
-      - name: Check for surviving live-site links in offline tree
-        # Flags any https://docs.twinbasic.com/<path> reference left in
-        # _site-offline/ HTML outside <code>/<pre> blocks. After offlinify
-        # strips the jekyll-seo-tag block, anything surviving is a source
-        # link that points at the live site instead of using a relative or
-        # /tB/... permalink that resolves locally. The bare root URL
-        # (https://docs.twinbasic.com[/]) is exempt -- intentional "go to
-        # the live site" links are allowed.
-        run: python scripts/check_offline_live_links.py
       - name: Check book links (informational)
         # Failures do not block the build. The book still has absolute
         # intra-site URLs that the chapter transform has not yet rewritten
@@ -77,7 +76,7 @@ jobs:
         # for visibility until those are fixed.
         continue-on-error: true
         run: >-
-          python scripts/check_links.py
+          node scripts/check_links.mjs
           --offline --include-fragments
           --root-dir docs/_site-pdf
           docs/_site-pdf/book.html
