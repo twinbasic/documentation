@@ -57,62 +57,6 @@ jobs:
         env:
           JEKYLL_ENV: production
           PAGES_REPO_NWO: "${{ github.repository }}"
-      - name: Set up Python for link checks
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.14'
-          cache: 'pip'
-      - name: Install Python deps
-        run: pip install -r requirements.txt
-      - name: Check online links (check_links.py)
-        # `--fallback-extensions html` mirrors what GitHub Pages does at request time:
-        # an extensionless URL like `/FAQ` is served as `/FAQ.html`. Without the flag
-        # every pretty permalink on the site would look broken.
-        #
-        # `--base-path` strips the Pages baseurl (e.g. `/twinBASIC-docs`) from absolute
-        # URLs before resolving against `--root-dir`. Equivalent to the `--remap` regex
-        # that lychee used in earlier iterations of this step.
-        run: >-
-          python scripts/check_links.py
-          --offline --include-fragments
-          --fallback-extensions html
-          --index-files 'index.html,.'
-          --base-path '${{ steps.pages.outputs.base_path }}'
-          --root-dir docs/_site
-          docs/_site
-      - name: Check offline links (check_links.py)
-        # Strict check on `_site-offline/`: every link must resolve to an actual file
-        # under `file://`, with no extension fallback. Catches relative links in
-        # markdown sources that point at a permalink that doesn't match the rendered
-        # filename (e.g. `[Foo](Foo/)` when Jekyll wrote `Foo.html`, not
-        # `Foo/index.html`) -- the kind of breakage the online check above hides
-        # behind `--fallback-extensions html`.
-        run: >-
-          python scripts/check_links.py
-          --offline --include-fragments
-          --index-files index.html
-          --root-dir docs/_site-offline
-          docs/_site-offline
-      - name: Check for surviving live-site links in offline tree
-        # Flags any https://docs.twinbasic.com/<path> reference left in
-        # _site-offline/ HTML outside <code>/<pre> blocks. After offlinify
-        # strips the jekyll-seo-tag block, anything surviving is a source
-        # link that points at the live site instead of using a relative or
-        # /tB/... permalink that resolves locally. The bare root URL
-        # (https://docs.twinbasic.com[/]) is exempt -- intentional "go to
-        # the live site" links are allowed.
-        run: python scripts/check_offline_live_links.py
-      - name: Check book links (informational)
-        # Failures do not block the build. The book still has absolute
-        # intra-site URLs that the chapter transform has not yet rewritten
-        # and some fragment anchors that are not yet generated. Tracked here
-        # for visibility until those are fixed.
-        continue-on-error: true
-        run: >-
-          python scripts/check_links.py
-          --offline --include-fragments
-          --root-dir docs/_site-pdf
-          docs/_site-pdf/book.html
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -120,9 +64,40 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
       - name: Install Node.js dependencies and Chromium
+        # Install npm deps first so the link checks (check_links.mjs)
+        # can use htmlparser2. Chromium download runs in the same step
+        # so the cache hit / miss is one decision.
         run: |
           npm ci
           sudo npx puppeteer browsers install chrome --install-deps
+      - name: Check links (check_links.mjs)
+        # Three passes run in parallel via /sep/:
+        #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
+        #      extensionless-URL behaviour.  --base-path strips the Pages baseurl
+        #      (e.g. `/twinBASIC-docs`) from absolute URLs before resolving.
+        #   2. Offline (_site-offline/): strict, no extension fallback.  --forbid
+        #      catches any surviving https://docs.twinbasic.com/<path> link the
+        #      offlinify rewrite missed (bare root URL is exempt).
+        #   3. Book (_site-pdf/book.html): --no-fail makes failures informational
+        #      (some links are not yet fully resolved).
+        run: >-
+          node scripts/check_links.mjs
+          --offline --include-fragments
+          --fallback-extensions html
+          --index-files 'index.html,.'
+          --base-path '${{ steps.pages.outputs.base_path }}'
+          --root-dir docs/_site
+          docs/_site
+          /sep/
+          --offline --include-fragments
+          --index-files index.html
+          --forbid 'https://docs.twinbasic.com'
+          --root-dir docs/_site-offline
+          docs/_site-offline
+          /sep/
+          --offline --no-fail --include-fragments
+          --root-dir docs/_site-pdf
+          docs/_site-pdf/book.html
       - name: Render book PDF
         run: |
           mkdir -p _pdf

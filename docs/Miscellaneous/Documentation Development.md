@@ -201,7 +201,7 @@ To check that none of the internal links in the most recent documentation build 
 
     check.bat
 
-This runs three checks: `scripts/check_links.py` against `_site/` (the live tree, in offline mode), the same against `_site-offline/` (the file://-browsable mirror), and `scripts/check_offline_live_links.py` over `_site-offline/` that flags any surviving `https://docs.twinbasic.com/<path>` link --- the offline mirror should not navigate back to the live docs site. The same three checks run in CI on every pull request and on every push to `staging`.
+This runs two checks: `scripts/check_links.mjs` against `_site/` (the live tree, in offline mode), and the same against `_site-offline/` (the file://-browsable mirror) with `--forbid 'https://docs.twinbasic.com'` to also flag any surviving live-site link --- the offline mirror should not navigate back to the live docs site. The same two checks run in CI on every pull request and on every push to `staging`.
 
 ### Building and Local Serving
 

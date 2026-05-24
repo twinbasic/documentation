@@ -709,9 +709,10 @@ module Offlinify
       # Rewrite each `<site_url><path>` occurrence to its resolved
       # page-relative form via the same `compute_relative` the main
       # HTML pass uses. Unresolved matches fall back to the original
-      # absolute URL -- lychee will then flag the source as broken,
-      # which is the right behaviour for a real bug. If `site.url`
-      # is unset (empty), write the stub verbatim: lychee against
+      # absolute URL -- the offline link-check (check_links.mjs with
+      # --forbid) will then flag the source as broken, which is the
+      # right behaviour for a real bug. If `site.url` is unset
+      # (empty), write the stub verbatim: the link check against
       # _site-offline/ will still find the path-portion targets in
       # the same way the main HTML pass does, so the stub passes
       # link-check even though it won't navigate locally.
