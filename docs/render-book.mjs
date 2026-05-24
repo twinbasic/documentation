@@ -102,6 +102,24 @@ import { PDFDocument } from 'pdf-lib';
 //     object body; the upstream version pays three speculative
 //     matchKeyword fail-and-rewind costs on every invocation. Same
 //     semantics, dispatch reordered by observed frequency.
+//   fast-parse-name -- byte-keyed cache in front of
+//     PDFObjectParser.parseName. Upstream builds the name body via
+//     `name += charFromCode(byte)` per byte then hands the result
+//     to PDFName.of (fast-decode-name's string-keyed Map). 99.7 % of
+//     the 1.68 M calls per load on the book are cache hits -- the
+//     same ~5 k unique names show up over and over (Type, Length,
+//     Pages, MediaBox, ...) -- so the per-call string build + hash
+//     is pure overhead on the hot path. The shim scans bytes with
+//     direct buffer access, accumulates a small Smi hash, and
+//     looks up a `Map<hash, PDFName>` keyed by byte content. On
+//     hit (~99.7 %) it returns the PDFName with zero string
+//     allocation; on miss it builds the string in one shot via
+//     String.fromCharCode and routes through the upstream
+//     PDFName.of (which is fast-decode-name's cache on this stack)
+//     so both caches converge on the same PDFName instance. ~80 ms
+//     of process wall-clock saved (-9 %) on the book, mostly on
+//     load (0.41 s -> 0.33 s). +1.3 MB long-lived heap for the
+//     cache itself, a small price for the load-time reduction.
 //   fast-sync-load -- rip the parseSpeed / objectsPerTick /
 //     shouldWaitForTick / waitForTick machinery out of both pdf-lib's
 //     load path (PDFDocument.load + five PDFParser /
@@ -170,6 +188,7 @@ import './lib/fast-size-in-bytes.mjs';
 import { setExpectedDictSlots }     from './lib/fast-dict-onebuf.mjs';
 import { setExpectedArraySlots }    from './lib/fast-array-onebuf.mjs';
 import './lib/fast-parse-object.mjs';
+import './lib/fast-parse-name.mjs';
 import './lib/fast-sync-load.mjs';
 import './lib/fast-indirect-objects.mjs';
 import './lib/fast-pdfnumber-pool.mjs';

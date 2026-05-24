@@ -292,6 +292,7 @@ let fastParseNumber = false;
 let fastDictIter = false;
 let fastParseDict = false;
 let fastParseObject = false;
+let fastParseName = false;
 let fastSyncLoad = false;
 let fastDictArray = false;
 let fastIndirectObjects = false;
@@ -335,6 +336,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-dict-iter') fastDictIter = true;
   else if (a === '--fast-parse-dict') fastParseDict = true;
   else if (a === '--fast-parse-object') fastParseObject = true;
+  else if (a === '--fast-parse-name') fastParseName = true;
   else if (a === '--fast-sync-load') fastSyncLoad = true;
   else if (a === '--fast-dict-array') fastDictArray = true;
   else if (a === '--fast-indirect-objects') fastIndirectObjects = true;
@@ -461,6 +463,10 @@ if (fastParseDict) {
 if (fastParseObject) {
   await import('../docs/lib/fast-parse-object.mjs');
   console.log('[harness] fast-parse-object: first-byte dispatch in parseObject, gate true/false/null matchKeyword behind byte check');
+}
+if (fastParseName) {
+  await import('../docs/lib/fast-parse-name.mjs');
+  console.log('[harness] fast-parse-name: byte-slice + String.fromCharCode build for PDFObjectParser.parseName');
 }
 if (fastSyncLoad) {
   await import('../docs/lib/fast-sync-load.mjs');

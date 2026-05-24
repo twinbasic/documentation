@@ -4437,6 +4437,261 @@ with 1-2 inline fields. Further heap reduction requires either:
 Neither has been started; this section closes the per-instance
 constructor-shape round.
 
+## Byte-keyed cache for `PDFName` lookups
+
+After the constructor-shape round closed, the new #1 row in the
+process CPU profile was `PDFObjectParser.prototype.parseName` at
+**87 ms self + 57 ms via its `fastOf` callee = ~144 ms combined
+(~16 % of process)**. The function fires **1.68 M times per load**
+on the book. Worth interrogating before treating as a hot loop.
+
+### What `parseName` does
+
+```js
+PDFObjectParser.prototype.parseName = function () {
+    this.bytes.assertNext(CharCodes.ForwardSlash);
+    var name = '';
+    while (!this.bytes.done()) {
+        var byte = this.bytes.peek();
+        if (IsWhitespace[byte] || IsDelimiter[byte]) break;
+        name += charFromCode(byte);   // per-byte cons-string append
+        this.bytes.next();
+    }
+    return PDFName.of(name);
+};
+```
+
+Two obvious-looking attack surfaces:
+
+1. **Per-byte method dispatch** (`this.bytes.peek()`, `.next()`,
+   `.done()`) -- ~16 M method calls across the load.
+2. **Per-byte string concat** (`name += charFromCode(byte)`) --
+   ~16 M cons-string appends, allocating an intermediate state per
+   byte until V8 flattens at the `PDFName.of(name)` lookup.
+
+### Two false starts
+
+The first version of `fast-parse-name.mjs` (not committed) kept
+the cons-string accumulator but read `this.bytes.bytes` /
+`.idx` / `.length` directly to skip the per-byte ByteStream
+dispatch:
+
+```js
+let name = '';
+while (idx < len) {
+  const byte = buf[idx];
+  if (IsWhitespace[byte] || IsDelimiter[byte]) break;
+  name += String.fromCharCode(byte);
+  idx++;
+}
+```
+
+Result: process wall-clock essentially flat (0.90 → 1.00 s,
+within noise). `parseName` self dropped out of the top 15 -- but
+the saved time migrated to attribution on the callers
+(`fastParseDictOneBuf` +35 ms, `fastParseObject` +21 ms) under
+V8 inlining and GC self +15 ms. The total didn't move.
+
+Lesson: **V8 already optimises the cons-string `+=` path well.**
+Per-byte appends use cons-string representation that defers the
+flatten until first use (`PDFName.of`'s string-hash lookup forces
+it). The method-call dispatch was apparently not the dominant
+cost; the cons-string flatten + `Map<string, PDFName>` lookup
+was.
+
+A second sketch (also not committed) built the lookup string via
+`String.fromCharCode.apply(null, buf.subarray(start, idx))` --
+the textbook "one-shot allocation" approach. It made things
+**worse** (~123 ms vs upstream ~87 ms). `.apply` on a Uint8Array
+view is a V8 deopt path: the engine has to convert each
+typed-array element to a stack arg, and the overhead exceeds the
+cons-string build it was meant to replace.
+
+Both attempts missed the actual surface.
+
+### The real surface: 99.7 % of the work is cache hits
+
+The instrumentation script
+[`perf/instrument-objclasses.mjs`](../instrument-objclasses.mjs)
+reports:
+
+| | calls    | unique | hit rate |
+|---|--------:|-------:|---------:|
+| `PDFName.of` | 1 681 225 | 4 787 | **99.715 %** |
+
+Of every 1 000 `parseName` calls, **997** hand the same byte
+sequence to `PDFName.of`'s string-keyed Map, get back the same
+`PDFName` instance, and discard the lookup string. The string was
+built, hashed, looked up, and thrown away -- the answer was
+already known.
+
+`Type`, `Length`, `Pages`, `MediaBox`, `Resources`, `Contents`,
+`Parent`, `Kids`, `Count`, `Font`, ... -- a few thousand names
+appear over and over across 260 k dicts.
+
+### The byte-cache
+
+Add a second cache layer in front of `PDFName.of`, keyed by the
+byte content of the name body (not the constructed string).
+
+```js
+// Scan body + Java-style hash in one pass. Smi math, no allocs.
+let hash = 0;
+while (idx < len) {
+  const byte = buf[idx];
+  if (IsWhitespace[byte] || IsDelimiter[byte]) break;
+  hash = (hash * 31 + byte) | 0;   // Smi
+  idx++;
+}
+
+// Map<hash, Entry | Entry[]>. Single-entry buckets are the common
+// case (4.8 k names into 2^32 hash space -> ~0 collisions).
+const bucket = byteCache.get(hash);
+if (bucket instanceof Entry) {
+  if (_bytesEqual(bucket.bytes, buf, start, idx)) return bucket.name;
+}
+// ... collision-bucket scan, then miss path.
+```
+
+On hit -- 99.7 % of calls -- return the cached `PDFName` with
+**zero string allocation, zero `Map<string, ...>` hashing**. Just
+a hash compute, a `Map<number, ...>` lookup, a `Uint8Array`
+equality check.
+
+On miss, build the string in one shot (`String.fromCharCode`
+with direct args via the existing fast path -- not `.apply` on a
+typed-array view), route through `PDFName.of` (which on this
+stack is fast-decode-name's string-keyed Map), and cache the
+returned `PDFName` in the byte-cache for next time. Both caches
+converge on the same `PDFName` instance per logical name, so
+identity comparisons (`name === PDFName.Type`) keep working
+everywhere downstream.
+
+### Bucket shape: `Entry | Entry[]`
+
+The Map values are polymorphic on purpose. Single-entry buckets
+store the `Entry` directly; on collision we promote to an
+`Entry[]` for linear scan. For 4.8 k unique names hashed into
+2^32 space, the expected collision count is ~0 (birthday bound).
+The polymorphic check (`bucket instanceof Entry`) only fires once
+per lookup, no IC degradation observed in practice.
+
+Stable hidden class for `Entry`: a plain class with
+`{ bytes, name }` set in the constructor body. Same pattern as
+`fast-refs-class` / `fast-dict-onebuf`'s `_FastDict` etc -- avoid
+`Object.create + writes`, give V8 a fixed shape from the start.
+
+### Hash function: Java-style `hash * 31 + byte`
+
+```js
+hash = (hash * 31 + byte) | 0;
+```
+
+- The `| 0` keeps `hash` in 32-bit signed Smi range, which V8
+  represents as an unboxed integer (no `HeapNumber` allocation).
+- `* 31` compiles to `(x << 5) - x` which is cheap.
+- Length is implicit in the iteration count (different-length
+  names with the same byte sums hash differently).
+- Collisions for the 4.8 k unique book names are zero in practice;
+  even if they occurred, the bucket scan catches them.
+
+FNV-1a was considered but adds two more shift-add ops per byte
+without measurable improvement for this collision count.
+
+### Measured
+
+Paired heap + cpu profile, baseline = the array-class state from
+the constructor-shape round, this on top:
+
+| Frame                          | Pre (ms) | Post (ms) | Delta              |
+|--------------------------------|---------:|----------:|-------------------:|
+| `PDFObjectParser.parseName`    |    87.14 |  (gone)   | **-87+ ms** (out of top 15) |
+| `fastOf` (PDFName decode-name) |    52.76 |  (gone)   | **-52+ ms** (out of top 15) |
+| `fastParseName` (new row)      |       -- |    58.52  | +58 ms (the cache lookup itself) |
+| `(garbage collector)`          |    58.69 |    80.31  | +21 ms (live-cache mark cost) |
+| Combined parseName + fastOf    |    ~144  |    ~58    | **-86 ms (-60 %)** |
+
+| Phase / metric                | Pre      | Post     | Delta               |
+|-------------------------------|---------:|---------:|--------------------:|
+| Process wall-clock (cpu run)  |  0.90 s  |  0.82 s  | **-80 ms (-9 %)**   |
+|   load                        |  0.41 s  |  0.33 s  | -80 ms              |
+|   save                        |  0.42 s  |  0.42 s  | flat                |
+| Heap (sampled total)          | 33.68 MB | 34.98 MB | +1.30 MB (cache)    |
+|   new `fastParseName` row     |        0 | 1 269 KB | the cache itself    |
+|   `set` (builtin)             |   624 KB |   852 KB | +228 KB (Map.set)   |
+
+The CPU win is all on load (which is where `parseName` runs);
+save is unchanged. Heap is +1.3 MB long-lived (the cache + 4.8 k
+`Uint8Array` byte-keys + Entry objects + `Map<number, ...>`
+overhead), a fixed cost for a workload-bounded cache.
+
+### A note on the heap-profile wall-clock
+
+Under `--heap-profile-process --heap-sampling 512`, the same run
+shows a much bigger speedup than the cpu-profile run:
+
+|                                  | Pre (heap-prof) | Post (heap-prof) | Delta    |
+|----------------------------------|----------------:|-----------------:|---------:|
+| Process wall-clock (heap run)    |          3.50 s |           2.56 s | -940 ms  |
+
+That 940 ms is **not a real wall-clock win** -- it's the
+sampler's per-allocation bookkeeping overhead dropping in step
+with the ~1.6 M transient allocations we just eliminated. The
+sampler fires once every 512 B; even at 64 B per allocation
+that's ~12 % of allocations sampled, but the bookkeeping work
+runs on **every** allocation to decide whether to sample.
+
+Read the cpu-profile number (-80 ms) for "did we get faster";
+read the heap-row delta (+1.3 MB) for "what's the long-lived
+cost". The 940 ms drop under heap profile is a secondary signal
+that confirms the allocation count dropped a lot even though most
+of those allocations were under the 512 B sample threshold and
+don't appear in the heap table.
+
+### Caveats
+
+- **Cache is process-lifetime.** Same as fast-decode-name. No
+  eviction; on the book the long-lived size stabilises at
+  ~1.3 MB (4.8 k entries × ~270 B amortised). For a workload
+  with very many unique names this would grow; for PDFs it
+  doesn't.
+- **`Map<number, value>` for the hash bucket.** V8's Map handles
+  Smi keys well, but allocates Map entry objects on `.set`.
+  The +228 KB in the `set` builtin row is mostly that.
+- **The byte-cache and fast-decode-name's string-cache are not
+  the same Map.** Both cache `PDFName` lookups, keyed
+  differently. Direct `PDFName.of("Foo")` calls (from non-parser
+  code) skip the byte-cache and hit fast-decode-name directly;
+  subsequent parser hits on the same name use the byte-cache.
+  Both return the same `PDFName` instance because the miss path
+  of the byte-cache goes through `PDFName.of`, which is
+  fast-decode-name.
+
+### What this teaches
+
+The two failed first attempts share a lesson: **V8 is good at
+the things you'd naively want to avoid** (cons-string `+=`,
+method dispatch through a small wrapper class). The wins come
+from eliminating the actual repeated work, not from rewriting
+the loop body.
+
+`parseName` looked like a hot loop. It was actually a hot lookup
+that built the lookup key by hand on every call. Move the
+key-build out of the hot path -- by caching the answer keyed on
+the raw input -- and the loop becomes irrelevant. Same lesson as
+the constructor-shape round (`Object.create + writes` is slow
+because V8 takes a different IC path, not because the writes
+themselves are slow); same lesson likely lurking in other "hot
+loop" rows in the profile.
+
+### Shipped
+
+[`docs/render-book.mjs`](../../docs/render-book.mjs) adds
+`import './lib/fast-parse-name.mjs';` next to the other parser-
+shim imports. The shim is idempotent on import and global on
+install -- no opt-out at production, the `--fast-parse-name`
+flag exists for A/B harness work.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -4481,7 +4736,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + skipJibberish digit fast-path      | ~0.95 s | ~0.6 s | ~0.4 s |
 | + fast-refs-class                    | ~0.9 s  | ~0.55 s | ~0.4 s |
 | + fast-dict-onebuf class shape       | ~0.9 s  | ~0.55 s | ~0.4 s |
-| **+ fast-array-onebuf class shape (this section)** | **~0.8 s** | **~0.5 s** | **~0.35 s** |
+| + fast-array-onebuf class shape      | ~0.8 s  | ~0.5 s  | ~0.35 s |
+| **+ fast-parse-name (this section)** | **~0.75 s** | **~0.4 s** | **~0.35 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,
