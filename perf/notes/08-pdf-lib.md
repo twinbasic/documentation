@@ -4060,6 +4060,106 @@ inflating + diffing all 453 ObjStm streams modulo `/CreationDate`
 no production import or flag change needed since `--fast-sync-load`
 was already wired up.
 
+## Class-constructor `PDFRef` shape
+
+The `Object.create + writes` trick the original `fast-refs` shim uses
+to skip the upstream `ENFORCER` check and `pool.set` (see [Skip
+`PDFRef` `pool.set` on the gen=0 miss path](#skip-pdfref-poolset-on-the-gen0-miss-path)
+above) carries an unexpected per-instance cost: V8 transitions the
+hidden class through one intermediate map per property write and
+routes the result through the slow-property path. On the book a
+fast-refs-built PDFRef sits at ~60 B/instance vs PDFName's ~31 B
+(built via `new PDFName(...)` -- a real constructor with a stable
+hidden class from the first instance).
+
+### The shim
+
+Plain function used as a constructor, both fields set in one shot:
+
+```js
+function _FastRef(objectNumber, generationNumber) {
+  this.objectNumber = objectNumber;
+  this.generationNumber = generationNumber;
+}
+_FastRef.prototype = PDFRef.prototype;
+
+PDFRef.of = function fastClassOf(objectNumber, generationNumber) {
+  if (generationNumber === undefined || generationNumber === 0) {
+    const existing = pool0[objectNumber];
+    if (existing) return existing;
+    const fresh = new _FastRef(objectNumber, 0);
+    pool0[objectNumber] = fresh;
+    return fresh;
+  }
+  return original.call(PDFRef, objectNumber, generationNumber);
+};
+```
+
+Aliasing `_FastRef.prototype = PDFRef.prototype` keeps
+`instanceof PDFRef` satisfied AND means method dispatch resolves
+on the shared prototype (no extra proto-chain hop). gen != 0 still
+falls back to the upstream `PDFRef.of` Map-based pool (rare on
+freshly-parsed PDFs).
+
+Same `toString` / `sizeInBytes` / `copyBytesInto` prototype
+overrides as the tag-drop section above -- the constructor produces
+gen=0 PDFRefs with no `tag` field at all, and the gen!=0 upstream
+fallback still sets `tag` but our overrides ignore it.
+
+### Measured heap
+
+Paired heap profile (`--fast-refs` vs `--fast-refs-class`, with the
+rest of the production shim set on):
+
+| Allocator                       | Pre        | Post       | Delta                  |
+|---------------------------------|-----------:|-----------:|-----------------------:|
+| Total sampled                   |  45.26 MB  |  41.39 MB  | **-3.87 MB (-8.5 %)**  |
+| `fastOf` / `fastClassOf` row    |   4 696 KB |   3 435 KB | -1 261 KB              |
+| `create` (builtin)              |   3 379 KB |   2 627 KB | -752 KB                |
+| `parseIndirectObjectHeader` row |   9 115 KB |   7 435 KB | -1 680 KB              |
+
+Per-PDFRef savings work out to ~16 B/instance × 226 k unique refs
+= ~3.7 MB, close to the measured 3.87 MB total. Not the full
+30 B-to-PDFName-floor (PDFRef carries 2 fields vs PDFName's 1),
+but a clean win and the construction-style change applies
+symmetrically to the other `Object.create`-built shapes
+(`fast-dict-onebuf._makeFromRange`,
+`fast-array-onebuf._makeFromRange`) for the next round.
+
+### Measured CPU
+
+Paired wall-clock and profile (`--cpu-profile-process`):
+
+| Row                        | Pre      | Post     | Delta              |
+|----------------------------|---------:|---------:|-------------------:|
+| Process wall-clock         | 1.13 s   | 0.99 s   | **-140 ms (-12 %)** |
+| load                       | 0.52 s   | 0.47 s   | -50 ms              |
+| save                       | 0.51 s   | 0.44 s   | -70 ms              |
+| `fastOf` (PDFRef) self-time| 28 ms    | out of top 15 | drops off      |
+
+GC self-time barely moved (87 ms → 82 ms), consistent with the
+allocation-rate drop being modest relative to mark-cost -- the live
+`fast-dict-onebuf` mainBuf still dominates the GC bill.
+
+### Wiring
+
+- [`docs/lib/fast-refs-class.mjs`](../../docs/lib/fast-refs-class.mjs)
+  -- new shim. Same `_writeUint` / `_digitCount` helpers as
+  `fast-refs`; same prototype overrides; only the construction style
+  differs.
+- [`docs/render-book.mjs`](../../docs/render-book.mjs) -- swaps
+  `import './lib/fast-refs.mjs'` for `import './lib/fast-refs-class.mjs'`.
+  Production runs through the new shim.
+- [`perf/measure.mjs`](../measure.mjs) -- adds the
+  `--fast-refs-class` flag with a mutex check against `--fast-refs`
+  (both shim `PDFRef.of`; loading both silently would not be
+  obvious if it broke something).
+
+`fast-refs.mjs` stays in the tree as an A/B baseline -- the
+construction style is the whole point of the comparison, so being
+able to flip back to the older shape with a flag is worth the
+20 lines of duplication.
+
 ## `@cantoo/pdf-lib`: not a drop-in replacement
 
 Spot-checked the maintained fork (`@cantoo/pdf-lib` 2.6.5) as an
@@ -4101,7 +4201,8 @@ Cumulative process-phase cost, baseline → after the shims to date:
 | + measure-pass Phase 1               | ~1.0 s  | ~0.7 s | ~0.4 s |
 | + fast-array-onebuf                  | ~1.0 s  | ~0.7 s | ~0.4 s |
 | + fast-refs tag drop                 | ~1.0 s  | ~0.7 s | ~0.4 s |
-| **+ skipJibberish digit fast-path (this section)** | **~0.95 s** | **~0.6 s** | **~0.4 s** |
+| + skipJibberish digit fast-path      | ~0.95 s | ~0.6 s | ~0.4 s |
+| **+ fast-refs-class (this section)** | **~0.9 s** | **~0.55 s** | **~0.4 s** |
 
 The bottom-up after the latest pair is what's left of pdf-lib's
 genuine parser work: `PDFDict.entries`, `PDFObjectParser.parseName`,

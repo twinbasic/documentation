@@ -282,6 +282,7 @@ let cloneCount = false;
 let renderOnly = false;
 let tracing = false;
 let fastRefs = false;
+let fastRefsClass = false;
 let parallelDeflate = false;
 let fastDecodeName = false;
 let fastNumberToString = false;
@@ -324,6 +325,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--tracing') tracing = true;
   else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
   else if (a === '--fast-refs') fastRefs = true;
+  else if (a === '--fast-refs-class') fastRefsClass = true;
   else if (a === '--parallel-deflate') parallelDeflate = true;
   else if (a === '--fast-decode-name') fastDecodeName = true;
   else if (a === '--fast-number-to-string') fastNumberToString = true;
@@ -416,9 +418,17 @@ if (instrumentSlotTypes && (incremental || renderOnly)) {
 
 // Install the dense-array cache for PDFRef.of's gen=0 path before any
 // pdf-lib operation. Side-effecting import; idempotent.
+if (fastRefs && fastRefsClass) {
+  console.error('--fast-refs and --fast-refs-class are mutually exclusive (both shim PDFRef.of).');
+  process.exit(2);
+}
 if (fastRefs) {
   await import('../docs/lib/fast-refs.mjs');
   console.log('[harness] fast-refs: PDFRef.of dense-array cache for gen=0');
+}
+if (fastRefsClass) {
+  await import('../docs/lib/fast-refs-class.mjs');
+  console.log('[harness] fast-refs-class: PDFRef.of dense-array cache + class-constructor shape');
 }
 if (fastDecodeName) {
   await import('../docs/lib/fast-decode-name.mjs');

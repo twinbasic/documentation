@@ -36,10 +36,27 @@ import { PDFDocument } from 'pdf-lib';
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
 //
-//   fast-refs         -- dense-array cache in front of PDFRef.of for
-//     the gen=0 case (82 % of ~1.2 M calls per load). ~0.2 s saved
-//     on load.
-//   fast-inflate      -- swaps pako.inflate for node:zlib.inflateSync
+//   fast-refs-class   -- dense-array cache in front of PDFRef.of for
+//     the gen=0 case (82 % of ~1.2 M calls per load) PLUS a
+//     class-constructor shape for the PDFRef instance, AND drops
+//     the per-instance `tag` string (toString / sizeInBytes /
+//     copyBytesInto compute from objectNumber / generationNumber
+//     directly via _writeUint + _digitCount helpers). Replaces the
+//     `Object.create(PDFRef.prototype) + property writes` pattern of
+//     the older fast-refs.mjs shim, which V8 routes through the
+//     slow-property path: PDFRef ended up at ~60 B/instance vs
+//     PDFName's ~31 B (`new PDFName(...)`-built). The constructor
+//     gives V8 a stable hidden class from the first instance and
+//     drops per-instance cost to ~44 B. On the book (226 k unique
+//     PDFRefs) the combined effect is ~3.87 MB heap (-8.5 % of
+//     total process-phase allocation) and ~140 ms wall-clock (-12 %
+//     of process) on top of the tag-drop refinement that already
+//     trimmed parseIndirectObjectHeader by ~4.3 MB. Same prototype
+//     methods, same instanceof semantics; the only change is the
+//     construction style. See "fast-refs-class" in
+//     perf/notes/08-pdf-lib.md. fast-refs.mjs stays in the tree as
+//     an A/B baseline (mutex-checked in measure.mjs).
+//   fast-inflate     -- swaps pako.inflate for node:zlib.inflateSync
 //     on the one pdf-lib call site that uses it
 //     (PDFCrossRefStreamParser during load). Negligible cost shift,
 //     but eliminates the last pdf-lib -> pako call at runtime.
@@ -144,7 +161,7 @@ import { PDFDocument } from 'pdf-lib';
 //     heap traffic from parseArray collapses (the `this.array`
 //     allocation + grow doublings across ~79 k PDFArrays). See
 //     "One-buffer PDFArray" in perf/notes/08-pdf-lib.md.
-import './lib/fast-refs.mjs';
+import './lib/fast-refs-class.mjs';
 import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
 import './lib/fast-decode-name.mjs';
