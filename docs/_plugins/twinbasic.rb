@@ -80,7 +80,14 @@ module Rouge
       id = /[a-z_]\w*/i
 
       state :whitespace do
-        rule %r/_[ \t]*\n/, Punctuation::LineContinuation
+        # Line continuation absorbs the next line's leading whitespace
+        # into the same LineContinuation token -- semantically the `_`
+        # plus trailing space, newline, and the continuing line's
+        # indent are one continuation unit, and folding them all into
+        # a single span keeps rendering consistent with the other
+        # states (`:attrargs`, `:dotted`, etc.) that already used the
+        # `_[ \t]*\n[ \t]*` form.
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
         rule %r/\n/, Text, :bol
         rule %r/[^\S\n]+/, Text
         rule %r/rem\b.*?$/i, Comment::Single
@@ -228,20 +235,41 @@ module Rouge
         rule(//) { pop! }
       end
 
+      # The :dim / :funcname / :typename / :typename_ext / :namespace /
+      # :end states each consume one or more identifiers that follow a
+      # specific opener keyword (Dim, Function, Class, Module, End, ...)
+      # and then pop back to :root. The original mixin :whitespace rule
+      # pushed :bol on `\n`, leaving the state on the stack so the next
+      # line's first identifier was mis-classified -- e.g.
+      #
+      #   Module MyModule
+      #       Option Private Module
+      #   End Module
+      #
+      # tokenised the second `Module` as Keyword + push :namespace, then
+      # `\n` pushed :bol, popping back to :namespace for the next line.
+      # The next line's `End` then matched the :namespace identifier rule
+      # and rendered as Name::Namespace (`nn`) instead of Keyword (`k`).
+      # The fix: drop mixin :whitespace, add non-newline whitespace plus
+      # the `_[ \t]*\n` line continuation, and let `\n` fall through to
+      # the empty-match `(//) { pop! }` so each state pops at end-of-line.
       state :dim do
-        mixin :whitespace
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
+        rule %r/[^\S\n]+/, Text
         rule %r/#{id}[%&@!#$]?/, Name::Variable, :pop!
         rule(//) { pop! }
       end
 
       state :funcname do
-        mixin :whitespace
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
+        rule %r/[^\S\n]+/, Text
         rule %r/#{id}[%&@!#$]?/, Name::Function, :pop!
         rule(//) { pop! }
       end
 
       state :typename do
-        mixin :whitespace
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
+        rule %r/[^\S\n]+/, Text
         rule id do |m|
           token Name::Class
           goto :typename_ext
@@ -250,7 +278,8 @@ module Rouge
       end
 
       state :typename_ext do
-        mixin :whitespace
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
+        rule %r/[^\S\n]+/, Text
         rule %r/(Extends|As)\b/i do |m|
           token Keyword
           goto :typename
@@ -259,13 +288,15 @@ module Rouge
       end
 
       state :namespace do
-        mixin :whitespace
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
+        rule %r/[^\S\n]+/, Text
         rule %r/#{id}([.]#{id})*/, Name::Namespace, :pop!
         rule(//) { pop! }
       end
 
       state :end do
-        mixin :whitespace
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
+        rule %r/[^\S\n]+/, Text
         rule %r/(Function|Sub|Property|Class|CoClass|Structure|Enum|Module|Namespace|Type|Interface|Select|If|With)\b/i,
           Keyword, :pop!
         rule(//) { pop! }
