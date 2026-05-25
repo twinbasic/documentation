@@ -1,7 +1,7 @@
 ---
 title: DataObject
 parent: VBRUN Package
-nav_order: 10
+nav_order: 12
 permalink: /tB/Packages/VBRUN/DataObject/
 redirect_from:
   - /tB/Modules/DataObject

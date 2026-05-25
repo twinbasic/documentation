@@ -1,7 +1,7 @@
 ---
 title: AsyncProperty
 parent: VBRUN Package
-nav_order: 10
+nav_order: 20
 permalink: /tB/Packages/VBRUN/AsyncProperty/
 redirect_from:
   - /tB/Modules/AsyncProperty

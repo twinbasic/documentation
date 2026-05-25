@@ -1,7 +1,7 @@
 ---
 title: PropertyBag
 parent: VBRUN Package
-nav_order: 10
+nav_order: 18
 permalink: /tB/Packages/VBRUN/PropertyBag/
 redirect_from:
   - /tB/Modules/PropertyBag

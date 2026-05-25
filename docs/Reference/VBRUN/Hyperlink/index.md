@@ -1,7 +1,7 @@
 ---
 title: Hyperlink
 parent: VBRUN Package
-nav_order: 10
+nav_order: 16
 permalink: /tB/Packages/VBRUN/Hyperlink/
 redirect_from:
   - /tB/Modules/Hyperlink

@@ -1,7 +1,7 @@
 ---
 title: ErrorStackFrame
 parent: VBRUN Package
-nav_order: 10
+nav_order: 15
 permalink: /tB/Packages/VBRUN/ErrorStackFrame/
 redirect_from:
   - /tB/Modules/ErrorStackFrame

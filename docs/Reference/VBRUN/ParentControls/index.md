@@ -1,7 +1,7 @@
 ---
 title: ParentControls
 parent: VBRUN Package
-nav_order: 10
+nav_order: 17
 permalink: /tB/Packages/VBRUN/ParentControls/
 redirect_from:
   - /tB/Modules/ParentControls
