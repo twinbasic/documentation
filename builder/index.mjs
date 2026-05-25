@@ -16,6 +16,7 @@ import { precomputeSeo } from "./seo.mjs";
 import { loadBookData, resolveBookChapters } from "./book.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
 import { renderPhase } from "./render.mjs";
+import { templatePhase } from "./template.mjs";
 
 function parseArgs(argv) {
   const args = { src: "docs" };
@@ -78,7 +79,10 @@ async function main() {
   await renderPhase(pages, site, staticFiles);
   t.lap("render");
 
-  console.log(`Phase 1+2+3 done: ${pages.length} pages, ${staticFiles.length} static files`);
+  await templatePhase(pages, site);
+  t.lap("template");
+
+  console.log(`Phase 1+2+3+4 done: ${pages.length} pages, ${staticFiles.length} static files`);
   console.log(t.summary());
 
   // Drift guard from PLAN-1.md §1.

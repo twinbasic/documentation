@@ -70,10 +70,33 @@ export async function discover(srcRoot) {
     });
   }));
 
-  pages.sort(bySrcRel);
+  // Jekyll sorts site.pages by basename (`name` = basename with
+  // extension) via `lib/jekyll/reader.rb:44`'s `site.pages.sort_by!
+  // (&:name)`. Mirror that with JS's stable Array#sort. Tied
+  // basenames (e.g. ~111 `index.md` pages from folder-style classes)
+  // are kept in fast-glob's input order; their relative position
+  // among sibling pages is then deterministically broken in Phase 2
+  // by the explicit `nav_order` values in each page's frontmatter,
+  // so the unstable-sort divergence Ruby exhibits between versions
+  // doesn't reach the rendered output.
+  pages.sort(byName);
+  // Static files keep the full-path sort -- Jekyll's reader sorts
+  // them with `site.static_files.sort_by!(&:relative_path)`, which
+  // is what `bySrcRel` does.
   staticFiles.sort(bySrcRel);
 
   return { pages, staticFiles };
+}
+
+function basename(p) {
+  const i = p.lastIndexOf("/");
+  return i < 0 ? p : p.slice(i + 1);
+}
+
+function byName(a, b) {
+  const an = basename(a.srcRel);
+  const bn = basename(b.srcRel);
+  return an < bn ? -1 : an > bn ? 1 : 0;
 }
 
 function bySrcRel(a, b) {

@@ -1,15 +1,32 @@
 // Triage harness: walk every page, find the first divergence from
-// Jekyll's body, then classify it into a coarse bucket so we can rank
+// Jekyll's output, then classify it into a coarse bucket so we can rank
 // remaining work by pattern frequency * visual severity.
+//
+// Two modes, selected at the command line:
+//
+//   node _triage.mjs               -- Phase 4 mode (default, canonical).
+//                                     Diffs page.html (full document, post-
+//                                     templatePhase) against _site/<destPath>.
+//                                     Strips the sidebar before classifying
+//                                     -- nav-order divergence is a Phase 1/2
+//                                     file-enumeration issue, not a Phase 4
+//                                     classifier-actionable bucket; reported
+//                                     once as "sidebar-only".
+//
+//   node _triage.mjs --phase3      -- Body-fragment mode (Phase 3 verification).
+//                                     Extracts <main>...</main>, strips the
+//                                     anchor-headings + children-TOC the
+//                                     layout adds, normalises whitespace,
+//                                     diffs against page.renderedContent.
 //
 // Severity scale:
 //   high   = visible to the reader (wrong colors, missing content, wrong
 //            text, broken links)
 //   medium = visible if you look (extra whitespace, missing class on a
 //            visible element)
-//   low    = invisible to readers but breaks byte-equality (class on
-//            an element that has no associated CSS, attribute order
-//            differences, layout-only quirks)
+//   low    = invisible to readers but breaks byte-equality (whitespace
+//            artefacts, ordering, layout-only quirks)
+//   info   = not a Phase 4 classifier-actionable bucket (upstream issue)
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -19,24 +36,51 @@ import { discover } from "./discover.mjs";
 import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { loadBookData, resolveBookChapters } from "./book.mjs";
+import { captureBuildInfo } from "./build-info.mjs";
 import { renderPhase } from "./render.mjs";
+import { templatePhase } from "./template.mjs";
 import { ACCEPTED_DIVERGENCE_PATHS } from "./accepted-divergences.mjs";
 
 const srcRoot = path.resolve(process.cwd(), "../docs");
 const siteRoot = path.join(srcRoot, "_site");
+const phase3Mode = process.argv.includes("--phase3");
+const showAll = process.argv.includes("--all");
 
 const { pages, staticFiles } = await discover(srcRoot);
 const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
-computeNav(pages, config);
+const { navTree } = computeNav(pages, config);
 const seo = precomputeSeo(pages, config);
 const bookData = await loadBookData(srcRoot);
 resolveBookChapters(bookData, pages);
-await renderPhase(pages, { config, ...seo, bookData }, staticFiles);
+const buildInfo = phase3Mode ? null : await captureBuildInfo();
+const site = { config, navTree, ...seo, buildInfo, bookData };
+await renderPhase(pages, site, staticFiles);
+if (!phase3Mode) await templatePhase(pages, site);
 
-// Classification rules. Each entry: { id, severity, label, test(jekyllCtx, oursCtx) }.
-// Run in order; first hit wins. Match against ~260 chars of context
-// around the first divergence point.
-const RULES = [
+// ---------- Phase 4 (full-page) rules ----------------------------------
+//
+// Classification runs in two passes:
+//   (a) content-based RULES tested against the diff context. These
+//       capture cross-region patterns -- a kramdown nbsp before a
+//       footnote backref, a Shiki/Rouge token-boundary mismatch,
+//       etc. They're more specific than region detection alone.
+//   (b) region-based fallback -- locate the first diff offset relative
+//       to landmark positions in the Jekyll document (head/sidebar/
+//       main-header/breadcrumbs/<main>/footer) and bucket by region.
+
+const PHASE4_RULES = [
+  {
+    id: "nbsp-empty-table-cell",
+    severity: "low",
+    label: "Empty table cell: kramdown emits <td>\\xa0</td>; Phase 3 padEmptyCells emits <td> </td>",
+    test: (j, o) => /<td[^>]*>\xa0/.test(j) && /<td[^>]*> /.test(o),
+  },
+  {
+    id: "nbsp-footnote-backref",
+    severity: "low",
+    label: "Footnote backref: kramdown emits &#160;<a class=\"reversefootnote\">; Phase 3 footnote_anchor rule emits a regular space",
+    test: (j, o) => /\xa0<a [^>]*class="reversefootnote"/.test(j) && / <a [^>]*class="reversefootnote"/.test(o),
+  },
   {
     id: "code-highlight-other-lang",
     severity: "medium",
@@ -67,12 +111,6 @@ const RULES = [
     test: (j, o) => /<li>\s*<h2/.test(j) && /<hr/.test(o),
   },
   {
-    id: "kramdown-image-as-table",
-    severity: "low",
-    label: "Kramdown misparses `![alt | text](url)` as a markdown table (the `|` in alt text trips the table detector); we correctly emit `<img>`",
-    test: (j, o) => /<td>!?\[/.test(j) && /<img\b/.test(o),
-  },
-  {
     id: "smart-quote",
     severity: "low",
     label: "Smart quote / apostrophe (curly vs straight, en-dash vs hyphen) divergence",
@@ -88,6 +126,31 @@ const RULES = [
     label: "Admonition rewrite skipped (body in <blockquote> instead of inside the alert div)",
     test: (j, o) => /markdown-alert/.test(j) && /<blockquote/.test(o),
   },
+  {
+    id: "scope-mapping",
+    severity: "medium",
+    label: "tB scope-to-class mapping mismatch (one Rouge class is the right answer; we picked the wrong neighbour)",
+    test: (j, o) => /class="(k|kt|kd|ow|o|nf|nc|nn|nv|n|nb|na|s|se|mi|mf|m|ld|lb|le|ln|lu|c1|cm|cp|lc|p|err)"/.test(j) &&
+                    /class="(k|kt|kd|ow|o|nf|nc|nn|nv|n|nb|na|s|se|mi|mf|m|ld|lb|le|ln|lu|c1|cm|cp|lc|p|err)"/.test(o),
+  },
+];
+
+// Phase 3 rules (body-fragment mode). Same as the historical set; the
+// nbsp rules are absent here because Phase 3's normalise() turns nbsp
+// into regular whitespace -- the diff is invisible after normalisation.
+const PHASE3_RULES = [
+  PHASE4_RULES.find((r) => r.id === "code-highlight-other-lang"),
+  PHASE4_RULES.find((r) => r.id === "no_toc-on-heading"),
+  PHASE4_RULES.find((r) => r.id === "list-paragraph-wrap"),
+  PHASE4_RULES.find((r) => r.id === "setext-heading-after-list"),
+  {
+    id: "kramdown-image-as-table",
+    severity: "low",
+    label: "Kramdown misparses `![alt | text](url)` as a markdown table (the `|` in alt text trips the table detector); we correctly emit `<img>`",
+    test: (j, o) => /<td>!?\[/.test(j) && /<img\b/.test(o),
+  },
+  PHASE4_RULES.find((r) => r.id === "smart-quote"),
+  PHASE4_RULES.find((r) => r.id === "blockquote-vs-admonition"),
   {
     id: "missing-anchor-attr",
     severity: "low",
@@ -106,13 +169,7 @@ const RULES = [
     label: "Table attribute differences (alignment, header markup)",
     test: (j, o) => /<th[^>]+>/.test(j) || /<th[^>]+>/.test(o),
   },
-  {
-    id: "scope-mapping",
-    severity: "medium",
-    label: "tB scope-to-class mapping mismatch (one Rouge class is the right answer; we picked the wrong neighbour)",
-    test: (j, o) => /class="(k|kt|kd|ow|o|nf|nc|nn|nv|n|nb|na|s|se|mi|mf|m|ld|lb|le|ln|lu|c1|cm|cp|lc|p|err)"/.test(j) &&
-                    /class="(k|kt|kd|ow|o|nf|nc|nn|nv|n|nb|na|s|se|mi|mf|m|ld|lb|le|ln|lu|c1|cm|cp|lc|p|err)"/.test(o),
-  },
+  PHASE4_RULES.find((r) => r.id === "scope-mapping"),
   {
     id: "attr-encoding",
     severity: "low",
@@ -123,58 +180,140 @@ const RULES = [
 
 const FALLBACK = { id: "other", severity: "?", label: "Unclassified divergence" };
 
-const buckets = new Map(); // id -> { rule, count, examples: [{srcRel, ctx}] }
+// ---------- region-based classifier (Phase 4 only) ---------------------
 
-let matched = 0;
-let differed = 0;
-let accepted = 0;
+// Severity for region buckets. Most chrome regions are medium (a wrong
+// SEO tag or footer link is visible), activation CSS / anchor-headings
+// are low (invisible to readers, just byte-level), sidebar is info
+// (out of Phase 4's scope -- nav order is a Phase 1/2 issue).
+const REGION_SEVERITY = {
+  "nav-order-propagation": { severity: "info", label: "Sidebar nav + per-page activation CSS only (Phase 1/2 file enumeration order propagating into the nav tree and the derived nth-child indices)" },
+  "sidebar-only":     { severity: "info",   label: "Sidebar-only diff (nav-order from Phase 1/2 file enumeration; nothing else differs)" },
+  "head-seo":         { severity: "medium", label: "Inside <!-- Begin Jekyll SEO tag --> block (title, og:*, canonical, JSON-LD)" },
+  "head-activation":  { severity: "low",    label: "Inside <style id=\"jtd-nav-activation\"> block (per-page CSS)" },
+  "head-other":       { severity: "medium", label: "Inside <head> but outside SEO + activation (meta, scripts, favicon)" },
+  "sidebar":          { severity: "info",   label: "Inside the sidebar's auxiliary blocks (site-title, nav-external-links, site-footer)" },
+  "svg-sprite":       { severity: "low",    label: "Inside the <svg class=\"d-none\"> icon sprite block" },
+  "main-header":      { severity: "medium", label: "Inside <div id=\"main-header\"> (search input, aux-nav)" },
+  "breadcrumbs":      { severity: "medium", label: "Inside <nav aria-label=\"Breadcrumb\"> block" },
+  "anchor-heading":   { severity: "low",    label: "Inside a heading's <a class=\"anchor-heading\"> wrapper" },
+  "body":             { severity: "medium", label: "Inside <main>...</main> (Phase 3 renderer territory)" },
+  "children-nav":     { severity: "medium", label: "Inside the children-nav block (auto-generated TOC at page bottom)" },
+  "footer-chrome":    { severity: "medium", label: "Inside <footer> (back-to-top, copyright, edit/offline links)" },
+  "search-footer":    { severity: "low",    label: "Inside the search-overlay / search-button block" },
+  "outside":          { severity: "low",    label: "Outside known regions (doctype, <html>, <body> opening, <body> closing, <html> close)" },
+};
 
-for (const p of pages) {
-  if (p.ext !== ".md") continue;
-  const jekyllPath = path.join(siteRoot, p.destPath);
-  let jekyllHtml;
-  try { jekyllHtml = await fs.readFile(jekyllPath, "utf8"); } catch { continue; }
-  const jekyll = extractMainBody(jekyllHtml);
-  const ours = normalise(p.renderedContent);
-  if (jekyll === ours) { matched++; continue; }
-  if (ACCEPTED_DIVERGENCE_PATHS.has(p.srcRel)) { accepted++; continue; }
-  differed++;
+// Walk jekyll once, find each landmark's start. Returns sorted array
+// of [pos, regionLabel] tuples for O(log n) region lookup per page.
+function buildRegionMap(jekyll) {
+  const landmarks = [];
+  const push = (pos, label) => { if (pos >= 0) landmarks.push([pos, label]); };
 
-  const minLen = Math.min(jekyll.length, ours.length);
-  let i = 0;
-  while (i < minLen && jekyll[i] === ours[i]) i++;
-  const ctxStart = Math.max(0, i - 60);
-  const ctxEnd = Math.min(Math.max(jekyll.length, ours.length), i + 200);
-  const jCtx = jekyll.slice(ctxStart, Math.min(ctxEnd, jekyll.length));
-  const oCtx = ours.slice(ctxStart, Math.min(ctxEnd, ours.length));
+  const headStart = jekyll.indexOf("<head>");
+  const headEnd = jekyll.indexOf("</head>");
+  push(headStart, "head-other");
 
-  let rule = RULES.find((r) => {
-    try { return r.test(jCtx, oCtx); } catch { return false; }
-  }) || FALLBACK;
+  const activationStart = jekyll.indexOf(`<style id="jtd-nav-activation">`);
+  const activationEnd = activationStart >= 0
+    ? jekyll.indexOf("</style>", activationStart) + "</style>".length
+    : -1;
+  push(activationStart, "head-activation");
+  if (activationEnd >= 0) push(activationEnd, "head-other");
 
-  const bucket = buckets.get(rule.id) || { rule, count: 0, examples: [] };
-  bucket.count++;
-  if (bucket.examples.length < 3) {
-    bucket.examples.push({ srcRel: p.srcRel, offset: i, jCtx, oCtx });
+  const seoStart = jekyll.indexOf("<!-- Begin Jekyll SEO tag");
+  const seoEnd = jekyll.indexOf("<!-- End Jekyll SEO tag -->");
+  push(seoStart, "head-seo");
+  if (seoEnd >= 0) push(seoEnd + "<!-- End Jekyll SEO tag -->".length, "head-other");
+
+  if (headEnd >= 0) push(headEnd + "</head>".length, "outside");
+
+  const spriteStart = jekyll.indexOf(`<svg xmlns="http://www.w3.org/2000/svg" class="d-none">`);
+  if (spriteStart >= 0) {
+    const spriteEnd = jekyll.indexOf("</svg>", spriteStart) + "</svg>".length;
+    push(spriteStart, "svg-sprite");
+    push(spriteEnd, "outside");
   }
-  buckets.set(rule.id, bucket);
+
+  const sideStart = jekyll.indexOf(`<div class="side-bar">`);
+  push(sideStart, "sidebar");
+  // The sidebar's matching </div> is just before <div class="main".
+  const mainStart = jekyll.indexOf(`<div class="main" id="top">`);
+  push(mainStart, "outside");
+
+  const headerStart = jekyll.indexOf(`<div id="main-header"`, mainStart);
+  push(headerStart, "main-header");
+  // header ends at the next `<div class="main-content-wrap">`.
+  const contentWrapStart = jekyll.indexOf(`<div class="main-content-wrap">`, mainStart);
+  push(contentWrapStart, "outside");
+
+  const breadcrumbStart = jekyll.indexOf(`<nav aria-label="Breadcrumb"`, contentWrapStart);
+  if (breadcrumbStart >= 0) {
+    const breadcrumbEnd = jekyll.indexOf("</nav>", breadcrumbStart) + "</nav>".length;
+    push(breadcrumbStart, "breadcrumbs");
+    push(breadcrumbEnd, "outside");
+  }
+
+  const mainBodyStart = jekyll.indexOf("<main>", contentWrapStart);
+  const mainBodyEnd = jekyll.indexOf("</main>", mainBodyStart);
+  push(mainBodyStart, "body");
+
+  // children-nav lives inside <main>, but it's a Phase 4 emission
+  // distinct from body. The TOC heading "Table of contents" is the
+  // tell.
+  const tocHeadingPos = mainBodyStart >= 0
+    ? jekyll.indexOf(`<h2 class="text-delta">Table of contents</h2>`, mainBodyStart)
+    : -1;
+  if (tocHeadingPos >= 0 && tocHeadingPos < mainBodyEnd) {
+    // The <hr> + <h2> + <ul> block is children-nav.
+    push(tocHeadingPos, "children-nav");
+  }
+  if (mainBodyEnd >= 0) push(mainBodyEnd + "</main>".length, "outside");
+
+  const footerStart = jekyll.indexOf("<footer>", mainBodyEnd);
+  if (footerStart >= 0) {
+    const footerEnd = jekyll.indexOf("</footer>", footerStart) + "</footer>".length;
+    push(footerStart, "footer-chrome");
+    push(footerEnd, "outside");
+  }
+
+  const searchOverlay = jekyll.indexOf(`<div class="search-overlay">`, footerStart >= 0 ? footerStart : 0);
+  if (searchOverlay >= 0) {
+    push(searchOverlay, "search-footer");
+    push(searchOverlay + `<div class="search-overlay"></div>`.length, "outside");
+  }
+
+  landmarks.sort((a, b) => a[0] - b[0]);
+  return landmarks;
 }
 
-console.log(`Matched: ${matched} / Accepted: ${accepted} / Differed: ${differed} / Total .md: ${matched + accepted + differed}\n`);
-
-const sorted = [...buckets.values()].sort((a, b) => b.count - a.count);
-const sev = { high: 3, medium: 2, low: 1, "?": 0 };
-sorted.sort((a, b) => (sev[b.rule.severity] - sev[a.rule.severity]) * 1000 + (b.count - a.count));
-
-for (const b of sorted) {
-  console.log(`=== [${b.rule.severity}] ${b.rule.id} -- ${b.count} pages`);
-  console.log(`    ${b.rule.label}`);
-  for (const ex of b.examples) {
-    console.log(`    e.g. ${ex.srcRel} @ ${ex.offset}`);
-    console.log(`         J: ${JSON.stringify(ex.jCtx.slice(0, 120))}`);
-    console.log(`         O: ${JSON.stringify(ex.oCtx.slice(0, 120))}`);
+function regionOf(offset, regionMap) {
+  // Find the latest landmark <= offset (linear scan; per-page count is
+  // ~10-15 so binary search isn't worth the indirection).
+  let label = "outside";
+  for (const [pos, l] of regionMap) {
+    if (pos <= offset) label = l;
+    else break;
   }
-  console.log();
+  return label;
+}
+
+// Anchor-heading is emitted INSIDE the body (`<main>`) by Phase 4.
+// Specifically detect a diff inside an `<a ... class="anchor-heading">`
+// wrapper -- region-of would call this "body" but the cause is Phase 4
+// anchor injection, not Phase 3.
+function isInsideAnchorHeading(jekyll, offset) {
+  const start = jekyll.lastIndexOf("<a ", offset);
+  if (start < 0) return false;
+  const end = jekyll.indexOf(">", start);
+  if (end < 0 || end < offset) return false;
+  return jekyll.slice(start, end + 1).includes("anchor-heading");
+}
+
+// ---------- shared utilities -------------------------------------------
+
+function normalise(s) {
+  return s.replace(/\s+/g, " ").trim();
 }
 
 function extractMainBody(html) {
@@ -194,6 +333,151 @@ function extractMainBody(html) {
   return normalise(body);
 }
 
-function normalise(s) {
-  return s.replace(/\s+/g, " ").trim();
+const SIDEBAR_RE = /<nav aria-label="Main" id="site-nav"[\s\S]*?<\/nav>/;
+const ACTIVATION_RE = /<style id="jtd-nav-activation">[\s\S]*?<\/style>/;
+function stripSidebar(h) { return h.replace(SIDEBAR_RE, "<SIDEBAR/>"); }
+function stripActivation(h) { return h.replace(ACTIVATION_RE, "<ACTIVATION/>"); }
+function stripNavRelated(h) { return stripActivation(stripSidebar(h)); }
+
+// ---------- main loop --------------------------------------------------
+
+const buckets = new Map(); // id -> { rule, count, examples }
+let matched = 0;
+let differed = 0;
+let accepted = 0;
+let sidebarOnly = 0;
+let navOrderPropagation = 0;
+let skipped = 0;
+
+function bumpBucket(id, rule, page, offset, jCtx, oCtx) {
+  const b = buckets.get(id) || { rule, count: 0, examples: [] };
+  b.count++;
+  if (b.examples.length < 3) {
+    b.examples.push({ srcRel: page.srcRel, offset, jCtx, oCtx });
+  }
+  buckets.set(id, b);
+}
+
+const RULES = phase3Mode ? PHASE3_RULES.filter(Boolean) : PHASE4_RULES;
+
+for (const p of pages) {
+  if (phase3Mode) {
+    if (p.ext !== ".md") continue;
+  } else {
+    if (p.frontmatter.layout === "book-combined") continue;
+    if (typeof p.html !== "string") { skipped++; continue; }
+  }
+
+  const jekyllPath = path.join(siteRoot, p.destPath);
+  let jekyllHtml;
+  try { jekyllHtml = await fs.readFile(jekyllPath, "utf8"); } catch { skipped++; continue; }
+
+  let jekyllSubject, oursSubject;
+  if (phase3Mode) {
+    jekyllSubject = extractMainBody(jekyllHtml);
+    oursSubject = normalise(p.renderedContent);
+  } else {
+    jekyllSubject = jekyllHtml;
+    oursSubject = p.html;
+  }
+
+  if (jekyllSubject === oursSubject) { matched++; continue; }
+  if (ACCEPTED_DIVERGENCE_PATHS.has(p.srcRel)) { accepted++; continue; }
+  differed++;
+
+  // Phase 4 special: if the only diff is in the sidebar (and/or in the
+  // activation CSS, which is derived from nav position), bucket once
+  // as info and move on. No content rule fires -- the diff isn't
+  // Phase-4-actionable; the root cause is Phase 1's file enumeration
+  // order mismatch with Jekyll's Ruby Dir.glob, and it propagates
+  // through Phase 2's nav-tree position into both the rendered sidebar
+  // and the per-page activation CSS's nth-child indices.
+  if (!phase3Mode) {
+    if (stripSidebar(jekyllSubject) === stripSidebar(oursSubject)) {
+      sidebarOnly++;
+      bumpBucket(
+        "sidebar-only",
+        { id: "sidebar-only", severity: "info", label: REGION_SEVERITY["sidebar-only"].label },
+        p, -1, "", "",
+      );
+      continue;
+    }
+    if (stripNavRelated(jekyllSubject) === stripNavRelated(oursSubject)) {
+      navOrderPropagation++;
+      bumpBucket(
+        "nav-order-propagation",
+        { id: "nav-order-propagation", severity: "info", label: REGION_SEVERITY["nav-order-propagation"].label },
+        p, -1, "", "",
+      );
+      continue;
+    }
+  }
+
+  // For Phase 4 mode, use sidebar-stripped subjects so the nav-order
+  // divergence doesn't dominate every page's diff offset. The diff
+  // offsets reported are in the stripped string.
+  const jStripped = phase3Mode ? jekyllSubject : stripSidebar(jekyllSubject);
+  const oStripped = phase3Mode ? oursSubject : stripSidebar(oursSubject);
+
+  const minLen = Math.min(jStripped.length, oStripped.length);
+  let i = 0;
+  while (i < minLen && jStripped[i] === oStripped[i]) i++;
+  const ctxStart = Math.max(0, i - 60);
+  const ctxEnd = Math.min(Math.max(jStripped.length, oStripped.length), i + 200);
+  const jCtx = jStripped.slice(ctxStart, Math.min(ctxEnd, jStripped.length));
+  const oCtx = oStripped.slice(ctxStart, Math.min(ctxEnd, oStripped.length));
+
+  // Content-based rule pass: more specific than region detection.
+  let rule = RULES.find((r) => {
+    try { return r.test(jCtx, oCtx); } catch { return false; }
+  });
+
+  if (rule) {
+    bumpBucket(rule.id, rule, p, i, jCtx, oCtx);
+    continue;
+  }
+
+  if (phase3Mode) {
+    bumpBucket("other", FALLBACK, p, i, jCtx, oCtx);
+    continue;
+  }
+
+  // Phase 4 region-based fallback. The stripped subject lost the
+  // sidebar, so region positions shift by `(sidebarLen - "<SIDEBAR/>".length)`.
+  // Build the region map against the STRIPPED jekyll so offsets line
+  // up directly with i.
+  const regionMap = buildRegionMap(jStripped);
+  let regionId = regionOf(i, regionMap);
+  if (regionId === "body" && isInsideAnchorHeading(jStripped, i)) {
+    regionId = "anchor-heading";
+  }
+  const regionInfo = REGION_SEVERITY[regionId] || { severity: "?", label: "(unknown region)" };
+  bumpBucket(regionId, { id: regionId, severity: regionInfo.severity, label: regionInfo.label }, p, i, jCtx, oCtx);
+}
+
+const mode = phase3Mode ? "Phase 3 (body fragment)" : "Phase 4 (full page)";
+const navLine = phase3Mode ? "" : `, Sidebar-only: ${sidebarOnly}, Nav-order-propagation: ${navOrderPropagation}`;
+const skippedLine = skipped > 0 ? `, Skipped: ${skipped}` : "";
+console.log(`Mode: ${mode}`);
+console.log(`Matched: ${matched}, Accepted: ${accepted}, Differed: ${differed}${navLine}${skippedLine}, Total: ${matched + accepted + differed + sidebarOnly + navOrderPropagation + skipped}\n`);
+
+const sorted = [...buckets.values()].sort((a, b) => b.count - a.count);
+const sev = { high: 3, medium: 2, low: 1, info: 0, "?": -1 };
+sorted.sort((a, b) => (sev[b.rule.severity] - sev[a.rule.severity]) * 1000 + (b.count - a.count));
+
+for (const b of sorted) {
+  console.log(`=== [${b.rule.severity}] ${b.rule.id} -- ${b.count} pages`);
+  console.log(`    ${b.rule.label}`);
+  const exCount = showAll ? b.examples.length : Math.min(3, b.examples.length);
+  for (let k = 0; k < exCount; k++) {
+    const ex = b.examples[k];
+    if (ex.offset < 0) {
+      // sidebar-only bucket -- no per-example context worth printing.
+      continue;
+    }
+    console.log(`    e.g. ${ex.srcRel} @ ${ex.offset}`);
+    console.log(`         J: ${JSON.stringify(ex.jCtx.slice(0, 120))}`);
+    console.log(`         O: ${JSON.stringify(ex.oCtx.slice(0, 120))}`);
+  }
+  console.log();
 }

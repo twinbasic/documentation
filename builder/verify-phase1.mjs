@@ -187,10 +187,13 @@ async function main() {
     "assets/css/print.css not in staticFiles") &&
     passed("excluded: assets/css/print.css");
 
-  // determinism: arrays sorted by srcRel
+  // determinism: pages sorted by basename (matches Jekyll's
+  // `site.pages.sort_by!(&:name)`), staticFiles by full srcRel
+  // (matches Jekyll's `site.static_files.sort_by!(&:relative_path)`).
+  const bn = (s) => s.slice(s.lastIndexOf("/") + 1);
   for (let i = 1; i < pages.length; i++) {
-    if (pages[i].srcRel <= pages[i-1].srcRel) {
-      assert(false, `pages not sorted at index ${i}: ${pages[i-1].srcRel} vs ${pages[i].srcRel}`);
+    if (bn(pages[i].srcRel) < bn(pages[i-1].srcRel)) {
+      assert(false, `pages not sorted by basename at index ${i}: ${pages[i-1].srcRel} vs ${pages[i].srcRel}`);
       break;
     }
   }
@@ -200,7 +203,7 @@ async function main() {
       break;
     }
   }
-  passed("pages and staticFiles sorted by srcRel");
+  passed("pages sorted by basename; staticFiles sorted by srcRel");
 
   if (process.exitCode) {
     console.log("\nFAILED");

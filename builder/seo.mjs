@@ -35,7 +35,13 @@ const HOMEPAGE_URLS = new Set([
 ]);
 
 export function precomputeSeo(pages, config) {
-  const markdown = new MarkdownIt({ html: true });
+  // typographer: true matches kramdown's smart_quotes (enabled by
+  // default for kramdown via _config.yml's `kramdown:` block). The
+  // visible effect on this site is `Do...Loop`, `For...Next`,
+  // `For Each...Next`, etc. in <title>, og:title, twitter:title, and
+  // JSON-LD headline -- with typographer they collapse to `Do…Loop`
+  // etc., matching Jekyll's rendered output.
+  const markdown = new MarkdownIt({ html: true, typographer: true });
 
   const seoSiteTitle = renderTitle(config.title, markdown);
   const logo = config.logo;

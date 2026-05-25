@@ -58,7 +58,11 @@ function renderPage(page, md) {
 // kramdown emits a single space inside otherwise-empty `<td>` / `<th>`
 // cells (`<td> </td>`); markdown-it leaves them collapsed (`<td></td>`).
 function padEmptyCells(html) {
-  return html.replace(/<(t[dh])([^>]*)><\/\1>/g, "<$1$2> </$1>");
+  // kramdown emits `<td>\xa0</td>` (nbsp) for empty cells; we mirror
+  // it so the rendered HTML byte-matches. Regular space here would
+  // visually look the same, but Phase 4's compress would later
+  // collapse it differently than kramdown's empty-cell content.
+  return html.replace(/<(t[dh])([^>]*)><\/\1>/g, "<$1$2> </$1>");
 }
 
 // Jekyll's Liquid renderer strips `{% raw %}` / `{% endraw %}` tags
@@ -998,7 +1002,10 @@ function configureFootnotes(md) {
   md.renderer.rules.footnote_anchor = (tokens, idx) => {
     const id = tokens[idx].meta.id;
     const n = id + 1;
-    return ` <a href="#fnref:${n}" class="reversefootnote" role="doc-backlink">&#8617;</a>`;
+    // Leading U+00A0 (nbsp) matches kramdown's footnote_anchor output --
+    // kramdown emits a nbsp before the backref so the arrow doesn't
+    // line-wrap away from the footnote text.
+    return ` <a href="#fnref:${n}" class="reversefootnote" role="doc-backlink">&#8617;</a>`;
   };
 
   md.renderer.rules.footnote_open = (tokens, idx) => {
