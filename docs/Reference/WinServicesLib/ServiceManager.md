@@ -161,7 +161,7 @@ Opens the SCM with `SC_MANAGER_CONNECT Or SC_MANAGER_CREATE_SERVICE`, calls `Cre
 > [!IMPORTANT]
 > [**Install**](#install) writes to the SCM database, which requires administrator rights. The usual pattern is to call it once from an elevated installer, not from the application's normal startup path. Running from within the twinBASIC IDE typically fails --- the IDE is rarely elevated.
 
-Raises run-time error 5 with a descriptive message on permission failure (*"Unable to open the Service manager..."*) or unrecoverable create failure (*"CreateServiceW() failed with error code <N>"*).
+Raises run-time error 5 with a descriptive message on permission failure (`"Unable to open the Service manager..."`) or unrecoverable create failure (`"CreateServiceW() failed with error code <N>"`).
 
 ### ReportStatus
 {: .no_toc }
