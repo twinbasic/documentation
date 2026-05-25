@@ -10,33 +10,29 @@ permalink: /FAQ
 
 ## General
 
-<details markdown=block open>
-<summary markdown=span><b>What is twinBASIC?</b></summary>
-{: #what-is-twinbasic }
+<details open>
+<summary markdown=span id="what-is-twinbasic"><b>What is twinBASIC?</b></summary>
 
 twinBASIC is a new BASIC language and development environment (IDE) aiming to be 100% backwards compatible with VB6/VBA. 
 
 </details>
 
-<details markdown=block open>
-<summary markdown=span><b>Who is behind twinBASIC?</b></summary>
-{: #authors }
+<details open>
+<summary markdown=span id="authors"><b>Who is behind twinBASIC?</b></summary>
 
 twinBASIC is the work of Wayne Phillips, who operates the company [Everything Access](https://www.everythingaccess.com/), a well established provider of professional tools and services for Microsoft Access and VBA generally, including the popular vbWatchdog software.
 
 </details>
 
-<details markdown=block open>
-<summary markdown=span><b>Where can I get twinBASIC?</b></summary>
-{: #where-to-get }
+<details open>
+<summary markdown=span id="where-to-get"><b>Where can I get twinBASIC?</b></summary>
 
 The latest version can be downloaded from the [Releases section](https://github.com/twinbasic/twinbasic/releases) of the [main twinBASIC GitHub repository](https://github.com/twinbasic/twinbasic). See [How do I install twinBASIC](#installation) for more information on installation.
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>What is the current status of the project?</b></summary>
-{: #current-status }
+<details>
+<summary markdown=span id="current-status"><b>What is the current status of the project?</b></summary>
 
 twinBASIC is currently late into the **Beta** stage, under development and not yet at a stable 1.0 release. All of the VB6/VBA7 syntax and intrinsic functions have been implemented. All of the basic controls except the OLE control, and about half of the Common Controls, have been implemented. It supports Forms, Classes, and UserControls-- both as compiled OCX/DLL controls and as in-project code (i.e. like .ctl files). However, not all features of these, such as properties, events, and methods, have been completed. Additionally, ActiveX EXEs and VBG project group support are not yet implemented, and there's a fair number of bugs remaining.
 
@@ -46,17 +42,15 @@ Krool's [VBCCR](https://github.com/Kr00l/VBCCR) and [VBFlexGrid](https://github.
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Is there an estimated timeline for when expected features will become available?</b></summary>
-{: #feature-timeline }
+<details>
+<summary markdown=span id="feature-timeline"><b>Is there an estimated timeline for when expected features will become available?</b></summary>
 
 Yes, see the [twinBASIC Roadmap](https://github.com/twinbasic/twinbasic/issues/335) in the Issues section for the latest update to the timeline. This roadmap only covers major components; smaller features are implemented in a less formal manner, usually when the related part of the codebase is being worked on.
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>What new features does twinBASIC have compared to VB6?</b></summary>
-{: #new-features }
+<details>
+<summary markdown=span id="new-features"><b>What new features does twinBASIC have compared to VB6?</b></summary>
 
 **Many!** It has 64bit compilation (using VBA7x64 compatible syntax), generics, overloading, multithreading (API-only right now, built in syntax coming soon), inheritance, ability to define interfaces and coclasses in your project using BASIC-style syntax, Unicode support in all controls and the editor (.twin files only), support for modern image formats, numerous enhancements to *Implements*, ability to create standard DLLs and kernel mode drivers, ability to set UDT packing alignment, and dozens of others, all available *right now*, with many more planned in the future.
 
@@ -64,9 +58,9 @@ For a full list of all the new features available right now, see the Wiki articl
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Where can I learn more about twinBASIC, find documentation, and participate in the community?</b></summary>
-{: #to-learn-more }
+<details>
+<summary markdown=span id="to-learn-more"><b>Where can I learn more about twinBASIC, find documentation, and participate in the community?</b></summary>
+
 [twinBASIC Home Page](https://twinbasic.com)
 
 twinBASIC GitHub: [Main section](https://github.com/twinbasic/twinbasic) \| [Issues](https://github.com/twinbasic/twinbasic/issues) \| [Discussions](https://github.com/twinbasic/twinbasic/discussions) \| [Language Design](https://github.com/twinbasic/lang-design) \| [ Language Specification](https://github.com/twinbasic/lang-spec) \| [Documentation](https://docs.twinbasic.com)
@@ -77,17 +71,15 @@ twinBASIC GitHub: [Main section](https://github.com/twinbasic/twinbasic) \| [Iss
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Is twinBASIC Open Source?</b></summary>
-{: #open-source }
+<details>
+<summary markdown=span id="open-source"><b>Is twinBASIC Open Source?</b></summary>
 
 While open source models are possible in the future, at this time the compiler is not. There are plans in the works to open source the IDE. To address some of the major concerns this presents, once tB hits it first major release, the source code will be placed in escrow, to be released to the community in the event the author disappears or is unable to continue working on it due to death or serious illness/injury. 
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>How much does twinBASIC cost?</b></summary>
-{: #cost }
+<details>
+<summary markdown=span id="cost"><b>How much does twinBASIC cost?</b></summary>
 
 There are 3 editions of twinBASIC: The Community Edition is FREE. A splash screen is placed on compiled 64bit binaries and certain features like advanced optimized compilation and future cross-platform compilation are unavailable, but there are no restrictions on core language features or royalties imposed. To get those features, subscriptions are available for the Professional and Ultimate editions. For more details, including current pricing for Professional and Ultimate editions, [see this page](https://twinbasic.com/preorder.html).
 
@@ -96,25 +88,22 @@ There are 3 editions of twinBASIC: The Community Edition is FREE. A splash scree
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Can I pay a one-time fee for a perpetual license?</b></summary>
-{: #perpetual-license }
+<details>
+<summary markdown=span id="perpetual-license"><b>Can I pay a one-time fee for a perpetual license?</b></summary>
 
 Due to the need for continuing income to be able to develop twinBASIC, subscriptions are the primary model for premium versions, which [are available](https://twinbasic.com/preorder.html) on a month-to-month or yearly basis. However, right now for a limited time, a buy-once perpetual license is available in the form of the [VIP Gold Lifetime Licence Initiative](https://twinbasic.com/vip.html). This provides not only a lifetime license to twinBASIC including updates and new versions, but numerous additional benefits available only to people who purchase this license. 
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Can twinBASIC be used to develop commercial products, and what royalties are owed?</b></summary>
-{: #commercial-use }
+<details>
+<summary markdown=span id="commercial-use"><b>Can twinBASIC be used to develop commercial products, and what royalties are owed?</b></summary>
 
 There are no restrictions on any edition of twinBASIC; they can all be used to develop commercial products, on a ROYALTY FREE basis. Nothing is owed for selling programs or other products created with twinBASIC. The twinBASIC software itself, however, may not be redistributed without appropriate license.
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>What does '100% backwards compatible' mean, technically?</b></summary>
-{: #backwards-compatibility }
+<details>
+<summary markdown=span id="backwards-compatibility"><b>What does '100% backwards compatible' mean, technically?</b></summary>
 
 Backwards compatibility refers to matching all publicly documented syntax, included controls, component and control behavior, and control appearance. It does not include undocumented, proprietary internal implementation details. So for example all language keywords, functions, and methods are present and should give the same results, and Forms/Classes/UserControls should implement all the same publicly documented interfaces, but twinBASIC exe files are not internally structured in the same way, and there isn't compatibility with the undocumented VB project info structures in the exe, whose contents have been reverse engineered over the years by the community. 
 
@@ -122,9 +111,8 @@ Currently, all basic controls have reimplementations in twinBASIC that support U
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>So some of my projects won't work?</b></summary>
-{: #when-it-does-not-work }
+<details>
+<summary markdown=span id="when-it-does-not-work"><b>So some of my projects won't work?</b></summary>
 
 Most projects do not use these reverse engineered internals, but some do: most commonly, for self-subclassing and callbacks inside Forms/Classes/UserControls; and also for multithreading and inline assembly. These routines have native support in twinBASIC without requiring internals hacks, so replacing these small parts of a few programs is very simple: `AddressOf` is supported on class members, so you can use regular subclassing and callback methods as you would if they were in a .bas module. `CreateThread` can be called without any special steps. And tB supports statically linked .obj files allowing incorporation of code from other languages, inline assembly in the form of `Emit()`/`EmitAny()` to insert instructions, and further support is planned in the future.
 
@@ -134,9 +122,8 @@ Other than those special cases, it's exceedingly rare for projects to depend on 
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>How do I report bugs or other problems?</b></summary>
-{: #bug-reporting }
+<details>
+<summary markdown=span id="bug-reporting"><b>How do I report bugs or other problems?</b></summary>
 
 The best way is to [create an issue](https://github.com/twinbasic/twinbasic/issues) in the twinBASIC GitHub repository.
 
@@ -144,9 +131,8 @@ You can also create a post in the #bugs channel of the [twinBASIC Discord server
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Is the twinBASIC IDE available in other languages?</b></summary>
-{: #localization }
+<details>
+<summary markdown=span id="localization"><b>Is the twinBASIC IDE available in other languages?</b></summary>
 
 The IDE currently has basic support for localizing all of the front end UI, with translations supplied by members of the community. These can be obtained from [#langpacks on the tB Discord server](https://discord.com/channels/927638153546829845/1329533568376115282), there's currently around 10 including French, German, Italian, Portuguese, Russian, Chinese (Simplified), Chinese (Traditional), Japanese, Swedish, Hungarian, Greek, Catalan, Indonesian (Bahasa), and Malayalam. Others may have been posted since this was written; check the channel.
 
@@ -156,9 +142,8 @@ Internal text such as the hover information does not yet support localization, b
 
 ## Installation
 
-<details markdown=block>
-<summary markdown=span><b>What are the system requirements for twinBASIC?</b></summary>
-{: #system-requirements }
+<details>
+<summary markdown=span id="system-requirements"><b>What are the system requirements for twinBASIC?</b></summary>
 
 The twinBASIC IDE is supported on Windows 7 through Windows 11. The installation is portable; you need only to extract the downloaded zip file then run; there's no installer. 
 
@@ -169,17 +154,15 @@ WebView2 is required. This is normally preinstalled on newer versions of Windows
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>twinBASIC won't run; says there's an invalid entry point.</b></summary>
-{: #invalid-entry-point }
+<details>
+<summary markdown=span id="invalid-entry-point"><b>twinBASIC won't run; says there's an invalid entry point.</b></summary>
 
 This issue is sometimes encountered on Windows 7. To be used on Windows 7, the OS must be fully updated; this error results from one or more missing updates. Run Windows Update to make sure you have all recent updates installed. If you still have problems, you can drop by the Discord or submit an issue on GitHub (see [`How do I report bugs or other problems?`](#bug-reporting))
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>The IDE reports missing files when I try to launch it.</b></summary>
-{: #missing-files }
+<details>
+<summary markdown=span id="missing-files"><b>The IDE reports missing files when I try to launch it.</b></summary>
 
 
 If, when launching the twinBASIC IDE, you are notified of missing files, the most likely reason is that the anti-virus software installed on your PC has quarantined some of the files needed by twinBASIC, mistakenly thinking that they contain a virus or other malware. Such erroneous detections are common with newly released software, so please be assured this is just a false-positive detection --- see also [the previous entry](#false-scanner-alerts) for context.
@@ -192,9 +175,8 @@ Please direct all negative emotions to your overactive anti-virus vendor :)
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>How do I install twinBASIC?</b></summary>
-{: #installation }
+<details>
+<summary markdown=span id="installation"><b>How do I install twinBASIC?</b></summary>
 
 tB does not require a full installation process, you need only extract the ZIP file. Download the latest version from the [Releases page](https://github.com/twinbasic/twinbasic/releases), named `twinBASIC_IDE_BETA_xxx.zip` (where xxx is a version number; click on 'Assets' to expand the file list if it's not already visible).
 
@@ -204,17 +186,15 @@ Download the zip and extract it to an **empty** folder. Do not simply overwrite 
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>How big is the twinBASIC installation?</b></summary>
-{: #installation-size }
+<details>
+<summary markdown=span id="installation-size"><b>How big is the twinBASIC installation?</b></summary>
 
 The IDE is quite small, it's currently only a 25MB download, about 80MB extracted, and that is half due to LLVM libraries.
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Where is twinBASIC IDE data stored?</b></summary>
-{: #ide-data-storage }
+<details>
+<summary markdown=span id="ide-data-storage"><b>Where is twinBASIC IDE data stored?</b></summary>
 
 In addition to the directory you extract the IDE to, twinBASIC stores files and settings in several locations:
 
@@ -238,9 +218,8 @@ In addition to the directory you extract the IDE to, twinBASIC stores files and 
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Is twinBASIC safe? (Some scanner) says it's malicious.</b></summary>
-{: #false-scanner-alerts }
+<details>
+<summary markdown=span id="false-scanner-alerts"><b>Is twinBASIC safe? (Some scanner) says it's malicious.</b></summary>
 
 Anyone who has ever tested their own programs against a wide variety of AV engines knows that unless your exe is 64bit and signed with a high-level certificate (and maybe not even then, until it's manually added to a trust list), false positives in a small number are simply a way of life. twinBASIC's IDE and compiler executables, like all apps in its position, may trigger a small number of positives on services like VirusTotal, particularly 32bit apps. These are almost always not from major vendors and/or "AI" based algorithmic detection.
 
@@ -248,9 +227,8 @@ Anyone who has ever tested their own programs against a wide variety of AV engin
 
 ## Using twinBASIC
 
-<details markdown=block>
-<summary markdown=span><b>How do I import my VB6 project into twinBASIC?</b></summary>
-{: #vb6-import }
+<details>
+<summary markdown=span id="vb6-import"><b>How do I import my VB6 project into twinBASIC?</b></summary>
 
 The easiest way is through the import wizard. When you first start the twinBASIC IDE, you're presented with the New Project dialog- this contains an 'Import from VBP' option:
 
@@ -266,9 +244,8 @@ You can import individual files, from VB projects or any type, through the Impor
 ![img](Images/16833fae-4bd7-418f-bb16-691a611a5b01.png){:style="width:50%; height:auto;"}
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Why do I see a lot of errors saying my variables are unrecognized?</b></summary>
-{: #unrecognized-variables }
+<details>
+<summary markdown=span id="unrecognized-variables"><b>Why do I see a lot of errors saying my variables are unrecognized?</b></summary>
 
 ![image](Images/e409ea37-96ad-44c5-8017-3699ef04b53d.png)
 
@@ -286,9 +263,8 @@ For an existing project, the Project Scope Option Explicit can be turned on or o
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Does twinBASIC support addins?</b></summary>
-{: #addins }
+<details>
+<summary markdown=span id="addins"><b>Does twinBASIC support addins?</b></summary>
 
 Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has its own addin infrastructure based on modern web technologies. See Samples 10 through 16 in the 'Samples' tab of the New Project dialog:
 
@@ -303,9 +279,8 @@ There are two locations that the addins can be installed to:
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>How do I use resources in twinBASIC?</b></summary>
-{: #resources }
+<details>
+<summary markdown=span id="resources"><b>How do I use resources in twinBASIC?</b></summary>
 
 Currently tB does not have a dedicated resource editor; instead, resources are managed through the Project Explorer. In the tree, you'll see a Resources folder; by default, it will include ICON in a Standard EXE, and MANIFEST, if you've chosen to enable Visual Styles:
 
@@ -341,9 +316,8 @@ For other standard types, you must use the # (pound sign) followed their number.
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>How do I set my own icon for my program?</b></summary>
-{: #app-icon }
+<details>
+<summary markdown=span id="app-icon"><b>How do I set my own icon for my program?</b></summary>
 
 By default newly created projects use the twinBASIC logo.  
 Imported projects use the icon of the Form chosen in Settings. This can be modified or set for all projects in the same way: in the Settings dialog for your project, there is an "Icon Form" option from which you can select which Form's icon will be used for your exe.
@@ -362,9 +336,8 @@ You may set both the Icon Form option and include additional ICON resources. In 
 
 </details> 
 
-<details markdown=block>
-<summary markdown=span><b>What are the runtime requirements for twinBASIC-produced EXEs/binaries?</b></summary>
-{: #runtime-requirements }
+<details>
+<summary markdown=span id="runtime-requirements"><b>What are the runtime requirements for twinBASIC-produced EXEs/binaries?</b></summary>
 
 Programs and modules/controls produced by twinBASIC have no native dependencies besides standard Windows system DLLs and are completely standalone/portable, besides of course 3rd party files your code may use. No runtime is required to be present.  
 Currently the minimum supported Windows version is **Windows XP**, with Windows 2000 support likely in the future. There are no current plans to support Windows ME, 98, 95, NT4, or earlier versions, as these lack key features for basic modernization provided by tB.  
@@ -373,9 +346,8 @@ Everything should also work under WINE and ReactOS, but testing, while successfu
 
 </details>
 
-<details markdown=block>
-<summary markdown=span><b>Why are EXEs produced by twinBASIC larger than VB6?</b></summary>
-{: #exe-size }
+<details>
+<summary markdown=span id="exe-size"><b>Why are EXEs produced by twinBASIC larger than VB6?</b></summary>
 
 The large majority of functionality, including major pieces like the Forms engine, is provided in VB6 applications/components by the msvbvm60.dll runtime, a 1.4MB file. twinBASIC applications/components have no such outside dependency; the Forms engine and all other functionality is included in the single exe, so the combined size isn't too far off. EXE size is expected to be reduced significantly with the introduction of LLVM-optimized compilation, coming soon.
 
