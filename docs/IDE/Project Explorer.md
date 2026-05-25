@@ -13,11 +13,6 @@ permalink: /tB/IDE/Project/Explorer
 ![Folder](Images/Folder.png "Folder") ImportedTypeLibraries  
 ![Folder](Images/Folder.png "Folder") Miscellaneous  
 ![Folder](Images/Folder.png "Folder") Packages  
-  <!-- ![Folder](Images/Folder.png "Folder") VB   -->
-  <!-- ![Folder](Images/Folder.png "Folder") VBA   -->
-  <!-- ![Folder](Images/Folder.png "Folder") VBComDlg   -->
-  <!-- ![Folder](Images/Folder.png "Folder") VBRUN   -->
-  <!-- ![Folder](Images/Folder.png "Folder") WinNativeCommonCtls   -->
 ![Folder](Images/Folder.png "Folder") References  
 ![Folder](Images/Folder.png "Folder") Resources  
 ![Folder](Images/Folder.png "Folder") Sources  
