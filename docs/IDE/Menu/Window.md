@@ -35,7 +35,7 @@ permalink: /tB/IDE/Project/Menu/Window
 ![Window Panel Layouts Default Menu](Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Default.png "Window Panel Layouts Default Menu")
 
 <details>
-<summary>&lt;DEFAULT&gt; (built-in)</summary>
+<summary markdown=span>&lt;DEFAULT&gt; (built-in)</summary>
 
 ```json
 {
@@ -149,7 +149,7 @@ permalink: /tB/IDE/Project/Menu/Window
 ![Window Panel Layouts Fullscreen Menu](Images/Menu_Window_PanelLayouts_ManagePanelLayouts_Fullscreen.png "Window Panel Layouts Fullscreen Menu")
 
 <details>
-<summary>&lt;FULLSCREEN&gt; (built-in)</summary>
+<summary markdown=span>&lt;FULLSCREEN&gt; (built-in)</summary>
 
 ```json
 {
@@ -226,7 +226,7 @@ permalink: /tB/IDE/Project/Menu/Window
 ![Window Keyboard Shortcuts - Manage Keyboard Shortcuts Menu](Images/Menu_Window_KeyboardShortcuts_ManageKeyboardShortcuts_1.png "Window Keyboard Shortcuts - Manage Keyboard Shortcuts Menu")
 
 <details>
-<summary>Options</summary>
+<summary markdown=span>Options</summary>
 
 ```json
 {

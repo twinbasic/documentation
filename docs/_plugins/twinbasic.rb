@@ -156,7 +156,18 @@ module Rouge
       end
 
       state :dotted do
-        mixin :whitespace
+        # The :dotted state handles `obj.member` (member access). It
+        # should NOT span newlines: in twinBASIC a statement ends at
+        # the newline unless explicitly continued with `_`, so an
+        # identifier on the NEXT line is not a member-access
+        # continuation and should be lexed by the normal root rules
+        # (which would, for instance, recognise `Exit Sub` as one
+        # Keyword instead of `Name + Keyword`). The original mixin
+        # `:whitespace` rule pushed `:bol` on `\n`, leaving `:dotted`
+        # on the stack and mis-classifying the next line's first
+        # identifier.
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
+        rule %r/[^\S\n]+/, Text
         rule %r/#{id}[%&@!#$]?/, Name, :pop!
         rule(//) { pop! }
       end
@@ -177,6 +188,18 @@ module Rouge
       end
 
       state :attrargs do
+        # Multi-line attribute argument lists use the standard `&` /
+        # `+` concat-and-line-continuation idiom inside the parens:
+        #
+        #   [Description("first part " & _
+        #                "second part")]
+        #
+        # The original state lacked rules for `&` (concat operator)
+        # and the `_[ \t]*\n` line continuation, so they fell through
+        # to the empty-match `(//) { pop! }` -- which popped out of
+        # `:attrargs` prematurely, leaving the closing `)]` to be
+        # tokenised in the wrong state (the `]` ended up as Error).
+        rule %r/_[ \t]*\n[ \t]*/, Punctuation::LineContinuation
         rule %r/[^\S\n]+/, Text
         rule %r/\)/, Punctuation, :pop!
         rule %r/,/, Punctuation
@@ -186,6 +209,10 @@ module Rouge
         rule %r/&O[0-7]+(_[0-7]+)*[%&!#@]?/i, Num::Integer
         rule %r/&B[01]+(_[01]+)*[%&!#@]?/i, Num::Integer
         rule %r/\d+[%&!#@]?/, Num::Integer
+        rule(
+          %r(&=|[*]=|/=|\\=|\^=|\+=|-=|<<=|>>=|<<|>>|:=|<=|>=|<>|[-&*/\\^+=<>]),
+          Operator
+        )
         rule id do |m|
           key = m[0].downcase
           if (kc = self.class.keyword_constants[key])

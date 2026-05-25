@@ -30,7 +30,7 @@ permalink: /tB/IDE/Project/Menu/Help
 
 ## About twinBASIC...
 
-![About | Help Menu](Images/Menu_Help_About.png "About | Help Menu")
+![About - Help Menu](Images/Menu_Help_About.png "About - Help Menu")
 
 ## Licence Agreement...
 

@@ -588,7 +588,7 @@ A file in a twinBASIC project that can contain bitmaps, text strings, or other d
 
 ## RGB
 
-A color value system used to describe colors as a mixture of red (R), green (G), and blue (B). The color is defined as a set of three integers (R, G, B) where each integer ranges from 0&ndash;255. A value of 0 indicates a total absence of a color component; a value of 255 indicates the highest intensity of a color component. See [**RGB**](Modules/Information/RGB) and [**RGBA**](Modules/Information/RGBA).
+A color value system used to describe colors as a mixture of red \(R\), green (G), and blue (B). The color is defined as a set of three integers (R, G, B) where each integer ranges from 0&ndash;255. A value of 0 indicates a total absence of a color component; a value of 255 indicates the highest intensity of a color component. See [**RGB**](Modules/Information/RGB) and [**RGBA**](Modules/Information/RGBA).
 
 ## run time
 
