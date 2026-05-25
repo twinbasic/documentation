@@ -173,7 +173,7 @@ When a module contains **Option Private Module**, the public parts, for example,
 > [!NOTE]
 > **Option Private** is a more verbose way of making modules or classes private to the package. An equivalent effect in a less verbose fashion is obtained with [**Private**](Private) statement as follows:
 >
-> ``` vb
+> ```tb
 > Private Module MyModule
 >     ' ...
 > End Module 
