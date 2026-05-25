@@ -1,0 +1,10 @@
+import MarkdownIt from 'markdown-it';
+const md = new MarkdownIt({html:true, breaks:false, xhtmlOut:true});
+console.log("---2 spaces---");
+console.log(JSON.stringify(md.render("foo  \nbar")));
+console.log("---3 spaces---");
+console.log(JSON.stringify(md.render("foo   \nbar")));
+console.log("---4 spaces---");
+console.log(JSON.stringify(md.render("foo    \nbar")));
+console.log("---tokens 3 spaces---");
+console.log(JSON.stringify(md.parse("foo   \nbar", {}), null, 2));

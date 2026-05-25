@@ -12,6 +12,10 @@
     "fast-glob": "^3.3",
     "gray-matter": "^4.0",
     "js-yaml": "^4.1",
-    "markdown-it": "^14.0"
+    "markdown-it": "^14.0",
+    "markdown-it-attrs": "^4.3",
+    "markdown-it-deflist": "^3.0",
+    "markdown-it-footnote": "^4.0",
+    "shiki": "^1.0"
   }
 }

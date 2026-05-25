@@ -156,22 +156,37 @@ measured timings: [PLAN-2.md](PLAN-2.md).
 
 ### Phase 3: RENDER (`render.mjs`, `highlight.mjs`)
 
-markdown-it setup:
-- GFM mode (tables, strikethrough, autolinks)
-- Block HTML parsing (enabled by default in markdown-it)
-- `markdown-it-attrs` for `{: .class }` / `{: .no_toc }` annotations
-- Custom plugin for GFM admonitions (`> [!NOTE]` etc.) -- ~40 lines
-- Shiki highlighter for fenced code blocks via `markdown-it` fence override
+Input: the `{ pages, staticFiles, site }` object Phase 2 returned. Phase 3
+reads each page's `rawContent` (markdown body) and writes one new field,
+`renderedContent`, holding the HTML body fragment.
 
-**twinBASIC grammar** (`twinbasic.tmLanguage.json`):
+Modules:
 
-Port the Rouge lexer's token rules to TextMate format:
-- ~140 keywords (statements, type keywords, operators)
-- States: root, string, attribute, dotted, dim, funcname, typename, namespace
-- Literals: hex (`&H`), octal (`&O`), binary (`&B`), dates (`#...#`), type suffixes
-- Preprocessor: `#If`, `#Const`, `#Region`
-- Line continuation: `_` at end of line
-- Custom token types: Boolean, Empty, Nothing, Null (map to TextMate scopes)
+- **`render.mjs`** -- markdown-it base setup (`html: true`, `typographer:
+  true`, `linkify: false`, `breaks: false`), plus a pre-render text pass
+  for GFM admonitions, plus plugins: `markdown-it-attrs` (with the
+  kramdown-style `{:` delimiter), `markdown-it-deflist`,
+  `markdown-it-footnote` (with rendering rules overridden to match
+  kramdown's `fnref:N` shape), custom plugins for header IDs (kramdown
+  slug algorithm), auto-TOC (`{:toc}`), relative-link rewriting
+  (`[X](Y.md)` → `[X](/perm-of-Y)` using by-path / by-permalink /
+  by-redirect-from tables), and `markdown="1"` block-HTML recursion.
+- **`highlight.mjs`** -- Shiki bootstrap, the
+  `builder/twinbasic.tmLanguage.json` grammar, a scope-to-Rouge-class
+  mapper so the existing `rouge.css` keeps working byte-for-byte, and
+  the wrapper-div emitter producing the Rouge-shaped `<div
+  class="language-tb highlighter-rouge"><div class="highlight"><pre
+  class="highlight"><code>...</code></pre></div></div>` structure.
+
+Replaces: kramdown's GFM converter + jekyll-relative-links (with the
+patch) + jekyll-gfm-admonitions (with the two patches) + Rouge + the
+custom `_plugins/twinbasic.rb` Rouge lexer. The JS port targets
+functionally equivalent HTML body output, verified by diff against
+Jekyll's rendered body fragments.
+
+Full spec, design decisions, edge cases, acceptance checklist,
+TextMate-grammar port plan, and implementation order:
+[PLAN-3.md](PLAN-3.md).
 
 ### Phase 4: TEMPLATE (`template.mjs`, `compress.mjs`)
 

@@ -1,0 +1,243 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "tb",
+  "displayName": "twinBASIC",
+  "scopeName": "source.tb",
+  "fileTypes": ["twin", "bas", "cls", "frm"],
+  "patterns": [
+    { "include": "#line-continuation" },
+    { "include": "#comments" },
+    { "include": "#preprocessor" },
+    { "include": "#dates" },
+    { "include": "#attribute-block" },
+    { "include": "#numbers" },
+    { "include": "#dotted-name" },
+    { "include": "#option-decl" },
+    { "include": "#exit-keyword" },
+    { "include": "#end-keyword" },
+    { "include": "#dim-keyword" },
+    { "include": "#funcname-keyword" },
+    { "include": "#typename-keyword" },
+    { "include": "#namespace-keyword" },
+    { "include": "#strings" },
+    { "include": "#literals" },
+    { "include": "#typed-identifier" },
+    { "include": "#types-keyword" },
+    { "include": "#operator-words" },
+    { "include": "#builtins" },
+    { "include": "#keywords" },
+    { "include": "#punctuation" },
+    { "include": "#operators" },
+    { "include": "#identifier" },
+    { "include": "#invalid" }
+  ],
+  "repository": {
+    "line-continuation": {
+      "match": "_[ \\t]*$",
+      "name": "punctuation.line-continuation.tb"
+    },
+    "comments": {
+      "patterns": [
+        { "match": "(?i)\\bREM\\b.*$", "name": "comment.line.tb" },
+        { "match": "'.*$", "name": "comment.line.tb" },
+        {
+          "begin": "/\\*",
+          "end": "\\*/",
+          "name": "comment.block.tb"
+        }
+      ]
+    },
+    "preprocessor": {
+      "patterns": [
+        {
+          "match": "(?i)#(?:If|ElseIf)\\b[^\\n]*?\\bThen\\b",
+          "name": "meta.preprocessor.tb"
+        },
+        { "match": "(?i)#Else\\b", "name": "meta.preprocessor.tb" },
+        { "match": "(?i)#End[ \\t]+If\\b", "name": "meta.preprocessor.tb" },
+        { "match": "(?i)#Const\\b", "name": "meta.preprocessor.tb" },
+        { "match": "(?i)#Region\\b[^\\n]*$", "name": "meta.preprocessor.tb" },
+        { "match": "(?i)#End[ \\t]+Region\\b", "name": "meta.preprocessor.tb" }
+      ]
+    },
+    "dates": {
+      "match": "#\\d[^#\\n]*#",
+      "name": "constant.other.date.tb"
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "match": "(?i)(?:\\d+\\.\\d*|\\d*\\.\\d+)(?:e[+-]?\\d+)?[!#@]?",
+          "name": "constant.numeric.float.tb"
+        },
+        {
+          "match": "(?i)\\d+e[+-]?\\d+[!#@]?",
+          "name": "constant.numeric.float.tb"
+        },
+        {
+          "match": "(?i)&H[0-9a-f]+(?:_[0-9a-f]+)*[%&!#@]?",
+          "name": "constant.numeric.integer.tb"
+        },
+        {
+          "match": "(?i)&O[0-7]+(?:_[0-7]+)*[%&!#@]?",
+          "name": "constant.numeric.integer.tb"
+        },
+        {
+          "match": "(?i)&B[01]+(?:_[01]+)*[%&!#@]?",
+          "name": "constant.numeric.integer.tb"
+        },
+        {
+          "match": "\\d+[%&!#@]?",
+          "name": "constant.numeric.integer.tb"
+        }
+      ]
+    },
+    "attribute-block": {
+      "begin": "\\[",
+      "end": "\\]",
+      "beginCaptures": { "0": { "name": "punctuation.tb" } },
+      "endCaptures": { "0": { "name": "punctuation.tb" } },
+      "patterns": [
+        {
+          "begin": "\\(",
+          "end": "\\)",
+          "beginCaptures": { "0": { "name": "punctuation.tb" } },
+          "endCaptures": { "0": { "name": "punctuation.tb" } },
+          "patterns": [
+            { "include": "#line-continuation" },
+            { "include": "#strings" },
+            { "include": "#numbers" },
+            { "include": "#literals" },
+            { "include": "#types-keyword" },
+            { "include": "#keywords" },
+            { "include": "#operators" },
+            { "match": ",", "name": "punctuation.tb" },
+            { "match": "(?i)[a-z_]\\w*[%&@!#$]?", "name": "entity.name.tb" }
+          ]
+        },
+        { "match": ",", "name": "punctuation.tb" },
+        { "match": "(?i)[a-z_]\\w*", "name": "entity.other.attribute-name.tb" }
+      ]
+    },
+    "strings": {
+      "begin": "\"",
+      "end": "\"(?!\")",
+      "name": "string.quoted.double.tb",
+      "patterns": [
+        { "match": "\"\"", "name": "string.escape.tb" }
+      ]
+    },
+    "literals": {
+      "patterns": [
+        { "match": "(?i)\\b(?:true|false)\\b", "name": "constant.language.boolean.tb" },
+        { "match": "(?i)\\bempty\\b", "name": "constant.language.empty.tb" },
+        { "match": "(?i)\\bnothing\\b", "name": "constant.language.nothing.tb" },
+        { "match": "(?i)\\bnull\\b", "name": "constant.language.null.tb" }
+      ]
+    },
+    "types-keyword": {
+      "match": "(?i)\\b(?:any|boolean|byte|currency|date|decimal|double|integer|long|longlong|longptr|object|single|string|variant)\\b",
+      "name": "storage.type.tb"
+    },
+    "operator-words": {
+      "match": "(?i)\\b(?:addressof|and|andalso|as|eqv|imp|is|isnot|like|mod|not|or|orelse|typeof|xor)\\b",
+      "name": "keyword.operator.word.tb"
+    },
+    "builtins": {
+      "match": "(?i)\\b(?:debug|err)\\b",
+      "name": "support.function.tb"
+    },
+    "option-decl": {
+      "match": "(?i)\\bOption[ \\t]+(?:Strict|Explicit|Compare|Base)[ \\t]+(?:On|Off|Binary|Text|0|1)\\b",
+      "name": "keyword.declaration.tb"
+    },
+    "exit-keyword": {
+      "comment": "Rouge matches `Exit Function|Sub|...` as one Keyword token, so we keep the whole phrase in a single scope (no captures) to render as one span.",
+      "match": "(?i)\\bExit[ \\t]+(?:Function|Sub|Property|For|Do|While)\\b",
+      "name": "keyword.control.tb"
+    },
+    "end-keyword": {
+      "comment": "Rouge tokenises `End` as one Keyword, then re-enters root, then matches the trailing Sub/Function/... as a separate Keyword in :end state -- so the rendered HTML has TWO adjacent <span class=\"k\"> elements. Split via captures so the same shape lands.",
+      "match": "(?i)\\b(End)\\b(?:([ \\t]+)(Function|Sub|Property|Class|CoClass|Structure|Enum|Module|Namespace|Type|Interface|Select|If|With)\\b)?",
+      "captures": {
+        "1": { "name": "keyword.control.tb" },
+        "3": { "name": "keyword.control.tb" }
+      }
+    },
+    "dim-keyword": {
+      "comment": "Begin/end so the whitespace between Dim and the identifier can span newlines (Rouge's :dim state mixes in :whitespace before matching the variable name). The end alternation matches the variable name OR pops at the next non-whitespace char if there's no identifier to consume.",
+      "begin": "(?i)\\b(Dim|Const|ReDim)\\b",
+      "beginCaptures": { "1": { "name": "keyword.control.tb" } },
+      "end": "(?i)([a-z_]\\w*[%&@!#$]?)|(?=\\S)",
+      "endCaptures": { "1": { "name": "variable.tb" } },
+      "patterns": [
+        { "include": "#line-continuation" },
+        { "include": "#comments" }
+      ]
+    },
+    "funcname-keyword": {
+      "comment": "Begin/end so the whitespace between Function/Sub/Property and the function name can span lines via a `_` line continuation. Mirrors Rouge's :funcname state. The end pattern includes `$` so the region also terminates at end-of-line when no continuation is seen -- without it the region would span newlines unconditionally and capture the next line's first identifier as a function name (Rouge's :funcname pops at end-of-line, so we must too).",
+      "begin": "(?i)\\b(Function|Sub|Property)\\b",
+      "beginCaptures": { "1": { "name": "keyword.control.tb" } },
+      "end": "(?i)([a-z_]\\w*[%&@!#$]?)|(?=\\S)|$",
+      "endCaptures": { "1": { "name": "entity.name.function.tb" } },
+      "patterns": [
+        { "include": "#line-continuation" },
+        { "include": "#comments" }
+      ]
+    },
+    "typename-keyword": {
+      "comment": "Rouge's :typename state matches a SINGLE identifier and tokens it as Name::Class. The Extends/As continuation (Rouge's :typename_ext) starts a fresh :typename for the next single identifier. A dotted continuation (`stdole.IUnknown`) leaves the typename state after `stdole`; `.IUnknown` then falls through to the dotted-name rule in :root. Stays as a one-line `match` rule because the source convention always puts the typename on the same line as the keyword.",
+      "match": "(?i)\\b(Alias|Class|CoClass|Structure|Enum|Type|Interface)\\b([ \\t]+)([a-z_]\\w*)(?:([ \\t]+)(Extends|As)([ \\t]+)([a-z_]\\w*))?",
+      "captures": {
+        "1": { "name": "keyword.control.tb" },
+        "3": { "name": "entity.name.type.tb" },
+        "5": { "name": "keyword.control.tb" },
+        "7": { "name": "entity.name.type.tb" }
+      }
+    },
+    "namespace-keyword": {
+      "match": "(?i)\\b(Module|Namespace|Imports)\\b([ \\t]+)([a-z_]\\w*(?:\\.[a-z_]\\w*)*)",
+      "captures": {
+        "1": { "name": "keyword.control.tb" },
+        "3": { "name": "entity.name.namespace.tb" }
+      }
+    },
+    "keywords": {
+      "match": "(?i)\\b(?:alias|byref|byval|call|case|class|close|coclass|const|continue|declare|default|delegate|dim|do|each|else|elseif|end|endif|enum|erase|error|event|exit|extends|finally|for|friend|function|get|global|gosub|goto|handles|if|implements|imports|inherits|input|interface|let|lib|line|lock|loop|me|mid|module|namespace|new|next|of|on|open|option|optional|overloads|paramarray|preserve|print|private|property|public|put|raiseevent|redim|resume|return|select|set|shared|static|step|stop|structure|sub|then|throw|to|try|type|unlock|until|using|wend|when|while|width|with|withevents|write)\\b",
+      "name": "keyword.control.tb"
+    },
+    "operators": {
+      "comment": "`:=` is intentionally NOT here -- Rouge tries punctuation first (which matches `:` from the [(){}!#,;:] char class) and then the standalone `=` matches the operator char class. Mirror that by leaving `:=` for the punctuation+operator split.",
+      "match": "&=|\\*=|/=|\\\\=|\\^=|\\+=|-=|<<=|>>=|<<|>>|<=|>=|<>|[-&*/\\\\^+=<>]",
+      "name": "keyword.operator.tb"
+    },
+    "punctuation": {
+      "patterns": [
+        { "match": "\\.", "name": "punctuation.tb" },
+        { "match": "[(){}!#,;:]", "name": "punctuation.tb" }
+      ]
+    },
+    "dotted-name": {
+      "comment": "After `.` the next identifier is always a member name (Rouge's :dotted state, which mixes in :whitespace before matching the identifier so a gap between `.` and the name still counts). Case-insensitive so the leading letter doesn't have to be lowercase.",
+      "match": "(?i)(\\.)([ \\t]*)([a-z_]\\w*[%&@!#$]?)",
+      "captures": {
+        "1": { "name": "punctuation.tb" },
+        "3": { "name": "entity.name.tb" }
+      }
+    },
+    "typed-identifier": {
+      "match": "(?i)[a-z_]\\w*[%&@!#$]",
+      "name": "entity.name.tb"
+    },
+    "identifier": {
+      "match": "(?i)[a-z_]\\w*",
+      "name": "entity.name.tb"
+    },
+    "invalid": {
+      "comment": "Anything not matched by any other rule (stray backticks, non-ASCII letters like 'À', etc.) becomes Rouge's Error token. Single-char to avoid swallowing whitespace.",
+      "match": "[^\\s]",
+      "name": "invalid.illegal.tb"
+    }
+  }
+}
