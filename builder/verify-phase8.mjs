@@ -346,6 +346,15 @@ async function main() {
     assert(false, `deriveBookOutputs differs across calls`);
   }
 
+  // ----- PLAN-9 §5.11 (B16) cross-reference completeness audit ---------
+  // Every <a href="<deploy-url>/..."> in book.html is an out-of-book
+  // live link -- the rewriter couldn't resolve the target to an
+  // in-book `#ch-...` anchor because the page isn't in book.yml. These
+  // require internet to follow when reading the PDF. Report counts +
+  // top targets so authors can either bring missing targets into the
+  // book or accept the live-link behaviour.
+  reportCrossReferences(ourHtml, site, /*verbose=*/process.argv.includes("--verbose"));
+
   // ----- §10.8 performance smoke check ---------------------------------
   if (t8Ms > 500) {
     console.error(`WARN: Phase 8 took ${t8Ms} ms (soft cap 500 ms)`);
@@ -400,6 +409,49 @@ async function walkFiles(root, fn) {
       await fn(full);
     }
   }
+}
+
+// PLAN-9 §5.11 (B16): every <a href="<deploy-url>/..."> in book.html
+// is a cross-reference the rewriter couldn't resolve to an in-book
+// `#ch-...` anchor because the page isn't in book.yml. Count them and
+// report the top targets so authors can decide whether to bring the
+// target into the book.
+function reportCrossReferences(html, site, verbose) {
+  const siteUrl = String(site.config?.url ?? "").replace(/\/+$/, "");
+  const baseurl = String(site.config?.baseurl ?? "");
+  const externalPrefix = siteUrl + baseurl;
+  if (!externalPrefix) {
+    console.log(`SKIP  Phase 8 cross-references (no site.url configured)`);
+    return;
+  }
+
+  const inBook = (html.match(/href="#ch-/g) || []).length;
+  const escaped = externalPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const hrefRe = new RegExp(`\\bhref="(${escaped}[^"]*)"`, "g");
+  const counts = new Map();
+  for (const m of html.matchAll(hrefRe)) {
+    const target = m[1].split("#", 1)[0];
+    counts.set(target, (counts.get(target) ?? 0) + 1);
+  }
+  const total = [...counts.values()].reduce((s, n) => s + n, 0);
+
+  console.log(`\nPhase 8 cross-references:`);
+  console.log(`  In-book anchors: ${inBook}`);
+  console.log(`  Out-of-book live links: ${total} (${counts.size} distinct targets)`);
+  if (total === 0) return;
+
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const cap = verbose ? sorted.length : Math.min(10, sorted.length);
+  console.log(`    Top targets by reference count:`);
+  for (let i = 0; i < cap; i++) {
+    const [target, n] = sorted[i];
+    console.log(`      ${String(n).padStart(4)} x ${target}`);
+  }
+  if (!verbose && sorted.length > 10) {
+    console.log(`      ... (showing top 10 of ${sorted.length}; --verbose for the full list)`);
+  }
+  console.log(`  Action: either add the target pages to docs/_data/book.yml`);
+  console.log(`          or accept the live-link behaviour.`);
 }
 
 main().catch((err) => {

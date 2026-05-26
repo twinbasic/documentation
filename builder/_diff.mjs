@@ -150,6 +150,14 @@ const HELP_TEXT = `Usage:
     node _diff.mjs --pdf-image=<rel>             check image presence
     node _diff.mjs --pdf-css=<rel>               PDF-tree CSS vs _site-pdf/
 
+  Page-diff modifiers (PLAN-9 §5.10 / §5.12):
+    --against-disk[=<root>]                      read bytes from <root>
+                                                 (default: <srcRoot>/_site-new/)
+                                                 instead of the in-memory render
+    --multi                                      continue past the first
+                                                 divergence and report each
+                                                 distinct region
+
   node _diff.mjs --help                          this message
 
 Print "MATCH" on byte equality, "DIFFER" with first-divergence offset
@@ -175,6 +183,16 @@ const bookMode = args.includes("--book") || args.includes("--book=full");
 const bookFullMode = args.includes("--book=full") || (args.includes("--book") && args.includes("--full"));
 const pdfImageArg = argValue(args, "--pdf-image");
 const pdfCssArg = argValue(args, "--pdf-css");
+// --against-disk needs its own handling because argValue would
+// otherwise consume the positional page-srcRel that often follows.
+// `--against-disk` (bare) -> "" -> default root. `--against-disk=<p>`
+// -> "<p>". Not passed at all -> null.
+const againstDiskEq = args.find(a => a.startsWith("--against-disk="));
+const againstDiskBare = args.includes("--against-disk");
+const againstDiskArg = againstDiskEq != null
+  ? againstDiskEq.slice("--against-disk=".length)
+  : (againstDiskBare ? "" : null);
+const multiMode = args.includes("--multi");
 
 // One mode at a time.
 const mode = robotsMode ? "robots"
@@ -262,13 +280,30 @@ async function diffPage() {
   try { jekyllHtml = await fs.readFile(jekyllPath, "utf8"); }
   catch { console.error("Jekyll output not found at:", jekyllPath); process.exit(1); }
 
-  if (p.html === undefined) {
-    console.error(`page.html is undefined for ${which} (book.html bypass?)`);
-    process.exit(1);
+  // PLAN-9 §5.10 (B12) --against-disk: read the ours-side bytes from
+  // a written tree on disk (default: <srcRoot>/_site-new/) instead
+  // of the in-memory page.html. Useful for triaging write-time
+  // encoding bugs or line-ending contamination that the in-memory
+  // compare can't see.
+  let oursHtml;
+  let labelKind;
+  if (againstDiskArg !== null) {
+    const diskRoot = path.resolve(againstDiskArg || path.join(srcRoot, "_site-new"));
+    const diskPath = path.join(diskRoot, p.destPath);
+    try { oursHtml = await fs.readFile(diskPath, "utf8"); }
+    catch { console.error("disk file not found:", diskPath); process.exit(1); }
+    labelKind = `Phase 5 disk (${diskRoot})`;
+  } else {
+    if (p.html === undefined) {
+      console.error(`page.html is undefined for ${which} (book.html bypass?)`);
+      process.exit(1);
+    }
+    oursHtml = p.html;
+    labelKind = "Phase 4";
   }
   const jekyllSubject = noStrip ? jekyllHtml : stripSidebar(jekyllHtml);
-  const oursSubject = noStrip ? p.html : stripSidebar(p.html);
-  const label = noStrip ? "Phase 4 full page" : "Phase 4 sidebar-stripped";
+  const oursSubject = noStrip ? oursHtml : stripSidebar(oursHtml);
+  const label = `${labelKind}${noStrip ? " full page" : " sidebar-stripped"}`;
   reportDiff(label, jekyllSubject, oursSubject);
 }
 
@@ -580,6 +615,10 @@ function reportDiff(label, jekyll, ours) {
     console.log(`MATCH (${label})`);
     return;
   }
+  if (multiMode) {
+    reportMultiDiff(label, jekyll, ours);
+    return;
+  }
   const minLen = Math.min(jekyll.length, ours.length);
   let i = 0;
   while (i < minLen && jekyll[i] === ours[i]) i++;
@@ -588,5 +627,64 @@ function reportDiff(label, jekyll, ours) {
   console.log(`DIFFER (${label}) at offset ${i} of ${ours.length} ours / ${jekyll.length} jekyll`);
   console.log("JEKYLL:", JSON.stringify(jekyll.slice(ctxStart, Math.min(ctxEnd, jekyll.length))));
   console.log("OURS  :", JSON.stringify(ours.slice(ctxStart, Math.min(ctxEnd, ours.length))));
+  process.exitCode = 1;
+}
+
+// PLAN-9 §5.12 (A1) --multi: walk both strings, locate every region
+// where they diverge and re-sync, and emit each one. Re-syncs by
+// looking for a 32-char common run after each divergence; gives up
+// after 20 regions to bound noise on totally-different inputs.
+function reportMultiDiff(label, jekyll, ours) {
+  const RESYNC_RUN = 32;
+  const MAX_REGIONS = 20;
+  const regions = [];
+  let j = 0, o = 0;
+  while (j < jekyll.length && o < ours.length) {
+    if (jekyll[j] === ours[o]) { j++; o++; continue; }
+    const jStart = j;
+    const oStart = o;
+    // Advance both until we find a long common substring.
+    let resyncJ = -1, resyncO = -1;
+    for (let dj = 0; dj <= 4096 && jStart + dj < jekyll.length; dj++) {
+      for (let dO = 0; dO <= 4096 && oStart + dO < ours.length; dO++) {
+        if (jekyll.substr(jStart + dj, RESYNC_RUN) ===
+            ours.substr(oStart + dO, RESYNC_RUN)) {
+          resyncJ = jStart + dj;
+          resyncO = oStart + dO;
+          break;
+        }
+      }
+      if (resyncJ !== -1) break;
+    }
+    if (resyncJ === -1) {
+      regions.push({
+        jStart, jEnd: jekyll.length,
+        oStart, oEnd: ours.length,
+        jSlice: jekyll.slice(jStart, Math.min(jStart + 200, jekyll.length)),
+        oSlice: ours.slice(oStart, Math.min(oStart + 200, ours.length)),
+        unresolved: true,
+      });
+      break;
+    }
+    regions.push({
+      jStart, jEnd: resyncJ,
+      oStart, oEnd: resyncO,
+      jSlice: jekyll.slice(jStart, resyncJ),
+      oSlice: ours.slice(oStart, resyncO),
+    });
+    if (regions.length >= MAX_REGIONS) break;
+    j = resyncJ;
+    o = resyncO;
+  }
+  console.log(`DIFFER-MULTI (${label}) ${regions.length} divergence region(s)`);
+  for (const [k, r] of regions.entries()) {
+    const j0 = Math.max(0, r.jStart - 30);
+    const o0 = Math.max(0, r.oStart - 30);
+    console.log(`  [${k + 1}] jekyll[${r.jStart}..${r.jEnd}] (${r.jEnd - r.jStart} chars) / ` +
+                `ours[${r.oStart}..${r.oEnd}] (${r.oEnd - r.oStart} chars)` +
+                (r.unresolved ? "  -- unresolved (no resync within 4096 chars)" : ""));
+    console.log(`      jekyll: ${JSON.stringify(jekyll.slice(j0, Math.min(r.jEnd + 30, jekyll.length)))}`);
+    console.log(`      ours  : ${JSON.stringify(ours.slice(o0, Math.min(r.oEnd + 30, ours.length)))}`);
+  }
   process.exitCode = 1;
 }

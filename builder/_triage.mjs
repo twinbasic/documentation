@@ -50,7 +50,7 @@ import {
 import { deriveBookOutputs, extractImagePaths } from "./pdf.mjs";
 import { ACCEPTED_DIVERGENCE_PATHS } from "./accepted-divergences.mjs";
 
-const HELP_TEXT = `Usage: node _triage.mjs [--all]
+const HELP_TEXT = `Usage: node _triage.mjs [--all] [--multi]
 
 Walks every page and bucket-classifies the first divergence from
 Jekyll's _site/. Also audits Phase 6 auxiliaries (sitemap, redirects,
@@ -59,6 +59,12 @@ search-data.js), and Phase 8 PDF tree (book.html, CSS, images).
 
 Flags:
   --all     Print every example per bucket (default caps at 3).
+  --multi   For each page bucketed under a divergence, count every
+            distinct divergence region (not just the first one) and
+            include the count alongside the bucket signature.
+            Surfaces hidden secondary divergences on already-bucketed
+            pages -- e.g. a markdown parse difference behind a syntax-
+            highlighting difference (PLAN-9 §5.12 / A1 path #3).
   --help    Print this message.
 
 Output: per-bucket counts sorted by severity then frequency, plus
@@ -75,6 +81,7 @@ const siteRoot = path.join(srcRoot, "_site");
 const siteOfflineRoot = path.join(srcRoot, "_site-offline");
 const sitePdfRoot = path.join(srcRoot, "_site-pdf");
 const showAll = process.argv.includes("--all");
+const multiMode = process.argv.includes("--multi");
 
 const { pages, staticFiles } = await discover(srcRoot);
 const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
@@ -329,13 +336,44 @@ let sidebarOnly = 0;
 let navOrderPropagation = 0;
 let skipped = 0;
 
-function bumpBucket(id, rule, page, offset, jCtx, oCtx) {
+function bumpBucket(id, rule, page, offset, jCtx, oCtx, regions) {
   const b = buckets.get(id) || { rule, count: 0, examples: [] };
   b.count++;
   if (b.examples.length < 3) {
-    b.examples.push({ srcRel: page.srcRel, offset, jCtx, oCtx });
+    b.examples.push({ srcRel: page.srcRel, offset, jCtx, oCtx, regions });
   }
   buckets.set(id, b);
+}
+
+// PLAN-9 §5.12 (A1) --multi: count distinct divergence regions on a
+// page. Same resync algorithm as _diff.mjs's reportMultiDiff; capped
+// at 50 regions to bound the cost on heavily-divergent pages.
+function countDivergenceRegions(jekyll, ours) {
+  if (jekyll === ours) return 0;
+  const RESYNC_RUN = 32;
+  const MAX_REGIONS = 50;
+  let regions = 0;
+  let j = 0, o = 0;
+  while (j < jekyll.length && o < ours.length) {
+    if (jekyll[j] === ours[o]) { j++; o++; continue; }
+    const jStart = j, oStart = o;
+    let resyncJ = -1, resyncO = -1;
+    for (let dj = 0; dj <= 4096 && jStart + dj < jekyll.length; dj++) {
+      for (let dO = 0; dO <= 4096 && oStart + dO < ours.length; dO++) {
+        if (jekyll.substr(jStart + dj, RESYNC_RUN) === ours.substr(oStart + dO, RESYNC_RUN)) {
+          resyncJ = jStart + dj;
+          resyncO = oStart + dO;
+          break;
+        }
+      }
+      if (resyncJ !== -1) break;
+    }
+    regions++;
+    if (resyncJ === -1 || regions >= MAX_REGIONS) break;
+    j = resyncJ;
+    o = resyncO;
+  }
+  return regions;
 }
 
 for (const p of pages) {
@@ -398,8 +436,13 @@ for (const p of pages) {
     try { return r.test(jCtx, oCtx); } catch { return false; }
   });
 
+  // PLAN-9 §5.12 (A1) --multi: count divergence regions on the
+  // stripped subjects so a "first divergence + bucket" match doesn't
+  // mask a second class of divergence elsewhere on the page.
+  const regions = multiMode ? countDivergenceRegions(jStripped, oStripped) : null;
+
   if (rule) {
-    bumpBucket(rule.id, rule, p, i, jCtx, oCtx);
+    bumpBucket(rule.id, rule, p, i, jCtx, oCtx, regions);
     continue;
   }
 
@@ -413,7 +456,7 @@ for (const p of pages) {
     regionId = "anchor-heading";
   }
   const regionInfo = REGION_SEVERITY[regionId] || { severity: "?", label: "(unknown region)" };
-  bumpBucket(regionId, { id: regionId, severity: regionInfo.severity, label: regionInfo.label }, p, i, jCtx, oCtx);
+  bumpBucket(regionId, { id: regionId, severity: regionInfo.severity, label: regionInfo.label }, p, i, jCtx, oCtx, regions);
 }
 
 console.log(`Phase 4 (full page) per-page bucket scan:`);
@@ -1000,7 +1043,8 @@ for (const b of sorted) {
       // sidebar-only bucket -- no per-example context worth printing.
       continue;
     }
-    console.log(`    e.g. ${ex.srcRel} @ ${ex.offset}`);
+    const regionsTag = ex.regions != null ? ` (${ex.regions} distinct region${ex.regions === 1 ? "" : "s"})` : "";
+    console.log(`    e.g. ${ex.srcRel} @ ${ex.offset}${regionsTag}`);
     console.log(`         J: ${JSON.stringify(ex.jCtx.slice(0, 120))}`);
     console.log(`         O: ${JSON.stringify(ex.oCtx.slice(0, 120))}`);
   }
