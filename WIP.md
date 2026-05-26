@@ -430,6 +430,31 @@ The Jekyll + Ruby build pipeline is being ported to a custom single-purpose Node
 
 While the port is in progress, the Jekyll pipeline below remains the canonical build path.
 
+### Builder diff / triage / verify tools
+
+When iterating on a phase or chasing a divergence vs Jekyll, **reach for one of these tools before reading source by hand**. They drive the in-memory tbdocs pipeline through whatever phase the requested target needs, then byte-diff against the matching file in Jekyll's `docs/_site/` or `docs/_site-offline/`. Listed in order of "what do I run first?":
+
+- [builder/_triage.mjs](builder/_triage.mjs) — bulk classifier. Walks every page, finds the first divergence from Jekyll, classifies it into a coarse bucket so remaining work can be ranked by pattern frequency × visual severity. Two modes: default Phase 4 (full page), `--phase3` (body fragment). After the per-page bucket table prints, an **auxiliary audit** section covers sitemap, redirect stubs, robots.txt, search index, and the **offline tree** (offline pages, offline redirects, offline CSS, offline JTD JS, offline search-data.js). Each auxiliary line reports MATCH or a one-line DIFFER summary with counts. **Start here** when something looks off across the board.
+- [builder/_diff.mjs](builder/_diff.mjs) — single-target diff. Pinpoints one file's first divergence with ~200 chars of context. Modes: default page (`<srcRel>`), `--phase3` (body fragment), `--redirect=<fromPath>`, `--robots`, `--search <srcRel>`, `--offline=<srcRel>` (offline page), `--offline-redirect=<fromPath>`, `--offline-css=<themeRel>`, `--offline-jtd`, `--offline-search`. **Run after triage** to drill into one representative file from the largest bucket.
+- [builder/_diff_all.mjs](builder/_diff_all.mjs) — per-bucket divergence audit. Aggregates Phase 3 / Phase 4 divergences across all pages.
+- [builder/_sitemap_diff.mjs](builder/_sitemap_diff.mjs) — sitemap URL-set diff against Jekyll's `sitemap.xml`.
+- [builder/_spot.mjs](builder/_spot.mjs) — single-page output dump (useful for piping into a paginator when investigating a specific page).
+- [builder/verify-phase{1..7}.mjs](builder/) — per-phase acceptance harness. Each Phase N has a matching `verify-phaseN.mjs` that drives Phases 1..N into a scratch destination and asserts the acceptance checks from `PLAN-N.md §10`. Run before merging phase changes; treat failures as blockers.
+
+Common workflows:
+
+| Question | Tool |
+|---|---|
+| "Is everything still byte-perfect vs Jekyll?" | `cd builder && node _triage.mjs` |
+| "Did Phase N regress?" | `cd builder && node verify-phaseN.mjs` |
+| "Why does this one page differ?" | `cd builder && node _diff.mjs <srcRel>` |
+| "Why does this offline page differ?" | `cd builder && node _diff.mjs --offline=<srcRel>` |
+| "Are the redirect stubs right?" | `cd builder && node _diff.mjs --redirect=<fromPath>` |
+| "Are the offline redirect stubs right?" | `cd builder && node _diff.mjs --offline-redirect=<fromPath>` |
+| "Is the lunr search index byte-equal?" | `cd builder && node _diff.mjs --search <srcRel>` |
+
+All tools live in `builder/` and expect to be run from inside it (`cd builder && node <tool>.mjs ...`). They read `../docs/_site/` and `../docs/_site-offline/` as the Jekyll references; both trees must be up-to-date (run `build.bat` once if not). The tools never write to `docs/`; scratch destinations are under `docs/_site-verify*` and `docs/_site-diff-scratch` and are cleaned up on exit.
+
 ## Build / preview
 
 From `docs/`:

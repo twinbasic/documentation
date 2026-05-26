@@ -1,5 +1,5 @@
-// tbdocs orchestrator. Phases 1+2+3+4+5+6: DISCOVER + COMPUTE + RENDER +
-// TEMPLATE + WRITE ONLINE + AUXILIARIES.
+// tbdocs orchestrator. Phases 1+2+3+4+5+6+7: DISCOVER + COMPUTE + RENDER +
+// TEMPLATE + WRITE ONLINE + AUXILIARIES + WRITE OFFLINE.
 //
 // Usage: node builder/index.mjs [--src <path>] [--dest <path>] [--dry-run]
 //
@@ -23,6 +23,7 @@ import { writePhase } from "./write.mjs";
 import { writeRedirects } from "./redirects.mjs";
 import { writeSitemap } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
+import { writeOffline } from "./offline.mjs";
 
 function parseArgs(argv) {
   const args = { src: "docs", dest: null, dryRun: false };
@@ -112,7 +113,13 @@ async function main() {
   }
   t.lap("auxiliaries");
 
-  console.log(`Phase 1+2+3+4+5+6 done: ${pages.length} pages, ${staticFiles.length} static files`);
+  let offlineStats = null;
+  if (!dryRun) {
+    offlineStats = await writeOffline(pages, staticFiles, site, destRoot, { auxStats });
+  }
+  t.lap("offline");
+
+  console.log(`Phase 1+2+3+4+5+6+7 done: ${pages.length} pages, ${staticFiles.length} static files`);
   console.log(`  wrote: ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
               `${writeStats.theme.copied} theme assets, ${writeStats.staticFiles.copied} static files ` +
               `-> ${destRoot}`);
@@ -120,6 +127,13 @@ async function main() {
     console.log(`  aux:   ${auxStats.redirects.written} redirect stubs, ` +
                 `${auxStats.sitemap.entries} sitemap entries, ` +
                 `${auxStats.search.entries} search-index entries`);
+  }
+  if (offlineStats) {
+    console.log(`  offline: ${offlineStats.html} HTML, ${offlineStats.css} CSS, ` +
+                `${offlineStats.redirects} redirect stubs, ` +
+                `${offlineStats.statics + offlineStats.assets} assets, ` +
+                `${offlineStats.excluded} excluded ` +
+                `(${offlineStats.unresolved} unresolved) -> ${destRoot}-offline`);
   }
   console.log(t.summary());
 
@@ -129,7 +143,7 @@ async function main() {
     process.exitCode = 1;
   }
 
-  // Phase 7+ chains in here.
+  // Phase 8+ chains in here.
   return { pages, staticFiles, site, destRoot };
 }
 

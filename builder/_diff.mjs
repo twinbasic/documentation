@@ -1,8 +1,8 @@
 // Single-target diff harness against Jekyll's _site/ output. Drives the
 // tbdocs pipeline through the phase the requested target needs (Phase 3
 // for body fragments / search content, Phase 4 for full page, Phase 5/6
-// for auxiliaries), then byte-diffs the in-memory result against the
-// matching Jekyll output.
+// for auxiliaries, Phase 7 for offline-tree files), then byte-diffs the
+// in-memory result against the matching Jekyll output.
 //
 // Usage:
 //   node _diff.mjs [<page-srcRel>] [--phase3] [--no-strip] [--full]
@@ -34,6 +34,32 @@
 //     Jekyll's entries with the same `doc` value, set-diffs by
 //     (doc, title, url, relUrl) tuple, then byte-diffs content per pair.
 //
+//   node _diff.mjs --offline=<srcRel>
+//     Diff one offline-tree HTML page. Drives Phases 1-4 then applies
+//     the offline transforms (stripSeo + URL rewrite + script inject)
+//     in-memory, byte-diffs vs `_site-offline/<destPath>`. Use the
+//     same <srcRel> as the default page mode.
+//
+//   node _diff.mjs --offline-redirect=<fromPath>
+//     Diff one offline redirect stub. Derives the stub HTML, rewrites
+//     the four <site.url>/<path> absolute URLs to page-relative,
+//     byte-diffs vs `_site-offline/<destPath>`.
+//
+//   node _diff.mjs --offline-css=<themeRel>
+//     Diff one offline CSS file. Reads <themeRel> from `_site/`
+//     (e.g. `assets/css/just-the-docs-combined.css`), applies the
+//     url() rewrite, byte-diffs vs `_site-offline/<themeRel>`.
+//
+//   node _diff.mjs --offline-jtd
+//     Diff the patched `assets/js/just-the-docs.js`. Reads the
+//     unpatched source from `_site/`, applies the navLink+initSearch
+//     patches, byte-diffs vs `_site-offline/assets/js/just-the-docs.js`.
+//
+//   node _diff.mjs --offline-search
+//     Diff the offline `search-data.js`. Wraps the in-memory
+//     search-data.json bytes as `window.SEARCH_DATA = ...`, byte-diffs
+//     vs `_site-offline/assets/js/search-data.js`.
+//
 // All modes print "MATCH" on full byte equality or "DIFFER" with the
 // first divergence offset + ~200 chars of context.
 
@@ -50,7 +76,15 @@ import { renderPhase } from "./render.mjs";
 import { templatePhase } from "./template.mjs";
 import { deriveRedirectStubs } from "./redirects.mjs";
 import { renderRobotsTxt } from "./sitemap.mjs";
-import { deriveSearchEntries } from "./search.mjs";
+import { deriveSearchEntries, writeSearchData } from "./search.mjs";
+import {
+  buildOfflineState,
+  deriveOfflinePage,
+  deriveOfflineRedirect,
+  deriveOfflineCss,
+  deriveOfflineJtdJs,
+  deriveOfflineSearchDataJs,
+} from "./offline.mjs";
 
 const SIDEBAR_RE = /<nav aria-label="Main" id="site-nav"[\s\S]*?<\/nav>/;
 function stripSidebar(h) { return h.replace(SIDEBAR_RE, "<SIDEBAR/>"); }
@@ -100,21 +134,35 @@ const noStrip = args.includes("--no-strip") || args.includes("--full");
 const redirectArg = argValue(args, "--redirect");
 const searchArg = argValue(args, "--search");
 const robotsMode = args.includes("--robots");
+const offlineArg = argValue(args, "--offline");
+const offlineRedirectArg = argValue(args, "--offline-redirect");
+const offlineCssArg = argValue(args, "--offline-css");
+const offlineJtdMode = args.includes("--offline-jtd");
+const offlineSearchMode = args.includes("--offline-search");
 
 // One mode at a time.
 const mode = robotsMode ? "robots"
+  : offlineJtdMode ? "offline-jtd"
+  : offlineSearchMode ? "offline-search"
+  : offlineRedirectArg !== null ? "offline-redirect"
+  : offlineCssArg !== null ? "offline-css"
+  : offlineArg !== null ? "offline-page"
   : redirectArg !== null ? "redirect"
   : searchArg !== null ? "search"
   : phase3Mode ? "phase3"
   : "page";
 
-const needsTemplate = mode === "page";
-const needsRender = mode === "page" || mode === "phase3" || mode === "search";
+const needsTemplate = mode === "page" || mode === "offline-page";
+const needsRender = mode === "page" || mode === "phase3" || mode === "search"
+  || mode === "offline-page" || mode === "offline-search";
+const needsOfflineState = mode === "offline-page" || mode === "offline-redirect"
+  || mode === "offline-css";
 
 // ---- Drive pipeline through required phase ---------------------------
 
 const srcRoot = path.resolve(process.cwd(), "../docs");
 const siteRoot = path.join(srcRoot, "_site");
+const siteOfflineRoot = path.join(srcRoot, "_site-offline");
 
 const { pages, staticFiles } = await discover(srcRoot);
 const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
@@ -127,12 +175,30 @@ const site = { config, navTree, ...seo, buildInfo, bookData };
 if (needsRender) await renderPhase(pages, site, staticFiles);
 if (needsTemplate) await templatePhase(pages, site);
 
+// Offline modes resolve URLs against Jekyll's _site/ tree (which is
+// guaranteed to have every theme asset Phase 5+6 emits). The diff
+// targets are Jekyll's _site-offline/<rel> files. Derive the redirect
+// stubs in-memory so their destPaths land in the URL resolver's set
+// (a page-relative `LBound` link resolves through the stub at
+// `tB/Core/LBound.html` rather than coming back as unresolved).
+let offlineState = null;
+if (needsOfflineState) {
+  let stubs = [];
+  try { stubs = deriveRedirectStubs(pages, site); } catch { /* collision; let it surface later */ }
+  offlineState = await buildOfflineState(pages, staticFiles, site, siteRoot, { stubs });
+}
+
 // ---- Dispatch --------------------------------------------------------
 
-if (mode === "redirect")     await diffRedirect(redirectArg);
-else if (mode === "robots")  await diffRobots();
-else if (mode === "search")  await diffSearch(searchArg);
-else                          await diffPage();
+if (mode === "redirect")              await diffRedirect(redirectArg);
+else if (mode === "robots")           await diffRobots();
+else if (mode === "search")           await diffSearch(searchArg);
+else if (mode === "offline-page")     await diffOfflinePage(offlineArg);
+else if (mode === "offline-redirect") await diffOfflineRedirect(offlineRedirectArg);
+else if (mode === "offline-css")      await diffOfflineCss(offlineCssArg);
+else if (mode === "offline-jtd")      await diffOfflineJtd();
+else if (mode === "offline-search")   await diffOfflineSearch();
+else                                  await diffPage();
 
 // ---- Mode: page (default, --phase3) ----------------------------------
 
@@ -279,6 +345,122 @@ async function diffSearch(srcRel) {
     if (contentDiffs.length > 3) console.log(`    ... +${contentDiffs.length - 3} more`);
   }
   process.exitCode = 1;
+}
+
+// ---- Mode: --offline=<srcRel> ---------------------------------------
+
+async function diffOfflinePage(rawSrcRel) {
+  if (!rawSrcRel) {
+    console.error("--offline needs a srcRel argument, e.g. --offline=Reference/Core/Const.md");
+    process.exit(1);
+  }
+  const p = pages.find(x => x.srcRel === rawSrcRel);
+  if (!p) { console.error("page not found:", rawSrcRel); process.exit(1); }
+  if (p.html === undefined) {
+    console.error(`page.html is undefined for ${rawSrcRel} (book.html bypass?)`);
+    process.exit(1);
+  }
+  const jekyllPath = path.join(siteOfflineRoot, p.destPath);
+  let jekyllHtml;
+  try { jekyllHtml = await fs.readFile(jekyllPath, "utf8"); }
+  catch { console.error("Jekyll offline output not found at:", jekyllPath); process.exit(1); }
+
+  const { html: oursHtml, misses } = deriveOfflinePage(p, offlineState);
+  const label = `offline page ${p.destPath}` + (misses ? ` (${misses} unresolved URLs)` : "");
+  reportDiff(label, jekyllHtml, oursHtml);
+}
+
+// ---- Mode: --offline-redirect=<fromPath> ----------------------------
+
+async function diffOfflineRedirect(rawFromPath) {
+  if (!rawFromPath) {
+    console.error("--offline-redirect needs a fromPath argument, e.g. --offline-redirect=/tB/Core/Day");
+    process.exit(1);
+  }
+  const candidates = [rawFromPath];
+  if (!rawFromPath.startsWith("/")) candidates.push("/" + rawFromPath);
+  const stubs = deriveRedirectStubs(pages, site);
+  const stub = stubs.find(s => candidates.includes(s.fromPath) || candidates.includes(s.destPath));
+  if (!stub) {
+    console.error(`No redirect stub matches "${rawFromPath}".`);
+    console.error(`Sample available fromPaths:`);
+    for (const s of stubs.slice(0, 5)) console.error(`  ${s.fromPath}  →  ${s.destPath}`);
+    process.exit(1);
+  }
+  const jekyllPath = path.join(siteOfflineRoot, stub.destPath);
+  let jekyllStub;
+  try { jekyllStub = await fs.readFile(jekyllPath, "utf8"); }
+  catch { console.error("Jekyll offline stub not found:", jekyllPath); process.exit(1); }
+
+  const oursStub = deriveOfflineRedirect(stub, offlineState);
+  reportDiff(
+    `offline redirect ${stub.fromPath} → ${stub.destPath} (owner: ${stub.sourcePage.srcRel})`,
+    jekyllStub,
+    oursStub,
+  );
+}
+
+// ---- Mode: --offline-css=<themeRel> ---------------------------------
+
+async function diffOfflineCss(rawRel) {
+  if (!rawRel) {
+    console.error("--offline-css needs a path argument, e.g. --offline-css=assets/css/just-the-docs-combined.css");
+    process.exit(1);
+  }
+  const themeRel = rawRel.startsWith("/") ? rawRel.slice(1) : rawRel;
+  const srcPath = path.join(siteRoot, themeRel);
+  let cssIn;
+  try { cssIn = await fs.readFile(srcPath, "utf8"); }
+  catch { console.error("Jekyll source CSS not found at:", srcPath); process.exit(1); }
+
+  const jekyllPath = path.join(siteOfflineRoot, themeRel);
+  let jekyllCss;
+  try { jekyllCss = await fs.readFile(jekyllPath, "utf8"); }
+  catch { console.error("Jekyll offline CSS not found at:", jekyllPath); process.exit(1); }
+
+  const { css: oursCss, misses } = deriveOfflineCss(cssIn, themeRel, offlineState);
+  const label = `offline CSS ${themeRel}` + (misses ? ` (${misses} unresolved URLs)` : "");
+  reportDiff(label, jekyllCss, oursCss);
+}
+
+// ---- Mode: --offline-jtd --------------------------------------------
+
+async function diffOfflineJtd() {
+  const srcPath = path.join(siteRoot, "assets/js/just-the-docs.js");
+  let srcJs;
+  try { srcJs = await fs.readFile(srcPath, "utf8"); }
+  catch { console.error("Jekyll source just-the-docs.js not found:", srcPath); process.exit(1); }
+
+  const jekyllPath = path.join(siteOfflineRoot, "assets/js/just-the-docs.js");
+  let jekyllJs;
+  try { jekyllJs = await fs.readFile(jekyllPath, "utf8"); }
+  catch { console.error("Jekyll offline just-the-docs.js not found:", jekyllPath); process.exit(1); }
+
+  const { js: oursJs, patches, warnings } = deriveOfflineJtdJs(srcJs);
+  for (const w of warnings) console.warn(w);
+  const label = `offline just-the-docs.js (patched: ${patches.join(", ") || "none"})`;
+  reportDiff(label, jekyllJs, oursJs);
+}
+
+// ---- Mode: --offline-search -----------------------------------------
+
+async function diffOfflineSearch() {
+  // Derive the search-data.json bytes in memory (same path Phase 6
+  // produces them), wrap as window.SEARCH_DATA = ..., diff vs Jekyll.
+  // We need writeSearchData's bytes, but the function writes to disk
+  // -- use a scratch dest so the write is harmless.
+  const scratchDest = path.join(srcRoot, "_site-diff-scratch");
+  await fs.mkdir(scratchDest, { recursive: true });
+  const { json } = await writeSearchData(pages, site, scratchDest);
+  await fs.rm(scratchDest, { recursive: true, force: true });
+
+  const oursJs = deriveOfflineSearchDataJs(json);
+  const jekyllPath = path.join(siteOfflineRoot, "assets/js/search-data.js");
+  let jekyllJs;
+  try { jekyllJs = await fs.readFile(jekyllPath, "utf8"); }
+  catch { console.error("Jekyll offline search-data.js not found:", jekyllPath); process.exit(1); }
+
+  reportDiff("offline search-data.js", jekyllJs, oursJs);
 }
 
 // ---- Shared: byte-diff with first-divergence context -----------------

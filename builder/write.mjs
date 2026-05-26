@@ -80,7 +80,7 @@ async function prepareDestination(destRoot, dryRun) {
   await fs.mkdir(destRoot, { recursive: true });
 }
 
-function isUnderProject(destRoot) {
+export function isUnderProject(destRoot) {
   const rel = path.relative(PROJECT_ROOT, destRoot);
   return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
@@ -227,7 +227,7 @@ async function collectTreeEntries(src, dest, filter) {
 
 // ---------- §5.6 safeWrite ----------------------------------------------
 
-async function safeWrite(dest, fn) {
+export async function safeWrite(dest, fn) {
   try {
     return await fn();
   } catch (err) {

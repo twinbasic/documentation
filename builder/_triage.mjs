@@ -41,11 +41,20 @@ import { renderPhase } from "./render.mjs";
 import { templatePhase } from "./template.mjs";
 import { deriveSitemapUrls, extractSitemapUrls, renderRobotsTxt } from "./sitemap.mjs";
 import { deriveRedirectStubs } from "./redirects.mjs";
-import { deriveSearchEntries } from "./search.mjs";
+import { deriveSearchEntries, writeSearchData } from "./search.mjs";
+import {
+  buildOfflineState,
+  deriveOfflinePage,
+  deriveOfflineRedirect,
+  deriveOfflineCss,
+  deriveOfflineJtdJs,
+  deriveOfflineSearchDataJs,
+} from "./offline.mjs";
 import { ACCEPTED_DIVERGENCE_PATHS } from "./accepted-divergences.mjs";
 
 const srcRoot = path.resolve(process.cwd(), "../docs");
 const siteRoot = path.join(srcRoot, "_site");
+const siteOfflineRoot = path.join(srcRoot, "_site-offline");
 const phase3Mode = process.argv.includes("--phase3");
 const showAll = process.argv.includes("--all");
 
@@ -480,6 +489,15 @@ await auditRedirects(site, pages, siteRoot);
 await auditRobots(site, siteRoot);
 // Search index (entry set + per-entry content, gated by accepted-divergences).
 await auditSearch(site, pages, siteRoot);
+// Offline tree: per-page derived HTML vs Jekyll's _site-offline/.
+// Phase 7 territory. Pages first (the bulk), then auxiliaries.
+if (!phase3Mode) {
+  await auditOfflinePages(site, pages, staticFiles, siteRoot, siteOfflineRoot);
+  await auditOfflineRedirects(site, pages, staticFiles, siteRoot, siteOfflineRoot);
+  await auditOfflineCss(site, pages, staticFiles, siteRoot, siteOfflineRoot);
+  await auditOfflineJtd(siteRoot, siteOfflineRoot);
+  await auditOfflineSearch(site, pages, siteOfflineRoot);
+}
 
 console.log();
 
@@ -602,6 +620,245 @@ async function auditSearch(site, pages, siteRoot) {
               `content-fail=${contentFail}, content-accepted=${contentAccepted})`);
   for (const f of failures) console.log(`  ≠ ${f.srcRel}: [${f.title}] ${f.url}`);
   if (failures.length < contentFail) console.log(`  ... +${contentFail - failures.length} more content failures`);
+}
+
+// ---- Offline-tree audits (Phase 7) -----------------------------------
+//
+// For each output kind, we run the pure-compute derive helper from
+// offline.mjs and byte-compare vs the matching file in Jekyll's
+// `_site-offline/`. Classification distinguishes:
+//
+//   propagated-online   Our Phase 4 page.html already differs from
+//                       Jekyll's _site/<rel>; the offline diff is the
+//                       same root cause flowing through Phase 7. Not a
+//                       Phase 7 bug. Sub-divided by whether the source
+//                       page is in ACCEPTED_DIVERGENCE_PATHS.
+//   offline-only        Our page.html matches _site/<rel> exactly, but
+//                       the derived offline bytes differ from
+//                       _site-offline/<rel>. This is a Phase 7 bug.
+//
+// Offline-only divergences are further bucketed by which offline
+// transform looks responsible -- SEO strip, URL rewrite (absolute,
+// relative, or in a script-src), script injection, or other.
+
+async function auditOfflinePages(site, pages, staticFiles, siteRoot, siteOfflineRoot) {
+  let stubs = [];
+  try { stubs = deriveRedirectStubs(pages, site); } catch { /* collision; surface later */ }
+  const state = await buildOfflineState(pages, staticFiles, site, siteRoot, { stubs });
+  let match = 0;
+  let skipped = 0;
+  const propagatedAccepted = [];
+  const propagatedUnaccepted = [];
+  const offlineOnly = [];
+
+  for (const p of pages) {
+    if (p.frontmatter?.layout === "book-combined") continue;
+    if (typeof p.html !== "string") { skipped++; continue; }
+
+    const jekyllOnlinePath = path.join(siteRoot, p.destPath);
+    const jekyllOfflinePath = path.join(siteOfflineRoot, p.destPath);
+    let jOnline, jOffline;
+    try { jOnline = await fs.readFile(jekyllOnlinePath, "utf8"); } catch { skipped++; continue; }
+    try { jOffline = await fs.readFile(jekyllOfflinePath, "utf8"); } catch { skipped++; continue; }
+
+    const { html: ours } = deriveOfflinePage(p, state);
+    if (ours === jOffline) { match++; continue; }
+
+    const onlineDiffers = p.html !== jOnline;
+    if (onlineDiffers) {
+      if (ACCEPTED_DIVERGENCE_PATHS.has(p.srcRel)) propagatedAccepted.push(p.srcRel);
+      else propagatedUnaccepted.push({ srcRel: p.srcRel, destPath: p.destPath });
+    } else {
+      const bucket = classifyOfflineDiff(jOffline, ours);
+      offlineOnly.push({ srcRel: p.srcRel, destPath: p.destPath, bucket });
+    }
+  }
+
+  // Phase 7 is "byte-perfect" when there are no unaccepted-propagated
+  // divergences AND no offline-only divergences. `propagated-accepted`
+  // is upstream Phase 3/4 territory flowing through; not a Phase 7 bug.
+  const phase7Bugs = propagatedUnaccepted.length + offlineOnly.length;
+  if (phase7Bugs === 0) {
+    const detail = [`${match} match`];
+    if (propagatedAccepted.length > 0) detail.push(`${propagatedAccepted.length} accepted`);
+    if (skipped > 0) detail.push(`${skipped} skipped`);
+    console.log(`Offline pages: MATCH (${detail.join(", ")})`);
+    return;
+  }
+  console.log(
+    `Offline pages: DIFFER (${match} match, ` +
+    `${propagatedAccepted.length} propagated-accepted, ` +
+    `${propagatedUnaccepted.length} propagated-unaccepted, ` +
+    `${offlineOnly.length} offline-only` +
+    (skipped > 0 ? `, ${skipped} skipped` : "") + `)`,
+  );
+  if (propagatedUnaccepted.length > 0) {
+    console.log(`  propagated-unaccepted (Phase 3/4 divergence flowing through):`);
+    for (const e of propagatedUnaccepted.slice(0, 5)) console.log(`    ≠ ${e.srcRel} → ${e.destPath}`);
+    if (propagatedUnaccepted.length > 5) {
+      console.log(`    ... +${propagatedUnaccepted.length - 5} more`);
+    }
+  }
+  if (offlineOnly.length > 0) {
+    console.log(`  offline-only (Phase 7-specific divergence):`);
+    const byBucket = new Map();
+    for (const e of offlineOnly) {
+      const list = byBucket.get(e.bucket) ?? [];
+      list.push(e);
+      byBucket.set(e.bucket, list);
+    }
+    const sortedBuckets = [...byBucket.entries()].sort((a, b) => b[1].length - a[1].length);
+    for (const [bucket, list] of sortedBuckets) {
+      console.log(`    ${bucket}: ${list.length} pages`);
+      for (const e of list.slice(0, 3)) console.log(`      e.g. ${e.srcRel} → ${e.destPath}`);
+      if (list.length > 3) console.log(`      ... +${list.length - 3} more`);
+    }
+  }
+}
+
+// Bucket an offline-only divergence by the nature of the first diff.
+// `j` is Jekyll's _site-offline/ bytes; `o` is our derived bytes.
+function classifyOfflineDiff(j, o) {
+  const minLen = Math.min(j.length, o.length);
+  let i = 0;
+  while (i < minLen && j[i] === o[i]) i++;
+  const ctxStart = Math.max(0, i - 80);
+  const ctxEnd = i + 80;
+  const jCtx = j.slice(ctxStart, ctxEnd);
+  const oCtx = o.slice(ctxStart, ctxEnd);
+
+  if (/<!-- Begin Jekyll SEO tag|<!-- End Jekyll SEO tag/.test(jCtx + oCtx)) {
+    return "strip-seo";
+  }
+  if (/window\.OFFLINE_SITE_ROOT|search-data\.js/.test(jCtx + oCtx)) {
+    return "script-inject";
+  }
+  if (/href="[^"]*"|src="[^"]*"/.test(jCtx + oCtx)) {
+    return "href-src-rewrite";
+  }
+  if (/url\([^)]*\)/.test(jCtx + oCtx)) {
+    return "css-url-rewrite";
+  }
+  return "other";
+}
+
+async function auditOfflineRedirects(site, pages, staticFiles, siteRoot, siteOfflineRoot) {
+  let stubs;
+  try { stubs = deriveRedirectStubs(pages, site); }
+  catch (err) { console.log(`Offline redirects: COLLISION (${err.message.split("\n")[0]})`); return; }
+  const state = await buildOfflineState(pages, staticFiles, site, siteRoot, { stubs });
+
+  let match = 0, missing = 0, mismatch = 0, skipped = 0;
+  const issues = [];
+  for (const s of stubs) {
+    const jPath = path.join(siteOfflineRoot, s.destPath);
+    let jOff;
+    try { jOff = await fs.readFile(jPath, "utf8"); }
+    catch { skipped++; continue; }
+    const ours = deriveOfflineRedirect(s, state);
+    if (jOff === ours) { match++; continue; }
+    mismatch++;
+    if (issues.length < 5) issues.push({ destPath: s.destPath, fromPath: s.fromPath });
+  }
+  if (mismatch === 0 && missing === 0) {
+    const skipSuffix = skipped > 0 ? ` (${skipped} skipped -- not in jekyll offline tree)` : "";
+    console.log(`Offline redirects: MATCH (${match} stubs)${skipSuffix}`);
+    return;
+  }
+  console.log(`Offline redirects: DIFFER (${stubs.length} stubs; ${match} match, ${mismatch} byte-mismatch, ${skipped} skipped)`);
+  for (const i of issues) console.log(`  ≠ ${i.destPath} (from ${i.fromPath})`);
+  if (issues.length < mismatch) console.log(`  ... +${mismatch - issues.length} more`);
+}
+
+async function auditOfflineCss(site, pages, staticFiles, siteRoot, siteOfflineRoot) {
+  // We don't know which CSS files Phase 5 will copy from builder/assets/
+  // without re-walking, so just enumerate Jekyll's _site/assets/css/.
+  const cssDir = path.join(siteRoot, "assets/css");
+  let dirents;
+  try { dirents = await fs.readdir(cssDir, { withFileTypes: true }); }
+  catch { console.log(`Offline CSS: SKIPPED (no ${cssDir})`); return; }
+  const cssFiles = dirents.filter(d => d.isFile() && d.name.endsWith(".css")).map(d => d.name);
+
+  let stubs = [];
+  try { stubs = deriveRedirectStubs(pages, site); } catch { /* collision; surface later */ }
+  const state = await buildOfflineState(pages, staticFiles, site, siteRoot, { stubs });
+  let match = 0, mismatch = 0, skipped = 0;
+  const issues = [];
+  for (const name of cssFiles) {
+    const themeRel = `assets/css/${name}`;
+    const srcPath = path.join(siteRoot, themeRel);
+    const dstPath = path.join(siteOfflineRoot, themeRel);
+    let cssIn, jOff;
+    try { cssIn = await fs.readFile(srcPath, "utf8"); } catch { skipped++; continue; }
+    try { jOff = await fs.readFile(dstPath, "utf8"); } catch { skipped++; continue; }
+    const { css: ours } = deriveOfflineCss(cssIn, themeRel, state);
+    if (ours === jOff) { match++; continue; }
+    mismatch++;
+    if (issues.length < 5) issues.push({ themeRel });
+  }
+  if (mismatch === 0) {
+    const skipSuffix = skipped > 0 ? ` (${skipped} skipped -- not in jekyll offline tree)` : "";
+    console.log(`Offline CSS: MATCH (${match} files)${skipSuffix}`);
+    return;
+  }
+  console.log(`Offline CSS: DIFFER (${cssFiles.length} files; ${match} match, ${mismatch} byte-mismatch, ${skipped} skipped)`);
+  for (const i of issues) console.log(`  ≠ ${i.themeRel}`);
+}
+
+async function auditOfflineJtd(siteRoot, siteOfflineRoot) {
+  const srcPath = path.join(siteRoot, "assets/js/just-the-docs.js");
+  const dstPath = path.join(siteOfflineRoot, "assets/js/just-the-docs.js");
+  let src, jOff;
+  try { src = await fs.readFile(srcPath, "utf8"); } catch { console.log(`Offline JTD JS: SKIPPED (no ${srcPath})`); return; }
+  try { jOff = await fs.readFile(dstPath, "utf8"); } catch { console.log(`Offline JTD JS: SKIPPED (no ${dstPath})`); return; }
+  const { js: ours, patches, warnings } = deriveOfflineJtdJs(src);
+  for (const w of warnings) console.log(`  WARN ${w}`);
+  if (jOff === ours) {
+    console.log(`Offline JTD JS: MATCH (${patches.length}/2 patches: ${patches.join(", ") || "none"})`);
+    return;
+  }
+  const minLen = Math.min(jOff.length, ours.length);
+  let i = 0;
+  while (i < minLen && jOff[i] === ours[i]) i++;
+  console.log(`Offline JTD JS: DIFFER at offset ${i} (jekyll=${jOff.length}, tbdocs=${ours.length})`);
+  console.log(`  J: ${JSON.stringify(jOff.slice(Math.max(0, i - 30), i + 100))}`);
+  console.log(`  T: ${JSON.stringify(ours.slice(Math.max(0, i - 30), i + 100))}`);
+}
+
+async function auditOfflineSearch(site, pages, siteOfflineRoot) {
+  // Mirror auditSearch's strategy: derive in-memory rather than reading
+  // _site/. writeSearchData writes one ~2.8 MB file; we scratch-write
+  // to a temp dest just to capture the JSON bytes.
+  const scratch = path.join(srcRoot, "_site-triage-scratch");
+  await fs.mkdir(scratch, { recursive: true });
+  let json;
+  try { ({ json } = await writeSearchData(pages, site, scratch)); }
+  finally { await fs.rm(scratch, { recursive: true, force: true }); }
+
+  const ours = deriveOfflineSearchDataJs(json);
+  const dstPath = path.join(siteOfflineRoot, "assets/js/search-data.js");
+  let jOff;
+  try { jOff = await fs.readFile(dstPath, "utf8"); }
+  catch { console.log(`Offline search-data.js: SKIPPED (no ${dstPath})`); return; }
+  if (jOff === ours) {
+    console.log(`Offline search-data.js: MATCH (${ours.length} bytes)`);
+    return;
+  }
+  // Whatever divergence we see in the JS is just the JSON divergence,
+  // already covered by auditSearch's gating. Verify that Jekyll's
+  // offline JS is the canonical wrap of Jekyll's online JSON; if so,
+  // report as a propagation rather than a Phase 7 issue.
+  const jJsonPath = path.join(siteRoot, "assets/js/search-data.json");
+  let jJson = null;
+  try { jJson = await fs.readFile(jJsonPath, "utf8"); } catch { /* fall through */ }
+  if (jJson !== null && jOff === deriveOfflineSearchDataJs(jJson)) {
+    console.log(`Offline search-data.js: MATCH (propagates from search-data.json -- see Search index above)`);
+    return;
+  }
+  const minLen = Math.min(jOff.length, ours.length);
+  let i = 0;
+  while (i < minLen && jOff[i] === ours[i]) i++;
+  console.log(`Offline search-data.js: DIFFER at offset ${i} (jekyll=${jOff.length}, tbdocs=${ours.length}) -- Phase 7 wrap divergence`);
 }
 
 const sorted = [...buckets.values()].sort((a, b) => b.count - a.count);

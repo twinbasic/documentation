@@ -20,7 +20,7 @@ export async function writeSearchData(pages, site, destRoot) {
   const body = entries.map(renderEntryString).join(",");
   const json = `{` + body + `\n}\n`;
   await writeFileMkdirp(path.join(destRoot, "assets/js/search-data.json"), json);
-  return { entries: entries.length };
+  return { entries: entries.length, json };
 }
 
 // Pure-compute derivation: produces the search-data entry array

@@ -28,7 +28,7 @@ export async function writeRedirects(pages, site, destRoot) {
   await runLimited(stubs, WRITE_LIMIT, async (s) => {
     await writeFileMkdirp(path.join(destRoot, s.destPath), s.html);
   });
-  return { written: stubs.length };
+  return { written: stubs.length, stubs };
 }
 
 // Pure-compute derivation: produces the redirect-stub list (destPath +
