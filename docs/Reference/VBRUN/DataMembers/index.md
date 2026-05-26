@@ -1,7 +1,7 @@
 ---
 title: DataMembers
 parent: VBRUN Package
-nav_order: 10
+nav_order: 11
 permalink: /tB/Packages/VBRUN/DataMembers/
 redirect_from:
   - /tB/Modules/DataMembers

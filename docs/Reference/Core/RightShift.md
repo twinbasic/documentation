@@ -1,5 +1,5 @@
 ---
-title: ">>, >>="
+title: "&gt;&gt;, &gt;&gt;="
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/RightShift

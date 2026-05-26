@@ -1,5 +1,5 @@
 ---
-title: \, \=
+title: "&#92;, &#92;="
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/IntegerDivide

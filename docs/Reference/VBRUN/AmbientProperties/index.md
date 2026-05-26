@@ -1,7 +1,7 @@
 ---
 title: AmbientProperties
 parent: VBRUN Package
-nav_order: 10
+nav_order: 19
 permalink: /tB/Packages/VBRUN/AmbientProperties/
 redirect_from:
   - /tB/Modules/AmbientProperties
