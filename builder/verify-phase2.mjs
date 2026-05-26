@@ -11,6 +11,7 @@ import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { loadBookData, resolveBookChapters } from "./book.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
+import { createMarkdownIt, initHighlighter, buildLinkTables } from "./render.mjs";
 
 function assert(cond, msg) {
   if (!cond) {
@@ -40,7 +41,7 @@ async function main() {
   const srcRoot = path.resolve(process.cwd(), "docs");
 
   const t = makeTimer();
-  const { pages } = await discover(srcRoot);
+  const { pages, staticFiles } = await discover(srcRoot);
   t.lap("discover");
 
   const buildInfoPromise = captureBuildInfo();
@@ -48,7 +49,14 @@ async function main() {
   const { navTree } = computeNav(pages, config);
   t.lap("nav");
 
-  const { seoSiteTitle, seoLogoUrl } = precomputeSeo(pages, config);
+  const highlighter = await initHighlighter();
+  const linkTables = buildLinkTables(pages);
+  const baseurl = String(config.baseurl || "");
+  const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
+  const markdown = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
+  t.lap("markdown-init");
+
+  const { seoSiteTitle, seoLogoUrl } = precomputeSeo(pages, config, markdown);
   t.lap("seo");
 
   const bookData = await loadBookData(srcRoot);

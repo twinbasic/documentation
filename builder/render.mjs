@@ -18,15 +18,18 @@ import footnote from "markdown-it-footnote";
 import { initHighlighter } from "./highlight.mjs";
 
 export async function renderPhase(pages, site, staticFiles = []) {
-  const highlighter = await initHighlighter();
-  const linkTables = buildLinkTables(pages);
-  const baseurl = String(site.config.baseurl || "");
-  // Lookup set for the relative-link image rewriter -- keys are the
-  // POSIX-separated source paths Phase 1 stashes on staticFiles[].
-  const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
-
-  const md = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
-  site.markdown = md;
+  // Allow the orchestrator to pre-build the markdown-it instance (so
+  // Phase 2's seo.mjs can share the same renderer). Idempotent: if
+  // site.markdown is already set, use it; otherwise build it here.
+  let md = site.markdown;
+  if (!md) {
+    const highlighter = await initHighlighter();
+    const linkTables = buildLinkTables(pages);
+    const baseurl = String(site.config.baseurl || "");
+    const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
+    md = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
+    site.markdown = md;
+  }
 
   await Promise.all(pages.map(async (page) => {
     page.renderedContent = renderPage(page, md);
@@ -193,7 +196,9 @@ function normaliseVoidTags(html) {
 
 // ---------- markdown-it configuration ---------------------------------------
 
-function createMarkdownIt(ctx) {
+export { initHighlighter };
+
+export function createMarkdownIt(ctx) {
   const md = new MarkdownIt({
     // kramdown parse_block_html + parse_span_html; recursion handled by
     // blockHtmlRecursionPlugin (PLAN-3 §5.12).
@@ -1203,7 +1208,7 @@ function renderTocItems(items, indent, out) {
 
 // ---------- §5.3 relative-links plugin --------------------------------------
 
-function buildLinkTables(pages) {
+export function buildLinkTables(pages) {
   const byPath = new Map();
   const byUrl = new Map();
   const byRedirect = new Map();

@@ -20,20 +20,21 @@
 //   docs/_plugins/book-chapter-transform.rb (per-chapter body transform)
 //   docs/_plugins/book-href-rewrite.rb   (cross-ref rewrite + landing strip)
 
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import yaml from "js-yaml";
-
 import { compressHtml } from "./compress.mjs";
+import { loadData } from "./data.mjs";
 
 // ---------------------------------------------------------------------------
 // §A  Phase 2: book.yml loader + chapter resolver + sort_by_nav_order
 // ---------------------------------------------------------------------------
 
+// Back-compat wrapper around the generic `loadData` loader. The
+// orchestrator (PLAN-9 §5.2) calls `loadData(srcRoot)` once and stashes
+// the result on `site.data`; downstream consumers read
+// `site.data.book` directly. `loadBookData` is retained for the verify
+// harnesses and diff tools that haven't migrated to `site.data` yet.
 export async function loadBookData(srcRoot) {
-  const file = path.join(srcRoot, "_data", "book.yml");
-  const raw = await fs.readFile(file, "utf8");
-  return yaml.load(raw);
+  const data = await loadData(srcRoot);
+  return data.book ?? null;
 }
 
 export function resolveBookChapters(bookData, pages) {

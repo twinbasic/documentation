@@ -29,7 +29,7 @@ import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { loadBookData, resolveBookChapters } from "./book.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
-import { renderPhase } from "./render.mjs";
+import { renderPhase, createMarkdownIt, initHighlighter, buildLinkTables } from "./render.mjs";
 import { templatePhase } from "./template.mjs";
 import { ACCEPTED_DIVERGENCE_PATHS } from "./accepted-divergences.mjs";
 
@@ -68,11 +68,16 @@ const siteRoot = path.join(srcRoot, "_site");
 const { pages, staticFiles } = await discover(srcRoot);
 const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
 const { navTree } = computeNav(pages, config);
-const seo = precomputeSeo(pages, config);
+const highlighter = await initHighlighter();
+const linkTables = buildLinkTables(pages);
+const baseurl = String(config.baseurl || "");
+const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
+const markdown = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
+const seo = precomputeSeo(pages, config, markdown);
 const bookData = await loadBookData(srcRoot);
 resolveBookChapters(bookData, pages);
 const buildInfo = phase3Mode ? null : await captureBuildInfo();
-const site = { config, navTree, ...seo, buildInfo, bookData };
+const site = { config, navTree, ...seo, buildInfo, bookData, markdown };
 await renderPhase(pages, site, staticFiles);
 if (!phase3Mode) await templatePhase(pages, site);
 

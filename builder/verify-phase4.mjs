@@ -22,7 +22,7 @@ import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { loadBookData, resolveBookChapters } from "./book.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
-import { renderPhase } from "./render.mjs";
+import { renderPhase, createMarkdownIt, initHighlighter, buildLinkTables } from "./render.mjs";
 import { templatePhase, navActivationCss, injectAnchorHeadings } from "./template.mjs";
 import { compressHtml } from "./compress.mjs";
 
@@ -66,7 +66,14 @@ async function main() {
   const { navTree } = computeNav(pages, config);
   t.lap("nav");
 
-  const { seoSiteTitle, seoLogoUrl } = precomputeSeo(pages, config);
+  const highlighter = await initHighlighter();
+  const linkTables = buildLinkTables(pages);
+  const baseurl = String(config.baseurl || "");
+  const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
+  const markdown = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
+  t.lap("markdown-init");
+
+  const { seoSiteTitle, seoLogoUrl } = precomputeSeo(pages, config, markdown);
   t.lap("seo");
 
   const bookData = await loadBookData(srcRoot);
@@ -76,7 +83,7 @@ async function main() {
   const buildInfo = await captureBuildInfo();
   t.lap("buildInfo");
 
-  const site = { config, navTree, seoSiteTitle, seoLogoUrl, buildInfo, bookData };
+  const site = { config, navTree, seoSiteTitle, seoLogoUrl, buildInfo, bookData, markdown };
 
   await renderPhase(pages, site, staticFiles);
   t.lap("render");

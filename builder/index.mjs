@@ -15,9 +15,10 @@ import yaml from "js-yaml";
 import { discover } from "./discover.mjs";
 import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
-import { loadBookData, resolveBookChapters } from "./book.mjs";
+import { resolveBookChapters } from "./book.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
-import { renderPhase } from "./render.mjs";
+import { loadData } from "./data.mjs";
+import { renderPhase, createMarkdownIt, initHighlighter, buildLinkTables } from "./render.mjs";
 import { templatePhase } from "./template.mjs";
 import { writePhase } from "./write.mjs";
 import { writeRedirects } from "./redirects.mjs";
@@ -82,17 +83,28 @@ async function main() {
   const { navTree } = computeNav(pages, config);
   t.lap("nav");
 
-  const { seoSiteTitle, seoLogoUrl } = precomputeSeo(pages, config);
+  // Build the shared markdown-it instance up front so Phase 2's SEO
+  // pass and Phase 3's body renderer use the same configured renderer.
+  // initHighlighter overlaps with the running git shell-outs above.
+  const highlighter = await initHighlighter();
+  const linkTables = buildLinkTables(pages);
+  const baseurl = String(config.baseurl || "");
+  const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
+  const markdown = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
+  t.lap("markdown-init");
+
+  const { seoSiteTitle, seoLogoUrl } = precomputeSeo(pages, config, markdown);
   t.lap("seo");
 
-  const bookData = await loadBookData(srcRoot);
+  const data = await loadData(srcRoot);
+  const bookData = data.book ?? null;
   resolveBookChapters(bookData, pages);
   t.lap("book");
 
   const buildInfo = await buildInfoPromise;
   t.lap("buildInfo");
 
-  const site = { config, navTree, seoSiteTitle, seoLogoUrl, buildInfo, bookData };
+  const site = { config, navTree, seoSiteTitle, seoLogoUrl, buildInfo, bookData, data, markdown };
 
   await renderPhase(pages, site, staticFiles);
   t.lap("render");

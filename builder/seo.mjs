@@ -12,8 +12,6 @@
 //
 // See builder/PLAN-2.md §5.7 + §6.3. Ports: _plugins/seo-precompute.rb.
 
-import MarkdownIt from "markdown-it";
-
 // Constants ported verbatim from Liquid::StandardFilters so the
 // strip/escape steps use the same regex characters Liquid would.
 const STRIP_HTML_BLOCKS = /<script.*?<\/script>|<!--.*?-->|<style.*?<\/style>/gms;
@@ -34,14 +32,20 @@ const HOMEPAGE_URLS = new Set([
   "/about/", "/about/index.html", "/about/index.htm",
 ]);
 
-export function precomputeSeo(pages, config) {
-  // typographer: true matches kramdown's smart_quotes (enabled by
-  // default for kramdown via _config.yml's `kramdown:` block). The
-  // visible effect on this site is `Do...Loop`, `For...Next`,
-  // `For Each...Next`, etc. in <title>, og:title, twitter:title, and
-  // JSON-LD headline -- with typographer they collapse to `Do…Loop`
-  // etc., matching Jekyll's rendered output.
-  const markdown = new MarkdownIt({ html: true, typographer: true });
+export function precomputeSeo(pages, config, markdown) {
+  // The markdown-it instance is shared with Phase 3's body renderer
+  // (see render.mjs's createMarkdownIt). The plugin stack adds attrs /
+  // deflist / footnote / header-id / TOC / relative-links / block-HTML
+  // recursion / smart-dash + smart-quote helpers; none of those plugins
+  // fire on the bare-text titles this site uses (no `{:` attribute
+  // syntax, no `term\n: definition`, no `[^N]` footnote ref, no
+  // heading, no `{:toc}` marker, no <a> token, no html_block with
+  // markdown="1"). The visible effect of the shared instance is
+  // identical to the previous standalone `new MarkdownIt({ html:
+  // true, typographer: true })` for every title on the site.
+  if (!markdown) {
+    throw new Error("precomputeSeo requires a markdown-it instance (build via render.mjs's createMarkdownIt)");
+  }
 
   const seoSiteTitle = renderTitle(config.title, markdown);
   const logo = config.logo;

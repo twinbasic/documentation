@@ -17,7 +17,7 @@ import { discover } from "./discover.mjs";
 import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { loadBookData, resolveBookChapters } from "./book.mjs";
-import { renderPhase } from "./render.mjs";
+import { renderPhase, createMarkdownIt, initHighlighter, buildLinkTables } from "./render.mjs";
 import { ACCEPTED_DIVERGENCE_PATHS } from "./accepted-divergences.mjs";
 
 function assert(cond, msg) {
@@ -56,7 +56,14 @@ async function main() {
   computeNav(pages, config);
   t.lap("nav");
 
-  const seo = precomputeSeo(pages, config);
+  const highlighter = await initHighlighter();
+  const linkTables = buildLinkTables(pages);
+  const baseurl = String(config.baseurl || "");
+  const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
+  const markdown = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
+  t.lap("markdown-init");
+
+  const seo = precomputeSeo(pages, config, markdown);
   t.lap("seo");
 
   const bookData = await loadBookData(srcRoot);
@@ -66,7 +73,7 @@ async function main() {
   // Per-page render timings -- wrap renderPhase by timing each page in
   // a follow-up pass. renderPhase itself isn't instrumented; the
   // additional pass measures per-page cost for the histogram.
-  const site = { config, navTree: pages, ...seo, bookData };
+  const site = { config, navTree: pages, ...seo, bookData, markdown };
   await renderPhase(pages, site, staticFiles);
   t.lap("render");
 
