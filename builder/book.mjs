@@ -190,6 +190,26 @@ function sortWithinGroup(members) {
   return [...indexes, ...withOrder, ...withoutOrder];
 }
 
+// PLAN-9 §5.9: per-chapter image-path collector. Same shape as
+// pdf.mjs's IMG_SRC_RE -- three top-level alternatives: <code>/<pre>
+// (consumed atomically so src= inside code samples doesn't count),
+// then a real page-relative `src="..."` attribute. The code/pre
+// branches leave m[1] (the quote char) undefined; we skip those.
+const IMG_SRC_RE_BOOK =
+  /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1/g;
+
+// Mutates `seen`. Called once per emitted chapter body so the post-
+// pass scan in pdf.mjs's deriveBookOutputs is no longer needed.
+function collectImagePaths(body, seen) {
+  for (const m of body.matchAll(IMG_SRC_RE_BOOK)) {
+    if (m[1] === undefined) continue;
+    const url = m[2];
+    const cleanPath = url.split(/[?#]/, 1)[0];
+    if (!cleanPath || seen.has(cleanPath)) continue;
+    seen.add(cleanPath);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // §B  Chapter anchor + URL helpers
 // ---------------------------------------------------------------------------
@@ -365,7 +385,7 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
 //   skipBaseHeadingShift   truthy. Skip the +1 1.5a base shift.
 //   extraHeadingShift      truthy. Apply an additional +1 shift (1.9
 //                          chaptered-part extra).
-function emitChapter(out, chapter, opts, subPageState, baseurl) {
+function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
   let body = chapter.renderedContent;
   if (!body || !body.trim()) return;
 
@@ -387,6 +407,13 @@ function emitChapter(out, chapter, opts, subPageState, baseurl) {
 
   body = bookChapterTransform(body, baseurl, n, chapterAnchor);
   if (!body.trim()) return;
+
+  // PLAN-9 §5.9: collect image paths inline so the post-assembly regex
+  // sweep in pdf.mjs's deriveBookOutputs can be dropped. The body has
+  // already had its `src="<baseurl>/" prefix stripped by step 1 of
+  // bookChapterTransform, so URLs match the page-relative shape
+  // IMG_SRC_RE_BOOK expects.
+  if (imagePaths) collectImagePaths(body, imagePaths);
 
   const articleClass = pickArticleClass(opts, isSubPage);
   const headerTitle  = pickHeaderTitle(chapter, opts, isSubPage, subPageState);
@@ -468,9 +495,12 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-// PLAN-8 §5.2: assembleBook. Walks site.bookData and emits the title
-// page + every <article>, runs the cross-ref rewrite + landing-strip
-// pass, runs html-compress. Pure compute; no I/O.
+// PLAN-8 §5.2 / PLAN-9 §5.9: assembleBook. Walks site.bookData and
+// emits the title page + every <article>, runs the cross-ref rewrite +
+// landing-strip pass, runs html-compress. Pure compute; no I/O. The
+// returned `imagePaths` is an array of every page-relative `<img
+// src=>` path referenced from the assembled body, deduplicated in
+// emit order (Set insertion order).
 export function assembleBook(site, pages) {
   const bookData = site.bookData;
   if (!bookData) {
@@ -482,17 +512,18 @@ export function assembleBook(site, pages) {
   const baseurl = String(site.config?.baseurl ?? "");
 
   const out = [];
+  const imagePaths = new Set();
   out.push(renderBookHead(lang, siteTitle));
   out.push("\n<body>\n");
   out.push(renderTitlePage(site));
-  emitFrontMatter(out, bookData, baseurl);
-  (bookData.parts ?? []).forEach((part, i) => emitPart(out, part, i, site, baseurl));
+  emitFrontMatter(out, bookData, baseurl, imagePaths);
+  (bookData.parts ?? []).forEach((part, i) => emitPart(out, part, i, site, baseurl, imagePaths));
   out.push("\n</body>\n</html>\n");
 
-  let html = out.join("");
-  html = rewriteBookHrefs(html, site, pages);
-  html = compressHtml(html);
-  return html;
+  let bookHtml = out.join("");
+  bookHtml = rewriteBookHrefs(bookHtml, site, pages);
+  bookHtml = compressHtml(bookHtml);
+  return { bookHtml, imagePaths: [...imagePaths] };
 }
 
 // PLAN-8 §6.9: head matches book-combined.html lines 1-8 byte-for-byte
@@ -638,7 +669,7 @@ function renderChapterDivider(chEntry) {
 // are emitted with article_class_override='front-matter' and
 // skip_sub_page_detection=true. The root URL `/` collapses to an empty
 // anchor seed; supply `ch-{fm.title-slug}` as the override.
-function emitFrontMatter(out, bookData, baseurl) {
+function emitFrontMatter(out, bookData, baseurl, imagePaths) {
   const state = { currentIndexUrl: "", currentIndexKind: "class", currentIndexName: "" };
   for (const fm of bookData.front_matter ?? []) {
     for (const chapter of fm._chapters ?? []) {
@@ -651,7 +682,7 @@ function emitFrontMatter(out, bookData, baseurl) {
         articleClassOverride: "front-matter",
         chapterAnchorOverride: fmAnchor,
         skipSubPageDetection: true,
-      }, state, baseurl);
+      }, state, baseurl, imagePaths);
     }
   }
 }
@@ -660,7 +691,7 @@ function emitFrontMatter(out, bookData, baseurl) {
 // optional foreword, optional chaptered-part landing, then the chapter
 // content. The sub-page state machine resets per chapter (chaptered)
 // or runs across the whole part (flat).
-function emitPart(out, part, partIdx, site, baseurl) {
+function emitPart(out, part, partIdx, site, baseurl, imagePaths) {
   const partNum = partIdx + 1;
   out.push(renderPartDivider(part, partNum, site));
 
@@ -670,7 +701,7 @@ function emitPart(out, part, partIdx, site, baseurl) {
       articleClassOverride: "part-foreword",
       skipSubPageDetection: true,
       skipBaseHeadingShift: !!part.no_heading_shift,
-    }, state, baseurl);
+    }, state, baseurl, imagePaths);
   }
 
   if (part.chapters && part.landing_page && part._landing) {
@@ -678,7 +709,7 @@ function emitPart(out, part, partIdx, site, baseurl) {
     emitChapter(out, part._landing, {
       skipSubPageDetection: true,
       skipBaseHeadingShift: !!part.no_heading_shift,
-    }, state, baseurl);
+    }, state, baseurl, imagePaths);
   }
 
   if (part.chapters) {
@@ -687,7 +718,7 @@ function emitPart(out, part, partIdx, site, baseurl) {
       const state = { currentIndexUrl: "", currentIndexKind: "class", currentIndexName: "" };
       for (const chapter of chEntry._chapters ?? []) {
         const flags = chapteredFlags(part, chEntry);
-        emitChapter(out, chapter, flags, state, baseurl);
+        emitChapter(out, chapter, flags, state, baseurl, imagePaths);
       }
     }
   } else {
@@ -697,7 +728,7 @@ function emitPart(out, part, partIdx, site, baseurl) {
       const flags = {};
       if (part.no_heading_shift) flags.skipBaseHeadingShift = true;
       if (isPartLanding) flags.skipSubPageDetection = true;
-      emitChapter(out, chapter, flags, state, baseurl);
+      emitChapter(out, chapter, flags, state, baseurl, imagePaths);
     }
   }
 }

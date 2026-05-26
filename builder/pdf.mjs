@@ -70,10 +70,14 @@ export async function writePdf(pages, staticFiles, site, destRoot, { serving = f
 // PLAN-8 §4 deps assembly: pure-compute helper. Returns the assembled
 // book.html string + the list of relative image paths it references.
 // Used by the writer (writePdf above) and by the diff tools.
+//
+// PLAN-9 §5.9: image-path collection is folded into the assembly
+// itself (book.mjs's emitChapter populates a Set as it goes); the
+// post-pass `extractImagePaths(bookHtml)` regex sweep is gone.
+// `extractImagePaths` is retained below as a fallback/diagnostic
+// export for the bulk-triage tools.
 export function deriveBookOutputs(pages, site) {
-  const bookHtml = assembleBook(site, pages);
-  const imagePaths = extractImagePaths(bookHtml);
-  return { bookHtml, imagePaths };
+  return assembleBook(site, pages);
 }
 
 // PLAN-8 §5.1: locate the one `layout: book-combined` page. Throws on
