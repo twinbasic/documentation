@@ -1,10 +1,15 @@
 # Future Work
 
 Open follow-up tasks for the tbdocs builder. Phases 1-8 are shipped;
-the items below were deliberately left out of those phases (either as
-post-port enhancements or as divergences whose cost outweighs the
-verification value). None are blocking; pick one up only when the
-trigger condition listed under each entry is hit.
+[Phase 9](PLAN-9.md) is planned as a consolidation pass that absorbs
+every item which doesn't change build output (or strictly improves
+Jekyll parity); **Phase 10** will pick up the items that intentionally
+change output and so couldn't fit Phase 9's no-regression criterion.
+
+Per-item phase routing is annotated inline below — look for **→ Phase
+9**, **→ Phase 10**, or **→ drop**. Items without an explicit routing
+either pre-date the Phase 9 plan (the §A1 investigation) or are
+sequenced outside the phase pipeline (§C cutover).
 
 When picking up a divergence-investigation entry: re-run the discovery
 step listed under "Reproduce" before assuming the symptom is still
@@ -16,6 +21,11 @@ since the entry was written.
 ## A. Divergence investigations
 
 ### A1. Hidden secondary divergences on accepted-divergence pages
+
+**Routing**: investigation paths #1 (multi-divergence audit tool) and
+#3 (`_diff.mjs` / `_triage.mjs` `--multi` mode) → **Phase 9**
+([PLAN-9.md §5.12](PLAN-9.md)). Path #2 (decide on the TestFixture
+line specifically) is a content / parser call that can wait.
 
 **Discovered**: Phase 6 verify (search-data byte comparison vs Jekyll's
 `docs/_site/assets/js/search-data.json`).
@@ -121,6 +131,10 @@ phases. Each is a clean addition; none block any current work.
 
 ### B1. Mermaid `.mmd` -> `.svg` automation (PLAN-3 §15)
 
+**Routing**: → **Phase 10**. Auto-regenerated SVGs would differ
+byte-for-byte from the hand-exported originals, regressing the
+`_site/assets/images/mmd/*.svg` byte match.
+
 **Trigger**: a second mermaid diagram is added to the site, or the
 single existing one needs a re-export.
 
@@ -133,18 +147,31 @@ any phase code.
 
 ### B2. Switch to Shiki-themed inline-style output (PLAN-3 §15 / §D3)
 
-**Trigger**: someone wants to retire `rouge.css` or use a curated
-Shiki theme.
+**Routing**: → **Phase 10** (headline item). Definitely regresses
+HTML byte-match.
+
+**Approach update**: rather than the original "switch to Shiki's
+default `<span style="color:#xxx">` output", the Phase 10 plan
+generates the Shiki theme **from the upstream twinBASIC `.twin` style
+source files** during the build, replacing the current
+`scripts/extract_theme_colors.py` mapping that produces Rouge classes.
+The original styling information lives in the `.twin` files; the
+current pipeline indirects through Rouge classes because Rouge's
+class set is fixed. Reading the `.twin` source directly lets the
+syntax colors stay in sync with upstream without manual remap.
+
+**Trigger**: Phase 10 lands.
 
 Phase 3 maps Shiki's TextMate scopes onto Rouge class names so the
-existing `assets/css/rouge.css` keeps working byte-for-byte. Dropping
-the mapper and using Shiki's default `<span style="color:#xxx">`
-output would let us delete `rouge.css` and adopt a Shiki theme
-wholesale, but it changes the rendered HTML and would require
-Phase 4 / asset-extraction follow-up. Out of scope for the
-byte-equivalent port.
+existing `assets/css/rouge.css` keeps working byte-for-byte. The
+Phase 10 change drops the mapper, generates Shiki styles directly
+from the `.twin` source files, and accepts the HTML body diff for
+every `<pre>` block (single category in
+`accepted-divergences.mjs`).
 
 ### B3. Move title rendering to `site.markdown` (PLAN-3 §15, PLAN-2 §D6)
+
+**Routing**: → **Phase 9** ([PLAN-9.md §5.1](PLAN-9.md)).
 
 **Trigger**: a refactor pass after the port settles.
 
@@ -156,6 +183,10 @@ Tiny code reduction, no behaviour change.
 
 ### B4. Generic `site.data.*` loader (PLAN-3 §15)
 
+**Routing**: → **Phase 9** ([PLAN-9.md §5.2](PLAN-9.md)). Pulled in
+as a mechanical cleanup even without a trigger; sets up cleanly for
+any future `_data/*.yml`.
+
 **Trigger**: a new `_data/<file>.yml` is added.
 
 Currently `book.mjs` loads `_data/book.yml` directly. A generic
@@ -164,6 +195,9 @@ data file without per-file plumbing. Defer until a second data file
 exists.
 
 ### B5. Inline copy-code button server-side rendering (PLAN-3 §15 / §D16)
+
+**Routing**: → **Phase 10**. Adds button HTML to every `<pre>`;
+regresses HTML byte-match.
 
 **Trigger**: the just-the-docs copy-code JS needs to be retired
 (client-bundle shrink, accessibility audit, etc.).
@@ -176,6 +210,9 @@ trigger.
 
 ### B6. Linkify exception list (PLAN-3 §15 / §D10)
 
+**Routing**: → **Phase 10**. Auto-linking bare URLs changes rendered
+HTML.
+
 **Trigger**: bare URLs start appearing in body prose that aren't
 already wrapped in explicit `[text](url)` markdown.
 
@@ -186,6 +223,9 @@ case but adds plugin complexity. Re-evaluate if the content
 convention changes.
 
 ### B7. Phase 7 nav-block cache (PLAN-7 §13)
+
+**Routing**: → **Phase 9** ([PLAN-9.md §5.3](PLAN-9.md)). Pulled in
+for the ~200 ms perf win even though the trigger isn't yet hit.
 
 **Trigger**: the offline HTML pass exceeds 300 ms in profiling, or
 the Phase 7 total exceeds the 1500 ms cap in `verify-phase7.mjs`.
@@ -199,6 +239,8 @@ nav back after the gsub; seed the cache from the first page in each
 
 ### B8. Phase 7 `--no-offline` opt-out (PLAN-7 §13)
 
+**Routing**: → **Phase 9** ([PLAN-9.md §5.4](PLAN-9.md)).
+
 **Trigger**: a deployment scenario where the offline tree is not
 wanted (e.g. CI builds that only ship the online tree).
 
@@ -207,6 +249,8 @@ production deploys can skip the offline build entirely. Currently
 the offline build always runs (~1 s cost).
 
 ### B9. Phase 7 `--profile-offline` flag (PLAN-7 §13)
+
+**Routing**: → **Phase 9** ([PLAN-9.md §5.7](PLAN-9.md)).
 
 **Trigger**: Phase 7 misses its 800 ms target and the per-substep
 breakdown is needed to identify the dominant cost.
@@ -218,6 +262,9 @@ the orchestrator's `t.summary()`.
 
 ### B10. Phase 7 search-data minification (PLAN-7 §13)
 
+**Routing**: → **Phase 10**. Jekyll's `search-data.js` is not
+minified; minifying regresses the offline-tree byte match.
+
 **Trigger**: complaints about page load under `file://` on spinning
 disks, or `_site-offline.zip` size pressure.
 
@@ -226,6 +273,11 @@ minification). The search index dominates offline-tree size; this
 is the highest-leverage size reduction.
 
 ### B11. Phase 7 AST-based JTD JS patching (PLAN-7 §13)
+
+**Routing**: → **Phase 10**. Replacing the regex patches with an
+AST rewrite carries a real risk of byte drift in the patched
+`just-the-docs.js`; Phase 10 verifies byte-identity or accepts the
+divergence.
 
 **Trigger**: regex misses in the patch step (the warning lines
 `deriveOfflineJtdJs` returns would surface this), typically caused
@@ -239,6 +291,8 @@ edits.
 
 ### B12. Phase 5 `--against-disk` diff mode (PLAN-5 §14 step 11)
 
+**Routing**: → **Phase 9** ([PLAN-9.md §5.10](PLAN-9.md)).
+
 **Trigger**: a post-write verification scenario actually needs it.
 
 Extend `_diff.mjs` / `_diff_all.mjs` with a mode that diffs the
@@ -248,6 +302,8 @@ divergences (write-time encoding bugs, line-ending contamination)
 that wouldn't show up in the in-memory compare.
 
 ### B13. Phase 8 `--no-pdf` opt-out (PLAN-8 §13)
+
+**Routing**: → **Phase 9** ([PLAN-9.md §5.5](PLAN-9.md)).
 
 **Trigger**: a deployment scenario where the PDF tree is not wanted
 (e.g. CI builds that only ship the online tree).
@@ -261,6 +317,8 @@ of truth.
 
 ### B14. Phase 8 `--serving` flag (PLAN-8 §13)
 
+**Routing**: → **Phase 9** ([PLAN-9.md §5.6](PLAN-9.md)).
+
 **Trigger**: a watch-mode flow lands and a mid-edit save can
 temporarily break an image reference.
 
@@ -270,6 +328,11 @@ missing-image throw to a warn. Matches Jekyll's
 as a `writePdf` parameter; just needs a CLI surface.
 
 ### B15. Phase 8 build-date semantics (PLAN-8 §13)
+
+**Routing**: → **Phase 9** ([PLAN-9.md §5.8](PLAN-9.md)). Switches
+the PDF title-page date from `commitDate` to wall-clock (`new
+Date()`) to match Jekyll's `site.time` semantics. Counts as a
+parity improvement, not a regression.
 
 **Trigger**: a `book.bat` user complains that the PDF title page
 date doesn't match expectations.
@@ -283,6 +346,8 @@ run and switch if needed (the `new Date()` fallback in
 `formatBuildDate` is already there for the no-git case).
 
 ### B16. Phase 8 cross-reference completeness audit (PLAN-8 §13)
+
+**Routing**: → **Phase 9** ([PLAN-9.md §5.11](PLAN-9.md)).
 
 **Trigger**: a reader complains that a PDF link sent them to the
 live site when they expected an in-PDF jump.
@@ -298,6 +363,8 @@ surfaces these.
 
 ### B17. Phase 8 image-extraction unification with `assembleBook` (PLAN-8 §13)
 
+**Routing**: → **Phase 9** ([PLAN-9.md §5.9](PLAN-9.md)).
+
 **Trigger**: Phase 8 misses its 200 ms target and the breakdown
 shows `extractImagePaths` non-trivial.
 
@@ -310,8 +377,11 @@ it assembles.
 
 ### B18. Phase 8 streaming write of book.html (PLAN-8 §13)
 
-**Trigger**: a future book size where the in-memory string causes
-GC pressure. Not relevant at the current ~5 MB scale.
+**Routing**: → **drop** ([PLAN-9.md §8.2](PLAN-9.md)). The trigger
+is "a future book size where the in-memory string causes GC
+pressure"; the current scale (~5 MB) is two orders of magnitude
+below that threshold and the book hasn't grown materially in years.
+Re-add the entry if the underlying constraint changes.
 
 The current implementation builds the full ~5.5 MB book.html string
 in memory and writes in one shot. A streaming write (Node's
@@ -325,6 +395,11 @@ would reduce the peak memory footprint but add complexity.
 The single-commit cutover from Jekyll to tbdocs. Sequenced after
 Phase 8 lands and all eight verify harnesses pass clean on the
 production tree (PLAN-5 §13, PLAN-8 §13).
+
+**Routing**: orthogonal to Phase 9 and Phase 10. Can run after
+either; the decision depends on whether the Phase 10 byte
+divergences (Shiki theme regen, etc.) are acceptable for the
+deploy target at the time of cutover.
 
 ### C1. Cutover sequence
 

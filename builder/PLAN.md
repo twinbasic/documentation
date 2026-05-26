@@ -5,7 +5,7 @@ Node.js tool. Goal: byte-equivalent output to Jekyll (modulo the
 accepted-divergences allow-list), in compact dependency-light JS, no
 framework.
 
-## Status: phases 1-8 shipped
+## Status: phases 1-8 shipped, Phase 9 planned
 
 All eight build phases land on the production tree and produce
 byte-equivalent output to Jekyll modulo the entries in
@@ -13,9 +13,18 @@ byte-equivalent output to Jekyll modulo the entries in
 its own acceptance harness ([verify-phase1.mjs](verify-phase1.mjs)
 through [verify-phase8.mjs](verify-phase8.mjs)) that runs the
 preceding phases into a scratch destination and asserts the §10
-checks from the corresponding `PLAN-N.md`. Open follow-ups (deferred
-enhancements, divergence investigations, the Jekyll-to-tbdocs
-cutover) live in [FUTURE-WORK.md](FUTURE-WORK.md).
+checks from the corresponding `PLAN-N.md`.
+
+**Phase 9** (planned, see [PLAN-9.md](PLAN-9.md)) is a QoL +
+documentation + cleanup consolidation pass that lands every
+FUTURE-WORK item which either doesn't change build output or strictly
+improves Jekyll parity. **Phase 10** (planned, no PLAN-10.md yet)
+picks up the output-changing FUTURE-WORK items (Shiki theming
+generated from upstream `.twin` source files, mermaid auto-gen,
+copy-code SSR, linkify, search-data minification, AST-based JTD
+patcher). Open follow-ups (deferred enhancements, divergence
+investigations, the Jekyll-to-tbdocs cutover) live in
+[FUTURE-WORK.md](FUTURE-WORK.md).
 
 ## Architecture
 
@@ -89,11 +98,16 @@ Phase 5: WRITE ONLINE    ~400ms   Write _site/                                  
 Phase 6: AUXILIARIES     ~100ms   Redirects, sitemap, search-data.json, robots.txt            [shipped]
 Phase 7: WRITE OFFLINE   ~1000ms  URL-rewritten copy to _site-offline/                        [shipped]
 Phase 8: WRITE PDF       ~150ms   Sparse copy to _site-pdf/                                   [shipped]
+Phase 9: QoL + DOCS      (-200ms) FUTURE-WORK consolidation; no output change                 [planned]
+Phase 10: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [planned]
 ```
 
 Timings are wall-clock measurements from `node builder/index.mjs` on
 the current Windows dev machine. Per-phase target / cap details and
-the per-substep breakdown live in each `PLAN-N.md`.
+the per-substep breakdown live in each `PLAN-N.md`. Phase 9 is net
+~200 ms faster than the post-Phase-8 baseline (Phase 7 nav-block
+cache + Phase 8 image-extract fold); Phase 10 is a feature phase
+with no perf budget set yet.
 
 ## Phase Specifications
 
@@ -321,6 +335,29 @@ Skip patterns: CNAME, robots.txt, sitemap.xml, book.html (per
 `_site-pdf/book.html` and produces `_pdf/book.pdf`. Phase 8 writes
 the inputs; the shell script does the actual PDF render. Full spec:
 [PLAN-8.md](PLAN-8.md).
+
+### Phase 9: QOL + DOCS + CLEANUP (planned)
+
+Consolidation pass landing every FUTURE-WORK item that either doesn't
+change build output or strictly improves Jekyll parity. Adds CLI
+flags (`--no-offline`, `--no-pdf`, `--serving`, `--profile-offline`),
+a Phase 7 nav-block cache (~200 ms perf win), a generic `_data/*.yml`
+loader (`data.mjs`), a multi-divergence audit tool
+(`_audit_accepted.mjs`), a `--against-disk` mode for `_diff.mjs`, a
+PDF cross-reference completeness check in `verify-phase8.mjs`, and a
+`builder/README.md` plus a per-module header consistency pass.
+Switches the PDF title-page date from `commitDate` to wall-clock to
+match Jekyll's `site.time`. Full spec: [PLAN-9.md](PLAN-9.md).
+
+### Phase 10: PARITY UPDATE (planned)
+
+Output-changing FUTURE-WORK items the byte-parity-with-Jekyll
+discipline of Phases 3-9 had deferred. The headline item is **Shiki
+themes generated from upstream twinBASIC `.twin` source files**
+(replacing the current `scripts/extract_theme_colors.py` Rouge-class
+mapping); other candidates are mermaid `.mmd` auto-regeneration,
+server-side copy-code button, selective linkify, search-data
+minification, and an AST-based JTD JS patcher. No PLAN-10.md yet.
 
 ## Static Asset Extraction (One-Time Setup)
 
