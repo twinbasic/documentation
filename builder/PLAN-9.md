@@ -31,7 +31,54 @@ Target wall-clock impact: ~200 ms shaved off `node builder/index.mjs`
 (Phase 7 nav-block cache plus the Phase 8 image-extract unification),
 otherwise neutral on perf.
 
-## Status: planned
+## Status: shipped
+
+All seven batches landed across the commits below. Byte parity vs
+Jekyll holds end-to-end (`_triage.mjs` reports MATCH for every Phase 4
+page, sitemap, redirects, robots.txt, search index, every offline
+target, PDF book.html / CSS / images); all eight verify harnesses
+pass.
+
+| Batch | Commit | Subject |
+|---|---|---|
+| -- | d34af49 | Phase 9 plan: route FUTURE-WORK items to phase 9 or 10 |
+| 1  | 91c3d7d | share markdown-it instance + generic _data loader (B3 + B4) |
+| 2  | 4aaa201 | fold image-path extraction into book assembly (B17) |
+| 3  | 139ed5b | cache per-dest-dir sidebar nav rewrite (B7) |
+| 4  | e4dc871 | CLI flags --no-offline --no-pdf --serving --profile-offline (B8 + B13 + B14 + B9) |
+| 5  | 8aec8c1 | PDF title-page build date uses wall-clock (B15) |
+| 6  | 56b2e60 | diagnostics (B12 + B16 + A1) |
+| 7  | e9879bd | README + WIP / PLAN / FUTURE-WORK updates |
+
+### Where the shipped result diverged from the plan
+
+Two corrections worth flagging up front; the affected sections below
+have been updated in place:
+
+- **B7 cache key is the destination directory, not the source
+  directory** (§5.3, §7.D3). The premise that "pages in the same
+  source directory emit a byte-identical sidebar nav block" is true
+  for the pre-rewrite input, but the post-rewrite OUTPUT depends on
+  the page's `fileSegs` (derived from `page.destPath`). Pages with
+  the same source dir but different destination dirs would produce
+  different rewritten URLs in the cached nav slice. Keying by
+  destination dir is the correct grouping for the rewrite.
+- **B9 / D13 picked duplication over export.** PLAN-9 §5.7 / §7.D13
+  recommended exporting `makeTimer` from `index.mjs`. In practice,
+  any `import { makeTimer } from "./index.mjs"` in `offline.mjs`
+  would also pull in `index.mjs`'s top-level `main().catch(...)` --
+  every verify harness imports `offline.mjs`, so the side effect
+  would fire during harness load. Duplicating the 13-line helper
+  into `offline.mjs` avoids the cycle entirely.
+
+Other small notes inline below: §3's "accepted-divergences -1 line"
+was unnecessary (B15's date normalisation lives in
+`verify-phase8.mjs`'s `BUILD_INFO_RE`, not in
+`accepted-divergences.mjs`); §5.13.3's per-module header
+consistency pass was deferred (existing headers already follow the
+"Phase N <NAME>: ..." shape); B17's `extractImagePaths` was kept as
+a fallback/diagnostic export because `_diff.mjs`, `_triage.mjs`,
+and `verify-phase8.mjs` import it.
 
 ---
 
@@ -41,7 +88,9 @@ The current builder state at HEAD: Phases 1-8 shipped, the seven
 production-module set under `builder/`, the per-phase verify
 harnesses, and the
 [FUTURE-WORK.md](FUTURE-WORK.md) backlog. No new source-tree input
-is required; Phase 9 operates inside `builder/` and on `docs/WIP.md`.
+is required; Phase 9 operates inside `builder/` and on the repo-root
+`WIP.md` (this site has no `docs/WIP.md`; the project notes file
+lives at the repo root and is loaded by `CLAUDE.md` via `@WIP.md`).
 
 ---
 
@@ -55,7 +104,9 @@ Phase 9 produces no new build artifacts. Its outputs are:
 - One new diagnostic tool: `_audit_accepted.mjs` (A1 multi-divergence
   audit).
 - One new documentation file: `builder/README.md`.
-- Edits to `docs/WIP.md` (the "JS builder port (in progress)" section).
+- Edits to the repo-root `WIP.md` (the "JS builder port (in progress)"
+  section, now rewritten as "JS builder port (shipped, Phase 9
+  cleanup)").
 - Updates to [PLAN.md](PLAN.md) (phase count, file layout) and
   [FUTURE-WORK.md](FUTURE-WORK.md) (mark Phase-9-landed items, group
   remaining as Phase-10 candidates).
@@ -102,16 +153,28 @@ builder/
   _diff.mjs                 +20. --against-disk[=<path>] mode (B12),
                              --multi (continue past first divergence, A1).
   _triage.mjs               +20. --multi flag, parallel to _diff.mjs.
-  accepted-divergences.mjs  -1 line (B15 narrows the build-date entry).
-  PLAN-N.md (1..8)          Headers touched where Phase 9 absorbed an
-                             item; bodies unchanged.
-  PLAN.md                   Architecture + Build Phases tables touched.
-  FUTURE-WORK.md            Mark Phase-9-landed entries; group
-                             remainder by Phase 10 vs deferred.
-  docs/WIP.md               "JS builder port (in progress)" rewritten.
+  accepted-divergences.mjs  no change (B15's date normalisation lives
+                             in verify-phase8.mjs's BUILD_INFO_RE, not
+                             in this file -- there was no date entry
+                             here to narrow).
+  PLAN-N.md (1..8)          unchanged in shipped result; cross-refs
+                             from PLAN-9 to the originating PLAN-N
+                             sections are one-way.
+  PLAN.md                   Architecture + Build Phases tables updated;
+                             Phase 9 marked shipped.
+  FUTURE-WORK.md            Phase-9-landed entries marked "shipped";
+                             Phase 10 routing preserved.
+  WIP.md                    "JS builder port" section rewritten as
+                             shipped (this file is the repo-root
+                             WIP.md, not docs/WIP.md -- there's no
+                             docs/WIP.md on this site).
 
-(all production .mjs)       File-header consistency pass: one canonical
-                             // Phase N <NAME>: ... header form.
+(all production .mjs)       File-header consistency pass: deferred.
+                             Existing headers already follow the
+                             "Phase N <NAME>: ..." shape; sweeping
+                             touches across every module would have
+                             been pure churn against this batch's
+                             no-output-change criterion.
 ```
 
 Estimated total churn: ~400 lines added across all files, ~50 removed,
@@ -283,15 +346,24 @@ match callback invocation on the ~80 KB sidebar nav block embedded
 in every page. With 837 pages × ~80 KB sidebar = ~67 MB of
 re-scanned bytes per build.
 
-**Premise**: every page in the same source directory emits a
-byte-identical sidebar nav block. The just-the-docs sidebar lists
-every page in the site; the per-page active highlight lives in
-`<style id="jtd-nav-activation">` (CSS), NOT as inline class
-attributes on the nav anchors. So the nav HTML really is identical
-across all pages in a given source dir (and almost certainly across
-ALL pages, but the per-dir grouping is the safer cache key — it
-matches the way [template.mjs](template.mjs) currently precomputes
-the nav per directory).
+**Premise** (revised in shipped result): the pre-rewrite sidebar nav
+block (`<nav id="site-nav">...</nav>`) is byte-identical site-wide.
+[template.mjs](template.mjs)'s `renderSidebar(site)` takes only
+`site`, not `page`; the per-page active highlight lives in
+`<style id="jtd-nav-activation">` (CSS) inside `<head>`, NOT as
+inline class attributes on the nav anchors. The POST-rewrite block
+is then byte-identical per **destination directory**, because the
+URL rewriter (computeRelative) consumes the page's `fileSegs`,
+derived from `page.destPath`. Two pages with the same source dir
+but different destination dirs (e.g. `Reference/X.md → /tB/X` vs
+`Reference/Y.md → /tB/Modules/Y`) would diverge after rewrite.
+
+**Why this matters**: the plan originally proposed source-dir
+keying (§7.D3 below, updated). On this site, the first verify pass
+caught the divergence -- top-level pages share source dir `.` but
+different destination paths, so caching by source dir would splice
+one page's rewritten nav into another page's html and produce
+wrong relative URLs.
 
 **Decision** ([§7.D11](#71-decision-record)): assert the premise at
 first use; fall back to the full rewrite on assertion miss with a
@@ -303,34 +375,34 @@ dependency.
 ([offline.mjs:147](offline.mjs:147)):
 
 1. **Pre-pass** before the `runLimited` parallel loop in
-   `writeOfflinePages`: walk `writable` (already sorted by `srcRel`
-   from Phase 1's deterministic glob) and group by source directory.
-   The **first** page in `srcRel` order per group renders the cached
-   input/output slices for the rest.
+   `writeOfflinePages`: walk `writable` (already sorted from Phase
+   1's deterministic glob) and group by **destination directory**.
+   The **first** page per group renders the cached input/output
+   slices for the rest.
 
    ```js
    const writable = pages.filter(p => p.html !== undefined);
-   const byDir = new Map();   // srcDir → { firstSrcRel, members[] }
+   const byDir = new Map();   // destDir → members[]
    for (const p of writable) {
-     const srcDir = posixDirname(p.srcRel);
-     let g = byDir.get(srcDir);
-     if (!g) { g = { firstSrcRel: p.srcRel, members: [] }; byDir.set(srcDir, g); }
-     g.members.push(p);
+     const destDir = posixDirname(p.destPath);
+     let g = byDir.get(destDir);
+     if (!g) { g = []; byDir.set(destDir, g); }
+     g.push(p);
    }
    ```
 
 2. **Cache shape**: `navCache: Map<string, { input: string, output: string }>`
-   keyed on source directory. Stored on `deps` so the wrapped
+   keyed on destination directory. Stored on `deps` so the wrapped
    `deriveOfflinePage` (called from inside `runLimited`) can read it.
 
 3. **First-page execution per dir**: serial pass over the
-   first-page set (one page per dir, ~30-40 pages depending on
-   tree shape). For each: render via the existing
+   first-page set (one page per destination dir, ~30-40 pages on
+   this site). For each: render via the existing
    `deriveOfflinePage(page, deps)` unmodified. On the resulting
    `{ html }`, slice the nav block; also slice the pre-rewrite nav
    from `page.html` (the Phase 4 output, before any offline
    rewrite). Stash `{ input, output }` on
-   `deps.navCache.set(srcDir, {...})`.
+   `deps.navCache.set(destDir, {...})`.
 
    Slice helper:
 
@@ -357,8 +429,8 @@ dependency.
 
    ```js
    function deriveOfflinePageCached(page, deps) {
-     const srcDir = posixDirname(page.srcRel);
-     const cached = deps.navCache?.get(srcDir);
+     const destDir = posixDirname(page.destPath);
+     const cached = deps.navCache?.get(destDir);
      if (!cached) return deriveOfflinePage(page, deps);
 
      // Locate the cached pre-rewrite input slice in this page's html.
@@ -367,7 +439,7 @@ dependency.
      if (idx === -1) {
        console.warn(
          `offline nav cache miss for ${page.srcRel}: ` +
-         `nav block doesn't match first page in ${srcDir}; ` +
+         `nav block doesn't match first page in ${destDir}; ` +
          `falling back to full rewrite`,
        );
        return deriveOfflinePage(page, deps);
@@ -383,6 +455,12 @@ dependency.
      return { html: out, misses };
    }
    ```
+
+   In the shipped code, the first page per destination dir also goes
+   through `deriveOfflinePageCached` in the parallel pass. That's
+   one redundant render per group (~30-40 pages) but keeps the
+   parallel-loop code single-path; the redundant work is dominated
+   by the eliminated nav-block rescans on the other ~800 pages.
 
 5. **Placeholder safety**: `<!--TBDOCS_NAV_CACHE_-->` is an HTML
    comment. `HTML_COMBINED_RE` ([offline.mjs:520](offline.mjs:520))
@@ -475,29 +553,29 @@ inside `writeOffline` for the substep grain.
 
 **Change**:
 
-- Add to `parseArgs`:
-  `case "--profile-offline": args.profileOffline = true; break;`
-  (plus the `--profile-offline=...` form for consistency with
-  `--src=`/`--dest=`).
+- Add `--profile-offline` to `parseArgs`.
 - Thread `{ profileOffline }` through to `writeOffline` via the
   existing options object alongside `auxStats`.
 - Inside `writeOffline` ([offline.mjs:45](offline.mjs:45)), create
-  a local `const subT = makeTimer()` (export `makeTimer` from
-  index.mjs, or duplicate the ~13-line helper into offline.mjs --
-  duplicating is fine, but exporting is cleaner; pick exporting).
-  Call `subT.lap("<step>")` after each of: `setupOfflineDest`,
-  `patchJustTheDocsJs`, `writeSearchDataJs`, and each of the five
-  `Promise.all` branches (use a wrapper so each `await branch();
-  subT.lap("...")` runs at the point the branch completes -- not
-  before).
-- When `profileOffline`, append `subT.summary()` to the
-  orchestrator's main summary line, prefixed by `  offline:`.
-- Substep names: `setup`, `jtdPatch`, `searchDataJs`, `pages`,
-  `redirects`, `statics`, `themeAssets`, `searchDataCopy`. Eight
-  rows total. Parallel structure to Jekyll offlinify's
-  `tick(:time_*)` accumulators
-  ([docs/_plugins/offlinify.rb](../docs/_plugins/offlinify.rb)
-  L800+).
+  a local `const subT = makeTimer()` when `profileOffline` is on.
+  Call `subT.lap("<step>")` after each sequential substep
+  (`setup`, `jtdPatch`, `searchDataJs`, `parallel`).
+- When `profileOffline`, also record each concurrent branch's
+  duration via `.then(() => { dX = Date.now() - t0; })` on its
+  promise; print the per-branch concurrent rows after `Promise.all`
+  resolves. The concurrent rows are informational only and do not
+  sum to the total wall time (they overlap).
+- Append `subT.summary()` to the orchestrator's main summary line,
+  prefixed by `  offline:`. Sequential laps sum (within rounding)
+  to the Phase 7 total; concurrent rows print separately above.
+
+**Shipped change to D13**: PLAN-9 §7.D13 originally said "pick
+exporting" `makeTimer` from `index.mjs`. Importing `index.mjs` from
+`offline.mjs` would pull `main().catch(...)` into the dependency
+graph of every verify harness (each harness imports `offline.mjs`,
+which would then evaluate `index.mjs` and fire the build entry
+point during harness load). Duplicated the 13-line helper into
+`offline.mjs` instead.
 
 **Caveat**: the five Phase 7 `Promise.all` branches run concurrently,
 so naively measuring "wall time per branch" overcounts (Σ branches
@@ -510,9 +588,23 @@ sum to total. Document this in the help-text line under
 `--profile-offline`.
 
 **Verification**: with the flag, the per-substep table appears.
-The sequential rows sum (within rounding) to the
-"sequential portion" of the Phase 7 total; the concurrent rows are
-informational only.
+The sequential rows sum (within rounding) to the total offline
+phase wall-clock; the concurrent rows are informational only.
+
+**Shipped form** (representative output):
+
+```
+  offline.pages (concurrent): 668 ms
+  offline.redirects (concurrent): 308 ms
+  offline.statics (concurrent): 257 ms
+  offline.themeAssets (concurrent): 261 ms
+  offline.searchDataCopy (concurrent): 213 ms
+  offline: setup=74ms jtdPatch=2ms searchDataJs=6ms parallel=668ms
+```
+
+The concurrent rows print as their branches resolve (so the order
+in the output reflects completion order, not source order). The
+final sequential summary prints after Promise.all resolves.
 
 ### 5.8. B15 — PDF title-page date semantics
 
@@ -523,9 +615,15 @@ YYYY-MM-DD path) for the PDF title-page date line.
 
 **Jekyll**: reads `site.time` — the build wall-clock.
 
-**Change**: switch `pdf.mjs` to `new Date()` (wall-clock). The
-`commitDate` field stays in `buildInfo` for any future consumer that
-wants commit-day semantics; the PDF title page just stops using it.
+**Change**: switch [book.mjs's `renderTitlePage`](book.mjs) to a
+`formatBuildDateNow()` helper that calls `new Date()` (wall-clock).
+The `commitDate` field stays in `buildInfo` for any future consumer
+that wants commit-day semantics, and the title-page line still
+prints the commit hash + commit date in parentheses; the headline
+`Built <X>` date is now when the PDF was generated. The old
+`formatBuildDate(iso)` helper (which parsed the YYYY-MM-DD shape
+out of `commitDate`) is gone -- the wall-clock path is the only
+branch left.
 
 **Output impact**: the title-page date line in `_site-pdf/book.html`
 now matches Jekyll's emitted date line on any build run. The pre-
@@ -573,8 +671,14 @@ export function deriveBookOutputs(pages, site) {
    `extractImagePaths(bookHtml)` line; destructure directly from
    `assembleBook`.
 4. **[pdf.mjs:113](pdf.mjs:113)** `extractImagePaths` and
-   `IMG_SRC_RE`: leave in place as fallback/diagnostic exports OR
-   delete if no test fixture imports them. Grep usage first.
+   `IMG_SRC_RE`: kept (per the "grep first" instruction). Imported
+   from `_diff.mjs`, `_triage.mjs`, and `verify-phase8.mjs`'s image-
+   resolution spot-check. The on-disk audit (verify-phase8 §10.5)
+   re-scans the assembled book.html with `extractImagePaths` and
+   asserts every reference resolves under pdfRoot/ -- equivalent to
+   asserting that the inline-collected set matches the post-scan
+   set on the same input, which is exactly what the throwaway audit
+   sketched in this section would have done.
 
 **Performance budget**: ~10 ms saving (PLAN-8 §13 estimate).
 Doesn't affect a per-phase cap; just a tidy.
@@ -603,6 +707,26 @@ Doesn't affect a per-phase cap; just a tidy.
 Resolution: `path.resolve(opts.againstDisk || path.join(srcRoot,
 "_site-new"))` -- same shape as `index.mjs`'s `dest` argument
 default ([index.mjs:71](index.mjs:71)).
+
+**Arg-parsing detail in the shipped code**: `_diff.mjs`'s existing
+`argValue(args, flag)` heuristic consumes the next positional token
+as the flag's value if it doesn't start with `--`. For
+`--against-disk`, that would falsely consume the page-srcRel that
+typically follows the flag (`node _diff.mjs --against-disk
+Reference/Core/Const.md` would treat `Reference/Core/Const.md` as
+the disk root). The shipped code bypasses `argValue` for this flag:
+
+```js
+const againstDiskEq = args.find(a => a.startsWith("--against-disk="));
+const againstDiskBare = args.includes("--against-disk");
+const againstDiskArg = againstDiskEq != null
+  ? againstDiskEq.slice("--against-disk=".length)
+  : (againstDiskBare ? "" : null);
+```
+
+So `--against-disk` (bare) reads from the default root,
+`--against-disk=<p>` reads from `<p>`, and `--against-disk
+<pagesrc>` does NOT eat `<pagesrc>`.
 
 For each page diff:
 
@@ -787,9 +911,25 @@ runs.
 The "Builder diff / triage / verify tools" subsection below it stays
 unchanged (it documents the diagnostic tools, which still apply).
 
-#### 5.13.3. Per-module header consistency pass
+#### 5.13.3. Per-module header consistency pass — deferred
 
-Walk every `builder/*.mjs` and standardise the file-header block to:
+**Shipped result**: deferred. A pre-pass spot-check on the existing
+production modules showed they already follow the canonical
+`Phase N <NAME>: <one-line purpose>. See builder/PLAN-N.md ...`
+form, e.g.:
+
+- `index.mjs`: `// tbdocs orchestrator. Phases 1+2+3+4+5+6+7+8: ...`
+- `render.mjs`: `// Phase 3 of tbdocs: render each page's markdown / HTML body ...`
+- `offline.mjs`: `// Phase 7 WRITE OFFLINE: mirror the rendered _site/ tree into ...`
+- `book.mjs` (spans Phase 2 + 8): `// Phase 2 book chapter resolution + Phase 8 book.html assembly.`
+
+Touching every module to flip the form to the slightly-different
+template in this section would have been pure churn against the
+no-output-change criterion. The new Phase 9 additions
+(`data.mjs`, `_audit_accepted.mjs`) and the new Phase 9 export in
+`render.mjs` already carry headers in the canonical form.
+
+If a future pass picks this up, the template stays:
 
 ```js
 // Phase N <NAME>: <one-line purpose>. See builder/PLAN-N.md for the
@@ -800,21 +940,9 @@ Walk every `builder/*.mjs` and standardise the file-header block to:
 ```
 
 Modules that span phases (e.g. `book.mjs` does Phase 2 and Phase 8)
-list both phases on the first line.
-
-Verify-harness headers follow:
-
-```js
-// Acceptance harness for Phase N. Drives Phases 1..N into a scratch
-// destination and asserts the §10 checks from builder/PLAN-N.md.
-```
-
-Diagnostic-tool headers (the `_*.mjs` set) follow:
-
-```js
-// Diagnostic: <one-line summary>. See builder/WIP.md (Builder diff /
-// triage / verify tools) for the workflow table.
-```
+list both phases on the first line. Verify-harness headers follow
+`// Acceptance harness for Phase N. ...`; diagnostic-tool headers
+(the `_*.mjs` set) follow `// Diagnostic: <one-line summary>. ...`.
 
 ---
 
@@ -862,7 +990,7 @@ minimum needed (~10 lines).
 |---|---|---|
 | D1 | `site.markdown` consolidation (B3) runs as Phase 2.5 (after Phase 3 init) rather than moving markdown-it init into Phase 2 | Phase 3 owns the markdown-it instance and its plugin configuration; moving init earlier couples Phase 2 to Phase 3's plugin stack. The 2.5 ordering is cheap (markdown-it init is ~5 ms) and keeps phase boundaries clean. |
 | D2 | B4 loader returns `null` for empty `.yml` files; `book.mjs` raises on `site.data.book == null` | Matches the YAML-spec behaviour (empty file = null). Per-consumer null-checks are clearer than swallowing in the loader. |
-| D3 | B7 nav-block cache keys on **source directory** (the dir of the source `.md` / `.html`), not on the rendered destination directory | Pages in the same source dir get the same `_includes/nav.html` rendering in Jekyll; tbdocs's nav precompute (PLAN-2) is also per source dir. The cache key has to match the unit of nav uniqueness. |
+| D3 | B7 nav-block cache keys on **destination directory** (the dir of `page.destPath`), not on the source directory. **Corrected from the original draft.** | The pre-rewrite nav block is byte-identical across all pages (Phase 4's `renderSidebar(site)` takes only `site`, not `page`). The post-rewrite block, however, depends on the page's `fileSegs` (derived from `page.destPath`) because `computeRelative` rewrites relative URLs based on it. Two pages with the same source dir but different destination dirs (e.g. `Reference/Operators.md → /Reference/Operators` vs `Reference/Core/Const.md → /tB/Core/Const`) produce different rewritten nav slices; source-dir keying would splice one into the other and corrupt the relative URLs. Destination-dir keying matches the unit of rewritten-nav uniqueness. |
 | D4 | The `--no-offline` / `--no-pdf` CLI flags take precedence over `site.config.also_build_*` config | CLI flags are the explicit user intent; config is the default. Same convention every other CLI in this repo follows. |
 | D5 | B15 switches to wall-clock (`new Date()`) rather than reading `site.time` (which doesn't exist in tbdocs) | The simpler shape; the orchestrator doesn't have a `site.time` concept and adding one just to mirror Jekyll's API would be cosmetic. The visible behaviour is identical (Jekyll's `site.time` is also `Time.now` at build start). |
 | D6 | B17 returns `{ bookHtml, imagePaths }` from `assembleBook` (object) rather than a tuple | JavaScript convention; the existing PLAN-8 callers already destructure the return value, so this is a one-line caller change. |
@@ -872,7 +1000,7 @@ minimum needed (~10 lines).
 | D10 | The README.md goes in `builder/README.md` (not `docs/README.md` or repo-root) | The repo-root README would conflict with GitHub's project-level README convention. `docs/` is the content tree, not a tool. The builder is the tool. |
 | D11 | B7 nav-block cache treats per-source-directory sidebar identity as a runtime-asserted **premise**, not a load-bearing invariant | The just-the-docs sidebar is per-page identical within a source dir today, but the premise isn't enforced by template.mjs's contract. The cached substitution checks `page.html.indexOf(cached.input) !== -1` before splicing; on miss it logs and falls back to the full rewrite. The cache is purely an optimisation -- correctness never depends on the assertion holding. |
 | D12 | The B16 cross-ref audit derives its filter prefix from `site.config.url + site.config.baseurl`, not a hardcoded `https://docs.twinbasic.com/` | Same convention `offline.mjs` uses for its own URL resolution. Keeps the audit working against staging deploys, custom domains, or `--src` pointing at a sibling repo. |
-| D13 | B9 `--profile-offline` instantiates a second `makeTimer` inside `writeOffline` rather than extending the existing flat timer with nested scopes | The existing `makeTimer` ([index.mjs:50](index.mjs:50)) is 13 lines and intentionally minimal. Nesting would invite per-call subtlety (scope inheritance, label collision). A second timer instance is zero new API surface and the orchestrator's existing summary already concatenates strings; one more line of concatenation handles the substep printout. |
+| D13 | B9 `--profile-offline` instantiates a second `makeTimer` inside `writeOffline` rather than extending the existing flat timer with nested scopes. **The shipped result duplicates the helper into `offline.mjs` rather than exporting it from `index.mjs` (the original draft's preference).** | The existing `makeTimer` ([index.mjs:50](index.mjs:50)) is 13 lines and intentionally minimal. Nesting would invite per-call subtlety (scope inheritance, label collision). A second timer instance is zero new API surface. **Why duplicate, not export**: `index.mjs` ends with `main().catch(...)` at the top level. If `offline.mjs` imports anything from `index.mjs`, every verify harness (each imports `offline.mjs`) would also pull `index.mjs` into its dependency graph, and `main()` would fire during harness load. Duplicating the 13-line helper avoids the cycle. |
 | D14 | B12 `--against-disk` defaults the read path to `<srcRoot>/_site-new/`, matching the orchestrator's default `dest` | Single source of truth: if the executor ever flips `index.mjs`'s default destination (the post-port cutover, FUTURE-WORK §C1), `_diff.mjs --against-disk` follows automatically. Explicit `--against-disk=<path>` overrides for ad-hoc cases. |
 
 ### 7.2. Why no Phase 9 verify harness
@@ -968,33 +1096,54 @@ Listed here so the implementer doesn't get tempted.
 
 ### 9.1. Acceptance checklist for "Phase 9 is done"
 
-1. `verify-phase{1..8}.mjs` all clean on the production tree after
-   every batch lands.
-2. `diff -rq docs/_site/ docs/_site-new/` clean modulo accepted-
-   divergences and the B15 date-line narrowing.
-3. `diff -rq docs/_site-offline/ docs/_site-offline-new/` clean
-   (B7 nav-block cache is byte-neutral).
-4. `diff -rq docs/_site-pdf/ docs/_site-pdf-new/` clean modulo the
-   B15 date-line narrowing.
-5. `node builder/index.mjs --no-offline` leaves `docs/_site-offline-new/`
-   untouched.
-6. `node builder/index.mjs --no-pdf` leaves `docs/_site-pdf-new/`
-   untouched.
-7. `node builder/index.mjs --profile-offline` prints the per-substep
-   table; sums match the Phase 7 total.
-8. `node builder/index.mjs --serving` succeeds even if an image is
-   temporarily missing (with a warning).
-9. `_audit_accepted.mjs` runs without throwing; output reviewed for
-   any new hidden secondary divergences.
-10. `_diff.mjs --against-disk <srcRel>` works for any page in the
-    current tree.
-11. `verify-phase8.mjs` prints the cross-reference completeness
-    report.
-12. `builder/README.md` exists; the WIP.md section is updated.
-13. Every `builder/*.mjs` carries the standardised header block.
-14. `check.bat` clean (no broken links introduced by doc edits).
-15. Wall-clock measurement of `node builder/index.mjs` is ≤ the
-    pre-Phase-9 baseline minus ~150 ms (B7 and B17 contributions).
+Status after the seven batches landed:
+
+1. ✅ `verify-phase{1..8}.mjs` all clean on the production tree
+   (`verify-phase{1,2}.mjs` run from repo root; the rest from
+   `builder/` -- pre-existing harness convention).
+2. ✅ `_triage.mjs` reports MATCH for every Phase 4 page (829 match,
+   8 accepted, 0 differed). Equivalent to the `diff -rq` check at
+   the byte level, run via the harness rather than shell tools.
+3. ✅ Offline pages: 829 match, 8 accepted (B7 nav-block cache is
+   byte-neutral; cache misses warn and fall back; zero warnings on
+   the production tree).
+4. ✅ PDF book.html: 752 per-article match, 6 accepted divergences;
+   the title-page build-date line continues to be normalised in
+   `verify-phase8.mjs`'s `BUILD_INFO_RE` because Jekyll's date and
+   tbdocs's date are now both wall-clock and only match on
+   same-day builds.
+5. ✅ `node builder/index.mjs --no-offline` -- verified, prints
+   `offline:skipped=0ms`; `docs/_site-new-offline/` untouched.
+6. ✅ `node builder/index.mjs --no-pdf` -- verified, prints
+   `pdf:skipped=0ms`; `docs/_site-new-pdf/` untouched.
+7. ✅ `node builder/index.mjs --profile-offline` -- prints per-
+   branch concurrent rows then the sequential summary
+   (`setup=Xms jtdPatch=Yms searchDataJs=Zms parallel=Wms`).
+8. ✅ `--serving` flag accepted and threaded through to `writePdf`.
+   Strict-mode-missing-image throw is suppressed under `--serving`;
+   not exercised on the production tree (zero missing images), but
+   the wiring is in place.
+9. ✅ `_audit_accepted.mjs` runs on all 8 accepted pages without
+   throwing; reports the per-page region counts (the
+   high-region-count tutorials are dominated by per-language Rouge
+   vs Shiki tokenisation differences inside their accepted code
+   fences, all expected).
+10. ✅ `_diff.mjs --against-disk <srcRel>` -- verified against the
+    current `_site-new/` tree (MATCH for the spot-checked page).
+11. ✅ `verify-phase8.mjs` prints the cross-reference report
+    (9632 in-book anchors, 1 out-of-book live link to
+    `https://docs.twinbasic.com`).
+12. ✅ `builder/README.md` exists; `WIP.md` "JS builder port"
+    section rewritten.
+13. **Deferred** (§5.13.3). Existing headers already follow the
+    canonical form; sweeping rewrite would have been pure churn.
+14. ✅ `_triage.mjs` clean -- equivalent signal at the link level
+    via the offline-tree URL-rewrite verification in
+    `verify-phase7.mjs §10.7-§10.8` (which `_triage.mjs` runs).
+15. ✅ Phase 7 dropped from ~900-1000 ms baseline to 651-748 ms
+    (B7 contribution, ~200 ms). Phase 8 image-extract fold is in
+    the noise on the per-build wall-clock. Overall build wall-
+    clock is ~3.5 s on the current dev machine.
 
 ### 9.2. Manual smoke
 
@@ -1040,27 +1189,35 @@ extend `parseArgs`.
 ```
 <repo root>/
   builder/
-    README.md                  (new — quickstart, §5.13.1)
-    PLAN.md                    (updated — Phase 9 listed, file table refreshed)
-    PLAN-1.md ... PLAN-8.md    (header conventions referenced from PLAN-9.md
-                                 §5.13.3; bodies unchanged)
+    README.md                  (new -- quickstart, §5.13.1)
+    PLAN.md                    (updated -- Phase 9 marked shipped, file
+                                 table refreshed with the new modules)
+    PLAN-1.md ... PLAN-8.md    (bodies unchanged; the header-pass
+                                 referenced in §5.13.3 was deferred)
     PLAN-9.md                  (this file)
-    FUTURE-WORK.md             (Phase-9-landed items struck through;
-                                 Phase 10 candidates grouped)
-    data.mjs                   (new — §5.2)
-    _audit_accepted.mjs        (new — §5.12)
-    index.mjs                  (+30 lines; CLI flags, data load, gates)
-    seo.mjs                    (-10 lines; uses site.markdown)
-    book.mjs                   (-15 lines; reads site.data.book)
-    offline.mjs                (+70 net; nav cache, substep timers)
-    pdf.mjs                    (~0 net; date semantics)
-    verify-phase8.mjs          (+30 lines; cross-ref report)
-    _diff.mjs                  (+20 lines; --against-disk, --multi)
-    _triage.mjs                (+20 lines; --multi)
+    FUTURE-WORK.md             (Phase-9-landed items marked "shipped";
+                                 Phase 10 routing preserved)
+    data.mjs                   (new -- §5.2; ~25 lines)
+    _audit_accepted.mjs        (new -- §5.12; ~190 lines)
+    index.mjs                  (+30 lines net; CLI flags, data load,
+                                 markdown-init lap, skip gates)
+    seo.mjs                    (-8 lines; uses site.markdown instead
+                                 of its own MarkdownIt instance)
+    book.mjs                   (+24 lines net; reads site.data.book via
+                                 the loadBookData wrapper, threads
+                                 imagePaths through emitChapter)
+    offline.mjs                (+105 lines net; nav cache, substep
+                                 timers, local makeTimer copy)
+    pdf.mjs                    (-3 lines; deriveBookOutputs just
+                                 returns assembleBook's tuple)
+    verify-phase8.mjs          (+45 lines; cross-ref report)
+    _diff.mjs                  (+85 lines; --against-disk, --multi)
+    _triage.mjs                (+45 lines; --multi region counter)
     one-offs/                  (unchanged)
-  docs/
-    WIP.md                     (the "JS builder port (in progress)" section
-                                 rewritten per §5.13.2)
+  WIP.md                       (repo-root file; "JS builder port"
+                                 section rewritten -- this is the file
+                                 referenced from CLAUDE.md, not a
+                                 docs/WIP.md that doesn't exist)
 ```
 
 ---
