@@ -543,10 +543,16 @@ function renderBookHead(lang, siteTitle) {
 // PLAN-8 §6.9: title page matches book.html lines 41-60. The book title
 // + subtitle are hardcoded in source HTML, not parameterised through
 // the manifest; mirror verbatim.
+//
+// PLAN-9 §5.8 (B15): the build-date is the build's wall-clock time
+// (matching Jekyll's `site.time` semantics), not the commitDate. The
+// commitDate still appears in parentheses for reference; the headline
+// `Built X` date is when the PDF was actually generated. Closes the
+// gap when book.bat runs days after the last commit.
 function renderTitlePage(site) {
   const commit = site.buildInfo?.commit ?? "unknown";
   const commitDate = site.buildInfo?.commitDate ?? "unknown";
-  const buildDate = formatBuildDate(commitDate);
+  const buildDate = formatBuildDateNow();
   let buildLine;
   if (commit !== "unknown") {
     buildLine = commitDate !== "unknown"
@@ -574,26 +580,12 @@ function renderTitlePage(site) {
 </section>`;
 }
 
-// PLAN-8 §6.10 / §7.D7. Builds "26 May 2026" from an ISO date like
-// "2026-05-26". Falls back to new Date() when the input is "unknown"
-// (no git history) or unparseable.
-function formatBuildDate(iso) {
-  if (!iso || iso === "unknown") {
-    const d = new Date();
-    return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
-  }
-  // Parse YYYY-MM-DD explicitly to avoid timezone surprises. new
-  // Date("2026-05-26") parses as UTC midnight, then localised --
-  // getDate() can return 25 on a negative-UTC-offset system.
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  if (m) {
-    const y = parseInt(m[1], 10);
-    const mo = parseInt(m[2], 10);
-    const da = parseInt(m[3], 10);
-    return `${da} ${MONTH_NAMES[mo - 1]} ${y}`;
-  }
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+// PLAN-9 §5.8 (B15): build-date is the build's wall-clock time, the
+// same shape Jekyll's `site.time | date: "%-d %B %Y"` produces.
+// Formatted in the local timezone (matching `getDate()` / `getMonth()`
+// / `getFullYear()` semantics).
+function formatBuildDateNow() {
+  const d = new Date();
   return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
 }
 
