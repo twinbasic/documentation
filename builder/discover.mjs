@@ -7,7 +7,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 
-const HTMLISH_EXT = /\.(html?|xml)$/i;
+import { permalinkToDestPath } from "./paths.mjs";
+
 const PAGE_EXT = /\.(md|html)$/i;
 const IMAGE_SCOPE = /(^|\/)Images\//;
 
@@ -116,7 +117,7 @@ function buildPage(srcRoot, srcRel, { data, content }) {
   const srcRelPosix = toPosix(srcRel);
   const ext = path.extname(srcRel).toLowerCase();
   const permalink = computePermalink(data.permalink, srcRelPosix);
-  const destPath = computeDestPath(permalink);
+  const destPath = permalinkToDestPath(permalink);
   return {
     srcPath: path.join(srcRoot, srcRel),
     srcRel: srcRelPosix,
@@ -135,15 +136,6 @@ function computePermalink(fmPermalink, srcRelPosix) {
     return fmPermalink;
   }
   return "/" + srcRelPosix.replace(PAGE_EXT, "") + ".html";
-}
-
-function computeDestPath(permalink) {
-  let p = permalink.startsWith("/") ? permalink.slice(1) : permalink;
-  if (p === "") return "index.html";
-  if (p.endsWith("/")) return p + "index.html";
-  const last = p.slice(p.lastIndexOf("/") + 1);
-  if (HTMLISH_EXT.test(last)) return p;
-  return p + ".html";
 }
 
 function toPosix(p) {

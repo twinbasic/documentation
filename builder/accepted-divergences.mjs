@@ -2,7 +2,7 @@
 // is accepted -- the underlying renderer behaviour is correct, but the
 // HTML differs in ways that don't (and shouldn't) reach the reader.
 //
-// Two buckets:
+// Three buckets:
 //
 //   * non-tb-highlight -- the divergence sits inside a ```html / ```json
 //     / ```sql / ```js / ... fence. Rouge has hand-written per-language
@@ -20,9 +20,26 @@
 //     listed with the specific Rouge rule they reflect; they're all
 //     visually neutral in the rendered output.
 //
+//   * markdown-parsing -- kramdown and markdown-it disagree on the
+//     parse tree for an unusual source pattern (typically mismatched
+//     emphasis markers, nested-marker greedy-opener cases, or HTML-in-
+//     markdown boundary handling). The disagreement is intrinsic to
+//     the two parsers' design and we'd need either a markdown-it
+//     plugin replicating kramdown's exact rule OR a source fix on the
+//     affected page. Listed with the precise source line and the
+//     visible HTML on each side.
+//
 // Add a page here only after confirming the divergence is purely
-// highlighting (no markdown / structure difference) AND the underlying
-// renderer choice is the right one for our pipeline.
+// in one of the three buckets above (no semantic content drift) AND
+// the underlying renderer choice is the right one for our pipeline.
+//
+// Pages can appear MORE THAN ONCE if they carry multiple distinct
+// divergences (e.g. a JSON highlighting divergence in one fence AND a
+// markdown-parsing divergence in a separate body paragraph). The
+// ACCEPTED_DIVERGENCE_PATHS Set is deduplicated by path, so per-path
+// lookups in `_triage.mjs` / `_diff_all.mjs` / `verify-phase*.mjs`
+// behave the same; the per-entry list is the audit trail of WHY
+// each accepted page is accepted, end-to-end.
 
 export const ACCEPTED_DIVERGENCES = [
   // ---------- non-tb syntax-highlighting -----------------------------
@@ -105,6 +122,27 @@ export const ACCEPTED_DIVERGENCES = [
       "expression / `}` / content / delimiter; Shiki keeps the whole " +
       "template literal as one string token. Per-language split would " +
       "need a JS-template-literal-aware re-tokeniser.",
+  },
+
+  // ---------- markdown-parsing (kramdown vs markdown-it) -------------
+  {
+    path: "Reference/Attributes.md",
+    category: "markdown-parsing",
+    lang: "md",
+    note:
+      "Strong-asterisk parse divergence on the `#testfixture` section " +
+      "(line 629 of the source): `**[TestFixture **[ **( True** \\| " +
+      "**False )** ] **]**`. kramdown opens `<strong>` at the leading " +
+      "`**[TestFixture` and closes at the third `**`, emitting " +
+      "`<strong>[TestFixture **[ **( True</strong> | <strong>...`. " +
+      "markdown-it leaves `**[TestFixture **[ ` as literal text and " +
+      "only opens `<strong>` at `**( True**`. Same rendered text once " +
+      "the browser strips the markup; visible difference is only the " +
+      "bold-range of the bracket / paren delimiters. Discovered via " +
+      "Phase 6 search-content verify (the JSON highlighting divergence " +
+      "above is the FIRST divergence on this page, which is why " +
+      "_triage / _diff did not surface this one). See FUTURE-WORK.md " +
+      "entry 1.",
   },
 
   // ---------- tb highlighting noise (Rouge tB lexer quirks) ---------

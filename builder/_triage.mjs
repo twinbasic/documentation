@@ -39,6 +39,9 @@ import { loadBookData, resolveBookChapters } from "./book.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
 import { renderPhase } from "./render.mjs";
 import { templatePhase } from "./template.mjs";
+import { deriveSitemapUrls, extractSitemapUrls, renderRobotsTxt } from "./sitemap.mjs";
+import { deriveRedirectStubs } from "./redirects.mjs";
+import { deriveSearchEntries } from "./search.mjs";
 import { ACCEPTED_DIVERGENCE_PATHS } from "./accepted-divergences.mjs";
 
 const srcRoot = path.resolve(process.cwd(), "../docs");
@@ -459,7 +462,147 @@ const mode = phase3Mode ? "Phase 3 (body fragment)" : "Phase 4 (full page)";
 const navLine = phase3Mode ? "" : `, Sidebar-only: ${sidebarOnly}, Nav-order-propagation: ${navOrderPropagation}`;
 const skippedLine = skipped > 0 ? `, Skipped: ${skipped}` : "";
 console.log(`Mode: ${mode}`);
-console.log(`Matched: ${matched}, Accepted: ${accepted}, Differed: ${differed}${navLine}${skippedLine}, Total: ${matched + accepted + differed + sidebarOnly + navOrderPropagation + skipped}\n`);
+console.log(`Matched: ${matched}, Accepted: ${accepted}, Differed: ${differed}${navLine}${skippedLine}, Total: ${matched + accepted + differed + sidebarOnly + navOrderPropagation + skipped}`);
+
+// ---- Phase 6 auxiliary audit -----------------------------------------
+//
+// The triage doesn't run Phase 6 (no file writes), so for each auxiliary
+// we derive the tbdocs side in-memory via the pure-compute helpers
+// exported from sitemap.mjs / redirects.mjs / search.mjs, then compare
+// against the on-disk Jekyll `_site/`. Each section prints one top-line
+// MATCH/DIFFER report; divergence details follow on indented lines.
+
+// Sitemap URL set.
+await auditSitemap(site, pages, siteRoot);
+// Redirect stubs (count + per-stub byte content).
+await auditRedirects(site, pages, siteRoot);
+// robots.txt (single-file byte content).
+await auditRobots(site, siteRoot);
+// Search index (entry set + per-entry content, gated by accepted-divergences).
+await auditSearch(site, pages, siteRoot);
+
+console.log();
+
+async function auditSitemap(site, pages, siteRoot) {
+  const p = path.join(siteRoot, "sitemap.xml");
+  let xml;
+  try { xml = await fs.readFile(p, "utf8"); } catch { xml = null; }
+  if (xml == null) {
+    console.log(`Sitemap: SKIPPED (no ${p})`);
+    return;
+  }
+  const jset = extractSitemapUrls(xml);
+  const tset = deriveSitemapUrls(pages, site);
+  const onlyJ = [...jset].filter(u => !tset.has(u)).sort();
+  const onlyT = [...tset].filter(u => !jset.has(u)).sort();
+  if (onlyJ.length === 0 && onlyT.length === 0) {
+    console.log(`Sitemap: MATCH (${jset.size} URLs)`);
+    return;
+  }
+  console.log(`Sitemap: DIFFER (jekyll=${jset.size}, tbdocs=${tset.size}; ` +
+              `only-jekyll=${onlyJ.length}, only-tbdocs=${onlyT.length})`);
+  for (const u of onlyJ.slice(0, 5)) console.log(`  - ${u}`);
+  if (onlyJ.length > 5) console.log(`  - ... +${onlyJ.length - 5} more`);
+  for (const u of onlyT.slice(0, 5)) console.log(`  + ${u}`);
+  if (onlyT.length > 5) console.log(`  + ... +${onlyT.length - 5} more`);
+}
+
+async function auditRedirects(site, pages, siteRoot) {
+  let stubs;
+  try { stubs = deriveRedirectStubs(pages, site); }
+  catch (err) {
+    console.log(`Redirects: COLLISION (${err.message.split("\n")[0]})`);
+    return;
+  }
+  let match = 0;
+  let missing = 0;
+  let mismatch = 0;
+  const issues = [];
+  for (const s of stubs) {
+    let onDisk;
+    try { onDisk = await fs.readFile(path.join(siteRoot, s.destPath), "utf8"); }
+    catch { missing++; if (issues.length < 5) issues.push({ kind: "missing", destPath: s.destPath }); continue; }
+    if (onDisk === s.html) { match++; }
+    else { mismatch++; if (issues.length < 5) issues.push({ kind: "mismatch", destPath: s.destPath }); }
+  }
+  if (mismatch === 0 && missing === 0) {
+    console.log(`Redirects: MATCH (${stubs.length} stubs)`);
+    return;
+  }
+  console.log(`Redirects: DIFFER (${stubs.length} stubs; ${match} match, ${mismatch} byte-mismatch, ${missing} missing in jekyll)`);
+  for (const i of issues) console.log(`  ${i.kind === "missing" ? "-" : "≠"} ${i.destPath}`);
+  if (issues.length < missing + mismatch) console.log(`  ... +${missing + mismatch - issues.length} more`);
+}
+
+async function auditRobots(site, siteRoot) {
+  const p = path.join(siteRoot, "robots.txt");
+  let onDisk;
+  try { onDisk = await fs.readFile(p, "utf8"); } catch { onDisk = null; }
+  if (onDisk == null) {
+    console.log(`Robots.txt: SKIPPED (no ${p})`);
+    return;
+  }
+  const expected = renderRobotsTxt(site.config);
+  if (onDisk === expected) {
+    console.log(`Robots.txt: MATCH (${expected.length} bytes)`);
+    return;
+  }
+  console.log(`Robots.txt: DIFFER (jekyll=${onDisk.length}, tbdocs=${expected.length})`);
+  console.log(`  J: ${JSON.stringify(onDisk.slice(0, 120))}`);
+  console.log(`  T: ${JSON.stringify(expected.slice(0, 120))}`);
+}
+
+async function auditSearch(site, pages, siteRoot) {
+  const p = path.join(siteRoot, "assets/js/search-data.json");
+  let raw;
+  try { raw = await fs.readFile(p, "utf8"); } catch { raw = null; }
+  if (raw == null) {
+    console.log(`Search index: SKIPPED (no ${p})`);
+    return;
+  }
+  const jObj = JSON.parse(raw);
+  const tEntries = deriveSearchEntries(pages, site);
+
+  // Set-level comparison on (doc, title, url, relUrl) quadruples.
+  const tupleOf = (e) => `${e.doc}\x00${e.title}\x00${e.url}\x00${e.relUrl}`;
+  const jByTuple = new Map();
+  for (const k of Object.keys(jObj)) jByTuple.set(tupleOf(jObj[k]), jObj[k]);
+  const tByTuple = new Map();
+  for (const e of tEntries) tByTuple.set(tupleOf(e), e);
+
+  const onlyJ = [...jByTuple.keys()].filter(k => !tByTuple.has(k));
+  const onlyT = [...tByTuple.keys()].filter(k => !jByTuple.has(k));
+
+  // Per-entry content comparison, gated by accepted-divergences.
+  let contentMatch = 0;
+  let contentAccepted = 0;
+  let contentFail = 0;
+  const failures = [];
+  for (const [tuple, te] of tByTuple) {
+    const je = jByTuple.get(tuple);
+    if (!je) continue;
+    if (je.content === te.content) { contentMatch++; continue; }
+    if (te.sourcePage && ACCEPTED_DIVERGENCE_PATHS.has(te.sourcePage.srcRel)) {
+      contentAccepted++;
+    } else {
+      contentFail++;
+      if (failures.length < 5) {
+        failures.push({ srcRel: te.sourcePage?.srcRel ?? "(unknown)", url: te.url, title: te.title });
+      }
+    }
+  }
+
+  if (onlyJ.length === 0 && onlyT.length === 0 && contentFail === 0) {
+    const acceptedSuffix = contentAccepted > 0 ? `; ${contentAccepted} accepted` : "";
+    console.log(`Search index: MATCH (${jByTuple.size} entries${acceptedSuffix})`);
+    return;
+  }
+  console.log(`Search index: DIFFER (jekyll=${jByTuple.size}, tbdocs=${tByTuple.size}; ` +
+              `only-jekyll=${onlyJ.length}, only-tbdocs=${onlyT.length}, ` +
+              `content-fail=${contentFail}, content-accepted=${contentAccepted})`);
+  for (const f of failures) console.log(`  ≠ ${f.srcRel}: [${f.title}] ${f.url}`);
+  if (failures.length < contentFail) console.log(`  ... +${contentFail - failures.length} more content failures`);
+}
 
 const sorted = [...buckets.values()].sort((a, b) => b.count - a.count);
 const sev = { high: 3, medium: 2, low: 1, info: 0, "?": -1 };

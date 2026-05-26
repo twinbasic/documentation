@@ -74,9 +74,18 @@ export function renderTitle(text, markdown) {
   const s = String(text);
   if (s === "") return "";
   const html = markdown.render(s);
-  const stripped = html.replace(STRIP_HTML_BLOCKS, "").replace(STRIP_HTML_TAGS, "");
+  const stripped = stripHtml(html);
   const collapsed = stripped.replace(/\s+/g, " ").trim();
   return collapsed.replace(HTML_ESCAPE_ONCE_REGEXP, m => HTML_ESCAPE[m]);
+}
+
+// Liquid's `strip_html` filter: drop <script>/<style> blocks and HTML
+// comments outright, then strip the remaining tag delimiters. Exported
+// for Phase 6's search-index content sanitiser (search.mjs).
+export function stripHtml(s) {
+  return String(s ?? "")
+    .replace(STRIP_HTML_BLOCKS, "")
+    .replace(STRIP_HTML_TAGS, "");
 }
 
 // Mirrors `Jekyll::Filters::URLFilters#absolute_url`. Already-absolute

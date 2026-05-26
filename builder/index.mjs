@@ -1,5 +1,5 @@
-// tbdocs orchestrator. Phases 1+2+3+4+5: DISCOVER + COMPUTE + RENDER +
-// TEMPLATE + WRITE ONLINE.
+// tbdocs orchestrator. Phases 1+2+3+4+5+6: DISCOVER + COMPUTE + RENDER +
+// TEMPLATE + WRITE ONLINE + AUXILIARIES.
 //
 // Usage: node builder/index.mjs [--src <path>] [--dest <path>] [--dry-run]
 //
@@ -20,6 +20,9 @@ import { captureBuildInfo } from "./build-info.mjs";
 import { renderPhase } from "./render.mjs";
 import { templatePhase } from "./template.mjs";
 import { writePhase } from "./write.mjs";
+import { writeRedirects } from "./redirects.mjs";
+import { writeSitemap } from "./sitemap.mjs";
+import { writeSearchData } from "./search.mjs";
 
 function parseArgs(argv) {
   const args = { src: "docs", dest: null, dryRun: false };
@@ -98,10 +101,26 @@ async function main() {
   const writeStats = await writePhase(pages, staticFiles, { destRoot, dryRun });
   t.lap("write");
 
-  console.log(`Phase 1+2+3+4+5 done: ${pages.length} pages, ${staticFiles.length} static files`);
+  let auxStats = null;
+  if (!dryRun) {
+    const [redirectStats, sitemapStats, searchStats] = await Promise.all([
+      writeRedirects(pages, site, destRoot),
+      writeSitemap(pages, site, destRoot),
+      writeSearchData(pages, site, destRoot),
+    ]);
+    auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
+  }
+  t.lap("auxiliaries");
+
+  console.log(`Phase 1+2+3+4+5+6 done: ${pages.length} pages, ${staticFiles.length} static files`);
   console.log(`  wrote: ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
               `${writeStats.theme.copied} theme assets, ${writeStats.staticFiles.copied} static files ` +
               `-> ${destRoot}`);
+  if (auxStats) {
+    console.log(`  aux:   ${auxStats.redirects.written} redirect stubs, ` +
+                `${auxStats.sitemap.entries} sitemap entries, ` +
+                `${auxStats.search.entries} search-index entries`);
+  }
   console.log(t.summary());
 
   // Drift guard from PLAN-1.md §1.
@@ -110,7 +129,7 @@ async function main() {
     process.exitCode = 1;
   }
 
-  // Phase 6+ chains in here.
+  // Phase 7+ chains in here.
   return { pages, staticFiles, site, destRoot };
 }
 

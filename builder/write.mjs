@@ -22,6 +22,8 @@ const BUILDER_ASSETS = path.join(__dirname, "assets");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const LIMIT = 64;
 
+export const WRITE_LIMIT = LIMIT;
+
 // Per-build mkdir cache (cleared at writePhase entry). Avoids ~76% of
 // mkdir syscalls on the current ~1,080-file inventory.
 const mkdirCache = new Set();
@@ -145,7 +147,7 @@ function assertNoDestinationCollisions(pages, staticFiles) {
 
 // ---------- §6.1 mkdirRec with cache + inflight collapse ----------------
 
-async function mkdirRec(dir) {
+export async function mkdirRec(dir) {
   if (mkdirCache.has(dir)) return;
   const pending = mkdirInflight.get(dir);
   if (pending) return pending;
@@ -159,7 +161,7 @@ async function mkdirRec(dir) {
 
 // ---------- §6.2 runLimited ---------------------------------------------
 
-async function runLimited(items, limit, fn) {
+export async function runLimited(items, limit, fn) {
   if (items.length === 0) return;
   let next = 0;
   const workers = Array.from(
@@ -172,6 +174,14 @@ async function runLimited(items, limit, fn) {
     },
   );
   await Promise.all(workers);
+}
+
+// Phase 6 substeps (redirects, sitemap, search) share this one-shot
+// "ensure parent dir then write the file" helper. Centralised so the
+// mkdir cache is shared across the orchestrator's later writes too.
+export async function writeFileMkdirp(filePath, content) {
+  await mkdirRec(path.dirname(filePath));
+  await safeWrite(filePath, () => fs.writeFile(filePath, content));
 }
 
 // ---------- §6.3 copyTree -----------------------------------------------
