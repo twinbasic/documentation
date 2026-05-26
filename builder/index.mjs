@@ -28,7 +28,15 @@ import { writeOffline } from "./offline.mjs";
 import { writePdf } from "./pdf.mjs";
 
 function parseArgs(argv) {
-  const args = { src: "docs", dest: null, dryRun: false };
+  const args = {
+    src: "docs",
+    dest: null,
+    dryRun: false,
+    skipOffline: null,
+    skipPdf: null,
+    serving: false,
+    profileOffline: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--src") {
@@ -41,6 +49,14 @@ function parseArgs(argv) {
       args.dest = a.slice("--dest=".length);
     } else if (a === "--dry-run") {
       args.dryRun = true;
+    } else if (a === "--no-offline") {
+      args.skipOffline = true;
+    } else if (a === "--no-pdf") {
+      args.skipPdf = true;
+    } else if (a === "--serving") {
+      args.serving = true;
+    } else if (a === "--profile-offline") {
+      args.profileOffline = true;
     } else {
       throw new Error(`Unknown argument: ${a}`);
     }
@@ -48,7 +64,7 @@ function parseArgs(argv) {
   return args;
 }
 
-function makeTimer() {
+export function makeTimer() {
   const laps = [];
   let last = Date.now();
   return {
@@ -64,7 +80,8 @@ function makeTimer() {
 }
 
 async function main() {
-  const { src, dest, dryRun } = parseArgs(process.argv.slice(2));
+  const opts = parseArgs(process.argv.slice(2));
+  const { src, dest, dryRun, serving, profileOffline } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   // Default dest = sibling of src named _site-new during the port,
   // _site once tbdocs replaces Jekyll. Flip the default in one place
@@ -126,17 +143,30 @@ async function main() {
   }
   t.lap("auxiliaries");
 
+  // CLI flag takes precedence (PLAN-9 §7.D4); fall back to the
+  // `also_build_offline` / `also_build_pdf` config knobs Jekyll uses
+  // when the flag isn't passed.
+  const skipOffline = opts.skipOffline
+    ?? (config.also_build_offline === false);
+  const skipPdf = opts.skipPdf
+    ?? (config.also_build_pdf === false);
+
   let offlineStats = null;
-  if (!dryRun) {
-    offlineStats = await writeOffline(pages, staticFiles, site, destRoot, { auxStats });
+  let offlineTimer = null;
+  if (!dryRun && !skipOffline) {
+    offlineStats = await writeOffline(pages, staticFiles, site, destRoot, {
+      auxStats,
+      profileOffline,
+    });
+    if (profileOffline) offlineTimer = offlineStats.subT ?? null;
   }
-  t.lap("offline");
+  t.lap(skipOffline ? "offline:skipped" : "offline");
 
   let pdfStats = null;
-  if (!dryRun) {
-    pdfStats = await writePdf(pages, staticFiles, site, destRoot);
+  if (!dryRun && !skipPdf) {
+    pdfStats = await writePdf(pages, staticFiles, site, destRoot, { serving });
   }
-  t.lap("pdf");
+  t.lap(skipPdf ? "pdf:skipped" : "pdf");
 
   console.log(`Phase 1+2+3+4+5+6+7+8 done: ${pages.length} pages, ${staticFiles.length} static files`);
   console.log(`  wrote: ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
@@ -161,6 +191,9 @@ async function main() {
                 `${pdfStats.images} images${missingClause} -> ${destRoot}-pdf`);
   }
   console.log(t.summary());
+  if (offlineTimer) {
+    console.log(`  offline: ${offlineTimer.summary()}`);
+  }
 
   // Drift guard from PLAN-1.md §1.
   if (pages.length < 836) {

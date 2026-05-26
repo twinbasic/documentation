@@ -38,11 +38,29 @@ import {
 const OFFLINE_SUFFIX = "-offline";
 const LIMIT = WRITE_LIMIT;
 
+// Local copy of index.mjs's makeTimer (PLAN-9 §7.D13). Avoids a
+// cyclic import; the verify harnesses and diff tools import
+// offline.mjs without going through index.mjs's main() side effects.
+function makeTimer() {
+  const laps = [];
+  let last = Date.now();
+  return {
+    lap(label) {
+      const now = Date.now();
+      laps.push({ label, ms: now - last });
+      last = now;
+    },
+    summary() {
+      return laps.map(l => `${l.label}=${l.ms}ms`).join(" ");
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats } = {}) {
+export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false } = {}) {
   if (!destRoot) {
     throw new Error("writeOffline requires a destRoot");
   }
@@ -63,25 +81,60 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
     },
   };
 
+  const subT = profileOffline ? makeTimer() : null;
+
   await setupOfflineDest(deps.offlineRoot);
+  subT?.lap("setup");
 
   const jtdSrc = path.join(destRoot, "assets/js/just-the-docs.js");
   const jtdDest = path.join(deps.offlineRoot, "assets/js/just-the-docs.js");
   const jtdPatches = await patchJustTheDocsJs(jtdSrc, jtdDest);
+  subT?.lap("jtdPatch");
   await writeSearchDataJs(
     path.join(deps.offlineRoot, "assets/js/search-data.js"),
     auxStats?.search?.json ?? null,
   );
+  subT?.lap("searchDataJs");
 
-  await Promise.all([
-    writeOfflinePages(pages, deps),
-    writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps),
-    copyOfflineStatics(staticFiles, deps),
-    copyOfflineThemeAssets(deps),
-    copyOfflineSearchData(auxStats?.search?.json ?? null, deps),
-  ]);
+  // PLAN-9 §5.7: per-branch timing. The five Promise.all branches
+  // overlap, so each branch's reported duration is the await time
+  // inside its own .then() callback; they sum to more than the
+  // wall-clock total. The "(concurrent)" suffix is informational only
+  // -- the sequential laps above are the source of truth for total.
+  //
+  // Construct the branch promise array under the same subT lap that
+  // covers Promise.all: each writeOfflinePages/etc. call runs its
+  // synchronous prefix (e.g. nav-block cache pre-pass) immediately,
+  // before any await happens. Folding that work into the same lap as
+  // the parallel await keeps the timing report honest.
+  if (subT) {
+    const t0Pages = Date.now();
+    let dPages = 0, dRedirects = 0, dStatics = 0, dThemes = 0, dSearch = 0;
+    const branches = [
+      writeOfflinePages(pages, deps).then(() => { dPages = Date.now() - t0Pages; }),
+      writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps).then(() => { dRedirects = Date.now() - t0Pages; }),
+      copyOfflineStatics(staticFiles, deps).then(() => { dStatics = Date.now() - t0Pages; }),
+      copyOfflineThemeAssets(deps).then(() => { dThemes = Date.now() - t0Pages; }),
+      copyOfflineSearchData(auxStats?.search?.json ?? null, deps).then(() => { dSearch = Date.now() - t0Pages; }),
+    ];
+    await Promise.all(branches);
+    subT.lap("parallel");
+    console.log(`  offline.pages (concurrent): ${dPages} ms`);
+    console.log(`  offline.redirects (concurrent): ${dRedirects} ms`);
+    console.log(`  offline.statics (concurrent): ${dStatics} ms`);
+    console.log(`  offline.themeAssets (concurrent): ${dThemes} ms`);
+    console.log(`  offline.searchDataCopy (concurrent): ${dSearch} ms`);
+  } else {
+    await Promise.all([
+      writeOfflinePages(pages, deps),
+      writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps),
+      copyOfflineStatics(staticFiles, deps),
+      copyOfflineThemeAssets(deps),
+      copyOfflineSearchData(auxStats?.search?.json ?? null, deps),
+    ]);
+  }
 
-  return { ...deps.counters, jtdPatches };
+  return { ...deps.counters, jtdPatches, subT };
 }
 
 // Pure-compute state assembly. Shared by the writer (writeOffline) and
