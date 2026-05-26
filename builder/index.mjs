@@ -1,9 +1,11 @@
-// tbdocs orchestrator. Phases 1+2: DISCOVER + COMPUTE.
+// tbdocs orchestrator. Phases 1+2+3+4+5: DISCOVER + COMPUTE + RENDER +
+// TEMPLATE + WRITE ONLINE.
 //
-// Usage: node builder/index.mjs [--src <path>]
+// Usage: node builder/index.mjs [--src <path>] [--dest <path>] [--dry-run]
 //
 // Default --src is "docs" relative to the current working directory.
-// The flag exists for tests pointing at fixture trees.
+// Default --dest is "<src>/_site-new" during the port; flip to "_site"
+// once tbdocs replaces Jekyll. --dry-run skips all filesystem writes.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -17,15 +19,22 @@ import { loadBookData, resolveBookChapters } from "./book.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
 import { renderPhase } from "./render.mjs";
 import { templatePhase } from "./template.mjs";
+import { writePhase } from "./write.mjs";
 
 function parseArgs(argv) {
-  const args = { src: "docs" };
+  const args = { src: "docs", dest: null, dryRun: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--src") {
       args.src = argv[++i];
     } else if (a.startsWith("--src=")) {
       args.src = a.slice("--src=".length);
+    } else if (a === "--dest") {
+      args.dest = argv[++i];
+    } else if (a.startsWith("--dest=")) {
+      args.dest = a.slice("--dest=".length);
+    } else if (a === "--dry-run") {
+      args.dryRun = true;
     } else {
       throw new Error(`Unknown argument: ${a}`);
     }
@@ -49,8 +58,12 @@ function makeTimer() {
 }
 
 async function main() {
-  const { src } = parseArgs(process.argv.slice(2));
+  const { src, dest, dryRun } = parseArgs(process.argv.slice(2));
   const srcRoot = path.resolve(process.cwd(), src);
+  // Default dest = sibling of src named _site-new during the port,
+  // _site once tbdocs replaces Jekyll. Flip the default in one place
+  // when the cutover happens.
+  const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site-new"));
 
   const t = makeTimer();
   const { pages, staticFiles } = await discover(srcRoot);
@@ -82,7 +95,13 @@ async function main() {
   await templatePhase(pages, site);
   t.lap("template");
 
-  console.log(`Phase 1+2+3+4 done: ${pages.length} pages, ${staticFiles.length} static files`);
+  const writeStats = await writePhase(pages, staticFiles, { destRoot, dryRun });
+  t.lap("write");
+
+  console.log(`Phase 1+2+3+4+5 done: ${pages.length} pages, ${staticFiles.length} static files`);
+  console.log(`  wrote: ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
+              `${writeStats.theme.copied} theme assets, ${writeStats.staticFiles.copied} static files ` +
+              `-> ${destRoot}`);
   console.log(t.summary());
 
   // Drift guard from PLAN-1.md §1.
@@ -91,8 +110,8 @@ async function main() {
     process.exitCode = 1;
   }
 
-  // Phase 4+ chains in here.
-  return { pages, staticFiles, site };
+  // Phase 6+ chains in here.
+  return { pages, staticFiles, site, destRoot };
 }
 
 main().catch((err) => {
