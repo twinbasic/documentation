@@ -5,26 +5,37 @@ Node.js tool. Goal: byte-equivalent output to Jekyll (modulo the
 accepted-divergences allow-list), in compact dependency-light JS, no
 framework.
 
-## Status: phases 1-8 shipped, Phase 9 planned
+## Status: phases 1-9 shipped, Phase 10 planned
 
-All eight build phases land on the production tree and produce
+All nine build phases land on the production tree and produce
 byte-equivalent output to Jekyll modulo the entries in
-[accepted-divergences.mjs](accepted-divergences.mjs). Each phase has
-its own acceptance harness ([verify-phase1.mjs](verify-phase1.mjs)
+[accepted-divergences.mjs](accepted-divergences.mjs). Phases 1-8 each
+have their own acceptance harness ([verify-phase1.mjs](verify-phase1.mjs)
 through [verify-phase8.mjs](verify-phase8.mjs)) that runs the
 preceding phases into a scratch destination and asserts the §10
-checks from the corresponding `PLAN-N.md`.
+checks from the corresponding `PLAN-N.md`. Phase 9 is a no-output
+consolidation pass; its acceptance is "Phases 1-8 still pass" rather
+than a dedicated harness.
 
-**Phase 9** (planned, see [PLAN-9.md](PLAN-9.md)) is a QoL +
-documentation + cleanup consolidation pass that lands every
-FUTURE-WORK item which either doesn't change build output or strictly
-improves Jekyll parity. **Phase 10** (planned, no PLAN-10.md yet)
-picks up the output-changing FUTURE-WORK items (Shiki theming
-generated from upstream `.twin` source files, mermaid auto-gen,
-copy-code SSR, linkify, search-data minification, AST-based JTD
-patcher). Open follow-ups (deferred enhancements, divergence
-investigations, the Jekyll-to-tbdocs cutover) live in
-[FUTURE-WORK.md](FUTURE-WORK.md).
+**Phase 9** (shipped, see [PLAN-9.md](PLAN-9.md)) consolidated every
+FUTURE-WORK item which either didn't change build output or strictly
+improved Jekyll parity. The CLI gained `--no-offline`, `--no-pdf`,
+`--serving`, and `--profile-offline` flags. Phase 7 picked up a
+per-destination-dir nav-block cache (~200 ms saved). Phase 8's image-
+extraction folded into `assembleBook` and the PDF title-page date
+switched to wall-clock to match Jekyll's `site.time`. A generic
+`_data/*.yml` loader (`data.mjs`) replaced the book-specific YAML
+load. `_diff.mjs` gained `--against-disk` and `--multi` modes; a new
+`_audit_accepted.mjs` surfaces hidden secondary divergences behind
+already-accepted entries; `verify-phase8.mjs` got a cross-reference
+completeness audit. The codebase gained [README.md](README.md).
+
+**Phase 10** (planned, no PLAN-10.md yet) picks up the output-changing
+FUTURE-WORK items (Shiki theming generated from upstream `.twin` source
+files, mermaid auto-gen, copy-code SSR, linkify, search-data
+minification, AST-based JTD patcher). Open follow-ups (deferred
+enhancements, divergence investigations, the Jekyll-to-tbdocs cutover)
+live in [FUTURE-WORK.md](FUTURE-WORK.md).
 
 ## Architecture
 
@@ -33,13 +44,17 @@ the output structure is fixed (three trees), the template is one layout with var
 
 ```
 builder/                 (sibling of docs/, at the repo root)
-  index.mjs              entry point + orchestrator
+  README.md              quickstart + module map (Phase 9 addition)
+  index.mjs              entry point + orchestrator (also exports makeTimer)
   discover.mjs           file reading, frontmatter parsing
   nav.mjs                nav tree + breadcrumbs + nav-levels + children
-  seo.mjs                per-page SEO metadata
+  seo.mjs                per-page SEO metadata (shares site.markdown)
   book.mjs               book chapter resolution + PDF page assembly
   build-info.mjs         git commit + commit date capture
+  data.mjs               generic _data/*.yml loader (Phase 9 addition)
   render.mjs             markdown-it pipeline setup
+                          (exports createMarkdownIt, initHighlighter,
+                           buildLinkTables for the orchestrator + tools)
   template.mjs           page layout as JS functions (replaces Liquid)
   compress.mjs           HTML whitespace collapse
   highlight.mjs          Shiki setup + twinBASIC grammar
@@ -49,10 +64,18 @@ builder/                 (sibling of docs/, at the repo root)
   search.mjs             Lunr search index generation (search-data.json)
   paths.mjs              shared dest-path helpers (Phase 5 + Phase 6)
   offline.mjs            URL rewriting for _site-offline/
+                          (per-dest-dir nav-block cache as of Phase 9)
   pdf.mjs                sparse _site-pdf/ tree generation
   twinbasic.tmLanguage.json    TextMate grammar for twinBASIC
   accepted-divergences.mjs     allow-list consumed by every verify harness
   verify-phase{1..8}.mjs       per-phase acceptance harnesses
+  _diff.mjs              single-target byte-diff (+ --against-disk, --multi)
+  _diff_all.mjs          per-bucket divergence aggregation
+  _triage.mjs            bulk classifier + auxiliary audit (+ --multi)
+  _audit_accepted.mjs    accepted-divergence multi-region audit
+                          (Phase 9 addition)
+  _sitemap_diff.mjs      sitemap URL-set diff
+  _spot.mjs              single-page output dump
 ```
 
 The builder lives at the repo root (not under `docs/`) so it isn't part of
@@ -98,7 +121,7 @@ Phase 5: WRITE ONLINE    ~400ms   Write _site/                                  
 Phase 6: AUXILIARIES     ~100ms   Redirects, sitemap, search-data.json, robots.txt            [shipped]
 Phase 7: WRITE OFFLINE   ~1000ms  URL-rewritten copy to _site-offline/                        [shipped]
 Phase 8: WRITE PDF       ~150ms   Sparse copy to _site-pdf/                                   [shipped]
-Phase 9: QoL + DOCS      (-200ms) FUTURE-WORK consolidation; no output change                 [planned]
+Phase 9: QoL + DOCS      (-200ms) FUTURE-WORK consolidation; no output change                 [shipped]
 Phase 10: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [planned]
 ```
 

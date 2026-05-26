@@ -1,15 +1,15 @@
 # Future Work
 
-Open follow-up tasks for the tbdocs builder. Phases 1-8 are shipped;
-[Phase 9](PLAN-9.md) is planned as a consolidation pass that absorbs
-every item which doesn't change build output (or strictly improves
-Jekyll parity); **Phase 10** will pick up the items that intentionally
-change output and so couldn't fit Phase 9's no-regression criterion.
+Open follow-up tasks for the tbdocs builder. Phases 1-9 are shipped;
+**Phase 10** will pick up the items that intentionally change output
+and so couldn't fit Phase 9's no-regression criterion.
 
-Per-item phase routing is annotated inline below — look for **→ Phase
-9**, **→ Phase 10**, or **→ drop**. Items without an explicit routing
-either pre-date the Phase 9 plan (the §A1 investigation) or are
-sequenced outside the phase pipeline (§C cutover).
+Per-item phase routing is annotated inline below — items routed to
+**→ Phase 9** (now landed) are marked **shipped**; items routed to
+**→ Phase 10** stay open; **→ drop** items are out of scope. Items
+without an explicit routing either pre-date the Phase 9 plan (the
+§A1 investigation, now also shipped) or are sequenced outside the
+phase pipeline (§C cutover).
 
 When picking up a divergence-investigation entry: re-run the discovery
 step listed under "Reproduce" before assuming the symptom is still
@@ -23,7 +23,7 @@ since the entry was written.
 ### A1. Hidden secondary divergences on accepted-divergence pages
 
 **Routing**: investigation paths #1 (multi-divergence audit tool) and
-#3 (`_diff.mjs` / `_triage.mjs` `--multi` mode) → **Phase 9**
+#3 (`_diff.mjs` / `_triage.mjs` `--multi` mode) → **shipped in Phase 9**
 ([PLAN-9.md §5.12](PLAN-9.md)). Path #2 (decide on the TestFixture
 line specifically) is a content / parser call that can wait.
 
@@ -171,7 +171,7 @@ every `<pre>` block (single category in
 
 ### B3. Move title rendering to `site.markdown` (PLAN-3 §15, PLAN-2 §D6)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.1](PLAN-9.md)).
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.1](PLAN-9.md)).
 
 **Trigger**: a refactor pass after the port settles.
 
@@ -183,9 +183,9 @@ Tiny code reduction, no behaviour change.
 
 ### B4. Generic `site.data.*` loader (PLAN-3 §15)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.2](PLAN-9.md)). Pulled in
-as a mechanical cleanup even without a trigger; sets up cleanly for
-any future `_data/*.yml`.
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.2](PLAN-9.md)).
+Pulled in as a mechanical cleanup even without a trigger; sets up
+cleanly for any future `_data/*.yml`.
 
 **Trigger**: a new `_data/<file>.yml` is added.
 
@@ -224,8 +224,9 @@ convention changes.
 
 ### B7. Phase 7 nav-block cache (PLAN-7 §13)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.3](PLAN-9.md)). Pulled in
-for the ~200 ms perf win even though the trigger isn't yet hit.
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.3](PLAN-9.md)).
+Keyed on destination directory (not source -- the URL rewrite depends
+on `page.destPath`'s fileSegs). ~200 ms shaved off the Phase 7 wall.
 
 **Trigger**: the offline HTML pass exceeds 300 ms in profiling, or
 the Phase 7 total exceeds the 1500 ms cap in `verify-phase7.mjs`.
@@ -239,7 +240,7 @@ nav back after the gsub; seed the cache from the first page in each
 
 ### B8. Phase 7 `--no-offline` opt-out (PLAN-7 §13)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.4](PLAN-9.md)).
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.4](PLAN-9.md)).
 
 **Trigger**: a deployment scenario where the offline tree is not
 wanted (e.g. CI builds that only ship the online tree).
@@ -250,7 +251,7 @@ the offline build always runs (~1 s cost).
 
 ### B9. Phase 7 `--profile-offline` flag (PLAN-7 §13)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.7](PLAN-9.md)).
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.7](PLAN-9.md)).
 
 **Trigger**: Phase 7 misses its 800 ms target and the per-substep
 breakdown is needed to identify the dominant cost.
@@ -291,7 +292,7 @@ edits.
 
 ### B12. Phase 5 `--against-disk` diff mode (PLAN-5 §14 step 11)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.10](PLAN-9.md)).
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.10](PLAN-9.md)).
 
 **Trigger**: a post-write verification scenario actually needs it.
 
@@ -303,7 +304,7 @@ that wouldn't show up in the in-memory compare.
 
 ### B13. Phase 8 `--no-pdf` opt-out (PLAN-8 §13)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.5](PLAN-9.md)).
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.5](PLAN-9.md)).
 
 **Trigger**: a deployment scenario where the PDF tree is not wanted
 (e.g. CI builds that only ship the online tree).
@@ -317,7 +318,7 @@ of truth.
 
 ### B14. Phase 8 `--serving` flag (PLAN-8 §13)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.6](PLAN-9.md)).
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.6](PLAN-9.md)).
 
 **Trigger**: a watch-mode flow lands and a mid-edit save can
 temporarily break an image reference.
@@ -329,9 +330,9 @@ as a `writePdf` parameter; just needs a CLI surface.
 
 ### B15. Phase 8 build-date semantics (PLAN-8 §13)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.8](PLAN-9.md)). Switches
-the PDF title-page date from `commitDate` to wall-clock (`new
-Date()`) to match Jekyll's `site.time` semantics. Counts as a
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.8](PLAN-9.md)).
+Switched the PDF title-page date from `commitDate` to wall-clock
+(`new Date()`) to match Jekyll's `site.time` semantics. Counts as a
 parity improvement, not a regression.
 
 **Trigger**: a `book.bat` user complains that the PDF title page
@@ -347,7 +348,7 @@ run and switch if needed (the `new Date()` fallback in
 
 ### B16. Phase 8 cross-reference completeness audit (PLAN-8 §13)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.11](PLAN-9.md)).
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.11](PLAN-9.md)).
 
 **Trigger**: a reader complains that a PDF link sent them to the
 live site when they expected an in-PDF jump.
@@ -363,7 +364,9 @@ surfaces these.
 
 ### B17. Phase 8 image-extraction unification with `assembleBook` (PLAN-8 §13)
 
-**Routing**: → **Phase 9** ([PLAN-9.md §5.9](PLAN-9.md)).
+**Routing**: → **shipped in Phase 9** ([PLAN-9.md §5.9](PLAN-9.md)).
+`extractImagePaths` retained as a fallback/diagnostic export for the
+verify harness and triage tools.
 
 **Trigger**: Phase 8 misses its 200 ms target and the breakdown
 shows `extractImagePaths` non-trivial.
