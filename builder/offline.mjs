@@ -126,17 +126,109 @@ async function setupOfflineDest(offlineRoot) {
 }
 
 // §5.2  writeOfflinePages -- per-page strip + rewrite + inject.
+//
+// PLAN-9 §5.3 (B7) nav-block cache: the just-the-docs sidebar in
+// `<nav id="site-nav">...</nav>` is byte-identical across every page
+// site-wide before rewrite (template.mjs's renderSidebar takes only
+// `site`, not `page`; the per-page active highlight lives in a
+// separate `<style id="jtd-nav-activation">` block emitted in
+// <head>, not as inline class attributes on the nav anchors). The
+// HTML rewrite pass spends ~200 ms per build re-running the per-
+// match callback over that ~80kB block on each of 837 pages. The
+// cache stashes the pre/post-rewrite nav slices once per
+// **destination** dir (the URL rewrite is keyed by `fileSegs`,
+// derived from `page.destPath`) and the per-page rewriter
+// substitutes them in instead of re-scanning.
+//
+// Asserted-premise design (§7.D11): each subsequent page checks that
+// its pre-rewrite nav block matches the cached `input` byte-for-byte.
+// On miss we fall back to the full rewrite with a warning -- the
+// cache is purely an optimisation, never a correctness dependency.
 async function writeOfflinePages(pages, deps) {
   const { offlineRoot } = deps;
   const writable = pages.filter(p => p.html !== undefined);
 
+  // Pre-pass: group pages by destination dir, render the first page
+  // in each group through deriveOfflinePage, and stash the
+  // pre-rewrite/post-rewrite nav slices on deps.navCache.
+  const byDir = new Map();
+  for (const p of writable) {
+    const destDir = posixDirname(p.destPath);
+    let g = byDir.get(destDir);
+    if (!g) { g = []; byDir.set(destDir, g); }
+    g.push(p);
+  }
+  const navCache = new Map();
+  for (const [destDir, group] of byDir) {
+    const first = group[0];
+    const input = sliceNavBlock(first.html);
+    if (input === null) continue;
+    const { html: rendered } = deriveOfflinePage(first, deps);
+    const output = sliceNavBlock(rendered);
+    if (output === null) continue;
+    navCache.set(destDir, { input, output });
+  }
+  deps.navCache = navCache;
+
   await runLimited(writable, LIMIT, async (page) => {
-    const { html, misses } = deriveOfflinePage(page, deps);
+    const { html, misses } = deriveOfflinePageCached(page, deps);
     const dest = path.join(offlineRoot, page.destPath);
     await writeFileMkdirp(dest, html);
     deps.counters.html += 1;
     deps.counters.unresolved += misses;
   });
+}
+
+const NAV_OPEN_RE = /<nav aria-label="Main" id="site-nav"[^>]*>/;
+const NAV_CLOSE = "</nav>";
+
+// Slice the sidebar nav block out of an HTML page. Returns the literal
+// `<nav ...>...</nav>` substring, or null if the page doesn't carry
+// the expected sidebar shape (in which case the cache entry is skipped
+// for the source dir and subsequent pages fall back to the full path).
+function sliceNavBlock(html) {
+  const m = html.match(NAV_OPEN_RE);
+  if (!m) return null;
+  const start = m.index;
+  const end = html.indexOf(NAV_CLOSE, start);
+  if (end === -1) return null;
+  return html.slice(start, end + NAV_CLOSE.length);
+}
+
+// Placeholder spliced in place of the cached input nav while
+// deriveOfflinePage runs. An HTML comment so it never collides with
+// the three alternatives in HTML_COMBINED_RE (<code> / <pre> /
+// href|src=), the SEO-block regex (different prefix), the JTD script
+// tag regex (different prefix), or any other rewrite step.
+const NAV_PLACEHOLDER = "<!--TBDOCS_NAV_CACHE_-->";
+
+// Cache-consulting wrapper around deriveOfflinePage. On hit:
+// substitutes the cached input slice with a placeholder, runs the
+// rewrite over the ~80kB-smaller string, splices the cached output
+// back in. On miss (no cache entry for the source dir OR the input
+// slice doesn't match byte-for-byte): falls back to the full
+// rewrite with a warning.
+function deriveOfflinePageCached(page, deps) {
+  const destDir = posixDirname(page.destPath);
+  const cached = deps.navCache?.get(destDir);
+  if (!cached) return deriveOfflinePage(page, deps);
+
+  const idx = page.html.indexOf(cached.input);
+  if (idx === -1) {
+    console.warn(
+      `offline nav cache miss for ${page.srcRel}: ` +
+      `nav block doesn't match first page in ${destDir}; ` +
+      `falling back to full rewrite`,
+    );
+    return deriveOfflinePage(page, deps);
+  }
+
+  const stubbed = page.html.slice(0, idx) + NAV_PLACEHOLDER +
+                  page.html.slice(idx + cached.input.length);
+  const stubbedPage = { ...page, html: stubbed };
+  const { html: stubbedOut, misses } = deriveOfflinePage(stubbedPage, deps);
+  const out = stubbedOut.replace(NAV_PLACEHOLDER, cached.output);
+  return { html: out, misses };
 }
 
 // Pure-compute: apply strip + URL rewrite + script injection to a

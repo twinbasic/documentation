@@ -358,11 +358,13 @@ async function main() {
   }
 
   // ----- §10.9 performance smoke check ---------------------------------
-  if (t7Ms > 1500) {
-    console.error(`WARN: Phase 7 took ${t7Ms} ms (soft cap 1500 ms)`);
+  // PLAN-9 §5.3: the B7 nav-block cache shaves ~200 ms off the HTML
+  // pass; the soft cap drops from 1500 ms to 1200 ms accordingly.
+  if (t7Ms > 1200) {
+    console.error(`WARN: Phase 7 took ${t7Ms} ms (soft cap 1200 ms)`);
     process.exitCode = 1;
   } else if (t7Ms > 800) {
-    console.log(`OK   Phase 7 took ${t7Ms} ms (above 800 ms target, under 1500 ms soft cap)`);
+    console.log(`OK   Phase 7 took ${t7Ms} ms (above 800 ms target, under 1200 ms soft cap)`);
   } else {
     passed(`Phase 7 took ${t7Ms} ms (under 800 ms target)`);
   }
