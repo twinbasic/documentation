@@ -1,7 +1,21 @@
 # tbdocs — Custom JS Static Site Generator
 
-Port of the Jekyll + just-the-docs build pipeline to a single-purpose Node.js tool.
-Goal: functionally equivalent output, ~2,200 lines of compact JS, no framework.
+Port of the Jekyll + just-the-docs build pipeline to a single-purpose
+Node.js tool. Goal: byte-equivalent output to Jekyll (modulo the
+accepted-divergences allow-list), in compact dependency-light JS, no
+framework.
+
+## Status: phases 1-8 shipped
+
+All eight build phases land on the production tree and produce
+byte-equivalent output to Jekyll modulo the entries in
+[accepted-divergences.mjs](accepted-divergences.mjs). Each phase has
+its own acceptance harness ([verify-phase1.mjs](verify-phase1.mjs)
+through [verify-phase8.mjs](verify-phase8.mjs)) that runs the
+preceding phases into a scratch destination and asserts the §10
+checks from the corresponding `PLAN-N.md`. Open follow-ups (deferred
+enhancements, divergence investigations, the Jekyll-to-tbdocs
+cutover) live in [FUTURE-WORK.md](FUTURE-WORK.md).
 
 ## Architecture
 
@@ -18,16 +32,18 @@ builder/                 (sibling of docs/, at the repo root)
   build-info.mjs         git commit + commit date capture
   render.mjs             markdown-it pipeline setup
   template.mjs           page layout as JS functions (replaces Liquid)
+  compress.mjs           HTML whitespace collapse
+  highlight.mjs          Shiki setup + twinBASIC grammar
+  write.mjs              _site/ writer (page HTML + theme + static files)
+  redirects.mjs          redirect stub pages
+  sitemap.mjs            sitemap.xml + robots.txt
+  search.mjs             Lunr search index generation (search-data.json)
+  paths.mjs              shared dest-path helpers (Phase 5 + Phase 6)
   offline.mjs            URL rewriting for _site-offline/
   pdf.mjs                sparse _site-pdf/ tree generation
-  search.mjs             Lunr search index generation (search-data.json)
-  redirects.mjs          redirect stub pages
-  sitemap.mjs            sitemap.xml
-  highlight.mjs          Shiki setup + twinBASIC grammar
-  compress.mjs           HTML whitespace collapse
-  twinbasic.tmLanguage.json   TextMate grammar for twinBASIC
-  verify-phase1.mjs      Phase 1 acceptance harness
-  verify-phase2.mjs      Phase 2 acceptance harness
+  twinbasic.tmLanguage.json    TextMate grammar for twinBASIC
+  accepted-divergences.mjs     allow-list consumed by every verify harness
+  verify-phase{1..8}.mjs       per-phase acceptance harnesses
 ```
 
 The builder lives at the repo root (not under `docs/`) so it isn't part of
@@ -58,24 +74,26 @@ Static assets (CSS, JS, SVGs) extracted once from the current Jekyll build live 
 Seven production dependencies. No template engine, no framework, no
 bundler. `js-yaml` is technically a transitive dep of `gray-matter`
 (declared explicitly because Phase 2 loads `_config.yml` and
-`_data/book.yml` directly); the four bottom-of-list packages remain
-unused until later phases land.
+`_data/book.yml` directly). Phase 3 brings in `markdown-it-deflist`
+and `markdown-it-footnote` alongside `markdown-it-attrs`; Phase 6
+brings in `lunr` for the search index emitter.
 
 ## Build Phases
 
 ```
-Phase 1: DISCOVER        ~120ms   Read .md/.html with frontmatter, enumerate static files       [shipped]
-Phase 2: COMPUTE         ~60ms    Nav tree, breadcrumbs, SEO, book chapters, build-info         [shipped]
-Phase 3: RENDER          ~1-2s    Markdown -> HTML (dominates build time)
-Phase 4: TEMPLATE        ~200ms   Wrap in layout, anchor headings, compress
-Phase 5: WRITE ONLINE    ~300ms   Write _site/
-Phase 6: AUXILIARIES     ~100ms   Redirects, sitemap, search-data.json
-Phase 7: WRITE OFFLINE   ~500ms   URL-rewritten copy to _site-offline/
-Phase 8: WRITE PDF       ~50ms    Sparse copy to _site-pdf/
+Phase 1: DISCOVER        ~120ms   Read .md/.html with frontmatter, enumerate static files     [shipped]
+Phase 2: COMPUTE         ~60ms    Nav tree, breadcrumbs, SEO, book chapters, build-info       [shipped]
+Phase 3: RENDER          ~1-2s    Markdown -> HTML (dominates build time)                     [shipped]
+Phase 4: TEMPLATE        ~200ms   Wrap in layout, anchor headings, compress                   [shipped]
+Phase 5: WRITE ONLINE    ~400ms   Write _site/                                                [shipped]
+Phase 6: AUXILIARIES     ~100ms   Redirects, sitemap, search-data.json, robots.txt            [shipped]
+Phase 7: WRITE OFFLINE   ~1000ms  URL-rewritten copy to _site-offline/                        [shipped]
+Phase 8: WRITE PDF       ~150ms   Sparse copy to _site-pdf/                                   [shipped]
 ```
 
-Phase 1+2 measured timings come from `node builder/index.mjs` on the
-current Windows dev machine; Phase 3 onward are still projections.
+Timings are wall-clock measurements from `node builder/index.mjs` on
+the current Windows dev machine. Per-phase target / cap details and
+the per-substep breakdown live in each `PLAN-N.md`.
 
 ## Phase Specifications
 
@@ -180,9 +198,11 @@ Modules:
 
 Replaces: kramdown's GFM converter + jekyll-relative-links (with the
 patch) + jekyll-gfm-admonitions (with the two patches) + Rouge + the
-custom `_plugins/twinbasic.rb` Rouge lexer. The JS port targets
-functionally equivalent HTML body output, verified by diff against
-Jekyll's rendered body fragments.
+custom `_plugins/twinbasic.rb` Rouge lexer. The JS port produces
+byte-equivalent body HTML modulo the entries in
+`accepted-divergences.mjs` (a small set of kramdown-vs-markdown-it
+edge cases that aren't worth the cost of a fix); verified per-page
+by `verify-phase3.mjs`.
 
 Full spec, design decisions, edge cases, acceptance checklist,
 TextMate-grammar port plan, and implementation order:
@@ -190,8 +210,9 @@ TextMate-grammar port plan, and implementation order:
 
 ### Phase 4: TEMPLATE (`template.mjs`, `compress.mjs`)
 
-The layout is a single JS function returning an HTML string. The ~13 Liquid includes
-become helper functions called inline:
+The layout is a single JS function returning an HTML string. The ~13
+Liquid includes become helper functions called inline. Full spec:
+[PLAN-4.md](PLAN-4.md).
 
 ```js
 export function renderPage(page, site) {
@@ -235,16 +256,19 @@ Sub-functions:
 **Nav activation CSS** (~30 lines): Generate the per-page `<style id="jtd-nav-activation">`
 block from `page.navLevels` -- positional `:nth-child()` selectors.
 
-### Phase 5: WRITE ONLINE
+### Phase 5: WRITE ONLINE (`write.mjs`)
 
 - For each page: write destPath to `_site/`
 - Copy theme assets: `builder/assets/` -> `docs/_site/assets/` (CSS, JS, sprites)
 - Copy every entry in `staticFiles[]` (from Phase 1) to its `destRel` under
   `_site/` -- content images, `favicon.png`, `CNAME`, `render-book.mjs`,
   `lib/*.mjs`, `assets/images/mmd/*`
-- Write `search-data.json` to `_site/assets/js/`
 
-### Phase 6: AUXILIARIES
+Pure filesystem I/O -- no transformation, no URL rewriting. Phase 6
+adds `search-data.json`, redirects, sitemap, and robots.txt alongside
+Phase 5's output. Full spec: [PLAN-5.md](PLAN-5.md).
+
+### Phase 6: AUXILIARIES (`redirects.mjs`, `sitemap.mjs`, `search.mjs`)
 
 **Redirects** (`redirects.mjs`):
 - For each page with `redirect_from` in frontmatter, generate a minimal HTML page
@@ -252,15 +276,18 @@ block from `page.navLevels` -- positional `:nth-child()` selectors.
 
 **Sitemap** (`sitemap.mjs`):
 - Standard `sitemap.xml` from all page permalinks. Same output as jekyll-sitemap.
+- Writes `robots.txt` alongside (one-line `Sitemap:` reference).
 
 **Search index** (`search.mjs`):
 - Walk rendered pages, strip HTML tags, split by headings into sections
 - Emit JSON: `{ "0": { doc, title, content, url, relUrl }, ... }`
 - Same format the client-side Lunr consumer expects -- zero client JS changes needed
 
+Full spec: [PLAN-6.md](PLAN-6.md).
+
 ### Phase 7: WRITE OFFLINE (`offline.mjs`)
 
-The algorithmic core of offlinify.rb (~600 lines JS):
+The algorithmic core of offlinify.rb:
 
 For each HTML file in `_site/`:
 1. Rewrite `href`/`src` attributes: root-absolute -> page-relative
@@ -275,7 +302,8 @@ One-time operations:
 - Patch `just-the-docs.js` (navLink + initSearch replacements)
 - Generate `search-data.js` wrapper: `window.SEARCH_DATA = {...};`
 
-Skip patterns: CNAME, robots.txt, sitemap.xml, book.html (per `offline_exclude` config).
+Skip patterns: CNAME, robots.txt, sitemap.xml, book.html (per
+`offline_exclude` config). Full spec: [PLAN-7.md](PLAN-7.md).
 
 ### Phase 8: WRITE PDF (`pdf.mjs`, `book.mjs` render half)
 
@@ -288,6 +316,11 @@ Skip patterns: CNAME, robots.txt, sitemap.xml, book.html (per `offline_exclude` 
    - `book.html`
    - `print.css`, `rouge.css`
    - Every `<img src="...">` referenced from `book.html`
+
+`pagedjs-cli` (invoked by `docs/book.bat`) reads the resulting
+`_site-pdf/book.html` and produces `_pdf/book.pdf`. Phase 8 writes
+the inputs; the shell script does the actual PDF render. Full spec:
+[PLAN-8.md](PLAN-8.md).
 
 ## Static Asset Extraction (One-Time Setup)
 
@@ -313,7 +346,8 @@ If the custom color scheme ever changes, recompile once manually with `sass`.
 
 ## Verification Strategy
 
-The content files don't change. Verify correctness by diffing output:
+The content files don't change. Correctness is asserted by diffing
+output against Jekyll's:
 
 ```
 1. Build with Jekyll:    cd docs && bundle exec jekyll build  ->  docs/_site/
@@ -321,48 +355,68 @@ The content files don't change. Verify correctness by diffing output:
 3. Diff:                 diff -rq docs/_site/ docs/_site-new/
 ```
 
-tbdocs is invoked from the repo root. It defaults to `docs/` as the source
-root and `docs/_site-new/` as the destination during the port; once it
-replaces Jekyll, the destination flips to `docs/_site/` and the Jekyll
-step goes away.
+tbdocs is invoked from the repo root. It defaults to `docs/` as the
+source root and `docs/_site-new/` as the destination during the port;
+the post-port cutover (see [FUTURE-WORK.md](FUTURE-WORK.md) §C1)
+flips the destination to `docs/_site/` and retires the Jekyll step.
 
-Accept known differences:
-- Minor whitespace variance (Jekyll's compress vs ours)
-- `<meta name="generator">` tag (Jekyll injects it; we omit)
-- Timestamp-dependent content (last_modified_date)
+Per-phase verification is the primary signal: each phase's
+`verify-phaseN.mjs` harness (listed individually in the Implementation
+Order table below) drives the preceding phases into a scratch
+destination and asserts the §10 acceptance checks from the
+corresponding `PLAN-N.md`. The full-tree `diff -rq` is the cumulative
+catch-all.
 
-For the offline tree: `diff -rq docs/_site-offline/ docs/_site-offline-new/`.
+Known accepted differences live in
+[accepted-divergences.mjs](accepted-divergences.mjs) -- a single
+per-page allow-list every verify harness reads. The buckets are
+documented inline next to each entry (kramdown-vs-markdown-it parser
+edge cases, Rouge-vs-Shiki tokenisation for non-tB languages, etc.).
+For the offline tree: `diff -rq docs/_site-offline/
+docs/_site-offline-new/` plus `scripts/check_links.mjs` -- both
+covered by `verify-phase7.mjs`.
 
-The existing `scripts/check_links.mjs` runs against the new output unchanged -- it checks
-internal link integrity regardless of which tool produced the HTML.
+The bulk-triage tools ([_triage.mjs](_triage.mjs),
+[_diff.mjs](_diff.mjs), [_diff_all.mjs](_diff_all.mjs)) classify any
+new divergence by first-occurrence pattern so a regression's blast
+radius is visible at a glance.
 
 ## Implementation Order
 
-Build incrementally, each step independently verifiable:
+All eight steps shipped. Each phase has its own acceptance harness
+that runs the preceding phases into a scratch destination and asserts
+the §10 checks from the corresponding `PLAN-N.md`.
 
 | Step | Module(s) | Status | Verify by |
 |------|-----------|--------|-----------|
 | 1 | `discover.mjs` | shipped | `verify-phase1.mjs`: 838 pages (836 .md + 404.html + book.html), frontmatter spot-checks, `staticFiles[]` covers content images + favicon + lib/ + render-book.mjs |
 | 2 | `nav.mjs` + `seo.mjs` + `book.mjs` + `build-info.mjs` | shipped | `verify-phase2.mjs`: 23 acceptance checks (navTree shape, navPath/breadcrumbs/children/navLevels populated, SEO byte-parity against Jekyll, buildInfo, bookData resolution) |
-| 3 | `render.mjs` + `highlight.mjs` | pending | Diff rendered HTML of 5 representative pages vs Jekyll |
-| 4 | `template.mjs` + `compress.mjs` | pending | Full-page render, visual comparison in browser |
-| 5 | Write online (`_site/`) | pending | `check_links.mjs` passes |
-| 6 | `search.mjs` + `redirects.mjs` + `sitemap.mjs` | pending | Functional search in browser |
-| 7 | `offline.mjs` | pending | Open `_site-offline/index.html` via file://, nav + search work |
-| 8 | `book.mjs` renderer half + `pdf.mjs` | pending | `pagedjs-cli` renders PDF without errors |
+| 3 | `render.mjs` + `highlight.mjs` + `twinbasic.tmLanguage.json` | shipped | `verify-phase3.mjs`: per-page rendered-body diff against Jekyll's `_site/<destPath>` (sidebar stripped), bucketed by `accepted-divergences.mjs` |
+| 4 | `template.mjs` + `compress.mjs` | shipped | `verify-phase4.mjs`: full-page byte diff against `_site/<destPath>` for every page (skipping `book.html`), accepted-divergence honouring |
+| 5 | `write.mjs` (Write online `_site/`) | shipped | `verify-phase5.mjs`: scratch-destination `diff -rq` vs Jekyll's `_site/`, plus `check_links.mjs` clean |
+| 6 | `search.mjs` + `redirects.mjs` + `sitemap.mjs` + `paths.mjs` | shipped | `verify-phase6.mjs`: sitemap URL-set parity, redirect stub byte parity (290 stubs), search-data per-entry content parity (2,587 entries), robots.txt byte parity |
+| 7 | `offline.mjs` | shipped | `verify-phase7.mjs`: per-file diff against Jekyll's `_site-offline/`, plus `check_links.mjs --forbid 'https://docs.twinbasic.com'` clean |
+| 8 | `book.mjs` renderer half + `pdf.mjs` | shipped | `verify-phase8.mjs`: per-article book.html byte diff vs `_site-pdf/book.html` (accepted-divergence-honouring), image inventory parity, CSS parity |
 
 Phase 2 shipped ahead of `render.mjs` (the originally-projected step 2)
 because the COMPUTE outputs don't depend on rendered markdown -- doing
-them first means RENDER and TEMPLATE can both consume the full per-page
-field set from day one without an "if `page.navLevels` is set yet"
-guard.
+them first meant RENDER and TEMPLATE could both consume the full
+per-page field set from day one without an "if `page.navLevels` is set
+yet" guard.
 
-## Expected Outcome
+## Outcome
 
-| Metric | Jekyll (current) | tbdocs (projected) |
-|--------|-----------------|-------------------|
-| Build time | ~11s | ~2-3s |
-| Dependencies | Ruby + Bundler + 8 gems | Node.js + 6 npm packages |
-| Build code | ~4,800 lines Ruby (plugins) + theme gem | ~2,200 lines JS |
-| Content changes | none | none |
-| Output parity | baseline | functional equivalent |
+| Metric | Jekyll | tbdocs (shipped) |
+|--------|--------|------------------|
+| Build time | ~11s | ~3s |
+| Dependencies | Ruby + Bundler + 8 gems | Node.js + 7 npm packages |
+| Build code | ~4,800 lines Ruby (plugins) + theme gem | ~6,600 lines JS production code + ~4,400 lines of acceptance harnesses / triage tools |
+| Content changes | baseline | none |
+| Output parity | baseline | byte-equivalent modulo entries in `accepted-divergences.mjs` |
+
+The JS line count came in higher than the original ~2,200-line
+projection because the byte-parity requirement (rather than functional
+equivalence) drove out a long tail of kramdown-vs-markdown-it parity
+plugins, the full offlinify port, and the per-phase verify harnesses.
+The cumulative source-of-truth is the eight `PLAN-N.md` specs plus
+`FUTURE-WORK.md`.

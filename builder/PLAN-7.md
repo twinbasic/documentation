@@ -2505,38 +2505,8 @@ only `_site-offline/`, with no entanglement to the PDF tree.
 
 ### Carried into FUTURE-WORK.md
 
-Append the following entries to [FUTURE-WORK.md](FUTURE-WORK.md) when
-Phase 7 ships:
-
-> **Phase 7 nav-block cache.** Defer per-source-dir caching of the
-> rewritten just-the-docs sidebar nav. Estimated saving: ~200 ms on
-> the HTML pass. Trigger: HTML pass exceeds 300 ms in profiling, or
-> Phase 7 total exceeds 1500 ms in `verify-phase7.mjs`.
-> Implementation: substitute the input nav with a placeholder before
-> the per-page gsub when `nav_cache[file_dir]` is set; splice the
-> cached rewritten nav back after the gsub; seed the cache from the
-> first page in each `file_dir`. ~80 lines added to `offline.mjs`
-> §D.
-
-> **Phase 7 `--no-offline` opt-out.** Add a CLI flag mirroring
-> Jekyll's `also_build_offline: false` so production deploys can skip
-> the offline build entirely. Currently the offline build always runs
-> (~1 s cost). Trigger: a deployment scenario where the offline tree
-> is not wanted (e.g. CI builds that only ship the online tree).
-
-> **Phase 7 `--profile-offline` flag.** Add per-substep timing
-> instrumentation parallel to Jekyll offlinify's `tick(:time_*)`
-> accumulators. Per-substep wall-time isn't captured in the first
-> cut; only the Phase 7 total appears in the orchestrator's
-> `t.summary()`. Trigger: Phase 7 misses its 800 ms target and the
-> per-substep breakdown is needed to identify the dominant cost.
-
-> **Phase 7 search-data minification.** Compress `search-data.js`
-> (~2.8 MB → ~1.7 MB at modest JSON minification). Trigger: complaints
-> about page load under file:// on spinning disks.
-
-> **Phase 7 AST-based JTD JS patching.** Replace the regex patches
-> with an acorn-based AST rewrite if just-the-docs ever ships a
-> function shape the regexes can't anchor on. Trigger: regex misses
-> in the patch step (the warning lines `deriveOfflineJtdJs` returns
-> would surface this).
+Five Phase 7 follow-ups have been moved to
+[FUTURE-WORK.md](FUTURE-WORK.md) §B7-B11: per-source-dir nav-block
+cache, `--no-offline` opt-out, `--profile-offline` instrumentation,
+search-data minification, and an AST-based JTD JS patcher. Each
+entry lists its trigger condition; none block any current work.

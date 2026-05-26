@@ -1660,23 +1660,12 @@ Phase 5 entirely.
 
 ### The cutover
 
-The single-commit cutover from Jekyll to tbdocs:
-
-1. Verify Phase 5+6+7+8 all pass on the production tree
-   (`diff -rq _site/ _site-new/` clean modulo accepted divergences;
-   `check_links.mjs` clean; PDF renders).
-2. Flip the default destination in `index.mjs` from
-   `_site-new` to `_site`.
-3. Delete `docs/_site-new/` (no longer used).
-4. Retire `bundle exec jekyll build` (the Gemfile, `_plugins/`,
-   `_includes/`, `_sass/`, `_layouts/` can all be deleted in a
-   follow-up cleanup).
-5. Update `build.bat` / `serve.bat` / `check.bat` to invoke
-   `node builder/index.mjs` instead of Jekyll.
-
-That clean handoff is the whole point of having a write phase as
-a standalone step -- it's the boundary at which Jekyll's output
-and tbdocs' output become directly comparable on disk.
+The single-commit cutover from Jekyll to tbdocs is captured in
+[FUTURE-WORK.md](FUTURE-WORK.md) §C1 (sequenced after every phase
+verify is clean on the production tree). Phase 5's role is to make
+the `_site-new/` vs `_site/` on-disk diff possible in the first
+place -- that's the boundary at which Jekyll's output and tbdocs'
+output become directly comparable.
 
 ---
 
@@ -1743,8 +1732,8 @@ verifiable.
 
 11. **Extend `_diff.mjs` / `_diff_all.mjs` with `--against-disk`
     mode.** Optional, but valuable for triage of post-write
-    divergences. (Not landed alongside the initial Phase 5 ship;
-    deferred until a verification scenario actually needs it.)
+    divergences. Not landed alongside the initial Phase 5 ship;
+    tracked in [FUTURE-WORK.md](FUTURE-WORK.md) §B12.
 
 12. **Run the full `diff -rq docs/_site/ docs/_site-new/`** and
     iterate on any surfaced byte differences. Most should be in

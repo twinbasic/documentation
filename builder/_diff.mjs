@@ -1,17 +1,15 @@
-// Single-target diff harness against Jekyll's _site/ output. Drives the
-// tbdocs pipeline through the phase the requested target needs (Phase 3
-// for body fragments / search content, Phase 4 for full page, Phase 5/6
-// for auxiliaries, Phase 7 for offline-tree files), then byte-diffs the
-// in-memory result against the matching Jekyll output.
+// Single-target diff harness against Jekyll's `_site/` (Phases 4-6),
+// `_site-offline/` (Phase 7), and `_site-pdf/` (Phase 8) outputs.
+// Drives the tbdocs pipeline through the phase the requested target
+// needs, then byte-diffs the in-memory result against the matching
+// Jekyll output.
 //
-// Usage:
-//   node _diff.mjs [<page-srcRel>] [--phase3] [--no-strip] [--full]
+// Phase 4 / 6 modes (online site):
+//
+//   node _diff.mjs [<page-srcRel>] [--no-strip] [--full]
 //     Default mode. Diff page.html (Phase 4) vs `_site/<destPath>`.
 //     <page-srcRel> defaults to "Reference/Core/Const.md".
-//     --phase3 switches to body-fragment mode (extract <main>...</main>,
-//     strip anchor-headings + auto-TOC, normalise whitespace, diff
-//     against page.renderedContent).
-//     --no-strip / --full keeps the sidebar in the Phase 4 diff (default
+//     --no-strip / --full keeps the sidebar in the diff (default
 //     strips it so nav-order divergence doesn't dominate).
 //
 //   node _diff.mjs --redirect=<fromPath>
@@ -25,43 +23,59 @@
 //     or pass the bare form ("tB/Core/Day") to avoid that.
 //
 //   node _diff.mjs --robots
-//     Diff robots.txt. Derives the expected content in-memory via
-//     sitemap.mjs's renderRobotsTxt, byte-diffs vs `_site/robots.txt`.
+//     Diff robots.txt vs `_site/robots.txt`.
 //
 //   node _diff.mjs --search <page-srcRel>
-//     Diff all search-index entries for one page. Filters the in-memory
-//     derived entries to those originating in <page-srcRel>, finds
-//     Jekyll's entries with the same `doc` value, set-diffs by
-//     (doc, title, url, relUrl) tuple, then byte-diffs content per pair.
+//     Diff search-index entries for one page vs `_site/assets/js/
+//     search-data.json`. Filters tbdocs's derived entries to those
+//     originating in <page-srcRel>, finds Jekyll's matching entries,
+//     set-diffs and content-diffs per (doc, title, url, relUrl) tuple.
+//
+// Phase 7 modes (offline mirror):
 //
 //   node _diff.mjs --offline=<srcRel>
-//     Diff one offline-tree HTML page. Drives Phases 1-4 then applies
-//     the offline transforms (stripSeo + URL rewrite + script inject)
-//     in-memory, byte-diffs vs `_site-offline/<destPath>`. Use the
-//     same <srcRel> as the default page mode.
+//     Diff one offline-tree HTML page vs `_site-offline/<destPath>`.
 //
 //   node _diff.mjs --offline-redirect=<fromPath>
-//     Diff one offline redirect stub. Derives the stub HTML, rewrites
-//     the four <site.url>/<path> absolute URLs to page-relative,
-//     byte-diffs vs `_site-offline/<destPath>`.
+//     Diff one offline redirect stub vs `_site-offline/<destPath>`.
 //
 //   node _diff.mjs --offline-css=<themeRel>
-//     Diff one offline CSS file. Reads <themeRel> from `_site/`
-//     (e.g. `assets/css/just-the-docs-combined.css`), applies the
-//     url() rewrite, byte-diffs vs `_site-offline/<themeRel>`.
+//     Diff one offline CSS file vs `_site-offline/<themeRel>`.
 //
 //   node _diff.mjs --offline-jtd
-//     Diff the patched `assets/js/just-the-docs.js`. Reads the
-//     unpatched source from `_site/`, applies the navLink+initSearch
-//     patches, byte-diffs vs `_site-offline/assets/js/just-the-docs.js`.
+//     Diff the patched `assets/js/just-the-docs.js` vs
+//     `_site-offline/assets/js/just-the-docs.js`.
 //
 //   node _diff.mjs --offline-search
-//     Diff the offline `search-data.js`. Wraps the in-memory
-//     search-data.json bytes as `window.SEARCH_DATA = ...`, byte-diffs
-//     vs `_site-offline/assets/js/search-data.js`.
+//     Diff the offline `search-data.js` wrap vs
+//     `_site-offline/assets/js/search-data.js`.
+//
+// Phase 8 modes (PDF book):
+//
+//   node _diff.mjs --book [--full]
+//     Diff the assembled book.html vs `_site-pdf/book.html`. The
+//     build-info line (`<p class="build-info">Built ...</p>`) is
+//     normalised on both sides by default so commit / build-date
+//     drift doesn't surface as a divergence. Pass `--book=full`
+//     (no normalisation) to surface every byte difference.
+//
+//   node _diff.mjs --pdf-image=<rel>
+//     Check whether an image path appears in the assembled book.html's
+//     <img src=> set AND in `staticFiles[]`. Prints one of:
+//       MATCH    -- referenced from book.html, in staticFiles
+//       MISS     -- not referenced from book.html
+//       MISSING-IN-INVENTORY -- referenced but not in staticFiles
+//                               (Phase 8 would log it as missing)
+//
+//   node _diff.mjs --pdf-css=<rel>
+//     Diff one PDF-tree CSS file vs `_site-pdf/<rel>`. Reads <rel>
+//     from `_site/<rel>` (the source pdfify.rb copies from) and
+//     `_site-pdf/<rel>`; the two must be byte-equal. Useful for
+//     verifying `assets/css/print.css` / `assets/css/rouge.css`.
 //
 // All modes print "MATCH" on full byte equality or "DIFFER" with the
-// first divergence offset + ~200 chars of context.
+// first divergence offset + ~200 chars of context. Run with `--help`
+// for this usage line.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -85,29 +99,19 @@ import {
   deriveOfflineJtdJs,
   deriveOfflineSearchDataJs,
 } from "./offline.mjs";
+import { deriveBookOutputs, extractImagePaths } from "./pdf.mjs";
 
 const SIDEBAR_RE = /<nav aria-label="Main" id="site-nav"[\s\S]*?<\/nav>/;
 function stripSidebar(h) { return h.replace(SIDEBAR_RE, "<SIDEBAR/>"); }
 
-function extractMainBody(html) {
-  const start = html.indexOf("<main>");
-  if (start < 0) return "";
-  const end = html.indexOf("</main>", start);
-  if (end < 0) return "";
-  let body = html.slice(start + "<main>".length, end);
-  body = body.replace(
-    /<a href="#[^"]*" class="anchor-heading"[^>]*>\s*<svg[^>]*>\s*<use [^>]*><\/use>\s*<\/svg>\s*<\/a>/g,
-    "",
+// Normalise the build-info line so commit / date / build-day variations
+// don't show up as divergences in --book mode.
+const BUILD_INFO_RE = /<p class="build-info">Built[^<]*<\/p>/;
+function normaliseBuildInfo(html) {
+  return html.replace(
+    BUILD_INFO_RE,
+    `<p class="build-info">Built BUILDDATE from commit COMMIT (COMMITDATE).</p>`,
   );
-  body = body.replace(/(<h\d[^>]*>)\s+/g, "$1");
-  body = body.replace(/\s+(<\/h\d>)/g, "$1");
-  const tocMarker = body.search(/<hr\s*\/?>\s*<h2 class="text-delta">Table of contents<\/h2>/);
-  if (tocMarker >= 0) body = body.slice(0, tocMarker);
-  return normalise(body);
-}
-
-function normalise(s) {
-  return s.replace(/\s+/g, " ").trim();
 }
 
 // Returns the value for `--flag value` or `--flag=value`. Returns null
@@ -126,11 +130,39 @@ function argValue(args, flag) {
   return null;
 }
 
+const HELP_TEXT = `Usage:
+  Online site (Phase 4 / 6):
+    node _diff.mjs [<page-srcRel>] [--full]      page.html vs _site/
+    node _diff.mjs --redirect=<fromPath>         redirect stub vs _site/
+    node _diff.mjs --robots                      robots.txt vs _site/
+    node _diff.mjs --search=<page-srcRel>        search-index entries
+
+  Offline mirror (Phase 7):
+    node _diff.mjs --offline=<srcRel>            offline page vs _site-offline/
+    node _diff.mjs --offline-redirect=<fromPath> offline stub vs _site-offline/
+    node _diff.mjs --offline-css=<themeRel>      offline CSS vs _site-offline/
+    node _diff.mjs --offline-jtd                 patched JTD JS
+    node _diff.mjs --offline-search              search-data.js wrap
+
+  PDF book (Phase 8):
+    node _diff.mjs --book [--book=full]          book.html vs _site-pdf/
+                                                 default normalises build-info
+    node _diff.mjs --pdf-image=<rel>             check image presence
+    node _diff.mjs --pdf-css=<rel>               PDF-tree CSS vs _site-pdf/
+
+  node _diff.mjs --help                          this message
+
+Print "MATCH" on byte equality, "DIFFER" with first-divergence offset
+and ~200 chars of context otherwise.`;
+
 // ---- Parse args ------------------------------------------------------
 
 const args = process.argv.slice(2);
-const phase3Mode = args.includes("--phase3");
-const noStrip = args.includes("--no-strip") || args.includes("--full");
+if (args.includes("--help") || args.includes("-h")) {
+  console.log(HELP_TEXT);
+  process.exit(0);
+}
+const noStrip = args.includes("--no-strip") || (args.includes("--full") && !args.some(a => a === "--book" || a === "--book=full"));
 const redirectArg = argValue(args, "--redirect");
 const searchArg = argValue(args, "--search");
 const robotsMode = args.includes("--robots");
@@ -139,6 +171,10 @@ const offlineRedirectArg = argValue(args, "--offline-redirect");
 const offlineCssArg = argValue(args, "--offline-css");
 const offlineJtdMode = args.includes("--offline-jtd");
 const offlineSearchMode = args.includes("--offline-search");
+const bookMode = args.includes("--book") || args.includes("--book=full");
+const bookFullMode = args.includes("--book=full") || (args.includes("--book") && args.includes("--full"));
+const pdfImageArg = argValue(args, "--pdf-image");
+const pdfCssArg = argValue(args, "--pdf-css");
 
 // One mode at a time.
 const mode = robotsMode ? "robots"
@@ -149,20 +185,25 @@ const mode = robotsMode ? "robots"
   : offlineArg !== null ? "offline-page"
   : redirectArg !== null ? "redirect"
   : searchArg !== null ? "search"
-  : phase3Mode ? "phase3"
+  : pdfImageArg !== null ? "pdf-image"
+  : pdfCssArg !== null ? "pdf-css"
+  : bookMode ? "book"
   : "page";
 
 const needsTemplate = mode === "page" || mode === "offline-page";
-const needsRender = mode === "page" || mode === "phase3" || mode === "search"
-  || mode === "offline-page" || mode === "offline-search";
+const needsRender = mode === "page" || mode === "search"
+  || mode === "offline-page" || mode === "offline-search"
+  || mode === "book" || mode === "pdf-image";
 const needsOfflineState = mode === "offline-page" || mode === "offline-redirect"
   || mode === "offline-css";
+const needsBuildInfo = needsTemplate || mode === "book";
 
 // ---- Drive pipeline through required phase ---------------------------
 
 const srcRoot = path.resolve(process.cwd(), "../docs");
 const siteRoot = path.join(srcRoot, "_site");
 const siteOfflineRoot = path.join(srcRoot, "_site-offline");
+const sitePdfRoot = path.join(srcRoot, "_site-pdf");
 
 const { pages, staticFiles } = await discover(srcRoot);
 const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
@@ -170,7 +211,7 @@ const { navTree } = computeNav(pages, config);
 const seo = precomputeSeo(pages, config);
 const bookData = await loadBookData(srcRoot);
 resolveBookChapters(bookData, pages);
-const buildInfo = needsTemplate ? await captureBuildInfo() : null;
+const buildInfo = needsBuildInfo ? await captureBuildInfo() : null;
 const site = { config, navTree, ...seo, buildInfo, bookData };
 if (needsRender) await renderPhase(pages, site, staticFiles);
 if (needsTemplate) await templatePhase(pages, site);
@@ -198,9 +239,12 @@ else if (mode === "offline-redirect") await diffOfflineRedirect(offlineRedirectA
 else if (mode === "offline-css")      await diffOfflineCss(offlineCssArg);
 else if (mode === "offline-jtd")      await diffOfflineJtd();
 else if (mode === "offline-search")   await diffOfflineSearch();
+else if (mode === "book")             await diffBook(bookFullMode);
+else if (mode === "pdf-image")        await diffPdfImage(pdfImageArg);
+else if (mode === "pdf-css")          await diffPdfCss(pdfCssArg);
 else                                  await diffPage();
 
-// ---- Mode: page (default, --phase3) ----------------------------------
+// ---- Mode: page (default) -------------------------------------------
 
 async function diffPage() {
   const positional = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--redirect" && args[i - 1] !== "--search");
@@ -213,20 +257,13 @@ async function diffPage() {
   try { jekyllHtml = await fs.readFile(jekyllPath, "utf8"); }
   catch { console.error("Jekyll output not found at:", jekyllPath); process.exit(1); }
 
-  let jekyllSubject, oursSubject;
-  if (phase3Mode) {
-    jekyllSubject = extractMainBody(jekyllHtml);
-    oursSubject = normalise(p.renderedContent);
-  } else {
-    if (p.html === undefined) {
-      console.error(`page.html is undefined for ${which} (book.html bypass?)`);
-      process.exit(1);
-    }
-    jekyllSubject = noStrip ? jekyllHtml : stripSidebar(jekyllHtml);
-    oursSubject = noStrip ? p.html : stripSidebar(p.html);
+  if (p.html === undefined) {
+    console.error(`page.html is undefined for ${which} (book.html bypass?)`);
+    process.exit(1);
   }
-
-  const label = phase3Mode ? "Phase 3 body" : (noStrip ? "Phase 4 full page" : "Phase 4 sidebar-stripped");
+  const jekyllSubject = noStrip ? jekyllHtml : stripSidebar(jekyllHtml);
+  const oursSubject = noStrip ? p.html : stripSidebar(p.html);
+  const label = noStrip ? "Phase 4 full page" : "Phase 4 sidebar-stripped";
   reportDiff(label, jekyllSubject, oursSubject);
 }
 
@@ -461,6 +498,74 @@ async function diffOfflineSearch() {
   catch { console.error("Jekyll offline search-data.js not found:", jekyllPath); process.exit(1); }
 
   reportDiff("offline search-data.js", jekyllJs, oursJs);
+}
+
+// ---- Mode: --book / --book=full -------------------------------------
+
+async function diffBook(full) {
+  const { bookHtml } = deriveBookOutputs(pages, site);
+  const jekyllPath = path.join(sitePdfRoot, "book.html");
+  let jekyllHtml;
+  try { jekyllHtml = await fs.readFile(jekyllPath, "utf8"); }
+  catch { console.error("Jekyll book.html not found at:", jekyllPath); process.exit(1); }
+
+  const ours = full ? bookHtml : normaliseBuildInfo(bookHtml);
+  const theirs = full ? jekyllHtml : normaliseBuildInfo(jekyllHtml);
+  const label = full ? "book.html (full)" : "book.html (build-info normalised)";
+  reportDiff(label, theirs, ours);
+}
+
+// ---- Mode: --pdf-image=<rel> ----------------------------------------
+
+async function diffPdfImage(rel) {
+  if (!rel) {
+    console.error("--pdf-image needs a relative-path argument, e.g. --pdf-image=Features/Images/foo.png");
+    process.exit(1);
+  }
+  const normRel = rel.replaceAll("\\", "/").replace(/^\//, "");
+  const { bookHtml } = deriveBookOutputs(pages, site);
+  const imagePaths = extractImagePaths(bookHtml);
+  const inBook = imagePaths.includes(normRel);
+  const inInventory = staticFiles.some(
+    (s) => s.destRel.replaceAll("\\", "/") === normRel,
+  );
+
+  if (inBook && inInventory) {
+    console.log(`MATCH (pdf-image ${normRel}: in book.html and in staticFiles[])`);
+    return;
+  }
+  if (inBook && !inInventory) {
+    console.log(`MISSING-IN-INVENTORY (pdf-image ${normRel}: in book.html, NOT in staticFiles[]) -- ` +
+                `Phase 8's strict-mode reporter would flag this as a missing image`);
+    process.exitCode = 1;
+    return;
+  }
+  // !inBook
+  const sample = imagePaths.slice(0, 5).join(", ");
+  console.log(`MISS (pdf-image ${normRel}: not referenced from book.html. ` +
+              `${imagePaths.length} image(s) referenced; first 5: ${sample})`);
+  process.exitCode = 1;
+}
+
+// ---- Mode: --pdf-css=<rel> ------------------------------------------
+
+async function diffPdfCss(rel) {
+  if (!rel) {
+    console.error("--pdf-css needs a path argument, e.g. --pdf-css=assets/css/print.css");
+    process.exit(1);
+  }
+  // Pdfify reads CSS from <site.dest>/<rel> and writes <site.dest>-pdf/
+  // <rel>; the two files should be byte-identical. The diff verifies
+  // that Jekyll's _site-pdf/<rel> matches Jekyll's _site/<rel>.
+  const themeRel = rel.startsWith("/") ? rel.slice(1) : rel;
+  const onlinePath = path.join(siteRoot, themeRel);
+  const pdfPath = path.join(sitePdfRoot, themeRel);
+  let online, pdf;
+  try { online = await fs.readFile(onlinePath, "utf8"); }
+  catch { console.error("Jekyll _site/" + themeRel + " not found"); process.exit(1); }
+  try { pdf = await fs.readFile(pdfPath, "utf8"); }
+  catch { console.error("Jekyll _site-pdf/" + themeRel + " not found"); process.exit(1); }
+  reportDiff(`pdf CSS ${themeRel} (_site/ -> _site-pdf/)`, online, pdf);
 }
 
 // ---- Shared: byte-diff with first-divergence context -----------------

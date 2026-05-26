@@ -1,5 +1,5 @@
-// tbdocs orchestrator. Phases 1+2+3+4+5+6+7: DISCOVER + COMPUTE + RENDER +
-// TEMPLATE + WRITE ONLINE + AUXILIARIES + WRITE OFFLINE.
+// tbdocs orchestrator. Phases 1+2+3+4+5+6+7+8: DISCOVER + COMPUTE +
+// RENDER + TEMPLATE + WRITE ONLINE + AUXILIARIES + WRITE OFFLINE + WRITE PDF.
 //
 // Usage: node builder/index.mjs [--src <path>] [--dest <path>] [--dry-run]
 //
@@ -24,6 +24,7 @@ import { writeRedirects } from "./redirects.mjs";
 import { writeSitemap } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
 import { writeOffline } from "./offline.mjs";
+import { writePdf } from "./pdf.mjs";
 
 function parseArgs(argv) {
   const args = { src: "docs", dest: null, dryRun: false };
@@ -119,7 +120,13 @@ async function main() {
   }
   t.lap("offline");
 
-  console.log(`Phase 1+2+3+4+5+6+7 done: ${pages.length} pages, ${staticFiles.length} static files`);
+  let pdfStats = null;
+  if (!dryRun) {
+    pdfStats = await writePdf(pages, staticFiles, site, destRoot);
+  }
+  t.lap("pdf");
+
+  console.log(`Phase 1+2+3+4+5+6+7+8 done: ${pages.length} pages, ${staticFiles.length} static files`);
   console.log(`  wrote: ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
               `${writeStats.theme.copied} theme assets, ${writeStats.staticFiles.copied} static files ` +
               `-> ${destRoot}`);
@@ -134,6 +141,12 @@ async function main() {
                 `${offlineStats.statics + offlineStats.assets} assets, ` +
                 `${offlineStats.excluded} excluded ` +
                 `(${offlineStats.unresolved} unresolved) -> ${destRoot}-offline`);
+  }
+  if (pdfStats) {
+    const mb = (pdfStats.bookBytes / (1024 * 1024)).toFixed(1);
+    const missingClause = pdfStats.missing > 0 ? ` (${pdfStats.missing} missing)` : "";
+    console.log(`  pdf:     book.html (${mb} MB), ${pdfStats.css} CSS, ` +
+                `${pdfStats.images} images${missingClause} -> ${destRoot}-pdf`);
   }
   console.log(t.summary());
 

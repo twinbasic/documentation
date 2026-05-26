@@ -2380,33 +2380,10 @@ running.
 
 ## 15. Out-of-scope follow-ups
 
-Worth flagging for future tasks, but explicitly NOT part of Phase 3:
-
-1. **Mermaid `.mmd` → `.svg` automation.** §D14. The current single
-   diagram is hand-exported via Typora. A small `mermaid.mjs`
-   preprocessor invoking `mmdc` would close the loop. Independent
-   addition; doesn't block Phase 3.
-
-2. **Switch to Shiki-themed inline-style output.** §D3. Would let us
-   drop `rouge.css` and use a curated Shiki theme. Larger asset
-   change; out of scope for the byte-equivalent port.
-
-3. **Move title rendering to `site.markdown` (the Phase 3 instance).**
-   §D6 in PLAN-2. Phase 2's seo.mjs currently creates its own minimal
-   markdown-it. Could be consolidated post-port; tiny code reduction,
-   no behaviour change.
-
-4. **Generic `site.data.*` loader.** Currently `book.mjs` loads
-   `_data/book.yml` itself; a generic loader would cover any future
-   `_data/<file>.yml`. Phase 8 / future refactor.
-
-5. **Inline copy-code button server-side rendering.** §D16. Would let
-   us drop the just-the-docs copy-code JS, reducing client bundle.
-   Cosmetic.
-
-6. **Linkify exception list.** §D10. Could enable `linkify: true`
-   selectively (off inside tables / code spans, on in prose). Adds
-   complexity for marginal benefit.
-
-These belong in a "post-port enhancements" backlog, not in PLAN-3
-itself.
+Six post-port enhancement items were noted while implementing Phase 3
+and have been moved to [FUTURE-WORK.md](FUTURE-WORK.md) §B1-B6:
+mermaid automation, Shiki-themed inline-style output, title-rendering
+consolidation onto `site.markdown`, generic `site.data.*` loader,
+inline copy-code button SSR, and a linkify exception list. None of
+them are part of Phase 3; pick one up when its trigger condition
+fires.

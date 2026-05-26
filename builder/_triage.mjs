@@ -1,25 +1,22 @@
 // Triage harness: walk every page, find the first divergence from
 // Jekyll's output, then classify it into a coarse bucket so we can rank
-// remaining work by pattern frequency * visual severity.
+// remaining work by pattern frequency * visual severity. Covers
+// Phases 3 -> 8 in one run:
 //
-// Two modes, selected at the command line:
+//   - Per-page Phase 4 diff vs `_site/<destPath>` (the main loop).
+//   - Phase 6 auxiliaries: sitemap, redirects, robots, search index.
+//   - Phase 7 offline mirror: pages, redirects, theme CSS, patched
+//     just-the-docs.js, search-data.js wrap.
+//   - Phase 8 PDF tree: book.html, two CSS files, image inventory.
 //
-//   node _triage.mjs               -- Phase 4 mode (default, canonical).
-//                                     Diffs page.html (full document, post-
-//                                     templatePhase) against _site/<destPath>.
-//                                     Strips the sidebar before classifying
-//                                     -- nav-order divergence is a Phase 1/2
-//                                     file-enumeration issue, not a Phase 4
-//                                     classifier-actionable bucket; reported
-//                                     once as "sidebar-only".
+// One mode, no flags except diagnostics:
 //
-//   node _triage.mjs --phase3      -- Body-fragment mode (Phase 3 verification).
-//                                     Extracts <main>...</main>, strips the
-//                                     anchor-headings + children-TOC the
-//                                     layout adds, normalises whitespace,
-//                                     diffs against page.renderedContent.
+//   node _triage.mjs                       -- run the full audit
+//   node _triage.mjs --all                 -- print every example per bucket
+//                                            (default caps at 3 per bucket)
+//   node _triage.mjs --help                -- this message
 //
-// Severity scale:
+// Severity scale (per-page Phase 4 buckets):
 //   high   = visible to the reader (wrong colors, missing content, wrong
 //            text, broken links)
 //   medium = visible if you look (extra whitespace, missing class on a
@@ -50,12 +47,33 @@ import {
   deriveOfflineJtdJs,
   deriveOfflineSearchDataJs,
 } from "./offline.mjs";
+import { deriveBookOutputs, extractImagePaths } from "./pdf.mjs";
 import { ACCEPTED_DIVERGENCE_PATHS } from "./accepted-divergences.mjs";
+
+const HELP_TEXT = `Usage: node _triage.mjs [--all]
+
+Walks every page and bucket-classifies the first divergence from
+Jekyll's _site/. Also audits Phase 6 auxiliaries (sitemap, redirects,
+robots, search), Phase 7 offline mirror (pages, redirects, CSS, JTD JS,
+search-data.js), and Phase 8 PDF tree (book.html, CSS, images).
+
+Flags:
+  --all     Print every example per bucket (default caps at 3).
+  --help    Print this message.
+
+Output: per-bucket counts sorted by severity then frequency, plus
+auxiliary MATCH/DIFFER lines. Exit 0 always (this is a diagnostic
+tool; use verify-phase*.mjs for pass/fail.)`;
+
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  console.log(HELP_TEXT);
+  process.exit(0);
+}
 
 const srcRoot = path.resolve(process.cwd(), "../docs");
 const siteRoot = path.join(srcRoot, "_site");
 const siteOfflineRoot = path.join(srcRoot, "_site-offline");
-const phase3Mode = process.argv.includes("--phase3");
+const sitePdfRoot = path.join(srcRoot, "_site-pdf");
 const showAll = process.argv.includes("--all");
 
 const { pages, staticFiles } = await discover(srcRoot);
@@ -64,10 +82,10 @@ const { navTree } = computeNav(pages, config);
 const seo = precomputeSeo(pages, config);
 const bookData = await loadBookData(srcRoot);
 resolveBookChapters(bookData, pages);
-const buildInfo = phase3Mode ? null : await captureBuildInfo();
+const buildInfo = await captureBuildInfo();
 const site = { config, navTree, ...seo, buildInfo, bookData };
 await renderPhase(pages, site, staticFiles);
-if (!phase3Mode) await templatePhase(pages, site);
+await templatePhase(pages, site);
 
 // ---------- Phase 4 (full-page) rules ----------------------------------
 //
@@ -144,49 +162,6 @@ const PHASE4_RULES = [
     label: "tB scope-to-class mapping mismatch (one Rouge class is the right answer; we picked the wrong neighbour)",
     test: (j, o) => /class="(k|kt|kd|ow|o|nf|nc|nn|nv|n|nb|na|s|se|mi|mf|m|ld|lb|le|ln|lu|c1|cm|cp|lc|p|err)"/.test(j) &&
                     /class="(k|kt|kd|ow|o|nf|nc|nn|nv|n|nb|na|s|se|mi|mf|m|ld|lb|le|ln|lu|c1|cm|cp|lc|p|err)"/.test(o),
-  },
-];
-
-// Phase 3 rules (body-fragment mode). Same as the historical set; the
-// nbsp rules are absent here because Phase 3's normalise() turns nbsp
-// into regular whitespace -- the diff is invisible after normalisation.
-const PHASE3_RULES = [
-  PHASE4_RULES.find((r) => r.id === "code-highlight-other-lang"),
-  PHASE4_RULES.find((r) => r.id === "no_toc-on-heading"),
-  PHASE4_RULES.find((r) => r.id === "list-paragraph-wrap"),
-  PHASE4_RULES.find((r) => r.id === "setext-heading-after-list"),
-  {
-    id: "kramdown-image-as-table",
-    severity: "low",
-    label: "Kramdown misparses `![alt | text](url)` as a markdown table (the `|` in alt text trips the table detector); we correctly emit `<img>`",
-    test: (j, o) => /<td>!?\[/.test(j) && /<img\b/.test(o),
-  },
-  PHASE4_RULES.find((r) => r.id === "smart-quote"),
-  PHASE4_RULES.find((r) => r.id === "blockquote-vs-admonition"),
-  {
-    id: "missing-anchor-attr",
-    severity: "low",
-    label: "kramdown emits role/itemprop attributes we don't (anchor accessibility metadata)",
-    test: (j, o) => /role="doc-/.test(j) && !/role="doc-/.test(o),
-  },
-  {
-    id: "deflist-wrap",
-    severity: "low",
-    label: "Definition list <p> wrap inside <dd> (tight vs loose detection differences)",
-    test: (j, o) => /<dd>\s*<p>/.test(j) !== /<dd>\s*<p>/.test(o),
-  },
-  {
-    id: "table-attrs",
-    severity: "low",
-    label: "Table attribute differences (alignment, header markup)",
-    test: (j, o) => /<th[^>]+>/.test(j) || /<th[^>]+>/.test(o),
-  },
-  PHASE4_RULES.find((r) => r.id === "scope-mapping"),
-  {
-    id: "attr-encoding",
-    severity: "low",
-    label: "HTML attribute escaping / quoting differences",
-    test: (j, o) => /&#?\w+;/.test(j) !== /&#?\w+;/.test(o),
   },
 ];
 
@@ -324,32 +299,20 @@ function isInsideAnchorHeading(jekyll, offset) {
 
 // ---------- shared utilities -------------------------------------------
 
-function normalise(s) {
-  return s.replace(/\s+/g, " ").trim();
-}
-
-function extractMainBody(html) {
-  const start = html.indexOf("<main>");
-  if (start < 0) return "";
-  const end = html.indexOf("</main>", start);
-  if (end < 0) return "";
-  let body = html.slice(start + "<main>".length, end);
-  body = body.replace(
-    /<a href="#[^"]*" class="anchor-heading"[^>]*>\s*<svg[^>]*>\s*<use [^>]*><\/use>\s*<\/svg>\s*<\/a>/g,
-    "",
-  );
-  body = body.replace(/(<h\d[^>]*>)\s+/g, "$1");
-  body = body.replace(/\s+(<\/h\d>)/g, "$1");
-  const tocMarker = body.search(/<hr\s*\/?>\s*<h2 class="text-delta">Table of contents<\/h2>/);
-  if (tocMarker >= 0) body = body.slice(0, tocMarker);
-  return normalise(body);
-}
-
 const SIDEBAR_RE = /<nav aria-label="Main" id="site-nav"[\s\S]*?<\/nav>/;
 const ACTIVATION_RE = /<style id="jtd-nav-activation">[\s\S]*?<\/style>/;
 function stripSidebar(h) { return h.replace(SIDEBAR_RE, "<SIDEBAR/>"); }
 function stripActivation(h) { return h.replace(ACTIVATION_RE, "<ACTIVATION/>"); }
 function stripNavRelated(h) { return stripActivation(stripSidebar(h)); }
+
+// Build-info line normaliser for Phase 8 PDF book comparison.
+const BUILD_INFO_RE = /<p class="build-info">Built[^<]*<\/p>/;
+function normaliseBuildInfo(html) {
+  return html.replace(
+    BUILD_INFO_RE,
+    `<p class="build-info">Built BUILDDATE from commit COMMIT (COMMITDATE).</p>`,
+  );
+}
 
 // ---------- main loop --------------------------------------------------
 
@@ -370,66 +333,52 @@ function bumpBucket(id, rule, page, offset, jCtx, oCtx) {
   buckets.set(id, b);
 }
 
-const RULES = phase3Mode ? PHASE3_RULES.filter(Boolean) : PHASE4_RULES;
-
 for (const p of pages) {
-  if (phase3Mode) {
-    if (p.ext !== ".md") continue;
-  } else {
-    if (p.frontmatter.layout === "book-combined") continue;
-    if (typeof p.html !== "string") { skipped++; continue; }
-  }
+  if (p.frontmatter.layout === "book-combined") continue;
+  if (typeof p.html !== "string") { skipped++; continue; }
 
   const jekyllPath = path.join(siteRoot, p.destPath);
   let jekyllHtml;
   try { jekyllHtml = await fs.readFile(jekyllPath, "utf8"); } catch { skipped++; continue; }
 
-  let jekyllSubject, oursSubject;
-  if (phase3Mode) {
-    jekyllSubject = extractMainBody(jekyllHtml);
-    oursSubject = normalise(p.renderedContent);
-  } else {
-    jekyllSubject = jekyllHtml;
-    oursSubject = p.html;
-  }
+  const jekyllSubject = jekyllHtml;
+  const oursSubject = p.html;
 
   if (jekyllSubject === oursSubject) { matched++; continue; }
   if (ACCEPTED_DIVERGENCE_PATHS.has(p.srcRel)) { accepted++; continue; }
   differed++;
 
-  // Phase 4 special: if the only diff is in the sidebar (and/or in the
-  // activation CSS, which is derived from nav position), bucket once
-  // as info and move on. No content rule fires -- the diff isn't
-  // Phase-4-actionable; the root cause is Phase 1's file enumeration
-  // order mismatch with Jekyll's Ruby Dir.glob, and it propagates
-  // through Phase 2's nav-tree position into both the rendered sidebar
-  // and the per-page activation CSS's nth-child indices.
-  if (!phase3Mode) {
-    if (stripSidebar(jekyllSubject) === stripSidebar(oursSubject)) {
-      sidebarOnly++;
-      bumpBucket(
-        "sidebar-only",
-        { id: "sidebar-only", severity: "info", label: REGION_SEVERITY["sidebar-only"].label },
-        p, -1, "", "",
-      );
-      continue;
-    }
-    if (stripNavRelated(jekyllSubject) === stripNavRelated(oursSubject)) {
-      navOrderPropagation++;
-      bumpBucket(
-        "nav-order-propagation",
-        { id: "nav-order-propagation", severity: "info", label: REGION_SEVERITY["nav-order-propagation"].label },
-        p, -1, "", "",
-      );
-      continue;
-    }
+  // If the only diff is in the sidebar (and/or in the activation CSS,
+  // which is derived from nav position), bucket once as info and move
+  // on. No content rule fires -- the diff isn't Phase-4-actionable;
+  // the root cause is Phase 1's file enumeration order mismatch with
+  // Jekyll's Ruby Dir.glob, and it propagates through Phase 2's nav-
+  // tree position into both the rendered sidebar and the per-page
+  // activation CSS's nth-child indices.
+  if (stripSidebar(jekyllSubject) === stripSidebar(oursSubject)) {
+    sidebarOnly++;
+    bumpBucket(
+      "sidebar-only",
+      { id: "sidebar-only", severity: "info", label: REGION_SEVERITY["sidebar-only"].label },
+      p, -1, "", "",
+    );
+    continue;
+  }
+  if (stripNavRelated(jekyllSubject) === stripNavRelated(oursSubject)) {
+    navOrderPropagation++;
+    bumpBucket(
+      "nav-order-propagation",
+      { id: "nav-order-propagation", severity: "info", label: REGION_SEVERITY["nav-order-propagation"].label },
+      p, -1, "", "",
+    );
+    continue;
   }
 
-  // For Phase 4 mode, use sidebar-stripped subjects so the nav-order
-  // divergence doesn't dominate every page's diff offset. The diff
-  // offsets reported are in the stripped string.
-  const jStripped = phase3Mode ? jekyllSubject : stripSidebar(jekyllSubject);
-  const oStripped = phase3Mode ? oursSubject : stripSidebar(oursSubject);
+  // Use sidebar-stripped subjects so the nav-order divergence doesn't
+  // dominate every page's diff offset. The diff offsets reported are
+  // in the stripped string.
+  const jStripped = stripSidebar(jekyllSubject);
+  const oStripped = stripSidebar(oursSubject);
 
   const minLen = Math.min(jStripped.length, oStripped.length);
   let i = 0;
@@ -440,7 +389,7 @@ for (const p of pages) {
   const oCtx = oStripped.slice(ctxStart, Math.min(ctxEnd, oStripped.length));
 
   // Content-based rule pass: more specific than region detection.
-  let rule = RULES.find((r) => {
+  let rule = PHASE4_RULES.find((r) => {
     try { return r.test(jCtx, oCtx); } catch { return false; }
   });
 
@@ -449,13 +398,8 @@ for (const p of pages) {
     continue;
   }
 
-  if (phase3Mode) {
-    bumpBucket("other", FALLBACK, p, i, jCtx, oCtx);
-    continue;
-  }
-
-  // Phase 4 region-based fallback. The stripped subject lost the
-  // sidebar, so region positions shift by `(sidebarLen - "<SIDEBAR/>".length)`.
+  // Region-based fallback. The stripped subject lost the sidebar, so
+  // region positions shift by `(sidebarLen - "<SIDEBAR/>".length)`.
   // Build the region map against the STRIPPED jekyll so offsets line
   // up directly with i.
   const regionMap = buildRegionMap(jStripped);
@@ -467,11 +411,11 @@ for (const p of pages) {
   bumpBucket(regionId, { id: regionId, severity: regionInfo.severity, label: regionInfo.label }, p, i, jCtx, oCtx);
 }
 
-const mode = phase3Mode ? "Phase 3 (body fragment)" : "Phase 4 (full page)";
-const navLine = phase3Mode ? "" : `, Sidebar-only: ${sidebarOnly}, Nav-order-propagation: ${navOrderPropagation}`;
-const skippedLine = skipped > 0 ? `, Skipped: ${skipped}` : "";
-console.log(`Mode: ${mode}`);
-console.log(`Matched: ${matched}, Accepted: ${accepted}, Differed: ${differed}${navLine}${skippedLine}, Total: ${matched + accepted + differed + sidebarOnly + navOrderPropagation + skipped}`);
+console.log(`Phase 4 (full page) per-page bucket scan:`);
+console.log(`Matched: ${matched}, Accepted: ${accepted}, Differed: ${differed}, ` +
+            `Sidebar-only: ${sidebarOnly}, Nav-order-propagation: ${navOrderPropagation}` +
+            (skipped > 0 ? `, Skipped: ${skipped}` : "") +
+            `, Total: ${matched + accepted + differed + sidebarOnly + navOrderPropagation + skipped}`);
 
 // ---- Phase 6 auxiliary audit -----------------------------------------
 //
@@ -489,15 +433,17 @@ await auditRedirects(site, pages, siteRoot);
 await auditRobots(site, siteRoot);
 // Search index (entry set + per-entry content, gated by accepted-divergences).
 await auditSearch(site, pages, siteRoot);
-// Offline tree: per-page derived HTML vs Jekyll's _site-offline/.
-// Phase 7 territory. Pages first (the bulk), then auxiliaries.
-if (!phase3Mode) {
-  await auditOfflinePages(site, pages, staticFiles, siteRoot, siteOfflineRoot);
-  await auditOfflineRedirects(site, pages, staticFiles, siteRoot, siteOfflineRoot);
-  await auditOfflineCss(site, pages, staticFiles, siteRoot, siteOfflineRoot);
-  await auditOfflineJtd(siteRoot, siteOfflineRoot);
-  await auditOfflineSearch(site, pages, siteOfflineRoot);
-}
+// Offline tree (Phase 7).
+await auditOfflinePages(site, pages, staticFiles, siteRoot, siteOfflineRoot);
+await auditOfflineRedirects(site, pages, staticFiles, siteRoot, siteOfflineRoot);
+await auditOfflineCss(site, pages, staticFiles, siteRoot, siteOfflineRoot);
+await auditOfflineJtd(siteRoot, siteOfflineRoot);
+await auditOfflineSearch(site, pages, siteOfflineRoot);
+// PDF tree (Phase 8).
+const pdfBookOk = await auditPdfBook(site, pages, sitePdfRoot);
+const pdfCssOk  = await auditPdfCss(siteRoot, sitePdfRoot);
+const pdfImagesOk = await auditPdfImages(site, pages, staticFiles, sitePdfRoot);
+auditPdfTotal(pdfBookOk, pdfCssOk, pdfImagesOk);
 
 console.log();
 
@@ -859,6 +805,180 @@ async function auditOfflineSearch(site, pages, siteOfflineRoot) {
   let i = 0;
   while (i < minLen && jOff[i] === ours[i]) i++;
   console.log(`Offline search-data.js: DIFFER at offset ${i} (jekyll=${jOff.length}, tbdocs=${ours.length}) -- Phase 7 wrap divergence`);
+}
+
+// ---- Phase 8 PDF-tree audits ----------------------------------------
+//
+// Three checks, each prints one MATCH/DIFFER line. The book.html
+// comparison normalises the build-info line on both sides so commit /
+// build-date drift doesn't surface as a divergence. The per-article
+// breakdown (744-ish exact-match plus accepted-divergence pages) is
+// covered by verify-phase8; here we report the file-level result.
+
+async function auditPdfBook(site, pages, sitePdfRoot) {
+  const jBookPath = path.join(sitePdfRoot, "book.html");
+  let jBook;
+  try { jBook = await fs.readFile(jBookPath, "utf8"); }
+  catch { console.log(`PDF book.html: SKIPPED (no ${jBookPath})`); return false; }
+
+  const { bookHtml } = deriveBookOutputs(pages, site);
+  const ours = normaliseBuildInfo(bookHtml);
+  const theirs = normaliseBuildInfo(jBook);
+  if (ours === theirs) {
+    console.log(`PDF book.html: MATCH (build-info normalised, ${ours.length} bytes)`);
+    return true;
+  }
+
+  // Per-article classification: split each side on <article>, compare
+  // each block, allow articles whose source page is in
+  // ACCEPTED_DIVERGENCE_PATHS to differ. Matches the verify-phase8
+  // logic and the offline-pages audit pattern -- the propagation of
+  // upstream Phase 3/4 divergences into the book is not a Phase 8
+  // bug, so report "accepted" rather than "fail".
+  const acceptedAnchors = buildAcceptedAnchors(pages);
+  const ourArticles = parseArticles(ours);
+  const jArticles = parseArticles(theirs);
+
+  // Header before the first article -- everything from <!DOCTYPE> up
+  // through the closing </section> of the title page.
+  const ourPrefix = sliceBeforeFirstArticle(ours);
+  const jPrefix = sliceBeforeFirstArticle(theirs);
+  const prefixMatch = ourPrefix === jPrefix;
+
+  // Per-article counts.
+  let articleMatch = 0;
+  let articleAccepted = 0;
+  const mismatched = [];
+  const n = Math.min(ourArticles.length, jArticles.length);
+  for (let k = 0; k < n; k++) {
+    const a = ourArticles[k];
+    const b = jArticles[k];
+    if (a.anchor !== b.anchor) {
+      mismatched.push({ idx: k, anchor: a.anchor || b.anchor, reason: "anchor mismatch" });
+      continue;
+    }
+    if (a.body === b.body) { articleMatch++; continue; }
+    if (acceptedAnchors.has(a.anchor)) { articleAccepted++; continue; }
+    mismatched.push({ idx: k, anchor: a.anchor, reason: "body diff" });
+  }
+  const articleCountMatch = ourArticles.length === jArticles.length;
+  const ok = prefixMatch && articleCountMatch && mismatched.length === 0;
+  if (ok) {
+    const acceptedSuffix = articleAccepted > 0 ? `, ${articleAccepted} accepted` : "";
+    console.log(`PDF book.html: MATCH (${articleMatch} articles${acceptedSuffix}, build-info normalised)`);
+    return true;
+  }
+
+  console.log(`PDF book.html: DIFFER (` +
+    `prefix=${prefixMatch ? "match" : "diff"}, ` +
+    `articles ours=${ourArticles.length}/jekyll=${jArticles.length}, ` +
+    `${articleMatch} match, ${articleAccepted} accepted, ${mismatched.length} unaccepted)`);
+  for (const m of mismatched.slice(0, 5)) {
+    console.log(`  ≠ article ${m.idx} (${m.anchor || "n/a"}): ${m.reason}`);
+  }
+  if (mismatched.length > 5) console.log(`  ... +${mismatched.length - 5} more`);
+  return false;
+}
+
+// Source path -> `ch-...` anchor for each page in ACCEPTED_DIVERGENCE_PATHS.
+function buildAcceptedAnchors(pages) {
+  const accepted = new Set();
+  for (const p of pages) {
+    if (!ACCEPTED_DIVERGENCE_PATHS.has(p.srcRel)) continue;
+    const url = p.permalink;
+    let seed = url.replaceAll("/", "-").replace(/^-/, "").replace(/-$/, "");
+    if (seed === "") seed = String(p.frontmatter?.title ?? "").toLowerCase().replaceAll(" ", "-");
+    accepted.add("ch-" + seed);
+  }
+  return accepted;
+}
+
+// Split book.html into `{anchor, body}` entries per <article> block.
+function parseArticles(html) {
+  const out = [];
+  const re = /<article[^>]*id="(ch-[^"]+|pt-\d+|chd-[^"]+)"[^>]*>[\s\S]*?<\/article>/g;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    out.push({ anchor: m[1], body: m[0] });
+  }
+  return out;
+}
+
+function sliceBeforeFirstArticle(html) {
+  const i = html.indexOf("<article");
+  return i === -1 ? html : html.slice(0, i);
+}
+
+async function auditPdfCss(siteRoot, sitePdfRoot) {
+  // Pdfify copies print.css + rouge.css from <site.dest>/<rel> to
+  // <site.dest>-pdf/<rel>; the two must be byte-identical.
+  const REQUIRED_CSS = ["assets/css/print.css", "assets/css/rouge.css"];
+  let match = 0;
+  const failures = [];
+  for (const rel of REQUIRED_CSS) {
+    const online = await fs.readFile(path.join(siteRoot, rel)).catch(() => null);
+    const pdf = await fs.readFile(path.join(sitePdfRoot, rel)).catch(() => null);
+    if (online && pdf && online.length === pdf.length && online.equals(pdf)) {
+      match++;
+    } else {
+      failures.push({ rel, online: online?.length ?? null, pdf: pdf?.length ?? null });
+    }
+  }
+  if (failures.length === 0) {
+    console.log(`PDF CSS: MATCH (${match} files)`);
+    return true;
+  }
+  console.log(`PDF CSS: DIFFER (${match} match, ${failures.length} byte-mismatch)`);
+  for (const f of failures) {
+    const onlineStr = f.online == null ? "(missing)" : `${f.online} bytes`;
+    const pdfStr = f.pdf == null ? "(missing)" : `${f.pdf} bytes`;
+    console.log(`  ≠ ${f.rel}: _site=${onlineStr}, _site-pdf=${pdfStr}`);
+  }
+  return false;
+}
+
+async function auditPdfImages(site, pages, staticFiles, sitePdfRoot) {
+  const { bookHtml } = deriveBookOutputs(pages, site);
+  const imagePaths = extractImagePaths(bookHtml);
+
+  // For each image path in the assembled book.html, check that:
+  //   1. The source exists in staticFiles[] (so Phase 8 can copy it).
+  //   2. The destination file exists under _site-pdf/<rel> (Jekyll's
+  //      pdfify already copied it there).
+  const staticDestRels = new Set(staticFiles.map(s => s.destRel.replaceAll("\\", "/")));
+  const missingInInventory = [];
+  const missingOnDisk = [];
+  for (const rel of imagePaths) {
+    if (!staticDestRels.has(rel)) missingInInventory.push(rel);
+    const exists = await fs.access(path.join(sitePdfRoot, rel)).then(() => true).catch(() => false);
+    if (!exists) missingOnDisk.push(rel);
+  }
+  if (missingInInventory.length === 0 && missingOnDisk.length === 0) {
+    console.log(`PDF images: MATCH (${imagePaths.length} files, 0 missing)`);
+    return true;
+  }
+  console.log(`PDF images: DIFFER (${imagePaths.length} referenced, ` +
+              `${missingInInventory.length} missing from staticFiles, ` +
+              `${missingOnDisk.length} missing on disk)`);
+  for (const rel of missingInInventory.slice(0, 5)) console.log(`  inventory- ${rel}`);
+  if (missingInInventory.length > 5) console.log(`  ... +${missingInInventory.length - 5} more`);
+  for (const rel of missingOnDisk.slice(0, 5)) console.log(`  on-disk- ${rel}`);
+  if (missingOnDisk.length > 5) console.log(`  ... +${missingOnDisk.length - 5} more`);
+  return false;
+}
+
+function auditPdfTotal(bookOk, cssOk, imagesOk) {
+  if (bookOk && cssOk && imagesOk) {
+    // 1 book.html + 2 CSS + N images. The image count varies with
+    // chapter content; report what we have.
+    console.log(`PDF total: book.html + CSS + images match Jekyll's _site-pdf/`);
+  } else {
+    const bad = [];
+    if (!bookOk) bad.push("book.html");
+    if (!cssOk) bad.push("CSS");
+    if (!imagesOk) bad.push("images");
+    console.log(`PDF total: ${bad.join(", ")} differ -- see above`);
+  }
 }
 
 const sorted = [...buckets.values()].sort((a, b) => b.count - a.count);
