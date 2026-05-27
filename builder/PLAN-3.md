@@ -2183,9 +2183,9 @@ dominated by Shiki + its WASM blob.
     accepted-divergences.mjs     — §10 "Accepted divergences" list,
                                    honoured by all three harnesses
     index.mjs                    — orchestrator extended
-    verify-phase1.mjs            — Phase 1 harness
-    verify-phase2.mjs            — Phase 2 harness
-    verify-phase3.mjs            — §10 acceptance harness (shipped)
+    verify-phase1.mjs            — Phase 1 harness (retired Phase 10)
+    verify-phase2.mjs            — Phase 2 harness (retired Phase 10)
+    verify-phase3.mjs            — §10 acceptance harness (shipped) (retired Phase 10)
     _triage.mjs                  — bucketed-divergence harness
     _diff_all.mjs                — flat divergence overview
     _diff.mjs                    — single-page diff inspector

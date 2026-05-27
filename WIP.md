@@ -424,42 +424,22 @@ WIP.md itself (and other files outside `docs/`) is not part of the Jekyll site a
 
 Python scripts are reserved for non-render concerns: one-off content conversion (e.g. `scripts/convert_em_dash_separators.py`), repo audits, dev tooling, link checks beyond `check.bat`, anything that runs *outside* a Jekyll build. They should never be a prerequisite for the render pipeline.
 
-## JS builder port (shipped, Phase 9 cleanup)
+## Build pipeline
 
-The Jekyll + Ruby build pipeline has been ported to a custom single-purpose Node.js tool that lives at the repo root in [builder/](builder/) (sibling of `docs/`, not inside it). All eight build phases land on the production tree and produce byte-equivalent output to Jekyll modulo the entries in [builder/accepted-divergences.mjs](builder/accepted-divergences.mjs). Phase 9 is the QoL / documentation / cleanup consolidation pass that adds CLI flags (`--no-offline`, `--no-pdf`, `--serving`, `--profile-offline`), a Phase 7 nav-block cache, a generic `_data/*.yml` loader (`data.mjs`), a multi-divergence audit tool (`_audit_accepted.mjs`), `_diff.mjs`'s `--against-disk` and `--multi` modes, a PDF cross-reference completeness check in `verify-phase8.mjs`, and [builder/README.md](builder/README.md). Phase 10 (planned) picks up the output-changing FUTURE-WORK items (Shiki theming generated from upstream `.twin` source files, mermaid auto-gen, copy-code SSR, linkify, search-data minification, AST-based JTD patcher). The Jekyll-to-tbdocs cutover is tracked in [builder/FUTURE-WORK.md §C1](builder/FUTURE-WORK.md).
+The site builds via [builder/](builder/), a custom Node.js static site generator. See [builder/PLAN.md](builder/PLAN.md) for the architecture overview and [builder/README.md](builder/README.md) for the quickstart.
 
-See [builder/README.md](builder/README.md) for the quickstart, [builder/PLAN.md](builder/PLAN.md) for the architecture overview, and [builder/PLAN-1.md](builder/PLAN-1.md) .. [builder/PLAN-9.md](builder/PLAN-9.md) for the per-phase specs.
+`builder/one-offs/` contains dev-test scripts used during the port phases; these are not part of the production build path.
 
-Until the cutover runs, the Jekyll pipeline below remains the canonical build path.
+The diff and verify harnesses (`_triage.mjs`, `_diff.mjs`, `_diff_all.mjs`, `_audit_accepted.mjs`, `_sitemap_diff.mjs`, `_spot.mjs`, `verify-phase{1..8}.mjs`, `accepted-divergences.mjs`) were retired in the Phase 10 cutover commit. Regression detection now relies on `scripts/check_links.mjs` (expanded into a site-integrity checker; see [docs/check.bat](docs/check.bat)).
 
-### Builder diff / triage / verify tools
+### Historical note
 
-When iterating on a phase or chasing a divergence vs Jekyll, **reach for one of these tools before reading source by hand**. They drive the in-memory tbdocs pipeline through whatever phase the requested target needs, then byte-diff against the matching file in Jekyll's `docs/_site/`, `docs/_site-offline/`, or `docs/_site-pdf/`. Listed in order of "what do I run first?":
+The site was originally built with Jekyll + just-the-docs. The Jekyll source set (`docs/_plugins/`, `docs/_includes/`, `docs/_layouts/`, `docs/_sass/`, `docs/Gemfile`) was retired in the Phase 10 cutover commit; the directories were kept for one release cycle as reference and then deleted in a follow-up cleanup commit. Search the git log for `Phase 10` to find both commits.
 
-- [builder/_triage.mjs](builder/_triage.mjs) — bulk classifier covering Phases 3-8 in one run. Walks every page, finds the first divergence from Jekyll, classifies it into a coarse bucket so remaining work can be ranked by pattern frequency × visual severity. After the per-page bucket table prints, an **auxiliary audit** section covers sitemap, redirect stubs, robots.txt, search index, the **offline tree** (offline pages, offline redirects, offline CSS, offline JTD JS, offline search-data.js), and the **PDF tree** (book.html with per-article accepted-divergence handling, the two stylesheets, the image inventory). Each auxiliary line reports MATCH or a one-line DIFFER summary with counts; a clean run prints MATCH at every line. Flags: `--all` (print every example per bucket; default caps at 3), `--help`. **Start here** when something looks off across the board.
-- [builder/_diff.mjs](builder/_diff.mjs) — single-target diff. Pinpoints one file's first divergence with ~200 chars of context. Modes — online site: default page (`<srcRel>`, `--full` keeps the sidebar), `--redirect=<fromPath>`, `--robots`, `--search=<srcRel>`. Offline mirror: `--offline=<srcRel>`, `--offline-redirect=<fromPath>`, `--offline-css=<themeRel>`, `--offline-jtd`, `--offline-search`. PDF book: `--book` (build-info normalised), `--book=full` (no normalisation), `--pdf-image=<rel>` (MATCH / MISS / MISSING-IN-INVENTORY), `--pdf-css=<rel>`. Page-diff modifiers: `--against-disk[=<root>]` (diff the on-disk write rather than the in-memory render — catches write-time encoding bugs), `--multi` (continue past the first divergence and report every distinct region). Always available: `--help`. **Run after triage** to drill into one representative file from the largest bucket.
-- [builder/_diff_all.mjs](builder/_diff_all.mjs) — per-bucket divergence audit. Aggregates Phase 3 / Phase 4 divergences across all pages.
-- [builder/_audit_accepted.mjs](builder/_audit_accepted.mjs) — accepted-divergence audit. Diffs every page in `ACCEPTED_DIVERGENCE_PATHS` against Jekyll's `_site/<destPath>` and reports EVERY divergence region (not just the first), so a hidden secondary divergence behind an existing accepted entry doesn't stay masked. Flags: `--all` (print every region per page; default caps at 5), `--help`.
-- [builder/_sitemap_diff.mjs](builder/_sitemap_diff.mjs) — sitemap URL-set diff against Jekyll's `sitemap.xml`.
-- [builder/_spot.mjs](builder/_spot.mjs) — single-page output dump (useful for piping into a paginator when investigating a specific page).
-- [builder/verify-phase{1..8}.mjs](builder/) — per-phase acceptance harness. Each Phase N has a matching `verify-phaseN.mjs` that drives Phases 1..N into a scratch destination and asserts the acceptance checks from `PLAN-N.md §10`. Phase 8's harness does per-article byte-diff vs `_site-pdf/book.html` with accepted-divergence skipping plus structural checks (file count, image presence, CSS parity). Run before merging phase changes; treat failures as blockers.
+### Migration notes
 
-Common workflows:
-
-| Question | Tool |
-|---|---|
-| "Is everything still byte-perfect vs Jekyll?" | `cd builder && node _triage.mjs` |
-| "Did Phase N regress?" | `cd builder && node verify-phaseN.mjs` |
-| "Why does this one page differ?" | `cd builder && node _diff.mjs <srcRel>` |
-| "Why does this offline page differ?" | `cd builder && node _diff.mjs --offline=<srcRel>` |
-| "Are the redirect stubs right?" | `cd builder && node _diff.mjs --redirect=<fromPath>` |
-| "Are the offline redirect stubs right?" | `cd builder && node _diff.mjs --offline-redirect=<fromPath>` |
-| "Is the lunr search index byte-equal?" | `cd builder && node _diff.mjs --search=<srcRel>` |
-| "Does book.html match Jekyll?" | `cd builder && node _diff.mjs --book` |
-| "Does the PDF tree have a given image?" | `cd builder && node _diff.mjs --pdf-image=<rel>` |
-| "Is a PDF-tree CSS byte-equal?" | `cd builder && node _diff.mjs --pdf-css=<themeRel>` |
-
-All tools live in `builder/` and expect to be run from inside it (`cd builder && node <tool>.mjs ...`). They read `../docs/_site/`, `../docs/_site-offline/`, and `../docs/_site-pdf/` as the Jekyll references; all three trees must be up-to-date (run `build.bat` once if not). The tools never write to `docs/`; scratch destinations are under `docs/_site-verify*` and `docs/_site-diff-scratch` and are cleaned up on exit.
+- `_site-new/` is no longer used. Run `rm -rf docs/_site-new/` on first sync after the cutover.
+- The eight `verify-phase{N}.mjs` harnesses were retired in the same cutover commit. Regression detection now relies on `scripts/check_links.mjs` (expanded into a site-integrity checker; see [docs/check.bat](docs/check.bat)).
 
 ## Build / preview
 

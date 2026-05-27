@@ -34,8 +34,15 @@
 //
 // Output limitation: no per-link line numbers in error messages --
 // htmlparser2 SAX doesn't expose source positions.
+//
+// Integrity checks (--check-html, --check-a11y, --check-ids,
+// --check-sitemap, --check-search):
+//   These share the existing htmlparser2 SAX parse pass -- no
+//   second file read.  Exit code 2 signals integrity-only failures
+//   so CI can distinguish "broken link" from "malformed HTML".
 
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 import { Parser } from "htmlparser2";
@@ -72,6 +79,12 @@ const LINK_ATTR_TABLE = new Map([
 
 const SRCSET_ATTRS = new Set(["srcset"]);
 
+// HTML5 void elements -- no closing tag, never pushed onto tag stack.
+const HTML5_VOID_ELEMENTS = new Set([
+  "area","base","br","col","embed","hr","img","input",
+  "link","meta","param","source","track","wbr",
+]);
+
 function* splitSrcset(value) {
   // `URL [descriptor], URL [descriptor], ...`. Descriptors cannot
   // contain commas, so a comma split is safe; each part's first
@@ -83,6 +96,106 @@ function* splitSrcset(value) {
     const url = ws < 0 ? trimmed : trimmed.slice(0, ws);
     if (url) yield url;
   }
+}
+
+// Derive the canonical URL path for an HTML file given its path
+// relative to the site root (forward slashes). Strips the .html
+// extension for parity with pages that have explicit permalinks.
+//   "index.html"                     -> "/"
+//   "tB/Core/Const.html"             -> "/tB/Core/Const"
+//   "tB/Packages/VB/CheckBox/index.html" -> "/tB/Packages/VB/CheckBox/"
+function deriveUrlPath(relPath) {
+  const fwd = relPath.replace(/\\/g, "/");
+  if (fwd === "index.html") return "/";
+  if (fwd.endsWith("/index.html")) return "/" + fwd.slice(0, -"index.html".length);
+  if (fwd.endsWith(".html")) return "/" + fwd.slice(0, -".html".length);
+  return "/" + fwd;
+}
+
+// Strip a trailing .html so sitemap/search URLs from pages without
+// explicit permalink (which keep the .html extension) compare equal
+// to deriveUrlPath output. Idempotent on already-clean paths.
+function stripHtmlSuffix(p) {
+  return p.endsWith(".html") ? p.slice(0, -".html".length) : p;
+}
+
+// URL-decode (sitemap entries percent-encode spaces and Unicode;
+// deriveUrlPath produces literal characters from the filename).
+function decodePath(p) {
+  try { return decodeURIComponent(p); } catch { return p; }
+}
+
+// Cross-file check: every .html file (except hardcoded exclusions and
+// redirect stubs) should appear in sitemap.xml.
+// Returns an array of issue strings, or null if sitemap.xml is absent.
+function checkSitemapContents(rootStr, htmlFiles, redirectStubSet, basePath) {
+  const sitemapPath = path.join(rootStr, "sitemap.xml");
+  let xml;
+  try { xml = fs.readFileSync(sitemapPath, "utf8"); } catch { return null; }
+
+  // Extract <loc> paths, stripping the scheme+host prefix, any
+  // --base-path prefix (e.g. '/twinBASIC-docs' from a GitHub Pages
+  // subpath deploy), and trailing .html (Jekyll/tbdocs use .html for
+  // pages without an explicit permalink; pages with permalinks omit it).
+  const sitemapPaths = new Set();
+  let siteRoot = null;
+  for (const m of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
+    const url = m[1].trim();
+    if (!siteRoot) {
+      const m2 = url.match(/^(https?:\/\/[^/]+)/);
+      if (m2) siteRoot = m2[1];
+    }
+    const p = siteRoot ? url.slice(siteRoot.length) : url;
+    sitemapPaths.add(stripHtmlSuffix(decodePath(stripBasePath(p || "/", basePath))));
+  }
+
+  // Hardcoded exclusions for first cut (no frontmatter access here).
+  const EXCLUDE = new Set(["book.html", "404.html"]);
+  const rootAbs = path.resolve(rootStr);
+  const issues = [];
+
+  for (const file of htmlFiles) {
+    if (EXCLUDE.has(path.basename(file))) continue;
+    if (redirectStubSet && redirectStubSet.has(path.resolve(file))) continue;
+    const rel = path.relative(rootAbs, path.resolve(file)).replace(/\\/g, "/");
+    const urlPath = deriveUrlPath(rel);
+    if (!sitemapPaths.has(urlPath)) {
+      issues.push(`${rel}: sitemap-missing: ${urlPath}`);
+    }
+  }
+  return issues;
+}
+
+// Cross-file check: every .html file (except exclusions and redirect
+// stubs) should have at least one entry in search-data.json whose
+// url matches the page's canonical path (ignoring fragment).
+// Returns an array of issue strings, or null if search-data.json is absent.
+function checkSearchContents(rootStr, htmlFiles, redirectStubSet, basePath) {
+  const searchPath = path.join(rootStr, "assets", "js", "search-data.json");
+  let searchData;
+  try { searchData = JSON.parse(fs.readFileSync(searchPath, "utf8")); } catch { return null; }
+
+  // Build set of page-level URLs (strip fragment part, --base-path
+  // prefix, and .html suffix; some pages without explicit permalink
+  // keep .html; URLs are percent-encoded for spaces / Unicode).
+  const searchPageUrls = new Set(
+    Object.values(searchData).map(e => stripHtmlSuffix(decodePath(stripBasePath((e.url ?? "").split("#")[0], basePath))))
+  );
+
+  const EXCLUDE = new Set(["book.html", "404.html"]);
+  const rootAbs = path.resolve(rootStr);
+  const issues = [];
+
+  for (const file of htmlFiles) {
+    if (EXCLUDE.has(path.basename(file))) continue;
+    if (redirectStubSet && redirectStubSet.has(path.resolve(file))) continue;
+    const rel = path.relative(rootAbs, path.resolve(file)).replace(/\\/g, "/");
+    const urlPath = deriveUrlPath(rel);
+    if (!searchPageUrls.has(urlPath)) {
+      issues.push(`${rel}: search-missing: ${urlPath}`);
+    }
+  }
+  return issues;
 }
 
 // One pass per file: extract every outgoing link AND every fragment-
@@ -99,7 +212,15 @@ function* splitSrcset(value) {
 // is non-empty and not just '/', is collected into the returned
 // `forbidden` list. The bare prefix and prefix/ are exempt
 // (intentional "go to live site" links).
-function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes) {
+//
+// checkOpts: optional integrity-check flags object. When present, the
+// SAX parse also collects:
+//   checkHtml   -- unclosed / mismatched tags (htmlErrors)
+//   checkA11y   -- img missing alt, empty anchors, empty href (a11yErrors)
+//   checkIds    -- duplicate id attributes on the same page (dupIds)
+//   checkCanonical -- capture <link rel="canonical" href="..."> (canonicalHref)
+//   captureRedirectStub -- detect <meta http-equiv="refresh"> (isRedirectStub)
+function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
   const links = [];
   const ids = captureIds ? new Set() : null;
   const hasForbid = forbidPrefixes && forbidPrefixes.length > 0;
@@ -113,8 +234,29 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes) {
       return;
     }
   } : null;
-  const parser = new Parser({
+
+  // Integrity state -- only allocated when requested.
+  const doHtml      = checkOpts?.checkHtml  ?? false;
+  const doA11y      = checkOpts?.checkA11y  ?? false;
+  const doIds       = checkOpts?.checkIds   ?? false;
+  const doCanonical = checkOpts?.checkCanonical ?? false;
+  const doStub      = checkOpts?.captureRedirectStub ?? false;
+
+  const tagStack   = doHtml ? [] : null;
+  const htmlErrors = doHtml ? [] : null;
+  const a11yErrors = doA11y ? [] : null;
+  const idMap      = doIds  ? new Map() : null;
+
+  // a11y anchor-tracking state.
+  let inAnchor        = false;
+  let anchorHasText   = false;
+  let anchorHasChild  = false;  // any element child (img, svg, span, ...)
+  let isRedirectStub  = false;
+  let canonicalHref   = null;
+
+  const handlers = {
     onopentag(name, attribs) {
+      // ── existing: capture ids ──────────────────────────────────
       if (captureIds) {
         const id = attribs.id;
         if (id) ids.add(id);
@@ -123,26 +265,171 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes) {
           if (nm) ids.add(nm);
         }
       }
+      // ── existing: extract links ────────────────────────────────
       const attrs = LINK_ATTR_TABLE.get(name);
-      if (!attrs) return;
-      for (const a of attrs) {
-        const v = attribs[a];
-        if (!v) continue;
-        if (SRCSET_ATTRS.has(a)) {
-          for (const u of splitSrcset(v)) {
-            links.push(u);
-            if (checkForbid) checkForbid(u);
+      if (attrs) {
+        for (const a of attrs) {
+          const v = attribs[a];
+          if (!v) continue;
+          if (SRCSET_ATTRS.has(a)) {
+            for (const u of splitSrcset(v)) {
+              links.push(u);
+              if (checkForbid) checkForbid(u);
+            }
+          } else {
+            links.push(v);
+            if (checkForbid) checkForbid(v);
           }
-        } else {
-          links.push(v);
-          if (checkForbid) checkForbid(v);
         }
       }
+
+      // ── check-html: push non-void elements onto tag stack ──────
+      if (tagStack !== null && !HTML5_VOID_ELEMENTS.has(name)) {
+        tagStack.push(name);
+      }
+
+      // ── check-ids: count id attributes ────────────────────────
+      if (idMap && attribs.id) {
+        idMap.set(attribs.id, (idMap.get(attribs.id) ?? 0) + 1);
+      }
+
+      // ── check-a11y ─────────────────────────────────────────────
+      if (doA11y) {
+        // img without alt attribute (alt="" is valid for decorative images)
+        if (name === "img" && !("alt" in attribs)) {
+          a11yErrors.push({ type: "img-missing-alt", src: attribs.src ?? "" });
+        }
+        // empty href
+        if (attribs.href === "") {
+          a11yErrors.push({ type: "empty-href", tag: name });
+        }
+        // track anchor content for empty-anchor check
+        if (name === "a") {
+          inAnchor      = true;
+          anchorHasText  = false;
+          anchorHasChild = false;
+        } else if (inAnchor) {
+          anchorHasChild = true;  // any child element -- link carries content
+        }
+      }
+
+      // ── redirect stub detection ────────────────────────────────
+      if (doStub && name === "meta" &&
+          (attribs["http-equiv"] ?? "").toLowerCase() === "refresh") {
+        isRedirectStub = true;
+      }
+
+      // ── canonical URL capture ─────────────────────────────────
+      if (doCanonical && name === "link" &&
+          (attribs.rel ?? "").toLowerCase() === "canonical" &&
+          attribs.href) {
+        canonicalHref = attribs.href;
+      }
     },
-  });
+  };
+
+  if (doA11y) {
+    handlers.ontext = function(text) {
+      if (inAnchor && text.trim()) anchorHasText = true;
+    };
+  }
+
+  if (doHtml || doA11y) {
+    handlers.onclosetag = function(name) {
+      // check-html: verify tag-stack balance
+      if (tagStack !== null && !HTML5_VOID_ELEMENTS.has(name)) {
+        const top = tagStack[tagStack.length - 1];
+        if (top === name) {
+          tagStack.pop();
+        } else {
+          // Mismatch: try lenient recovery by scanning back in the stack.
+          const idx = tagStack.lastIndexOf(name);
+          if (idx >= 0) {
+            while (tagStack.length > idx + 1) {
+              htmlErrors.push({ type: "mismatched-tag", tag: tagStack.pop() });
+            }
+            tagStack.pop();
+          } else {
+            htmlErrors.push({ type: "unexpected-close", tag: name });
+          }
+        }
+      }
+      // check-a11y: end-of-anchor check
+      if (doA11y && name === "a" && inAnchor) {
+        if (!anchorHasText && !anchorHasChild) {
+          a11yErrors.push({ type: "empty-anchor" });
+        }
+        inAnchor = false;
+      }
+    };
+  }
+
+  if (doHtml) {
+    handlers.onend = function() {
+      // Flag any tags still open at end-of-document.
+      for (let i = tagStack.length - 1; i >= 0; i--) {
+        htmlErrors.push({ type: "unclosed-tag", tag: tagStack[i] });
+      }
+    };
+  }
+
+  const parser = new Parser(handlers);
   parser.write(fs.readFileSync(htmlPath, "utf8"));
   parser.end();
-  return { links, ids, forbidden };
+
+  // Collect duplicate IDs.
+  const dupIds = idMap ? [] : null;
+  if (idMap) {
+    for (const [id, count] of idMap) {
+      if (count > 1) dupIds.push({ id, count });
+    }
+  }
+
+  return { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub, canonicalHref };
+}
+
+// Cross-file check: every page's <link rel="canonical" href="..."> must
+// match the page's own deployment URL.  The check expects the
+// canonical to refer to the URL where the page is actually served:
+// `--base-path` + file-derived URL path.
+//
+// Catches both the "canonical missing baseurl" bug (canonical would
+// 404 on a subpath deploy) and the inverse "canonical includes
+// baseurl on a root deploy" bug.  Ignores the canonical's scheme+host
+// (the URL may legitimately point at a different host than the one
+// hosting the file).
+//
+// Returns an array of issue strings, or null if no pages had a
+// canonical href (the input set was empty / canonical-less).
+function checkCanonicalContents(rootStr, canonicalByFile, redirectStubSet, basePath) {
+  if (canonicalByFile.size === 0) return null;
+  const EXCLUDE = new Set(["book.html", "404.html"]);
+  const rootAbs = path.resolve(rootStr);
+  const issues = [];
+
+  for (const [file, canonical] of canonicalByFile) {
+    if (EXCLUDE.has(path.basename(file))) continue;
+    if (redirectStubSet && redirectStubSet.has(path.resolve(file))) continue;
+    const rel = path.relative(rootAbs, path.resolve(file)).replace(/\\/g, "/");
+    const expected = (basePath || "") + deriveUrlPath(rel);
+
+    let canonicalPath;
+    try {
+      const u = new URL(canonical, "https://placeholder.invalid/");
+      canonicalPath = u.pathname;
+    } catch {
+      issues.push(`${rel}: canonical-malformed: '${canonical}'`);
+      continue;
+    }
+    // Decode percent-encoded segments before comparison (deriveUrlPath
+    // emits literal characters from the filename).
+    canonicalPath = decodePath(canonicalPath);
+
+    if (canonicalPath !== expected) {
+      issues.push(`${rel}: canonical-mismatch: '${canonicalPath}' (expected '${expected}')`);
+    }
+  }
+  return issues;
 }
 
 // Coerce a base-path arg into the canonical '/prefix' form (leading
@@ -167,6 +454,23 @@ function stripBasePath(pathStr, basePath) {
   if (pathStr.startsWith(basePath + "/")) return pathStr.slice(basePath.length);
   return pathStr;
 }
+
+// True when basePath is set and pathStr is a root-absolute URL that
+// is NOT within the basePath. On a real subpath deploy such a URL
+// would resolve outside the deployment and 404, even though it may
+// still find a file on disk under --root-dir. The resolver flags
+// these so they're reported as broken rather than silently resolving.
+function isOutsideBasePath(pathStr, basePath) {
+  if (!basePath) return false;
+  if (!pathStr.startsWith("/")) return false;
+  if (pathStr === basePath) return false;
+  if (pathStr.startsWith(basePath + "/")) return false;
+  return true;
+}
+
+// Sentinel target for off-base-path URLs. Angle brackets keep it
+// from colliding with any real on-disk path on Windows or POSIX.
+const OUTSIDE_BASEPATH_MARKER = "<<<outside-base-path>>>";
 
 // Resolve href -> [normalizedTargetStr, isDirLink, fragment].
 // Returns null for schemes/netlocs we skip. Uses only string ops (no
@@ -213,8 +517,15 @@ function resolve(href, sourceDir, sourcePath, rootStr, basePath) {
 
   let target;
   if (pathStr.startsWith("/")) {
-    const stripped = stripBasePath(pathStr, basePath);
-    target = path.normalize(path.join(rootStr, stripped.replace(/^\/+/, "")));
+    if (isOutsideBasePath(pathStr, basePath)) {
+      // Browser-semantics check: would 404 on a subpath deploy. Return
+      // a sentinel target so the existing "broken" pipeline picks it
+      // up; the reporter detects the marker to emit a clearer reason.
+      target = OUTSIDE_BASEPATH_MARKER + pathStr;
+    } else {
+      const stripped = stripBasePath(pathStr, basePath);
+      target = path.normalize(path.join(rootStr, stripped.replace(/^\/+/, "")));
+    }
   } else {
     target = path.normalize(path.join(sourceDir, pathStr));
   }
@@ -298,6 +609,32 @@ Options:
   -v, --verbose              Print per-stage timing breakdown.
   -h, --help                 Show this help and exit.
 
+Integrity checks (share the existing htmlparser2 SAX parse pass):
+  --check-html               HTML well-formedness: unclosed tags,
+                             mismatched closes.
+  --check-a11y               Accessibility basics: <img> missing alt,
+                             empty <a> tags, empty href attributes.
+  --check-ids                Duplicate id="..." attributes on the same
+                             page.
+  --check-sitemap            Every .html file in the input is in
+                             sitemap.xml (or is a known exclusion).
+                             Reads <root-dir>/sitemap.xml; skipped
+                             silently if the file is absent.
+  --check-search             Every .html file in the input has at least
+                             one entry in assets/js/search-data.json.
+                             Reads from <root-dir>; skipped silently if
+                             the file is absent.
+  --check-canonical          Every page's <link rel="canonical" href>
+                             URL path matches the page's own deployment
+                             URL. Catches canonical URLs that include
+                             --base-path / the wrong baseurl.
+
+Exit codes:
+  0  All checks passed.
+  1  Link / forbidden-prefix check failed.
+  2  Integrity check failed (no link failures).
+  3  Both link and integrity checks failed.
+
 Inputs are files or directories; directories are searched recursively
 for *.html.
 `);
@@ -314,6 +651,12 @@ function parseArgs(argv) {
     forbid: [],
     noFail: false,
     verbose: false,
+    checkHtml: false,
+    checkA11y: false,
+    checkIds: false,
+    checkSitemap: false,
+    checkSearch: false,
+    checkCanonical: false,
   };
   const inputs = [];
   const unknown = [];
@@ -336,6 +679,12 @@ function parseArgs(argv) {
     else if (a === "--threads") { need(a, i++); /* accepted, ignored */ }
     else if (a === "-v" || a === "--verbose") opts.verbose = true;
     else if (a === "-h" || a === "--help") { /* handled before dispatch */ }
+    else if (a === "--check-html") opts.checkHtml = true;
+    else if (a === "--check-a11y") opts.checkA11y = true;
+    else if (a === "--check-ids") opts.checkIds = true;
+    else if (a === "--check-sitemap") opts.checkSitemap = true;
+    else if (a === "--check-search") opts.checkSearch = true;
+    else if (a === "--check-canonical") opts.checkCanonical = true;
     else if (a.startsWith("--")) {
       // Tolerate unknown flags passed through via check.bat's %*.
       // Consume an attached value if present.
@@ -426,6 +775,18 @@ function runCheck(argv) {
   for (const w of walkWarnings) write(w);
   const tWalk = performance.now();
 
+  // Build checkOpts only when at least one integrity flag is on, to
+  // avoid adding handlers to the parser on runs that don't need them.
+  const needIntegrity = opts.checkHtml || opts.checkA11y || opts.checkIds;
+  const needRedirectStub = opts.checkSitemap || opts.checkSearch || opts.checkCanonical;
+  const checkOpts = (needIntegrity || needRedirectStub || opts.checkCanonical) ? {
+    checkHtml: opts.checkHtml,
+    checkA11y: opts.checkA11y,
+    checkIds:  opts.checkIds,
+    checkCanonical: opts.checkCanonical,
+    captureRedirectStub: needRedirectStub,
+  } : null;
+
   // Per-file: extract once, then group hrefs by (source_dir, href) so we
   // resolve each unique combination exactly once. The same nav/footer
   // links repeat across hundreds of pages from the same directory. Also
@@ -439,14 +800,28 @@ function runCheck(argv) {
   const idsByFile = opts.includeFragments ? new Map() : null;
   const forbidPrefixes = opts.forbid.length ? opts.forbid : null;
   const forbiddenBySource = forbidPrefixes ? new Map() : null;
+
+  // Per-file integrity results (populated when checkOpts is set).
+  const integrityByFile = needIntegrity ? new Map() : null;
+  const redirectStubSet = needRedirectStub ? new Set() : null;
+  const canonicalByFile = opts.checkCanonical ? new Map() : null;
+
   for (const src of htmlFiles) {
     const srcDir = path.dirname(src);
-    const { links, ids, forbidden } = extractLinksAndIds(
-      src, opts.includeFragments, forbidPrefixes
-    );
+    const { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub, canonicalHref } =
+      extractLinksAndIds(src, opts.includeFragments, forbidPrefixes, checkOpts);
     for (const h of links) occurrences.push([src, srcDir, h]);
     if (idsByFile) idsByFile.set(src, ids);
     if (forbidden && forbidden.length) forbiddenBySource.set(src, forbidden);
+    if (integrityByFile && (htmlErrors?.length || a11yErrors?.length || dupIds?.length)) {
+      integrityByFile.set(src, { htmlErrors, a11yErrors, dupIds });
+    }
+    if (redirectStubSet && isRedirectStub) {
+      redirectStubSet.add(path.resolve(src));
+    }
+    if (canonicalByFile && canonicalHref) {
+      canonicalByFile.set(src, canonicalHref);
+    }
   }
   const tExtract = performance.now();
 
@@ -540,8 +915,11 @@ function runCheck(argv) {
     if (entry.resolved === null) {
       brokenUniqueCount++;
       const srcs = entry.sources;
+      const reason = entry.target.startsWith(OUTSIDE_BASEPATH_MARKER)
+        ? `outside --base-path '${basePath}' (would 404 on subpath deploy)`
+        : "target not found";
       for (let i = 0; i < srcs.length; i += 2) {
-        broken.push(srcs[i], srcs[i + 1], "target not found");
+        broken.push(srcs[i], srcs[i + 1], reason);
       }
       continue;
     }
@@ -628,9 +1006,186 @@ function runCheck(argv) {
     write(`  Report:      ${fmt(tFragments, tDone)}\n`);
   }
 
-  let exitCode = (broken.length || forbiddenCount) ? 1 : 0;
+  // ── Integrity check reporting ──────────────────────────────────────
+
+  let integrityIssueCount = 0;
+
+  // Per-file html / a11y / ids findings.
+  if (integrityByFile && integrityByFile.size > 0) {
+    const lines = [];
+    const sortedFiles = [...integrityByFile.keys()].sort();
+    for (const src of sortedFiles) {
+      const { htmlErrors, a11yErrors, dupIds } = integrityByFile.get(src);
+      if (htmlErrors) {
+        for (const e of htmlErrors) {
+          lines.push(`${src}: html-${e.type}: <${e.tag}>`);
+          integrityIssueCount++;
+        }
+      }
+      if (a11yErrors) {
+        for (const e of a11yErrors) {
+          if (e.type === "img-missing-alt") {
+            lines.push(`${src}: a11y-img-missing-alt: src=${e.src}`);
+          } else if (e.type === "empty-anchor") {
+            lines.push(`${src}: a11y-empty-anchor`);
+          } else if (e.type === "empty-href") {
+            lines.push(`${src}: a11y-empty-href: <${e.tag}>`);
+          }
+          integrityIssueCount++;
+        }
+      }
+      if (dupIds) {
+        for (const e of dupIds) {
+          lines.push(`${src}: duplicate-id: '${e.id}' appears ${e.count} times`);
+          integrityIssueCount++;
+        }
+      }
+    }
+    if (lines.length) {
+      write("\n" + lines.join("\n") + "\n");
+    }
+  }
+
+  // Cross-file sitemap check.
+  if (opts.checkSitemap) {
+    const issues = checkSitemapContents(rootStr, htmlFiles, redirectStubSet, basePath);
+    if (issues === null) {
+      write("warning: --check-sitemap: sitemap.xml not found in root-dir, skipping\n");
+    } else if (issues.length) {
+      write("\n" + issues.join("\n") + "\n");
+      integrityIssueCount += issues.length;
+    }
+  }
+
+  // Cross-file search-index check.
+  if (opts.checkSearch) {
+    const issues = checkSearchContents(rootStr, htmlFiles, redirectStubSet, basePath);
+    if (issues === null) {
+      write("warning: --check-search: search-data.json not found in root-dir, skipping\n");
+    } else if (issues.length) {
+      write("\n" + issues.join("\n") + "\n");
+      integrityIssueCount += issues.length;
+    }
+  }
+
+  // Per-page canonical URL check.
+  if (opts.checkCanonical && canonicalByFile) {
+    const issues = checkCanonicalContents(rootStr, canonicalByFile, redirectStubSet, basePath);
+    if (issues === null) {
+      write("warning: --check-canonical: no <link rel=\"canonical\"> found in any page, skipping\n");
+    } else if (issues.length) {
+      write("\n" + issues.join("\n") + "\n");
+      integrityIssueCount += issues.length;
+    }
+  }
+
+  // Summary line when any integrity flags were requested.
+  if (needIntegrity || opts.checkSitemap || opts.checkSearch || opts.checkCanonical) {
+    write(`Integrity: ${integrityIssueCount} issue(s)\n`);
+  }
+
+  // Exit codes: 1 = link failures, 2 = integrity failures, 3 = both.
+  const linksFailed = broken.length > 0 || forbiddenCount > 0;
+  const integrityFailed = integrityIssueCount > 0;
+  let exitCode = (linksFailed ? 1 : 0) | (integrityFailed ? 2 : 0);
   if (opts.noFail) exitCode = 0;
   return { output: buf.join(""), exitCode };
+}
+
+// ── Self-test ──────────────────────────────────────────────────
+// Regression guards.  Runs once per process; takes <10 ms.
+//
+//   1. checkSitemapContents / checkSearchContents must strip
+//      --base-path from extracted URLs before comparing against
+//      file-derived paths.
+//   2. The resolver must flag root-absolute URLs that escape
+//      --base-path as broken (browser-semantics check).  A link
+//      missing the baseurl prefix may still find a file on disk
+//      under --root-dir, but it would 404 on a real subpath deploy.
+//   3. checkCanonicalContents must flag canonical URLs whose path
+//      doesn't equal --base-path + the page's URL path.  Catches
+//      "canonical missing baseurl" (would 404 on subpath deploy)
+//      and the inverse "canonical includes baseurl on root deploy".
+
+function selfTest() {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "check-links-test-"));
+  try {
+    fs.writeFileSync(path.join(tmp, "Foo.html"), "<html><body>t</body></html>");
+
+    fs.writeFileSync(path.join(tmp, "sitemap.xml"),
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      `<url>\n<loc>https://example.com/base/Foo</loc>\n</url>\n` +
+      `</urlset>\n`);
+
+    const assetsDir = path.join(tmp, "assets", "js");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "search-data.json"),
+      JSON.stringify({ "0": { url: "/base/Foo", title: "Foo", content: "" } }));
+
+    const files = [path.join(tmp, "Foo.html")];
+    const bp = "/base";
+
+    // Guard 1: sitemap / search check base-path stripping.
+    const sm = checkSitemapContents(tmp, files, null, bp);
+    if (!sm || sm.length)
+      throw new Error("checkSitemapContents with --base-path: " + JSON.stringify(sm));
+
+    const se = checkSearchContents(tmp, files, null, bp);
+    if (!se || se.length)
+      throw new Error("checkSearchContents with --base-path: " + JSON.stringify(se));
+
+    // Guard 2: resolver flags off-base-path root-absolute URLs.
+    // /base/Foo (inside)  -> resolves to <tmp>/Foo (exists)
+    // /Foo (outside)      -> sentinel target that won't exist on disk
+    const inside = resolve("/base/Foo", tmp, path.join(tmp, "Foo.html"), tmp, bp);
+    if (!inside || inside[0].startsWith(OUTSIDE_BASEPATH_MARKER))
+      throw new Error("resolve('/base/Foo') should resolve inside base-path: " + JSON.stringify(inside));
+
+    const outside = resolve("/Foo", tmp, path.join(tmp, "Foo.html"), tmp, bp);
+    if (!outside || !outside[0].startsWith(OUTSIDE_BASEPATH_MARKER))
+      throw new Error("resolve('/Foo') with base-path should be flagged outside: " + JSON.stringify(outside));
+
+    // With no base-path, every root-absolute URL is in-bounds.
+    const noBp = resolve("/Foo", tmp, path.join(tmp, "Foo.html"), tmp, "");
+    if (!noBp || noBp[0].startsWith(OUTSIDE_BASEPATH_MARKER))
+      throw new Error("resolve('/Foo') without --base-path must not be flagged: " + JSON.stringify(noBp));
+
+    // Guard 3: canonical URL check.  Under --base-path /base, the
+    // canonical for Foo.html must be "<host>/base/Foo" (the actual
+    // deployment URL).  Both "missing baseurl" and "wrong baseurl"
+    // are mismatches.
+    const okBp = new Map([
+      [path.join(tmp, "Foo.html"), "https://example.com/base/Foo"],
+    ]);
+    const okBpIssues = checkCanonicalContents(tmp, okBp, null, bp);
+    if (!okBpIssues || okBpIssues.length)
+      throw new Error("checkCanonicalContents under --base-path: correct canonical flagged: " + JSON.stringify(okBpIssues));
+
+    const missingBaseurl = new Map([
+      [path.join(tmp, "Foo.html"), "https://example.com/Foo"],
+    ]);
+    const miBpIssues = checkCanonicalContents(tmp, missingBaseurl, null, bp);
+    if (!miBpIssues || miBpIssues.length !== 1 || !miBpIssues[0].includes("canonical-mismatch"))
+      throw new Error("checkCanonicalContents: should flag baseurl-less canonical under --base-path: " + JSON.stringify(miBpIssues));
+
+    // With no --base-path, canonical must NOT include any path prefix.
+    const okNoBp = new Map([
+      [path.join(tmp, "Foo.html"), "https://example.com/Foo"],
+    ]);
+    const okNoBpIssues = checkCanonicalContents(tmp, okNoBp, null, "");
+    if (!okNoBpIssues || okNoBpIssues.length)
+      throw new Error("checkCanonicalContents without --base-path: correct canonical flagged: " + JSON.stringify(okNoBpIssues));
+
+    const extraBaseurl = new Map([
+      [path.join(tmp, "Foo.html"), "https://example.com/base/Foo"],
+    ]);
+    const exNoBpIssues = checkCanonicalContents(tmp, extraBaseurl, null, "");
+    if (!exNoBpIssues || exNoBpIssues.length !== 1 || !exNoBpIssues[0].includes("canonical-mismatch"))
+      throw new Error("checkCanonicalContents: should flag canonical with extra prefix on root deploy: " + JSON.stringify(exNoBpIssues));
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 // ── Module entry ────────────────────────────────────────────────
@@ -645,6 +1200,8 @@ if (!isMainThread) {
     printHelp();
     process.exit(0);
   }
+
+  selfTest();
 
   // Split on /sep/ into separate command lines.
   const commands = [];

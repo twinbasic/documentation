@@ -23,7 +23,7 @@ each Generator rebuilding it) makes the JS version much cheaper.
 Phase 2 landed across [nav.mjs](nav.mjs) (318 lines), [seo.mjs](seo.mjs)
 (126 lines), [book.mjs](book.mjs) (175 lines), [build-info.mjs](build-info.mjs)
 (28 lines), the extended [index.mjs](index.mjs) (93 lines), and the
-[verify-phase2.mjs](verify-phase2.mjs) acceptance harness (302 lines).
+`verify-phase2.mjs` (retired Phase 10) acceptance harness (302 lines).
 Total ~1,040 lines of JS for ~4,800 lines of replaced Ruby across the
 six nav plugins + seo-precompute + book-resolve-chapters + book-sort +
 build-info.
@@ -1320,7 +1320,7 @@ get tempted.
 
 ### Verification harness
 
-[verify-phase2.mjs](verify-phase2.mjs) extends the `verify-phase1.mjs`
+`verify-phase2.mjs` (retired Phase 10) extends the `verify-phase1.mjs`
 pattern. It:
 
 1. Runs `discover()` then every Phase 2 substep, capturing per-substep
@@ -1431,8 +1431,8 @@ Node runtime.
                           lands here later)
     build-info.mjs      — §5.9
     index.mjs           — orchestrator extended (see below)
-    verify-phase1.mjs   — Phase 1 harness
-    verify-phase2.mjs   — §10 acceptance harness (23 checks)
+    verify-phase1.mjs   — Phase 1 harness (retired Phase 10)
+    verify-phase2.mjs   — §10 acceptance harness (23 checks) (retired Phase 10)
   docs/                 — unchanged
 ```
 

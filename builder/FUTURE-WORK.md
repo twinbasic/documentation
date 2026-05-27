@@ -1,15 +1,16 @@
 # Future Work
 
 Open follow-up tasks for the tbdocs builder. Phases 1-9 are shipped;
-**Phase 10** will pick up the items that intentionally change output
-and so couldn't fit Phase 9's no-regression criterion.
+**Phase 10** is the Jekyll-to-tbdocs cutover ([PLAN-10.md](PLAN-10.md)
+once drafted; see §C1 below). **Phase 11** picks up the items that
+intentionally change build output and so couldn't fit Phase 9's
+no-regression criterion -- sequenced after Phase 10's cutover (when
+"regression vs Jekyll" is no longer the acceptance bar, so Phase 11
+divergences land as `accepted-divergences.mjs` entries become moot).
 
 Per-item phase routing is annotated inline below — items routed to
-**→ Phase 9** (now landed) are marked **shipped**; items routed to
-**→ Phase 10** stay open; **→ drop** items are out of scope. Items
-without an explicit routing either pre-date the Phase 9 plan (the
-§A1 investigation, now also shipped) or are sequenced outside the
-phase pipeline (§C cutover).
+**→ Phase 9** are marked **shipped**; items routed to **→ Phase 10**
+or **→ Phase 11** stay open; **→ drop** items are out of scope.
 
 When picking up a divergence-investigation entry: re-run the discovery
 step listed under "Reproduce" before assuming the symptom is still
@@ -131,7 +132,7 @@ phases. Each is a clean addition; none block any current work.
 
 ### B1. Mermaid `.mmd` -> `.svg` automation (PLAN-3 §15)
 
-**Routing**: → **Phase 10**. Auto-regenerated SVGs would differ
+**Routing**: → **Phase 11**. Auto-regenerated SVGs would differ
 byte-for-byte from the hand-exported originals, regressing the
 `_site/assets/images/mmd/*.svg` byte match.
 
@@ -145,29 +146,59 @@ close the loop so the source `.mmd` is the canonical input and the
 SVG regenerates automatically. Independent addition; doesn't touch
 any phase code.
 
-### B2. Switch to Shiki-themed inline-style output (PLAN-3 §15 / §D3)
+### B2. Switch to Shiki-themed output (PLAN-3 §15 / §D3)
 
-**Routing**: → **Phase 10** (headline item). Definitely regresses
-HTML byte-match.
+**Routing**: → **Phase 11** (headline item). Regresses HTML
+byte-match (per-span class names) AND the rouge.css file.
 
-**Approach update**: rather than the original "switch to Shiki's
-default `<span style="color:#xxx">` output", the Phase 10 plan
-generates the Shiki theme **from the upstream twinBASIC `.twin` style
-source files** during the build, replacing the current
-`scripts/extract_theme_colors.py` mapping that produces Rouge classes.
-The original styling information lives in the `.twin` files; the
-current pipeline indirects through Rouge classes because Rouge's
-class set is fixed. Reading the `.twin` source directly lets the
-syntax colors stay in sync with upstream without manual remap.
+**Approach**: rather than the original "switch to Shiki's default
+`<span style="color:#xxx">` output", the Phase 11 plan generates the
+Shiki theme **from the upstream twinBASIC `.twin` style source
+files** during the build, replacing the current
+`scripts/extract_theme_colors.py` mapping that produces Rouge
+classes. The original styling information lives in the `.twin`
+files; the current pipeline indirects through Rouge classes because
+Rouge's class set is fixed. Reading the `.twin` source directly lets
+the syntax colors stay in sync with upstream without manual remap.
 
-**Trigger**: Phase 10 lands.
+**Trigger**: Phase 10 lands (the cutover removes the byte-vs-Jekyll
+acceptance bar).
 
-Phase 3 maps Shiki's TextMate scopes onto Rouge class names so the
-existing `assets/css/rouge.css` keeps working byte-for-byte. The
-Phase 10 change drops the mapper, generates Shiki styles directly
-from the `.twin` source files, and accepts the HTML body diff for
-every `<pre>` block (single category in
-`accepted-divergences.mjs`).
+Phase 3 currently maps Shiki's TextMate scopes onto Rouge class
+names so the existing `assets/css/rouge.css` keeps working
+byte-for-byte. The Phase 11 change drops the mapper, generates Shiki
+styles directly from the `.twin` source files, and changes the
+per-span class names from Rouge tokens (`k`, `s`, `mi`) to a
+colour-palette scheme (`c1`, `c2`, … per unique theme colour).
+
+#### B2a. Shiki output-mode investigation (findings, 2026-Q2)
+
+Investigated as part of the Phase 9→10/11 split planning. Shiki has
+three output modes:
+
+| Mode | Per-span shape | Bytes/span | Notes |
+|---|---|---|---|
+| Default (inline styles) | `<span style="color:#FF5733">tok</span>` | ~31 | Colour baked into each span; no stylesheet needed. |
+| CSS variables (`themes: {light,dark}`) | `<span style="--shiki-light:#FF5;--shiki-dark:#AAA">tok</span>` | ~60+ | Light/dark switching but worst for size. |
+| Custom transformer + `codeToTokensBase` | `<span class="X">tok</span>` | depends on `X` | What [highlight.mjs](highlight.mjs) already does (with X = Rouge tokens). |
+
+Current Rouge classes average ~1.7 chars (`k`/`mi`/`cm`/`nf`/`lc`,
+Pygments convention). Per-span overhead is ~22 chars including the
+class wrapper. A colour-palette scheme of 2-char `c1`...`cN` IDs is
+the same length, so HTML byte size is essentially neutral; what
+changes is class *meaning* (scope-derived → colour-derived).
+
+The ~470-line `bestRougeClass` + per-language quirk logic in
+[highlight.mjs:154-466](highlight.mjs:154) exists solely to make
+Shiki's tokens emit what Rouge would have emitted; under Phase 11
+that entire layer disappears and Shiki's tokens drive directly.
+Net: highlight.mjs shrinks from ~470 lines to ~80, plus a small
+palette extractor (~50 lines) and a generated `<lang>-colors.css`
+(~1-2 KB).
+
+Decision recorded for Phase 11: use the custom-transformer approach
+with a colour-palette class scheme. Generate one combined stylesheet
+(per-language colour prefixes if needed for collision-free palettes).
 
 ### B3. Move title rendering to `site.markdown` (PLAN-3 §15, PLAN-2 §D6)
 
@@ -196,7 +227,7 @@ exists.
 
 ### B5. Inline copy-code button server-side rendering (PLAN-3 §15 / §D16)
 
-**Routing**: → **Phase 10**. Adds button HTML to every `<pre>`;
+**Routing**: → **Phase 11**. Adds button HTML to every `<pre>`;
 regresses HTML byte-match.
 
 **Trigger**: the just-the-docs copy-code JS needs to be retired
@@ -210,8 +241,10 @@ trigger.
 
 ### B6. Linkify exception list (PLAN-3 §15 / §D10)
 
-**Routing**: → **Phase 10**. Auto-linking bare URLs changes rendered
-HTML.
+**Routing**: → **drop** (2026-Q2). Postponed indefinitely; the
+content convention of "wrap every URL in explicit `[text](url)`"
+holds and the editorial pipeline catches stragglers. Re-add the
+entry if a content shift makes bare URLs common in body prose.
 
 **Trigger**: bare URLs start appearing in body prose that aren't
 already wrapped in explicit `[text](url)` markdown.
@@ -263,7 +296,7 @@ the orchestrator's `t.summary()`.
 
 ### B10. Phase 7 search-data minification (PLAN-7 §13)
 
-**Routing**: → **Phase 10**. Jekyll's `search-data.js` is not
+**Routing**: → **Phase 11**. Jekyll's `search-data.js` is not
 minified; minifying regresses the offline-tree byte match.
 
 **Trigger**: complaints about page load under `file://` on spinning
@@ -275,9 +308,9 @@ is the highest-leverage size reduction.
 
 ### B11. Phase 7 AST-based JTD JS patching (PLAN-7 §13)
 
-**Routing**: → **Phase 10**. Replacing the regex patches with an
+**Routing**: → **Phase 11**. Replacing the regex patches with an
 AST rewrite carries a real risk of byte drift in the patched
-`just-the-docs.js`; Phase 10 verifies byte-identity or accepts the
+`just-the-docs.js`; Phase 11 verifies byte-identity or accepts the
 divergence.
 
 **Trigger**: regex misses in the patch step (the warning lines
@@ -395,14 +428,58 @@ would reduce the peak memory footprint but add complexity.
 
 ## C. Post-port cutover
 
-The single-commit cutover from Jekyll to tbdocs. Sequenced after
-Phase 8 lands and all eight verify harnesses pass clean on the
-production tree (PLAN-5 §13, PLAN-8 §13).
+The cutover from Jekyll to tbdocs. Sequenced after Phases 1-9 land
+and all nine verify harnesses pass clean on the production tree
+(PLAN-5 §13, PLAN-8 §13).
 
-**Routing**: orthogonal to Phase 9 and Phase 10. Can run after
-either; the decision depends on whether the Phase 10 byte
-divergences (Shiki theme regen, etc.) are acceptable for the
-deploy target at the time of cutover.
+**Routing**: → **Phase 10** ([PLAN-10.md](PLAN-10.md)). Phase 11
+(the byte-changing items: B1, B2, B5, B10, B11) lands after Phase
+10 because retiring the byte-vs-Jekyll acceptance bar is what
+makes Phase 11's intentional divergences free to land.
+
+---
+
+## D. Phase 11 sequencing notes
+
+Captured during the Phase 9 → 10/11 split planning so the design
+intent survives until PLAN-11.md is drafted (post-Phase-10).
+
+1. **B2 lands first.** It's the largest change (~470 lines deleted
+   from [highlight.mjs](highlight.mjs), `scripts/extract_theme_colors.py`
+   deleted, `rouge.css` replaced by a generated palette stylesheet),
+   sets the pattern for "intentional divergence without the verify
+   harness as a safety net", and unblocks the other items by
+   proving the new acceptance model works. B1, B5, B10, B11 land
+   after in any order -- they're independent.
+
+2. **No Phase 11 verify harness needed.** Phase 10's expanded
+   `check_links.mjs` integrity checker (HTML well-formedness,
+   duplicate-id, anchor resolution, sitemap / search completeness)
+   is the regression detector. Each Phase 11 item just needs
+   `check.bat` clean after it lands.
+
+3. **`.twin` source file investigation is the first Phase 11
+   commit, not a planning blocker.** We don't yet know where
+   the source-of-truth `.twin` style files live (upstream repo?
+   local checkout? released artifact?) or what format they have
+   (XML? JSON? a custom DSL?). PLAN-11 §1 (Inputs) will document
+   the answer; the investigation itself happens in the first
+   commit of the B2 work, with findings folded back into PLAN-11
+   if material to subsequent commits.
+
+4. **`scripts/extract_theme_colors.py` deletes in the B2 commit,
+   not separately.** It exists only to feed the Rouge-class
+   indirection in `highlight.mjs` that B2 retires; without B2's
+   `SCOPE_TO_ROUGE_CLASS` consumer it has no caller. Same commit,
+   same revert boundary.
+
+5. **One PR per Phase 11 item, not one PR for the whole phase.**
+   B2 is large enough to deserve its own review window. The
+   smaller items (B1, B5, B10, B11) are clean independent
+   commits; bundling them would muddy the per-item revert path
+   without saving review time. Phase 10's "one PR for the
+   cutover" approach was driven by atomicity (commits 1-6 only
+   make sense together); Phase 11 doesn't have that constraint.
 
 ### C1. Cutover sequence
 

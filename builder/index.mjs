@@ -1,11 +1,16 @@
 // tbdocs orchestrator. Phases 1+2+3+4+5+6+7+8: DISCOVER + COMPUTE +
 // RENDER + TEMPLATE + WRITE ONLINE + AUXILIARIES + WRITE OFFLINE + WRITE PDF.
 //
-// Usage: node builder/index.mjs [--src <path>] [--dest <path>] [--dry-run]
+// Usage: node builder/index.mjs [--src <path>] [--dest <path>]
+//        [--baseurl <prefix>] [--url <origin>] [--dry-run]
 //
 // Default --src is "docs" relative to the current working directory.
-// Default --dest is "<src>/_site-new" during the port; flip to "_site"
-// once tbdocs replaces Jekyll. --dry-run skips all filesystem writes.
+// Default --dest is "<src>/_site". --dry-run skips all filesystem writes.
+// --baseurl overrides _config.yml's baseurl (used by CI to inject the
+// Pages base path).
+// --url overrides _config.yml's url (used by CI to inject the Pages
+// origin -- e.g. https://kubao.github.io -- so canonical URLs match
+// the actual deployment instead of the configured production host).
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -31,6 +36,8 @@ function parseArgs(argv) {
   const args = {
     src: "docs",
     dest: null,
+    baseurl: null,
+    url: null,
     dryRun: false,
     skipOffline: null,
     skipPdf: null,
@@ -47,6 +54,14 @@ function parseArgs(argv) {
       args.dest = argv[++i];
     } else if (a.startsWith("--dest=")) {
       args.dest = a.slice("--dest=".length);
+    } else if (a === "--baseurl") {
+      args.baseurl = argv[++i];
+    } else if (a.startsWith("--baseurl=")) {
+      args.baseurl = a.slice("--baseurl=".length);
+    } else if (a === "--url") {
+      args.url = argv[++i];
+    } else if (a.startsWith("--url=")) {
+      args.url = a.slice("--url=".length);
     } else if (a === "--dry-run") {
       args.dryRun = true;
     } else if (a === "--no-offline") {
@@ -83,10 +98,7 @@ async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const { src, dest, dryRun, serving, profileOffline } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
-  // Default dest = sibling of src named _site-new during the port,
-  // _site once tbdocs replaces Jekyll. Flip the default in one place
-  // when the cutover happens.
-  const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site-new"));
+  const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
   const t = makeTimer();
   const { pages, staticFiles } = await discover(srcRoot);
@@ -97,6 +109,8 @@ async function main() {
   const buildInfoPromise = captureBuildInfo();
 
   const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
+  if (opts.baseurl != null) config.baseurl = opts.baseurl;
+  if (opts.url != null) config.url = opts.url;
   const { navTree } = computeNav(pages, config);
   t.lap("nav");
 

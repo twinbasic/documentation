@@ -44,7 +44,7 @@ function buildInit(site) {
     header: renderHeader(site),
     searchFooter: renderSearchFooter(site),
     mermaidScript: renderMermaidScript(site),
-    faviconLink: buildFaviconLink(),
+    faviconLink: buildFaviconLink(site.config),
     gaSnippet: buildGaSnippet(site.config),
     searchEnabled: site.config.search_enabled !== false,
   };
@@ -60,6 +60,7 @@ function templatePage(page, site, init) {
   }
 
   const lang = site.config.lang ?? "en-US";
+  const baseurl = String(site.config.baseurl ?? "");
 
   // Compose. The literal newlines + indentation are for source clarity;
   // compress collapses them to single spaces. The body assembly mirrors
@@ -74,14 +75,14 @@ function templatePage(page, site, init) {
     `  <a class="skip-to-main" href="#main-content">Skip to main content</a>\n` +
     init.svgSprites + `\n` +
     init.sidebar + `\n` +
-    `  <div class="main" id="top">\n` +
+    `  <div class="main" id="page-top">\n` +
     init.header + `\n` +
     `    <div class="main-content-wrap">\n` +
-    renderBreadcrumbs(page) +
+    renderBreadcrumbs(page, baseurl) +
     `      <div id="main-content" class="main-content">\n` +
     `        <main>\n` +
     injectAnchorHeadings(page.renderedContent) +
-    renderChildrenNav(page) +
+    renderChildrenNav(page, baseurl) +
     `        </main>\n` +
     renderFooter(page, site) +
     `      </div>\n` +
@@ -106,20 +107,22 @@ function renderHead(page, site, init) {
   // The `<meta IE=Edge>` is directly followed by `<script>` (no
   // whitespace) because head.html has `{%- comment -%}...{%- endcomment -%}`
   // between them that strips surrounding whitespace.
+  const bu = String(site.config.baseurl ?? "");
   return `<head>\n` +
     `  <meta charset="UTF-8">\n` +
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
     `    if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-mode');\n` +
     `  </script>\n` +
-    `  <script type="text/javascript" src="/assets/js/theme-switch.js" defer></script>\n` +
-    `  <link rel="stylesheet" href="/assets/css/just-the-docs-combined.css">\n` +
-    `  <link rel="stylesheet" href="/assets/css/just-the-docs-head-nav.css" id="jtd-head-nav-stylesheet">\n` +
+    `  <script type="text/javascript" src="${escAttr(relativeUrl("/assets/js/theme-switch.js", bu))}" defer></script>\n` +
+    `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-combined.css", bu))}">\n` +
+    `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-head-nav.css", bu))}" id="jtd-head-nav-stylesheet">\n` +
     `  <style id="jtd-nav-activation">\n` +
     navActivationCss(page) +
     `\n  </style>\n` +
     (init.gaSnippet ? init.gaSnippet + `\n` : "") +
-    (init.searchEnabled ? `  <script src="/assets/js/vendor/lunr.min.js"></script>\n` : "") +
-    `  <script src="/assets/js/just-the-docs.js"></script>\n` +
+    (init.searchEnabled ? `  <script src="${escAttr(relativeUrl("/assets/js/vendor/lunr.min.js", bu))}"></script>\n` : "") +
+    (bu ? `  <script>window.jtdBaseurl=${JSON.stringify(bu)};</script>\n` : "") +
+    `  <script src="${escAttr(relativeUrl("/assets/js/just-the-docs.js", bu))}"></script>\n` +
     `  <meta name="viewport" content="width=device-width, initial-scale=1">\n` +
     headSeoBlock(page, site) +
     init.faviconLink +
@@ -184,8 +187,9 @@ function jsonLd(page, site) {
 // trailing space-before-`>` artifact from the Liquid source's
 // multi-line `<link ... href="..." >` shape (compress collapses the
 // internal whitespace to a single space).
-function buildFaviconLink() {
-  return `<link rel="shortcut icon" type="image/png" href="/favicon.png" >\n`;
+function buildFaviconLink(config) {
+  const bu = String(config.baseurl ?? "");
+  return `<link rel="shortcut icon" type="image/png" href="${relativeUrl("/favicon.png", bu)}" >\n`;
 }
 
 // Currently unset in _config.yml; emits empty string. When set, mirror
@@ -612,12 +616,11 @@ const AUX_NAV_SUN_MOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" style="dis
 
 // ---------- §5.7 renderBreadcrumbs ---------------------------------------
 
-function renderBreadcrumbs(page) {
+function renderBreadcrumbs(page, baseurl) {
   if (page.permalink === "/" || !page.frontmatter.parent || !page.frontmatter.title) {
     return "";
   }
   const chain = page.breadcrumbs || [];
-  const baseurl = String((page._baseurl ?? ""));
   // Liquid `{{ entry.title }}` and `{{ page.title }}` do NOT escape.
   // Operator titles like `&, &=` render literal in Jekyll's breadcrumb;
   // escaping here would emit `&amp;, &amp;=` instead.
@@ -652,11 +655,10 @@ export function injectAnchorHeadings(html) {
 
 // ---------- §5.9 renderChildrenNav ---------------------------------------
 
-function renderChildrenNav(page) {
+function renderChildrenNav(page, baseurl) {
   const children = page.children;
   if (!children || children.length === 0) return "";
   if (page.frontmatter.has_toc === false) return "";
-  const baseurl = "";
   // Liquid `{{ nav_child.title }}` / `{{ nav_child.summary }}` do NOT
   // escape -- emit titles and summaries verbatim.
   const items = children.map(child => {
@@ -689,7 +691,7 @@ function renderFooter(page, site) {
   if (!showFooter) return "";
 
   const backToTop = config.back_to_top
-    ? `        <p><a href="#top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a></p>\n`
+    ? `        <p><a href="#page-top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a></p>\n`
     : "";
 
   return `      <hr>\n` +
