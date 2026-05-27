@@ -130,6 +130,7 @@ These identifier strings are accepted as the **Encoding** argument. The constant
 | **koi8_u**{: #koi8_u } | `"koi8_u"` | KOI8-U, Ukrainian. |
 
 #### Big5
+{: #big5-group }
 
 | Constant | Value | Description |
 |----------|-------|-------------|

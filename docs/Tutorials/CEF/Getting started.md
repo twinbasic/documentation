@@ -31,11 +31,11 @@ Unlike [**WebView2**](../../tB/Packages/WebView2/WebView2/), CEF does not rely o
 
 Download the runtime ZIP that matches both the CEF version and the application bitness:
 
-| Version | Win32                                                                                                                                | Win64                                                                                                                                |
-|---------|--------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| v49     | [cefRuntime49_win32.zip](https://github.com/twinbasic/cef-runtimes/releases/download/latest/cefRuntime49_win32.zip)                  | [cefRuntime49_win64.zip](https://github.com/twinbasic/cef-runtimes/releases/download/latest/cefRuntime49_win64.zip)                  |
-| v109    | [cefRuntime109_win32.zip](https://github.com/twinbasic/cef-runtimes/releases/download/latest/cefRuntime109_win32.zip)                | [cefRuntime109_win64.zip](https://github.com/twinbasic/cef-runtimes/releases/download/latest/cefRuntime109_win64.zip)                |
-| v145    | [cefRuntime145_win32.zip](https://github.com/twinbasic/cef-runtimes/releases/download/latest/cefRuntime145_win32.zip)                | [cefRuntime145_win64.zip](https://github.com/twinbasic/cef-runtimes/releases/download/latest/cefRuntime145_win64.zip)                |
+| Version | Win32                                                        | Win64                                                        |
+| ------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| v49     | [cefRuntime49_win32.zip](https://github.com/twinbasic/cef-runtimes/releases/download/v1.0.0/cefRuntime49_win32.zip) | [cefRuntime49_win64.zip](https://github.com/twinbasic/cef-runtimes/releases/download/v1.0.0/cefRuntime49_win64.zip) |
+| v109    | [cefRuntime109_win32.zip](https://github.com/twinbasic/cef-runtimes/releases/download/v1.0.0/cefRuntime109_win32.zip) | [cefRuntime109_win64.zip](https://github.com/twinbasic/cef-runtimes/releases/download/v1.0.0/cefRuntime109_win64.zip) |
+| v145    | [cefRuntime145_win32.zip](https://github.com/twinbasic/cef-runtimes/releases/download/v1.0.0/cefRuntime145_win32.zip) | [cefRuntime145_win64.zip](https://github.com/twinbasic/cef-runtimes/releases/download/v1.0.0/cefRuntime145_win64.zip) |
 
 See [CEF Runtime Releases](https://github.com/twinbasic/cef-runtimes/releases/) for the full version list and release notes.
 

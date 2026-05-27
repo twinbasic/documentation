@@ -12,7 +12,6 @@ vba_attribution: true
 Returns the current path.
 
 ## CurDir Function
-{: #curdir }
 
 Returns a **Variant** (**String**) representing the current path.
 

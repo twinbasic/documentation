@@ -6,7 +6,7 @@ permalink: /FAQ
 
 # twinBASIC Frequently Asked Questions
 
-### [General](#general) - [Installation](#installation) - [Using twinBASIC](#using-twinbasic)
+### [General](#general) - [Installation](#install-section) - [Using twinBASIC](#using-twinbasic)
 
 ## General
 
@@ -141,6 +141,7 @@ Internal text such as the hover information does not yet support localization, b
 </details>
 
 ## Installation
+{: #install-section }
 
 <details>
 <summary markdown=span id="system-requirements"><b>What are the system requirements for twinBASIC?</b></summary>
