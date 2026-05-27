@@ -1,4 +1,4 @@
-cd /d "%~dp0..\"
+@pushd "%~dp0..\"
 node scripts/check_links.mjs --offline --include-fragments ^
     --check-html --check-a11y --check-ids ^
     --check-sitemap --check-search ^
@@ -8,4 +8,5 @@ node scripts/check_links.mjs --offline --include-fragments ^
     --check-html --check-a11y --check-ids ^
     --forbid "https://docs.twinbasic.com" ^
     --fallback-extensions html --index-files "index.html,." ^
-    --root-dir docs/_site-offline docs/_site-offline
+    --root-dir docs/_site-offline docs/_site-offline %*
+@popd

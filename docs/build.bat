@@ -1,2 +1,3 @@
-cd /d "%~dp0"
-node ..\builder\index.mjs --src .
+@pushd "%~dp0"
+node ..\builder\index.mjs --src . %*
+@popd
