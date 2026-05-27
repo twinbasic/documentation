@@ -229,6 +229,20 @@ export function chapterAnchorFromUrl(url, fallbackTitle = null) {
   return "ch-" + seed;
 }
 
+// Shared id-seed for a chapter divider article and its title heading.
+// Called from both renderChapterDivider and emitPart (landing_is_target).
+function chapterDividerId(chEntry) {
+  let idSeed;
+  if (chEntry.landing_page) {
+    idSeed = String(chEntry.landing_page).replaceAll("/", "-")
+      .replace(/^-/, "")
+      .replace(/-$/, "");
+  } else {
+    idSeed = String(chEntry.title ?? "").toLowerCase().replaceAll(" ", "-");
+  }
+  return `chd-${idSeed}`;
+}
+
 // PLAN-8 §6.2: parent URL for relative-href resolution. Folder-style
 // URLs (`/tB/Core/`) are their own parent; single-file URLs
 // (`/tB/Core/Const`) drop the trailing segment.
@@ -425,8 +439,12 @@ function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
   //   </article>
   // Pre-compress; the html-compress pass at the end collapses the
   // surrounding whitespace.
-  out.push(`<article class="${articleClass}" id="${chapterAnchor}">\n`);
+  out.push(`<article class="${articleClass}" id="${chapterAnchor}"${opts.markArticleClosed ? ' data-pdf-bookmark-closed' : ''}>\n`);
   out.push(`<span class="header-string">${headerTitle}</span>\n`);
+  // landing_is_target: chapter title heading injected here so it lands
+  // inside the landing-page article (making the PDF bookmark navigate to
+  // this page rather than the silent chapter-divider page).
+  if (opts.prependHtml) out.push(opts.prependHtml);
   out.push(body);
   // Some chapter bodies end with `\n`; some don't. The Liquid template
   // emits `{{ body }}\n</article>`, so we always need a separator
@@ -592,17 +610,21 @@ function formatBuildDateNow() {
 // PLAN-8 §6.9: part divider matches book.html lines 102-117. Order of
 // optional pieces: title (H1 or silent <p>) -> subtitle -> intro.
 function renderPartDivider(part, partNum, site) {
-  const silent = part.no_outline_entry ? " silent" : "";
+  // landing_is_target: the part title heading moves to the landing page
+  // article (see emitPart), so the divider always renders silently.
+  const useSilent = part.no_outline_entry || part.landing_is_target;
+  const silent = useSilent ? " silent" : "";
   // Jekyll's `{%- for part -%}` eats the leading whitespace before
   // `<article`; emit with no leading newline so `</article><article>`
   // / `</section><article>` join directly.
   let out = `<article class="part-divider${silent}" id="pt-${partNum}">\n`;
   out += `  <span class="part-title-string">${part.title}</span>\n`;
   out += `  <p class="part-number">Part ${ROMAN[partNum - 1] ?? ""}</p>\n`;
-  if (part.no_outline_entry) {
+  if (useSilent) {
     out += `  <p class="part-title-silent">${part.title}</p>`;
   } else {
-    out += `  <h1 id="pt-${partNum}-title">${part.title}</h1>`;
+    const closedAttr = part.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+    out += `  <h1 id="pt-${partNum}-title"${closedAttr}>${part.title}</h1>`;
   }
   if (part.subtitle) {
     // book.html line 111-112: subtitle | markdownify | remove '<p>'
@@ -631,22 +653,18 @@ function renderPartDivider(part, partNum, site) {
 
 // PLAN-8 §6.9: chapter divider matches book.html lines 218-227.
 function renderChapterDivider(chEntry) {
-  let idSeed;
-  if (chEntry.landing_page) {
-    idSeed = String(chEntry.landing_page).replaceAll("/", "-")
-      .replace(/^-/, "")
-      .replace(/-$/, "");
-  } else {
-    idSeed = String(chEntry.title ?? "").toLowerCase().replaceAll(" ", "-");
-  }
-  const dividerId = `chd-${idSeed}`;
-  const silent = chEntry.no_outline_entry ? " silent" : "";
+  const dividerId = chapterDividerId(chEntry);
+  // landing_is_target: the chapter title heading moves to the landing page
+  // article (see emitPart), so the divider always renders silently.
+  const useSilent = chEntry.no_outline_entry || chEntry.landing_is_target;
+  const silent = useSilent ? " silent" : "";
   // No leading newline -- mirrors Jekyll's `{%- for ch_entry -%}` strip.
   let out = `<article class="chapter-divider${silent}" id="${dividerId}">\n`;
-  if (chEntry.no_outline_entry) {
+  if (useSilent) {
     out += `  <p class="chapter-title-silent">${chEntry.title}</p>`;
   } else {
-    out += `  <h2 id="${dividerId}-title">${chEntry.title}</h2>`;
+    const closedAttr = chEntry.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+    out += `  <h2 id="${dividerId}-title"${closedAttr}>${chEntry.title}</h2>`;
   }
   if (chEntry.subtitle) {
     // book.html line 224-226: chapter subtitle is NOT markdownified --
@@ -698,18 +716,36 @@ function emitPart(out, part, partIdx, site, baseurl, imagePaths) {
 
   if (part.chapters && part.landing_page && part._landing) {
     const state = { currentIndexUrl: "", currentIndexKind: "class", currentIndexName: "" };
-    emitChapter(out, part._landing, {
+    const landingOpts = {
       skipSubPageDetection: true,
       skipBaseHeadingShift: !!part.no_heading_shift,
-    }, state, baseurl, imagePaths);
+    };
+    if (part.landing_is_target) {
+      const closedAttr = part.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+      landingOpts.prependHtml = `<h1 data-divider-heading id="pt-${partNum}-title"${closedAttr}>${part.title}</h1>\n`;
+    }
+    emitChapter(out, part._landing, landingOpts, state, baseurl, imagePaths);
   }
 
   if (part.chapters) {
     for (const chEntry of part.chapters) {
       out.push(renderChapterDivider(chEntry));
       const state = { currentIndexUrl: "", currentIndexKind: "class", currentIndexName: "" };
+      // For no_outline_entry chapters the outline entry is the first content
+      // heading; stamp the first non-empty article so parseOutline can find it.
+      let closedPending = !!(chEntry.no_outline_entry && chEntry.outline_closed);
       for (const chapter of chEntry._chapters ?? []) {
         const flags = chapteredFlags(part, chEntry);
+        if (closedPending && chapter.renderedContent?.trim()) {
+          flags.markArticleClosed = true;
+          closedPending = false;
+        }
+        if (chEntry.landing_is_target && chEntry.landing_page &&
+            chapter.permalink === chEntry.landing_page) {
+          const dividerId = chapterDividerId(chEntry);
+          const closedAttr = chEntry.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+          flags.prependHtml = `<h2 data-divider-heading id="${dividerId}-title"${closedAttr}>${chEntry.title}</h2>\n`;
+        }
         emitChapter(out, chapter, flags, state, baseurl, imagePaths);
       }
     }
@@ -719,7 +755,13 @@ function emitPart(out, part, partIdx, site, baseurl, imagePaths) {
       const isPartLanding = part.landing_page && chapter.permalink === part.landing_page;
       const flags = {};
       if (part.no_heading_shift) flags.skipBaseHeadingShift = true;
-      if (isPartLanding) flags.skipSubPageDetection = true;
+      if (isPartLanding) {
+        flags.skipSubPageDetection = true;
+        if (part.landing_is_target) {
+          const closedAttr = part.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+          flags.prependHtml = `<h1 data-divider-heading id="pt-${partNum}-title"${closedAttr}>${part.title}</h1>\n`;
+        }
+      }
       emitChapter(out, chapter, flags, state, baseurl, imagePaths);
     }
   }
@@ -784,7 +826,10 @@ export function rewriteBookHrefs(html, site, pages) {
     (_, open, anchorId, body, close) => {
       if (stripTargets.has(anchorId)) {
         const level = stripTargets.get(anchorId);
-        const re = new RegExp(`<${level}\\b[^>]*>[\\s\\S]*?</${level}>`);
+        // The negative lookahead skips injected divider headings
+        // (data-divider-heading) so the strip only removes the landing
+        // page's own source heading, not the one landing_is_target injects.
+        const re = new RegExp(`<${level}\\b(?![^>]*data-divider-heading)[^>]*>[\\s\\S]*?</${level}>`);
         body = body.replace(re, "");
       }
       const parentUrl = anchorToParent.get(anchorId);
@@ -850,13 +895,17 @@ function buildLandingStripTargets(bookData) {
   const map = new Map();
   for (const part of bookData.parts ?? []) {
     const partSkipBase = !!part.no_heading_shift;
-    if (part.landing_page && !part.no_outline_entry) {
+    if (part.landing_page && !(part.no_outline_entry && !part.landing_is_target)) {
       const level = partSkipBase ? 1 : 2;
       const anchor = chapterAnchorFromUrl(part.landing_page, part.title);
       map.set(anchor, `h${level}`);
     }
     for (const ch of part.chapters ?? []) {
-      if (!ch.landing_page || ch.no_outline_entry) continue;
+      // Strip landing H1 unless no_outline_entry is set WITHOUT landing_is_target
+      // (no_outline_entry promotes the landing's own H1 to the outline entry, so
+      // it must not be stripped; landing_is_target replaces it with an injected H2
+      // and still needs the landing H1 removed).
+      if (!ch.landing_page || (ch.no_outline_entry && !ch.landing_is_target)) continue;
       const chSkipExtra = !!ch.no_heading_shift;
       let level = 1;
       if (!partSkipBase) level++;
