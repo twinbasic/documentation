@@ -1,0 +1,603 @@
+/* Self-contained print stylesheet for the twinBASIC documentation PDF.
+   Rendered through pagedjs-cli (CSS Paged Media Module Level 3).
+
+   Paired with rouge.css (Rouge `github.light` theme, generated via rougify).
+   No just-the-docs styles are loaded for the PDF build --- this file is the
+   complete book design. */
+
+
+/* ---- Page geometry, running header, page numbers --------------------- */
+
+@page {
+  size: A4;
+  margin: 22mm 20mm 22mm 20mm;
+
+  @bottom-right {
+    /* Page number with part-title prefix. `string(part-title)` is set by
+       a hidden span on each part-divider article and persists across
+       pages until the next part. `var(--page-num)` is a JS-tracked
+       counter that survives aggressive-detach (perf/detach-pages.js) --
+       CSS `counter(page)` breaks when finalized pages are removed from
+       the DOM, so the Counters handler polyfills it as a CSS variable.
+       Named @page overrides (front-matter, divider, :first) suppress or
+       simplify this for pages that shouldn't show the part prefix. */
+    content: string(part-title) " - " var(--page-num);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #555;
+  }
+
+  @top-right {
+    content: string(chapter-title);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #555;
+  }
+}
+
+/* Page 1 of the document is the title page (book.html emits it before any
+   article). Suppress both the running header and the page number on it --
+   traditional title-page convention. `:first` here is the document's first
+   page, not the first page of each chapter. */
+@page :first {
+  @top-right    { content: ""; }
+  @bottom-right { content: ""; }
+}
+
+
+/* ---- Chapter boundaries --------------------------------------------- */
+
+/* One page break per article. Putting `break-before: page` on the
+   article itself (rather than on its h1) avoids the stacking-blank
+   issue where pagedjs honours an article-level break AND an inner
+   h1-level break separately. */
+article {
+  break-before: page;
+}
+
+/* Running-header source. Every chapter emits a hidden `<span
+   class="header-string">` as its first child; that span is the
+   string-set source for the @top-right chapter title. Routing through a
+   single dedicated element avoids pagedjs quirks where `:first-of-type`
+   + class-restricted selectors on h2/h3 left some top-level chapter
+   pages with stale or empty running headers. For top-level chapters the
+   span carries the chapter title; for sub-pages it carries the compound
+   "Parent - Sub" title (1.6c). */
+article.page > .header-string {
+  string-set: chapter-title content();
+  position: absolute;
+  font-size: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Part-title source for the @bottom-right page number prefix. Each part
+   divider emits a hidden <span class="part-title-string"> carrying the
+   part's title. `string(part-title)` persists across pages until the
+   next part divider overrides it -- same mechanism as chapter-title. */
+article.part-divider > .part-title-string {
+  string-set: part-title content();
+  position: absolute;
+  font-size: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ---- Title page (front matter, page 1) ------------------------------
+   Emitted by book.html as the first element in <body>, so it lands on
+   page 1 without any forced break. Chrome (running header + page number)
+   is blanked through the document-level `@page :first` rule above.
+   The book title sits a little below vertical centre; build provenance
+   and copyright pad down to the page bottom. */
+
+section.title-page {
+  text-align: center;
+  padding-top: 60mm;
+  break-after: page;
+}
+
+section.title-page .book-title {
+  font-size: 36pt;
+  font-weight: 700;
+  border: none;
+  line-height: 1.1;
+  margin: 0 0 0.4em;
+  break-after: avoid;
+}
+
+section.title-page .book-subtitle {
+  font-size: 16pt;
+  font-style: italic;
+  color: #444;
+  margin: 0;
+}
+
+section.title-page .title-footer {
+  margin-top: 130mm;
+  font-size: 9pt;
+  color: #555;
+}
+
+section.title-page .title-footer p {
+  margin: 0.3em 0;
+}
+
+
+/* ---- Part divider pages ---------------------------------------------
+   One <article class="part-divider"> is emitted per part in book.yml.
+   Each gets its own page; the running header is suppressed via the
+   named `divider` page; the page number stays in @bottom-right so the
+   eventual TOC can target the divider correctly. */
+
+article.part-divider {
+  page: divider;
+  text-align: center;
+  padding-top: 35%;
+  /* Restart page numbering at each Part so each section of the book reads
+     like a self-contained volume. Pagedjs's Counters module picks this up
+     and emits a `data-counter-page-reset` attribute on the element; the
+     `afterPageLayout` hook then injects a per-page rule that resets the
+     `page` counter on the part divider's page. Reset to 0 (not 1) so the
+     first content page after the divider reads "1" once the auto-increment
+     fires. The divider's @page rule suppresses both the running header and
+     the page counter (see @page divider below) so the divider page itself
+     reads as unnumbered, matching traditional book convention. */
+  counter-reset: page 0;
+}
+
+article.part-divider .part-number {
+  font-size: 14pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #555;
+  margin: 0 0 1.2em;
+}
+
+article.part-divider h1,
+article.part-divider .part-title-silent {
+  font-size: 32pt;
+  font-weight: 700;
+  border: none;
+  margin: 0 0 0.4em;
+  break-before: auto;
+  break-after: avoid;
+  line-height: 1.15;
+}
+
+article.part-divider .part-subtitle {
+  font-size: 14pt;
+  font-style: italic;
+  color: #444;
+  margin: 0 0 2em;
+}
+
+article.part-divider .part-intro {
+  max-width: 32em;
+  margin: 2em auto 0;
+  text-align: left;
+  font-size: 10.5pt;
+  color: #333;
+}
+
+@page divider {
+  @top-right    { content: ""; }
+  @bottom-right { content: ""; }
+}
+
+
+/* ---- Front matter -------------------------------------------------------
+   Each <article class="front-matter"> is emitted between the title page and
+   the first numbered Part (book.yml's `front_matter:` list). No part
+   divider, no part number; runs as ordinary book content but on a named
+   page that suppresses the running header so it reads as foreword-style
+   front matter rather than a chapter from inside a part. The named-page
+   selector works here because the article has `break-before: page` (per
+   the pagedjs gotcha that first-of-body never gets a named page applied;
+   front matter is never the first element thanks to the preceding
+   title-page section). */
+
+article.front-matter {
+  page: front-matter;
+  break-before: page;
+}
+
+@page front-matter {
+  @top-right    { content: ""; }
+  @bottom-right { content: var(--page-num); }
+}
+
+
+/* ---- Part foreword + chapter dividers (1.9) -----------------------------
+   A chaptered Part (currently the Packages part) emits two new article
+   shapes in addition to its regular chapter bodies:
+
+     <article class="part-foreword">    -- the part's intro page, sitting
+                                            between the part divider and
+                                            the first chapter divider. No
+                                            running header (named page).
+     <article class="chapter-divider">  -- one per chapter, full-page
+                                            title page styled like a
+                                            scaled-down part divider.
+
+   Chapter dividers use the same vertical centering as part dividers but
+   slightly smaller type, and no chapter number (the chapter ordinal is
+   implicit and doesn't read well at this position). The chapter title
+   on the divider is an H2 so it sits one level under the part divider's
+   H1 in the PDF outline; the corresponding source H1 on the chapter's
+   landing page is stripped by the book-href-rewrite plugin so the
+   outline shows the divider's H2 as the chapter's sole top-level entry. */
+
+article.part-foreword {
+  page: part-foreword;
+  break-before: page;
+}
+
+@page part-foreword {
+  @top-right { content: ""; }
+}
+
+article.chapter-divider {
+  page: chapter-divider;
+  break-before: page;
+  text-align: center;
+  padding-top: 30%;
+}
+
+article.chapter-divider h2,
+article.chapter-divider .chapter-title-silent {
+  font-size: 24pt;
+  font-weight: 700;
+  border: none;
+  margin: 0 0 0.5em;
+  break-before: auto;
+  break-after: avoid;
+  line-height: 1.2;
+}
+
+article.chapter-divider .chapter-subtitle {
+  font-size: 13pt;
+  font-style: italic;
+  color: #444;
+  margin: 0 auto;
+  max-width: 28em;
+}
+
+@page chapter-divider {
+  @top-right { content: ""; }
+}
+
+
+/* ---- Base typography ----------------------------------------------- */
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #1a1a1a;
+}
+
+body {
+  margin: 0;
+}
+
+strong { font-weight: 700; }
+em     { font-style: italic; }
+
+
+/* ---- Headings ------------------------------------------------------
+   After the 1.5a heading shift, the book uses h1 only on part dividers
+   (and any future title page / colophon). Chapter content uses h2..h6
+   with one level of demotion from the source kramdown output:
+     source h1 (chapter title)  -> h2
+     source h2 (section)         -> h3
+     source h3 (subsection)      -> h4
+     source h4..h6               -> h5..h7-stub
+   Visual sizes therefore stay anchored to the *source* role rather
+   than the rendered tag depth: the chapter title gets the big 24pt
+   look (article.page > h2:first-of-type below), sub-sections keep
+   their previous 18pt/14pt/12pt sizing through the per-depth rules. */
+
+h1, h2, h3, h4, h5, h6, h7-stub {
+  font-family: inherit;
+  color: #111;
+  margin: 1.6em 0 0.5em;
+  line-height: 1.25;
+  break-after: avoid;
+  break-inside: avoid;
+  display: block;
+}
+
+h1 {
+  font-size: 24pt;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 0.8em;
+}
+
+/* Chapter title for top-level chapters (source h1, now h2 after 1.5a).
+   Big, bold, no underline -- overrides the generic h2 rule. The
+   :not(.sub-chapter) restriction matches the string-set selector above
+   so sub-chapter articles don't apply this rule. */
+article.page:not(.sub-chapter) > h2:first-of-type {
+  font-size: 24pt;
+  font-weight: 700;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0.8em;
+}
+
+/* Sub-page chapter title (source h1, now h3 after 1.5a + 1.6b). Slightly
+   smaller than a top-level chapter (20pt vs 24pt) to signal that this
+   chapter sits below its parent index in the outline hierarchy, but
+   still distinct from in-chapter section headings. Overrides the
+   generic `article.page h3` 18pt-with-border rule. */
+article.page.sub-chapter > h3:first-of-type {
+  font-size: 20pt;
+  font-weight: 700;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0.7em;
+}
+
+/* Chaptered-part headings (1.9). Chapters inside a chaptered part get
+   an additional +1 heading shift on top of 1.5a / 1.6b so they nest in
+   the PDF outline below their chapter-divider's H2 rather than as
+   siblings. The result: source-H1 lands at h3 (top-level chapter) or
+   h4 (sub-page), source-H2 lands at h4 or h5, and so on. Visual
+   styling mirrors the flat-part rules above but at one tag deeper. */
+
+/* Top-level chapter in a chaptered part (source h1, now h3). */
+article.page.chaptered:not(.sub-chapter) > h3:first-of-type {
+  font-size: 24pt;
+  font-weight: 700;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0.8em;
+}
+
+/* Sub-page in a chaptered part (source h1, now h4). */
+article.page.chaptered.sub-chapter > h4:first-of-type {
+  font-size: 20pt;
+  font-weight: 700;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0.7em;
+}
+
+/* Section heading inside a chaptered-part chapter (source h2). */
+article.page.chaptered h4 {
+  font-size: 18pt;
+  font-weight: 700;
+  border-bottom: 0.5pt solid #bbb;
+  padding-bottom: 0.2em;
+}
+
+/* Subsection heading inside a chaptered-part chapter (source h3) --
+   Example / See Also / Remarks. */
+article.page.chaptered h5 {
+  font-size: 14pt;
+  font-weight: 600;
+  border: none;
+  padding: 0;
+}
+
+article.page.chaptered h6      { font-size: 12pt; font-weight: 600; }
+article.page.chaptered h7-stub { font-size: 11pt; font-weight: 600; color: #444; }
+
+/* Generic h2 (only used outside chapters now, e.g. for any future
+   front-matter sections). Kept for symmetry. */
+h2 {
+  font-size: 18pt;
+  font-weight: 700;
+  border-bottom: 0.5pt solid #bbb;
+  padding-bottom: 0.2em;
+}
+
+/* Section heading inside a chapter (source h2). */
+article.page h3 {
+  font-size: 18pt;
+  font-weight: 700;
+  border-bottom: 0.5pt solid #bbb;
+  padding-bottom: 0.2em;
+}
+
+/* Subsection heading inside a chapter (source h3) -- this is what
+   Example / See Also / Remarks render as. */
+article.page h4 {
+  font-size: 14pt;
+  font-weight: 600;
+  border: none;
+  padding: 0;
+}
+
+article.page h5 { font-size: 12pt; font-weight: 600; }
+article.page h6 { font-size: 11pt; font-weight: 600; }
+article.page h7-stub { font-size: 10.5pt; font-weight: 600; color: #444; }
+
+/* Generic depth fallbacks (for non-chapter contexts). */
+h3 { font-size: 14pt; font-weight: 600; }
+h4 { font-size: 12pt; font-weight: 600; }
+h5 { font-size: 11pt; font-weight: 600; }
+h6 { font-size: 10.5pt; font-weight: 600; color: #444; }
+h7-stub { font-size: 10pt; font-weight: 600; color: #555; }
+
+
+/* ---- Paragraphs and lists ----------------------------------------- */
+
+p {
+  margin: 0.6em 0;
+  orphans: 2;
+  widows: 2;
+}
+
+ul, ol {
+  margin: 0.5em 0;
+  padding-left: 1.8em;
+}
+
+li {
+  margin: 0.15em 0;
+  orphans: 2;
+  widows: 2;
+}
+
+
+/* ---- Definition lists (used heavily for parameter docs) ----------- */
+
+dl { margin: 0.6em 0; }
+dt { font-weight: 600; margin-top: 0.4em; }
+dd { margin: 0.1em 0 0.4em 1.8em; }
+
+
+/* ---- Inline code -------------------------------------------------- */
+
+code {
+  font-family: "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  background: #f4f4f6;
+  border: 0.5pt solid #e0e0e4;
+  border-radius: 2pt;
+  padding: 0 0.2em;
+  /* Smaller font-size makes the chip visually tight: glyphs fit naturally
+     inside the em-box rather than being forced into a cropped height.
+     Negative top/bottom `margin` on the inline-block keeps the chip's
+     contribution to the line box small so adjacent lines aren't pushed
+     apart. */
+  display: inline-block;
+  line-height: 1;
+  margin: -0.1em 0;
+  vertical-align: middle;
+}
+
+
+/* ---- Code blocks --------------------------------------------------
+   Two paths:
+   - Plain <pre><code> (no language fence): the <pre> carries the box.
+   - Rouge-rendered (div.highlighter-rouge > .highlight > pre.highlight > code):
+     the div.highlighter-rouge wrapper carries the box; all nested elements
+     (.highlight, pre.highlight, the whitespace `.w` spans whose background
+     rouge.css would otherwise paint behind indented lines) are stripped. */
+
+pre,
+div.highlighter-rouge {
+  font-family: "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 9pt;
+  line-height: 1.4;
+  margin: 0.6em 0;
+  padding: 0.6em 0.8em;
+  background: #f6f8fa;
+  border-radius: 3pt;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  break-inside: auto;
+}
+
+div.highlighter-rouge pre,
+div.highlighter-rouge .highlight,
+div.highlighter-rouge pre.highlight,
+div.highlighter-rouge .highlight .w {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+/* Code inside <pre> shouldn't get the inline-code box/border, and must
+   revert the inline-block + tight line-height the chip rule introduces. */
+pre code,
+div.highlighter-rouge code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  white-space: inherit;
+  display: inline;
+  line-height: inherit;
+}
+
+
+/* ---- Links -------------------------------------------------------- */
+
+a, a:link, a:visited {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+
+/* ---- Tables ------------------------------------------------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 0.95em;
+  break-inside: auto;
+}
+
+th, td {
+  border: 0.5pt solid #ccc;
+  padding: 0.3em 0.5em;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #f4f4f6;
+  font-weight: 600;
+}
+
+
+/* ---- Blockquotes -------------------------------------------------- */
+
+blockquote {
+  border-left: 2pt solid #bbb;
+  margin: 0.6em 0;
+  padding: 0.2em 0 0.2em 0.8em;
+  color: #444;
+}
+
+
+/* ---- GFMA admonitions (NOTE / IMPORTANT / WARNING / CAUTION / TIP) - */
+
+.markdown-alert {
+  border-left: 3pt solid #888;
+  background: #f6f8fa;
+  margin: 0.8em 0;
+  padding: 0.4em 0.8em 0.5em;
+  break-inside: avoid;
+}
+
+.markdown-alert-title {
+  font-weight: 700;
+  margin: 0 0 0.3em;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+.markdown-alert-title svg {
+  width: 11pt;
+  height: 11pt;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.markdown-alert > :last-child { margin-bottom: 0; }
+
+.markdown-alert-note         { border-left-color: #0969da; }
+.markdown-alert-note         .markdown-alert-title { color: #0969da; }
+.markdown-alert-important    { border-left-color: #8250df; }
+.markdown-alert-important    .markdown-alert-title { color: #8250df; }
+.markdown-alert-warning      { border-left-color: #bf8700; }
+.markdown-alert-warning      .markdown-alert-title { color: #bf8700; }
+.markdown-alert-caution      { border-left-color: #cf222e; }
+.markdown-alert-caution      .markdown-alert-title { color: #cf222e; }
+.markdown-alert-tip          { border-left-color: #1a7f37; }
+.markdown-alert-tip          .markdown-alert-title { color: #1a7f37; }
