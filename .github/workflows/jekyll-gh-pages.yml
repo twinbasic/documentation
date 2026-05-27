@@ -1,5 +1,4 @@
-name: Deploy Jekyll site to Pages
-# Starting point: https://github.com/actions/starter-workflows/blob/main/pages/jekyll.yml
+name: Build & deploy docs
 
 on:
   push:
@@ -35,54 +34,41 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Set up Ruby and install gems
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.4'
-          bundler-cache: true
-          working-directory: ./docs
-          cache-version: 0 # Increment this number if you need to re-download cached gems
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v6
-      - name: Write secondary config if available
-        run: |
-          echo "${{ vars.JEKYLL_SITE_CONFIG }}" > _site_config.yml
-          echo "SITE_CONFIG=_site_config.yml" >> "$GITHUB_ENV"
-        if: ${{ vars.JEKYLL_SITE_CONFIG != '' }}
-        working-directory: ./docs
-      - name: Build with Jekyll
-        run: bundle exec jekyll build --config _config.yml,$SITE_CONFIG --baseurl "${{ steps.pages.outputs.base_path }}"
-        working-directory: ./docs
-        env:
-          JEKYLL_ENV: production
-          PAGES_REPO_NWO: "${{ github.repository }}"
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
-      - name: Install Node.js dependencies and Chromium
-        # Install npm deps first so the link checks (check_links.mjs)
-        # can use htmlparser2. Chromium download runs in the same step
-        # so the cache hit / miss is one decision.
+          cache-dependency-path: |
+            package-lock.json
+            builder/package-lock.json
+      - name: Install dependencies and Chromium
         run: |
           npm ci
+          npm ci --prefix builder
           sudo npx puppeteer browsers install chrome --install-deps
-      - name: Check links (check_links.mjs)
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v6
+      - name: Build with tbdocs
+        run: node builder/index.mjs --src docs --baseurl '${{ steps.pages.outputs.base_path }}'
+      - name: Check links and site integrity
         # Three passes run in parallel via /sep/:
         #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
         #      extensionless-URL behaviour.  --base-path strips the Pages baseurl
         #      (e.g. `/twinBASIC-docs`) from absolute URLs before resolving.
-        #   2. Offline (_site-offline/): strict, no extension fallback.  --forbid
-        #      catches any surviving https://docs.twinbasic.com/<path> link the
-        #      offlinify rewrite missed (bare root URL is exempt).
+        #      Integrity checks (--check-html/a11y/ids/sitemap/search) run here.
+        #   2. Offline (_site-offline/): --forbid catches any surviving
+        #      https://docs.twinbasic.com/<path> link the offline rewrite missed
+        #      (bare root URL is exempt).  Integrity checks run here too (minus
+        #      sitemap/search -- the offline tree has neither).
         #   3. Book (_site-pdf/book.html): --no-fail makes failures informational
         #      (some links are not yet fully resolved).
         run: >-
           node scripts/check_links.mjs
           --offline --include-fragments
+          --check-html --check-a11y --check-ids
+          --check-sitemap --check-search
           --fallback-extensions html
           --index-files 'index.html,.'
           --base-path '${{ steps.pages.outputs.base_path }}'
@@ -90,8 +76,10 @@ jobs:
           docs/_site
           /sep/
           --offline --include-fragments
-          --index-files index.html
+          --check-html --check-a11y --check-ids
           --forbid 'https://docs.twinbasic.com'
+          --fallback-extensions html
+          --index-files 'index.html,.'
           --root-dir docs/_site-offline
           docs/_site-offline
           /sep/
@@ -109,16 +97,15 @@ jobs:
           path: ./docs/_site
       # The next two steps run only on manual dispatch -- they
       # package the offline copy of the site (`docs/_site-offline/`,
-      # produced by the always-on `also_build_offline: true` flag in
-      # `_config.yml` via `_plugins/offlinify.rb`) and ship it as a
-      # workflow artifact for the `release` job to attach to a new
-      # GitHub release. Pushes to `staging` skip this and only
-      # deploy to Pages.
+      # produced by the `also_build_offline: true` flag in
+      # `_config.yml`) and ship it as a workflow artifact for the
+      # `release` job to attach to a new GitHub release.  Pushes to
+      # `staging` skip this and only deploy to Pages.
       - name: Package offline site
         if: github.event_name == 'workflow_dispatch'
         run: |
           if [ ! -d ./docs/_site-offline ]; then
-            echo "::error::./docs/_site-offline not found -- ensure also_build_offline is true in _config.yml (or in the JEKYLL_SITE_CONFIG override)"
+            echo "::error::./docs/_site-offline not found -- ensure also_build_offline is true in _config.yml"
             exit 1
           fi
           (cd ./docs/_site-offline && zip -rq "${{ runner.temp }}/twinbasic-docs-offline.zip" .)
@@ -150,7 +137,7 @@ jobs:
         uses: actions/deploy-pages@v5
 
   # Release job -- runs only on manual dispatch, after a successful
-  # Pages deploy. Each manual deploy cuts a new GitHub release whose
+  # Pages deploy.  Each manual deploy cuts a new GitHub release whose
   # tag tracks a publicly visible documentation snapshot at
   # https://docs.twinbasic.com, with the offline-browsable copy of
   # the site attached as twinbasic-docs-offline.zip.
@@ -160,7 +147,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       # softprops/action-gh-release needs contents:write to create
-      # tags and publish releases. The top-level permissions block
+      # tags and publish releases.  The top-level permissions block
       # only grants contents:read for the build/deploy path.
       contents: write
     steps:
