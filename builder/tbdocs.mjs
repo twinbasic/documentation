@@ -3,6 +3,7 @@
 //
 // Usage: node builder/tbdocs.mjs [--src <path>] [--dest <path>]
 //        [--baseurl <prefix>] [--url <origin>] [--dry-run]
+//        [--serve] [--port <N>]
 //
 // Default --src is "docs" relative to the current working directory.
 // Default --dest is "<src>/_site". --dry-run skips all filesystem writes.
@@ -15,6 +16,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 
 import { discover } from "./discover.mjs";
@@ -44,6 +46,8 @@ function parseArgs(argv) {
     skipPdf: null,
     tolerateMissingImages: false,
     profileOffline: false,
+    serve: false,
+    port: 4000,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -73,6 +77,12 @@ function parseArgs(argv) {
       args.tolerateMissingImages = true;
     } else if (a === "--profile-offline") {
       args.profileOffline = true;
+    } else if (a === "--serve") {
+      args.serve = true;
+    } else if (a === "--port") {
+      args.port = Number(argv[++i]);
+    } else if (a.startsWith("--port=")) {
+      args.port = Number(a.slice("--port=".length));
     } else {
       throw new Error(`Unknown argument: ${a}`);
     }
@@ -95,8 +105,7 @@ export function makeTimer() {
   };
 }
 
-async function main() {
-  const opts = parseArgs(process.argv.slice(2));
+export async function runBuild(opts) {
   const { src, dest, dryRun, tolerateMissingImages, profileOffline } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
@@ -240,7 +249,20 @@ async function main() {
   return { pages, staticFiles, site, destRoot };
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function main() {
+  const opts = parseArgs(process.argv.slice(2));
+  if (opts.serve) {
+    const { runServe } = await import("./serve.mjs");
+    await runServe(opts);
+    return;
+  }
+  await runBuild(opts);
+}
+
+const isEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (isEntry) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
