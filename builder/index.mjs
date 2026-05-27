@@ -159,7 +159,12 @@ async function main() {
   const generatedAssets = highlighter.themeCss
     ? [{ rel: "assets/css/tb-highlight.css", content: highlighter.themeCss }]
     : [];
-  const writeStats = await writePhase(pages, staticFiles, { destRoot, dryRun, generatedAssets });
+  const writeStats = await writePhase(pages, staticFiles, {
+    destRoot,
+    dryRun,
+    generatedAssets,
+    baseurl,
+  });
   t.lap("write");
 
   let auxStats = null;
