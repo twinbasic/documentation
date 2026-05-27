@@ -8,7 +8,7 @@ permalink: /Documentation/Development/Building
 # Building and Deployment
 {: .no_toc }
 
-The day-to-day workflow for editing documentation: requirements, building, serving locally, link checking, Mermaid diagrams, screenshots, and the deployment to [docs.twinbasic.com](https://docs.twinbasic.com). Aimed at content contributors --- if you are hacking on the build pipeline itself, see [tbdocs Internals](Builder) instead.
+The day-to-day workflow for editing documentation: requirements, building, serving locally, link checking, Mermaid diagrams, screenshots, and the deployment to [docs.twinbasic.com](https://docs.twinbasic.com). Aimed at content contributors --- if you are modifying the build pipeline itself, see [tbdocs Internals](Builder) instead.
 
 * TOC goes here
 {:toc}
@@ -53,7 +53,7 @@ The simplest local preview is `build.bat` followed by opening the rendered files
 
     serve.bat
 
-This runs one `tbdocs` build, then starts a small in-tree static file server (`docs/serve.mjs`) on `_site/` at <http://localhost:4000>. The server logs only failures (4xx, 5xx, exceptions); successful requests stay silent. There is **no watch / live-reload** loop --- editing a source file requires re-running `serve.bat` (interrupt with <kbd>Ctrl</kbd><kbd>C</kbd> and start it again). Repeated rebuilds are inexpensive: `tbdocs` runs in ~3 seconds end-to-end on the current tree.
+This runs `tbdocs --serve`: after an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each file change, and any browser tab open on the page auto-reloads via SSE after each successful rebuild. Only failures (4xx, 5xx, server exceptions) are logged --- successful requests are silent. Ctrl+C exits cleanly.
 
 ## Checking link integrity
 
