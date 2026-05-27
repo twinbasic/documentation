@@ -1,7 +1,7 @@
 # PLAN-1: Phase 1 — DISCOVER (`discover.mjs`)
 
 Detailed implementation plan for the first phase of the tbdocs builder
-(`builder/index.mjs` orchestrator → `discover.mjs`). The builder lives at
+(`builder/tbdocs.mjs` orchestrator → `discover.mjs`). The builder lives at
 the repo root (sibling of `docs/`), not inside it. Read this together with
 [PLAN.md](PLAN.md) — it stays the authoritative architecture overview.
 
@@ -20,13 +20,13 @@ files on the existing dev machine.
 ### Source root
 
 `docs/` — the directory containing `_config.yml`, `index.md`, `_plugins/`, …
-The builder is invoked from the repo root as `node builder/index.mjs`, with
+The builder is invoked from the repo root as `node builder/tbdocs.mjs`, with
 `docs/` (relative to CWD) as the default source root. An explicit `--src`
 flag lets the orchestrator point elsewhere for tests.
 
 Phase 1 accepts an explicit `srcRoot` argument rather than computing it from
 `import.meta.url` or `process.cwd()`. This keeps the module pure and
-testable. The orchestrator in `index.mjs` is responsible for resolving the
+testable. The orchestrator in `tbdocs.mjs` is responsible for resolving the
 absolute path (typically `path.resolve(process.cwd(), "docs")`) and passing
 it down.
 
@@ -433,7 +433,7 @@ Per the user's choice. Reasons:
   its module avoids passing data through every intermediate phase.
 - Phase 1 stays narrowly focused: file discovery only.
 
-The orchestrator (`index.mjs`) is responsible for invoking `book.mjs`
+The orchestrator (`tbdocs.mjs`) is responsible for invoking `book.mjs`
 with the source root so it can read `_data/book.yml` itself.
 
 ### D5. `assets/css/` and `assets/js/` are excluded
@@ -646,12 +646,12 @@ at once is fine if the implementer prefers to do `npm install` once.
     PLAN-1.md       (this file)
     package.json    (new — gray-matter + fast-glob deps; "type": "module")
     discover.mjs    (new — the Phase 1 implementation)
-    index.mjs       (new — minimal stub that calls discover() and logs
+    tbdocs.mjs       (new — minimal stub that calls discover() and logs
                      counts; later phases extend it)
   docs/             (the Jekyll source tree; unchanged)
 ```
 
-Phase 1 deliberately leaves `index.mjs` as a thin shim. Real orchestration
+Phase 1 deliberately leaves `tbdocs.mjs` as a thin shim. Real orchestration
 arrives with Phase 2.
 
 ---

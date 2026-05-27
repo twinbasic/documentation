@@ -1,7 +1,7 @@
 // tbdocs orchestrator. Phases 1+2+3+4+5+6+7+8: DISCOVER + COMPUTE +
 // RENDER + TEMPLATE + WRITE ONLINE + AUXILIARIES + WRITE OFFLINE + WRITE PDF.
 //
-// Usage: node builder/index.mjs [--src <path>] [--dest <path>]
+// Usage: node builder/tbdocs.mjs [--src <path>] [--dest <path>]
 //        [--baseurl <prefix>] [--url <origin>] [--dry-run]
 //
 // Default --src is "docs" relative to the current working directory.

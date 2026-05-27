@@ -56,7 +56,7 @@ jobs:
         # deploys to kubao.github.io/twinBASIC-docs/, both bits move
         # so the page advertises its own URL rather than the config'd
         # production host).
-        run: node builder/index.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}'
+        run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}'
       - name: Check links and site integrity
         # Three passes run in parallel via /sep/:
         #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'

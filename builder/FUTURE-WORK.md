@@ -34,7 +34,7 @@ line specifically) is a content / parser call that can wait.
 **Reproduce**:
 ```
 cd builder
-node index.mjs                       # builds _site-new/
+node tbdocs.mjs                       # builds _site-new/
 node verify-phase6.mjs               # surfaces non-accepted content diffs
 ```
 
@@ -490,14 +490,14 @@ intent survives until PLAN-11.md is drafted (post-Phase-10).
 1. Verify Phases 5+6+7+8 all pass on the production tree
    (`diff -rq _site/ _site-new/` clean modulo accepted divergences;
    `check_links.mjs` clean; PDF renders via `book.bat`).
-2. Flip the default destination in `index.mjs` from `_site-new` to
+2. Flip the default destination in `tbdocs.mjs` from `_site-new` to
    `_site`.
 3. Delete `docs/_site-new/` (no longer used).
 4. Retire `bundle exec jekyll build`. The Gemfile, `_plugins/`,
    `_includes/`, `_sass/`, `_layouts/` can all be deleted in a
    follow-up cleanup.
 5. Update `build.bat` / `serve.bat` / `check.bat` to invoke
-   `node builder/index.mjs` instead of Jekyll.
+   `node builder/tbdocs.mjs` instead of Jekyll.
 6. Update the GitHub Pages deploy workflow
    (`.github/workflows/jekyll-gh-pages.yml`) to invoke tbdocs.
 7. Update the WIP.md "JS builder port (in progress)" section to

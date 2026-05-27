@@ -65,7 +65,7 @@ the output structure is fixed (three trees), the template is one layout with var
 ```
 builder/                 (sibling of docs/, at the repo root)
   README.md              quickstart + module map (Phase 9 addition)
-  index.mjs              entry point + orchestrator (also exports makeTimer)
+  tbdocs.mjs             entry point + orchestrator (also exports makeTimer)
   discover.mjs           file reading, frontmatter parsing
   nav.mjs                nav tree + breadcrumbs + nav-levels + children
   seo.mjs                per-page SEO metadata (shares site.markdown)
@@ -146,7 +146,7 @@ Phase 10: CUTOVER        (n/a)    Retire Jekyll; pivot harnesses to site-integri
 Phase 11: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [shipped]
 ```
 
-Timings are wall-clock measurements from `node builder/index.mjs` on
+Timings are wall-clock measurements from `node builder/tbdocs.mjs` on
 the current Windows dev machine. Per-phase target / cap details and
 the per-substep breakdown live in each `PLAN-N.md`. Phase 9 is net
 ~200 ms faster than the post-Phase-8 baseline (Phase 7 nav-block
@@ -397,7 +397,7 @@ title-page date from `commitDate` to wall-clock to match Jekyll's
 ### Phase 10: CUTOVER (planned)
 
 The Jekyll-to-tbdocs cutover. Flips the default destination from
-`_site-new` to `_site` in [index.mjs](index.mjs); updates
+`_site-new` to `_site` in [tbdocs.mjs](tbdocs.mjs); updates
 [docs/build.bat](../docs/build.bat) / [docs/serve.bat](../docs/serve.bat)
 / [docs/check.bat](../docs/check.bat) and the GitHub Pages workflow
 to call tbdocs instead of `bundle exec jekyll build`; retires the
@@ -471,7 +471,7 @@ output against Jekyll's:
 
 ```
 1. Build with Jekyll:    cd docs && bundle exec jekyll build  ->  docs/_site/
-2. Build with tbdocs:    node builder/index.mjs               ->  docs/_site-new/
+2. Build with tbdocs:    node builder/tbdocs.mjs              ->  docs/_site-new/
 3. Diff:                 diff -rq docs/_site/ docs/_site-new/
 ```
 

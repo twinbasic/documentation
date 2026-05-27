@@ -77,7 +77,7 @@ Implementation landed across:
   Per-article byte-diff vs `_site-pdf/book.html` with accepted-
   divergence skipping, plus structural / cross-ref / landing-strip /
   image-resolution / file-count / perf checks.
-- [`builder/index.mjs`](index.mjs) — `writePdf` call wired in after
+- [`builder/tbdocs.mjs`](tbdocs.mjs) — `writePdf` call wired in after
   `writeOffline`, plus the summary line.
 - [`builder/_diff.mjs`](_diff.mjs) + [`builder/_triage.mjs`](_triage.mjs) —
   extended per §12.1 with the new PDF modes. The pre-existing
@@ -378,7 +378,7 @@ builder/
   pdf.mjs         NEW. The I/O side of Phase 8. Exports:
                     writePdf(pages, staticFiles, site, destRoot, { serving })
                       -- the orchestrator entry point (gated by the
-                         outer `if (!dryRun)` in index.mjs, mirroring
+                         outer `if (!dryRun)` in tbdocs.mjs, mirroring
                          Phase 7's writeOffline). Returns
                          { bookBytes: N, html: 1, css: 2, images: N, missing: M }
                          where bookBytes is the assembled book.html
@@ -471,7 +471,7 @@ fixture before the next layer lands on top of it:
 8. **`compressHtml` wired in** (already exists in `compress.mjs`; just a call). Now `assembleBook` produces byte-comparable output.
 9. **`pdf.mjs` writer half** — `extractImagePaths`, `setupPdfDest`, `writePdfBook`, `copyPdfCss`, `copyPdfImages`, `reportMissingImages`, `writePdf`, `deriveBookOutputs` (§5.3-5.8). Five small functions + the orchestrator entry point.
 10. **`verify-phase8.mjs`** (§10) and the `_diff.mjs --book` / `_triage.mjs auditBook*` extensions (§12.1). Verification + diff tools.
-11. **`index.mjs` wire-in** (§12). The one-line `await writePdf(...)` call + the summary log extension.
+11. **`tbdocs.mjs` wire-in** (§12). The one-line `await writePdf(...)` call + the summary log extension.
 
 Each step's output is independently inspectable: steps 1-2 against
 unit fixtures; steps 3-7 against extracted blocks from
@@ -643,7 +643,7 @@ assertion style: the production source tree has exactly one
 book-combined page; deviation is a real bug. The Ruby pdfify warns
 because Jekyll's `:pages, :post_render` hook fires per-page and a
 mid-edit removal of `book.html`'s frontmatter would otherwise crash
-the watcher. tbdocs has no watcher and runs `node builder/index.mjs`
+the watcher. tbdocs has no watcher and runs `node builder/tbdocs.mjs`
 end-to-end; failing fast is the right default.
 
 **Note.** `bookPage` itself isn't directly used to assemble the
@@ -1018,7 +1018,7 @@ harness catch the error and assert on its message in tests.
 ### 5.9. Summary logging
 
 **Purpose.** One line summarising what Phase 8 did. Matches the
-Phase 5/6/7 summary line pattern in `index.mjs`.
+Phase 5/6/7 summary line pattern in `tbdocs.mjs`.
 
 Target shape:
 
@@ -2358,7 +2358,7 @@ Two documented divergence sources from Jekyll's `_site-pdf/book.html`:
 ### Performance smoke check
 
 ```sh
-node builder/index.mjs                # one-line per-phase timings
+node builder/tbdocs.mjs                # one-line per-phase timings
 cd builder && node verify-phase8.mjs  # ~25-check harness + timings
 ```
 
@@ -2454,7 +2454,7 @@ after Phase 7) remains unused.
     offline.mjs                — Phase 7 offline mirror
     pdf.mjs                    — NEW: writePdf + deriveBookOutputs + extractImagePaths
     accepted-divergences.mjs   — unchanged
-    index.mjs                  — orchestrator extended (writePdf call after offline + summary line)
+    tbdocs.mjs                  — orchestrator extended (writePdf call after offline + summary line)
     verify-phase1.mjs          — Phase 1 harness (retired Phase 10)
     verify-phase2.mjs          — Phase 2 harness (retired Phase 10)
     verify-phase3.mjs          — Phase 3 harness (retired Phase 10)
@@ -2473,7 +2473,7 @@ after Phase 7) remains unused.
   docs/.gitignore              — extended: _site-new-pdf/ added
 ```
 
-### Extended `index.mjs` orchestrator
+### Extended `tbdocs.mjs` orchestrator
 
 Phase 8 adds one substantive call to the orchestrator, plus a small
 extension to the summary line:
@@ -2604,9 +2604,9 @@ work and can be run to validate against tbdocs's output at any
 time.
 
 The cutover from Jekyll to tbdocs happens in a separate step:
-flipping `index.mjs`'s default destination from `_site-new/` to
+flipping `tbdocs.mjs`'s default destination from `_site-new/` to
 `_site/`, updating the GitHub Pages deploy workflow to invoke
-`node builder/index.mjs` instead of `bundle exec jekyll build`,
+`node builder/tbdocs.mjs` instead of `bundle exec jekyll build`,
 and retiring the Jekyll plugin set + Gemfile + Ruby toolchain.
 That's a post-Phase-8 follow-up, not part of Phase 8 itself.
 
@@ -2622,5 +2622,5 @@ block any current work.
 
 The post-port cutover from Jekyll to tbdocs (flip default
 destination, retire the Gemfile and Jekyll plugin set, swap CI to
-`node builder/index.mjs`) is tracked in
+`node builder/tbdocs.mjs`) is tracked in
 [FUTURE-WORK.md](FUTURE-WORK.md) §C1.

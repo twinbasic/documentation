@@ -106,7 +106,7 @@ Two values:
 
 | Value | Default | Source |
 |---|---|---|
-| `destRoot` | `path.resolve(srcRoot, "..", "_site-new")` during the port; `path.resolve(srcRoot, "..", "_site")` once tbdocs replaces Jekyll. Either way, a sibling of `docs/_data/` and `docs/_plugins/`. | `--dest <path>` CLI flag (extends the existing `--src` flag in `index.mjs`); falls back to the default sibling. |
+| `destRoot` | `path.resolve(srcRoot, "..", "_site-new")` during the port; `path.resolve(srcRoot, "..", "_site")` once tbdocs replaces Jekyll. Either way, a sibling of `docs/_data/` and `docs/_plugins/`. | `--dest <path>` CLI flag (extends the existing `--src` flag in `tbdocs.mjs`); falls back to the default sibling. |
 | `dryRun` | `false` | `--dry-run` CLI flag. When true, Phase 5 logs every intended operation but writes nothing. Useful for verification harnesses and CI smoke tests. |
 
 The orchestrator resolves both at startup and passes them down via
@@ -666,7 +666,7 @@ the drift case for ~1 ms. Recommended; placed in §6.4.
 ### 5.5. Summary logging
 
 **Purpose.** Print one line summarising what Phase 5 did. Mirrors
-the Phase 1-4 per-phase summary lines already in `index.mjs`.
+the Phase 1-4 per-phase summary lines already in `tbdocs.mjs`.
 
 The orchestrator wraps the per-surface counts and the resolved
 destination root in a two-line preamble before the existing
@@ -995,7 +995,7 @@ Watch-mode incremental rebuilds are a separate feature, not a
 Phase 5 concern. The implementer should not bake watch semantics
 into `write.mjs`; they belong in a wrapper that re-invokes the
 orchestrator. Jekyll's `jekyll serve` is its watch wrapper; tbdocs'
-equivalent would be a similar wrapper that calls `index.mjs` in a
+equivalent would be a similar wrapper that calls `tbdocs.mjs` in a
 loop with debounce.
 
 ### D8. The destination guard (`isUnderProject`) is mandatory, not opt-in
@@ -1111,7 +1111,7 @@ Per §10. `writePhase` itself does NOT run `check_links.mjs` or
   index roundtrip, sitemap shape) that Phase 5 has no reason to
   know about.
 
-The harness invokes Phase 5 (via `index.mjs`), then runs its
+The harness invokes Phase 5 (via `tbdocs.mjs`), then runs its
 own checks against the on-disk output.
 
 ### D14. The page-write loop reads `page.html` once
@@ -1285,7 +1285,7 @@ doesn't get tempted.
 
 ### Acceptance checklist for "Phase 5 is done"
 
-1. After `node builder/index.mjs` runs on the production tree
+1. After `node builder/tbdocs.mjs` runs on the production tree
    pointed at `docs/_site-new/`:
    - The directory `docs/_site-new/` exists and is non-empty.
    - It contains exactly **837 HTML pages** (838 total minus
@@ -1360,7 +1360,7 @@ doesn't get tempted.
    running the link check now would surface ~290 false positives;
    the harness skips it. After Phase 6 ships `redirects.mjs`, wire
    the call into the harness.
-9. Re-running `node builder/index.mjs` against the same source tree
+9. Re-running `node builder/tbdocs.mjs` against the same source tree
    produces byte-identical output (idempotency): `diff -rq
    _site-new/ _site-new-rerun/` is empty.
 10. Performance: full Phase 5 write of ~1,080 files completes in
@@ -1461,7 +1461,7 @@ The orchestrator's `makeTimer().lap("write")` prints a per-phase
 ms line:
 
 ```
-$ node builder/index.mjs
+$ node builder/tbdocs.mjs
 Phase 1+2+3+4+5 done: 838 pages, 234 static files
   wrote: 837 pages (1 skipped), 7 theme assets, 234 static files -> D:\...\docs\_site-new
 discover=88ms nav=21ms seo=14ms book=8ms buildInfo=0ms render=1954ms template=584ms write=391ms
@@ -1542,7 +1542,7 @@ copy package.
     template.mjs        — Phase 4 (shipped)
     compress.mjs        — Phase 4 (shipped)
     write.mjs           — §3 + §5 + §6 (~220 lines, NEW)
-    index.mjs           — orchestrator extended (CLI: --dest, --dry-run)
+    tbdocs.mjs           — orchestrator extended (CLI: --dest, --dry-run)
     verify-phase1.mjs   — Phase 1 harness (retired Phase 10)
     verify-phase2.mjs   — Phase 2 harness (retired Phase 10)
     verify-phase3.mjs   — Phase 3 harness (retired Phase 10)
@@ -1570,7 +1570,7 @@ copy package.
     _site-new/          — tbdocs' output (NEW; created by Phase 5)
 ```
 
-### Extended `index.mjs` orchestrator
+### Extended `tbdocs.mjs` orchestrator
 
 ```js
 import { writePhase } from "./write.mjs";
@@ -1712,12 +1712,12 @@ verifiable.
    no collisions on the current site (the assertion is a no-op
    negative check).
 
-8. **Wire `--dest` and `--dry-run` CLI flags into `index.mjs`.**
+8. **Wire `--dest` and `--dry-run` CLI flags into `tbdocs.mjs`.**
    Test with:
-   - `node builder/index.mjs --dry-run` (logs only, no I/O).
-   - `node builder/index.mjs --dest /tmp/foo` (should fail with
+   - `node builder/tbdocs.mjs --dry-run` (logs only, no I/O).
+   - `node builder/tbdocs.mjs --dest /tmp/foo` (should fail with
      the isUnderProject guard).
-   - `node builder/index.mjs --dest docs/_site-verify` (custom
+   - `node builder/tbdocs.mjs --dest docs/_site-verify` (custom
      scratch dest).
 
 9. **Wire `verify-phase5.mjs`** with the items in §10. Iterate
@@ -1751,7 +1751,7 @@ is the verification loop. Step 12 is the triage / cleanup pass.
 - **Read PLAN.md's "Verification Strategy" first.** The whole point
   of Phase 5 is to make the on-disk diff possible. The diff is the
   truth; everything else is process.
-- **Run `node builder/index.mjs --dry-run` early and often.** It
+- **Run `node builder/tbdocs.mjs --dry-run` early and often.** It
   catches "I broke the orchestrator wiring" without spending
   seconds on actual I/O.
 - **Use absolute paths everywhere.** Phase 5 receives `srcRoot`

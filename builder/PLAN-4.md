@@ -1992,7 +1992,7 @@ template engine, no HTML parser, no string-manipulation library.
     accepted-divergences.mjs    — Phase 3 list, possibly extended
     template.mjs        — §3 + §5 (~600 lines)
     compress.mjs        — §5.14 (~40 lines)
-    index.mjs           — orchestrator extended
+    tbdocs.mjs           — orchestrator extended
     verify-phase1.mjs   — Phase 1 harness (retired Phase 10)
     verify-phase2.mjs   — Phase 2 harness (retired Phase 10)
     verify-phase3.mjs   — Phase 3 harness (retired Phase 10)
@@ -2014,7 +2014,7 @@ template engine, no HTML parser, no string-manipulation library.
   docs/                 — unchanged
 ```
 
-### Extended `index.mjs` orchestrator
+### Extended `tbdocs.mjs` orchestrator
 
 ```js
 import { templatePhase } from "./template.mjs";

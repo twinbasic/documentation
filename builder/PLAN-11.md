@@ -63,7 +63,7 @@ slightly faster.
 ## 1. Inputs
 
 The Phase 10 end-state at HEAD: tbdocs is the canonical build path
-(`build.bat` invokes `node ../builder/index.mjs`); the eight
+(`build.bat` invokes `node ../builder/tbdocs.mjs`); the eight
 `verify-phase{1..8}.mjs` harnesses and their seven companion diff /
 triage tools are deleted; `accepted-divergences.mjs` is deleted;
 `scripts/check_links.mjs` carries the new integrity flags.
@@ -76,7 +76,7 @@ Specifically required:
 - No outstanding PRs that reference `accepted-divergences.mjs` or
   `verify-phase*.mjs` -- those files no longer exist; a PR that
   expects them in tree would conflict.
-- The GitHub Pages workflow runs cleanly from `node builder/index.mjs`
+- The GitHub Pages workflow runs cleanly from `node builder/tbdocs.mjs`
   (PLAN-10 §5.4).
 
 Not required as a precondition (but worth being aware of):
@@ -215,7 +215,7 @@ builder/
   template.mjs                +1 / -1. Stylesheet link swap (B2).
   book.mjs                    +1 / -1. Same swap for the PDF tree.
   pdf.mjs                     +1 / -1. REQUIRED_CSS entry swap.
-  index.mjs                   +20. Orchestrator: invoke mermaid.mjs
+  tbdocs.mjs                   +20. Orchestrator: invoke mermaid.mjs
                                before Phase 5; thread the highlight
                                theme through Phase 3's init.
   assets/css/rouge.css        DELETED. Replaced by the build-time
@@ -748,7 +748,7 @@ syntax-highlight palette):
   files to support documentation that links to the IDE itself
   is consistent with their distribution intent. If the upstream
   ever publishes a more restrictive licence, the fallback is
-  fetch-at-build-time (a small step in `index.mjs` that pulls
+  fetch-at-build-time (a small step in `tbdocs.mjs` that pulls
   the release artifact instead of reading from `builder/themes/`).
 - **Version recording.** The vendored copy was taken from the
   twinBASIC_IDE_BETA_982 build. When refreshing, prepend a
@@ -1101,7 +1101,7 @@ end-state.
     README.md                     (the existing module map updated for
                                    the new modules and the rouge.css
                                    removal)
-    index.mjs                     (+ 20 lines: mermaid pre-step,
+    tbdocs.mjs                     (+ 20 lines: mermaid pre-step,
                                    highlight-theme init)
     highlight.mjs                 (~ 80 lines, down from ~ 470)
     highlight-theme.mjs           NEW (~ 60-80 lines)
