@@ -130,46 +130,44 @@ when chasing parser parity becomes interesting.
 These are out-of-scope follow-ups noted while implementing the
 phases. Each is a clean addition; none block any current work.
 
-### B1. Mermaid `.mmd` -> `.svg` automation (PLAN-3 §15)
+### B1. Mermaid `.mmd` -> `.svg` automation (PLAN-3 §15) — **shipped in Phase 11**
 
-**Routing**: → **Phase 11**. Auto-regenerated SVGs would differ
-byte-for-byte from the hand-exported originals, regressing the
-`_site/assets/images/mmd/*.svg` byte match.
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.2](PLAN-11.md)).
 
-**Trigger**: a second mermaid diagram is added to the site, or the
-single existing one needs a re-export.
+`builder/mermaid.mjs` runs before Phase 1's discover, walks
+`docs/assets/images/mmd/*.mmd`, and invokes `mmdc` (via
+`npx --no-install` rooted at `builder/`) for any source whose `.svg`
+sibling is missing or older. The `.mmd` is now the canonical input;
+the SVG is a build artifact regenerated whenever the source changes.
+Adds `@mermaid-js/mermaid-cli` as a devDependency. The site already
+needs `puppeteer` at the repo root for the PDF render step (and CI
+calls `npx puppeteer browsers install chrome --install-deps`), so
+`mermaid.mjs` discovers that cached Chrome and passes it through
+via `PUPPETEER_EXECUTABLE_PATH` -- no second Chrome download. A
+missing `mmdc` or missing Chrome cache downgrades to a graceful
+warning; the existing on-disk SVG is retained, the build continues.
 
-The site currently has one mermaid source under
-`docs/assets/images/mmd/` with a hand-exported SVG sibling (produced
-via Typora). A small `mermaid.mjs` preprocessor invoking `mmdc` would
-close the loop so the source `.mmd` is the canonical input and the
-SVG regenerates automatically. Independent addition; doesn't touch
-any phase code.
+### B2. Switch to Shiki-themed output (PLAN-3 §15 / §D3) — **shipped in Phase 11**
 
-### B2. Switch to Shiki-themed output (PLAN-3 §15 / §D3)
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.1](PLAN-11.md)).
+Headline parity-update item.
 
-**Routing**: → **Phase 11** (headline item). Regresses HTML
-byte-match (per-span class names) AND the rouge.css file.
+`scripts/extract_theme_colors.py` and `builder/assets/css/rouge.css`
+are gone; `builder/highlight-theme.mjs` parses the three vendored
+`.theme` files under `builder/themes/` (Light, Dark, Classic) and
+emits `_site/assets/css/tb-highlight.css` at build time. Per-span
+class names switched from Rouge tokens (`k`, `s`, `mi`) to a
+colour-palette scheme (`c1`, `c2`, …) — one classId per unique
+(Light props, Dark props) tuple, so symbols sharing both palettes'
+properties collapse to a single rule (the five Literal* symbols
+fold to one `c13` on the current themes). `builder/highlight.mjs`
+shrank from ~470 lines to ~190; the per-language Rouge-quirk
+overrides folded into the theme's scope-to-Symbol table.
 
-**Approach**: rather than the original "switch to Shiki's default
-`<span style="color:#xxx">` output", the Phase 11 plan generates the
-Shiki theme **from the upstream twinBASIC `.twin` style source
-files** during the build, replacing the current
-`scripts/extract_theme_colors.py` mapping that produces Rouge
-classes. The original styling information lives in the `.twin`
-files; the current pipeline indirects through Rouge classes because
-Rouge's class set is fixed. Reading the `.twin` source directly lets
-the syntax colors stay in sync with upstream without manual remap.
-
-**Trigger**: Phase 10 lands (the cutover removes the byte-vs-Jekyll
-acceptance bar).
-
-Phase 3 currently maps Shiki's TextMate scopes onto Rouge class
-names so the existing `assets/css/rouge.css` keeps working
-byte-for-byte. The Phase 11 change drops the mapper, generates Shiki
-styles directly from the `.twin` source files, and changes the
-per-span class names from Rouge tokens (`k`, `s`, `mi`) to a
-colour-palette scheme (`c1`, `c2`, … per unique theme colour).
+Light palette ships at root; dark palette nests under
+`html.dark-mode` so the chrome's theme toggle flips both halves
+together. The PDF tree links `tb-highlight.css` from `book.html`
+in place of the retired `rouge.css`.
 
 #### B2a. Shiki output-mode investigation (findings, 2026-Q2)
 
@@ -225,19 +223,19 @@ loader walking `_data/*.yml` into `site.data` would cover any future
 data file without per-file plumbing. Defer until a second data file
 exists.
 
-### B5. Inline copy-code button server-side rendering (PLAN-3 §15 / §D16)
+### B5. Inline copy-code button server-side rendering (PLAN-3 §15 / §D16) — **shipped in Phase 11**
 
-**Routing**: → **Phase 11**. Adds button HTML to every `<pre>`;
-regresses HTML byte-match.
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.3](PLAN-11.md)).
 
-**Trigger**: the just-the-docs copy-code JS needs to be retired
-(client-bundle shrink, accessibility audit, etc.).
-
-The copy-code button is currently injected at runtime by the
-just-the-docs theme JS. Server-side injection in `highlight.mjs`
-(adding the `<button class="copy">` next to each `<pre>`) would let
-us drop the client script. Cosmetic; not worth doing without a
-trigger.
+`builder/highlight.mjs` emits the `<button class="copy-code">` HTML
+inside each `<div class="highlighter-rouge">` wrapper at build time
+(gated by `enable_copy_code_button` in `_config.yml`; default true).
+The chrome's existing CSS positions it absolutely over the top-right
+corner of the code block. `builder/assets/js/just-the-docs.js`
+retired the runtime DOM-injection loop -- the click handler now
+binds to the pre-rendered buttons via `closest('div.highlighter-rouge')`.
+`builder/assets/css/print.css` hides the button for the PDF render
+path.
 
 ### B6. Linkify exception list (PLAN-3 §15 / §D10)
 
@@ -294,34 +292,40 @@ offlinify's `tick(:time_*)` accumulators. Per-substep wall-time
 isn't captured in the first cut; only the Phase 7 total appears in
 the orchestrator's `t.summary()`.
 
-### B10. Phase 7 search-data minification (PLAN-7 §13)
+### B10. Phase 7 search-data minification (PLAN-7 §13) — **shipped in Phase 11**
 
-**Routing**: → **Phase 11**. Jekyll's `search-data.js` is not
-minified; minifying regresses the offline-tree byte match.
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.4](PLAN-11.md)).
 
-**Trigger**: complaints about page load under `file://` on spinning
-disks, or `_site-offline.zip` size pressure.
+`builder/offline.mjs`'s `deriveOfflineSearchDataJs` re-stringifies
+the parsed search-data JSON without indentation before wrapping it
+as `window.SEARCH_DATA = ...;`. The online `_site/assets/js/search-data.json`
+keeps its pretty-printed shape (Phase 6 unchanged); only the offline
+tree's `_site-offline/assets/js/search-data.js` is minified. Real-
+world reduction on the current tree is ~100 KB (~3.6%) -- 2.80 MB ->
+2.70 MB -- modest compared to the PLAN-11 ~1.1 MB estimate, because
+most of the file is content payload (which is preserved verbatim);
+only the per-entry indentation collapses.
 
-Compress `search-data.js` (~2.8 MB -> ~1.7 MB at modest JSON
-minification). The search index dominates offline-tree size; this
-is the highest-leverage size reduction.
+### B11. Phase 7 AST-based JTD JS patching (PLAN-7 §13) — **shipped in Phase 11**
 
-### B11. Phase 7 AST-based JTD JS patching (PLAN-7 §13)
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.5](PLAN-11.md)).
 
-**Routing**: → **Phase 11**. Replacing the regex patches with an
-AST rewrite carries a real risk of byte drift in the patched
-`just-the-docs.js`; Phase 11 verifies byte-identity or accepts the
-divergence.
+`builder/offline.mjs`'s `deriveOfflineJtdJs` parses the upstream
+`just-the-docs.js` with `acorn`, walks the AST for
+`FunctionDeclaration` nodes named `navLink` / `initSearch`, and
+string-slices the canonical replacements in at the node ranges.
+Non-patched regions stay byte-identical to upstream -- verified the
+new AST output matches the prior regex-patched bytes 1:1 on the
+current just-the-docs version (`19,963` bytes, identical).
 
-**Trigger**: regex misses in the patch step (the warning lines
-`deriveOfflineJtdJs` returns would surface this), typically caused
-by an upstream just-the-docs release changing the patched function
-shape.
+No regex fallback is shipped. `just-the-docs.js` is a vendored
+asset in `builder/assets/js/`; re-extraction only happens on
+deliberate gem-bump operations. A parse failure at build time is a
+clear signal to fix the asset (or the AST patcher's expectations)
+at the moment of the bump rather than silently switching to a
+second code path.
 
-Replace the regex patches with an acorn-based AST rewrite. The
-current regexes anchor on specific function signatures inside
-`just-the-docs.js`; an AST pass would survive cosmetic upstream
-edits.
+Adds `acorn` and `acorn-walk` to `builder/package.json` dependencies.
 
 ### B12. Phase 5 `--against-disk` diff mode (PLAN-5 §14 step 11)
 

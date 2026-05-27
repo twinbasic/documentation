@@ -18,6 +18,7 @@ import process from "node:process";
 import yaml from "js-yaml";
 
 import { discover } from "./discover.mjs";
+import { regenerateMermaid } from "./mermaid.mjs";
 import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
@@ -101,6 +102,16 @@ async function main() {
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
   const t = makeTimer();
+
+  // Phase 11 (B1) preprocess: regenerate stale mermaid SVGs before
+  // discover walks the tree so freshly-emitted siblings land in
+  // staticFiles[] on this same build.
+  const mermaidStats = await regenerateMermaid(srcRoot);
+  t.lap("mermaid");
+  if (mermaidStats.regenerated > 0) {
+    console.log(`mermaid: regenerated ${mermaidStats.regenerated} of ${mermaidStats.processed} SVG(s)`);
+  }
+
   const { pages, staticFiles } = await discover(srcRoot);
   t.lap("discover");
 
@@ -117,7 +128,9 @@ async function main() {
   // Build the shared markdown-it instance up front so Phase 2's SEO
   // pass and Phase 3's body renderer use the same configured renderer.
   // initHighlighter overlaps with the running git shell-outs above.
-  const highlighter = await initHighlighter();
+  const highlighter = await initHighlighter({
+    copyButton: config.enable_copy_code_button !== false,
+  });
   const linkTables = buildLinkTables(pages);
   const baseurl = String(config.baseurl || "");
   const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
@@ -143,7 +156,15 @@ async function main() {
   await templatePhase(pages, site);
   t.lap("template");
 
-  const writeStats = await writePhase(pages, staticFiles, { destRoot, dryRun });
+  const generatedAssets = highlighter.themeCss
+    ? [{ rel: "assets/css/tb-highlight.css", content: highlighter.themeCss }]
+    : [];
+  const writeStats = await writePhase(pages, staticFiles, {
+    destRoot,
+    dryRun,
+    generatedAssets,
+    baseurl,
+  });
   t.lap("write");
 
   let auxStats = null;

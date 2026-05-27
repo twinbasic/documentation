@@ -1,12 +1,22 @@
 /* Self-contained print stylesheet for the twinBASIC documentation PDF.
    Rendered through pagedjs-cli (CSS Paged Media Module Level 3).
 
-   Paired with rouge.css (Rouge `github.light` theme, generated via rougify).
-   No just-the-docs styles are loaded for the PDF build --- this file is the
-   complete book design. */
+   Paired with tb-highlight.css (generated at build time from the
+   vendored .theme files; see builder/highlight-theme.mjs). No
+   just-the-docs styles are loaded for the PDF build --- this file is
+   the complete book design. */
 
 
 /* ---- Page geometry, running header, page numbers --------------------- */
+
+
+/* ---- Print-only suppression ---------------------------------------- */
+
+/* The copy-code button is interactive chrome; it has no place in the
+   PDF. The button HTML is server-rendered (Phase 11 B5) so it's in
+   book.html too. Hide it for the PDF render path. */
+button.copy-code { display: none; }
+
 
 @page {
   size: A4;

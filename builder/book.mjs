@@ -535,7 +535,7 @@ function renderBookHead(lang, siteTitle) {
 <head>
   <meta charset="UTF-8">
   <title>${siteTitle}</title>
-  <link rel="stylesheet" href="assets/css/rouge.css">
+  <link rel="stylesheet" href="assets/css/tb-highlight.css">
   <link rel="stylesheet" href="assets/css/print.css">
 </head>`;
 }

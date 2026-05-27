@@ -26,6 +26,9 @@ import { promises as fs } from "node:fs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import * as acorn from "acorn";
+import * as acornWalk from "acorn-walk";
+
 import {
   WRITE_LIMIT,
   isUnderProject,
@@ -739,9 +742,6 @@ function rewriteCss(css, fileDir, fileSegs, sitePaths, caches, baseurl) {
 // §G  just-the-docs.js patches + search-data.js wrapper
 // ---------------------------------------------------------------------------
 
-const JTD_NAVLINK_RE = /function navLink\(\) \{[\s\S]*?return null; \/\/ avoids `undefined`\s*\}/;
-const JTD_INITSEARCH_FN_RE = /function initSearch\(\) \{[\s\S]*?request\.send\(\);\s*\}/;
-
 // The "Patched by _plugins/offlinify.rb" comment strings are kept
 // verbatim from the Ruby Offlinify constants so the patched JS is
 // byte-identical to Jekyll's _site-offline/assets/js/just-the-docs.js.
@@ -841,35 +841,65 @@ async function patchJustTheDocsJs(srcPath, destPath) {
 // just-the-docs.js source string. Returns `{ js, patches, warnings }`.
 // `warnings` is an array of warning lines for any patch that couldn't
 // be located -- the caller decides whether to log them.
+//
+// Phase 11 (B11): parses just-the-docs.js with acorn, walks for
+// FunctionDeclaration nodes named `navLink` / `initSearch`, and
+// replaces them by string-slicing at the node ranges -- so the
+// non-patched regions stay byte-identical to the upstream source.
+// Survives cosmetic upstream edits (variable renames, whitespace
+// changes inside the function body) that would have broken anchored
+// regex matches.
+//
+// `just-the-docs.js` is a vendored asset in `builder/assets/js/`; it
+// only changes when the operator deliberately re-extracts after a
+// gem bump. A parse error here means that re-extraction landed
+// something acorn can't read -- fix it at the time, no defensive
+// fallback shimmed in.
 export function deriveOfflineJtdJs(src) {
+  const ast = acorn.parse(src, {
+    ecmaVersion: "latest",
+    sourceType: "script",
+    ranges: true,
+  });
+
+  const edits = [];
+  acornWalk.simple(ast, {
+    FunctionDeclaration(node) {
+      if (!node.id) return;
+      if (node.id.name === "navLink") {
+        edits.push({ start: node.start, end: node.end, replacement: JTD_NAVLINK_REPLACEMENT, label: "navLink()" });
+      } else if (node.id.name === "initSearch") {
+        edits.push({ start: node.start, end: node.end, replacement: JTD_INITSEARCH_FN_REPLACEMENT, label: "initSearch()" });
+      }
+    },
+  });
+
+  // Apply edits right-to-left so earlier offsets stay valid.
+  edits.sort((a, b) => b.start - a.start);
   let out = src;
-  const patches = [];
+  for (const e of edits) {
+    out = out.slice(0, e.start) + e.replacement + out.slice(e.end);
+  }
+  // Patch list in source order for nicer log output.
+  const patches = edits
+    .slice()
+    .sort((a, b) => a.start - b.start)
+    .map((e) => e.label);
+
   const warnings = [];
-
-  let next = out.replace(JTD_NAVLINK_RE, JTD_NAVLINK_REPLACEMENT);
-  if (next !== out) {
-    patches.push("navLink()");
-    out = next;
-  } else {
+  const found = new Set(patches);
+  if (!found.has("navLink()")) {
     warnings.push(
-      "offline: could not locate navLink() in just-the-docs.js -- " +
-      "nav-active detection will be broken under file://. Update " +
-      "JTD_NAVLINK_RE in builder/offline.mjs.",
+      "offline: AST walk found no navLink() declaration in just-the-docs.js -- " +
+      "nav-active detection will be broken under file://.",
     );
   }
-
-  next = out.replace(JTD_INITSEARCH_FN_RE, JTD_INITSEARCH_FN_REPLACEMENT);
-  if (next !== out) {
-    patches.push("initSearch()");
-    out = next;
-  } else {
+  if (!found.has("initSearch()")) {
     warnings.push(
-      "offline: could not locate initSearch() in just-the-docs.js -- " +
-      "offline search will not work. Update JTD_INITSEARCH_FN_RE in " +
-      "builder/offline.mjs.",
+      "offline: AST walk found no initSearch() declaration in just-the-docs.js -- " +
+      "offline search will not work.",
     );
   }
-
   return { js: out, patches, warnings };
 }
 
@@ -883,9 +913,15 @@ async function writeSearchDataJs(destPath, jsonBytes) {
 }
 
 // Pure-compute: wrap the search-data.json bytes as a JS global so a
-// <script src=> can load them under file://.
+// <script src=> can load them under file://. Re-stringifies the parsed
+// JSON without indentation (Phase 11 B10) -- the offline tree's
+// search-data.js is consumed only by the lunr runtime, which doesn't
+// care about formatting; minification shaves ~1.1 MB off the offline
+// asset footprint. The online search-data.json keeps its pretty-printed
+// shape (Phase 6 unchanged).
 export function deriveOfflineSearchDataJs(jsonBytes) {
-  return `window.SEARCH_DATA = ${jsonBytes};\n`;
+  const minified = JSON.stringify(JSON.parse(jsonBytes));
+  return `window.SEARCH_DATA = ${minified};\n`;
 }
 
 // ---------------------------------------------------------------------------

@@ -32,7 +32,7 @@ import {
 } from "./write.mjs";
 
 const PDF_SUFFIX = "-pdf";
-const REQUIRED_CSS = ["assets/css/print.css", "assets/css/rouge.css"];
+const REQUIRED_CSS = ["assets/css/print.css", "assets/css/tb-highlight.css"];
 const LIMIT = WRITE_LIMIT;
 
 // ---------------------------------------------------------------------------

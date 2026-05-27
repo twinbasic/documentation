@@ -29,7 +29,7 @@ export const WRITE_LIMIT = LIMIT;
 const mkdirCache = new Set();
 const mkdirInflight = new Map();
 
-export async function writePhase(pages, staticFiles, { destRoot, dryRun = false } = {}) {
+export async function writePhase(pages, staticFiles, { destRoot, dryRun = false, generatedAssets = [], baseurl = "" } = {}) {
   if (!destRoot) {
     throw new Error("writePhase requires a destRoot");
   }
@@ -44,8 +44,8 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false 
     const pagesToWrite = pages.filter(p => p.html !== undefined).length;
     const skipped = pages.length - pagesToWrite;
     console.log(`[dry-run] would write ${pagesToWrite} pages (${skipped} skipped), ` +
-                `theme assets from ${BUILDER_ASSETS}, ${staticFiles.length} static files ` +
-                `to ${destRoot}`);
+                `theme assets from ${BUILDER_ASSETS}, ${generatedAssets.length} generated assets, ` +
+                `${staticFiles.length} static files to ${destRoot}`);
     return {
       pages: { written: pagesToWrite, skipped },
       theme: { copied: 0 },
@@ -55,8 +55,9 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false 
 
   const [pagesStats, themeStats, staticStats] = await Promise.all([
     writePages(pages, destRoot, LIMIT),
-    copyTheme(BUILDER_ASSETS, destRoot, LIMIT),
+    copyTheme(BUILDER_ASSETS, destRoot, LIMIT, baseurl),
     copyStaticFiles(staticFiles, destRoot, LIMIT),
+    writeGeneratedAssets(generatedAssets, destRoot, LIMIT),
   ]);
 
   return {
@@ -64,6 +65,20 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false 
     theme: themeStats,
     staticFiles: staticStats,
   };
+}
+
+// ---------- Generated assets (Phase 11 B2) ------------------------------
+
+// Build-time-generated files (currently just `tb-highlight.css` from
+// highlight-theme.mjs) written under <destRoot>/. Run alongside the
+// static / theme / pages writes so they land before the offline +
+// PDF passes go looking for them.
+async function writeGeneratedAssets(assets, destRoot, limit) {
+  await runLimited(assets, limit, async ({ rel, content }) => {
+    const dest = path.join(destRoot, rel);
+    await mkdirRec(path.dirname(dest));
+    await safeWrite(dest, () => fs.writeFile(dest, content, "utf8"));
+  });
 }
 
 // ---------- §5.1 prepareDestination -------------------------------------
@@ -106,13 +121,37 @@ async function writePages(pages, destRoot, limit) {
 
 // ---------- §5.3 copyTheme ----------------------------------------------
 
-async function copyTheme(builderAssetsRoot, destRoot, limit) {
+async function copyTheme(builderAssetsRoot, destRoot, limit, baseurl) {
   const destAssets = path.join(destRoot, "assets");
   // README.md is meta-documentation for the builder itself (see
   // builder/assets/README.md -- the re-extraction procedure + CSS
   // class contract); it's not a deployable asset. Skip it so it
   // doesn't show up at <destRoot>/assets/README.md.
-  return copyTree(builderAssetsRoot, destAssets, limit, name => name !== "README.md");
+  return copyTree(
+    builderAssetsRoot,
+    destAssets,
+    limit,
+    (name) => name !== "README.md",
+    baseurl
+      ? { transform: cssBaseurlTransformer(baseurl), extensions: [".css"] }
+      : null,
+  );
+}
+
+// Build-time CSS rewriter for non-empty baseurl deployments. Root-
+// absolute `url("/path")` references (e.g. the .site-logo background-
+// image's `url("/favicon.png")` in just-the-docs-combined.css) resolve
+// to the wrong location when GitHub Pages serves the site under a
+// sub-path. Prepending the baseurl makes them resolve correctly without
+// requiring a re-extraction of the vendored CSS.
+//
+// Protocol-relative URLs (`url("//cdn.../foo")`) are left alone via
+// the negative lookahead.
+function cssBaseurlTransformer(baseurl) {
+  return (css) => css.replace(
+    /url\((["']?)\/(?!\/)([^)"']*)\1\)/g,
+    (whole, q, rest) => `url(${q}${baseurl}/${rest}${q})`,
+  );
 }
 
 // ---------- §5.4 copyStaticFiles ----------------------------------------
@@ -186,7 +225,7 @@ export async function writeFileMkdirp(filePath, content) {
 
 // ---------- §6.3 copyTree -----------------------------------------------
 
-async function copyTree(src, dest, limit, filter = null) {
+async function copyTree(src, dest, limit, filter = null, transformSpec = null) {
   const entries = await collectTreeEntries(src, dest, filter);
   // Directories first, sorted shallow-to-deep, so all mkdir lands before
   // any copyFile.
@@ -197,8 +236,15 @@ async function copyTree(src, dest, limit, filter = null) {
     await mkdirRec(d.destAbs);
   }
   const files = entries.filter(e => e.isFile);
+  const transformExts = transformSpec ? new Set(transformSpec.extensions) : null;
   await runLimited(files, limit, async (f) => {
-    await safeWrite(f.destAbs, () => fs.copyFile(f.srcAbs, f.destAbs));
+    if (transformExts && transformExts.has(path.extname(f.srcAbs))) {
+      const raw = await fs.readFile(f.srcAbs, "utf8");
+      const out = transformSpec.transform(raw);
+      await safeWrite(f.destAbs, () => fs.writeFile(f.destAbs, out, "utf8"));
+    } else {
+      await safeWrite(f.destAbs, () => fs.copyFile(f.srcAbs, f.destAbs));
+    }
   });
   return { copied: files.length };
 }

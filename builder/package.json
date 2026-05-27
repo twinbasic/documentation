@@ -9,6 +9,8 @@
     "build": "node index.mjs"
   },
   "dependencies": {
+    "acorn": "^8.0",
+    "acorn-walk": "^8.0",
     "fast-glob": "^3.3",
     "gray-matter": "^4.0",
     "js-yaml": "^4.1",
@@ -17,5 +19,8 @@
     "markdown-it-deflist": "^3.0",
     "markdown-it-footnote": "^4.0",
     "shiki": "^1.0"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.0"
   }
 }

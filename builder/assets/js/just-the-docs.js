@@ -527,7 +527,10 @@ jtd.onReady(function(){
   initSearch();
 });
 
-// Copy button on code
+// Copy button on code (Phase 11 B5: button HTML is pre-rendered by
+// builder/highlight.mjs at build time; this hook only binds the click
+// handler. The upstream `processCodeBlocks` runtime DOM-injection
+// path is gone -- the button is in the DOM before this fires.)
 
 jtd.onReady(function(){
 
@@ -536,34 +539,25 @@ jtd.onReady(function(){
     return;
   }
 
-  var codeBlocks = document.querySelectorAll('div.highlighter-rouge, div.listingblock > div.content, figure.highlight');
+  var svgCopied = '<svg viewBox="0 0 24 24" class="copy-icon"><use xlink:href="#svg-copied"></use></svg>';
+  var svgCopy   = '<svg viewBox="0 0 24 24" class="copy-icon"><use xlink:href="#svg-copy"></use></svg>';
 
-  // note: the SVG svg-copied and svg-copy is only loaded as a Jekyll include if site.enable_copy_code_button is true; see _includes/icons/icons.html
-  var svgCopied =  '<svg viewBox="0 0 24 24" class="copy-icon"><use xlink:href="#svg-copied"></use></svg>';
-  var svgCopy =  '<svg viewBox="0 0 24 24" class="copy-icon"><use xlink:href="#svg-copy"></use></svg>';
-
-  codeBlocks.forEach(codeBlock => {
-    var copyButton = document.createElement('button');
+  document.querySelectorAll('button.copy-code').forEach(function (copyButton) {
+    var codeBlock = copyButton.closest('div.highlighter-rouge, div.listingblock > div.content, figure.highlight');
+    if (!codeBlock) return;
     var timeout = null;
-    copyButton.type = 'button';
-    copyButton.ariaLabel = 'Copy code to clipboard';
-    copyButton.innerHTML = svgCopy;
-    codeBlock.append(copyButton);
 
     copyButton.addEventListener('click', function () {
-      if(timeout === null) {
-        var code = (codeBlock.querySelector('pre:not(.lineno, .highlight)') || codeBlock.querySelector('code')).innerText;
-        window.navigator.clipboard.writeText(code);
+      if (timeout !== null) return;
+      var code = (codeBlock.querySelector('pre:not(.lineno, .highlight)') || codeBlock.querySelector('code')).innerText;
+      window.navigator.clipboard.writeText(code);
 
-        copyButton.innerHTML = svgCopied;
+      copyButton.innerHTML = svgCopied;
 
-        var timeoutSetting = 4000;
-
-        timeout = setTimeout(function () {
-          copyButton.innerHTML = svgCopy;
-          timeout = null;
-        }, timeoutSetting);
-      }
+      timeout = setTimeout(function () {
+        copyButton.innerHTML = svgCopy;
+        timeout = null;
+      }, 4000);
     });
   });
 
