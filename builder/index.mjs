@@ -143,7 +143,10 @@ async function main() {
   await templatePhase(pages, site);
   t.lap("template");
 
-  const writeStats = await writePhase(pages, staticFiles, { destRoot, dryRun });
+  const generatedAssets = highlighter.themeCss
+    ? [{ rel: "assets/css/tb-highlight.css", content: highlighter.themeCss }]
+    : [];
+  const writeStats = await writePhase(pages, staticFiles, { destRoot, dryRun, generatedAssets });
   t.lap("write");
 
   let auxStats = null;

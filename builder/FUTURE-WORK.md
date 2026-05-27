@@ -146,30 +146,27 @@ close the loop so the source `.mmd` is the canonical input and the
 SVG regenerates automatically. Independent addition; doesn't touch
 any phase code.
 
-### B2. Switch to Shiki-themed output (PLAN-3 §15 / §D3)
+### B2. Switch to Shiki-themed output (PLAN-3 §15 / §D3) — **shipped in Phase 11**
 
-**Routing**: → **Phase 11** (headline item). Regresses HTML
-byte-match (per-span class names) AND the rouge.css file.
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.1](PLAN-11.md)).
+Headline parity-update item.
 
-**Approach**: rather than the original "switch to Shiki's default
-`<span style="color:#xxx">` output", the Phase 11 plan generates the
-Shiki theme **from the upstream twinBASIC `.twin` style source
-files** during the build, replacing the current
-`scripts/extract_theme_colors.py` mapping that produces Rouge
-classes. The original styling information lives in the `.twin`
-files; the current pipeline indirects through Rouge classes because
-Rouge's class set is fixed. Reading the `.twin` source directly lets
-the syntax colors stay in sync with upstream without manual remap.
+`scripts/extract_theme_colors.py` and `builder/assets/css/rouge.css`
+are gone; `builder/highlight-theme.mjs` parses the three vendored
+`.theme` files under `builder/themes/` (Light, Dark, Classic) and
+emits `_site/assets/css/tb-highlight.css` at build time. Per-span
+class names switched from Rouge tokens (`k`, `s`, `mi`) to a
+colour-palette scheme (`c1`, `c2`, …) — one classId per unique
+(Light props, Dark props) tuple, so symbols sharing both palettes'
+properties collapse to a single rule (the five Literal* symbols
+fold to one `c13` on the current themes). `builder/highlight.mjs`
+shrank from ~470 lines to ~190; the per-language Rouge-quirk
+overrides folded into the theme's scope-to-Symbol table.
 
-**Trigger**: Phase 10 lands (the cutover removes the byte-vs-Jekyll
-acceptance bar).
-
-Phase 3 currently maps Shiki's TextMate scopes onto Rouge class
-names so the existing `assets/css/rouge.css` keeps working
-byte-for-byte. The Phase 11 change drops the mapper, generates Shiki
-styles directly from the `.twin` source files, and changes the
-per-span class names from Rouge tokens (`k`, `s`, `mi`) to a
-colour-palette scheme (`c1`, `c2`, … per unique theme colour).
+Light palette ships at root; dark palette nests under
+`html.dark-mode` so the chrome's theme toggle flips both halves
+together. The PDF tree links `tb-highlight.css` from `book.html`
+in place of the retired `rouge.css`.
 
 #### B2a. Shiki output-mode investigation (findings, 2026-Q2)
 

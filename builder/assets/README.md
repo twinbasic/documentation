@@ -15,16 +15,19 @@ into `_site-offline/` and re-run the offlinify rewrites itself.
 
 ## Inventory
 
-All seven files are Jekyll-build outputs, captured from
+The six files below are Jekyll-build outputs, captured from
 `docs/_site/assets/` after a clean `bundle exec jekyll build`. The
-upstream sources Jekyll consumed are listed for reference.
+upstream sources Jekyll consumed are listed for reference. The
+syntax-highlight stylesheet (`tb-highlight.css`) is a seventh asset
+that is **generated at build time** by `builder/highlight-theme.mjs`
+from the vendored `builder/themes/*.theme` source files — see
+[PLAN-11.md](../PLAN-11.md) §5.1 (B2).
 
 | File | Upstream source | Notes |
 |---|---|---|
 | `css/just-the-docs-combined.css` | `docs/assets/css/just-the-docs-combined.scss` — pulls in `_sass/just-the-docs.scss.liquid` (via the just-the-docs gem) plus `_sass/custom/twinbasic-light` / `_sass/custom/twinbasic-dark` for the project's dark/light variants and `_sass/custom/custom.scss` / `_sass/custom/admonitions.scss` for site-specific tweaks | The site stylesheet. Compiled by Jekyll's Sass pipeline; vendored here to avoid a Sass dep in the JS build. |
 | `css/just-the-docs-head-nav.css` | `docs/assets/css/just-the-docs-head-nav.css` — hand-written CSS with a small Liquid prelude (newline-capture) | Per-page nav-prefix override sheet. |
 | `css/print.css` | `docs/assets/css/print.css` — hand-written self-contained print stylesheet | The `@media print` sheet; used by Phase 8's PDF tree too. |
-| `css/rouge.css` | `docs/assets/css/rouge.css` — hand-written, the Rouge `github.light` palette mapped to `.k` / `.kc` / `.nb` / `.s` / … class names | The syntax-highlight scope-to-colour rules. Phase 3's Shiki driver emits the same Rouge / Pygments class names so this file styles both Rouge-rendered and Shiki-rendered code blocks. |
 | `js/just-the-docs.js` | just-the-docs gem `assets/js/just-the-docs.js` (version pinned by `docs/Gemfile`) | The runtime that wires the sidebar, search, copy-button, dark-mode toggle. |
 | `js/theme-switch.js` | `docs/assets/js/theme-switch.js` — project-local script | The dark-mode toggle. |
 | `js/vendor/lunr.min.js` | just-the-docs gem `assets/js/vendor/lunr.min.js` | The search runtime. |
@@ -50,17 +53,19 @@ cd docs && bundle exec jekyll build && cd ..
 cp docs/_site/assets/css/just-the-docs-combined.css   builder/assets/css/
 cp docs/_site/assets/css/just-the-docs-head-nav.css   builder/assets/css/
 cp docs/_site/assets/css/print.css                    builder/assets/css/
-cp docs/_site/assets/css/rouge.css                    builder/assets/css/
 cp docs/_site/assets/js/just-the-docs.js              builder/assets/js/
 cp docs/_site/assets/js/theme-switch.js               builder/assets/js/
 cp docs/_site/assets/js/vendor/lunr.min.js            builder/assets/js/vendor/
 ```
 
-Then re-run `node builder/verify-phase5.mjs`. A `diff -rq docs/_site
-docs/_site-new` "Files differ" entry for any of these seven paths
-means the bundled copy has drifted from Jekyll's current output —
-re-extracting closes the gap. (Per-page HTML divergences are
-unrelated; see PLAN-5.md §10.)
+Note: `rouge.css` was retired in PLAN-11 §5.1 (B2). The syntax-
+highlight stylesheet is now `tb-highlight.css`, generated at build
+time from `builder/themes/*.theme` — no extraction step.
+
+The Phase 5 verify harness retired in PLAN-10's cutover; regression
+detection now relies on `scripts/check_links.mjs`. After re-extracting,
+run `cd docs && build.bat && check.bat` and confirm the rendered
+chrome still works.
 
 ## CSS class contract
 
@@ -101,21 +106,26 @@ adjusting the JS emitter (or vice versa) breaks the rendered chrome.
   `octicon octicon-{alert,info,light-bulb,report,stop}`
   (the GitHub-flavoured admonition palette)
 
-**Syntax highlighting** (`highlight.mjs` + `rouge.css`):
+**Syntax highlighting** (`highlight.mjs` + `highlight-theme.mjs` + the
+generated `tb-highlight.css`):
 
-- The Rouge / Pygments token class set: `.k` keyword, `.kc`
-  keyword-constant, `.nb` name-builtin, `.s` string, `.c` comment,
-  `.n` name, `.o` operator, …
-- Phase 3's Shiki driver emits these class names from
-  `twinbasic.tmLanguage.json` scope mappings, so `rouge.css` styles
-  them with no extra translation step.
-- Phase 3 also emits `<span class="lc">` (line continuation) and
-  `<span class="se">` (string escape) for tB-specific tokens; both
-  inherit Rouge's class palette.
+- The palette-class set: `.c1`, `.c2`, … `.cN` — one class per
+  unique (Light props, Dark props) tuple across the Symbols the
+  renderer can land on. Stable across builds because the tuples
+  sort deterministically.
+- `highlight.mjs` looks up each token's Shiki scope chain via the
+  theme's `classForScope`, then emits `<span class="cN">` for hits
+  and no wrap for misses (plain punctuation, generic identifiers,
+  HTML tag names — the IDE theme doesn't colour those).
+- `tb-highlight.css` is generated at build time and written to
+  `<destRoot>/assets/css/tb-highlight.css`; the light palette lives
+  at root, the dark palette under `html.dark-mode`. The chrome's
+  theme toggle flips both halves together.
 
-If `rouge.css` ever stops covering a class name the highlighter
-emits, the affected tokens render as unstyled text — visible in the
-rendered site as black-on-white code spans inside the otherwise-
-coloured block. The fix is either to add the class to `rouge.css`
-(if the source omitted it) or to remap the Shiki scope in
-`highlight.mjs` to a name `rouge.css` already covers.
+If the IDE refreshes its themes (a tB BETA bump that changes
+palette colours or adds new Symbols), refresh the three files under
+`builder/themes/` from the BETA's installer — `Light.theme`,
+`Dark.theme`, `Classic.theme` — and rebuild. `highlight-theme.mjs`'s
+`SCOPE_TO_SYMBOL` table maps Shiki scopes to the upstream Symbol
+names; only changes there require code edits, palette colour shifts
+do not.

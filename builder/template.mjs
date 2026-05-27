@@ -115,6 +115,7 @@ function renderHead(page, site, init) {
     `  </script>\n` +
     `  <script type="text/javascript" src="${escAttr(relativeUrl("/assets/js/theme-switch.js", bu))}" defer></script>\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-combined.css", bu))}">\n` +
+    `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/tb-highlight.css", bu))}">\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-head-nav.css", bu))}" id="jtd-head-nav-stylesheet">\n` +
     `  <style id="jtd-nav-activation">\n` +
     navActivationCss(page) +

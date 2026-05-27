@@ -432,6 +432,16 @@ The site builds via [builder/](builder/), a custom Node.js static site generator
 
 The diff and verify harnesses (`_triage.mjs`, `_diff.mjs`, `_diff_all.mjs`, `_audit_accepted.mjs`, `_sitemap_diff.mjs`, `_spot.mjs`, `verify-phase{1..8}.mjs`, `accepted-divergences.mjs`) were retired in the Phase 10 cutover commit. Regression detection now relies on `scripts/check_links.mjs` (expanded into a site-integrity checker; see [docs/check.bat](docs/check.bat)).
 
+### Phase 11 — parity update
+
+Phase 11 (in progress, see [builder/PLAN-11.md](builder/PLAN-11.md)) lands the output-changing follow-ups that the Phase 3-9 byte-vs-Jekyll discipline had deferred. Five independent PRs:
+
+- **B2 — Shiki theme generated from `.theme` source.** Shipped. `scripts/extract_theme_colors.py` and `builder/assets/css/rouge.css` are gone; `builder/highlight-theme.mjs` parses the vendored `builder/themes/Light.theme` + `Dark.theme` files and emits `_site/assets/css/tb-highlight.css` at build time. Per-span class names switched from Rouge tokens (`k`, `s`, `mi`) to a palette scheme (`c1`, `c2`, …). `builder/highlight.mjs` shrank from ~470 lines to ~190 — the per-language Rouge-quirk overrides folded into the scope-to-Symbol table.
+- **B1 — Mermaid `.mmd` → `.svg` automation.** Pending.
+- **B5 — Server-side copy-code button.** Pending.
+- **B10 — `search-data.js` minification.** Pending.
+- **B11 — AST-based `just-the-docs.js` patching.** Pending.
+
 ### Historical note
 
 The site was originally built with Jekyll + just-the-docs. The Jekyll source set (`docs/_plugins/`, `docs/_includes/`, `docs/_layouts/`, `docs/_sass/`, `docs/Gemfile`) was retired in the Phase 10 cutover commit; the directories were kept for one release cycle as reference and then deleted in a follow-up cleanup commit. Search the git log for `Phase 10` to find both commits.

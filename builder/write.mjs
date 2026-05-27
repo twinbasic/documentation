@@ -29,7 +29,7 @@ export const WRITE_LIMIT = LIMIT;
 const mkdirCache = new Set();
 const mkdirInflight = new Map();
 
-export async function writePhase(pages, staticFiles, { destRoot, dryRun = false } = {}) {
+export async function writePhase(pages, staticFiles, { destRoot, dryRun = false, generatedAssets = [] } = {}) {
   if (!destRoot) {
     throw new Error("writePhase requires a destRoot");
   }
@@ -44,8 +44,8 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false 
     const pagesToWrite = pages.filter(p => p.html !== undefined).length;
     const skipped = pages.length - pagesToWrite;
     console.log(`[dry-run] would write ${pagesToWrite} pages (${skipped} skipped), ` +
-                `theme assets from ${BUILDER_ASSETS}, ${staticFiles.length} static files ` +
-                `to ${destRoot}`);
+                `theme assets from ${BUILDER_ASSETS}, ${generatedAssets.length} generated assets, ` +
+                `${staticFiles.length} static files to ${destRoot}`);
     return {
       pages: { written: pagesToWrite, skipped },
       theme: { copied: 0 },
@@ -57,6 +57,7 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false 
     writePages(pages, destRoot, LIMIT),
     copyTheme(BUILDER_ASSETS, destRoot, LIMIT),
     copyStaticFiles(staticFiles, destRoot, LIMIT),
+    writeGeneratedAssets(generatedAssets, destRoot, LIMIT),
   ]);
 
   return {
@@ -64,6 +65,20 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false 
     theme: themeStats,
     staticFiles: staticStats,
   };
+}
+
+// ---------- Generated assets (Phase 11 B2) ------------------------------
+
+// Build-time-generated files (currently just `tb-highlight.css` from
+// highlight-theme.mjs) written under <destRoot>/. Run alongside the
+// static / theme / pages writes so they land before the offline +
+// PDF passes go looking for them.
+async function writeGeneratedAssets(assets, destRoot, limit) {
+  await runLimited(assets, limit, async ({ rel, content }) => {
+    const dest = path.join(destRoot, rel);
+    await mkdirRec(path.dirname(dest));
+    await safeWrite(dest, () => fs.writeFile(dest, content, "utf8"));
+  });
 }
 
 // ---------- §5.1 prepareDestination -------------------------------------
