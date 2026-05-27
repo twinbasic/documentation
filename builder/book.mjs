@@ -799,18 +799,12 @@ const EXTERNAL_PREFIXES = ["http://", "https://", "mailto:", "#"];
 // hrefs, rewrite in-book targets to `#ch-...` anchors, strip the
 // redundant landing-page heading.
 //
-// Jekyll's site.pages includes jekyll-redirect-from's generated stub
-// pages, each carrying the redirect-from URL as its `page.url`. The
-// rewriter's prefix match (`page: /tB/Modules/`, etc.) sweeps those
-// stubs into the urlToAnchor map alongside the real pages, so a
-// link like `[X](/tB/Modules/Aliased)` resolves to a `#ch-...`
-// anchor (technically dangling -- no article carries that exact id,
-// since the stub bodies aren't emitted as articles -- but matching
-// Jekyll's bytes is the goal).
-//
-// tbdocs's `pages` array doesn't carry the stubs; derive them from
-// each page's `frontmatter.redirect_from` and pass an extended array
-// to the map builders below.
+// tbdocs derives redirect-from stubs from each page's
+// `frontmatter.redirect_from` and passes an extended array to the map
+// builders below. Each stub carries `canonicalPermalink` so that
+// `buildUrlToAnchor` can resolve redirect-from URLs to the same anchor
+// as the canonical page, rather than a dangling `ch-tB-Core-X` anchor
+// that no article in the book carries.
 export function rewriteBookHrefs(html, site, pages) {
   const bookData = site.bookData;
   if (!bookData) return html;
@@ -934,10 +928,9 @@ function augmentWithRedirectStubs(pages) {
       if (typeof fromPath !== "string" || fromPath === "") continue;
       out.push({
         permalink: fromPath,
+        canonicalPermalink: p.permalink,
         navPath: p.navPath,
         frontmatter: { title: p.frontmatter?.title ?? "" },
-        // No other fields needed -- rewriteBookHrefs only reads
-        // permalink, navPath, frontmatter.title from the pages list.
       });
     }
   }
@@ -973,7 +966,7 @@ function entryPages(entry, pages) {
   if (entry.pages) urlSpecs.push(...entry.pages);
   for (const prefix of urlSpecs) {
     for (const p of pages) {
-      if (noDescent ? p.permalink === prefix : p.permalink.startsWith(prefix)) {
+      if (noDescent ? p.permalink === prefix : p.permalink.includes(prefix)) {
         out.add(p);
       }
     }
@@ -986,7 +979,7 @@ function entryPages(entry, pages) {
     for (const p of pages) {
       const navPath = p.navPath;
       if (!navPath) continue;
-      if (noDescent ? navPath === np : navPath.startsWith(np)) {
+      if (noDescent ? navPath === np : navPath.includes(np)) {
         out.add(p);
       }
     }
@@ -1017,6 +1010,24 @@ function buildUrlToAnchor(bookData, pages) {
       } else {
         map.set(page.permalink + ".html", anchor);
       }
+    }
+  }
+  // Second pass: map redirect-from URLs to the same anchor as their
+  // canonical page. Redirect-from stubs are not swept into the map by
+  // the main loop (their permalink doesn't match page:/nav_page: selectors
+  // written against canonical URLs), so this pass adds them explicitly.
+  for (const page of pages) {
+    if (!page.canonicalPermalink) continue;
+    if (map.has(page.permalink)) continue;
+    const canonicalAnchor = map.get(page.canonicalPermalink);
+    if (!canonicalAnchor) continue;
+    map.set(page.permalink, canonicalAnchor);
+    if (page.permalink.endsWith("/")) {
+      map.set(page.permalink.replace(/\/$/, ""), canonicalAnchor);
+    } else if (page.permalink.endsWith(".html")) {
+      map.set(page.permalink.replace(/\.html$/, ""), canonicalAnchor);
+    } else {
+      map.set(page.permalink + ".html", canonicalAnchor);
     }
   }
   return map;

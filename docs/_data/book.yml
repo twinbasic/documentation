@@ -229,6 +229,8 @@ parts:
         outline_closed: true
       - title: Statements
         nav_page: Reference Section/Statements
+        nav_pages:
+          - Statements
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
@@ -244,7 +246,7 @@ parts:
         page: /Reference/Compiler-Constants
         outline_closed: true
       - title: Attributes
-        page: /Core/Attributes
+        page: /tB/Core/Attributes
         no_outline_entry: true
         no_heading_shift: true
         outline_closed: true
