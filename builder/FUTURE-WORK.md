@@ -130,21 +130,22 @@ when chasing parser parity becomes interesting.
 These are out-of-scope follow-ups noted while implementing the
 phases. Each is a clean addition; none block any current work.
 
-### B1. Mermaid `.mmd` -> `.svg` automation (PLAN-3 §15)
+### B1. Mermaid `.mmd` -> `.svg` automation (PLAN-3 §15) — **shipped in Phase 11**
 
-**Routing**: → **Phase 11**. Auto-regenerated SVGs would differ
-byte-for-byte from the hand-exported originals, regressing the
-`_site/assets/images/mmd/*.svg` byte match.
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.2](PLAN-11.md)).
 
-**Trigger**: a second mermaid diagram is added to the site, or the
-single existing one needs a re-export.
-
-The site currently has one mermaid source under
-`docs/assets/images/mmd/` with a hand-exported SVG sibling (produced
-via Typora). A small `mermaid.mjs` preprocessor invoking `mmdc` would
-close the loop so the source `.mmd` is the canonical input and the
-SVG regenerates automatically. Independent addition; doesn't touch
-any phase code.
+`builder/mermaid.mjs` runs before Phase 1's discover, walks
+`docs/assets/images/mmd/*.mmd`, and invokes `mmdc` (via
+`npx --no-install` rooted at `builder/`) for any source whose `.svg`
+sibling is missing or older. The `.mmd` is now the canonical input;
+the SVG is a build artifact regenerated whenever the source changes.
+Adds `@mermaid-js/mermaid-cli` as a devDependency. The site already
+needs `puppeteer` at the repo root for the PDF render step (and CI
+calls `npx puppeteer browsers install chrome --install-deps`), so
+`mermaid.mjs` discovers that cached Chrome and passes it through
+via `PUPPETEER_EXECUTABLE_PATH` -- no second Chrome download. A
+missing `mmdc` or missing Chrome cache downgrades to a graceful
+warning; the existing on-disk SVG is retained, the build continues.
 
 ### B2. Switch to Shiki-themed output (PLAN-3 §15 / §D3) — **shipped in Phase 11**
 

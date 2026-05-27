@@ -17,5 +17,8 @@
     "markdown-it-deflist": "^3.0",
     "markdown-it-footnote": "^4.0",
     "shiki": "^1.0"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.0"
   }
 }

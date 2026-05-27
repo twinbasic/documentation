@@ -18,6 +18,7 @@ import process from "node:process";
 import yaml from "js-yaml";
 
 import { discover } from "./discover.mjs";
+import { regenerateMermaid } from "./mermaid.mjs";
 import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
@@ -101,6 +102,16 @@ async function main() {
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
   const t = makeTimer();
+
+  // Phase 11 (B1) preprocess: regenerate stale mermaid SVGs before
+  // discover walks the tree so freshly-emitted siblings land in
+  // staticFiles[] on this same build.
+  const mermaidStats = await regenerateMermaid(srcRoot);
+  t.lap("mermaid");
+  if (mermaidStats.regenerated > 0) {
+    console.log(`mermaid: regenerated ${mermaidStats.regenerated} of ${mermaidStats.processed} SVG(s)`);
+  }
+
   const { pages, staticFiles } = await discover(srcRoot);
   t.lap("discover");
 
