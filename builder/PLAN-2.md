@@ -22,7 +22,7 @@ each Generator rebuilding it) makes the JS version much cheaper.
 
 Phase 2 landed across [nav.mjs](nav.mjs) (318 lines), [seo.mjs](seo.mjs)
 (126 lines), [book.mjs](book.mjs) (175 lines), [build-info.mjs](build-info.mjs)
-(28 lines), the extended [index.mjs](index.mjs) (93 lines), and the
+(28 lines), the extended [tbdocs.mjs](tbdocs.mjs) (93 lines), and the
 `verify-phase2.mjs` (retired Phase 10) acceptance harness (302 lines).
 Total ~1,040 lines of JS for ~4,800 lines of replaced Ruby across the
 six nav plugins + seo-precompute + book-resolve-chapters + book-sort +
@@ -252,7 +252,7 @@ builder/
                     half (assembling book.html) stays in book.mjs but
                     only runs in Phase 8.
   build-info.mjs    git shell-out for { commit, commitDate }.
-  index.mjs         existing orchestrator — extended to call the four
+  tbdocs.mjs         existing orchestrator — extended to call the four
                     above between discover() and the (future) Phase 3.
 ```
 
@@ -1108,7 +1108,7 @@ admonition plugin. A bare-bones markdown-it is ~100 KB and starts in
 
 `nav-integrity-check` (§5.2) should `throw new Error(...)` with a
 multi-line message listing every offending page. The orchestrator's
-top-level `.catch()` in `index.mjs` already prints the error and exits
+top-level `.catch()` in `tbdocs.mjs` already prints the error and exits
 non-zero. Same end-user experience as Jekyll's `Jekyll::Errors::FatalException`.
 
 Alternative: return an array of errors and let the orchestrator decide
@@ -1360,7 +1360,7 @@ The orchestrator and `verify-phase2.mjs` both print per-substep timings
 already. From the repo root:
 
 ```sh
-node builder/index.mjs              # one-line per-phase timings
+node builder/tbdocs.mjs              # one-line per-phase timings
 node builder/verify-phase2.mjs      # full 23-check harness + timings
 ```
 
@@ -1430,15 +1430,15 @@ Node runtime.
     book.mjs            — §5.8 loader + resolver (Phase 8 renderer
                           lands here later)
     build-info.mjs      — §5.9
-    index.mjs           — orchestrator extended (see below)
+    tbdocs.mjs           — orchestrator extended (see below)
     verify-phase1.mjs   — Phase 1 harness (retired Phase 10)
     verify-phase2.mjs   — §10 acceptance harness (23 checks) (retired Phase 10)
   docs/                 — unchanged
 ```
 
-### Extended `index.mjs` orchestrator
+### Extended `tbdocs.mjs` orchestrator
 
-The shipped orchestrator (see [index.mjs](index.mjs) for the file):
+The shipped orchestrator (see [tbdocs.mjs](tbdocs.mjs) for the file):
 
 ```js
 import { promises as fs } from "node:fs";

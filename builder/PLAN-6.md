@@ -27,7 +27,7 @@ search-data Liquid pass).
 
 Implementation: [paths.mjs](paths.mjs), [redirects.mjs](redirects.mjs),
 [sitemap.mjs](sitemap.mjs), [search.mjs](search.mjs); orchestrator
-extension in [index.mjs](index.mjs); acceptance harness in
+extension in [tbdocs.mjs](tbdocs.mjs); acceptance harness in
 `verify-phase6.mjs` (retired Phase 10); set-aware sitemap diff utility
 in `_sitemap_diff.mjs` (retired Phase 10). The shared `paths.mjs`
 helper was lifted out of `discover.mjs` so the permalink → output-
@@ -238,7 +238,7 @@ builder/
                   heading-bounded sections, sanitises with Ruby-strict
                   whitespace semantics, builds the search-data.json
                   string, writes it to destRoot/assets/js/.
-  index.mjs       extended with one Promise.all block (~10 lines)
+  tbdocs.mjs       extended with one Promise.all block (~10 lines)
                   that calls all three substeps in parallel after
                   writePhase. Skipped under --dry-run.
 ```
@@ -1401,7 +1401,7 @@ wall-time on the dev machine; 2586 byte-matching search entries +
 From the repo root:
 
 ```sh
-node builder/index.mjs                # one-line per-phase timings
+node builder/tbdocs.mjs                # one-line per-phase timings
 cd builder && node verify-phase6.mjs  # 25-check harness + timings
 ```
 
@@ -1497,7 +1497,7 @@ to the PLAN.md edit pass that accompanies the Phase 6 landing.
     search.mjs                 — NEW: §5.3
     accepted-divergences.mjs   — updated: third bucket ("markdown-parsing")
                                  + Reference/Attributes.md (TestFixture) entry
-    index.mjs                  — orchestrator extended (see below)
+    tbdocs.mjs                  — orchestrator extended (see below)
     verify-phase1.mjs          — Phase 1 harness (retired Phase 10)
     verify-phase2.mjs          — Phase 2 harness (retired Phase 10)
     verify-phase3.mjs          — Phase 3 harness (retired Phase 10)
@@ -1514,7 +1514,7 @@ to the PLAN.md edit pass that accompanies the Phase 6 landing.
   docs/                        — unchanged
 ```
 
-### Extended `index.mjs` orchestrator
+### Extended `tbdocs.mjs` orchestrator
 
 The Phase 6 addition to the orchestrator is a single `Promise.all`
 block after `writePhase`:

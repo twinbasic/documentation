@@ -41,9 +41,9 @@ import {
 const OFFLINE_SUFFIX = "-offline";
 const LIMIT = WRITE_LIMIT;
 
-// Local copy of index.mjs's makeTimer (PLAN-9 §7.D13). Avoids a
+// Local copy of tbdocs.mjs's makeTimer (PLAN-9 §7.D13). Avoids a
 // cyclic import; the verify harnesses and diff tools import
-// offline.mjs without going through index.mjs's main() side effects.
+// offline.mjs without going through tbdocs.mjs's main() side effects.
 function makeTimer() {
   const laps = [];
   let last = Date.now();

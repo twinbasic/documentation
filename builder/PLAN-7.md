@@ -790,7 +790,7 @@ there's no risk of the two files diverging.
 ### 5.7. Summary logging
 
 **Purpose.** One line summarising what Phase 7 did. Matches the
-Phase 5+6 summary line in `index.mjs`. Actual shipped output:
+Phase 5+6 summary line in `tbdocs.mjs`. Actual shipped output:
 
 ```
 Phase 1+2+3+4+5+6+7 done: 838 pages, 234 static files
@@ -1708,7 +1708,7 @@ reasons:
 
 The orchestrator awaits Phase 6's `Promise.all` before invoking
 Phase 7; the wait is implicit in the existing `await Promise.all(...)`
-in `index.mjs`.
+in `tbdocs.mjs`.
 
 ### D3. `_site/` is read-only input
 
@@ -2048,7 +2048,7 @@ implementer doesn't get tempted.
   scope.
 - **Watch-mode rebuilds** -- tbdocs has no watcher. Jekyll's
   `jekyll serve` triggers offlinify on each rebuild; tbdocs would
-  need an equivalent loop wrapper around `node builder/index.mjs`.
+  need an equivalent loop wrapper around `node builder/tbdocs.mjs`.
   Defer.
 - **Offline-tree compression / minification** -- search-data.js is
   ~2.8 MB (the dominant offline-tree size). Minifying the JSON before
@@ -2194,7 +2194,7 @@ Total checks: projected ~30 (8 base structure + 5 HTML byte parity +
 ### Performance smoke check
 
 ```sh
-node builder/index.mjs                # one-line per-phase timings
+node builder/tbdocs.mjs                # one-line per-phase timings
 cd builder && node verify-phase7.mjs  # ~30-check harness + timings
 ```
 
@@ -2297,7 +2297,7 @@ doesn't compile the index (the JSON is wrapped, not parsed).
     search.mjs                 — Phase 6 (signature extended: returns { entries, json })
     offline.mjs                — NEW: writeOffline + buildOfflineState + deriveOffline{Page,Redirect,Css,JtdJs,SearchDataJs}
     accepted-divergences.mjs   — unchanged (the 8 propagated-accepted pages are pre-existing Phase 3/4 divergences)
-    index.mjs                  — orchestrator extended (writeOffline call after auxiliaries + summary line)
+    tbdocs.mjs                  — orchestrator extended (writeOffline call after auxiliaries + summary line)
     verify-phase1.mjs          — Phase 1 harness (retired Phase 10)
     verify-phase2.mjs          — Phase 2 harness (retired Phase 10)
     verify-phase3.mjs          — Phase 3 harness (retired Phase 10)
@@ -2316,7 +2316,7 @@ doesn't compile the index (the JSON is wrapped, not parsed).
   docs/.gitignore              — extended: added _site-new-offline/
 ```
 
-### Extended `index.mjs` orchestrator
+### Extended `tbdocs.mjs` orchestrator
 
 Phase 7 adds one substantive call to the orchestrator, plus a small
 extension to the Phase 6 fan-out to capture the in-memory bytes Phase

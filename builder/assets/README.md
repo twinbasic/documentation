@@ -10,45 +10,43 @@ The HTML templates in `builder/template.mjs` reference each one by
 literal path; reorganising the tree breaks the chrome.
 
 These are the **online** variants — no offline-mode patches applied.
-Phase 7 (offline tree, future) will copy from `<destRoot>/assets/`
-into `_site-offline/` and re-run the offlinify rewrites itself.
+Phase 7 (`builder/offline.mjs`) copies them from `<destRoot>/assets/`
+into `_site-offline/` and re-runs the offlinify rewrites itself.
 
 ## Inventory
 
-The six files below are Jekyll-build outputs, captured from
-`docs/_site/assets/` after a clean `bundle exec jekyll build`. The
-upstream sources Jekyll consumed are listed for reference. The
-syntax-highlight stylesheet (`tb-highlight.css`) is a seventh asset
-that is **generated at build time** by `builder/highlight-theme.mjs`
-from the vendored `builder/themes/*.theme` source files — see
-[PLAN-11.md](../PLAN-11.md) §5.1 (B2).
+The six files below were captured one-off from `docs/_site/assets/`
+after a clean Jekyll build at cutover time; the legacy Jekyll source
+set has since been retired, so the upstream sources are listed for
+historical reference only. The syntax-highlight stylesheet
+(`tb-highlight.css`) is a seventh asset that is **generated at build
+time** by `builder/highlight-theme.mjs` from the vendored
+`builder/themes/*.theme` source files — see [PLAN-11.md](../PLAN-11.md)
+§5.1 (B2).
 
-| File | Upstream source | Notes |
+| File | Upstream source at extraction time | Notes |
 |---|---|---|
-| `css/just-the-docs-combined.css` | `docs/assets/css/just-the-docs-combined.scss` — pulls in `_sass/just-the-docs.scss.liquid` (via the just-the-docs gem) plus `_sass/custom/twinbasic-light` / `_sass/custom/twinbasic-dark` for the project's dark/light variants and `_sass/custom/custom.scss` / `_sass/custom/admonitions.scss` for site-specific tweaks | The site stylesheet. Compiled by Jekyll's Sass pipeline; vendored here to avoid a Sass dep in the JS build. |
+| `css/just-the-docs-combined.css` | `docs/assets/css/just-the-docs-combined.scss` — pulled in `_sass/just-the-docs.scss.liquid` (via the just-the-docs gem) plus `_sass/custom/twinbasic-light` / `_sass/custom/twinbasic-dark` for the project's dark/light variants and `_sass/custom/custom.scss` / `_sass/custom/admonitions.scss` for site-specific tweaks | The site stylesheet. Compiled by Jekyll's Sass pipeline; vendored here to avoid a Sass dep in the JS build. |
 | `css/just-the-docs-head-nav.css` | `docs/assets/css/just-the-docs-head-nav.css` — hand-written CSS with a small Liquid prelude (newline-capture) | Per-page nav-prefix override sheet. |
 | `css/print.css` | `docs/assets/css/print.css` — hand-written self-contained print stylesheet | The `@media print` sheet; used by Phase 8's PDF tree too. |
-| `js/just-the-docs.js` | just-the-docs gem `assets/js/just-the-docs.js` (version pinned by `docs/Gemfile`) | The runtime that wires the sidebar, search, copy-button click handler, dark-mode toggle. Patched in tree: the upstream `processCodeBlocks` DOM-injection step is retired (PLAN-11 B5 -- the button HTML is now server-rendered by `builder/highlight.mjs`); the click handler binds to those pre-rendered buttons instead. Re-apply when bumping the upstream gem version. |
+| `js/just-the-docs.js` | just-the-docs gem 0.10.1 (`assets/js/just-the-docs.js`) | The runtime that wires the sidebar, search, copy-button click handler, dark-mode toggle. Patched in tree: the upstream `processCodeBlocks` DOM-injection step is retired (PLAN-11 B5 -- the button HTML is now server-rendered by `builder/highlight.mjs`); the click handler binds to those pre-rendered buttons instead. Re-apply when bumping the upstream gem version. |
 | `js/theme-switch.js` | `docs/assets/js/theme-switch.js` — project-local script | The dark-mode toggle. |
-| `js/vendor/lunr.min.js` | just-the-docs gem `assets/js/vendor/lunr.min.js` | The search runtime. |
+| `js/vendor/lunr.min.js` | just-the-docs gem 0.10.1 (`assets/js/vendor/lunr.min.js`) | The search runtime. |
 
-Theme version is pinned in `docs/Gemfile`: `gem "just-the-docs", "= 0.10.1"`.
-Bump that version, re-run the extraction procedure below, and inspect
-the diff before committing.
+Theme version pinned at extraction time: just-the-docs 0.10.1.
 
 ## Re-extraction procedure
 
-Run after any of:
-
-- a `just-the-docs` version bump in `docs/Gemfile`,
-- a custom SCSS change under `docs/_sass/custom/`,
-- a hand-written CSS change under `docs/assets/css/*.{css,scss}`,
-- a `theme-switch.js` change under `docs/assets/js/`.
-
-From the repo root:
+The Ruby toolchain is no longer in tree; re-extraction therefore
+requires temporarily restoring the legacy Jekyll source set
+(`docs/_plugins/`, `docs/_includes/`, `docs/_layouts/`, `docs/_sass/`,
+`docs/Gemfile`, `docs/Gemfile.lock`) from git history. Pick the cutover
+commit (`git log --oneline | grep "Phase 10"` then the relevant
+follow-up that retired Ruby) and check out those paths into a worktree.
 
 ```sh
-cd docs && bundle exec jekyll build && cd ..
+# In a clean worktree with the Jekyll source set restored:
+cd docs && bundle install && bundle exec jekyll build && cd ..
 
 cp docs/_site/assets/css/just-the-docs-combined.css   builder/assets/css/
 cp docs/_site/assets/css/just-the-docs-head-nav.css   builder/assets/css/
@@ -58,14 +56,19 @@ cp docs/_site/assets/js/theme-switch.js               builder/assets/js/
 cp docs/_site/assets/js/vendor/lunr.min.js            builder/assets/js/vendor/
 ```
 
+Trigger conditions that warrant re-extraction:
+
+- a `just-the-docs` version bump,
+- a custom SCSS change applied to a temporarily-restored `_sass/custom/`,
+- a hand-written CSS change to one of the three CSS files above,
+- a `theme-switch.js` change.
+
 Note: `rouge.css` was retired in PLAN-11 §5.1 (B2). The syntax-
 highlight stylesheet is now `tb-highlight.css`, generated at build
 time from `builder/themes/*.theme` — no extraction step.
 
-The Phase 5 verify harness retired in PLAN-10's cutover; regression
-detection now relies on `scripts/check_links.mjs`. After re-extracting,
-run `cd docs && build.bat && check.bat` and confirm the rendered
-chrome still works.
+After re-extracting, run `cd docs && build.bat && check.bat` and
+confirm the rendered chrome still works.
 
 ## CSS class contract
 

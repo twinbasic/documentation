@@ -1,14 +1,6 @@
 _site/
-_site-new/
 _site-offline/
-_site-new-offline/
 _site-pdf/
-_site-new-pdf/
 _pdf/
-.sass-cache
-.jekyll-cache
-.jekyll-metadata
 *.af~lock~
 _bak
-_profile/out/
-_profile/rbspy.exe

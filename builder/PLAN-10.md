@@ -16,7 +16,7 @@ canonical build tool.
 What Phase 10 does NOT do:
 
 - Change build-output bytes. The cutover swaps the *invocation*
-  (`bundle exec jekyll build` → `node ../builder/index.mjs`); the
+  (`bundle exec jekyll build` → `node ../builder/tbdocs.mjs`); the
   output of `_site/` after the swap is the output tbdocs produces
   today, which is already byte-equivalent to Jekyll modulo
   accepted-divergences. Items that intentionally change build
@@ -54,7 +54,7 @@ routings up to date.
 
 Specifically required:
 
-- `node builder/index.mjs && diff -rq docs/_site/ docs/_site-new/`
+- `node builder/tbdocs.mjs && diff -rq docs/_site/ docs/_site-new/`
   reports only the documented accepted-divergence entries.
 - `check.bat` (current Phase 9 form) is clean (zero broken links,
   zero forbidden-prefix matches).
@@ -74,7 +74,7 @@ The cutover is not a fix-forward operation.
 Phase 10 changes the invocation surface and the verification
 surface; it does not change build output. Outputs are:
 
-- **Cutover edits** to [index.mjs](index.mjs) (default destination
+- **Cutover edits** to [tbdocs.mjs](tbdocs.mjs) (default destination
   flip), [docs/build.bat](../docs/build.bat) /
   [docs/serve.bat](../docs/serve.bat) /
   [docs/check.bat](../docs/check.bat), and
@@ -111,7 +111,7 @@ surface; it does not change build output. Outputs are:
 
 ```
 builder/
-  index.mjs                 -1 / +1. Default dest flips from
+  tbdocs.mjs                 -1 / +1. Default dest flips from
                              `_site-new` to `_site` at line 71.
   verify-phase{1..8}.mjs    DELETED (8 files, ~3,200 lines).
   _diff.mjs                 DELETED. Anchored on Jekyll comparison.
@@ -132,7 +132,7 @@ builder/
 
 docs/
   build.bat                 Rewrite. `bundle exec jekyll build`
-                             → `node ..\builder\index.mjs`.
+                             → `node ..\builder\tbdocs.mjs`.
   serve.bat                 Rewrite. `bundle exec jekyll serve`
                              → (see §5.3 for the serve story --
                              tbdocs has no watcher; serve.bat
@@ -168,12 +168,12 @@ NOT included in the line-delta numbers above.
 The cutover is one logical operation but lands as a sequence of
 git commits so that any single commit can be reverted cleanly. The
 order matters because some steps depend on others (CI swap depends
-on the index.mjs default flip, etc.).
+on the tbdocs.mjs default flip, etc.).
 
 | Commit | Substep | Verifies by |
 |---|---|---|
 | 1 | §5.1 pre-flight + new integrity-checker checks land first | Run new checks against current `_site/` (Jekyll output); zero regressions. Tests-first; integrity additions live in tree before they're needed. |
-| 2 | §5.2 default destination flip in `index.mjs` | `node builder/index.mjs` (no `--dest`) writes to `_site/`; existing `--dest <path>` still works. |
+| 2 | §5.2 default destination flip in `tbdocs.mjs` | `node builder/tbdocs.mjs` (no `--dest`) writes to `_site/`; existing `--dest <path>` still works. |
 | 3 | §5.3 script swap (`build.bat` / `check.bat` / `serve.bat`) | Manual smoke: `build.bat` runs tbdocs; `check.bat` runs the expanded checker; `serve.bat` serves the result. |
 | 4 | §5.5 verify-harness retirement | `ls builder/verify-phase*.mjs` empty; `ls builder/_*.mjs` empty (modulo the keepers); `accepted-divergences.mjs` gone. |
 | 5 | §5.4 CI swap (`.github/workflows/`) | PR build succeeds on the cutover branch before merging. |
@@ -232,7 +232,7 @@ mode this gate prevents.
 
 ### 5.2. Default destination flip
 
-[index.mjs:71](index.mjs:71) currently reads:
+[tbdocs.mjs:71](tbdocs.mjs:71) currently reads:
 
 ```js
 const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site-new"));
@@ -244,7 +244,7 @@ Change to:
 const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 ```
 
-Update the comment block at [index.mjs:68-70](index.mjs:68) to
+Update the comment block at [tbdocs.mjs:68-70](tbdocs.mjs:68) to
 remove the "during the port" / "flip the default in one place
 when the cutover happens" notes -- the cutover has happened.
 
@@ -269,7 +269,7 @@ Becomes:
 
 ```bat
 cd /d "%~dp0"
-node ..\builder\index.mjs --src .
+node ..\builder\tbdocs.mjs --src .
 ```
 
 The `cd /d "%~dp0"` ensures the script works regardless of the
@@ -304,7 +304,7 @@ then run a plain HTTP server. Use Node's built-in:
 
 ```bat
 cd /d "%~dp0"
-node ..\builder\index.mjs --src .
+node ..\builder\tbdocs.mjs --src .
 npx --yes http-server _site -p 4000 -c-1
 ```
 
@@ -339,7 +339,7 @@ jobs:
           node-version: 20
       - run: npm ci
         working-directory: builder
-      - run: node builder/index.mjs --src docs
+      - run: node builder/tbdocs.mjs --src docs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -509,12 +509,12 @@ case: `book.html`.
 
 This check **requires** access to the discovered-pages set OR a
 parse of `docs/` frontmatter. The cleanest option: have the
-integrity checker spawn `node builder/index.mjs --discover-only`
+integrity checker spawn `node builder/tbdocs.mjs --discover-only`
 (a new mode that prints the page-frontmatter set as JSON). Adds
-a small index.mjs change; gated on whether the user wants the
+a small tbdocs.mjs change; gated on whether the user wants the
 coupling.
 
-Alternative: have `check.bat` invoke `index.mjs` first, save
+Alternative: have `check.bat` invoke `tbdocs.mjs` first, save
 the page set to a temp JSON, then pass that path to
 `check_links.mjs --check-sitemap=/tmp/pages.json`.
 
@@ -623,7 +623,7 @@ Deletions:
 - All `docs/Reference/`, `docs/Features/`, `docs/Tutorials/`,
   etc. (content; obviously)
 
-**Verification of the deletion commit**: `node builder/index.mjs`
+**Verification of the deletion commit**: `node builder/tbdocs.mjs`
 still produces the same `_site/` output; `check.bat` still clean.
 If either fails, **revert immediately** -- the cutover commit
 itself is what landed the swap; the deletion is just cleanup.
@@ -747,7 +747,7 @@ for the first cut.
 | D4 | tbdocs has no watch mode; `serve.bat` does one-shot build + plain HTTP server | A watcher requires file-change detection + incremental rebuild infrastructure that's a phase of its own. Out of scope for Phase 10. Developers iterate via re-running `build.bat`. |
 | D5 | The CI workflow filename stays `jekyll-gh-pages.yml` (rewritten contents) or renames to `pages.yml` (implementer's call) | Either is fine. Renaming makes the new contents discoverable; keeping the old name preserves git history visibility. Implementer picks; not load-bearing. |
 | D6 | `--check-html` uses htmlparser2's lenient default mode + explicit void-element handling, NOT strict mode | htmlparser2's strict mode (recognizeSelfClosing) is XHTML-style; our HTML5 output expects bare `<br>` etc. The lenient mode + manual void-element handling matches HTML5 spec. |
-| D7 | The integrity checker's `--check-sitemap` / `--check-search` consume a pre-computed page set from a temp JSON, NOT a live spawn of `node builder/index.mjs` | Keeps `check_links.mjs` independent of the builder. `check.bat` orchestrates the temp-file dance. |
+| D7 | The integrity checker's `--check-sitemap` / `--check-search` consume a pre-computed page set from a temp JSON, NOT a live spawn of `node builder/tbdocs.mjs` | Keeps `check_links.mjs` independent of the builder. `check.bat` orchestrates the temp-file dance. |
 | D8 | The Jekyll source set deletion is deferred to a separate follow-up commit ~2 weeks after the cutover | Gives the production deploy time to settle. If a rollback is needed, the Jekyll source is in tree to fall back to. The deletion commit is mechanical; the cutover commit is the one that carries risk. |
 | D9 | Accepted-divergences.mjs deletes entirely (not repurposed for regression testing) | The user chose "retire harnesses" over "pivot to regression testing"; the divergence allow-list has no consumer after the harnesses retire. The integrity checker doesn't need it. |
 | D10 | The `_audit_accepted.mjs` tool retires alongside the verify harnesses | Same input dependency (`accepted-divergences.mjs`). No standalone use. |
@@ -840,7 +840,7 @@ After GitHub Pages serves the new build:
 Before opening the Jekyll source set deletion commit:
 
 1. No production incidents traceable to the cutover for 14 days.
-2. `node builder/index.mjs && diff -rq docs/_site-old/ docs/_site/`
+2. `node builder/tbdocs.mjs && diff -rq docs/_site-old/ docs/_site/`
    clean (if an old `_site-old/` snapshot was kept; not required).
 3. `check.bat` still clean on the latest tree.
 4. No PRs in flight that reference any of the to-be-deleted files
@@ -895,7 +895,7 @@ choice in WIP.md.
     README.md                  (Phase 9 shipped; minor update to
                                  point at Phase 10 as the current
                                  build path)
-    index.mjs                  (default dest → `_site`)
+    tbdocs.mjs                  (default dest → `_site`)
     [all production .mjs]      unchanged
     one-offs/                  unchanged
     [verify-phase{1..8}.mjs]   DELETED

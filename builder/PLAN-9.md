@@ -27,7 +27,7 @@ What Phase 9 does NOT do:
 - Add new build phases. The eight-phase orchestrator stays as-is;
   Phase 9 is internal cleanup spread across existing modules.
 
-Target wall-clock impact: ~200 ms shaved off `node builder/index.mjs`
+Target wall-clock impact: ~200 ms shaved off `node builder/tbdocs.mjs`
 (Phase 7 nav-block cache plus the Phase 8 image-extract unification),
 otherwise neutral on perf.
 
@@ -64,9 +64,9 @@ have been updated in place:
   different rewritten URLs in the cached nav slice. Keying by
   destination dir is the correct grouping for the rewrite.
 - **B9 / D13 picked duplication over export.** PLAN-9 §5.7 / §7.D13
-  recommended exporting `makeTimer` from `index.mjs`. In practice,
-  any `import { makeTimer } from "./index.mjs"` in `offline.mjs`
-  would also pull in `index.mjs`'s top-level `main().catch(...)` --
+  recommended exporting `makeTimer` from `tbdocs.mjs`. In practice,
+  any `import { makeTimer } from "./tbdocs.mjs"` in `offline.mjs`
+  would also pull in `tbdocs.mjs`'s top-level `main().catch(...)` --
   every verify harness imports `offline.mjs`, so the side effect
   would fire during harness load. Duplicating the 13-line helper
   into `offline.mjs` avoids the cycle entirely.
@@ -98,7 +98,7 @@ lives at the repo root and is loaded by `CLAUDE.md` via `@WIP.md`).
 
 Phase 9 produces no new build artifacts. Its outputs are:
 
-- Edits to existing builder modules (`index.mjs`, `seo.mjs`,
+- Edits to existing builder modules (`tbdocs.mjs`, `seo.mjs`,
   `book.mjs`, `offline.mjs`, `pdf.mjs`, `verify-phase{7,8}.mjs`).
 - One new module: `data.mjs` (generic `_data/*.yml` loader, B4).
 - One new diagnostic tool: `_audit_accepted.mjs` (A1 multi-divergence
@@ -137,7 +137,7 @@ builder/
                              loading book.yml directly (B4); thread
                              imagePaths Set through emitChapter so it
                              collects during assembly (B17).
-  index.mjs                 +50. parseArgs flags (B8, B13, B14, B9),
+  tbdocs.mjs                 +50. parseArgs flags (B8, B13, B14, B9),
                              skipOffline / skipPdf / serving plumbing,
                              call loadData() + createMarkdownIt() before
                              precomputeSeo (B3).
@@ -198,7 +198,7 @@ where noted. Suggested batching for review-sized commits:
 | 7 | Documentation: README, WIP.md, header pass | `check.bat` clean (no broken links in WIP edits) |
 
 Batches 1-3 can land in any order. Batch 4 depends on
-[index.mjs:29-48](index.mjs) `parseArgs` (present today, extends
+[tbdocs.mjs:29-48](tbdocs.mjs) `parseArgs` (present today, extends
 cleanly with the same `--flag value` / `--flag=value` shape). Batch
 5 is the only one that updates `accepted-divergences.mjs`. Batch 6
 has no production impact and can land last. Batch 7 closes the phase.
@@ -244,7 +244,7 @@ that 834 are plain ASCII (where the pipeline reduces to
    at line 44. `renderTitle` already takes `markdown` as its second
    argument (line 72) so its body needs no change.
 
-3. **[index.mjs](index.mjs)**: between the existing nav step
+3. **[tbdocs.mjs](tbdocs.mjs)**: between the existing nav step
    (line 82-83) and the SEO step (line 85-86), insert the
    markdown-it init:
 
@@ -265,7 +265,7 @@ that 834 are plain ASCII (where the pipeline reduces to
    ```
 
    `initHighlighter`, `buildLinkTables`, and `createMarkdownIt` need
-   exports added to render.mjs's import line in index.mjs. The
+   exports added to render.mjs's import line in tbdocs.mjs. The
    `site` object is constructed AFTER this block (line 95), so
    `site.markdown` needs a temporary holder until then — either
    construct `site` earlier with just `{ markdown }`, or stash on a
@@ -500,7 +500,7 @@ ms). Measure before / after with `--profile-offline` (§5.7).
 
 **Change**:
 
-- Add to `parseArgs` in `index.mjs`:
+- Add to `parseArgs` in `tbdocs.mjs`:
   ```js
   case "--no-offline": opts.skipOffline = true; break;
   ```
@@ -544,7 +544,7 @@ the build completes with a warning instead of throwing.
 
 **Source**: FUTURE-WORK.md §B9, PLAN-7 §13.
 
-**Current timer** ([index.mjs:50-63](index.mjs:50)): `makeTimer()`
+**Current timer** ([tbdocs.mjs:50-63](tbdocs.mjs:50)): `makeTimer()`
 returns `{ lap(label), summary() }` -- flat, no nested scopes. The
 hedge in the previous draft ("if `t.lap` doesn't support nested
 scopes, add the minimum needed") is real -- it doesn't. **No timer
@@ -570,10 +570,10 @@ inside `writeOffline` for the substep grain.
   to the Phase 7 total; concurrent rows print separately above.
 
 **Shipped change to D13**: PLAN-9 §7.D13 originally said "pick
-exporting" `makeTimer` from `index.mjs`. Importing `index.mjs` from
+exporting" `makeTimer` from `tbdocs.mjs`. Importing `tbdocs.mjs` from
 `offline.mjs` would pull `main().catch(...)` into the dependency
 graph of every verify harness (each harness imports `offline.mjs`,
-which would then evaluate `index.mjs` and fire the build entry
+which would then evaluate `tbdocs.mjs` and fire the build entry
 point during harness load). Duplicated the 13-line helper into
 `offline.mjs` instead.
 
@@ -705,8 +705,8 @@ Doesn't affect a per-phase cap; just a tidy.
   (lets the user diff a CI-built tree or an archived snapshot).
 
 Resolution: `path.resolve(opts.againstDisk || path.join(srcRoot,
-"_site-new"))` -- same shape as `index.mjs`'s `dest` argument
-default ([index.mjs:71](index.mjs:71)).
+"_site-new"))` -- same shape as `tbdocs.mjs`'s `dest` argument
+default ([tbdocs.mjs:71](tbdocs.mjs:71)).
 
 **Arg-parsing detail in the shipped code**: `_diff.mjs`'s existing
 `argValue(args, flag)` heuristic consumes the next positional token
@@ -851,7 +851,7 @@ Requires Node.js 20+.
 
     cd builder
     npm install
-    node index.mjs                # builds docs/_site-new/
+    node tbdocs.mjs                # builds docs/_site-new/
 
 ## Documentation
 
@@ -918,7 +918,7 @@ production modules showed they already follow the canonical
 `Phase N <NAME>: <one-line purpose>. See builder/PLAN-N.md ...`
 form, e.g.:
 
-- `index.mjs`: `// tbdocs orchestrator. Phases 1+2+3+4+5+6+7+8: ...`
+- `tbdocs.mjs`: `// tbdocs orchestrator. Phases 1+2+3+4+5+6+7+8: ...`
 - `render.mjs`: `// Phase 3 of tbdocs: render each page's markdown / HTML body ...`
 - `offline.mjs`: `// Phase 7 WRITE OFFLINE: mirror the rendered _site/ tree into ...`
 - `book.mjs` (spans Phase 2 + 8): `// Phase 2 book chapter resolution + Phase 8 book.html assembly.`
@@ -950,7 +950,7 @@ list both phases on the first line. Verify-harness headers follow
 
 ### 6.1. `parseArgs` extension
 
-`index.mjs` currently parses `--src`, `--dest`, `--dry-run`. Phase 9
+`tbdocs.mjs` currently parses `--src`, `--dest`, `--dry-run`. Phase 9
 adds four more (`--no-offline`, `--no-pdf`, `--serving`,
 `--profile-offline`).
 
@@ -1000,8 +1000,8 @@ minimum needed (~10 lines).
 | D10 | The README.md goes in `builder/README.md` (not `docs/README.md` or repo-root) | The repo-root README would conflict with GitHub's project-level README convention. `docs/` is the content tree, not a tool. The builder is the tool. |
 | D11 | B7 nav-block cache treats per-source-directory sidebar identity as a runtime-asserted **premise**, not a load-bearing invariant | The just-the-docs sidebar is per-page identical within a source dir today, but the premise isn't enforced by template.mjs's contract. The cached substitution checks `page.html.indexOf(cached.input) !== -1` before splicing; on miss it logs and falls back to the full rewrite. The cache is purely an optimisation -- correctness never depends on the assertion holding. |
 | D12 | The B16 cross-ref audit derives its filter prefix from `site.config.url + site.config.baseurl`, not a hardcoded `https://docs.twinbasic.com/` | Same convention `offline.mjs` uses for its own URL resolution. Keeps the audit working against staging deploys, custom domains, or `--src` pointing at a sibling repo. |
-| D13 | B9 `--profile-offline` instantiates a second `makeTimer` inside `writeOffline` rather than extending the existing flat timer with nested scopes. **The shipped result duplicates the helper into `offline.mjs` rather than exporting it from `index.mjs` (the original draft's preference).** | The existing `makeTimer` ([index.mjs:50](index.mjs:50)) is 13 lines and intentionally minimal. Nesting would invite per-call subtlety (scope inheritance, label collision). A second timer instance is zero new API surface. **Why duplicate, not export**: `index.mjs` ends with `main().catch(...)` at the top level. If `offline.mjs` imports anything from `index.mjs`, every verify harness (each imports `offline.mjs`) would also pull `index.mjs` into its dependency graph, and `main()` would fire during harness load. Duplicating the 13-line helper avoids the cycle. |
-| D14 | B12 `--against-disk` defaults the read path to `<srcRoot>/_site-new/`, matching the orchestrator's default `dest` | Single source of truth: if the executor ever flips `index.mjs`'s default destination (the post-port cutover, FUTURE-WORK §C1), `_diff.mjs --against-disk` follows automatically. Explicit `--against-disk=<path>` overrides for ad-hoc cases. |
+| D13 | B9 `--profile-offline` instantiates a second `makeTimer` inside `writeOffline` rather than extending the existing flat timer with nested scopes. **The shipped result duplicates the helper into `offline.mjs` rather than exporting it from `tbdocs.mjs` (the original draft's preference).** | The existing `makeTimer` ([tbdocs.mjs:50](tbdocs.mjs:50)) is 13 lines and intentionally minimal. Nesting would invite per-call subtlety (scope inheritance, label collision). A second timer instance is zero new API surface. **Why duplicate, not export**: `tbdocs.mjs` ends with `main().catch(...)` at the top level. If `offline.mjs` imports anything from `tbdocs.mjs`, every verify harness (each imports `offline.mjs`) would also pull `tbdocs.mjs` into its dependency graph, and `main()` would fire during harness load. Duplicating the 13-line helper avoids the cycle. |
+| D14 | B12 `--against-disk` defaults the read path to `<srcRoot>/_site-new/`, matching the orchestrator's default `dest` | Single source of truth: if the executor ever flips `tbdocs.mjs`'s default destination (the post-port cutover, FUTURE-WORK §C1), `_diff.mjs --against-disk` follows automatically. Explicit `--against-disk=<path>` overrides for ad-hoc cases. |
 
 ### 7.2. Why no Phase 9 verify harness
 
@@ -1016,7 +1016,7 @@ ones. Instead:
   new perf cap (1200 ms vs 1500 ms).
 - B15 → handled by an `accepted-divergences.mjs` narrowing.
 - B12 / B16 / A1 / B9 → diagnostic tools, used manually.
-- B8 / B13 / B14 → manual: run `node index.mjs --no-offline` and
+- B8 / B13 / B14 → manual: run `node tbdocs.mjs --no-offline` and
   confirm `_site-offline/` is untouched, etc.
 
 If Phase 9 needs a harness later (e.g. for the documentation pass),
@@ -1112,11 +1112,11 @@ Status after the seven batches landed:
    `verify-phase8.mjs`'s `BUILD_INFO_RE` because Jekyll's date and
    tbdocs's date are now both wall-clock and only match on
    same-day builds.
-5. ✅ `node builder/index.mjs --no-offline` -- verified, prints
+5. ✅ `node builder/tbdocs.mjs --no-offline` -- verified, prints
    `offline:skipped=0ms`; `docs/_site-new-offline/` untouched.
-6. ✅ `node builder/index.mjs --no-pdf` -- verified, prints
+6. ✅ `node builder/tbdocs.mjs --no-pdf` -- verified, prints
    `pdf:skipped=0ms`; `docs/_site-new-pdf/` untouched.
-7. ✅ `node builder/index.mjs --profile-offline` -- prints per-
+7. ✅ `node builder/tbdocs.mjs --profile-offline` -- prints per-
    branch concurrent rows then the sequential summary
    (`setup=Xms jtdPatch=Yms searchDataJs=Zms parallel=Wms`).
 8. ✅ `--serving` flag accepted and threaded through to `writePdf`.
@@ -1149,9 +1149,9 @@ Status after the seven batches landed:
 
 | Step | Confirms |
 |---|---|
-| `node builder/index.mjs && diff -rq docs/_site/ docs/_site-new/` | Default build still byte-clean. |
-| `node builder/index.mjs --no-offline --no-pdf && ls docs/_site-offline-new docs/_site-pdf-new` | Both trees skipped. |
-| `node builder/index.mjs --profile-offline` | Per-substep table appears. |
+| `node builder/tbdocs.mjs && diff -rq docs/_site/ docs/_site-new/` | Default build still byte-clean. |
+| `node builder/tbdocs.mjs --no-offline --no-pdf && ls docs/_site-offline-new docs/_site-pdf-new` | Both trees skipped. |
+| `node builder/tbdocs.mjs --profile-offline` | Per-substep table appears. |
 | `node builder/_audit_accepted.mjs` | Multi-divergence audit runs. |
 | `node builder/_diff.mjs --against-disk Reference/Const.md` | Disk diff works. |
 | `node builder/verify-phase8.mjs` | Cross-ref report appears. (retired Phase 10) |
@@ -1199,7 +1199,7 @@ extend `parseArgs`.
                                  Phase 10 routing preserved)
     data.mjs                   (new -- §5.2; ~25 lines)
     _audit_accepted.mjs        (new -- §5.12; ~190 lines)
-    index.mjs                  (+30 lines net; CLI flags, data load,
+    tbdocs.mjs                  (+30 lines net; CLI flags, data load,
                                  markdown-init lap, skip gates)
     seo.mjs                    (-8 lines; uses site.markdown instead
                                  of its own MarkdownIt instance)
