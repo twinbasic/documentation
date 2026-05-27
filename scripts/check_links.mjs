@@ -34,6 +34,12 @@
 //
 // Output limitation: no per-link line numbers in error messages --
 // htmlparser2 SAX doesn't expose source positions.
+//
+// Integrity checks (--check-html, --check-a11y, --check-ids,
+// --check-sitemap, --check-search):
+//   These share the existing htmlparser2 SAX parse pass -- no
+//   second file read.  Exit code 2 signals integrity-only failures
+//   so CI can distinguish "broken link" from "malformed HTML".
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -72,6 +78,12 @@ const LINK_ATTR_TABLE = new Map([
 
 const SRCSET_ATTRS = new Set(["srcset"]);
 
+// HTML5 void elements -- no closing tag, never pushed onto tag stack.
+const HTML5_VOID_ELEMENTS = new Set([
+  "area","base","br","col","embed","hr","img","input",
+  "link","meta","param","source","track","wbr",
+]);
+
 function* splitSrcset(value) {
   // `URL [descriptor], URL [descriptor], ...`. Descriptors cannot
   // contain commas, so a comma split is safe; each part's first
@@ -83,6 +95,105 @@ function* splitSrcset(value) {
     const url = ws < 0 ? trimmed : trimmed.slice(0, ws);
     if (url) yield url;
   }
+}
+
+// Derive the canonical URL path for an HTML file given its path
+// relative to the site root (forward slashes). Strips the .html
+// extension for parity with pages that have explicit permalinks.
+//   "index.html"                     -> "/"
+//   "tB/Core/Const.html"             -> "/tB/Core/Const"
+//   "tB/Packages/VB/CheckBox/index.html" -> "/tB/Packages/VB/CheckBox/"
+function deriveUrlPath(relPath) {
+  const fwd = relPath.replace(/\\/g, "/");
+  if (fwd === "index.html") return "/";
+  if (fwd.endsWith("/index.html")) return "/" + fwd.slice(0, -"index.html".length);
+  if (fwd.endsWith(".html")) return "/" + fwd.slice(0, -".html".length);
+  return "/" + fwd;
+}
+
+// Strip a trailing .html so sitemap/search URLs from pages without
+// explicit permalink (which keep the .html extension) compare equal
+// to deriveUrlPath output. Idempotent on already-clean paths.
+function stripHtmlSuffix(p) {
+  return p.endsWith(".html") ? p.slice(0, -".html".length) : p;
+}
+
+// URL-decode (sitemap entries percent-encode spaces and Unicode;
+// deriveUrlPath produces literal characters from the filename).
+function decodePath(p) {
+  try { return decodeURIComponent(p); } catch { return p; }
+}
+
+// Cross-file check: every .html file (except hardcoded exclusions and
+// redirect stubs) should appear in sitemap.xml.
+// Returns an array of issue strings, or null if sitemap.xml is absent.
+function checkSitemapContents(rootStr, htmlFiles, redirectStubSet) {
+  const sitemapPath = path.join(rootStr, "sitemap.xml");
+  let xml;
+  try { xml = fs.readFileSync(sitemapPath, "utf8"); } catch { return null; }
+
+  // Extract <loc> paths, stripping the scheme+host prefix and any
+  // trailing .html (Jekyll/tbdocs use .html for pages without an
+  // explicit permalink; pages with permalinks omit it).
+  const sitemapPaths = new Set();
+  let siteRoot = null;
+  for (const m of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
+    const url = m[1].trim();
+    if (!siteRoot) {
+      const m2 = url.match(/^(https?:\/\/[^/]+)/);
+      if (m2) siteRoot = m2[1];
+    }
+    const p = siteRoot ? url.slice(siteRoot.length) : url;
+    sitemapPaths.add(stripHtmlSuffix(decodePath(p || "/")));
+  }
+
+  // Hardcoded exclusions for first cut (no frontmatter access here).
+  const EXCLUDE = new Set(["book.html", "404.html"]);
+  const rootAbs = path.resolve(rootStr);
+  const issues = [];
+
+  for (const file of htmlFiles) {
+    if (EXCLUDE.has(path.basename(file))) continue;
+    if (redirectStubSet && redirectStubSet.has(path.resolve(file))) continue;
+    const rel = path.relative(rootAbs, path.resolve(file)).replace(/\\/g, "/");
+    const urlPath = deriveUrlPath(rel);
+    if (!sitemapPaths.has(urlPath)) {
+      issues.push(`${rel}: sitemap-missing: ${urlPath}`);
+    }
+  }
+  return issues;
+}
+
+// Cross-file check: every .html file (except exclusions and redirect
+// stubs) should have at least one entry in search-data.json whose
+// url matches the page's canonical path (ignoring fragment).
+// Returns an array of issue strings, or null if search-data.json is absent.
+function checkSearchContents(rootStr, htmlFiles, redirectStubSet) {
+  const searchPath = path.join(rootStr, "assets", "js", "search-data.json");
+  let searchData;
+  try { searchData = JSON.parse(fs.readFileSync(searchPath, "utf8")); } catch { return null; }
+
+  // Build set of page-level URLs (strip fragment part and .html
+  // suffix; some pages without explicit permalink keep .html;
+  // URLs are percent-encoded for spaces / Unicode).
+  const searchPageUrls = new Set(
+    Object.values(searchData).map(e => stripHtmlSuffix(decodePath((e.url ?? "").split("#")[0])))
+  );
+
+  const EXCLUDE = new Set(["book.html", "404.html"]);
+  const rootAbs = path.resolve(rootStr);
+  const issues = [];
+
+  for (const file of htmlFiles) {
+    if (EXCLUDE.has(path.basename(file))) continue;
+    if (redirectStubSet && redirectStubSet.has(path.resolve(file))) continue;
+    const rel = path.relative(rootAbs, path.resolve(file)).replace(/\\/g, "/");
+    const urlPath = deriveUrlPath(rel);
+    if (!searchPageUrls.has(urlPath)) {
+      issues.push(`${rel}: search-missing: ${urlPath}`);
+    }
+  }
+  return issues;
 }
 
 // One pass per file: extract every outgoing link AND every fragment-
@@ -99,7 +210,14 @@ function* splitSrcset(value) {
 // is non-empty and not just '/', is collected into the returned
 // `forbidden` list. The bare prefix and prefix/ are exempt
 // (intentional "go to live site" links).
-function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes) {
+//
+// checkOpts: optional integrity-check flags object. When present, the
+// SAX parse also collects:
+//   checkHtml   -- unclosed / mismatched tags (htmlErrors)
+//   checkA11y   -- img missing alt, empty anchors, empty href (a11yErrors)
+//   checkIds    -- duplicate id attributes on the same page (dupIds)
+//   captureRedirectStub -- detect <meta http-equiv="refresh"> (isRedirectStub)
+function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
   const links = [];
   const ids = captureIds ? new Set() : null;
   const hasForbid = forbidPrefixes && forbidPrefixes.length > 0;
@@ -113,8 +231,27 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes) {
       return;
     }
   } : null;
-  const parser = new Parser({
+
+  // Integrity state -- only allocated when requested.
+  const doHtml  = checkOpts?.checkHtml  ?? false;
+  const doA11y  = checkOpts?.checkA11y  ?? false;
+  const doIds   = checkOpts?.checkIds   ?? false;
+  const doStub  = checkOpts?.captureRedirectStub ?? false;
+
+  const tagStack   = doHtml ? [] : null;
+  const htmlErrors = doHtml ? [] : null;
+  const a11yErrors = doA11y ? [] : null;
+  const idMap      = doIds  ? new Map() : null;
+
+  // a11y anchor-tracking state.
+  let inAnchor        = false;
+  let anchorHasText   = false;
+  let anchorHasChild  = false;  // any element child (img, svg, span, ...)
+  let isRedirectStub  = false;
+
+  const handlers = {
     onopentag(name, attribs) {
+      // ── existing: capture ids ──────────────────────────────────
       if (captureIds) {
         const id = attribs.id;
         if (id) ids.add(id);
@@ -123,26 +260,120 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes) {
           if (nm) ids.add(nm);
         }
       }
+      // ── existing: extract links ────────────────────────────────
       const attrs = LINK_ATTR_TABLE.get(name);
-      if (!attrs) return;
-      for (const a of attrs) {
-        const v = attribs[a];
-        if (!v) continue;
-        if (SRCSET_ATTRS.has(a)) {
-          for (const u of splitSrcset(v)) {
-            links.push(u);
-            if (checkForbid) checkForbid(u);
+      if (attrs) {
+        for (const a of attrs) {
+          const v = attribs[a];
+          if (!v) continue;
+          if (SRCSET_ATTRS.has(a)) {
+            for (const u of splitSrcset(v)) {
+              links.push(u);
+              if (checkForbid) checkForbid(u);
+            }
+          } else {
+            links.push(v);
+            if (checkForbid) checkForbid(v);
           }
-        } else {
-          links.push(v);
-          if (checkForbid) checkForbid(v);
         }
       }
+
+      // ── check-html: push non-void elements onto tag stack ──────
+      if (tagStack !== null && !HTML5_VOID_ELEMENTS.has(name)) {
+        tagStack.push(name);
+      }
+
+      // ── check-ids: count id attributes ────────────────────────
+      if (idMap && attribs.id) {
+        idMap.set(attribs.id, (idMap.get(attribs.id) ?? 0) + 1);
+      }
+
+      // ── check-a11y ─────────────────────────────────────────────
+      if (doA11y) {
+        // img without alt attribute (alt="" is valid for decorative images)
+        if (name === "img" && !("alt" in attribs)) {
+          a11yErrors.push({ type: "img-missing-alt", src: attribs.src ?? "" });
+        }
+        // empty href
+        if (attribs.href === "") {
+          a11yErrors.push({ type: "empty-href", tag: name });
+        }
+        // track anchor content for empty-anchor check
+        if (name === "a") {
+          inAnchor      = true;
+          anchorHasText  = false;
+          anchorHasChild = false;
+        } else if (inAnchor) {
+          anchorHasChild = true;  // any child element -- link carries content
+        }
+      }
+
+      // ── redirect stub detection ────────────────────────────────
+      if (doStub && name === "meta" &&
+          (attribs["http-equiv"] ?? "").toLowerCase() === "refresh") {
+        isRedirectStub = true;
+      }
     },
-  });
+  };
+
+  if (doA11y) {
+    handlers.ontext = function(text) {
+      if (inAnchor && text.trim()) anchorHasText = true;
+    };
+  }
+
+  if (doHtml || doA11y) {
+    handlers.onclosetag = function(name) {
+      // check-html: verify tag-stack balance
+      if (tagStack !== null && !HTML5_VOID_ELEMENTS.has(name)) {
+        const top = tagStack[tagStack.length - 1];
+        if (top === name) {
+          tagStack.pop();
+        } else {
+          // Mismatch: try lenient recovery by scanning back in the stack.
+          const idx = tagStack.lastIndexOf(name);
+          if (idx >= 0) {
+            while (tagStack.length > idx + 1) {
+              htmlErrors.push({ type: "mismatched-tag", tag: tagStack.pop() });
+            }
+            tagStack.pop();
+          } else {
+            htmlErrors.push({ type: "unexpected-close", tag: name });
+          }
+        }
+      }
+      // check-a11y: end-of-anchor check
+      if (doA11y && name === "a" && inAnchor) {
+        if (!anchorHasText && !anchorHasChild) {
+          a11yErrors.push({ type: "empty-anchor" });
+        }
+        inAnchor = false;
+      }
+    };
+  }
+
+  if (doHtml) {
+    handlers.onend = function() {
+      // Flag any tags still open at end-of-document.
+      for (let i = tagStack.length - 1; i >= 0; i--) {
+        htmlErrors.push({ type: "unclosed-tag", tag: tagStack[i] });
+      }
+    };
+  }
+
+  const parser = new Parser(handlers);
   parser.write(fs.readFileSync(htmlPath, "utf8"));
   parser.end();
-  return { links, ids, forbidden };
+
+  // Collect duplicate IDs.
+  const dupIds = idMap ? [] : null;
+  if (idMap) {
+    for (const [id, count] of idMap) {
+      if (count > 1) dupIds.push({ id, count });
+    }
+  }
+
+  return { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub };
 }
 
 // Coerce a base-path arg into the canonical '/prefix' form (leading
@@ -298,6 +529,28 @@ Options:
   -v, --verbose              Print per-stage timing breakdown.
   -h, --help                 Show this help and exit.
 
+Integrity checks (share the existing htmlparser2 SAX parse pass):
+  --check-html               HTML well-formedness: unclosed tags,
+                             mismatched closes.
+  --check-a11y               Accessibility basics: <img> missing alt,
+                             empty <a> tags, empty href attributes.
+  --check-ids                Duplicate id="..." attributes on the same
+                             page.
+  --check-sitemap            Every .html file in the input is in
+                             sitemap.xml (or is a known exclusion).
+                             Reads <root-dir>/sitemap.xml; skipped
+                             silently if the file is absent.
+  --check-search             Every .html file in the input has at least
+                             one entry in assets/js/search-data.json.
+                             Reads from <root-dir>; skipped silently if
+                             the file is absent.
+
+Exit codes:
+  0  All checks passed.
+  1  Link / forbidden-prefix check failed.
+  2  Integrity check failed (no link failures).
+  3  Both link and integrity checks failed.
+
 Inputs are files or directories; directories are searched recursively
 for *.html.
 `);
@@ -314,6 +567,11 @@ function parseArgs(argv) {
     forbid: [],
     noFail: false,
     verbose: false,
+    checkHtml: false,
+    checkA11y: false,
+    checkIds: false,
+    checkSitemap: false,
+    checkSearch: false,
   };
   const inputs = [];
   const unknown = [];
@@ -336,6 +594,11 @@ function parseArgs(argv) {
     else if (a === "--threads") { need(a, i++); /* accepted, ignored */ }
     else if (a === "-v" || a === "--verbose") opts.verbose = true;
     else if (a === "-h" || a === "--help") { /* handled before dispatch */ }
+    else if (a === "--check-html") opts.checkHtml = true;
+    else if (a === "--check-a11y") opts.checkA11y = true;
+    else if (a === "--check-ids") opts.checkIds = true;
+    else if (a === "--check-sitemap") opts.checkSitemap = true;
+    else if (a === "--check-search") opts.checkSearch = true;
     else if (a.startsWith("--")) {
       // Tolerate unknown flags passed through via check.bat's %*.
       // Consume an attached value if present.
@@ -426,6 +689,17 @@ function runCheck(argv) {
   for (const w of walkWarnings) write(w);
   const tWalk = performance.now();
 
+  // Build checkOpts only when at least one integrity flag is on, to
+  // avoid adding handlers to the parser on runs that don't need them.
+  const needIntegrity = opts.checkHtml || opts.checkA11y || opts.checkIds;
+  const needRedirectStub = opts.checkSitemap || opts.checkSearch;
+  const checkOpts = (needIntegrity || needRedirectStub) ? {
+    checkHtml: opts.checkHtml,
+    checkA11y: opts.checkA11y,
+    checkIds:  opts.checkIds,
+    captureRedirectStub: needRedirectStub,
+  } : null;
+
   // Per-file: extract once, then group hrefs by (source_dir, href) so we
   // resolve each unique combination exactly once. The same nav/footer
   // links repeat across hundreds of pages from the same directory. Also
@@ -439,14 +713,24 @@ function runCheck(argv) {
   const idsByFile = opts.includeFragments ? new Map() : null;
   const forbidPrefixes = opts.forbid.length ? opts.forbid : null;
   const forbiddenBySource = forbidPrefixes ? new Map() : null;
+
+  // Per-file integrity results (populated when checkOpts is set).
+  const integrityByFile = needIntegrity ? new Map() : null;
+  const redirectStubSet = needRedirectStub ? new Set() : null;
+
   for (const src of htmlFiles) {
     const srcDir = path.dirname(src);
-    const { links, ids, forbidden } = extractLinksAndIds(
-      src, opts.includeFragments, forbidPrefixes
-    );
+    const { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub } =
+      extractLinksAndIds(src, opts.includeFragments, forbidPrefixes, checkOpts);
     for (const h of links) occurrences.push([src, srcDir, h]);
     if (idsByFile) idsByFile.set(src, ids);
     if (forbidden && forbidden.length) forbiddenBySource.set(src, forbidden);
+    if (integrityByFile && (htmlErrors?.length || a11yErrors?.length || dupIds?.length)) {
+      integrityByFile.set(src, { htmlErrors, a11yErrors, dupIds });
+    }
+    if (redirectStubSet && isRedirectStub) {
+      redirectStubSet.add(path.resolve(src));
+    }
   }
   const tExtract = performance.now();
 
@@ -628,7 +912,77 @@ function runCheck(argv) {
     write(`  Report:      ${fmt(tFragments, tDone)}\n`);
   }
 
-  let exitCode = (broken.length || forbiddenCount) ? 1 : 0;
+  // ── Integrity check reporting ──────────────────────────────────────
+
+  let integrityIssueCount = 0;
+
+  // Per-file html / a11y / ids findings.
+  if (integrityByFile && integrityByFile.size > 0) {
+    const lines = [];
+    const sortedFiles = [...integrityByFile.keys()].sort();
+    for (const src of sortedFiles) {
+      const { htmlErrors, a11yErrors, dupIds } = integrityByFile.get(src);
+      if (htmlErrors) {
+        for (const e of htmlErrors) {
+          lines.push(`${src}: html-${e.type}: <${e.tag}>`);
+          integrityIssueCount++;
+        }
+      }
+      if (a11yErrors) {
+        for (const e of a11yErrors) {
+          if (e.type === "img-missing-alt") {
+            lines.push(`${src}: a11y-img-missing-alt: src=${e.src}`);
+          } else if (e.type === "empty-anchor") {
+            lines.push(`${src}: a11y-empty-anchor`);
+          } else if (e.type === "empty-href") {
+            lines.push(`${src}: a11y-empty-href: <${e.tag}>`);
+          }
+          integrityIssueCount++;
+        }
+      }
+      if (dupIds) {
+        for (const e of dupIds) {
+          lines.push(`${src}: duplicate-id: '${e.id}' appears ${e.count} times`);
+          integrityIssueCount++;
+        }
+      }
+    }
+    if (lines.length) {
+      write("\n" + lines.join("\n") + "\n");
+    }
+  }
+
+  // Cross-file sitemap check.
+  if (opts.checkSitemap) {
+    const issues = checkSitemapContents(rootStr, htmlFiles, redirectStubSet);
+    if (issues === null) {
+      write("warning: --check-sitemap: sitemap.xml not found in root-dir, skipping\n");
+    } else if (issues.length) {
+      write("\n" + issues.join("\n") + "\n");
+      integrityIssueCount += issues.length;
+    }
+  }
+
+  // Cross-file search-index check.
+  if (opts.checkSearch) {
+    const issues = checkSearchContents(rootStr, htmlFiles, redirectStubSet);
+    if (issues === null) {
+      write("warning: --check-search: search-data.json not found in root-dir, skipping\n");
+    } else if (issues.length) {
+      write("\n" + issues.join("\n") + "\n");
+      integrityIssueCount += issues.length;
+    }
+  }
+
+  // Summary line when any integrity flags were requested.
+  if (needIntegrity || opts.checkSitemap || opts.checkSearch) {
+    write(`Integrity: ${integrityIssueCount} issue(s)\n`);
+  }
+
+  // Exit codes: 1 = link failures, 2 = integrity failures, 3 = both.
+  const linksFailed = broken.length > 0 || forbiddenCount > 0;
+  const integrityFailed = integrityIssueCount > 0;
+  let exitCode = (linksFailed ? 1 : 0) | (integrityFailed ? 2 : 0);
   if (opts.noFail) exitCode = 0;
   return { output: buf.join(""), exitCode };
 }
