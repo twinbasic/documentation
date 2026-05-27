@@ -43,7 +43,7 @@ redirect_from:
 
 <sup>2</sup> Originally reported in [twinBASIC GitHub Issue #1310 -- Windowless Anchor Resizing Bug](https://github.com/twinbasic/twinbasic/issues/1310). Fixed in BETA 162.
 
-<sup>3</sup> Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN -- Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-resources)
+<sup>3</sup> Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN -- Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/about-windows)
 
 <sup>4</sup> Background on Z-order rendering and Windows control layering: [Windows Controls - Z-order](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#z-order)
 
