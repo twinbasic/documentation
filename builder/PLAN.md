@@ -30,11 +30,30 @@ load. `_diff.mjs` gained `--against-disk` and `--multi` modes; a new
 already-accepted entries; `verify-phase8.mjs` got a cross-reference
 completeness audit. The codebase gained [README.md](README.md).
 
-**Phase 10** (planned, no PLAN-10.md yet) picks up the output-changing
-FUTURE-WORK items (Shiki theming generated from upstream `.twin` source
-files, mermaid auto-gen, copy-code SSR, linkify, search-data
-minification, AST-based JTD patcher). Open follow-ups (deferred
-enhancements, divergence investigations, the Jekyll-to-tbdocs cutover)
+**Phase 10** (planned, see [PLAN-10.md](PLAN-10.md)) is the
+Jekyll-to-tbdocs cutover: flip the default destination from
+`_site-new` to `_site`, swap CI (`build.bat` / `serve.bat` /
+`check.bat` / the GitHub Pages workflow) to invoke tbdocs instead
+of `bundle exec jekyll build`, retire the verify-phase{1..8}.mjs
+harnesses, and replace them with an expanded site-integrity
+checker built on top of the existing [scripts/check_links.mjs](../scripts/check_links.mjs)
+(HTML well-formedness, duplicate-ID detection, anchor resolution,
+heading-hierarchy checks). The Jekyll source set (`docs/_plugins/`,
+`docs/_includes/`, `docs/_layouts/`, `docs/_sass/`, `docs/Gemfile`)
+stays in tree for one release cycle as a reference, then deletes
+in a follow-up commit.
+
+**Phase 11** (planned, no PLAN-11.md yet) picks up the output-changing
+FUTURE-WORK items now that the byte-vs-Jekyll acceptance bar is
+gone: Shiki theming generated from upstream `.twin` source files
+(replacing the Rouge-class indirection in
+[highlight.mjs](highlight.mjs) and dropping `rouge.css`), mermaid
+auto-gen, copy-code SSR, search-data minification, AST-based JTD
+patcher. Sequenced after Phase 10 because Phase 11's intentional
+divergences are only free to land once `accepted-divergences.mjs`
+stops being the acceptance bar.
+
+Open follow-ups (deferred enhancements, divergence investigations)
 live in [FUTURE-WORK.md](FUTURE-WORK.md).
 
 ## Architecture
@@ -122,7 +141,8 @@ Phase 6: AUXILIARIES     ~100ms   Redirects, sitemap, search-data.json, robots.t
 Phase 7: WRITE OFFLINE   ~1000ms  URL-rewritten copy to _site-offline/                        [shipped]
 Phase 8: WRITE PDF       ~150ms   Sparse copy to _site-pdf/                                   [shipped]
 Phase 9: QoL + DOCS      (-200ms) FUTURE-WORK consolidation; no output change                 [shipped]
-Phase 10: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [planned]
+Phase 10: CUTOVER        (n/a)    Retire Jekyll; pivot harnesses to site-integrity checker    [planned]
+Phase 11: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [planned]
 ```
 
 Timings are wall-clock measurements from `node builder/index.mjs` on
@@ -359,28 +379,50 @@ Skip patterns: CNAME, robots.txt, sitemap.xml, book.html (per
 the inputs; the shell script does the actual PDF render. Full spec:
 [PLAN-8.md](PLAN-8.md).
 
-### Phase 9: QOL + DOCS + CLEANUP (planned)
+### Phase 9: QOL + DOCS + CLEANUP (shipped)
 
-Consolidation pass landing every FUTURE-WORK item that either doesn't
-change build output or strictly improves Jekyll parity. Adds CLI
-flags (`--no-offline`, `--no-pdf`, `--serving`, `--profile-offline`),
-a Phase 7 nav-block cache (~200 ms perf win), a generic `_data/*.yml`
-loader (`data.mjs`), a multi-divergence audit tool
-(`_audit_accepted.mjs`), a `--against-disk` mode for `_diff.mjs`, a
-PDF cross-reference completeness check in `verify-phase8.mjs`, and a
-`builder/README.md` plus a per-module header consistency pass.
-Switches the PDF title-page date from `commitDate` to wall-clock to
-match Jekyll's `site.time`. Full spec: [PLAN-9.md](PLAN-9.md).
+Consolidation pass landing every FUTURE-WORK item that either
+didn't change build output or strictly improved Jekyll parity.
+Added CLI flags (`--no-offline`, `--no-pdf`, `--serving`,
+`--profile-offline`); a Phase 7 nav-block cache (~200 ms perf
+win); a generic `_data/*.yml` loader (`data.mjs`); a multi-
+divergence audit tool (`_audit_accepted.mjs`); `--against-disk`
+and `--multi` modes for `_diff.mjs`; a PDF cross-reference
+completeness check in `verify-phase8.mjs`; and a `builder/README.md`
+plus a per-module header consistency pass. Switched the PDF
+title-page date from `commitDate` to wall-clock to match Jekyll's
+`site.time`. Full spec: [PLAN-9.md](PLAN-9.md).
 
-### Phase 10: PARITY UPDATE (planned)
+### Phase 10: CUTOVER (planned)
+
+The Jekyll-to-tbdocs cutover. Flips the default destination from
+`_site-new` to `_site` in [index.mjs](index.mjs); updates
+[docs/build.bat](../docs/build.bat) / [docs/serve.bat](../docs/serve.bat)
+/ [docs/check.bat](../docs/check.bat) and the GitHub Pages workflow
+to call tbdocs instead of `bundle exec jekyll build`; retires the
+eight `verify-phase{1..8}.mjs` harnesses; and replaces them with an
+expanded site-integrity checker built on top of
+[scripts/check_links.mjs](../scripts/check_links.mjs) -- adding
+HTML well-formedness validation, duplicate-`id` detection, anchor
+resolution (already partial via `--include-fragments`), and
+heading-hierarchy checks. The Jekyll source set (`docs/_plugins/`,
+`docs/_includes/`, `docs/_layouts/`, `docs/_sass/`, `docs/Gemfile`)
+stays for one release cycle as reference, then deletes in a
+follow-up commit. Full spec: [PLAN-10.md](PLAN-10.md).
+
+### Phase 11: PARITY UPDATE (planned)
 
 Output-changing FUTURE-WORK items the byte-parity-with-Jekyll
-discipline of Phases 3-9 had deferred. The headline item is **Shiki
+discipline of Phases 3-9 had deferred. Headline item: **Shiki
 themes generated from upstream twinBASIC `.twin` source files**
-(replacing the current `scripts/extract_theme_colors.py` Rouge-class
-mapping); other candidates are mermaid `.mmd` auto-regeneration,
-server-side copy-code button, selective linkify, search-data
-minification, and an AST-based JTD JS patcher. No PLAN-10.md yet.
+(replacing the `scripts/extract_theme_colors.py` Rouge-class
+mapping and dropping `rouge.css` entirely). Other candidates:
+mermaid `.mmd` auto-regeneration (B1), server-side copy-code
+button (B5), search-data minification (B10), AST-based JTD JS
+patcher (B11). B6 (linkify) and B18 (streaming book.html write)
+were dropped. No PLAN-11.md yet -- sequenced after Phase 10 lands
+because Phase 11's intentional byte divergences only become free to
+accept once the Jekyll-comparison harness is retired.
 
 ## Static Asset Extraction (One-Time Setup)
 
