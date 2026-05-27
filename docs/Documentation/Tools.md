@@ -111,7 +111,7 @@ Normalises literal en-dash / em-dash characters in markdown source under `docs/`
 
     node docs/render-book.mjs <input.html> -o <output.pdf> [options]
 
-The PDF renderer that `book.bat` calls. Drives `puppeteer` + `paged.js` + `pdf-lib` directly, so it controls `pdf-lib`'s `parseSpeed` (the default yields the event loop between every 100 objects on load, adding ~32 seconds to a 100-second build for no reason in Node --- see [perf/README.md](https://github.com/twinbasic/documentation/blob/main/perf/README.md) for the diagnosis). Replaces an earlier `npx pagedjs-cli ...` invocation.
+The PDF renderer that `book.bat` calls. It is a generic HTML-to-PDF converter: it takes the pre-built `_site-pdf/book.html` as its sole document input and has no knowledge of `_data/book.yml` --- all chapter structure, heading levels, and outline entries are already embedded in the HTML by `tbdocs` Phase 8. Drives `puppeteer` + `paged.js` + `pdf-lib` directly, so it controls `pdf-lib`'s `parseSpeed` (the default yields the event loop between every 100 objects on load, adding ~32 seconds to a 100-second build for no reason in Node --- see [perf/README.md](https://github.com/twinbasic/documentation/blob/main/perf/README.md) for the diagnosis). Replaces an earlier `npx pagedjs-cli ...` invocation.
 
 Key options used by `book.bat`:
 
@@ -128,6 +128,6 @@ The build pipeline also reads a handful of declarative files. They are not execu
 | File | Effect |
 |---|---|
 | `docs/_config.yml` | Site config. `tbdocs` reads `url`, `baseurl`, `title`, `logo`, `also_build_offline`, `also_build_pdf`, `offline_exclude`, `enable_copy_code_button`, the footer / aux-link knobs, the GitHub edit-link knobs, and the offline-download-link knobs. Jekyll-only keys (`markdown`, `kramdown`, `theme`, `highlighter`, the `defaults` block, the `compress_html` block, the `exclude` list) are ignored. |
-| `docs/_data/book.yml` | The PDF book's table of contents. Each entry resolves to one or more pages via `page` / `pages` / `nav_page` / `nav_pages` selectors plus an optional `no_descent` flag. `tbdocs`'s [`book.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/book.mjs) iterates over every entry and stores the resolved chapter array as `entry._chapters` for the renderer pass. |
+| `docs/_data/book.yml` | The PDF book's chapter manifest. Entries are resolved to pages via the selector schema (`page` / `pages` / `nav_page` / `nav_pages` / `no_descent`) and control PDF outline behaviour via `landing_page:`, `landing_is_target:`, `no_outline_entry:`, `no_heading_shift:`, and `outline_closed:`. Full schema is documented in the file header. Phase 2 resolves chapter arrays; Phase 8 assembles `book.html`. |
 | `builder/themes/Light.theme`, `Dark.theme`, `Classic.theme` | twinBASIC IDE theme files, vendored from the BETA installer. `builder/highlight-theme.mjs` parses them into a Symbol-keyed palette that drives both the renderer's scope-to-class mapping and the generated `tb-highlight.css`. Refresh from the installer when the IDE adds new palette entries. |
 | `builder/twinbasic.tmLanguage.json` | TextMate grammar for the twinBASIC language. Shiki uses it to tokenise every ` ```tb ` code block. |
