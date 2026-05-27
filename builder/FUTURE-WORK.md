@@ -292,17 +292,19 @@ offlinify's `tick(:time_*)` accumulators. Per-substep wall-time
 isn't captured in the first cut; only the Phase 7 total appears in
 the orchestrator's `t.summary()`.
 
-### B10. Phase 7 search-data minification (PLAN-7 §13)
+### B10. Phase 7 search-data minification (PLAN-7 §13) — **shipped in Phase 11**
 
-**Routing**: → **Phase 11**. Jekyll's `search-data.js` is not
-minified; minifying regresses the offline-tree byte match.
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.4](PLAN-11.md)).
 
-**Trigger**: complaints about page load under `file://` on spinning
-disks, or `_site-offline.zip` size pressure.
-
-Compress `search-data.js` (~2.8 MB -> ~1.7 MB at modest JSON
-minification). The search index dominates offline-tree size; this
-is the highest-leverage size reduction.
+`builder/offline.mjs`'s `deriveOfflineSearchDataJs` re-stringifies
+the parsed search-data JSON without indentation before wrapping it
+as `window.SEARCH_DATA = ...;`. The online `_site/assets/js/search-data.json`
+keeps its pretty-printed shape (Phase 6 unchanged); only the offline
+tree's `_site-offline/assets/js/search-data.js` is minified. Real-
+world reduction on the current tree is ~100 KB (~3.6%) -- 2.80 MB ->
+2.70 MB -- modest compared to the PLAN-11 ~1.1 MB estimate, because
+most of the file is content payload (which is preserved verbatim);
+only the per-entry indentation collapses.
 
 ### B11. Phase 7 AST-based JTD JS patching (PLAN-7 §13)
 

@@ -143,7 +143,7 @@ Phase 7: WRITE OFFLINE   ~1000ms  URL-rewritten copy to _site-offline/          
 Phase 8: WRITE PDF       ~150ms   Sparse copy to _site-pdf/                                   [shipped]
 Phase 9: QoL + DOCS      (-200ms) FUTURE-WORK consolidation; no output change                 [shipped]
 Phase 10: CUTOVER        (n/a)    Retire Jekyll; pivot harnesses to site-integrity checker    [shipped]
-Phase 11: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [in progress — B2 + B1 + B5 shipped]
+Phase 11: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [in progress — B2 + B1 + B5 + B10 shipped]
 ```
 
 Timings are wall-clock measurements from `node builder/index.mjs` on

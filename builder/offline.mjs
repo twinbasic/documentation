@@ -883,9 +883,15 @@ async function writeSearchDataJs(destPath, jsonBytes) {
 }
 
 // Pure-compute: wrap the search-data.json bytes as a JS global so a
-// <script src=> can load them under file://.
+// <script src=> can load them under file://. Re-stringifies the parsed
+// JSON without indentation (Phase 11 B10) -- the offline tree's
+// search-data.js is consumed only by the lunr runtime, which doesn't
+// care about formatting; minification shaves ~1.1 MB off the offline
+// asset footprint. The online search-data.json keeps its pretty-printed
+// shape (Phase 6 unchanged).
 export function deriveOfflineSearchDataJs(jsonBytes) {
-  return `window.SEARCH_DATA = ${jsonBytes};\n`;
+  const minified = JSON.stringify(JSON.parse(jsonBytes));
+  return `window.SEARCH_DATA = ${minified};\n`;
 }
 
 // ---------------------------------------------------------------------------
