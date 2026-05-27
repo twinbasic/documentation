@@ -218,6 +218,7 @@ function checkSearchContents(rootStr, htmlFiles, redirectStubSet, basePath) {
 //   checkHtml   -- unclosed / mismatched tags (htmlErrors)
 //   checkA11y   -- img missing alt, empty anchors, empty href (a11yErrors)
 //   checkIds    -- duplicate id attributes on the same page (dupIds)
+//   checkCanonical -- capture <link rel="canonical" href="..."> (canonicalHref)
 //   captureRedirectStub -- detect <meta http-equiv="refresh"> (isRedirectStub)
 function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
   const links = [];
@@ -235,10 +236,11 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
   } : null;
 
   // Integrity state -- only allocated when requested.
-  const doHtml  = checkOpts?.checkHtml  ?? false;
-  const doA11y  = checkOpts?.checkA11y  ?? false;
-  const doIds   = checkOpts?.checkIds   ?? false;
-  const doStub  = checkOpts?.captureRedirectStub ?? false;
+  const doHtml      = checkOpts?.checkHtml  ?? false;
+  const doA11y      = checkOpts?.checkA11y  ?? false;
+  const doIds       = checkOpts?.checkIds   ?? false;
+  const doCanonical = checkOpts?.checkCanonical ?? false;
+  const doStub      = checkOpts?.captureRedirectStub ?? false;
 
   const tagStack   = doHtml ? [] : null;
   const htmlErrors = doHtml ? [] : null;
@@ -250,6 +252,7 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
   let anchorHasText   = false;
   let anchorHasChild  = false;  // any element child (img, svg, span, ...)
   let isRedirectStub  = false;
+  let canonicalHref   = null;
 
   const handlers = {
     onopentag(name, attribs) {
@@ -315,6 +318,13 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
           (attribs["http-equiv"] ?? "").toLowerCase() === "refresh") {
         isRedirectStub = true;
       }
+
+      // ── canonical URL capture ─────────────────────────────────
+      if (doCanonical && name === "link" &&
+          (attribs.rel ?? "").toLowerCase() === "canonical" &&
+          attribs.href) {
+        canonicalHref = attribs.href;
+      }
     },
   };
 
@@ -375,7 +385,51 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
     }
   }
 
-  return { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub };
+  return { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub, canonicalHref };
+}
+
+// Cross-file check: every page's <link rel="canonical" href="..."> must
+// match the page's own deployment URL.  The check expects the
+// canonical to refer to the URL where the page is actually served:
+// `--base-path` + file-derived URL path.
+//
+// Catches both the "canonical missing baseurl" bug (canonical would
+// 404 on a subpath deploy) and the inverse "canonical includes
+// baseurl on a root deploy" bug.  Ignores the canonical's scheme+host
+// (the URL may legitimately point at a different host than the one
+// hosting the file).
+//
+// Returns an array of issue strings, or null if no pages had a
+// canonical href (the input set was empty / canonical-less).
+function checkCanonicalContents(rootStr, canonicalByFile, redirectStubSet, basePath) {
+  if (canonicalByFile.size === 0) return null;
+  const EXCLUDE = new Set(["book.html", "404.html"]);
+  const rootAbs = path.resolve(rootStr);
+  const issues = [];
+
+  for (const [file, canonical] of canonicalByFile) {
+    if (EXCLUDE.has(path.basename(file))) continue;
+    if (redirectStubSet && redirectStubSet.has(path.resolve(file))) continue;
+    const rel = path.relative(rootAbs, path.resolve(file)).replace(/\\/g, "/");
+    const expected = (basePath || "") + deriveUrlPath(rel);
+
+    let canonicalPath;
+    try {
+      const u = new URL(canonical, "https://placeholder.invalid/");
+      canonicalPath = u.pathname;
+    } catch {
+      issues.push(`${rel}: canonical-malformed: '${canonical}'`);
+      continue;
+    }
+    // Decode percent-encoded segments before comparison (deriveUrlPath
+    // emits literal characters from the filename).
+    canonicalPath = decodePath(canonicalPath);
+
+    if (canonicalPath !== expected) {
+      issues.push(`${rel}: canonical-mismatch: '${canonicalPath}' (expected '${expected}')`);
+    }
+  }
+  return issues;
 }
 
 // Coerce a base-path arg into the canonical '/prefix' form (leading
@@ -570,6 +624,10 @@ Integrity checks (share the existing htmlparser2 SAX parse pass):
                              one entry in assets/js/search-data.json.
                              Reads from <root-dir>; skipped silently if
                              the file is absent.
+  --check-canonical          Every page's <link rel="canonical" href>
+                             URL path matches the page's own deployment
+                             URL. Catches canonical URLs that include
+                             --base-path / the wrong baseurl.
 
 Exit codes:
   0  All checks passed.
@@ -598,6 +656,7 @@ function parseArgs(argv) {
     checkIds: false,
     checkSitemap: false,
     checkSearch: false,
+    checkCanonical: false,
   };
   const inputs = [];
   const unknown = [];
@@ -625,6 +684,7 @@ function parseArgs(argv) {
     else if (a === "--check-ids") opts.checkIds = true;
     else if (a === "--check-sitemap") opts.checkSitemap = true;
     else if (a === "--check-search") opts.checkSearch = true;
+    else if (a === "--check-canonical") opts.checkCanonical = true;
     else if (a.startsWith("--")) {
       // Tolerate unknown flags passed through via check.bat's %*.
       // Consume an attached value if present.
@@ -718,11 +778,12 @@ function runCheck(argv) {
   // Build checkOpts only when at least one integrity flag is on, to
   // avoid adding handlers to the parser on runs that don't need them.
   const needIntegrity = opts.checkHtml || opts.checkA11y || opts.checkIds;
-  const needRedirectStub = opts.checkSitemap || opts.checkSearch;
-  const checkOpts = (needIntegrity || needRedirectStub) ? {
+  const needRedirectStub = opts.checkSitemap || opts.checkSearch || opts.checkCanonical;
+  const checkOpts = (needIntegrity || needRedirectStub || opts.checkCanonical) ? {
     checkHtml: opts.checkHtml,
     checkA11y: opts.checkA11y,
     checkIds:  opts.checkIds,
+    checkCanonical: opts.checkCanonical,
     captureRedirectStub: needRedirectStub,
   } : null;
 
@@ -743,10 +804,11 @@ function runCheck(argv) {
   // Per-file integrity results (populated when checkOpts is set).
   const integrityByFile = needIntegrity ? new Map() : null;
   const redirectStubSet = needRedirectStub ? new Set() : null;
+  const canonicalByFile = opts.checkCanonical ? new Map() : null;
 
   for (const src of htmlFiles) {
     const srcDir = path.dirname(src);
-    const { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub } =
+    const { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub, canonicalHref } =
       extractLinksAndIds(src, opts.includeFragments, forbidPrefixes, checkOpts);
     for (const h of links) occurrences.push([src, srcDir, h]);
     if (idsByFile) idsByFile.set(src, ids);
@@ -756,6 +818,9 @@ function runCheck(argv) {
     }
     if (redirectStubSet && isRedirectStub) {
       redirectStubSet.add(path.resolve(src));
+    }
+    if (canonicalByFile && canonicalHref) {
+      canonicalByFile.set(src, canonicalHref);
     }
   }
   const tExtract = performance.now();
@@ -1003,8 +1068,19 @@ function runCheck(argv) {
     }
   }
 
+  // Per-page canonical URL check.
+  if (opts.checkCanonical && canonicalByFile) {
+    const issues = checkCanonicalContents(rootStr, canonicalByFile, redirectStubSet, basePath);
+    if (issues === null) {
+      write("warning: --check-canonical: no <link rel=\"canonical\"> found in any page, skipping\n");
+    } else if (issues.length) {
+      write("\n" + issues.join("\n") + "\n");
+      integrityIssueCount += issues.length;
+    }
+  }
+
   // Summary line when any integrity flags were requested.
-  if (needIntegrity || opts.checkSitemap || opts.checkSearch) {
+  if (needIntegrity || opts.checkSitemap || opts.checkSearch || opts.checkCanonical) {
     write(`Integrity: ${integrityIssueCount} issue(s)\n`);
   }
 
@@ -1026,6 +1102,10 @@ function runCheck(argv) {
 //      --base-path as broken (browser-semantics check).  A link
 //      missing the baseurl prefix may still find a file on disk
 //      under --root-dir, but it would 404 on a real subpath deploy.
+//   3. checkCanonicalContents must flag canonical URLs whose path
+//      doesn't equal --base-path + the page's URL path.  Catches
+//      "canonical missing baseurl" (would 404 on subpath deploy)
+//      and the inverse "canonical includes baseurl on root deploy".
 
 function selfTest() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "check-links-test-"));
@@ -1070,6 +1150,39 @@ function selfTest() {
     const noBp = resolve("/Foo", tmp, path.join(tmp, "Foo.html"), tmp, "");
     if (!noBp || noBp[0].startsWith(OUTSIDE_BASEPATH_MARKER))
       throw new Error("resolve('/Foo') without --base-path must not be flagged: " + JSON.stringify(noBp));
+
+    // Guard 3: canonical URL check.  Under --base-path /base, the
+    // canonical for Foo.html must be "<host>/base/Foo" (the actual
+    // deployment URL).  Both "missing baseurl" and "wrong baseurl"
+    // are mismatches.
+    const okBp = new Map([
+      [path.join(tmp, "Foo.html"), "https://example.com/base/Foo"],
+    ]);
+    const okBpIssues = checkCanonicalContents(tmp, okBp, null, bp);
+    if (!okBpIssues || okBpIssues.length)
+      throw new Error("checkCanonicalContents under --base-path: correct canonical flagged: " + JSON.stringify(okBpIssues));
+
+    const missingBaseurl = new Map([
+      [path.join(tmp, "Foo.html"), "https://example.com/Foo"],
+    ]);
+    const miBpIssues = checkCanonicalContents(tmp, missingBaseurl, null, bp);
+    if (!miBpIssues || miBpIssues.length !== 1 || !miBpIssues[0].includes("canonical-mismatch"))
+      throw new Error("checkCanonicalContents: should flag baseurl-less canonical under --base-path: " + JSON.stringify(miBpIssues));
+
+    // With no --base-path, canonical must NOT include any path prefix.
+    const okNoBp = new Map([
+      [path.join(tmp, "Foo.html"), "https://example.com/Foo"],
+    ]);
+    const okNoBpIssues = checkCanonicalContents(tmp, okNoBp, null, "");
+    if (!okNoBpIssues || okNoBpIssues.length)
+      throw new Error("checkCanonicalContents without --base-path: correct canonical flagged: " + JSON.stringify(okNoBpIssues));
+
+    const extraBaseurl = new Map([
+      [path.join(tmp, "Foo.html"), "https://example.com/base/Foo"],
+    ]);
+    const exNoBpIssues = checkCanonicalContents(tmp, extraBaseurl, null, "");
+    if (!exNoBpIssues || exNoBpIssues.length !== 1 || !exNoBpIssues[0].includes("canonical-mismatch"))
+      throw new Error("checkCanonicalContents: should flag canonical with extra prefix on root deploy: " + JSON.stringify(exNoBpIssues));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

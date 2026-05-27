@@ -55,7 +55,7 @@ jobs:
           node scripts/check_links.mjs
           --offline --include-fragments
           --check-html --check-a11y --check-ids
-          --check-sitemap --check-search
+          --check-sitemap --check-search --check-canonical
           --fallback-extensions html
           --index-files 'index.html,.'
           --root-dir docs/_site

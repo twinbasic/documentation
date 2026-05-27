@@ -51,7 +51,12 @@ jobs:
         id: pages
         uses: actions/configure-pages@v6
       - name: Build with tbdocs
-        run: node builder/index.mjs --src docs --baseurl '${{ steps.pages.outputs.base_path }}'
+        # --url + --baseurl together make canonical / og:url / sitemap
+        # entries point at the actual deployment (e.g. on a fork that
+        # deploys to kubao.github.io/twinBASIC-docs/, both bits move
+        # so the page advertises its own URL rather than the config'd
+        # production host).
+        run: node builder/index.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}'
       - name: Check links and site integrity
         # Three passes run in parallel via /sep/:
         #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
@@ -68,7 +73,7 @@ jobs:
           node scripts/check_links.mjs
           --offline --include-fragments
           --check-html --check-a11y --check-ids
-          --check-sitemap --check-search
+          --check-sitemap --check-search --check-canonical
           --fallback-extensions html
           --index-files 'index.html,.'
           --base-path '${{ steps.pages.outputs.base_path }}'

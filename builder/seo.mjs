@@ -62,7 +62,15 @@ export function precomputeSeo(pages, config, markdown) {
       : `${seoTitle} | ${seoSiteTitle}`;
 
     const url = String(page.permalink);
-    const canonicalInput = url.replace(/\/index\.html$/, "/");
+    // Canonical = deployment URL of the content.  Strip both
+    // `/index.html` (folder-style page) and any trailing `.html`
+    // (page without explicit permalink) so the canonical claims the
+    // extensionless URL GitHub Pages serves -- the same form every
+    // permalinked page uses, so links to the same content all
+    // canonicalise consistently.
+    const canonicalInput = url
+      .replace(/\/index\.html$/, "/")
+      .replace(/\.html$/, "");
     page.seoCanonical = absoluteUrl(canonicalInput, config);
     page.seoIsHome = HOMEPAGE_URLS.has(url);
   }

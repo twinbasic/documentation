@@ -2,12 +2,15 @@
 // RENDER + TEMPLATE + WRITE ONLINE + AUXILIARIES + WRITE OFFLINE + WRITE PDF.
 //
 // Usage: node builder/index.mjs [--src <path>] [--dest <path>]
-//        [--baseurl <prefix>] [--dry-run]
+//        [--baseurl <prefix>] [--url <origin>] [--dry-run]
 //
 // Default --src is "docs" relative to the current working directory.
 // Default --dest is "<src>/_site". --dry-run skips all filesystem writes.
 // --baseurl overrides _config.yml's baseurl (used by CI to inject the
 // Pages base path).
+// --url overrides _config.yml's url (used by CI to inject the Pages
+// origin -- e.g. https://kubao.github.io -- so canonical URLs match
+// the actual deployment instead of the configured production host).
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -34,6 +37,7 @@ function parseArgs(argv) {
     src: "docs",
     dest: null,
     baseurl: null,
+    url: null,
     dryRun: false,
     skipOffline: null,
     skipPdf: null,
@@ -54,6 +58,10 @@ function parseArgs(argv) {
       args.baseurl = argv[++i];
     } else if (a.startsWith("--baseurl=")) {
       args.baseurl = a.slice("--baseurl=".length);
+    } else if (a === "--url") {
+      args.url = argv[++i];
+    } else if (a.startsWith("--url=")) {
+      args.url = a.slice("--url=".length);
     } else if (a === "--dry-run") {
       args.dryRun = true;
     } else if (a === "--no-offline") {
@@ -102,6 +110,7 @@ async function main() {
 
   const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
   if (opts.baseurl != null) config.baseurl = opts.baseurl;
+  if (opts.url != null) config.url = opts.url;
   const { navTree } = computeNav(pages, config);
   t.lap("nav");
 
