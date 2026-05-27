@@ -56,7 +56,7 @@ diagram on the current tree, ~200 ms cost when it runs); B5 and
 B11 are perf-neutral. Net build-wall-clock effect: neutral to
 slightly faster.
 
-## Status: in progress — B2, B1, B5, B10 shipped; B11 pending
+## Status: shipped — B2, B1, B5, B10, B11 all landed
 
 ---
 
@@ -671,10 +671,13 @@ regions, which the string-slice approach does naturally.
 
 **Risk**: an `acorn` parse failure on the upstream
 `just-the-docs.js` (e.g. a future just-the-docs release that uses
-unsupported syntax). Mitigation: pass `ecmaVersion: "latest"`,
-catch parse errors, fall back to the regex patcher with a clear
-warning. The regex code stays in tree as the fallback for one
-release cycle, then drops in a follow-up.
+syntax acorn hasn't caught up to). Mitigation: `ecmaVersion: "latest"`
+so acorn accepts everything it can parse; the build fails loudly
+on parse error. No regex fallback is shipped -- per [§7.D13](#71-decision-record),
+`just-the-docs.js` is a vendored asset re-extracted only on
+deliberate gem-bump operations, so a parse failure at build time
+is a clear signal to fix the asset (or the AST patcher's expectations)
+at the moment of the bump.
 
 **Note**: the upstream just-the-docs version is pinned via
 `docs/Gemfile` (`gem "just-the-docs", "= 0.10.1"`). Under Phase 11
@@ -883,7 +886,7 @@ change.
 | D10 | B5 keeps the just-the-docs click-handler intact; only the DOM-injection path retires | The click-to-copy interaction is unchanged; only the moment of button creation moves from runtime to build-time. Minimal surface area to debug if a regression shows up. |
 | D11 | B10 minifies only the **offline** `search-data.js`, not the **online** `search-data.json` | The online JSON is fetched by Lunr at runtime and could-be-minified, but two consumer paths use it (the search runtime and any human-readable use-case for inspecting search hits). The offline `.js` is a write-once wrapper for `window.SEARCH_DATA` and has no other consumer; minification there is risk-free. |
 | D12 | B11's AST rewrites use **string-slice serialisation** (preserve upstream byte-formatting outside patched regions) rather than full re-serialisation via astring or similar | Keeps the diff vs upstream small and reviewable. A full re-serialisation would normalise whitespace site-wide and inflate the diff to "every line changed", obscuring whether the patch did anything beyond the two intended sites. |
-| D13 | B11 keeps the regex patcher in tree as a **fallback** for one release cycle, then drops it | Defence in depth against an acorn parse failure on a future just-the-docs version with unsupported syntax. The fallback fires only when acorn throws; once the release cycle is up, drop the fallback and tighten the dep on acorn's stability. |
+| D13 | B11 drops the regex patcher entirely; only the AST patcher ships | `just-the-docs.js` is a vendored asset re-extracted only on deliberate gem-bump operations, not silently. The "defence in depth" the original plan envisioned protects against an upstream churn pattern that doesn't apply here. A parse error at build time is a clear signal to fix the re-extracted asset (or the AST patcher's expectations) at the moment of the bump -- no second code path to maintain. |
 | D14 | Phase 11 does **not** touch `docs/_config.yml` | Same as Phase 10's [§7.D8](PLAN-10.md). The remaining Jekyll-only config keys are harmless ballast; cleaning them up is a separate task once the Phase 10 follow-up commit lands. |
 | D15 | `docs/_sass/custom/_twinbasic-{light,dark}.scss` deletes **in B2's PR if Phase 10 commit 7 has landed**, otherwise it stays for commit 7 to take | Avoids the bookkeeping question of "who owns these files now"; B2 retires their generator (`extract_theme_colors.py`), commit 7 retires the Jekyll source set including these SCSS partials. Whichever lands first claims the deletion. |
 

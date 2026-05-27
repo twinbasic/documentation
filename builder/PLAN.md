@@ -143,7 +143,7 @@ Phase 7: WRITE OFFLINE   ~1000ms  URL-rewritten copy to _site-offline/          
 Phase 8: WRITE PDF       ~150ms   Sparse copy to _site-pdf/                                   [shipped]
 Phase 9: QoL + DOCS      (-200ms) FUTURE-WORK consolidation; no output change                 [shipped]
 Phase 10: CUTOVER        (n/a)    Retire Jekyll; pivot harnesses to site-integrity checker    [shipped]
-Phase 11: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [in progress — B2 + B1 + B5 + B10 shipped]
+Phase 11: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [shipped]
 ```
 
 Timings are wall-clock measurements from `node builder/index.mjs` on
@@ -411,20 +411,36 @@ heading-hierarchy checks. The Jekyll source set (`docs/_plugins/`,
 stays for one release cycle as reference, then deletes in a
 follow-up commit. Full spec: [PLAN-10.md](PLAN-10.md).
 
-### Phase 11: PARITY UPDATE (in progress)
+### Phase 11: PARITY UPDATE (shipped)
 
 Output-changing FUTURE-WORK items the byte-parity-with-Jekyll
-discipline of Phases 3-9 had deferred. Headline item **B2 (shipped):
-Shiki themes generated from the vendored `.theme` files** —
-`scripts/extract_theme_colors.py` and `rouge.css` are gone;
-`builder/highlight-theme.mjs` builds the palette and emits
-`tb-highlight.css` at build time; `builder/highlight.mjs` shrank
-from ~470 lines to ~190 (the per-language Rouge-quirk overrides
-folded into the scope-to-Symbol table). Remaining items, each as
-its own PR: B1 (mermaid `.mmd` auto-regen), B5 (server-side copy-
-code button), B10 (search-data minification), B11 (AST-based JTD
-patcher). B6 (linkify) and B18 (streaming book.html write) were
-dropped. Full spec: [PLAN-11.md](PLAN-11.md).
+discipline of Phases 3-9 had deferred. All five PRs landed:
+
+- **B2:** Shiki themes generated from the vendored `.theme` files.
+  `scripts/extract_theme_colors.py` and `rouge.css` are gone;
+  `builder/highlight-theme.mjs` builds the palette and emits
+  `tb-highlight.css` at build time; `builder/highlight.mjs` shrank
+  from ~470 lines to ~190.
+- **B1:** Mermaid `.mmd` -> `.svg` auto-regen via `builder/mermaid.mjs`.
+  Reuses the cached Chrome the top-level `puppeteer` install already
+  provides; no second Chrome download.
+- **B5:** Server-side copy-code button. The button HTML is now
+  pre-rendered by `builder/highlight.mjs`; `just-the-docs.js`
+  retired the runtime DOM-injection loop, the click handler binds
+  to the pre-rendered buttons via `closest()`. `print.css` hides
+  the button for the PDF render path.
+- **B10:** Offline `search-data.js` minification -- `JSON.parse +
+  JSON.stringify` without indent. ~100 KB savings on the current
+  tree.
+- **B11:** AST-based patching of `just-the-docs.js` via `acorn`.
+  Survives cosmetic upstream edits; produces byte-identical output
+  to the prior regex patcher. `just-the-docs.js` is a vendored
+  asset re-extracted only on deliberate gem-bump operations, so no
+  regex fallback ships -- a parse error at build time is a clear
+  signal to fix the asset at the moment of the bump.
+
+B6 (linkify) and B18 (streaming book.html write) were dropped.
+Full spec: [PLAN-11.md](PLAN-11.md).
 
 ## Static Asset Extraction (One-Time Setup)
 

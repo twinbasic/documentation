@@ -306,22 +306,26 @@ world reduction on the current tree is ~100 KB (~3.6%) -- 2.80 MB ->
 most of the file is content payload (which is preserved verbatim);
 only the per-entry indentation collapses.
 
-### B11. Phase 7 AST-based JTD JS patching (PLAN-7 §13)
+### B11. Phase 7 AST-based JTD JS patching (PLAN-7 §13) — **shipped in Phase 11**
 
-**Routing**: → **Phase 11**. Replacing the regex patches with an
-AST rewrite carries a real risk of byte drift in the patched
-`just-the-docs.js`; Phase 11 verifies byte-identity or accepts the
-divergence.
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.5](PLAN-11.md)).
 
-**Trigger**: regex misses in the patch step (the warning lines
-`deriveOfflineJtdJs` returns would surface this), typically caused
-by an upstream just-the-docs release changing the patched function
-shape.
+`builder/offline.mjs`'s `deriveOfflineJtdJs` parses the upstream
+`just-the-docs.js` with `acorn`, walks the AST for
+`FunctionDeclaration` nodes named `navLink` / `initSearch`, and
+string-slices the canonical replacements in at the node ranges.
+Non-patched regions stay byte-identical to upstream -- verified the
+new AST output matches the prior regex-patched bytes 1:1 on the
+current just-the-docs version (`19,963` bytes, identical).
 
-Replace the regex patches with an acorn-based AST rewrite. The
-current regexes anchor on specific function signatures inside
-`just-the-docs.js`; an AST pass would survive cosmetic upstream
-edits.
+No regex fallback is shipped. `just-the-docs.js` is a vendored
+asset in `builder/assets/js/`; re-extraction only happens on
+deliberate gem-bump operations. A parse failure at build time is a
+clear signal to fix the asset (or the AST patcher's expectations)
+at the moment of the bump rather than silently switching to a
+second code path.
+
+Adds `acorn` and `acorn-walk` to `builder/package.json` dependencies.
 
 ### B12. Phase 5 `--against-disk` diff mode (PLAN-5 §14 step 11)
 
