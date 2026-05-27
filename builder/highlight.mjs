@@ -25,9 +25,20 @@ const SHIKI_BUNDLED_LANGS = [
   "js", "json", "ruby", "html", "yaml", "xml", "sql", "sh", "cpp", "c", "liquid",
 ];
 
+// Phase 11 (B5) server-side copy-button: emitted inside the wrapper
+// before the <div class="highlight"> child so it absolutely-positions
+// over the top-right corner per the chrome's existing CSS rules. The
+// matching click handler in builder/assets/js/just-the-docs.js binds
+// to these pre-rendered buttons on DOM-ready -- the runtime DOM
+// injection path (the upstream `processCodeBlocks` step) is gone.
+const COPY_BUTTON_HTML =
+  `<button type="button" class="copy-code" aria-label="Copy code to clipboard">` +
+  `<svg viewBox="0 0 24 24" class="copy-icon"><use xlink:href="#svg-copy"></use></svg>` +
+  `</button>`;
+
 let cached = null;
 
-export async function initHighlighter() {
+export async function initHighlighter({ copyButton = true } = {}) {
   if (cached) return cached;
 
   const theme = await loadHighlightTheme();
@@ -45,14 +56,15 @@ export async function initHighlighter() {
     if (err.code !== "ENOENT") throw err;
   }
 
+  const copyButtonHtml = copyButton ? COPY_BUTTON_HTML : "";
   cached = {
-    render: (code, lang) => renderCodeBlock(shiki, theme, code, lang),
+    render: (code, lang) => renderCodeBlock(shiki, theme, copyButtonHtml, code, lang),
     themeCss: theme.css,
   };
   return cached;
 }
 
-function renderCodeBlock(shiki, theme, code, lang) {
+function renderCodeBlock(shiki, theme, copyButtonHtml, code, lang) {
   const lower = (lang || "").toLowerCase();
   const isTb = TB_ALIASES.has(lower);
   // The wrapper class is `language-<as-typed>`; keep `vb` / `vba` /
@@ -85,7 +97,7 @@ function renderCodeBlock(shiki, theme, code, lang) {
     tokenizedHtml = escapeHtml(codeBody);
   }
 
-  return `<div class="language-${wrapperLang} highlighter-rouge"><div class="highlight"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
+  return `<div class="language-${wrapperLang} highlighter-rouge">${copyButtonHtml}<div class="highlight"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
 }
 
 // Shiki's `codeToTokensBase` with `includeExplanation` returns

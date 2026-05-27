@@ -223,19 +223,19 @@ loader walking `_data/*.yml` into `site.data` would cover any future
 data file without per-file plumbing. Defer until a second data file
 exists.
 
-### B5. Inline copy-code button server-side rendering (PLAN-3 §15 / §D16)
+### B5. Inline copy-code button server-side rendering (PLAN-3 §15 / §D16) — **shipped in Phase 11**
 
-**Routing**: → **Phase 11**. Adds button HTML to every `<pre>`;
-regresses HTML byte-match.
+**Routing**: → **shipped in Phase 11** ([PLAN-11.md §5.3](PLAN-11.md)).
 
-**Trigger**: the just-the-docs copy-code JS needs to be retired
-(client-bundle shrink, accessibility audit, etc.).
-
-The copy-code button is currently injected at runtime by the
-just-the-docs theme JS. Server-side injection in `highlight.mjs`
-(adding the `<button class="copy">` next to each `<pre>`) would let
-us drop the client script. Cosmetic; not worth doing without a
-trigger.
+`builder/highlight.mjs` emits the `<button class="copy-code">` HTML
+inside each `<div class="highlighter-rouge">` wrapper at build time
+(gated by `enable_copy_code_button` in `_config.yml`; default true).
+The chrome's existing CSS positions it absolutely over the top-right
+corner of the code block. `builder/assets/js/just-the-docs.js`
+retired the runtime DOM-injection loop -- the click handler now
+binds to the pre-rendered buttons via `closest('div.highlighter-rouge')`.
+`builder/assets/css/print.css` hides the button for the PDF render
+path.
 
 ### B6. Linkify exception list (PLAN-3 §15 / §D10)
 

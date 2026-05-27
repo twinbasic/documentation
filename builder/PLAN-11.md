@@ -56,7 +56,7 @@ diagram on the current tree, ~200 ms cost when it runs); B5 and
 B11 are perf-neutral. Net build-wall-clock effect: neutral to
 slightly faster.
 
-## Status: in progress — B2 + B1 shipped; B5, B10, B11 pending
+## Status: in progress — B2, B1, B5 shipped; B10, B11 pending
 
 ---
 

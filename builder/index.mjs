@@ -128,7 +128,9 @@ async function main() {
   // Build the shared markdown-it instance up front so Phase 2's SEO
   // pass and Phase 3's body renderer use the same configured renderer.
   // initHighlighter overlaps with the running git shell-outs above.
-  const highlighter = await initHighlighter();
+  const highlighter = await initHighlighter({
+    copyButton: config.enable_copy_code_button !== false,
+  });
   const linkTables = buildLinkTables(pages);
   const baseurl = String(config.baseurl || "");
   const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));

@@ -28,7 +28,7 @@ from the vendored `builder/themes/*.theme` source files — see
 | `css/just-the-docs-combined.css` | `docs/assets/css/just-the-docs-combined.scss` — pulls in `_sass/just-the-docs.scss.liquid` (via the just-the-docs gem) plus `_sass/custom/twinbasic-light` / `_sass/custom/twinbasic-dark` for the project's dark/light variants and `_sass/custom/custom.scss` / `_sass/custom/admonitions.scss` for site-specific tweaks | The site stylesheet. Compiled by Jekyll's Sass pipeline; vendored here to avoid a Sass dep in the JS build. |
 | `css/just-the-docs-head-nav.css` | `docs/assets/css/just-the-docs-head-nav.css` — hand-written CSS with a small Liquid prelude (newline-capture) | Per-page nav-prefix override sheet. |
 | `css/print.css` | `docs/assets/css/print.css` — hand-written self-contained print stylesheet | The `@media print` sheet; used by Phase 8's PDF tree too. |
-| `js/just-the-docs.js` | just-the-docs gem `assets/js/just-the-docs.js` (version pinned by `docs/Gemfile`) | The runtime that wires the sidebar, search, copy-button, dark-mode toggle. |
+| `js/just-the-docs.js` | just-the-docs gem `assets/js/just-the-docs.js` (version pinned by `docs/Gemfile`) | The runtime that wires the sidebar, search, copy-button click handler, dark-mode toggle. Patched in tree: the upstream `processCodeBlocks` DOM-injection step is retired (PLAN-11 B5 -- the button HTML is now server-rendered by `builder/highlight.mjs`); the click handler binds to those pre-rendered buttons instead. Re-apply when bumping the upstream gem version. |
 | `js/theme-switch.js` | `docs/assets/js/theme-switch.js` — project-local script | The dark-mode toggle. |
 | `js/vendor/lunr.min.js` | just-the-docs gem `assets/js/vendor/lunr.min.js` | The search runtime. |
 
