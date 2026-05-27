@@ -42,7 +42,7 @@ function parseArgs(argv) {
     dryRun: false,
     skipOffline: null,
     skipPdf: null,
-    serving: false,
+    tolerateMissingImages: false,
     profileOffline: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -69,8 +69,8 @@ function parseArgs(argv) {
       args.skipOffline = true;
     } else if (a === "--no-pdf") {
       args.skipPdf = true;
-    } else if (a === "--serving") {
-      args.serving = true;
+    } else if (a === "--tolerate-missing-images") {
+      args.tolerateMissingImages = true;
     } else if (a === "--profile-offline") {
       args.profileOffline = true;
     } else {
@@ -97,7 +97,7 @@ export function makeTimer() {
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
-  const { src, dest, dryRun, serving, profileOffline } = opts;
+  const { src, dest, dryRun, tolerateMissingImages, profileOffline } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
@@ -199,7 +199,7 @@ async function main() {
 
   let pdfStats = null;
   if (!dryRun && !skipPdf) {
-    pdfStats = await writePdf(pages, staticFiles, site, destRoot, { serving });
+    pdfStats = await writePdf(pages, staticFiles, site, destRoot, { tolerateMissingImages });
   }
   t.lap(skipPdf ? "pdf:skipped" : "pdf");
 

@@ -20,7 +20,7 @@ than a dedicated harness.
 **Phase 9** (shipped, see [PLAN-9.md](PLAN-9.md)) consolidated every
 FUTURE-WORK item which either didn't change build output or strictly
 improved Jekyll parity. The CLI gained `--no-offline`, `--no-pdf`,
-`--serving`, and `--profile-offline` flags. Phase 7 picked up a
+`--tolerate-missing-images`, and `--profile-offline` flags. Phase 7 picked up a
 per-destination-dir nav-block cache (~200 ms saved). Phase 8's image-
 extraction folded into `assembleBook` and the PDF title-page date
 switched to wall-clock to match Jekyll's `site.time`. A generic
@@ -384,7 +384,7 @@ the inputs; the shell script does the actual PDF render. Full spec:
 
 Consolidation pass landing every FUTURE-WORK item that either
 didn't change build output or strictly improved Jekyll parity.
-Added CLI flags (`--no-offline`, `--no-pdf`, `--serving`,
+Added CLI flags (`--no-offline`, `--no-pdf`, `--tolerate-missing-images`,
 `--profile-offline`); a Phase 7 nav-block cache (~200 ms perf
 win); a generic `_data/*.yml` loader (`data.mjs`); a multi-
 divergence audit tool (`_audit_accepted.mjs`); `--against-disk`

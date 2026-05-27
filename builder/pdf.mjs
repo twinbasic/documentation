@@ -4,7 +4,7 @@
 // Jekyll reference.
 //
 // One entry point: writePdf(pages, staticFiles, site, destRoot,
-// { serving }). The pure-compute helper deriveBookOutputs is also
+// { tolerateMissingImages }). The pure-compute helper deriveBookOutputs is also
 // exported so `_diff.mjs --book` / `_triage.mjs auditBook*` can derive
 // expected bytes without touching disk.
 //
@@ -39,7 +39,7 @@ const LIMIT = WRITE_LIMIT;
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-export async function writePdf(pages, staticFiles, site, destRoot, { serving = false } = {}) {
+export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMissingImages = false } = {}) {
   if (!destRoot) {
     throw new Error("writePdf requires a destRoot");
   }
@@ -63,7 +63,7 @@ export async function writePdf(pages, staticFiles, site, destRoot, { serving = f
     copyPdfImages(imagePaths, staticByDestRel, pdfRoot, counters, missingPaths),
   ]);
 
-  reportMissingImages(missingPaths, serving, counters);
+  reportMissingImages(missingPaths, tolerateMissingImages, counters);
   return counters;
 }
 
@@ -197,18 +197,17 @@ async function copyPdfImages(imagePaths, staticByDestRel, pdfRoot, counters, mis
 // §F  Missing-image reporting (port of pdfify.rb's strict mode)
 // ---------------------------------------------------------------------------
 
-// PLAN-8 §5.8: per-path error log, then throw if !serving. Mirrors
-// pdfify.rb's strict mode -- `jekyll build` aborts on a non-zero
-// missing count, `jekyll serve` warns only. tbdocs has no serve mode
-// today, so serving defaults to false and every Phase 8 invocation
-// runs in strict mode.
-function reportMissingImages(missingPaths, serving, counters) {
+// PLAN-8 §5.8: per-path error log, then throw if !tolerateMissingImages.
+// Mirrors pdfify.rb's strict mode -- `jekyll build` aborts on a non-zero
+// missing count, `jekyll serve` warns only. `--tolerate-missing-images`
+// (PLAN-12 §7.D5) flips the throw to a warning for iterative work.
+function reportMissingImages(missingPaths, tolerateMissingImages, counters) {
   counters.missing = missingPaths.length;
   for (const rel of missingPaths) {
     console.error(`pdf: missing image ${rel} (referenced from book.html, not present under source tree)`);
   }
   if (missingPaths.length === 0) return;
-  if (serving) {
+  if (tolerateMissingImages) {
     console.warn(`pdf: ${missingPaths.length} image reference(s) missing; PDF render will show broken-image placeholders`);
     return;
   }

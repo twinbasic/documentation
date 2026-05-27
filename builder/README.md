@@ -31,7 +31,7 @@ CLI flags:
 | `--dry-run` | Skip every filesystem write. |
 | `--no-offline` | Skip the offline-tree pass (Phase 7). |
 | `--no-pdf` | Skip the PDF-tree pass (Phase 8). |
-| `--serving` | Flip Phase 8's missing-image throw to a warning. |
+| `--tolerate-missing-images` | Downgrade Phase 8's missing-image error to a warning. |
 | `--profile-offline` | Per-substep timing for Phase 7. |
 
 ## Documentation
