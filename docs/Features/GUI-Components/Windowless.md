@@ -9,20 +9,20 @@ redirect_from:
 
 # Windowless Controls vs. Normal (Windowed) Controls
 
-| Feature | **Windowless Controls** | **Normal Controls** | 
-| --- | --- | --- | 
-| **Window Handle (hWnd)** | No hWnd; drawn directly on container's Device Context (DC) | Each has its own hWnd | 
-| **Performance** | Lower overhead, faster rendering<sup>3</sup> | Higher overhead due to window management | 
-| **Transparency & Shape** | Supports transparent backgrounds and non-rectangular regions | Limited to rectangular, opaque regions | 
-| **Z-Order Behavior** | Always rendered beneath windowed controls<sup>4</sup> | Can float above other controls | 
-| **Input Handling** | Requires manual routing of input (keyboard, mouse) via container | OS handles input natively | 
-| **Accessibility** | Needs explicit support via interfaces like `IAccessibleWindowlessSite`<sup>1</sup> | Built-in accessibility support | 
-| **Known Issues** | May require custom handling to work around known issues in twinBASIC (e.g., events not firing)<sup>2</sup> | More complete and stable | 
+| Feature | **Windowless Controls** | **Normal Controls** |
+| --- | --- | --- |
+| **Window Handle (hWnd)** | No hWnd; drawn directly on container's Device Context (DC) | Each has its own hWnd |
+| **Performance** | Lower overhead, faster rendering[^3] | Higher overhead due to window management |
+| **Transparency & Shape** | Supports transparent backgrounds and non-rectangular regions | Limited to rectangular, opaque regions |
+| **Z-Order Behavior** | Always rendered beneath windowed controls[^4] | Can float above other controls |
+| **Input Handling** | Requires manual routing of input (keyboard, mouse) via container | OS handles input natively |
+| **Accessibility** | Needs explicit support via interfaces like `IAccessibleWindowlessSite`[^1] | Built-in accessibility support |
+| **Known Issues** | May require custom handling to work around known issues in twinBASIC (e.g., events not firing)[^2] | More complete and stable |
 | **Use Case Fit** | Ideal for lightweight, static UI elements (e.g., labels, images) | Best for interactive or focusable controls (e.g., textboxes, buttons) |
 
 ---
 
-### ✅ **Benefits of Windowless Controls**
+### Benefits of Windowless Controls
 
 - **Performance Boost**: No hWnd means less GDI overhead---great for forms with many static elements.<sup>3</sup> 
 - **Visual Flexibility**: Enables transparent or shaped UI elements (e.g., rounded buttons, overlays).  
@@ -30,7 +30,7 @@ redirect_from:
 
 ---
 
-### ⚠️ **Drawbacks**
+### Drawbacks
 
 - **Complex Input Handling**: You must manually forward focus, mouse, and keyboard events from the container.  
 - **Z-Order Limitations**: Cannot appear above windowed controls---problematic for overlays or tooltips.<sup>4</sup>  
@@ -39,13 +39,10 @@ redirect_from:
 
 ---
 
-<sup>1</sup> [IAccessibleWindowlessSite Interface on Microsoft Learn](https://learn.microsoft.com/en-us/windows/win32/api/oleacc/nn-oleacc-iaccessiblewindowlesssite)
-
-<sup>2</sup> Originally reported in [twinBASIC GitHub Issue #1310 -- Windowless Anchor Resizing Bug](https://github.com/twinbasic/twinbasic/issues/1310). Fixed in BETA 162.
-
-<sup>3</sup> Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN -- Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/about-windows)
-
-<sup>4</sup> Background on Z-order rendering and Windows control layering: [Windows Controls - Z-order](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#z-order)
+[^1]:  [IAccessibleWindowlessSite Interface on Microsoft Learn](https://learn.microsoft.com/en-us/windows/win32/api/oleacc/nn-oleacc-iaccessiblewindowlesssite)
+[^2]: Originally reported in [twinBASIC GitHub Issue #1310 -- Windowless Anchor Resizing Bug](https://github.com/twinbasic/twinbasic/issues/1310). Fixed in BETA 162.
+[^3]: Overview of [GDI object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/gdi-objects) and [hWnd user object handles](https://learn.microsoft.com/en-us/windows/win32/sysinfo/user-objects)  in Windows UI architecture: [MSDN -- Window Resources](https://learn.microsoft.com/en-us/windows/win32/winmsg/about-windows)
+[^4]: Background on Z-order rendering and Windows control layering: [Windows Controls - Z-order](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#z-order)
 
 ---
 
@@ -72,13 +69,13 @@ redirect_from:
 
 ## Real-World Examples
 
-### 🪟 Windowless Control Examples
+### Windowless Control Examples
 
 - **[SweetIceLolly/VB6-MemoryDC](https://github.com/SweetIceLolly/VB6-MemoryDC)** -- A VB6 project demonstrating off-screen rendering using memory device contexts. Great for illustrating custom-drawn, windowless UI elements.  
 - **[fafalone/WinDevLib](https://github.com/fafalone/WinDevLib)** -- A twinBASIC library with low-level Win32 API wrappers. Includes examples of custom rendering and control logic that bypass hWnds.  
 - **[fafalone/EventTrace](https://github.com/fafalone/EventTrace)** -- A twinBASIC port of an ETW file activity monitor. Uses lightweight, non-windowed UI elements for performance.
 
-### 🧱 Windowed Control Examples
+### Windowed Control Examples
 
 - **[fafalone/UIRibbonDemos](https://github.com/fafalone/UIRibbonDemos)** -- twinBASIC demos of the Windows Ribbon UI framework. Showcases interactive, hWnd-backed controls with full accessibility and Z-order behavior.  
 - **[SweetIceLolly/DragControlsIDE](https://github.com/SweetIceLolly/DragControlsIDE)** -- A VB6-based IDE-like interface with draggable, windowed controls. Useful for demonstrating layout and anchoring behavior. 
@@ -87,16 +84,16 @@ redirect_from:
 
 ---
 
-### 🖨️ Printing Mixed-Control Forms in VBx/twinBASIC
+### Printing Mixed-Control Forms in VBx/twinBASIC
 
-#### ✅ What Works Out of the Box
+#### What Works Out of the Box
 
 * **Windowed controls** (e.g., `TextBox`, `CommandButton`) can often be captured using `Form.DrawToDC` or `PrintForm` in VB6, or by rendering the form’s `hDC` in twinBASIC.
 * **Windowless controls**, however, don’t have their own `hWnd` or device context, so they won’t appear unless you explicitly draw them.
 
 ---
 
-#### 🧰 Recommended Strategy
+#### Recommended Strategy
 
 1. **Render the Entire Form to a Bitmap**
 
@@ -115,7 +112,7 @@ redirect_from:
 
 ---
 
-#### 🧪 Tips for Accuracy
+#### Tips for Accuracy
 
 * **Z-Order Matters**: Since windowless controls render behind windowed ones, draw them first.
 * **DPI Awareness**: Match the printer’s DPI to your form’s layout scale to avoid blurry output.
