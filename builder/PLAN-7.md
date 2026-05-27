@@ -44,7 +44,7 @@ bulk through Node's libuv concurrency.
 
 Implementation landed in [`builder/offline.mjs`](offline.mjs) (~620
 lines including doc comments + the new `derive*` exports for the diff
-tools). The verify harness ([`verify-phase7.mjs`](verify-phase7.mjs))
+tools). The verify harness (`verify-phase7.mjs` (retired Phase 10))
 runs end-to-end on the production tree and all 30+ acceptance checks
 pass. Byte parity vs Jekyll's `docs/_site-offline/` is exact for every
 HTML page (829 match + 8 accepted-divergence pages whose Phase 3/4
@@ -2298,13 +2298,13 @@ doesn't compile the index (the JSON is wrapped, not parsed).
     offline.mjs                — NEW: writeOffline + buildOfflineState + deriveOffline{Page,Redirect,Css,JtdJs,SearchDataJs}
     accepted-divergences.mjs   — unchanged (the 8 propagated-accepted pages are pre-existing Phase 3/4 divergences)
     index.mjs                  — orchestrator extended (writeOffline call after auxiliaries + summary line)
-    verify-phase1.mjs          — Phase 1 harness
-    verify-phase2.mjs          — Phase 2 harness
-    verify-phase3.mjs          — Phase 3 harness
-    verify-phase4.mjs          — Phase 4 harness
-    verify-phase5.mjs          — Phase 5 harness
-    verify-phase6.mjs          — Phase 6 harness
-    verify-phase7.mjs          — NEW: §10 acceptance harness (30+ checks)
+    verify-phase1.mjs          — Phase 1 harness (retired Phase 10)
+    verify-phase2.mjs          — Phase 2 harness (retired Phase 10)
+    verify-phase3.mjs          — Phase 3 harness (retired Phase 10)
+    verify-phase4.mjs          — Phase 4 harness (retired Phase 10)
+    verify-phase5.mjs          — Phase 5 harness (retired Phase 10)
+    verify-phase6.mjs          — Phase 6 harness (retired Phase 10)
+    verify-phase7.mjs          — NEW: §10 acceptance harness (30+ checks) (retired Phase 10)
     _diff.mjs                  — first-divergence single-page diff (extended: --offline=, --offline-redirect=, --offline-css=, --offline-jtd, --offline-search)
     _diff_all.mjs              — per-bucket divergence audit (unchanged)
     _triage.mjs                — extended: auditOffline{Pages,Redirects,Css,Jtd,Search} with propagated-vs-offline-only classification

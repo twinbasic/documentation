@@ -1993,10 +1993,10 @@ template engine, no HTML parser, no string-manipulation library.
     template.mjs        — §3 + §5 (~600 lines)
     compress.mjs        — §5.14 (~40 lines)
     index.mjs           — orchestrator extended
-    verify-phase1.mjs   — Phase 1 harness
-    verify-phase2.mjs   — Phase 2 harness
-    verify-phase3.mjs   — Phase 3 harness
-    verify-phase4.mjs   — §10 acceptance harness (new)
+    verify-phase1.mjs   — Phase 1 harness (retired Phase 10)
+    verify-phase2.mjs   — Phase 2 harness (retired Phase 10)
+    verify-phase3.mjs   — Phase 3 harness (retired Phase 10)
+    verify-phase4.mjs   — §10 acceptance harness (new) (retired Phase 10)
     _triage.mjs / _diff.mjs / _diff_all.mjs / _spot.mjs   — extended
                           to operate on page.html
     assets/             — NEW for Phase 4 (extracted theme assets)

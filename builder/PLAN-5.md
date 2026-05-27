@@ -1543,11 +1543,11 @@ copy package.
     compress.mjs        — Phase 4 (shipped)
     write.mjs           — §3 + §5 + §6 (~220 lines, NEW)
     index.mjs           — orchestrator extended (CLI: --dest, --dry-run)
-    verify-phase1.mjs   — Phase 1 harness
-    verify-phase2.mjs   — Phase 2 harness
-    verify-phase3.mjs   — Phase 3 harness
-    verify-phase4.mjs   — Phase 4 harness
-    verify-phase5.mjs   — §10 acceptance harness (NEW)
+    verify-phase1.mjs   — Phase 1 harness (retired Phase 10)
+    verify-phase2.mjs   — Phase 2 harness (retired Phase 10)
+    verify-phase3.mjs   — Phase 3 harness (retired Phase 10)
+    verify-phase4.mjs   — Phase 4 harness (retired Phase 10)
+    verify-phase5.mjs   — §10 acceptance harness (NEW) (retired Phase 10)
     _triage.mjs / _diff.mjs / _diff_all.mjs / _spot.mjs   — unchanged;
                           --against-disk mode deferred until a
                           verification scenario actually needs it

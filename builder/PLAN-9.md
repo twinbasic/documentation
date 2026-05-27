@@ -866,7 +866,7 @@ Requires Node.js 20+.
 
 ## Verification
 
-Each phase has its own acceptance harness:
+Each phase had its own acceptance harness (all retired in Phase 10; see PLAN-10.md §5.5):
 
     node verify-phase1.mjs       # discover
     ...
@@ -1154,7 +1154,7 @@ Status after the seven batches landed:
 | `node builder/index.mjs --profile-offline` | Per-substep table appears. |
 | `node builder/_audit_accepted.mjs` | Multi-divergence audit runs. |
 | `node builder/_diff.mjs --against-disk Reference/Const.md` | Disk diff works. |
-| `node builder/verify-phase8.mjs` | Cross-ref report appears. |
+| `node builder/verify-phase8.mjs` | Cross-ref report appears. (retired Phase 10) |
 | Open `builder/README.md` in a browser via `gh readme` or rendered | Quickstart reads cleanly. |
 
 ---
@@ -1210,7 +1210,7 @@ extend `parseArgs`.
                                  timers, local makeTimer copy)
     pdf.mjs                    (-3 lines; deriveBookOutputs just
                                  returns assembleBook's tuple)
-    verify-phase8.mjs          (+45 lines; cross-ref report)
+    verify-phase8.mjs          (+45 lines; cross-ref report) (retired Phase 10)
     _diff.mjs                  (+85 lines; --against-disk, --multi)
     _triage.mjs                (+45 lines; --multi region counter)
     one-offs/                  (unchanged)

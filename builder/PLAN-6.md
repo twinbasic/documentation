@@ -28,8 +28,8 @@ search-data Liquid pass).
 Implementation: [paths.mjs](paths.mjs), [redirects.mjs](redirects.mjs),
 [sitemap.mjs](sitemap.mjs), [search.mjs](search.mjs); orchestrator
 extension in [index.mjs](index.mjs); acceptance harness in
-[verify-phase6.mjs](verify-phase6.mjs); set-aware sitemap diff utility
-in [_sitemap_diff.mjs](_sitemap_diff.mjs). The shared `paths.mjs`
+`verify-phase6.mjs` (retired Phase 10); set-aware sitemap diff utility
+in `_sitemap_diff.mjs` (retired Phase 10). The shared `paths.mjs`
 helper was lifted out of `discover.mjs` so the permalink → output-
 filename rule has one source of truth; `seo.mjs` exports its
 `absoluteUrl` and `stripHtml`; `write.mjs` exports its `mkdirRec`,
@@ -1498,12 +1498,12 @@ to the PLAN.md edit pass that accompanies the Phase 6 landing.
     accepted-divergences.mjs   — updated: third bucket ("markdown-parsing")
                                  + Reference/Attributes.md (TestFixture) entry
     index.mjs                  — orchestrator extended (see below)
-    verify-phase1.mjs          — Phase 1 harness
-    verify-phase2.mjs          — Phase 2 harness
-    verify-phase3.mjs          — Phase 3 harness
-    verify-phase4.mjs          — Phase 4 harness
-    verify-phase5.mjs          — Phase 5 harness
-    verify-phase6.mjs          — NEW: §10 acceptance harness (25 checks)
+    verify-phase1.mjs          — Phase 1 harness (retired Phase 10)
+    verify-phase2.mjs          — Phase 2 harness (retired Phase 10)
+    verify-phase3.mjs          — Phase 3 harness (retired Phase 10)
+    verify-phase4.mjs          — Phase 4 harness (retired Phase 10)
+    verify-phase5.mjs          — Phase 5 harness (retired Phase 10)
+    verify-phase6.mjs          — NEW: §10 acceptance harness (25 checks) (retired Phase 10)
     _diff.mjs                  — first-divergence single-page diff (unchanged)
     _diff_all.mjs              — per-bucket divergence audit (unchanged)
     _triage.mjs                — updated: top-line "Sitemap: MATCH/DIFFER"

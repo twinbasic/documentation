@@ -73,7 +73,7 @@ Implementation landed across:
 - [`builder/pdf.mjs`](pdf.mjs) — new, ~210 lines. `writePdf` +
   `deriveBookOutputs` + `extractImagePaths` + the setup/copy/report
   pipeline.
-- [`builder/verify-phase8.mjs`](verify-phase8.mjs) — new, ~270 lines.
+- `builder/verify-phase8.mjs` (retired Phase 10) — new, ~270 lines.
   Per-article byte-diff vs `_site-pdf/book.html` with accepted-
   divergence skipping, plus structural / cross-ref / landing-strip /
   image-resolution / file-count / perf checks.
@@ -2455,14 +2455,14 @@ after Phase 7) remains unused.
     pdf.mjs                    — NEW: writePdf + deriveBookOutputs + extractImagePaths
     accepted-divergences.mjs   — unchanged
     index.mjs                  — orchestrator extended (writePdf call after offline + summary line)
-    verify-phase1.mjs          — Phase 1 harness
-    verify-phase2.mjs          — Phase 2 harness
-    verify-phase3.mjs          — Phase 3 harness
-    verify-phase4.mjs          — Phase 4 harness
-    verify-phase5.mjs          — Phase 5 harness
-    verify-phase6.mjs          — Phase 6 harness
-    verify-phase7.mjs          — Phase 7 harness
-    verify-phase8.mjs          — NEW: §10 acceptance harness (~17 checks)
+    verify-phase1.mjs          — Phase 1 harness (retired Phase 10)
+    verify-phase2.mjs          — Phase 2 harness (retired Phase 10)
+    verify-phase3.mjs          — Phase 3 harness (retired Phase 10)
+    verify-phase4.mjs          — Phase 4 harness (retired Phase 10)
+    verify-phase5.mjs          — Phase 5 harness (retired Phase 10)
+    verify-phase6.mjs          — Phase 6 harness (retired Phase 10)
+    verify-phase7.mjs          — Phase 7 harness (retired Phase 10)
+    verify-phase8.mjs          — NEW: §10 acceptance harness (~17 checks) (retired Phase 10)
     _diff.mjs                  — extended: --book, --book=full, --pdf-image=<rel>, --pdf-css=<rel>, --help (and --phase3 body-fragment mode removed -- Phase 4 default subsumes it)
     _diff_all.mjs              — unchanged
     _triage.mjs                — extended: auditPdfBook (per-article diff w/ accepted-divergence skipping), auditPdfCss, auditPdfImages, auditPdfTotal, --help (and --phase3 mode removed in the same cleanup)
