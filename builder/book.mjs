@@ -316,21 +316,25 @@ const WHITESPACE_PATTERNS = (() => {
 // resulting post-compress bytes are identical for kramdown's input
 // (the duplicate `\n` collapses to one space) and now match for
 // markdown-it's input too.
-const DETAILS_OPEN_RE  = /<details[^>]*>/gi;
-const DETAILS_CLOSE_RE = /<\/details>/gi;
-const SUMMARY_RE       = /<summary[^>]*>|<\/summary>/gi;
+const DETAILS_OPEN_RE       = /<details[^>]*>/gi;
+const DETAILS_CLOSE_RE      = /<\/details>/gi;
+const SUMMARY_CLOSE_RE      = /<\/summary>/gi;
+// Open-tag variants: first capture summaries with an id= (preserve the id
+// as a lightweight anchor so intra-article href="#..." links still resolve
+// after the details/summary are unwrapped); then strip the rest.
+const SUMMARY_OPEN_WITH_ID  = /<summary\b[^>]*\bid="([^"]+)"[^>]*>/gi;
+const SUMMARY_OPEN_RE       = /<summary[^>]*>/gi;
 const HEADING_SHIFT_RE = /<(\/?)h([1-6])\b/g;
-const HEADING_ID_RE    = /<(h[2-6]|h7-stub)((?:\s+class="no_toc")?)\s+id="/g;
 
 // PLAN-8 §6.3 / book-chapter-transform.rb#book_chapter_transform. Five
 // logical passes:
 //   1. strip `src="<baseurl>/` prefix (no-op when baseurl is empty)
 //   2. unwrap <details>/<summary> tags (FAQ-style collapsibles flatten
-//      for print)
+//      for print); summary id= attributes are preserved as inline spans
 //   3. wrap inter-span whitespace in <span class="w">...</span>
 //      (longest pattern first)
 //   4. heading shift by N levels (0..3), capping at h7-stub
-//   5. anchor-id prefix on heading ids + intra-chapter href="#..."
+//   5. anchor-id prefix on all id= attributes and non-empty href="#..."
 export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor) {
   if (!body) return body;
   let result = body;
@@ -344,10 +348,15 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
   const strip = `src="${baseurl}/`;
   if (result.includes(strip)) result = result.replaceAll(strip, `src="`);
 
-  // Step 2: unwrap <details>/<summary>.
+  // Step 2: unwrap <details>/<summary>. Summaries with an id= attribute
+  // are replaced by a lightweight span that preserves the id, so that
+  // intra-article href="#..." links referencing those ids (e.g. FAQ
+  // cross-references) continue to resolve after the unwrap.
   result = result.replace(DETAILS_OPEN_RE, "");
   result = result.replace(DETAILS_CLOSE_RE, "");
-  result = result.replace(SUMMARY_RE, "");
+  result = result.replace(SUMMARY_OPEN_WITH_ID, (_, id) => `<span id="${id}">`);
+  result = result.replace(SUMMARY_OPEN_RE, "<span>");
+  result = result.replace(SUMMARY_CLOSE_RE, "</span>");
 
   // Step 2b: strip the just-the-docs `<div class="table-wrapper">`
   // around every <table>. The book-combined layout doesn't run the
@@ -373,11 +382,16 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
     });
   }
 
-  // Step 5: anchor-id prefix on every heading id + every href="#".
+  // Step 5: anchor-id prefix on every id attribute and every non-empty
+  // href="#...". Prefixing all id= (not just heading ids) ensures IAL
+  // anchors on table cells/spans and footnote ids (fn:N / fnref:N) are
+  // scoped to their chapter, matching the prefixed hrefs that reference
+  // them. Bare href="#" placeholder links are left as-is (they have no
+  // meaningful in-book target).
   if (chapterAnchor) {
     const prefix = `${chapterAnchor}-`;
-    result = result.replace(HEADING_ID_RE, (_, tag, classAttr) => `<${tag}${classAttr} id="${prefix}`);
-    result = result.replaceAll(`href="#`, `href="#${prefix}`);
+    result = result.replace(/ id="/g, ` id="${prefix}`);
+    result = result.replace(/href="#([^"]+)"/g, (_, frag) => `href="#${prefix}${frag}"`);
   }
 
   return result;
@@ -1013,12 +1027,13 @@ function buildUrlToAnchor(bookData, pages) {
     }
   }
   // Second pass: map redirect-from URLs to the same anchor as their
-  // canonical page. Redirect-from stubs are not swept into the map by
-  // the main loop (their permalink doesn't match page:/nav_page: selectors
-  // written against canonical URLs), so this pass adds them explicitly.
+  // canonical page. The main loop may have already set a stub's permalink
+  // to a wrong anchor (when a page:/nav_page: prefix matches the stub's
+  // redirect URL, e.g. page: /tB/Modules/ matches /tB/Modules/HiddenModule/VarPtr
+  // even though the real article is at /tB/Modules/Information/VarPtr).
+  // Always override with the canonical anchor, so drop the map.has() guard.
   for (const page of pages) {
     if (!page.canonicalPermalink) continue;
-    if (map.has(page.permalink)) continue;
     const canonicalAnchor = map.get(page.canonicalPermalink);
     if (!canonicalAnchor) continue;
     map.set(page.permalink, canonicalAnchor);
