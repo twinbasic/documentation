@@ -4,8 +4,7 @@
 // Usage: node builder/index.mjs [--src <path>] [--dest <path>] [--dry-run]
 //
 // Default --src is "docs" relative to the current working directory.
-// Default --dest is "<src>/_site-new" during the port; flip to "_site"
-// once tbdocs replaces Jekyll. --dry-run skips all filesystem writes.
+// Default --dest is "<src>/_site". --dry-run skips all filesystem writes.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -83,10 +82,7 @@ async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const { src, dest, dryRun, serving, profileOffline } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
-  // Default dest = sibling of src named _site-new during the port,
-  // _site once tbdocs replaces Jekyll. Flip the default in one place
-  // when the cutover happens.
-  const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site-new"));
+  const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
   const t = makeTimer();
   const { pages, staticFiles } = await discover(srcRoot);
