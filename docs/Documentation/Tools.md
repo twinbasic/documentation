@@ -38,7 +38,7 @@ Runs `scripts/check_links.mjs` against the rendered `_site/` and `_site-offline/
 
     docs\book.bat
 
-Renders the PDF book from `_site-pdf/book.html` into `_pdf/book.pdf`. Calls `node render-book.mjs` (see [below](#docsrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` at the repository root if `puppeteer` is missing.
+Renders the PDF book from `_site-pdf/book.html` into `_pdf/twinBASIC Book.pdf`. Calls `node render-book.mjs` (see [below](#docsrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` at the repository root if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `docs/book.bat` and in `.github/workflows/jekyll-gh-pages.yml`.
 
 ## CLI tools
 

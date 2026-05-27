@@ -94,7 +94,7 @@ jobs:
       - name: Render book PDF
         run: |
           mkdir -p _pdf
-          node render-book.mjs _site-pdf/book.html -o _pdf/book.pdf --outline-tags h1,h2,h3,h4 --additional-script ../perf/detach-pages.js
+          node render-book.mjs _site-pdf/book.html -o "_pdf/twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script ../perf/detach-pages.js
         working-directory: ./docs
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
@@ -127,7 +127,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: twinbasic-docs-book-pdf
-          path: ./docs/_pdf/book.pdf
+          path: "./docs/_pdf/twinBASIC Book.pdf"
 
   # Deployment job
   deploy:
@@ -189,11 +189,11 @@ jobs:
 
             **Offline copy:** download `twinbasic-docs-offline.zip`, extract anywhere, and open `index.html` in any browser — no server required. URLs, navigation, dark mode, and search all work over `file://`.
 
-            **PDF book:** download `book.pdf` for an offline-readable, printable copy of the full reference.
+            **PDF book:** download `twinBASIC Book.pdf` for an offline-readable, printable copy of the full reference.
 
             Source commit: ${{ github.sha }}.
           files: |
             twinbasic-docs-offline.zip
-            book.pdf
+            twinBASIC Book.pdf
           fail_on_unmatched_files: true
           make_latest: 'true'
