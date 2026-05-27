@@ -42,6 +42,7 @@
 //   so CI can distinguish "broken link" from "malformed HTML".
 
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 import { Parser } from "htmlparser2";
@@ -127,14 +128,15 @@ function decodePath(p) {
 // Cross-file check: every .html file (except hardcoded exclusions and
 // redirect stubs) should appear in sitemap.xml.
 // Returns an array of issue strings, or null if sitemap.xml is absent.
-function checkSitemapContents(rootStr, htmlFiles, redirectStubSet) {
+function checkSitemapContents(rootStr, htmlFiles, redirectStubSet, basePath) {
   const sitemapPath = path.join(rootStr, "sitemap.xml");
   let xml;
   try { xml = fs.readFileSync(sitemapPath, "utf8"); } catch { return null; }
 
-  // Extract <loc> paths, stripping the scheme+host prefix and any
-  // trailing .html (Jekyll/tbdocs use .html for pages without an
-  // explicit permalink; pages with permalinks omit it).
+  // Extract <loc> paths, stripping the scheme+host prefix, any
+  // --base-path prefix (e.g. '/twinBASIC-docs' from a GitHub Pages
+  // subpath deploy), and trailing .html (Jekyll/tbdocs use .html for
+  // pages without an explicit permalink; pages with permalinks omit it).
   const sitemapPaths = new Set();
   let siteRoot = null;
   for (const m of xml.matchAll(/<loc>(.*?)<\/loc>/g)) {
@@ -144,7 +146,7 @@ function checkSitemapContents(rootStr, htmlFiles, redirectStubSet) {
       if (m2) siteRoot = m2[1];
     }
     const p = siteRoot ? url.slice(siteRoot.length) : url;
-    sitemapPaths.add(stripHtmlSuffix(decodePath(p || "/")));
+    sitemapPaths.add(stripHtmlSuffix(decodePath(stripBasePath(p || "/", basePath))));
   }
 
   // Hardcoded exclusions for first cut (no frontmatter access here).
@@ -168,16 +170,16 @@ function checkSitemapContents(rootStr, htmlFiles, redirectStubSet) {
 // stubs) should have at least one entry in search-data.json whose
 // url matches the page's canonical path (ignoring fragment).
 // Returns an array of issue strings, or null if search-data.json is absent.
-function checkSearchContents(rootStr, htmlFiles, redirectStubSet) {
+function checkSearchContents(rootStr, htmlFiles, redirectStubSet, basePath) {
   const searchPath = path.join(rootStr, "assets", "js", "search-data.json");
   let searchData;
   try { searchData = JSON.parse(fs.readFileSync(searchPath, "utf8")); } catch { return null; }
 
-  // Build set of page-level URLs (strip fragment part and .html
-  // suffix; some pages without explicit permalink keep .html;
-  // URLs are percent-encoded for spaces / Unicode).
+  // Build set of page-level URLs (strip fragment part, --base-path
+  // prefix, and .html suffix; some pages without explicit permalink
+  // keep .html; URLs are percent-encoded for spaces / Unicode).
   const searchPageUrls = new Set(
-    Object.values(searchData).map(e => stripHtmlSuffix(decodePath((e.url ?? "").split("#")[0])))
+    Object.values(searchData).map(e => stripHtmlSuffix(decodePath(stripBasePath((e.url ?? "").split("#")[0], basePath))))
   );
 
   const EXCLUDE = new Set(["book.html", "404.html"]);
@@ -954,7 +956,7 @@ function runCheck(argv) {
 
   // Cross-file sitemap check.
   if (opts.checkSitemap) {
-    const issues = checkSitemapContents(rootStr, htmlFiles, redirectStubSet);
+    const issues = checkSitemapContents(rootStr, htmlFiles, redirectStubSet, basePath);
     if (issues === null) {
       write("warning: --check-sitemap: sitemap.xml not found in root-dir, skipping\n");
     } else if (issues.length) {
@@ -965,7 +967,7 @@ function runCheck(argv) {
 
   // Cross-file search-index check.
   if (opts.checkSearch) {
-    const issues = checkSearchContents(rootStr, htmlFiles, redirectStubSet);
+    const issues = checkSearchContents(rootStr, htmlFiles, redirectStubSet, basePath);
     if (issues === null) {
       write("warning: --check-search: search-data.json not found in root-dir, skipping\n");
     } else if (issues.length) {
@@ -987,6 +989,43 @@ function runCheck(argv) {
   return { output: buf.join(""), exitCode };
 }
 
+// ── Self-test ──────────────────────────────────────────────────
+// Regression guard: --base-path must be stripped from sitemap and
+// search-data URLs before comparing against file-derived paths.
+// Runs once per process; creates a minimal temp fixture, calls both
+// cross-file checks, and asserts zero issues.  Takes <5 ms.
+
+function selfTest() {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "check-links-test-"));
+  try {
+    fs.writeFileSync(path.join(tmp, "Foo.html"), "<html><body>t</body></html>");
+
+    fs.writeFileSync(path.join(tmp, "sitemap.xml"),
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      `<url>\n<loc>https://example.com/base/Foo</loc>\n</url>\n` +
+      `</urlset>\n`);
+
+    const assetsDir = path.join(tmp, "assets", "js");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "search-data.json"),
+      JSON.stringify({ "0": { url: "/base/Foo", title: "Foo", content: "" } }));
+
+    const files = [path.join(tmp, "Foo.html")];
+    const bp = "/base";
+
+    const sm = checkSitemapContents(tmp, files, null, bp);
+    if (!sm || sm.length)
+      throw new Error("checkSitemapContents with --base-path: " + JSON.stringify(sm));
+
+    const se = checkSearchContents(tmp, files, null, bp);
+    if (!se || se.length)
+      throw new Error("checkSearchContents with --base-path: " + JSON.stringify(se));
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 // ── Module entry ────────────────────────────────────────────────
 
 if (!isMainThread) {
@@ -999,6 +1038,8 @@ if (!isMainThread) {
     printHelp();
     process.exit(0);
   }
+
+  selfTest();
 
   // Split on /sep/ into separate command lines.
   const commands = [];

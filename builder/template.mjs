@@ -74,7 +74,7 @@ function templatePage(page, site, init) {
     `  <a class="skip-to-main" href="#main-content">Skip to main content</a>\n` +
     init.svgSprites + `\n` +
     init.sidebar + `\n` +
-    `  <div class="main" id="top">\n` +
+    `  <div class="main" id="page-top">\n` +
     init.header + `\n` +
     `    <div class="main-content-wrap">\n` +
     renderBreadcrumbs(page) +
@@ -689,7 +689,7 @@ function renderFooter(page, site) {
   if (!showFooter) return "";
 
   const backToTop = config.back_to_top
-    ? `        <p><a href="#top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a></p>\n`
+    ? `        <p><a href="#page-top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a></p>\n`
     : "";
 
   return `      <hr>\n` +
