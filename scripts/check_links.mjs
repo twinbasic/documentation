@@ -401,6 +401,23 @@ function stripBasePath(pathStr, basePath) {
   return pathStr;
 }
 
+// True when basePath is set and pathStr is a root-absolute URL that
+// is NOT within the basePath. On a real subpath deploy such a URL
+// would resolve outside the deployment and 404, even though it may
+// still find a file on disk under --root-dir. The resolver flags
+// these so they're reported as broken rather than silently resolving.
+function isOutsideBasePath(pathStr, basePath) {
+  if (!basePath) return false;
+  if (!pathStr.startsWith("/")) return false;
+  if (pathStr === basePath) return false;
+  if (pathStr.startsWith(basePath + "/")) return false;
+  return true;
+}
+
+// Sentinel target for off-base-path URLs. Angle brackets keep it
+// from colliding with any real on-disk path on Windows or POSIX.
+const OUTSIDE_BASEPATH_MARKER = "<<<outside-base-path>>>";
+
 // Resolve href -> [normalizedTargetStr, isDirLink, fragment].
 // Returns null for schemes/netlocs we skip. Uses only string ops (no
 // filesystem syscalls).
@@ -446,8 +463,15 @@ function resolve(href, sourceDir, sourcePath, rootStr, basePath) {
 
   let target;
   if (pathStr.startsWith("/")) {
-    const stripped = stripBasePath(pathStr, basePath);
-    target = path.normalize(path.join(rootStr, stripped.replace(/^\/+/, "")));
+    if (isOutsideBasePath(pathStr, basePath)) {
+      // Browser-semantics check: would 404 on a subpath deploy. Return
+      // a sentinel target so the existing "broken" pipeline picks it
+      // up; the reporter detects the marker to emit a clearer reason.
+      target = OUTSIDE_BASEPATH_MARKER + pathStr;
+    } else {
+      const stripped = stripBasePath(pathStr, basePath);
+      target = path.normalize(path.join(rootStr, stripped.replace(/^\/+/, "")));
+    }
   } else {
     target = path.normalize(path.join(sourceDir, pathStr));
   }
@@ -826,8 +850,11 @@ function runCheck(argv) {
     if (entry.resolved === null) {
       brokenUniqueCount++;
       const srcs = entry.sources;
+      const reason = entry.target.startsWith(OUTSIDE_BASEPATH_MARKER)
+        ? `outside --base-path '${basePath}' (would 404 on subpath deploy)`
+        : "target not found";
       for (let i = 0; i < srcs.length; i += 2) {
-        broken.push(srcs[i], srcs[i + 1], "target not found");
+        broken.push(srcs[i], srcs[i + 1], reason);
       }
       continue;
     }
@@ -990,10 +1017,15 @@ function runCheck(argv) {
 }
 
 // ── Self-test ──────────────────────────────────────────────────
-// Regression guard: --base-path must be stripped from sitemap and
-// search-data URLs before comparing against file-derived paths.
-// Runs once per process; creates a minimal temp fixture, calls both
-// cross-file checks, and asserts zero issues.  Takes <5 ms.
+// Regression guards.  Runs once per process; takes <10 ms.
+//
+//   1. checkSitemapContents / checkSearchContents must strip
+//      --base-path from extracted URLs before comparing against
+//      file-derived paths.
+//   2. The resolver must flag root-absolute URLs that escape
+//      --base-path as broken (browser-semantics check).  A link
+//      missing the baseurl prefix may still find a file on disk
+//      under --root-dir, but it would 404 on a real subpath deploy.
 
 function selfTest() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "check-links-test-"));
@@ -1014,6 +1046,7 @@ function selfTest() {
     const files = [path.join(tmp, "Foo.html")];
     const bp = "/base";
 
+    // Guard 1: sitemap / search check base-path stripping.
     const sm = checkSitemapContents(tmp, files, null, bp);
     if (!sm || sm.length)
       throw new Error("checkSitemapContents with --base-path: " + JSON.stringify(sm));
@@ -1021,6 +1054,22 @@ function selfTest() {
     const se = checkSearchContents(tmp, files, null, bp);
     if (!se || se.length)
       throw new Error("checkSearchContents with --base-path: " + JSON.stringify(se));
+
+    // Guard 2: resolver flags off-base-path root-absolute URLs.
+    // /base/Foo (inside)  -> resolves to <tmp>/Foo (exists)
+    // /Foo (outside)      -> sentinel target that won't exist on disk
+    const inside = resolve("/base/Foo", tmp, path.join(tmp, "Foo.html"), tmp, bp);
+    if (!inside || inside[0].startsWith(OUTSIDE_BASEPATH_MARKER))
+      throw new Error("resolve('/base/Foo') should resolve inside base-path: " + JSON.stringify(inside));
+
+    const outside = resolve("/Foo", tmp, path.join(tmp, "Foo.html"), tmp, bp);
+    if (!outside || !outside[0].startsWith(OUTSIDE_BASEPATH_MARKER))
+      throw new Error("resolve('/Foo') with base-path should be flagged outside: " + JSON.stringify(outside));
+
+    // With no base-path, every root-absolute URL is in-bounds.
+    const noBp = resolve("/Foo", tmp, path.join(tmp, "Foo.html"), tmp, "");
+    if (!noBp || noBp[0].startsWith(OUTSIDE_BASEPATH_MARKER))
+      throw new Error("resolve('/Foo') without --base-path must not be flagged: " + JSON.stringify(noBp));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
