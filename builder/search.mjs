@@ -30,6 +30,7 @@ export async function writeSearchData(pages, site, destRoot) {
 // `_diff.mjs`) can gate by `srcRel` against `accepted-divergences.mjs`.
 export function deriveSearchEntries(pages, site) {
   const headingLevel = site.config.search?.heading_level ?? 2;
+  const baseurl = String(site.config.baseurl ?? "");
   const entries = [];
   let i = 0;
 
@@ -51,7 +52,7 @@ export function deriveSearchEntries(pages, site) {
         doc: String(title),
         title: sec.title,
         content: sanitiseContent(sec.body),
-        url: encodeSpaces(sec.url),
+        url: encodeSpaces(baseurl + sec.url),
         relUrl: sec.url,
         sourcePage: page,
       });
@@ -63,7 +64,7 @@ export function deriveSearchEntries(pages, site) {
         doc: String(title),
         title: String(title),
         content: sanitiseContent(prefixContent),
-        url: encodeSpaces(page.permalink),
+        url: encodeSpaces(baseurl + page.permalink),
         relUrl: page.permalink,
         sourcePage: page,
       });
