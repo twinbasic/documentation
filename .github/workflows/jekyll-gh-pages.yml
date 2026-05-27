@@ -35,7 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -111,7 +111,7 @@ jobs:
           (cd ./docs/_site-offline && zip -rq "${{ runner.temp }}/twinbasic-docs-offline.zip" .)
       - name: Upload offline-site workflow artifact
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: twinbasic-docs-offline-zip
           path: ${{ runner.temp }}/twinbasic-docs-offline.zip
@@ -119,7 +119,7 @@ jobs:
           # release itself carries the long-lived copy of the zip.
           retention-days: 7
       - name: Upload book PDF workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: twinbasic-docs-book-pdf
           path: ./docs/_pdf/book.pdf
@@ -152,11 +152,11 @@ jobs:
       contents: write
     steps:
       - name: Download offline-site workflow artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: twinbasic-docs-offline-zip
       - name: Download book PDF workflow artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: twinbasic-docs-book-pdf
       - name: Compute release tag and name
