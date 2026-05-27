@@ -33,15 +33,32 @@ CLI flags:
 | `--no-pdf` | Skip the PDF-tree pass (Phase 8). |
 | `--tolerate-missing-images` | Downgrade Phase 8's missing-image error to a warning. |
 | `--profile-offline` | Per-substep timing for Phase 7. |
+| `--serve` | Start the long-lived dev server (watch + rebuild + SSE live-reload). |
+| `--port <N>` | HTTP port for `--serve` mode (default 4000). |
+
+## Serve mode
+
+`tbdocs --serve` starts a long-lived dev process: HTTP server on
+port 4000 (override with `--port`), recursive watcher on the
+source tree, debounced rebuild on changes, and SSE-driven browser
+auto-reload. The offline and PDF passes are skipped each rebuild
+(restore them with a non-`--serve` invocation).
+
+    cd builder && node tbdocs.mjs --src ../docs --serve
+
+Or via the docs wrapper: `docs/serve.bat`.
+
+Ctrl+C exits cleanly (closes the server, aborts the watcher,
+drains SSE clients).
 
 ## Documentation
 
-- [PLAN.md](PLAN.md) -- architecture overview and the 11-phase pipeline.
-- [PLAN-1.md](PLAN-1.md) .. [PLAN-11.md](PLAN-11.md) -- per-phase
+- [PLAN.md](PLAN.md) -- architecture overview and the 12-phase pipeline.
+- [PLAN-1.md](PLAN-1.md) .. [PLAN-12.md](PLAN-12.md) -- per-phase
   specs (inputs, outputs, edge cases, acceptance checklists). Phases
   1-8 are the build itself; Phase 9 was the QoL consolidation pass;
   Phase 10 was the Jekyll cutover; Phase 11 is the output-changing
-  parity update.
+  parity update; Phase 12 adds `--serve` watch mode.
 - [FUTURE-WORK.md](FUTURE-WORK.md) -- open follow-ups, grouped by
   divergence investigations / deferred enhancements.
 - [assets/README.md](assets/README.md) -- the bundled theme assets,

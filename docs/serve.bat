@@ -1,3 +1,3 @@
-cd /d "%~dp0"
-node ..\builder\tbdocs.mjs --src .
-node serve.mjs
+@pushd "%~dp0"
+node ..\builder\tbdocs.mjs --src . --serve %*
+@popd

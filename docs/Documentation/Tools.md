@@ -26,7 +26,7 @@ Renders the documentation. Wraps `node ..\builder\tbdocs.mjs --src .` and forwar
 
     docs\serve.bat
 
-Builds the documentation once, then serves `_site/` from <http://localhost:4000> via `docs/serve.mjs` (a tiny in-tree static file server). Cache headers are disabled so a manual reload picks up any rebuild. **Only failures (4xx, 5xx, server exceptions) are logged** --- successful requests are silent. There is no watch / live-reload loop; iterating on a change is `<Ctrl-C>` followed by re-running `serve.bat`.
+Starts a long-lived dev process. Wraps `node ..\builder\tbdocs.mjs --src . --serve` and forwards extra arguments through `%*`. After an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each change, and a browser connected to the page auto-reloads via SSE on each successful rebuild. Offline and PDF passes are skipped each rebuild. Ctrl+C exits cleanly. **Only failures (4xx, 5xx, server exceptions) are logged** --- successful requests are silent.
 
 ### docs/check.bat
 
@@ -52,8 +52,9 @@ Full invocation:
     node builder/tbdocs.mjs [--src <path>] [--dest <path>]
                             [--baseurl <prefix>] [--url <origin>]
                             [--dry-run]
-                            [--no-offline] [--no-pdf] [--serving]
+                            [--no-offline] [--no-pdf] [--tolerate-missing-images]
                             [--profile-offline]
+                            [--serve] [--port <N>]
 
 | Flag | Effect |
 |---|---|
@@ -64,8 +65,10 @@ Full invocation:
 | `--dry-run` | Skip every filesystem write. Useful for benchmarking or validating discovery / compute / render. |
 | `--no-offline` | Skip the offline tree pass. |
 | `--no-pdf` | Skip the PDF tree pass. |
-| `--serving` | Downgrade Phase 8's missing-image error to a warning. Use when the source tree is mid-edit and may temporarily reference an image that does not yet exist. |
+| `--tolerate-missing-images` | Downgrade Phase 8's missing-image error to a warning. Use when the source tree is mid-edit and may temporarily reference an image that does not yet exist. |
 | `--profile-offline` | Print per-substep timing for the offline tree pass. |
+| `--serve` | Start the long-lived dev server (watch + rebuild + SSE live-reload). Offline and PDF passes are skipped each rebuild. |
+| `--port <N>` | HTTP port for `--serve` mode. Default: 4000. |
 
 ### scripts/check_links.mjs
 

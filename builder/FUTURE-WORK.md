@@ -1,6 +1,9 @@
 # Future Work
 
-Open follow-up tasks for the tbdocs builder. Phases 1-11 are shipped.
+Open follow-up tasks for the tbdocs builder. Phases 1-12 are shipped.
+
+Phase 12 ([PLAN-12.md](PLAN-12.md)) shipped `--serve` watch mode, closing
+the no-watch-mode deferrals from PLAN-10 §7.D4 and §7.D11.
 
 When picking up a divergence-investigation entry: re-run the discovery
 step listed under "Reproduce" before assuming the symptom is still

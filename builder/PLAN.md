@@ -5,7 +5,7 @@ Node.js tool. Goal: byte-equivalent output to Jekyll (modulo the
 accepted-divergences allow-list), in compact dependency-light JS, no
 framework.
 
-## Status: phases 1-9 shipped, Phase 10 planned
+## Status: phases 1-12 shipped
 
 All nine build phases land on the production tree and produce
 byte-equivalent output to Jekyll modulo the entries in
@@ -54,6 +54,14 @@ pending. Sequenced after Phase 10 because Phase 11's intentional
 divergences are only free to land once `accepted-divergences.mjs`
 stops being the acceptance bar.
 
+**Phase 12** ([PLAN-12.md](PLAN-12.md)) ships `--serve` watch-and-reload
+mode: a single long-lived `tbdocs --serve` process runs the HTTP server,
+watches the source tree, rebuilds on changes (online tree only), and
+live-reloads the browser via SSE. Renames `--serving` to
+`--tolerate-missing-images`. Retires the standalone `docs/serve.mjs`
+static server; `docs/serve.bat` becomes a one-line `--serve` shim.
+Closes the PLAN-10 §7.D4 and §7.D11 watch-mode deferrals.
+
 Open follow-ups (deferred enhancements, divergence investigations)
 live in [FUTURE-WORK.md](FUTURE-WORK.md).
 
@@ -65,7 +73,8 @@ the output structure is fixed (three trees), the template is one layout with var
 ```
 builder/                 (sibling of docs/, at the repo root)
   README.md              quickstart + module map (Phase 9 addition)
-  tbdocs.mjs             entry point + orchestrator (also exports makeTimer)
+  tbdocs.mjs             entry point + orchestrator (also exports makeTimer, runBuild)
+  serve.mjs              dev-server: HTTP + watcher + SSE live-reload (Phase 12)
   discover.mjs           file reading, frontmatter parsing
   nav.mjs                nav tree + breadcrumbs + nav-levels + children
   seo.mjs                per-page SEO metadata (shares site.markdown)
@@ -144,6 +153,7 @@ Phase 8: WRITE PDF       ~150ms   Sparse copy to _site-pdf/                     
 Phase 9: QoL + DOCS      (-200ms) FUTURE-WORK consolidation; no output change                 [shipped]
 Phase 10: CUTOVER        (n/a)    Retire Jekyll; pivot harnesses to site-integrity checker    [shipped]
 Phase 11: PARITY UPDATE  (TBD)    Output-changing FUTURE-WORK items (Shiki, mermaid, ...)     [shipped]
+Phase 12: SERVE          (n/a)    Long-lived watcher + HTTP server + SSE live-reload          [shipped]
 ```
 
 Timings are wall-clock measurements from `node builder/tbdocs.mjs` on

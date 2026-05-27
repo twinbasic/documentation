@@ -30,7 +30,8 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 
 | File | Role |
 |---|---|
-| [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs) | Entry point. Parses CLI flags, orchestrates phases 1-8, prints per-phase timings. |
+| [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs) | Entry point. Parses CLI flags, dispatches to `runBuild` or `runServe`, prints per-phase timings. |
+| [`serve.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs) | Phase 12 dev server: HTTP static file server + recursive watcher + SSE live-reload. |
 | [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) | Phase 1. Walks `docs/`, parses frontmatter, classifies each file as a page or a static file. |
 | [`nav.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/nav.mjs) | Phase 2 nav substeps: nav-path, integrity check, nav tree, nav levels, breadcrumbs, children. |
 | [`seo.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/seo.mjs) | Phase 2 SEO precompute: per-page title / canonical / og: tags. |
@@ -66,7 +67,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | 7 | `offline.mjs` | URL-rewritten copy to `_site-offline/` | ~1,000 ms |
 | 8 | `pdf.mjs` + `book.mjs` | Sparse `_site-pdf/` tree (book.html + CSS + images) | ~150 ms |
 
-Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 lands the output-changing parity updates. None adds a runtime step. The per-phase `PLAN-N.md` files retain the implementation history.
+Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 lands the output-changing parity updates. None adds a runtime step. Phase 12 adds the `--serve` dev-server mode (a separate lifecycle, not a build phase). The per-phase `PLAN-N.md` files retain the implementation history.
 
 ## Dependencies
 
@@ -100,11 +101,15 @@ Each subsection below covers one module --- its role in the pipeline, the main e
 
 ### [tbdocs.mjs](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs) --- entry point and orchestrator
 
-`main()` parses CLI flags via `parseArgs`, resolves `srcRoot` / `destRoot`, then runs the eight phases sequentially, capturing per-phase wall-clock timings via the local `makeTimer()` helper. The flags it accepts mirror the table in [`builder/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/README.md): `--src`, `--dest`, `--baseurl`, `--url`, `--dry-run`, `--no-offline`, `--no-pdf`, `--serving`, `--profile-offline`.
+`main()` parses CLI flags via `parseArgs`, resolves `srcRoot` / `destRoot`, then dispatches to `runBuild(opts)` for a one-shot build or `runServe(opts)` (from [`serve.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs)) for the long-lived dev server. `runBuild` runs the eight phases sequentially, capturing per-phase wall-clock timings via the local `makeTimer()` helper. The flags it accepts mirror the table in [`builder/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/README.md): `--src`, `--dest`, `--baseurl`, `--url`, `--dry-run`, `--no-offline`, `--no-pdf`, `--tolerate-missing-images`, `--profile-offline`, `--serve`, `--port`.
 
 Two pieces of orchestration are worth flagging. First, `captureBuildInfo()` is launched as a promise immediately after discover so the two `git` shell-outs overlap with the CPU-bound nav computation that follows; the result is `await`ed only once Phase 2's other substeps are done. Second, the shared markdown-it instance is built once via `initHighlighter` + `createMarkdownIt` and stashed on `site.markdown` so Phase 2's SEO precompute and Phase 3's body renderer use the same configured pipeline --- titles run through the same dash, quote, and footnote-stripping rules as page body text.
 
 The drift guard at the end (`if (pages.length < 836)`) sets `process.exitCode = 1` when discover loses pages --- a discovery-rule regression that silently drops content surfaces as a non-zero exit even though the build itself "succeeded".
+
+### [serve.mjs](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs) --- Phase 12 dev server
+
+`runServe(opts)` runs the long-lived dev process invoked by `tbdocs --serve`. It performs an initial build (online tree only --- offline and PDF passes skipped), then starts an HTTP server on port 4000 (or `--port <N>`), a recursive source-tree watcher via `node:fs/promises watch`, and an SSE endpoint at `/_tbdocs/reload`. When a file change passes the filter (output directories, dot files, and editor swap files are ignored), a 300 ms debounce fires a rebuild; once the rebuild succeeds, a reload event is sent to every open browser tab. A lightweight inject middleware splices the SSE client script before `</body>` at serve time so the on-disk `_site/` stays byte-identical to a non-`--serve` build. Ctrl+C closes the server, aborts the watcher, and exits cleanly.
 
 ### [discover.mjs](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) --- Phase 1
 
@@ -249,7 +254,7 @@ The just-the-docs.js patcher is AST-based as of Phase 11 (B11): `deriveOfflineJt
 
 The image-path collector folds into `assembleBook`'s per-chapter emit (Phase 9 §5.9); a post-pass regex scan of the assembled HTML is retained as the exported `extractImagePaths` helper for the diff tools but no longer runs in the writer. `resolveBookPage` enforces exactly one `layout: book-combined` page in the source tree (throws on zero or multiple --- both are unambiguous misconfigurations).
 
-`reportMissingImages` implements pdfify.rb's strict mode: per-path error log, then throw if `!serving`. Every Phase 8 invocation runs in strict mode by default --- a missing image in the assembled book is a build-fail rather than a warning, since the alternative is a PDF with broken-image placeholders nobody notices until publication. The `--serving` CLI flag flips that to a warning for iterative work.
+`reportMissingImages` implements pdfify.rb's strict mode: per-path error log, then throw if `!tolerateMissingImages`. Every Phase 8 invocation runs in strict mode by default --- a missing image in the assembled book is a build-fail rather than a warning, since the alternative is a PDF with broken-image placeholders nobody notices until publication. The `--tolerate-missing-images` flag (renamed from `--serving` in Phase 12) downgrade the throw to a warning for iterative work.
 
 ## Static asset extraction
 
