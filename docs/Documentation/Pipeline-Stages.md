@@ -478,7 +478,7 @@ writeOffline(
 ): Promise<{ html, css, redirects, statics, assets, excluded, unresolved }>
 ```
 
-Reads every file written by Phases 5 and 6, rewrites absolute URLs to relative paths, and writes to `<destRoot>-offline/`. Patches `just-the-docs.js` via AST (acorn) to replace `navLink` and `initSearch` with offline-compatible implementations. Wraps `search-data.json` as an inline `window.SEARCH_DATA` assignment.
+Reads every file written by Phases 5 and 6, rewrites absolute URLs to relative paths, and writes to `<destRoot>-offline/`. Patches `just-the-docs.js` via AST (acorn) to replace `navLink` and `initSearch` with offline-compatible implementations. Writes `search-data.js`, which wraps the search index as a `window.SEARCH_DATA` assignment so offline search works under `file://` (browsers block `XMLHttpRequest` there). `offline_exclude` patterns apply to pages, static files, and theme assets alike; `search-data.json` is listed in `offline_exclude` and is absent from the offline tree --- only the `.js` wrapper is present.
 
 **Reads:** all files under `<destRoot>` (online tree), `auxStats.redirects` (redirect stub list from Phase 6).  
 **Writes:** all files to `<destRoot>-offline/`.
