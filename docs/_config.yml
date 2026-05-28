@@ -83,9 +83,10 @@ offline_exclude:
 # Patterns that start with * must be quoted so YAML does not interpret them
 # as alias references.
 exclude:
-  # Underscored directories at the root and at any depth -- catches
-  # _site, _site-offline, _site-pdf, _pdf, _data, _includes, _layouts,
-  # _sass, _plugins, _profile, and every _Images at any depth.
+  # Underscore-prefixed files and directories -- catches _config.yml,
+  # _book.yml, _site, _site-offline, _site-pdf, _pdf, _includes,
+  # _layouts, _sass, _plugins, _profile, and every _Images at any depth.
+  - _*
   - _*/**
   - "**/_*/**"
   # Defensive: caches and unrelated trees that should never be in docs/.
@@ -96,12 +97,8 @@ exclude:
   # Theme assets ship prebuilt from builder/assets/ instead.
   - assets/css/**
   - assets/js/**
-  # Top-level Jekyll / toolchain files.
-  - Gemfile
-  - Gemfile.lock
-  - _config.yml
+  # Top-level batch files are toolchain helpers, not site content.
   - "*.bat"
-  - redirects.json
   # Mermaid source files -- the build outputs .svg counterparts; the .mmd
   # sources are not part of the published site.
   - "**/*.mmd"

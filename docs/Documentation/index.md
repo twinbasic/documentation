@@ -34,7 +34,7 @@ Phases 1--6 produce the online tree (`_site/`). Phase 7 mirrors it into a `file:
 - [Tools and Scripts](Development/Tools) --- one-line-per-tool reference for every script, batch file, and CLI flag exposed by the documentation toolchain (intended audience: doc contributors).
 - [tbdocs Builder](Development/Builder) --- detailed technical documentation for the `tbdocs` static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). Read this when modifying the build pipeline itself. Sub-pages:
     - [Pipeline Stages](Development/Pipeline-Stages) --- per-stage interface reference: function signatures, reads/writes, and every exported symbol.
-    - [Book Configuration](Development/Book-Configuration) --- `_data/book.yml` key reference for the PDF chapter manifest.
+    - [Book Configuration](Development/Book-Configuration) --- `_book.yml` key reference for the PDF chapter manifest.
     - [Extending the Builder](Development/Extending) --- tutorial for adding a new pipeline stage or a markdown-it plugin.
 - [PDF Generation](Development/PDF-Generation) --- internals of the PDF renderer: `render-book.mjs`, paged.browser.js, and the pdf-lib shims.
 - [Library Patches](Development/Fixes) --- every modification to `paged.browser.js` and the `fast-*.mjs` pdf-lib shims: upstream problem, applied fix, and mechanism.

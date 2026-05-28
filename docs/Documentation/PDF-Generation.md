@@ -308,7 +308,7 @@ The key `@page` rules in `docs/assets/css/print.css` that paged.js acts on:
 
 ## See Also
 
-- [Book Configuration](Book-Configuration) -- the `_data/book.yml` manifest that controls what goes into `book.html`.
+- [Book Configuration](Book-Configuration) -- the `_book.yml` manifest that controls what goes into `book.html`.
 - [Pipeline Stages](Pipeline-Stages) -- the `pdf.mjs` and `book.mjs` interface contracts for Phase 8.
 - [tbdocs Builder](Builder) -- design rationale for Phase 8 in the tbdocs pipeline.
 - [pdf-lib Patches](Fixes/PDFLib) -- detailed description of each `fast-*.mjs` shim: upstream problem, fix, and mechanism.

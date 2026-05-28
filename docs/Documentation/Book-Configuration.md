@@ -9,16 +9,16 @@ permalink: /Documentation/Development/Book-Configuration
 # Book Configuration
 {: .no_toc }
 
-`docs/_data/book.yml` defines the chapter manifest for the PDF book: which pages appear, in what order, and how they map to named parts and chapters. `book.mjs` reads this file during Phase 2 (to resolve page selectors) and Phase 8 (to assemble `book.html`). See [Pipeline Stages](Pipeline-Stages) for the relevant interface contracts.
+`docs/_book.yml` defines the chapter manifest for the PDF book: which pages appear, in what order, and how they map to named parts and chapters. `book.mjs` reads this file during Phase 2 (to resolve page selectors) and Phase 8 (to assemble `book.html`). See [Pipeline Stages](Pipeline-Stages) for the relevant interface contracts.
 
 * TOC goes here
 {:toc}
 
 ## File location and load order
 
-**File:** `docs/_data/book.yml`
+**File:** `docs/_book.yml`
 
-`data.mjs` loads all `_data/*.yml` files during Phase 2 and makes them available as `site.data`. The orchestrator then exposes `site.data.book` as `site.bookData` and passes it to `resolveBookChapters`. That call traverses the entire structure and resolves every selector to a concrete `Page[]` stored as `entry._chapters`, so Phase 8's `assembleBook` has no further page lookups to do.
+`data.mjs` loads `_book.yml` during Phase 2 and makes it available as `site.data.book`. The orchestrator then exposes `site.data.book` as `site.bookData` and passes it to `resolveBookChapters`. That call traverses the entire structure and resolves every selector to a concrete `Page[]` stored as `entry._chapters`, so Phase 8's `assembleBook` has no further page lookups to do.
 
 Run `build.bat` then `book.bat` to see the effect of changes. The `check.bat` integrity check also runs a PDF build pass.
 

@@ -22,7 +22,7 @@ Module-level documentation lives next to the code:
 Sub-pages:
 
 - [Pipeline Stages](Pipeline-Stages) --- complete interface reference: function signatures, per-stage reads/writes, and every exported symbol.
-- [Book Configuration](Book-Configuration) --- `_data/book.yml` key reference for the PDF chapter manifest.
+- [Book Configuration](Book-Configuration) --- `_book.yml` key reference for the PDF chapter manifest.
 - [Extending the Builder](Extending) --- tutorial for adding a new pipeline stage or a markdown-it plugin.
 
 * TOC goes here
@@ -45,7 +45,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | [`seo.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/seo.mjs) | Phase 2 SEO precompute: per-page title / canonical / og: tags. |
 | [`book.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/book.mjs) | Phase 2 book chapter resolution + Phase 8 book.html assembly. |
 | [`build-info.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/build-info.mjs) | Phase 2 git commit hash + commit date capture. |
-| [`data.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/data.mjs) | Phase 2 generic `_data/*.yml` loader. |
+| [`data.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/data.mjs) | Phase 2 `_book.yml` loader. |
 | [`mermaid.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/mermaid.mjs) | Phase 11 (B1) preprocess: `.mmd` → `.svg` regeneration. |
 | [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) | Phase 3 markdown-it pipeline: GFM admonitions, kramdown-style attributes, deflist, footnotes, header IDs, TOC, relative-link rewriting. |
 | [`highlight.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight.mjs) | Phase 3 Shiki bootstrap plus the twinBASIC grammar. Emits the just-the-docs wrapper structure. |
@@ -67,7 +67,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | Phase | Module(s) | Job | Time |
 |---|---|---|---|
 | 1 | `discover.mjs` | Read `.md` / `.html` with frontmatter; enumerate static files | ~120 ms |
-| 2 | `nav.mjs` / `seo.mjs` / `book.mjs` / `build-info.mjs` / `data.mjs` | Compute nav tree, SEO, book chapters, git commit info, `_data/*.yml` | ~60 ms |
+| 2 | `nav.mjs` / `seo.mjs` / `book.mjs` / `build-info.mjs` / `data.mjs` | Compute nav tree, SEO, book chapters, git commit info, `_book.yml` | ~60 ms |
 | 3 | `render.mjs` + `highlight.mjs` | Markdown → HTML body | ~1-2 s |
 | 4 | `template.mjs` + `compress.mjs` | Wrap in layout, anchor headings, compress whitespace | ~200 ms |
 | 5 | `write.mjs` | Write `_site/` | ~400 ms |
@@ -128,7 +128,7 @@ The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightw
 
 ### [discover.mjs](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) --- Phase 1
 
-The `exclude:` list from `_config.yml` is passed in as the `ignore` parameter and forwarded directly to `fast-glob`. It skips every underscored directory (catches `_site/`, `_site-offline/`, `_site-pdf/`, `_data/`, every `_Images/` at any depth), the prebuilt theme trees under `assets/css/` and `assets/js/` (sourced from `builder/assets/` instead), top-level toolchain files (`Gemfile`, `_config.yml`, `*.bat`), Mermaid source files (`**/*.mmd`), and the obvious cache dirs.
+The `exclude:` list from `_config.yml` is passed in as the `ignore` parameter and forwarded directly to `fast-glob`. It skips every underscore-prefixed file and directory (`_config.yml`, `_book.yml`, `_site/`, `_site-offline/`, `_site-pdf/`, every `_Images/` at any depth), the prebuilt theme trees under `assets/css/` and `assets/js/` (sourced from `builder/assets/` instead), top-level batch files (`*.bat`), Mermaid source files (`**/*.mmd`), and the obvious cache dirs.
 
 The final `pages.sort(byName)` mirrors Jekyll's `site.pages.sort_by!(&:name)` --- sort by basename, leaving fast-glob's input order to break ties (which `nav_order` then resolves deterministically in Phase 2).
 

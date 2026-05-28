@@ -57,8 +57,8 @@ Built at the end of Phase 2 and passed unchanged to every subsequent phase.
 | `seoSiteTitle` | `string` | Rendered site title from `config.title`. |
 | `seoLogoUrl` | `string` | Absolute URL of the site logo. |
 | `buildInfo` | `object` | `{ commit: string, commitDate: string }` from git. Both fall back to `"unknown"` outside a git repository. |
-| `bookData` | `object\|null` | Parsed `_data/book.yml` with chapter selectors resolved to `Page` references. `null` when the file is absent. See [Book Configuration](Book-Configuration). |
-| `data` | `object` | All `_data/*.yml` files keyed by basename: `data.book`, `data.contributors`, and so on. |
+| `bookData` | `object\|null` | Parsed `_book.yml` with chapter selectors resolved to `Page` references. `null` when the file is absent. See [Book Configuration](Book-Configuration). |
+| `data` | `object` | `_book.yml` loaded as `{ book: … }`, or `{}` when absent. |
 | `markdown` | `MarkdownIt` | Shared markdown-it instance, built once during Phase 2 setup and reused by Phase 2's SEO pass and Phase 3's render pass. |
 
 ### Static files (`staticFiles[]`)
@@ -188,7 +188,7 @@ For each page, runs the title through `renderTitle` (markdown-it render → stri
 
 ### `book.mjs` --- Phase 2 half
 
-Resolves the `_data/book.yml` chapter selectors to concrete `Page` arrays so Phase 8 has no further page lookups to do.
+Resolves the `_book.yml` chapter selectors to concrete `Page` arrays so Phase 8 has no further page lookups to do.
 
 **Phase 2 entry point**
 
@@ -207,7 +207,7 @@ Phase 8's `assembleBook` lives in the same module; see [Phase 8](#phase-8-pdfmjs
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `loadBookData` | `(srcRoot: string) → Promise<object\|null>` | Back-compat wrapper that loads `_data/book.yml` directly. Prefer `data.mjs` instead. |
+| `loadBookData` | `(srcRoot: string) → Promise<object\|null>` | Back-compat wrapper that loads `_book.yml` directly. Prefer `data.mjs` instead. |
 | `resolveBookChapters` | `(bookData, pages) → void` | Phase 2 entry point. |
 | `sortByNavOrder` | `(input: Page[]) → Page[]` | Sorts a page array: index pages (URLs ending in `/`) first, then by `nav_order` ascending with title as tie-breaker, then alphabetically by title. |
 | `chapterAnchorFromUrl` | `(url: string, fallbackTitle?: string) → string` | Converts a page URL to the `ch-…` anchor slug used for in-book cross-references. |
@@ -242,7 +242,7 @@ Issues two parallel `git` shell-outs (`rev-parse --short HEAD` and `log -1 --for
 
 ### `data.mjs`
 
-Loads every `_data/*.yml` file under `srcRoot` into a flat object.
+Loads `_book.yml` from `srcRoot`.
 
 **Entry point**
 
@@ -250,9 +250,9 @@ Loads every `_data/*.yml` file under `srcRoot` into a flat object.
 loadData(srcRoot: string): Promise<object>
 ```
 
-Returns a plain object keyed by file basename without extension: `_data/book.yml` → `{ book: … }`, `_data/contributors.yml` → `{ contributors: … }`. Returns `{}` when the `_data/` directory is absent. The orchestrator stores the result at `site.data` and also exposes `site.data.book` as `site.bookData`.
+Returns `{ book: <parsed YAML> }`, or `{}` when the file is absent. The orchestrator stores the result at `site.data` and also exposes `site.data.book` as `site.bookData`.
 
-**Reads:** `<srcRoot>/_data/*.yml`.  
+**Reads:** `<srcRoot>/_book.yml`.  
 **Writes:** nothing to pages (result returned directly).
 
 **All exports**
@@ -612,5 +612,5 @@ The orchestrator sequences all stages and assembles the `site` object. It is not
 ## See Also
 
 - [tbdocs Builder](Builder) -- architecture overview and narrative design rationale.
-- [Book Configuration](Book-Configuration) -- `_data/book.yml` key reference.
+- [Book Configuration](Book-Configuration) -- `_book.yml` key reference.
 - [Extending the Builder](Extending) -- tutorial for adding a new stage or markdown-it plugin.
