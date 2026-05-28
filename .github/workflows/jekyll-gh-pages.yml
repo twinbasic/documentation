@@ -39,13 +39,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            builder/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install dependencies and Chromium
         run: |
           npm ci
-          npm ci --prefix builder
           sudo npx puppeteer browsers install chrome --install-deps
       - name: Setup Pages
         id: pages

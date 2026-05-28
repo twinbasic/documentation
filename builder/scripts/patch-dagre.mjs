@@ -26,9 +26,11 @@ import { fileURLToPath } from "node:url";
 import { resolve, dirname } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// __dirname is builder/scripts/; mermaid lives in the repo-root
+// node_modules (deps consolidated to one package.json at the root).
 const TARGET = resolve(
   __dirname,
-  "../node_modules/mermaid/dist/chunks/mermaid.esm/dagre-ZXKKJJHT.mjs"
+  "../../node_modules/mermaid/dist/chunks/mermaid.esm/dagre-ZXKKJJHT.mjs"
 );
 
 // ── Patch A: extractor() ─────────────────────────────────────────────
