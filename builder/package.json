@@ -6,7 +6,8 @@
   "type": "module",
   "main": "tbdocs.mjs",
   "scripts": {
-    "build": "node tbdocs.mjs"
+    "build": "node tbdocs.mjs",
+    "postinstall": "node scripts/patch-dagre.mjs"
   },
   "dependencies": {
     "acorn": "^8.0",
