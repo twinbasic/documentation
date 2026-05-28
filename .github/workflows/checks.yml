@@ -30,13 +30,9 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            builder/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: |
-          npm ci
-          npm ci --prefix builder
+        run: npm ci
       - name: Build with tbdocs
         run: node builder/tbdocs.mjs --src docs
       - name: Check links (check_links.mjs)

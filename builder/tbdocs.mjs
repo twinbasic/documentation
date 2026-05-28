@@ -117,8 +117,16 @@ export async function runBuild(opts) {
   // staticFiles[] on this same build.
   const mermaidStats = await regenerateMermaid(srcRoot);
   t.lap("mermaid");
-  if (mermaidStats.regenerated > 0) {
-    console.log(`mermaid: regenerated ${mermaidStats.regenerated} of ${mermaidStats.processed} SVG(s)`);
+  if (mermaidStats.regenerated > 0 || mermaidStats.failed > 0) {
+    const parts = [`regenerated ${mermaidStats.regenerated}`];
+    if (mermaidStats.failed > 0) parts.push(`failed ${mermaidStats.failed}`);
+    console.log(`mermaid: ${parts.join(", ")} of ${mermaidStats.processed} SVG(s)`);
+  }
+  // Content failures (broken .mmd, render exception) flip the build
+  // exit code so CI catches them; setup failures (missing puppeteer /
+  // Chrome) only warn and leave the existing SVGs in place.
+  if (mermaidStats.failed > 0) {
+    process.exitCode = 1;
   }
 
   const { pages, staticFiles } = await discover(srcRoot);

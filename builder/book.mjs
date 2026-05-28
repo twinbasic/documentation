@@ -229,6 +229,20 @@ export function chapterAnchorFromUrl(url, fallbackTitle = null) {
   return "ch-" + seed;
 }
 
+// Shared id-seed for a chapter divider article and its title heading.
+// Called from both renderChapterDivider and emitPart (landing_is_target).
+function chapterDividerId(chEntry) {
+  let idSeed;
+  if (chEntry.landing_page) {
+    idSeed = String(chEntry.landing_page).replaceAll("/", "-")
+      .replace(/^-/, "")
+      .replace(/-$/, "");
+  } else {
+    idSeed = String(chEntry.title ?? "").toLowerCase().replaceAll(" ", "-");
+  }
+  return `chd-${idSeed}`;
+}
+
 // PLAN-8 §6.2: parent URL for relative-href resolution. Folder-style
 // URLs (`/tB/Core/`) are their own parent; single-file URLs
 // (`/tB/Core/Const`) drop the trailing segment.
@@ -302,21 +316,25 @@ const WHITESPACE_PATTERNS = (() => {
 // resulting post-compress bytes are identical for kramdown's input
 // (the duplicate `\n` collapses to one space) and now match for
 // markdown-it's input too.
-const DETAILS_OPEN_RE  = /<details[^>]*>/gi;
-const DETAILS_CLOSE_RE = /<\/details>/gi;
-const SUMMARY_RE       = /<summary[^>]*>|<\/summary>/gi;
+const DETAILS_OPEN_RE       = /<details[^>]*>/gi;
+const DETAILS_CLOSE_RE      = /<\/details>/gi;
+const SUMMARY_CLOSE_RE      = /<\/summary>/gi;
+// Open-tag variants: first capture summaries with an id= (preserve the id
+// as a lightweight anchor so intra-article href="#..." links still resolve
+// after the details/summary are unwrapped); then strip the rest.
+const SUMMARY_OPEN_WITH_ID  = /<summary\b[^>]*\bid="([^"]+)"[^>]*>/gi;
+const SUMMARY_OPEN_RE       = /<summary[^>]*>/gi;
 const HEADING_SHIFT_RE = /<(\/?)h([1-6])\b/g;
-const HEADING_ID_RE    = /<(h[2-6]|h7-stub)((?:\s+class="no_toc")?)\s+id="/g;
 
 // PLAN-8 §6.3 / book-chapter-transform.rb#book_chapter_transform. Five
 // logical passes:
 //   1. strip `src="<baseurl>/` prefix (no-op when baseurl is empty)
 //   2. unwrap <details>/<summary> tags (FAQ-style collapsibles flatten
-//      for print)
+//      for print); summary id= attributes are preserved as inline spans
 //   3. wrap inter-span whitespace in <span class="w">...</span>
 //      (longest pattern first)
 //   4. heading shift by N levels (0..3), capping at h7-stub
-//   5. anchor-id prefix on heading ids + intra-chapter href="#..."
+//   5. anchor-id prefix on all id= attributes and non-empty href="#..."
 export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor) {
   if (!body) return body;
   let result = body;
@@ -330,10 +348,15 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
   const strip = `src="${baseurl}/`;
   if (result.includes(strip)) result = result.replaceAll(strip, `src="`);
 
-  // Step 2: unwrap <details>/<summary>.
+  // Step 2: unwrap <details>/<summary>. Summaries with an id= attribute
+  // are replaced by a lightweight span that preserves the id, so that
+  // intra-article href="#..." links referencing those ids (e.g. FAQ
+  // cross-references) continue to resolve after the unwrap.
   result = result.replace(DETAILS_OPEN_RE, "");
   result = result.replace(DETAILS_CLOSE_RE, "");
-  result = result.replace(SUMMARY_RE, "");
+  result = result.replace(SUMMARY_OPEN_WITH_ID, (_, id) => `<span id="${id}">`);
+  result = result.replace(SUMMARY_OPEN_RE, "<span>");
+  result = result.replace(SUMMARY_CLOSE_RE, "</span>");
 
   // Step 2b: strip the just-the-docs `<div class="table-wrapper">`
   // around every <table>. The book-combined layout doesn't run the
@@ -359,11 +382,16 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
     });
   }
 
-  // Step 5: anchor-id prefix on every heading id + every href="#".
+  // Step 5: anchor-id prefix on every id attribute and every non-empty
+  // href="#...". Prefixing all id= (not just heading ids) ensures IAL
+  // anchors on table cells/spans and footnote ids (fn:N / fnref:N) are
+  // scoped to their chapter, matching the prefixed hrefs that reference
+  // them. Bare href="#" placeholder links are left as-is (they have no
+  // meaningful in-book target).
   if (chapterAnchor) {
     const prefix = `${chapterAnchor}-`;
-    result = result.replace(HEADING_ID_RE, (_, tag, classAttr) => `<${tag}${classAttr} id="${prefix}`);
-    result = result.replaceAll(`href="#`, `href="#${prefix}`);
+    result = result.replace(/ id="/g, ` id="${prefix}`);
+    result = result.replace(/href="#([^"]+)"/g, (_, frag) => `href="#${prefix}${frag}"`);
   }
 
   return result;
@@ -425,8 +453,12 @@ function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
   //   </article>
   // Pre-compress; the html-compress pass at the end collapses the
   // surrounding whitespace.
-  out.push(`<article class="${articleClass}" id="${chapterAnchor}">\n`);
+  out.push(`<article class="${articleClass}" id="${chapterAnchor}"${opts.markArticleClosed ? ' data-pdf-bookmark-closed' : ''}>\n`);
   out.push(`<span class="header-string">${headerTitle}</span>\n`);
+  // landing_is_target: chapter title heading injected here so it lands
+  // inside the landing-page article (making the PDF bookmark navigate to
+  // this page rather than the silent chapter-divider page).
+  if (opts.prependHtml) out.push(opts.prependHtml);
   out.push(body);
   // Some chapter bodies end with `\n`; some don't. The Liquid template
   // emits `{{ body }}\n</article>`, so we always need a separator
@@ -592,17 +624,21 @@ function formatBuildDateNow() {
 // PLAN-8 §6.9: part divider matches book.html lines 102-117. Order of
 // optional pieces: title (H1 or silent <p>) -> subtitle -> intro.
 function renderPartDivider(part, partNum, site) {
-  const silent = part.no_outline_entry ? " silent" : "";
+  // landing_is_target: the part title heading moves to the landing page
+  // article (see emitPart), so the divider always renders silently.
+  const useSilent = part.no_outline_entry || part.landing_is_target;
+  const silent = useSilent ? " silent" : "";
   // Jekyll's `{%- for part -%}` eats the leading whitespace before
   // `<article`; emit with no leading newline so `</article><article>`
   // / `</section><article>` join directly.
   let out = `<article class="part-divider${silent}" id="pt-${partNum}">\n`;
   out += `  <span class="part-title-string">${part.title}</span>\n`;
   out += `  <p class="part-number">Part ${ROMAN[partNum - 1] ?? ""}</p>\n`;
-  if (part.no_outline_entry) {
+  if (useSilent) {
     out += `  <p class="part-title-silent">${part.title}</p>`;
   } else {
-    out += `  <h1 id="pt-${partNum}-title">${part.title}</h1>`;
+    const closedAttr = part.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+    out += `  <h1 id="pt-${partNum}-title"${closedAttr}>${part.title}</h1>`;
   }
   if (part.subtitle) {
     // book.html line 111-112: subtitle | markdownify | remove '<p>'
@@ -631,22 +667,18 @@ function renderPartDivider(part, partNum, site) {
 
 // PLAN-8 §6.9: chapter divider matches book.html lines 218-227.
 function renderChapterDivider(chEntry) {
-  let idSeed;
-  if (chEntry.landing_page) {
-    idSeed = String(chEntry.landing_page).replaceAll("/", "-")
-      .replace(/^-/, "")
-      .replace(/-$/, "");
-  } else {
-    idSeed = String(chEntry.title ?? "").toLowerCase().replaceAll(" ", "-");
-  }
-  const dividerId = `chd-${idSeed}`;
-  const silent = chEntry.no_outline_entry ? " silent" : "";
+  const dividerId = chapterDividerId(chEntry);
+  // landing_is_target: the chapter title heading moves to the landing page
+  // article (see emitPart), so the divider always renders silently.
+  const useSilent = chEntry.no_outline_entry || chEntry.landing_is_target;
+  const silent = useSilent ? " silent" : "";
   // No leading newline -- mirrors Jekyll's `{%- for ch_entry -%}` strip.
   let out = `<article class="chapter-divider${silent}" id="${dividerId}">\n`;
-  if (chEntry.no_outline_entry) {
+  if (useSilent) {
     out += `  <p class="chapter-title-silent">${chEntry.title}</p>`;
   } else {
-    out += `  <h2 id="${dividerId}-title">${chEntry.title}</h2>`;
+    const closedAttr = chEntry.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+    out += `  <h2 id="${dividerId}-title"${closedAttr}>${chEntry.title}</h2>`;
   }
   if (chEntry.subtitle) {
     // book.html line 224-226: chapter subtitle is NOT markdownified --
@@ -698,18 +730,36 @@ function emitPart(out, part, partIdx, site, baseurl, imagePaths) {
 
   if (part.chapters && part.landing_page && part._landing) {
     const state = { currentIndexUrl: "", currentIndexKind: "class", currentIndexName: "" };
-    emitChapter(out, part._landing, {
+    const landingOpts = {
       skipSubPageDetection: true,
       skipBaseHeadingShift: !!part.no_heading_shift,
-    }, state, baseurl, imagePaths);
+    };
+    if (part.landing_is_target) {
+      const closedAttr = part.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+      landingOpts.prependHtml = `<h1 data-divider-heading id="pt-${partNum}-title"${closedAttr}>${part.title}</h1>\n`;
+    }
+    emitChapter(out, part._landing, landingOpts, state, baseurl, imagePaths);
   }
 
   if (part.chapters) {
     for (const chEntry of part.chapters) {
       out.push(renderChapterDivider(chEntry));
       const state = { currentIndexUrl: "", currentIndexKind: "class", currentIndexName: "" };
+      // For no_outline_entry chapters the outline entry is the first content
+      // heading; stamp the first non-empty article so parseOutline can find it.
+      let closedPending = !!(chEntry.no_outline_entry && chEntry.outline_closed);
       for (const chapter of chEntry._chapters ?? []) {
         const flags = chapteredFlags(part, chEntry);
+        if (closedPending && chapter.renderedContent?.trim()) {
+          flags.markArticleClosed = true;
+          closedPending = false;
+        }
+        if (chEntry.landing_is_target && chEntry.landing_page &&
+            chapter.permalink === chEntry.landing_page) {
+          const dividerId = chapterDividerId(chEntry);
+          const closedAttr = chEntry.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+          flags.prependHtml = `<h2 data-divider-heading id="${dividerId}-title"${closedAttr}>${chEntry.title}</h2>\n`;
+        }
         emitChapter(out, chapter, flags, state, baseurl, imagePaths);
       }
     }
@@ -719,7 +769,13 @@ function emitPart(out, part, partIdx, site, baseurl, imagePaths) {
       const isPartLanding = part.landing_page && chapter.permalink === part.landing_page;
       const flags = {};
       if (part.no_heading_shift) flags.skipBaseHeadingShift = true;
-      if (isPartLanding) flags.skipSubPageDetection = true;
+      if (isPartLanding) {
+        flags.skipSubPageDetection = true;
+        if (part.landing_is_target) {
+          const closedAttr = part.outline_closed ? ` data-pdf-bookmark-closed` : ``;
+          flags.prependHtml = `<h1 data-divider-heading id="pt-${partNum}-title"${closedAttr}>${part.title}</h1>\n`;
+        }
+      }
       emitChapter(out, chapter, flags, state, baseurl, imagePaths);
     }
   }
@@ -757,18 +813,12 @@ const EXTERNAL_PREFIXES = ["http://", "https://", "mailto:", "#"];
 // hrefs, rewrite in-book targets to `#ch-...` anchors, strip the
 // redundant landing-page heading.
 //
-// Jekyll's site.pages includes jekyll-redirect-from's generated stub
-// pages, each carrying the redirect-from URL as its `page.url`. The
-// rewriter's prefix match (`page: /tB/Modules/`, etc.) sweeps those
-// stubs into the urlToAnchor map alongside the real pages, so a
-// link like `[X](/tB/Modules/Aliased)` resolves to a `#ch-...`
-// anchor (technically dangling -- no article carries that exact id,
-// since the stub bodies aren't emitted as articles -- but matching
-// Jekyll's bytes is the goal).
-//
-// tbdocs's `pages` array doesn't carry the stubs; derive them from
-// each page's `frontmatter.redirect_from` and pass an extended array
-// to the map builders below.
+// tbdocs derives redirect-from stubs from each page's
+// `frontmatter.redirect_from` and passes an extended array to the map
+// builders below. Each stub carries `canonicalPermalink` so that
+// `buildUrlToAnchor` can resolve redirect-from URLs to the same anchor
+// as the canonical page, rather than a dangling `ch-tB-Core-X` anchor
+// that no article in the book carries.
 export function rewriteBookHrefs(html, site, pages) {
   const bookData = site.bookData;
   if (!bookData) return html;
@@ -784,7 +834,10 @@ export function rewriteBookHrefs(html, site, pages) {
     (_, open, anchorId, body, close) => {
       if (stripTargets.has(anchorId)) {
         const level = stripTargets.get(anchorId);
-        const re = new RegExp(`<${level}\\b[^>]*>[\\s\\S]*?</${level}>`);
+        // The negative lookahead skips injected divider headings
+        // (data-divider-heading) so the strip only removes the landing
+        // page's own source heading, not the one landing_is_target injects.
+        const re = new RegExp(`<${level}\\b(?![^>]*data-divider-heading)[^>]*>[\\s\\S]*?</${level}>`);
         body = body.replace(re, "");
       }
       const parentUrl = anchorToParent.get(anchorId);
@@ -850,13 +903,17 @@ function buildLandingStripTargets(bookData) {
   const map = new Map();
   for (const part of bookData.parts ?? []) {
     const partSkipBase = !!part.no_heading_shift;
-    if (part.landing_page && !part.no_outline_entry) {
+    if (part.landing_page && !(part.no_outline_entry && !part.landing_is_target)) {
       const level = partSkipBase ? 1 : 2;
       const anchor = chapterAnchorFromUrl(part.landing_page, part.title);
       map.set(anchor, `h${level}`);
     }
     for (const ch of part.chapters ?? []) {
-      if (!ch.landing_page || ch.no_outline_entry) continue;
+      // Strip landing H1 unless no_outline_entry is set WITHOUT landing_is_target
+      // (no_outline_entry promotes the landing's own H1 to the outline entry, so
+      // it must not be stripped; landing_is_target replaces it with an injected H2
+      // and still needs the landing H1 removed).
+      if (!ch.landing_page || (ch.no_outline_entry && !ch.landing_is_target)) continue;
       const chSkipExtra = !!ch.no_heading_shift;
       let level = 1;
       if (!partSkipBase) level++;
@@ -885,10 +942,9 @@ function augmentWithRedirectStubs(pages) {
       if (typeof fromPath !== "string" || fromPath === "") continue;
       out.push({
         permalink: fromPath,
+        canonicalPermalink: p.permalink,
         navPath: p.navPath,
         frontmatter: { title: p.frontmatter?.title ?? "" },
-        // No other fields needed -- rewriteBookHrefs only reads
-        // permalink, navPath, frontmatter.title from the pages list.
       });
     }
   }
@@ -924,7 +980,7 @@ function entryPages(entry, pages) {
   if (entry.pages) urlSpecs.push(...entry.pages);
   for (const prefix of urlSpecs) {
     for (const p of pages) {
-      if (noDescent ? p.permalink === prefix : p.permalink.startsWith(prefix)) {
+      if (noDescent ? p.permalink === prefix : p.permalink.includes(prefix)) {
         out.add(p);
       }
     }
@@ -937,7 +993,7 @@ function entryPages(entry, pages) {
     for (const p of pages) {
       const navPath = p.navPath;
       if (!navPath) continue;
-      if (noDescent ? navPath === np : navPath.startsWith(np)) {
+      if (noDescent ? navPath === np : navPath.includes(np)) {
         out.add(p);
       }
     }
@@ -968,6 +1024,25 @@ function buildUrlToAnchor(bookData, pages) {
       } else {
         map.set(page.permalink + ".html", anchor);
       }
+    }
+  }
+  // Second pass: map redirect-from URLs to the same anchor as their
+  // canonical page. The main loop may have already set a stub's permalink
+  // to a wrong anchor (when a page:/nav_page: prefix matches the stub's
+  // redirect URL, e.g. page: /tB/Modules/ matches /tB/Modules/HiddenModule/VarPtr
+  // even though the real article is at /tB/Modules/Information/VarPtr).
+  // Always override with the canonical anchor, so drop the map.has() guard.
+  for (const page of pages) {
+    if (!page.canonicalPermalink) continue;
+    const canonicalAnchor = map.get(page.canonicalPermalink);
+    if (!canonicalAnchor) continue;
+    map.set(page.permalink, canonicalAnchor);
+    if (page.permalink.endsWith("/")) {
+      map.set(page.permalink.replace(/\/$/, ""), canonicalAnchor);
+    } else if (page.permalink.endsWith(".html")) {
+      map.set(page.permalink.replace(/\.html$/, ""), canonicalAnchor);
+    } else {
+      map.set(page.permalink + ".html", canonicalAnchor);
     }
   }
   return map;

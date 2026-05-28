@@ -7,33 +7,53 @@
 //
 // Idempotent: a second build with no source changes is a no-op (mtime
 // check). The `.mmd` is the canonical source; the SVG is a build
-// artifact -- the hand-export workflow (Typora / mermaid live editor)
-// the project used pre-B1 is no longer needed. Editing the .mmd by one
-// character regenerates the SVG on the next build.
+// artifact -- editing the .mmd by one character regenerates the SVG on
+// the next build.
 //
-// Requires `@mermaid-js/mermaid-cli` at devDependency scope. The
-// binary is invoked via `npx --no-install mmdc` with cwd rooted at
-// `builder/` so npx searches `builder/node_modules/` for the local
-// install. A missing mmdc (e.g. `npm install` not yet run in builder/)
-// logs a warning and leaves the existing on-disk SVG untouched -- the
-// build continues. Callers that need full B1 behaviour run
-// `cd builder && npm install` once.
+// Drives `puppeteer` + the in-tree `mermaid` package directly. Replaces
+// the older `npx mmdc` shell-out that needed `@mermaid-js/mermaid-cli`
+// installed in builder/ (along with its own puppeteer-core and a second
+// Chrome download). One browser launch covers the whole batch; previously
+// every diagram forked a fresh node+chrome via npx.
+//
+// Failure modes split into two:
+//   - SETUP (puppeteer/mermaid not installed, Chrome missing): warn +
+//     leave on-disk SVGs intact + return early. The build continues at
+//     exit 0 against the previous SVGs -- this is the "dev hasn't run
+//     `npm install` yet" path and must not break unrelated work.
+//   - CONTENT (one .mmd has a syntax error, one render throws): warn +
+//     keep that diagram's old SVG + continue the rest of the batch.
+//     The orchestrator (tbdocs.mjs) sets process.exitCode = 1 on the
+//     returned `failed` count so a broken diagram surfaces in CI.
+//
+// Setup recovery: `npm install` at the repo root pulls puppeteer + the
+// pinned mermaid; on a fresh machine `npx puppeteer browsers install
+// chrome --install-deps` (already in the deploy workflow) lands the
+// Chrome binary.
+//
+// ESM-from-file note: Chromium blocks the `import()` chain that
+// mermaid.esm.mjs needs when loaded via file:// (the patched dagre lives
+// in a lazily-loaded chunk; the IIFE bundle inlines + minifies past the
+// patch). The mermaid-cli authors shipped a request-intercept shim for
+// the same reason; we reproduce a stripped-down version mapping ONE root
+// (mermaid/dist/) + ONE MIME type (application/javascript) under
+// `https://tbdocs-mermaid.invalid`. Without this, lazy chunk loads --
+// including the patched dagre that scripts/patch-dagre.mjs edits -- all
+// fail with file:// CORS errors.
 
-import { promises as fs, readdirSync, existsSync } from "node:fs";
-import os from "node:os";
+import { promises as fs } from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BUILDER_ROOT = path.resolve(__dirname);
+const require_ = createRequire(import.meta.url);
 const MMD_REL_DIR = path.join("assets", "images", "mmd");
 
-// Windows requires the `.cmd` extension AND `shell: true` when spawning
-// the npx shim (otherwise spawn throws EINVAL); POSIX has the bare
-// `npx` on PATH and runs without a shell.
-const IS_WIN = process.platform === "win32";
-const NPX_CMD = IS_WIN ? "npx.cmd" : "npx";
+// Dummy origin -- the request-intercept handler resolves these back to
+// files under `mermaid/dist/`. Must be a non-resolving host so a real
+// network fetch never sneaks past the interceptor.
+const INTERCEPT_ORIGIN = "https://tbdocs-mermaid.invalid";
 
 export async function regenerateMermaid(srcRoot) {
   const mmdRoot = path.join(srcRoot, MMD_REL_DIR);
@@ -51,15 +71,58 @@ export async function regenerateMermaid(srcRoot) {
     return { processed: sources.length, regenerated: 0 };
   }
 
-  let regenerated = 0;
-  for (const { src, svg } of stale) {
-    const ok = await invokeMmdc(src, svg);
-    if (!ok) {
-      return { processed: sources.length, regenerated, skipped: true };
-    }
-    regenerated++;
+  // Lazy-load puppeteer + resolve the mermaid dist directory. Either
+  // failure is a SETUP problem -- dev hasn't run `npm install`. Warn +
+  // bail so unrelated build work still runs against the existing SVGs.
+  let puppeteer;
+  let mermaidDistDir;
+  try {
+    puppeteer = (await import("puppeteer")).default;
+    mermaidDistDir = path.dirname(
+      require_.resolve("mermaid/dist/mermaid.esm.mjs"),
+    );
+  } catch (err) {
+    console.warn(
+      `mermaid: skipped batch (${explainLoadFailure(err)}); existing SVGs retained`,
+    );
+    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true };
   }
-  return { processed: sources.length, regenerated };
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-software-rasterizer",
+      ],
+    });
+  } catch (err) {
+    console.warn(
+      `mermaid: skipped batch (${explainLaunchFailure(err)}); existing SVGs retained`,
+    );
+    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true };
+  }
+
+  // CONTENT failures (one diagram throws) don't abort the batch -- the
+  // orchestrator surfaces the `failed` count so every broken diagram
+  // produces a warning in one run, and the build's exit code reflects
+  // the overall outcome.
+  let regenerated = 0;
+  let failed = 0;
+  try {
+    const distReal = await fs.realpath(mermaidDistDir);
+    for (const { src, svg } of stale) {
+      const ok = await renderOne(browser, src, svg, distReal);
+      if (ok) regenerated++;
+      else failed++;
+    }
+  } finally {
+    await browser.close().catch(() => {});
+  }
+  return { processed: sources.length, regenerated, failed };
 }
 
 async function listMermaidSources(mmdRoot) {
@@ -86,128 +149,123 @@ async function isUpToDate(svg, src) {
     ]);
     return svgStat.mtimeMs >= srcStat.mtimeMs;
   } catch {
-    // SVG missing (or unstattable source -- the spawn will surface it).
+    // SVG missing (or unstattable source -- the renderer will surface it).
     return false;
   }
 }
 
-// Locate a Chrome binary the top-level puppeteer install already
-// landed under `~/.cache/puppeteer/`. The site's PDF render step uses
-// `puppeteer` at the repo root (and CI calls `npx puppeteer browsers
-// install chrome --install-deps`); mermaid-cli's bundled puppeteer-core
-// looks at the same cache. If a binary is present, mmdc reuses it via
-// `PUPPETEER_EXECUTABLE_PATH` even when the cached Chrome version
-// doesn't exactly match mermaid-cli's preferred version -- saves
-// installing a second Chrome.
-//
-// Layout under <cache>/:
-//   chrome/<platform>-<v>/chrome-<platform>/chrome[.exe]
-//   chrome-headless-shell/<platform>-<v>/chrome-headless-shell-<platform>/chrome-headless-shell[.exe]
-function findCachedChrome() {
-  const cacheDir = process.env.PUPPETEER_CACHE_DIR
-    || path.join(os.homedir(), ".cache", "puppeteer");
-  // chrome-headless-shell is smaller and matches the CI-installed
-  // artifact when `chrome-headless-shell` is passed to the installer;
-  // chrome is the fuller binary. Try the smaller one first.
-  for (const variant of ["chrome-headless-shell", "chrome"]) {
-    const variantRoot = path.join(cacheDir, variant);
-    let versions = [];
-    try {
-      versions = readdirSync(variantRoot)
-        .filter((v) => /^[a-z0-9_]+-\d/.test(v))
-        .sort()
-        .reverse();
-    } catch { continue; }
-    for (const v of versions) {
-      const platformDirs = (() => {
-        try {
-          return readdirSync(path.join(variantRoot, v))
-            .filter((n) => n.startsWith(`${variant}-`));
-        } catch { return []; }
-      })();
-      for (const platformDir of platformDirs) {
-        const exe = IS_WIN ? `${variant}.exe` : variant;
-        const candidate = path.join(variantRoot, v, platformDir, exe);
-        if (existsSync(candidate)) return candidate;
-      }
-    }
+// Wires up the intercept, navigates to a bare data:HTML page, dynamic-
+// imports mermaid.esm.mjs via the intercept origin, runs mermaid.render
+// against the diagram source, and writes the serialised SVG out.
+async function renderOne(browser, srcPath, svgPath, mermaidDistReal) {
+  const definition = await fs.readFile(srcPath, "utf8");
+  const page = await browser.newPage();
+  let pageErr = null;
+  try {
+    await page.setRequestInterception(true);
+    page.on("request", (req) => interceptRequest(req, mermaidDistReal));
+    page.on("pageerror", (err) => { pageErr = err; });
+
+    // data:HTML carries the container div mermaid.render writes into.
+    // The page origin is "data:" -- cross-origin from the intercept
+    // origin -- so the intercept serves CORS-permissive responses.
+    await page.goto(
+      "data:text/html;charset=utf-8," + encodeURIComponent(
+        "<!doctype html><html><body><div id=\"container\"></div></body></html>",
+      ),
+    );
+
+    const mermaidEsmUrl = `${INTERCEPT_ORIGIN}/mermaid.esm.mjs`;
+    const svgXml = await page.evaluate(
+      async ({ definition, mermaidEsmUrl }) => {
+        const { default: mermaid } = await import(mermaidEsmUrl);
+        mermaid.initialize({ startOnLoad: false });
+        const container = document.getElementById("container");
+        // svgId `my-svg` matches mermaid-cli's default so the diff
+        // against pre-existing SVGs is just whatever the renderer
+        // actually changed (id is referenced by every `#my-svg ...`
+        // CSS rule mermaid scopes into the <style> element).
+        const { svg: svgText } = await mermaid.render(
+          "my-svg",
+          definition,
+          container,
+        );
+        // mermaid.render returns the SVG markup as a string; round-trip
+        // through the DOM so XMLSerializer normalises HTML voids
+        // (<br> → <br/>) the way the mmdc CLI does.
+        container.innerHTML = svgText;
+        const svgEl = container.querySelector("svg");
+        // Explicit transparent background matches mermaid-cli's
+        // `-b transparent` mode; SVG defaults to transparent so this
+        // is cosmetic, but it keeps the inline style attribute byte-
+        // compatible with the historical committed SVGs.
+        svgEl.style.backgroundColor = "transparent";
+        return new XMLSerializer().serializeToString(svgEl);
+      },
+      { definition, mermaidEsmUrl },
+    );
+
+    await fs.writeFile(svgPath, svgXml, "utf8");
+    return true;
+  } catch (err) {
+    const why = pageErr ? pageErr.message : err.message;
+    console.warn(
+      `mermaid: skipped ${path.basename(srcPath)} (${why}); existing SVG retained`,
+    );
+    return false;
+  } finally {
+    await page.close().catch(() => {});
   }
-  return null;
 }
 
-// Pull the most informative line out of mmdc's stderr -- prefer an
-// explicit `Error: ...` line over the trailing stack frame. Covers the
-// two failure modes the build is likely to hit: mmdc not installed,
-// or Chrome (puppeteer's runtime) not installed.
-function explainMmdcFailure(stderr, code) {
-  if (/\bcould not (find|determine).*\bmmdc\b|cannot find module.*\bmermaid\b|\bnot installed\b(?!.*Chrome)|\b404\b/i.test(stderr)) {
-    return "mmdc not installed; run `cd builder && npm install`";
+// Map `https://tbdocs-mermaid.invalid/<rel>` to <mermaidDistReal>/<rel>.
+// Confined to the mermaid dist directory to keep this from being a
+// general file-read shim if a request URL is ever attacker-controlled
+// (it isn't in this codebase, but the cost of pinning the root is
+// zero). Everything else is let through unchanged -- mermaid does not
+// fetch external resources for our flowchart-only diagrams, so this
+// branch is exercised only by paranoid Chromium-internal requests.
+async function interceptRequest(req, mermaidDistReal) {
+  const url = req.url();
+  if (!url.startsWith(INTERCEPT_ORIGIN + "/")) {
+    return req.continue();
   }
-  if (/Could not find Chrome|puppeteer browsers install/i.test(stderr)) {
+  try {
+    const rel = decodeURIComponent(
+      url.slice(INTERCEPT_ORIGIN.length + 1).split("?")[0].split("#")[0],
+    );
+    const target = path.join(mermaidDistReal, rel);
+    const real = await fs.realpath(target);
+    if (real !== mermaidDistReal && !real.startsWith(mermaidDistReal + path.sep)) {
+      return req.abort();
+    }
+    const body = await fs.readFile(real);
+    return req.respond({
+      status: 200,
+      headers: { "Access-Control-Allow-Origin": "*" },
+      contentType: "application/javascript",
+      body,
+    });
+  } catch {
+    return req.abort();
+  }
+}
+
+function explainLoadFailure(err) {
+  const msg = err?.message ?? String(err);
+  if (/cannot find module ['"]puppeteer['"]|cannot find package ['"]puppeteer['"]/i.test(msg)) {
+    return "puppeteer not installed; run `cd builder && npm install`";
+  }
+  if (/cannot find module ['"]mermaid|cannot find package ['"]mermaid/i.test(msg)) {
+    return "mermaid not installed; run `cd builder && npm install`";
+  }
+  return msg;
+}
+
+function explainLaunchFailure(err) {
+  const msg = err?.message ?? String(err);
+  if (/Could not find Chrome|browsers install chrome/i.test(msg)) {
     return "Chrome runtime missing; run `npx puppeteer browsers install chrome-headless-shell`";
   }
-  const errLine = stderr
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .find((s) => s.startsWith("Error:") || /^[A-Z][a-zA-Z]+Error:/.test(s));
-  if (errLine) return errLine;
-  return `mmdc exited ${code}`;
-}
-
-function invokeMmdc(src, svg) {
-  return new Promise((resolve) => {
-    const args = [
-      "--no-install",
-      "mmdc",
-      "-i", src,
-      "-o", svg,
-      "-b", "transparent",
-    ];
-    // On Windows we shell out to cmd.exe so the `.cmd` shim resolves.
-    // Wrap any whitespace-bearing path argument in double quotes so
-    // cmd.exe parses it as a single token.
-    const finalArgs = IS_WIN
-      ? args.map((a) => /\s/.test(a) ? `"${a.replace(/"/g, '""')}"` : a)
-      : args;
-    // Reuse any Chrome the top-level `puppeteer` (used by the PDF
-    // render step) already installed -- avoids needing a second Chrome
-    // download just for mermaid. mmdc's puppeteer-core may complain
-    // about the version, but the API is generally backwards-compatible
-    // across a few major Chrome releases.
-    const env = { ...process.env };
-    if (!env.PUPPETEER_EXECUTABLE_PATH) {
-      const chrome = findCachedChrome();
-      if (chrome) env.PUPPETEER_EXECUTABLE_PATH = chrome;
-    }
-    const child = spawn(NPX_CMD, finalArgs, {
-      cwd: BUILDER_ROOT,
-      stdio: ["ignore", "pipe", "pipe"],
-      shell: IS_WIN,
-      env,
-    });
-    let stderr = "";
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("error", (err) => {
-      const why = err.code === "ENOENT"
-        ? "npx not found on PATH (install Node.js + npm)"
-        : err.message;
-      console.warn(
-        `mermaid: skipped ${path.basename(src)} (${why}); existing SVG retained`,
-      );
-      resolve(false);
-    });
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve(true);
-        return;
-      }
-      const detail = explainMmdcFailure(stderr, code);
-      console.warn(
-        `mermaid: skipped ${path.basename(src)} (${detail}); existing SVG retained`,
-      );
-      resolve(false);
-    });
-  });
+  return msg;
 }

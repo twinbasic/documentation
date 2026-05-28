@@ -142,6 +142,16 @@ function shouldRebuild(filename) {
   const segs = filename.split(/[/\\]/);
   if (IGNORED_PREFIXES.includes(segs[0])) return false;
   if (IGNORED_BASENAME_RE.test(segs.at(-1) ?? "")) return false;
+  // Mermaid renders <name>.mmd → <name>.svg back under srcRoot/assets/
+  // images/mmd/. The .mmd is the source of truth; the .svg is the
+  // build artifact. Without this filter, each .mmd edit fires the
+  // watcher twice -- once on the .mmd save, once on the .svg write
+  // mid-rebuild -- so the user sees a redundant second reload ~3 s
+  // after the first.
+  if (segs[0] === "assets" && segs[1] === "images" && segs[2] === "mmd"
+      && (segs.at(-1) ?? "").endsWith(".svg")) {
+    return false;
+  }
   return true;
 }
 

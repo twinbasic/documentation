@@ -1,0 +1,22 @@
+%%{init: {"themeVariables": {"lineColor": "#7a8090"}}}%%
+flowchart TD
+    subgraph PHASE8 ["tbdocs Phase 8 (pdf.mjs + book.mjs)"]
+		direction LR
+        ASM["assembleBook()<br>combine chapter HTML"]
+        CSS["copyPdfCss()<br>print.css + tb-highlight.css"]
+        IMG["copyPdfImages()<br>referenced images"]
+    end
+
+    PHASE8 --> PDFSRC["_site-pdf/book.html<br>(~5 MB)<br>print.css, tb-highlight.css,<br>images"]
+
+    PDFSRC --> R1
+
+    subgraph RENDER ["render-book.mjs"]
+		direction LR
+        R1["Phase 1: Render<br>puppeteer<br>→ headless Chromium<br>paged.js<br>CSS Paged Media layout<br>→ one .pagedjs_page<br>per output page"]
+        R2["Phase 2: Generate<br>extract metadata<br>+ outline tree<br>page.pdf() → raw PDF buffer"]
+        R3["Phase 3: Process<br>measureRawPdf()<br>→ pre-size shim arrays<br>PDFDocument.load() with fast-* shims<br>setMetadata() + setOutline()<br>parallelSave() → async deflate"]
+        R1 --> R2 --> R3
+    end
+
+    R3 --> PDF["_pdf/twinBASIC Book.pdf"]

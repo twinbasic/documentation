@@ -67,6 +67,18 @@ export async function parseOutline(page, tags, enableWarnings) {
           children: [],
           depth: orderDepth,
         };
+        // Check if this bookmark should start collapsed. The attribute may be
+        // on the heading element itself (part/chapter dividers) or on its
+        // parent article (no_outline_entry chapters whose entry is the first
+        // content heading).
+        {
+          let closed = tag.hasAttribute('data-pdf-bookmark-closed');
+          if (!closed) {
+            const articleEl = tag.closest('article[data-pdf-bookmark-closed]');
+            if (articleEl) closed = articleEl.querySelector(tags.join(',')) === tag;
+          }
+          if (closed) newNode.closed = true;
+        }
         if (orderDepth == currentOutlineNode.depth) {
           if (currentOutlineNode.parent) {
             newNode.parent = currentOutlineNode.parent;
@@ -131,7 +143,8 @@ function buildPdfObjectsForOutline (layer, context) {
     if (item.children.length > 0) {
       pdfObject.set(PDFName.of("First"), item.children[0].ref);
       pdfObject.set(PDFName.of("Last"), item.children[item.children.length - 1].ref);
-      pdfObject.set(PDFName.of("Count"), PDFNumber.of(countChildrenOfOutline(item.children)));
+      const childCount = countChildrenOfOutline(item.children);
+      pdfObject.set(PDFName.of("Count"), PDFNumber.of(item.closed ? -childCount : childCount));
     }
 
     context.assign(item.ref, PDFDict.fromMapWithContext(pdfObject, context));
