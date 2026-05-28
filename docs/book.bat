@@ -25,4 +25,4 @@ if not exist ..\node_modules\puppeteer\package.json (
     if errorlevel 1 exit /b 1
 )
 if not exist _pdf mkdir _pdf
-node render-book.mjs _site-pdf\book.html -o "_pdf\twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script ..\perf\detach-pages.js
+node ..\book\render-book.mjs _site-pdf\book.html -o "_pdf\twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script ..\perf\detach-pages.js

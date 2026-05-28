@@ -27,19 +27,19 @@
 //
 // Run: node --expose-gc perf/instrument-pioh.mjs
 
-import '../docs/lib/fast-refs-class.mjs';
-import '../docs/lib/fast-inflate.mjs';
-import '../docs/lib/fast-parse-number.mjs';
-import '../docs/lib/fast-decode-name.mjs';
-import '../docs/lib/fast-number-to-string.mjs';
-import '../docs/lib/fast-size-in-bytes.mjs';
-import '../docs/lib/fast-parse-object.mjs';
-import '../docs/lib/fast-sync-load.mjs';
-import '../docs/lib/fast-indirect-objects.mjs';
-import '../docs/lib/fast-pdfnumber-pool.mjs';
-import { setExpectedDictSlots } from '../docs/lib/fast-dict-onebuf.mjs';
-import { setExpectedArraySlots } from '../docs/lib/fast-array-onebuf.mjs';
-import { measure as measureRawPdf } from '../docs/lib/measure-pass.mjs';
+import '../book/lib/fast-refs-class.mjs';
+import '../book/lib/fast-inflate.mjs';
+import '../book/lib/fast-parse-number.mjs';
+import '../book/lib/fast-decode-name.mjs';
+import '../book/lib/fast-number-to-string.mjs';
+import '../book/lib/fast-size-in-bytes.mjs';
+import '../book/lib/fast-parse-object.mjs';
+import '../book/lib/fast-sync-load.mjs';
+import '../book/lib/fast-indirect-objects.mjs';
+import '../book/lib/fast-pdfnumber-pool.mjs';
+import { setExpectedDictSlots } from '../book/lib/fast-dict-onebuf.mjs';
+import { setExpectedArraySlots } from '../book/lib/fast-array-onebuf.mjs';
+import { measure as measureRawPdf } from '../book/lib/measure-pass.mjs';
 import { PDFDocument } from 'pdf-lib';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';

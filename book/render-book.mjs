@@ -155,7 +155,7 @@ import { PDFDocument } from 'pdf-lib';
 //     heap traffic drops ~13 % (123 MB -> 107 MB). PDFNumber is
 //     immutable so sharing is safe.
 //   measure-pass (Phase 1) -- no-allocate byte walker
-//     (docs/lib/measure-pass.mjs) that runs in front of
+//     (lib/measure-pass.mjs) that runs in front of
 //     PDFDocument.load on the raw Chrome PDF and counts dictSlots
 //     + arraySlots. The counts drive setExpectedDictSlots() on
 //     fast-dict-onebuf and setExpectedArraySlots() on

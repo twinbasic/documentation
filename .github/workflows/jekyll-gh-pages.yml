@@ -91,7 +91,7 @@ jobs:
       - name: Render book PDF
         run: |
           mkdir -p _pdf
-          node render-book.mjs _site-pdf/book.html -o "_pdf/twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script ../perf/detach-pages.js
+          node ../book/render-book.mjs _site-pdf/book.html -o "_pdf/twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script ../perf/detach-pages.js
         working-directory: ./docs
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

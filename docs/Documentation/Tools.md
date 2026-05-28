@@ -38,7 +38,7 @@ Runs `scripts/check_links.mjs` against the rendered `_site/` and `_site-offline/
 
     docs\book.bat
 
-Renders the PDF book from `_site-pdf/book.html` into `_pdf/twinBASIC Book.pdf`. Calls `node render-book.mjs` (see [below](#docsrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` at the repository root if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `docs/book.bat` and in `.github/workflows/jekyll-gh-pages.yml`.
+Renders the PDF book from `_site-pdf/book.html` into `_pdf/twinBASIC Book.pdf`. Calls `node ..\book\render-book.mjs` (see [below](#bookrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` at the repository root if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `docs/book.bat` and in `.github/workflows/jekyll-gh-pages.yml`.
 
 ## CLI tools
 
@@ -107,9 +107,10 @@ Online link crawler for the deployed site. Starts at `<start-url>`, GETs every s
 
 Normalises literal en-dash / em-dash characters in markdown source under `docs/` to their kramdown smart-quotes ASCII source form (`--` for en-dash, `---` for em-dash). The site forbids literal `–` / `—` in source --- this is the canonical fixer if any slip back in. Skips fenced code blocks and inline code spans.
 
-### docs/render-book.mjs
+### book/render-book.mjs
+{: #bookrender-bookmjs }
 
-    node docs/render-book.mjs <input.html> -o <output.pdf> [options]
+    node book/render-book.mjs <input.html> -o <output.pdf> [options]
 
 The PDF renderer that `book.bat` calls. It is a generic HTML-to-PDF converter: it takes the pre-built `_site-pdf/book.html` as its sole document input and has no knowledge of `_data/book.yml` --- all chapter structure, heading levels, and outline entries are already embedded in the HTML by `tbdocs` Phase 8. Uses `puppeteer` + `paged.js` + `pdf-lib` directly, so it controls `pdf-lib`'s `parseSpeed` (the default yields the event loop between every 100 objects on load, adding ~32 seconds to a 100-second build for no reason in Node --- see [perf/README.md](https://github.com/twinbasic/documentation/blob/main/perf/README.md) for the diagnosis). Replaces an earlier `npx pagedjs-cli ...` invocation.
 
