@@ -274,7 +274,7 @@ parts:
     # source H1 stripped by the plugin to avoid the redundancy with the
     # chapter divider's H2), followed by the package's class / module /
     # control pages in URL order.
-    # foreword_page: /tB/Packages/
+    foreword_page: /tB/Packages/
     chapters:
       - title: VBA Package
         subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
