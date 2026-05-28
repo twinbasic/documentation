@@ -17,6 +17,12 @@ This page is a navigation layer over the canonical specs. Module-level documenta
 - [`builder/PLAN-1.md`](https://github.com/twinbasic/documentation/blob/main/builder/PLAN-1.md) through [`PLAN-11.md`](https://github.com/twinbasic/documentation/blob/main/builder/PLAN-11.md) --- per-phase specs: inputs, outputs, edge cases, acceptance checks.
 - [`builder/FUTURE-WORK.md`](https://github.com/twinbasic/documentation/blob/main/builder/FUTURE-WORK.md) --- open follow-ups, grouped by divergence investigations / deferred enhancements.
 
+Structured reference and tutorial pages live here on the docs site:
+
+- [Pipeline Stages](Pipeline-Stages) --- complete interface reference: function signatures, per-stage reads/writes, and every exported symbol.
+- [Book Configuration](Book-Configuration) --- `_data/book.yml` key reference for the PDF chapter manifest.
+- [Extending the Builder](Extending) --- tutorial for adding a new pipeline stage or a markdown-it plugin.
+
 * TOC goes here
 {:toc}
 
@@ -67,7 +73,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | 7 | `offline.mjs` | URL-rewritten copy to `_site-offline/` | ~1,000 ms |
 | 8 | `pdf.mjs` + `book.mjs` | Sparse `_site-pdf/` tree (book.html + CSS + images) | ~150 ms |
 
-Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 lands the output-changing parity updates. None adds a runtime step. Phase 12 adds the `--serve` dev-server mode (a separate lifecycle, not a build phase). The per-phase `PLAN-N.md` files retain the implementation history.
+Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 introduces the output-changing parity updates. None adds a runtime step. Phase 12 adds the `--serve` dev-server mode (a separate lifecycle, not a build phase). The per-phase `PLAN-N.md` files retain the implementation history.
 
 ## Dependencies
 
@@ -131,7 +137,7 @@ The integrity check is the only path that can abort the build mid-Phase-2. Two f
 
 834 of 836 page titles on the site are plain ASCII strings where the pipeline collapses to a one-character escape; the remaining two (`Concat.md` and `LineContinuation.md` --- titles containing `&` and `\`) exercise the wrap-and-strip path. The shared markdown-it instance is mandatory; Phase 2 fails fast if the orchestrator forgot to build it via `createMarkdownIt` first.
 
-`stripHtml` and `absoluteUrl` are also exported for [`search.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/search.mjs) (search-index content sanitiser) and for [`sitemap.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sitemap.mjs) / [`redirects.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/redirects.mjs) (absolute URL composition) --- the same byte-for-byte URL helper that drives canonical tags is shared with the Phase 6 auxiliary writers.
+`stripHtml` and `absoluteUrl` are also exported for [`search.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/search.mjs) (search-index content sanitiser) and for [`sitemap.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sitemap.mjs) / [`redirects.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/redirects.mjs) (absolute URL composition) --- the same byte-for-byte URL helper used for canonical tags is shared with the Phase 6 auxiliary writers.
 
 ### [book.mjs](https://github.com/twinbasic/documentation/blob/main/builder/book.mjs) --- Phase 2 chapter resolution + Phase 8 assembly
 
@@ -147,9 +153,9 @@ The largest module by line count (~990 lines), split into two clearly-labelled h
 4. shift heading levels by `n in [0, 3]` capped at `h7-stub`;
 5. prefix every heading id and intra-chapter `href="#"` with the chapter anchor.
 
-Each part and chapter divider page carries the entry's title as an H1/H2 heading (or a silent `<p>` when `no_outline_entry:` is set), which becomes the PDF bookmark target. When `landing_is_target:` is set on an entry, the heading is instead injected directly into the landing-page article so the PDF bookmark navigates there rather than to the blank divider page; `rewriteBookHrefs`'s landing-H1 strip skips the injected heading via a `data-divider-heading` attribute. `outline_closed:` stamps `data-pdf-bookmark-closed` on the heading (or on the first content article for `no_outline_entry` entries), and `parseOutline` in `docs/lib/outline.mjs` reads the attribute to write a negative PDF `/Count` for that bookmark node. Full schema is documented in the `_data/book.yml` file header.
+Each part and chapter divider page contains the entry's title as an H1/H2 heading (or a silent `<p>` when `no_outline_entry:` is set), which becomes the PDF bookmark target. When `landing_is_target:` is set on an entry, the heading is instead injected directly into the landing-page article so the PDF bookmark navigates there rather than to the blank divider page; `rewriteBookHrefs`'s landing-H1 strip skips the injected heading via a `data-divider-heading` attribute. `outline_closed:` stamps `data-pdf-bookmark-closed` on the heading (or on the first content article for `no_outline_entry` entries), and `parseOutline` in `docs/lib/outline.mjs` reads the attribute to write a negative PDF `/Count` for that bookmark node. Full schema is documented in the `_data/book.yml` file header.
 
-`augmentWithRedirectStubs` synthesises virtual `Page` records from each real page's `redirect_from` so the cross-ref rewriter still captures legacy URLs the way Jekyll's `jekyll-redirect-from` did (its stubs landed in `site.pages` and got swept into the lookup table). `chapterAnchorFromUrl` is the URL → `ch-…` slug helper that drives both `id="..."` and the `#…` href targets.
+`augmentWithRedirectStubs` synthesises virtual `Page` records from each real page's `redirect_from` so the cross-ref rewriter still captures legacy URLs the way Jekyll's `jekyll-redirect-from` did (its stubs appeared in `site.pages` and got swept into the lookup table). `chapterAnchorFromUrl` is the URL → `ch-…` slug helper that generates both `id="..."` and the `#…` href targets.
 
 ### [build-info.mjs](https://github.com/twinbasic/documentation/blob/main/builder/build-info.mjs) --- Phase 2 git capture
 
@@ -157,13 +163,13 @@ Twenty-eight lines total. `captureBuildInfo()` issues two parallel `git` shell-o
 
 ### [data.mjs](https://github.com/twinbasic/documentation/blob/main/builder/data.mjs) --- Phase 2 data loader
 
-Reads every `_data/*.yml` under `srcRoot` into a flat object keyed by basename --- `_data/book.yml` becomes `site.data.book`, a future `_data/contributors.yml` would land at `site.data.contributors` with no per-file plumbing. Returns `{}` when the directory is absent. Replaces the book-specific YAML load that originally lived in [`book.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/book.mjs); the latter retains `loadBookData` as a back-compat wrapper for harnesses that haven't migrated.
+Reads every `_data/*.yml` under `srcRoot` into a flat object keyed by basename --- `_data/book.yml` becomes `site.data.book`, a future `_data/contributors.yml` would appear at `site.data.contributors` with no per-file plumbing. Returns `{}` when the directory is absent. Replaces the book-specific YAML load that originally lived in [`book.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/book.mjs); the latter retains `loadBookData` as a back-compat wrapper for harnesses that haven't migrated.
 
 ### [mermaid.mjs](https://github.com/twinbasic/documentation/blob/main/builder/mermaid.mjs) --- Phase 11 (B1) preprocessor
 
 `regenerateMermaid(srcRoot)` enumerates `<srcRoot>/assets/images/mmd/*.mmd`, compares mtimes against their `.svg` siblings, and re-runs `mmdc` on stale ones. Runs before Phase 1 so the freshly emitted SVGs appear in discover's `staticFiles[]` on the same build. Idempotent: a second build with no source changes is a no-op.
 
-Two practical complications. First, mmdc's launcher (the `npx` shim) needs Windows-vs-POSIX special-casing: on Windows, `spawn` requires `shell: true` and the `.cmd` suffix. Second, mmdc relies on puppeteer-core, which would otherwise download a second Chrome --- `findCachedChrome()` locates the cached Chrome the top-level `puppeteer` install already landed under `~/.cache/puppeteer/` and passes its path via `PUPPETEER_EXECUTABLE_PATH`, saving the duplicate install. `explainMmdcFailure()` parses mmdc's stderr to expose the two common failure modes (mmdc itself not installed; Chrome runtime missing) with the exact `npm install` / `puppeteer browsers install` invocation that fixes them; any failure logs a warning and leaves the existing on-disk SVG in place, so the build never aborts on a missing diagram tool.
+Two practical complications. First, mmdc's launcher (the `npx` shim) needs Windows-vs-POSIX special-casing: on Windows, `spawn` requires `shell: true` and the `.cmd` suffix. Second, mmdc relies on puppeteer-core, which would otherwise download a second Chrome --- `findCachedChrome()` locates the cached Chrome the top-level `puppeteer` install already placed under `~/.cache/puppeteer/` and passes its path via `PUPPETEER_EXECUTABLE_PATH`, saving the duplicate install. `explainMmdcFailure()` parses mmdc's stderr to expose the two common failure modes (mmdc itself not installed; Chrome runtime missing) with the exact `npm install` / `puppeteer browsers install` invocation that fixes them; any failure logs a warning and leaves the existing on-disk SVG in place, so the build never aborts on a missing diagram tool.
 
 ### [render.mjs](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) --- Phase 3 markdown pipeline
 
@@ -188,7 +194,7 @@ The render-rule overrides on `fence` / `code_block` / `code_inline` / `table_ope
 
 Wraps Shiki's `createHighlighter` with the in-tree `twinbasic.tmLanguage.json` grammar and the palette loaded by [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs). `initHighlighter({ copyButton })` returns a singleton `{ render, themeCss }`; the orchestrator caches it and passes `render` into markdown-it's `highlight` callback.
 
-The wrapper structure --- `<div class="language-X highlighter-rouge"><div class="highlight"><pre class="highlight"><code>...</code></pre></div></div>` --- is what the just-the-docs chrome's CSS expects, so the wrapper class output and the palette CSS share a single source of truth. `TB_ALIASES` accepts `tb`, `twinbasic`, `vb`, `vba` (all routed to the bundled tB grammar); other fenced languages route to Shiki's bundled list (`js`, `json`, `ruby`, `html`, `yaml`, and a handful more). An empty info string falls through to `language-plaintext`.
+The wrapper structure --- `<div class="language-X highlighter-rouge"><div class="highlight"><pre class="highlight"><code>...</code></pre></div></div>` --- is what the just-the-docs chrome's CSS expects, so the wrapper class output and the palette CSS share a single source of truth. `TB_ALIASES` accepts `tb`, `twinbasic`, `vb`, `vba` (all routed to the bundled tB grammar); other fenced languages route to Shiki's bundled list (`js`, `json`, `ruby`, `html`, `yaml`, and a few more). An empty info string falls through to `language-plaintext`.
 
 `renderThemedSpans` is the per-token-run coalescer: same-class adjacent tokens merge into one `<span>` so a multi-line block comment is a single coloured block, the line-continuation token (`_<whitespace>\n`) absorbs the next line's leading whitespace into the same span (mirroring the tB lexer's continuation handling), and trailing newlines on comment runs defer so a continuing comment on the next line merges in. Phase 11 (B5) added `COPY_BUTTON_HTML` to the wrapper output --- the runtime DOM-injection loop the upstream just-the-docs.js used to do is gone, the click handler binds to the pre-rendered button via `closest()`.
 
@@ -206,11 +212,11 @@ Reads the vendored `builder/themes/Light.theme` and `Dark.theme` files (the twin
 
 The layout is direct JS template-literal concatenation --- no Liquid, no template engine. Sub-functions match the upstream just-the-docs include set one-to-one: `renderHead` (charset / dark-mode early script / CSS / activation-style / lunr / just-the-docs.js / viewport / SEO / favicon, in the upstream's exact order), `renderSidebar` + `renderNavTree` (recursive nav walker with cycle defence by title), `renderHeader` + `renderSearchInput` + `renderAuxNav`, `renderBreadcrumbs`, `injectAnchorHeadings` (regex pass adding `<a class="anchor-heading">` next to every heading with an id), `renderChildrenNav` (auto-generated child page list for index pages), `renderFooter` + `renderFooterCustom` + `renderEditAndOfflineBlock`.
 
-`navActivationCss(page)` is the per-page `<style id="jtd-nav-activation">` block --- positional `:nth-child(N)` selectors derived from `page.navLevels` that bold the active leaf, rotate its expander chevron, expand the active sub-tree's `<ul>`, and turn off the background-image inheritance on every other link. The CSS structure mirrors the upstream `activation.scss.liquid` partial verbatim so the rendered style block byte-matches what Jekyll would have produced. `formatDate` implements the strftime tokens the project's `last_edit_time_format` actually uses (`%b %e %Y at %I:%M %p`) plus the common companions, throwing on unknown tokens so a future format change surfaces immediately.
+`navActivationCss(page)` is the per-page `<style id="jtd-nav-activation">` block --- positional `:nth-child(N)` selectors derived from `page.navLevels` that bold the active leaf, rotate its expander chevron, expand the active sub-tree's `<ul>`, and turn off the background-image inheritance on every other link. The CSS structure mirrors the upstream `activation.scss.liquid` partial verbatim so the rendered style block byte-matches what Jekyll would have produced. `formatDate` implements the strftime tokens the project's `last_edit_time_format` actually uses (`%b %e %Y at %I:%M %p`) plus the common companions, throwing on unknown tokens so a future format change is detected immediately.
 
 ### [compress.mjs](https://github.com/twinbasic/documentation/blob/main/builder/compress.mjs) --- Phase 4 whitespace compress
 
-Fifty-five lines. `compressHtml(html)` splits on `<pre>...</pre>` blocks (the capture-group `String.prototype.split` keeps the blocks in the result array, alternating with the outside-of-pre segments), then collapses every run of ASCII whitespace in the non-pre segments to a single space and trims. `collapseWhitespace` uses an explicit `[ \t\n\r\f\v]+` character class rather than JS's `\s` shorthand --- the latter would also match U+00A0 (no-break space) and a dozen other Unicode space characters, which would destroy the `&nbsp;`-driven indentation kramdown emits in blockquote, footnote-backref, and `<kbd>` markup. The trailing newline is preserved when the input had one.
+Fifty-five lines. `compressHtml(html)` splits on `<pre>...</pre>` blocks (the capture-group `String.prototype.split` keeps the blocks in the result array, alternating with the outside-of-pre segments), then collapses every run of ASCII whitespace in the non-pre segments to a single space and trims. `collapseWhitespace` uses an explicit `[ \t\n\r\f\v]+` character class rather than JS's `\s` shorthand --- the latter would also match U+00A0 (no-break space) and a dozen other Unicode space characters, which would destroy the `&nbsp;`-based indentation kramdown emits in blockquote, footnote-backref, and `<kbd>` markup. The trailing newline is preserved when the input had one.
 
 ### [write.mjs](https://github.com/twinbasic/documentation/blob/main/builder/write.mjs) --- Phase 5 online writer
 
@@ -236,7 +242,7 @@ Twenty-three lines. `permalinkToDestPath(permalink)` applies four rules: `/` →
 
 `writeSearchData(pages, site, destRoot)` iterates over every titled, non-`search_exclude` page with rendered content, splits its body into heading-bounded sections (folds `h2..h<heading_level>` into `h1` markers first, then splits on `<h1`), and emits one JSON entry per section plus an optional title-prefix entry when the first heading text differs from the page title. ~2,587 entries on the current tree.
 
-`sanitiseContent` is the kramdown-parity content normaliser --- 14 string replaces insert ` . ` / ` | ` separators between block boundaries (so the search snippet shows logical breaks instead of glued-together prose), then `stripHtml`, then a "Table of contents" removal, then a collapse-runs-of-ASCII-whitespace pass (narrow set, mirroring Ruby's `String#strip` semantics so `&nbsp;`-driven indentation isn't destroyed --- the same issue the [`compress.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/compress.mjs) compress pass guards against). The order is essential for byte parity with the just-the-docs Liquid template; rearranging the steps would change the output.
+`sanitiseContent` is the kramdown-parity content normaliser --- 14 string replaces insert ` . ` / ` | ` separators between block boundaries (so the search snippet shows logical breaks instead of glued-together prose), then `stripHtml`, then a "Table of contents" removal, then a collapse-runs-of-ASCII-whitespace pass (narrow set, mirroring Ruby's `String#strip` semantics so `&nbsp;`-based indentation isn't destroyed --- the same issue the [`compress.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/compress.mjs) compress pass guards against). The order is essential for byte parity with the just-the-docs Liquid template; rearranging the steps would change the output.
 
 ### [offline.mjs](https://github.com/twinbasic/documentation/blob/main/builder/offline.mjs) --- Phase 7 offline mirror
 
@@ -283,7 +289,7 @@ so an accidental discovery-rule regression that silently drops pages appears as 
 
 Some build-adjacent code lives at the repo root rather than under `builder/`:
 
-- **PDF rendering** --- `docs/render-book.mjs` plus its `docs/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. The driver is intentionally not part of the site generator: it pulls in `puppeteer` and `pdf-lib`, both heavy.
+- **PDF rendering** --- `docs/render-book.mjs` plus its `docs/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. The driver is intentionally not part of the site generator: it pulls in `puppeteer` and `pdf-lib`, both heavy. See [PDF Generation](PDF-Generation) for the full internals.
 - **Link checking** --- `scripts/check_links.mjs` reads from disk after the build; not part of the generator.
 - **External link crawling** --- `scripts/crawl_check.mjs` reads from HTTP; not part of the generator.
 - **Mermaid source files** --- `docs/assets/images/mmd/*.mmd` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.

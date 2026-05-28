@@ -45,7 +45,7 @@ or directly:
 
 A single `tbdocs` run produces all three trees. The `also_build_offline` and `also_build_pdf` keys in `_config.yml` toggle the sibling outputs; the `--no-offline` and `--no-pdf` flags do the same from the command line if you only want `_site/`.
 
-The full CLI surface for `tbdocs` --- every flag, what each one does, when to reach for it --- lives on the [Tools and Scripts](Tools#tbdocs) page.
+The full set of `tbdocs` CLI flags --- every flag, what each one does, when to use it --- lives on the [Tools and Scripts](Tools#tbdocs) page.
 
 ## Building and local serving
 

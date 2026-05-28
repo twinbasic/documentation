@@ -17,3 +17,7 @@ This section covers everything related to the twinBASIC documentation: the URL c
 - [Building and Deployment](Development/Building) --- the day-to-day workflow for editing content: requirements, building, serving locally, link checking, Mermaid diagrams, screenshots, and the GitHub Pages deployment.
 - [Tools and Scripts](Development/Tools) --- one-line-per-tool reference for every script, batch file, and CLI flag exposed by the documentation toolchain (intended audience: doc contributors).
 - [tbdocs Internals](Development/Builder) --- detailed technical documentation for the `tbdocs` static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). Read this when modifying the build pipeline itself.
+- [Pipeline Stages](Development/Pipeline-Stages) --- per-stage interface reference: function signatures, reads/writes, and every exported symbol.
+- [Book Configuration](Development/Book-Configuration) --- `_data/book.yml` key reference for the PDF chapter manifest.
+- [Extending the Builder](Development/Extending) --- tutorial for adding a new pipeline stage or a markdown-it plugin.
+- [PDF Generation](Development/PDF-Generation) --- internals of the PDF renderer: `render-book.mjs`, paged.browser.js, and the pdf-lib shims.
