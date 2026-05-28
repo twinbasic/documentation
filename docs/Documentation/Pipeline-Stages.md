@@ -81,19 +81,31 @@ Runs before Phase 1 so any freshly regenerated `.svg` files appear in Phase 1's 
 **Entry point**
 
 ```js
-regenerateMermaid(srcRoot: string): Promise<{ processed: number, regenerated: number }>
+regenerateMermaid(srcRoot: string): Promise<{
+  processed: number,
+  regenerated: number,
+  failed: number,
+  setupSkipped?: true,
+}>
 ```
 
-Enumerates `<srcRoot>/assets/images/mmd/*.mmd`, compares modification times against the `.svg` sibling at the same path, and re-runs `mmdc` on any stale `.mmd`. Returns counts for logging. The call is a no-op when no `.mmd` files are stale.
+Enumerates `<srcRoot>/assets/images/mmd/*.mmd`, compares modification times against the `.svg` sibling at the same path, and drives `puppeteer` + the `mermaid` package directly to render each stale `.mmd` into its `.svg`. One browser launch covers the whole batch. The call is a no-op when no `.mmd` files are stale.
 
-**Reads:** `<srcRoot>/assets/images/mmd/*.mmd` and their `.svg` siblings.  
+The render runs in an in-page `page.evaluate` that dynamic-imports `mermaid.esm.mjs` via a request-intercept origin (`https://tbdocs-mermaid.invalid`). The intercept maps requests back to `node_modules/mermaid/dist/`; the origin trick is needed because Chromium blocks the `import()` chain that `mermaid.esm.mjs` triggers when loaded over `file://`. The IIFE bundle (`mermaid.min.js`) would sidestep that constraint but inlines + minifies past the patched dagre chunk (see [Mermaid Dagre Patches](Fixes/Dagre)), so the ESM path with the intercept is the only one that keeps the patch effective.
+
+Two failure-mode distinctions:
+
+- **Setup failure** (`puppeteer` / `mermaid` not installed, Chrome runtime missing) returns `{ ..., setupSkipped: true }`, warns once, and leaves on-disk SVGs intact. The orchestrator does **not** flip the exit code.
+- **Per-diagram render failure** (broken `.mmd`, mermaid render throws) does not abort the batch --- the loop continues so every broken diagram surfaces in one run, the previous SVG is retained for each failed diagram, and the orchestrator flips `process.exitCode = 1` based on the `failed` count.
+
+**Reads:** `<srcRoot>/assets/images/mmd/*.mmd` and their `.svg` siblings; `node_modules/mermaid/dist/**` (resolved via `import.meta.url`-rooted `createRequire`).  
 **Writes:** `.svg` files alongside stale `.mmd` sources.
 
 **All exports**
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `regenerateMermaid` | `(srcRoot) → Promise<{ processed, regenerated }>` | Main entry point. |
+| `regenerateMermaid` | `(srcRoot) → Promise<{ processed, regenerated, failed, setupSkipped? }>` | Main entry point. |
 
 ---
 

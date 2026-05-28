@@ -9,9 +9,9 @@ permalink: /Documentation/Development/Fixes/Dagre
 # Mermaid Dagre Patches
 {: .no_toc }
 
-`builder/node_modules/mermaid/dist/chunks/mermaid.esm/dagre-ZXKKJJHT.mjs` is mermaid's adapter between the flowchart parser and dagre, the layered-graph layout algorithm. Five patches are applied to it by `builder/scripts/patch-dagre.mjs`, wired in as an npm `postinstall` hook so a fresh `cd builder && npm install` re-applies them automatically. This page documents each patch --- what dagre does upstream, why it broke the build-pipeline diagrams, and what was changed.
+`node_modules/mermaid/dist/chunks/mermaid.esm/dagre-ZXKKJJHT.mjs` is mermaid's adapter between the flowchart parser and dagre, the layered-graph layout algorithm. Five patches are applied to it by `builder/scripts/patch-dagre.mjs`, wired in as an npm `postinstall` hook on the repo-root `package.json` so a fresh `npm install` re-applies them automatically. This page documents each patch --- what dagre does upstream, why it broke the build-pipeline diagrams, and what was changed.
 
-The patches all target the same bundled file. Mermaid (11.15.0) ships dagre inlined into `dagre-ZXKKJJHT.mjs` and the npm bundle's load path imports the chunk directly, so patching the original `dagre-d3-es` source under `node_modules/dagre-d3-es/` has no effect at runtime.
+The patches all target the same bundled file. Mermaid (pinned at exactly 11.15.0 to keep the fingerprint hash in the chunk filename stable) ships dagre inlined into `dagre-ZXKKJJHT.mjs` and the npm bundle's load path imports the chunk directly, so patching the original `dagre-d3-es` source under `node_modules/dagre-d3-es/` has no effect at runtime.
 
 * TOC goes here
 {:toc}
@@ -159,6 +159,8 @@ graph.edges().forEach(function(e) {
 
 ## Patch application
 
-`builder/scripts/patch-dagre.mjs` runs as an npm `postinstall` hook for the `builder/` workspace. On a fresh `npm install`, the script applies all five patches in order; on a re-run it detects already-applied patches (by checking for marker strings unique to each one) and skips them. The script also carries migration paths from earlier patch versions: it spots an in-progress upgrade and transforms the prior version's text into the current one rather than failing the `postinstall`.
+`builder/scripts/patch-dagre.mjs` runs as the repo-root npm `postinstall` hook (single `package.json` at the repo root after the dependency consolidation; there is no per-`builder/` install any more). On a fresh `npm install`, the script applies all five patches in order; on a re-run it detects already-applied patches (by checking for marker strings unique to each one) and skips them. The script also carries migration paths from earlier patch versions: it spots an in-progress upgrade and transforms the prior version's text into the current one rather than failing the `postinstall`.
+
+The exact-pin on `mermaid` in the root `package.json` keeps the `ZXKKJJHT` fingerprint stable: mermaid regenerates its bundle hashes on each release, so a floated `^11.15.0` could drift the chunk filename on a patch bump and break the postinstall target path. The pin trades the small lockfile churn of manual mermaid bumps for build determinism.
 
 If mermaid is upgraded to a release that changes the structure of `dagre-ZXKKJJHT.mjs`, the script will fail loudly with `target not found` and the patch text in `patch-dagre.mjs` needs to be regenerated against the new source --- the patches are precise string replacements, not regex matches.

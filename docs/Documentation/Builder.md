@@ -79,29 +79,36 @@ Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 
 
 ## Dependencies
 
-Seven production dependencies plus one dev-only dependency:
+A single `package.json` at the repo root carries everything --- the static site generator's deps, the PDF renderer's deps, and the few packages both consume. There is no per-`builder/` `package.json` (an earlier split was consolidated; the previous arrangement required `npm ci --prefix builder` in CI and ended up dragging in a duplicate puppeteer-core via `@mermaid-js/mermaid-cli`):
 
 ```json
 {
-  "dependencies": {
+  "devDependencies": {
     "acorn": "^8.0",
     "acorn-walk": "^8.0",
     "fast-glob": "^3.3",
     "gray-matter": "^4.0",
+    "html-entities": "^2.6.0",
+    "htmlparser2": "^12.0.0",
     "js-yaml": "^4.1",
     "markdown-it": "^14.0",
     "markdown-it-attrs": "^4.3",
     "markdown-it-deflist": "^3.0",
     "markdown-it-footnote": "^4.0",
+    "mermaid": "11.15.0",
+    "pdf-lib": "1.17.1",
+    "puppeteer": "25.0.4",
     "shiki": "^1.0"
   },
-  "devDependencies": {
-    "@mermaid-js/mermaid-cli": "^11.0"
+  "scripts": {
+    "postinstall": "node builder/scripts/patch-dagre.mjs"
   }
 }
 ```
 
-No template engine, no framework, no bundler. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` so the offline patcher can target the AST instead of regex-matching strings; `markdown-it-{attrs,deflist,footnote}` cover the kramdown extensions the legacy renderer supported; `shiki` does the syntax highlighting; `lunr` powers the search index. The mermaid CLI runs only when an `.mmd` is newer than its `.svg` sibling.
+No template engine, no framework, no bundler. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` so the offline patcher can target the AST instead of regex-matching strings; `markdown-it-{attrs,deflist,footnote}` cover the kramdown extensions the legacy renderer supported; `shiki` does the syntax highlighting; `lunr` powers the search index. `mermaid` and `puppeteer` together drive the `.mmd` → `.svg` pre-phase (one headless Chromium per batch, replacing the old per-diagram `npx mmdc` fork); `puppeteer` is shared with the PDF renderer (`docs/render-book.mjs`). `pdf-lib` + `html-entities` + `htmlparser2` are the PDF renderer's own toolchain. The `postinstall` runs `builder/scripts/patch-dagre.mjs`, which rewrites mermaid's bundled dagre adapter --- see [Mermaid Dagre Patches](Fixes/Dagre).
+
+`mermaid` is **exact-pinned** (`"11.15.0"`, not `"^11.15.0"`). The dagre patches target a chunk filename whose hash component (`dagre-ZXKKJJHT.mjs`) is regenerated on each mermaid release, so a floated range could break the postinstall on a transparent patch bump.
 
 ## Per-module deep dive
 
@@ -116,6 +123,8 @@ The drift guard at the end (`if (pages.length < 836)`) sets `process.exitCode = 
 ### [serve.mjs](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs) --- Phase 12 dev server
 
 The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightweight inject middleware splices the SSE client script before `</body>` at serve time so the on-disk `_site/` stays byte-identical to a non-`--serve` build.
+
+`shouldRebuild` filters watcher events along three axes: prefixes (`_site/`, `_site-offline/`, `_site-pdf/`, `_pdf/`, `node_modules/`, `.git/`), basename patterns (dotfiles, editor swap files, the `4913` sentinel vim writes), and the specific `assets/images/mmd/*.svg` path. The last bit deserves a callout: those SVGs are emitted by the mermaid pre-phase back under `srcRoot`, so without the filter every `.mmd` edit fires the watcher twice (once on the `.mmd` save, once on the `.svg` write mid-rebuild) and the queued second rebuild is a no-op that triggers a redundant browser reload ~3 s later. The filter treats the `.mmd` as the source of truth and the `.svg` as a build artifact, matching how `_site/` writes are already excluded.
 
 ### [discover.mjs](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) --- Phase 1
 
@@ -167,7 +176,16 @@ Replaces the book-specific YAML load that originally lived in [`book.mjs`](https
 
 ### [mermaid.mjs](https://github.com/twinbasic/documentation/blob/main/builder/mermaid.mjs) --- Phase 11 (B1) preprocessor
 
-Two practical complications. First, mmdc's launcher (the `npx` shim) needs Windows-vs-POSIX special-casing: on Windows, `spawn` requires `shell: true` and the `.cmd` suffix. Second, mmdc relies on puppeteer-core, which would otherwise download a second Chrome --- `findCachedChrome()` locates the cached Chrome the top-level `puppeteer` install already placed under `~/.cache/puppeteer/` and passes its path via `PUPPETEER_EXECUTABLE_PATH`, saving the duplicate install. `explainMmdcFailure()` parses mmdc's stderr to expose the two common failure modes (mmdc itself not installed; Chrome runtime missing) with the exact `npm install` / `puppeteer browsers install` invocation that fixes them; any failure logs a warning and leaves the existing on-disk SVG in place, so the build never aborts on a missing diagram tool.
+Drives `puppeteer` + the in-tree `mermaid` package directly. Earlier this module shelled out to `@mermaid-js/mermaid-cli` via `npx mmdc`, which forked a fresh node + Chrome process per diagram and shipped its own bundled puppeteer-core (forcing a duplicate Chrome download); the direct path collapses both costs into one browser launch for the whole batch and one entry in the dependency tree.
+
+The render runs in a single `page.evaluate` that dynamic-imports `mermaid.esm.mjs` and calls `mermaid.render('my-svg', definition, container)`, then serialises the resulting `<svg>` via `XMLSerializer`. The SVG id matches mermaid-cli's default so any previously-committed SVG diffs cleanly against the new output. The bare HTML page is a `data:text/html` URL with one `<div id="container">`; nothing else is loaded.
+
+**The intercept shim.** Chromium blocks the relative-`import()` chain that `mermaid.esm.mjs` triggers when the entry is loaded over `file://`, so requests are routed through a dummy origin `https://tbdocs-mermaid.invalid/*` and `page.setRequestInterception(true)` resolves them back to `node_modules/mermaid/dist/*` --- the same trick mermaid-cli's own `puppeteerIntercept.js` uses, stripped down to one root and one MIME type. The shim is necessary because the alternative (the IIFE bundle `mermaid.min.js`) inlines + minifies past the patched dagre chunk and would silently undo the layout fixes documented in [Mermaid Dagre Patches](Fixes/Dagre).
+
+**Failure modes.** Two categories, handled distinctly:
+
+- **Setup** (`puppeteer` import fails, mermaid not installed, `puppeteer.launch()` fails for lack of Chrome): warns once with the recovery command (`npm install` / `npx puppeteer browsers install chrome --install-deps`), retains every on-disk SVG, returns `{ ..., setupSkipped: true }`. The orchestrator does **not** flip the exit code --- a fresh checkout still builds, just without diagram updates.
+- **Per-diagram render** (broken `.mmd` syntax, mermaid render throws inside `page.evaluate`): warns with the parser error including line + column + expected-token list, retains that diagram's previous SVG, **continues** processing the rest of the batch so every broken diagram surfaces in one run, and increments the returned `failed` count. The orchestrator flips `process.exitCode = 1` based on that count so CI catches the bad diagram.
 
 ### [render.mjs](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) --- Phase 3 markdown pipeline
 
@@ -277,7 +295,7 @@ so an accidental discovery-rule regression that silently drops pages appears as 
 
 Some build-adjacent code lives at the repo root rather than under `builder/`:
 
-- **PDF rendering** --- `docs/render-book.mjs` plus its `docs/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. The driver is intentionally not part of the site generator: it pulls in `puppeteer` and `pdf-lib`, both heavy. See [PDF Generation](PDF-Generation) for the full internals.
+- **PDF rendering** --- `docs/render-book.mjs` plus its `docs/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. The driver is intentionally not part of the site generator: `pdf-lib` is a heavy dep used only at PDF time. `puppeteer` is shared between `render-book.mjs` and `builder/mermaid.mjs` (one Chromium binary, two consumers). See [PDF Generation](PDF-Generation) for the full internals.
 - **Link checking** --- `scripts/check_links.mjs` reads from disk after the build; not part of the generator.
 - **External link crawling** --- `scripts/crawl_check.mjs` reads from HTTP; not part of the generator.
 - **Mermaid source files** --- `docs/assets/images/mmd/*.mmd` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.
