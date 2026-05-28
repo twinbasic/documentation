@@ -147,6 +147,8 @@ The largest module by line count (~990 lines), split into two clearly-labelled h
 4. shift heading levels by `n in [0, 3]` capped at `h7-stub`;
 5. prefix every heading id and intra-chapter `href="#"` with the chapter anchor.
 
+Each part and chapter divider page carries the entry's title as an H1/H2 heading (or a silent `<p>` when `no_outline_entry:` is set), which becomes the PDF bookmark target. When `landing_is_target:` is set on an entry, the heading is instead injected directly into the landing-page article so the PDF bookmark navigates there rather than to the blank divider page; `rewriteBookHrefs`'s landing-H1 strip skips the injected heading via a `data-divider-heading` attribute. `outline_closed:` stamps `data-pdf-bookmark-closed` on the heading (or on the first content article for `no_outline_entry` entries), and `parseOutline` in `docs/lib/outline.mjs` reads the attribute to write a negative PDF `/Count` for that bookmark node. Full schema is documented in the `_data/book.yml` file header.
+
 `augmentWithRedirectStubs` synthesises virtual `Page` records from each real page's `redirect_from` so the cross-ref rewriter still captures legacy URLs the way Jekyll's `jekyll-redirect-from` did (its stubs landed in `site.pages` and got swept into the lookup table). `chapterAnchorFromUrl` is the URL → `ch-…` slug helper that drives both `id="..."` and the `#…` href targets.
 
 ### [build-info.mjs](https://github.com/twinbasic/documentation/blob/main/builder/build-info.mjs) --- Phase 2 git capture

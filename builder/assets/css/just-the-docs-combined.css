@@ -264,7 +264,7 @@ a:not([class]) { text-decoration: underline; text-decoration-color: #eeebee; tex
 
 a:not([class]):hover { text-decoration-color: rgba(114, 83, 237, 0.45); }
 
-code { font-family: "SFMono-Regular", menlo, consolas, monospace; font-size: 0.75em; line-height: 1.4; }
+code { font-family: "SFMono-Regular", menlo, consolas, monospace; font-size: 0.95em; line-height: 1.4; }
 
 figure, pre { margin: 0; }
 
@@ -760,7 +760,7 @@ tbody tr:last-of-type td { padding-bottom: 0.75rem; }
 
 thead th { border-bottom: 1px solid #eeebee; }
 
-:not(pre, figure) > code { padding: 0.2em 0.15em; font-weight: 400; background-color: #f5f6fa; border: 1px solid #eeebee; border-radius: 4px; }
+:not(pre, figure) > code { padding: 0.15em 0.12em; font-weight: 400; background-color: #f5f6fa; border: 1px solid #eeebee; border-radius: 4px; }
 
 a:visited code { border-color: #eeebee; }
 
@@ -2073,7 +2073,7 @@ html.dark-mode a:not([class]) { text-decoration: underline; text-decoration-colo
 
 html.dark-mode a:not([class]):hover { text-decoration-color: rgba(44, 132, 250, 0.45); }
 
-html.dark-mode code { font-family: "SFMono-Regular", menlo, consolas, monospace; font-size: 0.75em; line-height: 1.4; }
+html.dark-mode code { font-family: "SFMono-Regular", menlo, consolas, monospace; font-size: 0.95em; line-height: 1.4; }
 
 html.dark-mode figure, html.dark-mode pre { margin: 0; }
 
@@ -2569,7 +2569,7 @@ html.dark-mode tbody tr:last-of-type td { padding-bottom: 0.75rem; }
 
 html.dark-mode thead th { border-bottom: 1px solid #44434d; }
 
-html.dark-mode :not(pre, figure) > code { padding: 0.2em 0.15em; font-weight: 400; background-color: #31343f; border: 1px solid #44434d; border-radius: 4px; }
+html.dark-mode :not(pre, figure) > code { padding: 0.15em 0.12em; font-weight: 400; background-color: #31343f; border: 1px solid #44434d; border-radius: 4px; }
 
 html.dark-mode a:visited code { border-color: #44434d; }
 
@@ -3554,5 +3554,7 @@ html.dark-mode span { color: #2c84fa; }
 html.dark-mode .site-footer { color: #959396; }
 
 html.dark-mode h1, html.dark-mode h2, html.dark-mode h3, html.dark-mode h4, html.dark-mode h5, html.dark-mode h6, html.dark-mode #toctitle { font-weight: 500; }
+
+td code, th code { font-size: 1em; }
 
 /*# sourceMappingURL=just-the-docs-combined.css.map */

@@ -4,7 +4,7 @@ nav_order: 2
 permalink: /FAQ
 ---
 
-# twinBASIC Frequently Asked Questions
+# Frequently Asked Questions
 
 ### [General](#general) - [Installation](#install-section) - [Using twinBASIC](#using-twinbasic)
 
