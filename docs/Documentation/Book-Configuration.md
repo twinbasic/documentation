@@ -1,7 +1,8 @@
 ---
 title: Book Configuration
-parent: Documentation Development
-nav_order: 6
+parent: tbdocs Builder
+grand_parent: Documentation Development
+nav_order: 2
 permalink: /Documentation/Development/Book-Configuration
 ---
 
@@ -245,4 +246,4 @@ What this produces:
 ## See Also
 
 - [Pipeline Stages](Pipeline-Stages) -- the `book.mjs` interface contracts.
-- [tbdocs Internals](Builder) -- design rationale for `book.mjs`.
+- [tbdocs Builder](Builder) -- design rationale for `book.mjs`.

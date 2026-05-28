@@ -359,3 +359,14 @@ parts:
         page: /tB/Packages/WinNativeCommonCtls/
         landing_is_target: true
         outline_closed: true
+
+  - title: Appendices
+    outline_closed: false
+    
+    chapters:
+      - title: Documentation Development
+        subtitle: How does the documentation builder work and how to use it
+        landing_page: /Documentation/Development/
+        page: /Documentation/Development/
+        landing_is_target: true
+        outline_closed: true

@@ -1,7 +1,8 @@
 ---
 title: Pipeline Stages
-parent: Documentation Development
-nav_order: 5
+parent: tbdocs Builder
+grand_parent: Documentation Development
+nav_order: 1
 permalink: /Documentation/Development/Pipeline-Stages
 ---
 
@@ -10,7 +11,7 @@ permalink: /Documentation/Development/Pipeline-Stages
 
 Complete interface reference for every stage in the `tbdocs` build pipeline. Each section covers one module: its entry-point signature, the data it reads from prior stages, the data it writes for subsequent stages, and every exported symbol.
 
-For design rationale and narrative descriptions, see [tbdocs Internals](Builder). To add a new stage or markdown-it plugin, see [Extending the Builder](Extending).
+For design rationale and narrative descriptions, see [tbdocs Builder](Builder). To add a new stage or markdown-it plugin, see [Extending the Builder](Extending).
 
 * TOC goes here
 {:toc}
@@ -598,6 +599,6 @@ The orchestrator sequences all stages and assembles the `site` object. It is not
 
 ## See Also
 
-- [tbdocs Internals](Builder) -- architecture overview and narrative design rationale.
+- [tbdocs Builder](Builder) -- architecture overview and narrative design rationale.
 - [Book Configuration](Book-Configuration) -- `_data/book.yml` key reference.
 - [Extending the Builder](Extending) -- tutorial for adding a new stage or markdown-it plugin.

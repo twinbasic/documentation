@@ -15,47 +15,7 @@ Internals of the two-stage PDF pipeline: `tbdocs` Phase 8 assembles a sparse `_s
 
 ## Data flow
 
-```
-tbdocs Phase 8  (builder/pdf.mjs + builder/book.mjs)
-│
-│  assembleBook()   -- combine all chapter HTML into book.html
-│  copyPdfCss()     -- copy print.css + tb-highlight.css
-│  copyPdfImages()  -- copy referenced images
-│
-└──> docs/_site-pdf/
-       book.html        (~5 MB assembled HTML)
-       assets/css/print.css
-       assets/css/tb-highlight.css
-       [images ...]
-
-
-node render-book.mjs _site-pdf/book.html -o _pdf/...
-│
-├── Phase 1: Render
-│     puppeteer.launch()  → headless Chromium
-│     page.goto(file://_site-pdf/book.html)
-│     window.PagedConfig.auto = false
-│     addScriptTag(paged.browser.js)
-│     addScriptTag(progress-handler.js)
-│     addScriptTag(detach-pages.js)   (via --additional-script)
-│     PagedPolyfill.preview()         synchronous CSS Paged Media layout
-│     → DOM: one .pagedjs_page per output PDF page
-│
-├── Phase 2: Generate
-│     page.evaluate()     → meta { title, lang, <meta name> values }
-│     parseOutline()      → OutlineNode[] tree
-│     page.pdf()          → raw PDF buffer (Chromium internal writer)
-│
-└── Phase 3: Process
-      measureRawPdf()             → { dictSlots, arraySlots, ... }
-      setExpectedDictSlots(n)
-      setExpectedArraySlots(n)    (pre-size fast-* shim backing arrays)
-      PDFDocument.load(rawPdf)    pdf-lib parse, fast-* shims active
-      setMetadata(pdfDoc, meta)   /Info dict
-      setOutline(pdfDoc, outline) /Outlines tree
-      parallelSave(pdfDoc, ...)   async deflate per object stream
-      writeFileSync()             → _pdf/twinBASIC Book.pdf
-```
+![PDF render pipeline](/assets/images/mmd/pdf-render-pipeline.svg)
 
 The two stages are decoupled: `tbdocs` builds `_site-pdf/` as part of its normal run; `render-book.mjs` runs only when `book.bat` calls it explicitly. This keeps `puppeteer` and `pdf-lib` --- both large --- out of the site generator's dependency tree.
 
@@ -154,7 +114,7 @@ The raw buffer from `page.pdf()` is a valid but minimal PDF: it has no `/Outline
 
 1. **`measureRawPdf(rawPdf)`** --- traverses the raw bytes without allocating any objects. Returns `dictSlots` and `arraySlots` counts used to pre-size two shim backing arrays before the load (see [`measure-pass.mjs`](#measure-passmjs)).
 
-2. **`PDFDocument.load(rawPdf)`** --- parses the raw PDF into pdf-lib's in-memory model. The fast-* shims (see [pdf-lib shims](#pdf-lib-shims)) are already active from the import block; this call uses their optimised data structures.
+2. **`PDFDocument.load(rawPdf)`** --- parses the raw PDF into pdf-lib's in-memory model. The fast-* shims (see [pdf-lib Patches](Fixes/PDFLib)) are already active from the import block; this call uses their optimised data structures.
 
 3. **`setMetadata(pdfDoc, meta)`** and **`setOutline(pdfDoc, outline)`** --- write the `/Info` dict and the `/Outlines` tree into the document (see [`postprocesser.mjs`](#postprocessermjs) and [`outline.mjs`](#outlinemjs)).
 
@@ -265,28 +225,6 @@ Paged.registerHandlers(ProgressHandler);
 
 `render-book.mjs` intercepts these console messages via `page.on('console', ...)` and writes a `\r`-overwriting progress line to stdout on TTYs, or one line per 100 pages when stdout is piped.
 
-## pdf-lib shims
-
-The `docs/lib/fast-*.mjs` files are side-effecting ES modules that patch pdf-lib's live exports. The import block at the top of `render-book.mjs` applies all shims before any pdf-lib operation runs. They are mutually compatible.
-
-| File | What it patches | Effect |
-|---|---|---|
-| `fast-refs-class.mjs` | `PDFRef.of` + `PDFRef` constructor | Dense array cache for gen=0 refs; constructor shape reduces per-instance cost from ~60 B to ~44 B. |
-| `fast-inflate.mjs` | `PDFCrossRefStreamParser` | Swaps pako.inflate for node:zlib.inflateSync. |
-| `fast-parse-number.mjs` | `BaseParser.parseRawNumber` / `parseRawInt` | Direct integer accumulators instead of per-byte string concat + `Number()`. |
-| `fast-decode-name.mjs` | `PDFName.of` | Skips the `decodeName` regex scan when the input has no `#` (99.999% of calls). |
-| `fast-number-to-string.mjs` | `numberToString` | Short-circuits when `String(num)` already has no `e`. |
-| `fast-size-in-bytes.mjs` | `utils.sizeInBytes` | Non-allocating bit-length ladder instead of `n.toString(2).length`. |
-| `fast-dict-onebuf.mjs` | `PDFDict` | One shared array for all dict key/value slots across the document; ~57% less heap traffic vs the Map-backed baseline. |
-| `fast-parse-object.mjs` | `PDFObjectParser.parseObject` | First-byte dispatch avoids three speculative `matchKeyword` scans on every call. |
-| `fast-parse-name.mjs` | `PDFObjectParser.parseName` | Byte-keyed cache with ~99.7% hit rate; returns cached `PDFName` instances with zero string allocation on hits. |
-| `fast-sync-load.mjs` | `PDFDocument.load` + `PDFWriter.serializeToBuffer` | Removes the `objectsPerTick` / `waitForTick` yield machinery. Saves ~135 ms on load and ~40 ms on save. |
-| `fast-indirect-objects.mjs` | `PDFContext.indirectObjects` | Dense array for gen=0 objects (Map fallback for gen≠0); halves `assign` heap traffic. |
-| `fast-pdfnumber-pool.mjs` | `PDFNumber.of` | Value-keyed pool; reduces PDF number heap allocations from ~15 MB to ~0.8 MB on the book. |
-| `fast-array-onebuf.mjs` | `PDFArray` | One shared array for all array elements across the document; ~19 MB of savings from per-instance `this.array` allocations. |
-
-The older shims `fast-refs.mjs`, `fast-dict-array.mjs`, `fast-dict-iter.mjs`, and `fast-parse-dict.mjs` remain in the tree as A/B baselines for the perf harness in `perf/` but are not imported in production.
-
 ## paged.browser.js
 
 `docs/lib/paged.browser.js` is a vendored, lightly patched copy of [Paged.js](https://pagedjs.org/) v0.4.3 (MIT). Paged.js is a CSS Paged Media polyfill: it reads `@page` rules from the linked stylesheet, breaks the document into discrete DOM pages, resolves CSS counters, and copies running headers and footers from `string-set` declarations into each page's margin boxes. Chromium then renders the resulting DOM into a PDF.
@@ -372,4 +310,6 @@ The key `@page` rules in `docs/assets/css/print.css` that paged.js acts on:
 
 - [Book Configuration](Book-Configuration) -- the `_data/book.yml` manifest that controls what goes into `book.html`.
 - [Pipeline Stages](Pipeline-Stages) -- the `pdf.mjs` and `book.mjs` interface contracts for Phase 8.
-- [tbdocs Internals](Builder) -- design rationale for Phase 8 in the tbdocs pipeline.
+- [tbdocs Builder](Builder) -- design rationale for Phase 8 in the tbdocs pipeline.
+- [pdf-lib Patches](Fixes/PDFLib) -- detailed description of each `fast-*.mjs` shim: upstream problem, fix, and mechanism.
+- [Paged.js Patches](Fixes/PagedJS) -- detailed description of every patch to `paged.browser.js`.

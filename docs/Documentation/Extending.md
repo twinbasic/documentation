@@ -1,7 +1,8 @@
 ---
 title: Extending the Builder
-parent: Documentation Development
-nav_order: 7
+parent: tbdocs Builder
+grand_parent: Documentation Development
+nav_order: 3
 permalink: /Documentation/Development/Extending
 ---
 
@@ -209,5 +210,5 @@ A clean run of all four is the bar for "ready to commit".
 ## See Also
 
 - [Pipeline Stages](Pipeline-Stages) -- full data model and export reference for every stage.
-- [tbdocs Internals](Builder) -- narrative design rationale for the pipeline.
+- [tbdocs Builder](Builder) -- narrative design rationale for the pipeline.
 - [Building and Deployment](Building) -- the day-to-day build workflow for content contributors.
