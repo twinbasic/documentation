@@ -116,10 +116,10 @@ Traverses the source tree and produces the `pages` and `staticFiles` arrays cons
 **Entry point**
 
 ```js
-discover(srcRoot: string): Promise<{ pages: Page[], staticFiles: StaticFile[] }>
+discover(srcRoot: string, ignore: string[]): Promise<{ pages: Page[], staticFiles: StaticFile[] }>
 ```
 
-Runs a single `fast-glob` call over `srcRoot` with the hardcoded `IGNORE` exclude list (underscore-prefixed directories, prebuilt theme assets, toolchain files). For each `.md` or `.html` file, attempts to parse YAML frontmatter. Files with parseable frontmatter become page objects; everything else becomes static file objects. Pages are sorted by basename (mirroring Jekyll's reader); static files by relative path.
+Runs a single `fast-glob` call over `srcRoot` with the `exclude:` list read from `_config.yml` and passed in by the orchestrator. For each `.md` or `.html` file, attempts to parse YAML frontmatter. Files with parseable frontmatter become page objects; everything else becomes static file objects. Pages are sorted by basename (mirroring Jekyll's reader); static files by relative path.
 
 **Reads:** source files under `srcRoot`.  
 **Writes (page fields):** `srcPath`, `srcRel`, `ext`, `frontmatter`, `rawContent`, `permalink`, `destPath`, `layoutDefault`, `imageScope`.
@@ -128,7 +128,7 @@ Runs a single `fast-glob` call over `srcRoot` with the hardcoded `IGNORE` exclud
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `discover` | `(srcRoot) → Promise<{ pages, staticFiles }>` | Main entry point. |
+| `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | Main entry point. |
 
 ---
 

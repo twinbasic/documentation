@@ -116,7 +116,7 @@ Each subsection covers the design rationale and implementation details for one m
 
 ### [tbdocs.mjs](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs) --- entry point and orchestrator
 
-`captureBuildInfo()` is launched as a promise immediately after discover so the two `git` shell-outs overlap with the CPU-bound nav computation that follows; the result is `await`ed only once Phase 2's other substeps are done. The shared markdown-it instance is built once via `initHighlighter` + `createMarkdownIt` and stored on `site.markdown` so Phase 2's SEO precompute and Phase 3's body renderer use the same configured pipeline --- titles run through the same dash, quote, and footnote-stripping rules as page body text.
+`_config.yml` is loaded first so its `exclude:` list can be passed to `discover()`. `captureBuildInfo()` is launched as a promise immediately after the config load so the two `git` shell-outs overlap with the I/O-bound discover and the CPU-bound nav computation that follows; the result is `await`ed only once Phase 2's other substeps are done. The shared markdown-it instance is built once via `initHighlighter` + `createMarkdownIt` and stored on `site.markdown` so Phase 2's SEO precompute and Phase 3's body renderer use the same configured pipeline --- titles run through the same dash, quote, and footnote-stripping rules as page body text.
 
 The drift guard at the end (`if (pages.length < 836)`) sets `process.exitCode = 1` when discover loses pages --- a discovery-rule regression that silently drops content appears as a non-zero exit even though the build itself "succeeded".
 
@@ -128,7 +128,7 @@ The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightw
 
 ### [discover.mjs](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) --- Phase 1
 
-The IGNORE rules skip every underscored directory (catches `_site/`, `_site-offline/`, `_site-pdf/`, `_data/`, every `_Images/` at any depth), the prebuilt theme trees under `assets/css/` and `assets/js/` (sourced from `builder/assets/` instead), top-level toolchain files (`Gemfile`, `_config.yml`, `*.bat`), and the obvious cache dirs.
+The `exclude:` list from `_config.yml` is passed in as the `ignore` parameter and forwarded directly to `fast-glob`. It skips every underscored directory (catches `_site/`, `_site-offline/`, `_site-pdf/`, `_data/`, every `_Images/` at any depth), the prebuilt theme trees under `assets/css/` and `assets/js/` (sourced from `builder/assets/` instead), top-level toolchain files (`Gemfile`, `_config.yml`, `*.bat`), Mermaid source files (`**/*.mmd`), and the obvious cache dirs.
 
 The final `pages.sort(byName)` mirrors Jekyll's `site.pages.sort_by!(&:name)` --- sort by basename, leaving fast-glob's input order to break ties (which `nav_order` then resolves deterministically in Phase 2).
 
