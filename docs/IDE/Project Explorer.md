@@ -32,10 +32,6 @@ When a Project is open contextual icons will appear.
 
 Same as Right-Click
 
-> [!NOTE]
->
->  TODO: Add each Menu item.
-
 ## Right-Click - Add
 
 ![Right-Click Add](Images/RightClick-Add.png "Right-Click Add")

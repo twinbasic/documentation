@@ -3,7 +3,6 @@ title: CheckBox
 parent: VB Package
 permalink: /tB/Packages/VB/CheckBox/
 has_toc: false
-vba_attribution: true
 ---
 
 # CheckBox class

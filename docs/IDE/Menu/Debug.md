@@ -17,7 +17,7 @@ permalink: /tB/IDE/Project/Menu/Debug
 - Clear Watches
 ---
 - Toggle Breakpoint <kbd>F9</kbd>
-- Clear Al Breakpoints <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F9</kbd>
+- Clear All Breakpoints <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F9</kbd>
 ---
 - Set Next Statement (Jump To Line) <kbd>CTRL</kbd> + <kbd>F9</kbd>
 ---
