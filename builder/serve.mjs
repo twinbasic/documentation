@@ -134,7 +134,7 @@ function createStaticHandler(destRoot) {
 }
 
 // §D — Watcher filtering
-const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_pdf", "node_modules", ".git"];
+const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_serve", "_pdf", "node_modules", ".git"];
 const IGNORED_BASENAME_RE = /^\.|~$|\.tmp$|\.swp$|^4913$/;
 
 function shouldRebuild(filename) {
@@ -157,12 +157,17 @@ function shouldRebuild(filename) {
 
 export async function runServe(opts) {
   const srcRoot = path.resolve(process.cwd(), opts.src ?? "docs");
-  const destRoot = path.resolve(opts.dest ?? path.join(srcRoot, "_site"));
+  // Serve writes to a tree disjoint from build.bat's `_site/` so a one-off
+  // build.bat run (for the PDF, an offline-mirror check, ...) doesn't clobber
+  // the running serve session's output mid-watch. The HTTP server, the
+  // watcher's IGNORED_PREFIXES, and both runBuild calls below all key off
+  // this same path.
+  const destRoot = path.resolve(opts.dest ?? path.join(srcRoot, "_serve"));
   const port = opts.port ?? 4000;
 
   // Initial build
   try {
-    await runBuild({ ...opts, skipOffline: true, skipPdf: true });
+    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
   } catch (err) {
     console.error("serve: initial build failed:", err.message);
     process.exit(1);
@@ -201,7 +206,7 @@ export async function runServe(opts) {
     if (running) { pending = true; return; }
     running = true;
     try {
-      await runBuild({ ...opts, skipOffline: true, skipPdf: true });
+      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
       notifyReload();
     } catch (err) {
       console.error("rebuild failed:", err.message);

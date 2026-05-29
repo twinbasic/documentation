@@ -61,7 +61,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | [`offline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline.mjs) | Phase 7 offline tree: URL rewriting, JS patching for `file://` browsing. |
 | [`pdf.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/pdf.mjs) | Phase 8 sparse PDF source tree. |
 
-`builder/` lives at the repo root (not under `docs/`) so it is not part of the Jekyll source tree the legacy renderer reads. It writes to `docs/_site/`, `docs/_site-offline/`, and `docs/_site-pdf/` --- the same destinations Jekyll used, so deployment tooling stays unchanged.
+`builder/` lives at the repo root (not under `docs/`) so it is not part of the Jekyll source tree the legacy renderer reads. The `build.bat` path writes to `docs/_site/`, `docs/_site-offline/`, and `docs/_site-pdf/` --- the same destinations Jekyll used, so deployment tooling stays unchanged. The `serve.bat` path writes to a separate `docs/_serve/` tree so a one-off `build.bat` run (refreshing the PDF, for example) never clobbers a running serve session's output.
 
 ## Build phases
 
@@ -76,7 +76,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | 7 | `offline.mjs` | URL-rewritten copy to `_site-offline/` | ~1,000 ms |
 | 8 | `pdf.mjs` + `book.mjs` | Sparse `_site-pdf/` tree (book.html + CSS + images) | ~150 ms |
 
-Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 introduces the output-changing parity updates. None adds a runtime step. Phase 12 adds the `--serve` dev-server mode (a separate lifecycle, not a build phase). The per-phase `PLAN-N.md` files retain the implementation history.
+Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 introduces the output-changing parity updates. None adds a runtime step. Phase 12 adds the `--serve` dev-server mode (a separate lifecycle, not a build phase; writes to `docs/_serve/` and skips the offline + PDF passes by default so the rebuild loop stays under one second). The per-phase `PLAN-N.md` files retain the implementation history.
 
 ## Dependencies
 
@@ -124,9 +124,9 @@ The drift guard at the end (`if (pages.length < 836)`) sets `process.exitCode = 
 
 ### [serve.mjs](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs) --- Phase 12 dev server
 
-The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightweight inject middleware splices the SSE client script before `</body>` at serve time so the on-disk `_site/` stays byte-identical to a non-`--serve` build.
+The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightweight inject middleware splices the SSE client script before `</body>` at HTTP-response time so the on-disk `_serve/` stays byte-identical to what `runBuild --dest docs/_serve` would have produced outside of serve mode.
 
-`shouldRebuild` filters watcher events along three axes: prefixes (`_site/`, `_site-offline/`, `_site-pdf/`, `_pdf/`, `node_modules/`, `.git/`), basename patterns (dotfiles, editor swap files, the `4913` sentinel vim writes), and the specific `assets/images/mmd/*.svg` path. The last bit deserves a callout: those SVGs are emitted by the mermaid pre-phase back under `srcRoot`, so without the filter every `.mmd` edit fires the watcher twice (once on the `.mmd` save, once on the `.svg` write mid-rebuild) and the queued second rebuild is a no-op that triggers a redundant browser reload ~3 s later. The filter treats the `.mmd` as the source of truth and the `.svg` as a build artifact, matching how `_site/` writes are already excluded.
+`shouldRebuild` filters watcher events along three axes: prefixes (`_site/`, `_site-offline/`, `_site-pdf/`, `_serve/`, `_pdf/`, `node_modules/`, `.git/`), basename patterns (dotfiles, editor swap files, the `4913` sentinel vim writes), and the specific `assets/images/mmd/*.svg` path. The last bit deserves a callout: those SVGs are emitted by the mermaid pre-phase back under `srcRoot`, so without the filter every `.mmd` edit fires the watcher twice (once on the `.mmd` save, once on the `.svg` write mid-rebuild) and the queued second rebuild is a no-op that triggers a redundant browser reload ~3 s later. The filter treats the `.mmd` as the source of truth and the `.svg` as a build artifact, matching how `_site/` writes are already excluded.
 
 ### [discover.mjs](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) --- Phase 1
 
