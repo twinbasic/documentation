@@ -15,6 +15,18 @@ Syntax: *object*.**StatusCode**
 
 The value identifies the step the read is currently on --- `vbAsyncStatusCodeFindingResource`, `vbAsyncStatusCodeConnecting`, `vbAsyncStatusCodeBeginDownloadData`, `vbAsyncStatusCodeEndDownloadData`, and so on. `vbAsyncStatusCodeError` (0) indicates that the read failed; the [**Status**](Status) property contains the matching human-readable description.
 
+### Example
+
+This example checks **StatusCode** during a download and reports an error when the read fails.
+
+```tb
+Private Sub UserControl_AsyncReadProgress(AsyncProp As AsyncProperty)
+    If AsyncProp.StatusCode = vbAsyncStatusCodeError Then
+        MsgBox "Download failed: " & AsyncProp.Status
+    End If
+End Sub
+```
+
 ### See Also
 
 - [Status](Status) property

@@ -48,6 +48,16 @@ The *compare* argument can have the following values:
 
 **InStrRev** will not find an instance of *stringmatch* unless the position of the end character of *stringmatch* is less than or equal to *start*.
 
+### Example
+
+This example uses **InStrRev** to find the last occurrence of a substring.
+
+```tb
+Debug.Print InStrRev("a.b.c", ".")       ' 4  — last dot
+Debug.Print InStrRev("a.b.c", ".", 3)    ' 2  — last dot at or before position 3
+Debug.Print InStrRev("a.b.c", "x")       ' 0  — not found
+```
+
 ### See Also
 
 - [InStr](InStr) function

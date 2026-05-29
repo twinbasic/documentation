@@ -20,6 +20,19 @@ Syntax: **PutMem8** *Address* **,** *Value*
 
 The address is written directly with no bounds or alignment check.
 
+### Example
+
+This example writes an 8-byte value to a buffer and reads it back.
+
+```tb
+Dim buf As LongPtr = AllocMem(8)
+Dim src As Currency = 1000000@
+PutMem8 buf, src
+Dim dst As Currency
+GetMem8 buf, dst        ' dst = src (same raw 8-byte pattern)
+FreeMem buf
+```
+
 ### See Also
 
 - [PutMem1](PutMem1), [PutMem2](PutMem2), [PutMem4](PutMem4), [PutMemPtr](PutMemPtr) procedures

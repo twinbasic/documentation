@@ -50,6 +50,18 @@ Syntax: *object*.**StorageType** [ **=** *value* ]
 
 Identifies the medium used to transfer the bytes --- a global memory handle, a file path, an `IStream`, an `IStorage`, a GDI handle, a metafile, or an enhanced metafile. The runtime normally negotiates this automatically; setting it directly is only needed when interoperating with another component that requires a specific medium.
 
+### Example
+
+This example reads the name and type of the first available format on a **DataObject**.
+
+```tb
+If Data.AvailableFormats.Count > 0 Then
+    Dim fmt As DataObjectFormat
+    Set fmt = Data.AvailableFormats.Item(1)
+    Debug.Print fmt.Name & " (" & fmt.FormatType & ")"
+End If
+```
+
 ## See Also
 
 - [DataObject](.)

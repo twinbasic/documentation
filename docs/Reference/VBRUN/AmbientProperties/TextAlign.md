@@ -23,6 +23,19 @@ A control that displays text and does not have its own alignment explicitly set 
 | 3     | Right-aligned                                          |
 | 4     | Fill                                                   |
 
+### Example
+
+This example responds to a **TextAlign** change and repaints the control with the updated alignment.
+
+```tb
+Private Sub UserControl_AmbientChanged(PropertyName As String)
+    Select Case PropertyName
+        Case "TextAlign"
+            UserControl.Refresh    ' repaint with updated text alignment
+    End Select
+End Sub
+```
+
 ### See Also
 
 - [Font](Font) property

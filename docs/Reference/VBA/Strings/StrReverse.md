@@ -13,3 +13,13 @@ Syntax: **StrReverse(** *expression* **)**
 
 *expression*
 : *required* The string whose characters are to be reversed. If *expression* is a zero-length string (`""`), a zero-length string is returned. If *expression* is **Null**, an error occurs.
+
+### Example
+
+This example uses **StrReverse** to reverse the character order of a string.
+
+```tb
+Debug.Print StrReverse("hello")     ' "olleh"
+Debug.Print StrReverse("racecar")   ' "racecar"
+Debug.Print StrReverse("AB")        ' "BA"
+```

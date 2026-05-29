@@ -15,6 +15,19 @@ Syntax: *object*.**ForeColor**
 
 A control that does not have its own foreground colour explicitly set should draw its text and other foreground elements using this colour, so that it remains legible against the container's [**BackColor**](BackColor). The value is an **OLE_COLOR**: an RGB value, a system-colour reference, or a palette-index reference. Pass it through [**TranslateColor**](../../../Modules/Information/TranslateColor) to obtain a plain RGB value if needed.
 
+### Example
+
+This example responds to an ambient **ForeColor** change and applies it to the control's text color.
+
+```tb
+Private Sub UserControl_AmbientChanged(PropertyName As String)
+    Select Case PropertyName
+        Case "ForeColor"
+            UserControl.ForeColor = Ambient.ForeColor
+    End Select
+End Sub
+```
+
 ### See Also
 
 - [BackColor](BackColor) property

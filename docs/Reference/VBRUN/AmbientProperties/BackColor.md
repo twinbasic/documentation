@@ -15,6 +15,19 @@ Syntax: *object*.**BackColor**
 
 A control that does not have its own background colour explicitly set should paint its background using this colour, so that it blends in with the surrounding container. The value is an **OLE_COLOR**: an RGB value, a system-colour reference, or a palette-index reference. Pass it through [**TranslateColor**](../../../Modules/Information/TranslateColor) to obtain a plain RGB value if needed.
 
+### Example
+
+This example responds to an ambient **BackColor** change and applies it to the control's background.
+
+```tb
+Private Sub UserControl_AmbientChanged(PropertyName As String)
+    Select Case PropertyName
+        Case "BackColor"
+            UserControl.BackColor = Ambient.BackColor
+    End Select
+End Sub
+```
+
 ### See Also
 
 - [ForeColor](ForeColor) property

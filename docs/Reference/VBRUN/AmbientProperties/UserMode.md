@@ -15,6 +15,19 @@ Syntax: *object*.**UserMode**
 
 This is the most-checked ambient property. A control should consult **UserMode** before doing anything that only makes sense at run time --- connecting to a database, starting a timer, animating its own appearance --- because at design time the host is showing a static representation of the control on a layout surface. When **UserMode** is **False**, the control should also be willing to draw selection adornments such as [**ShowGrabHandles**](ShowGrabHandles) and [**ShowHatching**](ShowHatching) on request.
 
+### Example
+
+This example responds to a **UserMode** change and enables the animation timer only at runtime.
+
+```tb
+Private Sub UserControl_AmbientChanged(PropertyName As String)
+    Select Case PropertyName
+        Case "UserMode"
+            tmrAnimate.Enabled = Ambient.UserMode    ' run timer only in user mode
+    End Select
+End Sub
+```
+
 ### See Also
 
 - [UIDead](UIDead) property

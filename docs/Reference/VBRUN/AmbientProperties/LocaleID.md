@@ -15,6 +15,21 @@ Syntax: *object*.**LocaleID**
 
 The Locale ID (LCID) is a 32-bit Windows identifier that names a language and a regional formatting convention --- for example `&H0409&` for English (United States) or `&H0407&` for German (Germany). A control should use this value when formatting numbers, dates, currencies, and message text, so that its output matches the language and conventions the host application is presenting to the user.
 
+### Example
+
+This example caches the ambient **LocaleID** for use when formatting numbers and dates.
+
+```tb
+Private mLocaleID As Long
+
+Private Sub UserControl_AmbientChanged(PropertyName As String)
+    Select Case PropertyName
+        Case "LocaleID"
+            mLocaleID = Ambient.LocaleID
+    End Select
+End Sub
+```
+
 ### See Also
 
 - [DisplayName](DisplayName) property

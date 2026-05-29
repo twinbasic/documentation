@@ -19,6 +19,20 @@ The value mirrors the *AsyncType* argument passed to **UserControl.AsyncRead** w
 - `vbAsyncTypeFile` (1) --- the data is being saved to a temporary file; **Value** holds its path as a **String**.
 - `vbAsyncTypeByteArray` (2) --- the data is being delivered as a **Byte** array.
 
+### Example
+
+This example checks **AsyncType** in the completion event and assigns the result to the appropriate property.
+
+```tb
+Private Sub UserControl_AsyncReadComplete(AsyncProp As AsyncProperty)
+    If AsyncProp.PropertyName = "Picture" Then
+        If AsyncProp.AsyncType = vbAsyncTypePicture Then
+            Set UserControl.Picture = AsyncProp.Value
+        End If
+    End If
+End Sub
+```
+
 ### See Also
 
 - [Value](Value) property
