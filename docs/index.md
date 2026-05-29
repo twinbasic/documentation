@@ -15,7 +15,7 @@ Start with the [FAQ](FAQ) for orientation --- what twinBASIC is, where it stands
 
 ## Coming from VBA or VB6?
 
-Most existing VB6 / VBA code compiles unchanged. The [Features overview](Features/) catalogues every addition --- new data types ([**LongLong**](Features/Language/Data-Types#longlong), [**LongPtr**](Features/Language/Data-Types#longptr), [**Decimal**](Features/Language/Data-Types#decimal)), native [**Interface**](tB/Core/Interface) and [**CoClass**](tB/Core/CoClass) definitions, [**Implements Via**](Features/Language/Inheritance#implements-via-for-basic-inheritance) and [**Inherits**](Features/Language/Inheritance#inherits-for-complete-oop), generics, method overloading, type inference, attribute syntax, and more.
+Most existing VB6 / VBA code compiles unchanged. Key additions beyond VBx compatibility: new data types ([**LongLong**](Features/Language/Data-Types#longlong), [**LongPtr**](Features/Language/Data-Types#longptr), [**Decimal**](Features/Language/Data-Types#decimal)), native [**Interface**](tB/Core/Interface) and [**CoClass**](tB/Core/CoClass) declarations, [**Implements Via**](Features/Language/Inheritance#implements-via-for-basic-inheritance) and [**Inherits**](Features/Language/Inheritance#inherits-for-complete-oop) for inheritance, generics, method overloading, type inference, and attribute syntax. The [Features overview](Features/) is the complete catalogue.
 
 ## Looking up a keyword, function, or operator?
 
@@ -75,7 +75,7 @@ The [**IDE section**](tB/IDE) documents the editor, project explorer, debugging 
 ## Community and external resources
 
 - The [**twinBASIC wiki**](https://github.com/twinbasic/documentation/wiki) on GitHub supplements these docs with community contributions and notes on bleeding-edge features.
-- [**twinBASIC Videos**](Videos/tB) --- the twinBASIC video series. The [**Access DevCon**](Videos/AccessDevCon) archive collects twinBASIC update sessions from the annual Access DevCon conference.
+- [**Videos**](Videos/) --- the twinBASIC video series and the [**Access DevCon**](Videos/AccessDevCon) conference sessions.
 - Third-party guides by Mike Wolfe at [@nolongerset](https://nolongerset.com):
   - [Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/)
   - [Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/)
