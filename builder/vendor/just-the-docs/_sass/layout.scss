@@ -1,4 +1,4 @@
-@use "sass:meta";
+@use "support/support" as *;
 
 // The basic two column layout
 
@@ -146,7 +146,7 @@
   }
 }
 
-@if meta.variable-exists(logo) {
+@if $logo {
   .site-logo {
     width: 100%;
     height: 100%;

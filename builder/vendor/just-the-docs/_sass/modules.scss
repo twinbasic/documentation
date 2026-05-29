@@ -1,17 +1,21 @@
-// Import external dependencies
-@import "./vendor/normalize.scss/normalize";
+// Forward support so the entry point can configure theme variables through
+// this aggregator (e.g. @use "modules" with ($logo: "/favicon.png")).
+@forward "./support/support";
+
+// External dependency
+@use "./vendor/normalize.scss/normalize";
 
 // Modules
-@import "./base";
-@import "./layout";
-@import "./content";
-@import "./navigation";
-@import "./typography";
-@import "./labels";
-@import "./buttons";
-@import "./search";
-@import "./tables";
-@import "./code";
-@import "./utilities/utilities";
-@import "./print";
-@import "./skiptomain";
+@use "./base";
+@use "./layout";
+@use "./content";
+@use "./navigation";
+@use "./typography";
+@use "./labels";
+@use "./buttons";
+@use "./search";
+@use "./tables";
+@use "./code";
+@use "./utilities/utilities";
+@use "./print";
+@use "./skiptomain";

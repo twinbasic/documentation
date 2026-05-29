@@ -4,179 +4,46 @@
 //   1. docs/_sass/         -- our customizations (custom/*.scss, etc.)
 //   2. builder/vendor/just-the-docs/_sass/  -- pristine JTD v0.10.1 sources
 //
-// Our docs/_sass/custom/custom.scss therefore shadows the gem's empty
-// upstream custom/custom.scss via load-path ordering -- same behavior the
-// Jekyll build relied on.
+// scss.mjs performs TWO sass.compile() calls: this file (light theme) and
+// just-the-docs-dark.scss (dark theme), then concatenates the results into
+// a single just-the-docs-combined.css asset.  Having separate compilations
+// gives each its own module cache, which is the only way to load modules.scss
+// twice with different variable configurations in Dart Sass.
 //
-// This file replaces the Liquid-templated entry point Jekyll used
-// (`_includes/css/just-the-docs.scss.liquid`). Inline comments mark where
-// each block corresponds to the Liquid include's output.
+// Within a single compilation, a module URL can only be loaded once.  The
+// $with parameter of meta.load-css() ALSO writes to the shared module cache,
+// so two calls to meta.load-css("modules", $with: ...) -- even with different
+// values -- conflict.  Therefore @use "modules" and @use "support/support"
+// are absent here; only meta.load-css() is used, and only once.
+//
+// Consequence: the two literal values in this file (div.opaque background
+// and span colour) cannot be referenced via Sass variables and are hardcoded.
 
-// site.logo = "favicon.png", relative_url-prefixed for the empty baseurl:
-$logo: "/favicon.png";
+@use "sass:meta";
+// custom/setup is the gem's empty pre-colour-scheme hook.
+@use "custom/setup";
+// custom/custom generates admonitions, .site-logo, code-size overrides, and
+// dark-scrollbar CSS, and exposes the tb-code-overrides mixin.
+@use "custom/custom" as *;
 
 // ── Light theme (root level) ──────────────────────────────────────────────
 //
-// Replicates the gem's `just-the-docs.scss.liquid` with color_scheme="light".
+// Replicates the gem's just-the-docs.scss.liquid with color_scheme="light".
+//
+// meta.load-css() is the only load of modules.scss in this compilation.
+// The $with map configures _variables.scss through the @forward chain:
+//   modules → @forward "support/support" → @forward "_variables.scss"
+// Only $logo is passed; all other variables use their !default light values.
 
-@import "support/support";       // variables + mixins
-@import "custom/setup";          // gem's pre-color-scheme hook (empty upstream)
-@import "color_schemes/light";   // light theme variable values
-@import "modules";               // all gem CSS modules
+@include meta.load-css("modules", $with: ("logo": "/favicon.png"));
 
-// callouts.scss.liquid output. site.callouts is configured but empty, so the
-// `{% for callout in site.callouts %}` loop produces nothing -- only the
-// unconditional div.opaque rule is emitted.
+// callouts.scss.liquid output -- only the unconditional div.opaque rule.
+// Light $body-background-color default = $white = #fff.
 div.opaque {
-  background-color: $body-background-color;
+  background-color: #fff;
 }
 
-// custom.scss.liquid expands to `@import "./custom/custom"`. Our shadow at
-// docs/_sass/custom/custom.scss adds admonitions, .site-logo, and the
-// dark-mode scrollbar rules.
-@import "custom/custom";
-
+// Light $link-color default = $purple-000 = #7253ed.
 span {
-  color: $link-color;
-}
-
-// ── Dark theme ────────────────────────────────────────────────────────────
-//
-// Replicates the gem's `just-the-docs.scss.liquid` with color_scheme="dark",
-// nested under html.dark-mode so every emitted rule is scoped.
-//
-// Note: the Jekyll build re-imported custom/custom.scss here via the second
-// expansion of custom.scss.liquid, which produced doubled
-// `html.dark-mode html.dark-mode` scrollbar selectors. We don't replay that
-// import -- our root-level @import "custom/custom" above already emits the
-// dark-mode scrollbar rules correctly.
-
-html.dark-mode {
-  @import "color_schemes/dark";  // overrides JTD variables to dark values
-  @import "modules";             // re-emits all module CSS with dark values
-
-  div.opaque {
-    background-color: $body-background-color;
-  }
-
-  // Re-emit the code font-size / inline-padding overrides defined in
-  // custom/custom.scss; without this scope the JTD dark-theme `code`
-  // rule (specificity 0,1,1) out-ranks our root-level override (0,0,1).
-  @include tb-code-overrides;
-
-  // ---------------------------------------------------------------
-  // Workaround for the dark-mode + .search-active interaction.
-  //
-  // Upstream `_sass/search.scss` declares its active-state rules as
-  // `.search-active { .search-results { display: block; } ... }`,
-  // assuming `.search-active` will be set on `<html>` directly (which
-  // is what `showSearch()` in just-the-docs.js does). Wrapping the
-  // dark-theme @import inside `html.dark-mode { }` causes SCSS
-  // nesting to compile those to:
-  //
-  //   html.dark-mode .search-active .search-results { display: block; }
-  //
-  // -- a *descendant* combinator. With both classes on `<html>`,
-  // `.search-active` isn't a descendant of `html.dark-mode`, so the
-  // override never matches. Meanwhile the dark-mode default
-  // `html.dark-mode .search-results { display: none; }` (specificity
-  // 0,2,1) outranks the unscoped light override
-  // `.search-active .search-results { display: block; }` (0,2,0), so
-  // the search dropdown stays hidden in dark mode.
-  //
-  // Fix: re-emit the upstream `.search-active { ... }` block here
-  // with `&.search-active { ... }`, which composes into the
-  // *compound* selector `html.dark-mode.search-active` (specificity
-  // 0,3,1) -- enough to beat the dark-mode default. The contents
-  // mirror upstream `_sass/search.scss` so the dark-mode active-search
-  // visuals stay byte-equivalent to the light-mode ones.
-  &.search-active {
-    .search {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      padding: 0;
-    }
-
-    .search-input-wrap {
-      height: $sp-10;
-      border-radius: 0;
-
-      @include mq(md) {
-        width: $search-results-width;
-        box-shadow:
-          0 1px 2px rgba(0, 0, 0, 0.12),
-          0 3px 10px rgba(0, 0, 0, 0.08);
-      }
-    }
-
-    .search-input {
-      background-color: $search-background-color;
-
-      @include mq(md) {
-        padding-left: 2.3rem;
-      }
-    }
-
-    .search-label {
-      @include mq(md) {
-        padding-left: 0.6rem;
-      }
-    }
-
-    .search-results {
-      display: block;
-    }
-
-    .search-overlay {
-      width: 100%;
-      height: 100%;
-      opacity: 1;
-      transition:
-        opacity ease $transition-duration,
-        width 0s,
-        height 0s;
-    }
-
-    @include mq(md) {
-      .main {
-        position: fixed;
-        right: 0;
-        left: 0;
-      }
-    }
-
-    .main-header {
-      padding-top: $sp-10;
-
-      @include mq(md) {
-        padding-top: 0;
-      }
-    }
-  }
-  // ---------------------------------------------------------------
-
-  div.highlighter-rouge div.highlight {
-    line-height: 1;
-  }
-
-  span {
-    color: $link-color;
-  }
-
-  .site-footer {
-    color: #959396;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  #toctitle {
-    font-weight: 500;
-  }
+  color: #7253ed;
 }
