@@ -14,7 +14,7 @@
 // in that shim).
 
 import { createRequire } from 'node:module';
-import { main, getMainLen } from '../docs/lib/fast-dict-onebuf.mjs';
+import { main, getMainLen } from '../book/lib/fast-dict-onebuf.mjs';
 
 const require = createRequire(import.meta.url);
 const PDFName      = require('pdf-lib/cjs/core/objects/PDFName.js').default;

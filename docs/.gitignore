@@ -1,6 +1,7 @@
 _site/
 _site-offline/
 _site-pdf/
+_serve/
 _pdf/
 *.af~lock~
 _bak

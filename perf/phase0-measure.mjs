@@ -24,18 +24,18 @@ import { inflateSync } from 'node:zlib';
 import { performance } from 'node:perf_hooks';
 import { createRequire } from 'node:module';
 
-// Production-equivalent shim wiring (same order as docs/render-book.mjs).
-await import('../docs/lib/fast-refs.mjs');
-await import('../docs/lib/fast-inflate.mjs');
-await import('../docs/lib/fast-parse-number.mjs');
-await import('../docs/lib/fast-decode-name.mjs');
-await import('../docs/lib/fast-number-to-string.mjs');
-await import('../docs/lib/fast-size-in-bytes.mjs');
-await import('../docs/lib/fast-dict-onebuf.mjs');
-await import('../docs/lib/fast-parse-object.mjs');
-await import('../docs/lib/fast-sync-load.mjs');
-await import('../docs/lib/fast-indirect-objects.mjs');
-await import('../docs/lib/fast-pdfnumber-pool.mjs');
+// Production-equivalent shim wiring (same order as book/render-book.mjs).
+await import('../book/lib/fast-refs.mjs');
+await import('../book/lib/fast-inflate.mjs');
+await import('../book/lib/fast-parse-number.mjs');
+await import('../book/lib/fast-decode-name.mjs');
+await import('../book/lib/fast-number-to-string.mjs');
+await import('../book/lib/fast-size-in-bytes.mjs');
+await import('../book/lib/fast-dict-onebuf.mjs');
+await import('../book/lib/fast-parse-object.mjs');
+await import('../book/lib/fast-sync-load.mjs');
+await import('../book/lib/fast-indirect-objects.mjs');
+await import('../book/lib/fast-pdfnumber-pool.mjs');
 
 const require = createRequire(import.meta.url);
 const { PDFDocument } = require('pdf-lib');

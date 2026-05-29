@@ -22,7 +22,7 @@ Module-level documentation lives next to the code:
 Sub-pages:
 
 - [Pipeline Stages](Pipeline-Stages) --- complete interface reference: function signatures, per-stage reads/writes, and every exported symbol.
-- [Book Configuration](Book-Configuration) --- `_data/book.yml` key reference for the PDF chapter manifest.
+- [Book Configuration](Book-Configuration) --- `_book.yml` key reference for the PDF chapter manifest.
 - [Extending the Builder](Extending) --- tutorial for adding a new pipeline stage or a markdown-it plugin.
 
 * TOC goes here
@@ -45,8 +45,9 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | [`seo.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/seo.mjs) | Phase 2 SEO precompute: per-page title / canonical / og: tags. |
 | [`book.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/book.mjs) | Phase 2 book chapter resolution + Phase 8 book.html assembly. |
 | [`build-info.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/build-info.mjs) | Phase 2 git commit hash + commit date capture. |
-| [`data.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/data.mjs) | Phase 2 generic `_data/*.yml` loader. |
+| [`data.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/data.mjs) | Phase 2 `_book.yml` loader. |
 | [`mermaid.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/mermaid.mjs) | Phase 11 (B1) preprocess: `.mmd` → `.svg` regeneration. |
+| [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs) | Phase 11 (B3) preprocess: compiles `docs/assets/css/just-the-docs-combined.scss` via Dart Sass into the just-the-docs stylesheet. |
 | [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) | Phase 3 markdown-it pipeline: GFM admonitions, kramdown-style attributes, deflist, footnotes, header IDs, TOC, relative-link rewriting. |
 | [`highlight.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight.mjs) | Phase 3 Shiki bootstrap plus the twinBASIC grammar. Emits the just-the-docs wrapper structure. |
 | [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs) | Phase 11 (B2) theme loader: reads `themes/*.theme`, derives the palette, emits `tb-highlight.css` and the scope-to-class lookup. |
@@ -60,14 +61,14 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | [`offline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline.mjs) | Phase 7 offline tree: URL rewriting, JS patching for `file://` browsing. |
 | [`pdf.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/pdf.mjs) | Phase 8 sparse PDF source tree. |
 
-`builder/` lives at the repo root (not under `docs/`) so it is not part of the Jekyll source tree the legacy renderer reads. It writes to `docs/_site/`, `docs/_site-offline/`, and `docs/_site-pdf/` --- the same destinations Jekyll used, so deployment tooling stays unchanged.
+`builder/` lives at the repo root (not under `docs/`) so it is not part of the Jekyll source tree the legacy renderer reads. The `build.bat` path writes to `docs/_site/`, `docs/_site-offline/`, and `docs/_site-pdf/` --- the same destinations Jekyll used, so deployment tooling stays unchanged. The `serve.bat` path writes to a separate `docs/_serve/` tree so a one-off `build.bat` run (refreshing the PDF, for example) never clobbers a running serve session's output.
 
 ## Build phases
 
 | Phase | Module(s) | Job | Time |
 |---|---|---|---|
 | 1 | `discover.mjs` | Read `.md` / `.html` with frontmatter; enumerate static files | ~120 ms |
-| 2 | `nav.mjs` / `seo.mjs` / `book.mjs` / `build-info.mjs` / `data.mjs` | Compute nav tree, SEO, book chapters, git commit info, `_data/*.yml` | ~60 ms |
+| 2 | `nav.mjs` / `seo.mjs` / `book.mjs` / `build-info.mjs` / `data.mjs` | Compute nav tree, SEO, book chapters, git commit info, `_book.yml` | ~60 ms |
 | 3 | `render.mjs` + `highlight.mjs` | Markdown → HTML body | ~1-2 s |
 | 4 | `template.mjs` + `compress.mjs` | Wrap in layout, anchor headings, compress whitespace | ~200 ms |
 | 5 | `write.mjs` | Write `_site/` | ~400 ms |
@@ -75,7 +76,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | 7 | `offline.mjs` | URL-rewritten copy to `_site-offline/` | ~1,000 ms |
 | 8 | `pdf.mjs` + `book.mjs` | Sparse `_site-pdf/` tree (book.html + CSS + images) | ~150 ms |
 
-Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 introduces the output-changing parity updates. None adds a runtime step. Phase 12 adds the `--serve` dev-server mode (a separate lifecycle, not a build phase). The per-phase `PLAN-N.md` files retain the implementation history.
+Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 introduces the output-changing parity updates. None adds a runtime step. Phase 12 adds the `--serve` dev-server mode (a separate lifecycle, not a build phase; writes to `docs/_serve/` and skips the offline + PDF passes by default so the rebuild loop stays under one second). The per-phase `PLAN-N.md` files retain the implementation history.
 
 ## Dependencies
 
@@ -98,6 +99,7 @@ A single `package.json` at the repo root carries everything --- the static site 
     "mermaid": "11.15.0",
     "pdf-lib": "1.17.1",
     "puppeteer": "25.0.4",
+    "sass": "^1.0",
     "shiki": "^1.0"
   },
   "scripts": {
@@ -106,7 +108,7 @@ A single `package.json` at the repo root carries everything --- the static site 
 }
 ```
 
-No template engine, no framework, no bundler. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` so the offline patcher can target the AST instead of regex-matching strings; `markdown-it-{attrs,deflist,footnote}` cover the kramdown extensions the legacy renderer supported; `shiki` does the syntax highlighting; `lunr` powers the search index. `mermaid` and `puppeteer` together drive the `.mmd` → `.svg` pre-phase (one headless Chromium per batch, replacing the old per-diagram `npx mmdc` fork); `puppeteer` is shared with the PDF renderer (`docs/render-book.mjs`). `pdf-lib` + `html-entities` + `htmlparser2` are the PDF renderer's own toolchain. The `postinstall` runs `builder/scripts/patch-dagre.mjs`, which rewrites mermaid's bundled dagre adapter --- see [Mermaid Dagre Patches](Fixes/Dagre).
+No template engine, no framework, no bundler. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` so the offline patcher can target the AST instead of regex-matching strings; `markdown-it-{attrs,deflist,footnote}` cover the kramdown extensions the legacy renderer supported; `shiki` does the syntax highlighting; `lunr` powers the search index. `mermaid` and `puppeteer` together drive the `.mmd` → `.svg` pre-phase (one headless Chromium per batch, replacing the old per-diagram `npx mmdc` fork); `puppeteer` is shared with the PDF renderer (`book/render-book.mjs`). `sass` (Dart Sass) compiles the vendored just-the-docs SCSS plus our customizations into the site stylesheet on every build, replacing the Jekyll-Sass pre-compile step. `pdf-lib` + `html-entities` + `htmlparser2` are the PDF renderer's own toolchain. The `postinstall` runs `builder/scripts/patch-dagre.mjs`, which rewrites mermaid's bundled dagre adapter --- see [Mermaid Dagre Patches](Fixes/Dagre).
 
 `mermaid` is **exact-pinned** (`"11.15.0"`, not `"^11.15.0"`). The dagre patches target a chunk filename whose hash component (`dagre-ZXKKJJHT.mjs`) is regenerated on each mermaid release, so a floated range could break the postinstall on a transparent patch bump.
 
@@ -116,19 +118,19 @@ Each subsection covers the design rationale and implementation details for one m
 
 ### [tbdocs.mjs](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs) --- entry point and orchestrator
 
-`captureBuildInfo()` is launched as a promise immediately after discover so the two `git` shell-outs overlap with the CPU-bound nav computation that follows; the result is `await`ed only once Phase 2's other substeps are done. The shared markdown-it instance is built once via `initHighlighter` + `createMarkdownIt` and stored on `site.markdown` so Phase 2's SEO precompute and Phase 3's body renderer use the same configured pipeline --- titles run through the same dash, quote, and footnote-stripping rules as page body text.
+`_config.yml` is loaded first so its `exclude:` list can be passed to `discover()`. `captureBuildInfo()` is launched as a promise immediately after the config load so the two `git` shell-outs overlap with the I/O-bound discover and the CPU-bound nav computation that follows; the result is `await`ed only once Phase 2's other substeps are done. The shared markdown-it instance is built once via `initHighlighter` + `createMarkdownIt` and stored on `site.markdown` so Phase 2's SEO precompute and Phase 3's body renderer use the same configured pipeline --- titles run through the same dash, quote, and footnote-stripping rules as page body text.
 
 The drift guard at the end (`if (pages.length < 836)`) sets `process.exitCode = 1` when discover loses pages --- a discovery-rule regression that silently drops content appears as a non-zero exit even though the build itself "succeeded".
 
 ### [serve.mjs](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs) --- Phase 12 dev server
 
-The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightweight inject middleware splices the SSE client script before `</body>` at serve time so the on-disk `_site/` stays byte-identical to a non-`--serve` build.
+The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightweight inject middleware splices the SSE client script before `</body>` at HTTP-response time so the on-disk `_serve/` stays byte-identical to what `runBuild --dest docs/_serve` would have produced outside of serve mode.
 
-`shouldRebuild` filters watcher events along three axes: prefixes (`_site/`, `_site-offline/`, `_site-pdf/`, `_pdf/`, `node_modules/`, `.git/`), basename patterns (dotfiles, editor swap files, the `4913` sentinel vim writes), and the specific `assets/images/mmd/*.svg` path. The last bit deserves a callout: those SVGs are emitted by the mermaid pre-phase back under `srcRoot`, so without the filter every `.mmd` edit fires the watcher twice (once on the `.mmd` save, once on the `.svg` write mid-rebuild) and the queued second rebuild is a no-op that triggers a redundant browser reload ~3 s later. The filter treats the `.mmd` as the source of truth and the `.svg` as a build artifact, matching how `_site/` writes are already excluded.
+`shouldRebuild` filters watcher events along three axes: prefixes (`_site/`, `_site-offline/`, `_site-pdf/`, `_serve/`, `_pdf/`, `node_modules/`, `.git/`), basename patterns (dotfiles, editor swap files, the `4913` sentinel vim writes), and the specific `assets/images/mmd/*.svg` path. The last bit deserves a callout: those SVGs are emitted by the mermaid pre-phase back under `srcRoot`, so without the filter every `.mmd` edit fires the watcher twice (once on the `.mmd` save, once on the `.svg` write mid-rebuild) and the queued second rebuild is a no-op that triggers a redundant browser reload ~3 s later. The filter treats the `.mmd` as the source of truth and the `.svg` as a build artifact, matching how `_site/` writes are already excluded.
 
 ### [discover.mjs](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) --- Phase 1
 
-The IGNORE rules skip every underscored directory (catches `_site/`, `_site-offline/`, `_site-pdf/`, `_data/`, every `_Images/` at any depth), the prebuilt theme trees under `assets/css/` and `assets/js/` (sourced from `builder/assets/` instead), top-level toolchain files (`Gemfile`, `_config.yml`, `*.bat`), and the obvious cache dirs.
+The `exclude:` list from `_config.yml` is passed in as the `ignore` parameter and forwarded directly to `fast-glob`. It skips every underscore-prefixed file and directory (`_config.yml`, `_book.yml`, `_site/`, `_site-offline/`, `_site-pdf/`, every `_Images/` at any depth), SCSS sources (`**/*.scss`, compiled separately by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs)), Mermaid sources (`**/*.mmd`, the `.svg` siblings are kept), and the obvious cache dirs.
 
 The final `pages.sort(byName)` mirrors Jekyll's `site.pages.sort_by!(&:name)` --- sort by basename, leaving fast-glob's input order to break ties (which `nav_order` then resolves deterministically in Phase 2).
 
@@ -162,7 +164,7 @@ The largest module by line count (~990 lines), split into two clearly-labelled h
 4. shift heading levels by `n in [0, 3]` capped at `h7-stub`;
 5. prefix every heading id and intra-chapter `href="#"` with the chapter anchor.
 
-Each part and chapter divider page contains the entry's title as an H1/H2 heading (or a silent `<p>` when `no_outline_entry:` is set), which becomes the PDF bookmark target. When `landing_is_target:` is set on an entry, the heading is instead injected directly into the landing-page article so the PDF bookmark navigates there rather than to the blank divider page; `rewriteBookHrefs`'s landing-H1 strip skips the injected heading via a `data-divider-heading` attribute. `outline_closed:` stamps `data-pdf-bookmark-closed` on the heading (or on the first content article for `no_outline_entry` entries), and `parseOutline` in `docs/lib/outline.mjs` reads the attribute to write a negative PDF `/Count` for that bookmark node. Full schema is documented in the `_data/book.yml` file header.
+Each part and chapter divider page contains the entry's title as an H1/H2 heading (or a silent `<p>` when `no_outline_entry:` is set), which becomes the PDF bookmark target. When `landing_is_target:` is set on an entry, the heading is instead injected directly into the landing-page article so the PDF bookmark navigates there rather than to the blank divider page; `rewriteBookHrefs`'s landing-H1 strip skips the injected heading via a `data-divider-heading` attribute. `outline_closed:` stamps `data-pdf-bookmark-closed` on the heading (or on the first content article for `no_outline_entry` entries), and `parseOutline` in `book/lib/outline.mjs` reads the attribute to write a negative PDF `/Count` for that bookmark node. Full schema is documented in the `_data/book.yml` file header.
 
 `augmentWithRedirectStubs` synthesises virtual `Page` records from each real page's `redirect_from` so the cross-ref rewriter still captures legacy URLs the way Jekyll's `jekyll-redirect-from` did (its stubs appeared in `site.pages` and got swept into the lookup table). `chapterAnchorFromUrl` is the URL → `ch-…` slug helper that generates both `id="..."` and the `#…` href targets.
 
@@ -186,6 +188,21 @@ The render runs in a single `page.evaluate` that dynamic-imports `mermaid.esm.mj
 
 - **Setup** (`puppeteer` import fails, mermaid not installed, `puppeteer.launch()` fails for lack of Chrome): warns once with the recovery command (`npm install` / `npx puppeteer browsers install chrome --install-deps`), retains every on-disk SVG, returns `{ ..., setupSkipped: true }`. The orchestrator does **not** flip the exit code --- a fresh checkout still builds, just without diagram updates.
 - **Per-diagram render** (broken `.mmd` syntax, mermaid render throws inside `page.evaluate`): warns with the parser error including line + column + expected-token list, retains that diagram's previous SVG, **continues** processing the rest of the batch so every broken diagram surfaces in one run, and increments the returned `failed` count. The orchestrator flips `process.exitCode = 1` based on that count so CI catches the bad diagram.
+
+### [scss.mjs](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs) --- Phase 11 (B3) SCSS compiler
+
+Runs Dart Sass (the [`sass`](https://www.npmjs.com/package/sass) npm package) over `docs/assets/css/just-the-docs-combined.scss` and pushes the result onto `generatedAssets` as `assets/css/just-the-docs-combined.css`. Replaces the Jekyll-era pre-compiled CSS that used to live under `builder/assets/`; editing any SCSS partial now reflects on the next build instead of requiring a re-extraction.
+
+Load paths are stacked, searched in order: `docs/_sass/` first (our customizations under `custom/`), then `builder/vendor/just-the-docs/_sass/` (the gem at v0.10.1). The same shadowing Jekyll relied on still applies --- `@import "custom/custom"` resolves to our `docs/_sass/custom/custom.scss` because the load-path order puts our `_sass/` first.
+
+The entry point replicates the gem's `_includes/css/just-the-docs.scss.liquid` Liquid template as pure SCSS: it imports `support/support`, then `custom/setup`, then `color_schemes/light` (always), then `modules` --- emitting the full light-theme rule set at root. The same import block re-runs inside an `html.dark-mode { ... }` wrapper with `color_schemes/dark` instead so every module rule lands a second time with the dark palette, scoped under the dark-mode class.
+
+Failure modes:
+
+- **Setup** (`sass` not installed) is a hard error with a `npm install` hint --- there is no pre-compiled CSS fallback to fall back to.
+- **Content** (syntax error in any SCSS partial) prints the source location, flips `process.exitCode = 1`, and continues the build with the previous `_site/` CSS lingering if any. CI catches the non-zero exit.
+
+Upstream Dart Sass emits deprecation warnings against several gem-vendored constructs (`darken()`, root-`@import`); they're upstream noise, not actionable here without forking the gem.
 
 ### [render.mjs](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) --- Phase 3 markdown pipeline
 
@@ -262,7 +279,7 @@ The per-page sidebar nav block is byte-identical across every page (it doesn't d
 
 The just-the-docs.js patcher is AST-based as of Phase 11 (B11): `deriveOfflineJtdJs` parses the upstream source with `acorn`, scans for `FunctionDeclaration` nodes named `navLink` and `initSearch`, and slices in the two replacement implementations (`JTD_NAVLINK_REPLACEMENT`, `JTD_INITSEARCH_FN_REPLACEMENT`). The non-patched regions stay byte-identical to the upstream source, and cosmetic upstream edits (variable renames, whitespace inside the patched bodies) survive --- the prior anchored-regex patcher would have broken on either. A parse error at build time is a clear signal that re-extraction produced something acorn can't read; no defensive fallback ships because just-the-docs.js is only re-extracted on deliberate gem-bump operations.
 
-`deriveOfflineSearchDataJs` wraps `search-data.json` as `window.SEARCH_DATA = {...}` (a `<script src=>` can't fetch JSON under `file://`) and minifies via `JSON.parse + JSON.stringify` without indentation --- Phase 11 (B10) shaved ~1.1 MB off the offline asset footprint.
+`deriveOfflineSearchDataJs` wraps `search-data.json` as `window.SEARCH_DATA = {...}` (a `<script src=>` can't fetch JSON under `file://`) and minifies via `JSON.parse + JSON.stringify` without indentation --- Phase 11 (B10) shaved ~1.1 MB off the offline asset footprint. The raw `search-data.json` is listed in `offline_exclude` in `_config.yml` and is absent from the offline tree; the `.js` wrapper is the only search asset the offline site carries. `copyOfflineThemeAssets` applies `offline_exclude` to all theme-asset files, not just the specially-patched `just-the-docs.js`.
 
 ### [pdf.mjs](https://github.com/twinbasic/documentation/blob/main/builder/pdf.mjs) --- Phase 8 PDF source tree
 
@@ -270,15 +287,23 @@ The image-path collector folds into `assembleBook`'s per-chapter emit (Phase 9 �
 
 `reportMissingImages` implements pdfify.rb's strict mode: per-path error log, then throw if `!tolerateMissingImages`. Every Phase 8 invocation runs in strict mode by default --- a missing image in the assembled book is a build-fail rather than a warning, since the alternative is a PDF with broken-image placeholders nobody notices until publication. The `--tolerate-missing-images` flag (renamed from `--serving` in Phase 12) downgrades the throw to a warning for iterative work.
 
-## Static asset extraction
+## Asset layout
 
-The bundled theme assets live under [`builder/assets/`](https://github.com/twinbasic/documentation/blob/main/builder/assets) and are copied verbatim into `<destRoot>/assets/` on every build. The seven files there are the just-the-docs chrome's runtime dependencies; they were extracted once from a Jekyll build of the upstream theme and committed at the version pinned at cutover time.
+The site's `/assets/` tree at deploy time is assembled from three sources:
 
-Re-extraction is a one-off event triggered by a deliberate theme bump or a hand-written CSS / JS change. The procedure requires temporarily restoring the legacy Jekyll source set (`docs/_plugins/`, `docs/_includes/`, `docs/_layouts/`, `docs/_sass/`, `docs/Gemfile`, `docs/Gemfile.lock`) from git history (the cutover commit and its prior state), running `bundle install && bundle exec jekyll build`, copying the produced files out of `_site/assets/` into `builder/assets/`, and then reverting the restore --- see [`builder/assets/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/assets/README.md) for the full procedure, the CSS class contract the generator targets, and the upstream sources each file came from.
+| Source on disk | What lives there | Phase that delivers it |
+|---|---|---|
+| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-switch.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Mermaid diagrams (`.mmd` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by [`write.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/write.mjs)'s `copyStaticFiles`. |
+| `builder/vendor/just-the-docs/` | Vendored from the just-the-docs gem (v0.10.1): `_sass/` (the theme's SCSS sources, fed into the compilation) and `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (the chrome runtime, copied verbatim). See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the inventory, re-vendoring procedure, and the in-tree patches applied to `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `write.mjs`'s `copyTheme`. |
+| Generated in-process | `just-the-docs-combined.css` (from [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs)) and `tb-highlight.css` (from [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs)). Neither is committed; both are rebuilt every run. | Pushed onto `generatedAssets` in [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs); written by `write.mjs`'s `writeGeneratedAssets` after `copyTheme` so the generated content wins any collision. |
+
+CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is non-empty; the same transform applies to generated CSS, so the `url("/favicon.png")` the SCSS entry point emits resolves correctly under sub-path deployments.
+
+There is no theme re-extraction step any more --- the SCSS sources live in tree, the build compiles them on every run via Dart Sass. Bumping just-the-docs is a matter of re-vendoring `_sass/` and `assets/js/` from the new gem tag (procedure in the vendor README), re-applying the `just-the-docs.js` patches if upstream changed them, and rebuilding.
 
 ## Verification
 
-Site integrity after a build is asserted by `docs/check.bat`, which runs `scripts/check_links.mjs` against `_site/` and `_site-offline/`. The CI workflow runs the same passes plus the `crawl_check.mjs` post-deploy check.
+Site integrity after a build is asserted by `check.bat`, which runs `scripts/check_links.mjs` against `_site/` and `_site-offline/`. The CI workflow runs the same passes plus the `crawl_check.mjs` post-deploy check.
 
 The build itself includes a small guard at the end of `tbdocs.mjs`:
 
@@ -295,7 +320,7 @@ so an accidental discovery-rule regression that silently drops pages appears as 
 
 Some build-adjacent code lives at the repo root rather than under `builder/`:
 
-- **PDF rendering** --- `docs/render-book.mjs` plus its `docs/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. The driver is intentionally not part of the site generator: `pdf-lib` is a heavy dep used only at PDF time. `puppeteer` is shared between `render-book.mjs` and `builder/mermaid.mjs` (one Chromium binary, two consumers). See [PDF Generation](PDF-Generation) for the full internals.
+- **PDF rendering** --- `book/render-book.mjs` plus its `book/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. The driver is intentionally not part of the site generator: `pdf-lib` is a heavy dep used only at PDF time. `puppeteer` is shared between `render-book.mjs` and `builder/mermaid.mjs` (one Chromium binary, two consumers). See [PDF Generation](PDF-Generation) for the full internals.
 - **Link checking** --- `scripts/check_links.mjs` reads from disk after the build; not part of the generator.
 - **External link crawling** --- `scripts/crawl_check.mjs` reads from HTTP; not part of the generator.
 - **Mermaid source files** --- `docs/assets/images/mmd/*.mmd` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.

@@ -90,7 +90,7 @@ console.log(`[probe] output       : ${outDir}`);
 console.log(`[probe] gc-passes    : ${forceGc ? gcPasses : '(off)'}`);
 console.log(`[probe] heap-snapshot: ${heapSnap}`);
 
-// Match production launch args (docs/render-book.mjs). --expose-gc
+// Match production launch args (book/render-book.mjs). --expose-gc
 // is added when --gc is set so window.gc() inside the page works;
 // pinning V8 to that flag has no measurable cost on render or generate.
 const chromeArgs = [

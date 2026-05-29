@@ -15,15 +15,13 @@ The day-to-day workflow for editing documentation: requirements, building, servi
 
 ## Development environment
 
-The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). The day-to-day commands below are Windows batch files that wrap the generator; their POSIX equivalents (run from inside `docs/`) are listed alongside.
+The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). The day-to-day commands below are Windows batch files that wrap the generator; their POSIX equivalents are listed alongside.
 
 1. Ensure the [requirements](#requirements) below are met.
 
 2. Fork [https://github.com/twinbasic/documentation][docs-repo] to your own GitHub account if you plan on making any changes, or for convenience. Skip this if you only want to build the docs locally without contributing changes.
 
 3. Clone either your fork or the [documentation repository itself][docs-repo].
-
-4. **Go to the `docs/` folder in the cloned working tree.** Building, serving, and other documentation operations all run from this folder, *not* from the repository root. (The `builder/` toolchain itself sits next to `docs/` and is not part of the source tree the documentation is rendered from.)
 
 ### Requirements
 
@@ -33,13 +31,13 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 ## Building
 
-To render the documentation from `.md` files into the `_site/` (online), `_site-offline/` (offline mirror), and `_site-pdf/` (sparse PDF source) folders, from inside `docs/`:
+To render the documentation from `.md` files into the `_site/` (online), `_site-offline/` (offline mirror), and `_site-pdf/` (sparse PDF source) folders:
 
     build.bat
 
 or directly:
 
-    node ..\builder\tbdocs.mjs --src .
+    node builder\tbdocs.mjs --src docs
 
 A single `tbdocs` run produces all three trees. The `also_build_offline` and `also_build_pdf` keys in `_config.yml` toggle the sibling outputs; the `--no-offline` and `--no-pdf` flags do the same from the command line if you only want `_site/`.
 
@@ -47,15 +45,17 @@ The full set of `tbdocs` CLI flags --- every flag, what each one does, when to u
 
 ## Building and local serving
 
-The simplest local preview is `build.bat` followed by opening the rendered files in any browser. To get a localhost server instead, from inside `docs/`:
+The simplest local preview is `build.bat` followed by opening the rendered files in any browser. To get a localhost server instead:
 
     serve.bat
 
 This runs `tbdocs --serve`: after an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each file change, and any browser tab open on the page auto-reloads via SSE after each successful rebuild. Only failures (4xx, 5xx, server exceptions) are logged --- successful requests are silent. Ctrl+C exits cleanly.
 
+Serve writes to `docs/_serve/`, completely disjoint from `build.bat`'s `_site/` family. That separation means a one-off `build.bat` invocation (e.g., to refresh `_site-pdf/` for `book.bat`, or to re-check `_site-offline/` link integrity) never touches the tree the live preview is serving, and the preview keeps showing whatever serve last rebuilt.
+
 ## Checking link integrity
 
-Before checking link integrity, the documentation must be built. From inside `docs/`:
+Before checking link integrity, the documentation must be built:
 
     check.bat
 

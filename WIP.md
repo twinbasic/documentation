@@ -432,17 +432,15 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 
 ## Build / preview
 
-From `docs/`:
-
-- `build.bat` — runs `node ..\builder\tbdocs.mjs --src .` which produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output.
-- `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Ctrl+C to stop.
+- `build.bat` — runs `node builder\tbdocs.mjs --src docs` which produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output.
+- `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
 - `check.bat` — link + integrity check (offline `scripts/check_links.mjs` against `_site/` and `_site-offline/`; the offline pass also runs `--forbid 'https://docs.twinbasic.com'` to catch surviving live-site links).
-- `book.bat` — renders the PDF from `_site-pdf/book.html` via `node render-book.mjs` into `_pdf/book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
+- `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
 
 ## Site integrity check
 
-After a batch of changes, verify the site builds clean and all links resolve. From the `docs/` folder, run:
+After a batch of changes, verify the site builds clean and all links resolve:
 
 ```sh
 build.bat && check.bat

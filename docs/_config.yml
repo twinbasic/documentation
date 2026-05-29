@@ -74,3 +74,29 @@ offline_exclude:
   - robots.txt
   - sitemap.xml
   - book.html
+  - assets/js/search-data.json
+
+# Files and patterns that tbdocs's discover phase excludes from the source
+# tree. Uses fast-glob syntax: ** crosses directory separators, * stays
+# within one level. Same role as Jekyll's built-in `exclude:` list.
+#
+# Patterns that start with * must be quoted so YAML does not interpret them
+# as alias references.
+exclude:
+  # Underscore-prefixed files and directories -- catches _config.yml,
+  # _book.yml, _site, _site-offline, _site-pdf, _pdf, _includes,
+  # _layouts, _sass, _plugins, _profile, and every _Images at any depth.
+  - _*
+  - _*/**
+  - "**/_*/**"
+  # Defensive: caches and unrelated trees that should never be in docs/.
+  - "**/.git/**"
+  - "**/node_modules/**"
+  - "**/.jekyll-cache/**"
+  - "**/.sass-cache/**"
+  # SCSS sources -- compiled by builder/scss.mjs into the just-the-docs
+  # stylesheet; the .scss itself is not a deployable asset.
+  - "**/*.scss"
+  # Mermaid source files -- the build outputs .svg counterparts; the .mmd
+  # sources are not part of the published site.
+  - "**/*.mmd"

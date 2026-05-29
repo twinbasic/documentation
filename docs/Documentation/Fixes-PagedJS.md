@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Fixes/PagedJS
 # Paged.js Patches
 {: .no_toc }
 
-`docs/lib/paged.browser.js` is a vendored, patched copy of paged.js v0.4.3 (MIT). Upstream paged.js is designed for interactive browsers: it yields to the event loop to keep pages responsive during long renders, uses async functions throughout, and registers observation and resize callbacks. None of that is useful in a headless, non-interactive Chromium process where the only goal is to produce a PDF as fast as possible. This page documents every patch and its rationale.
+`book/lib/paged.browser.js` is a vendored, patched copy of paged.js v0.4.3 (MIT). Upstream paged.js is designed for interactive browsers: it yields to the event loop to keep pages responsive during long renders, uses async functions throughout, and registers observation and resize callbacks. None of that is useful in a headless, non-interactive Chromium process where the only goal is to produce a PDF as fast as possible. This page documents every patch and its rationale.
 
 * TOC goes here
 {:toc}

@@ -112,13 +112,12 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
   // the parallel await keeps the timing report honest.
   if (subT) {
     const t0Pages = Date.now();
-    let dPages = 0, dRedirects = 0, dStatics = 0, dThemes = 0, dSearch = 0;
+    let dPages = 0, dRedirects = 0, dStatics = 0, dThemes = 0;
     const branches = [
       writeOfflinePages(pages, deps).then(() => { dPages = Date.now() - t0Pages; }),
       writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps).then(() => { dRedirects = Date.now() - t0Pages; }),
       copyOfflineStatics(staticFiles, deps).then(() => { dStatics = Date.now() - t0Pages; }),
       copyOfflineThemeAssets(deps).then(() => { dThemes = Date.now() - t0Pages; }),
-      copyOfflineSearchData(auxStats?.search?.json ?? null, deps).then(() => { dSearch = Date.now() - t0Pages; }),
     ];
     await Promise.all(branches);
     subT.lap("parallel");
@@ -126,14 +125,12 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
     console.log(`  offline.redirects (concurrent): ${dRedirects} ms`);
     console.log(`  offline.statics (concurrent): ${dStatics} ms`);
     console.log(`  offline.themeAssets (concurrent): ${dThemes} ms`);
-    console.log(`  offline.searchDataCopy (concurrent): ${dSearch} ms`);
   } else {
     await Promise.all([
       writeOfflinePages(pages, deps),
       writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps),
       copyOfflineStatics(staticFiles, deps),
       copyOfflineThemeAssets(deps),
-      copyOfflineSearchData(auxStats?.search?.json ?? null, deps),
     ]);
   }
 
@@ -366,6 +363,8 @@ async function copyOfflineThemeAssets(deps) {
 
   await runLimited(themeEntries, LIMIT, async (e) => {
     if (e.isJtdJs) return;
+    const relAsset = "assets/" + e.relUnderAssets;
+    if (offlineExcluded(relAsset, deps.excludePatterns)) return;
     const dest = path.join(offlineRoot, "assets", e.relUnderAssets);
     if (e.isCss) {
       const cssIn = await fs.readFile(e.srcAbs, "utf8");
@@ -391,14 +390,6 @@ export function deriveOfflineCss(cssIn, themeRel, state) {
   const fileSegs = fileDirSegsFromRel(themeRel);
   const { rewritten, misses } = rewriteCss(cssIn, fileDir, fileSegs, sitePaths, caches, baseurl);
   return { css: rewritten, misses };
-}
-
-// §5.6  copyOfflineSearchData -- verbatim copy of search-data.json.
-async function copyOfflineSearchData(jsonBytes, deps) {
-  if (jsonBytes == null) return;
-  const dest = path.join(deps.offlineRoot, "assets/js/search-data.json");
-  await writeFileMkdirp(dest, jsonBytes);
-  deps.counters.assets += 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -439,10 +430,6 @@ async function buildSitePaths(pages, staticFiles, destRoot, excludePatterns, stu
       paths.add("/" + rel);
     }
   }
-  // Defensive: the search-data.json Phase 6 writes isn't in pages[]
-  // or staticFiles[]; add it so a stray link from somewhere resolves
-  // instead of becoming an unresolved miss.
-  paths.add("/assets/js/search-data.json");
   return paths;
 }
 

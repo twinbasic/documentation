@@ -1,7 +1,7 @@
 // Phase 2 book chapter resolution + Phase 8 book.html assembly.
 //
 // Phase 2 surface (§A below): loadBookData, resolveBookChapters,
-// sortByNavOrder. Loads _data/book.yml and walks every entry / part /
+// sortByNavOrder. Loads _book.yml and walks every entry / part /
 // chaptered-part-chapter, resolving the selector schema (page / pages /
 // nav_page / nav_pages + no_descent) to a concrete Array<Page> stored
 // as `_chapters` on the entry. Pre-resolves landing_page / foreword_page
@@ -24,7 +24,7 @@ import { compressHtml } from "./compress.mjs";
 import { loadData } from "./data.mjs";
 
 // ---------------------------------------------------------------------------
-// §A  Phase 2: book.yml loader + chapter resolver + sort_by_nav_order
+// §A  Phase 2: _book.yml loader + chapter resolver + sort_by_nav_order
 // ---------------------------------------------------------------------------
 
 // Back-compat wrapper around the generic `loadData` loader. The

@@ -1,12 +1,15 @@
-// Phase 5 WRITE ONLINE: materialise the in-memory page set, the prebuilt
-// theme assets, and the static-file inventory onto disk under the
+// Phase 5 WRITE ONLINE: materialise the in-memory page set, the vendored
+// just-the-docs JS, and the static-file inventory onto disk under the
 // configured destination root. See builder/PLAN-5.md for the full spec.
 //
 // One entry point: writePhase(pages, staticFiles, { destRoot, dryRun }).
 // Three write surfaces in parallel after a clean-then-write prepare:
 //
 //   * writePages       -- page.destPath ← page.html (book.html skipped).
-//   * copyTheme        -- builder/assets/ → <destRoot>/assets/.
+//   * copyTheme        -- builder/vendor/just-the-docs/assets/ → <destRoot>/assets/.
+//                          Project-owned theme assets (head-nav.css, print.css,
+//                          theme-switch.js) live under docs/assets/ and ride
+//                          the static-file copy path instead.
 //   * copyStaticFiles  -- each staticFile.srcPath → <destRoot>/<destRel>.
 //
 // No URL rewriting, no auxiliaries (sitemap / robots / search index),
@@ -18,7 +21,10 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const BUILDER_ASSETS = path.join(__dirname, "assets");
+// Vendored just-the-docs runtime JS (just-the-docs.js + vendor/lunr.min.js).
+// Everything else the site serves under /assets/ now comes from docs/assets/
+// (handled by the static-file copy in copyStaticFiles).
+const BUILDER_ASSETS = path.join(__dirname, "vendor", "just-the-docs", "assets");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const LIMIT = 64;
 
@@ -53,12 +59,16 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false,
     };
   }
 
+  // Pages, theme assets, and static files run in parallel.
+  // Generated assets run after copyTheme as a defensive sequence: should a
+  // generated asset ever land at the same rel as a vendored file, the
+  // generated content wins. No such collision exists today.
   const [pagesStats, themeStats, staticStats] = await Promise.all([
     writePages(pages, destRoot, LIMIT),
     copyTheme(BUILDER_ASSETS, destRoot, LIMIT, baseurl),
-    copyStaticFiles(staticFiles, destRoot, LIMIT),
-    writeGeneratedAssets(generatedAssets, destRoot, LIMIT),
+    copyStaticFiles(staticFiles, destRoot, LIMIT, baseurl),
   ]);
+  await writeGeneratedAssets(generatedAssets, destRoot, LIMIT, baseurl);
 
   return {
     pages: pagesStats,
@@ -69,15 +79,18 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false,
 
 // ---------- Generated assets (Phase 11 B2) ------------------------------
 
-// Build-time-generated files (currently just `tb-highlight.css` from
-// highlight-theme.mjs) written under <destRoot>/. Run alongside the
-// static / theme / pages writes so they land before the offline +
-// PDF passes go looking for them.
-async function writeGeneratedAssets(assets, destRoot, limit) {
+// Build-time-generated files (`tb-highlight.css` from highlight-theme.mjs
+// and `just-the-docs-combined.css` from scss.mjs) written under <destRoot>/.
+// Generated CSS goes through the same baseurl rewrite the theme-asset copy
+// applies, so `url("/favicon.png")` (from the SCSS `$logo` setting) resolves
+// correctly on sub-path deployments.
+async function writeGeneratedAssets(assets, destRoot, limit, baseurl) {
+  const cssTransform = baseurl ? cssBaseurlTransformer(baseurl) : null;
   await runLimited(assets, limit, async ({ rel, content }) => {
+    const out = cssTransform && rel.endsWith(".css") ? cssTransform(content) : content;
     const dest = path.join(destRoot, rel);
     await mkdirRec(path.dirname(dest));
-    await safeWrite(dest, () => fs.writeFile(dest, content, "utf8"));
+    await safeWrite(dest, () => fs.writeFile(dest, out, "utf8"));
   });
 }
 
@@ -123,10 +136,9 @@ async function writePages(pages, destRoot, limit) {
 
 async function copyTheme(builderAssetsRoot, destRoot, limit, baseurl) {
   const destAssets = path.join(destRoot, "assets");
-  // README.md is meta-documentation for the builder itself (see
-  // builder/assets/README.md -- the re-extraction procedure + CSS
-  // class contract); it's not a deployable asset. Skip it so it
-  // doesn't show up at <destRoot>/assets/README.md.
+  // README.md and other meta-docs in the vendor tree are not deployable
+  // assets; the name filter keeps them out of <destRoot>/assets/ should one
+  // ever appear under builder/vendor/just-the-docs/assets/.
   return copyTree(
     builderAssetsRoot,
     destAssets,
@@ -156,12 +168,18 @@ function cssBaseurlTransformer(baseurl) {
 
 // ---------- §5.4 copyStaticFiles ----------------------------------------
 
-async function copyStaticFiles(staticFiles, destRoot, limit) {
+async function copyStaticFiles(staticFiles, destRoot, limit, baseurl) {
+  const cssTransform = baseurl ? cssBaseurlTransformer(baseurl) : null;
   let copied = 0;
   await runLimited(staticFiles, limit, async (file) => {
     const dest = path.join(destRoot, file.destRel);
     await mkdirRec(path.dirname(dest));
-    await safeWrite(dest, () => fs.copyFile(file.srcPath, dest));
+    if (cssTransform && file.destRel.endsWith(".css")) {
+      const raw = await fs.readFile(file.srcPath, "utf8");
+      await safeWrite(dest, () => fs.writeFile(dest, cssTransform(raw), "utf8"));
+    } else {
+      await safeWrite(dest, () => fs.copyFile(file.srcPath, dest));
+    }
     copied++;
   });
   return { copied };

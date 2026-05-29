@@ -8,7 +8,7 @@ permalink: /Documentation/Development/PDF-Generation
 # PDF Generation
 {: .no_toc }
 
-Internals of the two-stage PDF pipeline: `tbdocs` Phase 8 assembles a sparse `_site-pdf/` source tree, then `docs/render-book.mjs` renders it into `_pdf/twinBASIC Book.pdf` via headless Chromium + paged.js + pdf-lib. Read this when modifying the renderer, the print stylesheet, or the paged.js bundle.
+Internals of the two-stage PDF pipeline: `tbdocs` Phase 8 assembles a sparse `_site-pdf/` source tree, then `book/render-book.mjs` renders it into `_pdf/twinBASIC Book.pdf` via headless Chromium + paged.js + pdf-lib. Read this when modifying the renderer, the print stylesheet, or the paged.js bundle.
 
 * TOC goes here
 {:toc}
@@ -22,7 +22,7 @@ The two stages are decoupled: `tbdocs` builds `_site-pdf/` as part of its normal
 ## Running the renderer
 
 ```
-node render-book.mjs <input.html> -o <output.pdf>
+node book/render-book.mjs <input.html> -o <output.pdf>
                      [--outline-tags h1,h2,h3,h4]
                      [-t <timeout-ms>]
                      [--additional-script <path>]...
@@ -39,7 +39,7 @@ node render-book.mjs <input.html> -o <output.pdf>
 `book.bat` runs the standard production invocation:
 
 ```batch
-node render-book.mjs _site-pdf\book.html -o "_pdf\twinBASIC Book.pdf" ^
+node ..\book\render-book.mjs _site-pdf\book.html -o "_pdf\twinBASIC Book.pdf" ^
      --outline-tags h1,h2,h3,h4 ^
      --additional-script ..\perf\detach-pages.js
 ```
@@ -48,7 +48,7 @@ Always run `build.bat` first to populate `_site-pdf/`.
 
 ## render-book.mjs
 
-`docs/render-book.mjs` drives the three phases. Its helpers live in `docs/lib/`.
+`book/render-book.mjs` drives the three phases. Its helpers live in `book/lib/`.
 
 ### Phase 1: Render
 
@@ -227,7 +227,7 @@ Paged.registerHandlers(ProgressHandler);
 
 ## paged.browser.js
 
-`docs/lib/paged.browser.js` is a vendored, lightly patched copy of [Paged.js](https://pagedjs.org/) v0.4.3 (MIT). Paged.js is a CSS Paged Media polyfill: it reads `@page` rules from the linked stylesheet, breaks the document into discrete DOM pages, resolves CSS counters, and copies running headers and footers from `string-set` declarations into each page's margin boxes. Chromium then renders the resulting DOM into a PDF.
+`book/lib/paged.browser.js` is a vendored, lightly patched copy of [Paged.js](https://pagedjs.org/) v0.4.3 (MIT). Paged.js is a CSS Paged Media polyfill: it reads `@page` rules from the linked stylesheet, breaks the document into discrete DOM pages, resolves CSS counters, and copies running headers and footers from `string-set` declarations into each page's margin boxes. Chromium then renders the resulting DOM into a PDF.
 
 ### Global API
 
@@ -308,7 +308,7 @@ The key `@page` rules in `docs/assets/css/print.css` that paged.js acts on:
 
 ## See Also
 
-- [Book Configuration](Book-Configuration) -- the `_data/book.yml` manifest that controls what goes into `book.html`.
+- [Book Configuration](Book-Configuration) -- the `_book.yml` manifest that controls what goes into `book.html`.
 - [Pipeline Stages](Pipeline-Stages) -- the `pdf.mjs` and `book.mjs` interface contracts for Phase 8.
 - [tbdocs Builder](Builder) -- design rationale for Phase 8 in the tbdocs pipeline.
 - [pdf-lib Patches](Fixes/PDFLib) -- detailed description of each `fast-*.mjs` shim: upstream problem, fix, and mechanism.

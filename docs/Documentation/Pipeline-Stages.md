@@ -57,8 +57,8 @@ Built at the end of Phase 2 and passed unchanged to every subsequent phase.
 | `seoSiteTitle` | `string` | Rendered site title from `config.title`. |
 | `seoLogoUrl` | `string` | Absolute URL of the site logo. |
 | `buildInfo` | `object` | `{ commit: string, commitDate: string }` from git. Both fall back to `"unknown"` outside a git repository. |
-| `bookData` | `object\|null` | Parsed `_data/book.yml` with chapter selectors resolved to `Page` references. `null` when the file is absent. See [Book Configuration](Book-Configuration). |
-| `data` | `object` | All `_data/*.yml` files keyed by basename: `data.book`, `data.contributors`, and so on. |
+| `bookData` | `object\|null` | Parsed `_book.yml` with chapter selectors resolved to `Page` references. `null` when the file is absent. See [Book Configuration](Book-Configuration). |
+| `data` | `object` | `_book.yml` loaded as `{ book: … }`, or `{}` when absent. |
 | `markdown` | `MarkdownIt` | Shared markdown-it instance, built once during Phase 2 setup and reused by Phase 2's SEO pass and Phase 3's render pass. |
 
 ### Static files (`staticFiles[]`)
@@ -116,10 +116,10 @@ Traverses the source tree and produces the `pages` and `staticFiles` arrays cons
 **Entry point**
 
 ```js
-discover(srcRoot: string): Promise<{ pages: Page[], staticFiles: StaticFile[] }>
+discover(srcRoot: string, ignore: string[]): Promise<{ pages: Page[], staticFiles: StaticFile[] }>
 ```
 
-Runs a single `fast-glob` call over `srcRoot` with the hardcoded `IGNORE` exclude list (underscore-prefixed directories, prebuilt theme assets, toolchain files). For each `.md` or `.html` file, attempts to parse YAML frontmatter. Files with parseable frontmatter become page objects; everything else becomes static file objects. Pages are sorted by basename (mirroring Jekyll's reader); static files by relative path.
+Runs a single `fast-glob` call over `srcRoot` with the `exclude:` list read from `_config.yml` and passed in by the orchestrator. For each `.md` or `.html` file, attempts to parse YAML frontmatter. Files with parseable frontmatter become page objects; everything else becomes static file objects. Pages are sorted by basename (mirroring Jekyll's reader); static files by relative path.
 
 **Reads:** source files under `srcRoot`.  
 **Writes (page fields):** `srcPath`, `srcRel`, `ext`, `frontmatter`, `rawContent`, `permalink`, `destPath`, `layoutDefault`, `imageScope`.
@@ -128,7 +128,7 @@ Runs a single `fast-glob` call over `srcRoot` with the hardcoded `IGNORE` exclud
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `discover` | `(srcRoot) → Promise<{ pages, staticFiles }>` | Main entry point. |
+| `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | Main entry point. |
 
 ---
 
@@ -188,7 +188,7 @@ For each page, runs the title through `renderTitle` (markdown-it render → stri
 
 ### `book.mjs` --- Phase 2 half
 
-Resolves the `_data/book.yml` chapter selectors to concrete `Page` arrays so Phase 8 has no further page lookups to do.
+Resolves the `_book.yml` chapter selectors to concrete `Page` arrays so Phase 8 has no further page lookups to do.
 
 **Phase 2 entry point**
 
@@ -207,7 +207,7 @@ Phase 8's `assembleBook` lives in the same module; see [Phase 8](#phase-8-pdfmjs
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `loadBookData` | `(srcRoot: string) → Promise<object\|null>` | Back-compat wrapper that loads `_data/book.yml` directly. Prefer `data.mjs` instead. |
+| `loadBookData` | `(srcRoot: string) → Promise<object\|null>` | Back-compat wrapper that loads `_book.yml` directly. Prefer `data.mjs` instead. |
 | `resolveBookChapters` | `(bookData, pages) → void` | Phase 2 entry point. |
 | `sortByNavOrder` | `(input: Page[]) → Page[]` | Sorts a page array: index pages (URLs ending in `/`) first, then by `nav_order` ascending with title as tie-breaker, then alphabetically by title. |
 | `chapterAnchorFromUrl` | `(url: string, fallbackTitle?: string) → string` | Converts a page URL to the `ch-…` anchor slug used for in-book cross-references. |
@@ -242,7 +242,7 @@ Issues two parallel `git` shell-outs (`rev-parse --short HEAD` and `log -1 --for
 
 ### `data.mjs`
 
-Loads every `_data/*.yml` file under `srcRoot` into a flat object.
+Loads `_book.yml` from `srcRoot`.
 
 **Entry point**
 
@@ -250,9 +250,9 @@ Loads every `_data/*.yml` file under `srcRoot` into a flat object.
 loadData(srcRoot: string): Promise<object>
 ```
 
-Returns a plain object keyed by file basename without extension: `_data/book.yml` → `{ book: … }`, `_data/contributors.yml` → `{ contributors: … }`. Returns `{}` when the `_data/` directory is absent. The orchestrator stores the result at `site.data` and also exposes `site.data.book` as `site.bookData`.
+Returns `{ book: <parsed YAML> }`, or `{}` when the file is absent. The orchestrator stores the result at `site.data` and also exposes `site.data.book` as `site.bookData`.
 
-**Reads:** `<srcRoot>/_data/*.yml`.  
+**Reads:** `<srcRoot>/_book.yml`.  
 **Writes:** nothing to pages (result returned directly).
 
 **All exports**
@@ -371,7 +371,7 @@ writePhase(
 ): Promise<{ pages: { written, skipped }, theme: { copied }, staticFiles: { copied } }>
 ```
 
-Clears then recreates `destRoot`, then runs three operations in parallel: writes each `page.html` to its `destPath`; copies `builder/assets/` to `<destRoot>/assets/` (with a CSS `url()` baseurl rewrite for non-empty baseurls); and copies every `staticFiles[]` entry. Skips pages where `page.html` is `undefined`.
+Clears then recreates `destRoot`, then runs three operations in parallel: writes each `page.html` to its `destPath`; copies the vendored just-the-docs JS from `builder/vendor/just-the-docs/assets/` to `<destRoot>/assets/`; and copies every `staticFiles[]` entry (which includes the project-owned theme files now living under `docs/assets/`). A CSS `url()` baseurl rewrite runs over both copy paths and over generated CSS assets so root-absolute `url("/path")` references resolve correctly under non-empty baseurls. After the parallel batch, `writeGeneratedAssets` writes `generatedAssets[]` (the SCSS-compiled CSS and the highlight theme CSS) sequentially so they win any rel-path collision. Skips pages where `page.html` is `undefined`.
 
 **Reads:** `page.html`, `page.destPath`, `staticFile.srcPath`, `staticFile.destRel`.  
 **Writes:** `<destRoot>/**` (the online tree).
@@ -478,7 +478,7 @@ writeOffline(
 ): Promise<{ html, css, redirects, statics, assets, excluded, unresolved }>
 ```
 
-Reads every file written by Phases 5 and 6, rewrites absolute URLs to relative paths, and writes to `<destRoot>-offline/`. Patches `just-the-docs.js` via AST (acorn) to replace `navLink` and `initSearch` with offline-compatible implementations. Wraps `search-data.json` as an inline `window.SEARCH_DATA` assignment.
+Reads every file written by Phases 5 and 6, rewrites absolute URLs to relative paths, and writes to `<destRoot>-offline/`. Patches `just-the-docs.js` via AST (acorn) to replace `navLink` and `initSearch` with offline-compatible implementations. Writes `search-data.js`, which wraps the search index as a `window.SEARCH_DATA` assignment so offline search works under `file://` (browsers block `XMLHttpRequest` there). `offline_exclude` patterns apply to pages, static files, and theme assets alike; `search-data.json` is listed in `offline_exclude` and is absent from the offline tree --- only the `.js` wrapper is present.
 
 **Reads:** all files under `<destRoot>` (online tree), `auxStats.redirects` (redirect stub list from Phase 6).  
 **Writes:** all files to `<destRoot>-offline/`.
@@ -612,5 +612,5 @@ The orchestrator sequences all stages and assembles the `site` object. It is not
 ## See Also
 
 - [tbdocs Builder](Builder) -- architecture overview and narrative design rationale.
-- [Book Configuration](Book-Configuration) -- `_data/book.yml` key reference.
+- [Book Configuration](Book-Configuration) -- `_book.yml` key reference.
 - [Extending the Builder](Extending) -- tutorial for adding a new stage or markdown-it plugin.

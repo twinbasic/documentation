@@ -70,7 +70,7 @@ console.log(`[probe] shards : ${shardCount}`);
 async function runShard(shardIndex) {
   const tStart = Date.now();
   const browser = await puppeteer.launch({
-    // Matches docs/render-book.mjs (production path).
+    // Matches book/render-book.mjs (production path).
     headless: true,
     args: [
       '--no-sandbox',

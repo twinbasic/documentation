@@ -1,6 +1,7 @@
 %%{init: {"themeVariables": {"lineColor": "#7a8090"}}}%%
 flowchart TD
-    SRC["docs/ source tree<br>.md + _config.yml + _data/book.yml"]
+    SRC["docs/ source tree<br>*.md + _config.yml + _book.yml"]
+	SRC --> SERVE["serve.bat"] --> SERVED["_serve/"] --> BROWSER["local<br>web<br>browser"]
     SRC --> BUILD["build.bat<br>tbdocs.mjs"]
     BUILD --> SITE["_site/<br>online HTML"]
     BUILD --> OFFLINE["_site-offline/<br>file:// mirror"]

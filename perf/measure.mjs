@@ -113,7 +113,7 @@
 // for compressed objects) pass through unchanged.
 //
 // --parallel-deflate replaces pdfDoc.save() with parallelSave from
-// docs/lib/parallel-deflate.mjs: object streams are pre-deflated in
+// book/lib/parallel-deflate.mjs: object streams are pre-deflated in
 // parallel on libuv's thread pool with objectsPerStream=500 (vs
 // pdf-lib's serial save with default 50). Moves ~300 ms of zlib work
 // off the main thread on the book.
@@ -212,7 +212,7 @@
 // immutable so sharing is safe. Production runs through it.
 //
 // --measure-pass runs the no-allocate measure pass from
-// docs/lib/measure-pass.mjs against the raw Chrome PDF before
+// book/lib/measure-pass.mjs against the raw Chrome PDF before
 // pdf-lib's load, and uses the measured dict-slot count to
 // pre-size fast-dict-onebuf's mainBuf to exact demand (no
 // V8-amortized growth, no slack). Phase 1 of the two-pass
@@ -245,15 +245,15 @@ import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { Session } from 'node:inspector/promises';
 import puppeteer from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
-// Shared with docs/render-book.mjs -- the helpers and the paged.js
-// bundle live under docs/lib/ now that we've dropped the pagedjs-cli
+// Shared with book/render-book.mjs -- the helpers and the paged.js
+// bundle live under book/lib/ now that we've dropped the pagedjs-cli
 // dependency. Importing from there guarantees the harness measures the
 // same code that production runs.
-import { parseOutline, setOutline } from '../docs/lib/outline.mjs';
-import { setMetadata }              from '../docs/lib/postprocesser.mjs';
+import { parseOutline, setOutline } from '../book/lib/outline.mjs';
+import { setMetadata }              from '../book/lib/postprocesser.mjs';
 import { applyOutlineAndMetadataIncremental } from './incremental-pdf.mjs';
 import { pinCpuIfWindows } from './pin-cpu.mjs';
-import { parallelSave } from '../docs/lib/parallel-deflate.mjs';
+import { parallelSave } from '../book/lib/parallel-deflate.mjs';
 
 // On Windows, re-launch under `start /affinity 0x5500 /high` to stabilise
 // CPU sample-time. See pin-cpu.mjs. Cuts run-to-run variance from
@@ -425,71 +425,71 @@ if (fastRefs && fastRefsClass) {
   process.exit(2);
 }
 if (fastRefs) {
-  await import('../docs/lib/fast-refs.mjs');
+  await import('../book/lib/fast-refs.mjs');
   console.log('[harness] fast-refs: PDFRef.of dense-array cache for gen=0');
 }
 if (fastRefsClass) {
-  await import('../docs/lib/fast-refs-class.mjs');
+  await import('../book/lib/fast-refs-class.mjs');
   console.log('[harness] fast-refs-class: PDFRef.of dense-array cache + class-constructor shape');
 }
 if (fastDecodeName) {
-  await import('../docs/lib/fast-decode-name.mjs');
+  await import('../book/lib/fast-decode-name.mjs');
   console.log('[harness] fast-decode-name: skip decodeName regex when name has no #');
 }
 if (fastNumberToString) {
-  await import('../docs/lib/fast-number-to-string.mjs');
+  await import('../book/lib/fast-number-to-string.mjs');
   console.log('[harness] fast-number-to-string: skip redundant toString/split when no exponential');
 }
 if (fastSizeInBytes) {
-  await import('../docs/lib/fast-size-in-bytes.mjs');
+  await import('../book/lib/fast-size-in-bytes.mjs');
   console.log('[harness] fast-size-in-bytes: non-allocating ladder for xref byte-width');
 }
 if (fastInflate) {
-  await import('../docs/lib/fast-inflate.mjs');
+  await import('../book/lib/fast-inflate.mjs');
   console.log('[harness] fast-inflate: swap pako.inflate for node:zlib.inflateSync');
 }
 if (fastParseNumber) {
-  await import('../docs/lib/fast-parse-number.mjs');
+  await import('../book/lib/fast-parse-number.mjs');
   console.log('[harness] fast-parse-number: direct-integer accumulator for parseRawNumber/parseRawInt');
 }
 if (fastDictIter) {
-  await import('../docs/lib/fast-dict-iter.mjs');
+  await import('../book/lib/fast-dict-iter.mjs');
   console.log('[harness] fast-dict-iter: in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto');
 }
 if (fastParseDict) {
-  await import('../docs/lib/fast-parse-dict.mjs');
+  await import('../book/lib/fast-parse-dict.mjs');
   console.log('[harness] fast-parse-dict: hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict');
 }
 if (fastParseObject) {
-  await import('../docs/lib/fast-parse-object.mjs');
+  await import('../book/lib/fast-parse-object.mjs');
   console.log('[harness] fast-parse-object: first-byte dispatch in parseObject, gate true/false/null matchKeyword behind byte check');
 }
 if (fastParseName) {
-  await import('../docs/lib/fast-parse-name.mjs');
+  await import('../book/lib/fast-parse-name.mjs');
   console.log('[harness] fast-parse-name: byte-slice + String.fromCharCode build for PDFObjectParser.parseName');
 }
 if (fastSyncLoad) {
-  await import('../docs/lib/fast-sync-load.mjs');
+  await import('../book/lib/fast-sync-load.mjs');
   console.log('[harness] fast-sync-load: synchronify PDFParser load path, strip waitForTick machinery');
 }
 if (fastDictArray) {
-  await import('../docs/lib/fast-dict-array.mjs');
+  await import('../book/lib/fast-dict-array.mjs');
   console.log('[harness] fast-dict-array: PDFDict backed by flat alternating array (subsumes fast-parse-dict + fast-dict-iter)');
 }
 if (fastIndirectObjects) {
-  await import('../docs/lib/fast-indirect-objects.mjs');
+  await import('../book/lib/fast-indirect-objects.mjs');
   console.log('[harness] fast-indirect-objects: PDFContext.indirectObjects dense-array cache for gen=0 PDFRefs');
 }
 if (fastPdfnumberPool) {
-  await import('../docs/lib/fast-pdfnumber-pool.mjs');
+  await import('../book/lib/fast-pdfnumber-pool.mjs');
   console.log('[harness] fast-pdfnumber-pool: value-keyed cache in front of PDFNumber.of');
 }
 if (fastDictOnebuf) {
-  await import('../docs/lib/fast-dict-onebuf.mjs');
+  await import('../book/lib/fast-dict-onebuf.mjs');
   console.log('[harness] fast-dict-onebuf: ONE long-lived buffer for all PDFDict entries + small per-parser temp');
 }
 if (fastArrayOnebuf) {
-  await import('../docs/lib/fast-array-onebuf.mjs');
+  await import('../book/lib/fast-array-onebuf.mjs');
   console.log('[harness] fast-array-onebuf: ONE long-lived buffer for all PDFArray elements + small per-parser temp');
 }
 if (instrumentParsedict) {
@@ -500,11 +500,11 @@ if (instrumentParsedict) {
 // invoked in-flight (after rawPdf is in hand, before PDFDocument.load).
 let _runMeasurePass = null;
 if (measurePass) {
-  const { measure } = await import('../docs/lib/measure-pass.mjs');
-  const { setExpectedDictSlots } = await import('../docs/lib/fast-dict-onebuf.mjs');
+  const { measure } = await import('../book/lib/measure-pass.mjs');
+  const { setExpectedDictSlots } = await import('../book/lib/fast-dict-onebuf.mjs');
   let setExpectedArraySlots = null;
   if (fastArrayOnebuf) {
-    const ma = await import('../docs/lib/fast-array-onebuf.mjs');
+    const ma = await import('../book/lib/fast-array-onebuf.mjs');
     setExpectedArraySlots = ma.setExpectedArraySlots;
   }
   _runMeasurePass = (bytes) => {
@@ -556,7 +556,7 @@ const browser = await puppeteer.launch({
   // the latter being present at launch.
   //
   // --disable-gpu + --disable-software-rasterizer mirror production
-  // (docs/render-book.mjs). Shrinks the GPU process from ~100 MB to
+  // (book/render-book.mjs). Shrinks the GPU process from ~100 MB to
   // ~16 MB and the renderer ~120 MB; generate ~5 s faster; PDF byte-
   // identical. See perf/README.md "Disabling the GPU process".
   args: [

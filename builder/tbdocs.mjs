@@ -21,6 +21,7 @@ import yaml from "js-yaml";
 
 import { discover } from "./discover.mjs";
 import { regenerateMermaid } from "./mermaid.mjs";
+import { compileScss } from "./scss.mjs";
 import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
@@ -129,16 +130,23 @@ export async function runBuild(opts) {
     process.exitCode = 1;
   }
 
-  const { pages, staticFiles } = await discover(srcRoot);
-  t.lap("discover");
+  const scssResult = await compileScss(srcRoot);
+  t.lap("scss");
+  if (scssResult.failed) {
+    process.exitCode = 1;
+  }
+
+  const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
+  if (opts.baseurl != null) config.baseurl = opts.baseurl;
+  if (opts.url != null) config.url = opts.url;
 
   // Issue build-info immediately so the git shell-outs overlap with the
   // CPU-bound nav work.
   const buildInfoPromise = captureBuildInfo();
 
-  const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
-  if (opts.baseurl != null) config.baseurl = opts.baseurl;
-  if (opts.url != null) config.url = opts.url;
+  const { pages, staticFiles } = await discover(srcRoot, config.exclude ?? []);
+  t.lap("discover");
+
   const { navTree } = computeNav(pages, config);
   t.lap("nav");
 
@@ -173,9 +181,13 @@ export async function runBuild(opts) {
   await templatePhase(pages, site);
   t.lap("template");
 
-  const generatedAssets = highlighter.themeCss
-    ? [{ rel: "assets/css/tb-highlight.css", content: highlighter.themeCss }]
-    : [];
+  const generatedAssets = [];
+  if (highlighter.themeCss) {
+    generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: highlighter.themeCss });
+  }
+  if (scssResult.compiled) {
+    generatedAssets.push({ rel: "assets/css/just-the-docs-combined.css", content: scssResult.css });
+  }
   const writeStats = await writePhase(pages, staticFiles, {
     destRoot,
     dryRun,

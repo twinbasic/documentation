@@ -12,36 +12,13 @@ import { permalinkToDestPath } from "./paths.mjs";
 const PAGE_EXT = /\.(md|html)$/i;
 const IMAGE_SCOPE = /(^|\/)Images\//;
 
-// Files that look like pages but are toolchain artifacts.
-const IGNORE = [
-  // Underscored directories at the root and at any depth -- catches
-  // _site, _site-offline, _site-pdf, _pdf, _data, _includes, _layouts,
-  // _sass, _plugins, _profile, and every _Images at any depth.
-  "_*/**",
-  "**/_*/**",
-  // Defensive: caches and unrelated trees that should never be in docs/.
-  "**/.git/**",
-  "**/node_modules/**",
-  "**/.jekyll-cache/**",
-  "**/.sass-cache/**",
-  // Theme assets ship prebuilt from builder/assets/ instead.
-  "assets/css/**",
-  "assets/js/**",
-  // Top-level Jekyll / toolchain files.
-  "Gemfile",
-  "Gemfile.lock",
-  "_config.yml",
-  "*.bat",
-  "redirects.json",
-];
-
-export async function discover(srcRoot) {
+export async function discover(srcRoot, ignore = []) {
   const allFiles = await fg("**/*", {
     cwd: srcRoot,
     dot: false,
     onlyFiles: true,
     followSymbolicLinks: false,
-    ignore: IGNORE,
+    ignore,
   });
   allFiles.sort();
 

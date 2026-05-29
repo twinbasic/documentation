@@ -1,16 +1,68 @@
----
----
-{% include css/just-the-docs.scss.liquid color_scheme="light" %}
-@import "custom/twinbasic-light";
+// Combined just-the-docs stylesheet -- compiled by builder/scss.mjs.
+//
+// Sass load paths (set in scss.mjs, searched in order):
+//   1. docs/_sass/         -- our customizations (custom/*.scss, etc.)
+//   2. builder/vendor/just-the-docs/_sass/  -- pristine JTD v0.10.1 sources
+//
+// Our docs/_sass/custom/custom.scss therefore shadows the gem's empty
+// upstream custom/custom.scss via load-path ordering -- same behavior the
+// Jekyll build relied on.
+//
+// This file replaces the Liquid-templated entry point Jekyll used
+// (`_includes/css/just-the-docs.scss.liquid`). Inline comments mark where
+// each block corresponds to the Liquid include's output.
+
+// site.logo = "favicon.png", relative_url-prefixed for the empty baseurl:
+$logo: "/favicon.png";
+
+// ── Light theme (root level) ──────────────────────────────────────────────
+//
+// Replicates the gem's `just-the-docs.scss.liquid` with color_scheme="light".
+
+@import "support/support";       // variables + mixins
+@import "custom/setup";          // gem's pre-color-scheme hook (empty upstream)
+@import "color_schemes/light";   // light theme variable values
+@import "modules";               // all gem CSS modules
+
+// callouts.scss.liquid output. site.callouts is configured but empty, so the
+// `{% for callout in site.callouts %}` loop produces nothing -- only the
+// unconditional div.opaque rule is emitted.
+div.opaque {
+  background-color: $body-background-color;
+}
+
+// custom.scss.liquid expands to `@import "./custom/custom"`. Our shadow at
+// docs/_sass/custom/custom.scss adds admonitions, .site-logo, and the
+// dark-mode scrollbar rules.
+@import "custom/custom";
 
 span {
   color: $link-color;
 }
 
+// ── Dark theme ────────────────────────────────────────────────────────────
+//
+// Replicates the gem's `just-the-docs.scss.liquid` with color_scheme="dark",
+// nested under html.dark-mode so every emitted rule is scoped.
+//
+// Note: the Jekyll build re-imported custom/custom.scss here via the second
+// expansion of custom.scss.liquid, which produced doubled
+// `html.dark-mode html.dark-mode` scrollbar selectors. We don't replay that
+// import -- our root-level @import "custom/custom" above already emits the
+// dark-mode scrollbar rules correctly.
+
 html.dark-mode {
-  $color-scheme: dark;
-  {% include css/just-the-docs.scss.liquid color_scheme="dark" %}
-  @import "custom/twinbasic-dark";
+  @import "color_schemes/dark";  // overrides JTD variables to dark values
+  @import "modules";             // re-emits all module CSS with dark values
+
+  div.opaque {
+    background-color: $body-background-color;
+  }
+
+  // Re-emit the code font-size / inline-padding overrides defined in
+  // custom/custom.scss; without this scope the JTD dark-theme `code`
+  // rule (specificity 0,1,1) out-ranks our root-level override (0,0,1).
+  @include tb-code-overrides;
 
   // ---------------------------------------------------------------
   // Workaround for the dark-mode + .search-active interaction.
@@ -107,17 +159,15 @@ html.dark-mode {
   // ---------------------------------------------------------------
 
   div.highlighter-rouge div.highlight {
-	line-height: 1;
+    line-height: 1;
   }
 
   span {
     color: $link-color;
   }
 
-  /* just-the-docs-switchable-src.css */
-
   .site-footer {
-	color: #959396;
+    color: #959396;
   }
 
   h1,
