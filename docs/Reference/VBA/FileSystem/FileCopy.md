@@ -14,10 +14,10 @@ Copies a file.
 Syntax: **FileCopy** *source*, *destination*
 
 *source*
-: String expression that specifies the name of the file to be copied. The *source* may include directory or folder, and drive.
+: *required* String expression that specifies the name of the file to be copied. The *source* may include directory or folder, and drive.
 
 *destination*
-: String expression that specifies the target file name. The *destination* may include directory or folder, and drive.
+: *required* String expression that specifies the target file name. The *destination* may include directory or folder, and drive.
 
 An error occurs when **FileCopy** is used on a file that is currently open.
 
