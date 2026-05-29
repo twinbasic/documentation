@@ -14,38 +14,38 @@ One-line-per-tool reference for every executable in the documentation repository
 {:toc}
 ## Batch wrappers under docs/
 
-Each batch file changes to the `docs/` folder first, runs its underlying command, then restores the working directory. POSIX equivalents are listed in the per-batch entry below.
+Each batch file uses `@pushd "%~dp0"` to run from the repository root regardless of where it is invoked from. POSIX equivalents are listed in the per-batch entry below.
 
-### docs/build.bat
+### build.bat
 
-    docs\build.bat [extra tbdocs flags]
+    build.bat [extra tbdocs flags]
 
-Renders the documentation. Wraps `node ..\builder\tbdocs.mjs --src .` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`. Build time on the current tree is ~3 seconds end-to-end.
+Renders the documentation. Wraps `node builder\tbdocs.mjs --src docs` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`. Build time on the current tree is ~3 seconds end-to-end.
 
-### docs/serve.bat
+### serve.bat
 
-    docs\serve.bat
+    serve.bat
 
-Starts a long-lived dev process. Wraps `node ..\builder\tbdocs.mjs --src . --serve` and forwards extra arguments through `%*`. After an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each change, and a browser connected to the page auto-reloads via SSE on each successful rebuild. Offline and PDF passes are skipped each rebuild. Ctrl+C exits cleanly. **Only failures (4xx, 5xx, server exceptions) are logged** --- successful requests are silent.
+Starts a long-lived dev process. Wraps `node builder\tbdocs.mjs --src docs --serve` and forwards extra arguments through `%*`. After an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each change, and a browser connected to the page auto-reloads via SSE on each successful rebuild. Offline and PDF passes are skipped each rebuild. Ctrl+C exits cleanly. **Only failures (4xx, 5xx, server exceptions) are logged** --- successful requests are silent.
 
-### docs/check.bat
+### check.bat
 
-    docs\check.bat
+    check.bat
 
 Runs `scripts/check_links.mjs` against the rendered `_site/` and `_site-offline/` trees in two parallel passes. The offline pass also runs `--forbid "https://docs.twinbasic.com"` to flag any surviving live-site link the offline rewrite missed. Both passes assert link integrity, HTML well-formedness, duplicate-`id` detection, anchor resolution, and accessibility hints; the online pass additionally checks `sitemap.xml` and the search index. Requires `build.bat` to have run first.
 
-### docs/book.bat
+### book.bat
 
-    docs\book.bat
+    book.bat
 
-Renders the PDF book from `_site-pdf/book.html` into `_pdf/twinBASIC Book.pdf`. Calls `node ..\book\render-book.mjs` (see [below](#bookrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` at the repository root if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `docs/book.bat` and in `.github/workflows/jekyll-gh-pages.yml`.
+Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC Book.pdf`. Calls `node book\render-book.mjs` (see [below](#bookrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `book.bat` and in `.github/workflows/jekyll-gh-pages.yml`.
 
 ## CLI tools
 
 ### tbdocs --- node builder/tbdocs.mjs
 {: #tbdocs }
 
-Entry point for the static site generator. `docs/build.bat` invokes it as `node ..\builder\tbdocs.mjs --src .`; in CI it is run from the repository root.
+Entry point for the static site generator. `build.bat` invokes it as `node builder\tbdocs.mjs --src docs`; CI invokes it the same way.
 
 Full invocation:
 
@@ -120,7 +120,7 @@ Key options used by `book.bat`:
 |---|---|
 | `-o <output.pdf>` | Output PDF path. |
 | `--outline-tags h1,h2,h3,h4` | Heading levels to include in the PDF outline / bookmarks. |
-| `--additional-script <path>` | Path to a script injected before paged.js runs. `book.bat` passes `..\perf\detach-pages.js`, which hides each finalised page from Chromium's layout tree and restores them all before `page.pdf()` runs, dropping render time from ~104s to ~51s on the 1,638-page book by sidestepping paged.js's quadratic overflow walker. |
+| `--additional-script <path>` | Path to a script injected before paged.js runs. `book.bat` passes `perf\detach-pages.js`, which hides each finalised page from Chromium's layout tree and restores them all before `page.pdf()` runs, dropping render time from ~104s to ~51s on the 1,638-page book by sidestepping paged.js's quadratic overflow walker. |
 
 ## Configuration files
 

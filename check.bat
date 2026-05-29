@@ -1,4 +1,4 @@
-@pushd "%~dp0..\"
+@pushd "%~dp0"
 node scripts/check_links.mjs --offline --include-fragments ^
     --check-html --check-a11y --check-ids ^
     --check-sitemap --check-search --check-canonical ^

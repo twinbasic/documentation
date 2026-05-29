@@ -1,3 +1,0 @@
-@pushd "%~dp0"
-node ..\builder\tbdocs.mjs --src . %*
-@popd

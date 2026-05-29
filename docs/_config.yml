@@ -97,8 +97,6 @@ exclude:
   # Theme assets ship prebuilt from builder/assets/ instead.
   - assets/css/**
   - assets/js/**
-  # Top-level batch files are toolchain helpers, not site content.
-  - "*.bat"
   # Mermaid source files -- the build outputs .svg counterparts; the .mmd
   # sources are not part of the published site.
   - "**/*.mmd"

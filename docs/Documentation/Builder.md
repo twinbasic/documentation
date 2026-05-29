@@ -128,7 +128,7 @@ The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightw
 
 ### [discover.mjs](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) --- Phase 1
 
-The `exclude:` list from `_config.yml` is passed in as the `ignore` parameter and forwarded directly to `fast-glob`. It skips every underscore-prefixed file and directory (`_config.yml`, `_book.yml`, `_site/`, `_site-offline/`, `_site-pdf/`, every `_Images/` at any depth), the prebuilt theme trees under `assets/css/` and `assets/js/` (sourced from `builder/assets/` instead), top-level batch files (`*.bat`), Mermaid source files (`**/*.mmd`), and the obvious cache dirs.
+The `exclude:` list from `_config.yml` is passed in as the `ignore` parameter and forwarded directly to `fast-glob`. It skips every underscore-prefixed file and directory (`_config.yml`, `_book.yml`, `_site/`, `_site-offline/`, `_site-pdf/`, every `_Images/` at any depth), the prebuilt theme trees under `assets/css/` and `assets/js/` (sourced from `builder/assets/` instead), Mermaid source files (`**/*.mmd`), and the obvious cache dirs.
 
 The final `pages.sort(byName)` mirrors Jekyll's `site.pages.sort_by!(&:name)` --- sort by basename, leaving fast-glob's input order to break ties (which `nav_order` then resolves deterministically in Phase 2).
 
@@ -278,7 +278,7 @@ Re-extraction is a one-off event triggered by a deliberate theme bump or a hand-
 
 ## Verification
 
-Site integrity after a build is asserted by `docs/check.bat`, which runs `scripts/check_links.mjs` against `_site/` and `_site-offline/`. The CI workflow runs the same passes plus the `crawl_check.mjs` post-deploy check.
+Site integrity after a build is asserted by `check.bat`, which runs `scripts/check_links.mjs` against `_site/` and `_site-offline/`. The CI workflow runs the same passes plus the `crawl_check.mjs` post-deploy check.
 
 The build itself includes a small guard at the end of `tbdocs.mjs`:
 

@@ -13,7 +13,7 @@ This section covers everything related to the twinBASIC documentation: the URL c
 
 ## Toolchain overview
 
-Three commands, all run from inside `docs/`, handle the entire build-and-verify workflow. `build.bat` produces three output trees from the markdown source; `check.bat` validates link integrity on the two HTML trees; `book.bat` renders the PDF from the third.
+Three commands handle the entire build-and-verify workflow. `build.bat` produces three output trees from the markdown source; `check.bat` validates link integrity on the two HTML trees; `book.bat` renders the PDF from the third.
 
 ![Toolchain overview](/assets/images/mmd/toolchain-overview.svg)
 
