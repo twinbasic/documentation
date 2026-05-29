@@ -7,6 +7,8 @@ permalink: /tB/IDE/Project/Outline
 
 # Outline
 
+The Outline pane shows a structural overview of the declarations in the active source file---modules, classes, procedures, and properties.
+
 When a project isn't open this will be empty.
 
 ![Outline](Images/Outline.png "Outline")

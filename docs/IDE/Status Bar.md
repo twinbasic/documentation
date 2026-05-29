@@ -9,6 +9,8 @@ permalink: /tB/IDE/Project/StatusBar
 
 ![Status Bar](Images/StatusBar.png "Status Bar")
 
+The Status Bar runs along the bottom of the IDE window and shows at-a-glance information about the health of backend services, the active licence tier, and quick-access links to community resources.
+
 ## Services
 
 ![Services Unavailable](Images/Services_Unavailable.png "Services Unavailable")
