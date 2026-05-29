@@ -371,7 +371,7 @@ writePhase(
 ): Promise<{ pages: { written, skipped }, theme: { copied }, staticFiles: { copied } }>
 ```
 
-Clears then recreates `destRoot`, then runs three operations in parallel: writes each `page.html` to its `destPath`; copies `builder/assets/` to `<destRoot>/assets/` (with a CSS `url()` baseurl rewrite for non-empty baseurls); and copies every `staticFiles[]` entry. Skips pages where `page.html` is `undefined`.
+Clears then recreates `destRoot`, then runs three operations in parallel: writes each `page.html` to its `destPath`; copies the vendored just-the-docs JS from `builder/vendor/just-the-docs/assets/` to `<destRoot>/assets/`; and copies every `staticFiles[]` entry (which includes the project-owned theme files now living under `docs/assets/`). A CSS `url()` baseurl rewrite runs over both copy paths and over generated CSS assets so root-absolute `url("/path")` references resolve correctly under non-empty baseurls. After the parallel batch, `writeGeneratedAssets` writes `generatedAssets[]` (the SCSS-compiled CSS and the highlight theme CSS) sequentially so they win any rel-path collision. Skips pages where `page.html` is `undefined`.
 
 **Reads:** `page.html`, `page.destPath`, `staticFile.srcPath`, `staticFile.destRel`.  
 **Writes:** `<destRoot>/**` (the online tree).

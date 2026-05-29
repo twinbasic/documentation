@@ -47,6 +47,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | [`build-info.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/build-info.mjs) | Phase 2 git commit hash + commit date capture. |
 | [`data.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/data.mjs) | Phase 2 `_book.yml` loader. |
 | [`mermaid.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/mermaid.mjs) | Phase 11 (B1) preprocess: `.mmd` → `.svg` regeneration. |
+| [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs) | Phase 11 (B3) preprocess: compiles `docs/assets/css/just-the-docs-combined.scss` via Dart Sass into the just-the-docs stylesheet. |
 | [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) | Phase 3 markdown-it pipeline: GFM admonitions, kramdown-style attributes, deflist, footnotes, header IDs, TOC, relative-link rewriting. |
 | [`highlight.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight.mjs) | Phase 3 Shiki bootstrap plus the twinBASIC grammar. Emits the just-the-docs wrapper structure. |
 | [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs) | Phase 11 (B2) theme loader: reads `themes/*.theme`, derives the palette, emits `tb-highlight.css` and the scope-to-class lookup. |
@@ -98,6 +99,7 @@ A single `package.json` at the repo root carries everything --- the static site 
     "mermaid": "11.15.0",
     "pdf-lib": "1.17.1",
     "puppeteer": "25.0.4",
+    "sass": "^1.0",
     "shiki": "^1.0"
   },
   "scripts": {
@@ -106,7 +108,7 @@ A single `package.json` at the repo root carries everything --- the static site 
 }
 ```
 
-No template engine, no framework, no bundler. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` so the offline patcher can target the AST instead of regex-matching strings; `markdown-it-{attrs,deflist,footnote}` cover the kramdown extensions the legacy renderer supported; `shiki` does the syntax highlighting; `lunr` powers the search index. `mermaid` and `puppeteer` together drive the `.mmd` → `.svg` pre-phase (one headless Chromium per batch, replacing the old per-diagram `npx mmdc` fork); `puppeteer` is shared with the PDF renderer (`book/render-book.mjs`). `pdf-lib` + `html-entities` + `htmlparser2` are the PDF renderer's own toolchain. The `postinstall` runs `builder/scripts/patch-dagre.mjs`, which rewrites mermaid's bundled dagre adapter --- see [Mermaid Dagre Patches](Fixes/Dagre).
+No template engine, no framework, no bundler. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` so the offline patcher can target the AST instead of regex-matching strings; `markdown-it-{attrs,deflist,footnote}` cover the kramdown extensions the legacy renderer supported; `shiki` does the syntax highlighting; `lunr` powers the search index. `mermaid` and `puppeteer` together drive the `.mmd` → `.svg` pre-phase (one headless Chromium per batch, replacing the old per-diagram `npx mmdc` fork); `puppeteer` is shared with the PDF renderer (`book/render-book.mjs`). `sass` (Dart Sass) compiles the vendored just-the-docs SCSS plus our customizations into the site stylesheet on every build, replacing the Jekyll-Sass pre-compile step. `pdf-lib` + `html-entities` + `htmlparser2` are the PDF renderer's own toolchain. The `postinstall` runs `builder/scripts/patch-dagre.mjs`, which rewrites mermaid's bundled dagre adapter --- see [Mermaid Dagre Patches](Fixes/Dagre).
 
 `mermaid` is **exact-pinned** (`"11.15.0"`, not `"^11.15.0"`). The dagre patches target a chunk filename whose hash component (`dagre-ZXKKJJHT.mjs`) is regenerated on each mermaid release, so a floated range could break the postinstall on a transparent patch bump.
 
@@ -128,7 +130,7 @@ The 300 ms debounce coalesces rapid file changes into a single rebuild. A lightw
 
 ### [discover.mjs](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) --- Phase 1
 
-The `exclude:` list from `_config.yml` is passed in as the `ignore` parameter and forwarded directly to `fast-glob`. It skips every underscore-prefixed file and directory (`_config.yml`, `_book.yml`, `_site/`, `_site-offline/`, `_site-pdf/`, every `_Images/` at any depth), the prebuilt theme trees under `assets/css/` and `assets/js/` (sourced from `builder/assets/` instead), Mermaid source files (`**/*.mmd`), and the obvious cache dirs.
+The `exclude:` list from `_config.yml` is passed in as the `ignore` parameter and forwarded directly to `fast-glob`. It skips every underscore-prefixed file and directory (`_config.yml`, `_book.yml`, `_site/`, `_site-offline/`, `_site-pdf/`, every `_Images/` at any depth), SCSS sources (`**/*.scss`, compiled separately by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs)), Mermaid sources (`**/*.mmd`, the `.svg` siblings are kept), and the obvious cache dirs.
 
 The final `pages.sort(byName)` mirrors Jekyll's `site.pages.sort_by!(&:name)` --- sort by basename, leaving fast-glob's input order to break ties (which `nav_order` then resolves deterministically in Phase 2).
 
@@ -186,6 +188,21 @@ The render runs in a single `page.evaluate` that dynamic-imports `mermaid.esm.mj
 
 - **Setup** (`puppeteer` import fails, mermaid not installed, `puppeteer.launch()` fails for lack of Chrome): warns once with the recovery command (`npm install` / `npx puppeteer browsers install chrome --install-deps`), retains every on-disk SVG, returns `{ ..., setupSkipped: true }`. The orchestrator does **not** flip the exit code --- a fresh checkout still builds, just without diagram updates.
 - **Per-diagram render** (broken `.mmd` syntax, mermaid render throws inside `page.evaluate`): warns with the parser error including line + column + expected-token list, retains that diagram's previous SVG, **continues** processing the rest of the batch so every broken diagram surfaces in one run, and increments the returned `failed` count. The orchestrator flips `process.exitCode = 1` based on that count so CI catches the bad diagram.
+
+### [scss.mjs](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs) --- Phase 11 (B3) SCSS compiler
+
+Runs Dart Sass (the [`sass`](https://www.npmjs.com/package/sass) npm package) over `docs/assets/css/just-the-docs-combined.scss` and pushes the result onto `generatedAssets` as `assets/css/just-the-docs-combined.css`. Replaces the Jekyll-era pre-compiled CSS that used to live under `builder/assets/`; editing any SCSS partial now reflects on the next build instead of requiring a re-extraction.
+
+Load paths are stacked, searched in order: `docs/_sass/` first (our customizations under `custom/`), then `builder/vendor/just-the-docs/_sass/` (the gem at v0.10.1). The same shadowing Jekyll relied on still applies --- `@import "custom/custom"` resolves to our `docs/_sass/custom/custom.scss` because the load-path order puts our `_sass/` first.
+
+The entry point replicates the gem's `_includes/css/just-the-docs.scss.liquid` Liquid template as pure SCSS: it imports `support/support`, then `custom/setup`, then `color_schemes/light` (always), then `modules` --- emitting the full light-theme rule set at root. The same import block re-runs inside an `html.dark-mode { ... }` wrapper with `color_schemes/dark` instead so every module rule lands a second time with the dark palette, scoped under the dark-mode class.
+
+Failure modes:
+
+- **Setup** (`sass` not installed) is a hard error with a `npm install` hint --- there is no pre-compiled CSS fallback to fall back to.
+- **Content** (syntax error in any SCSS partial) prints the source location, flips `process.exitCode = 1`, and continues the build with the previous `_site/` CSS lingering if any. CI catches the non-zero exit.
+
+Upstream Dart Sass emits deprecation warnings against several gem-vendored constructs (`darken()`, root-`@import`); they're upstream noise, not actionable here without forking the gem.
 
 ### [render.mjs](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) --- Phase 3 markdown pipeline
 
@@ -270,11 +287,19 @@ The image-path collector folds into `assembleBook`'s per-chapter emit (Phase 9 �
 
 `reportMissingImages` implements pdfify.rb's strict mode: per-path error log, then throw if `!tolerateMissingImages`. Every Phase 8 invocation runs in strict mode by default --- a missing image in the assembled book is a build-fail rather than a warning, since the alternative is a PDF with broken-image placeholders nobody notices until publication. The `--tolerate-missing-images` flag (renamed from `--serving` in Phase 12) downgrades the throw to a warning for iterative work.
 
-## Static asset extraction
+## Asset layout
 
-The bundled theme assets live under [`builder/assets/`](https://github.com/twinbasic/documentation/blob/main/builder/assets) and are copied verbatim into `<destRoot>/assets/` on every build. The seven files there are the just-the-docs chrome's runtime dependencies; they were extracted once from a Jekyll build of the upstream theme and committed at the version pinned at cutover time.
+The site's `/assets/` tree at deploy time is assembled from three sources:
 
-Re-extraction is a one-off event triggered by a deliberate theme bump or a hand-written CSS / JS change. The procedure requires temporarily restoring the legacy Jekyll source set (`docs/_plugins/`, `docs/_includes/`, `docs/_layouts/`, `docs/_sass/`, `docs/Gemfile`, `docs/Gemfile.lock`) from git history (the cutover commit and its prior state), running `bundle install && bundle exec jekyll build`, copying the produced files out of `_site/assets/` into `builder/assets/`, and then reverting the restore --- see [`builder/assets/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/assets/README.md) for the full procedure, the CSS class contract the generator targets, and the upstream sources each file came from.
+| Source on disk | What lives there | Phase that delivers it |
+|---|---|---|
+| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-switch.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Mermaid diagrams (`.mmd` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by [`write.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/write.mjs)'s `copyStaticFiles`. |
+| `builder/vendor/just-the-docs/` | Vendored from the just-the-docs gem (v0.10.1): `_sass/` (the theme's SCSS sources, fed into the compilation) and `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (the chrome runtime, copied verbatim). See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the inventory, re-vendoring procedure, and the in-tree patches applied to `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `write.mjs`'s `copyTheme`. |
+| Generated in-process | `just-the-docs-combined.css` (from [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs)) and `tb-highlight.css` (from [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs)). Neither is committed; both are rebuilt every run. | Pushed onto `generatedAssets` in [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs); written by `write.mjs`'s `writeGeneratedAssets` after `copyTheme` so the generated content wins any collision. |
+
+CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is non-empty; the same transform applies to generated CSS, so the `url("/favicon.png")` the SCSS entry point emits resolves correctly under sub-path deployments.
+
+There is no theme re-extraction step any more --- the SCSS sources live in tree, the build compiles them on every run via Dart Sass. Bumping just-the-docs is a matter of re-vendoring `_sass/` and `assets/js/` from the new gem tag (procedure in the vendor README), re-applying the `just-the-docs.js` patches if upstream changed them, and rebuilding.
 
 ## Verification
 

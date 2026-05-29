@@ -58,16 +58,23 @@ project's `_config.yml` `exclude:` list, and tbdocs-specific opt-outs.
 | `*.bat` | Per `_config.yml exclude:` — `build.bat`, `serve.bat`, `check.bat`, `book.bat`, `profile-rbspy.bat`, `profile-rubyprof.bat`. |
 | `redirects.json` | Per `_config.yml exclude:`. Note: doesn't currently exist in the tree, but the entry is there to be defensive against future regressions. |
 
-**Excluded directories — tbdocs-specific:**
+**Excluded patterns — tbdocs-specific:**
 
-| Path | Why |
+| Pattern | Why |
 |---|---|
-| `assets/css/` | Theme CSS / SCSS. Jekyll currently runs Liquid + Sass over `just-the-docs-combined.scss` and `just-the-docs-head-nav.css`, copies `print.css` / `rouge.css` verbatim. tbdocs takes the four compiled files from `builder/assets/css/` instead (per PLAN.md "Static Asset Extraction"). Phase 5 handles the copy. Skipping in Phase 1 prevents the source tree from shadowing the prebuilt artifacts. |
-| `assets/js/` | Same story. The single `theme-switch.js` file in the source comes through pre-built from `builder/assets/js/` together with the just-the-docs runtime and the lunr vendor bundle. |
+| `**/*.scss` | SCSS sources fed into [`scss.mjs`](scss.mjs) (the only entry point currently lives at `docs/assets/css/just-the-docs-combined.scss`, with partials under `docs/_sass/custom/`). The compiled output is emitted on `generatedAssets` and written by Phase 5's `writeGeneratedAssets`, so letting Phase 1 enumerate the source `.scss` would shadow the generator output. |
+| `**/*.mmd` | Mermaid diagram sources fed into [`mermaid.mjs`](mermaid.mjs)'s preprocessor. The `.svg` siblings are kept --- content pages reference those. |
 
-`assets/images/` is **not** excluded — it carries the mermaid SVG renders
-(`assets/images/mmd/*.svg`) that content pages reference, and the
-`favicon.png` should keep landing at the same URL.
+`assets/css/` and `assets/js/` themselves are **not** excluded any more ---
+the project-owned theme files now live there (`assets/css/print.css`,
+`assets/css/just-the-docs-head-nav.css`, `assets/js/theme-switch.js`) and
+ride the normal static-file copy pipeline into `_site/`. Vendored
+just-the-docs JS lives under `builder/vendor/just-the-docs/assets/` and
+is copied separately by Phase 5's `copyTheme`.
+
+`assets/images/` is also not excluded --- it carries the rendered mermaid
+SVGs (`assets/images/mmd/*.svg`) referenced by content pages, plus the
+favicon and any content images.
 
 ### Assumption: the exclude list is complete
 
@@ -291,8 +298,8 @@ export async function discover(srcRoot) {
       "**/_*/**",          // …and at any depth (catches _Images).
       "**/.git/**",
       "**/node_modules/**",
-      "assets/css/**",
-      "assets/js/**",
+      "**/*.scss",         // SCSS sources -- compiled by scss.mjs.
+      "**/*.mmd",          // Mermaid sources -- compiled by mermaid.mjs.
       // Top-level Jekyll/toolchain files:
       "Gemfile",
       "Gemfile.lock",
@@ -436,17 +443,23 @@ Per the user's choice. Reasons:
 The orchestrator (`tbdocs.mjs`) is responsible for invoking `book.mjs`
 with the source root so it can read `_data/book.yml` itself.
 
-### D5. `assets/css/` and `assets/js/` are excluded
+### D5. Source-vs-output split is by extension, not by directory
 
-Per PLAN.md "Static Asset Extraction": the production CSS / JS lives
-prebuilt in `builder/assets/`. Letting Phase 1 also enumerate the source
-versions would force Phase 5 to disambiguate which copy wins — better to
-make the source/prebuilt split a Phase 1 concern.
+`**/*.scss` and `**/*.mmd` are excluded because they're inputs to
+[`scss.mjs`](scss.mjs) and [`mermaid.mjs`](mermaid.mjs) respectively ---
+both run before Phase 1 and write either to `generatedAssets` (CSS) or
+back under `srcRoot` (the `.svg` siblings the Mermaid preprocessor
+emits). Letting Phase 1 enumerate the `.scss` sources would race the
+generator output at write time; letting it enumerate the `.mmd` sources
+would publish a non-deployable artifact.
 
-`assets/images/` is **not** excluded. It carries the mermaid SVG renders
-(`assets/images/mmd/*.svg`) referenced by content pages, plus is where
-new content images would naturally land. Phase 5 copies these via the
-normal static-file pipeline.
+The broader `assets/` tree is **not** excluded. Project-owned theme files
+(`assets/css/print.css`, `assets/css/just-the-docs-head-nav.css`,
+`assets/js/theme-switch.js`) live there and ride the normal static-file
+copy pipeline; `assets/images/` carries content images plus the rendered
+mermaid SVGs. The vendored just-the-docs runtime JS lives outside
+`docs/` under `builder/vendor/just-the-docs/assets/` and Phase 5's
+`copyTheme` carries it across separately.
 
 **Risk:** if someone adds a new content asset under `assets/css/` or
 `assets/js/` (an inline icon, a tiny utility script), Phase 1 will drop

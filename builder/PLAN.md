@@ -113,8 +113,14 @@ It reads from `docs/` and writes to `docs/_site/` / `docs/_site-offline/`
 / `docs/_site-pdf/` -- the same destinations Jekyll uses, so deployment
 tooling (GitHub Pages serving from `/docs/`) stays unchanged.
 
-Static assets (CSS, JS, SVGs) extracted once from the current Jekyll build live in
-`builder/assets/` and get copied verbatim to `docs/_site/assets/` on each build.
+Site assets are assembled from three sources: project content under `docs/assets/`
+(SCSS entry point, hand-written CSS, project JS, content images, Mermaid diagrams);
+vendored just-the-docs bits under `builder/vendor/just-the-docs/` (`_sass/` compiled
+on every build by [`scss.mjs`](scss.mjs); `assets/js/just-the-docs.js` + `vendor/lunr.min.js`
+copied verbatim by [`write.mjs`](write.mjs)); and generated-in-process artifacts
+(`just-the-docs-combined.css` from `scss.mjs`, `tb-highlight.css` from
+[`highlight-theme.mjs`](highlight-theme.mjs)). See the **Asset layout** section below
+for the full breakdown.
 
 ## Dependencies
 
@@ -169,12 +175,12 @@ with no perf budget set yet.
 
 Input: the `docs/` source tree. Excluded: all `_*` directories (catches
 `_site/`, `_site-offline/`, `_site-pdf/`, `_data/`, `_includes/`, `_layouts/`,
-`_sass/`, `_plugins/`, `_profile/`, and every `_Images/`), `assets/css/` and
-`assets/js/` (theme assets, sourced from `builder/assets/` instead),
-top-level Jekyll/toolchain files (`_config.yml`, `Gemfile`, `Gemfile.lock`,
-`*.bat`), and `.jekyll-cache` / `.sass-cache` / `node_modules`. The builder
-itself lives at `../builder/` (outside `docs/`) and isn't part of the
-source tree.
+`_sass/`, `_plugins/`, `_profile/`, and every `_Images/`), SCSS sources
+(`**/*.scss`, compiled separately by [`scss.mjs`](scss.mjs)), Mermaid sources
+(`**/*.mmd`, the `.svg` siblings are kept), top-level Jekyll/toolchain files
+(`_config.yml`, `Gemfile`, `Gemfile.lock`, `*.bat`), and `.jekyll-cache` /
+`.sass-cache` / `node_modules`. The builder itself lives at `../builder/`
+(outside `docs/`) and isn't part of the source tree.
 
 Output: `{ pages, staticFiles }`.
 
@@ -327,10 +333,17 @@ block from `page.navLevels` -- positional `:nth-child()` selectors.
 ### Phase 5: WRITE ONLINE (`write.mjs`)
 
 - For each page: write destPath to `_site/`
-- Copy theme assets: `builder/assets/` -> `docs/_site/assets/` (CSS, JS, sprites)
+- Copy vendored theme JS: `builder/vendor/just-the-docs/assets/` ->
+  `docs/_site/assets/` (`just-the-docs.js` + `vendor/lunr.min.js`)
 - Copy every entry in `staticFiles[]` (from Phase 1) to its `destRel` under
-  `_site/` -- content images, `favicon.png`, `CNAME`, `render-book.mjs`,
-  `lib/*.mjs`, `assets/images/mmd/*`
+  `_site/` -- project-owned theme files (`assets/css/print.css`,
+  `assets/css/just-the-docs-head-nav.css`, `assets/js/theme-switch.js`),
+  content images, `favicon.png`, `CNAME`, `render-book.mjs`, `lib/*.mjs`,
+  `assets/images/mmd/*.svg`
+- After the parallel batch, write `generatedAssets[]` --- the SCSS-compiled
+  `just-the-docs-combined.css` and the highlight-theme `tb-highlight.css`.
+  CSS files in any of the three paths get a baseurl rewrite when the deployment
+  baseurl is non-empty
 
 Pure filesystem I/O -- no transformation, no URL rewriting. Phase 6
 adds `search-data.json`, redirects, sitemap, and robots.txt alongside
@@ -452,18 +465,24 @@ discipline of Phases 3-9 had deferred. All five PRs landed:
 B6 (linkify) and B18 (streaming book.html write) were dropped.
 Full spec: [PLAN-11.md](PLAN-11.md).
 
-## Static Asset Extraction (One-Time Setup)
+## Asset layout
 
-Before the first build, extract from the current Jekyll output:
+`_site/assets/` is assembled from three sources at build time --- nothing is
+extracted out of a Jekyll build any more.
 
-1. **CSS** -- `_site/assets/css/just-the-docs-combined.css` (compiled theme with custom
-   colors baked in), `just-the-docs-head-nav.css`, `print.css`, `rouge.css`
-2. **JS** -- `_site/assets/js/just-the-docs.js`, `vendor/lunr.min.js`
-3. **SVG sprites** -- the `<svg>` defs block from any rendered page
-4. **Favicon** -- `favicon.png`
+| Source on disk | What lives there | Phase that delivers it |
+|---|---|---|
+| `docs/assets/` | Project-owned content: the SCSS entry point (`css/just-the-docs-combined.scss`, excluded from copy, fed into Sass), project JS (`js/theme-switch.js`), hand-written stylesheets (`css/print.css`, `css/just-the-docs-head-nav.css`), Mermaid diagrams (`.mmd` sources excluded, `.svg` renders included), content images. | Discovered by Phase 1, copied by Phase 5's `copyStaticFiles`. |
+| `builder/vendor/just-the-docs/` | Vendored from the just-the-docs gem (v0.10.1): `_sass/` (theme SCSS sources, fed into the compilation); `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (chrome runtime, copied verbatim, `just-the-docs.js` patched in tree). See [`builder/vendor/just-the-docs/README.md`](vendor/just-the-docs/README.md). | `_sass/` consumed by [`scss.mjs`](scss.mjs); `assets/` copied by Phase 5's `copyTheme`. |
+| Generated in-process | `just-the-docs-combined.css` from [`scss.mjs`](scss.mjs); `tb-highlight.css` from [`highlight-theme.mjs`](highlight-theme.mjs). Neither is committed; both are rebuilt every run. | Pushed onto `generatedAssets`; written by Phase 5's `writeGeneratedAssets` after the parallel copy batch. |
 
-These live in `builder/assets/` and get copied verbatim to `docs/_site/assets/` on each build.
-If the custom color scheme ever changes, recompile once manually with `sass`.
+CSS files in any of the three paths run through a baseurl rewrite
+(`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is
+non-empty.
+
+Bumping the just-the-docs gem version is a re-vendor of `_sass/` and
+`assets/js/` from the new tag plus re-applying the `just-the-docs.js`
+patches; procedure in the vendor README.
 
 ## What Doesn't Get Ported
 
