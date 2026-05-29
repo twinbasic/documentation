@@ -33,4 +33,6 @@ Debug.Print IsArrayInitialized(a)     ' False — Erase released the storage.
 ### See Also
 
 - [IsArray](IsArray) function
+- [IsObject](IsObject) function
+- [IsEmpty](IsEmpty) function
 - [LBound](LBound), [UBound](UBound) functions

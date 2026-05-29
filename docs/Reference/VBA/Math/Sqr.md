@@ -25,3 +25,8 @@ MySqr = Sqr(23)    ' Returns 4.79583152331272.
 MySqr = Sqr(0)     ' Returns 0.
 MySqr = Sqr(-4)    ' Generates a run-time error.
 ```
+
+### See Also
+
+- [Exp](Exp) function
+- [Log](Log) function

@@ -37,3 +37,8 @@ Dim customerName As Variant
 customerName = recordset.Fields("Name").Value
 MsgBox "Customer Name: " & Nz(customerName, "Unknown")
 ```
+
+### See Also
+
+- [IsNull](../Information/IsNull) function
+- [IIf](../Interaction/IIf) function
