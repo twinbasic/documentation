@@ -14,8 +14,11 @@ The reference is organized into three layers: the language constructs the compil
 - [**Statements**](Reference/Statements) -- alphabetical index of every language statement
 - [**Procedures and Functions**](Reference/Procedures-and-Functions) -- alphabetical index of every callable runtime member
 - [**Operators**](Reference/Operators) -- arithmetic, comparison, logical, bitwise, and twinBASIC's added operators
+- [**Enumerations**](Reference/Enumerations) -- index of all 141 enumeration types across all twelve packages, grouped by package and A--Z
+- [**Data Types**](Reference/Data-Types) -- storage size, range, and suffix for every intrinsic type (**Boolean** through **Variant**)
 - [**Compiler Constants**](Reference/Compiler-Constants) -- the `#If` symbols the compiler recognises
 - [**Attributes**](../tB/Core/Attributes) -- `[Documentation(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
+- [**twinBASIC Additions**](Reference/twinBASIC-Additions) -- curated list of language and runtime additions beyond standard VBA
 
 **Controls and glossary:**
 
