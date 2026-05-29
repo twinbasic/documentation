@@ -31,7 +31,7 @@ const SCSS_REL = path.join("assets", "css", "just-the-docs-combined.scss");
 export async function compileScss(srcRoot) {
   let sass;
   try {
-    sass = (await import("sass")).default;
+    sass = await import("sass");
   } catch (err) {
     throw new Error(
       "scss: sass not installed. Run `npm install` at the repo root to fetch it.",
