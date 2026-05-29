@@ -10,6 +10,7 @@ Tutorials are step-by-step guides focused on specific topics. For a categorical 
 
 **Foundations:**
 
+- [**Hello World**](Hello-World) -- create a Standard EXE project, drop a button onto a form, and run your first twinBASIC application. No prior experience assumed.
 - [**Forms basics**](Forms) -- adding controls to a form, naming conventions, the Properties window, common events, and runtime vs. design-time property changes. Builds a temperature converter.
 - [**Calling the Windows API**](Windows-API) -- writing `Declare` statements, 32/64-bit considerations with `PtrSafe` and `LongPtr`, and reading error information. Tracks the mouse cursor position live.
 - [**Writing unit tests with Assert**](Testing-with-Assert) -- the **Assert** package's three modules, test-Sub patterns, running from the CodeLens bar or F5, and testing error paths.
