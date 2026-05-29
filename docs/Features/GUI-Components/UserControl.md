@@ -18,3 +18,17 @@ These work with all child windows inside the UserControl, including ones created
 ## Access to Raw Message Data
 
 You can access raw message data in the `PreKeyDown`/`PreKeyUp` event handlers with the new `PreKeyWParam`/`PreKeyLParam` and `PreKeyTargetHwnd` UserControl properties.
+
+## Example
+
+```tb
+Private Sub UserControl_Initialize()
+    PreKeyEvents = True
+End Sub
+
+Private Sub UserControl_PreKeyDown(KeyCode As Integer, Shift As Integer)
+    If KeyCode = vbKeyTab Then
+        Debug.Print "Tab intercepted; lParam=" & CStr(PreKeyLParam)
+    End If
+End Sub
+```

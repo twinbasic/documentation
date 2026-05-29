@@ -15,6 +15,18 @@ While it was possible to accomplish this via hacks previously, tB offers it as a
 
 Standard DLLs in twinBASIC can still specify a startup point; each export will then check if this code has run yet, and if not, run it.
 
+```tb
+[DllExport]
+Public Function Add(ByVal a As Long, ByVal b As Long) As Long
+    Add = a + b
+End Function
+
+[DllExport]
+Public Function Multiply CDecl(ByVal a As Long, ByVal b As Long) As Long
+    Multiply = a * b
+End Function
+```
+
 ## Console Applications
 
 This project type allows making a true console project rather than a GUI project. Helpfully, it will also add a default `Console` class for reading/writing console IO and provided debug console.

@@ -15,6 +15,13 @@ New to the debugging experience is a trace logging feature that automatically cr
 
 ![image](../Images/4fc2bf99-2bec-4943-837d-21038d791574.png)
 
+```tb
+Public Sub ProcessOrder(ByVal orderId As Long)
+    Debug.TracePrint "ProcessOrder called, orderId=" & CStr(orderId)
+    ' ... processing ...
+End Sub
+```
+
 ## Stale/Dangling Pointer Detection
 
 Bugs result from using Strings and Variants after they have been freed. It may not be noticed immediately if the memory has not been overwritten, but it's sometimes hard to detect and can cause issues like a String displaying it's previous value or garbage. This debugging option detects use-after-free, and replaces the data with a special symbol indicating the problem.

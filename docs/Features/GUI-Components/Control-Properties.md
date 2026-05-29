@@ -22,3 +22,15 @@ permalink: /Features/GUI-Components/Control-Properties
 ## Timer Enhancements
 
 `Timer.Interval` can now be set to any positive `Long` instead of being limited to 65,535.
+
+## Example
+
+```tb
+TextBox1.TextHint = "Enter your name"
+TextBox1.NumbersOnly = True
+
+Label1.Angle = 45
+Label1.LineSpacing = 30
+
+Timer1.Interval = 120000  ' 2 minutes; not limited to 65,535 ms
+```

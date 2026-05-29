@@ -11,3 +11,13 @@ The CodeLens feature allows running Subs and Functions, with no arguments and in
 Methods eligible to run with CodeLens (when enabled), have a bar above them that you can click to run:
 
 ![image](../Images/351d0147-cad3-4e16-89e5-0a9e43496740.png)
+
+### Example
+
+A no-argument `Public Sub` in a module is eligible for CodeLens:
+
+```tb
+Public Sub RunTest()
+    Debug.Print "Hello from CodeLens"
+End Sub
+```
