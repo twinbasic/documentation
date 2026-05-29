@@ -308,7 +308,7 @@ function renderSidebar(site) {
     // fallback footer. The site doesn't override nav_footer_custom.html,
     // so the upstream default applies verbatim.
     `    <footer class="site-footer">\n` +
-    `      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.\n` +
+    `      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme originally for Jekyll.\n` +
     `    </footer>\n` +
     `  </div>`;
 }
