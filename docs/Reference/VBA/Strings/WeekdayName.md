@@ -33,6 +33,16 @@ The *firstdayofweek* argument can have the following values:
 | **vbFriday**     | 6     | Friday                                                     |
 | **vbSaturday**   | 7     | Saturday                                                   |
 
+### Example
+
+This example uses **WeekdayName** to return the full and abbreviated name of a weekday.
+
+```tb
+Debug.Print WeekdayName(2)          ' "Monday" (vbSunday = first day of week)
+Debug.Print WeekdayName(2, True)    ' "Mon"
+Debug.Print WeekdayName(1)          ' "Sunday"
+```
+
 ### See Also
 
 - [FormatDateTime](FormatDateTime), [MonthName](MonthName) functions

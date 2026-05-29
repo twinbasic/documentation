@@ -7,6 +7,8 @@ permalink: /tB/IDE/Project/Toolbox
 
 # Toolbox
 
+The Toolbox lists the controls available for placement on forms and designers in the current project. Additional COM components can be added through the **+ More Components** button, which opens the COM References section of Project Settings.
+
 See [Controls](../../Controls)
 
 <!-- ![Toolbox](../Controls/Images/toolbox.png "Toolbox") -->

@@ -3,6 +3,8 @@ title: Event
 parent: Statements
 permalink: /tB/Core/Event
 ---
+# Event
+{: .no_toc }
 
 Declares a user-defined event.
 

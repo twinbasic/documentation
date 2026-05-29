@@ -15,6 +15,19 @@ Syntax: *object*.**DisplayName**
 
 The host typically returns the name by which the user identifies the control --- for example `"Form1!Command1"` in a designer, or whatever label has been chosen at run time. A control can include this string in error messages, log entries, or property browsers so that the user can tell which instance the message refers to.
 
+### Example
+
+This example responds to a **DisplayName** change and updates the control's tooltip.
+
+```tb
+Private Sub UserControl_AmbientChanged(PropertyName As String)
+    Select Case PropertyName
+        Case "DisplayName"
+            ToolTipText = Ambient.DisplayName
+    End Select
+End Sub
+```
+
 ### See Also
 
 - [LocaleID](LocaleID) property

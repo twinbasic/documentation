@@ -61,3 +61,8 @@ Function GetCommandLine(Optional MaxArgs As Variant) As Variant
     GetCommandLine = ArgArray()
 End Function
 ```
+
+### See Also
+
+- [Shell](Shell) function
+- [Environ](Environ) function

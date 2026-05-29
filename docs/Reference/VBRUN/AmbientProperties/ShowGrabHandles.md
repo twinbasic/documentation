@@ -15,6 +15,19 @@ Syntax: *object*.**ShowGrabHandles**
 
 Grab handles are the small squares drawn on the corners and edges of a selected control on a designer surface. A simple control can leave the grab handles to the host and ignore this property; a control that paints its own selection feedback (for example, because it occupies its full client area) should draw them when **ShowGrabHandles** is **True**. The property is generally only meaningful while [**UserMode**](UserMode) is **False**.
 
+### Example
+
+This example responds to a **ShowGrabHandles** change and repaints the control to show or hide the handles.
+
+```tb
+Private Sub UserControl_AmbientChanged(PropertyName As String)
+    Select Case PropertyName
+        Case "ShowGrabHandles"
+            UserControl.Refresh    ' repaint to show or hide selection grab handles
+    End Select
+End Sub
+```
+
 ### See Also
 
 - [ShowHatching](ShowHatching) property

@@ -19,7 +19,7 @@ You can adjust the following parameters: Max Size Raw, Max Size Lookup, and Data
 
 ## Boolean Type Sanitization
 
-Under the hood, a Boolean is a 2-byte type. With memory APIs, or when receiving these from outside code, it's possible to store values other than the ones representing `True` and `False`. This option validates Booleans from external sources, e.g. COM objects and APIs, to ensure only the two supported values are stored.
+Internally, a Boolean is a 2-byte type. With memory APIs, or when receiving these from outside code, it's possible to store values other than the ones representing `True` and `False`. This option validates Booleans from external sources, e.g. COM objects and APIs, to ensure only the two supported values are stored.
 
 ## Additional Options
 

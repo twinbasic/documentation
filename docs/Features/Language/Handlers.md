@@ -13,6 +13,16 @@ You can now separate the name of method from the class member it applies to.
 
 For events on Forms, UserControls, and event-raising objects, you can define any method as the handler, rather than need to name it as `Object_Event()`, by following it with `Handles Object.Event`. For example, in a form, instead of `Private Sub Form_Load()` you could handle the `Load` event with `Private Sub OnLoad() Handles Form.Load`.
 
+```tb
+Private Sub OnLoad() Handles Form.Load
+    Caption = "Loaded"
+End Sub
+
+Private Sub OnClick() Handles Command1.Click
+    Debug.Print "clicked"
+End Sub
+```
+
 ## Implements for Interfaces
 
 Similar to the above, for forms/UCs/classes that use `Implements`, you can use `Sub Bar() Implements IFoo.Bar`. Note that you can specify more than one implemented method; for more information, see the [Enhancements to Implements section](Interfaces-CoClasses).

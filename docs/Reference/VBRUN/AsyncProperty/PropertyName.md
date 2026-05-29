@@ -15,6 +15,21 @@ Syntax: *object*.**PropertyName**
 
 The value is the *PropertyName* argument that was passed to **UserControl.AsyncRead** when the read was started. A user control can have several reads pending at once, so an event handler typically uses **PropertyName** in a **Select Case** to decide what to do with [**Value**](Value) when the read completes --- for example, which property of the control to assign the result to.
 
+### Example
+
+This example uses **PropertyName** to route the completed read to the correct property.
+
+```tb
+Private Sub UserControl_AsyncReadComplete(AsyncProp As AsyncProperty)
+    Select Case AsyncProp.PropertyName
+        Case "Picture"
+            Set UserControl.Picture = AsyncProp.Value
+        Case "Data"
+            mData = AsyncProp.Value
+    End Select
+End Sub
+```
+
 ### See Also
 
 - [Target](Target) property

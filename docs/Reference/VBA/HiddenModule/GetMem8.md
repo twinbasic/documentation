@@ -20,6 +20,19 @@ Syntax: **GetMem8** *Address* **,** *retVal*
 
 The address is read directly with no bounds or alignment check.
 
+### Example
+
+This example writes an 8-byte value to a buffer and reads it back with **GetMem8**.
+
+```tb
+Dim buf As LongPtr = AllocMem(8)
+Dim src As Currency = 1000000@
+PutMem8 buf, src
+Dim dst As Currency
+GetMem8 buf, dst        ' dst = src (same raw 8-byte pattern)
+FreeMem buf
+```
+
 ### See Also
 
 - [GetMem1](GetMem1), [GetMem2](GetMem2), [GetMem4](GetMem4), [GetMemPtr](GetMemPtr) procedures

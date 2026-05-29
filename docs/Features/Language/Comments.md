@@ -18,3 +18,17 @@ a comment until:
 */
 ```
 
+### Example
+
+```tb
+' Single-line comment using the apostrophe
+
+Sub Greet(ByVal name As String /* in */)
+    Debug.Print "Hello, " & name  ' inline comment
+    /*
+    This block comment
+    spans multiple lines.
+    */
+End Sub
+```
+

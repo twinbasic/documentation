@@ -7,9 +7,6 @@ permalink: /Reference/Categories
 
 This chapter lists the global statements and procedures that form the core of the twinBASIC language.
 
-> [!WARNING]
-> Work in Progress Below
-
 # Categorical List
 
 ## Compiler Control

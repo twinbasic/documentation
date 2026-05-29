@@ -18,7 +18,7 @@ permalink: /tB/IDE/Project/Menu/Format
 - Vertical Spacing
 ---
 - Center In Container (Horizontally)
-- Center In Container (Horizontally)
+- Center In Container (Vertically)
 ---
 - Bring To Front
 - Send To Back

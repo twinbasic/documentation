@@ -24,10 +24,6 @@ permalink: /tB/IDE/Project/Menu/Help
 ---
 - Compiler services TRACE mode: Disabled
 
-> [!NOTE]
->
->  TODO: Add each Help Menu item.
-
 ## About twinBASIC...
 
 ![About - Help Menu](Images/Menu_Help_About.png "About - Help Menu")

@@ -29,3 +29,10 @@ Debug.Print Round(0.12355, 4)    ' 0.1236
 Debug.Print Round(0.12365, 4)    ' 0.1236
 Debug.Print Round(0.00005, 4)    ' 0
 ```
+
+### See Also
+
+- [Int](../Conversion/Int) function
+- [Fix](../Conversion/Fix) function
+- [CInt](../Conversion/CInt) function
+- [CLng](../Conversion/CLng) function

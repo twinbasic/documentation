@@ -91,6 +91,21 @@ For Each Path In Data.Files
 Next Path
 ```
 
+### Example
+
+This example iterates the file paths in a **DataObjectFiles** collection received from a shell drag-and-drop.
+
+```tb
+Private Sub Form1_OLEDragDrop(Data As DataObject, Effect As Long, _
+                               Button As Integer, Shift As Integer, _
+                               X As Single, Y As Single)
+    Dim path As Variant
+    For Each path In Data.Files
+        Debug.Print path
+    Next path
+End Sub
+```
+
 ## See Also
 
 - [DataObject](.)

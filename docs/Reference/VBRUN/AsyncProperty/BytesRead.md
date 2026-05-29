@@ -15,6 +15,18 @@ Syntax: *object*.**BytesRead**
 
 The value accumulates across successive **AsyncReadProgress** notifications and reaches its final total by the time **AsyncReadComplete** fires. When [**BytesMax**](BytesMax) is non-zero, the ratio `BytesRead / BytesMax` gives the fraction of the read that has completed.
 
+### Example
+
+This example logs the current download progress using **BytesRead** and **BytesMax**.
+
+```tb
+Private Sub UserControl_AsyncReadProgress(AsyncProp As AsyncProperty)
+    If AsyncProp.PropertyName = "Picture" Then
+        Debug.Print AsyncProp.BytesRead & " / " & AsyncProp.BytesMax
+    End If
+End Sub
+```
+
 ### See Also
 
 - [BytesMax](BytesMax) property

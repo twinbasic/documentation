@@ -19,6 +19,18 @@ Syntax: *object*.**Value**
 - `vbAsyncTypeFile` --- a **String** holding the path of a temporary file containing the downloaded data.
 - `vbAsyncTypeByteArray` --- a **Byte** array (`Byte()`) holding the raw bytes.
 
+### Example
+
+This example reads **Value** in the completion event and assigns the result to the control's **Picture** property.
+
+```tb
+Private Sub UserControl_AsyncReadComplete(AsyncProp As AsyncProperty)
+    If AsyncProp.PropertyName = "Picture" Then
+        Set UserControl.Picture = AsyncProp.Value    ' Value is an IPictureDisp
+    End If
+End Sub
+```
+
 ### See Also
 
 - [AsyncType](AsyncType) property

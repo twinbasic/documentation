@@ -15,6 +15,16 @@ Syntax: *object*.**Target**
 
 The value is the *Target* argument that was passed to **UserControl.AsyncRead** when the read was started --- typically an absolute or relative URL, but local file paths are also accepted. It is the location the data is being fetched from, and remains the same across every **AsyncReadProgress** notification and the final **AsyncReadComplete** event for that read.
 
+### Example
+
+This example logs the URL being fetched for each pending read.
+
+```tb
+Private Sub UserControl_AsyncReadProgress(AsyncProp As AsyncProperty)
+    Debug.Print "Fetching " & AsyncProp.PropertyName & " from: " & AsyncProp.Target
+End Sub
+```
+
 ### See Also
 
 - [PropertyName](PropertyName) property

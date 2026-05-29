@@ -34,3 +34,19 @@ These are the equivalent of `var = var (operand) (var2)`. So `i += 1` is the equ
 
 The logical opposite of the [`Is`](../../tB/Core/Is) operator for testing object equivalence. For example, instead of `If (object Is Nothing) = False` you could now write `If object `[`IsNot`](../../tB/Core/IsNot)` Nothing Then`.
 
+## Examples
+
+```tb
+Dim n As Long = &HFF
+Dim shifted As Long = n << 4   ' result: &HFF0
+
+n += 1                         ' compound assignment: n = &H100
+n <<= 2                        ' left-shift assignment: n = &H400
+
+Dim obj As Object = Nothing
+If obj IsNot Nothing Then Debug.Print obj
+
+Dim x As Long = -5
+Debug.Print If(x >= 0, x, -x) ' short-circuit If(): prints 5
+```
+

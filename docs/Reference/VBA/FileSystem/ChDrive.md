@@ -13,9 +13,8 @@ Changes the current drive.
 
 Syntax: **ChDrive** *drive*
 
-drive
-
-: A string expression that specifies an existing drive. If *drive* is a zero-length string (""), the current drive doesn't change. If the *drive* argument is a multiple-character string, **ChDrive** uses only the first letter.
+*drive*
+: *required* A string expression that specifies an existing drive. If *drive* is a zero-length string (""), the current drive doesn't change. If the *drive* argument is a multiple-character string, **ChDrive** uses only the first letter.
 
 ### See Also
 

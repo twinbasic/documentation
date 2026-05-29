@@ -46,6 +46,17 @@ For Each F In Data.AvailableFormats
 Next F
 ```
 
+### Example
+
+This example lists the name and format type of every format a **DataObject** holds.
+
+```tb
+Dim fmt As DataObjectFormat
+For Each fmt In Data.AvailableFormats
+    Debug.Print fmt.Name & " (" & fmt.FormatType & ")"
+Next fmt
+```
+
 ## See Also
 
 - [DataObject](.)

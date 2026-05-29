@@ -43,3 +43,4 @@ MyLog = Log(MyAngle + Sqr(MyAngle * MyAngle + 1))
 ### See Also
 
 - [Exp](Exp) function
+- [Sqr](Sqr) function

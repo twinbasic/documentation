@@ -17,6 +17,19 @@ The returned address is the location of the **SAFEARRAY*** field inside the **Va
 
 If *Variant* does not contain an array, the result is undefined.
 
+### Example
+
+This example retrieves the address of the **SAFEARRAY** descriptor inside a **Variant** array.
+
+```tb
+Dim v As Variant
+v = Array(10, 20, 30)          ' Variant holding an array
+Dim pSAPtr As LongPtr
+pSAPtr = vbaRefVarAry(v)       ' address of the SAFEARRAY* field in v
+Dim pSA As LongPtr
+GetMemPtr pSAPtr, pSA          ' dereference: pSA is the SAFEARRAY pointer
+```
+
 ### See Also
 
 - [VarPtr](VarPtr) function
