@@ -1,3 +1,6 @@
+@use "../variables" as *;
+@use "./layout" as *;
+
 @mixin fs-1 {
   & {
     font-size: $font-size-1 !important;

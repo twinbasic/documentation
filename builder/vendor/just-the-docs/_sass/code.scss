@@ -1,3 +1,5 @@
+@use "support/support" as *;
+
 // Code and syntax highlighting
 // stylelint-disable selector-no-qualifying-type, declaration-block-semicolon-newline-after,declaration-block-single-line-max-declarations, selector-no-type, selector-max-type, scss/comment-no-empty
 
@@ -226,19 +228,19 @@ code.language-mermaid {
   border: 0;
 }
 
-// Override OneDarkJekyll Colors for Code Blocks
+// Code block background and line-number colors
 .highlight,
 pre.highlight {
   background: $code-background-color; // Code Background
   // For Backwards Compatibility Before $code-linenumber-color was added
-  @if variable-exists(code-linenumber-color) {
+  @if $code-linenumber-color {
     color: $code-linenumber-color; // Code Line Numbers
   } @else {
     color: $body-text-color; // Code Line Numbers
   }
 }
 
-// Override OneDarkJekyll Colors for Code Blocks
+// Code block background and line-number colors
 .highlight pre {
   background: $code-background-color; // Code Background
 }

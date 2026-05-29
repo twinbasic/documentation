@@ -9,7 +9,7 @@ everything here either feeds a compile step or is copied verbatim into
 
 | Path | Origin | Used by |
 |---|---|---|
-| `_sass/` | Gem's `_sass/` at v0.10.1, byte-for-byte (`base.scss`, `buttons.scss`, `code.scss`, `color_schemes/`, `custom/setup.scss` + the gem's empty `custom/custom.scss`, `modules.scss`, `support/`, `utilities/`, `vendor/normalize.scss/normalize.scss`, `vendor/OneLightJekyll/syntax.scss`, `vendor/OneDarkJekyll/syntax.scss`, ...). | [`builder/scss.mjs`](../../scss.mjs) compiles `docs/assets/css/just-the-docs-combined.scss` against these sources via Dart Sass; the load-path ordering puts `docs/_sass/` first so our `custom/custom.scss` shadows the gem's empty one. |
+| `_sass/` | Gem's `_sass/` at v0.10.1, byte-for-byte (`base.scss`, `buttons.scss`, `code.scss`, `color_schemes/`, `custom/setup.scss` + the gem's empty `custom/custom.scss`, `modules.scss`, `support/`, `utilities/`, `vendor/normalize.scss/normalize.scss`, ...). | [`builder/scss.mjs`](../../scss.mjs) compiles `docs/assets/css/just-the-docs-combined.scss` against these sources via Dart Sass; the load-path ordering puts `docs/_sass/` first so our `custom/custom.scss` shadows the gem's empty one. |
 | `assets/js/just-the-docs.js` | Gem's `assets/js/just-the-docs.js` at v0.10.1, **patched in tree**. | [`builder/write.mjs`](../../write.mjs)'s `copyTheme` copies it to `_site/assets/js/just-the-docs.js`; [`builder/offline.mjs`](../../offline.mjs) re-derives an offline-mode variant via [`acorn`](https://www.npmjs.com/package/acorn)-AST patching. |
 | `assets/js/vendor/lunr.min.js` | Gem's `assets/js/vendor/lunr.min.js` at v0.10.1, unmodified. | Copied verbatim by `copyTheme`. The search index that drives it is the in-process [`builder/search.mjs`](../../search.mjs) output (`assets/js/search-data.json`). |
 
@@ -55,11 +55,20 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
       builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js
    ```
 
-3. Re-apply the copy-button patch in `assets/js/just-the-docs.js` (see
+3. Delete the unused vendor syntax themes that are not used by this site
+   (syntax highlighting comes from the twinBASIC IDE theme via
+   `builder/highlight-theme.mjs` instead):
+
+   ```sh
+   rm -rf builder/vendor/just-the-docs/_sass/vendor/OneLightJekyll
+   rm -rf builder/vendor/just-the-docs/_sass/vendor/OneDarkJekyll
+   ```
+
+4. Re-apply the copy-button patch in `assets/js/just-the-docs.js` (see
    above). Diffing against the previous vendored copy via `git diff` is
    the easiest way to spot what needs to come back.
 
-4. Inspect the entry point at `docs/assets/css/just-the-docs-combined.scss`
+5. Inspect the entry point at `docs/assets/css/just-the-docs-combined.scss`
    --- if the upstream `_includes/css/just-the-docs.scss.liquid` Liquid
    template changed shape between versions, the entry point needs to track
    it. The current entry point mirrors v0.10.1's: `support/support`,
@@ -67,12 +76,12 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    `callouts.scss.liquid` `div.opaque` rule and the `custom.scss.liquid`
    `@import "./custom/custom"`.
 
-5. Inspect the offline JS patcher in [`builder/offline.mjs`](../../offline.mjs)
+6. Inspect the offline JS patcher in [`builder/offline.mjs`](../../offline.mjs)
    --- `deriveOfflineJtdJs` slices in replacements for the upstream `navLink`
    and `initSearch` functions; if upstream rewrote either, the replacement
    bodies may need a refresh.
 
-6. Run `build.bat && check.bat`. The link check catches missing CSS / JS
+7. Run `build.bat && check.bat`. The link check catches missing CSS / JS
    references immediately; visual regressions are best caught by spinning
    up a preview and checking both light and dark modes.
 
