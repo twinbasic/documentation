@@ -228,7 +228,7 @@ code.language-mermaid {
   border: 0;
 }
 
-// Override OneDarkJekyll Colors for Code Blocks
+// Code block background and line-number colors
 .highlight,
 pre.highlight {
   background: $code-background-color; // Code Background
@@ -240,7 +240,7 @@ pre.highlight {
   }
 }
 
-// Override OneDarkJekyll Colors for Code Blocks
+// Code block background and line-number colors
 .highlight pre {
   background: $code-background-color; // Code Background
 }
