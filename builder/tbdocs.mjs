@@ -417,7 +417,7 @@ const TASKS = {
         scheduler.register(id, {
           expected: [],
           handler:  "render",
-          submit(renderOut, emit, state, scheduler) {
+          submit(renderOut, emit, state) {
             for (const r of renderOut.pages) {
               const p = state.pageByDest.get(r.destPath);
               if (!p) continue;
@@ -426,8 +426,6 @@ const TASKS = {
               if (r.offlineHtml !== undefined) p.offlineHtml = r.offlineHtml;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
             }
-            const t = scheduler.timings.get(id);
-            if (t) { t.workerStart = renderOut.workerStart; t.workerEnd = renderOut.workerEnd; }
             emit("renderJoin", {});
           },
         });

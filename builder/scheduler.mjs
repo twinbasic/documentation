@@ -83,7 +83,10 @@ export class Scheduler {
   }
 
   _onDone(task, output, start) {
-    this.timings.set(task.id, { start, end: Date.now() });
+    const end = Date.now();
+    const timing = { start, end };
+    if (output?.workerStart != null) { timing.workerStart = output.workerStart; timing.workerEnd = output.workerEnd; }
+    this.timings.set(task.id, timing);
     this.results.set(task.id, output);
     this.inFlight--;
     // submit() must be synchronous; async work belongs in execute().

@@ -25,19 +25,27 @@ const highlighterP = initHighlighter();
 
 const handlers = {
   async scssLight({ ctx }) {
-    return { scssLightResult: await compileLightScss(ctx.srcRoot) };
+    const workerStart = Date.now();
+    const scssLightResult = await compileLightScss(ctx.srcRoot);
+    return { workerStart, workerEnd: Date.now(), scssLightResult };
   },
 
   async scssDark({ ctx }) {
-    return { scssDarkResult: await compileDarkScss(ctx.srcRoot) };
+    const workerStart = Date.now();
+    const scssDarkResult = await compileDarkScss(ctx.srcRoot);
+    return { workerStart, workerEnd: Date.now(), scssDarkResult };
   },
 
   async mermaid({ ctx }) {
-    return { mermaidStats: await regenerateMermaid(ctx.srcRoot) };
+    const workerStart = Date.now();
+    const mermaidStats = await regenerateMermaid(ctx.srcRoot);
+    return { workerStart, workerEnd: Date.now(), mermaidStats };
   },
 
   async buildInfo() {
-    return { buildInfo: await captureBuildInfo() };
+    const workerStart = Date.now();
+    const buildInfo = await captureBuildInfo();
+    return { workerStart, workerEnd: Date.now(), buildInfo };
   },
 
   async render({ inputs }) {
