@@ -117,10 +117,11 @@ export function makeTimer() {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo, scss, mermaid, prepDest, highlighterInit), the main-thread
-// spine (discover → nav → buildInit; discover + highlighterInit → markdownInit →
-// seo / loadData → resolveBookChapters + deriveRedirects / deriveSitemap), the render
-// fan-out (dispatch → render:0..N → renderJoin), and write/post-write tasks
+// Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid, prepDest,
+// highlighterInit), the main-thread spine (discover → nav → buildInit;
+// discover + highlighterInit → markdownInit → seo / loadData →
+// resolveBookChapters + deriveRedirects / deriveSitemap), the render fan-out
+// (dispatch → render:0..N → renderJoin), and write/post-write tasks
 // (renderJoin + prepDest → searchData; write + searchData → writeAux →
 // writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
@@ -155,10 +156,30 @@ const TASKS = {
     },
   },
 
-  // Sass compilation (~700 ms CPU). Worker so it overlaps with the main spine.
-  scss: {
+  // Sass compilation split across two workers so light + dark run in parallel.
+  // Each half is ~700 ms total serially; running concurrently saves ~200 ms.
+  scssLight: {
     expected: [],
-    // execute() runs in cpu-worker.mjs as the "scss" handler.
+    // execute() runs in cpu-worker.mjs as the "scssLight" handler.
+    submit(out, emit) { emit("scssJoin", out); },
+  },
+
+  scssDark: {
+    expected: [],
+    // execute() runs in cpu-worker.mjs as the "scssDark" handler.
+    submit(out, emit) { emit("scssJoin", out); },
+  },
+
+  // Joins the two parallel SCSS results and emits to write.
+  scssJoin: {
+    expected: ["scssLight", "scssDark"],
+    runOnMain: true,
+    execute({ scssLight: { scssLightResult }, scssDark: { scssDarkResult } }) {
+      if (scssLightResult.failed || scssDarkResult.failed) {
+        return { scssResult: { compiled: false, failed: true } };
+      }
+      return { scssResult: { compiled: true, css: scssLightResult.css + "\n" + scssDarkResult.css } };
+    },
     submit(out, emit) { emit("write", out); },
   },
 
@@ -422,9 +443,9 @@ const TASKS = {
   // mermaid (SVG descriptors appended to state.staticFiles by mermaid.submit),
   // and prepDest (_site/ cleaned and recreated).
   write: {
-    expected: ["renderJoin", "scss", "mermaid", "prepDest"],
+    expected: ["renderJoin", "scssJoin", "mermaid", "prepDest"],
     runOnMain: true,
-    async execute({ scss: { scssResult }, mermaid: { mermaidStats } }, ctx, state) {
+    async execute({ scssJoin: { scssResult }, mermaid: { mermaidStats } }, ctx, state) {
       void mermaidStats; // dependency signal only; append already happened in mermaid.submit
       const generatedAssets = [];
       if (state.site.highlighter?.themeCss) {
@@ -525,7 +546,7 @@ function chunkPages(pages, workers) {
 // ── Gantt chart ───────────────────────────────────────────────────────────────
 
 const GANTT_SECTION = {
-  config: "Seeds", buildInfo: "Seeds", scss: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
+  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scssJoin: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
   highlighterInit: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   seo: "Spine", loadData: "Spine", resolveBookChapters: "Spine",
@@ -645,7 +666,7 @@ export async function runBuild(opts) {
   const site = scheduler.state.site;
 
   const { mermaidStats } = results.get("mermaid");
-  const { scssResult }   = results.get("scss");
+  const { scssResult }   = results.get("scssJoin");
 
   if (mermaidStats.regenerated > 0 || mermaidStats.failed > 0) {
     const parts = [`regenerated ${mermaidStats.regenerated}`];

@@ -4,7 +4,7 @@
 
 import { parentPort } from "node:worker_threads";
 
-import { compileScss }       from "./scss.mjs";
+import { compileLightScss, compileDarkScss } from "./scss.mjs";
 import { regenerateMermaid } from "./mermaid.mjs";
 import { captureBuildInfo }  from "./build-info.mjs";
 
@@ -24,8 +24,12 @@ import { deriveOfflinePage, deriveOfflinePageCached,
 const highlighterP = initHighlighter();
 
 const handlers = {
-  async scss({ ctx }) {
-    return { scssResult: await compileScss(ctx.srcRoot) };
+  async scssLight({ ctx }) {
+    return { scssLightResult: await compileLightScss(ctx.srcRoot) };
+  },
+
+  async scssDark({ ctx }) {
+    return { scssDarkResult: await compileDarkScss(ctx.srcRoot) };
   },
 
   async mermaid({ ctx }) {

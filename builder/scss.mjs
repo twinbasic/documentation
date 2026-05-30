@@ -13,13 +13,16 @@
 // TWO sass.compile() calls are used:
 //   1. just-the-docs-combined.scss -- light theme
 //   2. just-the-docs-dark.scss     -- dark theme (html.dark-mode { ... })
-// The results are concatenated into a single CSS asset.
+// The results are concatenated into a single CSS asset by scssJoin in tbdocs.mjs.
 //
 // Two separate compilations are required because Dart Sass maintains one
 // module cache per compile() call, and a module URL can only be loaded once
 // per compilation with one variable configuration.  The dark theme needs
 // modules.scss loaded with different variable values, which is only possible
 // in a fresh compilation with its own empty cache.
+//
+// compileLightScss / compileDarkScss are called from separate cpu-worker.mjs
+// handlers so both compilations run in parallel across two worker threads.
 //
 // Failure modes:
 //   SETUP   -- sass not installed: throw. There is no pre-compiled fallback;
@@ -40,41 +43,46 @@ const VENDOR_JTD_SASS = path.join(__dirname, "vendor", "just-the-docs", "_sass")
 const SCSS_LIGHT_REL = path.join("assets", "css", "just-the-docs-combined.scss");
 const SCSS_DARK_REL  = path.join("assets", "css", "just-the-docs-dark.scss");
 
-export async function compileScss(srcRoot) {
-  let sass;
+async function loadSass() {
   try {
-    sass = await import("sass");
+    return await import("sass");
   } catch (err) {
     throw new Error(
       "scss: sass not installed. Run `npm install` at the repo root to fetch it.",
       { cause: err },
     );
   }
+}
 
-  const loadPaths = [
+function makeLoadPaths(srcRoot) {
+  return [
     path.join(srcRoot, "_sass"),  // our customizations first
     VENDOR_JTD_SASS,              // gem fallback
   ];
+}
 
-  const compileOpts = {
-    style: "expanded",
-    sourceMap: false,
-    loadPaths,
-  };
-
-  let lightResult, darkResult;
+export async function compileLightScss(srcRoot) {
+  const sass = await loadSass();
   try {
-    lightResult = sass.compile(path.join(srcRoot, SCSS_LIGHT_REL), compileOpts);
+    const result = sass.compile(path.join(srcRoot, SCSS_LIGHT_REL), {
+      style: "expanded", sourceMap: false, loadPaths: makeLoadPaths(srcRoot),
+    });
+    return { compiled: true, css: result.css };
   } catch (err) {
     console.warn(`scss (light): compilation failed:\n  ${err.message}`);
     return { compiled: false, failed: true };
   }
+}
+
+export async function compileDarkScss(srcRoot) {
+  const sass = await loadSass();
   try {
-    darkResult = sass.compile(path.join(srcRoot, SCSS_DARK_REL), compileOpts);
+    const result = sass.compile(path.join(srcRoot, SCSS_DARK_REL), {
+      style: "expanded", sourceMap: false, loadPaths: makeLoadPaths(srcRoot),
+    });
+    return { compiled: true, css: result.css };
   } catch (err) {
     console.warn(`scss (dark): compilation failed:\n  ${err.message}`);
     return { compiled: false, failed: true };
   }
-
-  return { compiled: true, css: lightResult.css + "\n" + darkResult.css };
 }
