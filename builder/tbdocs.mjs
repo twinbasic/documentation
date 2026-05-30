@@ -388,6 +388,8 @@ const TASKS = {
               if (!p) continue;
               p.renderedContent = r.renderedContent;
               if (r.html !== undefined) p.html = r.html;
+              if (r.offlineHtml !== undefined) p.offlineHtml = r.offlineHtml;
+              if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
             }
             emit("renderJoin", renderOut);
           },

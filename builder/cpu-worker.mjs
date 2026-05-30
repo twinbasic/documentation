@@ -14,6 +14,10 @@ import { createMarkdownIt, buildLinkTables,
 import { templatePhase }                           from "./template.mjs";
 import { unpackShared }                            from "./sab-broadcast.mjs";
 
+import { deriveOfflinePage, deriveOfflinePageCached,
+         sliceNavBlock, normalizeBaseurl,
+         posixDirname }                            from "./offline-rewrite.mjs";
+
 // Start WASM init immediately, do NOT await. Module evaluation finishes
 // synchronously so the parentPort.on('message') dispatcher is installed
 // before the pool sends any work. Only the `render` handler awaits.
@@ -35,7 +39,8 @@ const handlers = {
   async render({ inputs }) {
     const { sharedSAB, chunk } = inputs;
     const { siteData, initData, linkTablesData, staticFilesArr,
-            baseurl, buildInfo } = unpackShared(sharedSAB);
+            baseurl, buildInfo, sitePathsArr,
+            skipOffline } = unpackShared(sharedSAB);
 
     const highlighter = await highlighterP;
     const linkTables  = reconstructLinkTables(linkTablesData);
@@ -46,12 +51,53 @@ const handlers = {
     await renderPhase(chunk, site);
     await templatePhase(chunk, site, initData);
 
+    // Offline rewrite pass (Phase III of PLAN-scheduler-offline.md).
+    // Runs the per-page URL rewrite inside the worker so it
+    // parallelises across CPUs. When skipOffline is true the entire
+    // pass is skipped — no Set construction, no rewriting.
+    if (!skipOffline) {
+      const sitePaths = new Set(sitePathsArr);
+      const caches = { rawResolution: new Map(), seg: new Map(), result: new Map() };
+      const offlineState = { sitePaths, caches, baseurl: normalizeBaseurl(baseurl) };
+
+      // Nav-cache pre-pass: group chunk pages by dest dir, derive the
+      // first page per dir, cache nav block slices. Same logic as
+      // writeOfflinePages in offline.mjs.
+      const writable = chunk.filter(p => p.html !== undefined);
+      const byDir = new Map();
+      for (const p of writable) {
+        const destDir = posixDirname(p.destPath);
+        let g = byDir.get(destDir);
+        if (!g) { g = []; byDir.set(destDir, g); }
+        g.push(p);
+      }
+      const navCache = new Map();
+      for (const [destDir, group] of byDir) {
+        const first = group[0];
+        const input = sliceNavBlock(first.html);
+        if (input === null) continue;
+        const { html: rendered } = deriveOfflinePage(first, offlineState);
+        const output = sliceNavBlock(rendered);
+        if (output === null) continue;
+        navCache.set(destDir, { input, output });
+      }
+      offlineState.navCache = navCache;
+
+      for (const p of writable) {
+        const { html, misses } = deriveOfflinePageCached(p, offlineState);
+        p.offlineHtml = html;
+        p.offlineMisses = misses;
+      }
+    }
+
     // book-combined pages have renderedContent but no html (Phase 8
     // handles them from renderedContent); send html: undefined for those.
     return chunk.map(p => ({
       destPath:        p.destPath,
       renderedContent: p.renderedContent,
       html:            p.html,
+      offlineHtml:     p.offlineHtml,
+      offlineMisses:   p.offlineMisses,
     }));
   },
 };
