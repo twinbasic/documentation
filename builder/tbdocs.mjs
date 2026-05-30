@@ -29,10 +29,10 @@ import { precomputeSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
 import {
-  renderPhase, createMarkdownIt, initHighlighter,
+  createMarkdownIt, initHighlighter,
   buildLinkTables, serializeLinkTables,
 } from "./render.mjs";
-import { templatePhase, buildInitFn } from "./template.mjs";
+import { buildInitFn } from "./template.mjs";
 import { writePhase } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
@@ -114,12 +114,13 @@ export function makeTimer() {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Phase 1 wires the seeds (config, buildInfo, scss, mermaid) and the main-
-// thread spine (discover → nav → markdownInit / buildInit → seo / loadData →
-// resolveBookChapters + deriveRedirects / deriveSitemap).
+// Seeds (config, buildInfo, scss, mermaid), the main-thread spine (discover →
+// nav → markdownInit / buildInit → seo / loadData → resolveBookChapters +
+// deriveRedirects / deriveSitemap), and the render fan-out (dispatch →
+// render:0..N → renderJoin) are all scheduler tasks.
 //
-// Render, template, write, and post-write tasks are still the trailing serial
-// block below scheduler.start(); they graduate to scheduler tasks in Phases 2–3.
+// Write and post-write tasks are still the trailing serial block below
+// scheduler.start(); they graduate to scheduler tasks in Phase 3.
 
 const TASKS = {
   // ── Seeds ─────────────────────────────────────────────────────────────────
@@ -144,7 +145,7 @@ const TASKS = {
   buildInfo: {
     expected: [],
     // execute() runs in cpu-worker.mjs as the "buildInfo" handler.
-    submit() { /* Phase 2: emit("dispatch", out) */ },
+    submit(out, emit) { emit("dispatch", out); },
   },
 
   // Sass compilation (~700 ms CPU). Worker so it overlaps with the main spine.
@@ -212,7 +213,7 @@ const TASKS = {
     execute(_, ctx, state) {
       return { initData: buildInitFn(state.site) };
     },
-    submit() { /* Phase 2: emit("dispatch", out) */ },
+    submit(out, emit) { emit("dispatch", out); },
   },
 
   // Shiki WASM init + link-table build + markdown-it instance creation.
@@ -274,7 +275,7 @@ const TASKS = {
       resolveBookChapters(state.site.bookData, state.pages);
       return {};
     },
-    submit() { /* Phase 2: emit("dispatch", {}) */ },
+    submit(_, emit) { emit("dispatch", {}); },
   },
 
   // Can run in parallel with nav/markdownInit -- only needs pages + config,
@@ -297,7 +298,77 @@ const TASKS = {
     },
     submit() { /* Phase 3: emit("writeAux", out) */ },
   },
+
+  // ── Render fan-out ─────────────────────────────────────────────────────────
+
+  // Slices state.pages into chunks and dynamically registers render:0..N
+  // worker tasks plus a renderJoin barrier. Waits for buildInit (template
+  // chrome), resolveBookChapters (identity-critical page refs), and
+  // buildInfo (git metadata for the footer).
+  dispatch: {
+    expected: ["buildInit", "resolveBookChapters", "buildInfo"],
+    runOnMain: true,
+    execute({ buildInit: { initData }, buildInfo: { buildInfo } }, ctx, state) {
+      const chunks = chunkPages(state.pages, ctx.workerCount);
+      const siteData = {
+        config:       state.site.config,
+        seoSiteTitle: state.site.seoSiteTitle,
+        seoLogoUrl:   state.site.seoLogoUrl,
+      };
+      return {
+        chunks, siteData, initData, buildInfo,
+        linkTablesData: state.site.linkTablesSerialized,
+        staticFilesArr: state.staticFiles.map(f => f.srcRel),
+        baseurl:        String(state.site.config.baseurl || ""),
+      };
+    },
+    submit(out, emit, _state, scheduler) {
+      const N = out.chunks.length;
+
+      scheduler.register("renderJoin", {
+        expected: Array.from({ length: N }, (_, i) => `render:${i}`),
+        runOnMain: true,
+        execute() { return {}; },
+        submit() { /* Phase 3: emit("write", {}) */ },
+      });
+
+      for (let i = 0; i < N; i++) {
+        const id = `render:${i}`;
+        scheduler.register(id, {
+          expected: [],
+          handler:  "render",
+          submit(renderOut, emit, state) {
+            for (const r of renderOut) {
+              const p = state.pageByDest.get(r.destPath);
+              if (!p) continue;
+              p.renderedContent = r.renderedContent;
+              if (r.html !== undefined) p.html = r.html;
+            }
+            emit("renderJoin", renderOut);
+          },
+        });
+        scheduler.seed(id, {
+          siteData:       out.siteData,
+          initData:       out.initData,
+          linkTablesData: out.linkTablesData,
+          staticFilesArr: out.staticFilesArr,
+          baseurl:        out.baseurl,
+          buildInfo:      out.buildInfo,
+          chunk:          out.chunks[i],
+        });
+      }
+    },
+  },
 };
+
+function chunkPages(pages, workers) {
+  const n = Math.min(workers, pages.length);
+  if (n === 0) return [];
+  const size = Math.ceil(pages.length / n);
+  const chunks = [];
+  for (let i = 0; i < pages.length; i += size) chunks.push(pages.slice(i, i + size));
+  return chunks;
+}
 
 // ── Build entry point ─────────────────────────────────────────────────────────
 
@@ -311,9 +382,9 @@ export async function runBuild(opts) {
   const scheduler = new Scheduler({ pool, tasks: TASKS });
   const ctx = { srcRoot, destRoot, opts, workerCount };
 
-  // Run the scheduler (seeds + main-thread spine). Render/template/write
-  // tasks are still the trailing serial block below; they graduate to
-  // scheduler tasks in Phases 2–3.
+  // Run the scheduler (seeds + main-thread spine + render fan-out).
+  // Write and post-write tasks are still the trailing serial block below;
+  // they graduate to scheduler tasks in Phase 3.
   let results;
   try {
     results = await scheduler.start(ctx);
@@ -321,13 +392,13 @@ export async function runBuild(opts) {
     await pool.destroy();
   }
 
-  // ── Trailing serial block (Phases 2–3 will absorb these) ─────────────────
+  // ── Trailing serial block (Phase 3 will absorb these) ────────────────────
 
   const t = makeTimer();
   const { pages, staticFiles } = scheduler.state;
   const site = scheduler.state.site;
 
-  // Wire in the three worker-task outputs that the serial block needs.
+  // Wire in worker-task outputs that the serial block needs.
   const { mermaidStats } = results.get("mermaid");
   const { scssResult }   = results.get("scss");
   site.buildInfo         = results.get("buildInfo").buildInfo;
@@ -341,12 +412,6 @@ export async function runBuild(opts) {
   if (scssResult.failed)       process.exitCode = 1;
 
   const baseurl = String(site.config.baseurl || "");
-
-  await renderPhase(pages, site, staticFiles);
-  t.lap("render");
-
-  await templatePhase(pages, site);
-  t.lap("template");
 
   const generatedAssets = [];
   if (site.highlighter?.themeCss) {

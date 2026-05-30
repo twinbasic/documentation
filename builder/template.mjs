@@ -18,7 +18,7 @@
 
 import { compressHtml } from "./compress.mjs";
 
-export async function templatePhase(pages, site) {
+export async function templatePhase(pages, site, initData) {
   if (site.config.just_the_docs?.collections) {
     throw new Error(
       "site.config.just_the_docs.collections is set; Phase 4 (and Phase 2) "
@@ -26,7 +26,7 @@ export async function templatePhase(pages, site) {
     );
   }
 
-  const init = buildInit(site);
+  const init = initData ?? buildInit(site);
 
   await Promise.all(pages.map(async (page) => {
     if (page.frontmatter.layout === "book-combined") return;

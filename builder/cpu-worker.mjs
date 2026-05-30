@@ -8,12 +8,15 @@ import { compileScss }       from "./scss.mjs";
 import { regenerateMermaid } from "./mermaid.mjs";
 import { captureBuildInfo }  from "./build-info.mjs";
 
-// Phase 2: uncomment when render fan-out is wired up.
-// import { initHighlighter }                         from "./highlight.mjs";
-// import { createMarkdownIt, buildLinkTables,
-//          renderPhase }                             from "./render.mjs";
-// import { templatePhase }                           from "./template.mjs";
-// const highlighterP = initHighlighter();
+import { initHighlighter }                         from "./highlight.mjs";
+import { createMarkdownIt, buildLinkTables,
+         renderPhase }                             from "./render.mjs";
+import { templatePhase }                           from "./template.mjs";
+
+// Start WASM init immediately, do NOT await. Module evaluation finishes
+// synchronously so the parentPort.on('message') dispatcher is installed
+// before the pool sends any work. Only the `render` handler awaits.
+const highlighterP = initHighlighter();
 
 const handlers = {
   async scss({ ctx }) {
@@ -28,7 +31,27 @@ const handlers = {
     return { buildInfo: await captureBuildInfo() };
   },
 
-  // Phase 2: render handler (renderPhase + templatePhase over a chunk).
+  async render({ inputs }) {
+    const { siteData, initData, linkTablesData, staticFilesArr,
+            baseurl, buildInfo, chunk } = inputs;
+
+    const highlighter = await highlighterP;
+    const linkTables  = reconstructLinkTables(linkTablesData);
+    const staticFiles = new Set(staticFilesArr);
+    const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
+
+    const site = { ...siteData, markdown, buildInfo };
+    await renderPhase(chunk, site);
+    await templatePhase(chunk, site, initData);
+
+    // book-combined pages have renderedContent but no html (Phase 8
+    // handles them from renderedContent); send html: undefined for those.
+    return chunk.map(p => ({
+      destPath:        p.destPath,
+      renderedContent: p.renderedContent,
+      html:            p.html,
+    }));
+  },
 };
 
 parentPort.on("message", async (msg) => {
@@ -45,3 +68,12 @@ parentPort.on("message", async (msg) => {
     parentPort.postMessage({ error: err.message, stack: err.stack });
   }
 });
+
+// linkTables values are page objects in the main pipeline, but
+// resolveLink() in the relative-links plugin only reads .permalink.
+// The serialized form ships [key, permalink] pairs; we reconstruct
+// minimal { permalink } stubs in the worker.
+function reconstructLinkTables({ byPath, byUrl, byRedirect }) {
+  const make = (pairs) => new Map(pairs.map(([k, pl]) => [k, { permalink: pl }]));
+  return { byPath: make(byPath), byUrl: make(byUrl), byRedirect: make(byRedirect) };
+}
