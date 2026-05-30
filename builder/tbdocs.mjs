@@ -117,10 +117,10 @@ export function makeTimer() {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo, scss, mermaid, prepDest), the main-thread spine (discover →
-// nav → markdownInit / buildInit → seo / loadData → resolveBookChapters +
-// deriveRedirects / deriveSitemap), the render fan-out (dispatch →
-// render:0..N → renderJoin), and write/post-write tasks
+// Seeds (config, buildInfo, scss, mermaid, prepDest, highlighterInit), the main-thread
+// spine (discover → nav → buildInit; discover + highlighterInit → markdownInit →
+// seo / loadData → resolveBookChapters + deriveRedirects / deriveSitemap), the render
+// fan-out (dispatch → render:0..N → renderJoin), and write/post-write tasks
 // (renderJoin + prepDest → searchData; write + searchData → writeAux →
 // writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
@@ -195,6 +195,18 @@ const TASKS = {
     },
   },
 
+  // Shiki WASM init. Seed on main (the live highlighter object is not
+  // serializable across a worker boundary). Fires immediately so the WASM
+  // warms up while discover + nav are running.
+  highlighterInit: {
+    expected: [],
+    runOnMain: true,
+    async execute() {
+      return { highlighter: await initHighlighter() };
+    },
+    submit(out, emit) { emit("markdownInit", out); },
+  },
+
   // ── Main-thread spine ─────────────────────────────────────────────────────
 
   discover: {
@@ -210,6 +222,7 @@ const TASKS = {
       state.site.config = out.config;
       for (const p of out.pages) state.pageByDest.set(p.destPath, p);
       emit("nav",             out);
+      emit("markdownInit",    out);
       emit("deriveRedirects", out);
       emit("deriveSitemap",   out);
     },
@@ -224,13 +237,12 @@ const TASKS = {
       return {};
     },
     submit(_, emit) {
-      emit("markdownInit", {});
-      emit("buildInit",    {});
+      emit("buildInit", {});
     },
   },
 
   // Pre-renders the sidebar/header/svg-sprite HTML used by templatePhase.
-  // Depends only on nav so it can start while markdownInit is in flight.
+  // Depends only on nav (needs state.site.navTree).
   buildInit: {
     expected: ["nav"],
     runOnMain: true,
@@ -240,14 +252,14 @@ const TASKS = {
     submit(out, emit) { emit("dispatch", out); },
   },
 
-  // Shiki WASM init + link-table build + markdown-it instance creation.
-  // Not serializable (Shiki's highlighter is a live object), so it stays
-  // on main. Workers initialize their own independent highlighter instances.
+  // Link-table build + markdown-it assembly. The highlighter arrives
+  // pre-warmed from highlighterInit; pages + config come from discover.
+  // Synchronous: all async work is done upstream. Not serializable (live
+  // Shiki object), so it stays on main. Workers init their own instances.
   markdownInit: {
-    expected: ["nav"],
+    expected: ["discover", "highlighterInit"],
     runOnMain: true,
-    async execute(_, ctx, state) {
-      const highlighter   = await initHighlighter();
+    execute({ highlighterInit: { highlighter } }, ctx, state) {
       const linkTables    = buildLinkTables(state.pages);
       const baseurl       = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
@@ -514,6 +526,7 @@ function chunkPages(pages, workers) {
 
 const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scss: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
+  highlighterInit: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   seo: "Spine", loadData: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
