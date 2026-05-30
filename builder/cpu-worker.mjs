@@ -12,6 +12,7 @@ import { initHighlighter }                         from "./highlight.mjs";
 import { createMarkdownIt, buildLinkTables,
          renderPhase }                             from "./render.mjs";
 import { templatePhase }                           from "./template.mjs";
+import { unpackShared }                            from "./sab-broadcast.mjs";
 
 // Start WASM init immediately, do NOT await. Module evaluation finishes
 // synchronously so the parentPort.on('message') dispatcher is installed
@@ -32,8 +33,9 @@ const handlers = {
   },
 
   async render({ inputs }) {
+    const { sharedSAB, chunk } = inputs;
     const { siteData, initData, linkTablesData, staticFilesArr,
-            baseurl, buildInfo, chunk } = inputs;
+            baseurl, buildInfo } = unpackShared(sharedSAB);
 
     const highlighter = await highlighterP;
     const linkTables  = reconstructLinkTables(linkTablesData);

@@ -560,17 +560,22 @@ const TASKS = {
       // Read pages directly from state.pages -- main-thread access,
       // no need to ship them through the input map.
       const chunks = chunkPages(state.pages, ctx.workerCount);
-      const siteData = {
-        config:       state.site.config,
-        seoSiteTitle: state.site.seoSiteTitle,
-        seoLogoUrl:   state.site.seoLogoUrl,
-      };
-      return {
-        chunks, siteData, initData, buildInfo,
+      const shared = {
+        siteData: {
+          config:       state.site.config,
+          seoSiteTitle: state.site.seoSiteTitle,
+          seoLogoUrl:   state.site.seoLogoUrl,
+        },
+        initData, buildInfo,
         linkTablesData: state.site.linkTablesSerialized,
         staticFilesArr: state.staticFiles.map(f => f.srcRel),
         baseurl:        String(state.site.config.baseurl || ""),
       };
+      // Pack the shared payload into a SharedArrayBuffer so each
+      // postMessage sends a SAB reference (shared memory) instead of
+      // structured-cloning ~286 KB per worker.
+      const sharedSAB = packShared(shared);
+      return { chunks, sharedSAB };
     },
     submit(out, emit, _state, scheduler) {
       const N = out.chunks.length;
@@ -602,13 +607,8 @@ const TASKS = {
           },
         });
         scheduler.seed(id, {
-          siteData:       out.siteData,
-          initData:       out.initData,
-          linkTablesData: out.linkTablesData,
-          staticFilesArr: out.staticFilesArr,
-          baseurl:        out.baseurl,
-          buildInfo:      out.buildInfo,
-          chunk:          out.chunks[i],
+          sharedSAB: out.sharedSAB,
+          chunk:     out.chunks[i],
         });
       }
     },
@@ -910,6 +910,7 @@ import {
   renderPhase,
 } from "./render.mjs";
 import { templatePhase }        from "./template.mjs";
+import { unpackShared }         from "./sab-broadcast.mjs";
 
 // Start WASM init immediately, do NOT await. The module finishes
 // loading synchronously so the parentPort.on('message') dispatcher is
@@ -931,8 +932,9 @@ const handlers = {
   },
 
   async render({ inputs }) {
+    const { sharedSAB, chunk } = inputs;
     const { siteData, initData, linkTablesData, staticFilesArr,
-            baseurl, buildInfo, chunk } = inputs;
+            baseurl, buildInfo } = unpackShared(sharedSAB);
 
     const highlighter = await highlighterP;
     const linkTables  = reconstructLinkTables(linkTablesData);
@@ -1041,14 +1043,15 @@ nav / seo / loadData / resolveBookChapters / buildInit run on main
 against `state.pages` directly. No marshalling, no delta merge --
 mutations are immediately visible to downstream main-thread tasks.
 
-### SharedArrayBuffer broadcast (Phase 4, optional)
-For the render fan-out, serialize `siteData + initData + linkTables`
-once into a SharedArrayBuffer and pass the wrapper to all render tasks
-via the pool's `transferList`. The SAB itself is shared memory, not
-cloned. Each worker deserializes its slice. The SAB is read-only by
-convention. Measure first -- likely modest savings vs. the N
-structured-clone fan-outs, only worth doing if profiling shows
-dispatch overhead is meaningful.
+### SharedArrayBuffer broadcast (Phase 4)
+The render fan-out's shared payload (`siteData + initData +
+linkTablesData + staticFilesArr + baseurl + buildInfo`, ~286 KB) is
+JSON-serialized once on the main thread into a SharedArrayBuffer via
+`sab-broadcast.mjs`'s `packShared()`. Each render task receives the
+SAB reference (shared memory, not cloned) alongside its per-worker
+chunk. Workers call `unpackShared()` to deserialize independently and
+in parallel. Measured saving: ~8 ms per build (fan-out drops from
+~19 ms to ~9 ms).
 
 ## Error handling
 
@@ -1300,7 +1303,7 @@ data lifetime across the worker boundary, or low-level serialisation.
 | 2. Render fan-out | Opus | Cross-thread structured-clone semantics, module-scope initialisation order, dynamic task registration, per-page delta-merge identity. Debugging concurrency bugs needs depth. |
 | 3. Post-write tasks | Sonnet | All `runOnMain`; thin wrappers around existing write functions. No new concurrency surface beyond the already-built scheduler. |
 | 3-follow-up. Workerize writeOffline | Opus (decided) | Profiled: zero CPU contention; cooperative async overlap is already optimal. Declined — no implementation needed. |
-| 4. SAB broadcast | Opus | Manual serialisation into shared memory; layout / endianness / varint choices need reasoning about memory ordering. |
+| 4. SAB broadcast | Opus | JSON + SAB approach; measured ~55% fan-out reduction (~8 ms saving). |
 
 Escalate to Opus mid-phase if a Sonnet session hits a debugging block
 it can't reason through.
@@ -1471,17 +1474,41 @@ surface, and add a result-merge path — all for no measurable gain.
 The overlap already saves ~260 ms vs. sequential execution (the full
 duration of `writePdf`). No further action needed.
 
-### Phase 4: SharedArrayBuffer broadcast (optional)
+### Phase 4: SharedArrayBuffer broadcast
 
 **Suggested model:** Opus.
 
-For the render fan-out, serialize `siteData + initData + linkTables`
-once into a SharedArrayBuffer and pass it to all render tasks via
-the pool's `transferList`. Measure first -- likely modest savings
-vs. the N structured-clone fan-outs.
+For the render fan-out, serialize `siteData + initData + linkTables +
+staticFilesArr + baseurl + buildInfo` once into a SharedArrayBuffer
+and pass it to all render tasks. The SAB is shared memory --- each
+worker deserializes its own copy from the same buffer instead of the
+main thread structured-cloning the ~286 KB shared payload 16 times.
 
-**Deliverable:** measured reduction in render-dispatch overhead.
+**Implementation.** Three files:
 
-**Verification.** `build.bat && check.bat` clean. Render dispatch
-overhead (the gap between `dispatch` end and the earliest `render:i`
-start in the timing summary) should decrease vs. Phase 2.
+- `builder/sab-broadcast.mjs` (~15 LOC): `packShared(obj)` serializes
+  an object to JSON, encodes to UTF-8, and copies into a SAB;
+  `unpackShared(sab)` reverses the process.
+- `tbdocs.mjs` `dispatch.execute()`: packs the shared payload into a
+  SAB and returns `{ chunks, sharedSAB }` instead of the flat fields.
+- `cpu-worker.mjs` `render` handler: calls `unpackShared(sharedSAB)`
+  to reconstruct the shared fields before rendering.
+
+**Measurements** (16 workers, ~286 KB shared payload, 857 pages):
+
+| | Run 1 | Run 2 | Run 3 | Median |
+|---|---|---|---|---|
+| Baseline (structured-clone) | 18.1 ms | 35.0 ms | 19.5 ms | ~19 ms |
+| SAB broadcast | 9.2 ms | 7.3 ms | 10.2 ms | ~9 ms |
+
+SAB packing cost (in `dispatch.execute()`): ~2 ms (visible as
+`dispatch=2ms` vs. prior `dispatch=0ms`). Net saving: ~8 ms per build,
+a ~55% reduction in fan-out overhead. The saving is modest in absolute
+terms (~0.2% of a ~4 s build) but the implementation is small and the
+pattern moves redundant serialization work off the main thread ---
+each worker independently deserializes from shared memory in parallel
+instead of the main thread serializing 16 identical copies
+sequentially.
+
+**Verification.** `build.bat && check.bat` clean. `dispatch` now
+shows ~2 ms (SAB packing) vs. 0 ms before.

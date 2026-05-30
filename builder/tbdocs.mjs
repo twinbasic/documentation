@@ -39,6 +39,7 @@ import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
 import { writeOffline } from "./offline.mjs";
 import { writePdf } from "./pdf.mjs";
+import { packShared } from "./sab-broadcast.mjs";
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
 
@@ -313,17 +314,20 @@ const TASKS = {
     runOnMain: true,
     execute({ buildInit: { initData }, buildInfo: { buildInfo } }, ctx, state) {
       const chunks = chunkPages(state.pages, ctx.workerCount);
-      const siteData = {
-        config:       state.site.config,
-        seoSiteTitle: state.site.seoSiteTitle,
-        seoLogoUrl:   state.site.seoLogoUrl,
-      };
-      return {
-        chunks, siteData, initData, buildInfo,
+      const shared = {
+        siteData: {
+          config:       state.site.config,
+          seoSiteTitle: state.site.seoSiteTitle,
+          seoLogoUrl:   state.site.seoLogoUrl,
+        },
+        initData,
+        buildInfo,
         linkTablesData: state.site.linkTablesSerialized,
         staticFilesArr: state.staticFiles.map(f => f.srcRel),
         baseurl:        String(state.site.config.baseurl || ""),
       };
+      const sharedSAB = packShared(shared);
+      return { chunks, sharedSAB };
     },
     submit(out, emit, _state, scheduler) {
       const N = out.chunks.length;
@@ -351,13 +355,8 @@ const TASKS = {
           },
         });
         scheduler.seed(id, {
-          siteData:       out.siteData,
-          initData:       out.initData,
-          linkTablesData: out.linkTablesData,
-          staticFilesArr: out.staticFilesArr,
-          baseurl:        out.baseurl,
-          buildInfo:      out.buildInfo,
-          chunk:          out.chunks[i],
+          sharedSAB: out.sharedSAB,
+          chunk:     out.chunks[i],
         });
       }
     },
