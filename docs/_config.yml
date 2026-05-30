@@ -3,9 +3,6 @@ logo: favicon.png
 logo_with_title: true
 url: "https://docs.twinbasic.com"
 
-# For copy button on code
-enable_copy_code_button: true
-
 # Aux links for the upper right navigation
 aux_links:
   "twinBASIC Home":

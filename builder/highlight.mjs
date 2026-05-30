@@ -57,7 +57,7 @@ const COPY_BUTTON_HTML =
 
 let cached = null;
 
-export async function initHighlighter({ copyButton = true } = {}) {
+export async function initHighlighter() {
   if (cached) return cached;
 
   const theme = await loadHighlightTheme();
@@ -86,15 +86,14 @@ export async function initHighlighter({ copyButton = true } = {}) {
       `Add it to highlight.mjs's SHIKI_LANGS to enable highlighting.`);
   };
 
-  const copyButtonHtml = copyButton ? COPY_BUTTON_HTML : "";
   cached = {
-    render: (code, lang) => renderCodeBlock(shiki, theme, copyButtonHtml, code, lang, warn),
+    render: (code, lang) => renderCodeBlock(shiki, theme, code, lang, warn),
     themeCss: theme.css,
   };
   return cached;
 }
 
-function renderCodeBlock(shiki, theme, copyButtonHtml, code, lang, warn) {
+function renderCodeBlock(shiki, theme, code, lang, warn) {
   const lower = (lang || "").toLowerCase();
   const isTb = TB_ALIASES.has(lower);
   // The wrapper class is `language-<as-typed>`; keep `vb` / `vba` /
@@ -133,7 +132,7 @@ function renderCodeBlock(shiki, theme, copyButtonHtml, code, lang, warn) {
     tokenizedHtml = escapeHtml(codeBody);
   }
 
-  return `<div class="language-${wrapperLang} highlighter-rouge">${copyButtonHtml}<div class="highlight"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
+  return `<div class="language-${wrapperLang} highlighter-rouge">${COPY_BUTTON_HTML}<div class="highlight"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
 }
 
 // Shiki's `codeToTokensBase` with `includeExplanation` returns
