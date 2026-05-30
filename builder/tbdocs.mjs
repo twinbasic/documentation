@@ -14,27 +14,33 @@
 // the actual deployment instead of the configured production host).
 
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 
+import { WorkerPool } from "./worker-pool.mjs";
+import { Scheduler }  from "./scheduler.mjs";
+
 import { discover } from "./discover.mjs";
-import { regenerateMermaid } from "./mermaid.mjs";
-import { compileScss } from "./scss.mjs";
 import { computeNav } from "./nav.mjs";
 import { precomputeSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
-import { captureBuildInfo } from "./build-info.mjs";
 import { loadData } from "./data.mjs";
-import { renderPhase, createMarkdownIt, initHighlighter, buildLinkTables } from "./render.mjs";
-import { templatePhase } from "./template.mjs";
+import {
+  renderPhase, createMarkdownIt, initHighlighter,
+  buildLinkTables, serializeLinkTables,
+} from "./render.mjs";
+import { templatePhase, buildInitFn } from "./template.mjs";
 import { writePhase } from "./write.mjs";
-import { writeRedirects } from "./redirects.mjs";
-import { writeSitemap } from "./sitemap.mjs";
+import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
+import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
 import { writeOffline } from "./offline.mjs";
 import { writePdf } from "./pdf.mjs";
+
+const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
 
 function parseArgs(argv) {
   const args = {
@@ -106,72 +112,235 @@ export function makeTimer() {
   };
 }
 
+// ── Task graph ────────────────────────────────────────────────────────────────
+//
+// Phase 1 wires the seeds (config, buildInfo, scss, mermaid) and the main-
+// thread spine (discover → nav → markdownInit / buildInit → seo / loadData →
+// resolveBookChapters + deriveRedirects / deriveSitemap).
+//
+// Render, template, write, and post-write tasks are still the trailing serial
+// block below scheduler.start(); they graduate to scheduler tasks in Phases 2–3.
+
+const TASKS = {
+  // ── Seeds ─────────────────────────────────────────────────────────────────
+
+  // Reads and merges _config.yml + CLI overrides. Seed on main because the
+  // output object flows directly into discover (identity matters, no worker
+  // boundary crossing needed, and it's a trivial I/O read).
+  config: {
+    expected: [],
+    runOnMain: true,
+    async execute(_, ctx) {
+      const text = await fs.readFile(path.join(ctx.srcRoot, "_config.yml"), "utf8");
+      const config = yaml.load(text);
+      if (ctx.opts.baseurl != null) config.baseurl = ctx.opts.baseurl;
+      if (ctx.opts.url != null) config.url = ctx.opts.url;
+      return { config };
+    },
+    submit(out, emit) { emit("discover", out); },
+  },
+
+  // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
+  buildInfo: {
+    expected: [],
+    // execute() runs in cpu-worker.mjs as the "buildInfo" handler.
+    submit() { /* Phase 2: emit("dispatch", out) */ },
+  },
+
+  // Sass compilation (~700 ms CPU). Worker so it overlaps with the main spine.
+  scss: {
+    expected: [],
+    // execute() runs in cpu-worker.mjs as the "scss" handler.
+    submit() { /* Phase 3: emit("write", out) */ },
+  },
+
+  // Stale mermaid SVG regeneration. Worker for the same reason.
+  mermaid: {
+    expected: [],
+    // execute() runs in cpu-worker.mjs as the "mermaid" handler.
+    submit(out, emit, state) {
+      // Append any freshly-generated SVG descriptors that discover didn't see
+      // (because mermaid and discover run concurrently). Dedup by srcRel so
+      // SVGs already on disk at discover time aren't double-counted.
+      const known = new Set(state.staticFiles.map((f) => f.srcRel));
+      for (const f of out.mermaidStats.svgFiles ?? []) {
+        if (!known.has(f.srcRel)) state.staticFiles.push(f);
+      }
+      /* Phase 3: emit("write", out) */
+    },
+  },
+
+  // ── Main-thread spine ─────────────────────────────────────────────────────
+
+  discover: {
+    expected: ["config"],
+    runOnMain: true,
+    async execute({ config: { config } }, ctx) {
+      const { pages, staticFiles } = await discover(ctx.srcRoot, config.exclude ?? []);
+      return { pages, staticFiles, config };
+    },
+    submit(out, emit, state) {
+      state.pages       = out.pages;
+      state.staticFiles = out.staticFiles;
+      state.site.config = out.config;
+      for (const p of out.pages) state.pageByDest.set(p.destPath, p);
+      emit("nav",             out);
+      emit("deriveRedirects", out);
+      emit("deriveSitemap",   out);
+    },
+  },
+
+  nav: {
+    expected: ["discover"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      const { navTree } = computeNav(state.pages, state.site.config);
+      state.site.navTree = navTree;
+      return {};
+    },
+    submit(_, emit) {
+      emit("markdownInit", {});
+      emit("buildInit",    {});
+    },
+  },
+
+  // Pre-renders the sidebar/header/svg-sprite HTML used by templatePhase.
+  // Depends only on nav so it can start while markdownInit is in flight.
+  buildInit: {
+    expected: ["nav"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      return { initData: buildInitFn(state.site) };
+    },
+    submit() { /* Phase 2: emit("dispatch", out) */ },
+  },
+
+  // Shiki WASM init + link-table build + markdown-it instance creation.
+  // Not serializable (Shiki's highlighter is a live object), so it stays
+  // on main. Workers initialize their own independent highlighter instances.
+  markdownInit: {
+    expected: ["nav"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      const highlighter   = await initHighlighter();
+      const linkTables    = buildLinkTables(state.pages);
+      const baseurl       = String(state.site.config.baseurl || "");
+      const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
+      state.site.highlighter           = highlighter;
+      state.site.markdown              = createMarkdownIt({
+        highlighter, linkTables, baseurl, staticFiles: staticFileSet,
+      });
+      state.site.linkTablesSerialized  = serializeLinkTables(linkTables);
+      return {};
+    },
+    submit(_, emit) {
+      emit("seo",      {});
+      emit("loadData", {});
+    },
+  },
+
+  seo: {
+    expected: ["markdownInit"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      const { seoSiteTitle, seoLogoUrl } = precomputeSeo(
+        state.pages, state.site.config, state.site.markdown);
+      state.site.seoSiteTitle = seoSiteTitle;
+      state.site.seoLogoUrl   = seoLogoUrl;
+      return {};
+    },
+    submit(_, emit) { emit("resolveBookChapters", {}); },
+  },
+
+  loadData: {
+    expected: ["markdownInit"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      const data = await loadData(ctx.srcRoot);
+      state.site.data     = data;
+      state.site.bookData = data.book ?? null;
+      return {};
+    },
+    submit(_, emit) { emit("resolveBookChapters", {}); },
+  },
+
+  // Mutates bookData._chapters with refs into state.pages. Identity-critical:
+  // the same page objects must be read by writePdf later (after renderPhase
+  // fills in renderedContent on those same objects).
+  resolveBookChapters: {
+    expected: ["seo", "loadData"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      resolveBookChapters(state.site.bookData, state.pages);
+      return {};
+    },
+    submit() { /* Phase 2: emit("dispatch", {}) */ },
+  },
+
+  // Can run in parallel with nav/markdownInit -- only needs pages + config,
+  // both available after discover. The layout-based filter (not p.html)
+  // lets this run before templatePhase.
+  deriveRedirects: {
+    expected: ["discover"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      return { stubs: deriveRedirectStubs(state.pages, state.site) };
+    },
+    submit() { /* Phase 3: emit("writeAux", out) */ },
+  },
+
+  deriveSitemap: {
+    expected: ["discover"],
+    runOnMain: true,
+    execute(_, ctx, state) {
+      return { urls: deriveSitemapUrls(state.pages, state.site) };
+    },
+    submit() { /* Phase 3: emit("writeAux", out) */ },
+  },
+};
+
+// ── Build entry point ─────────────────────────────────────────────────────────
+
 export async function runBuild(opts) {
   const { src, dest, dryRun, tolerateMissingImages, profileOffline } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
-  const t = makeTimer();
+  const workerCount = os.availableParallelism();
+  const pool = new WorkerPool(workerCount, CPU_WORKER_URL);
+  const scheduler = new Scheduler({ pool, tasks: TASKS });
+  const ctx = { srcRoot, destRoot, opts, workerCount };
 
-  // Phase 11 (B1) preprocess: regenerate stale mermaid SVGs before
-  // discover walks the tree so freshly-emitted siblings land in
-  // staticFiles[] on this same build.
-  const mermaidStats = await regenerateMermaid(srcRoot);
-  t.lap("mermaid");
+  // Run the scheduler (seeds + main-thread spine). Render/template/write
+  // tasks are still the trailing serial block below; they graduate to
+  // scheduler tasks in Phases 2–3.
+  let results;
+  try {
+    results = await scheduler.start(ctx);
+  } finally {
+    await pool.destroy();
+  }
+
+  // ── Trailing serial block (Phases 2–3 will absorb these) ─────────────────
+
+  const t = makeTimer();
+  const { pages, staticFiles } = scheduler.state;
+  const site = scheduler.state.site;
+
+  // Wire in the three worker-task outputs that the serial block needs.
+  const { mermaidStats } = results.get("mermaid");
+  const { scssResult }   = results.get("scss");
+  site.buildInfo         = results.get("buildInfo").buildInfo;
+
   if (mermaidStats.regenerated > 0 || mermaidStats.failed > 0) {
     const parts = [`regenerated ${mermaidStats.regenerated}`];
     if (mermaidStats.failed > 0) parts.push(`failed ${mermaidStats.failed}`);
     console.log(`mermaid: ${parts.join(", ")} of ${mermaidStats.processed} SVG(s)`);
   }
-  // Content failures (broken .mmd, render exception) flip the build
-  // exit code so CI catches them; setup failures (missing puppeteer /
-  // Chrome) only warn and leave the existing SVGs in place.
-  if (mermaidStats.failed > 0) {
-    process.exitCode = 1;
-  }
+  if (mermaidStats.failed > 0) process.exitCode = 1;
+  if (scssResult.failed)       process.exitCode = 1;
 
-  const scssResult = await compileScss(srcRoot);
-  t.lap("scss");
-  if (scssResult.failed) {
-    process.exitCode = 1;
-  }
-
-  const config = yaml.load(await fs.readFile(path.join(srcRoot, "_config.yml"), "utf8"));
-  if (opts.baseurl != null) config.baseurl = opts.baseurl;
-  if (opts.url != null) config.url = opts.url;
-
-  // Issue build-info immediately so the git shell-outs overlap with the
-  // CPU-bound nav work.
-  const buildInfoPromise = captureBuildInfo();
-
-  const { pages, staticFiles } = await discover(srcRoot, config.exclude ?? []);
-  t.lap("discover");
-
-  const { navTree } = computeNav(pages, config);
-  t.lap("nav");
-
-  // Build the shared markdown-it instance up front so Phase 2's SEO
-  // pass and Phase 3's body renderer use the same configured renderer.
-  // initHighlighter overlaps with the running git shell-outs above.
-  const highlighter = await initHighlighter();
-  const linkTables = buildLinkTables(pages);
-  const baseurl = String(config.baseurl || "");
-  const staticFileSet = new Set(staticFiles.map((s) => s.srcRel));
-  const markdown = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles: staticFileSet });
-  t.lap("markdown-init");
-
-  const { seoSiteTitle, seoLogoUrl } = precomputeSeo(pages, config, markdown);
-  t.lap("seo");
-
-  const data = await loadData(srcRoot);
-  const bookData = data.book ?? null;
-  resolveBookChapters(bookData, pages);
-  t.lap("book");
-
-  const buildInfo = await buildInfoPromise;
-  t.lap("buildInfo");
-
-  const site = { config, navTree, seoSiteTitle, seoLogoUrl, buildInfo, bookData, data, markdown };
+  const baseurl = String(site.config.baseurl || "");
 
   await renderPhase(pages, site, staticFiles);
   t.lap("render");
@@ -180,8 +349,8 @@ export async function runBuild(opts) {
   t.lap("template");
 
   const generatedAssets = [];
-  if (highlighter.themeCss) {
-    generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: highlighter.themeCss });
+  if (site.highlighter?.themeCss) {
+    generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: site.highlighter.themeCss });
   }
   if (scssResult.compiled) {
     generatedAssets.push({ rel: "assets/css/just-the-docs-combined.css", content: scssResult.css });
@@ -196,22 +365,22 @@ export async function runBuild(opts) {
 
   let auxStats = null;
   if (!dryRun) {
+    // Use the pre-derived stubs/urls from the scheduler rather than re-deriving.
+    const stubs = results.get("deriveRedirects").stubs;
+    const urls  = results.get("deriveSitemap").urls;
     const [redirectStats, sitemapStats, searchStats] = await Promise.all([
-      writeRedirects(pages, site, destRoot),
-      writeSitemap(pages, site, destRoot),
+      writeRedirects(pages, site, destRoot, stubs),
+      writeSitemap(pages, site, destRoot, urls),
       writeSearchData(pages, site, destRoot),
     ]);
     auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
   }
   t.lap("auxiliaries");
 
-  // CLI flag takes precedence (PLAN-9 §7.D4); fall back to the
-  // `also_build_offline` / `also_build_pdf` config knobs Jekyll uses
-  // when the flag isn't passed.
-  const skipOffline = opts.skipOffline
-    ?? (config.also_build_offline === false);
-  const skipPdf = opts.skipPdf
-    ?? (config.also_build_pdf === false);
+  // CLI flag takes precedence; fall back to the `also_build_offline` /
+  // `also_build_pdf` config knobs.
+  const skipOffline = opts.skipOffline ?? (site.config.also_build_offline === false);
+  const skipPdf     = opts.skipPdf     ?? (site.config.also_build_pdf     === false);
 
   let offlineStats = null;
   let offlineTimer = null;
@@ -252,6 +421,7 @@ export async function runBuild(opts) {
     console.log(`  pdf:     book.html (${mb} MB), ${pdfStats.css} CSS, ` +
                 `${pdfStats.images} images${missingClause} -> ${destRoot}-pdf`);
   }
+  console.log(scheduler.summary());
   console.log(t.summary());
   if (offlineTimer) {
     console.log(`  offline: ${offlineTimer.summary()}`);
@@ -263,7 +433,6 @@ export async function runBuild(opts) {
     process.exitCode = 1;
   }
 
-  // Phase 8+ chains in here.
   return { pages, staticFiles, site, destRoot };
 }
 
