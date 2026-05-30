@@ -16,7 +16,7 @@ How to add a new pipeline stage or a custom markdown-it plugin to `tbdocs`. This
 
 ## Two extension points
 
-**New pipeline stage** --- a new `.mjs` module that reads from the `pages` array or `site` object and writes output to disk or to page fields. The module exports one async function. The orchestrator in `tbdocs.mjs` calls it at the right point in the fixed sequence. No plugin registry or hook system is involved.
+**New pipeline stage** --- a new `.mjs` module that reads from the `pages` array or `site` object and writes output to disk or to page fields. The module exports one async function. The orchestrator in `tbdocs.mjs` registers it as a task in the scheduler's DAG, with declared predecessor dependencies that determine when it runs. No plugin registry or hook system is involved.
 
 **New markdown-it plugin** --- a function that configures the shared markdown-it instance with additional parsing or rendering rules. Registered in `createMarkdownIt` inside `render.mjs`. Both Phase 2's SEO title extraction and Phase 3's body render use the same instance, so the plugin runs on every page.
 
@@ -65,21 +65,24 @@ Add an import at the top of `builder/tbdocs.mjs`:
 import { myStage } from "./my-stage.mjs";
 ```
 
-Then call the stage in `runBuild` at the right position in the sequence. Most auxiliary stages belong after Phase 5 (write) and before Phase 7 (offline), so the online tree is complete when they run:
+Then add a task definition in the `TASKS` object. Each task declares its predecessor IDs in `expected`, runs its work in `execute()`, and routes its output to downstream tasks in `submit()`. Most auxiliary stages depend on `write` (so the online tree is complete) and emit into `writeAux` or a similar downstream task:
 
 ```js
-const myStats = await myStage(pages, site, destRoot);
-t.lap("my-stage");
-if (myStats) {
-  console.log(`  my-stage: ${myStats.entries} entries`);
-}
+myStage: {
+  expected: ["write"],
+  runOnMain: true,
+  async execute(_, ctx, state) {
+    return myStage(state.pages, state.site, ctx.destRoot);
+  },
+  submit(out, emit) { emit("writeAux", out); },
+},
 ```
 
-`t.lap("my-stage")` records wall-clock time for the step; the label appears in the timing summary line at the end of the build.
+Set `runOnMain: true` for stages that read from `state.pages` or `state.site` directly. The scheduler records per-task wall-clock timings automatically; the label in the timing summary is the task's key in the `TASKS` object.
 
 ### 3. Handle the `dryRun` flag
 
-When `dryRun` is `true`, the stage should log what it would do without touching the filesystem:
+When `dryRun` is `true`, the stage should log what it would do without touching the filesystem. The flag is available as `ctx.opts.dryRun` inside `execute()`:
 
 ```js
 export async function myStage(pages, site, destRoot, { dryRun = false } = {}) {

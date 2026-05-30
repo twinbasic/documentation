@@ -48,22 +48,24 @@ The pipeline passes two mutable data structures through every stage.
 
 ### Site object (`site`)
 
-Built at the end of Phase 2 and passed unchanged to every subsequent phase.
+Populated progressively by scheduler tasks on the main thread. Each task's `execute()` or `submit()` stores its output on `state.site`; downstream tasks read from it directly.
 
-| Field | Type | Description |
-|---|---|---|
-| `config` | `object` | Parsed `_config.yml`, with CLI overrides (`--baseurl`, `--url`) already applied. |
-| `navTree` | `object` | Top-level nav hierarchy produced by `nav.mjs`. |
-| `seoSiteTitle` | `string` | Rendered site title from `config.title`. |
-| `seoLogoUrl` | `string` | Absolute URL of the site logo. |
-| `buildInfo` | `object` | `{ commit: string, commitDate: string }` from git. Both fall back to `"unknown"` outside a git repository. |
-| `bookData` | `object\|null` | Parsed `_book.yml` with chapter selectors resolved to `Page` references. `null` when the file is absent. See [Book Configuration](Book-Configuration). |
-| `data` | `object` | `_book.yml` loaded as `{ book: … }`, or `{}` when absent. |
-| `markdown` | `MarkdownIt` | Shared markdown-it instance, built once during Phase 2 setup and reused by Phase 2's SEO pass and Phase 3's render pass. |
+| Field | Type | Set by | Description |
+|---|---|---|---|
+| `config` | `object` | `discover` | Parsed `_config.yml`, with CLI overrides (`--baseurl`, `--url`) already applied. |
+| `navTree` | `object` | `nav` | Top-level nav hierarchy produced by `nav.mjs`. |
+| `seoSiteTitle` | `string` | `seo` | Rendered site title from `config.title`. |
+| `seoLogoUrl` | `string` | `seo` | Absolute URL of the site logo. |
+| `buildInfo` | `object` | `buildInfo` | `{ commit: string, commitDate: string }` from git. Both fall back to `"unknown"` outside a git repository. |
+| `bookData` | `object\|null` | `loadData` | Parsed `_book.yml` with chapter selectors resolved to `Page` references. `null` when the file is absent. See [Book Configuration](Book-Configuration). |
+| `data` | `object` | `loadData` | `_book.yml` loaded as `{ book: … }`, or `{}` when absent. |
+| `markdown` | `MarkdownIt` | `markdownInit` | Shared markdown-it instance, built once and reused by the `seo` task and Phase 3's render pass. Workers build their own independent instances. |
+| `highlighter` | `object` | `markdownInit` | Shiki highlighter instance. `render(code, lang)` returns highlighted HTML; `themeCss` is the generated `tb-highlight.css` string or `null`. |
+| `linkTablesSerialized` | `object` | `markdownInit` | Serialized `[key, permalink]` pair arrays for structured-clone transfer to render workers. |
 
 ### Static files (`staticFiles[]`)
 
-Also produced by Phase 1. Every file that is not a page --- images, fonts, prebuilt CSS/JS, and any `.md`/`.html` file without frontmatter --- becomes a static file object. This array does not grow after Phase 1.
+Also produced by Phase 1. Every file that is not a page --- images, fonts, prebuilt CSS/JS, and any `.md`/`.html` file without frontmatter --- becomes a static file object. The `mermaid` task's `submit()` may append additional SVG descriptors after Phase 1 (because `mermaid` and `discover` run concurrently under the scheduler, freshly-emitted SVGs can miss Phase 1's traversal).
 
 | Field | Type | Description |
 |---|---|---|
@@ -86,6 +88,7 @@ regenerateMermaid(srcRoot: string): Promise<{
   regenerated: number,
   failed: number,
   setupSkipped?: true,
+  svgFiles: { srcPath: string, srcRel: string, destRel: string, size: number }[],
 }>
 ```
 
@@ -105,7 +108,7 @@ Two failure-mode distinctions:
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `regenerateMermaid` | `(srcRoot) → Promise<{ processed, regenerated, failed, setupSkipped? }>` | Main entry point. |
+| `regenerateMermaid` | `(srcRoot) → Promise<{ processed, regenerated, failed, setupSkipped?, svgFiles }>` | Main entry point. `svgFiles` is an array of `{ srcPath, srcRel, destRel, size }` descriptors for every managed SVG, stat'd during the call. |
 
 ---
 
@@ -134,7 +137,7 @@ Runs a single `fast-glob` call over `srcRoot` with the `exclude:` list read from
 
 ## Phase 2: COMPUTE
 
-Phase 2 runs several modules in sequence (with `captureBuildInfo` running in parallel). Together they build the `site` object and add nav, SEO, and book-chapter data to each page.
+Phase 2 runs several scheduler tasks on the main thread. Together they build the `site` object and add nav, SEO, and book-chapter data to each page. `captureBuildInfo` runs on a worker thread concurrently with the main spine; `deriveRedirects` and `deriveSitemap` also branch off after `discover` and run in parallel with the nav/seo chain.
 
 ### `nav.mjs`
 
@@ -227,7 +230,7 @@ Captures git commit hash and date for the PDF title page.
 captureBuildInfo(): Promise<{ commit: string, commitDate: string }>
 ```
 
-Issues two parallel `git` shell-outs (`rev-parse --short HEAD` and `log -1 --format=%cs`). Falls back to `"unknown"` on any failure, so the build never aborts outside a git repository. The orchestrator launches this promise immediately after Phase 1 so the shell-outs overlap with the CPU-bound nav computation.
+Issues two parallel `git` shell-outs (`rev-parse --short HEAD` and `log -1 --format=%cs`). Falls back to `"unknown"` on any failure, so the build never aborts outside a git repository. Runs on a worker thread as a seed task so the shell-outs overlap with the entire main-thread spine.
 
 **Reads:** local git repository state.  
 **Writes:** nothing to pages (result returned directly to the orchestrator).
@@ -265,7 +268,7 @@ Returns `{ book: <parsed YAML> }`, or `{}` when the file is absent. The orchestr
 
 ### Phase 2 setup --- shared markdown-it instance
 
-Before Phase 2 completes, the orchestrator builds the shared markdown-it instance that both Phase 2's SEO pass and Phase 3's render pass reuse. Three functions from `render.mjs` are called in sequence:
+The `markdownInit` scheduler task builds the shared markdown-it instance that both the `seo` task and each render worker reuse. Three functions from `render.mjs` are called in sequence:
 
 ```js
 const highlighter = await initHighlighter();
@@ -273,7 +276,9 @@ const linkTables  = buildLinkTables(pages);
 const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
 ```
 
-These functions are documented under [Phase 3](#phase-3-rendermjs) below since they are defined in `render.mjs`. They are called here during Phase 2 only to allow the SEO pass to share the same configured pipeline.
+The main-thread instance is stored on `state.site.markdown`; the link tables are also serialized via `serializeLinkTables()` and stored on `state.site.linkTablesSerialized` so the render fan-out can ship them to workers (each worker reconstructs minimal `{ permalink }` stubs).
+
+These functions are documented under [Phase 3](#phase-3-rendermjs) below since they are defined in `render.mjs`.
 
 ---
 
@@ -302,6 +307,7 @@ Renders each page's `rawContent` to `page.renderedContent` using the shared `sit
 | `buildLinkTables` | `(pages: Page[]) → { byPath, byUrl, byRedirect }` | Builds lookup tables keyed by `srcRel`, `permalink`, and `redirect_from` entries. Used by the relative-links plugin to resolve in-source `[X](Y.md)` links to absolute URLs at render time. |
 | `kramdownSlug` | `(text: string) → string` | Converts heading text to a kramdown-compatible anchor slug: lowercase, strip non-word characters, deduplicate with `-1`, `-2`, and so on. |
 | `rewriteAdmonitions` | `(src: string) → string` | Pre-render text pass: converts GFM `> [!NOTE]` / `[!IMPORTANT]` / `[!WARNING]` / `[!TIP]` / `[!CAUTION]` blocks to the `markdown-alert markdown-alert-<type>` class structure. |
+| `serializeLinkTables` | `(lt: { byPath, byUrl, byRedirect }) → { byPath, byUrl, byRedirect }` | Serializes the link-table Maps to `[key, permalink]` pair arrays for structured-clone transfer to render workers. Called by the `markdownInit` scheduler task. |
 
 ---
 
@@ -326,7 +332,8 @@ Pre-computes the per-build static sidebar HTML once, then wraps each page's `ren
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `templatePhase` | `(pages, site) → Promise<void>` | Main entry point. |
+| `templatePhase` | `(pages, site, initData?) → Promise<void>` | Main entry point. When `initData` is passed (on workers), skips the internal `buildInit()` call and uses the pre-rendered sidebar/header/svg-sprite HTML directly. |
+| `buildInitFn` | `(site: object) → object` | Pre-renders the ~50 KB of sidebar, header, and svg-sprite HTML used by `templatePhase`. Called by the `buildInit` scheduler task on the main thread; the result is shipped to render workers as part of the shared payload. |
 | `navActivationCss` | `(page: Page) → string` | Generates the per-page `<style id="jtd-nav-activation">` block from `page.navLevels`. Phase 12's dev server calls this when patching in the SSE reload script. |
 | `injectAnchorHeadings` | `(html: string) → string` | Adds `<a class="anchor-heading">` next to every heading that has an `id` attribute. |
 
@@ -399,10 +406,10 @@ Phase 6 runs three writers concurrently. None writes to page objects; all write 
 **Entry point**
 
 ```js
-writeRedirects(pages: Page[], site: object, destRoot: string): Promise<{ written: number }>
+writeRedirects(pages: Page[], site: object, destRoot: string, stubs?: Array): Promise<{ written: number }>
 ```
 
-For each page with a `redirect_from:` frontmatter entry, writes one HTML stub per source URL. Each stub uses `<script>location=…</script>`, `<meta http-equiv="refresh">`, a `<link rel="canonical">`, `<meta name="robots" content="noindex">`, and a visible `<a>` fallback for no-script/no-meta-refresh environments.
+When `stubs` is provided (pre-computed by the `deriveRedirects` scheduler task), the derivation step is skipped and the stubs are written directly. For each page with a `redirect_from:` frontmatter entry, writes one HTML stub per source URL. Each stub uses `<script>location=…</script>`, `<meta http-equiv="refresh">`, a `<link rel="canonical">`, `<meta name="robots" content="noindex">`, and a visible `<a>` fallback for no-script/no-meta-refresh environments.
 
 **Reads:** `page.frontmatter.redirect_from`, `page.permalink`, `site.config`.  
 **Writes:** redirect stub HTML files under `<destRoot>/`.
@@ -411,7 +418,7 @@ For each page with a `redirect_from:` frontmatter entry, writes one HTML stub pe
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeRedirects` | `(pages, site, destRoot) → Promise<{ written }>` | Main entry point. |
+| `writeRedirects` | `(pages, site, destRoot, stubs?) → Promise<{ written }>` | Main entry point. Accepts optional pre-computed `stubs` from `deriveRedirectStubs`. |
 | `deriveRedirectStubs` | `(pages, site) → Array<{ from, to, destPath }>` | Pure derivation of the stub list without writing to disk. Exported so `offline.mjs` can read the list without re-running the derivation. |
 
 ---
@@ -421,10 +428,10 @@ For each page with a `redirect_from:` frontmatter entry, writes one HTML stub pe
 **Entry point**
 
 ```js
-writeSitemap(pages: Page[], site: object, destRoot: string): Promise<{ entries: number }>
+writeSitemap(pages: Page[], site: object, destRoot: string, urls?: string[]): Promise<{ entries: number }>
 ```
 
-Filters pages by jekyll-sitemap rules (drops `sitemap: false` and `/404.html`), sorts absolute URLs alphabetically for byte-identical re-runs, and emits `sitemap.xml`. Also writes `robots.txt` with a `Sitemap:` reference.
+When `urls` is provided (pre-computed by the `deriveSitemap` scheduler task), the URL derivation step is skipped. Filters pages by jekyll-sitemap rules (drops `sitemap: false` and `/404.html`), sorts absolute URLs alphabetically for byte-identical re-runs, and emits `sitemap.xml`. Also writes `robots.txt` with a `Sitemap:` reference.
 
 **Reads:** `page.permalink`, `page.frontmatter.sitemap`, `site.config`.  
 **Writes:** `<destRoot>/sitemap.xml`, `<destRoot>/robots.txt`.
@@ -433,7 +440,7 @@ Filters pages by jekyll-sitemap rules (drops `sitemap: false` and `/404.html`), 
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeSitemap` | `(pages, site, destRoot) → Promise<{ entries }>` | Main entry point. |
+| `writeSitemap` | `(pages, site, destRoot, urls?) → Promise<{ entries }>` | Main entry point. Accepts optional pre-computed `urls` from `deriveSitemapUrls`. |
 | `deriveSitemapUrls` | `(pages, site) → string[]` | Returns the sorted list of absolute URLs that would appear in the sitemap, without writing to disk. |
 | `extractSitemapUrls` | `(xml: string) → string[]` | Parses an existing `sitemap.xml` string and extracts its `<loc>` values. Useful for diffing two builds. |
 | `renderRobotsTxt` | `(config: object) → string` | Produces the `robots.txt` content string. |
@@ -582,15 +589,63 @@ Called internally by `initHighlighter` in `highlight.mjs`; not normally called d
 
 ---
 
-## `tbdocs.mjs` --- orchestrator
+## Scheduler infrastructure
 
-The orchestrator sequences all stages and assembles the `site` object. It is not a stage itself.
+### `scheduler.mjs`
+
+The task-graph scheduler that drives the build pipeline. See [Scheduler and worker threads](Builder#scheduler-and-worker-threads) in the Builder page for the architectural overview.
 
 **All exports**
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `runBuild` | `(opts: BuildOpts) → Promise<{ pages, staticFiles, site, destRoot }>` | Runs the full pipeline (pre-phase, Phases 1--8). Returns the final state so external harnesses can chain additional work. |
+| `SharedState` | class | Holds the master `pages[]`, `staticFiles[]`, `site` object, and `pageByDest` (`Map<destPath, Page>`). Created by the `Scheduler` constructor. |
+| `Scheduler` | class | Task-graph coordinator. Constructor takes `{ pool: WorkerPool, tasks: object }`. `start(ctx)` dispatches all seed tasks and returns a promise resolving with a `Map<taskId, output>` when all tasks complete. `register(id, def)` and `seed(id, inputs)` support dynamic task creation at runtime (used by the render fan-out). `summary()` returns per-task timings. |
+
+---
+
+### `worker-pool.mjs`
+
+Minimal worker thread pool over `node:worker_threads`.
+
+**All exports**
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `WorkerPool` | class | Constructor takes `(size: number, workerUrl: URL)`. `run(payload, { name }) → Promise<any>` dispatches a named task to an idle worker and returns its result. `destroy() → Promise<void>` terminates all workers. Workers are spawned eagerly at construction. |
+
+---
+
+### `cpu-worker.mjs`
+
+Worker harness --- not imported by other modules. Routes incoming messages to named handlers (`scss`, `mermaid`, `buildInfo`, `render`) and posts back `{ result }` or `{ error, stack }`.
+
+No exports (worker entry point).
+
+---
+
+### `sab-broadcast.mjs`
+
+SharedArrayBuffer broadcast for the render fan-out's shared payload.
+
+**All exports**
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `packShared` | `(obj: object) → SharedArrayBuffer` | JSON-serializes `obj`, encodes to UTF-8, and copies into a `SharedArrayBuffer`. |
+| `unpackShared` | `(sab: SharedArrayBuffer) → object` | Decodes and JSON-parses the content of a `SharedArrayBuffer`. |
+
+---
+
+## `tbdocs.mjs` --- orchestrator
+
+The orchestrator defines the `TASKS` graph, constructs the `WorkerPool` + `Scheduler`, calls `scheduler.start(ctx)`, and logs the build summary after all tasks complete.
+
+**All exports**
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `runBuild` | `(opts: BuildOpts) → Promise<{ pages, staticFiles, site, destRoot }>` | Runs the full pipeline (pre-phase, Phases 1--8) via the task-graph scheduler. Returns the final state so external harnesses can chain additional work. |
 | `makeTimer` | `() → { lap(label: string): void, summary(): string }` | Lightweight lap timer. `lap(label)` records elapsed milliseconds since the last lap; `summary()` returns all laps as a `"label=Nms …"` string. |
 
 `BuildOpts` fields:

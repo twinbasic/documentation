@@ -25,7 +25,9 @@ A single `build.bat` run drives `tbdocs` through eight phases plus a Mermaid pre
 
 ![Build pipeline, eight phases plus the Mermaid pre-phase](/assets/images/mmd/build-phases.svg)
 
-Phases 1--6 produce the online tree (`_site/`). Phase 7 mirrors it into a `file://`-browsable offline copy. Phase 8 assembles the sparse PDF source tree that `book.bat` later renders into the final PDF. The [Pipeline Stages](Development/Pipeline-Stages) page documents every phase's interface contract; the [tbdocs Builder](Development/Builder) page covers the design rationale.
+Phases 1--6 produce the online tree (`_site/`). Phase 7 mirrors it into a `file://`-browsable offline copy. Phase 8 assembles the sparse PDF source tree that `book.bat` later renders into the final PDF.
+
+A task-graph **scheduler** models the pipeline as a DAG of tasks and dispatches work to a pool of `node:worker_threads`. Seed tasks (Sass compilation, Mermaid SVG regeneration, git metadata capture) run on workers concurrently with the main-thread spine; the render + template phase fans out across all available CPUs. The [tbdocs Builder](Development/Builder#scheduler-and-worker-threads) page documents the scheduler architecture and task DAG; the [Pipeline Stages](Development/Pipeline-Stages) page documents every phase's interface contract.
 
 ## Sub-pages
 
