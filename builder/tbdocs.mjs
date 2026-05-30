@@ -37,7 +37,8 @@ import { writePhase, prepareDestination } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
-import { writeOffline } from "./offline.mjs";
+import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
+import { buildSitePathsSync } from "./offline-rewrite.mjs";
 import { writePdf } from "./pdf.mjs";
 import { packShared } from "./sab-broadcast.mjs";
 
@@ -174,6 +175,7 @@ const TASKS = {
       }
       emit("write",    out);
       emit("writePdf", out);
+      emit("dispatch", out);
     },
   },
 
@@ -308,7 +310,7 @@ const TASKS = {
     execute(_, ctx, state) {
       return { stubs: deriveRedirectStubs(state.pages, state.site) };
     },
-    submit(out, emit) { emit("writeAux", out); },
+    submit(out, emit) { emit("writeAux", out); emit("dispatch", out); },
   },
 
   deriveSitemap: {
@@ -327,10 +329,22 @@ const TASKS = {
   // chrome), resolveBookChapters (identity-critical page refs), and
   // buildInfo (git metadata for the footer).
   dispatch: {
-    expected: ["buildInit", "resolveBookChapters", "buildInfo"],
+    expected: ["buildInit", "resolveBookChapters", "buildInfo", "mermaid", "deriveRedirects"],
     runOnMain: true,
-    execute({ buildInit: { initData }, buildInfo: { buildInfo } }, ctx, state) {
+    execute({ buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, deriveRedirects: { stubs } }, ctx, state) {
+      void mermaidStats; // dependency signal only -- static files already appended in mermaid.submit
       const chunks = chunkPages(state.pages, ctx.workerCount);
+      const excludePatterns = Array.isArray(state.site.config?.offline_exclude)
+        ? state.site.config.offline_exclude.map(String)
+        : [];
+      const themeAssetRels = [
+        ...enumerateVendoredThemeAssets(),
+        "assets/css/tb-highlight.css",
+        "assets/css/just-the-docs-combined.css",
+      ];
+      const sitePaths = buildSitePathsSync(state.pages, state.staticFiles, excludePatterns, stubs, themeAssetRels);
+      state.sitePaths = sitePaths;
+      const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
       const shared = {
         siteData: {
           config:       state.site.config,
@@ -342,6 +356,9 @@ const TASKS = {
         linkTablesData: state.site.linkTablesSerialized,
         staticFilesArr: state.staticFiles.map(f => f.srcRel),
         baseurl:        String(state.site.config.baseurl || ""),
+        sitePathsArr:           [...sitePaths],
+        offlineExcludePatterns: excludePatterns,
+        skipOffline,
       };
       const sharedSAB = packShared(shared);
       return { chunks, sharedSAB };
