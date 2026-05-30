@@ -1,11 +1,12 @@
 %%{init: {"themeVariables": {"clusterBkg": "transparent", "clusterBorder": "#7a8090", "lineColor": "#7a8090"}}}%%
 flowchart TB
-    subgraph seeds [" "]
-        direction LR
+    %%subgraph seeds [" "]
+    %%    direction LR
         BI["buildInfo<br><small>[W]</small>"]
         SC["scss<br><small>[W]</small>"]
         MM["mermaid<br><small>[W]</small>"]
-    end
+        PD["prepDest<br><small>[M]</small>"]
+    %%end
 
     CF["config<br><small>[M]</small>"] --> DI["discover<br><small>[M]</small>"]
     DI --> NV["nav<br><small>[M]</small>"]
@@ -29,17 +30,14 @@ flowchart TB
         RN["render:N-1<br><small>[W]</small>"]
     end
 
-    DP --> R0
-    DP --> R1
-    DP --> RN
+    DP --> fanout
 
-    R0 --> RJ["renderJoin<br><small>[M]</small>"]
-    R1 --> RJ
-    RN --> RJ
+    fanout --> RJ["renderJoin<br><small>[M]</small>"]
 
     RJ --> WR["write<br><small>[M]</small>"]
     SC --> WR
     MM --> WR
+    PD --> WR
 
     WR --> SD["searchData<br><small>[M]</small>"]
     SD --> WA["writeAux<br><small>[M]</small>"]
@@ -47,9 +45,10 @@ flowchart TB
     DS --> WA
 
     WA --> WO["writeOffline<br><small>[M]</small>"]
-    WA --> WP["writePdf<br><small>[M]</small>"]
+    RJ --> WP["writePdf<br><small>[M]</small>"]
+    MM --> WP
 
     classDef worker fill:#e8f0fe,stroke:#4285f4,color:#1a1a2e
     classDef main fill:#fef7e0,stroke:#f9ab00,color:#1a1a2e
     class BI,SC,MM,R0,R1,RN worker
-    class CF,DI,NV,MI,BU,SE,LD,RC,DP,RJ,WR,SD,WA,DR,DS,WO,WP main
+    class CF,DI,NV,MI,BU,SE,LD,RC,DP,RJ,WR,SD,WA,DR,DS,WO,WP,PD main

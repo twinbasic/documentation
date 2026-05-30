@@ -44,7 +44,6 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false,
   mkdirInflight.clear();
 
   assertNoDestinationCollisions(pages, staticFiles);
-  await prepareDestination(destRoot, dryRun);
 
   if (dryRun) {
     const pagesToWrite = pages.filter(p => p.html !== undefined).length;
@@ -96,7 +95,7 @@ async function writeGeneratedAssets(assets, destRoot, limit, baseurl) {
 
 // ---------- §5.1 prepareDestination -------------------------------------
 
-async function prepareDestination(destRoot, dryRun) {
+export async function prepareDestination(destRoot, dryRun) {
   if (dryRun) {
     console.log(`[dry-run] would clean ${destRoot}`);
     return;

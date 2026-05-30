@@ -92,9 +92,9 @@ The build pipeline is driven by a task-graph **scheduler** that models the pipel
 
 Three structural wins over the earlier serial baseline:
 
-1. **Seed tasks overlap with the main spine.** `scss` (~700 ms), `mermaid`, and `buildInfo` run on workers concurrently with the main-thread spine (discover → nav → markdownInit → seo → loadData → resolveBookChapters + buildInit). The spine takes ~250 ms total, so ~250 ms of `scss` hides behind it.
+1. **Seed tasks overlap with the main spine.** `scss` (~700 ms), `mermaid`, `buildInfo`, and `prepDest` (destination clean + recreate) run concurrently with the main-thread spine (discover → nav → markdownInit → seo → loadData → resolveBookChapters + buildInit). The spine takes ~250 ms total, so ~250 ms of `scss` hides behind it.
 2. **Render + template fans out across CPUs.** The single-threaded render + template work (~3.5 s combined) splits into N page chunks, each dispatched to a worker that runs both `renderPhase` and `templatePhase` on its slice. On a 4-core machine this compresses to ~875 ms; on 8 cores, ~440 ms.
-3. **`writeOffline` and `writePdf` overlap.** Both are `runOnMain` but their I/O-dominated `await` gaps interleave via cooperative async concurrency. The combined wall-clock equals `max(writeOffline, writePdf)` rather than their sum.
+3. **`writePdf` overlaps with the entire write chain.** `writePdf` depends on `renderJoin` + `mermaid` --- it sources CSS directly (highlight CSS from `state.site.highlighter`, `print.css` from the static-file inventory) and never reads from `_site/`. It starts as soon as pages are rendered and runs in parallel with `write → searchData → writeAux → writeOffline`. All five are `runOnMain` but their I/O-dominated `await` gaps interleave via cooperative async concurrency.
 
 ### Shared state and page deltas
 
@@ -150,9 +150,9 @@ Each subsection covers the design rationale and implementation details for one m
 
 ### [tbdocs.mjs](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs) --- entry point and orchestrator
 
-`runBuild()` constructs a `WorkerPool` of `os.availableParallelism()` workers, instantiates a `Scheduler` with the static `TASKS` graph, and calls `scheduler.start(ctx)`. The scheduler dispatches all seed tasks immediately (`config`, `buildInfo`, `scss`, `mermaid`), chains the main-thread spine as each task's `submit()` emits to the next, dynamically registers the `render:0..N` fan-out from `dispatch.submit()`, and resolves when the two terminal tasks (`writeOffline`, `writePdf`) complete. After `start()` resolves, `runBuild()` reads results from the scheduler's `results` map, logs the build summary, and destroys the pool.
+`runBuild()` constructs a `WorkerPool` of `os.availableParallelism()` workers, instantiates a `Scheduler` with the static `TASKS` graph, and calls `scheduler.start(ctx)`. The scheduler dispatches all seed tasks immediately (`config`, `buildInfo`, `scss`, `mermaid`, `prepDest`), chains the main-thread spine as each task's `submit()` emits to the next, dynamically registers the `render:0..N` fan-out from `dispatch.submit()`, and resolves when the two terminal tasks (`writeOffline`, `writePdf`) complete. After `start()` resolves, `runBuild()` reads results from the scheduler's `results` map, logs the build summary, and destroys the pool.
 
-The `TASKS` object defines every task in the DAG as a plain object with `expected` (predecessor IDs), `execute()` (task body), and `submit()` (synchronous output router). Tasks without `runOnMain: true` are dispatched to the worker pool by handler name; the four worker handlers (`scss`, `mermaid`, `buildInfo`, `render`) live in `cpu-worker.mjs`.
+The `TASKS` object defines every task in the DAG as a plain object with `expected` (predecessor IDs), `execute()` (task body), and `submit()` (synchronous output router). Most seed tasks without `runOnMain: true` are dispatched to the worker pool by handler name; the four worker handlers (`scss`, `mermaid`, `buildInfo`, `render`) live in `cpu-worker.mjs`. `prepDest` is the exception --- a main-thread seed that cleans and recreates the destination directory, overlapping with the spine and joining only at `write`.
 
 The shared markdown-it instance is built once during the `markdownInit` task via `initHighlighter` + `createMarkdownIt` and stored on `state.site.markdown` so the `seo` task and each render worker use the same configured pipeline --- titles run through the same dash, quote, and footnote-stripping rules as page body text. Workers build their own independent markdown-it + Shiki instances from the serialized link tables and shared payload.
 

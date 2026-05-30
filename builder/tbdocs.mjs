@@ -33,7 +33,7 @@ import {
   buildLinkTables, serializeLinkTables,
 } from "./render.mjs";
 import { buildInitFn } from "./template.mjs";
-import { writePhase } from "./write.mjs";
+import { writePhase, prepareDestination } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
@@ -115,11 +115,12 @@ export function makeTimer() {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo, scss, mermaid), the main-thread spine (discover →
+// Seeds (config, buildInfo, scss, mermaid, prepDest), the main-thread spine (discover →
 // nav → markdownInit / buildInit → seo / loadData → resolveBookChapters +
 // deriveRedirects / deriveSitemap), the render fan-out (dispatch →
-// render:0..N → renderJoin), and all write/post-write tasks (write →
-// searchData → writeAux → writeOffline / writePdf) are scheduler tasks.
+// render:0..N → renderJoin), and write/post-write tasks (write →
+// searchData → writeAux → writeOffline; renderJoin + mermaid → writePdf)
+// are scheduler tasks.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
 // summary, and returns.
 
@@ -171,8 +172,21 @@ const TASKS = {
       for (const f of out.mermaidStats.svgFiles ?? []) {
         if (!known.has(f.srcRel)) state.staticFiles.push(f);
       }
-      emit("write", out);
+      emit("write",    out);
+      emit("writePdf", out);
     },
+  },
+
+  // Clean and recreate _site/. No dependencies -- overlaps with the entire
+  // main-thread spine and worker seeds, joined only by `write`.
+  prepDest: {
+    expected: [],
+    runOnMain: true,
+    async execute(_, ctx) {
+      await prepareDestination(ctx.destRoot, ctx.opts.dryRun);
+      return {};
+    },
+    submit(_, emit) { emit("write", {}); },
   },
 
   // ── Main-thread spine ─────────────────────────────────────────────────────
@@ -336,7 +350,10 @@ const TASKS = {
         expected: Array.from({ length: N }, (_, i) => `render:${i}`),
         runOnMain: true,
         execute() { return {}; },
-        submit(_, emit) { emit("write", {}); },
+        submit(_, emit) {
+          emit("write",    {});
+          emit("writePdf", {});
+        },
       });
 
       for (let i = 0; i < N; i++) {
@@ -366,9 +383,10 @@ const TASKS = {
 
   // Materialise pages + static files + generated CSS to _site/.
   // Waits for renderJoin (pages rendered + templated), scss (generated CSS),
-  // and mermaid (SVG descriptors appended to state.staticFiles by mermaid.submit).
+  // mermaid (SVG descriptors appended to state.staticFiles by mermaid.submit),
+  // and prepDest (_site/ cleaned and recreated).
   write: {
-    expected: ["renderJoin", "scss", "mermaid"],
+    expected: ["renderJoin", "scss", "mermaid", "prepDest"],
     runOnMain: true,
     async execute({ scss: { scssResult }, mermaid: { mermaidStats } }, ctx, state) {
       void mermaidStats; // dependency signal only; append already happened in mermaid.submit
@@ -417,7 +435,6 @@ const TASKS = {
     },
     submit(out, emit) {
       emit("writeOffline", out);
-      emit("writePdf",     out);
     },
   },
 
@@ -438,15 +455,19 @@ const TASKS = {
     submit() { /* terminal */ },
   },
 
-  // Produce _site-pdf/. Runs in parallel with writeOffline.
+  // Produce _site-pdf/. Depends on renderJoin (pages have renderedContent)
+  // and mermaid (SVG descriptors in staticFiles). Sources CSS directly:
+  // tb-highlight.css from state.site.highlighter, print.css from staticFiles.
+  // Runs in parallel with write → searchData → writeAux → writeOffline.
   writePdf: {
-    expected: ["writeAux"],
+    expected: ["renderJoin", "mermaid"],
     runOnMain: true,
     async execute(_, ctx, state) {
       const skipPdf = ctx.opts.skipPdf ?? (state.site.config.also_build_pdf === false);
       if (ctx.opts.dryRun || skipPdf) return null;
       return writePdf(state.pages, state.staticFiles, state.site, ctx.destRoot, {
         tolerateMissingImages: ctx.opts.tolerateMissingImages,
+        highlightCss: state.site.highlighter?.themeCss,
       });
     },
     submit() { /* terminal */ },

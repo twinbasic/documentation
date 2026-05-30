@@ -232,10 +232,11 @@ master directly -- no delta merge needed.
 `[W]` = pool worker; `[M]` = main thread (`runOnMain: true`).
 
 ```
-Seeds (workers, concurrent):
+Seeds (concurrent):
   buildInfo  [W] ──────────────────────────────────────────┐
   scss       [W] ──────────────────────────────────────────┤
   mermaid    [W] ──────────────────────────────────────────┤
+  prepDest   [M] ──────────────────────────────────────────┤
                                                            │
 Main spine (sequential, on M):                             │
   config                                                   │
@@ -259,7 +260,7 @@ Render fan-out (workers, concurrent):                  │
                           ▼
                  renderJoin [M]  ◄── waits for all render:i
                           │
-Write fence:              │     scss [W], mermaid [W] join here too
+Write fence:              │     scss [W], mermaid [W], prepDest [M] join here too
                           ▼
                        write [M]                      ◄── reads state.pages, state.staticFiles
                           │
@@ -268,10 +269,16 @@ Write fence:              │     scss [W], mermaid [W] join here too
                           │
                           ▼
                      writeAux [M]                     ◄── derived redirects + sitemap join here
-                       │     │
-            ┌──────────┘     └──────────┐
-            ▼                           ▼
-     writeOffline [M]            writePdf [M]
+                          │
+                          ▼
+                   writeOffline [M]
+
+              (in parallel with write → ... → writeOffline:)
+
+                 renderJoin + mermaid
+                          │
+                          ▼
+                     writePdf [M]
             │                           │
             └─────────────┬─────────────┘
                           ▼
@@ -280,7 +287,9 @@ Write fence:              │     scss [W], mermaid [W] join here too
 
 Edges into `dispatch`: `buildInit`, `resolveBookChapters`,
 `buildInfo`.  
-Edges into `write`: `renderJoin`, `scss`, `mermaid`.  
+Edges into `write`: `renderJoin`, `scss`, `mermaid`, `prepDest`.  
+Edges out of `write`: `searchData`.  
+Edges into `writePdf`: `renderJoin`, `mermaid`.  
 Edges into `writeAux`: `searchData`, `deriveRedirects`, `deriveSitemap`.
 
 Three structural wins over the serial baseline:
@@ -639,7 +648,7 @@ Two non-obvious bits in `dispatch.submit`:
 2. **Why `renderJoin` exists at all.** Each `render:i.submit()` already
    emits into the page-deltas merge, and could emit directly to
    `write`. But `write.expected` is declared statically with
-   `["renderJoin", "scss", "mermaid"]` -- mutating it from
+   `["renderJoin", "scss", "mermaid", "prepDest"]` -- mutating it from
    `dispatch.submit` to add the N dynamic render predecessors would be
    awkward. The barrier is the cleaner expression: register it once
    with the right count, let write keep its static `expected`.
@@ -1140,8 +1149,15 @@ The DAG nodes downstream of `render` and `scss`/`mermaid`. All
 relative to their I/O.
 
 ```js
+writePdf: {
+  expected: ["renderJoin", "mermaid"],
+  runOnMain: true,
+  // Sources CSS directly: tb-highlight.css from state.site.highlighter,
+  // print.css from staticFiles. No dependency on write or _site/.
+},
+
 write: {
-  expected: ["renderJoin", "scss", "mermaid"],
+  expected: ["renderJoin", "scss", "mermaid", "prepDest"],
   runOnMain: true,
   async execute({ scss: { scssResult }, mermaid: { mermaidStats } }, ctx, state) {
     // render delta merges already happened in each render:i.submit().
@@ -1180,7 +1196,6 @@ writeAux: {
   },
   submit(out, emit) {
     emit("writeOffline", out);
-    emit("writePdf",     out);
   },
 },
 
@@ -1194,7 +1209,8 @@ writeOffline: {
   submit() { /* terminal */ },
 },
 
-// writePdf -- mirrors writeOffline.
+// writePdf depends on renderJoin + mermaid (CSS sourced directly).
+// It runs in parallel with write → searchData → writeAux → writeOffline.
 ```
 
 **Restoring the derive-time exports.** `redirects.mjs` /
@@ -1213,12 +1229,13 @@ derive can run at any point after discover.
 **Workerizing writeOffline or writePdf (measured, declined).** Both
 phases have non-trivial CPU sections: writeOffline rewrites URLs
 across all 856 HTML files; writePdf assembles `book.html` via
-`assembleBook`. Profiling shows the cooperative async concurrency
-already achieves zero-contention overlap — `writePdf` runs entirely
-within `writeOffline`'s I/O await gaps, and the combined wall-clock
-equals `max(writeOffline, writePdf)`. The structured-clone cost of
-shipping `pages[]` across the worker boundary (~37–65 ms) would be
-pure overhead. See §Phase 3-follow-up for the full measurement.
+`assembleBook`. `writePdf` now depends only on `renderJoin` + `mermaid`
+(CSS is sourced directly, not from `_site/`), so it runs in parallel
+with the entire `write → searchData → writeAux → writeOffline` chain.
+Cooperative async concurrency on the main thread interleaves their I/O
+gaps. The structured-clone cost of shipping `pages[]` across the worker
+boundary (~37–65 ms) would be pure overhead. See §Phase 3-follow-up
+for the full measurement.
 
 ## Timing / profiling
 
@@ -1383,7 +1400,7 @@ yet, so the build must look identical.
 Wire `runBuild()` to construct the pool, instantiate the scheduler,
 and call `scheduler.start(ctx)`. Port:
 
-- **Worker seeds:** `config`, `buildInfo`, `scss`, `mermaid`.
+- **Seeds:** `config`, `buildInfo`, `scss`, `mermaid`, `prepDest`.
 - **Main-thread spine:** `discover`, `nav`, `markdownInit`, `seo`,
   `loadData`, `resolveBookChapters`, `buildInit`, `deriveRedirects`,
   `deriveSitemap`.
