@@ -510,6 +510,104 @@ function chunkPages(pages, workers) {
   return chunks;
 }
 
+// ── Gantt chart ───────────────────────────────────────────────────────────────
+
+const GANTT_SECTION = {
+  config: "Seeds", buildInfo: "Seeds", scss: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
+  discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
+  seo: "Spine", loadData: "Spine", resolveBookChapters: "Spine",
+  deriveRedirects: "Spine", deriveSitemap: "Spine",
+  dispatch: "Render", renderJoin: "Render",
+  write: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
+};
+const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
+
+async function writeGantt(timings, outPath) {
+  if (timings.size === 0) return "";
+  const t0 = Math.min(...[...timings.values()].map(t => t.start));
+
+  const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
+  for (const [id, { start, end }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
+    const section = /^render:\d+$/.test(id) ? "Render" : (GANTT_SECTION[id] ?? "Other");
+    if (!grouped.has(section)) grouped.set(section, []);
+    grouped.get(section).push({ id, start: start - t0, end: end - t0 });
+  }
+
+  const lines = [
+    "gantt",
+    "    title Build task timeline",
+    "    dateFormat x",
+    "    axisFormat %S.%L",
+    "",
+  ];
+  for (const [section, tasks] of grouped) {
+    if (tasks.length === 0) continue;
+    lines.push(`    section ${section}`);
+    for (const { id, start, end } of tasks) {
+      const label  = id.replace(":", " ");
+      const taskId = `t_${id.replace(/[^a-z0-9]/gi, "_")}`;
+      lines.push(`    ${label} :done, ${taskId}, ${start}, ${Math.max(end, start + 1)}`);
+    }
+    lines.push("");
+  }
+
+  const content = lines.join("\n");
+  await fs.writeFile(outPath, content, "utf8");
+  return content;
+}
+
+async function injectGanttChart(pages, destRoot, ganttContent) {
+  if (!ganttContent) return;
+  const page = pages.find(p => p.permalink === "/Documentation/Development/BuildInfo");
+  if (!page) return;
+
+  const chart    = `<pre class="mermaid">\n${ganttContent}</pre>`;
+  // Match the rendered empty mmd code block — outer div + two closing divs.
+  const mmdBlockRe = /<div class="language-mmd highlighter-rouge">[\s\S]*?<\/div>\s*<\/div>/;
+
+  // Online / serve: CDN ESM import.
+  const onlineScript =
+    `<script type="module">\n` +
+    `import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';\n` +
+    `mermaid.initialize({ startOnLoad: true });\n` +
+    `</script>`;
+
+  // Offline: self-contained IIFE bundle (the ESM entry point uses dynamic chunk
+  // imports that break on file:// URLs; the IIFE is a single self-contained file).
+  // Relative prefix climbs from the page's directory back to the site root.
+  const depth = page.destPath.split(/[/\\]/).length - 1;
+  const rel   = "../".repeat(depth);
+  const offlineScript =
+    `<script src="${rel}assets/js/mermaid.min.js"></script>\n` +
+    `<script>mermaid.initialize({ startOnLoad: true });</script>`;
+
+  const mermaidSrc = fileURLToPath(
+    new URL("../node_modules/mermaid/dist/mermaid.min.js", import.meta.url));
+
+  const targets = [
+    { root: destRoot,              script: onlineScript  },
+    { root: `${destRoot}-offline`, script: offlineScript, copyMermaid: true },
+  ];
+
+  for (const { root, script, copyMermaid } of targets) {
+    const htmlPath = path.join(root, page.destPath);
+    let html;
+    try {
+      html = await fs.readFile(htmlPath, "utf8");
+    } catch (e) {
+      if (e.code !== "ENOENT") throw e;
+      continue;
+    }
+    if (copyMermaid) {
+      const dest = path.join(root, "assets", "js", "mermaid.min.js");
+      await fs.mkdir(path.dirname(dest), { recursive: true });
+      await fs.copyFile(mermaidSrc, dest);
+    }
+    const patched = html.replace(mmdBlockRe, `${chart}\n${script}`);
+    if (patched !== html) await fs.writeFile(htmlPath, patched, "utf8");
+  }
+}
+
 // ── Build entry point ─────────────────────────────────────────────────────────
 
 export async function runBuild(opts) {
@@ -577,6 +675,13 @@ export async function runBuild(opts) {
                 `${pdfResult.images} images${missingClause}`);
   }
   console.log(scheduler.summary());
+
+  const ganttPath = path.resolve(process.cwd(), "build-gantt.mmd");
+  const ganttContent = await writeGantt(scheduler.timings, ganttPath);
+
+  const injectStart = Date.now();
+  await injectGanttChart(scheduler.state.pages, destRoot, ganttContent);
+  console.log(pc.dim(`gantt-inject=${Date.now() - injectStart}ms`));
 
   // Drift guard from PLAN-1.md §1.
   if (pages.length < 836) {

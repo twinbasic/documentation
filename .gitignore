@@ -7,3 +7,5 @@ node_modules/
 /before/
 /after-*/
 /findoverflow-baseline/
+
+/build-gantt.mmd
