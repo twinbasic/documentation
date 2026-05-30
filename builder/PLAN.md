@@ -63,12 +63,11 @@ static server; `docs/serve.bat` becomes a one-line `--serve` shim.
 Closes the PLAN-10 §7.D4 and §7.D11 watch-mode deferrals.
 
 A **task-graph scheduler** for the build pipeline is designed in
-[PLAN-scheduler.md](PLAN-scheduler.md) -- not yet implemented. The
-plan covers a thin in-tree scheduler + `WorkerPool` over
+[PLAN-scheduler.md](PLAN-scheduler.md) and has been implemented
+(Phases 0--4). It covers a thin in-tree scheduler + `WorkerPool` over
 `node:worker_threads`, moves CPU-bound seed tasks (`scss`, `mermaid`,
 `buildInfo`) onto workers, and fans out `renderPhase` + `templatePhase`
-across CPUs. Wall-clock target: ~6.7 s → ~3.6 s on 8 cores. Start
-with §Migration path Phase 0.
+across CPUs via SAB broadcast.
 
 Open follow-ups (deferred enhancements, divergence investigations)
 live in [FUTURE-WORK.md](FUTURE-WORK.md).
