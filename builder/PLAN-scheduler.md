@@ -264,11 +264,16 @@ Write fence:              │     scss [W], mermaid [W], prepDest [M] join here 
                           ▼
                        write [M]                      ◄── reads state.pages, state.staticFiles
                           │
-                          ▼
-                    searchData [M]
-                          │
-                          ▼
-                     writeAux [M]                     ◄── derived redirects + sitemap join here
+              (in parallel with write:)               │
+                                                      │
+         renderJoin + prepDest                        │
+                   │                                  │
+                   ▼                                  │
+             searchData [M]                           │
+                   │                                  │
+                   └──────────────────────────────────┤
+                                                      │
+                     writeAux [M]                     ◄── derived redirects + sitemap join here too
                           │
                           ▼
                    writeOffline [M]
@@ -288,9 +293,9 @@ Write fence:              │     scss [W], mermaid [W], prepDest [M] join here 
 Edges into `dispatch`: `buildInit`, `resolveBookChapters`,
 `buildInfo`.  
 Edges into `write`: `renderJoin`, `scss`, `mermaid`, `prepDest`.  
-Edges out of `write`: `searchData`.  
+Edges into `searchData`: `renderJoin`, `prepDest`.  
 Edges into `writePdf`: `renderJoin`, `mermaid`.  
-Edges into `writeAux`: `searchData`, `deriveRedirects`, `deriveSitemap`.
+Edges into `writeAux`: `write`, `searchData`, `deriveRedirects`, `deriveSitemap`.
 
 Three structural wins over the serial baseline:
 
@@ -1173,12 +1178,14 @@ write: {
       dryRun:    ctx.opts.dryRun,
     });
   },
-  submit(out, emit) { emit("searchData", out); },
+  submit(out, emit) { emit("writeAux", out); },
 },
 
 searchData: {
-  expected: ["write"],
+  expected: ["renderJoin", "prepDest"],
   runOnMain: true,
+  // Reads only in-memory renderedContent; writes search-data.json
+  // into _site/ (needs prepDest). Runs in parallel with write.
   async execute(_, ctx, state) {
     return writeSearchData(state.pages, state.site, ctx.destRoot);
   },
@@ -1186,7 +1193,7 @@ searchData: {
 },
 
 writeAux: {
-  expected: ["searchData", "deriveRedirects", "deriveSitemap"],
+  expected: ["write", "searchData", "deriveRedirects", "deriveSitemap"],
   runOnMain: true,
   async execute({ deriveRedirects, deriveSitemap }, ctx, state) {
     await Promise.all([

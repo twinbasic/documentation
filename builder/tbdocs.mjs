@@ -118,9 +118,9 @@ export function makeTimer() {
 // Seeds (config, buildInfo, scss, mermaid, prepDest), the main-thread spine (discover →
 // nav → markdownInit / buildInit → seo / loadData → resolveBookChapters +
 // deriveRedirects / deriveSitemap), the render fan-out (dispatch →
-// render:0..N → renderJoin), and write/post-write tasks (write →
-// searchData → writeAux → writeOffline; renderJoin + mermaid → writePdf)
-// are scheduler tasks.
+// render:0..N → renderJoin), and write/post-write tasks
+// (renderJoin + prepDest → searchData; write + searchData → writeAux →
+// writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
 // summary, and returns.
 
@@ -178,7 +178,7 @@ const TASKS = {
   },
 
   // Clean and recreate _site/. No dependencies -- overlaps with the entire
-  // main-thread spine and worker seeds, joined only by `write`.
+  // main-thread spine and worker seeds. Joined by write and searchData.
   prepDest: {
     expected: [],
     runOnMain: true,
@@ -186,7 +186,10 @@ const TASKS = {
       await prepareDestination(ctx.destRoot, ctx.opts.dryRun);
       return {};
     },
-    submit(_, emit) { emit("write", {}); },
+    submit(_, emit) {
+      emit("write",      {});
+      emit("searchData", {});
+    },
   },
 
   // ── Main-thread spine ─────────────────────────────────────────────────────
@@ -351,8 +354,9 @@ const TASKS = {
         runOnMain: true,
         execute() { return {}; },
         submit(_, emit) {
-          emit("write",    {});
-          emit("writePdf", {});
+          emit("write",      {});
+          emit("writePdf",   {});
+          emit("searchData", {});
         },
       });
 
@@ -404,13 +408,14 @@ const TASKS = {
         baseurl:   String(state.site.config.baseurl || ""),
       });
     },
-    submit(out, emit) { emit("searchData", out); },
+    submit(out, emit) { emit("writeAux", out); },
   },
 
-  // Write search-data.json. Skipped on dry-run; result passes through to
-  // writeAux so its search.json field reaches writeOffline.
+  // Write search-data.json. Depends on renderJoin (pages have
+  // renderedContent) and prepDest (_site/ exists). Result passes
+  // through to writeAux so its search.json field reaches writeOffline.
   searchData: {
-    expected: ["write"],
+    expected: ["renderJoin", "prepDest"],
     runOnMain: true,
     async execute(_, ctx, state) {
       if (ctx.opts.dryRun) return { entries: 0, json: "" };
@@ -419,11 +424,11 @@ const TASKS = {
     submit(out, emit) { emit("writeAux", out); },
   },
 
-  // Write redirect stubs + sitemap/robots. Waits for searchData (sequencing),
-  // deriveRedirects, and deriveSitemap (pre-computed stubs/urls).
+  // Write redirect stubs + sitemap/robots. Waits for write (pages on disk),
+  // searchData, deriveRedirects, and deriveSitemap.
   // Passes searchStats through to writeOffline (for search-data.js).
   writeAux: {
-    expected: ["searchData", "deriveRedirects", "deriveSitemap"],
+    expected: ["write", "searchData", "deriveRedirects", "deriveSitemap"],
     runOnMain: true,
     async execute({ searchData: searchStats, deriveRedirects: { stubs }, deriveSitemap: { urls } }, ctx, state) {
       if (ctx.opts.dryRun) return { redirectStats: null, sitemapStats: null, searchStats };

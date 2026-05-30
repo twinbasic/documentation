@@ -39,8 +39,10 @@ flowchart TB
     MM --> WR
     PD --> WR
 
-    WR --> SD["searchData<br><small>[M]</small>"]
-    SD --> WA["writeAux<br><small>[M]</small>"]
+    RJ --> SD["searchData<br><small>[M]</small>"]
+    PD --> SD
+    WR --> WA["writeAux<br><small>[M]</small>"]
+    SD --> WA
     DR --> WA
     DS --> WA
 

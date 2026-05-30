@@ -94,7 +94,7 @@ Three structural wins over the earlier serial baseline:
 
 1. **Seed tasks overlap with the main spine.** `scss` (~700 ms), `mermaid`, `buildInfo`, and `prepDest` (destination clean + recreate) run concurrently with the main-thread spine (discover → nav → markdownInit → seo → loadData → resolveBookChapters + buildInit). The spine takes ~250 ms total, so ~250 ms of `scss` hides behind it.
 2. **Render + template fans out across CPUs.** The single-threaded render + template work (~3.5 s combined) splits into N page chunks, each dispatched to a worker that runs both `renderPhase` and `templatePhase` on its slice. On a 4-core machine this compresses to ~875 ms; on 8 cores, ~440 ms.
-3. **`writePdf` overlaps with the entire write chain.** `writePdf` depends on `renderJoin` + `mermaid` --- it sources CSS directly (highlight CSS from `state.site.highlighter`, `print.css` from the static-file inventory) and never reads from `_site/`. It starts as soon as pages are rendered and runs in parallel with `write → searchData → writeAux → writeOffline`. All five are `runOnMain` but their I/O-dominated `await` gaps interleave via cooperative async concurrency.
+3. **`writePdf` and `searchData` overlap with the write chain.** Both depend on `renderJoin` rather than `write`, so they start as soon as pages are rendered. `writePdf` (+ `mermaid`) sources CSS directly from in-memory state and the static-file inventory --- it never reads from `_site/`. `searchData` (+ `prepDest`) reads only in-memory `renderedContent`. Both run in parallel with `write`; `writeAux` joins `write` + `searchData` before starting. All are `runOnMain` but their I/O-dominated `await` gaps interleave via cooperative async concurrency.
 
 ### Shared state and page deltas
 
