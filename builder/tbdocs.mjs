@@ -337,7 +337,7 @@ const TASKS = {
       resolveBookChapters(state.site.bookData, state.pages);
       return {};
     },
-    submit(_, emit) { emit("dispatch", {}); },
+    submit(_, emit) { emit("writePdf", {}); },
   },
 
   // Can run in parallel with nav/markdownInit -- only needs pages + config,
@@ -365,10 +365,10 @@ const TASKS = {
 
   // Slices state.pages into chunks and dynamically registers render:0..N
   // worker tasks plus a renderJoin barrier. Waits for buildInit (template
-  // chrome), resolveBookChapters (identity-critical page refs), seo (SEO
-  // fields on state.site), and buildInfo (git metadata for the footer).
+  // chrome), seo (SEO fields on state.site), and buildInfo (git metadata
+  // for the footer).
   dispatch: {
-    expected: ["buildInit", "resolveBookChapters", "buildInfo", "mermaid", "deriveRedirects", "seo"],
+    expected: ["buildInit", "buildInfo", "mermaid", "deriveRedirects", "seo"],
     runOnMain: true,
     execute({ buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, seo: _seoSignal, deriveRedirects: { stubs } }, ctx, state) {
       void mermaidStats; // dependency signal only -- static files already appended in mermaid.submit
@@ -522,12 +522,13 @@ const TASKS = {
     submit() { /* terminal */ },
   },
 
-  // Produce _site-pdf/. Depends on renderJoin (pages have renderedContent)
-  // and mermaid (SVG descriptors in staticFiles). Sources CSS directly:
+  // Produce _site-pdf/. Depends on renderJoin (pages have renderedContent),
+  // resolveBookChapters (bookData._chapters refs into state.pages), and
+  // mermaid (SVG descriptors in staticFiles). Sources CSS directly:
   // tb-highlight.css from state.site.highlighter, print.css from staticFiles.
   // Runs in parallel with write → searchData → writeAux → writeOffline.
   writePdf: {
-    expected: ["renderJoin", "mermaid"],
+    expected: ["renderJoin", "mermaid", "resolveBookChapters"],
     runOnMain: true,
     async execute(_, ctx, state) {
       const skipPdf = ctx.opts.skipPdf ?? (state.site.config.also_build_pdf === false);
