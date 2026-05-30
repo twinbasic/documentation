@@ -120,9 +120,9 @@ export function makeTimer() {
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
 // Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid, prepDest,
-// highlighterInit), the main-thread spine (discover → nav → buildInit;
-// discover + highlighterInit → markdownInit → seo / loadData →
-// resolveBookChapters + deriveRedirects / deriveSitemap), the render fan-out
+// highlighterInit), the main-thread spine (config → discover → nav → buildInit;
+// config → loadData; nav + loadData → resolveBookChapters; discover + highlighterInit →
+// markdownInit → seo; deriveRedirects + deriveSitemap off discover), the render fan-out
 // (dispatch → render:0..N → renderJoin), and write/post-write tasks
 // (renderJoin + prepDest → searchData; write + searchData → writeAux →
 // writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
@@ -145,7 +145,7 @@ const TASKS = {
       if (ctx.opts.url != null) config.url = ctx.opts.url;
       return { config };
     },
-    submit(out, emit) { emit("discover", out); },
+    submit(out, emit) { emit("discover", out); emit("loadData", out); },
   },
 
   // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
@@ -263,6 +263,7 @@ const TASKS = {
     },
     submit(_, emit) {
       emit("buildInit", {});
+      emit("resolveBookChapters", {});
     },
   },
 
@@ -296,8 +297,7 @@ const TASKS = {
       return {};
     },
     submit(_, emit) {
-      emit("seo",      {});
-      emit("loadData", {});
+      emit("seo", {});
     },
   },
 
@@ -311,11 +311,11 @@ const TASKS = {
       state.site.seoLogoUrl   = seoLogoUrl;
       return {};
     },
-    submit(_, emit) { emit("resolveBookChapters", {}); },
+    submit(_, emit) { emit("dispatch", {}); },
   },
 
   loadData: {
-    expected: ["markdownInit"],
+    expected: ["config"],
     runOnMain: true,
     async execute(_, ctx, state) {
       const data = await loadData(ctx.srcRoot);
@@ -330,7 +330,7 @@ const TASKS = {
   // the same page objects must be read by writePdf later (after renderPhase
   // fills in renderedContent on those same objects).
   resolveBookChapters: {
-    expected: ["seo", "loadData"],
+    expected: ["nav", "loadData"],
     runOnMain: true,
     execute(_, ctx, state) {
       resolveBookChapters(state.site.bookData, state.pages);
@@ -364,13 +364,14 @@ const TASKS = {
 
   // Slices state.pages into chunks and dynamically registers render:0..N
   // worker tasks plus a renderJoin barrier. Waits for buildInit (template
-  // chrome), resolveBookChapters (identity-critical page refs), and
-  // buildInfo (git metadata for the footer).
+  // chrome), resolveBookChapters (identity-critical page refs), seo (SEO
+  // fields on state.site), and buildInfo (git metadata for the footer).
   dispatch: {
-    expected: ["buildInit", "resolveBookChapters", "buildInfo", "mermaid", "deriveRedirects"],
+    expected: ["buildInit", "resolveBookChapters", "buildInfo", "mermaid", "deriveRedirects", "seo"],
     runOnMain: true,
-    execute({ buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, deriveRedirects: { stubs } }, ctx, state) {
+    execute({ buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, seo: _seoSignal, deriveRedirects: { stubs } }, ctx, state) {
       void mermaidStats; // dependency signal only -- static files already appended in mermaid.submit
+      void _seoSignal;  // dependency signal only -- SEO fields already written to state.site
       const chunks = chunkPages(state.pages, ctx.workerCount);
       const excludePatterns = Array.isArray(state.site.config?.offline_exclude)
         ? state.site.config.offline_exclude.map(String)
@@ -553,7 +554,7 @@ const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
   highlighterInit: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
-  seo: "Spine", loadData: "Spine", resolveBookChapters: "Spine",
+  seo: "Spine", loadData: "Seeds", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render",
   write: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
