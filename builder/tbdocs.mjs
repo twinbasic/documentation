@@ -30,9 +30,10 @@ import { precomputeSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
 import {
-  createMarkdownIt, initHighlighter,
+  createMarkdownIt,
   buildLinkTables, serializeLinkTables,
 } from "./render.mjs";
+import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { buildInitFn } from "./template.mjs";
 import { writePhase, prepareDestination } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
@@ -217,14 +218,16 @@ const TASKS = {
     },
   },
 
-  // Shiki WASM init. Seed on main (the live highlighter object is not
-  // serializable across a worker boundary). Fires immediately so the WASM
-  // warms up while discover + nav are running.
+  // Theme CSS load. Reads the vendored .theme files and generates the
+  // tb-highlight.css palette; does NOT init Shiki WASM (unneeded on main
+  // since no code blocks are rendered here). Workers init their own full
+  // highlighter instances independently.
   highlighterInit: {
     expected: [],
     runOnMain: true,
     async execute() {
-      return { highlighter: await initHighlighter() };
+      const theme = await loadHighlightTheme();
+      return { highlightCss: theme.css };
     },
     submit(out, emit) { emit("markdownInit", out); },
   },
@@ -274,20 +277,20 @@ const TASKS = {
     submit(out, emit) { emit("dispatch", out); },
   },
 
-  // Link-table build + markdown-it assembly. The highlighter arrives
-  // pre-warmed from highlighterInit; pages + config come from discover.
-  // Synchronous: all async work is done upstream. Not serializable (live
-  // Shiki object), so it stays on main. Workers init their own instances.
+  // Link-table build + markdown-it assembly. Pages + config come from
+  // discover; highlighterInit supplies the theme CSS (no Shiki instance
+  // needed on main -- workers render all code blocks). Synchronous: all
+  // async work is done upstream.
   markdownInit: {
     expected: ["discover", "highlighterInit"],
     runOnMain: true,
-    execute({ highlighterInit: { highlighter } }, ctx, state) {
+    execute({ highlighterInit: { highlightCss } }, ctx, state) {
       const linkTables    = buildLinkTables(state.pages);
       const baseurl       = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
-      state.site.highlighter           = highlighter;
+      state.site.highlightCss          = highlightCss;
       state.site.markdown              = createMarkdownIt({
-        highlighter, linkTables, baseurl, staticFiles: staticFileSet,
+        highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
       });
       state.site.linkTablesSerialized  = serializeLinkTables(linkTables);
       return {};
@@ -449,8 +452,8 @@ const TASKS = {
     async execute({ scssJoin: { scssResult }, mermaid: { mermaidStats } }, ctx, state) {
       void mermaidStats; // dependency signal only; append already happened in mermaid.submit
       const generatedAssets = [];
-      if (state.site.highlighter?.themeCss) {
-        generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: state.site.highlighter.themeCss });
+      if (state.site.highlightCss) {
+        generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: state.site.highlightCss });
       }
       if (scssResult.compiled) {
         generatedAssets.push({ rel: "assets/css/just-the-docs-combined.css", content: scssResult.css });
@@ -528,7 +531,7 @@ const TASKS = {
       if (ctx.opts.dryRun || skipPdf) return null;
       return writePdf(state.pages, state.staticFiles, state.site, ctx.destRoot, {
         tolerateMissingImages: ctx.opts.tolerateMissingImages,
-        highlightCss: state.site.highlighter?.themeCss,
+        highlightCss: state.site.highlightCss,
       });
     },
     submit() { /* terminal */ },
@@ -583,7 +586,7 @@ async function writeGantt(timings, outPath) {
     lines.push(`    section ${section}`);
     for (const { id, start, end, workerStart, workerEnd } of tasks) {
       const pct    = workerStart != null
-        ? ` (${Math.round((workerEnd - workerStart) / (end - start) * 100)}%)`
+        ? ` (${Math.round((workerStart - start) / (end - start) * 100)}%+${Math.round((workerEnd - workerStart) / (end - start) * 100)}%)`
         : "";
       const label  = id.replace(":", " ") + pct;
       const taskId = `t_${id.replace(/[^a-z0-9]/gi, "_")}`;

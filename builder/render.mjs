@@ -216,7 +216,7 @@ export function createMarkdownIt(ctx) {
     // kramdown smart_quotes; see PLAN-3 §5.9 for divergences.
     typographer: true,
     quotes: "“”‘’",
-    highlight: (code, lang) => ctx.highlighter.render(code, lang),
+    highlight: ctx.highlighter ? (code, lang) => ctx.highlighter.render(code, lang) : undefined,
   });
 
   // Override the fence renderer so our highlight callback's wrapper HTML

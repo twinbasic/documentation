@@ -3,7 +3,6 @@
 // See PLAN-scheduler.md §Worker for the full handler set.
 
 import { parentPort } from "node:worker_threads";
-
 import { compileLightScss, compileDarkScss } from "./scss.mjs";
 import { regenerateMermaid } from "./mermaid.mjs";
 import { captureBuildInfo }  from "./build-info.mjs";
