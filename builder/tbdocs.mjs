@@ -145,7 +145,7 @@ const TASKS = {
       if (ctx.opts.url != null) config.url = ctx.opts.url;
       return { config };
     },
-    submit(out, emit) { emit("discover", out); emit("loadData", out); },
+    submit(out, emit) { emit("discover", out); emit("highlighterInit", out); },
   },
 
   // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
@@ -221,10 +221,10 @@ const TASKS = {
   // Theme CSS load. Reads the vendored .theme files and generates the
   // tb-highlight.css palette; does NOT init Shiki WASM (unneeded on main
   // since no code blocks are rendered here). Workers init their own full
-  // highlighter instances independently. Stores highlightCss on state
-  // immediately (terminal -- no downstream task to emit).
+  // highlighter instances independently. Runs after config so it sits in
+  // the discover I/O window; chains to loadData for the same reason.
   highlighterInit: {
-    expected: [],
+    expected: ["config"],
     runOnMain: true,
     async execute() {
       const theme = await loadHighlightTheme();
@@ -232,7 +232,8 @@ const TASKS = {
     },
     submit(out, emit, state) {
       state.site.highlightCss = out.highlightCss;
-      emit("write", out);
+      emit("write",    out);
+      emit("loadData", out);
     },
   },
 
@@ -315,7 +316,7 @@ const TASKS = {
   },
 
   loadData: {
-    expected: ["config"],
+    expected: ["highlighterInit"],
     runOnMain: true,
     async execute(_, ctx, state) {
       const data = await loadData(ctx.srcRoot);
@@ -560,9 +561,9 @@ function chunkPages(pages, workers) {
 
 const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
-  highlighterInit: "Seeds",
+  highlighterInit: "Seeds", loadData: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
-  seo: "Spine", loadData: "Seeds", resolveBookChapters: "Spine",
+  seo: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render",
   write: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
