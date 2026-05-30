@@ -110,13 +110,13 @@ function makeTimer() {
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false } = {}) {
+export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false, precomputed = false, sitePaths } = {}) {
   if (!destRoot) {
     throw new Error("writeOffline requires a destRoot");
   }
 
   const stubs = auxStats?.redirects?.stubs ?? [];
-  const state = await buildOfflineState(pages, staticFiles, site, destRoot, { stubs });
+  const state = await buildOfflineState(pages, staticFiles, site, destRoot, { stubs, sitePaths });
   const deps = {
     ...state,
     offlineRoot: destRoot + OFFLINE_SUFFIX,
@@ -161,7 +161,7 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
     const t0Pages = Date.now();
     let dPages = 0, dRedirects = 0, dStatics = 0, dThemes = 0;
     const branches = [
-      writeOfflinePages(pages, deps).then(() => { dPages = Date.now() - t0Pages; }),
+      writeOfflinePages(pages, deps, { precomputed }).then(() => { dPages = Date.now() - t0Pages; }),
       writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps).then(() => { dRedirects = Date.now() - t0Pages; }),
       copyOfflineStatics(staticFiles, deps).then(() => { dStatics = Date.now() - t0Pages; }),
       copyOfflineThemeAssets(deps).then(() => { dThemes = Date.now() - t0Pages; }),
@@ -174,7 +174,7 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
     console.log(`  offline.themeAssets (concurrent): ${dThemes} ms`);
   } else {
     await Promise.all([
-      writeOfflinePages(pages, deps),
+      writeOfflinePages(pages, deps, { precomputed }),
       writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps),
       copyOfflineStatics(staticFiles, deps),
       copyOfflineThemeAssets(deps),
@@ -191,13 +191,13 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
 // `stubs` (optional) is the redirect-stub list from Phase 6; their
 // destinations land in sitePaths so a page-relative link like
 // `LBound` resolves through the stub at `tB/Core/LBound.html`.
-export async function buildOfflineState(pages, staticFiles, site, destRoot, { stubs = [] } = {}) {
+export async function buildOfflineState(pages, staticFiles, site, destRoot, { stubs = [], sitePaths } = {}) {
   const excludePatterns = Array.isArray(site.config?.offline_exclude)
     ? site.config.offline_exclude.map(String)
     : [];
   return {
     destRoot,
-    sitePaths: await buildSitePaths(pages, staticFiles, destRoot, excludePatterns, stubs),
+    sitePaths: sitePaths ?? await buildSitePaths(pages, staticFiles, destRoot, excludePatterns, stubs),
     caches: {
       rawResolution: new Map(),
       seg: new Map(),
@@ -244,8 +244,20 @@ async function setupOfflineDest(offlineRoot) {
 // its pre-rewrite nav block matches the cached `input` byte-for-byte.
 // On miss we fall back to the full rewrite with a warning -- the
 // cache is purely an optimisation, never a correctness dependency.
-async function writeOfflinePages(pages, deps) {
+async function writeOfflinePages(pages, deps, { precomputed = false } = {}) {
   const { offlineRoot } = deps;
+
+  if (precomputed) {
+    const writable = pages.filter(p => p.offlineHtml !== undefined);
+    await runLimited(writable, LIMIT, async (page) => {
+      const dest = path.join(offlineRoot, page.destPath);
+      await writeFileMkdirp(dest, page.offlineHtml);
+      deps.counters.html += 1;
+      deps.counters.unresolved += page.offlineMisses ?? 0;
+    });
+    return;
+  }
+
   const writable = pages.filter(p => p.html !== undefined);
 
   // Pre-pass: group pages by destination dir, render the first page

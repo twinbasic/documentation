@@ -473,6 +473,8 @@ const TASKS = {
       const auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
       return writeOffline(state.pages, state.staticFiles, state.site, ctx.destRoot, {
         auxStats,
+        precomputed: true,
+        sitePaths: state.sitePaths,
         profileOffline: ctx.opts.profileOffline,
       });
     },
