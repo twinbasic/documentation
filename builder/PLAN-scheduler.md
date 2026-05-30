@@ -250,7 +250,7 @@ Main spine (sequential, on M):                             │
                                │                  ↓     │  │
                                └─→ buildInit      │     │  │
                                        ↓          │     │  │
-                                       └──────────┴─→ dispatch  ◄── buildInfo joins here
+                                       └──────────┴─→ dispatch  ◄── buildInfo, mermaid, deriveRedirects join here
                                                        │
 Render fan-out (workers, concurrent):                  │
   ┌────────────────────────────────────────────────────┘
@@ -291,7 +291,7 @@ Write fence:              │     scss [W], mermaid [W], prepDest [M] join here 
 ```
 
 Edges into `dispatch`: `buildInit`, `resolveBookChapters`,
-`buildInfo`.  
+`buildInfo`, `mermaid`, `deriveRedirects`.  
 Edges into `write`: `renderJoin`, `scss`, `mermaid`, `prepDest`.  
 Edges into `searchData`: `renderJoin`, `prepDest`.  
 Edges into `writePdf`: `renderJoin`, `mermaid`.  
@@ -332,9 +332,9 @@ The render fan-out is the only place where pages cross the worker
 boundary. The pattern:
 
 - Each `render:i` task receives a chunk of pages (worker's clone).
-- The worker mutates its local pages with `renderedContent` and `html`.
+- The worker mutates its local pages with `renderedContent`, `html`, and (when `!skipOffline`) `offlineHtml` + `offlineMisses`.
 - The task returns a **delta**: an array of
-  `[{ destPath, renderedContent, html }]` -- only the changed fields,
+  `[{ destPath, renderedContent, html, offlineHtml, offlineMisses }]` -- only the changed fields,
   keyed by `destPath`.
 - `render:i.submit()` walks the delta on the main thread, looks up
   each page via `state.pageByDest`, and assigns the fields onto the
@@ -433,6 +433,7 @@ const TASKS = {
         if (!known.has(f.srcRel)) state.staticFiles.push(f);
       }
       emit("write", out);
+      emit("dispatch", out);
     },
   },
 
@@ -555,7 +556,10 @@ const TASKS = {
       // page.html, so the derive can run before template.
       return { stubs: deriveRedirectStubs(state.pages, state.site) };
     },
-    submit(out, emit) { emit("writeAux", out); },
+    submit(out, emit) {
+      emit("writeAux", out);
+      emit("dispatch", out);
+    },
   },
 
   deriveSitemap: {
@@ -568,12 +572,19 @@ const TASKS = {
   },
 
   dispatch: {
-    expected: ["buildInit", "resolveBookChapters", "buildInfo"],
+    expected: ["buildInit", "resolveBookChapters", "buildInfo", "mermaid", "deriveRedirects"],
     runOnMain: true,
-    execute({ buildInit: { initData }, buildInfo: { buildInfo } }, ctx, state) {
+    execute({ buildInit: { initData }, buildInfo: { buildInfo }, deriveRedirects: { stubs } }, ctx, state) {
       // Read pages directly from state.pages -- main-thread access,
       // no need to ship them through the input map.
       const chunks = chunkPages(state.pages, ctx.workerCount);
+      const excludePatterns = state.site.config.offline_exclude ?? [];
+      const skipOffline     = /* from config / CLI opts */ false;
+      const sitePaths       = buildSitePathsSync(
+        state.pages, state.staticFiles, excludePatterns, stubs,
+        enumerateVendoredThemeAssets());
+      state.sitePaths = sitePaths;
+
       const shared = {
         siteData: {
           config:       state.site.config,
@@ -581,13 +592,16 @@ const TASKS = {
           seoLogoUrl:   state.site.seoLogoUrl,
         },
         initData, buildInfo,
-        linkTablesData: state.site.linkTablesSerialized,
-        staticFilesArr: state.staticFiles.map(f => f.srcRel),
-        baseurl:        String(state.site.config.baseurl || ""),
+        linkTablesData:         state.site.linkTablesSerialized,
+        staticFilesArr:         state.staticFiles.map(f => f.srcRel),
+        baseurl:                String(state.site.config.baseurl || ""),
+        sitePathsArr:           [...sitePaths],
+        offlineExcludePatterns: excludePatterns,
+        skipOffline:            Boolean(skipOffline),
       };
       // Pack the shared payload into a SharedArrayBuffer so each
       // postMessage sends a SAB reference (shared memory) instead of
-      // structured-cloning ~286 KB per worker.
+      // structured-cloning ~310--330 KB per worker.
       const sharedSAB = packShared(shared);
       return { chunks, sharedSAB };
     },
@@ -615,7 +629,9 @@ const TASKS = {
               const p = state.pageByDest.get(r.destPath);
               if (!p) continue;
               p.renderedContent = r.renderedContent;
-              if (r.html !== undefined) p.html = r.html;
+              if (r.html          !== undefined) p.html          = r.html;
+              if (r.offlineHtml   !== undefined) p.offlineHtml   = r.offlineHtml;
+              if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
             }
             emit("renderJoin", renderOut);
           },
@@ -961,10 +977,13 @@ const handlers = {
 
     // book-combined pages have renderedContent but no html (Phase 8
     // handles them from renderedContent); send html: undefined for those.
+    // offlineHtml and offlineMisses are undefined when skipOffline is true.
     return chunk.map(p => ({
       destPath:        p.destPath,
       renderedContent: p.renderedContent,
       html:            p.html,
+      offlineHtml:     p.offlineHtml,
+      offlineMisses:   p.offlineMisses,
     }));
   },
 };
@@ -1059,12 +1078,15 @@ mutations are immediately visible to downstream main-thread tasks.
 
 ### SharedArrayBuffer broadcast (Phase 4)
 The render fan-out's shared payload (`siteData + initData +
-linkTablesData + staticFilesArr + baseurl + buildInfo`, ~286 KB) is
-JSON-serialized once on the main thread into a SharedArrayBuffer via
-`sab-broadcast.mjs`'s `packShared()`. Each render task receives the
-SAB reference (shared memory, not cloned) alongside its per-worker
+linkTablesData + staticFilesArr + baseurl + buildInfo +
+sitePathsArr + offlineExcludePatterns + skipOffline`, ~310--330 KB)
+is JSON-serialized once on the main thread into a SharedArrayBuffer
+via `sab-broadcast.mjs`'s `packShared()`. Each render task receives
+the SAB reference (shared memory, not cloned) alongside its per-worker
 chunk. Workers call `unpackShared()` to deserialize independently and
-in parallel. Measured saving: ~8 ms per build (fan-out drops from
+in parallel; each builds a `new Set(sitePathsArr)` to drive the
+inline offline URL rewrite. Measured saving at Phase 4 baseline
+(~286 KB, pre-offline fields): ~8 ms per build (fan-out drops from
 ~19 ms to ~9 ms).
 
 ## Error handling
@@ -1211,7 +1233,11 @@ writeOffline: {
   runOnMain: true,
   async execute(_, ctx, state) {
     return writeOffline(state.pages, state.staticFiles, state.site,
-                        ctx.destRoot, { /* ... */ });
+                        ctx.destRoot, {
+                          auxStats,
+                          precomputed: true,
+                          sitePaths:   state.sitePaths,
+                        });
   },
   submit() { /* terminal */ },
 },

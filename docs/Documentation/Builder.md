@@ -77,7 +77,7 @@ One entry point, ~17 production modules. The content model is fixed (markdown + 
 | 4 | `template.mjs` + `compress.mjs` | Wrap in layout, anchor headings, compress whitespace | ~200 ms |
 | 5 | `write.mjs` | Write `_site/` | ~400 ms |
 | 6 | `redirects.mjs` / `sitemap.mjs` / `search.mjs` | Redirect stubs, sitemap.xml, search-data.json, robots.txt | ~100 ms |
-| 7 | `offline.mjs` | URL-rewritten copy to `_site-offline/` | ~1,000 ms |
+| 7 | `offline.mjs` | URL-rewritten copy to `_site-offline/` | ~300 ms |
 | 8 | `pdf.mjs` + `book.mjs` | Sparse `_site-pdf/` tree (book.html + CSS + images) | ~150 ms |
 
 Phases 9, 10, and 11 are historical: Phase 9 was a no-output QoL pass, Phase 10 retired Jekyll, Phase 11 introduces the output-changing parity updates. None adds a runtime step. Phase 12 adds the `--serve` dev-server mode (a separate lifecycle, not a build phase; writes to `docs/_serve/` and skips the offline + PDF passes by default so the rebuild loop stays under one second). The per-phase `PLAN-N.md` files retain the implementation history.
@@ -90,21 +90,22 @@ The build pipeline is driven by a task-graph **scheduler** that models the pipel
 
 **[M]** = runs on main thread; **[W]** = dispatched to a worker thread. Worker tasks overlap with the main-thread spine and with each other; main-thread tasks run serially within the main thread but can overlap with worker tasks.
 
-Three structural wins over the earlier serial baseline:
+Four structural wins over the earlier serial baseline:
 
 1. **Seed tasks overlap with the main spine.** `scss` (~700 ms), `mermaid`, `buildInfo`, and `prepDest` (destination clean + recreate) run concurrently with the main-thread spine (discover → nav → markdownInit → seo → loadData → resolveBookChapters + buildInit). The spine takes ~250 ms total, so ~250 ms of `scss` hides behind it.
 2. **Render + template fans out across CPUs.** The single-threaded render + template work (~3.5 s combined) splits into N page chunks, each dispatched to a worker that runs both `renderPhase` and `templatePhase` on its slice. On a 4-core machine this compresses to ~875 ms; on 8 cores, ~440 ms.
 3. **`writePdf` and `searchData` overlap with the write chain.** Both depend on `renderJoin` rather than `write`, so they start as soon as pages are rendered. `writePdf` (+ `mermaid`) sources CSS directly from in-memory state and the static-file inventory --- it never reads from `_site/`. `searchData` (+ `prepDest`) reads only in-memory `renderedContent`. Both run in parallel with `write`; `writeAux` joins `write` + `searchData` before starting. All are `runOnMain` but their I/O-dominated `await` gaps interleave via cooperative async concurrency.
+4. **Offline HTML rewrite runs inside the render fan-out.** Each render worker computes `offlineHtml` for its page chunk after `templatePhase`, storing the pre-computed result in the page delta. `writeOffline` (Phase 7) reads these pre-computed strings directly and drops from ~700 ms (CPU + I/O) to ~300 ms (I/O only). The `dispatch` task waits for `mermaid` and `deriveRedirects` (in addition to the spine tasks) so it has the full `sitePaths` set available to pack into the SharedArrayBuffer before dispatching workers.
 
 ### Shared state and page deltas
 
-The scheduler owns a `SharedState` instance that carries the master `pages[]`, `staticFiles[]`, `site` object, and a `pageByDest` lookup map. Main-thread tasks mutate `state.pages` directly --- no marshalling, no delta merge. Worker tasks receive structured-clone copies of their inputs and return **page deltas** (arrays of `{ destPath, renderedContent, html }`); the task's `submit()` runs on the main thread and merges each delta entry into the master page via `state.pageByDest`.
+The scheduler owns a `SharedState` instance that carries the master `pages[]`, `staticFiles[]`, `site` object, and a `pageByDest` lookup map. Main-thread tasks mutate `state.pages` directly --- no marshalling, no delta merge. Worker tasks receive structured-clone copies of their inputs and return **page deltas** (arrays of `{ destPath, renderedContent, html, offlineHtml, offlineMisses }`); the task's `submit()` runs on the main thread and merges each delta entry into the master page via `state.pageByDest`.
 
 After `discover.submit()` builds the master `pages[]`, no task ever replaces the array --- only mutates it in place. This preserves object identity across phases, which is critical for `resolveBookChapters` (stores `Page` references into `bookData._chapters`) and `writePdf` (reads `renderedContent` from those same objects after the render fan-out fills them in).
 
 ### Render fan-out
 
-The `dispatch` task slices `state.pages` into N chunks (one per available CPU), packs the shared per-build payload (site config, SEO metadata, pre-rendered sidebar HTML, serialized link tables, static file set, build info) into a **SharedArrayBuffer** via `sab-broadcast.mjs`'s `packShared()`, and dynamically registers N `render:i` worker tasks plus a `renderJoin` barrier. Each `render:i` receives the SAB reference (shared memory, not cloned) alongside its per-worker page chunk, deserializes the shared payload independently, initializes its own markdown-it + Shiki instance, runs `renderPhase` + `templatePhase` over its slice, and returns the per-page deltas. The `renderJoin` barrier waits for all N render tasks before unblocking `write`.
+The `dispatch` task waits for `buildInit`, `resolveBookChapters`, `buildInfo`, `mermaid`, and `deriveRedirects` before running. It uses the `mermaid` and `deriveRedirects` outputs to compute a `sitePaths` set (via `buildSitePathsSync` from `offline-rewrite.mjs`, using vendored theme assets rather than walking `_site/assets/`), then packs the shared per-build payload (site config, SEO metadata, pre-rendered sidebar HTML, serialized link tables, static file set, build info, site-paths array, offline exclude patterns, and skip-offline flag) into a **SharedArrayBuffer** via `sab-broadcast.mjs`'s `packShared()`, and dynamically registers N `render:i` worker tasks plus a `renderJoin` barrier. Each `render:i` receives the SAB reference (shared memory, not cloned) alongside its per-worker page chunk, deserializes the shared payload independently, initializes its own markdown-it + Shiki instance, runs `renderPhase` + `templatePhase` over its slice, then computes `offlineHtml` per page (unless `skipOffline`), and returns the per-page deltas. The `renderJoin` barrier waits for all N render tasks before unblocking `write`.
 
 ### Data transfer strategy
 
@@ -348,13 +349,13 @@ The image-path collector folds into `assembleBook`'s per-chapter emit (Phase 9 �
 - **`scss`** --- calls `compileScss(ctx.srcRoot)`.
 - **`mermaid`** --- calls `regenerateMermaid(ctx.srcRoot)`.
 - **`buildInfo`** --- calls `captureBuildInfo()`.
-- **`render`** --- the render + template hot path. Deserializes the shared payload from the SharedArrayBuffer, awaits the module-scope Shiki WASM init (started eagerly at import time, before any message arrives), builds a fresh markdown-it instance from the serialized link tables, runs `renderPhase` + `templatePhase` over the page chunk, and returns per-page deltas (`{ destPath, renderedContent, html }`).
+- **`render`** --- the render + template + offline-rewrite hot path. Deserializes the shared payload from the SharedArrayBuffer (including the site-paths array for offline rewriting), awaits the module-scope Shiki WASM init (started eagerly at import time, before any message arrives), builds a fresh markdown-it instance from the serialized link tables, runs `renderPhase` + `templatePhase` over the page chunk, then (unless `skipOffline`) computes `offlineHtml` per page via `deriveOfflinePageCached` from `offline-rewrite.mjs`, and returns per-page deltas (`{ destPath, renderedContent, html, offlineHtml, offlineMisses }`).
 
 Each worker starts its own `initHighlighter()` call at module scope without awaiting it, so the WASM init overlaps with worker spawn and the main-thread spine. Only the `render` handler awaits the result; the other three handlers service tasks while Shiki is still loading.
 
 ### [sab-broadcast.mjs](https://github.com/twinbasic/documentation/blob/main/builder/sab-broadcast.mjs) --- SharedArrayBuffer broadcast
 
-~15 lines. `packShared(obj)` JSON-serializes an object, encodes to UTF-8, and copies into a `SharedArrayBuffer`. `unpackShared(sab)` reverses the process. The render fan-out's shared payload (~286 KB of site config, pre-rendered sidebar HTML, serialized link tables, static file set, and build info) is packed once on the main thread; each worker receives the SAB reference (shared memory, not cloned) and deserializes independently. Measured saving: ~55% reduction in fan-out overhead (~8 ms per build).
+~15 lines. `packShared(obj)` JSON-serializes an object, encodes to UTF-8, and copies into a `SharedArrayBuffer`. `unpackShared(sab)` reverses the process. The render fan-out's shared payload (~310--330 KB of site config, pre-rendered sidebar HTML, serialized link tables, static file set, build info, site-paths array for offline rewriting, offline exclude patterns, and a skip-offline flag) is packed once on the main thread; each worker receives the SAB reference (shared memory, not cloned) and deserializes independently. Measured saving at Phase 4 baseline (~286 KB): ~55% reduction in fan-out overhead (~8 ms per build).
 
 ## Asset layout
 

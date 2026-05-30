@@ -4,9 +4,13 @@
 // and docs/_plugins/offlinify.rb for the canonical Jekyll reference.
 //
 // One entry point: writeOffline(pages, staticFiles, site, destRoot,
-// { auxStats }). Pure-compute derive helpers are in offline-rewrite.mjs
-// and re-exported from here for `_diff.mjs` / `_triage.mjs` backward
-// compatibility.
+// { auxStats, precomputed, sitePaths }). When precomputed is true,
+// per-page HTML was already derived by render workers and stored on
+// page.offlineHtml; writeOfflinePages writes those directly (I/O only).
+// sitePaths, when provided, skips the async _site/assets/ walk in
+// buildOfflineState. Pure-compute derive helpers are in
+// offline-rewrite.mjs and re-exported from here for `_diff.mjs` /
+// `_triage.mjs` backward compatibility.
 //
 // Internal sections:
 //

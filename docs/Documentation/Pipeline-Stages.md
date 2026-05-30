@@ -45,6 +45,8 @@ The pipeline passes two mutable data structures through every stage.
 | `seoIsHome` | Phase 2 (seo) | `boolean` | `true` when the page's permalink is a known home-page URL (e.g. `/`). |
 | `renderedContent` | Phase 3 | `string` | HTML body produced by markdown-it. Not yet wrapped in the site layout. |
 | `html` | Phase 4 | `string` | Complete HTML document, ready to write to disk. Absent on `layout: book-combined` pages, which Phase 8 owns. |
+| `offlineHtml` | Phase 4 (render worker) | `string\|undefined` | Pre-computed offline HTML for the page, with all absolute URLs rewritten to page-relative paths. Set by the render worker after `templatePhase`. `undefined` when `skipOffline` is true or the page is `layout: book-combined`. |
+| `offlineMisses` | Phase 4 (render worker) | `number\|undefined` | Count of URLs that could not be resolved during the per-page offline rewrite. `undefined` when `skipOffline` is true. Non-zero values are logged as warnings during `writeOffline`. |
 
 ### Site object (`site`)
 
@@ -482,11 +484,16 @@ writeOffline(
   staticFiles: StaticFile[],
   site: object,
   destRoot: string,
-  { auxStats?: object, profileOffline?: boolean }
+  {
+    auxStats?: object,
+    profileOffline?: boolean,
+    precomputed?: boolean,
+    sitePaths?: Set<string>
+  }
 ): Promise<{ html, css, redirects, statics, assets, excluded, unresolved }>
 ```
 
-Reads every file written by Phases 5 and 6, rewrites absolute URLs to relative paths, and writes to `<destRoot>-offline/`. Patches `just-the-docs.js` via AST (acorn) to replace `navLink` and `initSearch` with offline-compatible implementations. Writes `search-data.js`, which wraps the search index as a `window.SEARCH_DATA` assignment so offline search works under `file://` (browsers block `XMLHttpRequest` there). `offline_exclude` patterns apply to pages, static files, and theme assets alike; `search-data.json` is listed in `offline_exclude` and is absent from the offline tree --- only the `.js` wrapper is present.
+Reads every file written by Phases 5 and 6, rewrites absolute URLs to relative paths, and writes to `<destRoot>-offline/`. When `precomputed: true` (set by the scheduler), skips per-page CPU rewriting and writes `page.offlineHtml` directly (I/O only); when absent or false, derives offline HTML on the main thread (legacy path, used by diff tools). When `sitePaths` is provided, skips the `_site/assets/` walk in `buildOfflineState`. Patches `just-the-docs.js` via AST (acorn) to replace `navLink` and `initSearch` with offline-compatible implementations. Writes `search-data.js`, which wraps the search index as a `window.SEARCH_DATA` assignment so offline search works under `file://` (browsers block `XMLHttpRequest` there). `offline_exclude` patterns apply to pages, static files, and theme assets alike; `search-data.json` is listed in `offline_exclude` and is absent from the offline tree --- only the `.js` wrapper is present.
 
 **Reads:** all files under `<destRoot>` (online tree), `auxStats.redirects` (redirect stub list from Phase 6).  
 **Writes:** all files to `<destRoot>-offline/`.
@@ -495,13 +502,33 @@ Reads every file written by Phases 5 and 6, rewrites absolute URLs to relative p
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeOffline` | `(pages, staticFiles, site, destRoot, opts) → Promise<stats>` | Main entry point. |
-| `buildOfflineState` | `(pages, staticFiles, site, destRoot, { stubs? }) → Promise<OfflineState>` | Constructs the state object (site-path set, resolution caches, per-directory nav caches) used by all offline derivation functions. |
-| `deriveOfflinePage` | `(page: Page, state: OfflineState) → string` | Rewrites one page's HTML for offline use. |
-| `deriveOfflineRedirect` | `(stub, state: OfflineState) → string` | Rewrites a redirect stub's HTML for offline use. |
-| `deriveOfflineCss` | `(cssIn: string, themeRel: string, state: OfflineState) → string` | Rewrites `url()` references in a CSS file to page-relative paths. |
+| `writeOffline` | `(pages, staticFiles, site, destRoot, opts) → Promise<stats>` | Main entry point. `opts.precomputed` (bool) switches to I/O-only mode using `page.offlineHtml`; `opts.sitePaths` skips the `_site/assets/` walk. |
+| `buildOfflineState` | `(pages, staticFiles, site, destRoot, { stubs?, sitePaths? }) → Promise<OfflineState>` | Constructs the state object (site-path set, resolution caches, per-directory nav caches) used by all offline derivation functions. When `sitePaths` is provided, skips the async `_site/assets/` walk. |
+| `deriveOfflinePage` | `(page: Page, state: OfflineState) → string` | Rewrites one page's HTML for offline use. Defined in `offline-rewrite.mjs`; re-exported for backward compatibility. |
+| `deriveOfflineRedirect` | `(stub, state: OfflineState) → string` | Rewrites a redirect stub's HTML for offline use. Defined in `offline-rewrite.mjs`; re-exported for backward compatibility. |
+| `deriveOfflineCss` | `(cssIn: string, themeRel: string, state: OfflineState) → string` | Rewrites `url()` references in a CSS file to page-relative paths. Defined in `offline-rewrite.mjs`; re-exported for backward compatibility. |
 | `deriveOfflineJtdJs` | `(src: string) → string` | Patches `just-the-docs.js` via AST: replaces `navLink` and `initSearch` with offline-compatible implementations. A parse failure at build time is a signal that re-extraction produced unreadable source. |
 | `deriveOfflineSearchDataJs` | `(jsonBytes: Buffer) → string` | Wraps `search-data.json` as `window.SEARCH_DATA = …` and minifies it. |
+
+### `offline-rewrite.mjs`
+
+Pure-compute rewrite helpers extracted from `offline.mjs` so they can be imported by `cpu-worker.mjs` without pulling in `node:fs` or `acorn`. All symbols are also re-exported from `offline.mjs` for backward compatibility with `_diff.mjs` and `_triage.mjs`.
+
+**All exports**
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `buildSitePathsSync` | `(pages, staticFiles, excludePatterns, stubs, themeAssetRels) → Set<string>` | Synchronous version of `buildSitePaths`. Takes an explicit `themeAssetRels` string array (from `enumerateVendoredThemeAssets`) instead of walking `_site/assets/`. Used by `dispatch.execute` on the main thread to build the `sitePaths` set before dispatching render workers. |
+| `deriveOfflinePage` | `(page: Page, state: OfflineState) → string` | Rewrites one page's HTML for offline use: strips SEO metadata, rewrites every absolute URL to a page-relative path, and injects the offline search setup script. |
+| `deriveOfflinePageCached` | `(page: Page, state: OfflineState) → { html: string, misses: number }` | Cached variant of `deriveOfflinePage`. Uses `state.navCache` to substitute the pre-rewritten sidebar nav block for subsequent pages in the same destination directory, avoiding a full regex pass over the ~80 KB sidebar on each page. |
+| `sliceNavBlock` | `(html: string) → { before: string, nav: string, after: string }` | Splits a page's HTML into the segments before, within, and after the sidebar nav block. Used by the nav-cache pre-pass. |
+| `deriveOfflineCss` | `(cssIn: string, themeRel: string, state: OfflineState) → string` | Rewrites `url()` references in a CSS file to page-relative paths. |
+| `deriveOfflineRedirect` | `(stub, state: OfflineState) → string` | Rewrites a redirect stub's HTML for offline use. |
+| `offlineExcluded` | `(rel: string, patterns: string[]) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob pattern from `_config.yml`. |
+| `normalizeBaseurl` | `(baseurl: string) → string` | Normalises a baseurl string to trailing-slash form. |
+| `posixDirname` | `(rel: string) → string` | Returns the POSIX directory component of a relative path. |
+| `fileDirSegsFromRel` | `(rel: string) → string[]` | Splits a destination path into directory segments for use by `computeRelative`. |
+| `fnmatchPathname` | `(pattern: string, path: string) → boolean` | Glob-style pathname match (`*`, `**`, `?` supported). |
 
 ---
 
