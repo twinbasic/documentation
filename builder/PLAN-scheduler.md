@@ -1207,16 +1207,15 @@ to `p.frontmatter.layout !== "book-combined"` (the property that
 determines whether `html` will be set; known after discover) so the
 derive can run at any point after discover.
 
-**Workerizing writeOffline or writePdf (deferred).** Both phases have
-non-trivial CPU sections: writeOffline rewrites URLs across all 856
-HTML files (~700 ms CPU); writePdf assembles `book.html` via
-`assembleBook` (~150 ms CPU). On `runOnMain` both serialize their CPU
-work; only the async I/O windows interleave. The expected wall-clock
-win from workerizing one of them (move offline to a worker, keep pdf
-on main) is ~250 ms but at the cost of shipping `pages[]` and
-`staticFiles[]` across the boundary. Profile first, then decide -- the
-shipping cost may eat the gain. This is a Phase 3-follow-up choice,
-not a Phase 3 requirement.
+**Workerizing writeOffline or writePdf (measured, declined).** Both
+phases have non-trivial CPU sections: writeOffline rewrites URLs
+across all 856 HTML files; writePdf assembles `book.html` via
+`assembleBook`. Profiling shows the cooperative async concurrency
+already achieves zero-contention overlap — `writePdf` runs entirely
+within `writeOffline`'s I/O await gaps, and the combined wall-clock
+equals `max(writeOffline, writePdf)`. The structured-clone cost of
+shipping `pages[]` across the worker boundary (~37–65 ms) would be
+pure overhead. See §Phase 3-follow-up for the full measurement.
 
 ## Timing / profiling
 
@@ -1300,7 +1299,7 @@ data lifetime across the worker boundary, or low-level serialisation.
 | 1. Seeds + main-thread spine | Sonnet | Each task body is a thin wrapper around an existing phase function. The scheduler core is copy-from-plan. All mutation is on the main thread (no cross-worker identity yet). |
 | 2. Render fan-out | Opus | Cross-thread structured-clone semantics, module-scope initialisation order, dynamic task registration, per-page delta-merge identity. Debugging concurrency bugs needs depth. |
 | 3. Post-write tasks | Sonnet | All `runOnMain`; thin wrappers around existing write functions. No new concurrency surface beyond the already-built scheduler. |
-| 3-follow-up. Workerize writeOffline | Opus to decide, Sonnet to implement | Profile-driven judgement call. If the move is chosen, the port itself is mechanical. |
+| 3-follow-up. Workerize writeOffline | Opus (decided) | Profiled: zero CPU contention; cooperative async overlap is already optimal. Declined — no implementation needed. |
 | 4. SAB broadcast | Opus | Manual serialisation into shared memory; layout / endianness / varint choices need reasoning about memory ordering. |
 
 Escalate to Opus mid-phase if a Sonnet session hits a debugging block
@@ -1451,17 +1450,26 @@ summary output + `pool.destroy()`.
 `writePdf` should overlap in the timing summary -- their `start`
 timestamps should be within a few ms of each other.
 
-### Phase 3-follow-up: workerize writeOffline (optional)
+### Phase 3-follow-up: workerize writeOffline (optional) — DECLINED
 
-**Suggested model:** Opus for the measure-and-decide call; Sonnet for the port if the call comes back yes.
+**Decision:** do not workerize. Profiling shows zero CPU contention.
 
-Move `writeOffline` to a worker handler if profiling shows its CPU
-section blocks `writePdf` meaningfully. The shipping cost is
-non-trivial -- `state.pages` and `state.staticFiles` cross the
-boundary -- so measure first.
+Two independent measurement runs confirmed that `writeOffline` and
+`writePdf` already achieve perfect overlap via cooperative async
+concurrency on the main thread. In both runs the combined wall-clock
+equalled `max(writeOffline, writePdf)` — the "wasted (CPU contention)"
+metric was 0 ms. `writePdf`'s `assembleBook` synchronous section
+(~150 ms) runs entirely inside `writeOffline`'s I/O await gaps.
 
-**Verification.** `build.bat && check.bat` clean. Wall-clock should
-drop by the measured difference; revert if it doesn't.
+Structured-clone cost for shipping `pages[]` across the worker
+boundary was measured at ~37–65 ms (depending on per-page HTML size),
+which would be pure overhead against a 0 ms contention baseline.
+Adding the `offline` handler to `cpu-worker.mjs` would also increase
+worker spawn time (acorn import), complicate the worker's module
+surface, and add a result-merge path — all for no measurable gain.
+
+The overlap already saves ~260 ms vs. sequential execution (the full
+duration of `writePdf`). No further action needed.
 
 ### Phase 4: SharedArrayBuffer broadcast (optional)
 

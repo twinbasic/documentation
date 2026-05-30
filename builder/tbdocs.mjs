@@ -116,11 +116,11 @@ export function makeTimer() {
 //
 // Seeds (config, buildInfo, scss, mermaid), the main-thread spine (discover →
 // nav → markdownInit / buildInit → seo / loadData → resolveBookChapters +
-// deriveRedirects / deriveSitemap), and the render fan-out (dispatch →
-// render:0..N → renderJoin) are all scheduler tasks.
-//
-// Write and post-write tasks are still the trailing serial block below
-// scheduler.start(); they graduate to scheduler tasks in Phase 3.
+// deriveRedirects / deriveSitemap), the render fan-out (dispatch →
+// render:0..N → renderJoin), and all write/post-write tasks (write →
+// searchData → writeAux → writeOffline / writePdf) are scheduler tasks.
+// runBuild() constructs the pool + scheduler, awaits start(), logs the
+// summary, and returns.
 
 const TASKS = {
   // ── Seeds ─────────────────────────────────────────────────────────────────
@@ -145,14 +145,17 @@ const TASKS = {
   buildInfo: {
     expected: [],
     // execute() runs in cpu-worker.mjs as the "buildInfo" handler.
-    submit(out, emit) { emit("dispatch", out); },
+    submit(out, emit, state) {
+      state.site.buildInfo = out.buildInfo;
+      emit("dispatch", out);
+    },
   },
 
   // Sass compilation (~700 ms CPU). Worker so it overlaps with the main spine.
   scss: {
     expected: [],
     // execute() runs in cpu-worker.mjs as the "scss" handler.
-    submit() { /* Phase 3: emit("write", out) */ },
+    submit(out, emit) { emit("write", out); },
   },
 
   // Stale mermaid SVG regeneration. Worker for the same reason.
@@ -167,7 +170,7 @@ const TASKS = {
       for (const f of out.mermaidStats.svgFiles ?? []) {
         if (!known.has(f.srcRel)) state.staticFiles.push(f);
       }
-      /* Phase 3: emit("write", out) */
+      emit("write", out);
     },
   },
 
@@ -287,7 +290,7 @@ const TASKS = {
     execute(_, ctx, state) {
       return { stubs: deriveRedirectStubs(state.pages, state.site) };
     },
-    submit() { /* Phase 3: emit("writeAux", out) */ },
+    submit(out, emit) { emit("writeAux", out); },
   },
 
   deriveSitemap: {
@@ -296,7 +299,7 @@ const TASKS = {
     execute(_, ctx, state) {
       return { urls: deriveSitemapUrls(state.pages, state.site) };
     },
-    submit() { /* Phase 3: emit("writeAux", out) */ },
+    submit(out, emit) { emit("writeAux", out); },
   },
 
   // ── Render fan-out ─────────────────────────────────────────────────────────
@@ -329,7 +332,7 @@ const TASKS = {
         expected: Array.from({ length: N }, (_, i) => `render:${i}`),
         runOnMain: true,
         execute() { return {}; },
-        submit() { /* Phase 3: emit("write", {}) */ },
+        submit(_, emit) { emit("write", {}); },
       });
 
       for (let i = 0; i < N; i++) {
@@ -359,6 +362,96 @@ const TASKS = {
       }
     },
   },
+
+  // ── Write and post-write tasks ─────────────────────────────────────────────
+
+  // Materialise pages + static files + generated CSS to _site/.
+  // Waits for renderJoin (pages rendered + templated), scss (generated CSS),
+  // and mermaid (SVG descriptors appended to state.staticFiles by mermaid.submit).
+  write: {
+    expected: ["renderJoin", "scss", "mermaid"],
+    runOnMain: true,
+    async execute({ scss: { scssResult }, mermaid: { mermaidStats } }, ctx, state) {
+      void mermaidStats; // dependency signal only; append already happened in mermaid.submit
+      const generatedAssets = [];
+      if (state.site.highlighter?.themeCss) {
+        generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: state.site.highlighter.themeCss });
+      }
+      if (scssResult.compiled) {
+        generatedAssets.push({ rel: "assets/css/just-the-docs-combined.css", content: scssResult.css });
+      }
+      return writePhase(state.pages, state.staticFiles, {
+        destRoot:  ctx.destRoot,
+        dryRun:    ctx.opts.dryRun,
+        generatedAssets,
+        baseurl:   String(state.site.config.baseurl || ""),
+      });
+    },
+    submit(out, emit) { emit("searchData", out); },
+  },
+
+  // Write search-data.json. Skipped on dry-run; result passes through to
+  // writeAux so its search.json field reaches writeOffline.
+  searchData: {
+    expected: ["write"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      if (ctx.opts.dryRun) return { entries: 0, json: "" };
+      return writeSearchData(state.pages, state.site, ctx.destRoot);
+    },
+    submit(out, emit) { emit("writeAux", out); },
+  },
+
+  // Write redirect stubs + sitemap/robots. Waits for searchData (sequencing),
+  // deriveRedirects, and deriveSitemap (pre-computed stubs/urls).
+  // Passes searchStats through to writeOffline (for search-data.js).
+  writeAux: {
+    expected: ["searchData", "deriveRedirects", "deriveSitemap"],
+    runOnMain: true,
+    async execute({ searchData: searchStats, deriveRedirects: { stubs }, deriveSitemap: { urls } }, ctx, state) {
+      if (ctx.opts.dryRun) return { redirectStats: null, sitemapStats: null, searchStats };
+      const [redirectStats, sitemapStats] = await Promise.all([
+        writeRedirects(state.pages, state.site, ctx.destRoot, stubs),
+        writeSitemap(state.pages, state.site, ctx.destRoot, urls),
+      ]);
+      return { redirectStats, sitemapStats, searchStats };
+    },
+    submit(out, emit) {
+      emit("writeOffline", out);
+      emit("writePdf",     out);
+    },
+  },
+
+  // Produce _site-offline/. Runs in parallel with writePdf on the main thread;
+  // the gain is interleaved async I/O windows.
+  writeOffline: {
+    expected: ["writeAux"],
+    runOnMain: true,
+    async execute({ writeAux: { redirectStats, sitemapStats, searchStats } }, ctx, state) {
+      const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+      if (ctx.opts.dryRun || skipOffline) return null;
+      const auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
+      return writeOffline(state.pages, state.staticFiles, state.site, ctx.destRoot, {
+        auxStats,
+        profileOffline: ctx.opts.profileOffline,
+      });
+    },
+    submit() { /* terminal */ },
+  },
+
+  // Produce _site-pdf/. Runs in parallel with writeOffline.
+  writePdf: {
+    expected: ["writeAux"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      const skipPdf = ctx.opts.skipPdf ?? (state.site.config.also_build_pdf === false);
+      if (ctx.opts.dryRun || skipPdf) return null;
+      return writePdf(state.pages, state.staticFiles, state.site, ctx.destRoot, {
+        tolerateMissingImages: ctx.opts.tolerateMissingImages,
+      });
+    },
+    submit() { /* terminal */ },
+  },
 };
 
 function chunkPages(pages, workers) {
@@ -373,7 +466,7 @@ function chunkPages(pages, workers) {
 // ── Build entry point ─────────────────────────────────────────────────────────
 
 export async function runBuild(opts) {
-  const { src, dest, dryRun, tolerateMissingImages, profileOffline } = opts;
+  const { src, dest } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
@@ -382,9 +475,6 @@ export async function runBuild(opts) {
   const scheduler = new Scheduler({ pool, tasks: TASKS });
   const ctx = { srcRoot, destRoot, opts, workerCount };
 
-  // Run the scheduler (seeds + main-thread spine + render fan-out).
-  // Write and post-write tasks are still the trailing serial block below;
-  // they graduate to scheduler tasks in Phase 3.
   let results;
   try {
     results = await scheduler.start(ctx);
@@ -392,16 +482,11 @@ export async function runBuild(opts) {
     await pool.destroy();
   }
 
-  // ── Trailing serial block (Phase 3 will absorb these) ────────────────────
-
-  const t = makeTimer();
   const { pages, staticFiles } = scheduler.state;
   const site = scheduler.state.site;
 
-  // Wire in worker-task outputs that the serial block needs.
   const { mermaidStats } = results.get("mermaid");
   const { scssResult }   = results.get("scss");
-  site.buildInfo         = results.get("buildInfo").buildInfo;
 
   if (mermaidStats.regenerated > 0 || mermaidStats.failed > 0) {
     const parts = [`regenerated ${mermaidStats.regenerated}`];
@@ -411,86 +496,37 @@ export async function runBuild(opts) {
   if (mermaidStats.failed > 0) process.exitCode = 1;
   if (scssResult.failed)       process.exitCode = 1;
 
-  const baseurl = String(site.config.baseurl || "");
-
-  const generatedAssets = [];
-  if (site.highlighter?.themeCss) {
-    generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: site.highlighter.themeCss });
-  }
-  if (scssResult.compiled) {
-    generatedAssets.push({ rel: "assets/css/just-the-docs-combined.css", content: scssResult.css });
-  }
-  const writeStats = await writePhase(pages, staticFiles, {
-    destRoot,
-    dryRun,
-    generatedAssets,
-    baseurl,
-  });
-  t.lap("write");
-
-  let auxStats = null;
-  if (!dryRun) {
-    // Use the pre-derived stubs/urls from the scheduler rather than re-deriving.
-    const stubs = results.get("deriveRedirects").stubs;
-    const urls  = results.get("deriveSitemap").urls;
-    const [redirectStats, sitemapStats, searchStats] = await Promise.all([
-      writeRedirects(pages, site, destRoot, stubs),
-      writeSitemap(pages, site, destRoot, urls),
-      writeSearchData(pages, site, destRoot),
-    ]);
-    auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
-  }
-  t.lap("auxiliaries");
-
-  // CLI flag takes precedence; fall back to the `also_build_offline` /
-  // `also_build_pdf` config knobs.
-  const skipOffline = opts.skipOffline ?? (site.config.also_build_offline === false);
-  const skipPdf     = opts.skipPdf     ?? (site.config.also_build_pdf     === false);
-
-  let offlineStats = null;
-  let offlineTimer = null;
-  if (!dryRun && !skipOffline) {
-    offlineStats = await writeOffline(pages, staticFiles, site, destRoot, {
-      auxStats,
-      profileOffline,
-    });
-    if (profileOffline) offlineTimer = offlineStats.subT ?? null;
-  }
-  t.lap(skipOffline ? "offline:skipped" : "offline");
-
-  let pdfStats = null;
-  if (!dryRun && !skipPdf) {
-    pdfStats = await writePdf(pages, staticFiles, site, destRoot, { tolerateMissingImages });
-  }
-  t.lap(skipPdf ? "pdf:skipped" : "pdf");
+  const writeStats    = results.get("write");
+  const auxResult     = results.get("writeAux");
+  const offlineResult = results.get("writeOffline");
+  const pdfResult     = results.get("writePdf");
 
   console.log(`Phase 1+2+3+4+5+6+7+8 done: ${pages.length} pages, ${staticFiles.length} static files`);
   console.log(`  wrote: ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
               `${writeStats.theme.copied} theme assets, ${writeStats.staticFiles.copied} static files ` +
               `-> ${destRoot}`);
-  if (auxStats) {
-    console.log(`  aux:   ${auxStats.redirects.written} redirect stubs, ` +
-                `${auxStats.sitemap.entries} sitemap entries, ` +
-                `${auxStats.search.entries} search-index entries`);
+  if (auxResult?.redirectStats) {
+    console.log(`  aux:   ${auxResult.redirectStats.written} redirect stubs, ` +
+                `${auxResult.sitemapStats.entries} sitemap entries, ` +
+                `${auxResult.searchStats.entries} search-index entries`);
   }
-  if (offlineStats) {
-    console.log(`  offline: ${offlineStats.html} HTML, ${offlineStats.css} CSS, ` +
-                `${offlineStats.redirects} redirect stubs, ` +
-                `${offlineStats.statics + offlineStats.assets} assets, ` +
-                `${offlineStats.excluded} excluded ` +
-                `(${offlineStats.unresolved} unresolved) -> ${destRoot}-offline`);
+  if (offlineResult) {
+    console.log(`  offline: ${offlineResult.html} HTML, ${offlineResult.css} CSS, ` +
+                `${offlineResult.redirects} redirect stubs, ` +
+                `${offlineResult.statics + offlineResult.assets} assets, ` +
+                `${offlineResult.excluded} excluded ` +
+                `(${offlineResult.unresolved} unresolved) -> ${destRoot}-offline`);
+    if (opts.profileOffline && offlineResult.subT) {
+      console.log(`  offline: ${offlineResult.subT.summary()}`);
+    }
   }
-  if (pdfStats) {
-    const mb = (pdfStats.bookBytes / (1024 * 1024)).toFixed(1);
-    const missingClause = pdfStats.missing > 0 ? ` (${pdfStats.missing} missing)` : "";
-    console.log(`  pdf:     book.html (${mb} MB), ${pdfStats.css} CSS, ` +
-                `${pdfStats.images} images${missingClause} -> ${destRoot}-pdf`);
+  if (pdfResult) {
+    const mb = (pdfResult.bookBytes / (1024 * 1024)).toFixed(1);
+    const missingClause = pdfResult.missing > 0 ? ` (${pdfResult.missing} missing)` : "";
+    console.log(`  pdf:     book.html (${mb} MB), ${pdfResult.css} CSS, ` +
+                `${pdfResult.images} images${missingClause} -> ${destRoot}-pdf`);
   }
   console.log(scheduler.summary());
-  console.log(t.summary());
-  if (offlineTimer) {
-    console.log(`  offline: ${offlineTimer.summary()}`);
-  }
 
   // Drift guard from PLAN-1.md §1.
   if (pages.length < 836) {
