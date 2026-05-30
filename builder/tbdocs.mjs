@@ -122,7 +122,7 @@ export function makeTimer() {
 // Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid, prepDest,
 // highlighterInit), the main-thread spine (config → discover → nav → buildInit;
 // config → loadData; nav + loadData → resolveBookChapters; discover → markdownInit → seo;
-// deriveRedirects + deriveSitemap off discover), the render fan-out
+// deriveRedirects off discover; deriveSitemap deferred to dispatch), the render fan-out
 // (dispatch → render:0..N → renderJoin), and write/post-write tasks
 // (renderJoin + prepDest → searchData; write + searchData → writeAux →
 // writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
@@ -253,7 +253,6 @@ const TASKS = {
       emit("nav",             out);
       emit("markdownInit",    out);
       emit("deriveRedirects", out);
-      emit("deriveSitemap",   out);
     },
   },
 
@@ -352,8 +351,10 @@ const TASKS = {
     submit(out, emit) { emit("writeAux", out); emit("dispatch", out); },
   },
 
+  // Deferred to after dispatch so it runs while the main thread is idle
+  // waiting for render workers, rather than contending during the spine.
   deriveSitemap: {
-    expected: ["discover"],
+    expected: ["dispatch"],
     runOnMain: true,
     execute(_, ctx, state) {
       return { urls: deriveSitemapUrls(state.pages, state.site) };
@@ -405,6 +406,7 @@ const TASKS = {
     },
     submit(out, emit, _state, scheduler) {
       const N = out.chunks.length;
+      emit("deriveSitemap", {});
 
       scheduler.register("renderJoin", {
         expected: Array.from({ length: N }, (_, i) => `render:${i}`),
