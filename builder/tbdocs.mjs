@@ -121,8 +121,8 @@ export function makeTimer() {
 //
 // Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid, prepDest,
 // highlighterInit), the main-thread spine (config → discover → nav → buildInit;
-// config → loadData; nav + loadData → resolveBookChapters; discover + highlighterInit →
-// markdownInit → seo; deriveRedirects + deriveSitemap off discover), the render fan-out
+// config → loadData; nav + loadData → resolveBookChapters; discover → markdownInit → seo;
+// deriveRedirects + deriveSitemap off discover), the render fan-out
 // (dispatch → render:0..N → renderJoin), and write/post-write tasks
 // (renderJoin + prepDest → searchData; write + searchData → writeAux →
 // writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
@@ -221,7 +221,8 @@ const TASKS = {
   // Theme CSS load. Reads the vendored .theme files and generates the
   // tb-highlight.css palette; does NOT init Shiki WASM (unneeded on main
   // since no code blocks are rendered here). Workers init their own full
-  // highlighter instances independently.
+  // highlighter instances independently. Stores highlightCss on state
+  // immediately (terminal -- no downstream task to emit).
   highlighterInit: {
     expected: [],
     runOnMain: true,
@@ -229,7 +230,10 @@ const TASKS = {
       const theme = await loadHighlightTheme();
       return { highlightCss: theme.css };
     },
-    submit(out, emit) { emit("markdownInit", out); },
+    submit(out, emit, state) {
+      state.site.highlightCss = out.highlightCss;
+      emit("write", out);
+    },
   },
 
   // ── Main-thread spine ─────────────────────────────────────────────────────
@@ -278,22 +282,19 @@ const TASKS = {
     submit(out, emit) { emit("dispatch", out); },
   },
 
-  // Link-table build + markdown-it assembly. Pages + config come from
-  // discover; highlighterInit supplies the theme CSS (no Shiki instance
-  // needed on main -- workers render all code blocks). Synchronous: all
-  // async work is done upstream.
+  // Link-table build + markdown-it assembly. Only needs discover (pages +
+  // config + staticFiles). Synchronous: all async work is done upstream.
   markdownInit: {
-    expected: ["discover", "highlighterInit"],
+    expected: ["discover"],
     runOnMain: true,
-    execute({ highlighterInit: { highlightCss } }, ctx, state) {
+    execute(_, ctx, state) {
       const linkTables    = buildLinkTables(state.pages);
       const baseurl       = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
-      state.site.highlightCss          = highlightCss;
-      state.site.markdown              = createMarkdownIt({
+      state.site.markdown             = createMarkdownIt({
         highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
       });
-      state.site.linkTablesSerialized  = serializeLinkTables(linkTables);
+      state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       return {};
     },
     submit(_, emit) {
@@ -446,12 +447,13 @@ const TASKS = {
   // Materialise pages + static files + generated CSS to _site/.
   // Waits for renderJoin (pages rendered + templated), scss (generated CSS),
   // mermaid (SVG descriptors appended to state.staticFiles by mermaid.submit),
-  // and prepDest (_site/ cleaned and recreated).
+  // prepDest (_site/ cleaned and recreated), and highlighterInit (highlight CSS).
   write: {
-    expected: ["renderJoin", "scssJoin", "mermaid", "prepDest"],
+    expected: ["renderJoin", "scssJoin", "mermaid", "prepDest", "highlighterInit"],
     runOnMain: true,
-    async execute({ scssJoin: { scssResult }, mermaid: { mermaidStats } }, ctx, state) {
-      void mermaidStats; // dependency signal only; append already happened in mermaid.submit
+    async execute({ scssJoin: { scssResult }, mermaid: { mermaidStats }, highlighterInit: _highlightSignal }, ctx, state) {
+      void mermaidStats;      // dependency signal only; append already happened in mermaid.submit
+      void _highlightSignal;  // dependency signal only; highlightCss already written to state.site
       const generatedAssets = [];
       if (state.site.highlightCss) {
         generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: state.site.highlightCss });
