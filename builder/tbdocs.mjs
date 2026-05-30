@@ -122,7 +122,7 @@ export function makeTimer() {
 // Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid, prepDest,
 // highlighterInit), the main-thread spine (config → discover → nav → buildInit;
 // config → loadData; nav + loadData → resolveBookChapters; discover → markdownInit → seo;
-// deriveRedirects off discover; deriveSitemap deferred to dispatch), the render fan-out
+// deriveRedirects off discover; deriveSitemap + resolveBookChapters deferred to dispatch), the render fan-out
 // (dispatch → render:0..N → renderJoin), and write/post-write tasks
 // (renderJoin + prepDest → searchData; write + searchData → writeAux →
 // writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
@@ -266,7 +266,6 @@ const TASKS = {
     },
     submit(_, emit) {
       emit("buildInit", {});
-      emit("resolveBookChapters", {});
     },
   },
 
@@ -323,14 +322,15 @@ const TASKS = {
       state.site.bookData = data.book ?? null;
       return {};
     },
-    submit(_, emit) { emit("resolveBookChapters", {}); },
+    submit(_, emit) { },
   },
 
   // Mutates bookData._chapters with refs into state.pages. Identity-critical:
   // the same page objects must be read by writePdf later (after renderPhase
-  // fills in renderedContent on those same objects).
+  // fills in renderedContent on those same objects). Deferred to after
+  // deriveSitemap so it runs while the main thread is idle waiting for workers.
   resolveBookChapters: {
-    expected: ["nav", "loadData"],
+    expected: ["deriveSitemap"],
     runOnMain: true,
     execute(_, ctx, state) {
       resolveBookChapters(state.site.bookData, state.pages);
@@ -359,7 +359,10 @@ const TASKS = {
     execute(_, ctx, state) {
       return { urls: deriveSitemapUrls(state.pages, state.site) };
     },
-    submit(out, emit) { emit("writeAux", out); },
+    submit(out, emit) {
+      emit("writeAux", out);
+      emit("resolveBookChapters", {});
+    },
   },
 
   // ── Render fan-out ─────────────────────────────────────────────────────────
