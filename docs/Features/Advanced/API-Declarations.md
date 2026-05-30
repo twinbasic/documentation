@@ -101,11 +101,11 @@ With `cdecl` calling convention fully supported, twinBASIC can also handle varia
 
 Using the [given C/C++ prototype](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-wsprintfw):
 
-```cpp
+```c
 int WINAPIV wsprintfW(
-  [out] LPWSTR  unnamedParam1,
-  [in]  LPCWSTR unnamedParam2,
-        ...
+  /* [out] */ LPWSTR  unnamedParam1,
+  /* [in]  */ LPCWSTR unnamedParam2,
+              /* ... */
 );
 ```
 

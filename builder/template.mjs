@@ -270,11 +270,10 @@ const SVG_SYMBOLS_COPY = `<!-- Bootstrap Icons. MIT License: https://github.com/
   </svg>
 </symbol>`;
 
-// Port of theme's _includes/icons/icons.html. Search and copy-code-button
-// icons are conditional.
+// Port of theme's _includes/icons/icons.html. The search icon is
+// conditional; the copy-code icons ship unconditionally.
 function buildSvgSprites(config) {
   const searchEnabled = config.search_enabled !== false;
-  const copyEnabled = config.enable_copy_code_button !== false;
   const parts = [
     `  <svg xmlns="http://www.w3.org/2000/svg" class="d-none">`,
     SVG_SYMBOL_LINK,
@@ -282,7 +281,7 @@ function buildSvgSprites(config) {
     SVG_SYMBOL_EXPAND,
   ];
   if (searchEnabled) parts.push(SVG_SYMBOL_DOC);
-  if (copyEnabled) parts.push(SVG_SYMBOLS_COPY);
+  parts.push(SVG_SYMBOLS_COPY);
   parts.push(`</svg>`);
   return parts.join("\n");
 }

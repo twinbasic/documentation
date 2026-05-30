@@ -268,7 +268,7 @@ Returns `{ book: <parsed YAML> }`, or `{}` when the file is absent. The orchestr
 Before Phase 2 completes, the orchestrator builds the shared markdown-it instance that both Phase 2's SEO pass and Phase 3's render pass reuse. Three functions from `render.mjs` are called in sequence:
 
 ```js
-const highlighter = await initHighlighter({ copyButton: boolean });
+const highlighter = await initHighlighter();
 const linkTables  = buildLinkTables(pages);
 const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
 ```
@@ -298,7 +298,7 @@ Renders each page's `rawContent` to `page.renderedContent` using the shared `sit
 |---|---|---|
 | `renderPhase` | `(pages, site, staticFiles?) → Promise<void>` | Main entry point. |
 | `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles }) → MarkdownIt` | Configures and returns a markdown-it instance with all plugins and render-rule overrides applied. See [Extending the Builder](Extending) for how to add a plugin here. |
-| `initHighlighter` | `({ copyButton?: boolean }) → Promise<{ render, themeCss }>` | Initialises Shiki with the bundled twinBASIC grammar (delegates to `highlight.mjs` internally). `render(code, lang)` returns highlighted HTML; `themeCss` is the generated `tb-highlight.css` string or `null` when no theme was loaded. |
+| `initHighlighter` | `() → Promise<{ render, themeCss }>` | Initialises Shiki with the bundled twinBASIC grammar (delegates to `highlight.mjs` internally). `render(code, lang)` returns highlighted HTML; `themeCss` is the generated `tb-highlight.css` string or `null` when no theme was loaded. |
 | `buildLinkTables` | `(pages: Page[]) → { byPath, byUrl, byRedirect }` | Builds lookup tables keyed by `srcRel`, `permalink`, and `redirect_from` entries. Used by the relative-links plugin to resolve in-source `[X](Y.md)` links to absolute URLs at render time. |
 | `kramdownSlug` | `(text: string) → string` | Converts heading text to a kramdown-compatible anchor slug: lowercase, strip non-word characters, deduplicate with `-1`, `-2`, and so on. |
 | `rewriteAdmonitions` | `(src: string) → string` | Pre-render text pass: converts GFM `> [!NOTE]` / `[!IMPORTANT]` / `[!WARNING]` / `[!TIP]` / `[!CAUTION]` blocks to the `markdown-alert markdown-alert-<type>` class structure. |

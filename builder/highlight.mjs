@@ -21,8 +21,27 @@ import { loadHighlightTheme } from "./highlight-theme.mjs";
 
 // Fenced-info aliases that select the bundled tB grammar.
 const TB_ALIASES = new Set(["tb", "twinbasic", "vb", "vba"]);
-const SHIKI_BUNDLED_LANGS = [
-  "js", "json", "ruby", "html", "yaml", "xml", "sql", "sh", "cpp", "c", "liquid",
+
+// Fence labels that explicitly disclaim highlighting -- never warn for these.
+// Empty info string lands as wrapperLang `plaintext` (see renderCodeBlock).
+const SILENT_LANGS = new Set(["plaintext", "text", "txt", ""]);
+
+// Shiki grammars to load alongside the tB grammar. Restricted to labels
+// actually used in docs/ -- the highlighter warns at build time for any
+// unknown label, so adding a new fence language is a deliberate step:
+// extend this list, run the build, verify no warning. Aliases are
+// recognized automatically (shiki registers both canonical and alias
+// names, so loading `js` accepts `javascript` too, `yaml` accepts `yml`,
+// `batch` accepts `bat`). Counts from the last survey are noted.
+const SHIKI_LANGS = [
+  "js",     // 56 blocks (CEF/WebView2 interop tutorials)
+  "yaml",   // 13 blocks (config snippets)
+  "json",   //  7 blocks
+  "c",      //  3 blocks (Win32 API examples, comment style demos)
+  "html",   //  2 blocks (transitively loads css + javascript)
+  "xml",    //  1 block
+  "sql",    //  1 block
+  "batch",  //  1 block (Windows .bat examples)
 ];
 
 // Phase 11 (B5) server-side copy-button: emitted inside the wrapper
@@ -38,7 +57,7 @@ const COPY_BUTTON_HTML =
 
 let cached = null;
 
-export async function initHighlighter({ copyButton = true } = {}) {
+export async function initHighlighter() {
   if (cached) return cached;
 
   const theme = await loadHighlightTheme();
@@ -50,21 +69,31 @@ export async function initHighlighter({ copyButton = true } = {}) {
     const tbGrammar = JSON.parse(grammarText);
     shiki = await createHighlighter({
       themes: [],
-      langs: [tbGrammar, ...SHIKI_BUNDLED_LANGS],
+      langs: [tbGrammar, ...SHIKI_LANGS],
     });
   } catch (err) {
     if (err.code !== "ENOENT") throw err;
   }
 
-  const copyButtonHtml = copyButton ? COPY_BUTTON_HTML : "";
+  // Dedup unknown-language warnings per init. SILENT_LANGS suppresses
+  // explicit plaintext intent (text, txt, plaintext) and empty fences.
+  const warned = new Set();
+  const warn = (lang) => {
+    if (warned.has(lang)) return;
+    warned.add(lang);
+    console.warn(
+      `highlight: unknown fence language "${lang}" -- falling back to plain text. ` +
+      `Add it to highlight.mjs's SHIKI_LANGS to enable highlighting.`);
+  };
+
   cached = {
-    render: (code, lang) => renderCodeBlock(shiki, theme, copyButtonHtml, code, lang),
+    render: (code, lang) => renderCodeBlock(shiki, theme, code, lang, warn),
     themeCss: theme.css,
   };
   return cached;
 }
 
-function renderCodeBlock(shiki, theme, copyButtonHtml, code, lang) {
+function renderCodeBlock(shiki, theme, code, lang, warn) {
   const lower = (lang || "").toLowerCase();
   const isTb = TB_ALIASES.has(lower);
   // The wrapper class is `language-<as-typed>`; keep `vb` / `vba` /
@@ -82,6 +111,12 @@ function renderCodeBlock(shiki, theme, copyButtonHtml, code, lang) {
     }
   }
 
+  // Warn for non-silent fence labels that don't resolve to a loaded
+  // grammar. SILENT_LANGS covers explicit plaintext intent.
+  if (!shikiLang && !SILENT_LANGS.has(lower) && warn) {
+    warn(lower);
+  }
+
   // The trailing \n inside <code> matches the rouge / kramdown shape:
   // GFM strips the user's trailing newline; one is re-added here.
   const codeBody = code.endsWith("\n") ? code : code + "\n";
@@ -97,7 +132,7 @@ function renderCodeBlock(shiki, theme, copyButtonHtml, code, lang) {
     tokenizedHtml = escapeHtml(codeBody);
   }
 
-  return `<div class="language-${wrapperLang} highlighter-rouge">${copyButtonHtml}<div class="highlight"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
+  return `<div class="language-${wrapperLang} highlighter-rouge">${COPY_BUTTON_HTML}<div class="highlight"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
 }
 
 // Shiki's `codeToTokensBase` with `includeExplanation` returns
