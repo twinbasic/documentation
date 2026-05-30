@@ -34,7 +34,7 @@ import {
   buildLinkTables, serializeLinkTables,
 } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
-import { buildInitFn } from "./template.mjs";
+import { buildInitConfig, renderSidebar } from "./template.mjs";
 import { writePhase, prepareDestination } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
@@ -120,8 +120,8 @@ export function makeTimer() {
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
 // Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid, prepDest,
-// highlighterInit), the main-thread spine (config → discover → nav → buildInit;
-// config → loadData; nav + loadData → resolveBookChapters; discover → markdownInit → seo;
+// highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
+// nav + buildInit → dispatch; config → loadData; discover → markdownInit → seo;
 // deriveRedirects off discover; deriveSitemap + resolveBookChapters deferred to dispatch), the render fan-out
 // (dispatch → render:0..N → renderJoin), and write/post-write tasks
 // (renderJoin + prepDest → searchData; write + searchData → writeAux →
@@ -251,6 +251,7 @@ const TASKS = {
       state.site.config = out.config;
       for (const p of out.pages) state.pageByDest.set(p.destPath, p);
       emit("nav",             out);
+      emit("buildInit",       out);
       emit("markdownInit",    out);
       emit("deriveRedirects", out);
     },
@@ -262,20 +263,20 @@ const TASKS = {
     execute(_, ctx, state) {
       const { navTree } = computeNav(state.pages, state.site.config);
       state.site.navTree = navTree;
-      return {};
+      return { sidebar: renderSidebar(state.site) };
     },
-    submit(_, emit) {
-      emit("buildInit", {});
-    },
+    submit(out, emit) { emit("dispatch", out); },
   },
 
-  // Pre-renders the sidebar/header/svg-sprite HTML used by templatePhase.
-  // Depends only on nav (needs state.site.navTree).
+  // Pre-renders the config-only chrome (SVG sprites, header, search footer,
+  // mermaid script, favicon, GA). No nav-tree dependency -- runs after
+  // discover in parallel with nav. dispatch assembles the final initData
+  // by merging this with the sidebar from nav.
   buildInit: {
-    expected: ["nav"],
+    expected: ["discover"],
     runOnMain: true,
     execute(_, ctx, state) {
-      return { initData: buildInitFn(state.site) };
+      return { initData: buildInitConfig(state.site) };
     },
     submit(out, emit) { emit("dispatch", out); },
   },
@@ -368,13 +369,12 @@ const TASKS = {
   // ── Render fan-out ─────────────────────────────────────────────────────────
 
   // Slices state.pages into chunks and dynamically registers render:0..N
-  // worker tasks plus a renderJoin barrier. Waits for buildInit (template
-  // chrome), seo (SEO fields on state.site), and buildInfo (git metadata
-  // for the footer).
+  // worker tasks plus a renderJoin barrier. Assembles initData from the
+  // two parallel halves: nav (sidebar) + buildInit (config-only chrome).
   dispatch: {
-    expected: ["buildInit", "buildInfo", "mermaid", "deriveRedirects", "seo"],
+    expected: ["nav", "buildInit", "buildInfo", "mermaid", "deriveRedirects", "seo"],
     runOnMain: true,
-    execute({ buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, seo: _seoSignal, deriveRedirects: { stubs } }, ctx, state) {
+    execute({ nav: { sidebar }, buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, seo: _seoSignal, deriveRedirects: { stubs } }, ctx, state) {
       void mermaidStats; // dependency signal only -- static files already appended in mermaid.submit
       void _seoSignal;  // dependency signal only -- SEO fields already written to state.site
       const chunks = chunkPages(state.pages, ctx.workerCount);
@@ -395,7 +395,7 @@ const TASKS = {
           seoSiteTitle: state.site.seoSiteTitle,
           seoLogoUrl:   state.site.seoLogoUrl,
         },
-        initData,
+        initData: { ...initData, sidebar },
         buildInfo,
         linkTablesData: state.site.linkTablesSerialized,
         staticFilesArr: state.staticFiles.map(f => f.srcRel),

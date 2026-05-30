@@ -34,22 +34,26 @@ export async function templatePhase(pages, site, initData) {
   }));
 }
 
-// One-time per-build constants: pre-rendered SVG sprite, sidebar HTML,
-// header static parts, aux-nav, search-footer, mermaid script, favicon
-// link, GA snippet. Per §4 init order.
-// Exported as buildInitFn for the scheduler's main-thread buildInit task.
-export { buildInit as buildInitFn };
-function buildInit(site) {
+// Config-only chrome fields -- no nav-tree dependency. Exported for the
+// scheduler's buildInit task so it can run after discover, in parallel
+// with nav. Does not include sidebar; that is rendered by nav and merged
+// by dispatch.
+export function buildInitConfig(site) {
   return {
-    svgSprites: buildSvgSprites(site.config),
-    sidebar: renderSidebar(site),
-    header: renderHeader(site),
-    searchFooter: renderSearchFooter(site),
+    svgSprites:    buildSvgSprites(site.config),
+    header:        renderHeader(site),
+    searchFooter:  renderSearchFooter(site),
     mermaidScript: renderMermaidScript(site),
-    faviconLink: buildFaviconLink(site.config),
-    gaSnippet: buildGaSnippet(site.config),
+    faviconLink:   buildFaviconLink(site.config),
+    gaSnippet:     buildGaSnippet(site.config),
     searchEnabled: site.config.search_enabled !== false,
   };
+}
+
+// Full init -- used by the templatePhase fallback (no scheduler) and tools.
+export { buildInit as buildInitFn, renderSidebar };
+function buildInit(site) {
+  return { ...buildInitConfig(site), sidebar: renderSidebar(site) };
 }
 
 // ---------- §5.1 templatePage --------------------------------------------
