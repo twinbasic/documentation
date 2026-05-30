@@ -19,6 +19,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
+import pc   from "picocolors";
 
 import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler }  from "./scheduler.mjs";
@@ -512,6 +513,7 @@ function chunkPages(pages, workers) {
 // ── Build entry point ─────────────────────────────────────────────────────────
 
 export async function runBuild(opts) {
+  const buildStart = Date.now();
   const { src, dest } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
@@ -547,30 +549,32 @@ export async function runBuild(opts) {
   const offlineResult = results.get("writeOffline");
   const pdfResult     = results.get("writePdf");
 
-  console.log(`Phase 1+2+3+4+5+6+7+8 done: ${pages.length} pages, ${staticFiles.length} static files`);
-  console.log(`  wrote: ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
-              `${writeStats.theme.copied} theme assets, ${writeStats.staticFiles.copied} static files ` +
-              `-> ${destRoot}`);
+  console.log(`Done in ${pc.bold(pc.green(`${Date.now() - buildStart}ms`))}: ${pages.length} pages, ${staticFiles.length} static files`);
+  console.log(`  ${pc.bold("wrote:")} -> ${pc.cyan(destRoot)}`);
+  console.log(`         ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
+              `${writeStats.theme.copied} theme assets, ${writeStats.staticFiles.copied} static files`);
   if (auxResult?.redirectStats) {
-    console.log(`  aux:   ${auxResult.redirectStats.written} redirect stubs, ` +
+    console.log(`  ${pc.bold("aux:")}   ${auxResult.redirectStats.written} redirect stubs, ` +
                 `${auxResult.sitemapStats.entries} sitemap entries, ` +
                 `${auxResult.searchStats.entries} search-index entries`);
   }
   if (offlineResult) {
-    console.log(`  offline: ${offlineResult.html} HTML, ${offlineResult.css} CSS, ` +
+    console.log(`  ${pc.bold("offline:")} -> ${pc.cyan(`${destRoot}-offline`)}`);
+    console.log(`           ${offlineResult.html} HTML, ${offlineResult.css} CSS, ` +
                 `${offlineResult.redirects} redirect stubs, ` +
                 `${offlineResult.statics + offlineResult.assets} assets, ` +
                 `${offlineResult.excluded} excluded ` +
-                `(${offlineResult.unresolved} unresolved) -> ${destRoot}-offline`);
+                `(${offlineResult.unresolved} unresolved)`);
     if (opts.profileOffline && offlineResult.subT) {
-      console.log(`  offline: ${offlineResult.subT.summary()}`);
+      console.log(`  ${pc.bold("offline:")} ${offlineResult.subT.summary()}`);
     }
   }
   if (pdfResult) {
     const mb = (pdfResult.bookBytes / (1024 * 1024)).toFixed(1);
     const missingClause = pdfResult.missing > 0 ? ` (${pdfResult.missing} missing)` : "";
-    console.log(`  pdf:     book.html (${mb} MB), ${pdfResult.css} CSS, ` +
-                `${pdfResult.images} images${missingClause} -> ${destRoot}-pdf`);
+    console.log(`  ${pc.bold("pdf:")}     -> ${pc.cyan(`${destRoot}-pdf`)}`);
+    console.log(`           book.html (${mb} MB), ${pdfResult.css} CSS, ` +
+                `${pdfResult.images} images${missingClause}`);
   }
   console.log(scheduler.summary());
 

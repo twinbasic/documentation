@@ -1,6 +1,8 @@
 // Task-graph scheduler for the tbdocs build pipeline. See PLAN-scheduler.md
 // for the full design, data-flow diagram, and task placement rationale.
 
+import pc from "picocolors";
+
 export class SharedState {
   pages       = [];        // master copy; mutated in place by [M] tasks and render delta merges
   staticFiles = [];        // master copy; mermaid.submit appends new SVG descriptors
@@ -101,10 +103,26 @@ export class Scheduler {
   }
 
   summary() {
-    return [...this.timings.entries()]
-      .sort((a, b) => a[1].start - b[1].start)
-      .map(([id, { start, end }]) => `${id}=${end - start}ms`)
-      .join(" ");
+    const sorted = [...this.timings.entries()]
+      .sort((a, b) => a[1].start - b[1].start);
+
+    const renderMap = new Map();
+    const parts = [];
+    for (const [id, timing] of sorted) {
+      const m = id.match(/^render:(\d+)$/);
+      if (m) renderMap.set(Number(m[1]), timing);
+      else   parts.push(`${id}=${timing.end - timing.start}ms`);
+    }
+
+    let result = pc.dim(parts.join(" "));
+    if (renderMap.size > 0) {
+      const renderEntries = [...renderMap.entries()].sort((a, b) => a[0] - b[0]);
+      const wallMs = Math.max(...renderEntries.map(([, t]) => t.end))
+                   - Math.min(...renderEntries.map(([, t]) => t.start));
+      const inner = renderEntries.map(([i, t]) => `${i}=${t.end - t.start}ms`).join(", ");
+      result += `\n${pc.bold(pc.yellow("render:"))} ${pc.white(`${wallMs}ms,`)} ${pc.dim(inner)}`;
+    }
+    return result;
   }
 }
 
