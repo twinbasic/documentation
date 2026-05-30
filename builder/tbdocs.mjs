@@ -58,6 +58,7 @@ function parseArgs(argv) {
     profileOffline: false,
     serve: false,
     port: 4000,
+    ganttFile: "build-gantt.mmd",
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -711,7 +712,7 @@ export async function runBuild(opts) {
   }
   console.log(scheduler.summary());
 
-  const ganttPath = path.resolve(process.cwd(), "build-gantt.mmd");
+  const ganttPath = path.resolve(process.cwd(), opts.ganttFile ?? "build-gantt.mmd");
   const ganttContent = await writeGantt(scheduler.timings, ganttPath);
 
   const injectStart = Date.now();

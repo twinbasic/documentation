@@ -167,7 +167,7 @@ export async function runServe(opts) {
 
   // Initial build
   try {
-    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
+    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, ganttFile: "serve-gantt.mmd" });
   } catch (err) {
     console.error("serve: initial build failed:", err.message);
     process.exit(1);
@@ -206,7 +206,7 @@ export async function runServe(opts) {
     if (running) { pending = true; return; }
     running = true;
     try {
-      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
+      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, ganttFile: "serve-gantt.mmd" });
       notifyReload();
     } catch (err) {
       console.error("rebuild failed:", err.message);
