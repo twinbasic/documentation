@@ -417,8 +417,8 @@ const TASKS = {
         scheduler.register(id, {
           expected: [],
           handler:  "render",
-          submit(renderOut, emit, state) {
-            for (const r of renderOut) {
+          submit(renderOut, emit, state, scheduler) {
+            for (const r of renderOut.pages) {
               const p = state.pageByDest.get(r.destPath);
               if (!p) continue;
               p.renderedContent = r.renderedContent;
@@ -426,7 +426,9 @@ const TASKS = {
               if (r.offlineHtml !== undefined) p.offlineHtml = r.offlineHtml;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
             }
-            emit("renderJoin", renderOut);
+            const t = scheduler.timings.get(id);
+            if (t) { t.workerStart = renderOut.workerStart; t.workerEnd = renderOut.workerEnd; }
+            emit("renderJoin", {});
           },
         });
         scheduler.seed(id, {
@@ -562,11 +564,13 @@ async function writeGantt(timings, outPath) {
   const t0 = Math.min(...[...timings.values()].map(t => t.start));
 
   const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
-  for (const [id, { start, end }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
+  for (const [id, { start, end, workerStart, workerEnd }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
     if (id.endsWith("Join")) continue;
     const section = /^render:\d+$/.test(id) ? "Render" : (GANTT_SECTION[id] ?? "Other");
     if (!grouped.has(section)) grouped.set(section, []);
-    grouped.get(section).push({ id, start: start - t0, end: end - t0 });
+    const entry = { id, start: start - t0, end: end - t0 };
+    if (workerStart != null) { entry.workerStart = workerStart - t0; entry.workerEnd = workerEnd - t0; }
+    grouped.get(section).push(entry);
   }
 
   const lines = [
@@ -579,8 +583,11 @@ async function writeGantt(timings, outPath) {
   for (const [section, tasks] of grouped) {
     if (tasks.length === 0) continue;
     lines.push(`    section ${section}`);
-    for (const { id, start, end } of tasks) {
-      const label  = id.replace(":", " ");
+    for (const { id, start, end, workerStart, workerEnd } of tasks) {
+      const pct    = workerStart != null
+        ? ` (${Math.round((workerEnd - workerStart) / (end - start) * 100)}%)`
+        : "";
+      const label  = id.replace(":", " ") + pct;
       const taskId = `t_${id.replace(/[^a-z0-9]/gi, "_")}`;
       lines.push(`    ${label} :done, ${taskId}, ${start}, ${Math.max(end, start + 1)}`);
     }

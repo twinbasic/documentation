@@ -41,6 +41,7 @@ const handlers = {
   },
 
   async render({ inputs }) {
+    const workerStart = Date.now();
     const { sharedSAB, chunk } = inputs;
     const { siteData, initData, linkTablesData, staticFilesArr,
             baseurl, buildInfo, sitePathsArr,
@@ -94,15 +95,19 @@ const handlers = {
       }
     }
 
+    const workerEnd = Date.now();
     // book-combined pages have renderedContent but no html (Phase 8
     // handles them from renderedContent); send html: undefined for those.
-    return chunk.map(p => ({
-      destPath:        p.destPath,
-      renderedContent: p.renderedContent,
-      html:            p.html,
-      offlineHtml:     p.offlineHtml,
-      offlineMisses:   p.offlineMisses,
-    }));
+    return {
+      workerStart, workerEnd,
+      pages: chunk.map(p => ({
+        destPath:        p.destPath,
+        renderedContent: p.renderedContent,
+        html:            p.html,
+        offlineHtml:     p.offlineHtml,
+        offlineMisses:   p.offlineMisses,
+      })),
+    };
   },
 };
 
