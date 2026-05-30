@@ -37,6 +37,8 @@ export async function templatePhase(pages, site) {
 // One-time per-build constants: pre-rendered SVG sprite, sidebar HTML,
 // header static parts, aux-nav, search-footer, mermaid script, favicon
 // link, GA snippet. Per §4 init order.
+// Exported as buildInitFn for the scheduler's main-thread buildInit task.
+export { buildInit as buildInitFn };
 function buildInit(site) {
   return {
     svgSprites: buildSvgSprites(site.config),

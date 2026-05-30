@@ -1232,6 +1232,14 @@ export function buildLinkTables(pages) {
   return { byPath, byUrl, byRedirect };
 }
 
+// Serialize linkTables for cross-thread transfer. resolveLink() only reads
+// .permalink from each page, so shipping [key, permalink] pairs is sufficient.
+// Workers reconstruct minimal { permalink } stubs via reconstructLinkTables.
+export function serializeLinkTables(lt) {
+  const pairs = (m) => [...m.entries()].map(([k, p]) => [k, p.permalink]);
+  return { byPath: pairs(lt.byPath), byUrl: pairs(lt.byUrl), byRedirect: pairs(lt.byRedirect) };
+}
+
 function putOnce(map, key, value) {
   if (!map.has(key)) map.set(key, value);
 }

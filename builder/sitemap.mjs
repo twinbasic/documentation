@@ -13,10 +13,10 @@ import path from "node:path";
 import { absoluteUrl } from "./seo.mjs";
 import { writeFileMkdirp } from "./write.mjs";
 
-export async function writeSitemap(pages, site, destRoot) {
+export async function writeSitemap(pages, site, destRoot, precomputedUrls) {
   const config = site.config;
 
-  const sitemapUrls = [...deriveSitemapUrls(pages, site)].sort();
+  const sitemapUrls = [...(precomputedUrls ?? deriveSitemapUrls(pages, site))].sort();
 
   const xml = renderSitemapXml(sitemapUrls);
 

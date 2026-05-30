@@ -59,7 +59,7 @@ export async function regenerateMermaid(srcRoot) {
   const mmdRoot = path.join(srcRoot, MMD_REL_DIR);
   const sources = await listMermaidSources(mmdRoot);
   if (sources.length === 0) {
-    return { processed: 0, regenerated: 0 };
+    return { processed: 0, regenerated: 0, svgFiles: [] };
   }
 
   const stale = [];
@@ -68,7 +68,8 @@ export async function regenerateMermaid(srcRoot) {
     if (!(await isUpToDate(svg, src))) stale.push({ src, svg });
   }
   if (stale.length === 0) {
-    return { processed: sources.length, regenerated: 0 };
+    return { processed: sources.length, regenerated: 0,
+             svgFiles: await statSvgFiles(sources, srcRoot) };
   }
 
   // Lazy-load puppeteer + resolve the mermaid dist directory. Either
@@ -85,7 +86,8 @@ export async function regenerateMermaid(srcRoot) {
     console.warn(
       `mermaid: skipped batch (${explainLoadFailure(err)}); existing SVGs retained`,
     );
-    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true };
+    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true,
+             svgFiles: await statSvgFiles(sources, srcRoot) };
   }
 
   let browser;
@@ -103,7 +105,8 @@ export async function regenerateMermaid(srcRoot) {
     console.warn(
       `mermaid: skipped batch (${explainLaunchFailure(err)}); existing SVGs retained`,
     );
-    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true };
+    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true,
+             svgFiles: await statSvgFiles(sources, srcRoot) };
   }
 
   // CONTENT failures (one diagram throws) don't abort the batch -- the
@@ -122,7 +125,25 @@ export async function regenerateMermaid(srcRoot) {
   } finally {
     await browser.close().catch(() => {});
   }
-  return { processed: sources.length, regenerated, failed };
+  return { processed: sources.length, regenerated, failed,
+           svgFiles: await statSvgFiles(sources, srcRoot) };
+}
+
+// Stat all managed SVG files and return their static-file descriptors.
+// Called after rendering so freshly-written SVGs are included.
+async function statSvgFiles(sources, srcRoot) {
+  const results = [];
+  for (const src of sources) {
+    const svgPath = svgFor(src);
+    try {
+      const stat = await fs.stat(svgPath);
+      const srcRel = path.relative(srcRoot, svgPath).replace(/\\/g, "/");
+      results.push({ srcPath: svgPath, srcRel, destRel: srcRel, size: stat.size });
+    } catch {
+      // SVG not on disk (render failed or never generated); skip.
+    }
+  }
+  return results;
 }
 
 async function listMermaidSources(mmdRoot) {
