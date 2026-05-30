@@ -546,12 +546,12 @@ function chunkPages(pages, workers) {
 // ── Gantt chart ───────────────────────────────────────────────────────────────
 
 const GANTT_SECTION = {
-  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scssJoin: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
+  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
   highlighterInit: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   seo: "Spine", loadData: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
-  dispatch: "Render", renderJoin: "Render",
+  dispatch: "Render",
   write: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
@@ -562,6 +562,7 @@ async function writeGantt(timings, outPath) {
 
   const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
   for (const [id, { start, end }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
+    if (id.endsWith("Join")) continue;
     const section = /^render:\d+$/.test(id) ? "Render" : (GANTT_SECTION[id] ?? "Other");
     if (!grouped.has(section)) grouped.set(section, []);
     grouped.get(section).push({ id, start: start - t0, end: end - t0 });
