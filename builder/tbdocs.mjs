@@ -604,23 +604,6 @@ async function writeGantt(timings, outPath) {
     grouped.get(section).push(entry);
   }
 
-  // Condense tasks flagged consolidate into one bar per worker lane.
-  for (const [section, tasks] of grouped) {
-    const kept = [];
-    const byLane = new Map();
-    for (const entry of tasks) {
-      if (!entry.consolidate || entry.lane == null) { kept.push(entry); continue; }
-      const prev = byLane.get(entry.lane);
-      if (!prev) byLane.set(entry.lane, { start: entry.start, end: entry.end });
-      else { prev.start = Math.min(prev.start, entry.start); prev.end = Math.max(prev.end, entry.end); }
-    }
-    if (byLane.size === 0) continue;
-    const lanes = [...byLane.entries()]
-      .sort((a, b) => a[1].start - b[1].start)
-      .map(([lane, { start, end }]) => ({ id: `${section.toLowerCase()} w${lane}`, start, end }));
-    grouped.set(section, [...kept, ...lanes]);
-  }
-
   const lines = [
     "gantt",
     "    title Build task timeline",
@@ -727,6 +710,15 @@ export async function runBuild(opts) {
                 `${pdfResult.images} images${missingClause}`);
   }
   console.log(scheduler.summary());
+
+  for (const bt of pool.bootTimings) {
+    scheduler.timings.set(`${bt.type}:w${bt.lane}`, {
+      start: bt.start, end: bt.end,
+      workerStart: bt.start, workerEnd: bt.end,
+      lane: bt.lane,
+      ganttSection: "Boot",
+    });
+  }
 
   const ganttPath = path.resolve(process.cwd(), opts.ganttFile ?? "build-gantt.mmd");
   const grouped = await writeGantt(scheduler.timings, ganttPath);

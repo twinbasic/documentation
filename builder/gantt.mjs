@@ -6,6 +6,7 @@ const COLORS = {
   Spine:  { light: "#6eb5d9", dark: "#3c7db0" },
   Render: { light: "#b09cd8", dark: "#8066a8" },
   Write:  { light: "#e8a756", dark: "#c08030" },
+  Boot:   { light: "#e57373", dark: "#c62828" },
   Other:  { light: "#bbb",    dark: "#666"    },
 };
 
@@ -24,8 +25,32 @@ export function renderGantt(grouped) {
   const maxT = Math.max(...all.map(t => t.end));
   if (maxT <= 0) return "";
 
-  let rows = 0;
-  for (const tasks of grouped.values()) rows += tasks.length;
+  // Any task with a lane ran on a worker — pull it into the Workers
+  // section, tagged with its original section for bar colour.  Leftover
+  // Render tasks (dispatch, prepDest) fold into Spine.
+  const seeds = [], spine = [], write = [];
+  const laneTasks = [];
+  for (const [section, tasks] of grouped) {
+    for (const t of tasks) {
+      if (t.lane != null) { t._color = section; laneTasks.push(t); }
+      else if (section === "Seeds") seeds.push(t);
+      else if (section === "Spine" || section === "Render") spine.push(t);
+      else if (section === "Write") write.push(t);
+    }
+  }
+  const mainSections = [["Seeds", seeds], ["Spine", spine], ["Write", write]];
+
+  const lanes = new Map();
+  for (const t of laneTasks) {
+    if (!lanes.has(t.lane)) lanes.set(t.lane, []);
+    lanes.get(t.lane).push(t);
+  }
+  for (const tasks of lanes.values())
+    tasks.sort((a, b) => a.workerStart - b.workerStart);
+  const sortedLanes = [...lanes.entries()].sort((a, b) => a[0] - b[0]);
+
+  let rows = sortedLanes.length;
+  for (const [, tasks] of mainSections) rows += tasks.length;
   const h = AXIS_H + rows * ROW_H + 5;
   const xOf = t => SECTION_W + (t / maxT) * CHART_W;
 
@@ -57,33 +82,77 @@ export function renderGantt(grouped) {
   }
 
   let y = AXIS_H;
-  for (const [section, tasks] of grouped) {
+
+  // Seeds, Spine (with dispatch / prepDest folded in)
+  for (const [section, tasks] of mainSections.slice(0, 2)) {
     if (tasks.length === 0) continue;
+    y = renderMainSection(o, section, tasks, y, xOf);
+  }
+
+  // Workers — one row per lane, individual task bars
+  if (sortedLanes.length > 0) {
     o.push(`<line x1="0" y1="${y}" x2="${SVG_W}" y2="${y}" class="gg" stroke-width=".5"/>`);
-    const cls = `gb-${section.toLowerCase()}`;
-    for (let i = 0; i < tasks.length; i++) {
-      const t = tasks[i];
-      const bx = rd(xOf(t.start));
-      const bw = rd(Math.max(xOf(t.end) - xOf(t.start), 1));
-      const by = rd(y + (ROW_H - BAR_H) / 2);
+    for (let li = 0; li < sortedLanes.length; li++) {
+      const [, tasks] = sortedLanes[li];
       const ty = rd(y + ROW_H / 2 + 3.5);
-      if (i === 0) o.push(`<text x="4" y="${ty}" class="gs" font-size="12">${esc(section)}</text>`);
-      o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="${cls}" rx="2"/>`);
-      const lbl = taskLabel(t);
-      const textW = lbl.length * CHAR_W;
-      if (textW + BAR_PAD * 2 <= bw) {
-        o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
-      } else if (bx + bw + 4 + textW <= SVG_W) {
-        o.push(`<text x="${rd(bx + bw + 4)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
-      } else {
-        o.push(`<text x="${rd(bx - 4)}" y="${ty}" text-anchor="end" class="gl" font-size="11">${esc(lbl)}</text>`);
+      const by = rd(y + (ROW_H - BAR_H) / 2);
+      if (li === 0) o.push(`<text x="4" y="${ty}" class="gs" font-size="12">Workers</text>`);
+      const bootBars = [];
+      for (const t of tasks) {
+        if (t._color === "Boot") { bootBars.push(t); continue; }
+        const bx = rd(xOf(t.workerStart));
+        const bw = rd(Math.max(xOf(t.workerEnd) - xOf(t.workerStart), 1));
+        o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="gb-${(t._color || "render").toLowerCase()}" rx="2"/>`);
+        const lbl = workerLabel(t);
+        if (lbl.length * CHAR_W + BAR_PAD * 2 <= bw)
+          o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
+      }
+      const bootH = Math.round(BAR_H * 0.75);
+      for (const t of bootBars) {
+        const bx = rd(xOf(t.workerStart));
+        const bw = rd(Math.max(xOf(t.workerEnd) - xOf(t.workerStart), 1));
+        o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bootH}" class="gb-boot" rx="2"/>`);
+        const lbl = workerLabel(t);
+        if (lbl.length * CHAR_W + BAR_PAD * 2 <= bw)
+          o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
       }
       y += ROW_H;
     }
   }
 
+  // Write
+  for (const [section, tasks] of mainSections.slice(2)) {
+    if (tasks.length === 0) continue;
+    y = renderMainSection(o, section, tasks, y, xOf);
+  }
+
   o.push(`</g></svg>`);
   return o.join("\n");
+}
+
+function renderMainSection(o, section, tasks, y, xOf) {
+  o.push(`<line x1="0" y1="${y}" x2="${SVG_W}" y2="${y}" class="gg" stroke-width=".5"/>`);
+  const cls = `gb-${section.toLowerCase()}`;
+  for (let i = 0; i < tasks.length; i++) {
+    const t = tasks[i];
+    const bx = rd(xOf(t.start));
+    const bw = rd(Math.max(xOf(t.end) - xOf(t.start), 1));
+    const by = rd(y + (ROW_H - BAR_H) / 2);
+    const ty = rd(y + ROW_H / 2 + 3.5);
+    if (i === 0) o.push(`<text x="4" y="${ty}" class="gs" font-size="12">${esc(section)}</text>`);
+    o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="${cls}" rx="2"/>`);
+    const lbl = taskLabel(t);
+    const textW = lbl.length * CHAR_W;
+    if (textW + BAR_PAD * 2 <= bw) {
+      o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
+    } else if (bx + bw + 4 + textW <= SVG_W) {
+      o.push(`<text x="${rd(bx + bw + 4)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
+    } else {
+      o.push(`<text x="${rd(bx - 4)}" y="${ty}" text-anchor="end" class="gl" font-size="11">${esc(lbl)}</text>`);
+    }
+    y += ROW_H;
+  }
+  return y;
 }
 
 function niceInterval(max) {
@@ -107,6 +176,10 @@ function taskLabel(t) {
     }
   }
   return s;
+}
+
+function workerLabel(t) {
+  return t.id.replace(/:.*/, "").replace(/ w\d+$/, "");
 }
 
 function rd(n) { return Math.round(n * 10) / 10; }

@@ -17,13 +17,20 @@ export class WorkerPool {
     this._warm      = new Set();        // all workers that have signalled warmedUp
     this._busy      = new Map();        // Worker → { resolve, reject }
     this._queue     = [];               // pending { message, transferList, resolve, reject }
+    this.bootTimings = [];              // { lane, type, start, end }[]
     this._workers   = Array.from({ length: size }, (_, i) => this._spawn(i));
   }
 
   _spawn(lane) {
-    const w = new Worker(this._workerUrl);
+    const spawnTime = Date.now();
+    const w = new Worker(this._workerUrl, { workerData: { lane, spawnTime } });
     w.on("message", (msg) => {
-      if (msg.warmedUp) { this._onWarmedUp(w); return; }
+      if (msg.coldBoot) { this.bootTimings.push({ lane, type: "cold", ...msg.coldBoot }); return; }
+      if (msg.warmedUp) {
+        if (msg.warmBoot) this.bootTimings.push({ lane, type: "warm", ...msg.warmBoot });
+        this._onWarmedUp(w);
+        return;
+      }
       const entry = this._busy.get(w);
       if (!entry) return;
       this._busy.delete(w);

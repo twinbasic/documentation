@@ -2,7 +2,7 @@
 // appropriate handler and posts back { result } or { error, stack }.
 // See PLAN-scheduler.md §Worker for the full handler set.
 
-import { parentPort } from "node:worker_threads";
+import { parentPort, workerData } from "node:worker_threads";
 import { compileLightScss, compileDarkScss } from "./scss.mjs";
 import { regenerateMermaid } from "./mermaid.mjs";
 import { captureBuildInfo }  from "./build-info.mjs";
@@ -14,6 +14,10 @@ import { deriveOfflinePage, deriveOfflinePageCached,
          sliceNavBlock, normalizeBaseurl,
          posixDirname }                       from "./offline-rewrite.mjs";
 
+// Report cold-boot time: from worker spawn (passed via workerData) to
+// the point where all static imports have resolved and top-level code runs.
+if (workerData?.spawnTime) parentPort.postMessage({ coldBoot: { start: workerData.spawnTime, end: Date.now() } });
+
 // Shiki (highlight.mjs) is loaded lazily — its transitive import of the
 // shiki package is the heaviest single module in the worker graph. A
 // warmup signal from the pool triggers loading on idle workers so it
@@ -24,8 +28,9 @@ import { deriveOfflinePage, deriveOfflinePageCached,
 let _highlighterP = null;
 function ensureHighlighterInit() {
   if (!_highlighterP) {
+    const warmStart = Date.now();
     _highlighterP = import("./highlight.mjs").then(m => m.initHighlighter());
-    _highlighterP.then(() => parentPort.postMessage({ warmedUp: true }));
+    _highlighterP.then(() => parentPort.postMessage({ warmedUp: true, warmBoot: { start: warmStart, end: Date.now() } }));
   }
   return _highlighterP;
 }
