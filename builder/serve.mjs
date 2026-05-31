@@ -134,7 +134,7 @@ function createStaticHandler(destRoot) {
 }
 
 // §D — Watcher filtering
-const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_serve", "_pdf", "node_modules", ".git"];
+const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_serve", "_serve-offline", "_serve-pdf", "_pdf", "node_modules", ".git"];
 const IGNORED_BASENAME_RE = /^\.|~$|\.tmp$|\.swp$|^4913$/;
 
 function shouldRebuild(filename) {
