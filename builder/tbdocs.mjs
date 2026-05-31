@@ -434,6 +434,8 @@ const TASKS = {
         scheduler.register(id, {
           expected: [],
           handler:  "render",
+          consolidate: true,
+          ganttSection: "Render",
           submit(renderOut, emit, state) {
             for (const r of renderOut.pages) {
               const p = state.pageByDest.get(r.destPath);
@@ -554,8 +556,10 @@ const TASKS = {
   },
 };
 
+const SLICES_PER_WORKER = 10;
+
 function chunkPages(pages, workers) {
-  const n = Math.min(workers, pages.length);
+  const n = Math.min(workers * SLICES_PER_WORKER, pages.length);
   if (n === 0) return [];
   const size = Math.ceil(pages.length / n);
   const chunks = [];
@@ -581,13 +585,32 @@ async function writeGantt(timings, outPath) {
   const t0 = Math.min(...[...timings.values()].map(t => t.start));
 
   const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
-  for (const [id, { start, end, workerStart, workerEnd }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
+  for (const [id, { start, end, workerStart, workerEnd, lane, consolidate, ganttSection }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
     if (id.endsWith("Join")) continue;
-    const section = /^render:\d+$/.test(id) ? "Render" : (GANTT_SECTION[id] ?? "Other");
+    const section = ganttSection ?? GANTT_SECTION[id] ?? "Other";
     if (!grouped.has(section)) grouped.set(section, []);
     const entry = { id, start: start - t0, end: end - t0 };
     if (workerStart != null) { entry.workerStart = workerStart - t0; entry.workerEnd = workerEnd - t0; }
+    if (lane != null) entry.lane = lane;
+    if (consolidate)  entry.consolidate = true;
     grouped.get(section).push(entry);
+  }
+
+  // Condense tasks flagged consolidate into one bar per worker lane.
+  for (const [section, tasks] of grouped) {
+    const kept = [];
+    const byLane = new Map();
+    for (const entry of tasks) {
+      if (!entry.consolidate || entry.lane == null) { kept.push(entry); continue; }
+      const prev = byLane.get(entry.lane);
+      if (!prev) byLane.set(entry.lane, { start: entry.start, end: entry.end });
+      else { prev.start = Math.min(prev.start, entry.start); prev.end = Math.max(prev.end, entry.end); }
+    }
+    if (byLane.size === 0) continue;
+    const lanes = [...byLane.entries()]
+      .sort((a, b) => a[1].start - b[1].start)
+      .map(([lane, { start, end }]) => ({ id: `${section.toLowerCase()} w${lane}`, start, end }));
+    grouped.set(section, [...kept, ...lanes]);
   }
 
   const lines = [

@@ -86,6 +86,9 @@ export class Scheduler {
     const end = Date.now();
     const timing = { start, end };
     if (output?.workerStart != null) { timing.workerStart = output.workerStart; timing.workerEnd = output.workerEnd; }
+    if (output?.lane != null) timing.lane = output.lane;
+    if (task.def.consolidate)  timing.consolidate  = true;
+    if (task.def.ganttSection) timing.ganttSection = task.def.ganttSection;
     this.timings.set(task.id, timing);
     this.results.set(task.id, output);
     this.inFlight--;
@@ -109,21 +112,28 @@ export class Scheduler {
     const sorted = [...this.timings.entries()]
       .sort((a, b) => a[1].start - b[1].start);
 
-    const renderMap = new Map();
+    const consolidated = new Map();
     const parts = [];
     for (const [id, timing] of sorted) {
-      const m = id.match(/^render:(\d+)$/);
-      if (m) renderMap.set(Number(m[1]), timing);
-      else   parts.push(`${id}=${timing.end - timing.start}ms`);
+      if (timing.consolidate && timing.lane != null) {
+        const section = timing.ganttSection ?? "worker";
+        if (!consolidated.has(section)) consolidated.set(section, new Map());
+        const byLane = consolidated.get(section);
+        const prev = byLane.get(timing.lane);
+        if (!prev) byLane.set(timing.lane, { start: timing.start, end: timing.end });
+        else { prev.start = Math.min(prev.start, timing.start); prev.end = Math.max(prev.end, timing.end); }
+      } else {
+        parts.push(`${id}=${timing.end - timing.start}ms`);
+      }
     }
 
     let result = pc.dim(parts.join(" "));
-    if (renderMap.size > 0) {
-      const renderEntries = [...renderMap.entries()].sort((a, b) => a[0] - b[0]);
-      const wallMs = Math.max(...renderEntries.map(([, t]) => t.end))
-                   - Math.min(...renderEntries.map(([, t]) => t.start));
-      const inner = renderEntries.map(([i, t]) => `${i}=${t.end - t.start}ms`).join(", ");
-      result += `\n${pc.bold(pc.yellow("render:"))} ${pc.white(`${wallMs}ms,`)} ${pc.dim(inner)}`;
+    for (const [section, byLane] of consolidated) {
+      const lanes = [...byLane.entries()].sort((a, b) => a[0] - b[0]);
+      const wallMs = Math.max(...lanes.map(([, t]) => t.end))
+                   - Math.min(...lanes.map(([, t]) => t.start));
+      const inner = lanes.map(([i, t]) => `w${i}=${t.end - t.start}ms`).join(", ");
+      result += `\n${pc.bold(pc.yellow(`${section.toLowerCase()}:`))} ${pc.white(`${wallMs}ms,`)} ${pc.dim(inner)}`;
     }
     return result;
   }

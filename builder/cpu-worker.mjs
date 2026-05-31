@@ -50,31 +50,16 @@ const handlers = {
   async render({ inputs }) {
     const workerStart = Date.now();
     const { sharedSAB, chunk } = inputs;
-    const { siteData, initData, linkTablesData, staticFilesArr,
-            baseurl, buildInfo, sitePathsArr,
-            skipOffline } = unpackShared(sharedSAB);
+    const env = await getOrInitRenderEnv(sharedSAB);
 
-    const highlighter = await highlighterP;
-    const linkTables  = reconstructLinkTables(linkTablesData);
-    const staticFiles = new Set(staticFilesArr);
-    const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
+    await renderPhase(chunk, env.site);
+    await templatePhase(chunk, env.site, env.initData);
 
-    const site = { ...siteData, markdown, buildInfo };
-    await renderPhase(chunk, site);
-    await templatePhase(chunk, site, initData);
+    if (env.offlineBase) {
+      const offlineState = { ...env.offlineBase,
+        caches: { rawResolution: new Map(), seg: new Map(), result: new Map() },
+      };
 
-    // Offline rewrite pass (Phase III of PLAN-scheduler-offline.md).
-    // Runs the per-page URL rewrite inside the worker so it
-    // parallelises across CPUs. When skipOffline is true the entire
-    // pass is skipped — no Set construction, no rewriting.
-    if (!skipOffline) {
-      const sitePaths = new Set(sitePathsArr);
-      const caches = { rawResolution: new Map(), seg: new Map(), result: new Map() };
-      const offlineState = { sitePaths, caches, baseurl: normalizeBaseurl(baseurl) };
-
-      // Nav-cache pre-pass: group chunk pages by dest dir, derive the
-      // first page per dir, cache nav block slices. Same logic as
-      // writeOfflinePages in offline.mjs.
       const writable = chunk.filter(p => p.html !== undefined);
       const byDir = new Map();
       for (const p of writable) {
@@ -103,8 +88,6 @@ const handlers = {
     }
 
     const workerEnd = Date.now();
-    // book-combined pages have renderedContent but no html (Phase 8
-    // handles them from renderedContent); send html: undefined for those.
     return {
       workerStart, workerEnd,
       pages: chunk.map(p => ({
@@ -117,6 +100,37 @@ const handlers = {
     };
   },
 };
+
+// Cached per-worker render environment. The sharedSAB is identical for every
+// chunk in a build, so we unpack + derive once and reuse across chunks.
+let _renderSAB = null;
+let _renderEnv = null;
+
+async function getOrInitRenderEnv(sharedSAB) {
+  if (_renderSAB === sharedSAB) return _renderEnv;
+
+  const { siteData, initData, linkTablesData, staticFilesArr,
+          baseurl, buildInfo, sitePathsArr,
+          skipOffline } = unpackShared(sharedSAB);
+
+  const highlighter = await highlighterP;
+  const linkTables  = reconstructLinkTables(linkTablesData);
+  const staticFiles = new Set(staticFilesArr);
+  const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
+  const site        = { ...siteData, markdown, buildInfo };
+
+  let offlineBase = null;
+  if (!skipOffline) {
+    offlineBase = {
+      sitePaths: new Set(sitePathsArr),
+      baseurl:   normalizeBaseurl(baseurl),
+    };
+  }
+
+  _renderSAB = sharedSAB;
+  _renderEnv = { site, initData, offlineBase };
+  return _renderEnv;
+}
 
 parentPort.on("message", async (msg) => {
   const { name, ...payload } = msg;

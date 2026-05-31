@@ -10,10 +10,10 @@ export class WorkerPool {
     this._idle    = [];               // Worker[]
     this._busy    = new Map();        // Worker → { resolve, reject }
     this._queue   = [];               // pending { message, transferList, resolve, reject }
-    this._workers = Array.from({ length: size }, () => this._spawn());
+    this._workers = Array.from({ length: size }, (_, i) => this._spawn(i));
   }
 
-  _spawn() {
+  _spawn(lane) {
     const w = new Worker(this._workerUrl);
     w.on("message", (msg) => {
       const entry = this._busy.get(w);
@@ -21,7 +21,7 @@ export class WorkerPool {
       this._busy.delete(w);
       this._idle.push(w);
       if (msg.error) entry.reject(Object.assign(new Error(msg.error), { stack: msg.stack }));
-      else            entry.resolve(msg.result);
+      else            entry.resolve(Object.assign(msg.result, { lane }));
       this._drain();
     });
     w.on("error", (err) => {
