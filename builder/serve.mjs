@@ -196,6 +196,7 @@ export async function runServe(opts) {
   let running = false;
   let pending = false;
   let debounceTimer = null;
+  const changedFiles = new Set();
 
   function schedule() {
     clearTimeout(debounceTimer);
@@ -205,6 +206,9 @@ export async function runServe(opts) {
   async function fire() {
     if (running) { pending = true; return; }
     running = true;
+    const files = [...changedFiles].sort();
+    changedFiles.clear();
+    console.log(`\nChanged: ${files.join(", ")}`);
     try {
       await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, ganttFile: "serve-gantt.mmd" });
       notifyReload();
@@ -224,6 +228,7 @@ export async function runServe(opts) {
     try {
       for await (const event of watcher) {
         if (!shouldRebuild(event.filename)) continue;
+        changedFiles.add(event.filename.replaceAll("\\", "/"));
         schedule();
       }
     } catch (err) {
