@@ -119,11 +119,11 @@ export function makeTimer() {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid, prepDest,
+// Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid,
 // highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
 // nav + buildInit → dispatch; config → loadData; discover → markdownInit → seo;
-// deriveRedirects off discover; deriveSitemap + resolveBookChapters deferred to dispatch), the render fan-out
-// (dispatch → render:0..N → renderJoin), and write/post-write tasks
+// deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
+// the render fan-out (dispatch → render:0..N → renderJoin), and write/post-write tasks
 // (renderJoin + prepDest → searchData; write + searchData → writeAux →
 // writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
@@ -203,10 +203,11 @@ const TASKS = {
     },
   },
 
-  // Clean and recreate _site/, _site-offline/, _site-pdf/. No dependencies --
-  // overlaps with the entire main-thread spine and worker seeds. Joined by write and searchData.
+  // Clean and recreate _site/, _site-offline/, _site-pdf/. Deferred to after
+  // dispatch so the wipe doesn't contend with discover's source-file reads.
+  // Joined by write and searchData.
   prepDest: {
-    expected: [],
+    expected: ["dispatch"],
     runOnMain: true,
     async execute(_, ctx) {
       const r = ctx.destRoot;
@@ -412,6 +413,7 @@ const TASKS = {
     submit(out, emit, _state, scheduler) {
       const N = out.chunks.length;
       emit("deriveSitemap", {});
+      emit("prepDest",      {});
 
       scheduler.register("renderJoin", {
         expected: Array.from({ length: N }, (_, i) => `render:${i}`),
@@ -561,12 +563,12 @@ function chunkPages(pages, workers) {
 // ── Gantt chart ───────────────────────────────────────────────────────────────
 
 const GANTT_SECTION = {
-  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", mermaid: "Seeds", prepDest: "Seeds",
+  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", mermaid: "Seeds",
   highlighterInit: "Seeds", loadData: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   seo: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
-  dispatch: "Render",
+  dispatch: "Render", prepDest: "Render",
   write: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
