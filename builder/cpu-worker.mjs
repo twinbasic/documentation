@@ -7,20 +7,23 @@ import { compileLightScss, compileDarkScss } from "./scss.mjs";
 import { regenerateMermaid } from "./mermaid.mjs";
 import { captureBuildInfo }  from "./build-info.mjs";
 
-import { initHighlighter }                         from "./highlight.mjs";
-import { createMarkdownIt, buildLinkTables,
-         renderPhase }                             from "./render.mjs";
-import { templatePhase }                           from "./template.mjs";
-import { unpackShared }                            from "./sab-broadcast.mjs";
-
+import { createMarkdownIt, renderPhase }      from "./render.mjs";
+import { templatePhase }                      from "./template.mjs";
+import { unpackShared }                       from "./sab-broadcast.mjs";
 import { deriveOfflinePage, deriveOfflinePageCached,
          sliceNavBlock, normalizeBaseurl,
-         posixDirname }                            from "./offline-rewrite.mjs";
+         posixDirname }                       from "./offline-rewrite.mjs";
 
-// Start WASM init immediately, do NOT await. Module evaluation finishes
-// synchronously so the parentPort.on('message') dispatcher is installed
-// before the pool sends any work. Only the `render` handler awaits.
-const highlighterP = initHighlighter();
+// Shiki (highlight.mjs) is loaded lazily — its transitive import of the
+// shiki package is the heaviest single module in the worker graph. A
+// warmup signal from the pool triggers loading on idle workers so it
+// overlaps with the main-thread discover phase; critical-path seeds
+// (buildInfo, scss) finish before the import starts on their workers.
+let _highlighterP = null;
+function ensureHighlighterInit() {
+  if (!_highlighterP) _highlighterP = import("./highlight.mjs").then(m => m.initHighlighter());
+  return _highlighterP;
+}
 
 const handlers = {
   async scssLight({ ctx }) {
@@ -113,7 +116,7 @@ async function getOrInitRenderEnv(sharedSAB) {
           baseurl, buildInfo, sitePathsArr,
           skipOffline } = unpackShared(sharedSAB);
 
-  const highlighter = await highlighterP;
+  const highlighter = await ensureHighlighterInit();
   const linkTables  = reconstructLinkTables(linkTablesData);
   const staticFiles = new Set(staticFilesArr);
   const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
@@ -133,6 +136,10 @@ async function getOrInitRenderEnv(sharedSAB) {
 }
 
 parentPort.on("message", async (msg) => {
+  // Warmup signal from the pool — start Shiki init without posting a
+  // response so the pool's busy-tracking is unaffected.
+  if (msg.warmup) { ensureHighlighterInit(); return; }
+
   const { name, ...payload } = msg;
   const handler = handlers[name];
   if (!handler) {
@@ -145,6 +152,7 @@ parentPort.on("message", async (msg) => {
   } catch (err) {
     parentPort.postMessage({ error: err.message, stack: err.stack });
   }
+  ensureHighlighterInit();
 });
 
 // linkTables values are page objects in the main pipeline, but

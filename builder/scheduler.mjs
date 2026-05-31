@@ -62,6 +62,7 @@ export class Scheduler {
       }
     }
     this._flush();
+    this.pool.warmup();
     return this._doneP;
   }
 

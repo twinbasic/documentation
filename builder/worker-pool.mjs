@@ -48,6 +48,13 @@ export class WorkerPool {
     }
   }
 
+  // Send a no-response warmup signal to all currently idle workers.
+  // Workers handle { warmup: true } without posting back, so the
+  // pool's busy-tracking is unaffected.
+  warmup() {
+    for (const w of this._idle) w.postMessage({ warmup: true });
+  }
+
   destroy() {
     return Promise.all(this._workers.map(w => w.terminate()));
   }
