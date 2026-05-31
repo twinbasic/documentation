@@ -13,9 +13,8 @@
 //   §A  Top-level orchestration (writePdf entry point)
 //   §B  Image-path extraction (port of pdfify.rb's IMG_SRC_RE)
 //   §C  Static-file lookup
-//   §D  Setup pass (wipe + recreate pdfRoot)
-//   §E  Copy pass (book.html + CSS + images)
-//   §F  Missing-image reporting (port of pdfify.rb's strict mode)
+//   §D  Copy pass (book.html + CSS + images)
+//   §E  Missing-image reporting (port of pdfify.rb's strict mode)
 
 import { promises as fs } from "node:fs";
 
@@ -24,7 +23,6 @@ import path from "node:path";
 import { assembleBook } from "./book.mjs";
 import {
   WRITE_LIMIT,
-  isUnderProject,
   mkdirRec,
   runLimited,
   safeWrite,
@@ -52,8 +50,6 @@ export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMis
   const staticByDestRel = new Map(
     staticFiles.map(s => [s.destRel.replaceAll("\\", "/"), s]),
   );
-  await setupPdfDest(pdfRoot);
-
   const counters = { bookBytes: 0, html: 0, css: 0, images: 0, missing: 0 };
   const missingPaths = [];
 
@@ -129,22 +125,7 @@ export function extractImagePaths(html) {
 }
 
 // ---------------------------------------------------------------------------
-// §D  Setup pass
-// ---------------------------------------------------------------------------
-
-// PLAN-8 §5.4 + §7.D1: unlike Phase 7's wipe-contents-keep-directory
-// pattern, Phase 8 wipes the entire <pdfRoot>/. Mirrors pdfify.rb's
-// `rm_rf(dest)` + `mkdir_p(dest)`.
-async function setupPdfDest(pdfRoot) {
-  if (!isUnderProject(pdfRoot)) {
-    throw new Error(`refusing to clean ${pdfRoot}: not under the project tree`);
-  }
-  await fs.rm(pdfRoot, { recursive: true, force: true });
-  await fs.mkdir(pdfRoot, { recursive: true });
-}
-
-// ---------------------------------------------------------------------------
-// §E  Copy pass
+// §D  Copy pass
 // ---------------------------------------------------------------------------
 
 // PLAN-8 §5.5: write the assembled book.html.
@@ -201,7 +182,7 @@ async function copyPdfImages(imagePaths, staticByDestRel, pdfRoot, counters, mis
 }
 
 // ---------------------------------------------------------------------------
-// §F  Missing-image reporting (port of pdfify.rb's strict mode)
+// §E  Missing-image reporting (port of pdfify.rb's strict mode)
 // ---------------------------------------------------------------------------
 
 // PLAN-8 §5.8: per-path error log, then throw if !tolerateMissingImages.

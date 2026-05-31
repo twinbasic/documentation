@@ -35,7 +35,7 @@ import {
 } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { buildInitConfig, renderSidebar } from "./template.mjs";
-import { writePhase, prepareDestination } from "./write.mjs";
+import { writePhase, prepareDestinations } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
@@ -203,13 +203,14 @@ const TASKS = {
     },
   },
 
-  // Clean and recreate _site/. No dependencies -- overlaps with the entire
-  // main-thread spine and worker seeds. Joined by write and searchData.
+  // Clean and recreate _site/, _site-offline/, _site-pdf/. No dependencies --
+  // overlaps with the entire main-thread spine and worker seeds. Joined by write and searchData.
   prepDest: {
     expected: [],
     runOnMain: true,
     async execute(_, ctx) {
-      await prepareDestination(ctx.destRoot, ctx.opts.dryRun);
+      const r = ctx.destRoot;
+      await prepareDestinations([r, r + "-offline", r + "-pdf"], ctx.opts.dryRun);
       return {};
     },
     submit(_, emit) {

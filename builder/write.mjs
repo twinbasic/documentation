@@ -93,18 +93,20 @@ async function writeGeneratedAssets(assets, destRoot, limit, baseurl) {
   });
 }
 
-// ---------- §5.1 prepareDestination -------------------------------------
+// ---------- §5.1 prepareDestinations ------------------------------------
 
-export async function prepareDestination(destRoot, dryRun) {
+export async function prepareDestinations(roots, dryRun) {
   if (dryRun) {
-    console.log(`[dry-run] would clean ${destRoot}`);
+    for (const root of roots) console.log(`[dry-run] would clean ${root}`);
     return;
   }
-  if (!isUnderProject(destRoot)) {
-    throw new Error(`refusing to clean ${destRoot}: not under the project tree`);
-  }
-  await fs.rm(destRoot, { recursive: true, force: true });
-  await fs.mkdir(destRoot, { recursive: true });
+  await Promise.all(roots.map(async (root) => {
+    if (!isUnderProject(root)) {
+      throw new Error(`refusing to clean ${root}: not under the project tree`);
+    }
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.mkdir(root, { recursive: true });
+  }));
 }
 
 export function isUnderProject(destRoot) {

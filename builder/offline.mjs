@@ -137,9 +137,6 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
 
   const subT = profileOffline ? makeTimer() : null;
 
-  await setupOfflineDest(deps.offlineRoot);
-  subT?.lap("setup");
-
   const jtdSrc = path.join(destRoot, "assets/js/just-the-docs.js");
   const jtdDest = path.join(deps.offlineRoot, "assets/js/just-the-docs.js");
   const jtdPatches = await patchJustTheDocsJs(jtdSrc, jtdDest);
@@ -211,22 +208,6 @@ export async function buildOfflineState(pages, staticFiles, site, destRoot, { st
     siteUrl: String(site.config?.url ?? "").replace(/\/+$/, ""),
     excludePatterns,
   };
-}
-
-// §5.1  setupOfflineDest -- wipe-contents (not directory itself; see
-// PLAN-7 §7.D1) then ensure the root exists.
-async function setupOfflineDest(offlineRoot) {
-  if (!isUnderProject(offlineRoot)) {
-    throw new Error(`refusing to clean ${offlineRoot}: not under the project tree`);
-  }
-  if (existsSync(offlineRoot)) {
-    const entries = await fs.readdir(offlineRoot);
-    await Promise.all(entries.map(name =>
-      fs.rm(path.join(offlineRoot, name), { recursive: true, force: true }),
-    ));
-  } else {
-    await fs.mkdir(offlineRoot, { recursive: true });
-  }
 }
 
 // §5.2  writeOfflinePages -- per-page strip + rewrite + inject.
