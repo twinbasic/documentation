@@ -23,6 +23,7 @@ import pc   from "picocolors";
 
 import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler }  from "./scheduler.mjs";
+import { renderGantt } from "./gantt.mjs";
 
 import { discover } from "./discover.mjs";
 import { computeNav } from "./nav.mjs";
@@ -588,7 +589,7 @@ const GANTT_SECTION = {
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
 
 async function writeGantt(timings, outPath) {
-  if (timings.size === 0) return "";
+  if (timings.size === 0) return null;
   const t0 = Math.min(...[...timings.values()].map(t => t.start));
 
   const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
@@ -641,59 +642,21 @@ async function writeGantt(timings, outPath) {
     lines.push("");
   }
 
-  const content = lines.join("\n");
-  await fs.writeFile(outPath, content, "utf8");
-  return content;
+  await fs.writeFile(outPath, lines.join("\n"), "utf8");
+  return grouped;
 }
 
-async function injectGanttChart(pages, destRoot, ganttContent) {
-  if (!ganttContent) return;
+async function injectGanttChart(pages, destRoot, svgContent) {
+  if (!svgContent) return;
   const page = pages.find(p => p.permalink === "/Documentation/Development/BuildInfo");
   if (!page) return;
 
-  const chart    = `<pre class="mermaid">\n${ganttContent}</pre>`;
-  // Match the rendered empty mmd code block — outer div + two closing divs.
-  const mmdBlockRe = /<div class="language-mmd highlighter-rouge">[\s\S]*?<\/div>\s*<\/div>/;
-
-  // Online / serve: CDN ESM import.
-  const onlineScript =
-    `<script type="module">\n` +
-    `import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';\n` +
-    `mermaid.initialize({ startOnLoad: true });\n` +
-    `</script>`;
-
-  // Offline: self-contained IIFE bundle (the ESM entry point uses dynamic chunk
-  // imports that break on file:// URLs; the IIFE is a single self-contained file).
-  // Relative prefix climbs from the page's directory back to the site root.
-  const depth = page.destPath.split(/[/\\]/).length - 1;
-  const rel   = "../".repeat(depth);
-  const offlineScript =
-    `<script src="${rel}assets/js/mermaid.min.js"></script>\n` +
-    `<script>mermaid.initialize({ startOnLoad: true });</script>`;
-
-  const mermaidSrc = fileURLToPath(
-    new URL("../node_modules/mermaid/dist/mermaid.min.js", import.meta.url));
-
-  const targets = [
-    { root: destRoot,              script: onlineScript  },
-    { root: `${destRoot}-offline`, script: offlineScript, copyMermaid: true },
-  ];
-
-  for (const { root, script, copyMermaid } of targets) {
+  for (const root of [destRoot, `${destRoot}-offline`]) {
     const htmlPath = path.join(root, page.destPath);
     let html;
-    try {
-      html = await fs.readFile(htmlPath, "utf8");
-    } catch (e) {
-      if (e.code !== "ENOENT") throw e;
-      continue;
-    }
-    if (copyMermaid) {
-      const dest = path.join(root, "assets", "js", "mermaid.min.js");
-      await fs.mkdir(path.dirname(dest), { recursive: true });
-      await fs.copyFile(mermaidSrc, dest);
-    }
-    const patched = html.replace(mmdBlockRe, `${chart}\n${script}`);
+    try { html = await fs.readFile(htmlPath, "utf8"); }
+    catch (e) { if (e.code !== "ENOENT") throw e; continue; }
+    const patched = html.replace("<!-- gantt-chart -->", svgContent);
     if (patched !== html) await fs.writeFile(htmlPath, patched, "utf8");
   }
 }
@@ -766,10 +729,10 @@ export async function runBuild(opts) {
   console.log(scheduler.summary());
 
   const ganttPath = path.resolve(process.cwd(), opts.ganttFile ?? "build-gantt.mmd");
-  const ganttContent = await writeGantt(scheduler.timings, ganttPath);
+  const grouped = await writeGantt(scheduler.timings, ganttPath);
 
   const injectStart = Date.now();
-  await injectGanttChart(scheduler.state.pages, destRoot, ganttContent);
+  await injectGanttChart(scheduler.state.pages, destRoot, grouped ? renderGantt(grouped) : "");
   console.log(pc.dim(`gantt-inject=${Date.now() - injectStart}ms`));
 
   // Drift guard from PLAN-1.md §1.

@@ -11,5 +11,4 @@ permalink: /Documentation/Development/BuildInfo
 
 Gantt chart of this build's task timeline.
 
-```mmd
-```
+<!-- gantt-chart -->
