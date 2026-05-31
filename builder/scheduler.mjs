@@ -75,7 +75,8 @@ export class Scheduler {
     this.inFlight++;
     const p = task.def.runOnMain
       ? Promise.resolve(task.def.execute(task.inputs, this._ctx, this.state))
-      : this.pool.run({ inputs: task.inputs, ctx: this._ctx },
+      : this.pool.run({ inputs: task.inputs, ctx: this._ctx,
+                       deferHighlighter: task.def.deferHighlighter },
                       { name: task.def.handler ?? task.id });
     p.then(
       (output) => this._onDone(task, output, start),

@@ -17,11 +17,16 @@ import { deriveOfflinePage, deriveOfflinePageCached,
 // Shiki (highlight.mjs) is loaded lazily — its transitive import of the
 // shiki package is the heaviest single module in the worker graph. A
 // warmup signal from the pool triggers loading on idle workers so it
-// overlaps with the main-thread discover phase; critical-path seeds
-// (buildInfo, scss) finish before the import starts on their workers.
+// overlaps with the main-thread discover phase. buildInfo and mermaid
+// skip the post-handler init so Shiki never contends with them.
+// Once init completes, a { warmedUp: true } signal tells the pool this
+// worker is warm so it can be preferred for render dispatch.
 let _highlighterP = null;
 function ensureHighlighterInit() {
-  if (!_highlighterP) _highlighterP = import("./highlight.mjs").then(m => m.initHighlighter());
+  if (!_highlighterP) {
+    _highlighterP = import("./highlight.mjs").then(m => m.initHighlighter());
+    _highlighterP.then(() => parentPort.postMessage({ warmedUp: true }));
+  }
   return _highlighterP;
 }
 
@@ -140,7 +145,7 @@ parentPort.on("message", async (msg) => {
   // response so the pool's busy-tracking is unaffected.
   if (msg.warmup) { ensureHighlighterInit(); return; }
 
-  const { name, ...payload } = msg;
+  const { name, deferHighlighter, ...payload } = msg;
   const handler = handlers[name];
   if (!handler) {
     parentPort.postMessage({ error: `unknown task: ${name}` });
@@ -152,7 +157,7 @@ parentPort.on("message", async (msg) => {
   } catch (err) {
     parentPort.postMessage({ error: err.message, stack: err.stack });
   }
-  ensureHighlighterInit();
+  if (!deferHighlighter) ensureHighlighterInit();
 });
 
 // linkTables values are page objects in the main pipeline, but

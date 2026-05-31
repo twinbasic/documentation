@@ -129,6 +129,9 @@ export function makeTimer() {
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
 // summary, and returns.
 
+const workerCount    = os.availableParallelism();
+const mermaidIsSeed  = workerCount > 4;
+
 const TASKS = {
   // ── Seeds ─────────────────────────────────────────────────────────────────
 
@@ -149,14 +152,16 @@ const TASKS = {
   },
 
   // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
-  // Chains into mermaid so the two don't compete with discover on 4-thread CI.
+  // When workerCount <= 4, chains into mermaid so the two don't compete with
+  // discover on the CI runners. When workerCount > 4, mermaid is a seed.
   buildInfo: {
     expected: [],
+    deferHighlighter: true,
     // execute() runs in cpu-worker.mjs as the "buildInfo" handler.
     submit(out, emit, state) {
       state.site.buildInfo = out.buildInfo;
       emit("dispatch", out);
-      emit("mermaid",  {});
+      if (!mermaidIsSeed) emit("mermaid", {});
     },
   },
 
@@ -187,10 +192,12 @@ const TASKS = {
     submit(out, emit) { emit("write", out); },
   },
 
-  // Stale mermaid SVG regeneration. Chained after buildInfo (not a seed) to
-  // avoid competing with discover on 4-thread CI.
+  // Stale mermaid SVG regeneration. Seed when workerCount > 4 (enough cores
+  // to run without contention); chained after buildInfo otherwise so it
+  // doesn't compete with discover on 4-thread CI.
   mermaid: {
-    expected: ["buildInfo"],
+    expected: mermaidIsSeed ? [] : ["buildInfo"],
+    deferHighlighter: true,
     // execute() runs in cpu-worker.mjs as the "mermaid" handler.
     submit(out, emit, state) {
       // Append any freshly-generated SVG descriptors that discover didn't see
@@ -699,7 +706,6 @@ export async function runBuild(opts) {
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
-  const workerCount = os.availableParallelism();
   const pool = new WorkerPool(workerCount, CPU_WORKER_URL);
   const scheduler = new Scheduler({ pool, tasks: TASKS });
   const ctx = { srcRoot, destRoot, opts, workerCount };
