@@ -119,7 +119,7 @@ export function makeTimer() {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo, scssLight + scssDark → scssJoin, mermaid,
+// Seeds (config, buildInfo → mermaid, scssLight + scssDark → scssJoin,
 // highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
 // nav + buildInit → dispatch; config → loadData; discover → markdownInit → seo;
 // deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
@@ -149,12 +149,14 @@ const TASKS = {
   },
 
   // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
+  // Chains into mermaid so the two don't compete with discover on 4-thread CI.
   buildInfo: {
     expected: [],
     // execute() runs in cpu-worker.mjs as the "buildInfo" handler.
     submit(out, emit, state) {
       state.site.buildInfo = out.buildInfo;
       emit("dispatch", out);
+      emit("mermaid",  {});
     },
   },
 
@@ -185,9 +187,10 @@ const TASKS = {
     submit(out, emit) { emit("write", out); },
   },
 
-  // Stale mermaid SVG regeneration. Worker for the same reason.
+  // Stale mermaid SVG regeneration. Chained after buildInfo (not a seed) to
+  // avoid competing with discover on 4-thread CI.
   mermaid: {
-    expected: [],
+    expected: ["buildInfo"],
     // execute() runs in cpu-worker.mjs as the "mermaid" handler.
     submit(out, emit, state) {
       // Append any freshly-generated SVG descriptors that discover didn't see
@@ -563,7 +566,7 @@ function chunkPages(pages, workers) {
 // ── Gantt chart ───────────────────────────────────────────────────────────────
 
 const GANTT_SECTION = {
-  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", mermaid: "Seeds",
+  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", mermaid: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   seo: "Spine", resolveBookChapters: "Spine",
