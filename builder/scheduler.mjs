@@ -36,6 +36,10 @@ export class Scheduler {
       if (!def.on_demand) this._remaining++;
     }
 
+    // render counter: activated when all render:i tasks complete.
+    this._renderCount    = 0;
+    this._renderExpected = 0;
+
     // flush counter: activated by per-worker timing messages.
     this._flushCount = 0;
     this._flushStats = { written: 0, offlineWritten: 0, offlineMisses: 0 };
@@ -188,6 +192,18 @@ export class Scheduler {
 
     // State mutation.
     if (def) def.submit(output, this.state, this);
+
+    // Render counter: activate renderJoin when all render:i complete.
+    if (name?.startsWith("render:") && this._renderExpected > 0) {
+      this._renderCount++;
+      if (this._renderCount === this._renderExpected) {
+        this.addDynamicTasks(1);
+        const joinIdx = this._idMapping.nameToIdx.get("renderJoin");
+        if (joinIdx != null) {
+          Atomics.store(this._views.status, joinIdx, READY);
+        }
+      }
+    }
 
     this._remaining--;
     if (this._remaining === 0) {

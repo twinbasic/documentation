@@ -325,6 +325,17 @@ const TASKS = {
     submit() {},
   },
 
+  // Barrier: all render:i deltas merged into state.pages (renderedContent
+  // available). Activated by counter in _onWorkerDone. Tasks that only
+  // need renderedContent (not page HTML on disk) depend on this.
+  renderJoin: {
+    expected: [],
+    on_demand: true,
+    runOnMain: true,
+    execute() { return {}; },
+    submit() {},
+  },
+
   // Barrier: all workers have flushed their stashed pages to disk.
   // Activated by counter in _onPerWorkerTiming, not by SAB dep counts.
   flushJoin: {
@@ -499,6 +510,7 @@ const TASKS = {
     },
     submit(out, _state, scheduler) {
       const N = out.chunks.length;
+      scheduler._renderExpected = N;
 
       for (let i = 0; i < N; i++) {
         scheduler.tasks.set(`render:${i}`, {
@@ -548,11 +560,12 @@ const TASKS = {
     submit() {},
   },
 
-  // Write search-data.json. Depends on flushJoin (pages have
-  // renderedContent) and prepDest (_site/ exists). Result passes
-  // through to writeAux so its search.json field reaches writeOffline.
+  // Write search-data.json. Depends on renderJoin (pages have
+  // renderedContent in memory) and prepDest (_site/ exists). Result
+  // passes through to writeAux so its search.json field reaches
+  // writeOffline.
   searchData: {
-    expected: ["flushJoin", "prepDest"],
+    expected: ["renderJoin", "prepDest"],
     runOnMain: true,
     async execute(_, ctx, state) {
       if (ctx.opts.dryRun) return { entries: 0, json: "" };
@@ -636,7 +649,7 @@ const GANTT_SECTION = {
   seo: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
-  flush: "Write", flushJoin: "Write",
+  renderJoin: "Render", flush: "Write", flushJoin: "Write",
   writeAssets: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
