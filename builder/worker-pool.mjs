@@ -1,5 +1,5 @@
 // Worker pool over node:worker_threads.  Lifecycle manager: spawns workers,
-// sends them the scheduling SAB + metadata, forwards output/error/mainTaskReady
+// sends them the scheduling SAB, forwards output/error/mainTaskReady
 // messages to the scheduler, and terminates workers on destroy.  Workers pull
 // tasks from the SAB; the pool has no dispatch or queue logic.
 
@@ -13,7 +13,7 @@ export class WorkerPool {
     // Callbacks wired by the caller after construction.
     this.onWorkerDone      = null;      // ({ done, output, timing, lane }) => void
     this.onWorkerError     = null;      // ({ taskFailed, message, stack }) => void
-    this.onPerWorkerTiming = null;      // ({ perWorkerTiming, taskName, timing, lane }) => void
+    this.onPerWorkerTiming = null;      // ({ perWorkerTiming, taskIdx, timing, lane }) => void
     this.onMainTaskReady   = null;      // () => void
 
     this._workers = Array.from({ length: size }, (_, i) => this._spawn(i));
@@ -35,15 +35,15 @@ export class WorkerPool {
     return w;
   }
 
-  sendInit(sab, taskMeta, ctx, idMapping) {
+  sendInit(sab, ctx, idMapping) {
     for (const w of this._workers) {
-      w.postMessage({ init: true, sab, taskMeta, ctx, idMapping });
+      w.postMessage({ init: true, sab, ctx, idMapping });
     }
   }
 
-  broadcastRenderData(chunkDataSAB, sharedSAB) {
+  broadcastDynamicData(payloadSAB, sharedSAB) {
     for (const w of this._workers) {
-      w.postMessage({ renderData: true, chunkDataSAB, sharedSAB });
+      w.postMessage({ dynamicData: true, payloadSAB, sharedSAB });
     }
   }
 

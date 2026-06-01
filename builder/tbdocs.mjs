@@ -44,7 +44,13 @@ import { buildSitePathsSync, deriveOfflineCss,
          normalizeBaseurl }  from "./offline-rewrite.mjs";
 import { writePdf } from "./pdf.mjs";
 import { packShared } from "./sab-broadcast.mjs";
-import { allocSchedulerSAB, verifySchedulerSAB, SLICES_PER_WORKER } from "./sab-scheduler.mjs";
+import {
+  allocSchedulerSAB, verifySchedulerSAB, SLICES_PER_WORKER,
+  HANDLERS, F_PIN_TO_PRED,
+  writeTaskMeta,
+  allocDynamicSlots, wireDynamicEdges, appendDynamicSuccessors,
+  setDepCount, activateDynamicTasks, packPayloads,
+} from "./sab-scheduler.mjs";
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
 
@@ -311,22 +317,9 @@ const TASKS = {
     submit() {},
   },
 
-  // On-demand per-worker page flush: writes stashed html + offlineHtml
-  // to disk, overlapping I/O with the render tail. Activated by
-  // prepPageDirs (directories must exist). Counter-based flushJoin
-  // barrier fires when all workers complete.
-  flush: {
-    expected: ["prepPageDirs"],
-    on_demand: true,
-    unique_per_worker: true,
-    run_when_idle: true,
-    idle_priority: 1,
-    handler: "flush",
-    submit() {},
-  },
-
   // Barrier: all render:i deltas merged into state.pages (renderedContent
-  // available). Activated by counter in _onWorkerDone. Tasks that only
+  // available). Dep count is set to N by dispatch.submit(); each render:i
+  // completion decrements via the SAB successor edge. Tasks that only
   // need renderedContent (not page HTML on disk) depend on this.
   renderJoin: {
     expected: [],
@@ -336,13 +329,23 @@ const TASKS = {
     submit() {},
   },
 
-  // Barrier: all workers have flushed their stashed pages to disk.
-  // Activated by counter in _onPerWorkerTiming, not by SAB dep counts.
+  // Barrier: all per-chunk flush:i tasks have written their pages to disk.
+  // Dep count is set to N by dispatch.submit(); each flush:i completion
+  // decrements via the SAB successor edge. Aggregates the per-chunk write
+  // stats from all flush:i results.
   flushJoin: {
-    expected: [],
+    expected: [],   // populated by dispatch.submit
     on_demand: true,
     runOnMain: true,
-    execute() { return {}; },
+    execute(inputs) {
+      let written = 0, offlineWritten = 0, offlineMisses = 0;
+      for (const r of Object.values(inputs)) {
+        written        += r?.written        ?? 0;
+        offlineWritten += r?.offlineWritten ?? 0;
+        offlineMisses  += r?.offlineMisses  ?? 0;
+      }
+      return { written, offlineWritten, offlineMisses };
+    },
     submit() {},
   },
 
@@ -509,13 +512,64 @@ const TASKS = {
       return { chunks, sharedSAB };
     },
     submit(out, _state, scheduler) {
-      const N = out.chunks.length;
-      scheduler._renderExpected = N;
+      const N      = out.chunks.length;
+      const views  = scheduler._views;
+      const idMap  = scheduler._idMapping;
+      const renderJoinIdx    = idMap.nameToIdx.get("renderJoin");
+      const flushJoinIdx     = idMap.nameToIdx.get("flushJoin");
+      const renderEnvInitIdx = idMap.nameToIdx.get("renderEnvInit");
+      const prepPageDirsIdx  = idMap.nameToIdx.get("prepPageDirs");
 
+      // 1. Allocate 2N slots from the generic pool.
+      const renderBase = allocDynamicSlots(views, idMap, N);
+      const flushBase  = allocDynamicSlots(views, idMap, N);
+
+      // 2. Write metadata into the SAB.
       for (let i = 0; i < N; i++) {
-        scheduler.tasks.set(`render:${i}`, {
+        writeTaskMeta(views, renderBase + i, {
+          handlerIdx:    HANDLERS.render,
+          perWorkerDeps: [renderEnvInitIdx],
+        });
+        writeTaskMeta(views, flushBase + i, {
+          handlerIdx: HANDLERS.flush,
+          priority:   1,
+        });
+      }
+
+      // 3. Wire edges: render:i → [renderJoin, flush:i],
+      //                flush:i  → [flushJoin].
+      const edges = [];
+      for (let i = 0; i < N; i++) {
+        edges.push({ from: renderBase + i, to: [renderJoinIdx, flushBase + i] });
+        edges.push({ from: flushBase + i,  to: [flushJoinIdx] });
+      }
+      wireDynamicEdges(views, edges);
+
+      // Append prepPageDirs → flush:0..N-1 (so flush:i waits until the
+      // output dirs exist; prepPageDirs already has writeAssets as a
+      // static successor, so use the append helper).
+      const prepPageDirsToFlush = [];
+      for (let i = 0; i < N; i++) prepPageDirsToFlush.push(flushBase + i);
+      appendDynamicSuccessors(views, [{ from: prepPageDirsIdx, to: prepPageDirsToFlush }]);
+
+      // 4. Set dep counts and pinning.
+      setDepCount(views, renderJoinIdx, N);
+      setDepCount(views, flushJoinIdx,  N);
+      for (let i = 0; i < N; i++) {
+        setDepCount(views, flushBase + i, 2);  // gated on render:i + prepPageDirs
+        Atomics.store(views.pinnedTo, flushBase + i, renderBase + i);
+        views.flags[flushBase + i] |= F_PIN_TO_PRED;
+      }
+
+      // 5. Register names + task defs on the main-thread scheduler so
+      //    _onWorkerDone can look up consolidate/ganttSection/submit and
+      //    _assembleInputs can resolve flushJoin's expected list.
+      for (let i = 0; i < N; i++) {
+        const rName = `render:${i}`;
+        idMap.nameToIdx.set(rName, renderBase + i);
+        idMap.idxToName[renderBase + i] = rName;
+        scheduler.tasks.set(rName, {
           expected: [],
-          handler:  "render",
           consolidate: true,
           ganttSection: "Render",
           submit(renderOut, state) {
@@ -527,10 +581,31 @@ const TASKS = {
             }
           },
         });
+
+        const fName = `flush:${i}`;
+        idMap.nameToIdx.set(fName, flushBase + i);
+        idMap.idxToName[flushBase + i] = fName;
+        scheduler.tasks.set(fName, {
+          expected: [`render:${i}`],
+          consolidate: true,
+          ganttSection: "Write",
+          submit() {},
+        });
       }
 
-      scheduler.addDynamicTasks(N);
-      scheduler.dispatchRender(out.chunks, out.sharedSAB);
+      // Populate flushJoin's expected so _assembleInputs delivers all
+      // flush results to its execute().  Reset first --- in serve mode
+      // the task def object is reused across rebuilds.
+      const flushJoinDef = scheduler.tasks.get("flushJoin");
+      flushJoinDef.expected = [];
+      for (let i = 0; i < N; i++) flushJoinDef.expected.push(`flush:${i}`);
+
+      // 6. Pack payload, broadcast, account, activate.
+      const payloadSAB = packPayloads(views, renderBase, out.chunks);
+      scheduler.addDynamicTasks(2 * N + 2);   // N render + N flush + renderJoin + flushJoin
+      scheduler.pool.broadcastDynamicData(payloadSAB, out.sharedSAB);
+      activateDynamicTasks(views, renderBase, 2 * N);  // render:i activate (depCount 0);
+                                                       // flush:i stay NOT_READY (depCount 1)
     },
   },
 
@@ -649,7 +724,7 @@ const GANTT_SECTION = {
   seo: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
-  renderJoin: "Render", flush: "Write", flushJoin: "Write",
+  renderJoin: "Render", flushJoin: "Write",
   writeAssets: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
@@ -747,7 +822,7 @@ export async function runBuild(opts) {
 
   // Allocate the scheduling SAB before the pool so workers receive it at
   // init and start pulling tasks immediately.
-  const { sab, views, idMapping, taskMeta } = allocSchedulerSAB(TASKS, workerCount);
+  const { sab, views, idMapping } = allocSchedulerSAB(TASKS, workerCount);
   verifySchedulerSAB(TASKS, views, idMapping);
 
   const pool = new WorkerPool(workerCount, CPU_WORKER_URL);
@@ -758,7 +833,7 @@ export async function runBuild(opts) {
   pool.onPerWorkerTiming = (msg) => scheduler._onPerWorkerTiming(msg);
   pool.onMainTaskReady  = ()    => scheduler._onMainTaskReady();
 
-  pool.sendInit(sab, taskMeta, ctx, idMapping);
+  pool.sendInit(sab, ctx, idMapping);
 
   let results;
   try {
@@ -781,7 +856,7 @@ export async function runBuild(opts) {
   if (mermaidStats.failed > 0) process.exitCode = 1;
   if (scssResult.failed)       process.exitCode = 1;
 
-  const flushStats    = results.get("flush");
+  const flushStats    = results.get("flushJoin");
   const assetStats    = results.get("writeAssets");
   const auxResult     = results.get("writeAux");
   const offlineResult = results.get("writeOffline");

@@ -2048,9 +2048,41 @@ Deferred: the refactoring cost is significant for a ~120 ms saving on
 a 4 s build.  Revisit if the build wall-clock shrinks enough that the
 PDF task becomes a larger fraction.
 
-### Phase 15: Generic dynamic tasks and per-chunk flush
+### Phase 15: Generic dynamic tasks and per-chunk flush --- DONE
 
 **Suggested model:** Opus.
+
+**Outcome.** Landed as designed.  `build.bat` runs all worker lanes in
+parallel through both render and flush.  `check.bat` reports zero
+intra-site issues (only the 8 pre-existing PDF broken links remain).
+Two divergences from the design surfaced during implementation; both
+are folded into the description below.
+
+1. **`flush:i` is gated on `prepPageDirs` as well as `render:i`** (so
+   `setDepCount(views, flushBase + i, 2)`, not 1).  The design's
+   `depCount = 1` trusted that `prepPageDirs` would always finish
+   before any render chunk did.  On Windows, `mkdir` over ~100 nested
+   subdirectories takes longer than the first render chunk and the
+   first `flush:i` `ENOENT`s on a missing output directory.  A new
+   `appendDynamicSuccessors(views, edges)` primitive in
+   `sab-scheduler.mjs` extends `prepPageDirs`'s successor list with
+   `flush:0..N-1` without overwriting its static `writeAssets` edge
+   (it relocates the existing successors to the end of `succList`,
+   appends the new ones, and updates `succOffset` / `succCount`; the
+   old slots become dead space, ~4 bytes each).
+
+2. **`affinityLane`, `pinnedTo`, and `completedOnLane` are pre-filled
+   to `-1` for the whole array, not just static slots.**
+   `SharedArrayBuffer` is zero-initialized, so a dynamic slot's
+   `affinityLane[idx] === 0` made `scanAndClaim`'s
+   `aff !== -1 && aff !== myLane` filter treat every dynamic task as
+   pinned to lane 0.  Only `w0` ever claimed work; the other 15
+   workers sat idle through the entire render fan-out (build still
+   "succeeded" because `w0` ran all 160 chunks sequentially --- ~4 s
+   instead of ~250 ms on the render bar).  The design only specified
+   pre-filling the metadata arrays (`handlerIdx`, `perWorkerDep`,
+   `expectedDep`); the three identity-coordinates need the same
+   treatment.
 
 **Motivation.** Three coupled problems:
 
@@ -2275,8 +2307,9 @@ export function allocDynamicSlots(views, idMapping, count) {
 **`wireDynamicEdges(views, edges)`** --- appends successor edges for
 dynamic tasks to the global `succList`.  Each entry in `edges` is
 `{ from, to: [succIdx, ...] }`.  Called once after all slots are
-allocated and metadata written.  Edges for a given `from` task must
-be written in a single entry (no appending to an earlier block).
+allocated and metadata written.  Each `from` must have no prior
+successors (`succCount === 0`); to extend a task that already has
+static successors, use `appendDynamicSuccessors` below.
 
 ```js
 export function wireDynamicEdges(views, edges) {
@@ -2287,6 +2320,36 @@ export function wireDynamicEdges(views, edges) {
     Atomics.store(views.succOffset, from, edgePos);
     Atomics.store(views.succCount,  from, to.length);
     for (const s of to) views.succList[edgePos++] = s;
+  }
+  Atomics.store(views.edgeCount, 0, edgePos);
+}
+```
+
+**`appendDynamicSuccessors(views, edges)`** --- extends a task's
+successor list with new dynamic successors.  Relocates the task's
+existing successors to the end of `succList` (the old slots become
+dead space) so the contiguous-range invariant
+`succOffset[t]..succOffset[t]+succCount[t]` holds.  Used when a
+static task needs to fan out to dynamically-registered successors
+--- specifically `prepPageDirs → flush:0..N-1` while preserving
+`prepPageDirs → writeAssets`.
+
+```js
+export function appendDynamicSuccessors(views, edges) {
+  let edgePos = Atomics.load(views.edgeCount, 0);
+  for (const { from, to } of edges) {
+    const oldOff = Atomics.load(views.succOffset, from);
+    const oldCnt = Atomics.load(views.succCount,  from);
+    const total  = oldCnt + to.length;
+    if (edgePos + total > MAX_EDGES)
+      throw new Error(`dynamic edges exceed MAX_EDGES`);
+    for (let i = 0; i < oldCnt; i++)
+      views.succList[edgePos + i] = views.succList[oldOff + i];
+    for (let i = 0; i < to.length; i++)
+      views.succList[edgePos + oldCnt + i] = to[i];
+    Atomics.store(views.succOffset, from, edgePos);
+    Atomics.store(views.succCount,  from, total);
+    edgePos += total;
   }
   Atomics.store(views.edgeCount, 0, edgePos);
 }
@@ -2471,6 +2534,7 @@ submit(out, _state, scheduler) {
   const renderJoinIdx    = idMap.nameToIdx.get("renderJoin");
   const flushJoinIdx     = idMap.nameToIdx.get("flushJoin");
   const renderEnvInitIdx = idMap.nameToIdx.get("renderEnvInit");
+  const prepPageDirsIdx  = idMap.nameToIdx.get("prepPageDirs");
 
   // 1. Allocate 2N slots from the generic pool.
   const renderBase = allocDynamicSlots(views, idMap, N);
@@ -2488,8 +2552,8 @@ submit(out, _state, scheduler) {
     });
   }
 
-  // 3. Wire edges: render:i → [renderJoin, flush:i],
-  //                flush:i  → [flushJoin].
+  // 3a. Wire dynamic-only edges: render:i → [renderJoin, flush:i],
+  //                              flush:i  → [flushJoin].
   const edges = [];
   for (let i = 0; i < N; i++) {
     edges.push({ from: renderBase + i, to: [renderJoinIdx, flushBase + i] });
@@ -2497,11 +2561,19 @@ submit(out, _state, scheduler) {
   }
   wireDynamicEdges(views, edges);
 
+  // 3b. Append prepPageDirs → flush:0..N-1 (output directories must
+  // exist before flush writes a page).  prepPageDirs already has
+  // writeAssets as a static successor, so use the append helper that
+  // preserves the existing edge.
+  const prepToFlush = [];
+  for (let i = 0; i < N; i++) prepToFlush.push(flushBase + i);
+  appendDynamicSuccessors(views, [{ from: prepPageDirsIdx, to: prepToFlush }]);
+
   // 4. Set dep counts and pinning.
   setDepCount(views, renderJoinIdx, N);
   setDepCount(views, flushJoinIdx,  N);
   for (let i = 0; i < N; i++) {
-    setDepCount(views, flushBase + i, 1);  // gated on render:i
+    setDepCount(views, flushBase + i, 2);   // gated on render:i + prepPageDirs
     Atomics.store(views.pinnedTo, flushBase + i, renderBase + i);
     views.flags[flushBase + i] |= F_PIN_TO_PRED;
   }
@@ -2582,7 +2654,18 @@ its successor edges and the join dep counts are in place.
 5. **Remove `MAX_RENDER_CHUNKS`.**  `payloadOffset` and
    `payloadLength` are sized to `MAX_TASKS`.
 
-6. **Update `verifySchedulerSAB`.**  The current verification
+6. **Pre-fill the `-1`-default arrays for the whole table, not just
+   the static slots.**  `SharedArrayBuffer` is zero-initialized, so
+   any dynamic slot whose `affinityLane`, `pinnedTo`, or
+   `completedOnLane` is not explicitly written looks pinned to lane
+   0 / task 0.  Add `views.affinityLane.fill(-1)`,
+   `views.pinnedTo.fill(-1)`, `views.completedOnLane.fill(-1)` (and
+   `handlerIdx.fill(-1)`, `perWorkerDep.fill(-1)`,
+   `expectedDep.fill(-1)` --- already required for the metadata
+   arrays).  The existing per-static-task assignments become no-ops
+   that overwrite with the same value.
+
+7. **Update `verifySchedulerSAB`.**  The current verification
    function checks `taskMeta`-derived properties (dep counts, flags,
    successor edges, seed status).  Extend it to verify the new SAB
    arrays: `handlerIdx` matches `HANDLERS[def.handler]` for worker
@@ -2803,9 +2886,9 @@ exist, not the workers.
 
 | File | Changes |
 |---|---|
-| `sab-scheduler.mjs` | New SAB arrays (`handlerIdx`, `perWorkerDep`, `expectedDep`, `idlePriority`, `priority`, `payloadOffset`, `payloadLength`); remove `chunkOffset`, `chunkLength`, `MAX_RENDER_CHUNKS`; bump `MAX_TASKS` to 512, `MAX_EDGES` to 2048; `HANDLERS` registry; `writeTaskMeta` / `readTaskMeta`; `allocDynamicSlots` / `wireDynamicEdges` / `setDepCount` / `activateDynamicTasks` / `packPayloads`; `scanAndClaim` rewrite (priority + CAS retry); remove render pre-reservation + taskMeta pre-fill; remove `packChunkData` + `activateRenderTasks` |
+| `sab-scheduler.mjs` | New SAB arrays (`handlerIdx`, `perWorkerDep`, `expectedDep`, `idlePriority`, `priority`, `payloadOffset`, `payloadLength`); remove `chunkOffset`, `chunkLength`, `MAX_RENDER_CHUNKS`; bump `MAX_TASKS` to 512, `MAX_EDGES` to 2048; `HANDLERS` registry; `writeTaskMeta` / `readTaskMeta`; `allocDynamicSlots` / `wireDynamicEdges` / `appendDynamicSuccessors` / `setDepCount` / `activateDynamicTasks` / `packPayloads`; `scanAndClaim` rewrite (priority + CAS retry); whole-array `-1` pre-fill for `affinityLane` / `pinnedTo` / `completedOnLane` / `handlerIdx` / `perWorkerDep` / `expectedDep`; remove render pre-reservation + taskMeta pre-fill; remove `packChunkData` + `activateRenderTasks` |
 | `scheduler.mjs` | Remove `_renderCount`, `_renderExpected`, `_flushCount`, `_flushStats`; remove `startsWith("render:")` in `_onWorkerDone`; remove `taskName === "flush"` in `_onPerWorkerTiming`; resolve task names from indices in `_onPerWorkerTiming`; remove `taskMeta` from init message; rename `dispatchRender`; summary reads flush stats from `flushJoin` result |
-| `tbdocs.mjs` | Remove `flush` static task def; `renderJoin` / `flushJoin` lose counter comments; `dispatch.submit()` rewritten per §dispatch.submit() redesign; `GANTT_SECTION`: remove `flush`, `flushJoin` entry stays; summary output reads `flushJoin` result |
+| `tbdocs.mjs` | Remove `flush` static task def; `renderJoin` / `flushJoin` lose counter comments; `flushJoin.execute(inputs)` aggregates per-chunk write stats; `dispatch.submit()` rewritten per §dispatch.submit() redesign (including the `prepPageDirs → flush:i` append + `depCount = 2`); `GANTT_SECTION`: remove `flush`, `flushJoin` entry stays; summary output reads `flushJoin` result |
 | `cpu-worker.mjs` | Remove `taskMeta` module var and init handling; build `handlerById`; replace all `taskMeta[idx]` with `readTaskMeta`; replace `meta.handler` with `handlerById[meta.handlerIdx]`; `perWorkerTiming` sends `taskIdx` not `taskName`; render handler reads `payloadOffset`/`payloadLength` directly; `_pageStash` → `_pendingFlush` FIFO; receive `dynamicData` message |
 | `worker-pool.mjs` | `broadcastRenderData` → `broadcastDynamicData`; remove `taskMeta` from init message |
 
@@ -2827,8 +2910,8 @@ Four sources:
    name-matching branches, pre-reservation loops, and `taskMeta`
    construction are replaced by generic primitives (`writeTaskMeta` /
    `readTaskMeta`, `allocDynamicSlots` / `wireDynamicEdges` /
-   `activateDynamicTasks`, `packPayloads`).  The scheduler has zero
-   knowledge of what any task does.
+   `appendDynamicSuccessors` / `activateDynamicTasks`, `packPayloads`).
+   The scheduler has zero knowledge of what any task does.
 
 4. **Extensibility.**  Any future fan-out pattern (`foo:0..N` with a
    `fooJoin` barrier) uses the same primitives --- allocate slots,
@@ -2837,17 +2920,23 @@ Four sources:
 
 #### Verification
 
-`build.bat && check.bat` clean.  The Gantt chart should show:
+`build.bat && check.bat` clean (zero intra-site issues; the 8
+pre-existing PDF broken links from `book.html` are unchanged).  The
+Gantt chart shows:
 
 - `flush:i` bars interleaved with `render:i` bars on each worker
   lane (consolidated via `consolidate: true`), instead of a single
   `flush` bar at the tail.
 - `renderJoin` and `flushJoin` activated by dep-count (no manual
-  READY store visible in scheduler debug logging).
-- `flushJoin` result carrying aggregated write stats matching the
-  previous per-worker totals.
-- Timing summary and rendered output byte-identical to the
-  pre-change build (modulo timing values).
+  `Atomics.store(status, joinIdx, READY)` outside of
+  `sabOnTaskDone`).
+- `flushJoin` result carrying aggregated write stats (`written`,
+  `offlineWritten`, `offlineMisses`) matching the previous
+  single-`flush` totals.
+- Render section consolidated wall-clock dropped substantially
+  versus the bug condition where every worker except `w0` sat idle
+  (see "Outcome" at the top of this section for the two divergences
+  that surfaced during implementation).
 
 ### Phase 16: Persistent pool and `survives_reset`
 

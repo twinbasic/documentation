@@ -1,14 +1,11 @@
-// Task-graph scheduler for the tbdocs build pipeline.  Phase 7: main-thread
-// tasks scan the scheduling SAB for READY work and claim via CAS; worker
-// tasks are pulled from the SAB by workers (Phase 6).  The push-based
-// pending/ready/emit/flush mechanism is removed entirely.
-// See PLAN-sab-pull-scheduler.md §Phase 7.
+// Task-graph scheduler for the tbdocs build pipeline.  Phase 15: generic
+// dynamic tasks via SAB primitives; no render/flush-specific counters or
+// name-prefix matching.  See PLAN-sab-pull-scheduler.md §Phase 15.
 
 import pc from "picocolors";
 import {
-  onTaskDone as sabOnTaskDone,
-  packChunkData, activateRenderTasks,
   READY, CLAIMED, DONE, F_RUN_ON_MAIN,
+  onTaskDone as sabOnTaskDone,
 } from "./sab-scheduler.mjs";
 
 export class SharedState {
@@ -30,33 +27,17 @@ export class Scheduler {
     this._ganttSections = ganttSections ?? {};
 
     // Count non-on_demand static tasks for completion detection.
-    // Dynamic tasks (render:i) are added via addDynamicTasks().
+    // Dynamic tasks (render:i, flush:i) are added via addDynamicTasks().
     this._remaining = 0;
     for (const [, def] of this.tasks) {
       if (!def.on_demand) this._remaining++;
     }
-
-    // render counter: activated when all render:i tasks complete.
-    this._renderCount    = 0;
-    this._renderExpected = 0;
-
-    // flush counter: activated by per-worker timing messages.
-    this._flushCount = 0;
-    this._flushStats = { written: 0, offlineWritten: 0, offlineMisses: 0 };
 
     this._scanning          = false;
     this._mainScanScheduled = false;
     this._finished          = false;
 
     [this._doneP, this._doneResolve, this._doneReject] = deferred();
-  }
-
-  // Write render SAB entries, broadcast chunk data, and activate tasks.
-  dispatchRender(chunks, sharedSAB) {
-    const N = chunks.length;
-    const chunkDataSAB = packChunkData(chunks, this._views);
-    this.pool.broadcastRenderData(chunkDataSAB, sharedSAB);
-    activateRenderTasks(this._views, this._idMapping, N);
   }
 
   // Increment remaining-task count for dynamically-registered tasks.
@@ -70,7 +51,7 @@ export class Scheduler {
     return this._doneP;
   }
 
-  // ── Main-thread SAB scan (replaces _flush / _run) ─────────────────────────
+  // ── Main-thread SAB scan ─────────────────────────────────────────────────
 
   _scheduleMainScan() {
     if (this._mainScanScheduled) return;
@@ -195,18 +176,6 @@ export class Scheduler {
     // State mutation.
     if (def) def.submit(output, this.state, this);
 
-    // Render counter: activate renderJoin when all render:i complete.
-    if (name?.startsWith("render:") && this._renderExpected > 0) {
-      this._renderCount++;
-      if (this._renderCount === this._renderExpected) {
-        this.addDynamicTasks(1);
-        const joinIdx = this._idMapping.nameToIdx.get("renderJoin");
-        if (joinIdx != null) {
-          Atomics.store(this._views.status, joinIdx, READY);
-        }
-      }
-    }
-
     this._remaining--;
     if (this._remaining === 0) {
       this._finish();
@@ -223,7 +192,8 @@ export class Scheduler {
     this._abort(name, err);
   }
 
-  _onPerWorkerTiming({ taskName, timing, lane, output }) {
+  _onPerWorkerTiming({ taskIdx, timing, lane }) {
+    const taskName = this._idMapping.idxToName[taskIdx];
     this.timings.set(`${taskName}:w${lane}`, {
       start: timing.start, end: timing.end,
       workerStart: timing.start, workerEnd: timing.end,
@@ -231,23 +201,6 @@ export class Scheduler {
       consolidate: true,
       ganttSection: this._ganttSections[taskName] ?? "Boot",
     });
-
-    if (taskName === "flush" && output) {
-      this._flushCount++;
-      this._flushStats.written        += output.written        ?? 0;
-      this._flushStats.offlineWritten += output.offlineWritten ?? 0;
-      this._flushStats.offlineMisses  += output.offlineMisses  ?? 0;
-
-      if (this._flushCount === this._ctx.workerCount) {
-        this.results.set("flush", { ...this._flushStats });
-        this.addDynamicTasks(1);
-        const joinIdx = this._idMapping.nameToIdx.get("flushJoin");
-        if (joinIdx != null) {
-          Atomics.store(this._views.status, joinIdx, READY);
-          this._scheduleMainScan();
-        }
-      }
-    }
   }
 
   _onMainTaskReady() {
