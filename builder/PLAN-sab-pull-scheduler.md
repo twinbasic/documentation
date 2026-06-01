@@ -1710,6 +1710,236 @@ should show:
 - `writeOffline` duration dropping (no per-page HTML writing).
 - `renderJoin` absent from the summary.
 
+### Phase 13: Uniform task timing (t0 / t1 / t3)
+
+**Suggested model:** Opus.
+
+**Motivation.** The Gantt chart shows a gap between `dispatch` ending
+and the first `renderEnvInit` starting.  Investigation reveals the
+gap is real but uncharted: `dispatch.submit()` runs *after* the
+execute timing window closes (t1), and it does substantial work ---
+`packChunkData`, `broadcastRenderData`, `activateRenderTasks` --- that
+is invisible in the timeline.  The same blind spot exists for every
+main-thread task: `submit()` is never timed.
+
+A secondary problem: every worker handler (`scssLight`, `scssDark`,
+`mermaid`, `buildInfo`, `render`) redundantly captures its own
+`workerStart` / `workerEnd` timestamps, near-identical to the pull
+loop's `start` / `end` that already wrap the same call.  The timing
+should live in one place --- the runner (pull loop on the worker side,
+`_executeMainTask` / `_onWorkerDone` on main) --- with handlers
+unaware of timing.
+
+**Design.** Two boundary timestamps per task, with a third on
+main-thread tasks only:
+
+| Timestamp | Main-thread tasks | Worker tasks |
+|-----------|-------------------|--------------|
+| t0 | before `execute()` | before `handler()` |
+| t1 | after `execute()` | after `handler()` |
+| *(t2)* | *(reserved, unused)* | *(reserved, unused)* |
+| t3 | after `submit()` | *(not captured --- see below)* |
+
+t2 is reserved for a future split (e.g. timing `results.set()`
+separately) but not captured now.
+
+**Why t3 is main-thread only.** For main-thread tasks, `submit()`
+runs between t1 and `sabOnTaskDone` --- it gates successor activation,
+so its cost is on the critical path.  For worker tasks, the worker
+itself calls `onTaskDone` (SAB update) *before* posting the result
+message; `submit()` runs later on the main thread when
+`_onWorkerDone` processes the message, off the critical path.
+Worker-side `postMessage` cost (structured-clone serialization)
+cannot be included in the message it is measuring; the gap between
+t1 and the main thread's receipt time serves as a proxy if needed.
+
+The `workerStart` / `workerEnd` fields on handler return values are
+removed.  Handlers no longer capture timing; the runner does it
+uniformly.
+
+#### Changes to `scheduler.mjs`
+
+1. **`_executeMainTask`.** Capture t3 after `def.submit()`:
+
+   ```js
+   const t0 = Date.now();
+   output = await def.execute(inputs, this._ctx, this.state);
+   const t1 = Date.now();
+
+   // ... results.set, submit ...
+   def.submit(output, this.state, this);
+   const t3 = Date.now();
+
+   const timing = { start: t0, end: t1, t3 };
+   ```
+
+   The existing `start` / `end` semantics are preserved (t0 / t1) for
+   backwards compatibility with the summary and Gantt.  `t3` is a new
+   optional field.
+
+2. **`_onWorkerDone`.** Drop the `output.workerStart` /
+   `output.workerEnd` extraction.  Populate `workerStart` /
+   `workerEnd` from the timing message (t0 / t1):
+
+   ```js
+   const t = { start: timing.start, end: timing.end };
+   if (lane != null) {
+     t.workerStart = timing.start;
+     t.workerEnd   = timing.end;
+     t.lane = lane;
+   }
+   ```
+
+   No t3 --- worker `submit()` is off the critical path.
+
+3. **`_onPerWorkerTiming`.** Per-worker tasks (`warmInit`,
+   `renderEnvInit`, `flushPages`) arrive via this path.  The runner
+   sends `{ start, end }` (t0 / t1).  No change to the timing
+   fields stored --- `workerStart` / `workerEnd` are already
+   populated from `timing.start` / `timing.end`:
+
+   ```js
+   _onPerWorkerTiming({ taskName, timing, lane, output }) {
+     this.timings.set(`${taskName}:w${lane}`, {
+       start: timing.start, end: timing.end,
+       workerStart: timing.start, workerEnd: timing.end,
+       lane,
+       consolidate: true,
+       ganttSection: this._ganttSections[taskName] ?? "Boot",
+     });
+   ```
+
+   This is unchanged from the current code.
+
+4. **Drop `workerStart` / `workerEnd` extraction from output.**  The
+   lines in `_executeMainTask` and `_onWorkerDone` that read
+   `output.workerStart` / `output.workerEnd` are deleted.  The runner
+   provides these timestamps; handlers no longer carry them.
+
+#### Changes to `cpu-worker.mjs`
+
+1. **Pull loop --- regular task path** (~line 427).  Capture t0 / t1
+   as explicit variables.  The timing object sent to main carries
+   `{ start, end }` = t0 / t1:
+
+   ```js
+   const t0 = Date.now();
+   result = await handler(taskIdx);
+   const t1 = Date.now();
+
+   parentPort.postMessage({
+     done: taskIdx,
+     output: result,
+     timing: { start: t0, end: t1 },
+     lane: myLane,
+   });
+   ```
+
+   This is the same data the current code sends (it evaluates
+   `Date.now()` inside the postMessage args); the only change is
+   naming the variable `t1` before the call instead of inlining it.
+
+2. **Pull loop --- per-worker dep and idle paths.**  Three distinct
+   `perWorkerTiming` send sites need the same t0 / t1 treatment:
+
+   a. **Idle-task completion** (~line 281).  Currently:
+      `timing: { start: idleStart, end: Date.now() }`.
+      Change to capture t1 before the postMessage:
+      ```js
+      const t0 = Date.now();
+      idleResult = await handlers[idleMeta.handler]();
+      const t1 = Date.now();
+      Atomics.store(views.perWorkerDone, idleTask * MAX_LANES + myLane, 1);
+      parentPort.postMessage({
+        perWorkerTiming: true,
+        taskName: idleMeta.name,
+        timing: { start: t0, end: t1 },
+        lane: myLane,
+        output: idleResult,
+      });
+      ```
+
+   b. **Nested per-worker dep completion** (~line 347).  Currently:
+      `timing: { start: nestedStart, end: Date.now() }`.
+      Same pattern --- capture t1, send `{ start: t0, end: t1 }`.
+
+   c. **Direct per-worker dep completion** (~line 393).  Currently:
+      `timing: { start: depStart, end: Date.now() }`.
+      Same pattern.
+
+3. **Remove `workerStart` / `workerEnd` from handlers.**  Delete the
+   `workerStart = Date.now()` / `workerEnd: Date.now()` boilerplate
+   from: `scssLight`, `scssDark`, `mermaid`, `buildInfo`, `render`.
+   Each handler returns only its domain data (e.g. `{ scssLightResult }`,
+   `{ buildInfo }`, `{ pages: [...] }`).
+
+#### Changes to `gantt.mjs`
+
+1. **Worker lane bars.**  Currently uses `t.workerStart` /
+   `t.workerEnd`.  After Phase 13, these are populated from the
+   runner's t0 / t1 in `_onWorkerDone` and `_onPerWorkerTiming`
+   (see scheduler changes above), so the Gantt renderer needs no
+   change for basic rendering.
+
+2. **Submit / dispatch overlay.**  When `t3` is present on a timing
+   entry, render a second narrower or lighter-shaded rect from
+   `end` to `t3` on main-thread task bars.  This makes the
+   `dispatch.submit()` cost visible in the Gantt --- the gap that
+   motivated this phase.  Only main-thread tasks carry `t3`, so
+   worker lane bars are unaffected.
+
+#### Changes to `groupGanttTimings` (`tbdocs.mjs`)
+
+Pass through the `t3` field when present:
+
+```js
+const entry = { id, start: start - t0, end: end - t0 };
+if (t3 != null) entry.t3 = t3 - t0;
+```
+
+The destructuring on line 601 gains `t3`.
+
+#### Implementation steps
+
+1. Remove `workerStart` / `workerEnd` from the five worker handlers
+   (`scssLight`, `scssDark`, `mermaid`, `buildInfo`, `render`).
+
+2. Update the pull loop's regular-task path (~line 427) to capture
+   t0 / t1 as named variables.  Send `{ start: t0, end: t1 }` in
+   the timing object.
+
+3. Update all three per-worker timing send sites in the pull loop:
+   idle-task completion (~line 281), nested per-worker dep completion
+   (~line 347), direct per-worker dep completion (~line 393).  Each
+   gets the same t0 / t1 pattern.
+
+4. In `_executeMainTask`, capture t3 after `submit()`.  Store it on
+   the timing entry.
+
+5. In `_onWorkerDone`, stop reading `output.workerStart` /
+   `output.workerEnd`.  Populate `workerStart` / `workerEnd` from
+   the timing message's `start` / `end`.
+
+6. In `groupGanttTimings`, pass through t3.
+
+7. In `gantt.mjs`, render the `end`--`t3` overlay rect on
+   main-thread task bars when `t3` is present.
+
+**Files touched:**
+
+| File | Changes |
+|---|---|
+| `cpu-worker.mjs` | Remove `workerStart` / `workerEnd` from 5 handlers; name t0 / t1 in pull loop regular-task path; same pattern in all 3 per-worker timing send sites |
+| `scheduler.mjs` | `_executeMainTask`: capture t3 after submit; `_onWorkerDone`: drop `output.workerStart` extraction, populate from timing message; `_onPerWorkerTiming`: no change |
+| `tbdocs.mjs` | `groupGanttTimings`: pass through t3 |
+| `gantt.mjs` | Render end--t3 overlay rect on main-thread task bars |
+
+**Verification.** `build.bat && check.bat` clean.  The timing summary
+is unchanged (it reads `start` / `end`, which remain t0 / t1).  The
+Gantt chart shows a visible submit-phase tail on main-thread task
+bars --- most notably on `dispatch`, where the end--t3 overlay accounts
+for the previously invisible gap before `renderEnvInit`.
+
 ## Notify protocol
 
 Workers sleep on a single generation-counter slot (`views.notify`)
