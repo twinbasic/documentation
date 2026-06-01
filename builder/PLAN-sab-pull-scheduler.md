@@ -40,6 +40,15 @@ future worker-affinity needs:
 3. **`pin_to_predecessor`** --- the task must run on the same worker
    lane that ran a named predecessor. Applies to worker tasks.
 
+4. **`run_when_idle`** --- when a worker has no claimable tasks and
+   would otherwise sleep, it speculatively executes this task. This
+   is distinct from `on_demand` (triggered by a dependent) --- it is
+   triggered by worker idleness. The primary use case is overlapping
+   `warmInit` with the main-thread spine: workers finish their seed
+   tasks (scss, buildInfo) well before render chunks appear, and
+   would otherwise sit idle. With `run_when_idle`, they warm up
+   during that dead time. Applies to worker tasks.
+
 ### warmInit under the new model
 
 `warmInit` is declared as an explicit task with both `unique_per_worker`
@@ -72,6 +81,7 @@ Flag bits:
   F_UNIQUE_PER_WORKER = 2
   F_RUN_ON_MAIN      = 4
   F_PIN_TO_PRED      = 8
+  F_RUN_WHEN_IDLE    = 16
 
 Arrays (all Int32Array views into the SAB):
   taskCount                                  // [1]  — current number of registered tasks (atomic)
@@ -159,6 +169,7 @@ warmInit: {
   expected: [],
   on_demand: true,          // not started until a dependent needs it
   unique_per_worker: true,  // one instance per worker lane
+  run_when_idle: true,      // speculatively run when worker has no other work
   handler: "warmInit",
   // No submit --- unique_per_worker tasks don't participate in the
   // normal dependency graph.
@@ -936,6 +947,83 @@ concurrency, different dispatch mechanism).
 **Verification:** `build.bat && check.bat` clean. Serve mode works
 (rebuild on file change, workers reuse across rebuilds). No
 warmup-related code remains.
+
+### Phase 9: Speculative idle execution (`run_when_idle`)
+
+After Phase 8, `warmInit` is on-demand: it runs only when a worker
+claims a render chunk and discovers the per-worker dep is unsatisfied.
+This is correct but leaves performance on the table --- workers that
+finish seed tasks (scss, buildInfo, mermaid) sit idle during the
+main-thread spine (~200 ms) when they could be warming up.
+
+This phase adds `F_RUN_WHEN_IDLE` and wires `warmInit` to use it.
+
+1. **Flag bit.** Add `F_RUN_WHEN_IDLE = 16` to the SAB flag
+   constants and `run_when_idle` to the task definition schema.
+   `allocSchedulerSAB` sets the bit when the task def has
+   `run_when_idle: true`.
+
+2. **Pull loop change.** In the worker pull loop, after
+   `scanAndClaim` returns -1 (no claimable work) and before the
+   sleep path, insert a speculative-execution check:
+
+   ```
+   if taskIdx === -1:
+     // Speculative: run idle-eligible tasks before sleeping
+     idleTask = findIdleTask(views, myLane)
+     if idleTask !== -1:
+       execute handlers[idleTask]
+       Atomics.store(views.perWorkerDone, idleTask * MAX_LANES + myLane, 1)
+       postMessage({ done: idleTask, output, timing: { start, end } })
+       continue  // re-enter pull loop (real work may have appeared)
+
+     // Nothing to do — sleep
+     gen = Atomics.load(views.notify, 0)
+     taskIdx = scanAndClaim(views, myLane)  // double-check
+     if taskIdx === -1:
+       Atomics.wait(views.notify, 0, gen, 50)
+       continue
+   ```
+
+3. **`findIdleTask`.** Scans task indices for tasks with
+   `F_RUN_WHEN_IDLE` set:
+
+   ```
+   function findIdleTask(views, myLane):
+     count = Atomics.load(views.taskCount, 0)
+     for i = 0 to count - 1:
+       if !(Atomics.load(views.flags, i) & F_RUN_WHEN_IDLE): continue
+       if Atomics.load(views.flags, i) & F_UNIQUE_PER_WORKER:
+         if Atomics.load(views.perWorkerDone, i * MAX_LANES + myLane) === 0:
+           return i   // per-worker: no contention, no CAS needed
+       else:
+         if Atomics.load(views.status, i) !== DONE:
+           if Atomics.compareExchange(views.status, i, NOT_READY, CLAIMED) === NOT_READY:
+             return i
+     return -1
+   ```
+
+   In practice, only `warmInit` has this flag, and it's
+   `unique_per_worker`, so the scan hits one task and checks one
+   per-worker-done flag. After a worker has run its `warmInit`, the
+   check short-circuits on every subsequent idle pass.
+
+4. **`warmInit` task def.** Add `run_when_idle: true` alongside the
+   existing `on_demand: true` and `unique_per_worker: true`.
+
+5. **No change to the render claim path.** Render chunks still list
+   `warmInit` in `perWorkerDeps`. If a render chunk becomes ready
+   before the idle-speculative path ran (e.g. the worker was busy
+   with scss the whole time), the existing on-demand claim-release
+   protocol handles it. The two paths are complementary, not
+   alternatives.
+
+**Verification:** `build.bat && check.bat` clean. Timing summary
+shows `warmInit` per-lane timings overlapping with the main-thread
+spine (starting around t=100--200 ms, while discover/nav/seo are
+running), rather than clustering at render-chunk claim time
+(t=400+ ms). This is the same overlap the old `pool.warmup()`
+achieved, now expressed declaratively.
 
 ## Notify protocol
 
