@@ -35,7 +35,7 @@ import {
 } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { buildInitConfig, renderSidebar } from "./template.mjs";
-import { writePhase, prepareDestinations } from "./write.mjs";
+import { writePhase, prepareDestinations, preparePageDirs } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
@@ -124,8 +124,9 @@ export function makeTimer() {
 // nav + buildInit → dispatch; config → loadData; discover → markdownInit → seo;
 // deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
 // the render fan-out (dispatch → render:0..N → renderJoin), and write/post-write tasks
-// (renderJoin + prepDest → searchData; write + searchData → writeAux →
-// writeOffline; renderJoin + mermaid → writePdf) are scheduler tasks.
+// (prepDest → prepPageDirs; renderJoin + prepPageDirs → write + searchData;
+// write + searchData → writeAux → writeOffline; renderJoin + mermaid → writePdf)
+// are scheduler tasks.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
 // summary, and returns.
 
@@ -212,6 +213,19 @@ const TASKS = {
     async execute(_, ctx) {
       const r = ctx.destRoot;
       await prepareDestinations([r, r + "-offline", r + "-pdf"], ctx.opts.dryRun);
+      return {};
+    },
+    submit() {},
+  },
+
+  // Pre-create all page output directories while render workers are busy.
+  // Lets writePages skip mkdir entirely — pure writeFile.
+  prepPageDirs: {
+    expected: ["prepDest"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      if (ctx.opts.dryRun) return {};
+      await preparePageDirs(state.pages, state.staticFiles, ctx.destRoot);
       return {};
     },
     submit() {},
@@ -463,9 +477,10 @@ const TASKS = {
   // Materialise pages + static files + generated CSS to _site/.
   // Waits for renderJoin (pages rendered + templated), scss (generated CSS),
   // mermaid (SVG descriptors appended to state.staticFiles by mermaid.submit),
-  // prepDest (_site/ cleaned and recreated), and highlighterInit (highlight CSS).
+  // prepPageDirs (page output directories pre-created), and highlighterInit
+  // (highlight CSS).
   write: {
-    expected: ["renderJoin", "scssJoin", "mermaid", "prepDest", "highlighterInit"],
+    expected: ["renderJoin", "scssJoin", "mermaid", "prepPageDirs", "highlighterInit"],
     runOnMain: true,
     async execute({ scssJoin: { scssResult }, mermaid: { mermaidStats }, highlighterInit: _highlightSignal }, ctx, state) {
       void mermaidStats;      // dependency signal only; append already happened in mermaid.submit
@@ -573,7 +588,7 @@ const GANTT_SECTION = {
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   seo: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
-  dispatch: "Render", prepDest: "Render",
+  dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   write: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];

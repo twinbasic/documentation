@@ -43,8 +43,6 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false,
   mkdirCache.clear();
   mkdirInflight.clear();
 
-  assertNoDestinationCollisions(pages, staticFiles);
-
   if (dryRun) {
     const pagesToWrite = pages.filter(p => p.html !== undefined).length;
     const skipped = pages.length - pagesToWrite;
@@ -109,6 +107,17 @@ export async function prepareDestinations(roots, dryRun) {
   }));
 }
 
+// Pre-create all page output directories so writePages can skip mkdir
+// entirely.  Runs as a separate task concurrently with render workers.
+export async function preparePageDirs(pages, staticFiles, destRoot) {
+  assertNoDestinationCollisions(pages, staticFiles);
+  const dirs = new Set();
+  for (const page of pages) {
+    if (page.destPath) dirs.add(path.dirname(path.join(destRoot, page.destPath)));
+  }
+  await Promise.all([...dirs].map(d => fs.mkdir(d, { recursive: true })));
+}
+
 export function isUnderProject(destRoot) {
   const rel = path.relative(PROJECT_ROOT, destRoot);
   return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
@@ -121,12 +130,10 @@ async function writePages(pages, destRoot, limit) {
   let skipped = 0;
   await runLimited(pages, limit, async (page) => {
     if (page.html === undefined) {
-      // book.html (layout: book-combined) -- Phase 8 owns it.
       skipped++;
       return;
     }
     const dest = path.join(destRoot, page.destPath);
-    await mkdirRec(path.dirname(dest));
     await safeWrite(dest, () => fs.writeFile(dest, page.html, "utf8"));
     written++;
   });
@@ -188,7 +195,7 @@ async function copyStaticFiles(staticFiles, destRoot, limit, baseurl) {
 
 // ---------- §6.4 assertNoDestinationCollisions --------------------------
 
-function assertNoDestinationCollisions(pages, staticFiles) {
+export function assertNoDestinationCollisions(pages, staticFiles) {
   const pageDests = new Set(
     pages.filter(p => p.html !== undefined).map(p => p.destPath),
   );
