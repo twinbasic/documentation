@@ -40,7 +40,8 @@ import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchData } from "./search.mjs";
 import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
-import { buildSitePathsSync } from "./offline-rewrite.mjs";
+import { buildSitePathsSync, deriveOfflineCss,
+         normalizeBaseurl }  from "./offline-rewrite.mjs";
 import { writePdf } from "./pdf.mjs";
 import { packShared } from "./sab-broadcast.mjs";
 import { allocSchedulerSAB, verifySchedulerSAB, SLICES_PER_WORKER } from "./sab-scheduler.mjs";
@@ -119,7 +120,7 @@ export function makeTimer() {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo → mermaid, scssLight + scssDark → scssJoin,
+// Seeds (config, buildInfo → mermaid, scssLight + scssDark → scss,
 // highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
 // nav + buildInit → dispatch; config → loadData; discover → markdownInit → seo;
 // deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
@@ -179,15 +180,48 @@ const TASKS = {
     submit() {},
   },
 
-  // Joins the two parallel SCSS results.
-  scssJoin: {
-    expected: ["scssLight", "scssDark"],
+  // Joins the two parallel SCSS results and writes the combined CSS to
+  // _site/ and _site-offline/. Depends on prepDest so the output dirs
+  // exist (prepDest cleans them first).
+  scss: {
+    expected: ["scssLight", "scssDark", "prepDest"],
     runOnMain: true,
-    execute({ scssLight: { scssLightResult }, scssDark: { scssDarkResult } }) {
+    async execute({ scssLight: { scssLightResult }, scssDark: { scssDarkResult } }, ctx, state) {
       if (scssLightResult.failed || scssDarkResult.failed) {
         return { scssResult: { compiled: false, failed: true } };
       }
-      return { scssResult: { compiled: true, css: scssLightResult.css + "\n" + scssDarkResult.css } };
+      const combined = scssLightResult.css + "\n" + scssDarkResult.css;
+      if (ctx.opts.dryRun) {
+        return { scssResult: { compiled: true, css: combined } };
+      }
+
+      const rel = "assets/css/just-the-docs-combined.css";
+      const baseurl = String(state.site.config.baseurl || "");
+      const online = baseurl
+        ? combined.replace(
+            /url\((["']?)\/(?!\/)([^)"']*)\1\)/g,
+            (_, q, rest) => `url(${q}${baseurl}/${rest}${q})`,
+          )
+        : combined;
+      const dest = path.join(ctx.destRoot, rel);
+      await fs.mkdir(path.dirname(dest), { recursive: true });
+      await fs.writeFile(dest, online, "utf8");
+
+      const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+      let offlineMisses = 0;
+      if (!skipOffline) {
+        const offlineState = {
+          sitePaths: state.sitePaths,
+          caches: { rawResolution: new Map(), seg: new Map(), result: new Map() },
+          baseurl: normalizeBaseurl(baseurl),
+        };
+        const { css: offlineCss, misses } = deriveOfflineCss(online, rel, offlineState);
+        offlineMisses = misses;
+        const offDest = path.join(ctx.destRoot + "-offline", rel);
+        await fs.mkdir(path.dirname(offDest), { recursive: true });
+        await fs.writeFile(offDest, offlineCss, "utf8");
+      }
+      return { scssResult: { compiled: true, css: combined }, offlineMisses };
     },
     submit() {},
   },
@@ -490,21 +524,18 @@ const TASKS = {
 
   // ── Write and post-write tasks ─────────────────────────────────────────────
 
-  // Materialise static files + generated CSS to _site/. Page HTML is
-  // written by per-worker flush; this task handles theme, static
-  // files, and generated CSS only.
+  // Materialise theme JS, static files, and highlight CSS to _site/.
+  // Page HTML is written by per-worker flush; combined SCSS is written
+  // by the scss task.
   writeAssets: {
-    expected: ["scssJoin", "mermaid", "prepPageDirs", "highlighterInit"],
+    expected: ["mermaid", "prepPageDirs", "highlighterInit"],
     runOnMain: true,
-    async execute({ scssJoin: { scssResult }, mermaid: { mermaidStats }, highlighterInit: _highlightSignal }, ctx, state) {
+    async execute({ mermaid: { mermaidStats }, highlighterInit: _highlightSignal }, ctx, state) {
       void mermaidStats;      // dependency signal only; append already happened in mermaid.submit
       void _highlightSignal;  // dependency signal only; highlightCss already written to state.site
       const generatedAssets = [];
       if (state.site.highlightCss) {
         generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: state.site.highlightCss });
-      }
-      if (scssResult.compiled) {
-        generatedAssets.push({ rel: "assets/css/just-the-docs-combined.css", content: scssResult.css });
       }
       return writePhase(state.pages, state.staticFiles, {
         destRoot:  ctx.destRoot,
@@ -599,7 +630,7 @@ function chunkPages(pages, workers) {
 // ── Gantt chart ───────────────────────────────────────────────────────────────
 
 const GANTT_SECTION = {
-  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", mermaid: "Spine",
+  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", mermaid: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   seo: "Spine", resolveBookChapters: "Spine",
@@ -679,7 +710,7 @@ export async function runBuild(opts) {
   const site = scheduler.state.site;
 
   const { mermaidStats } = results.get("mermaid");
-  const { scssResult }   = results.get("scssJoin");
+  const { scssResult }   = results.get("scss");
 
   if (mermaidStats.regenerated > 0 || mermaidStats.failed > 0) {
     const parts = [`regenerated ${mermaidStats.regenerated}`];

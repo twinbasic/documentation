@@ -313,6 +313,7 @@ async function copyOfflineThemeAssets(deps) {
 
   await runLimited(themeEntries, LIMIT, async (e) => {
     if (e.isJtdJs) return;
+    if (e.isCombinedCss) return;
     const relAsset = "assets/" + e.relUnderAssets;
     if (offlineExcluded(relAsset, deps.excludePatterns)) return;
     const dest = path.join(offlineRoot, "assets", e.relUnderAssets);
@@ -600,6 +601,7 @@ async function collectThemeFiles(themeRoot) {
           relUnderAssets: childRel,
           srcAbs: path.join(themeRoot, childRel),
           isCss: childRel.endsWith(".css"),
+          isCombinedCss: childRel === "css/just-the-docs-combined.css",
           isJtdJs: childRel === "js/just-the-docs.js",
         });
       }
