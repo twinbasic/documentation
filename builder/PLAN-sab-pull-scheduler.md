@@ -3020,9 +3020,9 @@ data (link tables, config, site paths) and must re-run on each build.
 
 #### Why no worker-side changes are needed
 
-The init message handler (`cpu-worker.mjs` lines 197--209) already
-resets only per-build state (`_chunkDataSAB`, `_sharedSAB`,
-`_renderEnv`, `_pageStash`).  Module-scope singletons (the Shiki
+The init message handler (`cpu-worker.mjs` lines 201--209) already
+resets only per-build state (`_payloadSAB`, `_sharedSAB`,
+`_renderEnv`, `_pendingFlush`).  Module-scope singletons (the Shiki
 highlighter inside `highlight.mjs`) persist naturally across init
 messages because the worker thread and its module state survive.
 The `perWorkerDone` pre-fill in the SAB is the only mechanism needed
@@ -3054,7 +3054,7 @@ the previous one has resolved.
 
 `renderEnvInit` has `perWorkerDeps: ["warmInit"]`.  On a rebuild,
 `warmInit`'s `perWorkerDone` is pre-filled to 1.  The pull loop's
-dep check (cpu-worker.mjs line 309) reads
+dep check (cpu-worker.mjs line 305) reads
 `perWorkerDone[warmInitIdx * MAX_LANES + myLane] === 1` and
 proceeds.  `renderEnvInit` runs on-demand as before, using the same
 handler --- which correctly rebuilds `_renderEnv` from the fresh
@@ -3080,7 +3080,7 @@ export async function runBuild(opts) {
   const externalPool = opts.pool ?? null;
   const rebuild = externalPool?._buildCount > 0;
 
-  const { sab, views, idMapping, taskMeta } =
+  const { sab, views, idMapping } =
     allocSchedulerSAB(TASKS, workerCount, { rebuild });
   verifySchedulerSAB(TASKS, views, idMapping);
 
@@ -3093,7 +3093,7 @@ export async function runBuild(opts) {
   pool.onPerWorkerTiming = (msg) => scheduler._onPerWorkerTiming(msg);
   pool.onMainTaskReady   = ()    => scheduler._onMainTaskReady();
 
-  pool.sendInit(sab, taskMeta, ctx, idMapping);
+  pool.sendInit(sab, ctx, idMapping);
 
   let results;
   try {
@@ -3157,7 +3157,7 @@ export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
     }
   }
 
-  // ... existing taskMeta construction, return ...
+  // ... existing writeTaskMeta loop and return ...
 }
 ```
 
@@ -3238,9 +3238,9 @@ export class WorkerPool {
     this._buildCount = 0;
   }
 
-  sendInit(sab, taskMeta, ctx, idMapping) {
+  sendInit(sab, ctx, idMapping) {
     for (const w of this._workers) {
-      w.postMessage({ init: true, sab, taskMeta, ctx, idMapping });
+      w.postMessage({ init: true, sab, ctx, idMapping });
     }
     this._buildCount++;
   }
@@ -3283,12 +3283,20 @@ export class WorkerPool {
 
 #### Interaction with Phase 15
 
-Phase 15 moves `taskMeta` into the SAB and replaces the JS-side
-`taskMeta` array with `writeTaskMeta` / `readTaskMeta`.  If Phase 15
-lands first, the `allocSchedulerSAB` pre-fill loop is unchanged ---
-`perWorkerDone` is a separate SAB array, independent of the task
-metadata layout.  The `def.survives_reset` read stays in the JS
-task-definition loop.  No conflict.
+Phase 15 landed.  `taskMeta` is gone --- task metadata lives in SAB
+arrays written by `writeTaskMeta` / `readTaskMeta`.  The
+`perWorkerDone` pre-fill loop added here operates on a separate SAB
+array, independent of the task metadata layout.  The
+`def.survives_reset` read stays in the JS task-definition loop.  No
+conflict.
+
+Phase 15 also renamed `_pageStash` to `_pendingFlush` (FIFO queue,
+one batch per render chunk) and `_chunkDataSAB` to `_payloadSAB`.
+The init handler in `cpu-worker.mjs` (lines 201--209) resets
+`_payloadSAB`, `_sharedSAB`, `_renderEnv`, and `_pendingFlush` ---
+exactly the per-build state.  Module-scope singletons (the Shiki
+highlighter) persist naturally, so the `survives_reset` mechanism
+works as designed.
 
 #### Files touched
 
@@ -3462,16 +3470,32 @@ Result: byte-identical `search-data.json`.
 #### Changes
 
 **`cpu-worker.mjs`.**  Import `deriveSearchEntries` from
-`./search.mjs`.  At the end of the `render` handler, after the
-offline pass and before building the return value:
+`./search.mjs`.  In the `render` handler, after the offline-derivation
+block and the `_pendingFlush.push(batch)` line (Phase 15 added the
+FIFO stash there), derive the per-chunk search entries and include
+them in the return value:
 
 ```js
+// Per-chunk search entries (consolidated on main during searchData).
+// Drop `sourcePage` (workers hold cloned page objects, not master
+// refs) and `i` (chunk-local indices are meaningless; main assigns
+// global indices during consolidation).
 const searchEntries = deriveSearchEntries(chunk, env.site)
   .map(e => ({ doc: e.doc, title: e.title, content: e.content,
                url: e.url, relUrl: e.relUrl }));
+
+return {
+  pages: chunk.map(p => ({
+    destPath:        p.destPath,
+    renderedContent: p.renderedContent,
+    offlineMisses:   p.offlineMisses,
+  })),
+  searchEntries,
+};
 ```
 
-Add `searchEntries` to the return object alongside `pages`.
+The five-field strip on each entry is what keeps the structured-clone
+cost negligible (~400 KB total across all workers for ~2000 entries).
 
 **`search.mjs`.**  Export `renderEntryString`.  Add:
 
@@ -3489,42 +3513,53 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
 
 **`scheduler.mjs`.**  Add `searchChunks = []` to `SharedState`.
 
-**`tbdocs.mjs`.**  Three changes:
+**`tbdocs.mjs`.**  Four changes, all in `dispatch.submit()` and the
+`searchData` task def:
 
 1. Import: `writeSearchDataFromChunks` from `./search.mjs` (replaces
-   or supplements the existing `writeSearchData` import).
+   the existing `writeSearchData` import --- the main-thread helper
+   is no longer called).
 
-2. `dispatch.submit()`: after setting `scheduler._renderExpected = N`,
-   pre-allocate:
+2. At the top of `dispatch.submit()`, after `const N = out.chunks.length;`
+   (the existing first statement in Phase 15's redesigned submit),
+   pre-allocate the chunk array on `SharedState`:
 
    ```js
    scheduler.state.searchChunks = new Array(N);
    ```
 
-3. Each `render:${i}` task definition captures its chunk index and
-   pushes search entries in `submit`:
+   Pre-allocation is required: each `render:i.submit()` writes by
+   chunk index, not push order, so `searchChunks.flat()` later
+   produces entries in `pages` order regardless of completion order.
+
+3. Inside the existing `for (let i = 0; i < N; i++)` loop in
+   `dispatch.submit()` (the one that registers the per-chunk
+   `render:${i}` task defs via `scheduler.tasks.set(rName, ...)`),
+   extend the `submit(renderOut, state)` body with one indexed
+   assignment.  `i` is already in scope via `let`, so no `chunkIdx`
+   capture is needed:
 
    ```js
-   for (let i = 0; i < N; i++) {
-     const chunkIdx = i;
-     scheduler.tasks.set(`render:${i}`, {
-       ...
-       submit(renderOut, state) {
-         // existing delta merge
-         for (const r of renderOut.pages) {
-           const p = state.pageByDest.get(r.destPath);
-           if (!p) continue;
-           p.renderedContent = r.renderedContent;
-           if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
-         }
-         // NEW: stash search entries for consolidation
-         state.searchChunks[chunkIdx] = renderOut.searchEntries;
-       },
-     });
-   }
+   scheduler.tasks.set(rName, {
+     expected: [],
+     consolidate: true,
+     ganttSection: "Render",
+     submit(renderOut, state) {
+       for (const r of renderOut.pages) {
+         const p = state.pageByDest.get(r.destPath);
+         if (!p) continue;
+         p.renderedContent = r.renderedContent;
+         if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
+       }
+       state.searchChunks[i] = renderOut.searchEntries;   // NEW
+     },
+   });
    ```
 
-4. `searchData.execute()`:
+   The `flush:${i}` registration in the same loop is unchanged.
+
+4. `searchData.execute()` (currently calls `writeSearchData(state.pages,
+   state.site, ctx.destRoot)`):
 
    ```js
    async execute(_, ctx, state) {
@@ -3532,6 +3567,10 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
      return writeSearchDataFromChunks(state.searchChunks, ctx.destRoot);
    },
    ```
+
+   The `expected: ["renderJoin", "prepDest"]` dependency list is
+   unchanged --- `renderJoin` still provides the "all render:i deltas
+   merged" guarantee that gates the consolidation.
 
 #### Files touched
 
@@ -3544,16 +3583,29 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
 
 #### Interaction with other phases
 
-- **Phase 15 (generic dynamic tasks).**  If Phase 15 rewrites
-  `dispatch.submit()` and the render task registration, the
-  `render:i.submit` change (one additional indexed assignment) applies
-  to whatever form the submit takes.  The `searchChunks` pre-
-  allocation moves to wherever `dispatch.submit` sets up the render
-  fan-out.  No conflict.
+- **Phase 15 (generic dynamic tasks) --- LANDED.**  Phase 15
+  rewrote `dispatch.submit()` into its current form:
+  `allocDynamicSlots` for 2N render + flush slots, `writeTaskMeta`
+  via the SAB metadata API, per-iteration `scheduler.tasks.set(rName,
+  ...)` for each `render:${i}` / `flush:${i}` def, and
+  `activateDynamicTasks` at the end.  Phase 17's edits drop straight
+  into that structure: pre-allocate `state.searchChunks` once after
+  `N` is known, and add one indexed assignment inside the existing
+  per-chunk `render:${i}` submit closure.  No other Phase 15 surface
+  (the generic payload SAB, the priority-aware claim, the FIFO
+  `_pendingFlush`) is affected --- the worker's `searchEntries`
+  ride out in the same `{ done, output }` message that already
+  carries the render delta.
 
 - **Phase 16 (persistent pool).**  Pool persistence is orthogonal.
   `searchChunks` lives on `SharedState`, which is fresh per build
   (new `Scheduler` = new `SharedState`).  No interaction.
+
+- **Phase 18 (per-page SEO on workers).**  Phase 18 adds
+  `computeChunkSeo` between `renderPhase` and `templatePhase` in the
+  same render handler that Phase 17 extends.  Both are independent
+  per-page transforms with no data dependency on each other; they
+  compose without conflict regardless of landing order.
 
 - **`_triage.mjs` / `_diff.mjs`.**  These dev tools call
   `deriveSearchEntries` directly on `state.pages` on the main thread.
@@ -3609,7 +3661,10 @@ Split `precomputeSeo` into two functions:
    mutates pages in place with the four per-page fields.  Called on
    each render worker between `renderPhase` and `templatePhase`.
 
-The `seo` task is deleted.  `dispatch.expected` drops `"seo"`.
+The `seo` task is deleted.  `dispatch.expected` drops `"seo"` and
+gains `"markdownInit"` (the transitive dependency through `seo` is
+gone; `dispatch` reads `state.site.seoSiteTitle`, `seoLogoUrl`, and
+`linkTablesSerialized`, all written by `markdownInit`).
 
 #### Data flow
 
@@ -3621,7 +3676,7 @@ markdownInit [M]
        state.site.seoLogoUrl   = ...
              │
              ▼
-dispatch [M]  (expected drops "seo")
+dispatch [M]  (expected: drops "seo", gains "markdownInit")
    └── packs seoSiteTitle + seoLogoUrl into sharedSAB  (unchanged)
              │
              ▼
@@ -3741,24 +3796,31 @@ dev tooling.
    },
    ```
 
-4. Remove `"seo"` from `dispatch.expected` and the
-   `seo: _seoSignal` destructure + `void _seoSignal` in
-   `dispatch.execute`:
+4. Replace `"seo"` with `"markdownInit"` in `dispatch.expected`.
+   Replace the `seo: _seoSignal` destructure + `void _seoSignal`
+   with `markdownInit: _markdownInitSignal` +
+   `void _markdownInitSignal` in `dispatch.execute`:
    ```js
    dispatch: {
      expected: ["nav", "buildInit", "buildInfo", "mermaid",
-                "deriveRedirects"],
+                "deriveRedirects", "markdownInit"],
      ...
      execute({ nav: { sidebar },
                buildInit: { initData },
                buildInfo: { buildInfo },
                mermaid: { mermaidStats },
+               markdownInit: _markdownInitSignal,
                deriveRedirects: { stubs } }, ctx, state) {
        void mermaidStats;
+       void _markdownInitSignal;
        ...
      },
    },
    ```
+   The explicit edge replaces the transitive `markdownInit → seo →
+   dispatch` chain.  `dispatch` reads `state.site.seoSiteTitle`,
+   `state.site.seoLogoUrl`, and `state.site.linkTablesSerialized`,
+   all written by `markdownInit`.
 
 5. Remove `seo: "Spine"` from `GANTT_SECTION`.
 
@@ -3803,9 +3865,10 @@ discover → markdownInit ─────────→ dispatch
 discover → nav ──────────────────→ dispatch
 ```
 
-`seo` is removed from the static task DAG.  Its successor edge to
-`dispatch` is gone.  The `markdownInit` → `dispatch` path shortens
-by ~35 ms (the full `seo` duration).
+`seo` is removed from the static task DAG.  A direct
+`markdownInit → dispatch` edge replaces the two-hop
+`markdownInit → seo → dispatch` chain, saving ~35 ms (the full
+`seo` duration) from the critical path.
 
 #### Interaction with other phases
 
@@ -3817,11 +3880,14 @@ by ~35 ms (the full `seo` duration).
   If a future phase makes `nav` write its outputs to `state.site.*`
   rather than mutating pages in place, Phase 11 becomes viable.
 
-- **Phase 15 (generic dynamic tasks).**  Phase 15 rewrites
-  `dispatch.submit()` and removes `taskMeta`.  The `seo` removal
-  (dropping one `expected` entry and one destructure) applies
-  cleanly to whatever form `dispatch` takes after Phase 15.
-  No conflict.
+- **Phase 15 (generic dynamic tasks --- DONE).**  Phase 15 rewrote
+  `dispatch.submit()` to use the generic dynamic task API
+  (`allocDynamicSlots`, `writeTaskMeta`, `wireDynamicEdges`) and
+  replaced the JS `taskMeta` array with SAB-based metadata.
+  Confirmed: `dispatch.execute()` and `dispatch.expected` were not
+  changed by Phase 15, so the `seo` removal (replacing one
+  `expected` entry with `"markdownInit"` and updating the
+  destructure) applies cleanly.  No conflict.
 
 - **Phase 17 (search data on workers).**  Phase 17 adds
   `deriveSearchEntries` to the render handler, after render +
@@ -3835,7 +3901,7 @@ by ~35 ms (the full `seo` duration).
 | File | Changes |
 |---|---|
 | `seo.mjs` | Add `computeSiteSeo` and `computeChunkSeo` exports; refactor `precomputeSeo` to delegate (retained as dead code for dev tooling) |
-| `tbdocs.mjs` | Import `computeSiteSeo` instead of `precomputeSeo`; delete `seo` task; fold site-level SEO into `markdownInit`; drop `"seo"` from `dispatch.expected`; remove `seo` from `GANTT_SECTION`; update spine comment |
+| `tbdocs.mjs` | Import `computeSiteSeo` instead of `precomputeSeo`; delete `seo` task; fold site-level SEO into `markdownInit`; replace `"seo"` with `"markdownInit"` in `dispatch.expected`; update destructure; remove `seo` from `GANTT_SECTION`; update spine comment |
 | `cpu-worker.mjs` | Import `computeChunkSeo` from `./seo.mjs`; call between `renderPhase` and `templatePhase` in the render handler |
 
 #### Expected savings
