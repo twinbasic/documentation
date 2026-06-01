@@ -1,5 +1,4 @@
-// tbdocs orchestrator. Phases 1+2+3+4+5+6+7+8: DISCOVER + COMPUTE +
-// RENDER + TEMPLATE + WRITE ONLINE + AUXILIARIES + WRITE OFFLINE + WRITE PDF.
+// tbdocs orchestrator. Phases 1-4 pipeline + Phase 5+6 SAB scheduler.
 //
 // Usage: node builder/tbdocs.mjs [--src <path>] [--dest <path>]
 //        [--baseurl <prefix>] [--url <origin>] [--dry-run]
@@ -157,8 +156,7 @@ const TASKS = {
   // discover on the CI runners. When workerCount > 4, mermaid is a seed.
   buildInfo: {
     expected: [],
-    deferHighlighter: true,
-    // execute() runs in cpu-worker.mjs as the "buildInfo" handler.
+    handler: "buildInfo",
     submit(out, emit, state) {
       state.site.buildInfo = out.buildInfo;
       emit("dispatch", out);
@@ -170,13 +168,13 @@ const TASKS = {
   // Each half is ~700 ms total serially; running concurrently saves ~200 ms.
   scssLight: {
     expected: [],
-    // execute() runs in cpu-worker.mjs as the "scssLight" handler.
+    handler: "scssLight",
     submit(out, emit) { emit("scssJoin", out); },
   },
 
   scssDark: {
     expected: [],
-    // execute() runs in cpu-worker.mjs as the "scssDark" handler.
+    handler: "scssDark",
     submit(out, emit) { emit("scssJoin", out); },
   },
 
@@ -198,8 +196,7 @@ const TASKS = {
   // doesn't compete with discover on 4-thread CI.
   mermaid: {
     expected: mermaidIsSeed ? [] : ["buildInfo"],
-    deferHighlighter: true,
-    // execute() runs in cpu-worker.mjs as the "mermaid" handler.
+    handler: "mermaid",
     submit(out, emit, state) {
       // Append any freshly-generated SVG descriptors that discover didn't see
       // (because mermaid and discover run concurrently). Dedup by srcRel so
@@ -436,6 +433,7 @@ const TASKS = {
       emit("deriveSitemap", {});
       emit("prepDest",      {});
 
+      // renderJoin is a main-thread barrier — tracked by the push scheduler.
       scheduler.register("renderJoin", {
         expected: Array.from({ length: N }, (_, i) => `render:${i}`),
         runOnMain: true,
@@ -447,9 +445,12 @@ const TASKS = {
         },
       });
 
+      // render:i tasks are worker-pulled from the SAB.  Register their
+      // submit() with the scheduler (so merge + emit fires when the main
+      // thread processes the output message) but don't seed them through
+      // the push scheduler.
       for (let i = 0; i < N; i++) {
-        const id = `render:${i}`;
-        scheduler.register(id, {
+        scheduler.registerWorkerTask(`render:${i}`, {
           expected: [],
           handler:  "render",
           consolidate: true,
@@ -466,11 +467,10 @@ const TASKS = {
             emit("renderJoin", {});
           },
         });
-        scheduler.seed(id, {
-          sharedSAB: out.sharedSAB,
-          chunk:     out.chunks[i],
-        });
       }
+
+      // Write SAB entries, broadcast chunk data, set render tasks READY.
+      scheduler.dispatchRender(out.chunks, out.sharedSAB);
     },
   },
 
@@ -637,14 +637,21 @@ export async function runBuild(opts) {
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
-  const pool = new WorkerPool(workerCount, CPU_WORKER_URL);
-  const scheduler = new Scheduler({ pool, tasks: TASKS });
   const ctx = { srcRoot, destRoot, opts, workerCount };
 
-  // Phase 5 verification: allocate a SAB from the task graph and assert
-  // that dep counts, successor edges, flags, and seed status are correct.
-  const { views: sabViews, idMapping: sabMapping } = allocSchedulerSAB(TASKS, workerCount);
-  verifySchedulerSAB(TASKS, sabViews, sabMapping);
+  // Allocate the scheduling SAB before the pool so workers receive it at
+  // init and start pulling tasks immediately.
+  const { sab, views, idMapping, taskMeta } = allocSchedulerSAB(TASKS, workerCount);
+  verifySchedulerSAB(TASKS, views, idMapping);
+
+  const pool = new WorkerPool(workerCount, CPU_WORKER_URL);
+  const scheduler = new Scheduler({ pool, tasks: TASKS, views, idMapping });
+
+  pool.onWorkerDone     = (msg) => scheduler._onWorkerDone(msg);
+  pool.onWorkerError    = (msg) => scheduler._onWorkerError(msg);
+  pool.onWarmInitTiming = (msg) => scheduler._onWarmInitTiming(msg);
+
+  pool.sendInit(sab, taskMeta, ctx, idMapping);
 
   let results;
   try {

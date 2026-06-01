@@ -1,6 +1,6 @@
-// SAB-based scheduling data structures. Phase 5: layout, allocation, and
-// verification only; the push scheduler still runs the build.
-// See PLAN-sab-pull-scheduler.md for the full design.
+// SAB-based scheduling data structures and worker-pull primitives.
+// Phase 6: workers pull tasks via atomics; main-thread tasks still use the
+// push scheduler, bridged into the SAB. See PLAN-sab-pull-scheduler.md.
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -15,6 +15,7 @@ export const NOT_READY = 0;
 export const READY     = 1;
 export const CLAIMED   = 2;
 export const DONE      = 3;
+export const FAILED    = 4;
 
 // Flag bits
 export const F_ON_DEMAND         = 1;
@@ -210,6 +211,108 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
   };
 
   return { sab, views, idMapping, taskMeta };
+}
+
+// ── Worker pull-loop primitives ──────────────────────────────────────────────
+//
+// Used by cpu-worker.mjs (worker thread) and by the main-thread bridge in
+// scheduler.mjs.  All operate directly on the SAB via Atomics so they are
+// thread-safe without locks.
+
+export function scanAndClaim(views, myLane) {
+  const start = Atomics.load(views.firstReady, 0);
+  const count = Atomics.load(views.taskCount, 0);
+  for (let i = start; i < count; i++) {
+    if (Atomics.load(views.status, i) !== READY) continue;
+    if (Atomics.load(views.flags, i) & F_RUN_ON_MAIN) continue;
+    const aff = Atomics.load(views.affinityLane, i);
+    if (aff !== -1 && aff !== myLane) continue;
+    if (Atomics.compareExchange(views.status, i, READY, CLAIMED) === READY)
+      return i;
+  }
+  return -1;
+}
+
+export function onTaskDone(views, taskIdx, lane) {
+  Atomics.store(views.status, taskIdx, DONE);
+  Atomics.store(views.completedOnLane, taskIdx, lane);
+  advanceFirstReady(views, taskIdx);
+
+  let readyCount = 0;
+  let wakeMain   = false;
+
+  const off = Atomics.load(views.succOffset, taskIdx);
+  const cnt = Atomics.load(views.succCount, taskIdx);
+  for (let i = off; i < off + cnt; i++) {
+    const succ = Atomics.load(views.succList, i);
+    if (Atomics.load(views.flags, succ) & F_UNIQUE_PER_WORKER) continue;
+
+    const remaining = Atomics.sub(views.depCount, succ, 1) - 1;
+    if (remaining === 0) {
+      const pin = Atomics.load(views.pinnedTo, succ);
+      if (pin !== -1) {
+        const srcLane = Atomics.load(views.completedOnLane, pin);
+        Atomics.store(views.affinityLane, succ, srcLane);
+      }
+      Atomics.store(views.status, succ, READY);
+
+      if (Atomics.load(views.flags, succ) & F_RUN_ON_MAIN) wakeMain = true;
+      else readyCount++;
+    }
+  }
+
+  return { readyCount, wakeMain };
+}
+
+export function advanceFirstReady(views, taskIdx) {
+  const count = Atomics.load(views.taskCount, 0);
+  const cur   = Atomics.load(views.firstReady, 0);
+  if (taskIdx !== cur) return;
+  let next = cur;
+  while (next < count && Atomics.load(views.status, next) === DONE) next++;
+  if (next > cur) Atomics.compareExchange(views.firstReady, 0, cur, next);
+}
+
+// ── Dynamic task registration (called by dispatch on the main thread) ───────
+
+const encoder = new TextEncoder();
+
+export function registerDynamicRender(views, idMapping, numChunks) {
+  let edgePos = Atomics.load(views.edgeCount, 0);
+  for (let i = 0; i < numChunks; i++) {
+    const idx = idMapping.DYNAMIC_BASE + i;
+    views.succOffset[idx] = edgePos;
+    views.succCount[idx]  = 1;
+    if (edgePos >= MAX_EDGES)
+      throw new Error(`Edge count exceeds MAX_EDGES (${MAX_EDGES})`);
+    views.succList[edgePos++] = idMapping.RENDER_JOIN_IDX;
+  }
+  Atomics.store(views.edgeCount, 0, edgePos);
+  Atomics.store(views.depCount, idMapping.RENDER_JOIN_IDX, numChunks);
+  views.flags[idMapping.RENDER_JOIN_IDX] = F_RUN_ON_MAIN;
+}
+
+export function packChunkData(chunks, views) {
+  const buffers = chunks.map(c => encoder.encode(JSON.stringify(c)));
+  const totalBytes = buffers.reduce((sum, b) => sum + b.byteLength, 0);
+  const sab = new SharedArrayBuffer(totalBytes);
+  const full = new Uint8Array(sab);
+  let offset = 0;
+  for (let i = 0; i < buffers.length; i++) {
+    full.set(buffers[i], offset);
+    Atomics.store(views.chunkOffset, i, offset);
+    Atomics.store(views.chunkLength, i, buffers[i].byteLength);
+    offset += buffers[i].byteLength;
+  }
+  return sab;
+}
+
+export function activateRenderTasks(views, idMapping, numChunks) {
+  for (let i = 0; i < numChunks; i++) {
+    Atomics.store(views.status, idMapping.DYNAMIC_BASE + i, READY);
+  }
+  Atomics.add(views.notify, 0, 1);
+  Atomics.notify(views.notify, 0, Infinity);
 }
 
 // ── Verification ─────────────────────────────────────────────────────────────

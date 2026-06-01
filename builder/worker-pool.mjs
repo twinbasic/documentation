@@ -1,31 +1,44 @@
-// Worker pool over node:worker_threads. Spawns `size` workers eagerly at
-// construction, routes named tasks to whichever worker is idle, queues the
-// rest. No dynamic scaling, no recycling, no abort signals.
+// Worker pool over node:worker_threads.  Phase 6: workers pull tasks from a
+// scheduling SAB; the pool is a lifecycle manager that spawns workers, sends
+// them the SAB + metadata, forwards output/error messages to the scheduler,
+// and terminates workers on destroy.
 //
-// Idle workers are split into two tiers: _idleWarm (Shiki-initialized) and
-// _idleCold. _drain() pulls from warm first so render chunks land on
-// workers that can start immediately; cold workers only get work when no
-// warm ones are available.
+// Legacy push-model fields (_idleWarm, _idleCold, _warm, _busy, _queue,
+// run, warmup, _drain, _pushIdle, _onWarmedUp) are retained as dead code;
+// Phase 8 removes them.
 
 import { Worker } from "node:worker_threads";
 
 export class WorkerPool {
   constructor(size, workerUrl) {
     this._workerUrl = workerUrl;
-    this._idleWarm  = [];               // Worker[] — Shiki ready
-    this._idleCold  = [];               // Worker[] — not yet initialized
-    this._warm      = new Set();        // all workers that have signalled warmedUp
-    this._busy      = new Map();        // Worker → { resolve, reject }
-    this._queue     = [];               // pending { message, transferList, resolve, reject }
-    this.bootTimings = [];              // { lane, type, start, end }[]
-    this._workers   = Array.from({ length: size }, (_, i) => this._spawn(i));
+    this._idleWarm  = [];               // (Phase 8 removes)
+    this._idleCold  = [];               // (Phase 8 removes)
+    this._warm      = new Set();        // (Phase 8 removes)
+    this._busy      = new Map();        // (Phase 8 removes)
+    this._queue     = [];               // (Phase 8 removes)
+    this.bootTimings = [];
+
+    // Callbacks wired by the caller after construction.
+    this.onWorkerDone      = null;      // ({ done, output, timing, lane }) => void
+    this.onWorkerError     = null;      // ({ taskFailed, message, stack }) => void
+    this.onWarmInitTiming  = null;      // ({ warmInit, timing, lane }) => void
+
+    this._workers = Array.from({ length: size }, (_, i) => this._spawn(i));
   }
 
   _spawn(lane) {
     const spawnTime = Date.now();
     const w = new Worker(this._workerUrl, { workerData: { lane, spawnTime } });
     w.on("message", (msg) => {
+      // ── Phase 6 SAB-based message routing ──
       if (msg.coldBoot) { this.bootTimings.push({ lane, type: "cold", ...msg.coldBoot }); return; }
+      if (msg.warmInit)       { this.onWarmInitTiming?.(msg); return; }
+      if (msg.done != null)   { this.onWorkerDone?.(msg); return; }
+      if (msg.taskFailed != null) { this.onWorkerError?.(msg); return; }
+      if (msg.mainTaskReady)  { /* Phase 7 wires this up */ return; }
+
+      // ── Legacy push-model routing (Phase 8 removes) ──
       if (msg.warmedUp) {
         if (msg.warmBoot) this.bootTimings.push({ lane, type: "warm", ...msg.warmBoot });
         this._onWarmedUp(w);
@@ -46,6 +59,22 @@ export class WorkerPool {
     this._idleCold.push(w);
     return w;
   }
+
+  // ── Phase 6: SAB init + broadcast ──────────────────────────────────────────
+
+  sendInit(sab, taskMeta, ctx, idMapping) {
+    for (const w of this._workers) {
+      w.postMessage({ init: true, sab, taskMeta, ctx, idMapping });
+    }
+  }
+
+  broadcastRenderData(chunkDataSAB, sharedSAB) {
+    for (const w of this._workers) {
+      w.postMessage({ renderData: true, chunkDataSAB, sharedSAB });
+    }
+  }
+
+  // ── Legacy push-model methods (Phase 8 removes) ───────────────────────────
 
   _pushIdle(w) {
     if (this._warm.has(w)) this._idleWarm.push(w);
