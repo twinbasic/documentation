@@ -1,7 +1,7 @@
-// Worker pool over node:worker_threads.  Phase 6: workers pull tasks from a
+// Worker pool over node:worker_threads.  Phase 7: workers pull tasks from a
 // scheduling SAB; the pool is a lifecycle manager that spawns workers, sends
-// them the SAB + metadata, forwards output/error messages to the scheduler,
-// and terminates workers on destroy.
+// them the SAB + metadata, forwards output/error/mainTaskReady messages to
+// the scheduler, and terminates workers on destroy.
 //
 // Legacy push-model fields (_idleWarm, _idleCold, _warm, _busy, _queue,
 // run, warmup, _drain, _pushIdle, _onWarmedUp) are retained as dead code;
@@ -23,6 +23,7 @@ export class WorkerPool {
     this.onWorkerDone      = null;      // ({ done, output, timing, lane }) => void
     this.onWorkerError     = null;      // ({ taskFailed, message, stack }) => void
     this.onWarmInitTiming  = null;      // ({ warmInit, timing, lane }) => void
+    this.onMainTaskReady   = null;      // () => void
 
     this._workers = Array.from({ length: size }, (_, i) => this._spawn(i));
   }
@@ -36,7 +37,7 @@ export class WorkerPool {
       if (msg.warmInit)       { this.onWarmInitTiming?.(msg); return; }
       if (msg.done != null)   { this.onWorkerDone?.(msg); return; }
       if (msg.taskFailed != null) { this.onWorkerError?.(msg); return; }
-      if (msg.mainTaskReady)  { /* Phase 7 wires this up */ return; }
+      if (msg.mainTaskReady || msg.triggerMainTask != null) { this.onMainTaskReady?.(); return; }
 
       // ── Legacy push-model routing (Phase 8 removes) ──
       if (msg.warmedUp) {

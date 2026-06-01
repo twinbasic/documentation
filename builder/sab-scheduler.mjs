@@ -1,6 +1,6 @@
 // SAB-based scheduling data structures and worker-pull primitives.
-// Phase 6: workers pull tasks via atomics; main-thread tasks still use the
-// push scheduler, bridged into the SAB. See PLAN-sab-pull-scheduler.md.
+// Phase 7: workers pull tasks via atomics; main-thread tasks scan the SAB
+// for READY work and claim via CAS. See PLAN-sab-pull-scheduler.md.
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-// Worker harness for the tbdocs build pipeline.  Phase 6: persistent pull
+// Worker harness for the tbdocs build pipeline.  Phase 6+7: persistent pull
 // loop over the scheduling SAB.  Workers claim tasks via Atomics, execute
 // the named handler, post the output, and update successor dep counts ---
 // no main-thread round-trip for worker-to-worker transitions.

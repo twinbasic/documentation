@@ -1,4 +1,4 @@
-// tbdocs orchestrator. Phases 1-4 pipeline + Phase 5+6 SAB scheduler.
+// tbdocs orchestrator. Phases 1-4 pipeline + Phase 5-7 SAB scheduler.
 //
 // Usage: node builder/tbdocs.mjs [--src <path>] [--dest <path>]
 //        [--baseurl <prefix>] [--url <origin>] [--dry-run]
@@ -148,7 +148,7 @@ const TASKS = {
       if (ctx.opts.url != null) config.url = ctx.opts.url;
       return { config };
     },
-    submit(out, emit) { emit("discover", out); emit("highlighterInit", out); },
+    submit() {},
   },
 
   // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
@@ -157,10 +157,8 @@ const TASKS = {
   buildInfo: {
     expected: [],
     handler: "buildInfo",
-    submit(out, emit, state) {
+    submit(out, state) {
       state.site.buildInfo = out.buildInfo;
-      emit("dispatch", out);
-      if (!mermaidIsSeed) emit("mermaid", {});
     },
   },
 
@@ -169,16 +167,16 @@ const TASKS = {
   scssLight: {
     expected: [],
     handler: "scssLight",
-    submit(out, emit) { emit("scssJoin", out); },
+    submit() {},
   },
 
   scssDark: {
     expected: [],
     handler: "scssDark",
-    submit(out, emit) { emit("scssJoin", out); },
+    submit() {},
   },
 
-  // Joins the two parallel SCSS results and emits to write.
+  // Joins the two parallel SCSS results.
   scssJoin: {
     expected: ["scssLight", "scssDark"],
     runOnMain: true,
@@ -188,7 +186,7 @@ const TASKS = {
       }
       return { scssResult: { compiled: true, css: scssLightResult.css + "\n" + scssDarkResult.css } };
     },
-    submit(out, emit) { emit("write", out); },
+    submit() {},
   },
 
   // Stale mermaid SVG regeneration. Seed when workerCount > 4 (enough cores
@@ -197,17 +195,11 @@ const TASKS = {
   mermaid: {
     expected: mermaidIsSeed ? [] : ["buildInfo"],
     handler: "mermaid",
-    submit(out, emit, state) {
-      // Append any freshly-generated SVG descriptors that discover didn't see
-      // (because mermaid and discover run concurrently). Dedup by srcRel so
-      // SVGs already on disk at discover time aren't double-counted.
+    submit(out, state) {
       const known = new Set(state.staticFiles.map((f) => f.srcRel));
       for (const f of out.mermaidStats.svgFiles ?? []) {
         if (!known.has(f.srcRel)) state.staticFiles.push(f);
       }
-      emit("write",    out);
-      emit("writePdf", out);
-      emit("dispatch", out);
     },
   },
 
@@ -222,10 +214,7 @@ const TASKS = {
       await prepareDestinations([r, r + "-offline", r + "-pdf"], ctx.opts.dryRun);
       return {};
     },
-    submit(_, emit) {
-      emit("write",      {});
-      emit("searchData", {});
-    },
+    submit() {},
   },
 
   // Theme CSS load. Reads the vendored .theme files and generates the
@@ -240,15 +229,13 @@ const TASKS = {
       const theme = await loadHighlightTheme();
       return { highlightCss: theme.css };
     },
-    submit(out, emit, state) {
+    submit(out, state) {
       state.site.highlightCss = out.highlightCss;
-      emit("write",    out);
-      emit("loadData", out);
     },
   },
 
-  // On-demand per-worker Shiki initializer. Not dispatched by the push
-  // scheduler (on_demand flag); becomes active in the SAB pull model.
+  // On-demand per-worker Shiki initializer. Workers execute it the first
+  // time they claim a render chunk (per-worker dep in the SAB).
   warmInit: {
     expected: [],
     on_demand: true,
@@ -266,15 +253,11 @@ const TASKS = {
       const { pages, staticFiles } = await discover(ctx.srcRoot, config.exclude ?? []);
       return { pages, staticFiles, config };
     },
-    submit(out, emit, state) {
+    submit(out, state) {
       state.pages       = out.pages;
       state.staticFiles = out.staticFiles;
       state.site.config = out.config;
       for (const p of out.pages) state.pageByDest.set(p.destPath, p);
-      emit("nav",             out);
-      emit("buildInit",       out);
-      emit("markdownInit",    out);
-      emit("deriveRedirects", out);
     },
   },
 
@@ -286,7 +269,7 @@ const TASKS = {
       state.site.navTree = navTree;
       return { sidebar: renderSidebar(state.site) };
     },
-    submit(out, emit) { emit("dispatch", out); },
+    submit() {},
   },
 
   // Pre-renders the config-only chrome (SVG sprites, header, search footer,
@@ -299,7 +282,7 @@ const TASKS = {
     execute(_, ctx, state) {
       return { initData: buildInitConfig(state.site) };
     },
-    submit(out, emit) { emit("dispatch", out); },
+    submit() {},
   },
 
   // Link-table build + markdown-it assembly. Only needs discover (pages +
@@ -317,9 +300,7 @@ const TASKS = {
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       return {};
     },
-    submit(_, emit) {
-      emit("seo", {});
-    },
+    submit() {},
   },
 
   seo: {
@@ -332,7 +313,7 @@ const TASKS = {
       state.site.seoLogoUrl   = seoLogoUrl;
       return {};
     },
-    submit(_, emit) { emit("dispatch", {}); },
+    submit() {},
   },
 
   loadData: {
@@ -344,7 +325,7 @@ const TASKS = {
       state.site.bookData = data.book ?? null;
       return {};
     },
-    submit(_, emit) { },
+    submit() {},
   },
 
   // Mutates bookData._chapters with refs into state.pages. Identity-critical:
@@ -358,7 +339,7 @@ const TASKS = {
       resolveBookChapters(state.site.bookData, state.pages);
       return {};
     },
-    submit(_, emit) { emit("writePdf", {}); },
+    submit() {},
   },
 
   // Can run in parallel with nav/markdownInit -- only needs pages + config,
@@ -370,7 +351,7 @@ const TASKS = {
     execute(_, ctx, state) {
       return { stubs: deriveRedirectStubs(state.pages, state.site) };
     },
-    submit(out, emit) { emit("writeAux", out); emit("dispatch", out); },
+    submit() {},
   },
 
   // Deferred to after dispatch so it runs while the main thread is idle
@@ -381,10 +362,7 @@ const TASKS = {
     execute(_, ctx, state) {
       return { urls: deriveSitemapUrls(state.pages, state.site) };
     },
-    submit(out, emit) {
-      emit("writeAux", out);
-      emit("resolveBookChapters", {});
-    },
+    submit() {},
   },
 
   // ── Render fan-out ─────────────────────────────────────────────────────────
@@ -428,34 +406,26 @@ const TASKS = {
       const sharedSAB = packShared(shared);
       return { chunks, sharedSAB };
     },
-    submit(out, emit, _state, scheduler) {
+    submit(out, _state, scheduler) {
       const N = out.chunks.length;
-      emit("deriveSitemap", {});
-      emit("prepDest",      {});
 
-      // renderJoin is a main-thread barrier — tracked by the push scheduler.
-      scheduler.register("renderJoin", {
+      // Register task definitions for dynamic tasks.  The SAB already has
+      // pre-reserved slots and dep-count edges for render:i → renderJoin;
+      // registerDynamicRender (called by dispatchRender) populates them.
+      scheduler.tasks.set("renderJoin", {
         expected: Array.from({ length: N }, (_, i) => `render:${i}`),
         runOnMain: true,
         execute() { return {}; },
-        submit(_, emit) {
-          emit("write",      {});
-          emit("writePdf",   {});
-          emit("searchData", {});
-        },
+        submit() {},
       });
 
-      // render:i tasks are worker-pulled from the SAB.  Register their
-      // submit() with the scheduler (so merge + emit fires when the main
-      // thread processes the output message) but don't seed them through
-      // the push scheduler.
       for (let i = 0; i < N; i++) {
-        scheduler.registerWorkerTask(`render:${i}`, {
+        scheduler.tasks.set(`render:${i}`, {
           expected: [],
           handler:  "render",
           consolidate: true,
           ganttSection: "Render",
-          submit(renderOut, emit, state) {
+          submit(renderOut, state) {
             for (const r of renderOut.pages) {
               const p = state.pageByDest.get(r.destPath);
               if (!p) continue;
@@ -464,12 +434,11 @@ const TASKS = {
               if (r.offlineHtml !== undefined) p.offlineHtml = r.offlineHtml;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
             }
-            emit("renderJoin", {});
           },
         });
       }
 
-      // Write SAB entries, broadcast chunk data, set render tasks READY.
+      scheduler.addDynamicTasks(N + 1);
       scheduler.dispatchRender(out.chunks, out.sharedSAB);
     },
   },
@@ -500,7 +469,7 @@ const TASKS = {
         baseurl:   String(state.site.config.baseurl || ""),
       });
     },
-    submit(out, emit) { emit("writeAux", out); },
+    submit() {},
   },
 
   // Write search-data.json. Depends on renderJoin (pages have
@@ -513,7 +482,7 @@ const TASKS = {
       if (ctx.opts.dryRun) return { entries: 0, json: "" };
       return writeSearchData(state.pages, state.site, ctx.destRoot);
     },
-    submit(out, emit) { emit("writeAux", out); },
+    submit() {},
   },
 
   // Write redirect stubs + sitemap/robots. Waits for write (pages on disk),
@@ -530,9 +499,7 @@ const TASKS = {
       ]);
       return { redirectStats, sitemapStats, searchStats };
     },
-    submit(out, emit) {
-      emit("writeOffline", out);
-    },
+    submit() {},
   },
 
   // Produce _site-offline/. Runs in parallel with writePdf on the main thread;
@@ -650,6 +617,7 @@ export async function runBuild(opts) {
   pool.onWorkerDone     = (msg) => scheduler._onWorkerDone(msg);
   pool.onWorkerError    = (msg) => scheduler._onWorkerError(msg);
   pool.onWarmInitTiming = (msg) => scheduler._onWarmInitTiming(msg);
+  pool.onMainTaskReady  = ()    => scheduler._onMainTaskReady();
 
   pool.sendInit(sab, taskMeta, ctx, idMapping);
 

@@ -1,13 +1,14 @@
-// Task-graph scheduler for the tbdocs build pipeline.  Phase 6: main-thread
-// tasks still use the push-based pending/ready/flush mechanism; worker tasks
-// are pulled from the scheduling SAB.  A bridge in _onDone() updates the SAB
-// after each main-thread task so downstream worker tasks become READY
-// immediately.  See PLAN-sab-pull-scheduler.md §Phase 6.
+// Task-graph scheduler for the tbdocs build pipeline.  Phase 7: main-thread
+// tasks scan the scheduling SAB for READY work and claim via CAS; worker
+// tasks are pulled from the SAB by workers (Phase 6).  The push-based
+// pending/ready/emit/flush mechanism is removed entirely.
+// See PLAN-sab-pull-scheduler.md §Phase 7.
 
 import pc from "picocolors";
 import {
   onTaskDone as sabOnTaskDone,
   registerDynamicRender, packChunkData, activateRenderTasks,
+  READY, CLAIMED, DONE, F_RUN_ON_MAIN,
 } from "./sab-scheduler.mjs";
 
 export class SharedState {
@@ -21,45 +22,24 @@ export class Scheduler {
   constructor({ pool, tasks, views, idMapping }) {
     this.pool       = pool;
     this.tasks      = new Map(Object.entries(tasks));
-    this.pending    = new Map();   // only main-thread tasks
-    this.ready      = [];
-    this.results    = new Map();
+    this.results    = new Map();   // task name → output
     this.timings    = new Map();
     this.state      = new SharedState();
-    this.inFlight   = 0;           // main-thread tasks currently executing
     this._views     = views;
     this._idMapping = idMapping;
 
-    // Count static worker tasks (SAB-tracked, not on_demand).
-    this._workerRemaining = 0;
+    // Count non-on_demand static tasks for completion detection.
+    // Dynamic tasks (render:i, renderJoin) are added via addDynamicTasks().
+    this._remaining = 0;
     for (const [, def] of this.tasks) {
-      if (!def.runOnMain && !def.on_demand) this._workerRemaining++;
+      if (!def.on_demand) this._remaining++;
     }
+
+    this._scanning          = false;
+    this._mainScanScheduled = false;
+    this._finished          = false;
 
     [this._doneP, this._doneResolve, this._doneReject] = deferred();
-
-    // Only main-thread tasks participate in the push scheduler's
-    // pending/ready/flush mechanism.
-    for (const [id, def] of this.tasks) {
-      if (def.runOnMain) this._initPending(id, def);
-    }
-  }
-
-  _initPending(id, def) {
-    this.pending.set(id, { expected: def.expected.length, received: new Map() });
-  }
-
-  // Register a new main-thread task (used by dispatch.submit for renderJoin).
-  register(id, def) {
-    this.tasks.set(id, def);
-    if (def.runOnMain) this._initPending(id, def);
-  }
-
-  // Register a worker task definition (for submit() lookup) without adding
-  // it to the push scheduler's pending map.  Increments _workerRemaining.
-  registerWorkerTask(id, def) {
-    this.tasks.set(id, def);
-    this._workerRemaining++;
   }
 
   // Write render SAB entries, broadcast chunk data, and activate tasks.
@@ -71,125 +51,154 @@ export class Scheduler {
     activateRenderTasks(this._views, this._idMapping, N);
   }
 
-  // Seed a freshly-registered main-thread task directly.
-  seed(id, inputs) {
-    this.pending.delete(id);
-    this.ready.push({ id, def: this.tasks.get(id), inputs });
-    this._flush();
-  }
-
-  emit(targetId, data, sourceId) {
-    const entry = this.pending.get(targetId);
-    if (!entry) {
-      // Worker task or already-dispatched — SAB handles readiness.
-      if (this.tasks.has(targetId)) return;
-      throw new Error(`unknown or already-dispatched task: ${targetId}`);
-    }
-    entry.received.set(sourceId, data);
-    if (entry.received.size === entry.expected) {
-      this.pending.delete(targetId);
-      const def = this.tasks.get(targetId);
-      this.ready.push({ id: targetId, def, inputs: Object.fromEntries(entry.received) });
-      this._flush();
-    }
+  // Increment remaining-task count for dynamically-registered tasks.
+  addDynamicTasks(count) {
+    this._remaining += count;
   }
 
   async start(ctx) {
     this._ctx = ctx;
-    for (const [id, def] of this.tasks) {
-      if (def.expected.length === 0 && !def.on_demand) {
-        this.pending.delete(id);
-        // Only seed main-thread tasks; worker seeds are already READY in
-        // the SAB (set by allocSchedulerSAB).
-        if (def.runOnMain) this.ready.push({ id, def, inputs: {} });
-      }
-    }
-    this._flush();
+    this._scheduleMainScan();
     return this._doneP;
   }
 
-  _flush() {
-    while (this.ready.length > 0) this._run(this.ready.shift());
+  // ── Main-thread SAB scan (replaces _flush / _run) ─────────────────────────
+
+  _scheduleMainScan() {
+    if (this._mainScanScheduled) return;
+    this._mainScanScheduled = true;
+    // setImmediate lets pending worker messages drain before scanning.
+    setImmediate(() => {
+      this._mainScanScheduled = false;
+      this._mainScan();
+    });
   }
 
-  _run(task) {
-    const start = Date.now();
-    this.inFlight++;
-    // Phase 6: only main-thread tasks reach _run().  Worker tasks are
-    // SAB-pulled and never enter the ready queue.
-    const p = Promise.resolve(task.def.execute(task.inputs, this._ctx, this.state));
-    p.then(
-      (output) => this._onDone(task, output, start),
-      (err)    => this._onError(task, err),
-    );
+  async _mainScan() {
+    if (this._scanning || this._finished) return;
+    this._scanning = true;
+    try {
+      while (this._remaining > 0 && !this._finished) {
+        const claimed = this._claimMainTask();
+        if (!claimed) break;
+        await this._executeMainTask(claimed);
+      }
+    } finally {
+      this._scanning = false;
+    }
   }
 
-  _onDone(task, output, start) {
-    const end = Date.now();
-    const timing = { start, end };
+  // Scan the SAB for a READY main-thread task whose predecessor outputs are
+  // all available in the results map.  Returns { taskIdx, name, def, inputs }
+  // or null if nothing is claimable.
+  _claimMainTask() {
+    const views = this._views;
+    const start = Atomics.load(views.firstReady, 0);
+    const count = Atomics.load(views.taskCount, 0);
+    for (let i = start; i < count; i++) {
+      if (Atomics.load(views.status, i) !== READY) continue;
+      if (!(Atomics.load(views.flags, i) & F_RUN_ON_MAIN)) continue;
+      if (Atomics.compareExchange(views.status, i, READY, CLAIMED) !== READY) continue;
+
+      const name = this._idMapping.idxToName[i];
+      const def  = this.tasks.get(name);
+      if (!def) {
+        Atomics.store(views.status, i, DONE);
+        continue;
+      }
+
+      const inputs = this._assembleInputs(def);
+      if (inputs === null) {
+        // Predecessor output not yet received (message in flight); release.
+        Atomics.store(views.status, i, READY);
+        continue;
+      }
+      return { taskIdx: i, name, def, inputs };
+    }
+    return null;
+  }
+
+  async _executeMainTask({ taskIdx, name, def, inputs }) {
+    const views = this._views;
+    const t0 = Date.now();
+    let output;
+    try {
+      output = await def.execute(inputs, this._ctx, this.state);
+    } catch (err) {
+      this._abort(name, err);
+      return;
+    }
+    if (this._finished) return;
+    const t1 = Date.now();
+
+    // Timing.
+    const timing = { start: t0, end: t1 };
     if (output?.workerStart != null) { timing.workerStart = output.workerStart; timing.workerEnd = output.workerEnd; }
     if (output?.lane != null) timing.lane = output.lane;
-    if (task.def.consolidate)  timing.consolidate  = true;
-    if (task.def.ganttSection) timing.ganttSection = task.def.ganttSection;
-    this.timings.set(task.id, timing);
-    this.results.set(task.id, output);
-    this.inFlight--;
-    task.def.submit(
-      output,
-      (tgt, data) => this.emit(tgt, data, task.id),
-      this.state,
-      this,
-    );
+    if (def.consolidate)  timing.consolidate  = true;
+    if (def.ganttSection) timing.ganttSection = def.ganttSection;
+    this.timings.set(name, timing);
 
-    // Bridge: update the SAB so downstream worker tasks become READY
-    // without waiting for the push scheduler's _flush().
-    const taskIdx = this._idMapping.nameToIdx.get(task.id);
-    if (taskIdx != null) {
-      const { readyCount } = sabOnTaskDone(this._views, taskIdx, -1);
-      if (readyCount > 0) {
-        Atomics.add(this._views.notify, 0, 1);
-        Atomics.notify(this._views.notify, 0, readyCount);
-      }
+    // Store result.
+    this.results.set(name, output);
+
+    // State mutation.
+    def.submit(output, this.state, this);
+
+    // Update SAB: mark DONE, decrement successor dep counts.
+    const { readyCount } = sabOnTaskDone(views, taskIdx, -1);
+    if (readyCount > 0) {
+      Atomics.add(views.notify, 0, 1);
+      Atomics.notify(views.notify, 0, readyCount);
     }
 
-    this._checkDone();
+    this._remaining--;
+    if (this._remaining === 0) this._finish();
   }
 
-  // Called by the pool's message handler when a worker posts { done }.
+  _assembleInputs(def) {
+    const inputs = {};
+    for (const predName of def.expected) {
+      if (!this.results.has(predName)) return null;
+      inputs[predName] = this.results.get(predName);
+    }
+    return inputs;
+  }
+
+  // ── Worker output handling ────────────────────────────────────────────────
+
   _onWorkerDone({ done: taskIdx, output, timing, lane }) {
     const name = this._idMapping.idxToName[taskIdx];
     const def  = this.tasks.get(name);
-    if (!def) return;
 
+    // Timing.
     const t = { start: timing.start, end: timing.end };
     if (output?.workerStart != null) { t.workerStart = output.workerStart; t.workerEnd = output.workerEnd; }
     if (lane != null) t.lane = lane;
-    if (def.consolidate)  t.consolidate  = true;
-    if (def.ganttSection) t.ganttSection = def.ganttSection;
+    if (def?.consolidate)  t.consolidate  = true;
+    if (def?.ganttSection) t.ganttSection = def.ganttSection;
     this.timings.set(name, t);
+
+    // Store result.
     this.results.set(name, output);
 
-    def.submit(
-      output,
-      (tgt, data) => this.emit(tgt, data, name),
-      this.state,
-      this,
-    );
+    // State mutation.
+    if (def) def.submit(output, this.state, this);
 
-    this._workerRemaining--;
-    this._checkDone();
+    this._remaining--;
+    if (this._remaining === 0) {
+      this._finish();
+      return;
+    }
+
+    // A newly-stored result may satisfy a previously-blocked main task.
+    this._scheduleMainScan();
   }
 
   _onWorkerError({ taskFailed: taskIdx, message, stack }) {
     const name = this._idMapping.idxToName[taskIdx] ?? `task#${taskIdx}`;
     const err  = Object.assign(new Error(message), { stack });
-
-    // Signal workers to stop.
-    Atomics.store(this._views.buildDone, 0, 2);
-    Atomics.add(this._views.notify, 0, 1);
-    Atomics.notify(this._views.notify, 0, Infinity);
-
-    this._doneReject(new Error(`task ${name} failed`, { cause: err }));
+    this._abort(name, err);
   }
 
   _onWarmInitTiming({ timing, lane }) {
@@ -202,26 +211,31 @@ export class Scheduler {
     });
   }
 
-  _checkDone() {
-    if (this.inFlight === 0 && this._workerRemaining === 0
-        && this.ready.length === 0 && this.pending.size === 0) {
-      // Signal workers to exit.
-      Atomics.store(this._views.buildDone, 0, 1);
-      Atomics.add(this._views.notify, 0, 1);
-      Atomics.notify(this._views.notify, 0, Infinity);
-
-      this._doneResolve(this.results);
-    }
+  _onMainTaskReady() {
+    this._scheduleMainScan();
   }
 
-  _onError(task, err) {
-    // Signal workers to stop.
+  // ── Completion / abort ────────────────────────────────────────────────────
+
+  _finish() {
+    if (this._finished) return;
+    this._finished = true;
+    Atomics.store(this._views.buildDone, 0, 1);
+    Atomics.add(this._views.notify, 0, 1);
+    Atomics.notify(this._views.notify, 0, Infinity);
+    this._doneResolve(this.results);
+  }
+
+  _abort(taskName, err) {
+    if (this._finished) return;
+    this._finished = true;
     Atomics.store(this._views.buildDone, 0, 2);
     Atomics.add(this._views.notify, 0, 1);
     Atomics.notify(this._views.notify, 0, Infinity);
-
-    this._doneReject(new Error(`task ${task.id} failed`, { cause: err }));
+    this._doneReject(new Error(`task ${taskName} failed`, { cause: err }));
   }
+
+  // ── Summary ───────────────────────────────────────────────────────────────
 
   summary() {
     const sorted = [...this.timings.entries()]
