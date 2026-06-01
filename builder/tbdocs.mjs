@@ -687,7 +687,26 @@ async function injectGanttChart(pages, destRoot, svgContent) {
     const ls = `font-size:0.85em;float:right;margin-left:1em`;
     const downloadLink = `<a href="${dataUrl}" download="gantt.svg" style="${ls}">Download SVG</a>`;
     const copyLink = `<a href="javascript:;" onclick="navigator.clipboard.writeText(document.querySelector('#gantt-chart>svg').outerHTML)" style="${ls}">Copy SVG</a>`;
-    const header = `<style>@media print{#gantt-controls{display:none}}</style><div id="gantt-controls" style="overflow:hidden">${downloadLink}${copyLink}</div>`;
+    const downloadPng = `<a href="javascript:;" onclick="_ganttPng(1)" style="${ls}">Download PNG</a>`;
+    const copyPng = `<a href="javascript:;" onclick="_ganttPng(0)" style="${ls}">Copy PNG</a>`;
+    const pngFn = [
+      `<script>function _ganttPng(dl){`,
+      `var svg=document.querySelector('#gantt-chart>svg');if(!svg)return;`,
+      `var vb=svg.viewBox.baseVal,w=2048,h=Math.round(vb.height*(w/vb.width));`,
+      `var data=new XMLSerializer().serializeToString(svg);`,
+      `var blob=new Blob([data],{type:'image/svg+xml;charset=utf-8'});`,
+      `var url=URL.createObjectURL(blob);var img=new Image();`,
+      `img.onload=function(){`,
+      `var c=document.createElement('canvas');c.width=w;c.height=h;`,
+      `var ctx=c.getContext('2d');`,
+      `ctx.drawImage(img,0,0,w,h);URL.revokeObjectURL(url);`,
+      `c.toBlob(function(b){`,
+      `if(dl){var a=document.createElement('a');a.href=URL.createObjectURL(b);`,
+      `a.download='gantt.png';a.click();URL.revokeObjectURL(a.href)}`,
+      `else{navigator.clipboard.write([new ClipboardItem({'image/png':b})])}`,
+      `},'image/png')};img.src=url}<` + `/script>`,
+    ].join("");
+    const header = `${pngFn}<style>@media print{#gantt-controls{display:none}}</style><div id="gantt-controls" style="overflow:hidden">${downloadLink}${copyLink}${downloadPng}${copyPng}</div>`;
     const zoomScript = [
       `<script>(function(){`,
       `var c=document.getElementById('gantt-chart');`,
