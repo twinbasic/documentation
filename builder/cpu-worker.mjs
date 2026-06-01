@@ -18,7 +18,7 @@ import { deriveOfflinePage, deriveOfflinePageCached,
 
 import {
   createViews, scanAndClaim, onTaskDone,
-  READY, F_ON_DEMAND, F_RUN_ON_MAIN,
+  READY, DONE, F_ON_DEMAND, F_RUN_ON_MAIN,
   F_RUN_WHEN_IDLE, F_UNIQUE_PER_WORKER,
   MAX_LANES,
 } from "./sab-scheduler.mjs";
@@ -43,6 +43,34 @@ const handlers = {
   async warmInit() {
     const { initHighlighter } = await import("./highlight.mjs");
     await initHighlighter();
+    return {};
+  },
+
+  async renderEnvInit() {
+    while (!_sharedSAB) {
+      await new Promise(resolve => setImmediate(resolve));
+    }
+
+    const { siteData, initData, linkTablesData, staticFilesArr,
+            baseurl, buildInfo, sitePathsArr,
+            skipOffline } = unpackShared(_sharedSAB);
+
+    const { initHighlighter } = await import("./highlight.mjs");
+    const highlighter = await initHighlighter();
+    const linkTables  = reconstructLinkTables(linkTablesData);
+    const staticFiles = new Set(staticFilesArr);
+    const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
+    const site        = { ...siteData, markdown, buildInfo };
+
+    let offlineBase = null;
+    if (!skipOffline) {
+      offlineBase = {
+        sitePaths: new Set(sitePathsArr),
+        baseurl:   normalizeBaseurl(baseurl),
+      };
+    }
+
+    _renderEnv = { site, initData, offlineBase };
     return {};
   },
 
@@ -73,13 +101,6 @@ const handlers = {
   async render(taskIdx) {
     const workerStart = Date.now();
 
-    // The renderData broadcast may not yet have been processed (it was
-    // posted before the SAB set these tasks READY, but message delivery
-    // is async).  Yield until the data arrives.
-    while (!_chunkDataSAB || !_sharedSAB) {
-      await new Promise(resolve => setImmediate(resolve));
-    }
-
     const chunkIndex = taskIdx - idMapping.DYNAMIC_BASE;
     const offset = Atomics.load(views.chunkOffset, chunkIndex);
     const length = Atomics.load(views.chunkLength, chunkIndex);
@@ -87,7 +108,7 @@ const handlers = {
       new TextDecoder().decode(new Uint8Array(_chunkDataSAB, offset, length)),
     );
 
-    const env = await getOrInitRenderEnv(_sharedSAB);
+    const env = _renderEnv;
 
     await renderPhase(chunk, env.site);
     await templatePhase(chunk, env.site, env.initData);
@@ -138,37 +159,7 @@ const handlers = {
   },
 };
 
-// ── Cached per-worker render environment ────────────────────────────────────
-
-let _renderSAB = null;
 let _renderEnv = null;
-
-async function getOrInitRenderEnv(sharedSAB) {
-  if (_renderSAB === sharedSAB) return _renderEnv;
-
-  const { siteData, initData, linkTablesData, staticFilesArr,
-          baseurl, buildInfo, sitePathsArr,
-          skipOffline } = unpackShared(sharedSAB);
-
-  const { initHighlighter } = await import("./highlight.mjs");
-  const highlighter = await initHighlighter();
-  const linkTables  = reconstructLinkTables(linkTablesData);
-  const staticFiles = new Set(staticFilesArr);
-  const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
-  const site        = { ...siteData, markdown, buildInfo };
-
-  let offlineBase = null;
-  if (!skipOffline) {
-    offlineBase = {
-      sitePaths: new Set(sitePathsArr),
-      baseurl:   normalizeBaseurl(baseurl),
-    };
-  }
-
-  _renderSAB = sharedSAB;
-  _renderEnv = { site, initData, offlineBase };
-  return _renderEnv;
-}
 
 // ── Message handler (init + renderData only) ────────────────────────────────
 
@@ -180,7 +171,6 @@ parentPort.on("message", (msg) => {
     idMapping = msg.idMapping;
     _chunkDataSAB = null;
     _sharedSAB    = null;
-    _renderSAB    = null;
     _renderEnv    = null;
     pullLoop();
     return;
@@ -199,8 +189,24 @@ function findIdleTask(views, lane) {
   for (let i = 0; i < count; i++) {
     if (!(Atomics.load(views.flags, i) & F_RUN_WHEN_IDLE)) continue;
     if (Atomics.load(views.flags, i) & F_UNIQUE_PER_WORKER) {
-      if (Atomics.load(views.perWorkerDone, i * MAX_LANES + lane) === 0)
-        return i;
+      if (Atomics.load(views.perWorkerDone, i * MAX_LANES + lane) !== 0)
+        continue;
+      const meta = taskMeta[i];
+      if (meta?.expectedIdxs) {
+        let skip = false;
+        for (const predIdx of meta.expectedIdxs) {
+          if (Atomics.load(views.status, predIdx) !== DONE) { skip = true; break; }
+        }
+        if (skip) continue;
+      }
+      if (meta?.perWorkerDeps) {
+        let skip = false;
+        for (const depIdx of meta.perWorkerDeps) {
+          if (Atomics.load(views.perWorkerDone, depIdx * MAX_LANES + lane) === 0) { skip = true; break; }
+        }
+        if (skip) continue;
+      }
+      return i;
     } else {
       if (Atomics.load(views.status, i) !== READY) continue;
       if (Atomics.compareExchange(views.status, i, READY, CLAIMED) === READY)
@@ -232,7 +238,8 @@ async function pullLoop() {
         }
         Atomics.store(views.perWorkerDone, idleTask * MAX_LANES + myLane, 1);
         parentPort.postMessage({
-          warmInit: true,
+          perWorkerTiming: true,
+          taskName: idleMeta.name,
           timing:  { start: idleStart, end: Date.now() },
           lane:    myLane,
         });
@@ -265,14 +272,72 @@ async function pullLoop() {
       const depFlags = Atomics.load(views.flags, unsatisfied);
 
       if ((depFlags & F_ON_DEMAND) && !(depFlags & F_RUN_ON_MAIN)) {
-        // On-demand worker dep (warmInit).  Release the claimed task so
-        // other workers can pick it up, then execute the dep inline.
+        const depMeta = taskMeta[unsatisfied];
+
+        // Check the dep's own perWorkerDeps (e.g. renderEnvInit → warmInit).
+        let nestedUnsatisfied = null;
+        if (depMeta?.perWorkerDeps) {
+          for (const nestedIdx of depMeta.perWorkerDeps) {
+            if (Atomics.load(views.perWorkerDone, nestedIdx * MAX_LANES + myLane) === 0) {
+              nestedUnsatisfied = nestedIdx;
+              break;
+            }
+          }
+        }
+
+        if (nestedUnsatisfied !== null) {
+          const nestedFlags = Atomics.load(views.flags, nestedUnsatisfied);
+          if ((nestedFlags & F_ON_DEMAND) && !(nestedFlags & F_RUN_ON_MAIN)) {
+            Atomics.store(views.status, taskIdx, READY);
+            Atomics.add(views.notify, 0, 1);
+            Atomics.notify(views.notify, 0, 1);
+
+            const nestedMeta  = taskMeta[nestedUnsatisfied];
+            const nestedStart = Date.now();
+            try {
+              await handlers[nestedMeta.handler]();
+            } catch (err) {
+              parentPort.postMessage({ taskFailed: nestedUnsatisfied, message: err.message, stack: err.stack });
+              return;
+            }
+            Atomics.store(views.perWorkerDone, nestedUnsatisfied * MAX_LANES + myLane, 1);
+            parentPort.postMessage({
+              perWorkerTiming: true,
+              taskName: nestedMeta.name,
+              timing:  { start: nestedStart, end: Date.now() },
+              lane:    myLane,
+            });
+            continue;
+          }
+          Atomics.store(views.status, taskIdx, READY);
+          Atomics.add(views.notify, 0, 1);
+          Atomics.notify(views.notify, 0, 1);
+          continue;
+        }
+
+        // Check preconditions (expected predecessors on the dep).
+        let precondFailed = false;
+        if (depMeta?.expectedIdxs) {
+          for (const predIdx of depMeta.expectedIdxs) {
+            if (Atomics.load(views.status, predIdx) !== DONE) {
+              precondFailed = true;
+              break;
+            }
+          }
+        }
+        if (precondFailed) {
+          Atomics.store(views.status, taskIdx, READY);
+          Atomics.add(views.notify, 0, 1);
+          Atomics.notify(views.notify, 0, 1);
+          continue;
+        }
+
+        // All dep's deps satisfied. Release original task, execute the dep.
         Atomics.store(views.status, taskIdx, READY);
         Atomics.add(views.notify, 0, 1);
         Atomics.notify(views.notify, 0, 1);
 
-        const depMeta   = taskMeta[unsatisfied];
-        const depStart  = Date.now();
+        const depStart = Date.now();
         try {
           await handlers[depMeta.handler]();
         } catch (err) {
@@ -282,7 +347,8 @@ async function pullLoop() {
         Atomics.store(views.perWorkerDone, unsatisfied * MAX_LANES + myLane, 1);
 
         parentPort.postMessage({
-          warmInit: true,
+          perWorkerTiming: true,
+          taskName: depMeta.name,
           timing:  { start: depStart, end: Date.now() },
           lane:    myLane,
         });

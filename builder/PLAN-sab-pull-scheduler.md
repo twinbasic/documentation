@@ -1066,8 +1066,7 @@ The worker simply verifies each predecessor is DONE:
 
 ```
 // About to run on-demand unique_per_worker dep D:
-for each pred of D.expected:
-  predIdx = nameToIdx[pred]
+for each predIdx of taskMeta[D].expectedIdxs:
   if Atomics.load(views.status, predIdx) !== DONE:
     // Precondition not met; release original task and re-scan.
     Atomics.store(views.status, taskIdx, READY)

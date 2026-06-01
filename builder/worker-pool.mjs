@@ -13,7 +13,7 @@ export class WorkerPool {
     // Callbacks wired by the caller after construction.
     this.onWorkerDone      = null;      // ({ done, output, timing, lane }) => void
     this.onWorkerError     = null;      // ({ taskFailed, message, stack }) => void
-    this.onWarmInitTiming  = null;      // ({ warmInit, timing, lane }) => void
+    this.onPerWorkerTiming = null;      // ({ perWorkerTiming, taskName, timing, lane }) => void
     this.onMainTaskReady   = null;      // () => void
 
     this._workers = Array.from({ length: size }, (_, i) => this._spawn(i));
@@ -24,7 +24,7 @@ export class WorkerPool {
     const w = new Worker(this._workerUrl, { workerData: { lane, spawnTime } });
     w.on("message", (msg) => {
       if (msg.coldBoot) { this.bootTimings.push({ lane, type: "cold", ...msg.coldBoot }); return; }
-      if (msg.warmInit)       { this.onWarmInitTiming?.(msg); return; }
+      if (msg.perWorkerTiming) { this.onPerWorkerTiming?.(msg); return; }
       if (msg.done != null)   { this.onWorkerDone?.(msg); return; }
       if (msg.taskFailed != null) { this.onWorkerError?.(msg); return; }
       if (msg.mainTaskReady || msg.triggerMainTask != null) { this.onMainTaskReady?.(); return; }

@@ -245,6 +245,20 @@ const TASKS = {
     submit() {},
   },
 
+  // On-demand per-worker render environment init: unpacks the shared
+  // payload, reconstructs link-table Maps, instantiates markdown-it.
+  // Depends on dispatch (sharedSAB must exist) and warmInit (Shiki
+  // must be loaded). Moves the hidden first-chunk init cost off the
+  // render hot path.
+  renderEnvInit: {
+    expected: ["dispatch"],
+    perWorkerDeps: ["warmInit"],
+    on_demand: true,
+    unique_per_worker: true,
+    handler: "renderEnvInit",
+    submit() {},
+  },
+
   // ── Main-thread spine ─────────────────────────────────────────────────────
 
   discover: {
@@ -617,7 +631,7 @@ export async function runBuild(opts) {
 
   pool.onWorkerDone     = (msg) => scheduler._onWorkerDone(msg);
   pool.onWorkerError    = (msg) => scheduler._onWorkerError(msg);
-  pool.onWarmInitTiming = (msg) => scheduler._onWarmInitTiming(msg);
+  pool.onPerWorkerTiming = (msg) => scheduler._onPerWorkerTiming(msg);
   pool.onMainTaskReady  = ()    => scheduler._onMainTaskReady();
 
   pool.sendInit(sab, taskMeta, ctx, idMapping);

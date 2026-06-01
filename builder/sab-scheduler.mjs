@@ -179,13 +179,37 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
   Atomics.store(views.edgeCount, 0, edgePos);
 
   // 5. Build taskMeta
-  const warmInitIdx = nameToIdx.get("warmInit");
-  const taskMeta    = new Array(totalTasks).fill(null);
+  const renderEnvInitIdx = nameToIdx.get("renderEnvInit");
+  const taskMeta         = new Array(totalTasks).fill(null);
 
   for (const [name, def] of Object.entries(taskDefs)) {
+    // Map perWorkerDeps from definition (if any) through nameToIdx.
+    let perWorkerDeps = [];
+    if (def.perWorkerDeps) {
+      perWorkerDeps = def.perWorkerDeps.map(depName => {
+        const depIdx = nameToIdx.get(depName);
+        if (depIdx == null)
+          throw new Error(`"${name}" has unknown perWorkerDep "${depName}"`);
+        return depIdx;
+      });
+    }
+
+    // Map expected predecessors to indices for precondition checking
+    // on unique_per_worker tasks (Phase 10).
+    let expectedIdxs = [];
+    if (def.unique_per_worker && def.expected.length > 0) {
+      expectedIdxs = def.expected.map(predName => {
+        const predIdx = nameToIdx.get(predName);
+        if (predIdx == null)
+          throw new Error(`"${name}" has unknown expected predecessor "${predName}"`);
+        return predIdx;
+      });
+    }
+
     taskMeta[nameToIdx.get(name)] = {
       handler:        def.handler ?? name,
-      perWorkerDeps:  [],
+      perWorkerDeps,
+      expectedIdxs,
       name,
     };
   }
@@ -193,7 +217,8 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
   for (let i = 0; i < maxChunks; i++) {
     taskMeta[DYNAMIC_BASE + i] = {
       handler:        "render",
-      perWorkerDeps:  warmInitIdx != null ? [warmInitIdx] : [],
+      perWorkerDeps:  renderEnvInitIdx != null ? [renderEnvInitIdx] : [],
+      expectedIdxs:   [],
       name:           `render:${i}`,
     };
   }
@@ -201,6 +226,7 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
   taskMeta[RENDER_JOIN_IDX] = {
     handler:        "renderJoin",
     perWorkerDeps:  [],
+    expectedIdxs:   [],
     name:           "renderJoin",
   };
 

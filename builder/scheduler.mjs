@@ -201,8 +201,8 @@ export class Scheduler {
     this._abort(name, err);
   }
 
-  _onWarmInitTiming({ timing, lane }) {
-    this.timings.set(`warmInit:w${lane}`, {
+  _onPerWorkerTiming({ taskName, timing, lane }) {
+    this.timings.set(`${taskName}:w${lane}`, {
       start: timing.start, end: timing.end,
       workerStart: timing.start, workerEnd: timing.end,
       lane,
