@@ -1254,7 +1254,32 @@ dispatch. First render chunk per worker no longer shows an inflated
 wall-clock relative to subsequent chunks. Total render wall-clock
 is unchanged (the init cost moved, not eliminated).
 
-### Phase 11: Amortize chunk packing into discover I/O gaps
+### Phase 11: Amortize chunk packing into discover I/O gaps — DECLINED
+
+**Decision:** precondition is false; pages are mutated between
+discover and dispatch.
+
+The plan assumed page objects are NOT mutated between
+`discover.submit()` and `dispatch.submit()`, so JSON serialized
+during discover would be identical to what `JSON.stringify` would
+produce at pack time.  In practice, `nav` mutates every page in
+place (adding `navPath`, `breadcrumbs`, `children`, `navLevels`)
+and `seo` adds `seoTitle`, `seoFullTitle`, `seoCanonical`,
+`seoIsHome`.  Both run between discover and dispatch.  A debug
+assertion (`TBDOCS_DEBUG=1`) confirmed the mismatch immediately
+on the first chunk.
+
+The ~40 ms `packChunkData` cost is real but cannot be amortized
+into discover's I/O gaps without either (a) serializing only the
+discover-time fields and reconstructing the full page on the worker
+(fragile, couples the cache to every future spine mutation), or
+(b) re-serializing after the last mutation (which puts the work
+back on the critical path and defeats the purpose).  Neither is
+worth the complexity for a 40 ms saving.
+
+---
+
+*Original plan text retained below for reference.*
 
 `packChunkData` runs inside `dispatch.submit()`, after the dispatch
 timing window closes.  It JSON-serializes every chunk array (~858
