@@ -7,10 +7,18 @@ const COLORS = {
   Render: { light: "#b09cd8", dark: "#8066a8" },
   Write:  { light: "#e8a756", dark: "#c08030" },
   Boot:   { light: "#e57373", dark: "#c62828" },
+  Cold:   { light: "#6eb5d9", dark: "#3c7db0" },
+  Env:    { light: "#e8a756", dark: "#c08030" },
   Other:  { light: "#bbb",    dark: "#666"    },
 };
 
-const SECTION_W = 60;
+const SECTION_W = 24;
+
+const BOOT_STYLE = {
+  cold:          { label: "cold", cls: "cold" },
+  warmInit:      { label: "warm", cls: "boot" },
+  renderEnvInit: { label: "env",  cls: "env"  },
+};
 const SVG_W     = 900;
 const CHART_W   = SVG_W - SECTION_W - 20;
 const ROW_H     = 20;
@@ -92,26 +100,24 @@ export function renderGantt(grouped) {
   // Workers — one row per lane, individual task bars
   if (sortedLanes.length > 0) {
     o.push(`<line x1="0" y1="${y}" x2="${SVG_W}" y2="${y}" class="gg" stroke-width=".5"/>`);
+    const lx = Math.round(SECTION_W / 2);
+    const ly = rd(y + sortedLanes.length * ROW_H / 2);
+    o.push(`<text x="${lx}" y="${ly}" class="gs" font-size="12" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,${lx},${ly})">Workers</text>`);
     for (let li = 0; li < sortedLanes.length; li++) {
       const [, tasks] = sortedLanes[li];
       const ty = rd(y + ROW_H / 2 + 3.5);
       const by = rd(y + (ROW_H - BAR_H) / 2);
-      if (li === 0) o.push(`<text x="4" y="${ty}" class="gs" font-size="12">Workers</text>`);
-      const bootBars = [];
       for (const t of tasks) {
-        if (t._color === "Boot") { bootBars.push(t); continue; }
         const bx = rd(xOf(t.workerStart));
         const bw = rd(Math.max(xOf(t.workerEnd) - xOf(t.workerStart), 1));
-        o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="gb-${(t._color || "render").toLowerCase()}" rx="2"/>`);
-        const lbl = workerLabel(t);
-        if (lbl.length * CHAR_W + BAR_PAD * 2 <= bw)
-          o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
-      }
-      const bootH = Math.round(BAR_H * 0.75);
-      for (const t of bootBars) {
-        const bx = rd(xOf(t.workerStart));
-        const bw = rd(Math.max(xOf(t.workerEnd) - xOf(t.workerStart), 1));
-        o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${bootH}" class="gb-boot" rx="2"/>`);
+        let cls;
+        if (t._color === "Boot") {
+          const base = t.id.replace(/:.*/, "");
+          cls = `gb-${BOOT_STYLE[base]?.cls ?? "boot"}`;
+        } else {
+          cls = `gb-${(t._color || "render").toLowerCase()}`;
+        }
+        o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="${cls}" rx="2"/>`);
         const lbl = workerLabel(t);
         if (lbl.length * CHAR_W + BAR_PAD * 2 <= bw)
           o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
@@ -133,13 +139,15 @@ export function renderGantt(grouped) {
 function renderMainSection(o, section, tasks, y, xOf) {
   o.push(`<line x1="0" y1="${y}" x2="${SVG_W}" y2="${y}" class="gg" stroke-width=".5"/>`);
   const cls = `gb-${section.toLowerCase()}`;
+  const lx = Math.round(SECTION_W / 2);
+  const ly = rd(y + tasks.length * ROW_H / 2);
+  o.push(`<text x="${lx}" y="${ly}" class="gs" font-size="12" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,${lx},${ly})">${esc(section)}</text>`);
   for (let i = 0; i < tasks.length; i++) {
     const t = tasks[i];
     const bx = rd(xOf(t.start));
     const bw = rd(Math.max(xOf(t.end) - xOf(t.start), 1));
     const by = rd(y + (ROW_H - BAR_H) / 2);
     const ty = rd(y + ROW_H / 2 + 3.5);
-    if (i === 0) o.push(`<text x="4" y="${ty}" class="gs" font-size="12">${esc(section)}</text>`);
     o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="${cls}" rx="2"/>`);
     const lbl = taskLabel(t);
     const textW = lbl.length * CHAR_W;
@@ -179,7 +187,8 @@ function taskLabel(t) {
 }
 
 function workerLabel(t) {
-  return t.id.replace(/:.*/, "").replace(/ w\d+$/, "");
+  const base = t.id.replace(/:.*/, "").replace(/ w\d+$/, "");
+  return BOOT_STYLE[base]?.label ?? base;
 }
 
 function rd(n) { return Math.round(n * 10) / 10; }
