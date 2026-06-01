@@ -139,19 +139,18 @@ export class Scheduler {
     if (this._finished) return;
     const t1 = Date.now();
 
-    // Timing.
-    const timing = { start: t0, end: t1 };
-    if (output?.workerStart != null) { timing.workerStart = output.workerStart; timing.workerEnd = output.workerEnd; }
-    if (output?.lane != null) timing.lane = output.lane;
-    if (def.consolidate)  timing.consolidate  = true;
-    if (def.ganttSection) timing.ganttSection = def.ganttSection;
-    this.timings.set(name, timing);
-
     // Store result.
     this.results.set(name, output);
 
     // State mutation.
     def.submit(output, this.state, this);
+    const t3 = Date.now();
+
+    // Timing.
+    const timing = { start: t0, end: t1, t3 };
+    if (def.consolidate)  timing.consolidate  = true;
+    if (def.ganttSection) timing.ganttSection = def.ganttSection;
+    this.timings.set(name, timing);
 
     // Update SAB: mark DONE, decrement successor dep counts.
     const { readyCount } = sabOnTaskDone(views, taskIdx, -1);
@@ -181,8 +180,11 @@ export class Scheduler {
 
     // Timing.
     const t = { start: timing.start, end: timing.end };
-    if (output?.workerStart != null) { t.workerStart = output.workerStart; t.workerEnd = output.workerEnd; }
-    if (lane != null) t.lane = lane;
+    if (lane != null) {
+      t.workerStart = timing.start;
+      t.workerEnd   = timing.end;
+      t.lane = lane;
+    }
     if (def?.consolidate)  t.consolidate  = true;
     if (def?.ganttSection) t.ganttSection = def.ganttSection;
     this.timings.set(name, t);

@@ -101,31 +101,26 @@ const handlers = {
   },
 
   async scssLight() {
-    const workerStart = Date.now();
     const scssLightResult = await compileLightScss(ctx.srcRoot);
-    return { workerStart, workerEnd: Date.now(), scssLightResult };
+    return { scssLightResult };
   },
 
   async scssDark() {
-    const workerStart = Date.now();
     const scssDarkResult = await compileDarkScss(ctx.srcRoot);
-    return { workerStart, workerEnd: Date.now(), scssDarkResult };
+    return { scssDarkResult };
   },
 
   async mermaid() {
-    const workerStart = Date.now();
     const mermaidStats = await regenerateMermaid(ctx.srcRoot);
-    return { workerStart, workerEnd: Date.now(), mermaidStats };
+    return { mermaidStats };
   },
 
   async buildInfo() {
-    const workerStart = Date.now();
     const buildInfo = await captureBuildInfo();
-    return { workerStart, workerEnd: Date.now(), buildInfo };
+    return { buildInfo };
   },
 
   async render(taskIdx) {
-    const workerStart = Date.now();
 
     const chunkIndex = taskIdx - idMapping.DYNAMIC_BASE;
     const offset = Atomics.load(views.chunkOffset, chunkIndex);
@@ -184,9 +179,7 @@ const handlers = {
       }
     }
 
-    const workerEnd = Date.now();
     return {
-      workerStart, workerEnd,
       pages: chunk.map(p => ({
         destPath:        p.destPath,
         renderedContent: p.renderedContent,
@@ -277,8 +270,8 @@ async function pullLoop() {
       // Speculative: run idle-eligible tasks before sleeping
       const idleTask = findIdleTask(views, myLane);
       if (idleTask !== -1) {
-        const idleMeta  = taskMeta[idleTask];
-        const idleStart = Date.now();
+        const idleMeta = taskMeta[idleTask];
+        const t0 = Date.now();
         let idleResult;
         try {
           idleResult = await handlers[idleMeta.handler]();
@@ -286,11 +279,12 @@ async function pullLoop() {
           parentPort.postMessage({ taskFailed: idleTask, message: err.message, stack: err.stack });
           return;
         }
+        const t1 = Date.now();
         Atomics.store(views.perWorkerDone, idleTask * MAX_LANES + myLane, 1);
         parentPort.postMessage({
           perWorkerTiming: true,
           taskName: idleMeta.name,
-          timing:  { start: idleStart, end: Date.now() },
+          timing:  { start: t0, end: t1 },
           lane:    myLane,
           output:  idleResult,
         });
@@ -343,8 +337,8 @@ async function pullLoop() {
             Atomics.add(views.notify, 0, 1);
             Atomics.notify(views.notify, 0, 1);
 
-            const nestedMeta  = taskMeta[nestedUnsatisfied];
-            const nestedStart = Date.now();
+            const nestedMeta = taskMeta[nestedUnsatisfied];
+            const t0 = Date.now();
             let nestedResult;
             try {
               nestedResult = await handlers[nestedMeta.handler]();
@@ -352,11 +346,12 @@ async function pullLoop() {
               parentPort.postMessage({ taskFailed: nestedUnsatisfied, message: err.message, stack: err.stack });
               return;
             }
+            const t1 = Date.now();
             Atomics.store(views.perWorkerDone, nestedUnsatisfied * MAX_LANES + myLane, 1);
             parentPort.postMessage({
               perWorkerTiming: true,
               taskName: nestedMeta.name,
-              timing:  { start: nestedStart, end: Date.now() },
+              timing:  { start: t0, end: t1 },
               lane:    myLane,
               output:  nestedResult,
             });
@@ -390,7 +385,7 @@ async function pullLoop() {
         Atomics.add(views.notify, 0, 1);
         Atomics.notify(views.notify, 0, 1);
 
-        const depStart = Date.now();
+        const t0 = Date.now();
         let depResult;
         try {
           depResult = await handlers[depMeta.handler]();
@@ -398,12 +393,13 @@ async function pullLoop() {
           parentPort.postMessage({ taskFailed: unsatisfied, message: err.message, stack: err.stack });
           return;
         }
+        const t1 = Date.now();
         Atomics.store(views.perWorkerDone, unsatisfied * MAX_LANES + myLane, 1);
 
         parentPort.postMessage({
           perWorkerTiming: true,
           taskName: depMeta.name,
-          timing:  { start: depStart, end: Date.now() },
+          timing:  { start: t0, end: t1 },
           lane:    myLane,
           output:  depResult,
         });
@@ -424,7 +420,7 @@ async function pullLoop() {
       return;
     }
 
-    const start = Date.now();
+    const t0 = Date.now();
     let result;
     try {
       result = await handler(taskIdx);
@@ -433,6 +429,7 @@ async function pullLoop() {
       Atomics.store(views.status, taskIdx, 4); // FAILED
       return;
     }
+    const t1 = Date.now();
 
     // Post output BEFORE the SAB update (ordering constraint: the merge
     // message must arrive on the main thread before any downstream
@@ -440,7 +437,7 @@ async function pullLoop() {
     parentPort.postMessage({
       done:   taskIdx,
       output: result,
-      timing: { start, end: Date.now() },
+      timing: { start: t0, end: t1 },
       lane:   myLane,
     });
 

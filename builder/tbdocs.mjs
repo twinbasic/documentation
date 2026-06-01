@@ -659,11 +659,12 @@ function groupGanttTimings(timings) {
   const t0 = Math.min(...[...timings.values()].map(t => t.start));
 
   const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
-  for (const [id, { start, end, workerStart, workerEnd, lane, consolidate, ganttSection }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
+  for (const [id, { start, end, t3, workerStart, workerEnd, lane, consolidate, ganttSection }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
     if (id.endsWith("Join")) continue;
     const section = ganttSection ?? GANTT_SECTION[id] ?? "Other";
     if (!grouped.has(section)) grouped.set(section, []);
     const entry = { id, start: start - t0, end: end - t0 };
+    if (t3 != null) entry.t3 = t3 - t0;
     if (workerStart != null) { entry.workerStart = workerStart - t0; entry.workerEnd = workerEnd - t0; }
     if (lane != null) entry.lane = lane;
     if (consolidate)  entry.consolidate = true;
@@ -682,7 +683,35 @@ async function injectGanttChart(pages, destRoot, svgContent) {
     let html;
     try { html = await fs.readFile(htmlPath, "utf8"); }
     catch (e) { if (e.code !== "ENOENT") throw e; continue; }
-    const patched = html.replace("<!-- gantt-chart -->", svgContent);
+    const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
+    const ls = `font-size:0.85em;float:right;margin-left:1em`;
+    const downloadLink = `<a href="${dataUrl}" download="gantt.svg" style="${ls}">Download SVG</a>`;
+    const copyLink = `<a href="javascript:;" onclick="navigator.clipboard.writeText(document.querySelector('#gantt-chart>svg').outerHTML)" style="${ls}">Copy SVG</a>`;
+    const header = `<style>@media print{#gantt-controls{display:none}}</style><div id="gantt-controls" style="overflow:hidden">${downloadLink}${copyLink}</div>`;
+    const zoomScript = [
+      `<script>(function(){`,
+      `var c=document.getElementById('gantt-chart');`,
+      `if(!c)return;`,
+      `c.style.cursor='zoom-in';`,
+      `function toggle(){`,
+      `  var svg=c.querySelector('svg');`,
+      `  if(c.dataset.zoomed){`,
+      `    c.removeAttribute('style');c.style.cursor='zoom-in';`,
+      `    if(svg)svg.style.maxWidth='';`,
+      `    delete c.dataset.zoomed;`,
+      `  }else{`,
+      `    var bg=getComputedStyle(document.body).backgroundColor;`,
+      `    Object.assign(c.style,{position:'fixed',top:'0',left:'0',width:'100vw',height:'100vh',`,
+      `      zIndex:'9999',background:bg,padding:'1rem',boxSizing:'border-box',overflow:'auto',cursor:'zoom-out'});`,
+      `    if(svg)svg.style.maxWidth='100%';`,
+      `    c.dataset.zoomed='1';c.scrollTop=0;`,
+      `  }`,
+      `}`,
+      `c.addEventListener('click',toggle);`,
+      `document.addEventListener('keydown',function(e){if(e.key==='Escape'&&c.dataset.zoomed)toggle();},{capture:true});`,
+      `})();<` + `/script>`,
+    ].join("");
+    const patched = html.replace("<!-- gantt-chart -->", `${header}\n<div id="gantt-chart">${svgContent}</div>\n${zoomScript}`);
     if (patched !== html) await fs.writeFile(htmlPath, patched, "utf8");
   }
 }

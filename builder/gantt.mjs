@@ -149,6 +149,13 @@ function renderMainSection(o, section, tasks, y, xOf) {
     const by = rd(y + (ROW_H - BAR_H) / 2);
     const ty = rd(y + ROW_H / 2 + 3.5);
     o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="${cls}" rx="2"/>`);
+    if (t.t3 != null) {
+      const t3x  = rd(xOf(t.t3));
+      const t3w  = rd(Math.max(t3x - (bx + bw), 1));
+      const t3h  = Math.round(BAR_H / 2);
+      const t3by = rd(by + BAR_H - t3h);
+      o.push(`<rect x="${rd(bx + bw)}" y="${t3by}" width="${t3w}" height="${t3h}" class="${cls}" rx="2" opacity="0.7"/>`);
+    }
     const lbl = taskLabel(t);
     const textW = lbl.length * CHAR_W;
     if (textW + BAR_PAD * 2 <= bw) {
