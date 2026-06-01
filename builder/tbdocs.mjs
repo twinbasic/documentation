@@ -494,7 +494,7 @@ const TASKS = {
   // written by per-worker flush; this task handles theme, static
   // files, and generated CSS only.
   writeAssets: {
-    expected: ["flushJoin", "scssJoin", "mermaid", "prepPageDirs", "highlighterInit"],
+    expected: ["scssJoin", "mermaid", "prepPageDirs", "highlighterInit"],
     runOnMain: true,
     async execute({ scssJoin: { scssResult }, mermaid: { mermaidStats }, highlighterInit: _highlightSignal }, ctx, state) {
       void mermaidStats;      // dependency signal only; append already happened in mermaid.submit
@@ -534,7 +534,7 @@ const TASKS = {
   // disk), searchData, deriveRedirects, and deriveSitemap.
   // Passes searchStats through to writeOffline (for search-data.js).
   writeAux: {
-    expected: ["writeAssets", "searchData", "deriveRedirects", "deriveSitemap"],
+    expected: ["writeAssets", "searchData", "flushJoin", "deriveRedirects", "deriveSitemap"],
     runOnMain: true,
     async execute({ searchData: searchStats, deriveRedirects: { stubs }, deriveSitemap: { urls } }, ctx, state) {
       if (ctx.opts.dryRun) return { redirectStats: null, sitemapStats: null, searchStats };
