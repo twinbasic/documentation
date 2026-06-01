@@ -22,6 +22,7 @@ export const F_ON_DEMAND         = 1;
 export const F_UNIQUE_PER_WORKER = 2;
 export const F_RUN_ON_MAIN       = 4;
 export const F_PIN_TO_PRED       = 8;
+export const F_RUN_WHEN_IDLE    = 16;
 
 // ── SAB layout ───────────────────────────────────────────────────────────────
 //
@@ -142,6 +143,7 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
     if (def?.unique_per_worker)   f |= F_UNIQUE_PER_WORKER;
     if (def?.runOnMain)           f |= F_RUN_ON_MAIN;
     if (def?.pin_to_predecessor)  f |= F_PIN_TO_PRED;
+    if (def?.run_when_idle)       f |= F_RUN_WHEN_IDLE;
     views.flags[i] = f;
 
     // successor edges
@@ -364,6 +366,7 @@ export function verifySchedulerSAB(taskDefs, views, idMapping) {
     if (def.unique_per_worker)   want |= F_UNIQUE_PER_WORKER;
     if (def.runOnMain)           want |= F_RUN_ON_MAIN;
     if (def.pin_to_predecessor)  want |= F_PIN_TO_PRED;
+    if (def.run_when_idle)       want |= F_RUN_WHEN_IDLE;
     if (views.flags[idx] !== want)
       errors.push(`flags "${name}": got ${views.flags[idx]}, want ${want}`);
   }

@@ -240,6 +240,7 @@ const TASKS = {
     expected: [],
     on_demand: true,
     unique_per_worker: true,
+    run_when_idle: true,
     handler: "warmInit",
     submit() {},
   },

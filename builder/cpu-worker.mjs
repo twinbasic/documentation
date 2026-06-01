@@ -19,6 +19,7 @@ import { deriveOfflinePage, deriveOfflinePageCached,
 import {
   createViews, scanAndClaim, onTaskDone,
   READY, F_ON_DEMAND, F_RUN_ON_MAIN,
+  F_RUN_WHEN_IDLE, F_UNIQUE_PER_WORKER,
   MAX_LANES,
 } from "./sab-scheduler.mjs";
 
@@ -191,6 +192,24 @@ parentPort.on("message", (msg) => {
   }
 });
 
+// ── Idle-task scan (speculative warmup) ─────────────────────────────────────
+
+function findIdleTask(views, lane) {
+  const count = Atomics.load(views.taskCount, 0);
+  for (let i = 0; i < count; i++) {
+    if (!(Atomics.load(views.flags, i) & F_RUN_WHEN_IDLE)) continue;
+    if (Atomics.load(views.flags, i) & F_UNIQUE_PER_WORKER) {
+      if (Atomics.load(views.perWorkerDone, i * MAX_LANES + lane) === 0)
+        return i;
+    } else {
+      if (Atomics.load(views.status, i) !== READY) continue;
+      if (Atomics.compareExchange(views.status, i, READY, CLAIMED) === READY)
+        return i;
+    }
+  }
+  return -1;
+}
+
 // ── Pull loop ───────────────────────────────────────────────────────────────
 
 async function pullLoop() {
@@ -200,6 +219,26 @@ async function pullLoop() {
     let taskIdx = scanAndClaim(views, myLane);
 
     if (taskIdx === -1) {
+      // Speculative: run idle-eligible tasks before sleeping
+      const idleTask = findIdleTask(views, myLane);
+      if (idleTask !== -1) {
+        const idleMeta  = taskMeta[idleTask];
+        const idleStart = Date.now();
+        try {
+          await handlers[idleMeta.handler]();
+        } catch (err) {
+          parentPort.postMessage({ taskFailed: idleTask, message: err.message, stack: err.stack });
+          return;
+        }
+        Atomics.store(views.perWorkerDone, idleTask * MAX_LANES + myLane, 1);
+        parentPort.postMessage({
+          warmInit: true,
+          timing:  { start: idleStart, end: Date.now() },
+          lane:    myLane,
+        });
+        continue;
+      }
+
       const gen = Atomics.load(views.notify, 0);
       // Double-check after reading gen (race: a task may have become
       // READY between the failed scan and this load).
