@@ -1980,3 +1980,62 @@ knows exactly what it's waiting for, and wakes as soon as the main
 thread sets the task to DONE and notifies the slot. Before waiting,
 the worker checks if other non-dependent work is available (one scan);
 if so, it does that work instead of sleeping.
+
+### Phase 14: Move `writePdf` to a worker --- DEFERRED
+
+**Motivation.** `writePdf` depends on `flushJoin` + `mermaid` +
+`resolveBookChapters` --- no data dependency on the offline pipeline
+(`searchData` → `writeAux` → `writeOffline`).  But both `writePdf` and
+the offline pipeline are `runOnMain`, so they serialize on the main
+thread.  On a machine where `flushJoin` lands at ~1.2 s, the ~150 ms
+`writePdf` cost is 12 % of the build.
+
+**Investigation.** Splitting `writePdf` into two main-thread tasks
+(`assemblePdf` + `writePdfFiles`) to measure the compute-vs-I/O
+breakdown showed:
+
+```
+assemblePdf=160ms  writePdfFiles=30ms
+```
+
+The compute half (`assembleBook`: chapter walking, body transforms,
+href rewriting, html-compress) is ~84 % of the cost.  The file-write
+half (one `book.html` + 2 CSS files + ~100 images) is only ~30 ms.
+
+**Consequence.** Moving just the file writes to a worker saves ~30 ms
+--- not enough to justify the SAB broadcast plumbing.  The real win
+requires moving `assembleBook` itself off main.  Two blockers prevent
+that:
+
+1. **Live page-object references.**  `resolveBookChapters` stores page
+   objects in `bookData._chapters[]`, `_foreword`, `_landing`.  These
+   are identity-linked to `state.pages` entries where `renderedContent`
+   was merged after render.  Structured clone to a worker breaks the
+   identity link.
+
+2. **`site.markdown` dependency.**  `assembleBook` →
+   `renderPartDivider` calls `site.markdown.render()` for part
+   subtitles and intros.  The markdown-it instance is not serializable.
+
+**Paths forward (not yet committed to):**
+
+- **Index-based chapter references.**  `resolveBookChapters` stores
+  permalink strings instead of page objects; `assembleBook` builds a
+  `Map<permalink, Page>` at the start and resolves refs through it.
+  Removes blocker 1.
+
+- **Pre-render book text.**  Pre-render subtitles/intros during
+  `resolveBookChapters` (which runs after `markdownInit`), storing the
+  HTML on `bookData` entries.  `renderPartDivider` reads the
+  pre-rendered strings instead of calling `site.markdown`.  Removes
+  blocker 2.
+
+- **Full worker migration.**  With both blockers removed, the entire
+  `writePdf` (compute + I/O) can run on a worker via SAB broadcast of
+  a page projection (~10 MB: all pages' `permalink`, `navPath`,
+  `renderedContent`, `frontmatter` subset).  Packing cost ~30--50 ms;
+  net main-thread savings ~100--120 ms.
+
+Deferred: the refactoring cost is significant for a ~120 ms saving on
+a 4 s build.  Revisit if the build wall-clock shrinks enough that the
+PDF task becomes a larger fraction.
