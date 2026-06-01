@@ -36,7 +36,7 @@ export class Scheduler {
       if (!def.on_demand) this._remaining++;
     }
 
-    // flushPages counter: activated by per-worker timing messages.
+    // flush counter: activated by per-worker timing messages.
     this._flushCount = 0;
     this._flushStats = { written: 0, offlineWritten: 0, offlineMisses: 0 };
 
@@ -214,14 +214,14 @@ export class Scheduler {
       ganttSection: this._ganttSections[taskName] ?? "Boot",
     });
 
-    if (taskName === "flushPages" && output) {
+    if (taskName === "flush" && output) {
       this._flushCount++;
       this._flushStats.written        += output.written        ?? 0;
       this._flushStats.offlineWritten += output.offlineWritten ?? 0;
       this._flushStats.offlineMisses  += output.offlineMisses  ?? 0;
 
       if (this._flushCount === this._ctx.workerCount) {
-        this.results.set("flushPages", { ...this._flushStats });
+        this.results.set("flush", { ...this._flushStats });
         this.addDynamicTasks(1);
         const joinIdx = this._idMapping.nameToIdx.get("flushJoin");
         if (joinIdx != null) {

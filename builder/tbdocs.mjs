@@ -124,7 +124,7 @@ export function makeTimer() {
 // nav + buildInit → dispatch; config → loadData; discover → markdownInit → seo;
 // deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
 // the render fan-out (dispatch → render:0..N, each worker stashes html locally),
-// the per-worker flush (prepPageDirs → flushPages [per worker] → flushJoin [counter barrier]),
+// the per-worker flush (prepPageDirs → flush [per worker] → flushJoin [counter barrier]),
 // and write/post-write tasks
 // (flushJoin + prepPageDirs → writeAssets + searchData;
 // writeAssets + searchData → writeAux → writeOffline; flushJoin + mermaid → writePdf)
@@ -281,13 +281,13 @@ const TASKS = {
   // to disk, overlapping I/O with the render tail. Activated by
   // prepPageDirs (directories must exist). Counter-based flushJoin
   // barrier fires when all workers complete.
-  flushPages: {
+  flush: {
     expected: ["prepPageDirs"],
     on_demand: true,
     unique_per_worker: true,
     run_when_idle: true,
     idle_priority: 1,
-    handler: "flushPages",
+    handler: "flush",
     submit() {},
   },
 
@@ -491,7 +491,7 @@ const TASKS = {
   // ── Write and post-write tasks ─────────────────────────────────────────────
 
   // Materialise static files + generated CSS to _site/. Page HTML is
-  // written by per-worker flushPages; this task handles theme, static
+  // written by per-worker flush; this task handles theme, static
   // files, and generated CSS only.
   writeAssets: {
     expected: ["flushJoin", "scssJoin", "mermaid", "prepPageDirs", "highlighterInit"],
@@ -549,7 +549,7 @@ const TASKS = {
 
   // Produce _site-offline/. Depends on writeAux (redirects + sitemap on
   // disk) and writeAssets (theme assets on disk for the CSS-rewrite +
-  // JTD-patch passes). Offline page HTML is already on disk from flushPages.
+  // JTD-patch passes). Offline page HTML is already on disk from flush.
   writeOffline: {
     expected: ["writeAux", "writeAssets"],
     runOnMain: true,
@@ -605,7 +605,7 @@ const GANTT_SECTION = {
   seo: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
-  flushPages: "Write", flushJoin: "Write",
+  flush: "Write", flushJoin: "Write",
   writeAssets: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
@@ -689,7 +689,7 @@ export async function runBuild(opts) {
   if (mermaidStats.failed > 0) process.exitCode = 1;
   if (scssResult.failed)       process.exitCode = 1;
 
-  const flushStats    = results.get("flushPages");
+  const flushStats    = results.get("flush");
   const assetStats    = results.get("writeAssets");
   const auxResult     = results.get("writeAux");
   const offlineResult = results.get("writeOffline");

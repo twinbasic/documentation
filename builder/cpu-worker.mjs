@@ -76,7 +76,7 @@ const handlers = {
     return {};
   },
 
-  async flushPages() {
+  async flush() {
     let written = 0, offlineWritten = 0, offlineMisses = 0;
     if (!ctx.opts.dryRun) {
       const items = _pageStash;
@@ -171,7 +171,7 @@ const handlers = {
       }
     }
 
-    // Stash writable pages for flushPages (avoids structured-clone of
+    // Stash writable pages for flush (avoids structured-clone of
     // html + offlineHtml across the worker boundary).
     for (const p of chunk) {
       if (p.html !== undefined) {

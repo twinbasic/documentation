@@ -158,7 +158,7 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
   // synchronous prefix (e.g. nav-block cache pre-pass) immediately,
   // before any await happens. Folding that work into the same lap as
   // the parallel await keeps the timing report honest.
-  // Offline page HTML is already on disk from per-worker flushPages.
+  // Offline page HTML is already on disk from per-worker flush.
   // Only redirect stubs, static files, and theme assets are written here.
   if (subT) {
     const t0Pages = Date.now();

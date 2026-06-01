@@ -7,7 +7,7 @@ const COLORS = {
   Render: { light: "#b09cd8", dark: "#8066a8" },
   Write:  { light: "#e8a756", dark: "#c08030" },
   Boot:   { light: "#e57373", dark: "#c62828" },
-  Cold:   { light: "#6eb5d9", dark: "#3c7db0" },
+  Cold:   { light: "#5b7fb5", dark: "#2c4a7c" },
   Env:    { light: "#e8a756", dark: "#c08030" },
   Other:  { light: "#bbb",    dark: "#666"    },
 };
