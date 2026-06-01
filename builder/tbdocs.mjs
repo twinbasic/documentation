@@ -44,6 +44,7 @@ import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
 import { buildSitePathsSync } from "./offline-rewrite.mjs";
 import { writePdf } from "./pdf.mjs";
 import { packShared } from "./sab-broadcast.mjs";
+import { allocSchedulerSAB, verifySchedulerSAB, SLICES_PER_WORKER } from "./sab-scheduler.mjs";
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
 
@@ -247,6 +248,16 @@ const TASKS = {
       emit("write",    out);
       emit("loadData", out);
     },
+  },
+
+  // On-demand per-worker Shiki initializer. Not dispatched by the push
+  // scheduler (on_demand flag); becomes active in the SAB pull model.
+  warmInit: {
+    expected: [],
+    on_demand: true,
+    unique_per_worker: true,
+    handler: "warmInit",
+    submit() {},
   },
 
   // ── Main-thread spine ─────────────────────────────────────────────────────
@@ -563,8 +574,6 @@ const TASKS = {
   },
 };
 
-const SLICES_PER_WORKER = 10;
-
 function chunkPages(pages, workers) {
   const n = Math.min(workers * SLICES_PER_WORKER, pages.length);
   if (n === 0) return [];
@@ -631,6 +640,11 @@ export async function runBuild(opts) {
   const pool = new WorkerPool(workerCount, CPU_WORKER_URL);
   const scheduler = new Scheduler({ pool, tasks: TASKS });
   const ctx = { srcRoot, destRoot, opts, workerCount };
+
+  // Phase 5 verification: allocate a SAB from the task graph and assert
+  // that dep counts, successor edges, flags, and seed status are correct.
+  const { views: sabViews, idMapping: sabMapping } = allocSchedulerSAB(TASKS, workerCount);
+  verifySchedulerSAB(TASKS, sabViews, sabMapping);
 
   let results;
   try {

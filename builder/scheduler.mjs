@@ -58,7 +58,7 @@ export class Scheduler {
     for (const [id, def] of this.tasks) {
       if (def.expected.length === 0) {
         this.pending.delete(id);   // seeds have no inputs; remove from pending before dispatching
-        this.ready.push({ id, def, inputs: {} });
+        if (!def.on_demand) this.ready.push({ id, def, inputs: {} });
       }
     }
     this._flush();
