@@ -1710,7 +1710,7 @@ should show:
 - `writeOffline` duration dropping (no per-page HTML writing).
 - `renderJoin` absent from the summary.
 
-### Phase 13: Uniform task timing (t0 / t1 / t3)
+### Phase 13: Uniform task timing (t0 / t1 / t3) — DONE
 
 **Suggested model:** Opus.
 
@@ -1759,18 +1759,26 @@ uniformly.
 
 #### Changes to `scheduler.mjs`
 
-1. **`_executeMainTask`.** Capture t3 after `def.submit()`:
+1. **`_executeMainTask`.** Move the timing-entry construction below
+   `def.submit()` and capture t3 after it.  Currently the timing
+   object is built between t1 and `results.set`; it must move so that
+   t3 is available.  Preserve the existing `consolidate` /
+   `ganttSection` / `lane` properties on the timing entry:
 
    ```js
    const t0 = Date.now();
    output = await def.execute(inputs, this._ctx, this.state);
    const t1 = Date.now();
 
-   // ... results.set, submit ...
+   this.results.set(name, output);
    def.submit(output, this.state, this);
    const t3 = Date.now();
 
    const timing = { start: t0, end: t1, t3 };
+   // keep consolidate, ganttSection, lane as before
+   if (def.consolidate)  timing.consolidate  = true;
+   if (def.ganttSection) timing.ganttSection = def.ganttSection;
+   this.timings.set(name, timing);
    ```
 
    The existing `start` / `end` semantics are preserved (t0 / t1) for
@@ -1793,7 +1801,7 @@ uniformly.
    No t3 --- worker `submit()` is off the critical path.
 
 3. **`_onPerWorkerTiming`.** Per-worker tasks (`warmInit`,
-   `renderEnvInit`, `flushPages`) arrive via this path.  The runner
+   `renderEnvInit`, `flush`) arrive via this path.  The runner
    sends `{ start, end }` (t0 / t1).  No change to the timing
    fields stored --- `workerStart` / `workerEnd` are already
    populated from `timing.start` / `timing.end`:
@@ -1882,11 +1890,11 @@ uniformly.
    change for basic rendering.
 
 2. **Submit / dispatch overlay.**  When `t3` is present on a timing
-   entry, render a second narrower or lighter-shaded rect from
-   `end` to `t3` on main-thread task bars.  This makes the
-   `dispatch.submit()` cost visible in the Gantt --- the gap that
-   motivated this phase.  Only main-thread tasks carry `t3`, so
-   worker lane bars are unaffected.
+   entry, render a half-height rect from `end` to `t3`, aligned to
+   the bottom of the bar, using the same fill class as the main bar.
+   This makes the `dispatch.submit()` cost visible in the Gantt ---
+   the gap that motivated this phase.  Only main-thread tasks carry
+   `t3`, so worker lane bars are unaffected.
 
 #### Changes to `groupGanttTimings` (`tbdocs.mjs`)
 
@@ -1897,7 +1905,7 @@ const entry = { id, start: start - t0, end: end - t0 };
 if (t3 != null) entry.t3 = t3 - t0;
 ```
 
-The destructuring on line 601 gains `t3`.
+The destructuring on line ~662 gains `t3`.
 
 #### Implementation steps
 
@@ -2039,3 +2047,1734 @@ that:
 Deferred: the refactoring cost is significant for a ~120 ms saving on
 a 4 s build.  Revisit if the build wall-clock shrinks enough that the
 PDF task becomes a larger fraction.
+
+### Phase 15: Generic dynamic tasks and per-chunk flush
+
+**Suggested model:** Opus.
+
+**Motivation.** Three coupled problems:
+
+1. **Flush clustering.**  All `render:i` tasks become READY
+   simultaneously after `dispatch`.  Workers pull them greedily via
+   `scanAndClaim`, which claims the first READY task it finds.  The
+   per-worker `flush` task is `run_when_idle` --- it only fires when
+   `scanAndClaim` returns -1, i.e. every render task is already
+   CLAIMED or DONE.  With `SLICES_PER_WORKER = 10` and 8--16
+   workers, that means 80--160 render tasks drain before any worker
+   goes idle.  All workers finish within moments of each other, so
+   all flushes cluster at the tail --- the I/O burst that Phase 12
+   was meant to spread.
+
+2. **Special-cased join barriers.**  `renderJoin` and `flushJoin` use
+   hand-rolled counters in `_onWorkerDone` and `_onPerWorkerTiming`
+   with manual `Atomics.store(status, joinIdx, READY)`.  Each new
+   fan-out pattern requires a new counter, a new name-matching branch,
+   and a new stats accumulator.  The SAB already has a general
+   dep-count mechanism (`onTaskDone` decrements successor dep counts
+   and sets READY at zero); the joins should use it.
+
+3. **Render-specific infrastructure.**  Three layers of the scheduler
+   know about `render` by name:
+
+   - `allocSchedulerSAB` pre-reserves named `render:${i}` slots and
+     hardcodes their `taskMeta` (handler `"render"`, `perWorkerDeps`
+     `[renderEnvInitIdx]`).
+   - `scheduler.mjs` name-matches `startsWith("render:")` in
+     `_onWorkerDone` and `taskName === "flush"` in
+     `_onPerWorkerTiming`.
+   - `cpu-worker.mjs` computes `taskIdx - idMapping.DYNAMIC_BASE` to
+     index into render-specific `chunkOffset` / `chunkLength` SAB
+     arrays.
+
+   The scheduler should know about *tasks* (static or dynamic) and
+   their metadata (handler, deps, successors, priority) --- not about
+   what any specific task does.
+
+This phase solves all three by introducing a generic dynamic task pool,
+SAB-based task metadata, a generic payload mechanism, and per-task
+priority --- and uses them to replace the current `render:i` /
+`flush` / `renderJoin` / `flushJoin` infrastructure with per-chunk
+`flush:i` tasks and SAB dep-count-gated barriers.
+
+#### Design overview
+
+Four pillars:
+
+1. **SAB-based task metadata.**  The `taskMeta` JS array (sent once
+   to workers via `workerData`, frozen at worker creation) is replaced
+   by SAB arrays that the main thread can write at any time and
+   workers read atomically at claim time.  A pair of functions ---
+   `writeTaskMeta` / `readTaskMeta` --- encapsulates the layout so
+   call sites never touch raw offsets.  `taskMeta` is deleted.
+
+2. **Generic dynamic pool.**  `allocSchedulerSAB` no longer
+   pre-reserves named slots for any specific task type.  Static tasks
+   get indices `0..S-1`.  Slots `S..MAX_TASKS-1` are a blank pool.
+   Any task's `submit()` can allocate slots from it at runtime via
+   `allocDynamicSlots`.
+
+3. **Generic payload.**  The render-specific `chunkOffset` /
+   `chunkLength` SAB arrays are replaced by `payloadOffset[MAX_TASKS]`
+   / `payloadLength[MAX_TASKS]`, indexed by `taskIdx` directly.  A
+   `packPayloads` function packs data into a `SharedArrayBuffer` and
+   writes the per-task offsets.  Any dynamic task handler can read its
+   payload; handlers with no payload (like `flush`) ignore the
+   zero-length entry.
+
+4. **Per-task priority + per-chunk flush.**  An Int32 `priority` field
+   in the SAB makes `scanAndClaim` prefer higher-priority tasks.
+   The single `unique_per_worker` `flush` task is replaced by N
+   dynamic `flush:i` tasks, each pinned to its predecessor `render:i`
+   and assigned `priority: 1` (above render's default 0).  Both
+   `renderJoin` and `flushJoin` become normal dep-count-gated
+   barriers --- no counters, no name-matching.
+
+#### SAB layout changes
+
+**Bump constants.**
+
+| Constant | Old | New | Reason |
+|---|---|---|---|
+| `MAX_TASKS` | 256 | 512 | 2N dynamic tasks (render + flush) at 16 cores = 320; need headroom |
+| `MAX_EDGES` | 512 | 2048 | 3N dynamic edges + ~37 static; worst case (64 lanes × 10 slices) = 1957 |
+| `MAX_RENDER_CHUNKS` | 640 | *(deleted)* | Replaced by `payloadOffset` / `payloadLength` sized to `MAX_TASKS` |
+| `SLICES_PER_WORKER` | 10 | 10 | Unchanged |
+
+**New arrays** (all Int32, alongside existing arrays):
+
+```
+handlerIdx     [MAX_TASKS]          // handler function ID; -1 = unassigned
+perWorkerDep   [MAX_TASKS * 2]      // up to 2 per-worker dep indices; -1 = none
+expectedDep    [MAX_TASKS * 2]      // up to 2 precondition pred indices; -1 = none
+idlePriority   [MAX_TASKS]          // idle-task ordering; 0 = default
+priority       [MAX_TASKS]          // scanAndClaim ordering; 0 = default, higher = first
+payloadOffset  [MAX_TASKS]          // byte offset into payloadSAB for this task's data
+payloadLength  [MAX_TASKS]          // byte length of this task's data; 0 = no payload
+```
+
+**Removed arrays:** `chunkOffset`, `chunkLength`.
+
+**Total SAB size.**  With MAX_TASKS = 512, MAX_EDGES = 2048,
+MAX_LANES = 64:
+
+```
+existing:  taskCount(1) + depCount(512) + status(512) + flags(512) +
+           succOffset(512) + succCount(512) + succList(2048) +
+           affinityLane(512) + pinnedTo(512) + completedOnLane(512) +
+           perWorkerDone(512 × 64 = 32768) + edgeCount(1) +
+           notify(1) + firstReady(1) + buildDone(1)
+new:       handlerIdx(512) + perWorkerDep(1024) + expectedDep(1024) +
+           idlePriority(512) + priority(512) +
+           payloadOffset(512) + payloadLength(512)
+total:     ~42,000 Int32 slots × 4 = ~164 KB
+```
+
+Roughly double the current ~80 KB.  Negligible for a build tool.
+
+#### Handler registry
+
+A shared integer mapping, defined once in `sab-scheduler.mjs`:
+
+```js
+export const HANDLERS = {
+  warmInit: 0, renderEnvInit: 1, flush: 2,
+  scssLight: 3, scssDark: 4, mermaid: 5,
+  buildInfo: 6, render: 7,
+};
+```
+
+`allocSchedulerSAB` resolves `def.handler ?? name` through this table
+when writing static task metadata.  `registerDynamicTasks` (below)
+receives the integer directly.
+
+Workers build the reverse table at init:
+
+```js
+const handlerById = [
+  handlers.warmInit, handlers.renderEnvInit, handlers.flush,
+  handlers.scssLight, handlers.scssDark, handlers.mermaid,
+  handlers.buildInfo, handlers.render,
+];
+```
+
+#### Task metadata API
+
+Two functions in `sab-scheduler.mjs`, encapsulating the SAB layout
+for per-task metadata.  Every caller --- `allocSchedulerSAB` for
+static tasks, dynamic task registration for dynamic tasks, pull loop
+and idle scan for reads --- goes through these.
+
+```js
+export function writeTaskMeta(views, idx, {
+  handlerIdx, perWorkerDeps, expectedDeps, idlePriority, priority,
+}) {
+  Atomics.store(views.handlerIdx,   idx, handlerIdx);
+  Atomics.store(views.perWorkerDep, idx * 2,     perWorkerDeps?.[0] ?? -1);
+  Atomics.store(views.perWorkerDep, idx * 2 + 1, perWorkerDeps?.[1] ?? -1);
+  Atomics.store(views.expectedDep,  idx * 2,     expectedDeps?.[0]  ?? -1);
+  Atomics.store(views.expectedDep,  idx * 2 + 1, expectedDeps?.[1]  ?? -1);
+  Atomics.store(views.idlePriority, idx, idlePriority ?? 0);
+  Atomics.store(views.priority,     idx, priority ?? 0);
+}
+
+export function readTaskMeta(views, idx) {
+  const d0 = Atomics.load(views.perWorkerDep, idx * 2);
+  const d1 = Atomics.load(views.perWorkerDep, idx * 2 + 1);
+  const e0 = Atomics.load(views.expectedDep,  idx * 2);
+  const e1 = Atomics.load(views.expectedDep,  idx * 2 + 1);
+  return {
+    handlerIdx:    Atomics.load(views.handlerIdx, idx),
+    perWorkerDeps: d1 !== -1 ? [d0, d1] : d0 !== -1 ? [d0] : [],
+    expectedDeps:  e1 !== -1 ? [e0, e1] : e0 !== -1 ? [e0] : [],
+    idlePriority:  Atomics.load(views.idlePriority, idx),
+    priority:      Atomics.load(views.priority, idx),
+  };
+}
+```
+
+Static tasks: `allocSchedulerSAB` calls `writeTaskMeta` in its
+existing per-task loop, replacing the `taskMeta[idx] = { ... }`
+assignment.  Name resolution (`HANDLERS[name]`, `nameToIdx.get(dep)`)
+happens in the same loop as today.  Main-thread tasks (`runOnMain`)
+are skipped --- workers never read their metadata (`scanAndClaim`
+skips `F_RUN_ON_MAIN` tasks), so writing `handlerIdx` is unnecessary.
+Their SAB metadata slots stay at the initialized defaults
+(`handlerIdx = -1`, deps = -1, priorities = 0).
+
+Dynamic tasks: `dispatch.submit()` calls `writeTaskMeta` for each
+allocated slot before activation.
+
+Workers: the pull loop calls `readTaskMeta` after `scanAndClaim`
+returns a task index.  `findIdleTask` calls it per candidate.
+On-demand dep execution calls it on the dep.
+
+#### Dynamic task API
+
+Five primitives in `sab-scheduler.mjs`.  Together with `writeTaskMeta`,
+they replace the pre-reservation loop, the `taskMeta` pre-fill loop,
+`activateRenderTasks`, and `packChunkData`.
+
+**`allocDynamicSlots(views, idMapping, count)`** --- reserves `count`
+contiguous slots from the dynamic pool.  Returns the base index.
+Advances `idMapping.nextDynamic` and updates `taskCount` in the SAB
+so workers scan the new slots.  Does not write metadata or edges.
+
+```js
+export function allocDynamicSlots(views, idMapping, count) {
+  const base = idMapping.DYNAMIC_BASE + idMapping.nextDynamic;
+  if (base + count > MAX_TASKS)
+    throw new Error(`dynamic tasks exceed MAX_TASKS`);
+  idMapping.nextDynamic += count;
+  const newCount = base + count;
+  if (newCount > Atomics.load(views.taskCount, 0))
+    Atomics.store(views.taskCount, 0, newCount);
+  return base;
+}
+```
+
+**`wireDynamicEdges(views, edges)`** --- appends successor edges for
+dynamic tasks to the global `succList`.  Each entry in `edges` is
+`{ from, to: [succIdx, ...] }`.  Called once after all slots are
+allocated and metadata written.  Edges for a given `from` task must
+be written in a single entry (no appending to an earlier block).
+
+```js
+export function wireDynamicEdges(views, edges) {
+  let edgePos = Atomics.load(views.edgeCount, 0);
+  for (const { from, to } of edges) {
+    if (edgePos + to.length > MAX_EDGES)
+      throw new Error(`dynamic edges exceed MAX_EDGES`);
+    Atomics.store(views.succOffset, from, edgePos);
+    Atomics.store(views.succCount,  from, to.length);
+    for (const s of to) views.succList[edgePos++] = s;
+  }
+  Atomics.store(views.edgeCount, 0, edgePos);
+}
+```
+
+**`setDepCount(views, idx, count)`** --- sets a task's predecessor
+count.  Used for join barriers whose dep count is not known at
+allocation time.
+
+```js
+export function setDepCount(views, idx, count) {
+  Atomics.store(views.depCount, idx, count);
+}
+```
+
+**`activateDynamicTasks(views, base, count)`** --- sets status to
+READY for `count` tasks starting at `base`.  Replaces
+`activateRenderTasks`.  Only activates tasks whose current `depCount`
+is 0 (tasks with unsatisfied predecessors stay NOT_READY and are
+activated later by `onTaskDone`).
+
+```js
+export function activateDynamicTasks(views, base, count) {
+  let readyCount = 0;
+  for (let i = 0; i < count; i++) {
+    const idx = base + i;
+    if (Atomics.load(views.depCount, idx) === 0) {
+      Atomics.store(views.status, idx, READY);
+      readyCount++;
+    }
+  }
+  if (readyCount > 0) {
+    Atomics.add(views.notify, 0, 1);
+    Atomics.notify(views.notify, 0, Infinity);
+  }
+}
+```
+
+This is more general than `activateRenderTasks` (which assumed all
+tasks have `depCount = 0`).  `flush:i` tasks have `depCount = 1`
+(gated on `render:i`), so they stay NOT_READY and are activated by
+`onTaskDone` when their `render:i` completes.
+
+**`packPayloads(views, base, payloads)`** --- JSON-serializes each
+payload, concatenates into one `SharedArrayBuffer`, and writes
+per-task `payloadOffset` / `payloadLength` into the scheduling SAB.
+Replaces `packChunkData`.
+
+```js
+export function packPayloads(views, base, payloads) {
+  const buffers = payloads.map(p => encoder.encode(JSON.stringify(p)));
+  const totalBytes = buffers.reduce((sum, b) => sum + b.byteLength, 0);
+  const sab = new SharedArrayBuffer(totalBytes);
+  const full = new Uint8Array(sab);
+  let offset = 0;
+  for (let i = 0; i < buffers.length; i++) {
+    full.set(buffers[i], offset);
+    Atomics.store(views.payloadOffset, base + i, offset);
+    Atomics.store(views.payloadLength, base + i, buffers[i].byteLength);
+    offset += buffers[i].byteLength;
+  }
+  return sab;
+}
+```
+
+Indexed by `base + i` (= `taskIdx`), not by a separate chunk index.
+Tasks with no payload (flush, static tasks) have `payloadLength = 0`.
+
+#### Priority-aware `scanAndClaim`
+
+Replace the first-match scan with a best-match scan.  `priority` is
+immutable after task registration, so it can be read without
+`Atomics` (plain array access).
+
+```js
+export function scanAndClaim(views, myLane) {
+  const count = Atomics.load(views.taskCount, 0);
+  while (true) {
+    const start = Atomics.load(views.firstReady, 0);
+    let bestIdx = -1, bestPri = -1;   // -1 is below valid range (0+); any real task wins
+    for (let i = start; i < count; i++) {
+      if (Atomics.load(views.status, i) !== READY) continue;
+      if (Atomics.load(views.flags, i) & F_RUN_ON_MAIN) continue;
+      const aff = Atomics.load(views.affinityLane, i);
+      if (aff !== -1 && aff !== myLane) continue;
+      const pri = Atomics.load(views.priority, i);
+      if (pri > bestPri) { bestPri = pri; bestIdx = i; }
+    }
+    if (bestIdx === -1) return -1;
+    if (Atomics.compareExchange(views.status, bestIdx, READY, CLAIMED) === READY)
+      return bestIdx;
+    // CAS lost: retry full scan.
+  }
+}
+```
+
+**Cost.**  The scan becomes O(taskCount - firstReady) instead of
+O(first-READY), but with MAX_TASKS = 512 and mostly NOT_READY or
+DONE slots, the difference is microseconds.  The CAS retry
+terminates quickly: the claimed task is no longer READY, so the next
+scan finds the second-best.
+
+**Priority assignment.**  `render:i` tasks get priority 0 (default).
+`flush:i` tasks get priority 1.  When both a `flush:i` and a
+`render:j` are READY on the same worker, the flush runs first ---
+clearing the stash before the next render fills it.
+
+#### Per-chunk `flush:i` design
+
+Replace the single `unique_per_worker` `flush` task with N dynamic
+`flush:i` tasks, one per render chunk:
+
+- `depCount = 1`, gated on `render:i` --- becomes READY when
+  `render:i` completes.
+- `pin_to_predecessor = render:i` --- runs on the worker that
+  rendered the chunk, so the stashed HTML is local.
+- `priority = 1` --- picked before any render task (priority 0)
+  when both are READY on the same worker.
+- Successor edge to `flushJoin` --- the join fires when all N
+  flush tasks complete.
+
+**FIFO stash invariant.**  The worker-local `_pageStash` flat array
+is replaced by a FIFO queue `_pendingFlush`.  The `render` handler
+pushes one batch; the `flush` handler shifts one batch.  The priority
+mechanism guarantees the queue depth is always exactly 1 when `flush`
+runs and exactly 0 afterward.
+
+Proof: the pull loop is sequential --- a worker awaits one handler at
+a time.  After `render:i` completes on worker W, `onTaskDone` runs
+synchronously, decrementing `flush:i`'s dep count to 0 and setting it
+READY with affinity pinned to W.  Worker W then calls `scanAndClaim`.
+`flush:i` (priority 1, pinned to W) is preferred over any remaining
+`render:j` (priority 0).  So the next task W executes is `flush:i`,
+which shifts the single queued batch.  No second render can
+interleave.
+
+#### Graph changes
+
+```
+render:i [W]  (stashes pages locally; delta carries renderedContent + offlineMisses only)
+    render:i.submit()  merges renderedContent into state.pages on main
+       |
+       |--- [successor edge] --→  renderJoin [M]  (pure barrier, no-op execute)
+       |
+       +--- [successor edge] --→  flush:i [W, pin_to_predecessor, priority: 1]
+                                     writes stashed html       → _site/<destPath>
+                                     writes stashed offlineHtml → _site-offline/<destPath>
+                                        |
+                                        +--- [successor edge] --→  flushJoin [M]
+                                                aggregates write stats from all flush:i results
+
+renderJoin + prepDest                              → searchData [M]
+
+flushJoin + mermaid + prepPageDirs + highlighterInit → writeAssets [M]
+
+flushJoin + searchData + deriveRedirects + deriveSitemap → writeAux [M]
+
+writeAux + writeAssets                             → writeOffline [M]
+
+flushJoin + mermaid + resolveBookChapters          → writePdf [M]
+```
+
+`searchData` depends on `renderJoin` (not `flushJoin`): it needs
+`renderedContent` in memory, which requires all `render:i.submit()`
+calls to have run.  `renderJoin` provides that guarantee --- it
+becomes READY only after all `render:i` are DONE, and by that point
+the main thread has processed every `render:i` result message (FIFO
+property of worker-to-main postMessage: each worker's render-done
+messages precede its flush-done messages, and `_onWorkerDone`
+processes them in order).
+
+#### `dispatch.submit()` redesign
+
+The single orchestration point.  All render- and flush-specific
+knowledge lives here --- the scheduler sees only generic dynamic tasks.
+
+```js
+submit(out, _state, scheduler) {
+  const N = out.chunks.length;
+  const views = scheduler._views;
+  const idMap = scheduler._idMapping;
+  const renderJoinIdx    = idMap.nameToIdx.get("renderJoin");
+  const flushJoinIdx     = idMap.nameToIdx.get("flushJoin");
+  const renderEnvInitIdx = idMap.nameToIdx.get("renderEnvInit");
+
+  // 1. Allocate 2N slots from the generic pool.
+  const renderBase = allocDynamicSlots(views, idMap, N);
+  const flushBase  = allocDynamicSlots(views, idMap, N);
+
+  // 2. Write metadata into the SAB.
+  for (let i = 0; i < N; i++) {
+    writeTaskMeta(views, renderBase + i, {
+      handlerIdx:    HANDLERS.render,
+      perWorkerDeps: [renderEnvInitIdx],
+    });
+    writeTaskMeta(views, flushBase + i, {
+      handlerIdx: HANDLERS.flush,
+      priority:   1,
+    });
+  }
+
+  // 3. Wire edges: render:i → [renderJoin, flush:i],
+  //                flush:i  → [flushJoin].
+  const edges = [];
+  for (let i = 0; i < N; i++) {
+    edges.push({ from: renderBase + i, to: [renderJoinIdx, flushBase + i] });
+    edges.push({ from: flushBase + i,  to: [flushJoinIdx] });
+  }
+  wireDynamicEdges(views, edges);
+
+  // 4. Set dep counts and pinning.
+  setDepCount(views, renderJoinIdx, N);
+  setDepCount(views, flushJoinIdx,  N);
+  for (let i = 0; i < N; i++) {
+    setDepCount(views, flushBase + i, 1);  // gated on render:i
+    Atomics.store(views.pinnedTo, flushBase + i, renderBase + i);
+    views.flags[flushBase + i] |= F_PIN_TO_PRED;
+  }
+
+  // 5. Register names + submit callbacks on the main-thread task map.
+  for (let i = 0; i < N; i++) {
+    const rName = `render:${i}`;
+    idMap.nameToIdx.set(rName, renderBase + i);
+    idMap.idxToName[renderBase + i] = rName;
+    scheduler.tasks.set(rName, {
+      expected: [],
+      consolidate: true,
+      ganttSection: "Render",
+      submit(renderOut, state) {
+        for (const r of renderOut.pages) {
+          const p = state.pageByDest.get(r.destPath);
+          if (!p) continue;
+          p.renderedContent = r.renderedContent;
+          if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
+        }
+      },
+    });
+
+    const fName = `flush:${i}`;
+    idMap.nameToIdx.set(fName, flushBase + i);
+    idMap.idxToName[flushBase + i] = fName;
+    scheduler.tasks.set(fName, {
+      expected: [`render:${i}`],
+      consolidate: true,
+      ganttSection: "Write",
+      submit() {},
+    });
+  }
+
+  // Populate flushJoin's expected array so _assembleInputs delivers
+  // all flush results to its execute().  Reset first --- in serve mode
+  // the task def object is reused across rebuilds; without the reset,
+  // names from the previous build would accumulate.
+  const flushJoinDef = scheduler.tasks.get("flushJoin");
+  flushJoinDef.expected = [];
+  for (let i = 0; i < N; i++) flushJoinDef.expected.push(`flush:${i}`);
+
+  // 6. Pack payload, broadcast, and activate.
+  const payloadSAB = packPayloads(views, renderBase, out.chunks);
+  scheduler.addDynamicTasks(2 * N + 2);  // N render + N flush + renderJoin + flushJoin
+  scheduler.pool.broadcastDynamicData(payloadSAB, out.sharedSAB);
+  activateDynamicTasks(views, renderBase, 2 * N);  // render tasks activate (depCount 0);
+                                                    // flush tasks stay NOT_READY (depCount 1)
+},
+```
+
+No `_renderExpected`, no `wireJoins()`, no name-prefix matching.
+The successor edges, dep counts, and pinning are all explicit data
+written into the SAB before any task activates.
+
+**Ordering guarantee.**  `wireDynamicEdges` and `setDepCount` run
+before `activateDynamicTasks`.  No render task can *complete* before
+its successor edges and the join dep counts are in place.
+
+#### `allocSchedulerSAB` changes
+
+1. **Remove the render pre-reservation loop** (current lines 98--103)
+   and the `taskMeta` pre-fill loop (lines 216--223).
+
+2. **Replace `taskMeta` construction** with `writeTaskMeta` calls in
+   the existing per-task loop.  For each static task that is NOT
+   `runOnMain`, resolve the handler name through `HANDLERS`, resolve
+   dep names through `nameToIdx`, and call `writeTaskMeta`.  Skip
+   main-thread tasks (their metadata slots stay at initialized
+   defaults; workers never read them).
+
+3. **Initialize `idMapping.nextDynamic = 0`.**  Dynamic slots start
+   at `DYNAMIC_BASE` (= static task count) and grow upward.
+
+4. **Remove `taskMeta` from the return value.**  Return
+   `{ sab, views, idMapping }` only.
+
+5. **Remove `MAX_RENDER_CHUNKS`.**  `payloadOffset` and
+   `payloadLength` are sized to `MAX_TASKS`.
+
+6. **Update `verifySchedulerSAB`.**  The current verification
+   function checks `taskMeta`-derived properties (dep counts, flags,
+   successor edges, seed status).  Extend it to verify the new SAB
+   arrays: `handlerIdx` matches `HANDLERS[def.handler]` for worker
+   tasks, `perWorkerDep` / `expectedDep` match the resolved indices,
+   and main-thread task slots have `handlerIdx = -1`.
+
+#### `cpu-worker.mjs` changes
+
+1. **Remove `taskMeta`** from the init message handler and module
+   scope.
+
+2. **Build `handlerById` at init** from the `HANDLERS` constant (or
+   receive it in the init message and invert).
+
+3. **Replace all `taskMeta[idx]` reads with `readTaskMeta(views, idx)`.**
+   Five call sites: pull loop after claim (~line 311), idle-task scan
+   (~line 232), nested dep check (~line 330), direct dep check
+   (~line 326), idle-task execution (~line 280).
+
+4. **Replace `meta.handler` lookup** (`handlers[meta.handler]`) with
+   `handlerById[meta.handlerIdx]`.
+
+5. **Replace `perWorkerTiming` name field** in all three send sites.
+   Send `taskIdx` instead of `taskName`:
+
+   ```js
+   parentPort.postMessage({
+     perWorkerTiming: true,
+     taskIdx: idleTask,       // was: taskName: idleMeta.name
+     timing: { start: t0, end: t1 },
+     lane: myLane,
+     output: idleResult,
+   });
+   ```
+
+6. **Render handler: read payload from SAB.**  Replace:
+   ```js
+   const chunkIndex = taskIdx - idMapping.DYNAMIC_BASE;
+   const offset = Atomics.load(views.chunkOffset, chunkIndex);
+   const length = Atomics.load(views.chunkLength, chunkIndex);
+   ```
+   with:
+   ```js
+   const offset = Atomics.load(views.payloadOffset, taskIdx);
+   const length = Atomics.load(views.payloadLength, taskIdx);
+   ```
+   No `DYNAMIC_BASE` arithmetic.
+
+7. **`_pageStash` → `_pendingFlush` FIFO.**  The render handler
+   pushes one batch per chunk; the flush handler shifts one batch:
+
+   ```js
+   let _pendingFlush = [];
+
+   // In render handler, after templatePhase + offline derivation:
+   const batch = [];
+   for (const p of chunk) {
+     if (p.html !== undefined)
+       batch.push({ destPath: p.destPath, html: p.html,
+                    offlineHtml: p.offlineHtml, offlineMisses: p.offlineMisses });
+   }
+   _pendingFlush.push(batch);
+
+   // flush handler:
+   async flush() {
+     const items = _pendingFlush.shift() ?? [];
+     let written = 0, offlineWritten = 0, offlineMisses = 0;
+     if (!ctx.opts.dryRun) {
+       let next = 0;
+       const limit = Math.min(64, items.length || 1);
+       const workers = Array.from({ length: limit }, async () => {
+         while (next < items.length) {
+           const p = items[next++];
+           await fsP.writeFile(path.join(ctx.destRoot, p.destPath), p.html, "utf8");
+           written++;
+           if (p.offlineHtml !== undefined) {
+             await fsP.writeFile(
+               path.join(ctx.destRoot + "-offline", p.destPath), p.offlineHtml, "utf8");
+             offlineWritten++;
+           }
+           offlineMisses += p.offlineMisses ?? 0;
+         }
+       });
+       await Promise.all(workers);
+     }
+     return { written, offlineWritten, offlineMisses };
+   },
+   ```
+
+   Reset `_pendingFlush = []` in the `msg.init` handler (serve-mode
+   reuse across rebuilds).
+
+8. **Receive `payloadSAB` via `dynamicData` message** (renamed from
+   `renderData`).  Store as `_payloadSAB`.
+
+#### `scheduler.mjs` changes
+
+1. **Remove `taskMeta` from init message** to workers.  Send
+   `{ init: true, sab, ctx, idMapping }`.
+
+2. **Remove `_renderCount`, `_renderExpected`** fields and their
+   constructor initialization.
+
+3. **Remove `_flushCount`, `_flushStats`** fields, constructor
+   initialization, and serve-mode reset.
+
+4. **Remove the `startsWith("render:")` branch** in `_onWorkerDone`.
+
+5. **Remove the `taskName === "flush"` branch** in
+   `_onPerWorkerTiming`.
+
+6. **Resolve task names from indices** in `_onPerWorkerTiming`.
+   Replace `taskName` (received from worker) with:
+   ```js
+   const taskName = this._idMapping.idxToName[msg.taskIdx];
+   ```
+
+7. **Rename `dispatchRender` → `broadcastDynamicData`** (or make it
+   a pass-through to `pool.broadcastDynamicData`).
+
+8. **Summary output.**  Read flush stats from
+   `this.results.get("flushJoin")` instead of `_flushStats`.
+
+#### `renderJoin` and `flushJoin` task definitions
+
+No `joins` field, no `wireJoins()`.  Both are plain `on_demand`
+barrier tasks activated by the normal SAB dep-count mechanism:
+
+```js
+renderJoin: {
+  expected: [],           // no static predecessors
+  on_demand: true,
+  runOnMain: true,
+  execute() { return {}; },
+  submit() {},
+},
+
+flushJoin: {
+  expected: [],           // populated by dispatch.submit
+  on_demand: true,
+  runOnMain: true,
+  execute(inputs) {
+    let written = 0, offlineWritten = 0, offlineMisses = 0;
+    for (const r of Object.values(inputs)) {
+      written        += r?.written        ?? 0;
+      offlineWritten += r?.offlineWritten ?? 0;
+      offlineMisses  += r?.offlineMisses  ?? 0;
+    }
+    return { written, offlineWritten, offlineMisses };
+  },
+  submit() {},
+},
+```
+
+`renderJoin`'s `expected` stays empty --- it has no static
+predecessors, and its dep count is set dynamically by
+`dispatch.submit`.  It receives no inputs.
+
+`flushJoin`'s `expected` is populated by `dispatch.submit` with
+`flush:0`..`flush:N-1`, so `_assembleInputs` delivers all flush
+results to `execute(inputs)`.
+
+Note: `flush:i` is a regular dynamic task, not `unique_per_worker`.
+Its results flow through `_onWorkerDone` (the normal worker
+completion path), not through `_onPerWorkerTiming`.  The worker
+posts `{ done: taskIdx, output: { written, ... } }`, the main
+thread stores the result, and `onTaskDone` decrements `flushJoin`'s
+dep count.  When the last `flush:i` completes, `flushJoin` becomes
+READY and the main thread aggregates the stats.
+
+#### `flush` static task definition
+
+Removed.  The single `unique_per_worker` / `run_when_idle` `flush`
+entry in `TASKS` is deleted.  Per-chunk `flush:i` tasks are
+registered dynamically in `dispatch.submit()`.
+
+#### What gets deleted
+
+| Current code | Status |
+|---|---|
+| `taskMeta` array in `allocSchedulerSAB` | Deleted; replaced by `writeTaskMeta` calls |
+| `taskMeta` in `workerData` / init message | Deleted; workers read from SAB |
+| `taskMeta` module var in `cpu-worker.mjs` | Deleted |
+| `render:${i}` pre-reservation loop in `allocSchedulerSAB` | Deleted |
+| `render:${i}` taskMeta pre-fill loop in `allocSchedulerSAB` | Deleted |
+| `chunkOffset` / `chunkLength` SAB arrays | Replaced by `payloadOffset` / `payloadLength` |
+| `MAX_RENDER_CHUNKS` constant | Deleted |
+| `packChunkData` function | Replaced by `packPayloads` |
+| `activateRenderTasks` function | Replaced by `activateDynamicTasks` |
+| `_renderCount` / `_renderExpected` in `Scheduler` | Deleted |
+| `_flushCount` / `_flushStats` in `Scheduler` | Deleted |
+| `startsWith("render:")` branch in `_onWorkerDone` | Deleted |
+| `taskName === "flush"` branch in `_onPerWorkerTiming` | Deleted |
+| `flush` static task definition | Deleted |
+| `taskIdx - idMapping.DYNAMIC_BASE` in render handler | Replaced by direct `payloadOffset[taskIdx]` |
+
+#### Init message simplification
+
+Workers receive:
+
+```
+{ init: true, sab, ctx, idMapping }
+```
+
+`taskMeta` is gone.  `idMapping` is retained for `DYNAMIC_BASE` (used
+by `allocDynamicSlots` at build start, though workers do not need it)
+and for debug/error messages.  Workers only strictly need the SAB and
+`ctx`; `idMapping` can be trimmed in a future phase.
+
+#### Edge case: worker with zero render chunks
+
+Under high worker counts or small page sets, some workers claim no
+render tasks.  No `flush:i` is pinned to them; their `_pendingFlush`
+stays empty.  This is safe --- the joins count only the tasks that
+exist, not the workers.
+
+#### Files touched
+
+| File | Changes |
+|---|---|
+| `sab-scheduler.mjs` | New SAB arrays (`handlerIdx`, `perWorkerDep`, `expectedDep`, `idlePriority`, `priority`, `payloadOffset`, `payloadLength`); remove `chunkOffset`, `chunkLength`, `MAX_RENDER_CHUNKS`; bump `MAX_TASKS` to 512, `MAX_EDGES` to 2048; `HANDLERS` registry; `writeTaskMeta` / `readTaskMeta`; `allocDynamicSlots` / `wireDynamicEdges` / `setDepCount` / `activateDynamicTasks` / `packPayloads`; `scanAndClaim` rewrite (priority + CAS retry); remove render pre-reservation + taskMeta pre-fill; remove `packChunkData` + `activateRenderTasks` |
+| `scheduler.mjs` | Remove `_renderCount`, `_renderExpected`, `_flushCount`, `_flushStats`; remove `startsWith("render:")` in `_onWorkerDone`; remove `taskName === "flush"` in `_onPerWorkerTiming`; resolve task names from indices in `_onPerWorkerTiming`; remove `taskMeta` from init message; rename `dispatchRender`; summary reads flush stats from `flushJoin` result |
+| `tbdocs.mjs` | Remove `flush` static task def; `renderJoin` / `flushJoin` lose counter comments; `dispatch.submit()` rewritten per §dispatch.submit() redesign; `GANTT_SECTION`: remove `flush`, `flushJoin` entry stays; summary output reads `flushJoin` result |
+| `cpu-worker.mjs` | Remove `taskMeta` module var and init handling; build `handlerById`; replace all `taskMeta[idx]` with `readTaskMeta`; replace `meta.handler` with `handlerById[meta.handlerIdx]`; `perWorkerTiming` sends `taskIdx` not `taskName`; render handler reads `payloadOffset`/`payloadLength` directly; `_pageStash` → `_pendingFlush` FIFO; receive `dynamicData` message |
+| `worker-pool.mjs` | `broadcastRenderData` → `broadcastDynamicData`; remove `taskMeta` from init message |
+
+#### Expected savings
+
+Four sources:
+
+1. **Distributed I/O.**  Writes interleave with renders instead of
+   clustering at the tail.  Each `render:i` is immediately followed
+   by its `flush:i` on the same worker; libuv file-write operations
+   from different workers overlap with CPU-bound renders on other
+   workers.
+
+2. **Reduced structured-clone cost.**  Unchanged from Phase 12:
+   `html` and `offlineHtml` stay on the worker, never crossing the
+   `postMessage` boundary.
+
+3. **Scheduler simplification.**  ~60 lines of special-case counters,
+   name-matching branches, pre-reservation loops, and `taskMeta`
+   construction are replaced by generic primitives (`writeTaskMeta` /
+   `readTaskMeta`, `allocDynamicSlots` / `wireDynamicEdges` /
+   `activateDynamicTasks`, `packPayloads`).  The scheduler has zero
+   knowledge of what any task does.
+
+4. **Extensibility.**  Any future fan-out pattern (`foo:0..N` with a
+   `fooJoin` barrier) uses the same primitives --- allocate slots,
+   write metadata, wire edges, set dep counts, activate.  No
+   scheduler changes needed.
+
+#### Verification
+
+`build.bat && check.bat` clean.  The Gantt chart should show:
+
+- `flush:i` bars interleaved with `render:i` bars on each worker
+  lane (consolidated via `consolidate: true`), instead of a single
+  `flush` bar at the tail.
+- `renderJoin` and `flushJoin` activated by dep-count (no manual
+  READY store visible in scheduler debug logging).
+- `flushJoin` result carrying aggregated write stats matching the
+  previous per-worker totals.
+- Timing summary and rendered output byte-identical to the
+  pre-change build (modulo timing values).
+
+### Phase 16: Persistent pool and `survives_reset`
+
+**Suggested model:** Opus.
+
+**Motivation.**  In serve mode, every `runBuild()` call creates a
+fresh `WorkerPool` (spawning N worker threads) and destroys it
+afterward.  Each rebuild pays:
+
+1. **Cold boot** (~100--200 ms): thread creation, `cpu-worker.mjs`
+   module loading, V8 JIT compilation of the worker harness.
+2. **`warmInit` scheduling overhead**: the on-demand dep chain
+   (`render:i` → `renderEnvInit` → `warmInit`) fires on every build.
+   `initHighlighter()` is a module-scope singleton and returns
+   instantly after the first call, but the scheduling machinery
+   (claim `render:i`, discover unsatisfied dep, release, execute
+   `warmInit`, re-claim) still runs on every worker on every build.
+3. **V8 JIT de-optimization**: fresh workers lose the optimized code
+   from the previous build's hot paths (render, template,
+   offline-rewrite).
+
+Pool persistence was part of the original SAB scheduler design
+(§Build start sequence step 2, §Serve mode) but was never
+implemented --- `runBuild()` unconditionally creates and destroys the
+pool.  This phase implements the reuse path and adds a generic
+`survives_reset` flag so per-worker warm-up tasks are skipped on
+rebuilds.
+
+#### Design
+
+Two pieces:
+
+**1. Persistent pool.**  `runBuild()` accepts an optional `pool`
+parameter.  When provided, it reuses the existing pool and skips
+`pool.destroy()` at the end.  `serve.mjs` creates the pool once at
+startup and passes it to every `runBuild()` call.  A convenience
+factory `createWorkerPool()` is exported from `tbdocs.mjs` so the
+pool-creation logic (worker count, worker URL) stays centralized.
+
+The `WorkerPool` gains a `_buildCount` counter (initialized to 0,
+incremented in `sendInit()`).  `runBuild()` reads
+`pool._buildCount > 0` to determine whether this is a rebuild.
+
+**2. `survives_reset` flag.**  A new boolean on task definitions.
+Semantics: for `unique_per_worker` tasks with this flag, the
+handler's side effects are build-independent (e.g. loading a WASM
+module) and persist in the worker's memory across init messages.
+On a rebuild (`pool._buildCount > 0`), `allocSchedulerSAB`
+pre-fills their `perWorkerDone` slots to 1 for all active lanes.
+
+Effect: the pull loop's dep check
+(`perWorkerDone[task * MAX_LANES + lane] === 1`) passes
+immediately.  The handler never fires.  The idle scan
+(`findIdleTask`) skips the task (the `perWorkerDone !== 0`
+short-circuit already exists).  Downstream `perWorkerDeps` chains
+(e.g. `renderEnvInit` depending on `warmInit`) see the dep as
+satisfied and proceed without delay.
+
+`survives_reset` is only meaningful on `unique_per_worker` tasks.
+Declaring it on a non-`unique_per_worker` task is a definition
+error (caught by `allocSchedulerSAB`).  The flag is a declaration
+by the task author that the handler's side effects do not depend on
+per-build state --- the scheduler trusts it.
+
+The task definition:
+
+```js
+warmInit: {
+  expected: [],
+  on_demand: true,
+  unique_per_worker: true,
+  run_when_idle: true,
+  survives_reset: true,     // new
+  handler: "warmInit",
+  submit() {},
+},
+```
+
+`renderEnvInit` does NOT get the flag --- it depends on per-build
+data (link tables, config, site paths) and must re-run on each build.
+
+#### Why no worker-side changes are needed
+
+The init message handler (`cpu-worker.mjs` lines 197--209) already
+resets only per-build state (`_chunkDataSAB`, `_sharedSAB`,
+`_renderEnv`, `_pageStash`).  Module-scope singletons (the Shiki
+highlighter inside `highlight.mjs`) persist naturally across init
+messages because the worker thread and its module state survive.
+The `perWorkerDone` pre-fill in the SAB is the only mechanism needed
+to prevent the handler from re-executing --- the worker does not need
+to know about `survives_reset`.
+
+#### Why the pull loop exits cleanly between builds
+
+When `_finish()` fires on the main thread, it sets `buildDone = 1`
+in the SAB and calls `Atomics.notify(views.notify, 0, Infinity)`.
+Workers that are sleeping in `Atomics.wait` wake immediately;
+workers mid-iteration reach the `buildDone` check on the next loop
+cycle.  All workers return from `pullLoop()` and re-enter their
+event loop.
+
+The next build's init message is sent after `runBuild()` returns (in
+`serve.mjs`, after logging and Gantt injection).  Workers process the
+init message on their now-idle event loops, create views over the new
+SAB, and call `pullLoop()` again.  No overlap with the previous
+`pullLoop()` instance is possible --- `pullLoop()` has already
+returned before the init message is processed.
+
+The 300 ms debounce in `serve.mjs` provides ample margin, but the
+sequencing is safe even without it: `runBuild()` is `await`ed, so
+the next `runBuild()` call (and its init messages) cannot begin until
+the previous one has resolved.
+
+#### Dependency chain correctness
+
+`renderEnvInit` has `perWorkerDeps: ["warmInit"]`.  On a rebuild,
+`warmInit`'s `perWorkerDone` is pre-filled to 1.  The pull loop's
+dep check (cpu-worker.mjs line 309) reads
+`perWorkerDone[warmInitIdx * MAX_LANES + myLane] === 1` and
+proceeds.  `renderEnvInit` runs on-demand as before, using the same
+handler --- which correctly rebuilds `_renderEnv` from the fresh
+`sharedSAB` payload.  No chain short-circuiting beyond `warmInit`
+occurs.
+
+#### `runBuild()` changes (`tbdocs.mjs`)
+
+Accept an optional `pool` in the `opts` parameter.  When present,
+skip pool creation and destruction.  Detect rebuild mode from the
+pool's build count.  Skip boot-timing injection on rebuilds (the
+cold-boot timings are from the first build and stale).
+
+```js
+export async function runBuild(opts) {
+  const buildStart = Date.now();
+  const { src, dest } = opts;
+  const srcRoot  = path.resolve(process.cwd(), src);
+  const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
+
+  const ctx = { srcRoot, destRoot, opts, workerCount };
+
+  const externalPool = opts.pool ?? null;
+  const rebuild = externalPool?._buildCount > 0;
+
+  const { sab, views, idMapping, taskMeta } =
+    allocSchedulerSAB(TASKS, workerCount, { rebuild });
+  verifySchedulerSAB(TASKS, views, idMapping);
+
+  const pool = externalPool ?? new WorkerPool(workerCount, CPU_WORKER_URL);
+  const scheduler = new Scheduler({ pool, tasks: TASKS, views, idMapping,
+                                     ganttSections: GANTT_SECTION });
+
+  pool.onWorkerDone      = (msg) => scheduler._onWorkerDone(msg);
+  pool.onWorkerError     = (msg) => scheduler._onWorkerError(msg);
+  pool.onPerWorkerTiming = (msg) => scheduler._onPerWorkerTiming(msg);
+  pool.onMainTaskReady   = ()    => scheduler._onMainTaskReady();
+
+  pool.sendInit(sab, taskMeta, ctx, idMapping);
+
+  let results;
+  try {
+    results = await scheduler.start(ctx);
+  } finally {
+    if (!externalPool) await pool.destroy();
+  }
+
+  // ... existing summary logging ...
+
+  // Boot timings: only inject on first build.
+  if (!rebuild) {
+    for (const bt of pool.bootTimings) {
+      scheduler.timings.set(`${bt.type}:w${bt.lane}`, {
+        start: bt.start, end: bt.end,
+        workerStart: bt.start, workerEnd: bt.end,
+        lane: bt.lane, ganttSection: "Boot",
+      });
+    }
+  }
+
+  // ... Gantt injection, drift guard ...
+}
+```
+
+Export a pool factory so `serve.mjs` does not import `WorkerPool`
+or `CPU_WORKER_URL` directly:
+
+```js
+export function createWorkerPool() {
+  return new WorkerPool(workerCount, CPU_WORKER_URL);
+}
+```
+
+Add `survives_reset: true` to the `warmInit` task definition.
+
+#### `allocSchedulerSAB` changes (`sab-scheduler.mjs`)
+
+Third parameter gains `{ rebuild }`:
+
+```js
+export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
+  // ... existing allocation logic (indices, successor list,
+  //     depCount, flags, succOffset/succCount/succList, status) ...
+
+  // Validate: survives_reset only on unique_per_worker tasks.
+  for (const [name, def] of Object.entries(taskDefs)) {
+    if (def.survives_reset && !def.unique_per_worker)
+      throw new Error(
+        `"${name}" has survives_reset without unique_per_worker`);
+  }
+
+  // Pre-fill perWorkerDone for surviving tasks on rebuilds.
+  if (opts.rebuild) {
+    for (const [name, def] of Object.entries(taskDefs)) {
+      if (!def.survives_reset || !def.unique_per_worker) continue;
+      const idx = nameToIdx.get(name);
+      for (let lane = 0; lane < workerCount; lane++) {
+        views.perWorkerDone[idx * MAX_LANES + lane] = 1;
+      }
+    }
+  }
+
+  // ... existing taskMeta construction, return ...
+}
+```
+
+The pre-fill runs after all per-task arrays are written and before
+the return.  `verifySchedulerSAB` does not check `perWorkerDone`,
+so no changes needed there.
+
+#### `serve.mjs` changes
+
+Create the pool once at startup.  Pass it to every `runBuild()`
+call.  Destroy on shutdown.
+
+```js
+import { runBuild, createWorkerPool } from "./tbdocs.mjs";
+
+export async function runServe(opts) {
+  // ... existing setup (srcRoot, destRoot, port) ...
+
+  const pool = createWorkerPool();
+
+  // Initial build
+  try {
+    await runBuild({ ...opts, dest: destRoot,
+                     skipOffline: true, skipPdf: true, pool });
+  } catch (err) {
+    console.error("serve: initial build failed:", err.message);
+    await pool.destroy();
+    process.exit(1);
+  }
+
+  // ... existing server + SSE setup ...
+
+  async function fire() {
+    if (running) { pending = true; return; }
+    running = true;
+    const files = [...changedFiles].sort();
+    changedFiles.clear();
+    console.log(`\nChanged: ${files.join(", ")}`);
+    try {
+      await runBuild({ ...opts, dest: destRoot,
+                       skipOffline: true, skipPdf: true, pool });
+      notifyReload();
+    } catch (err) {
+      console.error("rebuild failed:", err.message);
+    } finally {
+      running = false;
+      if (pending) { pending = false; schedule(); }
+    }
+  }
+
+  // ... existing watcher ...
+
+  // Shutdown
+  process.on("SIGINT", () => {
+    console.log("serve: shutting down.");
+    ac.abort();
+    for (const res of sseClients) {
+      try { res.end(); } catch {}
+    }
+    sseClients.clear();
+    pool.destroy();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 100).unref();
+  });
+
+  // ...
+}
+```
+
+#### `WorkerPool` changes (`worker-pool.mjs`)
+
+Add `_buildCount`, incremented in `sendInit()`:
+
+```js
+export class WorkerPool {
+  constructor(size, workerUrl) {
+    // ... existing fields ...
+    this._buildCount = 0;
+  }
+
+  sendInit(sab, taskMeta, ctx, idMapping) {
+    for (const w of this._workers) {
+      w.postMessage({ init: true, sab, taskMeta, ctx, idMapping });
+    }
+    this._buildCount++;
+  }
+}
+```
+
+#### Edge cases
+
+1. **First build in serve mode.**  `pool._buildCount === 0` →
+   `rebuild = false`.  Workers run `warmInit` normally.  Pool is
+   initialized.  Identical to current single-build behavior.
+
+2. **Subsequent rebuilds.**  `pool._buildCount > 0` →
+   `rebuild = true`.  `warmInit`'s `perWorkerDone` pre-filled.
+   Workers skip it.  `renderEnvInit` re-runs with fresh data.
+
+3. **Single-build mode (`build.bat`).**  No `pool` option.
+   `externalPool = null`.  Pool created, used, destroyed.
+   `rebuild = false`.  No change from current behavior.
+
+4. **Worker crash during previous build.**  The pool does not
+   respawn crashed workers.  On the next rebuild, `perWorkerDone` is
+   pre-filled for the dead worker's lane.  No task is scheduled to
+   that lane (the worker thread does not exist), so the pre-fill is
+   harmless.  The render fan-out distributes across surviving
+   workers.
+
+5. **Build failure in serve mode.**  `runBuild()` rejects; the
+   `finally` block does NOT destroy an external pool.  `serve.mjs`
+   logs the error and waits for the next file change, which triggers
+   a fresh `runBuild()` with the same pool.  Workers have already
+   exited their pull loops (either from `buildDone = 2` on abort, or
+   from the failed task's error propagation), and re-enter when the
+   next init message arrives.
+
+6. **Future `survives_reset` tasks.**  Any `unique_per_worker` +
+   `on_demand` task that loads build-independent state (e.g. a WASM
+   module, a compiled grammar, a vendored dataset) can declare
+   `survives_reset: true`.  The mechanism is generic.
+
+#### Interaction with Phase 15
+
+Phase 15 moves `taskMeta` into the SAB and replaces the JS-side
+`taskMeta` array with `writeTaskMeta` / `readTaskMeta`.  If Phase 15
+lands first, the `allocSchedulerSAB` pre-fill loop is unchanged ---
+`perWorkerDone` is a separate SAB array, independent of the task
+metadata layout.  The `def.survives_reset` read stays in the JS
+task-definition loop.  No conflict.
+
+#### Files touched
+
+| File | Changes |
+|---|---|
+| `tbdocs.mjs` | `runBuild()`: accept `pool` option, detect rebuild, skip pool create/destroy, skip boot timings on rebuild; `warmInit` task def: add `survives_reset: true`; export `createWorkerPool()` factory |
+| `sab-scheduler.mjs` | `allocSchedulerSAB`: accept `opts` parameter; validate `survives_reset` + `unique_per_worker` constraint; pre-fill `perWorkerDone` for surviving tasks in rebuild mode |
+| `serve.mjs` | Create pool once at startup via `createWorkerPool()`; pass to `runBuild()`; destroy on shutdown |
+| `worker-pool.mjs` | Add `_buildCount` counter, incremented in `sendInit()` |
+| `cpu-worker.mjs` | No changes |
+| `scheduler.mjs` | No changes |
+
+#### Expected savings
+
+Two sources:
+
+1. **Cold boot elimination.**  ~100--200 ms per rebuild (worker
+   thread creation, module loading, V8 compilation).  This is the
+   dominant saving.
+
+2. **`warmInit` scheduling overhead.**  Per worker per rebuild: one
+   claim--release cycle on the first render chunk, one on-demand dep
+   resolution, one `initHighlighter()` call (instant but not free).
+   Roughly ~5--10 ms total across all workers.  Small, but the
+   architectural benefit is that the on-demand dep chain is never
+   entered for `warmInit` --- downstream tasks see the dep as already
+   satisfied at SAB allocation time.
+
+A secondary benefit: V8 JIT-optimized code persists across rebuilds.
+The hot paths (render, template, offline-rewrite) stay in optimized
+tier after the first build, rather than being re-compiled from
+scratch on each rebuild.
+
+#### Verification
+
+`build.bat && check.bat` clean.  Single-build mode unchanged.
+
+Serve mode (`serve.bat`):
+
+- First build: timing summary shows normal `warmInit:wN` entries
+  and `cold:wN` boot entries.
+- Subsequent rebuilds: `warmInit:wN` entries absent (handlers never
+  ran).  `cold:wN` entries absent (no boot).  `renderEnvInit:wN`
+  entries present (re-runs with fresh data).
+- Total rebuild time drops by ~100--200 ms (cold boot) on a 16-core
+  machine.
+- All rebuilds produce byte-identical output to fresh builds.
+
+### Phase 17: Distribute search-data derivation to render workers
+
+**Suggested model:** Sonnet.
+
+**Motivation.**  `searchData` runs on the main thread after `renderJoin`
+and takes 100--200 ms (dev machine to CI).  It sits on the critical
+path to `writeAux` -> `writeOffline`.  The task does two things:
+(1) derive search entries from `renderedContent` (CPU-heavy HTML
+parsing, splitting on headings, stripping tags, sanitizing ---
+~80--90% of the runtime), and (2) render to JSON and write one file
+(~10--20% of the runtime).  The derivation is per-page with zero
+cross-page dependencies, and each render worker already has the
+rendered content and site config.  Moving the derivation onto workers
+eliminates ~80--170 ms from the main-thread critical path.
+
+#### Design
+
+Two pieces: derive on workers, consolidate on main.
+
+**Worker side.**  The `render` handler in `cpu-worker.mjs` calls
+`deriveSearchEntries(chunk, site)` after render + template + offline,
+producing per-chunk search entries.  The entries are returned
+alongside the page delta, stripped of the `sourcePage` field (worker
+pages are clones, not master refs) and the `i` field (chunk-local
+indices are meaningless; the main thread assigns global indices during
+consolidation).  Each entry is five short strings (`doc`, `title`,
+`content`, `url`, `relUrl`) --- the structured-clone cost is
+negligible (~400 KB total across all workers for ~2000 entries).
+
+The worker already has everything `deriveSearchEntries` needs:
+
+- `page.renderedContent` --- set by `renderPhase`.
+- `page.frontmatter.title`, `page.frontmatter.search_exclude`,
+  `page.permalink` --- on the chunk pages.
+- `site.config.search.heading_level`, `site.config.baseurl` --- in
+  the shared SAB payload (via `siteData.config`).
+
+**Import.**  `cpu-worker.mjs` adds
+`import { deriveSearchEntries } from "./search.mjs"`.  The transitive
+import of `stripHtml` from `seo.mjs` and `writeFileMkdirp` from
+`write.mjs` is harmless --- workers have full Node.js access and only
+the pure-compute `deriveSearchEntries` function is called.
+
+**Main-thread merge.**  `SharedState` gains a `searchChunks` field
+(initialized to `[]`).  `dispatch.submit()` pre-allocates it as
+`new Array(N)` so each `render:i.submit()` can assign by chunk index:
+`state.searchChunks[chunkIdx] = renderOut.searchEntries`.  Indexed
+assignment preserves page order across the chunks --- chunk 0's
+entries come before chunk 1's, matching the serial iteration order
+over `state.pages`.  By the time `renderJoin` fires, every slot is
+populated.
+
+**`searchData` task.**  Dependencies unchanged: `renderJoin` +
+`prepDest`.  The `execute()` body changes from "derive from
+state.pages + write" to "consolidate from state.searchChunks + write":
+
+1. Flatten `state.searchChunks` into a single array (`.flat()`).
+2. Assign sequential `i` values (0, 1, 2, ...).
+3. Map through `renderEntryString` (the existing per-entry JSON
+   formatter, newly exported from `search.mjs`).
+4. Join, wrap, write.
+
+The CPU-heavy work (steps inside `deriveSearchEntries`:
+`extractSections`, `stripHtml`, `sanitiseContent`) is gone from the
+main thread.  What remains is a linear scan over ~2000 small objects +
+`JSON.stringify` per entry + one file write --- estimated ~5--15 ms.
+
+**`searchData` output shape.**  Unchanged: `{ entries: number,
+json: string }`.  Downstream consumers (`writeAux`, `writeOffline`)
+see no difference.
+
+**`search.mjs` changes.**  Export `renderEntryString` (currently
+file-local) so the consolidated `searchData.execute` can import it.
+Add a `writeSearchDataFromChunks(searchChunks, destRoot)` convenience
+that encapsulates the consolidate + renumber + render + write
+sequence, keeping the logic in `search.mjs` alongside the existing
+`writeSearchData`.
+
+#### Data flow
+
+```
+render:i [W]
+   ├── renderPhase + templatePhase + offline  (existing)
+   ├── deriveSearchEntries(chunk, site)       ← NEW
+   └── return { pages: [...], searchEntries: [...] }
+              │
+              ▼
+render:i.submit() [M]
+   ├── merge renderedContent + offlineMisses into state.pages  (existing)
+   └── state.searchChunks[i] = renderOut.searchEntries         ← NEW
+              │
+              ▼
+renderJoin [M]  (barrier — all searchChunks slots populated)
+              │
+              ▼
+searchData [M]
+   ├── flatten state.searchChunks        (~5 ms)
+   ├── assign sequential i
+   ├── renderEntryString per entry
+   ├── write search-data.json
+   └── return { entries, json }
+```
+
+#### Ordering guarantee
+
+The serial `deriveSearchEntries` iterates `state.pages` in master-
+array order, producing entries with sequential `i` values (0, 1,
+2, ...).  The distributed version preserves this ordering:
+
+1. `chunkPages()` slices `state.pages` into consecutive, non-
+   overlapping chunks: chunk 0 = pages[0..k), chunk 1 = pages[k..2k),
+   etc.  Within each chunk, page order matches the master.
+2. `deriveSearchEntries(chunk, site)` iterates the chunk in order,
+   producing entries in the same relative order as the serial version.
+3. `state.searchChunks[i]` uses indexed assignment keyed by chunk
+   index, not push order.  `searchChunks.flat()` concatenates in
+   index order: chunk 0, chunk 1, ..., chunk N-1.
+4. Sequential `i` assignment after flattening produces the same
+   numbering as the serial loop.
+
+Result: byte-identical `search-data.json`.
+
+#### Changes
+
+**`cpu-worker.mjs`.**  Import `deriveSearchEntries` from
+`./search.mjs`.  At the end of the `render` handler, after the
+offline pass and before building the return value:
+
+```js
+const searchEntries = deriveSearchEntries(chunk, env.site)
+  .map(e => ({ doc: e.doc, title: e.title, content: e.content,
+               url: e.url, relUrl: e.relUrl }));
+```
+
+Add `searchEntries` to the return object alongside `pages`.
+
+**`search.mjs`.**  Export `renderEntryString`.  Add:
+
+```js
+export async function writeSearchDataFromChunks(searchChunks, destRoot) {
+  const allEntries = searchChunks.flat();
+  for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
+  const body = allEntries.map(renderEntryString).join(",");
+  const json = `{` + body + `\n}\n`;
+  await writeFileMkdirp(
+    path.join(destRoot, "assets/js/search-data.json"), json);
+  return { entries: allEntries.length, json };
+}
+```
+
+**`scheduler.mjs`.**  Add `searchChunks = []` to `SharedState`.
+
+**`tbdocs.mjs`.**  Three changes:
+
+1. Import: `writeSearchDataFromChunks` from `./search.mjs` (replaces
+   or supplements the existing `writeSearchData` import).
+
+2. `dispatch.submit()`: after setting `scheduler._renderExpected = N`,
+   pre-allocate:
+
+   ```js
+   scheduler.state.searchChunks = new Array(N);
+   ```
+
+3. Each `render:${i}` task definition captures its chunk index and
+   pushes search entries in `submit`:
+
+   ```js
+   for (let i = 0; i < N; i++) {
+     const chunkIdx = i;
+     scheduler.tasks.set(`render:${i}`, {
+       ...
+       submit(renderOut, state) {
+         // existing delta merge
+         for (const r of renderOut.pages) {
+           const p = state.pageByDest.get(r.destPath);
+           if (!p) continue;
+           p.renderedContent = r.renderedContent;
+           if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
+         }
+         // NEW: stash search entries for consolidation
+         state.searchChunks[chunkIdx] = renderOut.searchEntries;
+       },
+     });
+   }
+   ```
+
+4. `searchData.execute()`:
+
+   ```js
+   async execute(_, ctx, state) {
+     if (ctx.opts.dryRun) return { entries: 0, json: "" };
+     return writeSearchDataFromChunks(state.searchChunks, ctx.destRoot);
+   },
+   ```
+
+#### Files touched
+
+| File | Changes |
+|---|---|
+| `cpu-worker.mjs` | Import `deriveSearchEntries` from `search.mjs`. In `render` handler, call it after offline pass, add `searchEntries` (sans `sourcePage`, sans `i`) to return value. |
+| `search.mjs` | Export `renderEntryString`. Add `writeSearchDataFromChunks()`. |
+| `scheduler.mjs` | Add `searchChunks = []` to `SharedState`. |
+| `tbdocs.mjs` | Import `writeSearchDataFromChunks`. `dispatch.submit`: pre-allocate `state.searchChunks`. `render:i.submit`: store `searchEntries` by chunk index. `searchData.execute`: call `writeSearchDataFromChunks` instead of `writeSearchData`. |
+
+#### Interaction with other phases
+
+- **Phase 15 (generic dynamic tasks).**  If Phase 15 rewrites
+  `dispatch.submit()` and the render task registration, the
+  `render:i.submit` change (one additional indexed assignment) applies
+  to whatever form the submit takes.  The `searchChunks` pre-
+  allocation moves to wherever `dispatch.submit` sets up the render
+  fan-out.  No conflict.
+
+- **Phase 16 (persistent pool).**  Pool persistence is orthogonal.
+  `searchChunks` lives on `SharedState`, which is fresh per build
+  (new `Scheduler` = new `SharedState`).  No interaction.
+
+- **`_triage.mjs` / `_diff.mjs`.**  These dev tools call
+  `deriveSearchEntries` directly on `state.pages` on the main thread.
+  They are not part of the build pipeline and are unaffected.  The
+  `sourcePage` field they rely on is only produced by main-thread
+  calls to `deriveSearchEntries`, not by the worker path.
+
+#### Expected savings
+
+The derivation distributes across N workers in parallel with render +
+template + offline.  Per-worker added time is
+~(100--200 ms) / N.
+
+| Machine | Per-worker added | Main-thread searchData | Net critical-path saving |
+|---|---|---|---|
+| 16-core (CI) | ~6--12 ms | drops to ~5--15 ms | ~85--185 ms |
+| 4-core (dev) | ~25--50 ms | drops to ~5--15 ms | ~55--135 ms |
+
+#### Verification
+
+`build.bat && check.bat` clean.  `search-data.json` byte-identical
+to pre-Phase-17 output (ordering guarantee above).  The timing
+summary should show `searchData` at ~5--15 ms (down from
+~100--200 ms).  `render:i` timings increase by a few ms each,
+absorbed within the render fan-out.  Total build wall-clock drops by
+the net saving.
+
+### Phase 18: Move per-page SEO to render workers
+
+**Suggested model:** Sonnet.
+
+**Motivation.**  The `seo` task runs on the main thread after
+`markdownInit`, computing four per-page fields (`seoTitle`,
+`seoFullTitle`, `seoCanonical`, `seoIsHome`) and two site-level
+constants (`seoSiteTitle`, `seoLogoUrl`).  It takes ~35 ms and sits
+on the critical path between `markdownInit` and `dispatch`.  The
+per-page fields are only consumed by `templatePhase` inside the
+render workers --- no main-thread task reads them after `dispatch`
+serializes them into the chunk payloads.  Moving the per-page
+computation into the render workers removes the task from the
+critical path and shrinks the serialized chunk payload by ~130 KB
+(~150 bytes × ~858 pages).
+
+#### Design
+
+Split `precomputeSeo` into two functions:
+
+1. **`computeSiteSeo(config, markdown)`** --- returns
+   `{ seoSiteTitle, seoLogoUrl }`.  Called once on the main thread,
+   folded into `markdownInit`.
+
+2. **`computeChunkSeo(pages, seoSiteTitle, config, markdown)`** ---
+   mutates pages in place with the four per-page fields.  Called on
+   each render worker between `renderPhase` and `templatePhase`.
+
+The `seo` task is deleted.  `dispatch.expected` drops `"seo"`.
+
+#### Data flow
+
+```
+markdownInit [M]
+   ├── buildLinkTables + createMarkdownIt       (existing)
+   └── computeSiteSeo(config, markdown)          ← NEW
+       state.site.seoSiteTitle = ...
+       state.site.seoLogoUrl   = ...
+             │
+             ▼
+dispatch [M]  (expected drops "seo")
+   └── packs seoSiteTitle + seoLogoUrl into sharedSAB  (unchanged)
+             │
+             ▼
+render:i [W]
+   ├── deserialize chunk
+   ├── renderPhase(chunk, site)                  (existing)
+   ├── computeChunkSeo(chunk, site.seoSiteTitle, ← NEW
+   │                   site.config, site.markdown)
+   ├── templatePhase(chunk, site, initData)      (existing)
+   └── offline derivation                        (existing)
+```
+
+#### Why it's safe
+
+- **No main-thread consumer.**  The four per-page SEO fields are set
+  on `state.pages` before dispatch, serialized into chunks,
+  deserialized on workers, used by `headSeoBlock` inside
+  `templatePhase`, and never sent back to main.  No post-dispatch
+  main-thread task reads them.  `searchData` reads
+  `renderedContent`; `writePdf` reads `renderedContent` via
+  `bookData._chapters` refs.  Neither reads any `seo*` field.
+
+- **Identical markdown-it instance.**  The render worker's
+  markdown-it instance is built from the same plugin stack as the
+  main thread's (`seo.mjs` lines 36--45 document the equivalence).
+  `renderTitle` produces byte-identical output.
+
+- **Page data available.**  Each chunk page carries
+  `frontmatter.title` and `permalink` --- the only per-page inputs
+  to the SEO computation.  `site.config` (for `absoluteUrl`) and
+  `site.seoSiteTitle` (for the full-title composition) are already
+  in the shared payload.
+
+#### Changes
+
+**`seo.mjs`.**  Add two exported functions.  `precomputeSeo`
+delegates to them:
+
+```js
+export function computeSiteSeo(config, markdown) {
+  if (!markdown) {
+    throw new Error(
+      "computeSiteSeo requires a markdown-it instance");
+  }
+  const seoSiteTitle = renderTitle(config.title, markdown);
+  const logo = config.logo;
+  const seoLogoUrl = logo != null
+    ? uriEscape(absoluteUrl(String(logo), config))
+    : null;
+  return { seoSiteTitle, seoLogoUrl };
+}
+
+export function computeChunkSeo(pages, seoSiteTitle, config,
+                                markdown) {
+  for (const page of pages) {
+    const rawTitle = page.frontmatter.title;
+    const seoTitle = isNonEmpty(rawTitle)
+      ? renderTitle(rawTitle, markdown) : seoSiteTitle;
+    page.seoTitle = seoTitle;
+    page.seoFullTitle = seoTitle === seoSiteTitle
+      ? seoTitle
+      : `${seoTitle} | ${seoSiteTitle}`;
+    const url = String(page.permalink);
+    const canonicalInput = url
+      .replace(/\/index\.html$/, "/")
+      .replace(/\.html$/, "");
+    page.seoCanonical = absoluteUrl(canonicalInput, config);
+    page.seoIsHome = HOMEPAGE_URLS.has(url);
+  }
+}
+
+export function precomputeSeo(pages, config, markdown) {
+  const { seoSiteTitle, seoLogoUrl } =
+    computeSiteSeo(config, markdown);
+  computeChunkSeo(pages, seoSiteTitle, config, markdown);
+  return { seoSiteTitle, seoLogoUrl };
+}
+```
+
+`precomputeSeo` becomes a convenience wrapper.  The `seo` task that
+called it is deleted, so it is effectively dead code --- retained for
+dev tooling.
+
+**`tbdocs.mjs`.**  Six changes:
+
+1. Import: replace `precomputeSeo` with `computeSiteSeo`:
+   ```js
+   import { computeSiteSeo } from "./seo.mjs";
+   ```
+
+2. Delete the `seo` task definition (current lines 411--422).
+
+3. Fold site-level SEO into `markdownInit.execute()`:
+   ```js
+   markdownInit: {
+     expected: ["discover"],
+     runOnMain: true,
+     execute(_, ctx, state) {
+       const linkTables    = buildLinkTables(state.pages);
+       const baseurl       =
+         String(state.site.config.baseurl || "");
+       const staticFileSet =
+         new Set(state.staticFiles.map(s => s.srcRel));
+       state.site.markdown = createMarkdownIt({
+         highlighter: null, linkTables, baseurl,
+         staticFiles: staticFileSet,
+       });
+       state.site.linkTablesSerialized =
+         serializeLinkTables(linkTables);
+       const { seoSiteTitle, seoLogoUrl } =
+         computeSiteSeo(state.site.config, state.site.markdown);
+       state.site.seoSiteTitle = seoSiteTitle;
+       state.site.seoLogoUrl   = seoLogoUrl;
+       return {};
+     },
+     submit() {},
+   },
+   ```
+
+4. Remove `"seo"` from `dispatch.expected` and the
+   `seo: _seoSignal` destructure + `void _seoSignal` in
+   `dispatch.execute`:
+   ```js
+   dispatch: {
+     expected: ["nav", "buildInit", "buildInfo", "mermaid",
+                "deriveRedirects"],
+     ...
+     execute({ nav: { sidebar },
+               buildInit: { initData },
+               buildInfo: { buildInfo },
+               mermaid: { mermaidStats },
+               deriveRedirects: { stubs } }, ctx, state) {
+       void mermaidStats;
+       ...
+     },
+   },
+   ```
+
+5. Remove `seo: "Spine"` from `GANTT_SECTION`.
+
+6. Update the spine comment (~line 131) to remove the `→ seo`
+   segment.
+
+**`cpu-worker.mjs`.**  Import `computeChunkSeo` from `./seo.mjs`.
+In the `render` handler, call it between `renderPhase` and
+`templatePhase`:
+
+```js
+async render(taskIdx) {
+  const offset = Atomics.load(views.payloadOffset, taskIdx);
+  const length = Atomics.load(views.payloadLength, taskIdx);
+  const chunk = JSON.parse(
+    new TextDecoder().decode(
+      new Uint8Array(_payloadSAB, offset, length)),
+  );
+
+  const env = _renderEnv;
+
+  await renderPhase(chunk, env.site);
+  computeChunkSeo(chunk, env.site.seoSiteTitle,
+                   env.site.config, env.site.markdown);
+  await templatePhase(chunk, env.site, env.initData);
+
+  // ... offline derivation unchanged ...
+}
+```
+
+#### Graph changes
+
+Before:
+```
+discover → markdownInit → seo ──→ dispatch
+discover → nav ──────────────────→ dispatch
+```
+
+After:
+```
+discover → markdownInit ─────────→ dispatch
+discover → nav ──────────────────→ dispatch
+```
+
+`seo` is removed from the static task DAG.  Its successor edge to
+`dispatch` is gone.  The `markdownInit` → `dispatch` path shortens
+by ~35 ms (the full `seo` duration).
+
+#### Interaction with other phases
+
+- **Phase 11 (DECLINED).**  Phase 11 was declined because `nav` and
+  `seo` both mutate page objects between discover and dispatch,
+  breaking the precondition for pre-serializing chunks during
+  discover.  This phase removes `seo` as a mutator --- only `nav`
+  remains.  The precondition is still not met, but the gap narrows.
+  If a future phase makes `nav` write its outputs to `state.site.*`
+  rather than mutating pages in place, Phase 11 becomes viable.
+
+- **Phase 15 (generic dynamic tasks).**  Phase 15 rewrites
+  `dispatch.submit()` and removes `taskMeta`.  The `seo` removal
+  (dropping one `expected` entry and one destructure) applies
+  cleanly to whatever form `dispatch` takes after Phase 15.
+  No conflict.
+
+- **Phase 17 (search data on workers).**  Phase 17 adds
+  `deriveSearchEntries` to the render handler, after render +
+  template + offline.  Phase 18 adds `computeChunkSeo` earlier
+  (between `renderPhase` and `templatePhase`).  Both are independent
+  per-page transforms; neither depends on the other's output.  They
+  compose without conflict regardless of landing order.
+
+#### Files touched
+
+| File | Changes |
+|---|---|
+| `seo.mjs` | Add `computeSiteSeo` and `computeChunkSeo` exports; refactor `precomputeSeo` to delegate (retained as dead code for dev tooling) |
+| `tbdocs.mjs` | Import `computeSiteSeo` instead of `precomputeSeo`; delete `seo` task; fold site-level SEO into `markdownInit`; drop `"seo"` from `dispatch.expected`; remove `seo` from `GANTT_SECTION`; update spine comment |
+| `cpu-worker.mjs` | Import `computeChunkSeo` from `./seo.mjs`; call between `renderPhase` and `templatePhase` in the render handler |
+
+#### Expected savings
+
+Two sources:
+
+1. **Critical-path reduction.**  The `seo` task (~35 ms) is removed
+   from the `markdownInit` → `dispatch` path.  If `seo` was the
+   last `dispatch` dependency to complete (likely when `nav` finishes
+   first), `dispatch` starts ~35 ms sooner.  If `nav` was the
+   bottleneck, the saving is the difference between the `seo` path
+   and the `nav` path --- still non-negative.
+
+2. **Reduced chunk payload.**  Four fields per page (`seoTitle`,
+   `seoFullTitle`, `seoCanonical`, `seoIsHome`) are no longer
+   serialized into the chunks.  At ~150 bytes/page × ~858 pages,
+   this saves ~130 KB from the `packPayloads` step --- both
+   `JSON.stringify` CPU time and `TextEncoder` throughput.
+
+The per-worker cost of `computeChunkSeo` is negligible: ~54
+pages/worker × ~60 μs/page ≈ 3--4 ms per worker, absorbed within
+the render fan-out.
+
+#### Verification
+
+`build.bat && check.bat` clean.  The `seo` entry disappears from
+the timing summary and Gantt chart.  `dispatch` starts ~35 ms
+sooner (visible as the gap between `markdownInit` and `dispatch`
+shrinking).  Rendered output byte-identical --- `headSeoBlock` in
+every page produces the same `<title>`, `<meta>`, canonical, and
+JSON-LD.
