@@ -158,24 +158,23 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
   // synchronous prefix (e.g. nav-block cache pre-pass) immediately,
   // before any await happens. Folding that work into the same lap as
   // the parallel await keeps the timing report honest.
+  // Offline page HTML is already on disk from per-worker flushPages.
+  // Only redirect stubs, static files, and theme assets are written here.
   if (subT) {
     const t0Pages = Date.now();
-    let dPages = 0, dRedirects = 0, dStatics = 0, dThemes = 0;
+    let dRedirects = 0, dStatics = 0, dThemes = 0;
     const branches = [
-      writeOfflinePages(pages, deps, { precomputed }).then(() => { dPages = Date.now() - t0Pages; }),
       writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps).then(() => { dRedirects = Date.now() - t0Pages; }),
       copyOfflineStatics(staticFiles, deps).then(() => { dStatics = Date.now() - t0Pages; }),
       copyOfflineThemeAssets(deps).then(() => { dThemes = Date.now() - t0Pages; }),
     ];
     await Promise.all(branches);
     subT.lap("parallel");
-    console.log(`  offline.pages (concurrent): ${dPages} ms`);
     console.log(`  offline.redirects (concurrent): ${dRedirects} ms`);
     console.log(`  offline.statics (concurrent): ${dStatics} ms`);
     console.log(`  offline.themeAssets (concurrent): ${dThemes} ms`);
   } else {
     await Promise.all([
-      writeOfflinePages(pages, deps, { precomputed }),
       writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps),
       copyOfflineStatics(staticFiles, deps),
       copyOfflineThemeAssets(deps),

@@ -1435,6 +1435,281 @@ Discover's wall-clock time does not increase meaningfully (~1--3 ms).
 Rendered output is byte-identical to the pre-change build.  Run once
 with `TBDOCS_DEBUG=1` to exercise the assertion.
 
+### Phase 12: Per-worker page flush
+
+**Suggested model:** Opus.
+
+**Motivation.** Today the entire `writePages` pass --- ~1,080 files to
+disk --- waits behind `renderJoin`, then runs on the main thread.  The
+per-page I/O is embarrassingly parallel and the data is already in
+worker memory after `render`.  This phase moves page writes into
+workers, overlapping I/O with the render tail and eliminating the
+`html` / `offlineHtml` fields from the render delta (the two largest
+structured-clone payloads per chunk).
+
+**Design.** Three changes:
+
+1. **Page stash.** Each worker keeps a module-scope array
+   (`_pageStash = []`) initialized empty at startup.  The `render`
+   handler appends `{ destPath, html, offlineHtml }` for each rendered
+   page to the stash instead of returning those fields in the delta.
+   The render delta shrinks to `{ destPath, renderedContent,
+   offlineMisses }`.
+
+2. **`flushPages` task.** A new `unique_per_worker` + `on_demand` task.
+   When activated (by `prepPageDirs` completing on main), it becomes
+   eligible in the idle-task scan.  The handler writes every stashed
+   page to `_site/` and `_site-offline/`, clears the stash, and returns
+   write stats.  A `flushJoin` barrier on main collects all per-worker
+   flush completions.
+
+3. **Priority-ordered idle scan.** The current `F_RUN_WHEN_IDLE`
+   boolean becomes a numeric priority (`idle_priority`).
+   `findIdleTask` picks the eligible task with the lowest
+   (= highest-priority) value.  Assignment: `warmInit` = 0 (run first
+   --- Shiki must load before rendering), `flushPages` = 1 (run after
+   render drains).  In practice they never compete (`warmInit` finishes
+   long before `flushPages` becomes eligible), but the priority makes
+   the ordering explicit and defensive.
+
+   Implementation: store `idle_priority` in `taskMeta` (the JS-side
+   per-task metadata already sent to workers at init), not in the SAB
+   layout.  `findIdleTask` keeps the flag-bit scan
+   (`F_RUN_WHEN_IDLE`) to identify idle-eligible tasks, then among
+   eligible candidates picks the one with the lowest
+   `taskMeta[i].idlePriority`.  With only 2--3 idle tasks the extra
+   comparison is negligible.
+
+**Edge case: worker with zero render chunks.** Under high worker
+counts (or small page sets), one or more workers may never claim a
+render task.  Their stash stays at the initialized-empty `[]`.
+`flushPages` on such a worker writes zero pages and returns
+`{ written: 0, offlineWritten: 0 }`.  This is safe --- `flushJoin`
+counts it as done.  Guard: `_pageStash` must be preset to `[]` both
+at module scope and in the `msg.init` handler (serve-mode pool reuse
+across rebuilds).
+
+**Graph changes.** `renderJoin` is removed entirely.  All downstream
+tasks that depended on it switch to `flushJoin`:
+
+```
+render:i [W]  (stashes pages locally; delta carries renderedContent + offlineMisses only)
+    render:i.submit()  merges renderedContent into state.pages on main
+
+prepPageDirs [M]  →  activates flushPages ON_DEMAND slots
+
+flushPages [W, unique_per_worker, on_demand, idle_priority: 1]
+    writes stashed html       → _site/<destPath>
+    writes stashed offlineHtml → _site-offline/<destPath>
+    → flushJoin [M]
+
+flushJoin + scssJoin + mermaid + highlighterInit  → writeAssets [M]
+    (copyTheme + copyStaticFiles + writeGeneratedAssets --- no page writes)
+
+flushJoin + prepDest  → searchData [M]
+
+flushJoin + searchData + deriveRedirects + deriveSitemap  → writeAux [M]
+
+writeAux + writeAssets  → writeOffline [M]
+    (offline theme / static / aux only --- page HTML already on disk from flush)
+
+flushJoin + mermaid  → writePdf [M]
+    (reads renderedContent from state.pages --- not html)
+```
+
+**Why `flushJoin` subsumes `renderJoin`.** Messages from a single
+worker to main are FIFO.  Each worker posts all `render:i` completion
+messages (triggering `render:i.submit()` delta merges on main) before
+posting its `flushPages` completion.  By the time main processes the
+last worker's flush-done --- which is when `flushJoin` fires --- every
+`render:i.submit()` has already executed.  So `flushJoin` implies all
+render deltas are merged, and `searchData` / `writePdf` can safely
+read `renderedContent` from `state.pages`.
+
+**Implementation details.**
+
+- **Stash initialization.** `let _pageStash = []` at module scope in
+  `cpu-worker.mjs`.  Reset to `[]` in the `msg.init` handler (for
+  serve-mode pool reuse across rebuilds).
+
+- **Render handler change.** After `renderPhase` + `templatePhase` +
+  offline derivation, the handler pushes `{ destPath, html,
+  offlineHtml }` onto `_pageStash` for each writable page
+  (`html !== undefined`).  The return value drops `html` and
+  `offlineHtml`:
+  ```js
+  return {
+    workerStart, workerEnd,
+    pages: chunk.map(p => ({
+      destPath:        p.destPath,
+      renderedContent: p.renderedContent,
+      offlineMisses:   p.offlineMisses,
+    })),
+  };
+  ```
+
+- **`flushPages` handler.** Reads `ctx.destRoot` (already available on
+  the worker via the init message).  Writes each stashed page to
+  `path.join(destRoot, p.destPath)` and, when `offlineHtml` is
+  defined, to `path.join(destRoot + '-offline', p.destPath)`.  Skips
+  actual writes when `ctx.opts.dryRun` is true.  Returns
+  `{ written, offlineWritten, offlineMisses }` (`offlineMisses` is
+  the sum of per-page `offlineMisses` counts from the stash).
+
+  **Stats delivery.** The `perWorkerTiming` message format gains an
+  optional `output` field.  The `flushPages` completion path in
+  `cpu-worker.mjs` sets it to the handler's return value so the stats
+  reach main alongside the timing.  Existing per-worker tasks
+  (`warmInit`, `renderEnvInit`) omit the field; the main-thread
+  handler ignores it when absent.
+
+- **`flushPages` task definition.**
+  ```js
+  flushPages: {
+    expected: ["prepPageDirs"],
+    on_demand: true,
+    unique_per_worker: true,
+    run_when_idle: true,
+    idle_priority: 1,
+    handler: "flushPages",
+    submit() {},
+  },
+  ```
+- **`flushJoin` task definition and activation.**  `flushJoin` is
+  `on_demand` + `runOnMain`.  It does not participate in the normal
+  SAB successor system (because `flushPages` is `unique_per_worker`,
+  which uses `perWorkerDone` + `perWorkerTiming` --- not the regular
+  task-completion path that decrements successor dep counts).
+
+  Instead, **counter-based activation in `_onPerWorkerTiming`:**
+  the scheduler keeps a `_flushCount` counter (initialized to 0) and
+  a `_flushStats` accumulator.  When `_onPerWorkerTiming` receives a
+  message with `taskName === "flushPages"`, it increments the counter
+  and folds the message's `output` into the accumulator (summing
+  `written`, `offlineWritten`, `offlineMisses`).  When the counter
+  reaches `workerCount`, it:
+
+  1. Stores the aggregated stats on `this.results` under
+     `"flushPages"` so downstream tasks can read them.
+  2. Calls `addDynamicTasks(1)` (so `_remaining` includes
+     `flushJoin`).
+  3. Sets `flushJoin`'s SAB status to `READY`.
+  4. Calls `_scheduleMainScan()`.
+
+  `flushJoin` then runs as a no-op barrier; its `submit()` is empty
+  (downstream tasks declare `"flushJoin"` in their `expected` arrays
+  and the scheduler's `_assembleInputs` resolves it from
+  `this.results`).
+
+  ```js
+  flushJoin: {
+    expected: [],
+    on_demand: true,
+    runOnMain: true,
+    execute() { return {}; },
+    submit() {},
+  },
+  ```
+
+  Reset `_flushCount` and `_flushStats` in the constructor (and on
+  each rebuild in serve mode).
+
+- **`render:i.submit()` change.** Drops the `html` and `offlineHtml`
+  assignments from the delta merge.  Only merges `renderedContent` and
+  `offlineMisses`.
+
+- **`prepPageDirs` extension.** Currently creates directories under
+  `destRoot` only.  Extended to also create the corresponding
+  directories under `destRoot + '-offline'` so `flushPages` workers
+  can write without per-file mkdir.
+
+- **`write` → `writeAssets`.** The current `write` task is renamed.
+  Its `expected` changes from
+  `["renderJoin", "scssJoin", "mermaid", "prepPageDirs",
+  "highlighterInit"]` to
+  `["flushJoin", "scssJoin", "mermaid", "prepPageDirs",
+  "highlighterInit"]`.  It no longer calls `writePages` --- only
+  `copyTheme`, `copyStaticFiles`, and `writeGeneratedAssets`.
+
+- **`writeOffline` change.** The `writeOfflinePages` call is removed
+  from `writeOffline`'s `Promise.all` orchestration.  With
+  `offlineHtml` no longer merged back into `state.pages` (it stays on
+  the worker), the `precomputed` branch at `offline.mjs:235` would
+  filter to zero pages --- the offline page HTML is already on disk
+  from the flush.  `writeOffline` keeps: JS patches
+  (`just-the-docs.js`), `search-data.js` wrapper, redirect-stub
+  rewrites, theme-asset copy, static-file copy.
+
+  The `deps.counters.html` and `deps.counters.unresolved` tallies
+  that `writeOfflinePages` used to maintain move to `flushPages`
+  return stats, aggregated on main via `flushJoin`.
+
+  `writeOffline` gains a direct dependency on `writeAssets` (in
+  addition to `writeAux`): it reads `_site/assets/js/just-the-docs.js`
+  to produce the patched offline copy, and walks `_site/assets/` to
+  mirror theme files with CSS URL rewrites.  Today this is covered
+  transitively through `writeAux → write`; with `write` split into
+  `flushPages` + `writeAssets`, the edge must be explicit.
+
+- **`searchData`, `writePdf` dependency change.** Both switch from
+  `renderJoin` to `flushJoin` in their `expected` arrays.  No other
+  changes --- `searchData` reads `renderedContent` from
+  `state.pages`; `writePdf` reads `renderedContent` via
+  `bookData._chapters` refs.  Neither reads `html`.
+
+- **`GANTT_SECTION` map** (`tbdocs.mjs`).  Remove `write`, add
+  `writeAssets: "Write"`, `flushJoin: "Write"`.  Per-worker
+  `flushPages` timings are recorded by `_onPerWorkerTiming` under
+  `"flushPages:wN"` with `ganttSection: "Write"` (update the
+  hard-coded `"Boot"` section in `_onPerWorkerTiming` to read from
+  taskMeta, or special-case `flushPages`).
+
+- **Summary output** (`tbdocs.mjs`).  The build summary currently
+  reports write stats from the `write` task result.  With the split,
+  page-write stats come from the aggregated `flushPages` result
+  (stored under `"flushPages"` in `this.results` by the counter
+  activation), and asset-write stats come from `writeAssets`.
+
+**Files touched:**
+
+| File | Changes |
+|---|---|
+| `cpu-worker.mjs` | `_pageStash` module var + reset in `msg.init`; render handler: push to stash, drop `html`/`offlineHtml` from return; new `flushPages` handler; `perWorkerTiming` message gains `output` field for flush stats |
+| `tbdocs.mjs` | New `flushPages` + `flushJoin` task defs; rename `write` → `writeAssets` and strip `writePages` call; update `expected` arrays (`searchData`, `writePdf`, `writeOffline`); `GANTT_SECTION` map; summary output |
+| `scheduler.mjs` | `_flushCount` / `_flushStats` counter; `_onPerWorkerTiming` extension for flush activation + stats aggregation; Gantt section for per-worker flush timings |
+| `sab-scheduler.mjs` | `idlePriority` in `taskMeta` wire-up (minor --- already passed to workers, just needs to be populated from the task def); `flushJoin` SAB slot allocation |
+| `write.mjs` | `preparePageDirs` extended to create dirs under `destRoot + '-offline'` |
+| `offline.mjs` | Remove `writeOfflinePages` call from `writeOffline`'s `Promise.all`; adjust counter reporting |
+
+**Expected savings.**
+
+Three sources:
+1. **Wall-clock overlap.** Pages start hitting disk as soon as a worker
+   exhausts its render tasks, instead of waiting for `renderJoin` +
+   main-thread `writePages`.  The overlap between the render tail and
+   the first flush is the direct win.
+2. **Reduced structured-clone cost.** `html` (~5--15 KB per page) and
+   `offlineHtml` (similar size) no longer cross the worker boundary.
+   On ~1,080 pages across ~16 chunks, this drops the total return-path
+   clone volume substantially.
+3. **Decoupled `writeAssets`.** Theme and static-file copies no longer
+   wait for rendered pages.  They start as soon as `flushJoin` + their
+   seed deps are ready.
+
+Conservative estimate: 50--100 ms wall-clock on a 16-core machine.
+The main value is architectural --- the write pipeline is no longer a
+main-thread bottleneck gated on the render barrier.
+
+**Verification.** `build.bat && check.bat` clean.  The timing summary
+should show:
+- Per-worker `flushPages` timings appearing after the last `render:i`
+  per worker, with earlier workers' flushes overlapping later workers'
+  render tails.
+- `writeAssets` replacing `write` in the Write section, with a shorter
+  duration (no `writePages`).
+- `writeOffline` duration dropping (no per-page HTML writing).
+- `renderJoin` absent from the summary.
+
 ## Notify protocol
 
 Workers sleep on a single generation-counter slot (`views.notify`)

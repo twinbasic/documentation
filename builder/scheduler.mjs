@@ -7,7 +7,7 @@
 import pc from "picocolors";
 import {
   onTaskDone as sabOnTaskDone,
-  registerDynamicRender, packChunkData, activateRenderTasks,
+  packChunkData, activateRenderTasks,
   READY, CLAIMED, DONE, F_RUN_ON_MAIN,
 } from "./sab-scheduler.mjs";
 
@@ -19,7 +19,7 @@ export class SharedState {
 }
 
 export class Scheduler {
-  constructor({ pool, tasks, views, idMapping }) {
+  constructor({ pool, tasks, views, idMapping, ganttSections }) {
     this.pool       = pool;
     this.tasks      = new Map(Object.entries(tasks));
     this.results    = new Map();   // task name → output
@@ -27,13 +27,18 @@ export class Scheduler {
     this.state      = new SharedState();
     this._views     = views;
     this._idMapping = idMapping;
+    this._ganttSections = ganttSections ?? {};
 
     // Count non-on_demand static tasks for completion detection.
-    // Dynamic tasks (render:i, renderJoin) are added via addDynamicTasks().
+    // Dynamic tasks (render:i) are added via addDynamicTasks().
     this._remaining = 0;
     for (const [, def] of this.tasks) {
       if (!def.on_demand) this._remaining++;
     }
+
+    // flushPages counter: activated by per-worker timing messages.
+    this._flushCount = 0;
+    this._flushStats = { written: 0, offlineWritten: 0, offlineMisses: 0 };
 
     this._scanning          = false;
     this._mainScanScheduled = false;
@@ -45,7 +50,6 @@ export class Scheduler {
   // Write render SAB entries, broadcast chunk data, and activate tasks.
   dispatchRender(chunks, sharedSAB) {
     const N = chunks.length;
-    registerDynamicRender(this._views, this._idMapping, N);
     const chunkDataSAB = packChunkData(chunks, this._views);
     this.pool.broadcastRenderData(chunkDataSAB, sharedSAB);
     activateRenderTasks(this._views, this._idMapping, N);
@@ -201,14 +205,31 @@ export class Scheduler {
     this._abort(name, err);
   }
 
-  _onPerWorkerTiming({ taskName, timing, lane }) {
+  _onPerWorkerTiming({ taskName, timing, lane, output }) {
     this.timings.set(`${taskName}:w${lane}`, {
       start: timing.start, end: timing.end,
       workerStart: timing.start, workerEnd: timing.end,
       lane,
       consolidate: true,
-      ganttSection: "Boot",
+      ganttSection: this._ganttSections[taskName] ?? "Boot",
     });
+
+    if (taskName === "flushPages" && output) {
+      this._flushCount++;
+      this._flushStats.written        += output.written        ?? 0;
+      this._flushStats.offlineWritten += output.offlineWritten ?? 0;
+      this._flushStats.offlineMisses  += output.offlineMisses  ?? 0;
+
+      if (this._flushCount === this._ctx.workerCount) {
+        this.results.set("flushPages", { ...this._flushStats });
+        this.addDynamicTasks(1);
+        const joinIdx = this._idMapping.nameToIdx.get("flushJoin");
+        if (joinIdx != null) {
+          Atomics.store(this._views.status, joinIdx, READY);
+          this._scheduleMainScan();
+        }
+      }
+    }
   }
 
   _onMainTaskReady() {

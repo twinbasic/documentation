@@ -35,7 +35,7 @@ export const WRITE_LIMIT = LIMIT;
 const mkdirCache = new Set();
 const mkdirInflight = new Map();
 
-export async function writePhase(pages, staticFiles, { destRoot, dryRun = false, generatedAssets = [], baseurl = "" } = {}) {
+export async function writePhase(pages, staticFiles, { destRoot, dryRun = false, generatedAssets = [], baseurl = "", skipPages = false } = {}) {
   if (!destRoot) {
     throw new Error("writePhase requires a destRoot");
   }
@@ -61,7 +61,7 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false,
   // generated asset ever land at the same rel as a vendored file, the
   // generated content wins. No such collision exists today.
   const [pagesStats, themeStats, staticStats] = await Promise.all([
-    writePages(pages, destRoot, LIMIT),
+    skipPages ? { written: 0, skipped: 0 } : writePages(pages, destRoot, LIMIT),
     copyTheme(BUILDER_ASSETS, destRoot, LIMIT, baseurl),
     copyStaticFiles(staticFiles, destRoot, LIMIT, baseurl),
   ]);
@@ -109,11 +109,14 @@ export async function prepareDestinations(roots, dryRun) {
 
 // Pre-create all page output directories so writePages can skip mkdir
 // entirely.  Runs as a separate task concurrently with render workers.
-export async function preparePageDirs(pages, staticFiles, destRoot) {
+export async function preparePageDirs(pages, staticFiles, destRoot, offlineRoot) {
   assertNoDestinationCollisions(pages, staticFiles);
   const dirs = new Set();
   for (const page of pages) {
-    if (page.destPath) dirs.add(path.dirname(path.join(destRoot, page.destPath)));
+    if (page.destPath) {
+      dirs.add(path.dirname(path.join(destRoot, page.destPath)));
+      if (offlineRoot) dirs.add(path.dirname(path.join(offlineRoot, page.destPath)));
+    }
   }
   await Promise.all([...dirs].map(d => fs.mkdir(d, { recursive: true })));
 }

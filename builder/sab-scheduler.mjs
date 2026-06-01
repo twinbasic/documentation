@@ -94,17 +94,15 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
 
   const DYNAMIC_BASE = idxToName.length;
   const maxChunks    = workerCount * SLICES_PER_WORKER;
-  const RENDER_JOIN_IDX = DYNAMIC_BASE + maxChunks;
 
-  // Pre-reserve render chunk and renderJoin slots
+  // Pre-reserve render chunk slots (no renderJoin — flushJoin is a
+  // static task activated by counter, not by SAB dep counts).
   for (let i = 0; i < maxChunks; i++) {
     nameToIdx.set(`render:${i}`, DYNAMIC_BASE + i);
     idxToName.push(`render:${i}`);
   }
-  nameToIdx.set("renderJoin", RENDER_JOIN_IDX);
-  idxToName.push("renderJoin");
 
-  const totalTasks = RENDER_JOIN_IDX + 1;
+  const totalTasks = DYNAMIC_BASE + maxChunks;
   if (totalTasks > MAX_TASKS)
     throw new Error(`${totalTasks} tasks exceeds MAX_TASKS (${MAX_TASKS})`);
 
@@ -211,6 +209,7 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
       perWorkerDeps,
       expectedIdxs,
       name,
+      idlePriority:   def.idle_priority ?? 0,
     };
   }
 
@@ -223,18 +222,10 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
     };
   }
 
-  taskMeta[RENDER_JOIN_IDX] = {
-    handler:        "renderJoin",
-    perWorkerDeps:  [],
-    expectedIdxs:   [],
-    name:           "renderJoin",
-  };
-
   const idMapping = {
     nameToIdx,
     idxToName,
     DYNAMIC_BASE,
-    RENDER_JOIN_IDX,
     maxRenderChunks: maxChunks,
   };
 
@@ -304,21 +295,6 @@ export function advanceFirstReady(views, taskIdx) {
 // ── Dynamic task registration (called by dispatch on the main thread) ───────
 
 const encoder = new TextEncoder();
-
-export function registerDynamicRender(views, idMapping, numChunks) {
-  let edgePos = Atomics.load(views.edgeCount, 0);
-  for (let i = 0; i < numChunks; i++) {
-    const idx = idMapping.DYNAMIC_BASE + i;
-    views.succOffset[idx] = edgePos;
-    views.succCount[idx]  = 1;
-    if (edgePos >= MAX_EDGES)
-      throw new Error(`Edge count exceeds MAX_EDGES (${MAX_EDGES})`);
-    views.succList[edgePos++] = idMapping.RENDER_JOIN_IDX;
-  }
-  Atomics.store(views.edgeCount, 0, edgePos);
-  Atomics.store(views.depCount, idMapping.RENDER_JOIN_IDX, numChunks);
-  views.flags[idMapping.RENDER_JOIN_IDX] = F_RUN_ON_MAIN;
-}
 
 export function packChunkData(chunks, views) {
   const buffers = chunks.map(c => encoder.encode(JSON.stringify(c)));

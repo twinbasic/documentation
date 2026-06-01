@@ -4,6 +4,8 @@
 // no main-thread round-trip for worker-to-worker transitions.
 // See PLAN-sab-pull-scheduler.md §Worker pull loop.
 
+import { promises as fsP } from "node:fs";
+import path from "node:path";
 import { parentPort, workerData } from "node:worker_threads";
 import { compileLightScss, compileDarkScss } from "./scss.mjs";
 import { regenerateMermaid } from "./mermaid.mjs";
@@ -72,6 +74,30 @@ const handlers = {
 
     _renderEnv = { site, initData, offlineBase };
     return {};
+  },
+
+  async flushPages() {
+    let written = 0, offlineWritten = 0, offlineMisses = 0;
+    if (!ctx.opts.dryRun) {
+      const items = _pageStash;
+      let next = 0;
+      const limit = 64;
+      const workers = Array.from({ length: Math.min(limit, items.length || 1) }, async () => {
+        while (next < items.length) {
+          const p = items[next++];
+          await fsP.writeFile(path.join(ctx.destRoot, p.destPath), p.html, "utf8");
+          written++;
+          if (p.offlineHtml !== undefined) {
+            await fsP.writeFile(path.join(ctx.destRoot + "-offline", p.destPath), p.offlineHtml, "utf8");
+            offlineWritten++;
+          }
+          offlineMisses += p.offlineMisses ?? 0;
+        }
+      });
+      await Promise.all(workers);
+    }
+    _pageStash = [];
+    return { written, offlineWritten, offlineMisses };
   },
 
   async scssLight() {
@@ -145,21 +171,33 @@ const handlers = {
       }
     }
 
+    // Stash writable pages for flushPages (avoids structured-clone of
+    // html + offlineHtml across the worker boundary).
+    for (const p of chunk) {
+      if (p.html !== undefined) {
+        _pageStash.push({
+          destPath:      p.destPath,
+          html:          p.html,
+          offlineHtml:   p.offlineHtml,
+          offlineMisses: p.offlineMisses,
+        });
+      }
+    }
+
     const workerEnd = Date.now();
     return {
       workerStart, workerEnd,
       pages: chunk.map(p => ({
         destPath:        p.destPath,
         renderedContent: p.renderedContent,
-        html:            p.html,
-        offlineHtml:     p.offlineHtml,
         offlineMisses:   p.offlineMisses,
       })),
     };
   },
 };
 
-let _renderEnv = null;
+let _renderEnv  = null;
+let _pageStash  = [];
 
 // ── Message handler (init + renderData only) ────────────────────────────────
 
@@ -172,6 +210,7 @@ parentPort.on("message", (msg) => {
     _chunkDataSAB = null;
     _sharedSAB    = null;
     _renderEnv    = null;
+    _pageStash    = [];
     pullLoop();
     return;
   }
@@ -186,12 +225,16 @@ parentPort.on("message", (msg) => {
 
 function findIdleTask(views, lane) {
   const count = Atomics.load(views.taskCount, 0);
+  let bestIdx = -1;
+  let bestPri = Infinity;
   for (let i = 0; i < count; i++) {
     if (!(Atomics.load(views.flags, i) & F_RUN_WHEN_IDLE)) continue;
+    const meta = taskMeta[i];
+    const pri  = meta?.idlePriority ?? 0;
+    if (pri >= bestPri) continue;
     if (Atomics.load(views.flags, i) & F_UNIQUE_PER_WORKER) {
       if (Atomics.load(views.perWorkerDone, i * MAX_LANES + lane) !== 0)
         continue;
-      const meta = taskMeta[i];
       if (meta?.expectedIdxs) {
         let skip = false;
         for (const predIdx of meta.expectedIdxs) {
@@ -206,14 +249,20 @@ function findIdleTask(views, lane) {
         }
         if (skip) continue;
       }
-      return i;
+      bestIdx = i;
+      bestPri = pri;
     } else {
       if (Atomics.load(views.status, i) !== READY) continue;
-      if (Atomics.compareExchange(views.status, i, READY, CLAIMED) === READY)
-        return i;
+      bestIdx = i;
+      bestPri = pri;
     }
   }
-  return -1;
+  // For non-unique_per_worker tasks, CAS-claim at the end.
+  if (bestIdx !== -1 && !(Atomics.load(views.flags, bestIdx) & F_UNIQUE_PER_WORKER)) {
+    if (Atomics.compareExchange(views.status, bestIdx, READY, CLAIMED) !== READY)
+      return -1;
+  }
+  return bestIdx;
 }
 
 // ── Pull loop ───────────────────────────────────────────────────────────────
@@ -230,8 +279,9 @@ async function pullLoop() {
       if (idleTask !== -1) {
         const idleMeta  = taskMeta[idleTask];
         const idleStart = Date.now();
+        let idleResult;
         try {
-          await handlers[idleMeta.handler]();
+          idleResult = await handlers[idleMeta.handler]();
         } catch (err) {
           parentPort.postMessage({ taskFailed: idleTask, message: err.message, stack: err.stack });
           return;
@@ -242,6 +292,7 @@ async function pullLoop() {
           taskName: idleMeta.name,
           timing:  { start: idleStart, end: Date.now() },
           lane:    myLane,
+          output:  idleResult,
         });
         continue;
       }
@@ -294,8 +345,9 @@ async function pullLoop() {
 
             const nestedMeta  = taskMeta[nestedUnsatisfied];
             const nestedStart = Date.now();
+            let nestedResult;
             try {
-              await handlers[nestedMeta.handler]();
+              nestedResult = await handlers[nestedMeta.handler]();
             } catch (err) {
               parentPort.postMessage({ taskFailed: nestedUnsatisfied, message: err.message, stack: err.stack });
               return;
@@ -306,6 +358,7 @@ async function pullLoop() {
               taskName: nestedMeta.name,
               timing:  { start: nestedStart, end: Date.now() },
               lane:    myLane,
+              output:  nestedResult,
             });
             continue;
           }
@@ -338,8 +391,9 @@ async function pullLoop() {
         Atomics.notify(views.notify, 0, 1);
 
         const depStart = Date.now();
+        let depResult;
         try {
-          await handlers[depMeta.handler]();
+          depResult = await handlers[depMeta.handler]();
         } catch (err) {
           parentPort.postMessage({ taskFailed: unsatisfied, message: err.message, stack: err.stack });
           return;
@@ -351,6 +405,7 @@ async function pullLoop() {
           taskName: depMeta.name,
           timing:  { start: depStart, end: Date.now() },
           lane:    myLane,
+          output:  depResult,
         });
         continue;
       }

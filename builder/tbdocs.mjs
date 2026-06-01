@@ -123,9 +123,11 @@ export function makeTimer() {
 // highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
 // nav + buildInit → dispatch; config → loadData; discover → markdownInit → seo;
 // deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
-// the render fan-out (dispatch → render:0..N → renderJoin), and write/post-write tasks
-// (prepDest → prepPageDirs; renderJoin + prepPageDirs → write + searchData;
-// write + searchData → writeAux → writeOffline; renderJoin + mermaid → writePdf)
+// the render fan-out (dispatch → render:0..N, each worker stashes html locally),
+// the per-worker flush (prepPageDirs → flushPages [per worker] → flushJoin [counter barrier]),
+// and write/post-write tasks
+// (flushJoin + prepPageDirs → writeAssets + searchData;
+// writeAssets + searchData → writeAux → writeOffline; flushJoin + mermaid → writePdf)
 // are scheduler tasks.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
 // summary, and returns.
@@ -225,7 +227,9 @@ const TASKS = {
     runOnMain: true,
     async execute(_, ctx, state) {
       if (ctx.opts.dryRun) return {};
-      await preparePageDirs(state.pages, state.staticFiles, ctx.destRoot);
+      const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+      const offlineRoot = skipOffline ? null : ctx.destRoot + "-offline";
+      await preparePageDirs(state.pages, state.staticFiles, ctx.destRoot, offlineRoot);
       return {};
     },
     submit() {},
@@ -270,6 +274,30 @@ const TASKS = {
     on_demand: true,
     unique_per_worker: true,
     handler: "renderEnvInit",
+    submit() {},
+  },
+
+  // On-demand per-worker page flush: writes stashed html + offlineHtml
+  // to disk, overlapping I/O with the render tail. Activated by
+  // prepPageDirs (directories must exist). Counter-based flushJoin
+  // barrier fires when all workers complete.
+  flushPages: {
+    expected: ["prepPageDirs"],
+    on_demand: true,
+    unique_per_worker: true,
+    run_when_idle: true,
+    idle_priority: 1,
+    handler: "flushPages",
+    submit() {},
+  },
+
+  // Barrier: all workers have flushed their stashed pages to disk.
+  // Activated by counter in _onPerWorkerTiming, not by SAB dep counts.
+  flushJoin: {
+    expected: [],
+    on_demand: true,
+    runOnMain: true,
+    execute() { return {}; },
     submit() {},
   },
 
@@ -438,16 +466,6 @@ const TASKS = {
     submit(out, _state, scheduler) {
       const N = out.chunks.length;
 
-      // Register task definitions for dynamic tasks.  The SAB already has
-      // pre-reserved slots and dep-count edges for render:i → renderJoin;
-      // registerDynamicRender (called by dispatchRender) populates them.
-      scheduler.tasks.set("renderJoin", {
-        expected: Array.from({ length: N }, (_, i) => `render:${i}`),
-        runOnMain: true,
-        execute() { return {}; },
-        submit() {},
-      });
-
       for (let i = 0; i < N; i++) {
         scheduler.tasks.set(`render:${i}`, {
           expected: [],
@@ -459,28 +477,24 @@ const TASKS = {
               const p = state.pageByDest.get(r.destPath);
               if (!p) continue;
               p.renderedContent = r.renderedContent;
-              if (r.html !== undefined) p.html = r.html;
-              if (r.offlineHtml !== undefined) p.offlineHtml = r.offlineHtml;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
             }
           },
         });
       }
 
-      scheduler.addDynamicTasks(N + 1);
+      scheduler.addDynamicTasks(N);
       scheduler.dispatchRender(out.chunks, out.sharedSAB);
     },
   },
 
   // ── Write and post-write tasks ─────────────────────────────────────────────
 
-  // Materialise pages + static files + generated CSS to _site/.
-  // Waits for renderJoin (pages rendered + templated), scss (generated CSS),
-  // mermaid (SVG descriptors appended to state.staticFiles by mermaid.submit),
-  // prepPageDirs (page output directories pre-created), and highlighterInit
-  // (highlight CSS).
-  write: {
-    expected: ["renderJoin", "scssJoin", "mermaid", "prepPageDirs", "highlighterInit"],
+  // Materialise static files + generated CSS to _site/. Page HTML is
+  // written by per-worker flushPages; this task handles theme, static
+  // files, and generated CSS only.
+  writeAssets: {
+    expected: ["flushJoin", "scssJoin", "mermaid", "prepPageDirs", "highlighterInit"],
     runOnMain: true,
     async execute({ scssJoin: { scssResult }, mermaid: { mermaidStats }, highlighterInit: _highlightSignal }, ctx, state) {
       void mermaidStats;      // dependency signal only; append already happened in mermaid.submit
@@ -497,16 +511,17 @@ const TASKS = {
         dryRun:    ctx.opts.dryRun,
         generatedAssets,
         baseurl:   String(state.site.config.baseurl || ""),
+        skipPages: true,
       });
     },
     submit() {},
   },
 
-  // Write search-data.json. Depends on renderJoin (pages have
+  // Write search-data.json. Depends on flushJoin (pages have
   // renderedContent) and prepDest (_site/ exists). Result passes
   // through to writeAux so its search.json field reaches writeOffline.
   searchData: {
-    expected: ["renderJoin", "prepDest"],
+    expected: ["flushJoin", "prepDest"],
     runOnMain: true,
     async execute(_, ctx, state) {
       if (ctx.opts.dryRun) return { entries: 0, json: "" };
@@ -515,11 +530,11 @@ const TASKS = {
     submit() {},
   },
 
-  // Write redirect stubs + sitemap/robots. Waits for write (pages on disk),
-  // searchData, deriveRedirects, and deriveSitemap.
+  // Write redirect stubs + sitemap/robots. Waits for writeAssets (theme on
+  // disk), searchData, deriveRedirects, and deriveSitemap.
   // Passes searchStats through to writeOffline (for search-data.js).
   writeAux: {
-    expected: ["write", "searchData", "deriveRedirects", "deriveSitemap"],
+    expected: ["writeAssets", "searchData", "deriveRedirects", "deriveSitemap"],
     runOnMain: true,
     async execute({ searchData: searchStats, deriveRedirects: { stubs }, deriveSitemap: { urls } }, ctx, state) {
       if (ctx.opts.dryRun) return { redirectStats: null, sitemapStats: null, searchStats };
@@ -532,10 +547,11 @@ const TASKS = {
     submit() {},
   },
 
-  // Produce _site-offline/. Runs in parallel with writePdf on the main thread;
-  // the gain is interleaved async I/O windows.
+  // Produce _site-offline/. Depends on writeAux (redirects + sitemap on
+  // disk) and writeAssets (theme assets on disk for the CSS-rewrite +
+  // JTD-patch passes). Offline page HTML is already on disk from flushPages.
   writeOffline: {
-    expected: ["writeAux"],
+    expected: ["writeAux", "writeAssets"],
     runOnMain: true,
     async execute({ writeAux: { redirectStats, sitemapStats, searchStats } }, ctx, state) {
       const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
@@ -551,13 +567,13 @@ const TASKS = {
     submit() { /* terminal */ },
   },
 
-  // Produce _site-pdf/. Depends on renderJoin (pages have renderedContent),
+  // Produce _site-pdf/. Depends on flushJoin (pages have renderedContent),
   // resolveBookChapters (bookData._chapters refs into state.pages), and
   // mermaid (SVG descriptors in staticFiles). Sources CSS directly:
   // tb-highlight.css from state.site.highlighter, print.css from staticFiles.
-  // Runs in parallel with write → searchData → writeAux → writeOffline.
+  // Runs in parallel with writeAssets → searchData → writeAux → writeOffline.
   writePdf: {
-    expected: ["renderJoin", "mermaid", "resolveBookChapters"],
+    expected: ["flushJoin", "mermaid", "resolveBookChapters"],
     runOnMain: true,
     async execute(_, ctx, state) {
       const skipPdf = ctx.opts.skipPdf ?? (state.site.config.also_build_pdf === false);
@@ -589,7 +605,8 @@ const GANTT_SECTION = {
   seo: "Spine", resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
-  write: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
+  flushPages: "Write", flushJoin: "Write",
+  writeAssets: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
 
@@ -642,7 +659,7 @@ export async function runBuild(opts) {
   verifySchedulerSAB(TASKS, views, idMapping);
 
   const pool = new WorkerPool(workerCount, CPU_WORKER_URL);
-  const scheduler = new Scheduler({ pool, tasks: TASKS, views, idMapping });
+  const scheduler = new Scheduler({ pool, tasks: TASKS, views, idMapping, ganttSections: GANTT_SECTION });
 
   pool.onWorkerDone     = (msg) => scheduler._onWorkerDone(msg);
   pool.onWorkerError    = (msg) => scheduler._onWorkerError(msg);
@@ -672,15 +689,16 @@ export async function runBuild(opts) {
   if (mermaidStats.failed > 0) process.exitCode = 1;
   if (scssResult.failed)       process.exitCode = 1;
 
-  const writeStats    = results.get("write");
+  const flushStats    = results.get("flushPages");
+  const assetStats    = results.get("writeAssets");
   const auxResult     = results.get("writeAux");
   const offlineResult = results.get("writeOffline");
   const pdfResult     = results.get("writePdf");
 
   console.log(`Done in ${pc.bold(pc.green(`${Date.now() - buildStart}ms`))}: ${pages.length} pages, ${staticFiles.length} static files`);
   console.log(`  ${pc.bold("wrote:")} -> ${pc.cyan(destRoot)}`);
-  console.log(`         ${writeStats.pages.written} pages (${writeStats.pages.skipped} skipped), ` +
-              `${writeStats.theme.copied} theme assets, ${writeStats.staticFiles.copied} static files`);
+  console.log(`         ${flushStats.written} pages, ` +
+              `${assetStats.theme.copied} theme assets, ${assetStats.staticFiles.copied} static files`);
   if (auxResult?.redirectStats) {
     console.log(`  ${pc.bold("aux:")}   ${auxResult.redirectStats.written} redirect stubs, ` +
                 `${auxResult.sitemapStats.entries} sitemap entries, ` +
@@ -688,11 +706,11 @@ export async function runBuild(opts) {
   }
   if (offlineResult) {
     console.log(`  ${pc.bold("offline:")} -> ${pc.cyan(`${destRoot}-offline`)}`);
-    console.log(`           ${offlineResult.html} HTML, ${offlineResult.css} CSS, ` +
+    console.log(`           ${flushStats.offlineWritten} HTML, ${offlineResult.css} CSS, ` +
                 `${offlineResult.redirects} redirect stubs, ` +
                 `${offlineResult.statics + offlineResult.assets} assets, ` +
                 `${offlineResult.excluded} excluded ` +
-                `(${offlineResult.unresolved} unresolved)`);
+                `(${flushStats.offlineMisses} unresolved)`);
     if (opts.profileOffline && offlineResult.subT) {
       console.log(`  ${pc.bold("offline:")} ${offlineResult.subT.summary()}`);
     }
