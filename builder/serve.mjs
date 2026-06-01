@@ -167,7 +167,7 @@ export async function runServe(opts) {
 
   // Initial build
   try {
-    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, ganttFile: "serve-gantt.mmd" });
+    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
   } catch (err) {
     console.error("serve: initial build failed:", err.message);
     process.exit(1);
@@ -210,7 +210,7 @@ export async function runServe(opts) {
     changedFiles.clear();
     console.log(`\nChanged: ${files.join(", ")}`);
     try {
-      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, ganttFile: "serve-gantt.mmd" });
+      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
       notifyReload();
     } catch (err) {
       console.error("rebuild failed:", err.message);

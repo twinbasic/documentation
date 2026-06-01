@@ -60,7 +60,6 @@ function parseArgs(argv) {
     profileOffline: false,
     serve: false,
     port: 4000,
-    ganttFile: "build-gantt.mmd",
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -588,7 +587,7 @@ const GANTT_SECTION = {
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
 
-async function writeGantt(timings, outPath) {
+function groupGanttTimings(timings) {
   if (timings.size === 0) return null;
   const t0 = Math.min(...[...timings.values()].map(t => t.start));
 
@@ -603,29 +602,6 @@ async function writeGantt(timings, outPath) {
     if (consolidate)  entry.consolidate = true;
     grouped.get(section).push(entry);
   }
-
-  const lines = [
-    "gantt",
-    "    title Build task timeline",
-    "    dateFormat x",
-    "    axisFormat %S.%L",
-    "",
-  ];
-  for (const [section, tasks] of grouped) {
-    if (tasks.length === 0) continue;
-    lines.push(`    section ${section}`);
-    for (const { id, start, end, workerStart, workerEnd } of tasks) {
-      const pct    = workerStart != null
-        ? ` (${Math.round((workerStart - start) / (end - start) * 100)}%+${Math.round((workerEnd - workerStart) / (end - start) * 100)}%)`
-        : "";
-      const label  = id.replace(":", " ") + pct;
-      const taskId = `t_${id.replace(/[^a-z0-9]/gi, "_")}`;
-      lines.push(`    ${label} :done, ${taskId}, ${start}, ${Math.max(end, start + 1)}`);
-    }
-    lines.push("");
-  }
-
-  await fs.writeFile(outPath, lines.join("\n"), "utf8");
   return grouped;
 }
 
@@ -720,8 +696,7 @@ export async function runBuild(opts) {
     });
   }
 
-  const ganttPath = path.resolve(process.cwd(), opts.ganttFile ?? "build-gantt.mmd");
-  const grouped = await writeGantt(scheduler.timings, ganttPath);
+  const grouped = groupGanttTimings(scheduler.timings);
 
   const injectStart = Date.now();
   await injectGanttChart(scheduler.state.pages, destRoot, grouped ? renderGantt(grouped) : "");
