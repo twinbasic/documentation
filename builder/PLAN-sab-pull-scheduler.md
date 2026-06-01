@@ -133,7 +133,13 @@ start via a `postMessage` init message. This includes:
     to look up the right function after claiming a task by index.
   - `perWorkerDeps`: array of task indices that are
     `unique_per_worker` dependencies. Empty for most tasks; render
-    chunks have `[warmInitIdx]`. Workers check these after claiming.
+    chunks have `[renderEnvInitIdx]`. Workers check these after
+    claiming.
+  - `expectedIdxs`: array of predecessor task indices used as
+    preconditions for `unique_per_worker` tasks (Phase 10). Workers
+    verify each predecessor is DONE before executing the per-worker
+    instance. Empty for tasks without predecessors (e.g. `warmInit`);
+    `renderEnvInit` has `[dispatchIdx]`.
   - `name`: string task name (for timing / error messages).
 
 - **`ctx`** --- the build context (`{ srcRoot, destRoot, opts,
@@ -795,6 +801,10 @@ handler functions, and external behavior.
    - `taskMeta[i].handler`: handler function name (string).
    - `taskMeta[i].perWorkerDeps`: array of task indices (for
      unique_per_worker deps). Empty for most tasks.
+   - `taskMeta[i].expectedIdxs`: array of predecessor task indices
+     (for precondition checking on unique_per_worker tasks with
+     `expected` predecessors, Phase 10). Empty for most tasks.
+     Populated by mapping `def.expected` names through `nameToIdx`.
    - `taskMeta[i].name`: task name (for debug/timing).
 
 5. Add the `warmInit` task definition to `TASKS` in `tbdocs.mjs`:
@@ -1024,6 +1034,382 @@ spine (starting around t=100--200 ms, while discover/nav/seo are
 running), rather than clustering at render-chunk claim time
 (t=400+ ms). This is the same overlap the old `pool.warmup()`
 achieved, now expressed declaratively.
+
+### Phase 10: Explicit render env init (`renderEnvInit`)
+
+After Phase 9, the first render chunk on each worker pays a hidden
+startup cost inside `getOrInitRenderEnv`: unpack ~300 KB shared
+payload (JSON.parse), reconstruct three link-table Maps (~857 entries
+each), instantiate markdown-it with plugins, build two Sets
+(`staticFilesArr`, `sitePathsArr`). This cost is invisible in
+timing --- it's buried inside the first render chunk's wall-clock ---
+and it front-loads onto one chunk per worker, making that chunk
+appear ~10--15 ms slower than the rest.
+
+This phase extracts the init into an explicit per-worker task,
+making the cost visible, moving it off the render hot path, and
+eliminating the `while (!_chunkDataSAB)` polling loop from the
+render handler.
+
+#### Design extension: `unique_per_worker` tasks with predecessors
+
+Phases 5--9 treat `unique_per_worker` tasks as seeds (no `expected`
+predecessors). `renderEnvInit` needs `dispatch` to be DONE before it
+can run (the sharedSAB doesn't exist until then). This requires
+allowing `expected` on `unique_per_worker` tasks.
+
+The semantics: `expected` predecessors on a `unique_per_worker` task
+are **preconditions**, checked as read-only SAB status reads before
+the per-worker instance executes. They are NOT tracked via depCount
+(the task still doesn't participate in normal dependency counting).
+The worker simply verifies each predecessor is DONE:
+
+```
+// About to run on-demand unique_per_worker dep D:
+for each pred of D.expected:
+  predIdx = nameToIdx[pred]
+  if Atomics.load(views.status, predIdx) !== DONE:
+    // Precondition not met; release original task and re-scan.
+    Atomics.store(views.status, taskIdx, READY)
+    Atomics.add(views.notify, 0, 1)
+    Atomics.notify(views.notify, 0, 1)
+    continue outer loop
+```
+
+The precondition check runs after the per-worker dep check (nested
+deps are checked first). If `renderEnvInit` depends on `warmInit`
+via `perWorkerDeps`, the flow for a render chunk is:
+
+1. Worker claims render:i
+2. Checks perWorkerDeps: `renderEnvInit[W]` not done
+3. About to run renderEnvInit on-demand; checks its perWorkerDeps:
+   `warmInit[W]` not done
+4. Runs warmInit[W] (on-demand, releases render:i first)
+5. Re-enters pull loop, claims render:i again
+6. Checks perWorkerDeps: `renderEnvInit[W]` not done
+7. About to run renderEnvInit; checks its perWorkerDeps:
+   `warmInit[W]` done
+8. Checks renderEnvInit's preconditions: `dispatch` DONE? Yes
+9. Runs renderEnvInit[W] (releases render:i first)
+10. Re-enters pull loop, claims render:i again
+11. Checks perWorkerDeps: `renderEnvInit[W]` done
+12. Executes render:i --- env already initialized, no polling
+
+If Phase 9's `run_when_idle` already ran warmInit during the spine,
+steps 3--5 are skipped (warmInit[W] is already done).
+
+#### Task definitions
+
+```js
+warmInit: {
+  expected: [],
+  on_demand: true,
+  unique_per_worker: true,
+  run_when_idle: true,
+  handler: "warmInit",
+  submit() {},
+},
+
+renderEnvInit: {
+  expected: ["dispatch"],         // precondition: sharedSAB exists
+  perWorkerDeps: ["warmInit"],    // needs Shiki loaded
+  on_demand: true,
+  unique_per_worker: true,
+  handler: "renderEnvInit",
+  submit() {},
+},
+```
+
+Render chunks change from `perWorkerDeps: ["warmInit"]` to
+`perWorkerDeps: ["renderEnvInit"]`. This chains the dependency:
+render → renderEnvInit → warmInit.
+
+#### Handler
+
+The `renderEnvInit` handler does what `getOrInitRenderEnv` does
+today, minus the highlighter init (already done by warmInit):
+
+```js
+async renderEnvInit() {
+  // Wait for renderData message (sharedSAB delivered via postMessage
+  // after dispatch; may not be processed yet if we were in
+  // Atomics.wait when it arrived).
+  while (!_sharedSAB) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+
+  const { siteData, initData, linkTablesData, staticFilesArr,
+          baseurl, buildInfo, sitePathsArr,
+          skipOffline } = unpackShared(_sharedSAB);
+
+  const { initHighlighter } = await import("./highlight.mjs");
+  const highlighter = await initHighlighter();  // cached; instant after warmInit
+  const linkTables  = reconstructLinkTables(linkTablesData);
+  const staticFiles = new Set(staticFilesArr);
+  const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles });
+  const site        = { ...siteData, markdown, buildInfo };
+
+  let offlineBase = null;
+  if (!skipOffline) {
+    offlineBase = {
+      sitePaths: new Set(sitePathsArr),
+      baseurl:   normalizeBaseurl(baseurl),
+    };
+  }
+
+  _renderEnv = { site, initData, offlineBase };
+  return {};
+}
+```
+
+The render handler simplifies --- no lazy init, no polling:
+
+```js
+async render(taskIdx) {
+  const workerStart = Date.now();
+
+  const chunkIndex = taskIdx - idMapping.DYNAMIC_BASE;
+  const offset = Atomics.load(views.chunkOffset, chunkIndex);
+  const length = Atomics.load(views.chunkLength, chunkIndex);
+  const chunk = JSON.parse(
+    new TextDecoder().decode(new Uint8Array(_chunkDataSAB, offset, length)),
+  );
+
+  // _renderEnv guaranteed initialized by renderEnvInit (perWorkerDep).
+  const env = _renderEnv;
+
+  await renderPhase(chunk, env.site);
+  await templatePhase(chunk, env.site, env.initData);
+  // ... offline rewriting ...
+}
+```
+
+`getOrInitRenderEnv` is deleted.
+
+#### Changes to `findIdleTask` (Phase 9)
+
+`findIdleTask` must respect preconditions for `run_when_idle` tasks
+that have `expected` predecessors. `renderEnvInit` is NOT
+`run_when_idle` (no benefit --- there's no idle window between
+dispatch and render chunks), so this doesn't apply to it. But if a
+future `run_when_idle` task has predecessors, `findIdleTask` should
+check them:
+
+```
+function findIdleTask(views, myLane, taskMeta):
+  count = Atomics.load(views.taskCount, 0)
+  for i = 0 to count - 1:
+    if !(Atomics.load(views.flags, i) & F_RUN_WHEN_IDLE): continue
+    if Atomics.load(views.flags, i) & F_UNIQUE_PER_WORKER:
+      if Atomics.load(views.perWorkerDone, i * MAX_LANES + myLane) !== 0:
+        continue   // already done on this lane
+
+      // Check preconditions and perWorkerDeps before running
+      if !preconditionsMet(views, i, taskMeta): continue
+      if !perWorkerDepsMet(views, i, myLane, taskMeta): continue
+
+      return i
+    // ... non-unique_per_worker case unchanged ...
+  return -1
+```
+
+For `warmInit` (no predecessors, no perWorkerDeps), these checks
+are no-ops. The guard exists for forward-compatibility.
+
+#### Implementation steps
+
+1. Extend the on-demand dep execution path in the pull loop:
+   before executing an on-demand `unique_per_worker` dep, check
+   its `expected` predecessors against SAB status. If any
+   predecessor is not DONE, release the original task and
+   re-scan.
+
+2. Extend the on-demand dep execution path to recursively check
+   `perWorkerDeps` on the dep itself. If `renderEnvInit` has
+   `perWorkerDeps: ["warmInit"]`, and warmInit is not done on
+   this lane, handle warmInit first (same on-demand protocol).
+
+3. Add the `renderEnvInit` task definition to `TASKS`.
+
+4. Add the `renderEnvInit` handler to `cpu-worker.mjs`.
+
+5. Move the `while (!_sharedSAB)` polling from the render handler
+   to `renderEnvInit`.
+
+6. Simplify the render handler: read `_renderEnv` directly.
+
+7. Delete `getOrInitRenderEnv` and the `_renderSAB` cache-check
+   variable.
+
+8. Update render chunk `perWorkerDeps` from `["warmInit"]` to
+   `["renderEnvInit"]` (in `allocSchedulerSAB`'s taskMeta
+   construction and in any task def that references it).
+
+9. Update `findIdleTask` to check preconditions and perWorkerDeps
+   for `run_when_idle` tasks (forward-compatibility).
+
+**Verification:** `build.bat && check.bat` clean. Timing summary
+shows `renderEnvInit:w0`, `renderEnvInit:w1`, ... per-lane entries
+(consolidated in the Boot section, ~10--15 ms each) appearing after
+dispatch. First render chunk per worker no longer shows an inflated
+wall-clock relative to subsequent chunks. Total render wall-clock
+is unchanged (the init cost moved, not eliminated).
+
+### Phase 11: Amortize chunk packing into discover I/O gaps
+
+`packChunkData` runs inside `dispatch.submit()`, after the dispatch
+timing window closes.  It JSON-serializes every chunk array (~858
+pages across ~16 chunks), creating a ~40 ms gap between the dispatch
+bar and the first render bar in the Gantt.  The serialization is
+pure synchronous CPU work on the main thread.
+
+`discover` spends ~200 ms in async disk I/O (`fs.readFile` on every
+source file via `Promise.all`).  During each I/O wait the main
+thread's event loop is idle.  This phase pre-serializes page objects
+inside discover's `Promise.all` callbacks, overlapping the ~40 ms of
+CPU work with the ~200 ms of libuv reads.  At dispatch time,
+`packChunkData` concatenates pre-serialized strings instead of
+re-traversing the page data.
+
+Independent of Phase 10 --- neither changes code the other touches.
+
+#### Precondition
+
+Page objects are NOT mutated between `discover.submit()` and
+`dispatch.submit()`.  The spine tasks (`nav`, `seo`, `markdownInit`,
+`deriveRedirects`, `buildInit`) all read `state.pages` but write
+their results to `state.site.*`, not back to individual page
+objects.  JSON serialized during discover is therefore identical to
+what `JSON.stringify` would produce at pack time.
+
+A debug assertion (step 6) guards this invariant.
+
+#### Side-table, not page property
+
+Pre-serialized strings are stored in a `Map<page, string>` returned
+alongside `{ pages, staticFiles }` from `discover()` --- NOT as a
+`_json` property on the page object.  A property would be included
+by `JSON.stringify(page)`, embedding a JSON-escaped copy of the
+whole page inside itself and roughly doubling the payload.
+
+#### Data flow
+
+1. **`discover()` returns the cache.**  After `buildPage()` creates
+   a page object, `JSON.stringify(page)` produces the pre-serialized
+   string.  Both happen in the same `Promise.all` callback, right
+   after `await fs.readFile()`:
+
+   ```
+   await Promise.all(allFiles.map(async (srcRel) => {
+     ...
+     const raw = await fs.readFile(srcPath, "utf8")
+     const page = buildPage(srcRoot, srcRel, parsed)
+     jsonCache.set(page, JSON.stringify(page))
+     pages.push(page)
+   }))
+   return { pages, staticFiles, jsonCache }
+   ```
+
+   Each `JSON.stringify` takes ~47 μs (40 ms / 858 pages).  The
+   libuv thread pool continues servicing reads while the main thread
+   does this work.
+
+   Object identity is preserved through `pages.sort()` and
+   `chunkPages()` --- both reorder or slice the same objects --- so
+   `jsonCache.get(page)` resolves correctly at pack time.
+
+2. **`discover.submit()` stores the cache on `state`.**
+
+   ```
+   submit(out, state) {
+     state.pages       = out.pages
+     state.staticFiles = out.staticFiles
+     state.site.config = out.config
+     state.jsonCache   = out.jsonCache          // new
+     for (const p of out.pages) state.pageByDest.set(p.destPath, p)
+   }
+   ```
+
+3. **`Scheduler.dispatchRender()` passes the cache to
+   `packChunkData`.**
+
+   ```
+   dispatchRender(chunks, sharedSAB) {
+     ...
+     const chunkDataSAB = packChunkData(chunks, this._views,
+                                        this.state.jsonCache)
+     ...
+   }
+   ```
+
+4. **`packChunkData` concatenates instead of serializing.**
+
+   ```
+   export function packChunkData(chunks, views, jsonCache) {
+     const buffers = jsonCache
+       ? chunks.map(chunk =>
+           encoder.encode("[" + chunk.map(p => jsonCache.get(p)).join(",") + "]"))
+       : chunks.map(c => encoder.encode(JSON.stringify(c)))
+     ...  // remainder unchanged: allocate SAB, copy buffers, write offsets
+   }
+   ```
+
+   The fallback path (no cache) is retained so any caller that omits
+   the argument gets the original behavior.
+
+#### Why `Promise.all` still works
+
+The current `discover` fires all reads at once via
+`Promise.all(allFiles.map(async ...))`.  Adding `JSON.stringify`
+inside each callback does not reduce I/O concurrency --- all reads
+are already dispatched to libuv before any callback runs.  As I/O
+completions arrive, the event loop runs each callback synchronously
+(parse frontmatter, build page, serialize).  Each ~47 μs serialize
+is invisible between I/O completions; libuv workers keep reading
+disk in the background.
+
+#### Memory
+
+The cache holds ~858 JSON strings averaging ~4 KB each --- ~3.4 MB
+total.  Negligible.  The cache is dropped when the build state is
+GC'd (after each build, or after each rebuild in serve mode).
+
+#### Implementation steps
+
+**Files:** `builder/discover.mjs`, `builder/tbdocs.mjs` (the
+`discover` task definition and `SharedState`), `builder/scheduler.mjs`
+(`Scheduler` class), `builder/sab-scheduler.mjs` (`packChunkData`).
+
+1. Add a `jsonCache` field to `SharedState` in
+   `builder/scheduler.mjs` (initialized to `null`).
+
+2. In `discover()` (`builder/discover.mjs`), create a `new Map()`,
+   populate it inside the `Promise.all` callback after
+   `buildPage()`, and include it in the return value.
+
+3. In the `discover` task definition in `builder/tbdocs.mjs`, update
+   `execute()` to destructure `jsonCache` from `discover()`'s
+   return value and pass it through in the output object.  Update
+   `submit()` to store `state.jsonCache = out.jsonCache`.
+
+4. Add a `jsonCache` parameter to `packChunkData` in
+   `builder/sab-scheduler.mjs`.  When present, use string
+   concatenation (`"[" + ... + "]"`); otherwise fall back to
+   `JSON.stringify`.
+
+5. In `Scheduler.dispatchRender()` (`builder/scheduler.mjs`), pass
+   `this.state.jsonCache` to `packChunkData`.
+
+6. Add a debug assertion (gated on `process.env.TBDOCS_DEBUG`) that
+   compares each concatenated chunk JSON with
+   `JSON.stringify(chunk)` to catch any unexpected page mutation
+   between discover and dispatch.
+
+**Verification:** `build.bat && check.bat` clean.  The dispatch-to-
+first-render gap in the Gantt shrinks from ~40 ms to <5 ms.
+Discover's wall-clock time does not increase meaningfully (~1--3 ms).
+Rendered output is byte-identical to the pre-change build.  Run once
+with `TBDOCS_DEBUG=1` to exercise the assertion.
 
 ## Notify protocol
 
