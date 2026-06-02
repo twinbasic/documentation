@@ -38,7 +38,7 @@ import { buildInitConfig, renderSidebar } from "./template.mjs";
 import { writePhase, prepareDestinations, preparePageDirs } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
-import { writeSearchData } from "./search.mjs";
+import { writeSearchDataFromChunks } from "./search.mjs";
 import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
 import { buildSitePathsSync, deriveOfflineCss,
          normalizeBaseurl }  from "./offline-rewrite.mjs";
@@ -523,6 +523,12 @@ const TASKS = {
       const renderEnvInitIdx = idMap.nameToIdx.get("renderEnvInit");
       const prepPageDirsIdx  = idMap.nameToIdx.get("prepPageDirs");
 
+      // Phase 17: pre-allocate searchChunks so each render:i.submit() can
+      // assign by chunk index regardless of completion order.  After
+      // renderJoin fires, scheduler.state.searchChunks[0..N-1] holds every
+      // worker's per-chunk entries in pages-order.
+      scheduler.state.searchChunks = new Array(N);
+
       // 1. Allocate 2N slots from the generic pool.
       const renderBase = allocDynamicSlots(views, idMap, N);
       const flushBase  = allocDynamicSlots(views, idMap, N);
@@ -582,6 +588,7 @@ const TASKS = {
               p.renderedContent = r.renderedContent;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
             }
+            state.searchChunks[i] = renderOut.searchEntries;
           },
         });
 
@@ -642,16 +649,18 @@ const TASKS = {
     submit() {},
   },
 
-  // Write search-data.json. Depends on renderJoin (pages have
-  // renderedContent in memory) and prepDest (_site/ exists). Result
-  // passes through to writeAux so its search.json field reaches
-  // writeOffline.
+  // Write search-data.json. Depends on renderJoin (every render:i.submit
+  // has stored its searchEntries in state.searchChunks[i]) and prepDest
+  // (_site/ exists). Result passes through to writeAux so its search.json
+  // field reaches writeOffline.  Heavy lifting (extractSections, stripHtml,
+  // sanitiseContent) ran on the workers; this task only concatenates and
+  // renumbers.
   searchData: {
     expected: ["renderJoin", "prepDest"],
     runOnMain: true,
     async execute(_, ctx, state) {
       if (ctx.opts.dryRun) return { entries: 0, json: "" };
-      return writeSearchData(state.pages, state.site, ctx.destRoot);
+      return writeSearchDataFromChunks(state.searchChunks, ctx.destRoot);
     },
     submit() {},
   },

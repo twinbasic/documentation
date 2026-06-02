@@ -9,10 +9,11 @@ import {
 } from "./sab-scheduler.mjs";
 
 export class SharedState {
-  pages       = [];
-  staticFiles = [];
-  site        = {};
-  pageByDest  = new Map();
+  pages        = [];
+  staticFiles  = [];
+  site         = {};
+  pageByDest   = new Map();
+  searchChunks = [];   // Phase 17: per-chunk search entries from render workers
 }
 
 export class Scheduler {

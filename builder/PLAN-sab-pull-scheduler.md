@@ -3380,9 +3380,32 @@ Serve mode (`serve.bat`):
   machine.
 - All rebuilds produce byte-identical output to fresh builds.
 
-### Phase 17: Distribute search-data derivation to render workers
+### Phase 17: Distribute search-data derivation to render workers --- DONE
 
 **Suggested model:** Sonnet.
+
+**Outcome.**  Landed as designed.  `build.bat && check.bat` clean (zero
+intra-site issues; the same 8 pre-existing PDF broken links remain).
+`searchData` drops from ~140 ms to ~17 ms on a 16-core machine (a
+~125 ms net saving on the critical path).  Per-worker render times
+absorb the derivation cost (~3--5 ms per chunk).  The total search
+entry count (2754) and the set of `{doc, title, content, url, relUrl}`
+tuples are bit-identical to the pre-Phase-17 output across runs.
+
+One observation that adjusts the design's byte-identity claim:
+**`search-data.json` byte-output already varied run-to-run before
+Phase 17**, because `state.pages` ordering depends on the filesystem
+traversal order returned by `fast-glob` inside [discover.mjs](discover.mjs)
+(only basenames are explicitly sorted; ties hold fast-glob's input
+order, which is filesystem-dependent).  Five back-to-back pre-Phase-17
+builds produced five distinct SHA-256 hashes.  The Phase 17 changes
+preserve that pre-existing non-determinism --- they don't introduce
+any new ordering variance --- and the entry SET (which is what
+client-side lunr actually indexes) remains stable across runs and
+matches pre-Phase-17.  Making the output byte-stable across builds
+would require sorting pages by `srcRel` (or another total order) in
+discover, which is orthogonal to Phase 17 and tracked separately if
+ever needed.
 
 **Motivation.**  `searchData` runs on the main thread after `renderJoin`
 and takes 100--200 ms (dev machine to CI).  It sits on the critical
@@ -3669,12 +3692,19 @@ template + offline.  Per-worker added time is
 
 #### Verification
 
-`build.bat && check.bat` clean.  `search-data.json` byte-identical
-to pre-Phase-17 output (ordering guarantee above).  The timing
-summary should show `searchData` at ~5--15 ms (down from
-~100--200 ms).  `render:i` timings increase by a few ms each,
-absorbed within the render fan-out.  Total build wall-clock drops by
-the net saving.
+`build.bat && check.bat` clean.  The set of search entries (keyed by
+`{doc, title, content, url, relUrl}`) is identical to the
+pre-Phase-17 output.  The timing summary shows `searchData` at
+~5--15 ms (down from ~100--200 ms).  `render:i` timings increase by
+a few ms each, absorbed within the render fan-out.  Total build
+wall-clock drops by the net saving.
+
+Note: byte-identity across runs is NOT a Phase 17 invariant.
+`search-data.json` was already non-deterministic before Phase 17
+because `discover.mjs` keeps fast-glob's filesystem-dependent input
+order for pages that tie under the basename sort, which propagates
+into entry order in both the serial and chunked paths.  Phase 17
+preserves the pre-existing variance --- it does not amplify it.
 
 ### Phase 18: Move per-page SEO to render workers
 
@@ -3729,7 +3759,9 @@ render:i [W]
    ├── computeChunkSeo(chunk, site.seoSiteTitle, ← NEW
    │                   site.config, site.markdown)
    ├── templatePhase(chunk, site, initData)      (existing)
-   └── offline derivation                        (existing)
+   ├── offline derivation                        (existing)
+   ├── _pendingFlush stash                       (Phase 15)
+   └── deriveSearchEntries(chunk, site)          (Phase 17)
 ```
 
 #### Why it's safe
@@ -3738,8 +3770,12 @@ render:i [W]
   on `state.pages` before dispatch, serialized into chunks,
   deserialized on workers, used by `headSeoBlock` inside
   `templatePhase`, and never sent back to main.  No post-dispatch
-  main-thread task reads them.  `searchData` reads
-  `renderedContent`; `writePdf` reads `renderedContent` via
+  main-thread task reads them.  `searchData` (after Phase 17) only
+  consolidates pre-derived entries on main; the heavy
+  `deriveSearchEntries` runs on workers and reads `renderedContent`
+  and `frontmatter` --- not any `seo*` field (confirmed: `search.mjs`
+  has zero references to `seoTitle`, `seoFullTitle`, `seoCanonical`,
+  or `seoIsHome`).  `writePdf` reads `renderedContent` via
   `bookData._chapters` refs.  Neither reads any `seo*` field.
 
 - **Identical markdown-it instance.**  The render worker's
@@ -3810,7 +3846,7 @@ dev tooling.
    import { computeSiteSeo } from "./seo.mjs";
    ```
 
-2. Delete the `seo` task definition (current lines 411--422).
+2. Delete the `seo` task definition (current lines 414--425).
 
 3. Fold site-level SEO into `markdownInit.execute()`:
    ```js
@@ -3872,7 +3908,8 @@ dev tooling.
 
 **`cpu-worker.mjs`.**  Import `computeChunkSeo` from `./seo.mjs`.
 In the `render` handler, call it between `renderPhase` and
-`templatePhase`:
+`templatePhase` (before the offline derivation and the Phase 17
+`deriveSearchEntries` call that follows it):
 
 ```js
 async render(taskIdx) {
@@ -3890,7 +3927,7 @@ async render(taskIdx) {
                    env.site.config, env.site.markdown);
   await templatePhase(chunk, env.site, env.initData);
 
-  // ... offline derivation unchanged ...
+  // ... offline derivation, _pendingFlush stash, deriveSearchEntries unchanged ...
 }
 ```
 
@@ -3932,12 +3969,21 @@ discover → nav ──────────────────→ dispa
   `expected` entry with `"markdownInit"` and updating the
   destructure) applies cleanly.  No conflict.
 
-- **Phase 17 (search data on workers).**  Phase 17 adds
+- **Phase 17 (search data on workers --- DONE).**  Phase 17 added
   `deriveSearchEntries` to the render handler, after render +
-  template + offline.  Phase 18 adds `computeChunkSeo` earlier
-  (between `renderPhase` and `templatePhase`).  Both are independent
-  per-page transforms; neither depends on the other's output.  They
-  compose without conflict regardless of landing order.
+  template + offline + the `_pendingFlush` stash.  Phase 18 adds
+  `computeChunkSeo` earlier (between `renderPhase` and
+  `templatePhase`).  Both are independent per-page transforms;
+  neither depends on the other's output.  Confirmed on landed code:
+  `computeChunkSeo` inserts at line 132 (between `renderPhase` and
+  `templatePhase`); the Phase 17 `deriveSearchEntries` call is at
+  line 185, well after the offline block.  No positional conflict.
+
+  Phase 17 also added `state.searchChunks` pre-allocation and an
+  indexed assignment inside `render:i.submit()` in
+  `dispatch.submit()`.  Phase 18 does not touch `dispatch.submit()`
+  --- it only edits `dispatch.execute()` and `dispatch.expected`.
+  No interaction.
 
 #### Files touched
 
@@ -3945,7 +3991,7 @@ discover → nav ──────────────────→ dispa
 |---|---|
 | `seo.mjs` | Add `computeSiteSeo` and `computeChunkSeo` exports; refactor `precomputeSeo` to delegate (retained as dead code for dev tooling) |
 | `tbdocs.mjs` | Import `computeSiteSeo` instead of `precomputeSeo`; delete `seo` task; fold site-level SEO into `markdownInit`; replace `"seo"` with `"markdownInit"` in `dispatch.expected`; update destructure; remove `seo` from `GANTT_SECTION`; update spine comment |
-| `cpu-worker.mjs` | Import `computeChunkSeo` from `./seo.mjs`; call between `renderPhase` and `templatePhase` in the render handler |
+| `cpu-worker.mjs` | Import `computeChunkSeo` from `./seo.mjs`; call between `renderPhase` (line 131) and `templatePhase` (line 132) in the render handler. No interaction with the Phase 17 `deriveSearchEntries` call (line 185), which runs later in the handler. |
 
 #### Expected savings
 

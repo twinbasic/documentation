@@ -13,6 +13,7 @@ import { captureBuildInfo }  from "./build-info.mjs";
 import { createMarkdownIt, renderPhase }      from "./render.mjs";
 import { templatePhase }                      from "./template.mjs";
 import { unpackShared }                       from "./sab-broadcast.mjs";
+import { deriveSearchEntries }                from "./search.mjs";
 import { deriveOfflinePage, deriveOfflinePageCached,
          sliceNavBlock, normalizeBaseurl,
          posixDirname }                       from "./offline-rewrite.mjs";
@@ -177,12 +178,21 @@ const handlers = {
     }
     _pendingFlush.push(batch);
 
+    // Per-chunk search entries; consolidated on main during searchData.
+    // Drop `sourcePage` (workers hold cloned page objects, not master
+    // refs) and `i` (chunk-local indices are meaningless; main assigns
+    // global indices during consolidation).
+    const searchEntries = deriveSearchEntries(chunk, env.site)
+      .map(e => ({ doc: e.doc, title: e.title, content: e.content,
+                   url: e.url, relUrl: e.relUrl }));
+
     return {
       pages: chunk.map(p => ({
         destPath:        p.destPath,
         renderedContent: p.renderedContent,
         offlineMisses:   p.offlineMisses,
       })),
+      searchEntries,
     };
   },
 };
