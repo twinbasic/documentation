@@ -470,7 +470,7 @@ const TASKS = {
   dispatch: {
     expected: ["nav", "buildInit", "buildInfo", "dot", "deriveRedirects", "markdownInit"],
     runOnMain: true,
-    execute({ nav: { sidebar }, buildInit: { initData }, buildInfo: { buildInfo }, dot: _dotSignal, markdownInit: _markdownInitSignal, deriveRedirects: { stubs } }, ctx, state) {
+    async execute({ nav: { sidebar }, buildInit: { initData }, buildInfo: { buildInfo }, dot: _dotSignal, markdownInit: _markdownInitSignal, deriveRedirects: { stubs } }, ctx, state) {
       void _dotSignal;   // dependency signal only -- static files already appended in dot.submit
       void _markdownInitSignal;  // dependency signal only -- markdown + linkTablesSerialized + seoSiteTitle/seoLogoUrl already on state.site
       const chunks = chunkPages(state.pages, ctx.workerCount);
@@ -485,6 +485,14 @@ const TASKS = {
       const sitePaths = buildSitePathsSync(state.pages, state.staticFiles, excludePatterns, stubs, themeAssetRels);
       state.sitePaths = sitePaths;
       const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+      const svgContentsMap = Object.create(null);
+      for (const f of state.staticFiles) {
+        if (f.srcRel.endsWith(".svg")) {
+          try {
+            svgContentsMap[f.srcRel] = await fs.readFile(path.join(ctx.srcRoot, f.srcRel), "utf8");
+          } catch {}
+        }
+      }
       const shared = {
         siteData: {
           config:       state.site.config,
@@ -499,6 +507,7 @@ const TASKS = {
         sitePathsArr:           [...sitePaths],
         offlineExcludePatterns: excludePatterns,
         skipOffline,
+        svgContentsMap,
       };
       const sharedSAB = packShared(shared);
       return { chunks, sharedSAB };
@@ -763,55 +772,15 @@ async function injectGanttChart(pages, destRoot, svgContent) {
     let html;
     try { html = await fs.readFile(htmlPath, "utf8"); }
     catch (e) { if (e.code !== "ENOENT") throw e; continue; }
-    const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgContent)}`;
-    const ls = `font-size:0.85em;float:right;margin-left:1em`;
-    const downloadLink = `<a href="${dataUrl}" download="gantt.svg" style="${ls}">Download SVG</a>`;
-    const copyLink = `<a href="javascript:;" onclick="navigator.clipboard.writeText(document.querySelector('#gantt-chart>svg').outerHTML)" style="${ls}">Copy SVG</a>`;
-    const downloadPng = `<a href="javascript:;" onclick="_ganttPng(1)" style="${ls}">Download PNG</a>`;
-    const copyPng = `<a href="javascript:;" onclick="_ganttPng(0)" style="${ls}">Copy PNG</a>`;
-    const pngFn = [
-      `<script>function _ganttPng(dl){`,
-      `var svg=document.querySelector('#gantt-chart>svg');if(!svg)return;`,
-      `var vb=svg.viewBox.baseVal,w=2048,h=Math.round(vb.height*(w/vb.width));`,
-      `var data=new XMLSerializer().serializeToString(svg);`,
-      `var blob=new Blob([data],{type:'image/svg+xml;charset=utf-8'});`,
-      `var url=URL.createObjectURL(blob);var img=new Image();`,
-      `img.onload=function(){`,
-      `var c=document.createElement('canvas');c.width=w;c.height=h;`,
-      `var ctx=c.getContext('2d');`,
-      `ctx.drawImage(img,0,0,w,h);URL.revokeObjectURL(url);`,
-      `c.toBlob(function(b){`,
-      `if(dl){var a=document.createElement('a');a.href=URL.createObjectURL(b);`,
-      `a.download='gantt.png';a.click();URL.revokeObjectURL(a.href)}`,
-      `else{navigator.clipboard.write([new ClipboardItem({'image/png':b})])}`,
-      `},'image/png')};img.src=url}<` + `/script>`,
-    ].join("");
-    const header = `${pngFn}<style>@media print{#gantt-controls{display:none}}</style><div id="gantt-controls" style="overflow:hidden">${downloadLink}${copyLink}${downloadPng}${copyPng}</div>`;
-    const zoomScript = [
-      `<script>(function(){`,
-      `var c=document.getElementById('gantt-chart');`,
-      `if(!c)return;`,
-      `c.style.cursor='zoom-in';`,
-      `function toggle(){`,
-      `  var svg=c.querySelector('svg');`,
-      `  if(c.dataset.zoomed){`,
-      `    c.removeAttribute('style');c.style.cursor='zoom-in';`,
-      `    if(svg)svg.style.maxWidth='';`,
-      `    delete c.dataset.zoomed;`,
-      `  }else{`,
-      `    var bg=getComputedStyle(document.body).backgroundColor;`,
-      `    Object.assign(c.style,{position:'fixed',top:'0',left:'0',width:'100vw',height:'100vh',`,
-      `      zIndex:'9999',background:bg,padding:'1rem',boxSizing:'border-box',overflow:'auto',cursor:'zoom-out'});`,
-      `    if(svg)svg.style.maxWidth='100%';`,
-      `    c.dataset.zoomed='1';c.scrollTop=0;`,
-      `  }`,
-      `}`,
-      `c.addEventListener('click',toggle);`,
-      `document.addEventListener('keydown',function(e){if(e.key==='Escape'&&c.dataset.zoomed)toggle();},{capture:true});`,
-      `})();<` + `/script>`,
-    ].join("");
-    const patched = html.replace("<!-- gantt-chart -->", `${header}\n<div id="gantt-chart">${svgContent}</div>\n${zoomScript}`);
-    if (patched !== html) await fs.writeFile(htmlPath, patched, "utf8");
+    const marker = 'data-svg-src="assets/images/gantt.svg"';
+    const idx = html.indexOf(marker);
+    if (idx < 0) continue;
+    const svgStart = html.indexOf("<svg", idx);
+    const svgEnd = html.indexOf("</svg>", svgStart);
+    if (svgStart < 0 || svgEnd < 0) continue;
+    const patched = html.slice(0, svgStart) + svgContent + html.slice(svgEnd + 6);
+    await fs.writeFile(htmlPath, patched, "utf8");
+    await fs.writeFile(path.join(root, "assets", "images", "gantt.svg"), svgContent, "utf8");
   }
 }
 

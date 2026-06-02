@@ -25,7 +25,12 @@ What Phase 13 does NOT do:
 - Change the existing `.dot` → `.svg` regeneration pipeline
   (`dot.mjs`).  Diagrams are still rendered from `.dot` source by
   WASM Graphviz; this plan only changes how the resulting `.svg`
-  files are embedded in pages.
+  files are embedded in pages.  (One `.dot` source fix WAS needed:
+  `pdf-render-pipeline.dot` had `margin=12` in its `graph [...]`
+  defaults block, which Graphviz interprets as 12 *inches* on the
+  root graph --- producing a 2239×2406 pt SVG with 864 pt of dead
+  space.  Moved the `margin=12` to each `subgraph cluster_*` where
+  it means 12 *points* of intra-cluster padding.)
 - Touch the offline or PDF build passes.  Inline SVGs are already
   part of the page HTML by the time those passes run; no
   rewriting is needed.
@@ -159,7 +164,11 @@ data-attribute selectors:
 Print media: the script injects
 `@media print { .svg-controls { display:none } }` once on load.
 
-Total size: ~60 lines / ~2 KB uncompressed.  No cost on pages
+Sizing: the script also injects
+`.svg-container svg { width: 100%; height: auto }` so every
+inlined SVG fills the column width and scales proportionally.
+
+Total size: ~80 lines / ~2.5 KB uncompressed.  No cost on pages
 without SVGs (the `<script>` tag is not emitted).
 
 ---
@@ -354,14 +363,16 @@ In `renderHead`, after the `just-the-docs.js` `<script>` line
 
 ### 5.4. `svg-inline.js`
 
-New file at `docs/assets/js/svg-inline.js`.  ~60 lines, no
+New file at `docs/assets/js/svg-inline.js`.  ~80 lines, no
 dependencies, IIFE.
 
 Behaviours:
 
-1. **Print-hide CSS injection**.  On load, inject a `<style>` with
-   `@media print { .svg-controls { display:none } }` and the
-   base `.svg-controls a` float styling.
+1. **CSS injection**.  On load, inject a `<style>` with
+   `@media print { .svg-controls { display:none } }`, the
+   base `.svg-controls a` float styling, and
+   `.svg-container svg { width:100%; height:auto }` so
+   every inlined SVG fills the column width.
 
 2. **Zoom toggle**.  `document.addEventListener("click", ...)`,
    delegated to `.svg-container`.  If the click target is inside
@@ -403,7 +414,9 @@ every build.
 
 **Simplified `injectGanttChart(pages, destRoot, svgContent)`**:
 
-Collapses to ~15 lines.  For each output tree (`destRoot`,
+Collapses to ~15 lines.  No `baseurl` parameter --- static files
+live directly under the output root (`_site/assets/...`), not
+under the baseurl prefix.  For each output tree (`destRoot`,
 `destRoot-offline`):
 
 1. Read the BuildInfo HTML from disk.

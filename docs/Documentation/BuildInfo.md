@@ -11,4 +11,4 @@ permalink: /Documentation/Development/BuildInfo
 
 Gantt chart of this build's task timeline.
 
-<!-- gantt-chart -->
+![Build task timeline](/assets/images/gantt.svg)

@@ -26,10 +26,10 @@ digraph pdf_render {
         fontsize=13
         style="rounded"
         labeljust="l"
-        margin=12
     ]
 
     subgraph cluster_writePdf {
+        margin=12
         label="tbdocs writePdf (pdf.mjs + book.mjs)"
         ASM [label=<assembleBook()<BR/>combine chapter HTML>]
         CSS [label=<copyPdfCss()<BR/>print.css + tb-highlight.css>]
@@ -40,6 +40,7 @@ digraph pdf_render {
     PDFSRC [label=<_site-pdf/book.html<BR/>(~5 MB)<BR/>print.css, tb-highlight.css,<BR/>images>]
 
     subgraph cluster_render {
+        margin=12
         label="render-book.mjs"
         R1 [label=<Phase 1: Render<BR/>puppeteer<BR/>→ headless Chromium<BR/>paged.js<BR/>CSS Paged Media layout<BR/>→ one .pagedjs_page<BR/>per output page>]
         R2 [label=<Phase 2: Generate<BR/>extract metadata<BR/>+ outline tree<BR/>page.pdf() → raw PDF buffer>]
