@@ -17,6 +17,13 @@
    book.html too. Hide it for the PDF render path. */
 button.copy-code { display: none; }
 
+/* SVG inline controls are interactive chrome (zoom, download, copy);
+   hide them in the PDF.  Constrain the SVG to the page width and
+   scale text down so diagram labels don't dominate the page. */
+.svg-controls { display: none; }
+.svg-container svg { max-width: 100%; height: auto; }
+.svg-container text { font-size: 75%; }
+
 
 @page {
   size: A4;

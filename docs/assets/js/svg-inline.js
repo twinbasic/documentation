@@ -1,12 +1,4 @@
 (function () {
-  var style = document.createElement("style");
-  style.textContent =
-    "@media print { .svg-controls { display: none } }" +
-    ".svg-controls { overflow: hidden; font-size: 0.85em }" +
-    ".svg-controls a { float: right; margin-left: 1em }" +
-    ".svg-container svg { width: 100%; height: auto }";
-  document.head.appendChild(style);
-
   document.addEventListener("click", function (e) {
     var container = e.target.closest(".svg-container");
     if (!container) return;

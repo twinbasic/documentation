@@ -1,5 +1,22 @@
 @use "admonitions";
 
+// Inline SVG diagrams (Phase 13). Controls are float-right links above
+// the diagram; the SVG fills the column width.
+.svg-controls {
+  overflow: hidden;
+  font-size: 0.85em;
+
+  a {
+    float: right;
+    margin-left: 1em;
+  }
+}
+
+.svg-container svg {
+  width: 100%;
+  height: auto;
+}
+
 .site-logo {
   padding-right: 3rem;
 }
