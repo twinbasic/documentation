@@ -3706,9 +3706,23 @@ order for pages that tie under the basename sort, which propagates
 into entry order in both the serial and chunked paths.  Phase 17
 preserves the pre-existing variance --- it does not amplify it.
 
-### Phase 18: Move per-page SEO to render workers
+### Phase 18: Move per-page SEO to render workers --- DONE
 
 **Suggested model:** Sonnet.
+
+**Outcome.**  Landed as designed.  `build.bat && check.bat` clean (zero
+intra-site issues; only the 8 pre-existing PDF broken links in
+`book.html` remain).  The `seo` task is gone from the timing summary;
+`markdownInit` absorbs the site-level `computeSiteSeo` work (~36 ms
+total, up from ~5 ms baseline --- the ~30 ms of `renderTitle` for the
+config title plus `absoluteUrl` for the logo).  Per-page SEO now runs
+on workers between `renderPhase` and `templatePhase`, absorbed within
+the render fan-out wall-clock.  Spot-checked rendered head output:
+`<title>`, `og:title`, `canonical`, `og:site_name`, and the JSON-LD
+`WebSite` / `WebPage` `@type` (driven by `seoIsHome`) all populate
+identically to the pre-phase build.
+
+No divergences from the design surfaced during implementation.
 
 **Motivation.**  The `seo` task runs on the main thread after
 `markdownInit`, computing four per-page fields (`seoTitle`,

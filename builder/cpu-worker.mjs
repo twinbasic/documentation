@@ -14,6 +14,7 @@ import { createMarkdownIt, renderPhase }      from "./render.mjs";
 import { templatePhase }                      from "./template.mjs";
 import { unpackShared }                       from "./sab-broadcast.mjs";
 import { deriveSearchEntries }                from "./search.mjs";
+import { computeChunkSeo }                    from "./seo.mjs";
 import { deriveOfflinePage, deriveOfflinePageCached,
          sliceNavBlock, normalizeBaseurl,
          posixDirname }                       from "./offline-rewrite.mjs";
@@ -129,6 +130,7 @@ const handlers = {
     const env = _renderEnv;
 
     await renderPhase(chunk, env.site);
+    computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown);
     await templatePhase(chunk, env.site, env.initData);
 
     if (env.offlineBase) {

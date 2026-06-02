@@ -26,7 +26,7 @@ import { renderGantt } from "./gantt.mjs";
 
 import { discover } from "./discover.mjs";
 import { computeNav } from "./nav.mjs";
-import { precomputeSeo } from "./seo.mjs";
+import { computeSiteSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
 import {
@@ -128,7 +128,7 @@ export function makeTimer() {
 //
 // Seeds (config, buildInfo → mermaid, scssLight + scssDark → scss,
 // highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
-// nav + buildInit → dispatch; config → loadData; discover → markdownInit → seo;
+// nav + buildInit → dispatch; config → loadData; discover → markdownInit;
 // deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
 // the render fan-out (dispatch → render:0..N, each worker stashes html locally),
 // the per-worker flush (prepPageDirs → flush [per worker] → flushJoin [counter barrier]),
@@ -393,8 +393,10 @@ const TASKS = {
     submit() {},
   },
 
-  // Link-table build + markdown-it assembly. Only needs discover (pages +
-  // config + staticFiles). Synchronous: all async work is done upstream.
+  // Link-table build + markdown-it assembly + site-level SEO constants
+  // (seoSiteTitle / seoLogoUrl). Only needs discover (pages + config +
+  // staticFiles). Per-page SEO fields are computed on render workers in
+  // computeChunkSeo between renderPhase and templatePhase.
   markdownInit: {
     expected: ["discover"],
     runOnMain: true,
@@ -406,17 +408,7 @@ const TASKS = {
         highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
       });
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
-      return {};
-    },
-    submit() {},
-  },
-
-  seo: {
-    expected: ["markdownInit"],
-    runOnMain: true,
-    execute(_, ctx, state) {
-      const { seoSiteTitle, seoLogoUrl } = precomputeSeo(
-        state.pages, state.site.config, state.site.markdown);
+      const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
       state.site.seoSiteTitle = seoSiteTitle;
       state.site.seoLogoUrl   = seoLogoUrl;
       return {};
@@ -479,11 +471,11 @@ const TASKS = {
   // worker tasks plus a renderJoin barrier. Assembles initData from the
   // two parallel halves: nav (sidebar) + buildInit (config-only chrome).
   dispatch: {
-    expected: ["nav", "buildInit", "buildInfo", "mermaid", "deriveRedirects", "seo"],
+    expected: ["nav", "buildInit", "buildInfo", "mermaid", "deriveRedirects", "markdownInit"],
     runOnMain: true,
-    execute({ nav: { sidebar }, buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, seo: _seoSignal, deriveRedirects: { stubs } }, ctx, state) {
+    execute({ nav: { sidebar }, buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, markdownInit: _markdownInitSignal, deriveRedirects: { stubs } }, ctx, state) {
       void mermaidStats; // dependency signal only -- static files already appended in mermaid.submit
-      void _seoSignal;  // dependency signal only -- SEO fields already written to state.site
+      void _markdownInitSignal;  // dependency signal only -- markdown + linkTablesSerialized + seoSiteTitle/seoLogoUrl already on state.site
       const chunks = chunkPages(state.pages, ctx.workerCount);
       const excludePatterns = Array.isArray(state.site.config?.offline_exclude)
         ? state.site.config.offline_exclude.map(String)
@@ -737,7 +729,7 @@ const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", mermaid: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
-  seo: "Spine", resolveBookChapters: "Spine",
+  resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   renderJoin: "Render", flushJoin: "Write",
