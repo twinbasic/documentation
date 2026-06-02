@@ -12,7 +12,7 @@
 import { createServer } from "node:http";
 import { readFile, stat, watch } from "node:fs/promises";
 import path from "node:path";
-import { runBuild } from "./tbdocs.mjs";
+import { runBuild, createWorkerPool } from "./tbdocs.mjs";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -134,7 +134,7 @@ function createStaticHandler(destRoot) {
 }
 
 // §D — Watcher filtering
-const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_serve", "_pdf", "node_modules", ".git"];
+const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_serve", "_serve-offline", "_serve-pdf", "_pdf", "node_modules", ".git"];
 const IGNORED_BASENAME_RE = /^\.|~$|\.tmp$|\.swp$|^4913$/;
 
 function shouldRebuild(filename) {
@@ -142,13 +142,13 @@ function shouldRebuild(filename) {
   const segs = filename.split(/[/\\]/);
   if (IGNORED_PREFIXES.includes(segs[0])) return false;
   if (IGNORED_BASENAME_RE.test(segs.at(-1) ?? "")) return false;
-  // Mermaid renders <name>.mmd → <name>.svg back under srcRoot/assets/
-  // images/mmd/. The .mmd is the source of truth; the .svg is the
-  // build artifact. Without this filter, each .mmd edit fires the
-  // watcher twice -- once on the .mmd save, once on the .svg write
-  // mid-rebuild -- so the user sees a redundant second reload ~3 s
-  // after the first.
-  if (segs[0] === "assets" && segs[1] === "images" && segs[2] === "mmd"
+  // Graphviz renders <name>.dot → <name>.svg back under srcRoot/assets/
+  // images/dot/. The .dot is the source of truth; the .svg is the
+  // build artifact. Without this filter, each .dot edit fires the
+  // watcher twice -- once on the .dot save, once on the .svg write
+  // mid-rebuild -- so the user sees a redundant second reload after
+  // the first.
+  if (segs[0] === "assets" && segs[1] === "images" && segs[2] === "dot"
       && (segs.at(-1) ?? "").endsWith(".svg")) {
     return false;
   }
@@ -165,11 +165,17 @@ export async function runServe(opts) {
   const destRoot = path.resolve(opts.dest ?? path.join(srcRoot, "_serve"));
   const port = opts.port ?? 4000;
 
+  // Pool persists across rebuilds: skips ~100--200 ms of worker cold boot
+  // per rebuild and lets warmInit's survives_reset short-circuit on builds
+  // after the first.
+  const pool = createWorkerPool();
+
   // Initial build
   try {
-    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
+    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, pool });
   } catch (err) {
     console.error("serve: initial build failed:", err.message);
+    await pool.destroy();
     process.exit(1);
   }
 
@@ -196,6 +202,7 @@ export async function runServe(opts) {
   let running = false;
   let pending = false;
   let debounceTimer = null;
+  const changedFiles = new Set();
 
   function schedule() {
     clearTimeout(debounceTimer);
@@ -205,8 +212,11 @@ export async function runServe(opts) {
   async function fire() {
     if (running) { pending = true; return; }
     running = true;
+    const files = [...changedFiles].sort();
+    changedFiles.clear();
+    console.log(`\nChanged: ${files.join(", ")}`);
     try {
-      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
+      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, pool });
       notifyReload();
     } catch (err) {
       console.error("rebuild failed:", err.message);
@@ -224,6 +234,7 @@ export async function runServe(opts) {
     try {
       for await (const event of watcher) {
         if (!shouldRebuild(event.filename)) continue;
+        changedFiles.add(event.filename.replaceAll("\\", "/"));
         schedule();
       }
     } catch (err) {
@@ -239,6 +250,7 @@ export async function runServe(opts) {
       try { res.end(); } catch {}
     }
     sseClients.clear();
+    pool.destroy();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 100).unref();
   });

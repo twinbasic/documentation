@@ -4,27 +4,26 @@
 // and docs/_plugins/offlinify.rb for the canonical Jekyll reference.
 //
 // One entry point: writeOffline(pages, staticFiles, site, destRoot,
-// { auxStats }). Pure-compute derive helpers (buildOfflineState +
-// derive*) are also exported for `_diff.mjs` / `_triage.mjs` to reuse
-// without writing anything to disk.
+// { auxStats, precomputed, sitePaths }). When precomputed is true,
+// per-page HTML was already derived by render workers and stored on
+// page.offlineHtml; writeOfflinePages writes those directly (I/O only).
+// sitePaths, when provided, skips the async _site/assets/ walk in
+// buildOfflineState. Pure-compute derive helpers are in
+// offline-rewrite.mjs and re-exported from here for `_diff.mjs` /
+// `_triage.mjs` backward compatibility.
 //
 // Internal sections:
 //
 //   §A  Top-level orchestration
-//   §B  Site-paths set
-//   §C  URL resolution           (computeRelative, computeRelUrl,
-//                                  resolveRaw, buildSegs, decode)
-//   §D  HTML rewrite pipeline    (stripSeo, rewriteHtml,
-//                                  injectSearchSetup)
-//   §E  CSS rewrite pipeline     (rewriteCss)
-//   §F  Redirect-stub rewrite
+//   §B  Site-paths set (buildSitePaths async + enumerateVendoredThemeAssets)
 //   §G  just-the-docs.js patches + search-data.js wrapper
 //   §H  Static-file pass + theme-asset pass
-//   §I  Pure-compute derive helpers (re-export surface for diff tools)
+//   §I  Re-export surface for diff tools (from offline-rewrite.mjs)
 
 import { promises as fs } from "node:fs";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import * as acorn from "acorn";
 import * as acornWalk from "acorn-walk";
@@ -38,8 +37,60 @@ import {
   writeFileMkdirp,
 } from "./write.mjs";
 
+import {
+  offlineExcluded,
+  normalizeBaseurl,
+  posixDirname,
+  sliceNavBlock,
+  deriveOfflinePage,
+  deriveOfflinePageCached,
+  deriveOfflineCss,
+  deriveOfflineRedirect,
+} from "./offline-rewrite.mjs";
+
+// ---------------------------------------------------------------------------
+// §I  Re-export surface for diff tools (from offline-rewrite.mjs)
+// ---------------------------------------------------------------------------
+
+export {
+  buildSitePathsSync,
+  offlineExcluded,
+  fnmatchPathname,
+  normalizeBaseurl,
+  posixDirname,
+  fileDirSegsFromRel,
+  sliceNavBlock,
+  NAV_OPEN_RE,
+  NAV_CLOSE,
+  NAV_PLACEHOLDER,
+  deriveOfflinePageCached,
+  deriveOfflinePage,
+  deriveOfflineCss,
+  deriveOfflineRedirect,
+  stripSeo,
+  rewriteHtml,
+  injectSearchSetup,
+  rewriteCss,
+  computeRelative,
+  resolveRaw,
+  buildSegs,
+  decode,
+  computeRelUrl,
+  getPageCache,
+  escapeRegExp,
+  PATH_SAFE_RE,
+  PATH_SAFE_CHAR_RE,
+  SEO_BLOCK_RE,
+  TITLE_RE,
+  HTML_COMBINED_RE,
+  JTD_SCRIPT_TAG_RE,
+  CSS_URL_RE,
+} from "./offline-rewrite.mjs";
+
 const OFFLINE_SUFFIX = "-offline";
 const LIMIT = WRITE_LIMIT;
+
+const _builderDir = path.dirname(fileURLToPath(import.meta.url));
 
 // Local copy of tbdocs.mjs's makeTimer (PLAN-9 §7.D13). Avoids a
 // cyclic import; the verify harnesses and diff tools import
@@ -63,13 +114,13 @@ function makeTimer() {
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false } = {}) {
+export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false, precomputed = false, sitePaths } = {}) {
   if (!destRoot) {
     throw new Error("writeOffline requires a destRoot");
   }
 
   const stubs = auxStats?.redirects?.stubs ?? [];
-  const state = await buildOfflineState(pages, staticFiles, site, destRoot, { stubs });
+  const state = await buildOfflineState(pages, staticFiles, site, destRoot, { stubs, sitePaths });
   const deps = {
     ...state,
     offlineRoot: destRoot + OFFLINE_SUFFIX,
@@ -85,9 +136,6 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
   };
 
   const subT = profileOffline ? makeTimer() : null;
-
-  await setupOfflineDest(deps.offlineRoot);
-  subT?.lap("setup");
 
   const jtdSrc = path.join(destRoot, "assets/js/just-the-docs.js");
   const jtdDest = path.join(deps.offlineRoot, "assets/js/just-the-docs.js");
@@ -110,24 +158,23 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
   // synchronous prefix (e.g. nav-block cache pre-pass) immediately,
   // before any await happens. Folding that work into the same lap as
   // the parallel await keeps the timing report honest.
+  // Offline page HTML is already on disk from per-worker flush.
+  // Only redirect stubs, static files, and theme assets are written here.
   if (subT) {
     const t0Pages = Date.now();
-    let dPages = 0, dRedirects = 0, dStatics = 0, dThemes = 0;
+    let dRedirects = 0, dStatics = 0, dThemes = 0;
     const branches = [
-      writeOfflinePages(pages, deps).then(() => { dPages = Date.now() - t0Pages; }),
       writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps).then(() => { dRedirects = Date.now() - t0Pages; }),
       copyOfflineStatics(staticFiles, deps).then(() => { dStatics = Date.now() - t0Pages; }),
       copyOfflineThemeAssets(deps).then(() => { dThemes = Date.now() - t0Pages; }),
     ];
     await Promise.all(branches);
     subT.lap("parallel");
-    console.log(`  offline.pages (concurrent): ${dPages} ms`);
     console.log(`  offline.redirects (concurrent): ${dRedirects} ms`);
     console.log(`  offline.statics (concurrent): ${dStatics} ms`);
     console.log(`  offline.themeAssets (concurrent): ${dThemes} ms`);
   } else {
     await Promise.all([
-      writeOfflinePages(pages, deps),
       writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps),
       copyOfflineStatics(staticFiles, deps),
       copyOfflineThemeAssets(deps),
@@ -144,13 +191,13 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
 // `stubs` (optional) is the redirect-stub list from Phase 6; their
 // destinations land in sitePaths so a page-relative link like
 // `LBound` resolves through the stub at `tB/Core/LBound.html`.
-export async function buildOfflineState(pages, staticFiles, site, destRoot, { stubs = [] } = {}) {
+export async function buildOfflineState(pages, staticFiles, site, destRoot, { stubs = [], sitePaths } = {}) {
   const excludePatterns = Array.isArray(site.config?.offline_exclude)
     ? site.config.offline_exclude.map(String)
     : [];
   return {
     destRoot,
-    sitePaths: await buildSitePaths(pages, staticFiles, destRoot, excludePatterns, stubs),
+    sitePaths: sitePaths ?? await buildSitePaths(pages, staticFiles, destRoot, excludePatterns, stubs),
     caches: {
       rawResolution: new Map(),
       seg: new Map(),
@@ -160,22 +207,6 @@ export async function buildOfflineState(pages, staticFiles, site, destRoot, { st
     siteUrl: String(site.config?.url ?? "").replace(/\/+$/, ""),
     excludePatterns,
   };
-}
-
-// §5.1  setupOfflineDest -- wipe-contents (not directory itself; see
-// PLAN-7 §7.D1) then ensure the root exists.
-async function setupOfflineDest(offlineRoot) {
-  if (!isUnderProject(offlineRoot)) {
-    throw new Error(`refusing to clean ${offlineRoot}: not under the project tree`);
-  }
-  if (existsSync(offlineRoot)) {
-    const entries = await fs.readdir(offlineRoot);
-    await Promise.all(entries.map(name =>
-      fs.rm(path.join(offlineRoot, name), { recursive: true, force: true }),
-    ));
-  } else {
-    await fs.mkdir(offlineRoot, { recursive: true });
-  }
 }
 
 // §5.2  writeOfflinePages -- per-page strip + rewrite + inject.
@@ -197,8 +228,20 @@ async function setupOfflineDest(offlineRoot) {
 // its pre-rewrite nav block matches the cached `input` byte-for-byte.
 // On miss we fall back to the full rewrite with a warning -- the
 // cache is purely an optimisation, never a correctness dependency.
-async function writeOfflinePages(pages, deps) {
+async function writeOfflinePages(pages, deps, { precomputed = false } = {}) {
   const { offlineRoot } = deps;
+
+  if (precomputed) {
+    const writable = pages.filter(p => p.offlineHtml !== undefined);
+    await runLimited(writable, LIMIT, async (page) => {
+      const dest = path.join(offlineRoot, page.destPath);
+      await writeFileMkdirp(dest, page.offlineHtml);
+      deps.counters.html += 1;
+      deps.counters.unresolved += page.offlineMisses ?? 0;
+    });
+    return;
+  }
+
   const writable = pages.filter(p => p.html !== undefined);
 
   // Pre-pass: group pages by destination dir, render the first page
@@ -232,75 +275,6 @@ async function writeOfflinePages(pages, deps) {
   });
 }
 
-const NAV_OPEN_RE = /<nav aria-label="Main" id="site-nav"[^>]*>/;
-const NAV_CLOSE = "</nav>";
-
-// Slice the sidebar nav block out of an HTML page. Returns the literal
-// `<nav ...>...</nav>` substring, or null if the page doesn't carry
-// the expected sidebar shape (in which case the cache entry is skipped
-// for the source dir and subsequent pages fall back to the full path).
-function sliceNavBlock(html) {
-  const m = html.match(NAV_OPEN_RE);
-  if (!m) return null;
-  const start = m.index;
-  const end = html.indexOf(NAV_CLOSE, start);
-  if (end === -1) return null;
-  return html.slice(start, end + NAV_CLOSE.length);
-}
-
-// Placeholder spliced in place of the cached input nav while
-// deriveOfflinePage runs. An HTML comment so it never collides with
-// the three alternatives in HTML_COMBINED_RE (<code> / <pre> /
-// href|src=), the SEO-block regex (different prefix), the JTD script
-// tag regex (different prefix), or any other rewrite step.
-const NAV_PLACEHOLDER = "<!--TBDOCS_NAV_CACHE_-->";
-
-// Cache-consulting wrapper around deriveOfflinePage. On hit:
-// substitutes the cached input slice with a placeholder, runs the
-// rewrite over the ~80kB-smaller string, splices the cached output
-// back in. On miss (no cache entry for the source dir OR the input
-// slice doesn't match byte-for-byte): falls back to the full
-// rewrite with a warning.
-function deriveOfflinePageCached(page, deps) {
-  const destDir = posixDirname(page.destPath);
-  const cached = deps.navCache?.get(destDir);
-  if (!cached) return deriveOfflinePage(page, deps);
-
-  const idx = page.html.indexOf(cached.input);
-  if (idx === -1) {
-    console.warn(
-      `offline nav cache miss for ${page.srcRel}: ` +
-      `nav block doesn't match first page in ${destDir}; ` +
-      `falling back to full rewrite`,
-    );
-    return deriveOfflinePage(page, deps);
-  }
-
-  const stubbed = page.html.slice(0, idx) + NAV_PLACEHOLDER +
-                  page.html.slice(idx + cached.input.length);
-  const stubbedPage = { ...page, html: stubbed };
-  const { html: stubbedOut, misses } = deriveOfflinePage(stubbedPage, deps);
-  const out = stubbedOut.replace(NAV_PLACEHOLDER, cached.output);
-  return { html: out, misses };
-}
-
-// Pure-compute: apply strip + URL rewrite + script injection to a
-// single rendered page. Returns `{ html, misses }`. The page must
-// have `page.html !== undefined`. The state's caches are mutated for
-// per-build reuse; pass a fresh state if cache pollution across pages
-// is a concern (see _diff.mjs's per-call buildOfflineState).
-export function deriveOfflinePage(page, state) {
-  const { sitePaths, caches, baseurl } = state;
-  const fileDir = posixDirname(page.destPath);
-  const fileSegs = fileDirSegsFromRel(page.destPath);
-  let html = page.html;
-  html = stripSeo(html);
-  const { rewritten, misses } = rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl);
-  html = rewritten;
-  html = injectSearchSetup(html, fileSegs);
-  return { html, misses };
-}
-
 // §5.3  writeOfflineRedirects -- rewrite the four <site.url><path>
 // occurrences in each stub.
 async function writeOfflineRedirects(stubs, deps) {
@@ -309,30 +283,6 @@ async function writeOfflineRedirects(stubs, deps) {
     const html = deriveOfflineRedirect(s, deps);
     await writeFileMkdirp(path.join(offlineRoot, s.destPath), html);
     deps.counters.redirects += 1;
-  });
-}
-
-// Pure-compute: rewrite the absolute <site.url>/<path> URLs in a single
-// redirect stub. Returns the rewritten HTML. With no site.url configured,
-// returns the stub verbatim.
-export function deriveOfflineRedirect(stub, state) {
-  const { sitePaths, caches, baseurl, siteUrl } = state;
-  if (!siteUrl) return stub.html;
-
-  const siteUrlEsc = escapeRegExp(siteUrl);
-  const prefixRe = new RegExp(`${siteUrlEsc}(/[^"' >]*)`, "g");
-
-  const fileDir = posixDirname(stub.destPath);
-  const fileSegs = fileDirSegsFromRel(stub.destPath);
-  const pageCache = getPageCache(caches.result, fileDir);
-
-  return stub.html.replace(prefixRe, (match, raw) => {
-    let rel = pageCache.get(raw);
-    if (rel === undefined) {
-      rel = computeRelative(raw, fileSegs, sitePaths, caches, baseurl);
-      pageCache.set(raw, rel);
-    }
-    return rel ?? match;
   });
 }
 
@@ -363,6 +313,7 @@ async function copyOfflineThemeAssets(deps) {
 
   await runLimited(themeEntries, LIMIT, async (e) => {
     if (e.isJtdJs) return;
+    if (e.isCombinedCss) return;
     const relAsset = "assets/" + e.relUnderAssets;
     if (offlineExcluded(relAsset, deps.excludePatterns)) return;
     const dest = path.join(offlineRoot, "assets", e.relUnderAssets);
@@ -379,17 +330,6 @@ async function copyOfflineThemeAssets(deps) {
       counters.assets += 1;
     }
   });
-}
-
-// Pure-compute: rewrite `url(/...)` references in a single CSS file.
-// `themeRel` is the file's path relative to <destRoot>/ (e.g.
-// "assets/css/just-the-docs-combined.css"). Returns `{ css, misses }`.
-export function deriveOfflineCss(cssIn, themeRel, state) {
-  const { sitePaths, caches, baseurl } = state;
-  const fileDir = posixDirname(themeRel);
-  const fileSegs = fileDirSegsFromRel(themeRel);
-  const { rewritten, misses } = rewriteCss(cssIn, fileDir, fileSegs, sitePaths, caches, baseurl);
-  return { css: rewritten, misses };
 }
 
 // ---------------------------------------------------------------------------
@@ -433,296 +373,26 @@ async function buildSitePaths(pages, staticFiles, destRoot, excludePatterns, stu
   return paths;
 }
 
-// §6.5  offlineExcluded -- File.fnmatch(..., FNM_PATHNAME) semantics:
-// `*` does NOT cross `/`, `**` does.
-function offlineExcluded(rel, patterns) {
-  if (!patterns.length) return false;
-  return patterns.some(pat => fnmatchPathname(pat, rel));
-}
-
-function fnmatchPathname(pattern, str) {
-  let re = "^";
-  for (let i = 0; i < pattern.length; i++) {
-    const c = pattern[i];
-    if (c === "*") {
-      if (pattern[i + 1] === "*") { re += ".*"; i++; }
-      else { re += "[^/]*"; }
-    } else if (c === "?") {
-      re += "[^/]";
-    } else if (".+^$()|[]{}\\".includes(c)) {
-      re += "\\" + c;
-    } else {
-      re += c;
-    }
-  }
-  re += "$";
-  return new RegExp(re).test(str);
-}
-
-// ---------------------------------------------------------------------------
-// §C  URL resolution
-// ---------------------------------------------------------------------------
-
-// Chars safe in a URL path segment (RFC 3986 unreserved + sub-delims that
-// don't need encoding in a path).
-const PATH_SAFE_RE = /[^A-Za-z0-9\-_.~!$&'()*+,;=:@]/;
-const PATH_SAFE_CHAR_RE = /^[A-Za-z0-9\-_.~!$&'()*+,;=:@]$/;
-
-// §6.3  computeRelative -- absolute URL → page-relative URL.
-function computeRelative(raw, fileSegs, sitePaths, caches, baseurl) {
-  let resolved = caches.rawResolution.get(raw);
-  if (resolved === undefined) {
-    resolved = resolveRaw(raw, sitePaths, baseurl);
-    caches.rawResolution.set(raw, resolved);
-  }
-  const [sep, tail, sitePath] = resolved;
-  if (sitePath === null) return null;
-
-  let segCacheEntry = caches.seg.get(sitePath);
-  if (segCacheEntry === undefined) {
-    segCacheEntry = buildSegs(sitePath);
-    caches.seg.set(sitePath, segCacheEntry);
-  }
-  const [decodedSegs, encodedSegs] = segCacheEntry;
-
-  let common = 0;
-  const fsLen = fileSegs.length;
-  const tsLen = decodedSegs.length;
-  while (common < fsLen && common < tsLen && fileSegs[common] === decodedSegs[common]) {
-    common++;
-  }
-
-  const ascend = "../".repeat(fsLen - common);
-  const descend = encodedSegs.slice(common).join("/");
-  let rel = ascend + descend;
-  if (rel === "") rel = "./";
-  return rel + sep + tail;
-}
-
-// File-dir-independent half of computeRelative.
-function resolveRaw(raw, sitePaths, baseurl) {
-  const splitIdx = raw.search(/[?#]/);
-  const pathPart = splitIdx === -1 ? raw : raw.slice(0, splitIdx);
-  const sep = splitIdx === -1 ? "" : raw[splitIdx];
-  const tail = splitIdx === -1 ? "" : raw.slice(splitIdx + 1);
-  let fsPath = decode(pathPart);
-
-  if (baseurl) {
-    if (fsPath === baseurl) fsPath = "/";
-    else if (fsPath.startsWith(baseurl + "/")) fsPath = fsPath.slice(baseurl.length);
-  }
-
-  let candidates;
-  if (fsPath.endsWith("/")) {
-    candidates = [fsPath, fsPath + "index.html"];
-  } else if (fsPath.includes(".")) {
-    candidates = [fsPath, fsPath + "/index.html"];
-  } else {
-    candidates = [fsPath, fsPath + ".html", fsPath + "/index.html"];
-  }
-  let sitePath = null;
-  for (const c of candidates) {
-    if (sitePaths.has(c)) { sitePath = c; break; }
-  }
-  return [sep, tail, sitePath];
-}
-
-// §6.4  computeRelUrl -- page-relative URL → page-relative URL with the
-// .html / /index.html / "" suffix that makes it resolve under file://.
-function computeRelUrl(raw, fileSegs, sitePaths) {
-  const splitIdx = raw.search(/[?#]/);
-  const pathPart = splitIdx === -1 ? raw : raw.slice(0, splitIdx);
-  const sep = splitIdx === -1 ? "" : raw[splitIdx];
-  const tail = splitIdx === -1 ? "" : raw.slice(splitIdx + 1);
-  if (pathPart === "") return null;
-
-  const decoded = decode(pathPart);
-  const trailingSlash = decoded.endsWith("/");
-  const stack = [...fileSegs];
-  for (const seg of decoded.split("/")) {
-    if (seg === "" || seg === ".") continue;
-    if (seg === "..") stack.pop();
-    else stack.push(seg);
-  }
-
-  let probePath = "/" + stack.join("/");
-  if (trailingSlash && !probePath.endsWith("/")) probePath += "/";
-
-  let candidates;
-  if (probePath.endsWith("/")) {
-    candidates = [["", probePath], ["index.html", probePath + "index.html"]];
-  } else if (probePath.includes(".")) {
-    candidates = [["", probePath], ["/index.html", probePath + "/index.html"]];
-  } else {
-    candidates = [["", probePath], [".html", probePath + ".html"], ["/index.html", probePath + "/index.html"]];
-  }
-
-  for (const [suffix, full] of candidates) {
-    if (sitePaths.has(full)) return pathPart + suffix + sep + tail;
-  }
-  return null;
-}
-
-// Cached decoded/encoded segments for a site-rooted path.
-function buildSegs(sitePath) {
-  const decoded = sitePath.slice(1).split("/");
-  const encoded = decoded.map(seg => {
-    if (!PATH_SAFE_RE.test(seg)) return seg;
-    // Encode per UTF-8 byte so non-ASCII characters in future content
-    // round-trip correctly.
-    const bytes = new TextEncoder().encode(seg);
-    let out = "";
-    for (const b of bytes) {
-      if (b < 0x80 && PATH_SAFE_CHAR_RE.test(String.fromCharCode(b))) {
-        out += String.fromCharCode(b);
+// Synchronous walk of builder/vendor/just-the-docs/assets/. Returns
+// paths like ["assets/js/just-the-docs.js",
+// "assets/js/vendor/lunr.min.js"] for use as the themeAssetRels
+// argument to buildSitePathsSync. Lives here (not offline-rewrite.mjs)
+// to keep the worker-imported module free of node:fs dependencies.
+export function enumerateVendoredThemeAssets() {
+  const assetsRoot = path.join(_builderDir, "vendor/just-the-docs/assets");
+  const out = [];
+  function walk(rel) {
+    for (const entry of readdirSync(path.join(assetsRoot, rel), { withFileTypes: true })) {
+      const childRel = rel === "" ? entry.name : path.posix.join(rel, entry.name);
+      if (entry.isDirectory()) {
+        walk(childRel);
       } else {
-        out += "%" + b.toString(16).toUpperCase().padStart(2, "0");
+        out.push("assets/" + childRel);
       }
     }
-    return out;
-  });
-  return [decoded, encoded];
-}
-
-// Percent-decode a URL path (sequences of %XX bytes interpreted as UTF-8).
-function decode(s) {
-  return s.replace(/(?:%[0-9A-Fa-f]{2})+/g, (m) => {
-    const bytes = new Uint8Array(m.length / 3);
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = parseInt(m.slice(i * 3 + 1, i * 3 + 3), 16);
-    }
-    return new TextDecoder("utf-8").decode(bytes);
-  });
-}
-
-// §6.11  fileDirSegsFromRel
-function fileDirSegsFromRel(rel) {
-  const normalised = rel.replaceAll("\\", "/");
-  const dir = posixDirname(normalised);
-  if (dir === "." || dir === "") return [];
-  return dir.split("/");
-}
-
-function posixDirname(rel) {
-  const normalised = rel.replaceAll("\\", "/");
-  const idx = normalised.lastIndexOf("/");
-  return idx === -1 ? "." : normalised.slice(0, idx);
-}
-
-// §6.12  normalizeBaseurl
-function normalizeBaseurl(raw) {
-  let baseurl = String(raw ?? "").replace(/\/+$/, "");
-  if (baseurl && !baseurl.startsWith("/")) baseurl = "/" + baseurl;
-  return baseurl;
-}
-
-// §6.13  escapeRegExp
-function escapeRegExp(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// Hoist the per-file-dir inner cache so the per-match cost is one
-// map lookup.
-function getPageCache(resultCache, fileDir) {
-  let pageCache = resultCache.get(fileDir);
-  if (!pageCache) {
-    pageCache = new Map();
-    resultCache.set(fileDir, pageCache);
   }
-  return pageCache;
-}
-
-// ---------------------------------------------------------------------------
-// §D  HTML rewrite pipeline
-// ---------------------------------------------------------------------------
-
-const SEO_BLOCK_RE = /<!-- Begin Jekyll SEO tag.*?<!-- End Jekyll SEO tag -->/s;
-const TITLE_RE = /<title>.*?<\/title>/s;
-
-// §6.2  stripSeo -- drop the jekyll-seo-tag block, keep its <title>.
-function stripSeo(html) {
-  if (!html.includes("<!-- Begin Jekyll SEO tag")) return html;
-  return html.replace(SEO_BLOCK_RE, (block) => {
-    const titleMatch = block.match(TITLE_RE);
-    return titleMatch ? titleMatch[0] : "";
-  });
-}
-
-// Combined regex: three top-level alternatives -- <code> block, <pre>
-// block, or a real href|src attribute carrying either an absolute or
-// page-relative URL. The code/pre alternatives consume their bodies
-// atomically so href/src matches inside code samples are skipped.
-const HTML_COMBINED_RE = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2/g;
-
-// §6.6  rewriteHtml -- single regex pass over the HTML.
-function rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl) {
-  let misses = 0;
-  const pageCache = getPageCache(caches.result, fileDir);
-
-  const rewritten = html.replace(HTML_COMBINED_RE, (match, attrName, quote, rawUrl) => {
-    if (attrName === undefined) {
-      // <code> or <pre> block; leave verbatim.
-      return match;
-    }
-    let rel = pageCache.get(rawUrl);
-    if (rel === undefined) {
-      rel = rawUrl.startsWith("/")
-        ? computeRelative(rawUrl, fileSegs, sitePaths, caches, baseurl)
-        : computeRelUrl(rawUrl, fileSegs, sitePaths);
-      pageCache.set(rawUrl, rel);
-    }
-    if (rel === null) {
-      misses++;
-      return match;
-    }
-    if (rel === rawUrl) {
-      // File already correct at the relative path (rare).
-      return match;
-    }
-    return `${attrName}=${quote}${rel}${quote}`;
-  });
-
-  return { rewritten, misses };
-}
-
-const JTD_SCRIPT_TAG_RE = /<script\s+src="([^"]*)just-the-docs\.js"/;
-
-// §6.8  injectSearchSetup -- two <script> tags before the just-the-docs.js
-// tag carry the per-page relative site-root and the lunr-index data load.
-function injectSearchSetup(html, fileSegs) {
-  return html.replace(JTD_SCRIPT_TAG_RE, (match, prefix) => {
-    const siteRoot = fileSegs.length === 0 ? "" : "../".repeat(fileSegs.length);
-    return `<script>window.OFFLINE_SITE_ROOT="${siteRoot}";</script>\n` +
-      `<script src="${prefix}search-data.js"></script>` +
-      match;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// §E  CSS rewrite pipeline
-// ---------------------------------------------------------------------------
-
-const CSS_URL_RE = /url\(\s*(["']?)(\/(?!\/)[^"'()\s]*)\1\s*\)/g;
-
-// §6.7  rewriteCss -- url(/...) → page-relative.
-function rewriteCss(css, fileDir, fileSegs, sitePaths, caches, baseurl) {
-  let misses = 0;
-  const pageCache = getPageCache(caches.result, fileDir);
-
-  const rewritten = css.replace(CSS_URL_RE, (match, quote, rawUrl) => {
-    let rel = pageCache.get(rawUrl);
-    if (rel === undefined) {
-      rel = computeRelative(rawUrl, fileSegs, sitePaths, caches, baseurl);
-      pageCache.set(rawUrl, rel);
-    }
-    if (rel === null) {
-      misses++;
-      return match;
-    }
-    return `url(${quote}${rel}${quote})`;
-  });
-
-  return { rewritten, misses };
+  walk("");
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -931,6 +601,7 @@ async function collectThemeFiles(themeRoot) {
           relUnderAssets: childRel,
           srcAbs: path.join(themeRoot, childRel),
           isCss: childRel.endsWith(".css"),
+          isCombinedCss: childRel === "css/just-the-docs-combined.css",
           isJtdJs: childRel === "js/just-the-docs.js",
         });
       }

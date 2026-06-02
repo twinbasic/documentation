@@ -23,6 +23,21 @@ export async function writeSearchData(pages, site, destRoot) {
   return { entries: entries.length, json };
 }
 
+// Phase 17 consolidation path: per-worker render handlers call
+// deriveSearchEntries on their chunk and stash the result on
+// state.searchChunks[i].  This function flattens those chunks (in chunk-
+// index order, matching the serial page iteration), renumbers `i` so it
+// is globally sequential, and writes the same byte-for-byte search-data.json
+// the single-threaded writeSearchData would have produced.
+export async function writeSearchDataFromChunks(searchChunks, destRoot) {
+  const allEntries = searchChunks.flat();
+  for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
+  const body = allEntries.map(renderEntryString).join(",");
+  const json = `{` + body + `\n}\n`;
+  await writeFileMkdirp(path.join(destRoot, "assets/js/search-data.json"), json);
+  return { entries: allEntries.length, json };
+}
+
 // Pure-compute derivation: produces the search-data entry array
 // (already sanitised, already URL-encoded) without writing anything.
 // Each entry is `{ i, doc, title, content, url, relUrl, sourcePage }`.
@@ -134,7 +149,7 @@ function extractSections(page, pageTitle, headingLevel) {
 //
 // Consumes a derived entry from `deriveSearchEntries`: content is
 // already sanitised, url is already URL-encoded.
-function renderEntryString(e) {
+export function renderEntryString(e) {
   return `"${e.i}": {\n` +
     `    "doc": ${JSON.stringify(e.doc)},\n` +
     `    "title": ${JSON.stringify(e.title)},\n` +

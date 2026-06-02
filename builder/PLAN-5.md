@@ -307,21 +307,22 @@ size. `fs.writeFile(path, buffer)` is the right primitive.
    ▼
  [1] assertNoDestinationCollisions(pages, staticFiles)  ← §6.4
        (throws on any page.destPath == staticFile.destRel;
-        runs BEFORE prepareDestination so a collision aborts
-        without wiping the previous destination)
+        a collision aborts the build without any destructive I/O)
    │
    ▼
- [2] prepareDestination(destRoot, dryRun)       ← §5.1
-       (delete + recreate, or skip if dry-run)
+     NOTE: prepareDestination (§5.1) is now a separate scheduler
+     task (`prepDest`) that runs as a seed -- it overlaps with
+     the entire main-thread spine and joins only at `write`.
+     writePhase assumes the destination is already prepared.
    │
    ▼
- [3] In parallel (Promise.all):
+ [2] In parallel (Promise.all):
        writePages(pages, destRoot, limit)        ← §5.2
        copyTheme(builderAssetsRoot, destRoot, limit)  ← §5.3
        copyStaticFiles(staticFiles, destRoot, limit)  ← §5.4
    │
    ▼
- [4] summarise(totals)              ← §5.5
+ [3] summarise(totals)              ← §5.5
        (file counts, byte counts, timing; one log line)
 ```
 
@@ -356,23 +357,22 @@ constrained systems; on the dev machine, no cap at all also works
 If profiling shows the cap is too low (write throughput < expected),
 bump it. The arg lives at the top of `write.mjs` as a constant.
 
-### Why prepare-destination is sequential before the parallel writes
+### Why prepare-destination is a separate seed task
 
-Two reasons:
+`prepareDestination` (§5.1) deletes and recreates the destination
+directory. It now runs as the `prepDest` scheduler seed --- no
+dependencies, so it overlaps with the entire main-thread spine and
+worker seeds. The `write` task joins on `prepDest` alongside
+`renderJoin`, `scss`, and `mermaid`, guaranteeing the destination is
+clean before any file is written.
 
-1. **Correctness.** The clean step deletes the existing tree. The
-   parallel writers would race the delete if it ran concurrently --
-   a page write could land before the matching directory is removed,
-   then the delete would either fail (`ENOTEMPTY`) or destroy the
-   freshly-written file.
-2. **Predictability.** A user-facing error from `prepareDestination`
-   (e.g. "destination is locked by another process") has a clean
-   single-source point. If it raced with writes, the error message
-   would be one of dozens of `EBUSY`s with no obvious culprit.
+The same two invariants from the original design hold:
 
-The prepare step is ~50 ms (recursive delete of a tree with ~1,080
-files + recreate). Sequencing it costs that 50 ms; parallelising
-would save it but risk the failure modes above.
+1. **Correctness.** The DAG edge `prepDest → write` ensures the
+   clean step finishes before the parallel writers start.
+2. **Predictability.** A `prepareDestination` failure (e.g. locked
+   directory) surfaces as a single clear error before any write
+   begins.
 
 ### Phase 5 init order (one-time)
 
@@ -886,12 +886,12 @@ function assertNoDestinationCollisions(pages, staticFiles) {
 }
 ```
 
-Called from `writePhase` **before** `prepareDestination`. The order
-matters: a collision detected after the clean step would have
-already wiped the previous `_site-new/` contents, leaving the user
-no way to investigate the previous state. Running the assertion
-first means a collision aborts the build without any destructive
-I/O. Fast (set membership check over ~1,080 entries; <1 ms).
+Called from `writePhase` before any file writes. Because
+`prepareDestination` now runs as a separate seed task (`prepDest`),
+it may have already cleaned the destination by the time the
+collision check runs --- but the check still fires before `write`
+begins writing any pages, so a collision still aborts cleanly.
+Fast (set membership check over ~1,080 entries; <1 ms).
 
 ---
 
@@ -1614,10 +1614,13 @@ async function main() {
 `writePhase(pages, staticFiles, { destRoot, dryRun })`:
 
 1. Calls `assertNoDestinationCollisions(pages, staticFiles)` (§6.4).
-2. Calls `prepareDestination(destRoot, dryRun)` (§5.1).
-3. `Promise.all`-fans `writePages`, `copyTheme`, `copyStaticFiles`
+2. `Promise.all`-fans `writePages`, `copyTheme`, `copyStaticFiles`
    (§5.2 / §5.3 / §5.4).
-4. Returns `{ pages: {written, skipped}, theme: {copied}, staticFiles: {copied} }`.
+3. Returns `{ pages: {written, skipped}, theme: {copied}, staticFiles: {copied} }`.
+
+Note: `prepareDestination` (§5.1) is no longer called inside
+`writePhase`. The scheduler's `prepDest` seed task handles it
+before `write` runs.
 
 The orchestrator's return value gains `destRoot` so Phase 6 / Phase 7
 / Phase 8 know where to write or read.

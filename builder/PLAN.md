@@ -62,6 +62,14 @@ live-reloads the browser via SSE. Renames `--serving` to
 static server; `docs/serve.bat` becomes a one-line `--serve` shim.
 Closes the PLAN-10 §7.D4 and §7.D11 watch-mode deferrals.
 
+A **task-graph scheduler** for the build pipeline is designed in
+[PLAN-scheduler.md](PLAN-scheduler.md) and has been implemented
+(Phases 0--4). It covers a thin in-tree scheduler + `WorkerPool` over
+`node:worker_threads`, moves CPU-bound seed tasks (`scss`, `mermaid`,
+`buildInfo`) onto workers, runs `prepDest` (destination clean/recreate)
+as a main-thread seed in parallel with the spine, and fans out
+`renderPhase` + `templatePhase` across CPUs via SAB broadcast.
+
 Open follow-ups (deferred enhancements, divergence investigations)
 live in [FUTURE-WORK.md](FUTURE-WORK.md).
 

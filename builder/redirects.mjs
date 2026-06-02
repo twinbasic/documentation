@@ -23,8 +23,8 @@ import { permalinkToDestPath } from "./paths.mjs";
 import { absoluteUrl } from "./seo.mjs";
 import { runLimited, writeFileMkdirp, WRITE_LIMIT } from "./write.mjs";
 
-export async function writeRedirects(pages, site, destRoot) {
-  const stubs = deriveRedirectStubs(pages, site);
+export async function writeRedirects(pages, site, destRoot, precomputedStubs) {
+  const stubs = precomputedStubs ?? deriveRedirectStubs(pages, site);
   await runLimited(stubs, WRITE_LIMIT, async (s) => {
     await writeFileMkdirp(path.join(destRoot, s.destPath), s.html);
   });
@@ -44,9 +44,11 @@ export function deriveRedirectStubs(pages, site) {
   // §7.D2: build the set of every real page's on-disk path so a bad
   // redirect_from entry that would overwrite a page surfaces with a
   // clear error rather than silently clobbering.
+  // Filter uses frontmatter.layout rather than p.html so deriveRedirectStubs
+  // can run before templatePhase under the scheduler.
   const pageDestPaths = new Map();
   for (const p of pages) {
-    if (p.html !== undefined) pageDestPaths.set(p.destPath, p);
+    if (p.frontmatter.layout !== "book-combined") pageDestPaths.set(p.destPath, p);
   }
 
   const stubs = [];

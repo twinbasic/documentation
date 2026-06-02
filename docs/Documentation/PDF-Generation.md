@@ -15,7 +15,7 @@ Internals of the two-stage PDF pipeline: `tbdocs` Phase 8 assembles a sparse `_s
 
 ## Data flow
 
-![PDF render pipeline](/assets/images/mmd/pdf-render-pipeline.svg)
+![PDF render pipeline](/assets/images/dot/pdf-render-pipeline.svg)
 
 The two stages are decoupled: `tbdocs` builds `_site-pdf/` as part of its normal run; `render-book.mjs` runs only when `book.bat` calls it explicitly. This keeps `puppeteer` and `pdf-lib` --- both large --- out of the site generator's dependency tree.
 

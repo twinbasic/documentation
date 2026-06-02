@@ -84,9 +84,9 @@ the architecture overview.
 | 7 | [offline.mjs](offline.mjs) | Mirror to `_site-offline/` with `file://` URL rewrites |
 | 8 | [pdf.mjs](pdf.mjs) + [book.mjs](book.mjs) (renderer half) | Sparse `_site-pdf/` tree (book.html + CSS + images) |
 
-A pre-step ([mermaid.mjs](mermaid.mjs)) regenerates stale
-`docs/assets/images/mmd/*.svg` from their `.mmd` sources before
-discover walks the tree.
+A seed task ([dot.mjs](dot.mjs)) regenerates stale
+`docs/assets/images/dot/*.svg` from their `.dot` sources via the WASM
+build of Graphviz, concurrently with discover.
 
 ## Verification
 

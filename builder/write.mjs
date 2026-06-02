@@ -35,16 +35,13 @@ export const WRITE_LIMIT = LIMIT;
 const mkdirCache = new Set();
 const mkdirInflight = new Map();
 
-export async function writePhase(pages, staticFiles, { destRoot, dryRun = false, generatedAssets = [], baseurl = "" } = {}) {
+export async function writePhase(pages, staticFiles, { destRoot, dryRun = false, generatedAssets = [], baseurl = "", skipPages = false } = {}) {
   if (!destRoot) {
     throw new Error("writePhase requires a destRoot");
   }
 
   mkdirCache.clear();
   mkdirInflight.clear();
-
-  assertNoDestinationCollisions(pages, staticFiles);
-  await prepareDestination(destRoot, dryRun);
 
   if (dryRun) {
     const pagesToWrite = pages.filter(p => p.html !== undefined).length;
@@ -64,7 +61,7 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false,
   // generated asset ever land at the same rel as a vendored file, the
   // generated content wins. No such collision exists today.
   const [pagesStats, themeStats, staticStats] = await Promise.all([
-    writePages(pages, destRoot, LIMIT),
+    skipPages ? { written: 0, skipped: 0 } : writePages(pages, destRoot, LIMIT),
     copyTheme(BUILDER_ASSETS, destRoot, LIMIT, baseurl),
     copyStaticFiles(staticFiles, destRoot, LIMIT, baseurl),
   ]);
@@ -94,18 +91,34 @@ async function writeGeneratedAssets(assets, destRoot, limit, baseurl) {
   });
 }
 
-// ---------- §5.1 prepareDestination -------------------------------------
+// ---------- §5.1 prepareDestinations ------------------------------------
 
-async function prepareDestination(destRoot, dryRun) {
+export async function prepareDestinations(roots, dryRun) {
   if (dryRun) {
-    console.log(`[dry-run] would clean ${destRoot}`);
+    for (const root of roots) console.log(`[dry-run] would clean ${root}`);
     return;
   }
-  if (!isUnderProject(destRoot)) {
-    throw new Error(`refusing to clean ${destRoot}: not under the project tree`);
+  await Promise.all(roots.map(async (root) => {
+    if (!isUnderProject(root)) {
+      throw new Error(`refusing to clean ${root}: not under the project tree`);
+    }
+    await fs.rm(root, { recursive: true, force: true });
+    await fs.mkdir(root, { recursive: true });
+  }));
+}
+
+// Pre-create all page output directories so writePages can skip mkdir
+// entirely.  Runs as a separate task concurrently with render workers.
+export async function preparePageDirs(pages, staticFiles, destRoot, offlineRoot) {
+  assertNoDestinationCollisions(pages, staticFiles);
+  const dirs = new Set();
+  for (const page of pages) {
+    if (page.destPath) {
+      dirs.add(path.dirname(path.join(destRoot, page.destPath)));
+      if (offlineRoot) dirs.add(path.dirname(path.join(offlineRoot, page.destPath)));
+    }
   }
-  await fs.rm(destRoot, { recursive: true, force: true });
-  await fs.mkdir(destRoot, { recursive: true });
+  await Promise.all([...dirs].map(d => fs.mkdir(d, { recursive: true })));
 }
 
 export function isUnderProject(destRoot) {
@@ -120,12 +133,10 @@ async function writePages(pages, destRoot, limit) {
   let skipped = 0;
   await runLimited(pages, limit, async (page) => {
     if (page.html === undefined) {
-      // book.html (layout: book-combined) -- Phase 8 owns it.
       skipped++;
       return;
     }
     const dest = path.join(destRoot, page.destPath);
-    await mkdirRec(path.dirname(dest));
     await safeWrite(dest, () => fs.writeFile(dest, page.html, "utf8"));
     written++;
   });
@@ -187,7 +198,7 @@ async function copyStaticFiles(staticFiles, destRoot, limit, baseurl) {
 
 // ---------- §6.4 assertNoDestinationCollisions --------------------------
 
-function assertNoDestinationCollisions(pages, staticFiles) {
+export function assertNoDestinationCollisions(pages, staticFiles) {
   const pageDests = new Set(
     pages.filter(p => p.html !== undefined).map(p => p.destPath),
   );

@@ -15,8 +15,6 @@
 //   </div>
 
 import { promises as fs } from "node:fs";
-import { createHighlighter } from "shiki";
-
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 
 // Fenced-info aliases that select the bundled tB grammar.
@@ -67,6 +65,7 @@ export async function initHighlighter() {
     const grammarUrl = new URL("./twinbasic.tmLanguage.json", import.meta.url);
     const grammarText = await fs.readFile(grammarUrl, "utf8");
     const tbGrammar = JSON.parse(grammarText);
+    const { createHighlighter } = await import("shiki");
     shiki = await createHighlighter({
       themes: [],
       langs: [tbGrammar, ...SHIKI_LANGS],

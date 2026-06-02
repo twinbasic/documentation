@@ -94,6 +94,6 @@ exclude:
   # SCSS sources -- compiled by builder/scss.mjs into the just-the-docs
   # stylesheet; the .scss itself is not a deployable asset.
   - "**/*.scss"
-  # Mermaid source files -- the build outputs .svg counterparts; the .mmd
-  # sources are not part of the published site.
-  - "**/*.mmd"
+  # Graphviz/DOT source files -- the build outputs .svg counterparts via
+  # builder/dot.mjs; the .dot sources are not part of the published site.
+  - "**/*.dot"

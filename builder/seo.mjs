@@ -32,27 +32,36 @@ const HOMEPAGE_URLS = new Set([
   "/about/", "/about/index.html", "/about/index.htm",
 ]);
 
-export function precomputeSeo(pages, config, markdown) {
-  // The markdown-it instance is shared with Phase 3's body renderer
-  // (see render.mjs's createMarkdownIt). The plugin stack adds attrs /
-  // deflist / footnote / header-id / TOC / relative-links / block-HTML
-  // recursion / smart-dash + smart-quote helpers; none of those plugins
-  // fire on the bare-text titles this site uses (no `{:` attribute
-  // syntax, no `term\n: definition`, no `[^N]` footnote ref, no
-  // heading, no `{:toc}` marker, no <a> token, no html_block with
-  // markdown="1"). The visible effect of the shared instance is
-  // identical to the previous standalone `new MarkdownIt({ html:
-  // true, typographer: true })` for every title on the site.
+// Site-level SEO constants: seoSiteTitle (rendered config.title) and
+// seoLogoUrl (absolute, uri-escaped). Folded into markdownInit on main so
+// dispatch can pack them into the shared SAB.
+//
+// The markdown-it instance is shared with Phase 3's body renderer
+// (see render.mjs's createMarkdownIt). The plugin stack adds attrs /
+// deflist / footnote / header-id / TOC / relative-links / block-HTML
+// recursion / smart-dash + smart-quote helpers; none of those plugins
+// fire on the bare-text titles this site uses (no `{:` attribute
+// syntax, no `term\n: definition`, no `[^N]` footnote ref, no
+// heading, no `{:toc}` marker, no <a> token, no html_block with
+// markdown="1"). The visible effect of the shared instance is
+// identical to the previous standalone `new MarkdownIt({ html:
+// true, typographer: true })` for every title on the site.
+export function computeSiteSeo(config, markdown) {
   if (!markdown) {
-    throw new Error("precomputeSeo requires a markdown-it instance (build via render.mjs's createMarkdownIt)");
+    throw new Error("computeSiteSeo requires a markdown-it instance (build via render.mjs's createMarkdownIt)");
   }
-
   const seoSiteTitle = renderTitle(config.title, markdown);
   const logo = config.logo;
   const seoLogoUrl = logo != null
     ? uriEscape(absoluteUrl(String(logo), config))
     : null;
+  return { seoSiteTitle, seoLogoUrl };
+}
 
+// Per-page SEO fields: seoTitle / seoFullTitle / seoCanonical / seoIsHome.
+// Mutates pages in place. Called on each render worker between renderPhase
+// and templatePhase so the values never cross the postMessage boundary.
+export function computeChunkSeo(pages, seoSiteTitle, config, markdown) {
   for (const page of pages) {
     const rawTitle = page.frontmatter.title;
     const seoTitle = isNonEmpty(rawTitle) ? renderTitle(rawTitle, markdown) : seoSiteTitle;
@@ -74,7 +83,13 @@ export function precomputeSeo(pages, config, markdown) {
     page.seoCanonical = absoluteUrl(canonicalInput, config);
     page.seoIsHome = HOMEPAGE_URLS.has(url);
   }
+}
 
+// Convenience wrapper kept for dev tooling that wants the full
+// main-thread pass (site-level + per-page) in one call.
+export function precomputeSeo(pages, config, markdown) {
+  const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(config, markdown);
+  computeChunkSeo(pages, seoSiteTitle, config, markdown);
   return { seoSiteTitle, seoLogoUrl };
 }
 

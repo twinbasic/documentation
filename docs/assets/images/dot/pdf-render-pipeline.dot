@@ -1,0 +1,55 @@
+// PDF render pipeline: tbdocs's writePdf populates _site-pdf/, then
+// render-book.mjs drives puppeteer + paged.js + pdf-lib to produce the
+// final PDF.
+
+digraph pdf_render {
+    rankdir=TB
+    bgcolor="transparent"
+    compound=true
+    nodesep=0.3
+    ranksep=0.6
+    splines=true
+
+    node [
+        shape=box
+        style="rounded,filled"
+        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=12
+        margin="0.12,0.06"
+        fillcolor="#fef7e0"
+        color="#f9ab00"
+    ]
+    edge [color="#7a8090" arrowsize=0.7]
+    graph [
+        color="#7a8090"
+        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=13
+        style="rounded"
+        labeljust="l"
+        margin=12
+    ]
+
+    subgraph cluster_writePdf {
+        label="tbdocs writePdf (pdf.mjs + book.mjs)"
+        ASM [label=<assembleBook()<BR/>combine chapter HTML>]
+        CSS [label=<copyPdfCss()<BR/>print.css + tb-highlight.css>]
+        IMG [label=<copyPdfImages()<BR/>referenced images>]
+        { rank=same; ASM; CSS; IMG }
+    }
+
+    PDFSRC [label=<_site-pdf/book.html<BR/>(~5 MB)<BR/>print.css, tb-highlight.css,<BR/>images>]
+
+    subgraph cluster_render {
+        label="render-book.mjs"
+        R1 [label=<Phase 1: Render<BR/>puppeteer<BR/>→ headless Chromium<BR/>paged.js<BR/>CSS Paged Media layout<BR/>→ one .pagedjs_page<BR/>per output page>]
+        R2 [label=<Phase 2: Generate<BR/>extract metadata<BR/>+ outline tree<BR/>page.pdf() → raw PDF buffer>]
+        R3 [label=<Phase 3: Process<BR/>measureRawPdf()<BR/>→ pre-size shim arrays<BR/>PDFDocument.load() with fast-* shims<BR/>setMetadata() + setOutline()<BR/>parallelSave() → async deflate>]
+        R1 -> R2 -> R3
+    }
+
+    PDF [label=<_pdf/twinBASIC Book.pdf>]
+
+    ASM    -> PDFSRC [ltail=cluster_writePdf]
+    PDFSRC -> R1     [lhead=cluster_render]
+    R3     -> PDF
+}
