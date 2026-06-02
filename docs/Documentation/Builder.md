@@ -87,7 +87,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 
 | File | Role |
 |---|---|
-| [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) | markdown-it configuration + plugin stack + `renderPhase`. Built once on main and once per worker. |
+| [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) | markdown-it configuration + plugin stack (including `svgInlinePlugin` for build-time SVG embedding) + `renderPhase`. Built once on main and once per worker. |
 | [`highlight.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight.mjs) | Shiki bootstrap + the bundled twinBASIC grammar. Emits the just-the-docs wrapper structure. |
 | [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs) | Loads `Light.theme` + `Dark.theme`, emits `tb-highlight.css` + scope-to-class lookup. |
 | [`template.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/template.mjs) | `templatePhase` (per-page layout wrap) + `buildInitConfig` + `renderSidebar`. JS template literals; no template engine. |
@@ -333,11 +333,42 @@ Three flags on the pool make the reuse safe:
 
 `serve.mjs` writes to `docs/_serve/` --- disjoint from `build.bat`'s `_site/` family. A one-off `build.bat` run during a serve session never touches the tree the live preview is showing.
 
+## SVG inlining
+
+Markdown `![alt](/assets/images/foo.svg)` references to build-local SVGs are replaced at render time with the SVG content inlined directly in the HTML. The feature removes the browser round-trip for separate SVG files and adds interactive controls (zoom, download, clipboard copy) to every inlined diagram.
+
+The pipeline:
+
+1. **`dispatch.execute()`** reads every `.svg` static file into a `svgContentsMap` keyed by `srcRel`. The map is packed into the shared SAB and broadcast to every render worker.
+2. **`renderEnvInit`** on each worker unpacks `svgContentsMap` and passes it as `svgContents` to `createMarkdownIt`.
+3. **`svgInlinePlugin`** in `render.mjs` overrides the markdown-it image renderer. When the `src` ends in `.svg` and the file's content exists in `ctx.svgContents`, the plugin replaces the `<img>` tag with a wrapper structure containing the raw SVG, four control links (Download SVG, Copy SVG, Download PNG, Copy PNG), and a click-to-zoom container. The plugin also sets `page.hasSvg = true`.
+4. **`templatePhase`** conditionally includes `<script defer src="/assets/js/svg-inline.js">` on pages where `page.hasSvg` is true.
+
+The wrapper HTML emitted by `buildSvgWrapper`:
+
+```html
+<div class="svg-inline-wrap">
+  <div class="svg-controls">
+    <a href="#" data-action="download-svg" data-filename="...">Download SVG</a>
+    <a href="#" data-action="copy-svg">Copy SVG</a>
+    <a href="#" data-action="download-png" data-filename="...">Download PNG</a>
+    <a href="#" data-action="copy-png" data-filename="...">Copy PNG</a>
+  </div>
+  <div class="svg-container" data-svg-src="..." role="img" aria-label="...">
+    <svg>...</svg>
+  </div>
+</div>
+```
+
+`svg-inline.js` (~80 lines, no dependencies) handles four client-side behaviours: click-to-zoom (fullscreen overlay, Escape to close), SVG download (serialises the `<svg>` to XML), SVG clipboard copy, and PNG export (renders the SVG to a 2048 px-wide canvas via `Image` + `toBlob`). The controls are hidden in print CSS.
+
+Only SVGs whose content is present in `svgContents` are inlined; external URLs and missing files fall through to the default `<img>` renderer. The main-thread markdown-it instance (used only for site-level SEO) passes an empty map --- no SVG content needed there.
+
 ## Gantt chart and build introspection
 
 Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `renderGantt(grouped)` takes the `Map<section, taskTiming[]>` the scheduler accumulates and renders one SVG row per main-thread task plus one row per worker lane. Workers appear as a single row each with multiple coloured rectangles (one per task they ran, in completion order); the colour encodes the originating section. Boot timings (cold start, `warmInit`, `renderEnvInit`) appear as a distinct row group on the first build of a session.
 
-`tbdocs.mjs:injectGanttChart` splices the rendered SVG into the [Build Info](BuildInfo) page just after `writeOffline` completes and just before the build returns. The page itself is a placeholder with a `<!-- gantt-chart -->` comment that the inject pass replaces. Both the online and offline copies of the page get the SVG; the page also carries small JavaScript helpers for zoom, download, and PNG export.
+The Gantt chart flows through the same SVG inlining pipeline as other diagrams. The [Build Info](BuildInfo) page contains a standard markdown image reference to a placeholder `gantt.svg`; during the render pass it becomes an inline SVG wrapper with zoom and export controls. After `writeOffline` completes, `tbdocs.mjs:injectGanttChart` locates the wrapper's `data-svg-src` marker in the rendered HTML and swaps the placeholder SVG content for the real Gantt chart. Both the online and offline copies of the page are patched; the on-disk `gantt.svg` file is also updated so the offline mirror's fallback stays current.
 
 When adding a new task to `TASKS`, give it a `ganttSection` key matching one of `Seeds` / `Spine` / `Render` / `Write` so it lands in a coherent group. Tasks without a section fall into a generic "Other" bucket.
 
@@ -378,7 +409,7 @@ The site's `/assets/` tree at deploy time is assembled from three sources:
 
 | Source on disk | What lives there | Phase that delivers it |
 |---|---|---|
-| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-switch.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
+| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-switch.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
 | `builder/vendor/just-the-docs/` | Vendored from the just-the-docs theme (v0.10.1): `_sass/` (the theme's SCSS sources, fed into the compilation) and `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (the chrome runtime, copied verbatim). See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the inventory, re-vendoring procedure, and the in-tree patches applied to `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `writeAssets`. |
 | Generated in-process | `just-the-docs-combined.css` (from `scss.mjs`) and `tb-highlight.css` (from `highlight-theme.mjs`). Neither is committed; both are rebuilt every run. | Written by `scss` (combined CSS) and `writeAssets` (highlight CSS). |
 

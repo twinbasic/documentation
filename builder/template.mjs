@@ -128,6 +128,7 @@ function renderHead(page, site, init) {
     (init.searchEnabled ? `  <script src="${escAttr(relativeUrl("/assets/js/vendor/lunr.min.js", bu))}"></script>\n` : "") +
     (bu ? `  <script>window.jtdBaseurl=${JSON.stringify(bu)};</script>\n` : "") +
     `  <script src="${escAttr(relativeUrl("/assets/js/just-the-docs.js", bu))}"></script>\n` +
+    (page.hasSvg ? `  <script src="${escAttr(relativeUrl("/assets/js/svg-inline.js", bu))}" defer></script>\n` : "") +
     `  <meta name="viewport" content="width=device-width, initial-scale=1">\n` +
     headSeoBlock(page, site) +
     init.faviconLink +

@@ -323,6 +323,7 @@ export function createMarkdownIt(ctx) {
   md.use(kramdownDashesPlugin);
   md.use(kramdownEllipsisPlugin);
   md.use(flattenAdjacentStrongPlugin);
+  md.use(svgInlinePlugin, ctx);
 
   return md;
 }
@@ -1570,6 +1571,56 @@ function normaliseBlockHtml(content) {
 // tags (separated by whitespace): <br>, <br/>, <br />, <hr ...>,
 // <img ...>. kramdown wraps any such sequence in a single <p>.
 const STANDALONE_INLINE_HTML_RE = /^(?:<(br|hr|img)\b[^>]*\/?>\s*)+$/i;
+
+// ---------- SVG inline plugin -----------------------------------------------
+
+function svgInlinePlugin(md, ctx) {
+  const orig = md.renderer.rules.image;
+
+  md.renderer.rules.image = (tokens, idx, options, env, self) => {
+    const token = tokens[idx];
+    const srcIdx = token.attrIndex("src");
+    if (srcIdx < 0) return fallback();
+    const src = token.attrs[srcIdx][1];
+    if (!src.endsWith(".svg")) return fallback();
+
+    const prefix = (ctx.baseurl || "") + "/";
+    if (!src.startsWith(prefix)) return fallback();
+    const srcRel = src.slice(prefix.length);
+
+    const svgContent = ctx.svgContents?.get(srcRel);
+    if (!svgContent) return fallback();
+
+    const alt = self.renderInlineAsText(token.children, options, env);
+    const stem = srcRel.split("/").pop().replace(/\.svg$/, "");
+
+    if (env?.page) env.page.hasSvg = true;
+
+    return buildSvgWrapper(svgContent, alt, stem, srcRel);
+
+    function fallback() {
+      if (orig) return orig(tokens, idx, options, env, self);
+      token.attrs[token.attrIndex("alt")][1] =
+        self.renderInlineAsText(token.children, options, env);
+      return self.renderToken(tokens, idx, options);
+    }
+  };
+}
+
+function buildSvgWrapper(svgContent, alt, stem, srcRel) {
+  const esc = escapeHtml;
+  return `<div class="svg-inline-wrap">` +
+    `<div class="svg-controls">` +
+    `<a href="#" data-action="download-svg" data-filename="${esc(stem)}">Download SVG</a>` +
+    `<a href="#" data-action="copy-svg">Copy SVG</a>` +
+    `<a href="#" data-action="download-png" data-filename="${esc(stem)}">Download PNG</a>` +
+    `<a href="#" data-action="copy-png" data-filename="${esc(stem)}">Copy PNG</a>` +
+    `</div>` +
+    `<div class="svg-container" data-svg-src="${esc(srcRel)}" role="img" aria-label="${esc(alt)}">` +
+    svgContent +
+    `</div>` +
+    `</div>`;
+}
 
 // ---------- helpers ---------------------------------------------------------
 
