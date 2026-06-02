@@ -46,6 +46,7 @@ The pipeline passes three pieces of mutable state through every task: the `pages
 | `seoIsHome` | `render:i` (`computeChunkSeo`) | `boolean` | `true` when the page's permalink is a known home-page URL. |
 | `html` | `render:i` (`templatePhase`) | `string` | Complete HTML document, ready to write to disk. Absent on `layout: book-combined` pages, which `writePdf` owns. |
 | `offlineHtml` | `render:i` (`deriveOfflinePageCached`) | `string\|undefined` | Pre-computed offline HTML for the page, with every absolute URL rewritten to a page-relative path. Set after `templatePhase` when `!skipOffline`. |
+| `hasSvg` | `render:i` (`svgInlinePlugin`) | `boolean\|undefined` | `true` when the page contains at least one inlined SVG. `templatePhase` uses this to conditionally include the `svg-inline.js` script. |
 | `offlineMisses` | `render:i` (`deriveOfflinePageCached`) | `number\|undefined` | Count of URLs that could not be resolved during the per-page offline rewrite. Aggregated by `flushJoin`. |
 
 ### Site object (`site`)
@@ -463,11 +464,13 @@ The same modules as above, with the full export list per file.
 | Symbol | Signature | Description |
 |---|---|---|
 | `renderPhase` | `(pages, site, staticFiles?) → Promise<void>` | Renders each page's `rawContent` to `renderedContent` via the supplied site's markdown-it. Skips `layout: book-combined`. |
-| `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles }) → MarkdownIt` | Builds the configured markdown-it instance. See [Extending](Extending) for the plugin list and ordering. |
+| `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles, svgContents? }) → MarkdownIt` | Builds the configured markdown-it instance. `svgContents` is a `Map<srcRel, string>` of pre-read SVG file contents; when present, the `svgInlinePlugin` replaces `<img>` tags for matching `.svg` sources with inline SVG wrappers. See [Extending](Extending) for the plugin list and ordering. |
 | `initHighlighter` | (re-export from `highlight.mjs`) | `() → Promise<object>`. Initialises Shiki with the bundled twinBASIC grammar. |
 | `buildLinkTables` | `(pages) → { byPath, byUrl, byRedirect }` | Map lookups keyed by `srcRel`, `permalink`, and `redirect_from` entries. |
 | `serializeLinkTables` | `(lt) → { byPath, byUrl, byRedirect }` | Serializes the Maps to `[key, permalink]` pair arrays for structured-clone transfer to workers. |
 | `kramdownSlug` | `(text) → string` | Header-id slugify: lowercase, drop characters outside `\p{L}\p{N}\p{M}\p{Pc}\-`, replace spaces with `-`, deduplicate. |
+| `svgInlinePlugin` | `(md, ctx) → void` | markdown-it plugin. Overrides the image renderer: when the `src` ends in `.svg` and its content exists in `ctx.svgContents`, replaces the `<img>` with an inline SVG wrapper (via `buildSvgWrapper`) and sets `page.hasSvg = true`. Non-matching images fall through to the default renderer. Registered last in the plugin chain. |
+| `buildSvgWrapper` | `(svgContent, alt, stem, srcRel) → string` | Returns the `<div class="svg-inline-wrap">` HTML structure containing the SVG controls (download/copy SVG and PNG) and the `<div class="svg-container">` with the raw SVG content. |
 | `rewriteAdmonitions` | `(src) → string` | GFM admonition rewrite to the `markdown-alert markdown-alert-<type>` class structure with the five SVG octicons. |
 
 ### `highlight.mjs`
