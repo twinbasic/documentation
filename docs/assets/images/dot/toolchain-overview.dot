@@ -1,0 +1,43 @@
+// High-level view of the documentation toolchain: source tree → build/serve
+// → output trees → check/book pipelines.
+
+digraph toolchain {
+    rankdir=TB
+    bgcolor="transparent"
+    nodesep=0.3
+    ranksep=0.5
+    splines=true
+
+    node [
+        shape=box
+        style="rounded,filled"
+        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=12
+        margin="0.12,0.06"
+        fillcolor="#fef7e0"
+        color="#f9ab00"
+    ]
+    edge [color="#7a8090" arrowsize=0.7]
+
+    SRC     [label=<docs/ source tree<BR/>*.md + _config.yml + _book.yml>]
+    SERVE   [label=<serve.bat>]
+    SERVED  [label=<_serve/>]
+    BROWSER [label=<local<BR/>web<BR/>browser>]
+    BUILD   [label=<build.bat<BR/>tbdocs.mjs>]
+    SITE    [label=<_site/<BR/>online HTML>]
+    OFFLINE [label=<_site-offline/<BR/>file:// mirror>]
+    PDFSRC  [label=<_site-pdf/<BR/>book.html + CSS + images>]
+    CHECK   [label=<check.bat<BR/>check_links.mjs>]
+    BOOK    [label=<book.bat<BR/>render-book.mjs>]
+    PDF     [label=<_pdf/twinBASIC Book.pdf>]
+
+    SRC -> SERVE -> SERVED -> BROWSER
+    SRC -> BUILD
+    BUILD -> SITE
+    BUILD -> OFFLINE
+    BUILD -> PDFSRC
+    SITE    -> CHECK
+    OFFLINE -> CHECK
+    PDFSRC  -> CHECK [style=dashed]
+    PDFSRC  -> BOOK -> PDF
+}

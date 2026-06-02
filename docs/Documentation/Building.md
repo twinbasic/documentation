@@ -8,7 +8,7 @@ permalink: /Documentation/Development/Building
 # Building and Deployment
 {: .no_toc }
 
-The day-to-day workflow for editing documentation: requirements, building, serving locally, link checking, Mermaid diagrams, screenshots, and the deployment to [docs.twinbasic.com](https://docs.twinbasic.com). Aimed at content contributors --- if you are modifying the build pipeline itself, see [tbdocs Internals](Builder) instead.
+The day-to-day workflow for editing documentation: requirements, building, serving locally, link checking, Graphviz diagrams, screenshots, and the deployment to [docs.twinbasic.com](https://docs.twinbasic.com). Aimed at content contributors --- if you are modifying the build pipeline itself, see [tbdocs Internals](Builder) instead.
 
 * TOC goes here
 {:toc}
@@ -25,9 +25,9 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 ### Requirements
 
-- **Node.js 22+** for `tbdocs` itself. The site builds offline with no Ruby toolchain.
-- **`npm ci`** at the repository root installs everything: the static site generator's deps, the PDF renderer's deps, and `puppeteer` (shared by both the PDF renderer and mermaid's `.mmd` → `.svg` regenerator). A single `package.json` at the repo root carries the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
-- **Chromium** is required whenever an `.mmd` diagram needs regenerating and whenever the PDF book is rendered. It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. A missing Chromium during a build downgrades to a warning and reuses the on-disk `.svg`, so first-time setups that skip the install step still build (just without diagram updates).
+- **Node.js 22+** for `tbdocs` itself.
+- **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root carries the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
+- **Chromium** is required only when the PDF book is rendered. It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it.
 
 ## Building
 
@@ -63,20 +63,20 @@ This runs two passes of `scripts/check_links.mjs`: one against `_site/` (the onl
 
 A clean `check.bat` run is the bar for "ready to commit".
 
-## Mermaid diagrams
+## Graphviz/DOT diagrams
 
-Mermaid diagrams live as `.mmd` source files under `docs/assets/images/mmd/` and are referenced from markdown as `.svg`:
+Diagrams live as `.dot` source files under `docs/assets/images/dot/` and are referenced from markdown as `.svg`:
 
-    ![Diagram](/assets/images/mmd/<hash>.svg)
+    ![Diagram](/assets/images/dot/<name>.svg)
 
-`tbdocs` regenerates each `.svg` from its `.mmd` sibling when the SVG is missing or older than its source --- editing a `.mmd` by one character regenerates the SVG on the next build. Both files belong in git; the `.mmd` is the canonical source, the `.svg` is the build artifact that the browser actually loads.
+`tbdocs` regenerates each `.svg` from its `.dot` sibling when the SVG is missing or older than its source --- editing a `.dot` by one character regenerates the SVG on the next build. Both files belong in git; the `.dot` is the canonical source, the `.svg` is the build artifact the browser loads.
 
-The renderer drives `puppeteer` + the `mermaid` package directly (both regular dependencies in the repo-root `package.json`). One headless Chromium covers the whole batch --- previously the project shelled out to `@mermaid-js/mermaid-cli` which forked a fresh node + Chrome process per diagram and shipped its own bundled puppeteer-core. The direct path keeps the dependency tree smaller, removes the per-file process startup overhead, and uses the same Chromium cache as `render-book.mjs`. Two failure modes are handled distinctly:
+The renderer drives `@hpcc-js/wasm-graphviz` directly: one WASM module load (~50 ms) covers the whole batch, then each diagram is a synchronous `gv.dot(src)` call. No headless browser, no in-tree patches, no Chromium dependency for diagrams. Two failure modes are handled distinctly:
 
-- **Setup failures** (no puppeteer, no Chrome, no mermaid) emit a one-line warning, retain the existing on-disk SVGs, and let the build exit 0 --- a fresh checkout without `npm install` or a sandbox without Chromium doesn't break unrelated work.
-- **Content failures** (broken `.mmd` syntax, render exception) emit the parser error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and flip `process.exitCode = 1` so CI catches the bad diagram.
+- **Setup failures** (`@hpcc-js/wasm-graphviz` not installed, WASM load fails) emit a one-line warning, retain the existing on-disk SVGs, and let the build exit 0 --- a fresh checkout without `npm install` still builds against the committed SVGs.
+- **Content failures** (broken DOT syntax, render throws) emit the error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and flip `process.exitCode = 1` so CI catches the bad diagram.
 
-In serve mode the watcher ignores writes to `assets/images/mmd/*.svg`. The `.mmd` is the source of truth; the `.svg` is the build artifact mermaid emits back under `srcRoot`. Without the filter, each `.mmd` edit would fire two rebuilds (one on the edit, one on the SVG write) and the browser would reload twice for one user change.
+In serve mode the watcher ignores writes to `assets/images/dot/*.svg`. The `.dot` is the source of truth; the `.svg` is the build artifact the renderer emits back under `srcRoot`. Without the filter, each `.dot` edit would fire two rebuilds (one on the edit, one on the SVG write) and the browser would reload twice for one user change.
 
 ## Deploying to docs.twinbasic.com
 

@@ -69,7 +69,7 @@ Worker handlers live in `cpu-worker.mjs`. Two edits:
 // builder/sab-scheduler.mjs
 export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
-  scssLight: 3, scssDark: 4, mermaid: 5,
+  scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
   myHandler: 8,                          // ← new
 };

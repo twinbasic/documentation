@@ -43,7 +43,6 @@ export function buildInitConfig(site) {
     svgSprites:    buildSvgSprites(site.config),
     header:        renderHeader(site),
     searchFooter:  renderSearchFooter(site),
-    mermaidScript: renderMermaidScript(site),
     faviconLink:   buildFaviconLink(site.config),
     gaSnippet:     buildGaSnippet(site.config),
     searchEnabled: site.config.search_enabled !== false,
@@ -72,7 +71,7 @@ function templatePage(page, site, init) {
   // compress collapses them to single spaces. The body assembly mirrors
   // _layouts/default.html: skip-to-main link, icon sprite, sidebar,
   // <div class="main">, header, breadcrumbs, <main> wrapping body +
-  // children-nav, footer, then per-page-search-footer, then mermaid.
+  // children-nav, footer, then per-page-search-footer.
   const html =
     `<!DOCTYPE html>\n` +
     `<html lang="${escAttr(lang)}">\n` +
@@ -95,7 +94,6 @@ function templatePage(page, site, init) {
     `    </div>\n` +
     (init.searchEnabled ? init.searchFooter + `\n` : "") +
     `  </div>\n` +
-    (init.mermaidScript ? init.mermaidScript + `\n` : "") +
     `</body>\n` +
     `</html>\n`;
 
@@ -793,19 +791,6 @@ function renderSearchFooter(site) {
   return button + `    <div class="search-overlay"></div>`;
 }
 
-// ---------- §5.13 renderMermaidScript ------------------------------------
-
-function renderMermaidScript(site) {
-  const m = site.config.mermaid;
-  if (!m) return "";
-  const version = m.version ?? "latest";
-  const extra = site.config.mermaid_config ?? "";
-  return `  <script src="https://cdn.jsdelivr.net/npm/mermaid@${version}/dist/mermaid.min.js"></script>\n` +
-    `  <script>\n` +
-    `    mermaid.initialize({ startOnLoad: true });\n` +
-    (extra ? `    ${extra}\n` : "") +
-    `  </script>`;
-}
 
 // ---------- §6.2 / §6.3 URL helpers --------------------------------------
 

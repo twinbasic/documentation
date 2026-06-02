@@ -3,10 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "description": "twinBASIC documentation source, tbdocs static-site builder, and PDF book pipeline.",
-  "scripts": {
-    "postinstall": "node builder/scripts/patch-dagre.mjs"
-  },
   "devDependencies": {
+    "@hpcc-js/wasm-graphviz": "^1.21",
     "acorn": "^8.0",
     "acorn-walk": "^8.0",
     "fast-glob": "^3.3",
@@ -18,7 +16,6 @@
     "markdown-it-attrs": "^4.3",
     "markdown-it-deflist": "^3.0",
     "markdown-it-footnote": "^4.0",
-    "mermaid": "11.15.0",
     "sass": "^1.0",
     "pdf-lib": "1.17.1",
     "puppeteer": "25.0.4",

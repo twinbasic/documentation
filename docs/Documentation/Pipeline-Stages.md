@@ -74,7 +74,7 @@ In addition, `SharedState` itself carries two non-`site` fields that downstream 
 
 ### Static files (`staticFiles[]`)
 
-Also produced by `discover`. Every file that is not a page --- images, fonts, prebuilt CSS/JS, and any `.md`/`.html` file without frontmatter --- becomes a static file object. `mermaid.submit()` appends additional SVG descriptors for any freshly-regenerated diagrams.
+Also produced by `discover`. Every file that is not a page --- images, fonts, prebuilt CSS/JS, and any `.md`/`.html` file without frontmatter --- becomes a static file object. `dot.submit()` appends additional SVG descriptors for any freshly-regenerated diagrams.
 
 | Field | Type | Description |
 |---|---|---|
@@ -113,7 +113,7 @@ Each worker handler is registered in `HANDLERS` (in `sab-scheduler.mjs`) as a na
 ```js
 export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
-  scssLight: 3, scssDark: 4, mermaid: 5,
+  scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
 };
 ```
@@ -154,9 +154,9 @@ scss.expected = ["scssLight", "scssDark", "prepDest"]
 
 Joins the two CSS strings, writes `assets/css/just-the-docs-combined.css` to both `_site/` and `_site-offline/` (the offline copy includes the page-relative URL rewrite via `deriveOfflineCss`). Depends on `prepDest` so the destination directories exist.
 
-### `mermaid` (worker)
+### `dot` (worker)
 
-Handler calls `regenerateMermaid(srcRoot)`. Walks `<srcRoot>/assets/images/mmd/*.mmd`, compares mtimes against `.svg` siblings, drives one puppeteer + mermaid batch over the stale ones. Returns `mermaidStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends new SVG descriptors to `state.staticFiles`. Seed when `os.availableParallelism() > 4`; chained after `buildInfo` otherwise so it does not contend with `discover` on small CI runners.
+Handler calls `regenerateDot(srcRoot)`. Walks `<srcRoot>/assets/images/dot/*.dot`, compares mtimes against `.svg` siblings, calls `Graphviz.load()` once then `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends new SVG descriptors to `state.staticFiles`. The WASM render is fast (sub-millisecond per diagram after the ~50 ms one-time `Graphviz.load()`); runs on a worker so the init hides behind the main spine.
 
 ### `highlighterInit` (main)
 
@@ -214,7 +214,7 @@ buildInit.expected = ["discover"]
 buildInit.execute() → { initData }
 ```
 
-Calls `buildInitConfig(state.site)` from `template.mjs`. Pre-renders the config-only chrome (SVG sprites, header, search footer, mermaid bootstrap script, favicon, GA). Runs in parallel with `nav`; `dispatch` merges the two outputs.
+Calls `buildInitConfig(state.site)` from `template.mjs`. Pre-renders the config-only chrome (SVG sprites, header, search footer, favicon, GA). Runs in parallel with `nav`; `dispatch` merges the two outputs.
 
 ### `markdownInit` (main)
 
@@ -262,7 +262,7 @@ Calls `resolveBookChapters(state.site.bookData, state.pages)` from `book.mjs`. M
 
 ```js
 dispatch.expected = [
-  "nav", "buildInit", "buildInfo", "mermaid",
+  "nav", "buildInit", "buildInfo", "dot",
   "deriveRedirects", "markdownInit",
 ]
 dispatch.execute() → { chunks, sharedSAB }
@@ -349,7 +349,7 @@ Main-thread tasks that materialise the rest of the output after the render fan-o
 ### `writeAssets` (main)
 
 ```js
-writeAssets.expected = ["mermaid", "prepPageDirs", "highlighterInit"]
+writeAssets.expected = ["dot", "prepPageDirs", "highlighterInit"]
 ```
 
 Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedAssets, baseurl, skipPages: true })` from `write.mjs`. Copies vendored theme JS, copies project static files, writes generated CSS (`tb-highlight.css` from `state.site.highlightCss`). **Does not** write page HTML --- the per-chunk `flush:i` tasks already did that. The CSS baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) applies to both copy paths and to generated assets.
@@ -386,7 +386,7 @@ Calls `writeOffline(state.pages, state.staticFiles, state.site, destRoot, { auxS
 ### `writePdf` (main, terminal)
 
 ```js
-writePdf.expected = ["flushJoin", "mermaid", "resolveBookChapters"]
+writePdf.expected = ["flushJoin", "dot", "resolveBookChapters"]
 ```
 
 Calls `writePdf(state.pages, state.staticFiles, state.site, destRoot, { tolerateMissingImages, highlightCss })` from `pdf.mjs`. Internally calls `assembleBook(site, pages)` from `book.mjs` for the `book.html` HTML string, writes `tb-highlight.css` from the highlight string passed in, copies `print.css` via the `staticFiles` inventory, copies every image referenced in `book.html`. Missing images throw by default; `--tolerate-missing-images` downgrades to a warning.
@@ -445,11 +445,11 @@ The same modules as above, with the full export list per file.
 |---|---|---|
 | `loadData` | `(srcRoot) → Promise<object>` | Returns `{ book: <parsed YAML> }`, or `{}` when `_book.yml` is absent. |
 
-### `mermaid.mjs`
+### `dot.mjs`
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `regenerateMermaid` | `(srcRoot) → Promise<{ processed, regenerated, failed, setupSkipped?, svgFiles }>` | Regenerates stale `.mmd` → `.svg` via puppeteer + mermaid. `svgFiles` is the appendable static-file descriptor list. |
+| `regenerateDot` | `(srcRoot) → Promise<{ processed, regenerated, failed, setupSkipped?, svgFiles }>` | Regenerates stale `.dot` → `.svg` via the WASM build of Graphviz (`@hpcc-js/wasm-graphviz`). `svgFiles` is the appendable static-file descriptor list. |
 
 ### `scss.mjs`
 
@@ -487,7 +487,7 @@ The same modules as above, with the full export list per file.
 | Symbol | Signature | Description |
 |---|---|---|
 | `templatePhase` | `(pages, site, initData) → Promise<void>` | Wraps each page's `renderedContent` in the just-the-docs layout, runs `compressHtml`, stores the result in `page.html`. Skips `layout: book-combined`. |
-| `buildInitConfig` | `(site) → object` | Pre-renders the config-only chrome (SVG sprites, header, search footer, mermaid script, favicon, GA). Called by the `buildInit` task. |
+| `buildInitConfig` | `(site) → object` | Pre-renders the config-only chrome (SVG sprites, header, search footer, favicon, GA). Called by the `buildInit` task. |
 | `buildInitFn` | (alias of internal `buildInit`) | Available for harnesses; combines `buildInitConfig` + `renderSidebar` in one call. |
 | `renderSidebar` | `(site) → string` | Pre-renders the sidebar HTML. Called by the `nav` task; the output is folded into the shared payload by `dispatch`. |
 | `navActivationCss` | `(page) → string` | Per-page `<style id="jtd-nav-activation">` block. |
@@ -608,7 +608,7 @@ The handler table is built from the imported `HANDLERS` constant:
 | `renderEnvInit` | inline | Unpacks shared SAB, awaits highlighter, reconstructs link tables, builds markdown-it, stashes `_renderEnv`. |
 | `flush` | inline | Drains the next `_pendingFlush` batch to disk. |
 | `scssLight` / `scssDark` | `scss.mjs` | Light/dark palette compile. |
-| `mermaid` | `mermaid.mjs` | `regenerateMermaid` over `srcRoot`. |
+| `dot` | `dot.mjs` | `regenerateDot` over `srcRoot`. |
 | `buildInfo` | `build-info.mjs` | `captureBuildInfo`. |
 | `render` | inline | Five-stage chunk render: `renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`. |
 

@@ -80,7 +80,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 
 | File | Role |
 |---|---|
-| [`mermaid.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/mermaid.mjs) | Regenerates stale `.mmd` → `.svg` via puppeteer + mermaid. One browser launch per build. |
+| [`dot.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/dot.mjs) | Regenerates stale `.dot` → `.svg` via the WASM build of Graphviz (`@hpcc-js/wasm-graphviz`). |
 | [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs) | Dart Sass over the vendored just-the-docs SCSS. Split across `scssLight` + `scssDark` worker tasks, joined on main. |
 
 **Render hot path**
@@ -173,9 +173,16 @@ The complete layout, allocation helper, and the `readTaskMeta` / `writeTaskMeta`
 
 ## Task DAG by section
 
-The pipeline has 28 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into four sections that also organise the discussion below: **Seeds**, **Spine**, **Render**, **Write**.
+The pipeline has 28 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into four sections that also organise the discussion below:
 
-![Task DAG of the SAB pull scheduler, grouped by Gantt section](/assets/images/mmd/scheduler-dag.svg)
+- **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`
+- **Spine**: `nav`, `dot`, `buildInit`, `markdownInit`, `deriveSitemap`, `deriveRedirects`, `resolveBookChapters`
+- **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `renderEnvInit`, `render:i`, `renderJoin`
+- **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `writeAux`, `writeOffline`, `writePdf`
+
+The full task DAG, with every cross-section edge, follows:
+
+![Task DAG of the SAB pull scheduler](/assets/images/dot/scheduler-dag.svg)
 
 **[M]** runs on the main thread; **[W]** runs on a worker. Solid arrows are normal predecessor edges (`expected`); dotted arrows are per-lane dependencies (`perWorkerDeps`) or implicit data dependencies between tasks that share state through `SharedState`.
 
@@ -188,7 +195,7 @@ Seeds have no predecessors and become claimable as soon as the build starts (wit
 - `scssLight` (worker) --- compiles `just-the-docs-combined.scss` against the light palette.
 - `scssDark` (worker) --- same against the dark palette. The two halves were one ~700 ms compile in the old design; splitting them saves about 200 ms.
 - `scss` (main) --- joins both halves, writes the combined CSS to `_site/` and `_site-offline/`.
-- `mermaid` (worker) --- regenerates stale `.mmd` → `.svg`. Seed when more than four workers are available; chained after `buildInfo` on small CI runners so it does not contend with `discover` for the I/O window.
+- `dot` (worker) --- regenerates stale `.dot` → `.svg` via the WASM build of Graphviz. WASM init (~50 ms) hides behind the main spine; per-diagram render is synchronous after that.
 - `highlighterInit` (main) --- loads the `Light.theme` + `Dark.theme` palette, emits `tb-highlight.css`. Does not bring up Shiki on main --- workers each init their own.
 - `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`) --- per-lane Shiki bootstrap. The flag combination means workers run it during the main-thread spine if they have no other claimable work, every render-worker needs it on its own lane, and in serve mode the per-lane done flag survives across rebuilds so the second build skips warmup entirely.
 - `prepDest` (main) --- cleans and recreates the three destination trees. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads.
@@ -246,7 +253,7 @@ Once `renderJoin` fires the auxiliary writers can run; once `flushJoin` fires th
 - `searchData` (main) --- concatenates `state.searchChunks` (already populated by each `render:i`'s `submit()`), renumbers the global `i` index, writes `search-data.json`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only consolidates.
 - `writeAux` (main) --- writes redirect stubs + sitemap + robots.txt. Depends on `writeAssets`, `searchData`, `flushJoin`, `deriveRedirects`, `deriveSitemap`.
 - `writeOffline` (main) --- produces `_site-offline/`. The per-page offline HTML was already computed inside `render:i` and written by `flush:i`, so this task only handles the cross-cutting work: CSS url() rewriting, the just-the-docs.js AST patch, the `search-data.js` wrapper, theme assets, redirect stubs.
-- `writePdf` (main) --- assembles `_site-pdf/book.html` and copies the images it references. Depends on `flushJoin` (so `renderedContent` is filled), `resolveBookChapters` (so `bookData._chapters` is wired), and `mermaid` (so diagram SVGs are in `staticFiles`).
+- `writePdf` (main) --- assembles `_site-pdf/book.html` and copies the images it references. Depends on `flushJoin` (so `renderedContent` is filled), `resolveBookChapters` (so `bookData._chapters` is wired), and `dot` (so diagram SVGs are in `staticFiles`).
 
 ## What runs where
 
@@ -258,7 +265,7 @@ For a one-page reference, every task and its execution locus:
 | Seeds | `buildInfo` | worker | Two `git` shell-outs in parallel. |
 | Seeds | `scssLight`, `scssDark` | workers | Light + dark palettes compile concurrently. |
 | Seeds | `scss` | main | Joins light + dark; writes online + offline CSS. |
-| Seeds | `mermaid` | worker | Seed on > 4 cores; chained after `buildInfo` otherwise. |
+| Seeds | `dot` | worker | WASM Graphviz; init hides behind the main spine. |
 | Seeds | `highlighterInit` | main | Palette CSS only. |
 | Seeds | `warmInit` | worker (per lane) | Per-worker Shiki bootstrap. `on_demand` + `run_when_idle`. |
 | Seeds | `prepDest`, `prepPageDirs` | main | Deferred to after `dispatch`. |
@@ -284,7 +291,7 @@ The scheduler owns a `SharedState` instance with five fields:
 | Field | Type | Filled by |
 |---|---|---|
 | `pages` | `Page[]` | `discover.submit()`. Never reassigned afterwards --- only mutated in place. |
-| `staticFiles` | `StaticFile[]` | `discover.submit()`, plus appends from `mermaid.submit()` for freshly-regenerated SVGs. |
+| `staticFiles` | `StaticFile[]` | `discover.submit()`, plus appends from `dot.submit()` for freshly-regenerated SVGs. |
 | `site` | `object` | Populated progressively by every spine task's `submit()`. |
 | `pageByDest` | `Map<destPath, Page>` | `discover.submit()`. Used by render `submit()` to merge deltas into the master `Page` objects. |
 | `searchChunks` | `Array<Array<entry>>` | Pre-allocated to length N by `dispatch.submit()`; each `render:i.submit()` writes one slot. |
@@ -341,6 +348,7 @@ A single `package.json` at the repo root carries everything --- the static site 
 ```json
 {
   "devDependencies": {
+    "@hpcc-js/wasm-graphviz": "^1.21",
     "acorn": "^8.0",
     "acorn-walk": "^8.0",
     "fast-glob": "^3.3",
@@ -352,21 +360,15 @@ A single `package.json` at the repo root carries everything --- the static site 
     "markdown-it-attrs": "^4.3",
     "markdown-it-deflist": "^3.0",
     "markdown-it-footnote": "^4.0",
-    "mermaid": "11.15.0",
     "pdf-lib": "1.17.1",
     "puppeteer": "25.0.4",
     "sass": "^1.0",
     "shiki": "^1.0"
-  },
-  "scripts": {
-    "postinstall": "node builder/scripts/patch-dagre.mjs"
   }
 }
 ```
 
-No template engine, no framework, no bundler. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` for the AST-based offline patcher; the `markdown-it-*` packages cover the dialect extensions the legacy parser supported; `shiki` is the syntax highlighter; `mermaid` + `puppeteer` regenerate `.mmd` → `.svg` (one headless Chromium per batch); `sass` is Dart Sass for the SCSS compile. `pdf-lib` + `html-entities` + `htmlparser2` are the PDF renderer's toolchain. The `postinstall` runs `builder/scripts/patch-dagre.mjs`, which rewrites mermaid's bundled dagre adapter --- see [Mermaid Dagre Patches](Fixes/Dagre).
-
-`mermaid` is **exact-pinned** (`"11.15.0"`, not `"^11.15.0"`). The dagre patches target a chunk filename whose hash component is regenerated on each mermaid release, so a floated range could break the postinstall on a transparent patch bump.
+No template engine, no framework, no bundler, no postinstall hooks. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` for the AST-based offline patcher; the `markdown-it-*` packages cover the dialect extensions the legacy parser supported; `shiki` is the syntax highlighter; `@hpcc-js/wasm-graphviz` is the WASM build of Graphviz that renders `.dot` diagram sources; `sass` is Dart Sass for the SCSS compile. `pdf-lib` + `html-entities` + `htmlparser2` + `puppeteer` are the PDF renderer's toolchain (puppeteer drives headless Chromium for the paged.js layout pass).
 
 Node 22+ is required: the SAB scheduler uses `Atomics.wait`, `Atomics.notify`, and `SharedArrayBuffer` --- all baseline in Node 22 without flags.
 
@@ -376,7 +378,7 @@ The site's `/assets/` tree at deploy time is assembled from three sources:
 
 | Source on disk | What lives there | Phase that delivers it |
 |---|---|---|
-| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-switch.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Mermaid diagrams (`.mmd` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
+| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-switch.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
 | `builder/vendor/just-the-docs/` | Vendored from the just-the-docs theme (v0.10.1): `_sass/` (the theme's SCSS sources, fed into the compilation) and `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (the chrome runtime, copied verbatim). See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the inventory, re-vendoring procedure, and the in-tree patches applied to `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `writeAssets`. |
 | Generated in-process | `just-the-docs-combined.css` (from `scss.mjs`) and `tb-highlight.css` (from `highlight-theme.mjs`). Neither is committed; both are rebuilt every run. | Written by `scss` (combined CSS) and `writeAssets` (highlight CSS). |
 
@@ -386,10 +388,10 @@ CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<b
 
 Some build-adjacent code lives at the repo root rather than under `builder/`:
 
-- **PDF rendering** --- `book/render-book.mjs` plus its `book/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. `pdf-lib` is a heavy dep used only at PDF time; `puppeteer` is shared between `render-book.mjs` and `builder/mermaid.mjs` (one Chromium binary, two consumers). See [PDF Generation](PDF-Generation) for the internals.
+- **PDF rendering** --- `book/render-book.mjs` plus its `book/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. Both `pdf-lib` and `puppeteer` are used only at PDF time. See [PDF Generation](PDF-Generation) for the internals.
 - **Link checking** --- `scripts/check_links.mjs` reads from disk after the build; not part of the generator.
 - **External link crawling** --- `scripts/crawl_check.mjs` reads from HTTP; not part of the generator.
-- **Mermaid source files** --- `docs/assets/images/mmd/*.mmd` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.
+- **Graphviz/DOT source files** --- `docs/assets/images/dot/*.dot` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.
 
 ## Drift guards and failure modes
 
@@ -397,9 +399,9 @@ The build aborts or flips the exit code under a handful of conditions:
 
 - **Page-count drift.** `runBuild()` ends with `if (pages.length < 836) process.exitCode = 1` so a discover-rule regression that silently drops content appears as a non-zero exit even though the build itself completed.
 - **SAB structural validation.** `verifySchedulerSAB(TASKS, views, idMapping)` runs immediately after allocation. A misconfigured `expected`/`perWorkerDeps` list, a duplicate task name, or a successor edge to an unknown task aborts the build before any task runs.
-- **Mermaid render failure.** Per-diagram failures retain the previous SVG and continue the batch so every broken diagram surfaces in one run; the orchestrator flips `process.exitCode = 1` based on the failure count.
+- **DOT render failure.** Per-diagram failures retain the previous SVG and continue the batch so every broken diagram surfaces in one run; the orchestrator flips `process.exitCode = 1` based on the failure count.
 - **SCSS compile failure.** The light/dark workers warn with the source location and continue with `failed: true`; the joiner sets `process.exitCode = 1`. Existing `_site/` CSS lingers.
 - **Nav integrity.** Orphan or ambiguous `parent:` declarations throw inside `nav.execute()`, which aborts the build via `Scheduler._abort()`.
 - **Worker crash.** A worker handler that throws posts `{ taskFailed, message, stack }` to main; the scheduler calls `_abort()`, the build rejects, and the orchestrator surfaces the error with the task name in the message.
 
-Setup-class failures --- puppeteer not installed, no Chromium on disk, sass missing --- print a one-line recovery hint and continue with stale outputs. They do not flip the exit code; a fresh checkout still builds.
+Setup-class failures --- `@hpcc-js/wasm-graphviz` not installed, `sass` missing --- print a one-line recovery hint and continue with stale outputs. They do not flip the exit code; a fresh checkout still builds.

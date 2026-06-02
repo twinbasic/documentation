@@ -27,7 +27,7 @@ export const F_RUN_WHEN_IDLE    = 16;
 // (handlerById) at startup from the imported HANDLERS constant.
 export const HANDLERS = {
   warmInit: 0, renderEnvInit: 1, flush: 2,
-  scssLight: 3, scssDark: 4, mermaid: 5,
+  scssLight: 3, scssDark: 4, dot: 5,
   buildInfo: 6, render: 7,
 };
 

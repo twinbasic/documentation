@@ -7,7 +7,7 @@ import { promises as fsP } from "node:fs";
 import path from "node:path";
 import { parentPort, workerData } from "node:worker_threads";
 import { compileLightScss, compileDarkScss } from "./scss.mjs";
-import { regenerateMermaid } from "./mermaid.mjs";
+import { regenerateDot }     from "./dot.mjs";
 import { captureBuildInfo }  from "./build-info.mjs";
 
 import { createMarkdownIt, renderPhase }      from "./render.mjs";
@@ -110,9 +110,9 @@ const handlers = {
     return { scssDarkResult };
   },
 
-  async mermaid() {
-    const mermaidStats = await regenerateMermaid(ctx.srcRoot);
-    return { mermaidStats };
+  async dot() {
+    const dotStats = await regenerateDot(ctx.srcRoot);
+    return { dotStats };
   },
 
   async buildInfo() {

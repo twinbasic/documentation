@@ -126,7 +126,7 @@ export function makeTimer() {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo → mermaid, scssLight + scssDark → scss,
+// Seeds (config, buildInfo, dot, scssLight + scssDark → scss,
 // highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
 // nav + buildInit → dispatch; config → loadData; discover → markdownInit;
 // deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
@@ -134,13 +134,12 @@ export function makeTimer() {
 // the per-worker flush (prepPageDirs → flush [per worker] → flushJoin [counter barrier]),
 // and write/post-write tasks
 // (flushJoin + prepPageDirs → writeAssets + searchData;
-// writeAssets + searchData → writeAux → writeOffline; flushJoin + mermaid → writePdf)
+// writeAssets + searchData → writeAux → writeOffline; flushJoin + dot → writePdf)
 // are scheduler tasks.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
 // summary, and returns.
 
-const workerCount    = os.availableParallelism();
-const mermaidIsSeed  = workerCount > 4;
+const workerCount = os.availableParallelism();
 
 const TASKS = {
   // ── Seeds ─────────────────────────────────────────────────────────────────
@@ -162,8 +161,6 @@ const TASKS = {
   },
 
   // Git rev-parse / log shell-outs. Worker so they overlap with the main spine.
-  // When workerCount <= 4, chains into mermaid so the two don't compete with
-  // discover on the CI runners. When workerCount > 4, mermaid is a seed.
   buildInfo: {
     expected: [],
     handler: "buildInfo",
@@ -232,15 +229,15 @@ const TASKS = {
     submit() {},
   },
 
-  // Stale mermaid SVG regeneration. Seed when workerCount > 4 (enough cores
-  // to run without contention); chained after buildInfo otherwise so it
-  // doesn't compete with discover on 4-thread CI.
-  mermaid: {
-    expected: mermaidIsSeed ? [] : ["buildInfo"],
-    handler: "mermaid",
+  // Stale DOT/Graphviz SVG regeneration. WASM-based; no headless browser,
+  // no in-tree patches. Runs on a worker as a seed so the Graphviz.load()
+  // WASM init (~50 ms) hides behind the main spine.
+  dot: {
+    expected: [],
+    handler: "dot",
     submit(out, state) {
       const known = new Set(state.staticFiles.map((f) => f.srcRel));
-      for (const f of out.mermaidStats.svgFiles ?? []) {
+      for (const f of out.dotStats.svgFiles ?? []) {
         if (!known.has(f.srcRel)) state.staticFiles.push(f);
       }
     },
@@ -471,10 +468,10 @@ const TASKS = {
   // worker tasks plus a renderJoin barrier. Assembles initData from the
   // two parallel halves: nav (sidebar) + buildInit (config-only chrome).
   dispatch: {
-    expected: ["nav", "buildInit", "buildInfo", "mermaid", "deriveRedirects", "markdownInit"],
+    expected: ["nav", "buildInit", "buildInfo", "dot", "deriveRedirects", "markdownInit"],
     runOnMain: true,
-    execute({ nav: { sidebar }, buildInit: { initData }, buildInfo: { buildInfo }, mermaid: { mermaidStats }, markdownInit: _markdownInitSignal, deriveRedirects: { stubs } }, ctx, state) {
-      void mermaidStats; // dependency signal only -- static files already appended in mermaid.submit
+    execute({ nav: { sidebar }, buildInit: { initData }, buildInfo: { buildInfo }, dot: _dotSignal, markdownInit: _markdownInitSignal, deriveRedirects: { stubs } }, ctx, state) {
+      void _dotSignal;   // dependency signal only -- static files already appended in dot.submit
       void _markdownInitSignal;  // dependency signal only -- markdown + linkTablesSerialized + seoSiteTitle/seoLogoUrl already on state.site
       const chunks = chunkPages(state.pages, ctx.workerCount);
       const excludePatterns = Array.isArray(state.site.config?.offline_exclude)
@@ -621,10 +618,10 @@ const TASKS = {
   // Page HTML is written by per-worker flush; combined SCSS is written
   // by the scss task.
   writeAssets: {
-    expected: ["mermaid", "prepPageDirs", "highlighterInit"],
+    expected: ["dot", "prepPageDirs", "highlighterInit"],
     runOnMain: true,
-    async execute({ mermaid: { mermaidStats }, highlighterInit: _highlightSignal }, ctx, state) {
-      void mermaidStats;      // dependency signal only; append already happened in mermaid.submit
+    async execute({ dot: _dotSignal, highlighterInit: _highlightSignal }, ctx, state) {
+      void _dotSignal;        // dependency signal only; append already happened in dot.submit
       void _highlightSignal;  // dependency signal only; highlightCss already written to state.site
       const generatedAssets = [];
       if (state.site.highlightCss) {
@@ -696,11 +693,11 @@ const TASKS = {
 
   // Produce _site-pdf/. Depends on flushJoin (pages have renderedContent),
   // resolveBookChapters (bookData._chapters refs into state.pages), and
-  // mermaid (SVG descriptors in staticFiles). Sources CSS directly:
+  // dot (SVG descriptors in staticFiles). Sources CSS directly:
   // tb-highlight.css from state.site.highlighter, print.css from staticFiles.
   // Runs in parallel with writeAssets → searchData → writeAux → writeOffline.
   writePdf: {
-    expected: ["flushJoin", "mermaid", "resolveBookChapters"],
+    expected: ["flushJoin", "dot", "resolveBookChapters"],
     runOnMain: true,
     async execute(_, ctx, state) {
       const skipPdf = ctx.opts.skipPdf ?? (state.site.config.also_build_pdf === false);
@@ -726,7 +723,7 @@ function chunkPages(pages, workers) {
 // ── Gantt chart ───────────────────────────────────────────────────────────────
 
 const GANTT_SECTION = {
-  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", mermaid: "Spine",
+  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
   discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   resolveBookChapters: "Spine",
@@ -870,16 +867,16 @@ export async function runBuild(opts) {
   const { pages, staticFiles } = scheduler.state;
   const site = scheduler.state.site;
 
-  const { mermaidStats } = results.get("mermaid");
-  const { scssResult }   = results.get("scss");
+  const { dotStats }   = results.get("dot");
+  const { scssResult } = results.get("scss");
 
-  if (mermaidStats.regenerated > 0 || mermaidStats.failed > 0) {
-    const parts = [`regenerated ${mermaidStats.regenerated}`];
-    if (mermaidStats.failed > 0) parts.push(`failed ${mermaidStats.failed}`);
-    console.log(`mermaid: ${parts.join(", ")} of ${mermaidStats.processed} SVG(s)`);
+  if (dotStats.regenerated > 0 || dotStats.failed > 0) {
+    const parts = [`regenerated ${dotStats.regenerated}`];
+    if (dotStats.failed > 0) parts.push(`failed ${dotStats.failed}`);
+    console.log(`dot: ${parts.join(", ")} of ${dotStats.processed} SVG(s)`);
   }
-  if (mermaidStats.failed > 0) process.exitCode = 1;
-  if (scssResult.failed)       process.exitCode = 1;
+  if (dotStats.failed > 0) process.exitCode = 1;
+  if (scssResult.failed)   process.exitCode = 1;
 
   const flushStats    = results.get("flushJoin");
   const assetStats    = results.get("writeAssets");
