@@ -16,13 +16,16 @@ The patches all target the same bundled file. Mermaid (pinned at exactly 11.15.0
 * TOC goes here
 {:toc}
 
-## Per-cluster direction with cross-cluster edges (Patch A)
+## Cross-cluster edges in any subgraph (Patch A)
 
-**Problem.** Mermaid's `extractor()` extracts a subgraph with `direction LR` (or `RL`) into its own layout pass --- but only when the cluster has no edges crossing its boundary. Clusters that do have a cross-boundary edge stay in the parent graph as compound nodes, and dagre's main layout silently ignores their per-cluster `rankdir`. The result: any `direction LR` subgraph that connects to anything outside itself renders top-to-bottom anyway.
+**Problem.** Mermaid's `extractor()` extracts a subgraph into its own layout pass --- but only when the cluster has no edges crossing its boundary. Clusters with a cross-boundary edge stay in the parent graph as compound nodes. Two consequences:
 
-This is the layout problem behind the [build-pipeline diagram](../assets/images/mmd/build-phases.svg). `row1` and `row2` are LR subgraphs, but `row1`'s last node connects to `row2`'s first node, which gives both rows external connections, so neither was extracted and both rendered as vertical stacks.
+- A `direction LR` (or `RL`) subgraph with external connections silently ignores its per-cluster `rankdir` and renders top-to-bottom like the parent.
+- A direction-less subgraph with external connections crashes dagre's downstream rank step outright with `Cannot set properties of undefined (setting 'rank')`.
 
-**Fix.** Extend the else-branch in `extractor()` so a cluster with both external connections and an explicit `clusterData.dir` is still extracted into its own sub-graph. Before `copy()` moves the children out, every edge that crosses the cluster boundary is rerouted to use the cluster placeholder node itself; the original endpoint node IDs are preserved on the rerouted edge as `_patchOrigV` and `_patchOrigW` so Patch B can fix up the rendered path later.
+The first case is the layout problem behind the [build-pipeline diagram](../assets/images/mmd/build-phases.svg). `row1` and `row2` are LR subgraphs, but `row1`'s last node connects to `row2`'s first node, which gives both rows external connections, so neither was extracted and both rendered as vertical stacks. The second case is what the [scheduler-dag diagram](../assets/images/mmd/scheduler-dag.svg) hits whenever any of its four subgraphs is left direction-less.
+
+**Fix.** Extend the else-branch in `extractor()` so any cluster with children and external connections is extracted into its own sub-graph. The sub-graph's direction is taken from the cluster's explicit `clusterData.dir` if set, otherwise inherited from the parent graph's `rankdir`. Before `copy()` moves the children out, every edge that crosses the cluster boundary is rerouted to use the cluster placeholder node itself; the original endpoint node IDs are preserved on the rerouted edge as `_patchOrigV` and `_patchOrigW` so Patch B can fix up the rendered path later.
 
 ```js
 for (const { e: _e, child: _c, other: _other } of _patchEdges) {
@@ -36,9 +39,14 @@ for (const { e: _e, child: _c, other: _other } of _patchEdges) {
     graph.setEdge(_other, node, _eData, _e.name);
   }
 }
+const _gs = graph.graph();
+const _dir = clusterDb.get(node)?.clusterData?.dir || _gs.rankdir;
 ```
 
-After the rerouting, the parent graph's cross-cluster edge is `Cluster → ExternalCluster`, and the sub-graph carries only its internal edges. Dagre then lays out the parent (here, top-to-bottom) and the sub-graph (left-to-right) as two separate passes.
+After the rerouting, the parent graph's cross-cluster edge is `Cluster → ExternalCluster`, and the sub-graph carries only its internal edges. Dagre then lays out the parent (top-to-bottom for a `flowchart TB`) and each sub-graph (`LR` if declared, `TB` if not) as separate passes.
+
+> [!NOTE]
+> Patch V1 required an explicit `direction` on the cluster --- direction-less clusters with cross-boundary edges were left untouched and would crash dagre downstream. The V2 form (current) extends extraction to all clusters with cross-cluster edges, defaulting to the parent's `rankdir` when no explicit direction is set. `patch-dagre.mjs` migrates a V1-patched dagre source to V2 in-place when re-run.
 
 ## Cross-cluster edge endpoints (Patch B)
 

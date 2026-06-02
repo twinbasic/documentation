@@ -1,13 +1,14 @@
 // patch-dagre.mjs — postinstall patch for mermaid's bundled dagre adapter.
 //
-// Three patches applied to dagre-ZXKKJJHT.mjs:
+// Five patches applied to dagre-ZXKKJJHT.mjs:
 //
 // Patch A (extractor): extends the extractor() function's else-branch so
-// that clusters with external connections are still extracted into their own
-// sub-graph when they declare an explicit `direction` (clusterData.dir).
-// Cross-boundary edges are rerouted to use the cluster placeholder node;
-// original endpoint node IDs are preserved as _patchOrigV / _patchOrigW on
-// the edge data so Patch B can fix up the rendered path.
+// that any cluster with cross-cluster edges and children is extracted into
+// its own sub-graph. When the cluster has no explicit `direction`, the
+// sub-graph inherits the parent graph's rankdir. Cross-boundary edges are
+// rerouted to use the cluster placeholder node; original endpoint node IDs
+// are preserved as _patchOrigV / _patchOrigW on the edge data so Patch B can
+// fix up the rendered path.
 //
 // Patch B (recursiveRender, points): after dagre lays out the parent graph
 // with cluster placeholders, overrides the cross-cluster edge waypoints to
@@ -51,7 +52,7 @@ const ORIGINAL_ELSE = `    } else {
       log.debug(clusterDb);
     }`;
 
-const NEW_ELSE = `    } else if (clusterDb.get(node)?.clusterData?.dir && graph.children(node) && graph.children(node).length > 0) {
+const NEW_ELSE_V2 = `    } else if (graph.children(node) && graph.children(node).length > 0) {
       const _patchChildren = new Set(graph.children(node));
       const _patchEdges = [];
       for (const _c of _patchChildren) {
@@ -74,11 +75,8 @@ const NEW_ELSE = `    } else if (clusterDb.get(node)?.clusterData?.dir && graph.
         }
       }
       const _gs = graph.graph();
-      let _dir = _gs.rankdir === "TB" ? "LR" : "TB";
-      if (clusterDb.get(node)?.clusterData?.dir) {
-        _dir = clusterDb.get(node).clusterData.dir;
-        log.warn("Fixing dir (external cluster)", _dir);
-      }
+      const _dir = clusterDb.get(node)?.clusterData?.dir || _gs.rankdir;
+      log.warn("Fixing dir (external cluster)", _dir);
       const _cg = new Graph({
         multigraph: true,
         compound: true
@@ -114,6 +112,23 @@ const NEW_ELSE = `    } else if (clusterDb.get(node)?.clusterData?.dir && graph.
       );
       log.debug(clusterDb);
     }`;
+
+// Patch A V1 → V2 migration: V1 required clusterData.dir on the cluster
+// (silent crash for direction-less clusters with cross-boundary edges); V2
+// extracts any such cluster and inherits the parent rankdir when no explicit
+// direction is set.
+const V1_GUARD_OLD = `    } else if (clusterDb.get(node)?.clusterData?.dir && graph.children(node) && graph.children(node).length > 0) {`;
+const V2_GUARD_NEW = `    } else if (graph.children(node) && graph.children(node).length > 0) {`;
+
+const V1_DIR_OLD = `      const _gs = graph.graph();
+      let _dir = _gs.rankdir === "TB" ? "LR" : "TB";
+      if (clusterDb.get(node)?.clusterData?.dir) {
+        _dir = clusterDb.get(node).clusterData.dir;
+        log.warn("Fixing dir (external cluster)", _dir);
+      }`;
+const V2_DIR_NEW = `      const _gs = graph.graph();
+      const _dir = clusterDb.get(node)?.clusterData?.dir || _gs.rankdir;
+      log.warn("Fixing dir (external cluster)", _dir);`;
 
 // Incremental: if the old A patch is present (has _patchChildren but not
 // _patchOrigV), splice in the two metadata lines.
@@ -342,14 +357,26 @@ src = src.replace(/\r\n/g, "\n");
 const originalSrc = src;
 
 // Patch A — extractor.
-// Three states: fresh (apply NEW_ELSE), old patch present (splice _patchOrigV),
-// or already updated (skip).
-if (src.includes("_patchOrigV")) {
-  console.log("patch-dagre: Patch A already applied.");
+// Four states:
+//   V2 (current)  — clusterData?.dir || _gs.rankdir present: skip.
+//   V1 (legacy)   — _patchOrigV present, auto-flip ternary present: migrate dir block.
+//   V0 (oldest)   — _patchChildren present, no _patchOrigV: splice metadata + migrate dir.
+//   Fresh         — no patch markers: apply V2 directly.
+const V2_DIR_MARKER = "clusterData?.dir || _gs.rankdir";
+if (src.includes(V2_DIR_MARKER)) {
+  console.log("patch-dagre: Patch A already applied (V2).");
+} else if (src.includes("_patchOrigV")) {
+  src = src.replace(V1_GUARD_OLD, V2_GUARD_NEW);
+  src = src.replace(V1_DIR_OLD,   V2_DIR_NEW);
+  console.log("patch-dagre: Patch A upgraded V1 → V2 (inherit parent rankdir).");
 } else if (src.includes("_patchChildren")) {
-  src = applyPatch(src, "_patchOrigV", OLD_REROUTE, NEW_REROUTE, "Patch A (incremental)");
+  // V0 → V2: splice metadata in reroute step, then migrate dir block + guard.
+  src = applyPatch(src, "_patchOrigV", OLD_REROUTE, NEW_REROUTE, "Patch A V0 → V1 reroute");
+  src = src.replace(V1_GUARD_OLD, V2_GUARD_NEW);
+  src = src.replace(V1_DIR_OLD,   V2_DIR_NEW);
+  console.log("patch-dagre: Patch A upgraded V1 → V2 (inherit parent rankdir).");
 } else {
-  src = applyPatch(src, "_patchChildren", ORIGINAL_ELSE, NEW_ELSE, "Patch A (full)");
+  src = applyPatch(src, "_patchChildren", ORIGINAL_ELSE, NEW_ELSE_V2, "Patch A (V2)");
 }
 
 // Patch B — render edge-point fixup.
