@@ -131,7 +131,15 @@ export function readTaskMeta(views, idx) {
 
 // ── Allocation ───────────────────────────────────────────────────────────────
 
-export function allocSchedulerSAB(taskDefs, workerCount) {
+export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
+  // Validate: survives_reset only makes sense on unique_per_worker tasks
+  // (it pre-fills perWorkerDone, which only those tasks consult).
+  for (const [name, def] of Object.entries(taskDefs)) {
+    if (def.survives_reset && !def.unique_per_worker)
+      throw new Error(
+        `"${name}" has survives_reset without unique_per_worker`);
+  }
+
   // 1. Assign indices to static tasks in definition order.
   const nameToIdx = new Map();
   const idxToName = [];
@@ -261,6 +269,21 @@ export function allocSchedulerSAB(taskDefs, workerCount) {
       expectedDeps,
       idlePriority: def.idle_priority ?? 0,
     });
+  }
+
+  // 6. Pre-fill perWorkerDone for survives_reset tasks on rebuilds.  The
+  //    handler's side effects (e.g. loading a WASM module into the worker's
+  //    module scope) persist across init messages, so the dep check passes
+  //    immediately and the handler never re-fires.  Validated above to be
+  //    unique_per_worker, so perWorkerDone is the right slot to flip.
+  if (opts.rebuild) {
+    for (const [name, def] of Object.entries(taskDefs)) {
+      if (!def.survives_reset) continue;
+      const idx = nameToIdx.get(name);
+      for (let lane = 0; lane < workerCount; lane++) {
+        views.perWorkerDone[idx * MAX_LANES + lane] = 1;
+      }
+    }
   }
 
   const idMapping = {

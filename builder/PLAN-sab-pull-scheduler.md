@@ -2938,9 +2938,44 @@ Gantt chart shows:
   (see "Outcome" at the top of this section for the two divergences
   that surfaced during implementation).
 
-### Phase 16: Persistent pool and `survives_reset`
+### Phase 16: Persistent pool and `survives_reset` --- DONE
 
 **Suggested model:** Opus.
+
+**Outcome.**  Landed as designed.  `build.bat && check.bat` clean
+(single-build mode unchanged; only the 8 pre-existing PDF broken
+links remain).  Pool reuse exercised in-process across three
+back-to-back builds: build 1 = 1797 ms, build 2 = 1129 ms,
+build 3 = 1011 ms --- a ~670 ms saving on the first rebuild, well
+above the predicted 100--200 ms (V8 JIT settling on hot paths and
+Sass startup absorption account for the rest).  The boot section
+correctly drops from 1514 ms wall-clock on the initial build to
+~15 ms on rebuilds (no `cold:wN`, no `warmInit:wN` --- only the
+fresh `renderEnvInit:wN` per-worker timings).
+
+Two latent issues surfaced from exercising the rebuild path that
+the design did not predict; both are folded into the description
+below.
+
+1. **`pool` had to be stripped from `ctx.opts`.**  `runBuild()`
+   stores `opts` on the `ctx` it ships to workers via the init
+   message.  With pool reuse, `opts.pool` carries a `WorkerPool`
+   instance whose live `Worker` handles cannot be structured-cloned
+   --- `postMessage` throws `DataCloneError`.  Fix: destructure
+   `const { pool: externalPool = null, ...ctxOpts } = opts;` and
+   put `ctxOpts` (not `opts`) on `ctx`.
+
+2. **`dispatch.submit()` mutated the shared `TASKS.flushJoin.expected`.**
+   `scheduler.tasks` is `new Map(Object.entries(TASKS))`, so the
+   Map's `flushJoin` entry is the same object reference as
+   `TASKS.flushJoin`.  Setting `flushJoinDef.expected = [...]`
+   wrote `["flush:0", "flush:1", ...]` back into `TASKS`.  On the
+   next rebuild, `allocSchedulerSAB(TASKS, ...)` walked
+   `expected`, failed to resolve `"flush:0"`, and threw.  Fix:
+   replace the Map entry with a shallow clone bearing a fresh
+   `expected` array
+   (`scheduler.tasks.set("flushJoin", { ...flushJoinDef, expected: dynamicExpected })`);
+   leave `TASKS.flushJoin` untouched.
 
 **Motivation.**  In serve mode, every `runBuild()` call creates a
 fresh `WorkerPool` (spawning N worker threads) and destroys it
@@ -3597,9 +3632,17 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
   ride out in the same `{ done, output }` message that already
   carries the render delta.
 
-- **Phase 16 (persistent pool).**  Pool persistence is orthogonal.
-  `searchChunks` lives on `SharedState`, which is fresh per build
-  (new `Scheduler` = new `SharedState`).  No interaction.
+- **Phase 16 (persistent pool) --- DONE.**  Pool persistence is
+  orthogonal.  `searchChunks` lives on `SharedState`, which is fresh
+  per build (new `Scheduler` = new `SharedState`).  Confirmed: Phase
+  16's two divergences (stripping `pool` from `ctx.opts` to avoid
+  `DataCloneError`, and cloning `flushJoinDef` to prevent
+  `dispatch.submit()` from mutating `TASKS`) are in disjoint code
+  paths.  The `ctx.opts` fix is in `runBuild()` parameter handling;
+  the clone fix is in the `flushJoin` portion of `dispatch.submit()`.
+  Phase 17's edits (pre-allocating `state.searchChunks` and adding
+  an indexed assignment in the `render:i` submit closure) touch
+  neither.  No interaction.
 
 - **Phase 18 (per-page SEO on workers).**  Phase 18 adds
   `computeChunkSeo` between `renderPhase` and `templatePhase` in the

@@ -293,12 +293,15 @@ const TASKS = {
   },
 
   // On-demand per-worker Shiki initializer. Workers execute it the first
-  // time they claim a render chunk (per-worker dep in the SAB).
+  // time they claim a render chunk (per-worker dep in the SAB).  Once a
+  // worker has run it, the highlighter persists in module scope across
+  // init messages, so survives_reset lets rebuilds skip it.
   warmInit: {
     expected: [],
     on_demand: true,
     unique_per_worker: true,
     run_when_idle: true,
+    survives_reset: true,
     handler: "warmInit",
     submit() {},
   },
@@ -594,11 +597,15 @@ const TASKS = {
       }
 
       // Populate flushJoin's expected so _assembleInputs delivers all
-      // flush results to its execute().  Reset first --- in serve mode
-      // the task def object is reused across rebuilds.
+      // flush results to its execute().  Replace the Map entry with a
+      // shallow clone bearing a fresh expected array so the shared
+      // TASKS.flushJoin def stays untouched across rebuilds -- if we
+      // mutated it in place, the next build's allocSchedulerSAB would
+      // see leftover "flush:N" names and fail.
       const flushJoinDef = scheduler.tasks.get("flushJoin");
-      flushJoinDef.expected = [];
-      for (let i = 0; i < N; i++) flushJoinDef.expected.push(`flush:${i}`);
+      const flushJoinExpected = [];
+      for (let i = 0; i < N; i++) flushJoinExpected.push(`flush:${i}`);
+      scheduler.tasks.set("flushJoin", { ...flushJoinDef, expected: flushJoinExpected });
 
       // 6. Pack payload, broadcast, account, activate.
       const payloadSAB = packPayloads(views, renderBase, out.chunks);
@@ -812,20 +819,37 @@ async function injectGanttChart(pages, destRoot, svgContent) {
 
 // ── Build entry point ─────────────────────────────────────────────────────────
 
+// Factory exposed so serve.mjs can create a pool once at startup and pass it
+// to every runBuild() call without importing WorkerPool/CPU_WORKER_URL itself.
+export function createWorkerPool() {
+  return new WorkerPool(workerCount, CPU_WORKER_URL);
+}
+
 export async function runBuild(opts) {
   const buildStart = Date.now();
   const { src, dest } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
 
-  const ctx = { srcRoot, destRoot, opts, workerCount };
+  // When serve.mjs reuses a pool across rebuilds, opts.pool is passed in;
+  // runBuild() then skips pool create/destroy.  rebuild === true means this
+  // is at least the second build on this pool, so warmInit's perWorkerDone
+  // gets pre-filled (workers keep the highlighter in module scope) and
+  // boot timings are not re-injected.
+  //
+  // The pool is stripped from the opts that lands on ctx -- ctx travels to
+  // workers via postMessage's structured clone, which cannot serialize the
+  // Worker handles inside the pool.
+  const { pool: externalPool = null, ...ctxOpts } = opts;
+  const rebuild = externalPool != null && externalPool._buildCount > 0;
 
-  // Allocate the scheduling SAB before the pool so workers receive it at
-  // init and start pulling tasks immediately.
-  const { sab, views, idMapping } = allocSchedulerSAB(TASKS, workerCount);
+  const ctx = { srcRoot, destRoot, opts: ctxOpts, workerCount };
+
+  const { sab, views, idMapping } =
+    allocSchedulerSAB(TASKS, workerCount, { rebuild });
   verifySchedulerSAB(TASKS, views, idMapping);
 
-  const pool = new WorkerPool(workerCount, CPU_WORKER_URL);
+  const pool = externalPool ?? new WorkerPool(workerCount, CPU_WORKER_URL);
   const scheduler = new Scheduler({ pool, tasks: TASKS, views, idMapping, ganttSections: GANTT_SECTION });
 
   pool.onWorkerDone     = (msg) => scheduler._onWorkerDone(msg);
@@ -839,7 +863,7 @@ export async function runBuild(opts) {
   try {
     results = await scheduler.start(ctx);
   } finally {
-    await pool.destroy();
+    if (!externalPool) await pool.destroy();
   }
 
   const { pages, staticFiles } = scheduler.state;
@@ -891,13 +915,19 @@ export async function runBuild(opts) {
   }
   console.log(scheduler.summary());
 
-  for (const bt of pool.bootTimings) {
-    scheduler.timings.set(`${bt.type}:w${bt.lane}`, {
-      start: bt.start, end: bt.end,
-      workerStart: bt.start, workerEnd: bt.end,
-      lane: bt.lane,
-      ganttSection: "Boot",
-    });
+  // Boot timings come from the workers' very first message after spawn.
+  // On rebuilds the workers are alive from the previous build and never
+  // emit them again, so only inject on the first build to keep the Gantt
+  // honest.
+  if (!rebuild) {
+    for (const bt of pool.bootTimings) {
+      scheduler.timings.set(`${bt.type}:w${bt.lane}`, {
+        start: bt.start, end: bt.end,
+        workerStart: bt.start, workerEnd: bt.end,
+        lane: bt.lane,
+        ganttSection: "Boot",
+      });
+    }
   }
 
   const grouped = groupGanttTimings(scheduler.timings);

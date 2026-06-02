@@ -10,6 +10,11 @@ export class WorkerPool {
     this._workerUrl = workerUrl;
     this.bootTimings = [];
 
+    // Incremented each time sendInit() ships a fresh SAB to the workers.
+    // runBuild() reads `_buildCount > 0` to detect rebuilds when serve.mjs
+    // reuses the pool across builds.
+    this._buildCount = 0;
+
     // Callbacks wired by the caller after construction.
     this.onWorkerDone      = null;      // ({ done, output, timing, lane }) => void
     this.onWorkerError     = null;      // ({ taskFailed, message, stack }) => void
@@ -39,6 +44,7 @@ export class WorkerPool {
     for (const w of this._workers) {
       w.postMessage({ init: true, sab, ctx, idMapping });
     }
+    this._buildCount++;
   }
 
   broadcastDynamicData(payloadSAB, sharedSAB) {

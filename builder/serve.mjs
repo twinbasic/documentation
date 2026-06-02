@@ -12,7 +12,7 @@
 import { createServer } from "node:http";
 import { readFile, stat, watch } from "node:fs/promises";
 import path from "node:path";
-import { runBuild } from "./tbdocs.mjs";
+import { runBuild, createWorkerPool } from "./tbdocs.mjs";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -165,11 +165,17 @@ export async function runServe(opts) {
   const destRoot = path.resolve(opts.dest ?? path.join(srcRoot, "_serve"));
   const port = opts.port ?? 4000;
 
+  // Pool persists across rebuilds: skips ~100--200 ms of worker cold boot
+  // per rebuild and lets warmInit's survives_reset short-circuit on builds
+  // after the first.
+  const pool = createWorkerPool();
+
   // Initial build
   try {
-    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
+    await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, pool });
   } catch (err) {
     console.error("serve: initial build failed:", err.message);
+    await pool.destroy();
     process.exit(1);
   }
 
@@ -210,7 +216,7 @@ export async function runServe(opts) {
     changedFiles.clear();
     console.log(`\nChanged: ${files.join(", ")}`);
     try {
-      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true });
+      await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, pool });
       notifyReload();
     } catch (err) {
       console.error("rebuild failed:", err.message);
@@ -244,6 +250,7 @@ export async function runServe(opts) {
       try { res.end(); } catch {}
     }
     sseClients.clear();
+    pool.destroy();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 100).unref();
   });
