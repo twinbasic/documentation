@@ -9,99 +9,263 @@ permalink: /Documentation/Development/Extending
 # Extending the Builder
 {: .no_toc }
 
-How to add a new pipeline stage or a custom markdown-it plugin to `tbdocs`. This guide assumes working knowledge of modern JavaScript (async/await, ES modules) but not of the build pipeline internals. Read [Pipeline Stages](Pipeline-Stages) first for the data contracts each stage operates on.
+How to add a new pipeline task or a custom markdown-it plugin to `tbdocs`. Read [tbdocs Builder](Builder) first for the architectural tour and [Pipeline Stages](Pipeline-Stages) for the data contracts each task operates on.
 
 * TOC goes here
 {:toc}
 
-## Two extension points
+## Three extension points
 
-**New pipeline stage** --- a new `.mjs` module that reads from the `pages` array or `site` object and writes output to disk or to page fields. The module exports one async function. The orchestrator in `tbdocs.mjs` registers it as a task in the scheduler's DAG, with declared predecessor dependencies that determine when it runs. No plugin registry or hook system is involved.
+**Pipeline task** --- a new entry in the static `TASKS` graph in [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs). The task declares its predecessors and either runs on the main thread or dispatches to a worker handler. No plugin registry or hook system is involved.
 
-**New markdown-it plugin** --- a function that configures the shared markdown-it instance with additional parsing or rendering rules. Registered in `createMarkdownIt` inside `render.mjs`. Both Phase 2's SEO title extraction and Phase 3's body render use the same instance, so the plugin runs on every page.
+**Markdown-it plugin** --- a function that configures the shared markdown-it instance. Registered in `createMarkdownIt` inside [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs). Each render worker builds its own markdown-it from the same factory, so the plugin runs on every page on every worker.
+
+**Render-worker sub-stage** --- a transformation slotted into the per-chunk render handler in [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs), between two of the existing sub-stages (`renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`). This is the right shape when the new work is per-page CPU compute that should run in parallel with the rest of the page render.
 
 > [!NOTE]
-> Stage module changes are not hot-reloaded. After editing a stage module, stop and restart `serve.bat` (Ctrl+C, then re-run) to load the change.
+> Changes to task definitions, worker handlers, or markdown-it plugins are not hot-reloaded by serve mode. The worker pool is persistent: after editing any of these, stop `serve.bat` (Ctrl+C) and re-run to load the new code.
 
 ---
 
-## Adding a pipeline stage
+## Adding a pipeline task
 
-### 1. Write the module
+### 1. Decide where the work runs
 
-Create `builder/my-stage.mjs`. Export one async function. The standard signature takes the `pages` array, the `site` object, and any additional context the stage needs (typically `destRoot`), and returns a stats object for logging:
+The first question is whether the task body needs the main thread.
+
+| Pick `runOnMain` when… | Pick a worker handler when… |
+|---|---|
+| The body mutates `state.pages` or `state.site` and other tasks must see the result. | The body is pure compute. |
+| The body coordinates filesystem layout (a `mkdir` race or a sequenced clean). | The body reads files but does not coordinate destination layout. |
+| The output is small and downstream tasks consume it via the inputs object. | The output is per-page and you want to fan out across cores. |
+| The task should join multiple worker outputs together. | The task should run multiple times in parallel (`render:i`, `flush:i`). |
+
+If the work is per-page CPU compute, prefer adding a sub-stage inside the existing render handler over creating a new task --- the render fan-out already runs at full parallelism, and a sub-stage avoids the extra postMessage round-trip. The render-worker sub-stage walkthrough below covers that case.
+
+### 2. Pick the right flags
+
+Past the main-vs-worker decision, the scheduling primitives compose. The common patterns:
+
+| You want… | Set |
+|---|---|
+| A regular dependency. | `expected: ["predName"]` |
+| A seed that does not auto-start; runs when a successor needs it. | `on_demand: true` |
+| Per-worker setup that must run on each lane before another task is claimable on that lane. | `unique_per_worker: true`, declared as a `perWorkerDeps` on the dependent task. |
+| Speculative execution during idle time (e.g. warmup that overlaps the main spine). | `run_when_idle: true` |
+| Must run on the lane that ran a specific predecessor. | `pinnedTo` set by `submit()` via the SAB `pinnedTo` array (see `dispatch.submit` for the pattern). |
+| Per-lane done flags survive serve-mode rebuilds. | `survives_reset: true` (`unique_per_worker` tasks only). |
+| Lower-number priority claims first when multiple tasks are READY. | `priority: N` |
+| Combine per-lane timings into one Gantt swimlane. | `consolidate: true` |
+
+The full reference is in the [Scheduler-level concepts](Pipeline-Stages#scheduler-level-concepts) section of Pipeline Stages.
+
+### 3. Write the worker handler (if worker-resident)
+
+Worker handlers live in `cpu-worker.mjs`. Two edits:
+
+**Step 3a.** Add an entry to `HANDLERS` in `sab-scheduler.mjs` (the IDs are arbitrary integers, just pick the next free one):
 
 ```js
-// builder/my-stage.mjs
-
-import { writeFileMkdirp } from "./write.mjs";
-import path from "node:path";
-
-export async function myStage(pages, site, destRoot) {
-  const manifest = pages.map(p => ({
-    url: p.permalink,
-    title: p.frontmatter.title ?? null,
-  }));
-
-  const dest = path.join(destRoot, "pages-manifest.json");
-  await writeFileMkdirp(dest, JSON.stringify(manifest, null, 2));
-
-  return { entries: manifest.length };
-}
+// builder/sab-scheduler.mjs
+export const HANDLERS = {
+  warmInit: 0, renderEnvInit: 1, flush: 2,
+  scssLight: 3, scssDark: 4, mermaid: 5,
+  buildInfo: 6, render: 7,
+  myHandler: 8,                          // ← new
+};
 ```
 
-Use the I/O utilities exported by `write.mjs` --- `writeFileMkdirp`, `mkdirRec`, `runLimited`, `safeWrite` --- rather than raw `fs.writeFile` calls. They handle directory creation and include the destination path in error messages.
-
-> [!IMPORTANT]
-> If the stage writes to disk, check `opts.dryRun` and skip all filesystem writes when it is `true`. The `dryRun` flag is passed through the same `opts` object the orchestrator receives and must propagate to all I/O operations.
-
-If the stage writes new fields to page objects, add them at the point in `runBuild` where they first appear, and list them in the [data model table](Pipeline-Stages#page-objects-pages) in Pipeline Stages so other developers know which phase sets each field.
-
-### 2. Register the stage in `tbdocs.mjs`
-
-Add an import at the top of `builder/tbdocs.mjs`:
+**Step 3b.** Add the handler function in the `handlers` object in `cpu-worker.mjs`:
 
 ```js
-import { myStage } from "./my-stage.mjs";
-```
+// builder/cpu-worker.mjs
+const handlers = {
+  // ... existing handlers ...
 
-Then add a task definition in the `TASKS` object. Each task declares its predecessor IDs in `expected`, runs its work in `execute()`, and routes its output to downstream tasks in `submit()`. Most auxiliary stages depend on `write` (so the online tree is complete) and emit into `writeAux` or a similar downstream task:
+  async myHandler(taskIdx) {
+    // taskIdx is the SAB slot index for this task; useful when reading
+    // per-task payload via _payloadSAB + payloadOffset/payloadLength.
+    // For a parameterless task you can ignore it.
 
-```js
-myStage: {
-  expected: ["write"],
-  runOnMain: true,
-  async execute(_, ctx, state) {
-    return myStage(state.pages, state.site, ctx.destRoot);
+    // Workers have access to ctx (srcRoot, destRoot, opts, workerCount),
+    // _sharedSAB (from dispatch.broadcastDynamicData), and any module-scope
+    // state previous handlers stashed (e.g. _renderEnv from renderEnvInit).
+    const { srcRoot } = ctx;
+    const result = await someComputation(srcRoot);
+    return { result };
   },
-  submit(out, emit) { emit("writeAux", out); },
+};
+```
+
+The handler's return value is the message body. It comes back to main as `{ done: taskIdx, output, timing, lane }`; the scheduler stores `output` in `results` and passes it to your task's `submit()`.
+
+### 4. Define the task in `TASKS`
+
+Edit the `TASKS` object in `tbdocs.mjs`:
+
+```js
+// builder/tbdocs.mjs
+const TASKS = {
+  // ... existing tasks ...
+
+  myTask: {
+    expected: ["write"],                 // run after the main write pass
+    handler: "myHandler",                // worker dispatch (omit + add runOnMain for a main task)
+    ganttSection: "Write",               // appears under "Write" in the chart
+    submit(out, state) {
+      // Merge the worker's output into shared state, or pass it to
+      // downstream tasks via state.site / state.<custom>. For a
+      // terminal task you can leave this as a no-op.
+      state.site.myResult = out.result;
+    },
+  },
+};
+```
+
+For a main-thread task, drop `handler` and add `runOnMain: true` plus an `execute`:
+
+```js
+myMainTask: {
+  expected: ["renderJoin", "prepDest"],
+  runOnMain: true,
+  ganttSection: "Write",
+  async execute({ renderJoin: _ }, ctx, state) {
+    // inputs is { [predName]: predOutput } for every predecessor in expected.
+    // ctx carries srcRoot, destRoot, opts, workerCount.
+    // state is the SharedState (pages, staticFiles, site, pageByDest, …).
+    const manifest = state.pages.map(p => ({ url: p.permalink, title: p.frontmatter.title }));
+    if (!ctx.opts.dryRun) {
+      const dest = path.join(ctx.destRoot, "pages-manifest.json");
+      await writeFileMkdirp(dest, JSON.stringify(manifest));
+    }
+    return { entries: manifest.length };
+  },
+  submit() {},
 },
 ```
 
-Set `runOnMain: true` for stages that read from `state.pages` or `state.site` directly. The scheduler records per-task wall-clock timings automatically; the label in the timing summary is the task's key in the `TASKS` object.
+> [!IMPORTANT]
+> If the task writes to disk, check `ctx.opts.dryRun` and skip the writes when it is `true`. The flag is honoured by every existing task and contributors lean on it for fast iteration.
 
-### 3. Handle the `dryRun` flag
+### 5. Worked example A: main-thread auxiliary task
 
-When `dryRun` is `true`, the stage should log what it would do without touching the filesystem. The flag is available as `ctx.opts.dryRun` inside `execute()`:
+End-to-end: a task that emits `pages-manifest.json` listing every page's URL and title. The task depends on `flushJoin` (so the in-memory page set is fully populated) and `prepDest` (so the destination tree exists).
 
 ```js
-export async function myStage(pages, site, destRoot, { dryRun = false } = {}) {
-  const manifest = pages.map(p => ({ url: p.permalink, title: p.frontmatter.title ?? null }));
+// builder/tbdocs.mjs
 
-  if (dryRun) {
-    console.log(`[dry-run] my-stage: would write ${manifest.length} entries`);
-    return { entries: manifest.length };
+import { writeFileMkdirp } from "./write.mjs";
+
+const TASKS = {
+  // ... existing tasks ...
+
+  pagesManifest: {
+    expected: ["flushJoin", "prepDest"],
+    runOnMain: true,
+    ganttSection: "Write",
+    async execute(_, ctx, state) {
+      if (ctx.opts.dryRun) return { entries: 0 };
+      const manifest = state.pages.map(p => ({
+        url:   p.permalink,
+        title: p.frontmatter.title ?? null,
+      }));
+      const dest = path.join(ctx.destRoot, "pages-manifest.json");
+      await writeFileMkdirp(dest, JSON.stringify(manifest, null, 2));
+      return { entries: manifest.length };
+    },
+    submit() {},
+  },
+};
+```
+
+No other edits needed. The scheduler picks up the new entry on the next build; the task appears under "Write" in the Gantt chart with its timing label.
+
+### 6. Worked example B: distributed compute
+
+End-to-end: per-page word count, with the count itself computed inside the render fan-out (so it scales with cores) and the consolidated result written by a main-thread task. This mirrors how `searchData` and per-page SEO are wired.
+
+**Step 6a.** Compute the word count per page on the worker. The cleanest place is inside the existing `render` handler in `cpu-worker.mjs`, between `templatePhase` and the offline rewrite:
+
+```js
+// builder/cpu-worker.mjs, inside the render handler
+
+await templatePhase(chunk, env.site, env.initData);
+
+// ── New: per-page word count over the rendered body ──
+for (const p of chunk) {
+  if (p.renderedContent) {
+    p.wordCount = p.renderedContent
+      .replace(/<[^>]+>/g, " ")        // strip tags
+      .split(/\s+/)
+      .filter(Boolean)
+      .length;
   }
-
-  const dest = path.join(destRoot, "pages-manifest.json");
-  await writeFileMkdirp(dest, JSON.stringify(manifest, null, 2));
-  return { entries: manifest.length };
 }
 ```
 
-### 4. Verify
+**Step 6b.** Add `wordCount` to the per-page delta the handler returns, so it travels back to main:
 
-Run `build.bat` and look for the timing label in the output. Then run `check.bat` to confirm the new output does not break existing link resolution or the page-count guard.
+```js
+return {
+  pages: chunk.map(p => ({
+    destPath:        p.destPath,
+    renderedContent: p.renderedContent,
+    offlineMisses:   p.offlineMisses,
+    wordCount:       p.wordCount,           // ← new
+  })),
+  searchEntries,
+};
+```
+
+**Step 6c.** Merge the new field into the master `Page` objects in `dispatch.submit`. Find the `submit(renderOut, state)` callback `dispatch` registers on each `render:i` and extend it:
+
+```js
+// builder/tbdocs.mjs, in dispatch.submit's render:i registration
+
+scheduler.tasks.set(rName, {
+  expected: [],
+  consolidate: true,
+  ganttSection: "Render",
+  submit(renderOut, state) {
+    for (const r of renderOut.pages) {
+      const p = state.pageByDest.get(r.destPath);
+      if (!p) continue;
+      p.renderedContent = r.renderedContent;
+      if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
+      if (r.wordCount !== undefined)     p.wordCount     = r.wordCount;   // ← new
+    }
+    state.searchChunks[i] = renderOut.searchEntries;
+  },
+});
+```
+
+**Step 6d.** Write a consolidator task that runs after `renderJoin`:
+
+```js
+// builder/tbdocs.mjs, in TASKS
+
+writeWordCounts: {
+  expected: ["renderJoin", "prepDest"],
+  runOnMain: true,
+  ganttSection: "Write",
+  async execute(_, ctx, state) {
+    if (ctx.opts.dryRun) return { entries: 0 };
+    const data = state.pages
+      .filter(p => p.wordCount !== undefined)
+      .map(p => ({ url: p.permalink, words: p.wordCount }));
+    const dest = path.join(ctx.destRoot, "assets/js/word-counts.json");
+    await writeFileMkdirp(dest, JSON.stringify(data));
+    return { entries: data.length };
+  },
+  submit() {},
+},
+```
+
+That is the full pattern: per-chunk compute on the render workers, merge into the master pages in the render `submit()`, consolidate in a main-thread task after `renderJoin`.
+
+### 7. Verify
+
+`build.bat` shows the new task in the timing summary line and in the Gantt chart on the [Build Info](BuildInfo) page. `check.bat` confirms nothing else broke. Watch the chart to make sure the new task fits inside its expected section: a "Write" task that runs during the spine usually means a missing predecessor.
 
 ---
 
@@ -109,15 +273,15 @@ Run `build.bat` and look for the timing label in the output. Then run `check.bat
 
 ### Background
 
-`createMarkdownIt` in `render.mjs` builds the single markdown-it instance the entire pipeline uses. It applies `markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`, and roughly ten in-tree plugins in a fixed order. A new plugin becomes part of that order.
+`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. Plugins are applied in a fixed order: `markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`, then roughly ten in-tree plugins. A new plugin becomes part of that order.
 
-The same instance is used for Phase 2's SEO title extraction (via `renderTitle`) and Phase 3's body render (via `renderPhase`). A plugin that changes how inline content renders affects both passes. A block-level plugin that adds new tokens generally affects only Phase 3, since `renderTitle` strips all HTML.
+The same factory is called twice on main (once for the shared site-level SEO instance via `markdownInit`, and once per dev-tooling harness that re-renders) and once per render worker (via `renderEnvInit`). Plugins that reach for module-scope state must therefore work across worker boundaries --- in practice, that means no mutable closure-captured state, since each worker has its own module-scope instance.
 
 ### 1. Write the plugin
 
-A markdown-it plugin is a function that receives the `md` instance (and an optional options object) and mutates it by adding rules, overriding renderer functions, or adjusting options.
+A markdown-it plugin is a function that receives the `md` instance and mutates it. Two common shapes:
 
-**Renderer override example** --- wrap every `<table>` in a scrollable container:
+**Renderer override** --- wrap every `<table>` in a scrollable container:
 
 ```js
 // builder/table-wrap-plugin.mjs
@@ -125,19 +289,18 @@ A markdown-it plugin is a function that receives the `md` instance (and an optio
 export function tableWrapPlugin(md) {
   const originalOpen = md.renderer.rules.table_open
     ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
-
   const originalClose = md.renderer.rules.table_close
     ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
 
   md.renderer.rules.table_open = (tokens, idx, options, env, self) =>
-    "<div class=\"table-wrapper\">" + originalOpen(tokens, idx, options, env, self);
+    `<div class="table-wrapper">${originalOpen(tokens, idx, options, env, self)}`;
 
   md.renderer.rules.table_close = (tokens, idx, options, env, self) =>
-    originalClose(tokens, idx, options, env, self) + "</div>";
+    `${originalClose(tokens, idx, options, env, self)}</div>`;
 }
 ```
 
-**Block rule example** --- a new fenced syntax that emits a `<div class="callout">`:
+**Block rule** --- a new fenced syntax that emits a `<div class="callout">`:
 
 ```js
 // builder/callout-plugin.mjs
@@ -154,10 +317,11 @@ export function calloutPlugin(md) {
     state.line = startLine + 1;
 
     while (state.line < endLine) {
-      if (state.src.slice(state.bMarks[state.line] + state.tShift[state.line], state.eMarks[state.line]) === ":::") {
-        state.line++;
-        break;
-      }
+      const line = state.src.slice(
+        state.bMarks[state.line] + state.tShift[state.line],
+        state.eMarks[state.line],
+      );
+      if (line === ":::") { state.line++; break; }
       state.line++;
     }
     state.push("callout_close", "div", -1);
@@ -166,42 +330,106 @@ export function calloutPlugin(md) {
 }
 ```
 
-For the full markdown-it rule API --- block rules, inline rules, core rules, renderer rule overrides --- see the [markdown-it documentation](https://markdown-it.github.io/markdown-it/) and the existing in-tree plugins in `render.mjs` as worked examples.
+For the full rule API see the [markdown-it documentation](https://markdown-it.github.io/markdown-it/) and the existing in-tree plugins in `render.mjs` as worked examples.
 
-### 2. Register in `render.mjs`
+### 2. Register in `createMarkdownIt`
 
-Open `builder/render.mjs`. Add an import near the top of the file (alongside the other in-tree plugin imports):
+Add an import at the top of `render.mjs`:
 
 ```js
 import { tableWrapPlugin } from "./table-wrap-plugin.mjs";
 ```
 
-Find `createMarkdownIt` and add `md.use(tableWrapPlugin)` in the plugin chain. **Order matters** --- place the new plugin after any plugins it depends on, and before any plugins that may conflict with its token types:
+Find `createMarkdownIt` and add `md.use(tableWrapPlugin)` in the plugin chain. **Order matters** --- place the new plugin after any plugin it depends on and before any plugin that could interfere with its token types:
 
 ```js
 export function createMarkdownIt(ctx) {
-  const md = new MarkdownIt({ ... });
+  const md = new MarkdownIt({ /* ... */ });
   // ... existing npm plugins ...
   // ... existing in-tree plugins ...
-  md.use(tableWrapPlugin);   // new plugin, appended after existing ones
+  md.use(tableWrapPlugin);
   return md;
 }
 ```
 
 ### 3. Verify
 
-Run `build.bat` and open one of the affected pages in the browser (or use `serve.bat` for live reload). Then run `check.bat` to confirm no links are broken and the build exits cleanly. Watch Phase 3 timing in the console output --- a block rule that traverses the full token stream on every page can add measurable time to the ~1--2 s hot path.
+Run `build.bat` and open an affected page; for live feedback, use `serve.bat`. A plugin that walks the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
 
 ---
 
-## Testing both extension types
+## Adding a render-worker sub-stage
 
-The same four-step workflow applies to any change to the builder:
+When the new work is per-page CPU compute, slotting it into the existing `render` handler is the cleanest path. Skip the per-task overhead, ride the same fan-out.
 
-1. **`build.bat`** --- runs the full pipeline; a clean exit means no build-time errors.
-2. **`serve.bat`** --- live-reload server; navigate to affected pages in the browser to spot visual regressions.
-3. **`check.bat`** --- offline link and integrity check; catches broken links and missing pages introduced by the change.
-4. **`book.bat`** --- re-runs the PDF build; required if the stage or plugin affects Phase 8 or the `book.html` output.
+### Where to plug in
+
+The handler in `cpu-worker.mjs` runs five sub-stages in order:
+
+```
+chunk = parseFromPayloadSAB(taskIdx)
+await renderPhase(chunk, env.site)              // markdown-it body render
+computeChunkSeo(chunk, ...)                     // per-page SEO fields
+await templatePhase(chunk, env.site, ...)       // layout wrap
+if (env.offlineBase) { … deriveOfflinePageCached per page … }
+searchEntries = deriveSearchEntries(chunk, env.site)
+return { pages: chunk.map(…), searchEntries }
+```
+
+A new transformation goes between two existing sub-stages, depending on what it reads and writes:
+
+| Insertion point | Use when… |
+|---|---|
+| Between `renderPhase` and `computeChunkSeo` | The transformation needs `renderedContent` but not `seoTitle`. |
+| Between `computeChunkSeo` and `templatePhase` | The transformation needs SEO fields but should run before the layout wrap. |
+| Between `templatePhase` and the offline pass | The transformation needs the final `html` (e.g. extracting outbound links from the wrapped page). |
+| After the offline pass | The transformation needs both `html` and `offlineHtml`. |
+| Inside the chunk-mapping `return` | Per-page output to thread back to main (extend the `pages.map(…)` projection). |
+
+### Worked example: per-page outbound link count
+
+After `templatePhase` has run, count outbound links per page and emit them in the delta:
+
+```js
+// builder/cpu-worker.mjs, inside the render handler
+
+await templatePhase(chunk, env.site, env.initData);
+
+for (const p of chunk) {
+  if (p.html) {
+    const matches = p.html.match(/href="https?:\/\//g);
+    p.outboundLinks = matches ? matches.length : 0;
+  }
+}
+
+// ... offline pass ...
+
+return {
+  pages: chunk.map(p => ({
+    destPath:        p.destPath,
+    renderedContent: p.renderedContent,
+    offlineMisses:   p.offlineMisses,
+    outboundLinks:   p.outboundLinks,    // ← new
+  })),
+  searchEntries,
+};
+```
+
+Then extend `dispatch.submit`'s `render:i` callback to merge the new field, exactly as the [worked example B](#6-worked-example-b-distributed-compute) above does.
+
+> [!NOTE]
+> Anything you mutate on a worker's chunk page must travel back through the delta to be visible on main. The worker's `chunk` is a structured-clone copy; main never sees those copies directly. The `pages.map(…)` projection at the end of the render handler is the single channel.
+
+---
+
+## Testing
+
+Four commands cover the loop:
+
+1. **`build.bat`** --- full pipeline. A clean exit and a sensible Gantt placement is the bar.
+2. **`serve.bat`** --- live-reload dev server for visual checks. Remember the persistent pool: Ctrl+C and restart after handler-code or task-graph changes.
+3. **`check.bat`** --- offline link and integrity check. Catches broken links and missing pages introduced by the change.
+4. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
 
 A clean run of all four is the bar for "ready to commit".
 
@@ -212,6 +440,6 @@ A clean run of all four is the bar for "ready to commit".
 
 ## See Also
 
-- [Pipeline Stages](Pipeline-Stages) -- full data model and export reference for every stage.
-- [tbdocs Builder](Builder) -- narrative design rationale for the pipeline.
+- [Pipeline Stages](Pipeline-Stages) -- full data model, per-task interface reference, per-module export tables.
+- [tbdocs Builder](Builder) -- architectural tour and design rationale.
 - [Building and Deployment](Building) -- the day-to-day build workflow for content contributors.

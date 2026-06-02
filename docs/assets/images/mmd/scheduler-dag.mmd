@@ -1,58 +1,106 @@
 %%{init: {"themeVariables": {"clusterBkg": "transparent", "clusterBorder": "#7a8090", "lineColor": "#7a8090"}}}%%
 flowchart TB
-    %%subgraph seeds [" "]
-    %%    direction LR
+    subgraph seeds [Seeds]
+        direction LR
+        CF["config<br><small>[M]</small>"]
         BI["buildInfo<br><small>[W]</small>"]
-        SC["scss<br><small>[W]</small>"]
+        SL["scssLight<br><small>[W]</small>"]
+        SD["scssDark<br><small>[W]</small>"]
+        HI["highlighterInit<br><small>[M]</small>"]
+        LD["loadData<br><small>[M]</small>"]
+        WI["warmInit<br><small>[W] per-lane<br>on_demand, idle"]
+    end
+
+    subgraph spine [Spine]
+        direction LR
+        DI["discover<br><small>[M]</small>"]
+        NV["nav<br><small>[M]</small>"]
+        BU["buildInit<br><small>[M]</small>"]
+        MI["markdownInit<br><small>[M]</small>"]
+        DR["deriveRedirects<br><small>[M]</small>"]
         MM["mermaid<br><small>[W]</small>"]
+        DSi["deriveSitemap<br><small>[M]</small>"]
+        RBC["resolveBookChapters<br><small>[M]</small>"]
+    end
+
+    subgraph render [Render]
+        direction LR
+        DP["dispatch<br><small>[M]</small>"]
         PD["prepDest<br><small>[M]</small>"]
-    %%end
+        PPD["prepPageDirs<br><small>[M]</small>"]
+        REI["renderEnvInit<br><small>[W] per-lane</small>"]
+        Ri["render:i<br><small>[W]</small>"]
+        RJ["renderJoin<br><small>[M]</small>"]
+    end
 
-    CF["config<br><small>[M]</small>"] --> DI["discover<br><small>[M]</small>"]
-    DI --> NV["nav<br><small>[M]</small>"]
-    DI --> DR["deriveRedirects<br><small>[M]</small>"]
-    DI --> DS["deriveSitemap<br><small>[M]</small>"]
-    NV --> MI["markdownInit<br><small>[M]</small>"]
-    NV --> BU["buildInit<br><small>[M]</small>"]
-    MI --> SE["seo<br><small>[M]</small>"]
-    MI --> LD["loadData<br><small>[M]</small>"]
-    SE --> RC["resolveBook-<br>Chapters<br><small>[M]</small>"]
-    LD --> RC
+    subgraph writes [Write]
+        direction LR
+        SCSS["scss<br><small>[M]</small>"]
+        Fi["flush:i<br><small>[W] pinned</small>"]
+        FJ["flushJoin<br><small>[M]</small>"]
+        WA["writeAssets<br><small>[M]</small>"]
+        SDt["searchData<br><small>[M]</small>"]
+        WX["writeAux<br><small>[M]</small>"]
+        WO["writeOffline<br><small>[M]</small>"]
+        WP["writePdf<br><small>[M]</small>"]
+    end
 
-    BU --> DP["dispatch<br><small>[M]</small>"]
-    RC --> DP
+    CF --> DI
+    CF --> HI
+    HI --> LD
+    DI --> NV
+    DI --> BU
+    DI --> MI
+    DI --> DR
+
+    NV --> DP
+    BU --> DP
     BI --> DP
     MM --> DP
     DR --> DP
+    MI --> DP
 
-    subgraph fanout [" "]
-        direction LR
-        R0["render:0<br><small>[W]</small>"]
-        R1["render:1<br><small>[W]</small>"]
-        RN["render:N-1<br><small>[W]</small>"]
-    end
+    DP --> PD
+    DP --> DSi
+    DP --> REI
+    DP --> Ri
 
-    DP --> fanout
+    PD --> PPD
+    PD --> SCSS
+    SL --> SCSS
+    SD --> SCSS
 
-    fanout --> RJ["renderJoin<br><small>[M]</small>"]
+    DSi --> RBC
 
-    RJ --> WR["write<br><small>[M]</small>"]
-    SC --> WR
-    MM --> WR
-    PD --> WR
+    WI -.-> REI
+    REI -.-> Ri
 
-    RJ --> SD["searchData<br><small>[M]</small>"]
-    PD --> SD
-    WR --> WA["writeAux<br><small>[M]</small>"]
-    SD --> WA
-    DR --> WA
-    DS --> WA
+    Ri --> Fi
+    Ri --> RJ
+    PPD --> Fi
+    Fi --> FJ
 
-    WA --> WO["writeOffline<br><small>[M]</small>"]
-    RJ --> WP["writePdf<br><small>[M]</small>"]
+    MM --> WA
+    PPD --> WA
+    HI --> WA
+
+    RJ --> SDt
+    PD --> SDt
+
+    WA --> WX
+    SDt --> WX
+    FJ --> WX
+    DR --> WX
+    DSi --> WX
+
+    WX --> WO
+    WA --> WO
+
+    FJ --> WP
     MM --> WP
+    RBC --> WP
 
     classDef worker fill:#e8f0fe,stroke:#4285f4,color:#1a1a2e
     classDef main fill:#fef7e0,stroke:#f9ab00,color:#1a1a2e
-    class BI,SC,MM,R0,R1,RN worker
-    class CF,DI,NV,MI,BU,SE,LD,RC,DP,RJ,WR,SD,WA,DR,DS,WO,WP,PD main
+    class BI,SL,SD,MM,WI,REI,Ri,Fi worker
+    class CF,DI,NV,BU,MI,LD,DR,DSi,RBC,DP,HI,RJ,FJ,SCSS,PD,PPD,WA,SDt,WX,WO,WP main

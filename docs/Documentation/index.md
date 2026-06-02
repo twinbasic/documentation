@@ -21,13 +21,11 @@ Three commands handle the entire build-and-verify workflow. `build.bat` produces
 
 ## Build pipeline
 
-A single `build.bat` run drives `tbdocs` through eight phases plus a Mermaid pre-phase.
+A single `build.bat` run drives `tbdocs` through one shared task graph rather than a fixed phase sequence. The graph is organised into four sections that also organise the timeline view on the [Build Info](Development/BuildInfo) page: **Seeds** (config + Sass + git metadata + Mermaid + per-worker warmup), **Spine** (discovery + nav + SEO setup + book chapters), **Render** (per-chunk fan-out across all available CPUs), and **Write** (assets + search index + redirects + sitemap + offline mirror + PDF source).
 
-![Build pipeline, eight phases plus the Mermaid pre-phase](/assets/images/mmd/build-phases.svg)
+![Build pipeline, four sections: Seeds, Spine, Render, Write](/assets/images/mmd/build-phases.svg)
 
-Phases 1--6 produce the online tree (`_site/`). Phase 7 mirrors it into a `file://`-browsable offline copy. Phase 8 assembles the sparse PDF source tree that `book.bat` later renders into the final PDF.
-
-A task-graph **scheduler** models the pipeline as a DAG of tasks and dispatches work to a pool of `node:worker_threads`. Seed tasks (Sass compilation, Mermaid SVG regeneration, git metadata capture) run on workers concurrently with the main-thread spine; the render + template phase fans out across all available CPUs. The [tbdocs Builder](Development/Builder#scheduler-and-worker-threads) page documents the scheduler architecture and task DAG; the [Pipeline Stages](Development/Pipeline-Stages) page documents every phase's interface contract.
+A **SharedArrayBuffer-based pull scheduler** lets workers and the main thread compete for ready tasks directly: there is no central dispatcher. Three pieces of per-page work --- offline HTML rewrite, per-page SEO, and search-index derivation --- run inside the render workers rather than as separate main-thread passes. The [tbdocs Builder](Development/Builder) page documents the scheduler architecture and the task DAG; the [Pipeline Stages](Development/Pipeline-Stages) page documents every task's interface contract.
 
 ## Sub-pages
 
@@ -35,8 +33,8 @@ A task-graph **scheduler** models the pipeline as a DAG of tasks and dispatches 
 - [Building and Deployment](Development/Building) --- the day-to-day workflow for editing content: requirements, building, serving locally, link checking, Mermaid diagrams, screenshots, and the GitHub Pages deployment.
 - [Tools and Scripts](Development/Tools) --- one-line-per-tool reference for every script, batch file, and CLI flag exposed by the documentation toolchain (intended audience: doc contributors).
 - [tbdocs Builder](Development/Builder) --- detailed technical documentation for the `tbdocs` static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). Read this when modifying the build pipeline itself. Sub-pages:
-    - [Pipeline Stages](Development/Pipeline-Stages) --- per-stage interface reference: function signatures, reads/writes, and every exported symbol.
+    - [Pipeline Stages](Development/Pipeline-Stages) --- complete interface reference: per-task signatures and per-module export tables, plus the scheduler-level concepts (flag bits, task lifecycle, SAB layout).
     - [Book Configuration](Development/Book-Configuration) --- `_book.yml` key reference for the PDF chapter manifest.
-    - [Extending the Builder](Development/Extending) --- tutorial for adding a new pipeline stage or a markdown-it plugin.
+    - [Extending the Builder](Development/Extending) --- tutorial for adding a new pipeline task, markdown-it plugin, or render-worker sub-stage.
 - [PDF Generation](Development/PDF-Generation) --- internals of the PDF renderer: `render-book.mjs`, paged.browser.js, and the pdf-lib shims.
 - [Library Patches](Development/Fixes) --- every modification to `paged.browser.js` and the `fast-*.mjs` pdf-lib shims: upstream problem, applied fix, and mechanism.

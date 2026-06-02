@@ -2,22 +2,20 @@
 flowchart TB
     subgraph row1 [ ]
         direction LR
-        PRE["Pre: Mermaid<br>.mmd → .svg<br>regeneration"] --> 
-		P1["Phase 1: Discover<br>traverse source tree,<br>parse frontmatter"] --> 
-		P2["Phase 2: Compute<br>nav tree, SEO, book<br>chapters, _data/*.yml"]
+        SEEDS["Seeds<br>config + buildInfo +<br>scssLight/Dark + mermaid +<br>highlighterInit + warmInit"] -->
+        SPINE["Spine<br>discover → nav + buildInit +<br>markdownInit + deriveRedirects +<br>loadData; resolveBookChapters"] -->
+        DISPATCH["dispatch<br>fan-out point"]
     end
     subgraph row2 [ ]
         direction LR
-		P3["Phase 3: Render<br>markdown → HTML<br>via markdown-it + Shiki"] -->
-        P4["Phase 4: Template +<br>Compress,<br>wrap in site layout,<br>compress whitespace"] --> 
-		P5["Phase 5: Write<br>→_site/"]
+        RENDER["render:0..N-1<br>renderPhase + computeChunkSeo +<br>templatePhase + offline rewrite +<br>deriveSearchEntries"] -->
+        FLUSH["flush:0..N-1<br>per-lane pinned;<br>writes page HTML"]
     end
-	subgraph row3 [ ]
+    subgraph row3 [ ]
         direction LR
-        P6["Phase 6: Auxiliaries<br>redirect stubs, sitemap.xml, search index"]
-        P6 --> P7["Phase 7: Offline<br>→ _site-offline/"]
-        P6 --> P8["Phase 8: PDF Source<br>→ _site-pdf/"]
+        ASSETS["writeAssets +<br>searchData +<br>writeAux"] -->
+        OUTPUTS["writeOffline → _site-offline/<br>writePdf → _site-pdf/<br>(also _site/ from flush)"]
     end
 
-    P2 --> P3
-	P5 --> P6
+    DISPATCH --> RENDER
+    FLUSH --> ASSETS
