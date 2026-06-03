@@ -41,8 +41,8 @@ gh_edit_view_mode: "tree"
 # it to fetch the offline copy, offline readers use it to refresh
 # theirs against the latest release.
 gh_offline_link: true
-gh_offline_link_text: "Download offline copy"
 gh_offline_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinbasic-docs-offline.zip"
+gh_pdf_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinBASIC.Book.pdf"
 
 # When true, tbdocs's Phase 7 writes a `file://`-browsable mirror of
 # `_site/` to `_site-offline/` with every URL rewritten to a page-
