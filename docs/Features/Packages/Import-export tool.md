@@ -55,7 +55,7 @@ python impexp.py import MyProject.twinproj unpacked/
 Scans a directory tree and writes a `.twinproj` or `.twinpack` binary.  The
 directory name becomes the root entry name in the output file.  Well-known
 directory and file names (`Sources`, `Resources`, `Settings`, etc.) are
-tagged with the correct `mark2` category values automatically.
+tagged with the correct `category` values automatically.
 
 ```
 node impexp.mjs export unpacked/ MyProject.twinproj
@@ -81,9 +81,9 @@ Importing and re-exporting a binary file preserves all file contents
 byte-for-byte.  The following metadata fields are reset to defaults on a
 disk round-trip (they are not stored on the filesystem):
 
-- **mark1** (revision counter) -- directories get `0x0000`; files get
-  `0x0002`.
-- **Revision entries** -- always written as zero.
+- **revision counter** -- directories get `0x0000`; files get `0x0002`.
+- **flags** -- always written as zero (no flags set).
+- **Revision trailer entries** -- always written as zero.
 - **Entry order** -- directories first, then files, sorted alphabetically
   within each group.
 

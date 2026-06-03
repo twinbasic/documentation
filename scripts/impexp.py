@@ -16,10 +16,33 @@ import struct
 import sys
 
 MAGIC = 0xEA0BA51C
+FORMAT_VERSION = 1
 
-DIR_MARK2 = {
-    'Resources': 0x02, 'Sources': 0x03, 'ImportedTypeLibraries': 0x05,
-    'Miscellaneous': 0x06, 'Packages': 0x07,
+FLAGS_NONE = 0x00000000
+FLAGS_HIDDEN = 0x00000001
+FLAGS_SUPER_HIDDEN = 0x00000002
+FLAGS_VIRTUAL = 0x00000004
+
+CATEGORY_DEFAULT = 0x00
+CATEGORY_REFERENCES = 0x01  # always virtual; never present in serialized files
+CATEGORY_RESOURCES = 0x02
+CATEGORY_SOURCES = 0x03
+CATEGORY_SETTINGS = 0x04
+CATEGORY_IMPORTED_TYPE_LIBRARIES = 0x05
+CATEGORY_MISCELLANEOUS = 0x06
+CATEGORY_PACKAGES = 0x07
+
+# Well-known entry names that get a non-default category on export.
+# References is intentionally excluded -- it is materialised virtually by
+# the IDE, never serialized, and tagging an on-disk folder with category
+# 0x01 would confuse the IDE on import.
+CATEGORY_BY_NAME = {
+    'Resources': CATEGORY_RESOURCES,
+    'Sources': CATEGORY_SOURCES,
+    'Settings': CATEGORY_SETTINGS,
+    'ImportedTypeLibraries': CATEGORY_IMPORTED_TYPE_LIBRARIES,
+    'Miscellaneous': CATEGORY_MISCELLANEOUS,
+    'Packages': CATEGORY_PACKAGES,
 }
 
 # -------------------------- Parser (binary -> tree) --------------------------
@@ -28,11 +51,11 @@ DIR_MARK2 = {
 def parse(data):
     pos = [0]
 
+    def read_u64():
+        v, = struct.unpack_from('<Q', data, pos[0]); pos[0] += 8; return v
+
     def read_u32():
         v, = struct.unpack_from('<I', data, pos[0]); pos[0] += 4; return v
-
-    def read_u16():
-        v, = struct.unpack_from('<H', data, pos[0]); pos[0] += 2; return v
 
     def read_i16():
         v, = struct.unpack_from('<h', data, pos[0]); pos[0] += 2; return v
@@ -62,24 +85,33 @@ def parse(data):
     entry_count = [0]
 
     def read_entry():
+        # At the root this 2-byte field is the file format version;
+        # everywhere else it is the entry kind (1 = file, 2 = directory).
         kind = read_i16()
-        name = read_str()
-        mark1 = read_u16()
-        pos[0] += 10  # reserved padding -- always zeros
-        mark2 = read_u8()
         entry_count[0] += 1
+        is_root = (entry_count[0] == 1)
+        if is_root and kind != FORMAT_VERSION:
+            raise ValueError(
+                f'Unsupported file format version: {kind}, '
+                f'expected {FORMAT_VERSION}')
 
-        if kind == 1 and entry_count[0] > 1:
+        name = read_str()
+        revision = read_u64()
+        flags = read_u32()
+        category = read_u8()
+
+        if kind == 1 and not is_root:
             content = read_blob()
             revision_count = read_u32()
             revisions = [read_u32() for _ in range(revision_count)]
-            return dict(kind='file', name=name, mark1=mark1, mark2=mark2,
+            return dict(kind='file', name=name, revision=revision,
+                        flags=flags, category=category,
                         content=content, revisions=revisions)
 
         count = read_u32()
         children = [read_entry() for _ in range(count)]
-        return dict(kind='directory', name=name, mark1=mark1, mark2=mark2,
-                    children=children)
+        return dict(kind='directory', name=name, revision=revision,
+                    flags=flags, category=category, children=children)
 
     return read_entry()
 
@@ -90,14 +122,14 @@ def parse(data):
 def serialize(root):
     chunks = []
 
+    def write_u64(v):
+        chunks.append(struct.pack('<Q', v))
+
     def write_u32(v):
         chunks.append(struct.pack('<I', v))
 
     def write_i16(v):
         chunks.append(struct.pack('<h', v))
-
-    def write_u16(v):
-        chunks.append(struct.pack('<H', v))
 
     def write_u8(v):
         chunks.append(struct.pack('B', v))
@@ -123,20 +155,22 @@ def serialize(root):
         if entry['kind'] == 'file' and not is_root:
             write_i16(1)
             write_str(entry['name'])
-            write_u16(entry.get('mark1', 0x0002))
-            chunks.append(b'\x00' * 10)
-            write_u8(entry.get('mark2', 0x00))
+            write_u64(entry.get('revision', 0x0002))
+            write_u32(entry.get('flags', FLAGS_NONE))
+            write_u8(entry.get('category', 0x00))
             write_blob(entry['content'])
             revisions = entry.get('revisions', [])
             write_u32(len(revisions))
             for r in revisions:
                 write_u32(r)
         else:
-            write_i16(1 if is_root else 2)
+            # Root entry writes the format version; non-root directory
+            # writes kind=2.
+            write_i16(FORMAT_VERSION if is_root else 2)
             write_str(entry['name'])
-            write_u16(entry.get('mark1', 0x0000))
-            chunks.append(b'\x00' * 10)
-            write_u8(entry.get('mark2', 0x00))
+            write_u64(entry.get('revision', 0x0000))
+            write_u32(entry.get('flags', FLAGS_NONE))
+            write_u8(entry.get('category', 0x00))
             children = entry.get('children', [])
             write_u32(len(children))
             for child in children:
@@ -184,10 +218,8 @@ def do_import(input_path, output_dir, *, quiet=False):
 # -------------------------- Export (disk -> binary) --------------------------
 
 
-def _mark2_for(name, is_dir):
-    if is_dir:
-        return DIR_MARK2.get(name, 0x00)
-    return 0x04 if name == 'Settings' else 0x00
+def _category_for(name):
+    return CATEGORY_BY_NAME.get(name, CATEGORY_DEFAULT)
 
 
 def _build_tree(dir_path):
@@ -204,12 +236,14 @@ def _build_tree(dir_path):
             content = fh.read()
         children.append(dict(
             kind='file', name=f,
-            mark1=0x0002, mark2=_mark2_for(f, False),
+            revision=0x0002, flags=FLAGS_NONE,
+            category=_category_for(f),
             content=content, revisions=[],
         ))
     return dict(
         kind='directory', name=name,
-        mark1=0x0000, mark2=_mark2_for(name, True),
+        revision=0x0000, flags=FLAGS_NONE,
+        category=_category_for(name),
         children=children,
     )
 
@@ -351,7 +385,7 @@ def _self_test():
 
         def t_empty():
             tree = dict(kind='directory', name='Empty',
-                        mark1=0, mark2=0, children=[])
+                        revision=0, flags=0, category=0, children=[])
             rt = parse(serialize(tree))
             eq(rt['name'], 'Empty', 'name')
             eq(len(rt['children']), 0, 'children')
@@ -359,10 +393,12 @@ def _self_test():
 
         def t_single():
             content = b'Hello twinBASIC'
-            tree = dict(kind='directory', name='Mini', mark1=0, mark2=0,
+            tree = dict(kind='directory', name='Mini',
+                        revision=0, flags=0, category=0,
                         children=[
-                            dict(kind='file', name='test.twin', mark1=2,
-                                 mark2=0, content=content, revisions=[]),
+                            dict(kind='file', name='test.twin',
+                                 revision=2, flags=0, category=0,
+                                 content=content, revisions=[]),
                         ])
             rt = parse(serialize(tree))
             eq(len(rt['children']), 1, 'children')
@@ -370,6 +406,21 @@ def _self_test():
             if rt['children'][0]['content'] != content:
                 raise AssertionError('content mismatch')
         test('Single-file project round-trip', t_single)
+
+        def t_flags():
+            tree = dict(
+                kind='directory', name='WithFlags',
+                revision=0, flags=FLAGS_HIDDEN, category=0,
+                children=[
+                    dict(kind='file', name='h.twin',
+                         revision=2, flags=FLAGS_HIDDEN | FLAGS_VIRTUAL,
+                         category=0, content=b'x', revisions=[]),
+                ])
+            rt = parse(serialize(tree))
+            eq(rt['flags'], FLAGS_HIDDEN, 'root flags')
+            eq(rt['children'][0]['flags'],
+               FLAGS_HIDDEN | FLAGS_VIRTUAL, 'file flags')
+        test('Flags field preserved on round-trip', t_flags)
 
         def t_bad_magic():
             try:

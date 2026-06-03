@@ -38,33 +38,26 @@ A length-prefixed byte string.  Encoding is UTF-8 for filenames and text content
 
 ## Entry structure
 
-Every node in the tree — the root, directories, and files — shares a common header:
+Every node in the tree — the root, directories, and files — shares the same common header.  The first 2 bytes carry one of two meanings depending on position: at the root entry they hold the file format version; everywhere else they hold the entry kind.
 
-| Offset | Size | Type      | Field   | Description |
-|--------|------|-----------|---------|-------------|
-| +0     | 2    | int16     | `kind`  | Entry type (see below). |
-| +2     | var  | LenString | `name`  | Entry name (filename or folder name). |
-| +2+var | 2    | uint16    | `mark1` | Revision counter (see [mark1](#mark1-revision-counter)). |
-| ...    | 10   | byte[]    | `pad`   | Reserved.  Always observed as all zeros. |
-| ...    | 1    | uint8     | `mark2` | Category tag (see [mark2](#mark2-category-tag)). |
+| Offset | Size | Type      | Field      | Description |
+|--------|------|-----------|------------|-------------|
+| +0     | 2    | int16     | `kind`     | At the root: file format version (currently `1`).  Everywhere else: entry kind (`1` = file, `2` = directory). |
+| +2     | var  | LenString | `name`     | Entry name (filename or folder name). |
+| +2+var | 8    | uint64    | `revision` | Revision counter (see [revision](#revision-counter)). |
+| ...    | 4    | uint32    | `flags`    | File-system flags bitmask (see [flags](#flags)). |
+| ...    | 1    | uint8     | `category` | Category tag (see [category](#category-tag)). |
 
 After this common header, the entry body depends on whether the entry is a **file** or a **directory**.
 
 ### Determining entry type
 
-The root entry is always the first entry parsed.  It is always a directory (even though it has `kind=1`), because the format uses positional logic:
+The root entry is always the first entry parsed.  It is always a directory — its 2-byte field is the file format version, not a kind tag, and its value (currently `1`) coincides with the file-kind value but should not be read as one.  Every entry after the root is determined by its `kind`:
 
-- **Directory** — the root entry, or any entry with `kind != 1`.
-  Body: child count followed by child entries.
-- **File** — any non-root entry with `kind == 1`.
+- **File** — `kind == 1`.
   Body: content blob followed by a revision trailer.
-
-Observed `kind` values:
-
-| kind | Meaning |
-|------|---------|
-| 1    | File (or root directory — always the first entry) |
-| 2    | Directory |
+- **Directory** — `kind == 2`.
+  Body: child count followed by child entries.
 
 ### Directory body
 
@@ -89,9 +82,9 @@ The `revisionCount` field is 0 for the vast majority of files, making the file b
 
 ## Field details
 
-### mark1 (revision counter)
+### revision counter
 
-For files, `mark1` is a revision counter that starts at a low value and increments with each edit inside the IDE.  For the root entry and directories it is always 0.
+For files, `revision` is a 64-bit counter that starts at a low value and increments with each edit inside the IDE.  For the root entry and directories it is always 0.
 
 | Context | Typical values |
 |---------|----------------|
@@ -99,19 +92,38 @@ For files, `mark1` is a revision counter that starts at a low value and incremen
 | Heavily edited file | `0x17D5`, `0x1AA0` |
 | Root and directories | `0x0000` |
 
-### mark2 (category tag)
+Only the low 16 bits have been observed to vary in real-world files; the upper 48 bits are always zero in practice.
+
+### flags
+
+A 32-bit bitmask describing file-system-level properties of the entry.  Every entry observed so far has `flags == 0`, but the IDE recognises the following bits:
+
+| Bit value    | Name          | Meaning |
+|--------------|---------------|---------|
+| `0x00000000` | `None`        | Default — no flags set. |
+| `0x00000001` | `Hidden`      | Hidden from the user, but accessible via the VFS. |
+| `0x00000002` | `SuperHidden` | Not accessible via the VFS — internal only. |
+| `0x00000004` | `Virtual`     | Virtual items are skipped during serialization. |
+
+Other bits are reserved.
+
+### category tag
 
 Encodes the semantic role of the entry within the project:
 
-| mark2 | Entry name              | Meaning |
-|-------|-------------------------|---------|
-| 0x00  | *(various)*             | Default.  Used for the root, most files, and resource subdirectories (`BITMAP`, `ICON`, `MANIFEST`). |
-| 0x02  | `Resources`             | Resource directory. |
-| 0x03  | `Sources`               | Source code directory. |
-| 0x04  | `Settings`              | Project settings file (JSON). |
-| 0x05  | `ImportedTypeLibraries` | Imported type library directory. |
-| 0x06  | `Miscellaneous`         | Miscellaneous files directory (screenshots, etc.). |
-| 0x07  | `Packages`              | Package references directory. |
+| category | Entry name              | Meaning |
+|----------|-------------------------|---------|
+| 0x00     | *(various)*             | Default.  Used for the root, most files, and resource subdirectories (`BITMAP`, `ICON`, `MANIFEST`). |
+| 0x01     | `References`            | References directory.  Always virtual — see note below. |
+| 0x02     | `Resources`             | Resource directory. |
+| 0x03     | `Sources`               | Source code directory. |
+| 0x04     | `Settings`              | Project settings file (JSON). |
+| 0x05     | `ImportedTypeLibraries` | Imported type library directory. |
+| 0x06     | `Miscellaneous`         | Miscellaneous files directory (screenshots, etc.). |
+| 0x07     | `Packages`              | Package references directory. |
+
+> [!NOTE]
+> The `References` directory (category `0x01`) is a virtual folder — it carries the [`Virtual`](#flags) flag and is skipped during serialization, so it never appears in saved `.twinproj` or `.twinpack` files.  The IDE materialises it at runtime from the project's references list.
 
 ## Differences between .twinproj and .twinpack
 
@@ -120,7 +132,6 @@ Both formats use the identical binary structure.  The differences are in which e
 | Entry                  | .twinproj | .twinpack |
 |------------------------|-----------|-----------|
 | `.meta` file           | Yes       | No        |
-| `References` directory | Sometimes | No        |
 | `CHANGELOG.md`         | Sometimes | Sometimes |
 | `LICENCE.md`           | Sometimes | Sometimes |
 | `Settings` file        | Yes       | Yes       |
@@ -128,51 +139,53 @@ Both formats use the identical binary structure.  The differences are in which e
 | `Resources` directory  | Yes       | Yes       |
 | `Packages` directory   | Yes       | Yes       |
 
+The `References` directory (category `0x01`) is virtual and is omitted from both formats during serialization — see [category tag](#category-tag).
+
 ### .meta file
 
 Present only in `.twinproj` files.  Contains JSON storing the user's IDE layout preferences — expanded folders, open editors, watch list, and outline-panel options.  This file is stripped when the IDE generates a `.twinpack` for distribution.
 
 ### Settings file
 
-Always present (`mark2 = 0x04`).  Contains JSON with project configuration including the build type, references, version numbers, and other project settings.
+Always present (`category = 0x04`).  Contains JSON with project configuration including the build type, references, version numbers, and other project settings.
 
 ## Typical tree structures
 
 ### .twinproj (Standard EXE project)
 
 ```
-ROOT "NewProject"               (kind=1, mark2=0x00)
-  DIR  "Miscellaneous"          (kind=2, mark2=0x06)
-  DIR  "Packages"               (kind=2, mark2=0x07)
-  DIR  "ImportedTypeLibraries"  (kind=2, mark2=0x05)
-  DIR  "Resources"              (kind=2, mark2=0x02)
-    DIR  "ICON"                 (kind=2, mark2=0x00)
-      FILE "twinBASIC.ico"      (kind=1, mark2=0x00)
-  DIR  "Sources"                (kind=2, mark2=0x03)
-    FILE "Form1.tbform"         (kind=1, mark2=0x00)
-    FILE "Form1.twin"           (kind=1, mark2=0x00)
-  FILE "Settings"               (kind=1, mark2=0x04)
-  FILE ".meta"                  (kind=1, mark2=0x00)
+ROOT "NewProject"               (version=1, category=0x00)
+  DIR  "Miscellaneous"          (kind=2, category=0x06)
+  DIR  "Packages"               (kind=2, category=0x07)
+  DIR  "ImportedTypeLibraries"  (kind=2, category=0x05)
+  DIR  "Resources"              (kind=2, category=0x02)
+    DIR  "ICON"                 (kind=2, category=0x00)
+      FILE "twinBASIC.ico"      (kind=1, category=0x00)
+  DIR  "Sources"                (kind=2, category=0x03)
+    FILE "Form1.tbform"         (kind=1, category=0x00)
+    FILE "Form1.twin"           (kind=1, category=0x00)
+  FILE "Settings"               (kind=1, category=0x04)
+  FILE ".meta"                  (kind=1, category=0x00)
 ```
 
 ### .twinpack (distributed package)
 
 ```
-ROOT "CustomControlsPackage"    (kind=1, mark2=0x00)
-  FILE "CHANGELOG.md"           (kind=1, mark2=0x00)
-  FILE "LICENCE.md"             (kind=1, mark2=0x00)
-  DIR  "Miscellaneous"          (kind=2, mark2=0x06)
-    FILE "frmTextbox.png"       (kind=1, mark2=0x00)
-  DIR  "ImportedTypeLibraries"  (kind=2, mark2=0x05)
-  FILE "Settings"               (kind=1, mark2=0x04)
-  DIR  "Sources"                (kind=2, mark2=0x03)
-    FILE "WaynesGrid.twin"      (kind=1, mark2=0x00)
-  DIR  "Resources"              (kind=2, mark2=0x02)
-    DIR  "MANIFEST"             (kind=2, mark2=0x00)
-      FILE "#1.xml"             (kind=1, mark2=0x00)
-    DIR  "BITMAP"               (kind=2, mark2=0x00)
-      FILE "twinBASIC.bmp"      (kind=1, mark2=0x00)
-  DIR  "Packages"               (kind=2, mark2=0x07)
+ROOT "CustomControlsPackage"    (version=1, category=0x00)
+  FILE "CHANGELOG.md"           (kind=1, category=0x00)
+  FILE "LICENCE.md"             (kind=1, category=0x00)
+  DIR  "Miscellaneous"          (kind=2, category=0x06)
+    FILE "frmTextbox.png"       (kind=1, category=0x00)
+  DIR  "ImportedTypeLibraries"  (kind=2, category=0x05)
+  FILE "Settings"               (kind=1, category=0x04)
+  DIR  "Sources"                (kind=2, category=0x03)
+    FILE "WaynesGrid.twin"      (kind=1, category=0x00)
+  DIR  "Resources"              (kind=2, category=0x02)
+    DIR  "MANIFEST"             (kind=2, category=0x00)
+      FILE "#1.xml"             (kind=1, category=0x00)
+    DIR  "BITMAP"               (kind=2, category=0x00)
+      FILE "twinBASIC.bmp"      (kind=1, category=0x00)
+  DIR  "Packages"               (kind=2, category=0x07)
 ```
 
 ## Notes
