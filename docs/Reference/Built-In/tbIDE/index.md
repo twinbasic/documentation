@@ -1,6 +1,6 @@
 ---
 title: tbIDE Package
-parent: Packages
+parent: Built-In Packages
 nav_order: 11
 permalink: /tB/Packages/tbIDE/
 has_toc: false

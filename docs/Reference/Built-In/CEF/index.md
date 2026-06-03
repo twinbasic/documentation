@@ -1,6 +1,6 @@
 ---
 title: CEF Package
-parent: Packages
+parent: Built-In Packages
 nav_order: 6
 permalink: /tB/Packages/CEF/
 has_toc: false

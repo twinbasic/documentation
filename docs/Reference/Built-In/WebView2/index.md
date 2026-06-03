@@ -1,6 +1,6 @@
 ---
 title: WebView2 Package
-parent: Packages
+parent: Built-In Packages
 nav_order: 7
 permalink: /tB/Packages/WebView2/
 has_toc: false

@@ -276,6 +276,12 @@ parts:
     # control pages in URL order.
     foreword_page: /tB/Packages/
     chapters:
+      - title: Default Packages
+        subtitle: VB, VBA, and VBRUN --- included in every project by default
+        landing_page: /tB/Packages/Default/
+        landing_is_target: true
+        outline_closed: true
+
       - title: VBA Package
         subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
         landing_page: /tB/Packages/VBA
@@ -294,6 +300,12 @@ parts:
         subtitle: Classic VB6 forms and intrinsic controls
         landing_page: /tB/Packages/VB/
         page: /tB/Packages/VB/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: Built-In Packages
+        subtitle: Nine optional packages shipped with twinBASIC, always available offline
+        landing_page: /tB/Packages/Built-In/
         landing_is_target: true
         outline_closed: true
 

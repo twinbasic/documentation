@@ -1,6 +1,6 @@
 ---
 title: WinNamedPipesLib Package
-parent: Packages
+parent: Built-In Packages
 nav_order: 9
 permalink: /tB/Packages/WinNamedPipesLib/
 has_toc: false

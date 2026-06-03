@@ -1,6 +1,6 @@
 ---
 title: CustomControls Package
-parent: Packages
+parent: Built-In Packages
 nav_order: 5
 permalink: /tB/Packages/CustomControls/
 has_toc: false

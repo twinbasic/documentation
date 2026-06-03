@@ -1,6 +1,6 @@
 ---
 title: WinNativeCommonCtls Package
-parent: Packages
+parent: Built-In Packages
 nav_order: 12
 permalink: /tB/Packages/WinNativeCommonCtls/
 has_toc: false

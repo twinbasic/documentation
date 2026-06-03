@@ -1,6 +1,6 @@
 ---
 title: VB Package
-parent: Packages
+parent: Default Packages
 nav_order: 1
 permalink: /tB/Packages/VB/
 has_toc: false
