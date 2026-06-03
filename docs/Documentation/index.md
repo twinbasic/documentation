@@ -21,7 +21,7 @@ Three commands handle the entire build-and-verify workflow. `build.bat` produces
 
 ## Build pipeline
 
-A single `build.bat` run drives `tbdocs` through a shared task DAG, dispatched by a SharedArrayBuffer-based pull scheduler --- there is no central dispatcher and no fixed phase sequence; workers and the main thread compete for ready tasks directly. The graph is organised into four sections (**Seeds**, **Spine**, **Render**, **Write**) that also label the timeline on the [Build Info](Development/BuildInfo) page; the [tbdocs Builder](Development/Builder) page documents the full DAG, the scheduler architecture, and each task's interface contract.
+A single `build.bat` run executes `tbdocs` against a shared task DAG, dispatched by a SharedArrayBuffer-based pull scheduler --- there is no central dispatcher and no fixed phase sequence; workers and the main thread compete for ready tasks directly. The graph is organised into four sections (**Seeds**, **Spine**, **Render**, **Write**) that also label the timeline on the [Build Info](Development/BuildInfo) page; the [tbdocs Builder](Development/Builder) page documents the full DAG, the scheduler architecture, and each task's interface contract.
 
 ## Sub-pages
 

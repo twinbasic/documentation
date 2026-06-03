@@ -128,7 +128,7 @@ At each call site that now receives the sync sentinel, `_assertSync(result, hook
 
 **Problem.** `[PATCH: wrap-content-move]` Upstream moved the `<body>` content into paged.js's layout container by serialising the entire body to a string via `innerHTML` and reparsing it into a `<template>`. For a large book this serialisation is expensive and destroys the live DOM nodes, requiring a full reparse.
 
-**Fix.** Children are moved directly into a plain `DocumentFragment` owned by the live document via `appendChild`. The fragment is stashed on a marker `<template>` element's `_pagedjsContent` expando so re-entrant calls return the already-moved fragment rather than attempting to move already-detached nodes.
+**Fix.** Children are moved directly into a plain `DocumentFragment` owned by the live document via `appendChild`. The fragment is stored on a marker `<template>` element's `_pagedjsContent` expando so re-entrant calls return the already-moved fragment rather than attempting to move already-detached nodes.
 
 ### Whitespace filter
 

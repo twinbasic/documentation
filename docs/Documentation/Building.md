@@ -26,7 +26,7 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 ### Requirements
 
 - **Node.js 22+** for `tbdocs` itself.
-- **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root carries the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
+- **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root contains the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
 - **Chromium** is required only when the PDF book is rendered. It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it.
 
 ## Building
@@ -73,7 +73,7 @@ Diagrams live as `.dot` source files under `docs/assets/images/dot/` and are ref
 
 At render time, any markdown image reference to a build-local `.svg` is replaced with the SVG content inlined directly in the HTML. Each inlined SVG gets a click-to-zoom overlay and four control links (Download SVG, Copy SVG, Download PNG, Copy PNG). The controls are hidden in print output. See the [SVG inlining](Builder#svg-inlining) section of the Builder page for the implementation details.
 
-The renderer drives `@hpcc-js/wasm-graphviz` directly: one WASM module load (~50 ms) covers the whole batch, then each diagram is a synchronous `gv.dot(src)` call. No headless browser, no in-tree patches, no Chromium dependency for diagrams. Two failure modes are handled distinctly:
+The renderer calls `@hpcc-js/wasm-graphviz` directly: one WASM module load (~50 ms) covers the whole batch, then each diagram is a synchronous `gv.dot(src)` call. No headless browser, no in-tree patches, no Chromium dependency for diagrams. Two failure modes are handled distinctly:
 
 - **Setup failures** (`@hpcc-js/wasm-graphviz` not installed, WASM load fails) emit a one-line warning, retain the existing on-disk SVGs, and let the build exit 0 --- a fresh checkout without `npm install` still builds against the committed SVGs.
 - **Content failures** (broken DOT syntax, render throws) emit the error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and flip `process.exitCode = 1` so CI catches the bad diagram.
