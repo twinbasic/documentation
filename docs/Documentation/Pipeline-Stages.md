@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Pipeline-Stages
 # Pipeline Stages
 {: .no_toc }
 
-Complete interface reference for `tbdocs`. The first half walks every task in the scheduler's DAG, grouped by the four Gantt sections (Seeds / Spine / Render / Write). The second half walks every module, with the full export table for each.
+Complete interface reference for `tbdocs`. The first half covers every task in the scheduler's DAG, grouped by the four Gantt sections (Seeds / Spine / Render / Write). The second half covers every module, with the full export table for each.
 
 For design rationale and the narrative tour, see [tbdocs Builder](Builder). To add a new task or markdown-it plugin, see [Extending the Builder](Extending).
 
@@ -59,14 +59,14 @@ Populated progressively. Each task's `execute()` or `submit()` stores its output
 | `navTree` | `object` | `nav` | Top-level nav hierarchy. |
 | `buildInfo` | `object` | `buildInfo` | `{ commit: string, commitDate: string }` from git. Both fall back to `"unknown"` outside a git repository. |
 | `data` | `object` | `loadData` | `_book.yml` loaded as `{ book: … }`, or `{}` when absent. |
-| `bookData` | `object\|null` | `loadData` | Shortcut for `data.book`. After `resolveBookChapters`, each entry carries `_chapters` (`Page[]`) plus `_landing` / `_foreword` if declared. |
+| `bookData` | `object\|null` | `loadData` | Shortcut for `data.book`. After `resolveBookChapters`, each entry holds `_chapters` (`Page[]`) plus `_landing` / `_foreword` if declared. |
 | `markdown` | `MarkdownIt` | `markdownInit` | Main-thread markdown-it instance. Used only for site-level SEO; render workers build their own. |
 | `linkTablesSerialized` | `object` | `markdownInit` | `{ byPath, byUrl, byRedirect }` of `[key, permalink]` pair arrays for structured-clone transfer to render workers. |
 | `seoSiteTitle` | `string` | `markdownInit` (via `computeSiteSeo`) | Rendered site title from `config.title`. |
 | `seoLogoUrl` | `string\|null` | `markdownInit` (via `computeSiteSeo`) | Absolute URL of the site logo. |
 | `highlightCss` | `string\|null` | `highlighterInit` | Generated `tb-highlight.css` content. Read by `writeAssets` and `writePdf`. |
 
-In addition, `SharedState` itself carries two non-`site` fields that downstream tasks read directly:
+In addition, `SharedState` itself contains two non-`site` fields that downstream tasks read directly:
 
 | Field | Type | Set by | Description |
 |---|---|---|---|
@@ -93,7 +93,7 @@ Every task is declared as an entry in the static `TASKS` object in [`tbdocs.mjs`
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `expected` | `string[]` | yes | Names of predecessor tasks. The scheduler builds successor edges from this list. |
-| `execute` | `(inputs, ctx, state, scheduler?) → result` | for main tasks | Body. `inputs` is a `{ [predName]: predOutput }` object; `ctx` carries `srcRoot`, `destRoot`, `opts`, `workerCount`; `state` is the `SharedState`. |
+| `execute` | `(inputs, ctx, state, scheduler?) → result` | for main tasks | Body. `inputs` is a `{ [predName]: predOutput }` object; `ctx` holds `srcRoot`, `destRoot`, `opts`, `workerCount`; `state` is the `SharedState`. |
 | `handler` | `string` | for worker tasks | Name of the handler function in `cpu-worker.mjs`. Must appear in the `HANDLERS` map in `sab-scheduler.mjs`. |
 | `submit` | `(out, state, scheduler) → void` | yes | Synchronous output router. Runs on the main thread after `execute` (or after the worker message arrives). Merges the delta into `state` and may register dynamic tasks (e.g. `dispatch.submit`). |
 | `runOnMain` | `boolean` | no | Task body runs on the main thread. The main loop claims; workers skip. Default `false` for tasks with `handler:`. |
@@ -157,7 +157,7 @@ Joins the two CSS strings, writes `assets/css/just-the-docs-combined.css` to bot
 
 ### `dot` (worker)
 
-Handler calls `regenerateDot(srcRoot)`. Walks `<srcRoot>/assets/images/dot/*.dot`, compares mtimes against `.svg` siblings, calls `Graphviz.load()` once then `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends new SVG descriptors to `state.staticFiles`. The WASM render is fast (sub-millisecond per diagram after the ~50 ms one-time `Graphviz.load()`); runs on a worker so the init hides behind the main spine.
+Handler calls `regenerateDot(srcRoot)`. Traverses `<srcRoot>/assets/images/dot/*.dot`, compares mtimes against `.svg` siblings, calls `Graphviz.load()` once then `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends new SVG descriptors to `state.staticFiles`. The WASM render is fast (sub-millisecond per diagram after the ~50 ms one-time `Graphviz.load()`); runs on a worker so the init hides behind the main spine.
 
 ### `highlighterInit` (main)
 
@@ -165,7 +165,7 @@ Calls `loadHighlightTheme()` from `highlight-theme.mjs`. Loads `Light.theme` + `
 
 ### `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`)
 
-Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). The flag combination is load-bearing: `unique_per_worker` means every lane that runs a render task needs its own warmup; `on_demand` keeps it off the auto-start list; `run_when_idle` lets workers fire it speculatively during the main spine; `survives_reset` keeps the per-lane done flag across serve-mode rebuilds, since the worker's module-scope Shiki state survives even though the SAB is fresh.
+Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). The flag combination is essential: `unique_per_worker` means every lane that runs a render task needs its own warmup; `on_demand` keeps it off the auto-start list; `run_when_idle` lets workers fire it speculatively during the main spine; `survives_reset` keeps the per-lane done flag across serve-mode rebuilds, since the worker's module-scope Shiki state survives even though the SAB is fresh.
 
 ### `prepDest` (main, deferred)
 
@@ -272,7 +272,7 @@ dispatch.execute() → { chunks, sharedSAB }
 The fan-out point. `execute`:
 
 1. Slices `state.pages` into `workerCount × SLICES_PER_WORKER` chunks (capped at one chunk per worker for small page counts).
-2. Computes the `sitePaths` set via `buildSitePathsSync` from `offline-rewrite.mjs`, using the vendored theme asset list from `enumerateVendoredThemeAssets()` rather than walking `_site/assets/`.
+2. Computes the `sitePaths` set via `buildSitePathsSync` from `offline-rewrite.mjs`, using the vendored theme asset list from `enumerateVendoredThemeAssets()` rather than traversing `_site/assets/`.
 3. Builds the shared payload (config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info) and packs it into one SAB via `packShared` from `sab-broadcast.mjs`.
 
 `submit` allocates 2N dynamic SAB slots, writes their handler IDs, wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dep on `render:i → renderEnvInit`, pins each `flush:i` to its `render:i`, packs the per-chunk page data into a payload SAB, registers `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and finally activates the `render:i` slots.
@@ -298,7 +298,7 @@ Per-lane render environment setup. Handler:
 4. Reconstructs the link-table `Map`s from the serialized pair arrays.
 5. Builds the worker's own markdown-it via `createMarkdownIt({...})`.
 6. Builds the offline base state (site-paths set, normalised baseurl) when `!skipOffline`.
-7. Stashes the result in the worker's module-scope `_renderEnv`.
+7. Stores the result in the worker's module-scope `_renderEnv`.
 
 ### `render:i` (worker, dynamic)
 
@@ -309,7 +309,7 @@ Handler (`render` in `cpu-worker.mjs`):
 3. `computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown)` --- per-page SEO fields.
 4. `await templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap.
 5. When `env.offlineBase` is set: per-destination-directory, render the first page through `deriveOfflinePage` and slice the nav block via `sliceNavBlock`; cache the input/output nav slices keyed by directory; for each writable page, call `deriveOfflinePageCached` which substitutes the cached nav, runs the rewriter over the smaller string, and splices the output back in. Saves ~200 ms of repeated nav rewriting.
-6. Stash `{ destPath, html, offlineHtml, offlineMisses }` on the worker's `_pendingFlush` FIFO so the matching `flush:i` can drain it.
+6. Store `{ destPath, html, offlineHtml, offlineMisses }` on the worker's `_pendingFlush` FIFO so the matching `flush:i` can drain it.
 7. `deriveSearchEntries(chunk, env.site)` --- per-section search entries. Trim `sourcePage` and the chunk-local `i` before returning (main reassigns global indices).
 
 Returns `{ pages, searchEntries }`. The `submit()` callback (registered on the scheduler by `dispatch.submit`) merges `renderedContent` / `offlineMisses` into the master `Page` objects via `state.pageByDest`, and writes `searchEntries` into `state.searchChunks[i]`.
@@ -402,7 +402,7 @@ The same modules as above, with the full export list per file.
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | Walks the source tree, classifies pages vs static files, returns the two sorted arrays. |
+| `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | Traverses the source tree, classifies pages vs static files, returns the two sorted arrays. |
 
 ### `nav.mjs`
 
@@ -554,7 +554,7 @@ The same modules as above, with the full export list per file.
 |---|---|---|
 | `writeOffline` | `(pages, staticFiles, site, destRoot, { auxStats?, profileOffline?, precomputed?, sitePaths? }) → Promise<stats>` | Offline tree writer. `precomputed: true` skips per-page HTML rewriting (use the pre-computed `page.offlineHtml` from render workers); `sitePaths` skips the `_site/assets/` walk. |
 | `buildOfflineState` | `(pages, staticFiles, site, destRoot, { stubs?, sitePaths? }) → Promise<OfflineState>` | Constructs the rewrite-state object (site-path set, resolution caches, per-directory nav caches). |
-| `enumerateVendoredThemeAssets` | `() → string[]` | Lists the relative paths under `builder/vendor/just-the-docs/assets/`. Used by `dispatch` to build the site-paths set without walking `_site/`. |
+| `enumerateVendoredThemeAssets` | `() → string[]` | Lists the relative paths under `builder/vendor/just-the-docs/assets/`. Used by `dispatch` to build the site-paths set without traversing `_site/`. |
 | `deriveOfflineJtdJs` | `(src) → string` | AST-based patcher: replaces `navLink` and `initSearch` in `just-the-docs.js` with offline-compatible implementations via `acorn`. A parse failure at build time signals that re-extraction produced something acorn cannot read. |
 | `deriveOfflineSearchDataJs` | `(jsonBytes) → string` | Wraps `search-data.json` as `window.SEARCH_DATA = …` and minifies. `<script src=>` cannot fetch JSON under `file://`. |
 | `deriveOfflinePage`, `deriveOfflineRedirect`, `deriveOfflineCss` | (re-exported from `offline-rewrite.mjs`) | Pure-compute helpers used by both the offline writer and the worker render handler. |
@@ -565,7 +565,7 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `buildSitePathsSync` | `(pages, staticFiles, excludePatterns, stubs, themeAssetRels) → Set<string>` | Synchronous version of `buildSitePaths`. Takes an explicit theme-asset list instead of walking `_site/assets/`. Used by `dispatch`. |
+| `buildSitePathsSync` | `(pages, staticFiles, excludePatterns, stubs, themeAssetRels) → Set<string>` | Synchronous version of `buildSitePaths`. Takes an explicit theme-asset list instead of traversing `_site/assets/`. Used by `dispatch`. |
 | `deriveOfflinePage` | `(page, state) → { html, misses }` | Rewrites one page's HTML for offline use: strips SEO metadata, rewrites every absolute URL to a page-relative path, injects the offline search setup script. |
 | `deriveOfflinePageCached` | `(page, deps) → { html, misses }` | Cached variant. Uses `state.navCache` to substitute the pre-rewritten sidebar nav block, avoiding a full regex pass over the ~80 KB sidebar on each page. |
 | `sliceNavBlock` | `(html) → { before, nav, after } \| null` | Splits a page's HTML into the segments before, within, and after the sidebar nav block. |
@@ -608,7 +608,7 @@ The handler table is built from the imported `HANDLERS` constant:
 | Handler | Source | Description |
 |---|---|---|
 | `warmInit` | inline | Awaits `initHighlighter()`. |
-| `renderEnvInit` | inline | Unpacks shared SAB, awaits highlighter, reconstructs link tables, builds markdown-it, stashes `_renderEnv`. |
+| `renderEnvInit` | inline | Unpacks shared SAB, awaits highlighter, reconstructs link tables, builds markdown-it, stores `_renderEnv`. |
 | `flush` | inline | Drains the next `_pendingFlush` batch to disk. |
 | `scssLight` / `scssDark` | `scss.mjs` | Light/dark palette compile. |
 | `dot` | `dot.mjs` | `regenerateDot` over `srcRoot`. |

@@ -10,7 +10,7 @@ permalink: /Documentation/Development/Fixes
 # Library Patches
 {: .no_toc }
 
-Two third-party libraries carry in-tree modifications. `book/lib/paged.browser.js` is a patched copy of paged.js v0.4.3 (MIT); the thirteen `fast-*.mjs` files there are side-effecting shims applied to pdf-lib's live exports before each PDF process phase. This section documents every change: what the upstream behaviour was, why it was unsuitable for the build pipeline, and what was changed.
+Two third-party libraries have in-tree modifications. `book/lib/paged.browser.js` is a patched copy of paged.js v0.4.3 (MIT); the thirteen `fast-*.mjs` files there are side-effecting shims applied to pdf-lib's live exports before each PDF process phase. This section documents every change: what the upstream behaviour was, why it was unsuitable for the build pipeline, and what was changed.
 
 ## Sub-pages
 

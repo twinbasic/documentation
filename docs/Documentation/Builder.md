@@ -30,9 +30,9 @@ Sub-pages:
 
 ## Why tbdocs exists
 
-The site was originally built with the just-the-docs Jekyll theme; tbdocs is the Node.js replacement that drives the same content model and the same output structure without a Ruby toolchain. The win once the port was settled is mostly internal: a fixed dependency set, end-to-end build time around 2--3 seconds on a modern laptop, and one process for all three output trees.
+The site was originally built with the just-the-docs Jekyll theme; tbdocs is the Node.js replacement that follows the same content model and the same output structure without a Ruby toolchain. The win once the port was settled is mostly internal: a fixed dependency set, end-to-end build time around 2--3 seconds on a modern laptop, and one process for all three output trees.
 
-The rework documented here is internal. The build moved from a push-style scheduler (the main thread decides what is ready and hands work to workers) to a SAB-based pull scheduler (workers read shared task state and claim work themselves) and three pieces of per-page work that used to run serially on the main thread --- offline rewrite, per-page SEO, and search-index derivation --- now run inside the render workers. The output is byte-equivalent to the previous scheduler; the change is in how the time is spent.
+The rework documented here is internal. The build moved from a push-style scheduler (the main thread decides what is ready and passes work to workers) to a SAB-based pull scheduler (workers read shared task state and claim work themselves) and three pieces of per-page work that used to run serially on the main thread --- offline rewrite, per-page SEO, and search-index derivation --- now run inside the render workers. The output is byte-equivalent to the previous scheduler; the change is in how the time is spent.
 
 ## Architecture at a glance
 
@@ -61,7 +61,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs) | Entry point. Defines the static `TASKS` graph, allocates the SAB, spawns the pool, runs the build, injects the Gantt chart. |
 | [`scheduler.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scheduler.mjs) | Main-thread side of the pull scheduler: claim loop, results map, completion detection, summary printer. |
 | [`worker-pool.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/worker-pool.mjs) | Worker lifecycle wrapper: spawn, send the SAB, forward messages to the scheduler, terminate. No dispatch logic. |
-| [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs) | Worker harness. Runs the pull loop, holds the eight named handlers, drives speculative idle execution. |
+| [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs) | Worker harness. Runs the pull loop, holds the eight named handlers, handles speculative idle execution. |
 | [`sab-scheduler.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sab-scheduler.mjs) | SAB layout, allocation, task-metadata API. Constants and atomics primitives consumed by both the scheduler and the workers. |
 | [`sab-broadcast.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sab-broadcast.mjs) | JSON-over-SAB pack/unpack for the shared payload (config, link tables, sidebar HTML, etc.) broadcast to every render worker. |
 
@@ -155,11 +155,11 @@ A task can also declare `perWorkerDeps` --- a list of `unique_per_worker` tasks 
 
 ### Notify protocol
 
-The SAB carries a single `notify` Int32 used as a generation counter. Workers that find no claimable work read the counter, perform one more scan to close the race window, then `Atomics.wait(notify, gen, 50)` --- a fifty-millisecond timeout that also serves as a safety net against missed wakeups. Every state transition that could make a task claimable bumps the counter and calls `Atomics.notify`, so any worker sleeping on the old generation returns immediately.
+The SAB holds a single `notify` Int32 used as a generation counter. Workers that find no claimable work read the counter, perform one more scan to close the race window, then `Atomics.wait(notify, gen, 50)` --- a fifty-millisecond timeout that also serves as a safety net against missed wakeups. Every state transition that could make a task claimable bumps the counter and calls `Atomics.notify`, so any worker sleeping on the old generation returns immediately.
 
 ## SAB memory layout
 
-A single `SharedArrayBuffer` carries every Int32 array the scheduler needs. The sizes are static: `MAX_TASKS = 512`, `MAX_LANES = 64`, `MAX_EDGES = 2048`, total roughly 140 KB. The arrays a reader is most likely to care about:
+A single `SharedArrayBuffer` contains every Int32 array the scheduler needs. The sizes are static: `MAX_TASKS = 512`, `MAX_LANES = 64`, `MAX_EDGES = 2048`, total roughly 140 KB. The arrays a reader is most likely to care about:
 
 - `status[i]` --- the task lifecycle enum above.
 - `depCount[i]` --- remaining predecessor count. Decremented atomically on each predecessor's completion.
@@ -188,7 +188,7 @@ The full task DAG, with every cross-section edge, follows:
 
 ### Seeds
 
-Seeds have no predecessors and become claimable as soon as the build starts (with the exception of `on_demand` seeds that wait for a successor). They saturate the worker pool while the main thread is still walking the source tree.
+Seeds have no predecessors and become claimable as soon as the build starts (with the exception of `on_demand` seeds that wait for a successor). They saturate the worker pool while the main thread is still traversing the source tree.
 
 - `config` (main) --- reads `_config.yml` + applies CLI overrides.
 - `buildInfo` (worker) --- two `git` shell-outs. Falls back to `"unknown"` on failure.
@@ -215,7 +215,7 @@ config → discover ┬→ nav            ┐
                   └→ resolveBookChapters (after deriveSitemap)
 ```
 
-- `discover` --- walks `docs/`, classifies pages vs static files, builds `state.pageByDest`.
+- `discover` --- traverses `docs/`, classifies pages vs static files, builds `state.pageByDest`.
 - `nav` --- builds the sidebar tree, runs the integrity check (orphan / ambiguous `parent:` aborts the build here), pre-renders the sidebar HTML.
 - `buildInit` --- pre-renders the config-only chrome (SVG sprites, header, search footer, favicon). No nav-tree dependency; runs in parallel with `nav`.
 - `markdownInit` --- builds the link tables, instantiates the shared markdown-it, computes site-level SEO. The serialized link tables and site-level SEO constants travel to render workers as part of the shared SAB payload.
@@ -241,7 +241,7 @@ dispatch ┬→ render:0 ─┬→ flush:0 ─┐
 
 - `renderEnvInit` (worker, `on_demand` + `unique_per_worker`) --- per-lane render environment setup: unpack the shared SAB, reconstruct the link-table Maps, instantiate the worker's own markdown-it. Declared as a `perWorkerDeps` on every `render:i` so the first render claim per lane pulls it in.
 - `render:i` (worker, dynamic) --- the per-chunk compute. Each one runs five sub-stages over its slice of `state.pages`: `renderPhase` (markdown-it body render) → `computeChunkSeo` (per-page SEO fields) → `templatePhase` (just-the-docs layout wrap) → `deriveOfflinePageCached` (offline HTML rewrite) → `deriveSearchEntries` (per-section search entries). Returns a delta containing `renderedContent` per page, plus the per-chunk search entries.
-- `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stashes a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it.
+- `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it.
 - `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData`. Its dep count is set to N by `dispatch.submit()`.
 - `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `writePdf`.
 
@@ -279,8 +279,8 @@ For a one-page reference, every task and its execution locus:
 Three pieces of work newly distributed to render workers under the current design:
 
 1. **Per-page SEO** (`computeChunkSeo`) --- was a single Phase 2 main-thread task; now runs per chunk inside `render:i`, between `renderPhase` and `templatePhase`. The values are written into the page objects on the worker and travel back as part of the render delta.
-2. **Per-page offline HTML** (`deriveOfflinePageCached`) --- was a Phase 7 main-thread pass that re-read the online tree; now runs per chunk inside `render:i` after `templatePhase`. The resulting `offlineHtml` is stashed on the page and written by the matching `flush:i` directly to `_site-offline/`.
-3. **Per-chunk search entries** (`deriveSearchEntries`) --- was a Phase 6 main-thread task; now runs per chunk inside `render:i`. Each chunk's entries are stashed at `state.searchChunks[i]` by the render `submit()`; the `searchData` task only flattens, renumbers, and writes the JSON.
+2. **Per-page offline HTML** (`deriveOfflinePageCached`) --- was a Phase 7 main-thread pass that re-read the online tree; now runs per chunk inside `render:i` after `templatePhase`. The resulting `offlineHtml` is stored on the page and written by the matching `flush:i` directly to `_site-offline/`.
+3. **Per-chunk search entries** (`deriveSearchEntries`) --- was a Phase 6 main-thread task; now runs per chunk inside `render:i`. Each chunk's entries are stored at `state.searchChunks[i]` by the render `submit()`; the `searchData` task only flattens, renumbers, and writes the JSON.
 
 Per-chunk page HTML writes were similarly pulled off the main thread: each `flush:i` writes its chunk's pages to disk on the same worker that rendered them, with the pinning enforced by `pin_to_predecessor`.
 
@@ -319,7 +319,7 @@ Each `render:i` runs five sub-stages over its chunk:
 4. Offline rewrite (when `!skipOffline`) --- per destination directory, render the first page through `deriveOfflinePage` and slice out the nav block. Subsequent pages in the same directory substitute the sliced nav with a cached output, run the rewriter over the smaller string, and splice the output back in. Saves ~200 ms across the build.
 5. `deriveSearchEntries(chunk, env.site)` --- per-section search-index entries.
 
-The worker stashes the writable pages on its own `_pendingFlush` FIFO and returns the deltas. The matching `flush:i` --- pinned to this lane --- claims later, pops the batch, and writes the page HTML to disk. The pinning is what guarantees the batch lands on the right worker; the FIFO is what handles the case where a worker has already started a second `render:i` before its first `flush:i` claims.
+The worker stores the writable pages on its own `_pendingFlush` FIFO and returns the deltas. The matching `flush:i` --- pinned to this lane --- claims later, pops the batch, and writes the page HTML to disk. The pinning is what guarantees the batch lands on the right worker; the FIFO is what handles the case where a worker has already started a second `render:i` before its first `flush:i` claims.
 
 ## Persistent worker pool and serve mode
 
@@ -374,7 +374,7 @@ When adding a new task to `TASKS`, give it a `ganttSection` key matching one of 
 
 ## Dependencies
 
-A single `package.json` at the repo root carries everything --- the static site generator's deps, the PDF renderer's deps, and the few packages both consume:
+A single `package.json` at the repo root contains everything --- the static site generator's deps, the PDF renderer's deps, and the few packages both consume:
 
 ```json
 {
@@ -399,7 +399,7 @@ A single `package.json` at the repo root carries everything --- the static site 
 }
 ```
 
-No template engine, no framework, no bundler, no postinstall hooks. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` for the AST-based offline patcher; the `markdown-it-*` packages cover the dialect extensions the legacy parser supported; `shiki` is the syntax highlighter; `@hpcc-js/wasm-graphviz` is the WASM build of Graphviz that renders `.dot` diagram sources; `sass` is Dart Sass for the SCSS compile. `pdf-lib` + `html-entities` + `htmlparser2` + `puppeteer` are the PDF renderer's toolchain (puppeteer drives headless Chromium for the paged.js layout pass).
+No template engine, no framework, no bundler, no postinstall hooks. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` for the AST-based offline patcher; the `markdown-it-*` packages cover the dialect extensions the legacy parser supported; `shiki` is the syntax highlighter; `@hpcc-js/wasm-graphviz` is the WASM build of Graphviz that renders `.dot` diagram sources; `sass` is Dart Sass for the SCSS compile. `pdf-lib` + `html-entities` + `htmlparser2` + `puppeteer` are the PDF renderer's toolchain (puppeteer controls headless Chromium for the paged.js layout pass).
 
 Node 22+ is required: the SAB scheduler uses `Atomics.wait`, `Atomics.notify`, and `SharedArrayBuffer` --- all baseline in Node 22 without flags.
 
@@ -430,9 +430,9 @@ The build aborts or flips the exit code under a handful of conditions:
 
 - **Page-count drift.** `runBuild()` ends with `if (pages.length < 836) process.exitCode = 1` so a discover-rule regression that silently drops content appears as a non-zero exit even though the build itself completed.
 - **SAB structural validation.** `verifySchedulerSAB(TASKS, views, idMapping)` runs immediately after allocation. A misconfigured `expected`/`perWorkerDeps` list, a duplicate task name, or a successor edge to an unknown task aborts the build before any task runs.
-- **DOT render failure.** Per-diagram failures retain the previous SVG and continue the batch so every broken diagram surfaces in one run; the orchestrator flips `process.exitCode = 1` based on the failure count.
+- **DOT render failure.** Per-diagram failures retain the previous SVG and continue the batch so every broken diagram appears in one run; the orchestrator flips `process.exitCode = 1` based on the failure count.
 - **SCSS compile failure.** The light/dark workers warn with the source location and continue with `failed: true`; the joiner sets `process.exitCode = 1`. Existing `_site/` CSS lingers.
 - **Nav integrity.** Orphan or ambiguous `parent:` declarations throw inside `nav.execute()`, which aborts the build via `Scheduler._abort()`.
-- **Worker crash.** A worker handler that throws posts `{ taskFailed, message, stack }` to main; the scheduler calls `_abort()`, the build rejects, and the orchestrator surfaces the error with the task name in the message.
+- **Worker crash.** A worker handler that throws posts `{ taskFailed, message, stack }` to main; the scheduler calls `_abort()`, the build rejects, and the orchestrator reports the error with the task name in the message.
 
 Setup-class failures --- `@hpcc-js/wasm-graphviz` not installed, `sass` missing --- print a one-line recovery hint and continue with stale outputs. They do not flip the exit code; a fresh checkout still builds.

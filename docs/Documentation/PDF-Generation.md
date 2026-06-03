@@ -48,7 +48,7 @@ Always run `build.bat` first to populate `_site-pdf/`.
 
 ## render-book.mjs
 
-`book/render-book.mjs` drives the three phases. Its helpers live in `book/lib/`.
+`book/render-book.mjs` runs the three phases. Its helpers live in `book/lib/`.
 
 ### Phase 1: Render
 
@@ -110,7 +110,7 @@ page.pdf({
 
 Augments the raw PDF from Chromium with a bookmark tree and document metadata, then saves the final output.
 
-The raw buffer from `page.pdf()` is a valid but minimal PDF: it has no `/Outlines` entry and carries Chromium's default metadata. The process phase runs four operations in sequence:
+The raw buffer from `page.pdf()` is a valid but minimal PDF: it has no `/Outlines` entry and contains Chromium's default metadata. The process phase runs four operations in sequence:
 
 1. **`measureRawPdf(rawPdf)`** --- traverses the raw bytes without allocating any objects. Returns `dictSlots` and `arraySlots` counts used to pre-size two shim backing arrays before the load (see [`measure-pass.mjs`](#measure-passmjs)).
 
@@ -178,7 +178,7 @@ The function also injects a hidden `<div>` of `<a href="#id">` links before `<bo
 }
 ```
 
-`dictSlots` and `arraySlots` drive `setExpectedDictSlots()` and `setExpectedArraySlots()` on the fast-dict-onebuf and fast-array-onebuf shims. Calling these before `PDFDocument.load()` lets each shim pre-allocate its backing array to the measured size, eliminating V8 growth resizes during parse.
+`dictSlots` and `arraySlots` are passed to `setExpectedDictSlots()` and `setExpectedArraySlots()` on the fast-dict-onebuf and fast-array-onebuf shims. Calling these before `PDFDocument.load()` lets each shim pre-allocate its backing array to the measured size, eliminating V8 growth resizes during parse.
 
 The internal `Measurer` class keeps per-dict state (`/Length`, `/Type`, `/N`, `/First`) on depth-indexed `Int32Array` / `Uint8Array` stacks rather than per-object heap records. Stack depth is 64; maximum observed on the book is 4.
 
@@ -268,7 +268,7 @@ Key lifecycle hooks (all optional overrides):
 | `beforeParsed` | `(content)` | Before the source document is processed. |
 | `afterParsed` | `(parsed)` | After the source document has been processed, before layout begins. |
 | `beforePageLayout` | `(page)` | Before a new page is laid out. |
-| `afterPageLayout` | `(pageElement, page, breakToken)` | After each page is fully laid out. `pageElement` is the `.pagedjs_page` DOM node; `breakToken` carries the position where the next page starts. |
+| `afterPageLayout` | `(pageElement, page, breakToken)` | After each page is fully laid out. `pageElement` is the `.pagedjs_page` DOM node; `breakToken` holds the position where the next page starts. |
 | `finalizePage` | `(pageElement, page, breakToken)` | After a page is finalised. Called slightly later than `afterPageLayout`; used by `detach-pages.js` to remove the previous page from the DOM. |
 | `afterRendered` | `(pages)` | After all pages have been rendered, before `page.pdf()` runs. Used by `detach-pages.js` to restore pages in document order. |
 

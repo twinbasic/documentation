@@ -354,13 +354,13 @@ export function createMarkdownIt(ctx) {
 
 ### 3. Verify
 
-Run `build.bat` and open an affected page; for live feedback, use `serve.bat`. A plugin that walks the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
+Run `build.bat` and open an affected page; for live feedback, use `serve.bat`. A plugin that traverses the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
 
 ---
 
 ## Adding a render-worker sub-stage
 
-When the new work is per-page CPU compute, slotting it into the existing `render` handler is the cleanest path. Skip the per-task overhead, ride the same fan-out.
+When the new work is per-page CPU compute, slotting it into the existing `render` handler is the most direct path. Skip the per-task overhead, ride the same fan-out.
 
 ### Where to plug in
 
