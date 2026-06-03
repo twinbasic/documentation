@@ -17,10 +17,37 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const MAGIC = 0xEA0BA51C;
+const FORMAT_VERSION = 1;
 
-const DIR_MARK2 = {
-  Resources: 0x02, Sources: 0x03, ImportedTypeLibraries: 0x05,
-  Miscellaneous: 0x06, Packages: 0x07,
+const FLAGS = {
+  None: 0x00000000,
+  Hidden: 0x00000001,
+  SuperHidden: 0x00000002,
+  Virtual: 0x00000004,
+};
+
+const CATEGORY = {
+  Default: 0x00,
+  References: 0x01,  // always virtual; never present in serialized files
+  Resources: 0x02,
+  Sources: 0x03,
+  Settings: 0x04,
+  ImportedTypeLibraries: 0x05,
+  Miscellaneous: 0x06,
+  Packages: 0x07,
+};
+
+// Well-known entry names that get a non-default category on export.
+// References is intentionally excluded -- it is materialised virtually by
+// the IDE, never serialized, and tagging an on-disk folder with category
+// 0x01 would confuse the IDE on import.
+const CATEGORY_BY_NAME = {
+  Resources: CATEGORY.Resources,
+  Sources: CATEGORY.Sources,
+  Settings: CATEGORY.Settings,
+  ImportedTypeLibraries: CATEGORY.ImportedTypeLibraries,
+  Miscellaneous: CATEGORY.Miscellaneous,
+  Packages: CATEGORY.Packages,
 };
 
 // -------------------------- Parser (binary -> tree) --------------------------
@@ -32,8 +59,8 @@ function parse(buffer) {
   let pos = 0;
   let entryCount = 0;
 
+  function readU64() { const v = view.getBigUint64(pos, true); pos += 8; return Number(v); }
   function readU32() { const v = view.getUint32(pos, true); pos += 4; return v; }
-  function readU16() { const v = view.getUint16(pos, true); pos += 2; return v; }
   function readI16() { const v = view.getInt16(pos, true); pos += 2; return v; }
   function readU8()  { const v = view.getUint8(pos); pos += 1; return v; }
   function readStr() {
@@ -57,25 +84,32 @@ function parse(buffer) {
       `expected 0x${MAGIC.toString(16).padStart(8, '0').toUpperCase()}`);
 
   function readEntry() {
+    // At the root this 2-byte field is the file format version; everywhere
+    // else it is the entry kind (1 = file, 2 = directory).
     const kind = readI16();
-    const name = readStr();
-    const mark1 = readU16();
-    pos += 10;  // reserved padding -- always zeros
-    const mark2 = readU8();
     entryCount++;
+    const isRoot = (entryCount === 1);
+    if (isRoot && kind !== FORMAT_VERSION)
+      throw new Error(
+        `Unsupported file format version: ${kind}, expected ${FORMAT_VERSION}`);
 
-    if (kind === 1 && entryCount > 1) {
+    const name = readStr();
+    const revision = readU64();
+    const flags = readU32();
+    const category = readU8();
+
+    if (kind === 1 && !isRoot) {
       const content = readBlob();
       const revisionCount = readU32();
       const revisions = [];
       for (let i = 0; i < revisionCount; i++) revisions.push(readU32());
-      return { kind: 'file', name, mark1, mark2, content, revisions };
+      return { kind: 'file', name, revision, flags, category, content, revisions };
     }
 
     const count = readU32();
     const children = [];
     for (let i = 0; i < count; i++) children.push(readEntry());
-    return { kind: 'directory', name, mark1, mark2, children };
+    return { kind: 'directory', name, revision, flags, category, children };
   }
 
   return readEntry();
@@ -87,9 +121,9 @@ function serialize(root) {
   const chunks = [];
   const encoder = new TextEncoder();
 
+  function writeU64(v) { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(v)); chunks.push(b); }
   function writeU32(v) { const b = Buffer.alloc(4); b.writeUInt32LE(v); chunks.push(b); }
   function writeI16(v) { const b = Buffer.alloc(2); b.writeInt16LE(v); chunks.push(b); }
-  function writeU16(v) { const b = Buffer.alloc(2); b.writeUInt16LE(v); chunks.push(b); }
   function writeU8(v)  { chunks.push(Buffer.from([v])); }
   function writeStr(s) {
     const e = encoder.encode(s);
@@ -111,19 +145,20 @@ function serialize(root) {
     if (entry.kind === 'file' && !isRoot) {
       writeI16(1);
       writeStr(entry.name);
-      writeU16(entry.mark1 ?? 0x0002);
-      chunks.push(Buffer.alloc(10));
-      writeU8(entry.mark2 ?? 0x00);
+      writeU64(entry.revision ?? 0x0002);
+      writeU32(entry.flags ?? FLAGS.None);
+      writeU8(entry.category ?? 0x00);
       writeBlob(entry.content);
       const revs = entry.revisions ?? [];
       writeU32(revs.length);
       for (const r of revs) writeU32(r);
     } else {
-      writeI16(isRoot ? 1 : 2);
+      // Root entry writes the format version; non-root directory writes kind=2.
+      writeI16(isRoot ? FORMAT_VERSION : 2);
       writeStr(entry.name);
-      writeU16(entry.mark1 ?? 0x0000);
-      chunks.push(Buffer.alloc(10));
-      writeU8(entry.mark2 ?? 0x00);
+      writeU64(entry.revision ?? 0x0000);
+      writeU32(entry.flags ?? FLAGS.None);
+      writeU8(entry.category ?? 0x00);
       const children = entry.children ?? [];
       writeU32(children.length);
       for (const child of children) writeEntry(child);
@@ -162,9 +197,8 @@ function doImport(inputPath, outputDir, { quiet = false } = {}) {
 
 // -------------------------- Export (disk -> binary) --------------------------
 
-function mark2For(name, isDir) {
-  if (isDir) return DIR_MARK2[name] ?? 0x00;
-  return name === 'Settings' ? 0x04 : 0x00;
+function categoryFor(name) {
+  return CATEGORY_BY_NAME[name] ?? CATEGORY.Default;
 }
 
 function buildTree(dirPath) {
@@ -180,14 +214,14 @@ function buildTree(dirPath) {
   for (const f of files) {
     children.push({
       kind: 'file', name: f.name,
-      mark1: 0x0002, mark2: mark2For(f.name, false),
+      revision: 0x0002, flags: FLAGS.None, category: categoryFor(f.name),
       content: fs.readFileSync(path.join(dirPath, f.name)),
       revisions: [],
     });
   }
   return {
     kind: 'directory', name,
-    mark1: 0x0000, mark2: mark2For(name, true),
+    revision: 0x0000, flags: FLAGS.None, category: categoryFor(name),
     children,
   };
 }
@@ -293,7 +327,7 @@ function selfTest() {
     });
 
     test('Empty project round-trip', () => {
-      const tree = { kind: 'directory', name: 'Empty', mark1: 0, mark2: 0, children: [] };
+      const tree = { kind: 'directory', name: 'Empty', revision: 0, flags: 0, category: 0, children: [] };
       const rt = parse(serialize(tree));
       eq(rt.name, 'Empty', 'name');
       eq(rt.children.length, 0, 'children');
@@ -302,14 +336,28 @@ function selfTest() {
     test('Single-file project round-trip', () => {
       const content = Buffer.from('Hello twinBASIC');
       const tree = {
-        kind: 'directory', name: 'Mini', mark1: 0, mark2: 0,
-        children: [{ kind: 'file', name: 'test.twin', mark1: 2, mark2: 0, content, revisions: [] }],
+        kind: 'directory', name: 'Mini', revision: 0, flags: 0, category: 0,
+        children: [{ kind: 'file', name: 'test.twin', revision: 2, flags: 0, category: 0, content, revisions: [] }],
       };
       const rt = parse(serialize(tree));
       eq(rt.children.length, 1, 'children');
       eq(rt.children[0].name, 'test.twin', 'filename');
       if (!Buffer.from(rt.children[0].content).equals(content))
         throw new Error('content mismatch');
+    });
+
+    test('Flags field preserved on round-trip', () => {
+      const tree = {
+        kind: 'directory', name: 'WithFlags', revision: 0, flags: FLAGS.Hidden, category: 0,
+        children: [{
+          kind: 'file', name: 'h.twin',
+          revision: 2, flags: FLAGS.Hidden | FLAGS.Virtual, category: 0,
+          content: Buffer.from('x'), revisions: [],
+        }],
+      };
+      const rt = parse(serialize(tree));
+      eq(rt.flags, FLAGS.Hidden, 'root flags');
+      eq(rt.children[0].flags, FLAGS.Hidden | FLAGS.Virtual, 'file flags');
     });
 
     test('Bad magic rejected', () => {
