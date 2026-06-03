@@ -731,7 +731,7 @@ function renderFooterCustom(page, config) {
 function renderEditAndOfflineBlock(page, config) {
   const showEdit = config.gh_edit_link && config.gh_edit_link_text && config.gh_edit_repository
     && config.gh_edit_branch && config.gh_edit_view_mode;
-  const showOffline = config.gh_offline_link && config.gh_offline_link_text && config.gh_offline_link_url;
+  const showOffline = config.gh_offline_link && config.gh_offline_link_url;
   const showLastModified = config.last_edit_timestamp && config.last_edit_time_format
     && page.frontmatter.last_modified_date;
 
@@ -755,9 +755,17 @@ function renderEditAndOfflineBlock(page, config) {
       `        </p>\n`;
   }
   if (showOffline) {
-    inner += `        <p class="text-small text-grey-dk-000 mb-0">\n` +
-      `          <a href="${escAttr(String(config.gh_offline_link_url))}" id="download-offline">${escText(String(config.gh_offline_link_text))}</a>\n` +
-      `        </p>\n`;
+    const pdfUrl = config.gh_pdf_link_url ? String(config.gh_pdf_link_url) : null;
+    const offlineHref = escAttr(String(config.gh_offline_link_url));
+    if (pdfUrl) {
+      inner += `        <p class="text-small text-grey-dk-000 mb-0">\n` +
+        `          Download <a href="${offlineHref}" id="download-offline">Offline Copy</a> or <a href="${escAttr(pdfUrl)}" id="download-pdf">PDF</a>.\n` +
+        `        </p>\n`;
+    } else {
+      inner += `        <p class="text-small text-grey-dk-000 mb-0">\n` +
+        `          <a href="${offlineHref}" id="download-offline">Offline Copy</a>\n` +
+        `        </p>\n`;
+    }
   }
 
   return `        <div class="d-flex mt-2">\n` + inner + `        </div>\n`;
