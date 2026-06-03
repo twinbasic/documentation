@@ -74,6 +74,9 @@ export async function createClient(config) {
     }
   }
 
+  if (config.limits._rateLimit != null) limits.requests_per_second = config.limits._rateLimit
+  if (config.limits._cap != null) limits.session_query_cap = config.limits._cap
+
   async function enforceRateLimit() {
     const now = Date.now()
     const interval = 1000 / limits.requests_per_second

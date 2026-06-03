@@ -30,9 +30,18 @@ Phase 2 reads the raw JSON produced by Phase 1 and converts it into structured M
 }
 ```
 
-**Tag resolution.** Thread objects carry `applied_tags` as an array of Snowflake IDs. The human-readable tag names ("Answered", "WebView2", etc.) come from the parent forum channel's `available_tags` array, stored in `data/raw/guild.json` by Phase 1. Process loads the channel definitions at startup and builds a tag-ID-to-name lookup map for frontmatter generation.
+`data/raw/channels/{channel_id}.json` — text channel messages, same shape but keyed by `channel`:
 
-**Display names.** Message author objects carry `username` and `global_name` but not the server-specific nickname. Phase 1 exports a separate `data/raw/members.json` mapping user IDs to `{ username, global_name, nick }`. Process resolves display names in priority order: `nick` (server nickname) > `global_name` > `username`.
+```json
+{
+  "channel": { "id": "...", "name": "...", ... },
+  "messages": [{ "id": "...", "author": {...}, "content": "...", "reactions": [...], ... }]
+}
+```
+
+**Tag resolution.** Thread objects carry `applied_tags` as an array of Snowflake IDs. The human-readable tag names ("Answered", "WebView2", etc.) come from the parent forum channel's `available_tags` array, stored in `data/raw/guild.json` by Phase 1. Process loads the channel definitions at startup and builds a tag-ID-to-name lookup map for frontmatter generation. Text channels have no tags.
+
+**Display names.** Message author objects carry `username` and `global_name` but not the server-specific nickname. Phase 1 exports a separate `data/raw/members.json` mapping user IDs to `{ username, global_name, nick }`. Process resolves display names in priority order: `nick` (server nickname) > `global_name` > `username`. If members.json is empty (the bot lacked the Server Members Intent and got a 403), the resolver falls back to the `global_name` / `username` fields on each message's author object.
 
 ---
 
@@ -72,6 +81,19 @@ has_answer: true                    # true if "Answered" tag present
 ---
 ```
 
+Text channels use a simpler frontmatter — no tags, thread metadata, or answer signal:
+
+```yaml
+---
+channel_id: "927638154192748606"
+title: "general"
+message_count: 4523
+top_reactions:
+  "👍": 120
+  "❤️": 45
+---
+```
+
 `has_answer` is the strongest single quality signal — it means a community member or maintainer marked the thread resolved.
 
 ---
@@ -80,9 +102,12 @@ has_answer: true                    # true if "Answered" tag present
 
 ```
 data/threads/
-  {channel_name}/
-    {thread_id}--{slugified-title}.md
+  {channel_name}.md                          text channel (one file per channel)
+  {forum_channel_name}/
+    {thread_id}--{slugified-title}.md        forum thread (one file per thread)
 ```
+
+Forum threads nest under a subdirectory named after the parent forum channel. Text channels produce a single `.md` at the root of `data/threads/`.
 
 The `--` separator makes the ID and slug visually distinct without conflicting with slug hyphens. The ID prefix guarantees uniqueness even when two threads share similar titles after slugification.
 
@@ -127,9 +152,9 @@ Code blocks in Discord messages (backtick-fenced, with or without a language hin
 
 Process applies only light, mechanical filtering — not relevance filtering (Phase 3's job):
 
-- **System messages** — skip messages where `type ≠ 0` (joins, pins, thread-created markers, etc.).
-- **Empty threads** — skip threads with zero non-system messages after the starter.
-- **Bot-only threads** — skip threads where every message author has `bot: true`.
+- **System messages** — skip messages whose `type` is not 0 (DEFAULT) or 19 (REPLY). Type 19 messages are Discord's "reply to a specific message" — they carry real user content and the `message_reference` that the renderer uses for reply threading. Types to skip include joins (7), pins (18), thread-created markers (21), etc.
+- **Empty threads** — skip threads with zero non-system messages after the starter. For text channels, skip if zero non-system messages total.
+- **Bot-only** — skip threads (or text channels) where every message author has `bot: true`.
 
 No content-based filtering here; that judgment belongs to the extraction agents.
 
@@ -167,3 +192,24 @@ wisdom/
   data/
     threads/        gitignored
 ```
+
+---
+
+## Implementation notes
+
+**Determinism.** Tags in frontmatter are sorted alphabetically. Reaction maps are sorted by count descending, then by emoji name. Input files are processed in lexicographic filename order. Timestamps are normalized to `YYYY-MM-DDTHH:MM:SSZ` (no fractional seconds). These choices ensure byte-identical output on re-runs.
+
+**Slugification edge case.** If the thread title produces an empty slug after stripping (e.g. all-punctuation titles), the slug defaults to `untitled`.
+
+**Timestamps.** Message timestamps render as `YYYY-MM-DD HH:MM` in UTC (no seconds — matches the plan's examples). Frontmatter timestamps use full ISO 8601 with seconds.
+
+---
+
+## Phase 1 changes made alongside Phase 2
+
+Several resilience improvements to the export pipeline were implemented during Phase 2 development and are recorded here (PLAN-1 is unchanged):
+
+- **403 resilience.** The members endpoint, per-channel message fetch, and archived-threads endpoints all catch 403 errors and continue with a warning instead of crashing.
+- **Denied-target tracking.** Targets that return 403 during message fetch are recorded in `data/raw/denied.json` with a timestamp. On subsequent runs, denied targets sort to the end of the fetch queue so accessible targets get the session budget first. `--force` clears the denied set.
+- **Skip already-fetched targets.** Targets with both a manifest entry and an existing JSON output file are skipped entirely (no API call). This is critical for multi-session bulk exports — once a thread is fetched, it costs zero requests on every subsequent run. `--force` and `--since` override the skip.
+- **CLI overrides.** `--rate-limit <n>` and `--cap <n>` flags override the tier-selected rate limit and session cap for the current run.

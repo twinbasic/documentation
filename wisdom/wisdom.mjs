@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadConfig } from './config.mjs'
 import { createClient, CapReachedError, timestampToSnowflake, EXIT_CAP_REACHED } from './discord/api.mjs'
 import { discoverChannels, fetchMembers } from './discord/discover.mjs'
 import { fetchMessages, loadManifest, saveManifest, highestSnowflake } from './discord/messages.mjs'
+import { runProcess } from './process/thread.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -21,8 +22,11 @@ function parseArgs(argv) {
       case '--channel':     flags.channels.push(args[++i]); break
       case '--since':       flags.since = args[++i]; break
       case '--force':       flags.force = true; break
+      case '--in':          flags.in = args[++i]; break
       case '--out':         flags.out = args[++i]; break
       case '--concurrency': flags.concurrency = parseInt(args[++i], 10); break
+      case '--rate-limit':  flags.rateLimit = parseFloat(args[++i]); break
+      case '--cap':         flags.cap = parseInt(args[++i], 10); break
       case '--dry-run':     flags.dryRun = true; break
       default:
         process.stderr.write(`Unknown option: ${args[i]}\n`)
@@ -101,22 +105,50 @@ async function runExport(flags) {
     ? timestampToSnowflake(Date.parse(flags.since))
     : null
 
+  // Track targets that returned 403 — try them last
+  const deniedPath = join(outDir, 'denied.json')
+  const denied = flags.force
+    ? {}
+    : existsSync(deniedPath) ? JSON.parse(readFileSync(deniedPath, 'utf-8')) : {}
+
   // Fetch targets: text channels + forum threads
+  // Previously denied targets sort to the end
   const targets = [
     ...textChannels.map(c => ({ kind: 'channel', id: c.id, obj: c, name: c.name })),
     ...threads.map(t => ({ kind: 'thread', id: t.id, obj: t, name: t.name })),
   ]
+  targets.sort((a, b) => (denied[a.id] ? 1 : 0) - (denied[b.id] ? 1 : 0))
 
   let totalMessages = 0
   let completed = 0
+  let upToDate = 0
 
   const capHit = await runConcurrent(targets, config.export.concurrency, async (target) => {
+    const subdir = target.kind === 'thread' ? 'threads' : 'channels'
+    const filePath = join(outDir, subdir, `${target.id}.json`)
+
+    if (!flags.force && !sinceSnowflake && manifest[target.id] && existsSync(filePath)) {
+      upToDate++
+      return
+    }
+
     const after = sinceSnowflake || manifest[target.id] || null
-    const messages = await fetchMessages(client, target.id, after)
+    let messages
+    try {
+      messages = await fetchMessages(client, target.id, after)
+    } catch (err) {
+      if (/403/.test(err.message)) {
+        denied[target.id] = new Date().toISOString()
+        writeFileSync(deniedPath, JSON.stringify(denied, null, 2))
+        completed++
+        process.stderr.write(`[wisdom] [${completed}/${targets.length}] ${target.name}: no access; skipping\n`)
+        return
+      }
+      throw err
+    }
 
     if (messages.length) {
-      const subdir = target.kind === 'thread' ? 'threads' : 'channels'
-      writeJson(join(outDir, subdir, `${target.id}.json`), {
+      writeJson(filePath, {
         [target.kind]: target.obj,
         messages,
       })
@@ -133,8 +165,9 @@ async function runExport(flags) {
   })
 
   process.stderr.write(
-    `[wisdom] Done — ${totalMessages} messages, ${completed}/${targets.length} targets, ` +
-    `${client.queryCount}/${client.sessionCap} requests\n`,
+    `[wisdom] Done — ${totalMessages} messages, ${completed}/${targets.length} targets` +
+    (upToDate ? `, ${upToDate} up-to-date` : '') +
+    `, ${client.queryCount}/${client.sessionCap} requests\n`,
   )
 
   if (capHit) {
@@ -159,7 +192,16 @@ Export options:
   --force               Ignore manifest; re-fetch all history
   --out <dir>           Output directory  [default: wisdom/data/raw]
   --concurrency <n>     Parallel fetches  [default: 3]
+  --rate-limit <n>      Requests per second  [default: per tier]
+  --cap <n>             Session request cap  [default: per tier]
   --dry-run             Discover only; do not fetch messages
+
+Process options:
+  --in <dir>            Input directory of raw JSON  [default: wisdom/data/raw]
+  --out <dir>           Output directory for .md files  [default: wisdom/data/threads]
+  --channel <id>        Restrict to threads from this channel ID (repeatable)
+  --since <date>        Only process threads created after this ISO 8601 date
+  --force               Regenerate all output files (skip mtime check)
 `
 
 const { command, flags } = parseArgs(process.argv)
@@ -169,6 +211,8 @@ switch (command) {
     await runExport(flags)
     break
   case 'process':
+    await runProcess(flags)
+    break
   case 'extract':
     process.stderr.write(`"${command}" is not yet implemented\n`)
     process.exit(1)

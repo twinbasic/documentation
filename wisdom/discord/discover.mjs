@@ -90,20 +90,28 @@ export async function discoverChannels(client, config, explicitIds) {
 export async function fetchMembers(client, guildId) {
   const members = {}
   let after = '0'
-  while (true) {
-    const batch = await client.request(
-      `/guilds/${guildId}/members?limit=1000&after=${after}`,
-    )
-    if (!batch.length) break
-    for (const m of batch) {
-      members[m.user.id] = {
-        username: m.user.username,
-        global_name: m.user.global_name || null,
-        nick: m.nick || null,
+  try {
+    while (true) {
+      const batch = await client.request(
+        `/guilds/${guildId}/members?limit=1000&after=${after}`,
+      )
+      if (!batch.length) break
+      for (const m of batch) {
+        members[m.user.id] = {
+          username: m.user.username,
+          global_name: m.user.global_name || null,
+          nick: m.nick || null,
+        }
       }
+      after = batch[batch.length - 1].user.id
+      if (batch.length < 1000) break
     }
-    after = batch[batch.length - 1].user.id
-    if (batch.length < 1000) break
+  } catch (err) {
+    if (/403/.test(err.message)) {
+      process.stderr.write('[wisdom] Members endpoint unavailable (missing access); skipping\n')
+      return members
+    }
+    throw err
   }
   process.stderr.write(`[wisdom] Members: ${Object.keys(members).length}\n`)
   return members

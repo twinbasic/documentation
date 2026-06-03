@@ -39,6 +39,8 @@ export function loadConfig(cliFlags = {}) {
 
   if (cliFlags.guild) config.guild_id = cliFlags.guild
   if (cliFlags.concurrency != null) config.export.concurrency = Number(cliFlags.concurrency)
+  if (cliFlags.rateLimit != null) config.limits._rateLimit = Number(cliFlags.rateLimit)
+  if (cliFlags.cap != null) config.limits._cap = Number(cliFlags.cap)
   if (cliFlags.out) config.export.out = cliFlags.out
 
   if (!config.guild_id) {
