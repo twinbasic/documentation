@@ -8,6 +8,7 @@ import { createClient, CapReachedError, timestampToSnowflake, EXIT_CAP_REACHED }
 import { discoverChannels, fetchMembers } from './discord/discover.mjs'
 import { fetchMessages, loadManifest, saveManifest, highestSnowflake } from './discord/messages.mjs'
 import { runProcess } from './process/thread.mjs'
+import { runExtract } from './extract/prep.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -28,6 +29,7 @@ function parseArgs(argv) {
       case '--rate-limit':  flags.rateLimit = parseFloat(args[++i]); break
       case '--cap':         flags.cap = parseInt(args[++i], 10); break
       case '--dry-run':     flags.dryRun = true; break
+      case '--min-confidence': flags.minConfidence = args[++i]; break
       default:
         process.stderr.write(`Unknown option: ${args[i]}\n`)
         process.exit(1)
@@ -183,7 +185,7 @@ const USAGE = `Usage: node wisdom/wisdom.mjs <command> [options]
 Commands:
   export    Fetch Discord messages to data/raw/
   process   Convert raw JSON to structured .md files
-  extract   Run Claude agents to extract knowledge
+  extract   Prepare data for Claude-agent knowledge extraction
 
 Export options:
   --guild <id>          Guild (server) ID
@@ -202,6 +204,14 @@ Process options:
   --channel <id>        Restrict to threads from this channel ID (repeatable)
   --since <date>        Only process threads created after this ISO 8601 date
   --force               Regenerate all output files (skip mtime check)
+
+Extract options:
+  --in <dir>            Input directory of processed .md files  [default: wisdom/data/threads]
+  --out <dir>           Output directory for findings  [default: wisdom/data/findings]
+  --since <date>        Only analyse threads created after this date (ISO 8601)
+  --channel <name>      Restrict to threads from this channel name (repeatable)
+  --min-confidence <l>  Skip findings below this level: high | medium | low  [default: low]
+  --dry-run             Prepare data but do not write staging.md
 `
 
 const { command, flags } = parseArgs(process.argv)
@@ -214,8 +224,7 @@ switch (command) {
     await runProcess(flags)
     break
   case 'extract':
-    process.stderr.write(`"${command}" is not yet implemented\n`)
-    process.exit(1)
+    await runExtract(flags)
     break
   default:
     process.stderr.write(USAGE)

@@ -19,7 +19,6 @@ This phase is implemented as a **Workflow script** (`extract/workflow.mjs`) invo
 - Fetching from Discord — Phase 1.
 - Converting JSON to Markdown — Phase 2.
 - Automatic commits or edits to `docs/` without human review.
-- Findings that cannot be mapped to a specific documentation page.
 - Findings that duplicate content already on the target page.
 
 ---
@@ -52,25 +51,30 @@ The entire flow uses `pipeline()` — each thread progresses from extraction to 
 export const FINDING_SCHEMA = {
   type: 'object',
   properties: {
-    package:       { type: 'string' },
+    package:        { type: 'string' },
     // e.g. "WebView2", "VBA", "CEF", "VB", "WinNativeCommonCtls"
-    symbol:        { type: ['string', 'null'] },
+    symbol:         { type: ['string', 'null'] },
     // Qualified name, e.g. "WebView2.Navigate", "Strings.Split". null = package-level.
     kind: {
       enum: ['gotcha', 'workaround', 'example', 'clarification', 'deprecation']
     },
-    summary:       { type: 'string' },
+    summary:        { type: 'string' },
     // One sentence. Written in plain English; can be used as a NOTE callout heading.
-    detail:        { type: 'string' },
+    detail:         { type: 'string' },
     // Expanded prose. May include a fenced code block using ```tb.
-    confidence:    { enum: ['high', 'medium', 'low'] },
+    confidence:     { enum: ['high', 'medium', 'low'] },
     // high   = confirmed by multiple users or by a twinBASIC maintainer
     // medium = one clear, plausible explanation from a knowledgeable user
     // low    = single user, untested suggestion, or hedged claim
-    source_thread: { type: 'string' },
+    source_thread:  { type: 'string' },
     // Thread ID for traceability back to the original Discord conversation.
+    date_earliest:  { type: 'string' },
+    // YYYY-MM-DD of the earliest message informing this finding.
+    date_latest:    { type: 'string' },
+    // YYYY-MM-DD of the latest message informing this finding.
   },
-  required: ['package', 'kind', 'summary', 'confidence', 'source_thread'],
+  required: ['package', 'kind', 'summary', 'confidence', 'source_thread',
+             'date_earliest', 'date_latest'],
 }
 
 export const DOC_ADDITION_SCHEMA = {
@@ -78,16 +82,22 @@ export const DOC_ADDITION_SCHEMA = {
   properties: {
     target_page:    { type: 'string' },
     // Repo-relative path, e.g. "docs/Reference/WebView2/WebView2/index.md"
+    // Set to "UNMAPPED" when no existing page fits.
     section:        { type: 'string' },
     // Where to insert: "after-remarks" | "example" | "see-also" | "new-section"
     draft:          { type: 'string' },
     // The Markdown prose to insert, ready to copy into the target file.
     finding_ids:    { type: 'array', items: { type: 'string' } },
     // Source thread IDs that contributed to this addition.
+    date_earliest:  { type: 'string' },
+    // YYYY-MM-DD — earliest across all contributing findings.
+    date_latest:    { type: 'string' },
+    // YYYY-MM-DD — latest across all contributing findings.
     reviewer_note:  { type: ['string', 'null'] },
     // Optional guidance for the human reviewer, e.g. "verify against the .twin source".
   },
-  required: ['target_page', 'section', 'draft', 'finding_ids'],
+  required: ['target_page', 'section', 'draft', 'finding_ids',
+             'date_earliest', 'date_latest'],
 }
 ```
 
@@ -122,6 +132,7 @@ Instructions:
 - If the finding maps to an example, produce a full code block with a one-line lead-in.
 - For See Also additions, produce a `- [Symbol](relative-url) -- short description` line.
 - Set `reviewer_note` when the draft requires verification against the `.twin` source or when it conflicts with anything currently on the page.
+- When a finding has no `resolved_page` and no existing page fits, set `target_page` to `"UNMAPPED"` — do not skip the finding. Include the package and symbol in `reviewer_note` so the reviewer can triage placement (create a new page, attach to a package index, etc.).
 
 ---
 
@@ -141,7 +152,31 @@ From the frontmatter produced by Phase 2:
 
 ## Staging output
 
-`data/findings/staging.md` is a human-readable review file. Each proposed addition renders as:
+`data/findings/staging.md` is a human-readable review file.
+
+### Unmapped findings
+
+Not every finding maps to an existing documentation page. Cross-cutting gotchas, migration tips, IDE behavior, and general patterns may have no natural home in the current reference tree. These findings are drafted anyway and collected at the top of the staging file under an **Unmapped Findings** heading, tagged with their package and symbol for triage. The reviewer decides what to do with each: create a new page, attach to a package index, fold into an existing page the agent missed, or discard.
+
+```markdown
+# Unmapped Findings
+
+## UNMAPPED · after-remarks
+
+> [!NOTE]
+> COM threading in twinBASIC defaults to STA. Long-running COM calls on the
+> UI thread block message processing — move them to a background thread.
+
+_Source threads: 1357924680135792468 · confidence: medium_
+_Date range: 2024-03-12 to 2024-03-14_
+_Reviewer note: Package: Core. Consider a new "Threading" guide page under docs/Reference/Core/._
+
+---
+```
+
+### Mapped additions
+
+Each proposed addition to an existing page renders as:
 
 ```markdown
 ## docs/Reference/WebView2/WebView2/index.md · after-remarks
@@ -151,6 +186,7 @@ From the frontmatter produced by Phase 2:
 > navigation request. Wait for `EnvironmentReady` before calling any navigation method.
 
 _Source threads: 1234567890123456789 · confidence: high_
+_Date range: 2024-06-01 to 2024-06-03_
 _Reviewer note: verify with WebView2 .twin source that no queuing occurs internally._
 
 ---
