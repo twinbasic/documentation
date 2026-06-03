@@ -356,6 +356,11 @@ const TASKS = {
     runOnMain: true,
     async execute({ config: { config } }, ctx) {
       const { pages, staticFiles } = await discover(ctx.srcRoot, config.exclude ?? []);
+      for (const entry of config.bundle_extra ?? []) {
+        const srcPath = path.resolve(ctx.srcRoot, entry.src);
+        const stat = await fs.stat(srcPath);
+        staticFiles.push({ srcPath, srcRel: entry.dest, destRel: entry.dest, size: stat.size });
+      }
       return { pages, staticFiles, config };
     },
     submit(out, state) {

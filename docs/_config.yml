@@ -79,6 +79,15 @@ offline_exclude:
 #
 # Patterns that start with * must be quoted so YAML does not interpret them
 # as alias references.
+# Extra files from outside the docs tree to bundle as site assets.
+# Each entry maps a source path (relative to docs/) to a destination
+# path in the built site.  Injected during the discover phase.
+bundle_extra:
+  - src: ../scripts/impexp.mjs
+    dest: Features/Packages/downloads/impexp.mjs
+  - src: ../scripts/impexp.py
+    dest: Features/Packages/downloads/impexp.py
+
 exclude:
   # Underscore-prefixed files and directories -- catches _config.yml,
   # _book.yml, _site, _site-offline, _site-pdf, _pdf, _includes,
