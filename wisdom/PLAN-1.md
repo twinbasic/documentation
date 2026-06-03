@@ -39,9 +39,9 @@ Discord supports two token types:
 
 Bot and user tokens are structurally identical — both are three-segment base64url strings (`[user_id].[timestamp].[signature]`). The "Bot " prefix exists only in the HTTP `Authorization` header, not in the stored token value. There is no way to distinguish token type by inspecting the string alone.
 
-**Auto-detection.** The tool starts every session under user-token limits (the conservative tier). After a randomized delay of 5–10 seconds, a background probe sends `GET /api/v10/@me`. If the response contains `bot: true`, the tool upgrades to bot-token limits for the remainder of the session. Requests already in flight or completed before the probe returns are unaffected — only the rate and cap governing future requests change. If the probe fails or times out, user-token limits remain in effect; the failure is logged but does not abort the export. The probe counts toward the session query cap.
+**Auto-detection.** At startup, the tool probes `GET /api/v10/users/@me` with a `Bot` prefix. If the request succeeds and the response contains `bot: true`, the tool uses bot-token auth and bot-tier limits. If the `Bot`-prefixed request fails (401), it retries with a bare token (user-token auth) and applies user-tier limits. The probe counts toward the session query cap.
 
-Token is read from the `DISCORD_TOKEN` environment variable. It is never accepted as a CLI argument to avoid shell-history leakage.
+Token is read from the `DISCORD_TOKEN` environment variable, with a fallback to `wisdom/.token` (a gitignored file). Lines starting with `#` are ignored, so the file can carry comments. It is never accepted as a CLI argument to avoid shell-history leakage.
 
 ---
 
@@ -58,9 +58,9 @@ Guild
 
 **Step 1 — Channel list.** `GET /guilds/{guild_id}/channels` returns all channels in the server. Keep text channels (type 0) and forum channels (type 15); skip everything else. Channel objects are preserved in full — in particular, forum channels carry an `available_tags` array that Phase 2 needs to resolve thread tag IDs to display names.
 
-**Step 2 — Active threads.** `GET /guilds/{guild_id}/threads/active` returns all currently open threads across the entire guild. Filter to threads whose `parent_id` is one of the forum channels from Step 1.
+**Step 2 — Active threads.** `GET /guilds/{guild_id}/threads/active` returns all currently open threads across the entire guild. Filter to threads whose `parent_id` is one of the forum channels from Step 1. This endpoint is bot-only; user tokens receive a 403, which the tool handles by skipping active thread discovery and logging a warning.
 
-**Step 3 — Archived threads.** `GET /channels/{channel_id}/threads/archived/public?limit=100` paginates archived threads per forum channel. Paginate using the `has_more` flag and the `before` query parameter (ISO 8601 timestamp of the last thread's `archive_timestamp`).
+**Step 3 — Archived threads.** `GET /channels/{channel_id}/threads/archived/public?limit=100` paginates archived threads per forum channel. Paginate using the `has_more` flag and the `before` query parameter (ISO 8601 timestamp of the last thread's `archive_timestamp`, URL-encoded). Forum channels that return 403 (restricted access) are skipped with a warning.
 
 **Step 4 — Message fetch.** For each thread (and each in-scope text channel), fetch messages via `GET /channels/{channel_id}/messages?limit=100&before={snowflake}`, paginating until the response is empty or the incremental cutoff is reached.
 
@@ -145,7 +145,7 @@ data/raw/
 
 ```jsonc
 {
-  "guild_id": "1234567890123456789",
+  "guild_id": "927638153546829845",
 
   "channels": {
     "exclude_patterns": [
@@ -158,7 +158,7 @@ data/raw/
   },
 
   "threads": {
-    "min_message_count": 2
+    "min_message_count": 1
   },
 
   "export": {
@@ -188,15 +188,15 @@ data/raw/
 
 **`channels.include_types`** — limit discovery to `"text"` (type 0) and/or `"forum"` (type 15) channels. Both are included by default; remove `"text"` to skip regular text channels entirely if the server's knowledge is concentrated in forum threads.
 
-**`threads.min_message_count`** — threads with fewer messages than this threshold are not fetched. Skips dead-on-arrival threads (e.g. unanswered one-liners). Default: 2 (starter + at least one reply).
+**`threads.min_message_count`** — threads with fewer messages than this threshold are not fetched. Default: 1 (skips only empty/deleted threads with zero messages).
 
 **`export.concurrency`** — default parallel fetch count, overridable at runtime via `--concurrency`.
 
-**`guild_id`** — the server's Snowflake ID, so `--guild` does not need to be passed on every invocation. Can still be overridden on the CLI.
+**`guild_id`** — the server's Snowflake ID. Defaults to the twinBASIC Discord server. Can be overridden on the CLI with `--guild`.
 
 **`limits.user`** / **`limits.bot`** — per-tier rate and session cap settings. `requests_per_second` controls the inter-request delay; user-tier delays are jittered, bot-tier delays are fixed. `session_query_cap` is the maximum number of counted API requests per invocation.
 
-**`limits.probe_delay`** — a `[min, max]` pair in seconds. The auto-detection probe (`GET /api/v10/@me`) fires after a uniformly random delay in this range. Setting both values to `0` fires the probe immediately at startup.
+**`limits.probe_delay`** — reserved for future use. The current implementation probes eagerly at startup.
 
 The config is loaded at startup and merged with any CLI flags; explicit CLI flags take precedence over config values. In particular, an explicit `--channel <id>` flag bypasses the config's `exclude_patterns` and `exclude_ids` rules entirely — requesting a specific channel by ID is an unambiguous include.
 
@@ -234,7 +234,8 @@ wisdom/
     api.mjs               fetch wrapper: auth headers, rate-limit handling, retries
     discover.mjs          guild → channel list → active threads → archived threads → guild members
     messages.mjs          paginated message fetch with Snowflake cursor
-  .gitignore              ignores data/
+  .gitignore              ignores data/ and .token
+  .token                  gitignored; optional token file (fallback when DISCORD_TOKEN is unset)
   data/                   gitignored
     raw/
       members.json        user ID → { username, global_name, nick }
