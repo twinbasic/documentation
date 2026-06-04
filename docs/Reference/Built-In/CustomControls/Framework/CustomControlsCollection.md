@@ -30,7 +30,7 @@ Syntax: *object*.**Count**
 ### Item
 {: .no_toc }
 
-Returns the control at the given index or with the given name. The **Default property** --- the **Controls** ( *…* ) shorthand calls **Item**.
+Returns the control at the given index or with the given name. The **Default property** --- the **Controls** ( *...* ) shorthand calls **Item**.
 
 Syntax: *object*.**Item** ( *IndexOrName* ) **As Object**
 
@@ -74,7 +74,7 @@ A `For Each` loop over the collection produces every hosted control in turn:
 ```tb
 Dim ctl As Object
 For Each ctl In MyForm.Controls
-    ' …
+    ' ...
 Next
 ```
 

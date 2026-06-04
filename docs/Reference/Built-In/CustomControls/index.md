@@ -4,6 +4,7 @@ parent: Built-In Packages
 nav_order: 5
 permalink: /tB/Packages/CustomControls/
 has_toc: false
+indexed_from: beta-x-0983
 ---
 
 # CustomControls Package
@@ -64,14 +65,23 @@ Every style object raises an **OnChanged** event whenever one of its fields is s
 
 For authoring new custom controls or forms, the **CustomControls DESIGNER** half of the package supplies:
 
-- [ICustomControl](Framework/ICustomControl) -- the interface every custom control implements: **Initialize**, **Destroy**, **Paint**
-- [ICustomForm](Framework/ICustomForm) -- the analogous interface for custom form classes
+- [_CustomControlContext](Framework/_CustomControlContext) -- the underlying COM interface of [**CustomControlContext**](Framework/CustomControlContext), defining the four callback methods: serializer access, repaint requests, timer creation, and focus changes
+- [_CustomControlsCollection](Framework/_CustomControlsCollection) -- the underlying COM interface of [**CustomControlsCollection**](Framework/CustomControlsCollection), defining the collection contract: indexed access, enumeration, and add/remove
+- [_CustomControlTimer](Framework/_CustomControlTimer) -- the underlying COM interface of [**CustomControlTimer**](Framework/CustomControlTimer), defining the **Interval** and **Enabled** properties
+- [_CustomControlTimerEvents](Framework/_CustomControlTimerEvents) -- the event-source interface of [**CustomControlTimer**](Framework/CustomControlTimer), declaring the **OnTimer** callback that fires on each tick
+- [_CustomFormContext](Framework/_CustomFormContext) -- the underlying COM interface of [**CustomFormContext**](Framework/CustomFormContext), extending **_CustomControlContext** with **Show** and **Close**
+- [Canvas](Framework/Canvas) -- the drawing surface passed to **Paint**; the only way to put pixels into a custom control
 - [CustomControlContext](Framework/CustomControlContext) -- callback object passed to **Initialize**; offers serializer access, repaint requests, timer creation, and focus changes
-- [CustomFormContext](Framework/CustomFormContext) -- a **CustomControlContext** extended with **Show** and **Close** for form-class controls
 - [CustomControlTimer](Framework/CustomControlTimer) -- the timer returned by **CustomControlContext.CreateTimer**; has **Interval**, **Enabled**, and an **OnTimer** event
 - [CustomControlsCollection](Framework/CustomControlsCollection) -- the **Controls** collection on a form
-- [Canvas](Framework/Canvas) -- the drawing surface passed to **Paint**; the only way to put pixels into a custom control
+- [CustomFormContext](Framework/CustomFormContext) -- a **CustomControlContext** extended with **Show** and **Close** for form-class controls
+- [ICustomControl](Framework/ICustomControl) -- the interface every custom control implements: **Initialize**, **Destroy**, **Paint**
+- [ICustomForm](Framework/ICustomForm) -- the analogous interface for custom form classes
 - [SerializeInfo](Framework/SerializeInfo) -- the per-instance serializer returned by **CustomControlContext.GetSerializer**; used to deserialize designer-set property values and to query the runtime mode
+
+## Modules
+
+- [Constants](Constants) -- declares the enumerations and UDTs shared across the entire **CustomControls** package; internal to the DESIGNER library
 
 ## Enumerations
 

@@ -42,24 +42,80 @@ Syntax: *object*.**ChangeFocusedElement** *ElementTabIndex*
 ### CreateTimer
 {: .no_toc }
 
-Returns a new [**CustomControlTimer**](CustomControlTimer) bound to this control's lifetime. The timer is **Disabled** on creation; the caller sets [**Interval**](CustomControlTimer#interval), subscribes to the timer's **OnTimer** event, and sets [**Enabled**](CustomControlTimer#enabled) to **True** to start it.
+Returns a new [**CustomControlTimer**](CustomControlTimer) bound to this control's lifetime. The timer is disabled on creation; the caller sets [**Interval**](CustomControlTimer#interval), subscribes to the timer's [**OnTimer**](CustomControlTimer#ontimer) event, and sets [**Enabled**](CustomControlTimer#enabled) to **True** to start it.
 
 Syntax: *object*.**CreateTimer** ( ) **As stdole.IUnknown**
 
-The framework returns the timer typed as **stdole.IUnknown**; cast with `CType(Of CustomControlTimer)(…)` to get a strongly-typed reference. [**WaynesTimer**](../WaynesTimer) and [**WaynesSlider**](../WaynesSlider/) both use this pattern.
+The timer is returned as **stdole.IUnknown**. Cast to [**CustomControlTimer**](CustomControlTimer) with `CType(Of CustomControlTimer)(…)` before accessing its members. Declare the holding field with **WithEvents** so that the **OnTimer** event can be handled.
+
+```tb
+Private WithEvents InternalTimer As CustomControlTimer
+
+Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
+        Implements CustomControls.ICustomControl.Initialize
+
+    Set Me.ControlContext = Ctx
+    Set Me.InternalTimer = CType(Of CustomControlTimer)(Ctx.CreateTimer())
+    Me.InternalTimer.Interval = 250
+    Me.InternalTimer.Enabled = True
+End Sub
+
+Private Sub OnTimer() Handles InternalTimer.OnTimer
+    ' called every 250 ms
+End Sub
+```
 
 ### GetSerializer
 {: .no_toc }
 
-Returns the [**SerializeInfo**](SerializeInfo) handle for this control instance. The serializer exposes the deserialization entry point and the run-time / design-time mode flags.
+Returns the [**SerializeInfo**](SerializeInfo) handle for this control instance. The serializer exposes the deserialization entry point and the run-time/design-time mode flags.
 
 Syntax: *object*.**GetSerializer** ( ) **As SerializeInfo**
+
+Call **GetSerializer** at the start of a control's [**Initialize**](ICustomControl#initialize) implementation to load any property values that were set in the form designer, and to read the mode flags before storing the context for later use.
+
+```tb
+Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
+        Implements CustomControls.ICustomControl.Initialize
+
+    With Ctx.GetSerializer
+        If Not .RuntimeUISrzDeserialize(Me, False) Then
+            InitializeDefaultValues
+        End If
+
+        Me.IsDesignMode = .RuntimeUISrzIsDesignMode()
+    End With
+
+    Set Me.ControlContext = Ctx
+End Sub
+```
 
 ### Repaint
 {: .no_toc }
 
-Tells the framework that the control's appearance has changed and that the canvas should be repainted at the next opportunity. The framework eventually calls back into [**ICustomControl.Paint**](ICustomControl#paint); calling **Repaint** multiple times in quick succession produces at most one paint.
+Tells the framework that the control's appearance has changed and that the canvas should be repainted at the next opportunity.
 
 Syntax: *object*.**Repaint** ( )
 
-Every concrete `Waynes…` control hooks the **OnChanged** events on its state and style sub-objects, and calls **Repaint** from the handler --- so a runtime assignment like `btn.NormalState.BackgroundFill.ColorPoints.SetSolidColor vbBlue` triggers an automatic redraw.
+The framework schedules one paint pass regardless of how many times **Repaint** is called before it runs --- multiple calls in quick succession produce at most one call to [**ICustomControl.Paint**](ICustomControl#paint). This means it is safe to call **Repaint** from multiple **OnChanged** handlers that fire together when several style properties are set in sequence.
+
+When writing a new custom control, call **Repaint** whenever the control's internal state changes in a way that affects what the next **Paint** call should draw. Every concrete `Waynes...` control hooks the **OnChanged** events raised by its style sub-objects and calls **Repaint** from each handler, so a runtime property assignment triggers an automatic redraw without the caller needing to call **Repaint** directly.
+
+```tb
+' In a custom control class:
+Private m_Context As CustomControls.CustomControlContext
+Private m_Caption As String
+
+Public Property Let Caption(ByVal Value As String)
+    m_Caption = Value
+    m_Context.Repaint   ' schedule a repaint to show the new caption
+End Property
+```
+
+## See Also
+
+- [_CustomControlContext](_CustomControlContext) interface -- the COM interface definition this CoClass implements
+- [CustomFormContext](CustomFormContext) class -- extends **CustomControlContext** with **Show** and **Close** for form-class controls
+- [ICustomControl](ICustomControl) interface -- the interface a custom control implements; receives the context on **Initialize**
+- [SerializeInfo](SerializeInfo) type (UDT) -- the per-instance serializer returned by **GetSerializer**
+- [CustomControlTimer](CustomControlTimer) class -- the timer object returned by **CreateTimer**

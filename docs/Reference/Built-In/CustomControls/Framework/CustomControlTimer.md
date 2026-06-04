@@ -11,7 +11,7 @@ has_toc: false
 
 A timer created by [**CustomControlContext.CreateTimer**](CustomControlContext#createtimer) and owned by the control that created it. The timer raises [**OnTimer**](#ontimer) at the rate given by [**Interval**](#interval), once it has been started by setting [**Enabled**](#enabled) to **True**.
 
-The framework returns timers typed as **stdole.IUnknown**; cast to **CustomControlTimer** with `CType(Of CustomControlTimer)(…)` before storing. The control should also declare the field with `WithEvents` so that the **OnTimer** event can be handled.
+The framework returns timers typed as **stdole.IUnknown**; cast to **CustomControlTimer** with `CType(Of CustomControlTimer)(…)` before storing. Declare the field with **WithEvents** so that the **OnTimer** event can be handled.
 
 ```tb
 Private WithEvents InternalTimer As CustomControlTimer
@@ -26,29 +26,35 @@ Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
 End Sub
 
 Private Sub OnTimer() Handles InternalTimer.OnTimer
-    ' fire every 250ms
+    ' raised every 250 ms
 End Sub
 ```
 
-[**WaynesTimer**](../WaynesTimer) wraps a single **CustomControlTimer** and re-exposes its **Interval** / **Enabled** as designer-visible properties. [**WaynesSlider**](../WaynesSlider/) uses one as an internal mouse-down auto-repeat timer.
+[**WaynesTimer**](../WaynesTimer) wraps a single **CustomControlTimer** and re-exposes its **Interval** and **Enabled** as designer-visible properties. [**WaynesSlider**](../WaynesSlider/) uses one internally for mouse-down auto-repeat.
 
 ## Properties
 
 ### Enabled
 {: .no_toc }
 
-Whether the timer is currently running. Setting to **True** starts it; setting to **False** stops it. **Boolean**.
+Whether the timer is currently running. Read/write **Boolean**. Setting to **True** starts it; setting to **False** stops it.
 
-Syntax: *object*.**Enabled** [ = *value* ]
+Syntax: *object*.**Enabled** [ **=** *value* ]
+
+*value*
+: A **Boolean** specifying the running state. **True** starts the timer; **False** stops it.
 
 ### Interval
 {: .no_toc }
 
-The number of milliseconds between successive [**OnTimer**](#ontimer) events. **Long**. A timer with an interval of 0 never fires.
+The number of milliseconds between successive [**OnTimer**](#ontimer) events. Read/write **Long**. A value of `0` prevents the timer from firing.
 
-Syntax: *object*.**Interval** [ = *value* ]
+Syntax: *object*.**Interval** [ **=** *value* ]
 
-Changing **Interval** while the timer is enabled takes effect on the next tick.
+*value*
+: A **Long** specifying the number of milliseconds between timer firings.
+
+Changing **Interval** while the timer is running takes effect on the next tick --- the current tick completes at the old interval before the new one begins.
 
 ## Events
 
@@ -58,3 +64,8 @@ Changing **Interval** while the timer is enabled takes effect on the next tick.
 Raised every [**Interval**](#interval) milliseconds while the timer is enabled.
 
 Syntax: *object*\_**OnTimer**( )
+
+## See Also
+
+- [CustomControlContext](CustomControlContext) class -- the callback object whose **CreateTimer** returns a **CustomControlTimer**
+- [ICustomControl](ICustomControl) interface
