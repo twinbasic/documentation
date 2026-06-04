@@ -4,6 +4,7 @@ parent: Built-In Packages
 nav_order: 4
 permalink: /tB/Packages/Assert/
 has_toc: false
+indexed_from: beta-x-0983
 ---
 
 # Assert Package
@@ -50,12 +51,58 @@ Every assertion is tagged `[DebugOnly(True)]` --- the calls compile to *nothing*
 
 ## Members
 
-Each module exposes the same fifteen functions, grouped here by purpose:
+Each module exposes the same fifteen functions. See the per-module pages for the full signatures and the comparison semantics that apply to each member.
 
-- **Diagnostic outcome** --- **Succeed**, **Fail**, **Inconclusive**
-- **Equality** --- **AreEqual** / **AreNotEqual**, **AreSame** / **AreNotSame**
-- **Boolean** --- **IsTrue**, **IsFalse**
-- **Reference and value state** --- **IsNothing** / **IsNotNothing**, **IsNull** / **IsNotNull**
-- **Sequence** --- **SequenceEquals** / **NotSequenceEquals**
+### Exact
 
-See the per-module pages for the full signatures and the comparison semantics that apply to each member.
+- [AreEqual](Exact#areequal) -- asserts that *Actual* is equal to *Expected* under strictest semantics; datatypes must match and no implicit conversions occur
+- [AreNotEqual](Exact#arenotequal) -- asserts that *Actual* is not equal to *Expected* under strictest semantics; datatypes must match and no implicit conversions occur
+- [AreNotSame](Exact#arenotsame) -- asserts that *Actual* and *Expected* refer to different objects
+- [AreSame](Exact#aresame) -- asserts that *Actual* and *Expected* refer to the same object
+- [Fail](Exact#fail) -- unconditionally records a test failure
+- [Inconclusive](Exact#inconclusive) -- records the test as inconclusive --- neither a pass nor a failure
+- [IsFalse](Exact#isfalse) -- asserts that *Condition* evaluates to **False**
+- [IsNothing](Exact#isnothing) -- asserts that *Value* is the **Nothing** object reference
+- [IsNotNothing](Exact#isnotnothing) -- asserts that *Value* refers to an object and is not **Nothing**
+- [IsNotNull](Exact#isnotnull) -- asserts that *Value* is not the **Null** value of a **Variant**
+- [IsNull](Exact#isnull) -- asserts that *Value* is the **Null** value of a **Variant**
+- [IsTrue](Exact#istrue) -- asserts that *Condition* evaluates to **True**
+- [NotSequenceEquals](Exact#notsequenceequals) -- asserts that *Actual* and *Expected* differ in length or in at least one element
+- [SequenceEquals](Exact#sequenceequals) -- asserts that *Actual* and *Expected* contain the same elements in the same order
+- [Succeed](Exact#succeed) -- records that the test reached this point without failure
+
+### Permissive
+
+- [AreEqual](Permissive#areequal) -- asserts that *Actual* is equal to *Expected* with case-insensitive strings and numeric promotion
+- [AreNotEqual](Permissive#arenotequal) -- asserts that *Actual* is not equal to *Expected* with case-insensitive strings and numeric promotion
+- [AreNotSame](Permissive#arenotsame) -- asserts that *Actual* and *Expected* refer to different objects
+- [AreSame](Permissive#aresame) -- asserts that *Actual* and *Expected* refer to the same object
+- [Fail](Permissive#fail) -- unconditionally records a test failure
+- [Inconclusive](Permissive#inconclusive) -- records the test as inconclusive --- neither a pass nor a failure
+- [IsFalse](Permissive#isfalse) -- asserts that *Condition* evaluates to **False**
+- [IsNothing](Permissive#isnothing) -- asserts that *Value* is the **Nothing** object reference
+- [IsNotNothing](Permissive#isnotnothing) -- asserts that *Value* refers to an object and is not **Nothing**
+- [IsNotNull](Permissive#isnotnull) -- asserts that *Value* is not the **Null** value of a **Variant**
+- [IsNull](Permissive#isnull) -- asserts that *Value* is the **Null** value of a **Variant**
+- [IsTrue](Permissive#istrue) -- asserts that *Condition* evaluates to **True**
+- [NotSequenceEquals](Permissive#notsequenceequals) -- asserts that *Actual* and *Expected* differ in length or in at least one element
+- [SequenceEquals](Permissive#sequenceequals) -- asserts that *Actual* and *Expected* contain the same elements in the same order
+- [Succeed](Permissive#succeed) -- records that the test reached this point without failure
+
+### Strict
+
+- [AreEqual](Strict#areequal) -- asserts that *Actual* is equal to *Expected* with case-sensitive strings and normal twinBASIC equality
+- [AreNotEqual](Strict#arenotequal) -- asserts that *Actual* is not equal to *Expected* with case-sensitive strings and normal twinBASIC equality
+- [AreNotSame](Strict#arenotsame) -- asserts that *Actual* and *Expected* refer to different objects
+- [AreSame](Strict#aresame) -- asserts that *Actual* and *Expected* refer to the same object
+- [Fail](Strict#fail) -- unconditionally records a test failure
+- [Inconclusive](Strict#inconclusive) -- records the test as inconclusive --- neither a pass nor a failure
+- [IsFalse](Strict#isfalse) -- asserts that *Condition* evaluates to **False**
+- [IsNothing](Strict#isnothing) -- asserts that *Value* is the **Nothing** object reference
+- [IsNotNothing](Strict#isnotnothing) -- asserts that *Value* refers to an object and is not **Nothing**
+- [IsNotNull](Strict#isnotnull) -- asserts that *Value* is not the **Null** value of a **Variant**
+- [IsNull](Strict#isnull) -- asserts that *Value* is the **Null** value of a **Variant**
+- [IsTrue](Strict#istrue) -- asserts that *Condition* evaluates to **True**
+- [NotSequenceEquals](Strict#notsequenceequals) -- asserts that *Actual* and *Expected* differ in length or in at least one element
+- [SequenceEquals](Strict#sequenceequals) -- asserts that *Actual* and *Expected* contain the same elements in the same order
+- [Succeed](Strict#succeed) -- records that the test reached this point without failure

@@ -89,6 +89,16 @@ Syntax: **Exact.AreEqual** *Expected*, *Actual* [, *Message* ]
 
 The comparison follows this module's [comparison semantics](#comparison-semantics) --- *Expected* and *Actual* must have the same datatype, strings are compared case-sensitively, and `Empty`, `vbNullString`, and `""` are all distinct from one another. If either operand is **Null**, the assertion fails --- `Null` is never equal to anything; use [**IsNull**](#isnull) to test for **Null** explicitly.
 
+```tb
+Exact.AreEqual 42, result          ' passes only if result is Long 42
+Exact.AreEqual "Hello", greeting   ' passes only if greeting is exactly "Hello"
+
+' These all fail under Exact:
+Exact.AreEqual 5, 5.0              ' Long vs Double — datatypes differ
+Exact.AreEqual "", vbNullString    ' the two empty-string forms are distinct
+Exact.AreEqual Empty, 0            ' Empty is distinct from 0
+```
+
 ### AreNotEqual
 
 Asserts that *Actual* is not equal to *Expected*.
@@ -104,7 +114,14 @@ Syntax: **Exact.AreNotEqual** *Expected*, *Actual* [, *Message* ]
 *Message*
 : *optional* A **String** included in the failure record if the values are equal.
 
-Comparison uses this module's [comparison semantics](#comparison-semantics). If either operand is **Null**, the assertion passes --- `Null` is never equal to anything.
+The comparison follows this module's [comparison semantics](#comparison-semantics) --- *Expected* and *Actual* must have the same datatype for the values to be considered equal, strings are compared case-sensitively, and `Empty`, `vbNullString`, and `""` are all treated as distinct values. If either operand is **Null**, the assertion passes --- `Null` is never equal to anything, including another `Null`.
+
+```tb
+Exact.AreNotEqual 5, 6             ' passes — different values
+Exact.AreNotEqual "A", "a"         ' passes — case-sensitive, so "A" <> "a"
+Exact.AreNotEqual 5, 5.0           ' passes — Long vs Double, datatypes differ
+Exact.AreNotEqual "", vbNullString ' passes — distinct empty-string forms
+```
 
 ### AreSame
 
@@ -137,6 +154,15 @@ Syntax: **Exact.AreNotSame** *Expected*, *Actual* [, *Message* ]
 
 *Message*
 : *optional* A **String** included in the failure record if the references are the same.
+
+Reference identity is independent of the module's other comparison rules --- **AreNotSame** always uses the **IsNot** operator, never default-member equality. To compare values rather than references, use [**AreNotEqual**](#arenotequal).
+
+```tb
+Dim a As New Collection
+Dim b As New Collection
+Exact.AreNotSame a, b   ' passes — a and b are distinct object instances
+Exact.AreNotSame a, a   ' fails — same reference
+```
 
 ## Boolean
 
@@ -208,7 +234,13 @@ Syntax: **Exact.IsNull** *Value* [, *Message* ]
 *Message*
 : *optional* A **String** included in the failure record if *Value* is not **Null**.
 
-Equivalent to checking [**IsNull**](../../Modules/Information/IsNull)`(Value) = True`. To check for the **Nothing** object reference instead, use [**IsNothing**](#isnothing).
+Equivalent to checking [**IsNull**](../../Modules/Information/IsNull)`(Value) = True`. Because `Null` is never equal to anything --- not even to itself --- the equality assertions ([**AreEqual**](#areequal), [**AreNotEqual**](#arenotequal)) cannot be used to test for **Null**; this assertion exists specifically for that purpose. To check for the **Nothing** object reference instead, use [**IsNothing**](#isnothing).
+
+```tb
+Dim rs As Object   ' assume this is a Recordset
+' A field value may be Null when the database column contains no data:
+Exact.IsNull rs.Fields("MiddleName").Value
+```
 
 ### IsNotNull
 
@@ -221,6 +253,19 @@ Syntax: **Exact.IsNotNull** *Value* [, *Message* ]
 
 *Message*
 : *optional* A **String** included in the failure record if *Value* is **Null**.
+
+**IsNotNull** is the inverse of [**IsNull**](#isnull): it passes when `IsNull(Value)` would return **False**, and fails when `IsNull(Value)` would return **True**. Because `Null` is never considered equal to anything --- including itself --- `AreNotEqual(Null, value)` is not a reliable way to assert the absence of **Null**; **IsNotNull** is the correct assertion for that purpose. To check for the **Nothing** object reference instead, use [**IsNotNothing**](#isnotnothing).
+
+```tb
+Sub TestQueryResult()
+    Dim result As Variant
+    result = db.ReadField("Name")
+
+    ' Assert the field was present and not null before inspecting its value.
+    Exact.IsNotNull result, "expected a non-null Name field"
+    Exact.AreEqual "Alice", result
+End Sub
+```
 
 ## Sequence
 

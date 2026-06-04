@@ -103,7 +103,16 @@ Syntax: **Strict.AreNotEqual** *Expected*, *Actual* [, *Message* ]
 *Message*
 : *optional* A **String** included in the failure record if the values are equal.
 
-Comparison uses this module's [comparison semantics](#comparison-semantics). If either operand is **Null**, the assertion passes --- `Null` is never equal to anything.
+The comparison follows this module's [comparison semantics](#comparison-semantics) --- strings are compared case-sensitively, object references are compared by identity, and everything else uses normal twinBASIC equality. If either operand is **Null**, the assertion passes --- `Null` is never equal to anything, including another `Null`.
+
+```tb
+Strict.AreNotEqual "Hello", "hello"  ' passes — strings are compared case-sensitively
+Strict.AreNotEqual 1, 2              ' passes — different numeric values
+
+' Under Strict, numeric promotions apply, so these would fail (the values are equal):
+' Strict.AreNotEqual 5, 5.0           ' fails — 5 and 5.0 are equal under twinBASIC equality
+' Strict.AreNotEqual "", vbNullString  ' fails — both are the empty string
+```
 
 ### AreSame
 
@@ -136,6 +145,15 @@ Syntax: **Strict.AreNotSame** *Expected*, *Actual* [, *Message* ]
 
 *Message*
 : *optional* A **String** included in the failure record if the references are the same.
+
+Reference identity is independent of the module's other comparison rules --- **AreNotSame** always uses the **IsNot** operator, never default-member equality. To compare values rather than references, use [**AreNotEqual**](#arenotequal).
+
+```tb
+Dim a As New Collection
+Dim b As New Collection
+Strict.AreNotSame a, b   ' passes — a and b are distinct object instances
+Strict.AreNotSame a, a   ' fails — same reference
+```
 
 ## Boolean
 
@@ -195,6 +213,16 @@ Syntax: **Strict.IsNotNothing** *Value* [, *Message* ]
 *Message*
 : *optional* A **String** included in the failure record if *Value* is **Nothing**.
 
+This is the complement of [**IsNothing**](#isnothing), equivalent to `Value IsNot Nothing`. Use this assertion to confirm that a factory call, a lookup, or any other expression that is expected to return an object did not return **Nothing**.
+
+```tb
+Dim result As Widget
+Set result = factory.CreateWidget("blue")
+Strict.IsNotNothing result   ' fails if CreateWidget returned Nothing
+```
+
+To check for the **Null** value of a **Variant** rather than an unset object reference, use [**IsNotNull**](#isnotnull).
+
 ### IsNull
 
 Asserts that *Value* is the **Null** value of a **Variant**.
@@ -220,6 +248,19 @@ Syntax: **Strict.IsNotNull** *Value* [, *Message* ]
 
 *Message*
 : *optional* A **String** included in the failure record if *Value* is **Null**.
+
+**IsNotNull** is the inverse of [**IsNull**](#isnull): it passes when `IsNull(Value)` would return **False**, and fails when `IsNull(Value)` would return **True**. Because `Null` is never considered equal to anything --- including itself --- `AreNotEqual(Null, value)` is not a reliable way to assert the absence of **Null**; **IsNotNull** is the correct assertion for that purpose. To check for the **Nothing** object reference instead, use [**IsNotNothing**](#isnotnothing).
+
+```tb
+Sub TestQueryResult()
+    Dim result As Variant
+    result = db.ReadField("Name")
+
+    ' Assert the field was present and not null before inspecting its value.
+    Strict.IsNotNull result, "expected a non-null Name field"
+    Strict.AreEqual "Alice", result
+End Sub
+```
 
 ## Sequence
 
@@ -254,6 +295,20 @@ Syntax: **Strict.NotSequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
 
 *FailMessage*
 : *optional* A **String** included in the failure record if the sequences are equal.
+
+Both arguments must support iteration via **For Each**. The assertion passes when the two sequences have a different element count, or when any corresponding element pair differs under this module's comparison rules --- strings are compared case-sensitively, numeric values are compared with normal twinBASIC equality (so `5` equals `5.0`), and object references are compared by identity. **NotSequenceEquals** is the inverse of [**SequenceEquals**](#sequenceequals): if **SequenceEquals** would pass, **NotSequenceEquals** fails, and vice versa.
+
+```tb
+Dim expected(0 To 1) As String
+expected(0) = "alpha"
+expected(1) = "beta"
+
+Dim actual(0 To 1) As String
+actual(0) = "alpha"
+actual(1) = "Beta"   ' differs in case
+
+Strict.NotSequenceEquals expected, actual   ' passes — "beta" <> "Beta" under case-sensitive comparison
+```
 
 ## See Also
 
