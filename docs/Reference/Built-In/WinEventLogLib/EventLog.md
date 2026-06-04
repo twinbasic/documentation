@@ -60,7 +60,7 @@ Syntax: *object*.**LogFailure** *EventId*, *CategoryId* [, *AdditionalStrings* .
 : *required* A *T2* value naming the category the event belongs to. Becomes the numeric **Task Category** column.
 
 *AdditionalStrings*
-: *optional* A **ParamArray** of values inserted into the event's message string at the `%1`, `%2`, … placeholders. Each value is converted to a **String** before being passed to `ReportEventW`.
+: *optional* A **ParamArray** of values inserted into the event's message string at the `%1`, `%2`, ... placeholders. Each value is converted to a **String** before being passed to `ReportEventW`.
 
 > [!NOTE]
 > Despite the name, **LogFailure** writes an **Error** entry --- the Windows event type `EVENTLOG_ERROR_TYPE` (= 1). It does *not* write an *Audit Failure* entry. That event type, and *Warning* and *Audit Success*, are not currently reachable through this class.
@@ -78,13 +78,15 @@ Syntax: *object*.**LogSuccess** *EventId*, *CategoryId* [, *AdditionalStrings* .
 : *required* A *T1* value naming the event being reported. Becomes the numeric **Event ID** column in the Event Viewer.
 
 *CategoryId*
-: *required* A *T2* value naming the category the event belongs to.
+: *required* A *T2* value naming the category the event belongs to. Becomes the numeric **Task Category** column.
 
 *AdditionalStrings*
-: *optional* A **ParamArray** of values inserted into the event's message string at the `%1`, `%2`, … placeholders.
+: *optional* A **ParamArray** of values inserted into the event's message string at the `%1`, `%2`, ... placeholders. Each value is converted to a **String** before being passed to `ReportEventW`.
 
 > [!NOTE]
 > The Windows event type for this call is `EVENTLOG_SUCCESS` (= 0), which is the Win32 SDK's literal name for the **Information** event type --- *not* an Audit Success entry. The class spells the method **LogSuccess** to track the SDK constant, but the entries that appear in `eventvwr.msc` are tagged **Information**.
+
+The first call after construction lazily resolves the source handle via `RegisterEventSourceW`; if [**Register**](#register) has not been run for this *LogName*, the entry is still written but the Event Viewer cannot resolve the message strings and shows *"The description for Event ID X cannot be found"*.
 
 ### New
 {: .no_toc }
@@ -94,9 +96,21 @@ Constructs an **EventLog** instance bound to a single source name.
 Syntax: **New EventLog(Of** *T1*, *T2* **)** ( *LogName* )
 
 *LogName*
-: *required* A **String** naming the source. See the top of this page for the leaf-name vs full-path syntax.
+: *required* A **String** naming the event source. A simple name such as `"MyService"` registers the source under the **Application** parent log (`Application\MyService`). A backslash-separated path such as `"System\MyService"` registers the source under the named parent log instead. The final segment is always the source name and appears in the Event Viewer's **Source** column.
 
-The constructor only stores *LogName*. The first call to [**LogSuccess**](#logsuccess) / [**LogFailure**](#logfailure) lazily acquires the Win32 source handle via `RegisterEventSourceW`. [**Register**](#register) writes the registry entries the Event Viewer reads when rendering messages --- it must be run separately, once, with admin rights.
+The constructor only stores *LogName*; no Win32 call is made at construction time. The source handle is acquired lazily by `RegisterEventSourceW` on the first call to [**LogSuccess**](#logsuccess) or [**LogFailure**](#logfailure). If the handle cannot be acquired at that point, run-time error 5 is raised.
+
+[**Register**](#register) must be called separately --- once, with administrator rights --- to write the registry entries the Event Viewer reads when rendering message strings. Constructing an **EventLog** instance and calling [**LogSuccess**](#logsuccess) / [**LogFailure**](#logfailure) without a prior [**Register**](#register) still writes entries to the log, but the Event Viewer cannot resolve message strings and displays *"The description for Event ID X cannot be found"* for each entry.
+
+Both type arguments *T1* and *T2* are required at instantiation; twinBASIC does not deduce them from the *LogName* argument.
+
+```tb
+' Bind to "MyService" under the Application log.
+Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+
+' Bind to a source under a named parent log.
+Dim SysLog As New EventLog(Of MyEventIds, MyCategories)("System\MyService")
+```
 
 ### Register
 {: .no_toc }
@@ -119,6 +133,35 @@ The Event Viewer renders message strings by loading **EventMessageFile** and loo
 If the registry key cannot be opened for write, **Register** raises run-time error 5 *"Failed to register event log source (\<LogName\>)"*. Typical causes are insufficient privileges and a *LogPath* that points at a non-existent parent log.
 
 The lower-level [**EventLogHelperPublic.RegisterEventLogInternal**](EventLogHelperPublic#registereventloginternal) is what **Register** delegates to; use it directly only when registering a source without binding it to a generic *T2* (and so without using **GetDeclaredMaxEnumValue** to derive the category count).
+
+## Example
+
+This example registers a source on first install (requires admin) and then writes an **Information**-type entry at runtime.
+
+```tb
+Public Enum MyEventIds
+    StartupOk       = 1000
+    StartupFailed   = 1001
+    ShutdownClean   = 1100
+End Enum
+
+Public Enum MyCategories
+    General = 1
+    Network = 2
+End Enum
+
+' One-time install step (requires admin):
+Sub Install()
+    Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+    Log.Register
+End Sub
+
+' Runtime use (no admin required):
+Sub OnServiceStart()
+    Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+    Log.LogSuccess StartupOk, General, "Service started", App.ModulePath
+End Sub
+```
 
 ## See Also
 

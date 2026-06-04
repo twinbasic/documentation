@@ -10,9 +10,6 @@ has_toc: false
 
 A single low-level helper that writes the registry entries Windows reads when rendering Event Log messages. Most projects do not call into this module directly --- [**EventLog.Register**](EventLog#register) wraps the call and automatically supplies the category count from the *T2* type argument. Use **EventLogHelperPublic** only when registering a source outside the generic [**EventLog**](EventLog) class (for example, when the category count cannot be derived from a declared enum).
 
-* TOC
-{:toc}
-
 ## RegisterEventLogInternal
 
 Writes the registry entries that declare the running EXE as the message provider for an event source.
@@ -34,7 +31,22 @@ Creates `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\<LogPath>` and writes:
 > [!IMPORTANT]
 > **RegisterEventLogInternal** writes under `HKEY_LOCAL_MACHINE` and requires administrator rights. The usual pattern is to call it once from an elevated installer, not from the application's normal startup path.
 
-If the registry key cannot be opened for write, **RegisterEventLogInternal** raises run-time error 5 with the message *"Failed to register event log source (\<LogName\>)"*, where `<LogName>` is the trailing segment of *LogPath*. Typical causes are insufficient privileges and a *LogPath* whose parent log (e.g. `"Application"`, `"System"`) does not exist.
+If the registry key cannot be opened for write, **RegisterEventLogInternal** raises run-time error 5 with the message *"Failed to register event log source (\<LogName\>)"*, where `<LogName>` is the trailing segment of *LogPath*. Typical causes are insufficient privileges and a *LogPath* whose parent log (for example, `"Application"` or `"System"`) does not exist.
+
+### Example
+
+This example registers a custom event source under the Application log, supplying three categories.
+
+```tb
+' Requires administrator rights.
+EventLogHelperPublic.RegisterEventLogInternal "Application\MyService", 3
+```
+
+To register under a non-default parent log, pass the full path:
+
+```tb
+EventLogHelperPublic.RegisterEventLogInternal "System\MyService", 3
+```
 
 ## See Also
 

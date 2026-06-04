@@ -4,6 +4,12 @@ parent: Built-In Packages
 nav_order: 8
 permalink: /tB/Packages/WinEventLogLib/
 has_toc: false
+exclude_from_docs:
+  - EventLogHelperPrivate
+  - EventLogAPIs
+exclude_kinds:
+  - Declare
+indexed_from: beta-x-0983
 ---
 
 # WinEventLogLib Package
@@ -143,7 +149,16 @@ The three other Windows Event Log entry types --- **Warning**, **Audit Success**
 ## Classes
 
 - [EventLog](EventLog) -- the generic event-log source -- open / register / log entries against one event log, parameterised by an event-ID enum and a category enum
+  - [LogFailure](EventLog#logfailure) -- writes an **Error**-type entry to the log
+  - [LogSuccess](EventLog#logsuccess) -- writes an **Information**-type entry to the log
+  - [New](EventLog#new) -- constructs an **EventLog** instance bound to a single source name
+  - [Register](EventLog#register) -- writes the registry entries that declare this EXE as the message provider for the source
+
+## Enumerations
+
+- [EventLogTypeConstants](EventLogTypeConstants) -- the Windows Event Log entry-type constants (`EVENTLOG_SUCCESS`, `EVENTLOG_ERROR_TYPE`, etc.) passed to `ReportEventW`
 
 ## Modules
 
 - [EventLogHelperPublic](EventLogHelperPublic) -- the low-level registry helper underlying [**EventLog.Register**](EventLog#register); call it directly only when a category count must be supplied without using the generic class
+  - [RegisterEventLogInternal](EventLogHelperPublic#registereventloginternal) -- writes the registry entries that declare the running EXE as the message provider for an event source
