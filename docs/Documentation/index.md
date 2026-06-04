@@ -32,5 +32,6 @@ A single `build.bat` run executes `tbdocs` against a shared task DAG, dispatched
     - [Pipeline Stages](Development/Pipeline-Stages) --- complete interface reference: per-task signatures and per-module export tables, plus the scheduler-level concepts (flag bits, task lifecycle, SAB layout).
     - [Book Configuration](Development/Book-Configuration) --- `_book.yml` key reference for the PDF chapter manifest.
     - [Extending the Builder](Development/Extending) --- tutorial for adding a new pipeline task, markdown-it plugin, or render-worker sub-stage.
+- [Wisdom](Development/Wisdom) --- the Discord knowledge harvester: a three-phase tool (export, process, extract) that mines the twinBASIC Discord for actionable technical knowledge and drafts documentation additions for human review.
 - [PDF Generation](Development/PDF-Generation) --- internals of the PDF renderer: `render-book.mjs`, paged.browser.js, and the pdf-lib shims.
 - [Library Patches](Development/Fixes) --- every modification to `paged.browser.js` and the `fast-*.mjs` pdf-lib shims: upstream problem, applied fix, and mechanism.
