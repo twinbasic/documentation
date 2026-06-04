@@ -1,4 +1,5 @@
 import { snowflakeToTimestamp } from '../discord/api.mjs'
+import { highestSnowflake } from '../discord/messages.mjs'
 
 export function buildFrontmatter(thread, messages, tagMap, channelMap) {
   const channel = channelMap[thread.parent_id]
@@ -30,6 +31,13 @@ export function buildFrontmatter(thread, messages, tagMap, channelMap) {
   }
   if (archived) fm.archived = archived
   fm.message_count = messages.length
+  // Phase 3 watermark: highest snowflake among the messages.  Monotonic and
+  // time-encoded, stable across filesystem operations that would invalidate
+  // an mtime watermark (git checkout, cross-platform clones, OneDrive sync,
+  // etc.).  Paired with message_count to catch deletions of the most recent
+  // message (where the snowflake regresses).
+  const lastMessageId = highestSnowflake(messages)
+  if (lastMessageId) fm.last_message_id = lastMessageId
   fm.reply_count = Math.max(0, messages.length - 1)
   if (Object.keys(starterReactions).length) fm.starter_reactions = starterReactions
   if (Object.keys(topReactions).length) fm.top_reactions = topReactions
@@ -49,6 +57,7 @@ export function serializeFrontmatter(fm) {
   lines.push(`created: ${quote(fm.created)}`)
   if (fm.archived) lines.push(`archived: ${quote(fm.archived)}`)
   lines.push(`message_count: ${fm.message_count}`)
+  if (fm.last_message_id) lines.push(`last_message_id: ${quote(fm.last_message_id)}`)
   lines.push(`reply_count: ${fm.reply_count}`)
   if (fm.starter_reactions) {
     lines.push('starter_reactions:')

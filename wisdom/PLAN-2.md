@@ -69,6 +69,7 @@ tags: ["Answered", "WebView2"]
 created: "2024-03-15T10:23:00Z"
 archived: "2024-03-18T14:05:00Z"   # omit for active threads
 message_count: 12
+last_message_id: "1234567890999999999"  # snowflake of the newest message; Phase 3 watermark
 reply_count: 11                     # message_count minus the starter
 starter_reactions:
   "👍": 5
@@ -95,6 +96,8 @@ top_reactions:
 ```
 
 `has_answer` is the strongest single quality signal — it means a community member or maintainer marked the thread resolved.
+
+`last_message_id` is Phase 3's watermark. It carries the snowflake of the newest message in the thread (Discord snowflakes are monotonic and time-encoded), and pairs with `message_count` to let `extract` cheaply detect whether a thread has gained or lost content since its findings were last produced. The pair is content-derived, so it survives `git checkout`, cross-platform clones, filesystem syncs, and other operations that would invalidate a filesystem-mtime watermark.
 
 ---
 

@@ -38,6 +38,26 @@ export function buildPackageSummary(sitemap) {
     .join('\n')
 }
 
+// Flat { "Package/Title" → path, "Title" → path (if unambiguous) } for agent-side resolution.
+export function buildPageIndex(sitemap) {
+  const index = {}
+  const titleCount = {}
+  for (const entry of sitemap) {
+    const rel = entry.path.replace(/^docs\/Reference\//, '')
+    const parts = rel.split('/')
+    const pkg = parts[0]
+    index[`${pkg}/${entry.title}`] = entry.path
+    titleCount[entry.title] = (titleCount[entry.title] || 0) + 1
+  }
+  // Unambiguous titles get a bare-title shortcut
+  for (const entry of sitemap) {
+    if (titleCount[entry.title] === 1) {
+      index[entry.title] = entry.path
+    }
+  }
+  return index
+}
+
 function walk(dir, callback) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)

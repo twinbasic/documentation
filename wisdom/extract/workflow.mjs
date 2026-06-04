@@ -1,3 +1,32 @@
+// Invocation (after running `node wisdom/wisdom.mjs extract`):
+//
+// Single-batch (<=200 threads — prep writes extract-prep.json):
+//   1. Read wisdom/data/findings/extract-prep.json, pass its parsed contents
+//      as `args` to the Workflow tool with scriptPath
+//      "wisdom/extract/workflow.mjs".
+//   2. Write the returned additions array to extract-results-0.json.
+//   3. Run `node wisdom/wisdom.mjs extract --merge` to graft the results into
+//      staging.md and advance the watermark in extract-state.json.
+//
+// Multi-batch (>200 threads — prep writes extract-manifest.json + batch files):
+//   1. Read wisdom/data/findings/extract-manifest.json.
+//   2. For each batch in manifest.batches:
+//      a. Read the batch file (e.g. extract-batch-0.json).
+//      b. Pass its contents as `args` to the Workflow tool.
+//      c. Write the returned additions array to extract-results-{i}.json.
+//      d. Skip batches whose result file already exists (resumability).
+//   3. Run `node wisdom/wisdom.mjs extract --merge` to graft all batches.
+//
+// Batch files are small (~19 KB): thread file paths, per-thread file sizes
+// (for byte-budget grouping), and config.  Shared reference data
+// (package-summary.txt, page-index.json) lives in wisdom/data/findings/ and
+// is read by agents directly.  The Workflow tool delivers args as a JSON
+// string, so the script parses it on entry.
+//
+// The workflow returns { additions: [...] } only — no rendered staging.
+// Rendering and grafting are handled by `extract --merge`, which preserves
+// pending review state in the long-lived staging.md.
+
 export const meta = {
   name: 'wisdom-extract',
   description: 'Extract technical knowledge from Discord threads and draft documentation additions',
@@ -9,7 +38,7 @@ export const meta = {
 
 // --- Schemas (inlined — workflow scripts cannot import modules) ---
 
-const EXTRACTION_SCHEMA = {
+var EXTRACTION_SCHEMA = {
   type: 'object',
   properties: {
     findings: {
@@ -17,6 +46,7 @@ const EXTRACTION_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          thread_path:    { type: 'string' },
           package:        { type: 'string' },
           symbol:         { type: ['string', 'null'] },
           kind:           { enum: ['gotcha', 'workaround', 'example', 'clarification', 'deprecation'] },
@@ -26,7 +56,7 @@ const EXTRACTION_SCHEMA = {
           date_earliest:  { type: 'string' },
           date_latest:    { type: 'string' },
         },
-        required: ['package', 'kind', 'summary', 'detail', 'confidence',
+        required: ['thread_path', 'package', 'kind', 'summary', 'detail', 'confidence',
                    'date_earliest', 'date_latest'],
       },
     },
@@ -34,7 +64,7 @@ const EXTRACTION_SCHEMA = {
   required: ['findings'],
 }
 
-const ADDITION_SCHEMA = {
+var ADDITION_SCHEMA = {
   type: 'object',
   properties: {
     additions: {
@@ -42,6 +72,7 @@ const ADDITION_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          thread_path:    { type: 'string' },
           target_page:    { type: 'string' },
           section:        { enum: ['after-remarks', 'example', 'see-also', 'new-section'] },
           draft:          { type: 'string' },
@@ -50,7 +81,7 @@ const ADDITION_SCHEMA = {
           date_latest:    { type: 'string' },
           reviewer_note:  { type: ['string', 'null'] },
         },
-        required: ['target_page', 'section', 'draft', 'confidence',
+        required: ['thread_path', 'target_page', 'section', 'draft', 'confidence',
                    'date_earliest', 'date_latest'],
       },
     },
@@ -58,164 +89,97 @@ const ADDITION_SCHEMA = {
   required: ['additions'],
 }
 
-// --- Helper functions (pure JS — no Node.js APIs) ---
+// --- Shared file paths (written by the prep step, read by agents) ---
 
-function buildPageLookup(sitemap) {
-  var lookup = {}
-  for (var i = 0; i < sitemap.length; i++) {
-    var entry = sitemap[i]
-    var rel = entry.path.replace(/^docs\/Reference\//, '')
-    var parts = rel.split('/')
-    var pkg = parts[0]
-    var key = pkg + '/' + entry.title
-    lookup[key] = entry.path
-    if (!lookup['_' + entry.title]) {
-      lookup['_' + entry.title] = entry.path
-    } else {
-      lookup['_' + entry.title] = null
-    }
-  }
-  return lookup
-}
-
-function resolveTargetPage(lookup, pkg, symbol) {
-  if (symbol) {
-    var dotParts = symbol.split('.')
-    var className = dotParts[0]
-    var qualified = lookup[pkg + '/' + className]
-    if (qualified) return qualified
-    var exact = lookup[pkg + '/' + symbol]
-    if (exact) return exact
-    var byTitle = lookup['_' + className]
-    if (byTitle) return byTitle
-    var bySymbol = lookup['_' + symbol]
-    if (bySymbol) return bySymbol
-  }
-  var idx = lookup[pkg + '/' + pkg + ' Package']
-  if (idx) return idx
-  for (var k in lookup) {
-    if (k.startsWith(pkg + '/') && lookup[k] && lookup[k].endsWith('index.md')) return lookup[k]
-  }
-  return null
-}
-
-function formatMeta(add) {
-  var parts = []
-  var sources = (add.finding_ids || []).join(' · ')
-  parts.push('_Source threads: ' + sources + ' · confidence: ' + (add.confidence || 'medium') + '_')
-  if (add.date_earliest || add.date_latest) {
-    var range = add.date_earliest === add.date_latest
-      ? add.date_earliest
-      : (add.date_earliest || '?') + ' to ' + (add.date_latest || '?')
-    parts.push('_Date range: ' + range + '_')
-  }
-  if (add.reviewer_note) parts.push('_Reviewer note: ' + add.reviewer_note + '_')
-  return parts
-}
-
-function renderStaging(additions) {
-  if (!additions.length) return '# Wisdom Extract -- Staging\n\nNo additions found.\n'
-
-  var unmapped = []
-  var mapped = []
-  for (var i = 0; i < additions.length; i++) {
-    if (additions[i].target_page === 'UNMAPPED') unmapped.push(additions[i])
-    else mapped.push(additions[i])
-  }
-
-  var lines = ['# Wisdom Extract -- Staging', '']
-
-  // Unmapped findings first
-  if (unmapped.length) {
-    lines.push('# Unmapped Findings', '')
-    lines.push('_These findings do not map to an existing documentation page. The reviewer ' +
-      'decides: create a new page, attach to a package index, fold into an existing page, ' +
-      'or discard._', '')
-    for (var ui = 0; ui < unmapped.length; ui++) {
-      var u = unmapped[ui]
-      lines.push('## UNMAPPED · ' + u.section, '')
-      lines.push(u.draft, '')
-      var meta = formatMeta(u)
-      for (var ml = 0; ml < meta.length; ml++) lines.push(meta[ml])
-      lines.push('', '---', '')
-    }
-  }
-
-  // Mapped additions grouped by target page + section
-  if (mapped.length) {
-    var groups = {}
-    for (var mi = 0; mi < mapped.length; mi++) {
-      var add = mapped[mi]
-      var key = add.target_page + ' · ' + add.section
-      if (!groups[key]) groups[key] = []
-      groups[key].push(add)
-    }
-
-    var keys = Object.keys(groups).sort()
-    for (var ki = 0; ki < keys.length; ki++) {
-      var adds = groups[keys[ki]]
-      for (var ai = 0; ai < adds.length; ai++) {
-        var a = adds[ai]
-        var heading = '## ' + keys[ki]
-        if (adds.length > 1) {
-          var others = []
-          for (var oi = 0; oi < adds.length; oi++) {
-            if (oi !== ai) {
-              var ids = adds[oi].finding_ids || []
-              for (var fi = 0; fi < ids.length; fi++) others.push(ids[fi])
-            }
-          }
-          heading += ' [DUPLICATE? -- see also thread ' + others.join(', ') + ']'
-        }
-        lines.push(heading, '')
-        lines.push(a.draft, '')
-        var meta = formatMeta(a)
-        for (var ml = 0; ml < meta.length; ml++) lines.push(meta[ml])
-        lines.push('', '---', '')
-      }
-    }
-  }
-
-  return lines.join('\n')
-}
+var FINDINGS_DIR = 'wisdom/data/findings'
+var PKG_SUMMARY_FILE = FINDINGS_DIR + '/package-summary.txt'
+var PAGE_INDEX_FILE = FINDINGS_DIR + '/page-index.json'
 
 // --- Main workflow ---
 
-// args: {
-//   sitemap:        [{path, title, permalink, parent}],
-//   packageSummary: string,
-//   threads:        [{path, thread_id, channel, created, message_count, has_answer, tags}],
-//   config:         {minConfidence, dryRun}
+// args (JSON string, parsed below): {
+//   threads:      [path, ...],        — file paths to thread .md files
+//   thread_sizes: [bytes, ...],       — parallel array of file sizes (for grouping)
+//   config:       { minConfidence }
 // }
 
-var CONFIDENCE_RANK = { low: 0, medium: 1, high: 2 }
-var minConf = CONFIDENCE_RANK[(args.config && args.config.minConfidence) || 'low']
-var pageLookup = buildPageLookup(args.sitemap)
+var data = typeof args === 'string' ? JSON.parse(args) : args
 
-log('Processing ' + args.threads.length + ' threads against ' + args.sitemap.length + ' doc pages')
+var CONFIDENCE_RANK = { low: 0, medium: 1, high: 2 }
+var minConf = CONFIDENCE_RANK[(data.config && data.config.minConfidence) || 'low']
+
+// --- Group threads by total bytes to reduce agent calls ---
+// Threads above MAX_SOLO_SIZE get their own group.  Everything else is packed
+// into groups whose cumulative size approaches TARGET_GROUP_BYTES.
+
+var TARGET_GROUP_BYTES = 25000
+var MAX_SOLO_SIZE = 15000
+
+var groups = []
+var currentGroup = [], currentBytes = 0
+for (var ti = 0; ti < data.threads.length; ti++) {
+  var tp = data.threads[ti]
+  var size = (data.thread_sizes && data.thread_sizes[ti]) || 3000
+  if (size > MAX_SOLO_SIZE) {
+    groups.push([tp])
+  } else {
+    currentGroup.push(tp)
+    currentBytes += size
+    if (currentBytes >= TARGET_GROUP_BYTES) {
+      groups.push(currentGroup)
+      currentGroup = []; currentBytes = 0
+    }
+  }
+}
+if (currentGroup.length) groups.push(currentGroup)
+
+log('Processing ' + data.threads.length + ' threads in ' + groups.length + ' groups (' +
+    groups.filter(function(g) { return g.length > 1 }).length + ' batched, ' +
+    groups.filter(function(g) { return g.length === 1 }).length + ' solo)')
 
 phase('Extract')
 
 var results = await pipeline(
-  args.threads,
+  groups,
 
-  // Stage 1: extraction — read thread, identify findings
-  function (thread) {
+  // Stage 1: extraction — read thread(s), identify findings
+  function (group) {
+    var firstName = group[0].split('/').pop().replace(/\.md$/, '')
+    if (firstName.length > 40) firstName = firstName.slice(0, 40)
+    var label = group.length > 1
+      ? firstName + '+' + (group.length - 1)
+      : firstName
+
+    var fileList = ''
+    for (var gi = 0; gi < group.length; gi++) {
+      fileList += (gi + 1) + '. Read: ' + group[gi] + '\n'
+    }
+
     return agent(
-      'You are analyzing a Discord thread from the twinBASIC community for actionable ' +
-      'technical knowledge that belongs in the twinBASIC documentation.\n\n' +
+      'You are analyzing ' + group.length + ' Discord thread(s) from the twinBASIC ' +
+      'community for actionable technical knowledge that belongs in the twinBASIC ' +
+      'documentation.\n\n' +
 
-      'Read the thread file at: ' + thread.path + '\n\n' +
+      '## Input files\n\n' +
 
-      'The documentation site covers these packages and symbols:\n' +
-      args.packageSummary + '\n\n' +
+      fileList +
+      (group.length + 1) + '. Read the package summary at: ' + PKG_SUMMARY_FILE + '\n' +
+      '   This lists every documented package and its public symbols.\n\n' +
+
+      'Each thread file has YAML frontmatter (thread_id, channel, message_count, ' +
+      'has_answer, tags) followed by the rendered conversation.\n\n' +
+
+      '## Task\n\n' +
 
       'Extract actionable findings: gotchas, workarounds, non-obvious behaviors, usage ' +
-      'patterns, corrected misconceptions. Return an empty findings array if the thread ' +
-      'is off-topic, purely social, unanswered, or has no actionable technical content.\n\n' +
+      'patterns, corrected misconceptions. Return an empty findings array if none of ' +
+      'the threads contain actionable technical content.\n\n' +
 
-      'Rules:\n' +
+      '## Rules\n\n' +
+
       '- One finding per distinct technical point. Do not bundle unrelated points.\n' +
+      '- thread_path: the EXACT file path of the thread this finding came from ' +
+        '(copy it verbatim from the list above).\n' +
       '- package: the top-level package name (e.g. "WebView2", "VBA", "VB", "CEF", ' +
         '"CustomControls", "VBRUN", "Core").\n' +
       '- symbol: the most specific qualified name (e.g. "WebView2.Navigate", "Split", ' +
@@ -233,23 +197,21 @@ var results = await pipeline(
         'that inform this finding. Use the timestamps shown on each message line.\n' +
       '- Do not extract findings about already-obvious API surface behavior.\n' +
       '- Prefer findings that are surprising or not obvious from the API alone.\n\n' +
-
-      'Thread metadata:\n' +
-      '  Thread ID: ' + thread.thread_id + '\n' +
-      '  Channel: ' + thread.channel + '\n' +
-      '  Has answer tag: ' + thread.has_answer + '\n' +
-      '  Message count: ' + thread.message_count + '\n' +
-      '  Tags: ' + ((thread.tags && thread.tags.length) ? thread.tags.join(', ') : 'none') + '\n',
+      'IMPORTANT: You MUST return your result by calling the StructuredOutput tool. ' +
+      'Do NOT respond with plain text. Call the StructuredOutput tool with a ' +
+      '{"findings": [...]} object matching the required schema. If there are no ' +
+      'findings, call StructuredOutput with {"findings": []}.\n',
       {
-        label: 'extract:' + thread.channel + '/' + thread.thread_id,
+        label: 'extract:' + label,
         phase: 'Extract',
         schema: EXTRACTION_SCHEMA,
+        model: 'sonnet',
       }
     )
   },
 
   // Stage 2: drafting — map findings to doc pages, write prose
-  function (extraction, thread) {
+  function (extraction, group) {
     if (!extraction || !extraction.findings || !extraction.findings.length) return null
 
     // Filter by minimum confidence
@@ -260,52 +222,45 @@ var results = await pipeline(
     }
     if (!findings.length) return null
 
-    // Resolve target pages and add source_thread
-    var mapped = []
-    for (var j = 0; j < findings.length; j++) {
-      var finding = findings[j]
-      mapped.push({
-        package: finding.package,
-        symbol: finding.symbol,
-        kind: finding.kind,
-        summary: finding.summary,
-        detail: finding.detail,
-        confidence: finding.confidence,
-        source_thread: thread.thread_id,
-        resolved_page: resolveTargetPage(pageLookup, finding.package, finding.symbol),
-      })
-    }
-
-    // Collect unique target pages for the agent to read
-    var seen = {}
-    var targetPages = []
-    for (var k = 0; k < mapped.length; k++) {
-      var rp = mapped[k].resolved_page
-      if (rp && !seen[rp]) {
-        seen[rp] = true
-        targetPages.push(rp)
-      }
-    }
+    var firstName = group[0].split('/').pop().replace(/\.md$/, '')
+    if (firstName.length > 40) firstName = firstName.slice(0, 40)
+    var label = group.length > 1
+      ? firstName + '+' + (group.length - 1)
+      : firstName
 
     return agent(
       'You are drafting documentation additions for the twinBASIC docs site based on ' +
-      'findings extracted from a Discord thread.\n\n' +
+      'findings extracted from Discord threads.\n\n' +
 
-      (targetPages.length
-        ? 'Read these documentation pages to understand their current content and formatting:\n' +
-          targetPages.map(function (p) { return '- ' + p }).join('\n') + '\n\n'
-        : '') +
+      '## Input files\n\n' +
 
-      'Findings to draft additions for:\n' +
-      JSON.stringify(mapped, null, 2) + '\n\n' +
+      '1. Read the page index at: ' + PAGE_INDEX_FILE + '\n' +
+      '   This is a JSON object mapping "Package/Title" keys to repo-relative file paths ' +
+      '(e.g. "VBA/AppActivate" → "docs/Reference/VBA/Interaction/AppActivate.md"). ' +
+      'Unambiguous titles also appear as bare keys (e.g. "AppActivate" → same path).\n' +
+      '2. For each finding, resolve its target page:\n' +
+      '   a. Look up "<package>/<symbol>" (e.g. "WebView2/Navigate").\n' +
+      '   b. If symbol has a dot, also try "<package>/<className>" ' +
+        '(e.g. "WebView2/WebView2" for "WebView2.Navigate").\n' +
+      '   c. Fall back to "<package>/<Package> Package" for the package index page.\n' +
+      '   d. If none match, set target_page to "UNMAPPED".\n' +
+      '3. Read each resolved target page to understand its current content and formatting.\n\n' +
 
-      'Rules:\n' +
+      '## Findings to draft\n\n' +
+
+      JSON.stringify(findings, null, 2) + '\n\n' +
+
+      '## Rules\n\n' +
+
       '- Produce one addition per logical insertion point. Merge related findings ' +
         'targeting the same page section into a single addition.\n' +
+      '- thread_path: copy the thread_path from the finding(s) this addition is based on. ' +
+        'If an addition merges findings from multiple threads, use the thread_path of the ' +
+        'primary (highest-confidence) finding.\n' +
       '- target_page: repo-relative path (e.g. "docs/Reference/WebView2/WebView2/index.md"). ' +
-        'Use the resolved_page from the finding when available. If it is null and you can ' +
-        'identify an appropriate existing page, use that. If no existing page fits, set ' +
-        'target_page to "UNMAPPED" — do NOT skip the finding.\n' +
+        'Use the resolved path from the page index. If resolution fails and you can ' +
+        'identify an appropriate existing page by reading nearby files, use that. ' +
+        'Otherwise set target_page to "UNMAPPED" — do NOT skip the finding.\n' +
       '- section: "after-remarks" for behavioral notes and gotchas, "example" for code ' +
         'examples, "see-also" for cross-references, "new-section" for substantial new content.\n' +
       '- draft: the exact Markdown prose to insert.\n' +
@@ -317,15 +272,18 @@ var results = await pipeline(
       '    Do not reproduce findings verbatim — rewrite in the site\'s voice.\n' +
       '- For See Also entries: `- [Symbol](relative-url) -- short description`\n' +
       '- confidence: highest confidence among the contributing findings.\n' +
-      '- date_earliest, date_latest: the overall date range across all contributing findings ' +
-        '(earliest of all date_earliest values, latest of all date_latest values).\n' +
+      '- date_earliest, date_latest: the overall date range across all contributing findings.\n' +
       '- reviewer_note: set when the draft needs verification against the .twin source, ' +
         'or when it may conflict with existing page content. For UNMAPPED findings, include ' +
-        'the package and symbol so the reviewer can triage placement. null otherwise.\n',
+        'the package and symbol so the reviewer can triage placement. null otherwise.\n\n' +
+      'IMPORTANT: You MUST return your result by calling the StructuredOutput tool. ' +
+      'Do NOT respond with plain text. Call the StructuredOutput tool with an ' +
+      '{"additions": [...]} object matching the required schema.\n',
       {
-        label: 'draft:' + thread.channel + '/' + thread.thread_id,
+        label: 'draft:' + label,
         phase: 'Draft',
         schema: ADDITION_SCHEMA,
+        model: 'sonnet',
       }
     )
   }
@@ -333,17 +291,24 @@ var results = await pipeline(
 
 // --- Assemble results ---
 
+function threadIdFromPath(p) {
+  var parts = (p || '').split('/')
+  var filename = parts[parts.length - 1] || ''
+  return filename.split('--')[0]
+}
+
 var allAdditions = []
 for (var ri = 0; ri < results.length; ri++) {
   var r = results[ri]
   if (!r || !r.additions || !r.additions.length) continue
+
   for (var ai = 0; ai < r.additions.length; ai++) {
     var add = r.additions[ai]
     allAdditions.push({
       target_page:   add.target_page,
       section:       add.section,
       draft:         add.draft,
-      finding_ids:   [args.threads[ri].thread_id],
+      finding_ids:   [threadIdFromPath(add.thread_path)],
       confidence:    add.confidence || 'medium',
       date_earliest: add.date_earliest || null,
       date_latest:   add.date_latest || null,
@@ -352,8 +317,6 @@ for (var ri = 0; ri < results.length; ri++) {
   }
 }
 
-log('Extracted ' + allAdditions.length + ' additions from ' + args.threads.length + ' threads')
+log('Extracted ' + allAdditions.length + ' additions from ' + data.threads.length + ' threads')
 
-var staging = renderStaging(allAdditions)
-
-return { additions: allAdditions, staging: staging }
+return { additions: allAdditions }

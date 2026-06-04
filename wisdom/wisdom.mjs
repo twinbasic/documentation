@@ -8,7 +8,7 @@ import { createClient, CapReachedError, timestampToSnowflake, EXIT_CAP_REACHED }
 import { discoverChannels, fetchMembers } from './discord/discover.mjs'
 import { fetchMessages, loadManifest, saveManifest, highestSnowflake } from './discord/messages.mjs'
 import { runProcess } from './process/thread.mjs'
-import { runExtract } from './extract/prep.mjs'
+import { runExtract, runMerge } from './extract/prep.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -29,6 +29,8 @@ function parseArgs(argv) {
       case '--rate-limit':  flags.rateLimit = parseFloat(args[++i]); break
       case '--cap':         flags.cap = parseInt(args[++i], 10); break
       case '--dry-run':     flags.dryRun = true; break
+      case '--merge':       flags.merge = true; break
+      case '--all':         flags.all = true; break
       case '--min-confidence': flags.minConfidence = args[++i]; break
       default:
         process.stderr.write(`Unknown option: ${args[i]}\n`)
@@ -208,10 +210,17 @@ Process options:
 Extract options:
   --in <dir>            Input directory of processed .md files  [default: wisdom/data/threads]
   --out <dir>           Output directory for findings  [default: wisdom/data/findings]
-  --since <date>        Only analyse threads created after this date (ISO 8601)
   --channel <name>      Restrict to threads from this channel name (repeatable)
   --min-confidence <l>  Skip findings below this level: high | medium | low  [default: low]
-  --dry-run             Prepare data but do not write staging.md
+  --since <date>        Diagnostic: filter by thread created date; sideband output, no state update
+  --all                 Bootstrap: process all threads, ignoring state and channel filter
+  --force               Re-process threads even if their watermark matches state (pair with --channel to scope)
+  --dry-run             Write the prep file but do not invoke the workflow; state is not touched
+  --merge               Graft extract-results-*.json into staging.md and advance state (no agents)
+
+  Default mode is incremental: only threads whose last_message_id or message_count
+  has changed since the last successful merge are re-extracted.
+  --since, --all, and --force are mutually exclusive primary modes.
 `
 
 const { command, flags } = parseArgs(process.argv)
@@ -224,7 +233,8 @@ switch (command) {
     await runProcess(flags)
     break
   case 'extract':
-    await runExtract(flags)
+    if (flags.merge) await runMerge(flags)
+    else await runExtract(flags)
     break
   default:
     process.stderr.write(USAGE)
