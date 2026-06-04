@@ -4,6 +4,9 @@ parent: Built-In Packages
 nav_order: 10
 permalink: /tB/Packages/WinServicesLib/
 has_toc: false
+indexed_from: beta-x-0983
+exclude_from_docs:
+  - ServicesConstantsPublic
 ---
 
 # WinServicesLib Package
@@ -121,11 +124,47 @@ Calling [**Install**](ServiceManager#install) while running inside the twinBASIC
 
 ## Classes and interface
 
-- [Services](Services) -- the predeclared singleton coordinator: [**ConfigureNew**](Services#configurenew), [**RunServiceDispatcher**](Services#runservicedispatcher), the bulk install / uninstall helpers, plus the runtime control methods ([**LaunchService**](Services#launchservice), [**ControlService**](Services#controlservice), [**QueryStateOfService**](Services#querystateofservice))
-- [ServiceManager](ServiceManager) -- one per configured service; holds the fields the SCM cares about (name, description, type, start-mode, command-line, dependencies, ...) plus the [**ReportStatus**](ServiceManager#reportstatus) call the service uses to inform the SCM of state transitions
-- [ServiceCreator](ServiceCreator) -- the generic [**ServiceCreator**](ServiceCreator)`(Of T)` factory the dispatcher uses to instantiate each service class on demand; *T* must implement [**ITbService**](ITbService)
-- [ServiceState](ServiceState) -- a read-only state snapshot returned by [**Services.QueryStateOfService**](Services#querystateofservice), giving the SCM-reported state and process ID of an installed service
 - [ITbService](ITbService) -- the interface every service class implements: [**EntryPoint**](ITbService#entrypoint), [**StartupFailed**](ITbService#startupfailed), [**ChangeState**](ITbService#changestate)
+  - [ChangeState](ITbService#changestate) -- invoked on the dispatcher thread when the SCM delivers a control code (*Stop*, *Pause*, *Continue*, ...)
+  - [EntryPoint](ITbService#entrypoint) -- the service's main routine, invoked on the SCM-spawned service thread once the SCM handshake has completed
+  - [StartupFailed](ITbService#startupfailed) -- invoked when the SCM handshake fails before **EntryPoint** can run
+- [ServiceCreator](ServiceCreator) -- the generic [**ServiceCreator**](ServiceCreator)`(Of T)` factory the dispatcher uses to instantiate each service class on demand; *T* must implement [**ITbService**](ITbService)
+  - [CreateInstance](ServiceCreator#createinstance) -- returns a fresh `New T` cast as [**ITbService**](ITbService) for use by the dispatcher trampoline
+- [ServiceManager](ServiceManager) -- one per configured service; holds the fields the SCM cares about (name, description, type, start-mode, command-line, dependencies, ...) plus the [**ReportStatus**](ServiceManager#reportstatus) call the service uses to inform the SCM of state transitions
+  - [AutoInitializeCOM](ServiceManager#autoinitializecom) -- controls whether COM is initialized in STA mode on the service thread before **EntryPoint** is called; default **True**
+  - [DependentServices](ServiceManager#dependentservices) -- list of service names the SCM must auto-start before starting this service
+  - [Description](ServiceManager#description) -- human-readable description text displayed in `services.msc` and `sc.exe query`
+  - [Install](ServiceManager#install) -- registers this service in the SCM database; requires administrator rights
+  - [InstallStartMode](ServiceManager#installstartmode) -- the SCM start mode (*OnDemand*, *Auto*, *Disabled*, ...) the service is registered with
+  - [InstanceCreator](ServiceManager#instancecreator) -- the [**ServiceCreator(Of T)**](ServiceCreator) factory the dispatcher calls to create the **ITbService** instance at service start
+  - [Name](ServiceManager#name) -- the service's unique name in the SCM database, used by `services.msc` and `sc.exe`
+  - [New](ServiceManager#new) -- initializes a new **ServiceManager** with default configuration values
+  - [ReportStatus](ServiceManager#reportstatus) -- informs the SCM of the service's current state; called from inside **EntryPoint** and **ChangeState**
+  - [ResyncStatus](ServiceManager#resyncstatus) -- re-applies the cached `SERVICE_STATUS` to the SCM via `SetServiceStatus`
+  - [SERVICE_TABLE_ENTRYW](ServiceManager#service_table_entryw) -- internal Win32 UDT pairing a service name with its entry-point address; used by **RunServiceDispatcher**
+  - [ServiceEntryPoint](ServiceManager#serviceentrypoint) -- the SCM-invoked entry point that runs on the service thread; called by the package's dispatcher trampoline, not by user code
+  - [SupportsPausing](ServiceManager#supportspausing) -- whether the service advertises acceptance of *Pause* / *Continue* control codes to the SCM; default **False**
+  - [Type](ServiceManager#type) -- the Win32 service type (*OwnProcess*, *ShareProcess*, ...); default **tbServiceTypeOwnProcess**
+  - [Uninstall](ServiceManager#uninstall) -- removes this service from the SCM database; requires administrator rights
+- [Services](Services) -- the predeclared singleton coordinator: [**ConfigureNew**](Services#configurenew), [**RunServiceDispatcher**](Services#runservicedispatcher), the bulk install / uninstall helpers, plus the runtime control methods ([**LaunchService**](Services#launchservice), [**ControlService**](Services#controlservice), [**QueryStateOfService**](Services#querystateofservice))
+  - [_NewEnum](Services#_newenum) -- `For Each` enumerator across every configured [**ServiceManager**](ServiceManager) in insertion order
+  - [ConfigureNew](Services#configurenew) -- allocates a fresh **ServiceManager**, registers it internally, and returns it for the caller to populate
+  - [ControlService](Services#controlservice) -- sends an SCM control code (*Stop*, *Pause*, *Continue*, ...) to a running service by name
+  - [GetConfiguredService](Services#getconfiguredservice) -- looks up a previously-configured **ServiceManager** by its **Name**
+  - [InstallAll](Services#installall) -- calls **Install** on every configured **ServiceManager**; requires administrator rights
+  - [LaunchService](Services#launchservice) -- starts an installed service by name and optionally forwards launch arguments to **ServiceManager.LaunchArgs**
+  - [QueryStateOfService](Services#querystateofservice) -- returns a fresh **ServiceState** snapshot of an installed service
+  - [UninstallAll](Services#uninstallall) -- calls **Uninstall** on every configured **ServiceManager**; requires administrator rights
+- [ServiceState](ServiceState) -- a read-only state snapshot returned by [**Services.QueryStateOfService**](Services#querystateofservice), giving the SCM-reported state and process ID of an installed service
+  - [CheckPoint](ServiceState#checkpoint) -- the SCM-reported `dwCheckPoint` progress counter; auto-incremented by the package while the service is in a pending state
+  - [CurrentStateText](ServiceState#currentstatetext) -- human-readable rendering of **CurrentState** (e.g. `RUNNING`, `STOPPING`, `STOPPED`)
+  - [ExitCode](ServiceState#exitcode) -- the Win32 exit code the service reported when it last stopped
+  - [Flags](ServiceState#flags) -- the SCM-reported `dwServiceFlags` bitmask (e.g. `SERVICE_RUNS_IN_SYSTEM_PROCESS`)
+  - [New](ServiceState#new) -- initializes a **ServiceState** by querying the SCM for the named service's current status
+  - [ProcessId](ServiceState#processid) -- the OS process ID hosting the service, or **0** if not running
+  - [ServiceSpecificExitCode](ServiceState#servicespecificexitcode) -- vendor-defined exit code, meaningful only when **ExitCode** equals `ERROR_SERVICE_SPECIFIC_ERROR` (1066)
+  - [Type](ServiceState#type) -- the SCM-reported service type as a [**ServiceTypeConstants**](Enumerations/ServiceTypeConstants) value
+  - [WaitHint](ServiceState#waithint) -- estimated upper-bound milliseconds for the current pending state transition, as last reported by the service
 
 ## Enumerations
 

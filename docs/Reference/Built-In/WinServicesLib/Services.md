@@ -69,6 +69,16 @@ The method opens the SCM, requests the minimum required permission for the chose
 
 Raises run-time error 5 with a descriptive message if the SCM cannot be opened (typically a permissions issue), the service is not installed, or `ControlServiceExW` fails.
 
+```tb
+' Stop a running service from the interactive branch of Sub Main:
+Services.ControlService "MyService", vbServiceControlStop
+
+' Pause and later continue:
+Services.ControlService "MyService", vbServiceControlPause
+' ... later ...
+Services.ControlService "MyService", vbServiceControlContinue
+```
+
 ### GetConfiguredService
 {: .no_toc }
 
@@ -183,7 +193,7 @@ Syntax: **Services.UninstallAll**
 > [!IMPORTANT]
 > **UninstallAll** writes registry entries under `HKEY_LOCAL_MACHINE` and requires administrator rights. Per-service errors abort the bulk operation; services already uninstalled before the failure remain uninstalled.
 
-## Enumerator
+## Properties
 
 ### _NewEnum
 {: .no_toc }
@@ -192,6 +202,11 @@ Provides `For Each` support across every [**ServiceManager**](ServiceManager) th
 
 Syntax: **For Each** *manager* **In Services**
 
+*manager*
+: A [**ServiceManager**](ServiceManager) variable that receives each configured service in turn.
+
+The property is tagged `[Enumerator]` and returns the internal **Collection** holding every [**ServiceManager**](ServiceManager) allocated by [**ConfigureNew**](#configurenew). Enumeration order is insertion order --- services appear in the order they were created.
+
 ```tb
 Dim manager As ServiceManager
 For Each manager In Services
@@ -199,7 +214,23 @@ For Each manager In Services
 Next
 ```
 
-The enumeration order is insertion order --- services appear in the order they were created with [**ConfigureNew**](#configurenew).
+A common use is the interactive branch of `Sub Main`, where the EXE lists or acts on all configured services without needing to know each name individually:
+
+```tb
+' Print the install state of every configured service:
+Dim manager As ServiceManager
+For Each manager In Services
+    On Error Resume Next
+    Dim state As ServiceState
+    Set state = Services.QueryStateOfService(manager.Name)
+    If Err.Number = 0 Then
+        Debug.Print manager.Name & ": " & state.CurrentStateText
+    Else
+        Debug.Print manager.Name & ": not installed"
+    End If
+    On Error GoTo 0
+Next
+```
 
 ## See Also
 

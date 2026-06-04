@@ -12,7 +12,7 @@ The contract every service class in a **WinServicesLib** project implements. Thr
 
 - [**EntryPoint**](#entrypoint) -- runs the service's actual work.
 - [**StartupFailed**](#startupfailed) -- invoked when the SCM handshake fails before [**EntryPoint**](#entrypoint) can run.
-- [**ChangeState**](#changestate) -- invoked when the SCM delivers a control code (*Stop*, *Pause*, *Continue*, …).
+- [**ChangeState**](#changestate) -- invoked when the SCM delivers a control code (*Stop*, *Pause*, *Continue*, ...).
 
 The package's [**ServiceCreator**](ServiceCreator)`(Of T)` factory creates one instance per service start; the dispatcher trampoline holds the instance for the lifetime of the service and routes the three lifecycle subs to it.
 
@@ -46,7 +46,7 @@ Class MyService
 
     Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
             Implements ITbService.StartupFailed
-        ' …optional failure-reporting hook
+        ' ...optional failure-reporting hook
     End Sub
 End Class
 ```
@@ -112,7 +112,7 @@ The body of **EntryPoint** is the service's actual work. The minimum responsibil
 After the **EntryPoint** sub returns, the service thread exits and the SCM marks the service as stopped.
 
 > [!IMPORTANT]
-> **EntryPoint** runs on the **service thread**, not the dispatcher thread. The two threads execute concurrently for the lifetime of the service. Shared `Public` flags on the implementing class (`IsStopping`, `IsPaused`, …) coordinate state changes triggered from [**ChangeState**](#changestate).
+> **EntryPoint** runs on the **service thread**, not the dispatcher thread. The two threads execute concurrently for the lifetime of the service. Shared `Public` flags on the implementing class (`IsStopping`, `IsPaused`, ...) coordinate state changes triggered from [**ChangeState**](#changestate).
 
 ### StartupFailed
 {: .no_toc }
