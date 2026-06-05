@@ -154,10 +154,6 @@ The three other Windows Event Log entry types --- **Warning**, **Audit Success**
   - [New](EventLog#new) -- constructs an **EventLog** instance bound to a single source name
   - [Register](EventLog#register) -- writes the registry entries that declare this EXE as the message provider for the source
 
-## Enumerations
-
-- [EventLogTypeConstants](EventLogTypeConstants) -- the Windows Event Log entry-type constants (`EVENTLOG_SUCCESS`, `EVENTLOG_ERROR_TYPE`, etc.) passed to `ReportEventW`
-
 ## Modules
 
 - [EventLogHelperPublic](EventLogHelperPublic) -- the low-level registry helper underlying [**EventLog.Register**](EventLog#register); call it directly only when a category count must be supplied without using the generic class
