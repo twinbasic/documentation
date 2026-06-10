@@ -68,3 +68,15 @@ End Class
 
 With the above, `MyClass` will not implement `IDispatch`. This means it will not be available for late-binding-- i.e. you cannot use it with a variable declared `As Object`. If you attempt to `Set` an `Object` (or `IDispatch`) variable to such a class, it will raise an `E_NOINTERFACE` error.
 
+In programming, a class that does not use the `NotDispatchable` keyword—and therefore **does not implement the `IDispatch` interface by default**—has two main benefits:
+
+**1. Improved performance and reduced resource usage**  
+In traditional VBx/VBA environments, classes implement `IDispatch` by default to support so‑called _late binding_. However, `IDispatch` has a relatively complex implementation mechanism: it requires the program to dynamically resolve and look up method or property addresses at runtime (via a dispatch table).  
+If a class only implements the more basic `IUnknown` interface, the compiler can skip this extra dispatching overhead and generate leaner code, resulting in slightly better performance and lower memory consumption.
+
+**2. Stronger type safety, preventing accidental misuse**  
+Implementing `IDispatch` by default means the class can be assigned to variables declared `As Object` (i.e., late binding is allowed). While this offers flexibility, it also means the compiler cannot perform strict type checking.  
+By declaring `NotDispatchable`, you explicitly restrict the class to _early binding_ (the exact class type must be known to use it). This forces developers to follow the defined interface strictly, eliminating potential hidden runtime bugs caused by typos or incorrect object types, making the code more robust.
+
+**Usage recommendation:**  
+If you are developing an internal utility class, a low‑level module, or you know for certain that you do not need to treat objects as generic `Object` instances, **it is highly recommended to use `NotDispatchable`**. This makes your code more modern, safer, and more efficient.
