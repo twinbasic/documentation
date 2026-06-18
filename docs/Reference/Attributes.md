@@ -208,7 +208,7 @@ A limited case of [constant foldable attribute](#constantfoldable), which applie
 ## CustomControl  (String)
 {: #customcontrol }
 
-Syntax: **[Description("** image file name **")]**
+Syntax: **[CustomControl("** image file name **")]**
 
 Applicable to: [**Class**](Class)
 
