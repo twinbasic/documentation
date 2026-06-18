@@ -148,17 +148,20 @@ Internal text such as the hover information does not yet support localization, b
 
 The twinBASIC IDE is supported on Windows 7 through Windows 11. The installation is portable; you need only to extract the downloaded zip file then run; there's no installer. 
 
-WebView2 is required. This is normally preinstalled on newer versions of Windows, and is installed along with Edge if you've installed that browser. You can also obtain it from [Microsoft's website](https://developer.microsoft.com/en-us/microsoft-edge/webview2?form=MA13LH#download-section). Select the Standalone Evergreen x86 version:
+WebView2 is required. This is normally preinstalled on newer versions of Windows, and is installed along with Edge if you've installed that browser. For Windows 10 and 11, you can also obtain it from [Microsoft's website](https://developer.microsoft.com/en-us/microsoft-edge/webview2?form=MA13LH#download-section). Select the Standalone Evergreen x86 version:
 
 ![image](Images/94490c87-fafe-4d5b-ae39-d3cedba1c21d.png)
 
+See the next entry for Windows 7.
 
 </details>
 
 <details>
-<summary markdown=span id="invalid-entry-point"><b>twinBASIC won't run; says there's an invalid entry point.</b></summary>
+<summary markdown=span id="invalid-entry-point"><b>How do I install twinBASIC on Windows 7?</b></summary>
 
-This issue is sometimes encountered on Windows 7. To be used on Windows 7, the OS must be fully updated; this error results from one or more missing updates. Run Windows Update to make sure you have all recent updates installed. If you still have problems, you can drop by the Discord or submit an issue on GitHub (see [`How do I report bugs or other problems?`](#bug-reporting))
+To be used on Windows 7, ideally the OS must be fully updated; you may encounter an error from one or more missing updates including "missing entry point" errors or WebView2 errors. Run Windows Update to make sure you have all recent updates installed.
+
+You can also manually configure Windows 7 with the proper updates. First, make sure you have Windows 7 Service Pack 1 installed. You can then install update [KB3080149](https://www.microsoft.com/en-us/download/details.aspx?id=48636). After you restarted to complete that update, you need an offline installer for the WebView2 Runtime, for the last version supported by Windows 7, v109.0.1518.78, a copy of which can be found here on the Internet Archive: [Microsoft Edge Web View 2 Runtime Installer v109.0.1518.78](https://archive.org/details/microsoft-edge-web-view-2-runtime-installer-v109.0.1518.78). You must install the x86 version. After these two items have been installed, both the twinBASIC IDE and the twinBASIC WebView2 Package should run.
 
 </details>
 
