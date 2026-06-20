@@ -44,7 +44,7 @@ The American Standard Code for Information Interchange (ASCII) 7-bit character s
 
 ## attribute
 
-(twinBASIC) Metadata attached to a [module](#module), procedure, parameter, or other declaration, written in square brackets — for example, `[Documentation("...")]`. Some attributes drive compiler behaviour (such as `[PackingAlignment]` on a [user-defined type](#user-defined-type) or `[VB_UserMemId]` on a member); others are informational. Attributes are a twinBASIC addition; classic VBA exposes only a small fixed set via the `Attribute` directive.
+(twinBASIC) Metadata attached to a [module](#module), procedure, parameter, or other declaration, written in square brackets --- for example, `[Documentation("...")]`. Some attributes control compiler behaviour (such as `[PackingAlignment]` on a [user-defined type](#user-defined-type) or `[VB_UserMemId]` on a member); others are informational. Attributes are a twinBASIC addition; classic VBA exposes only a small fixed set via the `Attribute` directive.
 
 ## Automation object
 
@@ -154,7 +154,7 @@ The period during which source code is translated to executable code.
 
 ## compiler directive
 
-A command used to alter the action of the compiler — for example, the [conditional compilation](#conditional-compiler-constant) directives `#If`, `#Else`, `#ElseIf`, and `#End If`, or the `#Const` directive. See [Preprocessor directives](Core/Topic-Preprocessor).
+A command used to alter the action of the compiler --- for example, the [conditional compilation](#conditional-compiler-constant) directives `#If`, `#Else`, `#ElseIf`, and `#End If`, or the `#Const` directive. See [Preprocessor directives](Core/Topic-Preprocessor).
 
 ## conditional compiler constant
 
@@ -236,7 +236,7 @@ Nonexecutable code that names a constant, [variable](#variable), or [procedure](
 A [data type](#data-type) that contains decimal numbers scaled by a power of 10. For zero-scaled numbers (integers with no fractional part), the range is +/-79,228,162,514,264,337,593,543,950,335. For numbers with 28 decimal places the range is +/-7.9228162514264337593543950335. The smallest non-zero value that can be represented as a **Decimal** is `0.0000000000000000000000000001`.
 
 > [!NOTE]
-> Unlike classic VBA — where **Decimal** was usable only as a **Variant** subtype produced by **CDec** — twinBASIC supports **Decimal** as a first-class declared type. You can write `Dim x As Decimal`.
+> Unlike classic VBA --- where **Decimal** was usable only as a **Variant** subtype produced by **CDec** --- twinBASIC supports **Decimal** as a first-class declared type. You can write `Dim x As Decimal`.
 
 ## designer
 
@@ -412,7 +412,7 @@ A 4-byte integer ranging in value from -2,147,483,648 to 2,147,483,647. The ampe
 
 ## LongPtr data type
 
-(twinBASIC) A platform-dependent integer used to hold pointer or handle values. **LongPtr** is 4 bytes on 32-bit platforms and 8 bytes on 64-bit platforms. Use **LongPtr** rather than **Long** or **LongLong** when declaring DLL parameters that carry pointers or handles, so that the same source compiles correctly on both platforms.
+(twinBASIC) A platform-dependent integer used to hold pointer or handle values. **LongPtr** is 4 bytes on 32-bit platforms and 8 bytes on 64-bit platforms. Use **LongPtr** rather than **Long** or **LongLong** when declaring DLL parameters that hold pointers or handles, so that the same source compiles correctly on both platforms.
 
 ## MDI child
 
@@ -588,7 +588,7 @@ A file in a twinBASIC project that can contain bitmaps, text strings, or other d
 
 ## RGB
 
-A color value system used to describe colors as a mixture of red (R), green (G), and blue (B). The color is defined as a set of three integers (R, G, B) where each integer ranges from 0&ndash;255. A value of 0 indicates a total absence of a color component; a value of 255 indicates the highest intensity of a color component. See [**RGB**](Modules/Information/RGB) and [**RGBA**](Modules/Information/RGBA).
+A color value system used to describe colors as a mixture of red \(R\), green (G), and blue (B). The color is defined as a set of three integers (R, G, B) where each integer ranges from 0&ndash;255. A value of 0 indicates a total absence of a color component; a value of 255 indicates the highest intensity of a color component. See [**RGB**](Modules/Information/RGB) and [**RGBA**](Modules/Information/RGBA).
 
 ## run time
 
@@ -678,7 +678,7 @@ Times are stored as part of a real number. Values to the right of the decimal re
 
 ## transparent
 
-Describes the background of the object if the background is not visible. Instead of the background, whatever is behind the object is visible — for example, an image or picture used as a backdrop in your application. Use the `BackStyle` property to make the background transparent.
+Describes the background of the object if the background is not visible. Instead of the background, whatever is behind the object is visible --- for example, an image or picture used as a backdrop in your application. Use the `BackStyle` property to make the background transparent.
 
 ## twip
 

@@ -17,7 +17,7 @@ permalink: /tB/IDE/Project/Menu/Debug
 - Clear Watches
 ---
 - Toggle Breakpoint <kbd>F9</kbd>
-- Clear Al Breakpoints <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F9</kbd>
+- Clear All Breakpoints <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F9</kbd>
 ---
 - Set Next Statement (Jump To Line) <kbd>CTRL</kbd> + <kbd>F9</kbd>
 ---
@@ -25,9 +25,9 @@ permalink: /tB/IDE/Project/Menu/Debug
 
 ## Debugger Options
 
-![Debugger Options | Debug Menu](Images/Menu_Debug_DebuggerOptions.png "Debugger Options | Debug Menu")
+![Debugger Options - Debug Menu](Images/Menu_Debug_DebuggerOptions.png "Debugger Options - Debug Menu")
 
 - Break On All Errors
 - ✔ Allow Breakpoints (Debuggable)
 
-![Debugger Options | Debug Menu](Images/Menu_Debug_DebuggerOptions_2.png "Debugger Options | Debug Menu")
+![Debugger Options - Debug Menu](Images/Menu_Debug_DebuggerOptions_2.png "Debugger Options - Debug Menu")

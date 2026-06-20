@@ -1,6 +1,7 @@
 ---
 title: Re-entrancy
 parent: WebView2
+grand_parent: Tutorials
 nav_order: 3
 permalink: /Tutorials/WebView2/Re-entrancy
 redirect_from:

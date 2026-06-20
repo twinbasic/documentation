@@ -20,7 +20,7 @@ Syntax:
 : Numeric expression or string expression that evaluates to **True** or **False**. If *condition* is Null, *condition* is treated as **False**.
 
 *statements*
-: *optional*  One or more statements executed while *condition* is **True**.
+: *optional* One or more statements executed while *condition* is **True**.
 
 If *condition* is **True**, all *statements* are executed until the **Wend** statement is encountered. Control then returns to the **While** statement and *condition* is again checked. If *condition* is still **True**, the process is repeated. If it is not **True**, execution resumes with the statement following the **Wend** statement.
 

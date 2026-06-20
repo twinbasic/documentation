@@ -6,8 +6,9 @@ vba_attribution: true
 ---
 
 # Declare
+{: .no_toc }
 
-Used at the module level to declare references to external procedures in a dynamic-link library (DLL).
+Declares references to external procedures in a dynamic-link library (DLL) at the module level.
 
 > [!NOTE]
 >
@@ -30,9 +31,9 @@ Declare Sub...
 Syntax:
 
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe**  ] **Sub** *name* **Lib** "*libname*" [ **(** [ *arglist* ] **)** ]
+  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Sub** *name* **Lib** "*libname*" [ **(** [ *arglist* ] **)** ]
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe**  ] **Sub** *name* **Lib** "*libname*" **Alias** "*aliasname*" [ **(** [ *arglist* ] **)** ]
+  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Sub** *name* **Lib** "*libname*" **Alias** "*aliasname*" [ **(** [ *arglist* ] **)** ]
 - > [ *attributes* ]  
   > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Function** *name* **Lib** "*libname*" [ **(** [ *arglist* ] **)** ] [ **As** *type* ]
 - > [ *attributes* ]  
@@ -62,7 +63,7 @@ Syntax:
 : Name of the DLL or code resource that contains the declared procedure.
 
 **Alias** *aliasname*
-: *optional* Indicates that the procedure being called has another name in the DLL. This is useful when the external procedure name is the same as a keyword. You can also use Alias when a DLL procedure has the same name as a public variable, constant, or any other procedure in the same scope. Alias is also useful if any characters in the DLL procedure name aren't allowed by the DLL naming convention.  
+: *optional* Indicates that the procedure being called has another name in the DLL. This is useful when the external procedure name is the same as a keyword. Alias also applies when a DLL procedure has the same name as a public variable, constant, or any other procedure in the same scope. Alias is also useful when any characters in the DLL procedure name aren't allowed by the DLL naming convention.  
 *aliasname* names the procedure in the DLL or code resource. If the first character is not a number sign (**#**), *aliasname* is the name of the procedure's entry point in the DLL. If (**#**) is the first character, all characters that follow must indicate the ordinal number of the procedure's entry point.
 
 *arglist* 
@@ -87,18 +88,18 @@ Syntax: [ **Optional** ] [ **ByVal** \| **ByRef** ] [ **ParamArray** ] *varname*
 : *optional* Indicates that the argument is passed by reference. **ByRef** is the default unlike in Visual Basic .NET.
 
 **ParamArray**
-: *optional* Used only as the last argument in arglist to indicate that the final argument is an **Optional** array of **Variant** elements. The **ParamArray** keyword allows you to provide an arbitrary number of arguments. The ParamArray keyword can't be used with **ByVal**, **ByRef**, or **Optional**.
+: *optional* Used only as the last argument in arglist to indicate that the final argument is an **Optional** array of **Variant** elements. The **ParamArray** keyword permits passing an arbitrary number of arguments. The ParamArray keyword can't be used with **ByVal**, **ByRef**, or **Optional**.
 
 *varname*
 : Name of the variable representing the argument being passed to the procedure; follows standard variable naming conventions.
 
 **( )**
-:  Required for array variables. Indicates that *varname* is an array.
+: Required for array variables. Indicates that *varname* is an array.
 
 *type*
 : *optional* Data type of the argument passed to the procedure; may be **Byte**, **Boolean**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Currency**, **Single**, **Double**, **Decimal**, **Date**, **String** (variable length only), **Object**, **Variant**, a user-defined type (UDT), or an object type. (**LongLong** is a valid declared type only on 64-bit platforms.)
 
-If you include an argument list, the number and type of arguments are checked each time the procedure is called. The First sub in the following example takes one **Long** argument, wherease the Second sub takes no arguments:
+When an argument list is included, the number and type of arguments are checked each time the procedure is called. The First sub in the following example takes one **Long** argument, whereas the Second sub takes no arguments:
 
 ```tb
 Declare Sub First Lib "MyLib" (X As Long)
@@ -107,12 +108,12 @@ Declare Sub Second Lib "MyLib" ()
 
 > [!NOTE]
 >
-> - You can't have fixed-length strings in the argument list of a **Declare** statement; only variable-length strings can be passed to procedures. Fixed-length strings can appear as procedure arguments, but they are converted to variable-length strings before being passed.
+> - Fixed-length strings cannot appear in the argument list of a **Declare** statement; only variable-length strings can be passed to procedures. Fixed-length strings can appear as procedure arguments, but they are converted to variable-length strings before being passed.
 > - The **vbNullString** constant is used when calling external procedures, where the external procedure requires a string whose value is zero. This is not the same thing as a zero-length string ("").
 
 ### Example
 
-This example shows how the **Declare** statement is used at the module level of a standard module to declare a reference to an external procedure in a dynamic-link library (DLL). You can place the **Declare** statements in class modules if the **Declare** statements are **Private**.
+This example shows how the **Declare** statement is used at the module level of a standard module to declare a reference to an external procedure in a dynamic-link library (DLL). **Declare** statements can be placed in class modules when they are **Private**.
 
 ```tb
 ' In 32-bit Microsoft Windows systems, specify the library USER32.DLL.

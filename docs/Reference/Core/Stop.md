@@ -14,7 +14,7 @@ Syntax:
 
 > **Stop**
 
-You can place **Stop** statements anywhere in procedures to suspend execution. Using the **Stop** statement is similar to setting a breakpoint in the code.
+**Stop** statements can be placed anywhere in procedures to suspend execution. Using the **Stop** statement is similar to setting a breakpoint in the code.
 
 The **Stop** statement suspends execution, but unlike [**End**](End), it doesn't close any files or clear variables, unless it is in a compiled executable (.exe) file.
 

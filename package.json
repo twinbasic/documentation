@@ -1,0 +1,24 @@
+{
+  "name": "twinbasic-docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "twinBASIC documentation source, tbdocs static-site builder, and PDF book pipeline.",
+  "devDependencies": {
+    "@hpcc-js/wasm-graphviz": "^1.21",
+    "acorn": "^8.0",
+    "acorn-walk": "^8.0",
+    "fast-glob": "^3.3",
+    "gray-matter": "^4.0",
+    "html-entities": "^2.6.0",
+    "htmlparser2": "^12.0.0",
+    "js-yaml": "^4.1",
+    "markdown-it": "^14.0",
+    "markdown-it-attrs": "^4.3",
+    "markdown-it-deflist": "^3.0",
+    "markdown-it-footnote": "^4.0",
+    "sass": "^1.0",
+    "pdf-lib": "1.17.1",
+    "puppeteer": "25.0.4",
+    "shiki": "^1.0"
+  }
+}

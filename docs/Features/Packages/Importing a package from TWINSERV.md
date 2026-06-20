@@ -1,6 +1,7 @@
 ---
 title: Importing a Package from TWINSERV
-parent: Packages
+parent: Package Management
+grand_parent: Features
 nav_order: 2
 permalink: /Features/Packages/Importing-TWINSERV
 redirect_from:

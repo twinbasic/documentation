@@ -1,0 +1,196 @@
+name: Build & deploy docs
+
+on:
+  push:
+    branches: ["staging"]
+
+  # Allows you to run this workflow manually from the Actions tab.
+  # The manual path additionally cuts a GitHub release with the
+  # offline-browsable site copy attached as a zip; pushes to
+  # `staging` only deploy to Pages.
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (leave blank for auto: docs-YYYY-MM-DD-HHMM in UTC)'
+        required: false
+        type: string
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies and Chromium
+        run: |
+          npm ci
+          sudo npx puppeteer browsers install chrome --install-deps
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v6
+      - name: Build with tbdocs
+        # --url + --baseurl together make canonical / og:url / sitemap
+        # entries point at the actual deployment (e.g. on a fork that
+        # deploys to kubao.github.io/twinBASIC-docs/, both bits move
+        # so the page advertises its own URL rather than the config'd
+        # production host).
+        run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}'
+      - name: Check links and site integrity
+        # Three passes run in parallel via /sep/:
+        #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
+        #      extensionless-URL behaviour.  --base-path strips the Pages baseurl
+        #      (e.g. `/twinBASIC-docs`) from absolute URLs before resolving.
+        #      Integrity checks (--check-html/a11y/ids/sitemap/search) run here.
+        #   2. Offline (_site-offline/): --forbid catches any surviving
+        #      https://docs.twinbasic.com/<path> link the offline rewrite missed
+        #      (bare root URL is exempt).  Integrity checks run here too (minus
+        #      sitemap/search -- the offline tree has neither).
+        #   3. Book (_site-pdf/book.html): --no-fail makes failures informational
+        #      (some links are not yet fully resolved).
+        run: >-
+          node scripts/check_links.mjs
+          --offline --include-fragments
+          --check-html --check-a11y --check-ids
+          --check-sitemap --check-search --check-canonical
+          --fallback-extensions html
+          --index-files 'index.html,.'
+          --base-path '${{ steps.pages.outputs.base_path }}'
+          --root-dir docs/_site
+          docs/_site
+          /sep/
+          --offline --include-fragments
+          --check-html --check-a11y --check-ids
+          --forbid 'https://docs.twinbasic.com'
+          --fallback-extensions html
+          --index-files 'index.html,.'
+          --root-dir docs/_site-offline
+          docs/_site-offline
+          /sep/
+          --offline --no-fail --include-fragments
+          --root-dir docs/_site-pdf
+          docs/_site-pdf/book.html
+      - name: Render book PDF
+        run: |
+          mkdir -p _pdf
+          node ../book/render-book.mjs _site-pdf/book.html -o "_pdf/twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script ../perf/detach-pages.js
+        working-directory: ./docs
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./docs/_site
+      # The next two steps run only on manual dispatch -- they
+      # package the offline copy of the site (`docs/_site-offline/`,
+      # produced by the `also_build_offline: true` flag in
+      # `_config.yml`) and ship it as a workflow artifact for the
+      # `release` job to attach to a new GitHub release.  Pushes to
+      # `staging` skip this and only deploy to Pages.
+      - name: Package offline site
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ ! -d ./docs/_site-offline ]; then
+            echo "::error::./docs/_site-offline not found -- ensure also_build_offline is true in _config.yml"
+            exit 1
+          fi
+          (cd ./docs/_site-offline && zip -rq "${{ runner.temp }}/twinbasic-docs-offline.zip" .)
+      - name: Upload offline-site workflow artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: twinbasic-docs-offline-zip
+          path: ${{ runner.temp }}/twinbasic-docs-offline.zip
+          # Workflow-internal hand-off to the release job; the
+          # release itself carries the long-lived copy of the zip.
+          retention-days: 7
+      - name: Upload book PDF workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: twinbasic-docs-book-pdf
+          path: "./docs/_pdf/twinBASIC Book.pdf"
+
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+  # Release job -- runs only on manual dispatch, after a successful
+  # Pages deploy.  Each manual deploy cuts a new GitHub release whose
+  # tag tracks a publicly visible documentation snapshot at
+  # https://docs.twinbasic.com, with the offline-browsable copy of
+  # the site attached as twinbasic-docs-offline.zip.
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      # softprops/action-gh-release needs contents:write to create
+      # tags and publish releases.  The top-level permissions block
+      # only grants contents:read for the build/deploy path.
+      contents: write
+    steps:
+      - name: Download offline-site workflow artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: twinbasic-docs-offline-zip
+      - name: Download book PDF workflow artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: twinbasic-docs-book-pdf
+      - name: Compute release tag and name
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+            NAME="$INPUT_TAG"
+          else
+            TAG="docs-$(date -u +'%Y-%m-%d-%H%M')"
+            NAME="Documentation $(date -u +'%Y-%m-%d %H:%M UTC')"
+          fi
+          echo "tag=$TAG"   >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+      - name: Create release with offline-site zip
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            Snapshot of the documentation deployed to <https://docs.twinbasic.com>.
+
+            **Offline copy:** download `twinbasic-docs-offline.zip`, extract anywhere, and open `index.html` in any browser — no server required. URLs, navigation, dark mode, and search all work over `file://`.
+
+            **PDF book:** download `twinBASIC Book.pdf` for an offline-readable, printable copy of the full reference.
+
+            Source commit: ${{ github.sha }}.
+          files: |
+            twinbasic-docs-offline.zip
+            twinBASIC Book.pdf
+          fail_on_unmatched_files: true
+          make_latest: 'true'

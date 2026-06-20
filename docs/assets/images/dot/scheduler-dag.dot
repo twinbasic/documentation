@@ -1,0 +1,122 @@
+// Task DAG of the SAB pull scheduler. See docs/Documentation/Builder.md.
+
+digraph scheduler {
+    rankdir=TB
+    bgcolor="transparent"
+    nodesep=0.25
+    ranksep=0.45
+    splines=true
+
+    node [
+        shape=box
+        style="rounded,filled"
+        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=12
+        margin="0.12,0.06"
+    ]
+    edge [
+        color="#7a8090"
+        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=10
+        arrowsize=0.7
+    ]
+    graph [
+        margin=0
+    ]
+
+    // ── Colour scheme ───────────────────────────────────────────────────
+    // [M] main thread → fef7e0 fill / f9ab00 stroke
+    // [W] worker      → e8f0fe fill / 4285f4 stroke
+
+    // ── Nodes ───────────────────────────────────────────────────────────
+
+    CF  [label=<config<BR/><FONT POINT-SIZE="10">[M]</FONT>>,             fillcolor="#fef7e0", color="#f9ab00"]
+    BI  [label=<buildInfo<BR/><FONT POINT-SIZE="10">[W]</FONT>>,          fillcolor="#e8f0fe", color="#4285f4"]
+    SL  [label=<scssLight<BR/><FONT POINT-SIZE="10">[W]</FONT>>,          fillcolor="#e8f0fe", color="#4285f4"]
+    SD  [label=<scssDark<BR/><FONT POINT-SIZE="10">[W]</FONT>>,           fillcolor="#e8f0fe", color="#4285f4"]
+    HI  [label=<highlighterInit<BR/><FONT POINT-SIZE="10">[M]</FONT>>,    fillcolor="#fef7e0", color="#f9ab00"]
+    LD  [label=<loadData<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
+    WI  [label=<warmInit<BR/><FONT POINT-SIZE="10">[W] per-lane<BR/>on_demand, idle</FONT>>, fillcolor="#e8f0fe", color="#4285f4"]
+
+    DI  [label=<discover<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
+    NV  [label=<nav<BR/><FONT POINT-SIZE="10">[M]</FONT>>,                fillcolor="#fef7e0", color="#f9ab00"]
+    BU  [label=<buildInit<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
+    MI  [label=<markdownInit<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    DR  [label=<deriveRedirects<BR/><FONT POINT-SIZE="10">[M]</FONT>>,    fillcolor="#fef7e0", color="#f9ab00"]
+    DT  [label=<dot<BR/><FONT POINT-SIZE="10">[W]</FONT>>,                fillcolor="#e8f0fe", color="#4285f4"]
+    DSi [label=<deriveSitemap<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
+    RBC [label=<resolveBookChapters<BR/><FONT POINT-SIZE="10">[M]</FONT>>, fillcolor="#fef7e0", color="#f9ab00"]
+
+    DP  [label=<dispatch<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
+    PD  [label=<prepDest<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
+    PPD [label=<prepPageDirs<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    REI [label=<renderEnvInit<BR/><FONT POINT-SIZE="10">[W] per-lane</FONT>>, fillcolor="#e8f0fe", color="#4285f4"]
+    Ri  [label=<render:i<BR/><FONT POINT-SIZE="10">[W]</FONT>>,           fillcolor="#e8f0fe", color="#4285f4"]
+    RJ  [label=<renderJoin<BR/><FONT POINT-SIZE="10">[M]</FONT>>,         fillcolor="#fef7e0", color="#f9ab00"]
+
+    SCSS [label=<scss<BR/><FONT POINT-SIZE="10">[M]</FONT>>,              fillcolor="#fef7e0", color="#f9ab00"]
+    Fi   [label=<flush:i<BR/><FONT POINT-SIZE="10">[W] pinned</FONT>>,    fillcolor="#e8f0fe", color="#4285f4"]
+    FJ   [label=<flushJoin<BR/><FONT POINT-SIZE="10">[M]</FONT>>,         fillcolor="#fef7e0", color="#f9ab00"]
+    WA   [label=<writeAssets<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+    SDt  [label=<searchData<BR/><FONT POINT-SIZE="10">[M]</FONT>>,        fillcolor="#fef7e0", color="#f9ab00"]
+    WX   [label=<writeAux<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
+    WO   [label=<writeOffline<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
+    WP   [label=<writePdf<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
+
+    // ── Edges ───────────────────────────────────────────────────────────
+
+    CF -> DI
+    CF -> HI
+    HI -> LD
+    DI -> NV
+    DI -> BU
+    DI -> MI
+    DI -> DR
+
+    NV -> DP
+    BU -> DP
+    BI -> DP
+    DT -> DP
+    DR -> DP
+    MI -> DP
+
+    DP -> PD
+    DP -> DSi
+    DP -> REI
+    DP -> Ri
+
+    PD -> PPD
+    PD -> SCSS
+    SL -> SCSS
+    SD -> SCSS
+
+    DSi -> RBC
+
+    WI  -> REI [style=dashed]
+    REI -> Ri  [style=dashed]
+
+    Ri  -> Fi
+    Ri  -> RJ
+    PPD -> Fi
+    Fi  -> FJ
+
+    DT  -> WA
+    PPD -> WA
+    HI  -> WA
+
+    RJ -> SDt
+    PD -> SDt
+
+    WA  -> WX
+    SDt -> WX
+    FJ  -> WX
+    DR  -> WX
+    DSi -> WX
+
+    WX -> WO
+    WA -> WO
+
+    FJ  -> WP
+    DT  -> WP
+    RBC -> WP
+}

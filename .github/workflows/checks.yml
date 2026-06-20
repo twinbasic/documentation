@@ -25,17 +25,46 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Set up Ruby and install gems
-        uses: ruby/setup-ruby@v1
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
-          ruby-version: '3.4'
-          bundler-cache: true
-          working-directory: ./docs
-          cache-version: 0 # Increment this number if you need to re-download cached gems
-      - name: Build with Jekyll
-        run: bundle exec jekyll build
-        working-directory: ./docs
-      - name: Run HTML Proofer
-        run: bundle exec htmlproofer ./_site --disable-external --no-enforce-https
-        # --log-level :debug 
-        working-directory: ./docs
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build with tbdocs
+        run: node builder/tbdocs.mjs --src docs
+      - name: Check links (check_links.mjs)
+        # Three passes run in parallel via /sep/:
+        #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
+        #      extensionless-URL behaviour.  No --base-path needed -- this
+        #      workflow builds without --baseurl (contrast jekyll-gh-pages.yml).
+        #      Integrity checks (--check-html/a11y/ids/sitemap/search) run here.
+        #   2. Offline (_site-offline/): --forbid catches any surviving
+        #      https://docs.twinbasic.com/<path> link the offline rewrite missed
+        #      (bare root URL is exempt).  Integrity checks run here too (minus
+        #      sitemap/search -- the offline tree has neither).
+        #   3. Book (_site-pdf/book.html): --no-fail makes failures informational
+        #      (some links are not yet fully resolved).
+        run: >-
+          node scripts/check_links.mjs
+          --offline --include-fragments
+          --check-html --check-a11y --check-ids
+          --check-sitemap --check-search --check-canonical
+          --fallback-extensions html
+          --index-files 'index.html,.'
+          --root-dir docs/_site
+          docs/_site
+          /sep/
+          --offline --include-fragments
+          --check-html --check-a11y --check-ids
+          --index-files 'index.html,.'
+          --fallback-extensions html
+          --forbid 'https://docs.twinbasic.com'
+          --root-dir docs/_site-offline
+          docs/_site-offline
+          /sep/
+          --offline --no-fail --include-fragments
+          --root-dir docs/_site-pdf
+          docs/_site-pdf/book.html

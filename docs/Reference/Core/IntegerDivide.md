@@ -1,5 +1,5 @@
 ---
-title: \, \=
+title: "&#92;, &#92;="
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/IntegerDivide
@@ -33,7 +33,7 @@ Dividing by zero raises a run-time error.
 
 ### Compound assignment
 
-`x \= y` is the twinBASIC shorthand for `x = x \ y`. The left-hand side is evaluated once and rounded to an integral type as described above. **\\=** is a statement, not an expression — it does not produce a value.
+`x \= y` is the twinBASIC shorthand for `x = x \ y`. The left-hand side is evaluated once and rounded to an integral type as described above. **\\=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Value As Long = 100

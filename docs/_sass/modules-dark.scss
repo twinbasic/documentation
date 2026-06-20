@@ -1,0 +1,36 @@
+// Dark-theme configuration of the full JTD module tree.
+//
+// This file is ONLY ever loaded via meta.load-css() inside html.dark-mode {}
+// in just-the-docs-dark.scss.  It is never @used directly.
+//
+// Because meta.load-css() includes this file's CSS output at the call site
+// (inside the html.dark-mode selector), every rule below ends up scoped to
+// html.dark-mode in the compiled CSS -- exactly what @import "modules" inside
+// html.dark-mode {} produced under the old @import architecture.
+//
+// The @use here is at the TOP LEVEL of this file, which is required.
+// The $with map threads configuration through modules.scss's
+// @forward "support/support" chain down to _variables.scss.
+//
+// $feedback-color is intentionally omitted: _variables.scss computes it
+// as color.adjust($sidebar-color, $lightness: -3%), so passing $sidebar-color
+// is sufficient -- the default expression runs with the configured dark value.
+// $search-result-preview-color is omitted: identical in both themes.
+
+@use "modules" with (
+  $logo: "/favicon.png",
+  $color-scheme: dark,
+  $body-background-color: #27262b,
+  $body-heading-color: #f5f6fa,
+  $body-text-color: #e6e1e8,
+  $link-color: #2c84fa,
+  $nav-child-link-color: #959396,
+  $sidebar-color: #27262b,
+  $base-button-color: #302d36,
+  $btn-primary-color: #264caf,
+  $code-background-color: #31343f,
+  $code-linenumber-color: #dee2f7,
+  $table-background-color: #302d36,
+  $search-background-color: #302d36,
+  $border-color: #44434d,
+);

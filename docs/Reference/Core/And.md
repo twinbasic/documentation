@@ -8,7 +8,7 @@ vba_attribution: true
 # And operator
 {: .no_toc }
 
-Used to perform a logical conjunction on two expressions.
+Used to perform a bitwise conjunction on two expressions.
 
 Syntax:
 > *result* **=** *expression1* **And** *expression2*
@@ -33,7 +33,7 @@ If both expressions evaluate to **True**, *result* is **True**. If either expres
 | **Null**  | **False** | **False** |
 | **Null**  | **Null**  | **Null**  |
 
-The **And** operator also performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
+The **And** operator performs a bitwise comparison of identically positioned bits in two numeric expressions and sets the corresponding bit in *result* according to the following table:
 
 | If bit in *expression1* is | And bit in *expression2* is | The *result* is |
 |:-----:|:-----:|:-----:|
@@ -43,7 +43,7 @@ The **And** operator also performs a bitwise comparison of identically positione
 | 1 | 1 | 1 |
 
 > [!NOTE]
-> **And** evaluates *both* operands every time, even when *expression1* alone determines the result. Use [**AndAlso**](AndAlso) when you want short-circuit evaluation — for example, when *expression2* is expensive, has side effects, or would fail without the guard provided by *expression1*.
+> **And** evaluates *both* operands every time, even when *expression1* alone determines the result. Use [**AndAlso**](AndAlso) for short-circuit evaluation --- for example, when *expression2* is expensive, has side effects, or would fail without the guard provided by *expression1*.
 
 ### Example
 

@@ -43,7 +43,7 @@ This is an optional attribute, but it is usually advisable to set this attribute
 ## Must implement ICustomControl
 ![CustomControl ICustomControl interface](Images/ccICustomControl.png)
 
-All CustomControls *must* implement CustomControls.ICustomControl.  This interface currently has 3 methods that you must implement:
+All CustomControls *must* implement [`CustomControls.ICustomControl`](../../tB/Packages/CustomControls/Framework/ICustomControl).  This interface currently has 3 methods that you must implement:
 
 ```tb
 Sub Initialize(ByVal Context As CustomControlContext)
@@ -78,7 +78,7 @@ Public Dock As CustomControls.DockMode
 Public Visible As Boolean
 ```
 
-The form designer and the form engine work with these properties, so it is important to include them in your CustomControl class.
+The form designer and the form engine work with these properties, so it is important to include them in your CustomControl class. The types used here are all defined in the framework: [`PixelCount`](../../tB/Packages/CustomControls/Enumerations/PixelCount), [`DockMode`](../../tB/Packages/CustomControls/Enumerations/DockMode), and the [`Anchors`](../../tB/Packages/CustomControls/Styles/Anchors) style object.
 
 Note that the form designer works with pixel values which are not DPI-scaled.  So the Left/Top/Width/Height properties of your control do not reflect DPI scaling.  For example, if your control has a width of 50 pixels, then at DPI 150%, then the actual drawing width is 75 pixels ( see [Painting / drawing to your control](Painting)).
 
@@ -90,4 +90,12 @@ CustomControls *must* offer a serialization constructor:
 Public Sub New(Serializer As SerializationInfo)
 ```
 
-The passed in Serializer object offers a `Deserialize()` method that you call in order to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](Properties) for further information.
+The passed in Serializer object offers a `Deserialize()` method that you call to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](Properties) for further information.
+
+> [!NOTE]
+> The current framework names the serializer type [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) (not `SerializationInfo`), and `Deserialize()` is exposed as `RuntimeUISrzDeserialize()`. See the reference page for the current member names and the design-mode / runtime-mode flags also available on this object.
+
+***
+## See also
+
+- [CustomControls package reference](../../tB/Packages/CustomControls/) -- the full reference for the framework half (interfaces, callback objects, the [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) drawing surface, the [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) serializer) and the built-in `Waynes…` controls built on it.

@@ -11,7 +11,7 @@ has_toc: false
 
 This section documents all the features and enhancements that twinBASIC brings compared to VBx and earlier BASIC dialects. 
 
-twinBASIC maintains backward compatibility with VBx syntax while providing these powerful new features. Most enhancements are opt-in, allowing you to gradually adopt them in your projects.
+twinBASIC maintains backward compatibility with VBx syntax while providing these new features. Most enhancements are opt-in, allowing you to gradually adopt them in your projects.
 
 For detailed documentation on each feature, navigate to the specific category listed below.
 
@@ -62,9 +62,13 @@ Modernized GUI components featuring:
 - 64-bit support and DPI awareness
 - New controls (QR Code, Multiframe, CheckMark)
 
-### [Packages](Packages/)
+### [Package Management](Packages/)
+
+twinBASIC[^1] has a centralized package repository, called TWINSERV. Users can publish both public and private packages. Package browsing, downloading, and publishing is seamlessly integrated into the IDE.
 
 Packages are collections of components that can be referenced from another twinBASIC project. They are distributed as TWINPACK files that contains everything needed by the components in that package.
+
+[^1]: A service of TWINBASIC LTD offered to the user community.
 
 ### [Advanced Features](Advanced/)
 

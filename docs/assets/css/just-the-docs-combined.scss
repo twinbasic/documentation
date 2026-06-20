@@ -1,36 +1,49 @@
----
----
-{% include css/just-the-docs.scss.liquid color_scheme="light" %}
+// Combined just-the-docs stylesheet -- compiled by builder/scss.mjs.
+//
+// Sass load paths (set in scss.mjs, searched in order):
+//   1. docs/_sass/         -- our customizations (custom/*.scss, etc.)
+//   2. builder/vendor/just-the-docs/_sass/  -- pristine JTD v0.10.1 sources
+//
+// scss.mjs performs TWO sass.compile() calls: this file (light theme) and
+// just-the-docs-dark.scss (dark theme), then concatenates the results into
+// a single just-the-docs-combined.css asset.  Having separate compilations
+// gives each its own module cache, which is the only way to load modules.scss
+// twice with different variable configurations in Dart Sass.
+//
+// Within a single compilation, a module URL can only be loaded once.  The
+// $with parameter of meta.load-css() ALSO writes to the shared module cache,
+// so two calls to meta.load-css("modules", $with: ...) -- even with different
+// values -- conflict.  Therefore @use "modules" and @use "support/support"
+// are absent here; only meta.load-css() is used, and only once.
+//
+// Consequence: the two literal values in this file (div.opaque background
+// and span colour) cannot be referenced via Sass variables and are hardcoded.
 
-span {
-  color: $link-color;
+@use "sass:meta";
+// custom/setup is the gem's empty pre-colour-scheme hook.
+@use "custom/setup";
+// custom/custom generates admonitions, .site-logo, code-size overrides, and
+// dark-scrollbar CSS, and exposes the tb-code-overrides mixin.
+@use "custom/custom" as *;
+
+// ── Light theme (root level) ──────────────────────────────────────────────
+//
+// Replicates the gem's just-the-docs.scss.liquid with color_scheme="light".
+//
+// meta.load-css() is the only load of modules.scss in this compilation.
+// The $with map configures _variables.scss through the @forward chain:
+//   modules → @forward "support/support" → @forward "_variables.scss"
+// Only $logo is passed; all other variables use their !default light values.
+
+@include meta.load-css("modules", $with: ("logo": "/favicon.png"));
+
+// callouts.scss.liquid output -- only the unconditional div.opaque rule.
+// Light $body-background-color default = $white = #fff.
+div.opaque {
+  background-color: #fff;
 }
 
-html.dark-mode {
-  $color-scheme: dark;
-  {% include css/just-the-docs.scss.liquid color_scheme="dark" %}
-  
-  div.highlighter-rouge div.highlight {
-	line-height: 1;
-  }
-  
-  span {
-    color: $link-color;
-  }
-  
-  /* just-the-docs-switchable-src.css */
-  
-  .site-footer {
-	color: #959396;
-  }
-  
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  #toctitle {
-    font-weight: 500;
-  }
+// Light $link-color default = $purple-000 = #7253ed.
+span {
+  color: #7253ed;
 }

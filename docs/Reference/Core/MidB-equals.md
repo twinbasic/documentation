@@ -19,7 +19,7 @@ Syntax:
 : **Variant** (**Long**). Byte position in *stringvar* where the replacement of bytes begins.
 
 *length*
-: *optional*  **Variant** (**Long**). Number of bytes to replace. If omitted, all of *string* is used.
+: *optional* **Variant** (**Long**). Number of bytes to replace. If omitted, all of *string* is used.
 
 *string*
 : String expression whose bytes replace part of *stringvar*.

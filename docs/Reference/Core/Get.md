@@ -19,12 +19,12 @@ Syntax:
 : Any valid file number.
 
 *recnumber*
-: *optional*  **Variant** (**Long**). Record number (**Random** mode files) or byte number (**Binary** mode files) at which reading begins.
+: *optional* **Variant** (**Long**). Record number (**Random** mode files) or byte number (**Binary** mode files) at which reading begins.
 
 *varname*
 : Valid variable name into which data is read.
 
-Data read with **Get** is usually written to a file with [**Put**](Put). The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. If you omit *recnumber*, the next record or byte following the last **Get** or **Put** statement (or pointed to by the last [**Seek**](../Modules/FileSystem/Seek) function) is read. You must include the delimiting commas:
+Data read with **Get** is usually written to a file with [**Put**](Put). The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. When *recnumber* is omitted, the next record or byte following the last **Get** or **Put** statement (or pointed to by the last [**Seek**](../Modules/FileSystem/Seek) function) is read. The delimiting commas must be included:
 
 ```tb
 Get #4, , FileBuffer
@@ -39,7 +39,7 @@ For files opened in **Random** mode, the following rules apply:
 - If the variable being read into is a **Variant** of numeric type, **Get** reads 2 bytes identifying the **VarType** of the **Variant** and then the data that goes into the variable. For example, when reading a **Variant** of **VarType** 3, **Get** reads 6 bytes: 2 bytes identifying the **Variant** as **VarType** 3 (**Long**) and 4 bytes containing the **Long** data. The record length specified by the **Len** clause in the **Open** statement must be at least 2 bytes greater than the actual number of bytes required to store the variable.
 
   > [!NOTE]
-  > Use the **Get** statement to read a **Variant** array from disk, but you can't use **Get** to read a scalar **Variant** containing an array. You also can't use **Get** to read objects from disk.
+  > Use the **Get** statement to read a **Variant** array from disk; **Get** cannot read a scalar **Variant** containing an array. **Get** also cannot read objects from disk.
 
 - If the variable being read into is a **Variant** of **VarType** 8 (**String**), **Get** reads 2 bytes identifying the **VarType**, 2 bytes indicating the length of the string, and then reads the string data. The record length specified by the **Len** clause in the **Open** statement must be at least 4 bytes greater than the actual length of the string.
 

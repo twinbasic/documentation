@@ -7,9 +7,6 @@ permalink: /Reference/Categories
 
 This chapter lists the global statements and procedures that form the core of the twinBASIC language.
 
-> [!WARNING]
-> Work in Progress Below
-
 # Categorical List
 
 ## Compiler Control
@@ -49,7 +46,7 @@ Statements:
 * [On ... GoTo](../tB/Core/On-GoTo), [On ... GoSub](../tB/Core/On-GoSub) - transfer execution to a location selected by an expression
 * [Stop](../tB/Core/Stop) - interrupt execution
 
-Inline conditional functions — expression-level alternatives to the **If...Then...Else** and **Select Case** statements above:
+Inline conditional functions --- expression-level alternatives to the **If...Then...Else** and **Select Case** statements above:
 
 * [If](../tB/Modules/Interaction/If) - evaluate an expression and return one of two values; only the chosen branch is evaluated (twinBASIC addition)
 * [IIf](../tB/Modules/Interaction/IIf) - evaluate an expression and return one of two values; both branches are always evaluated
@@ -455,6 +452,16 @@ Procedures:
 * [NPV](../tB/Modules/Financial/NPV) - net present value of an investment
 * [NPer](../tB/Modules/Financial/NPer) - number of periods for an investment with constant deposits and interest
 * [FormatCurrency](../tB/Modules/Strings/FormatCurrency) - format an expression as a currency string
+
+## Unit Testing
+
+Modules of the [Assert](../tB/Packages/Assert/) package:
+
+* [Exact](../tB/Packages/Assert/Exact) - strictest comparison semantics; datatypes must match and no implicit conversions happen
+* [Strict](../tB/Packages/Assert/Strict) - case-sensitive strings, otherwise standard twinBASIC equality
+* [Permissive](../tB/Packages/Assert/Permissive) - case-insensitive strings, otherwise standard twinBASIC equality
+
+Each module exposes the same fifteen assertions: **Succeed**, **Fail**, **Inconclusive**, **AreEqual** / **AreNotEqual**, **AreSame** / **AreNotSame**, **IsTrue** / **IsFalse**, **IsNothing** / **IsNotNothing**, **IsNull** / **IsNotNull**, **SequenceEquals** / **NotSequenceEquals**. All are tagged `[DebugOnly(True)]` and compile out of release builds.
 
 ## Deprecated
 

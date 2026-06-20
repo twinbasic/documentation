@@ -54,7 +54,7 @@ Public Function MyExportedFunction(ByVal arg As Long) As Long
 Public Function MyCDeclExport CDecl(ByVal arg As Long)
 ```
 
-This is primarily used to create Standard DLLs (see [Project Types](../Project-Configuration/Project-Types.md)), but this functionality is also available in Standard EXE and other compiled project types.
+This is primarily used to create Standard DLLs (see [Project Types](../Project-Configuration/Project-Types)), but this functionality is also available in Standard EXE and other compiled project types.
 
 ## Create classes without `IDispatch`
 

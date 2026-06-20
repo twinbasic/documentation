@@ -1,0 +1,21 @@
+// Forward support so the entry point can configure theme variables through
+// this aggregator (e.g. @use "modules" with ($logo: "/favicon.png")).
+@forward "./support/support";
+
+// External dependency
+@use "./vendor/normalize.scss/normalize";
+
+// Modules
+@use "./base";
+@use "./layout";
+@use "./content";
+@use "./navigation";
+@use "./typography";
+@use "./labels";
+@use "./buttons";
+@use "./search";
+@use "./tables";
+@use "./code";
+@use "./utilities/utilities";
+@use "./print";
+@use "./skiptomain";

@@ -31,18 +31,18 @@ Operators built into the twinBASIC language. They are understood by the compiler
 - [Is](../tB/Core/Is) -- compares two object references for identity
 - [IsNot](../tB/Core/IsNot) -- (twinBASIC) the logical inverse of **Is**
 
-## Logical and Bitwise
+## Bitwise
 
-Both operands are always evaluated.
+Both operands are always evaluated. Booleans are treated as integers: True = -1, False = 0.
 
-- [And](../tB/Core/And) -- logical or bitwise conjunction
-- [Or](../tB/Core/Or) -- logical or bitwise disjunction
-- [Not](../tB/Core/Not) -- logical or bitwise negation
-- [Xor](../tB/Core/Xor) -- logical or bitwise exclusive-or
-- [Eqv](../tB/Core/Eqv) -- logical or bitwise equivalence
-- [Imp](../tB/Core/Imp) -- logical or bitwise implication
+- [And](../tB/Core/And) -- bitwise conjunction
+- [Or](../tB/Core/Or) -- bitwise disjunction
+- [Not](../tB/Core/Not) -- bitwise negation
+- [Xor](../tB/Core/Xor) -- bitwise exclusive-or
+- [Eqv](../tB/Core/Eqv) -- bitwise equivalence
+- [Imp](../tB/Core/Imp) -- bitwise implication
 
-## Logical (Short-Circuit)
+## Logical Short-Circuit
 
 The right operand is evaluated only when the left operand does not already determine the result.
 
@@ -51,7 +51,7 @@ The right operand is evaluated only when the left operand does not already deter
 
 ## Bitshift
 
-*(twinBASIC)* Shifts are *logical* — vacated bits are filled with zero, and shifts past the operand's width yield `0` rather than wrapping.
+*(twinBASIC)* Shifts are *logical* --- vacated bits are filled with zero, and shifts past the operand's width yield `0` rather than wrapping.
 
 - [\<<](../tB/Core/LeftShift) -- (twinBASIC) shifts a numeric value left by a given number of bits
 - [\>>](../tB/Core/RightShift) -- (twinBASIC) shifts a numeric value right by a given number of bits
@@ -102,4 +102,4 @@ Within each category, the order from highest to lowest precedence is:
 
 Comparison operators all have equal precedence and evaluate left-to-right. Multiplication and division also evaluate left-to-right when they appear together, as do addition and subtraction. The `&` operator is not strictly arithmetic, but in precedence it follows all arithmetic operators and precedes all comparison operators.
 
-The compound-assignment operators (`+=`, `-=`, `*=`, `/=`, `^=`, `&=`, `<<=`, `>>=`) appear only at statement level — they are not part of any expression, so they do not participate in precedence.
+The compound-assignment operators (`+=`, `-=`, `*=`, `/=`, `^=`, `&=`, `<<=`, `>>=`) appear only at statement level --- they are not part of any expression, so they do not participate in precedence.

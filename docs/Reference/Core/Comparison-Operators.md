@@ -47,9 +47,9 @@ The following table lists the comparison operators and the conditions that deter
 > [!NOTE]
 > The [**Is**](Is) and [**Like**](Like) operators have their own dedicated comparison semantics and are documented separately.
 
-The `=` symbol is also the assignment operator (`*variable* = *expression*`). The context — whether `=` appears in an expression or at the top of a statement — determines which meaning applies; you do not need to choose between them explicitly.
+The `=` symbol is also the assignment operator (`*variable* = *expression*`). The context --- whether `=` appears in an expression or at the top of a statement --- determines which meaning applies; no explicit choice between them is required.
 
-When comparing two expressions, you may not be able to easily determine whether the expressions are being compared as numbers or as strings. The following table shows how the expressions are compared, or the result when either expression is not a **Variant**:
+When comparing two expressions, determining whether they are being compared as numbers or as strings can be non-obvious. The following table shows how the expressions are compared, or the result when either expression is not a **Variant**:
 
 | If                                                                                       | Then                                                  |
 |:-----------------------------------------------------------------------------------------|:------------------------------------------------------|
@@ -74,7 +74,7 @@ If *expression1* and *expression2* are both **Variant** expressions, their under
 
 When a **Single** is compared to a **Double**, the **Double** is rounded to the precision of the **Single**. If a **Currency** is compared with a **Single** or **Double**, the **Single** or **Double** is converted to a **Currency**. For **Currency**, any fractional value less than `.0001` may be lost, which can cause two values to compare as equal when they are not.
 
-String comparisons are governed by the module's [**Option Compare**](Option) setting — **Binary** (the default; case-sensitive, ordinal) or **Text** (case-insensitive, locale-sensitive).
+String comparisons are governed by the module's [**Option Compare**](Option) setting --- **Binary** (the default; case-sensitive, ordinal) or **Text** (case-insensitive, locale-sensitive).
 
 ### Example
 

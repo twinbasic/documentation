@@ -53,7 +53,7 @@ You can see that the Honk method is only implemented by the parent class, then c
 
 ## **Inherits** for Complete OOP
 
-This is a more robust option for full inheritance and OOP. It supports `Protected` methods and variables that are accessible to derived classes but not outside callers, `Overridable` and `Overrides` syntax, multiple inheritance, and explicit base class constructors.
+This option supports full inheritance and OOP: `Protected` methods and variables accessible to derived classes (but not outside callers), `Overridable` and `Overrides` syntax, multiple inheritance, and explicit base class constructors.
 
 ### Example: Animal Class Hierarchy
 

@@ -1,5 +1,5 @@
 ---
-title: <<, <<=
+title: "&lt;&lt;, &lt;&lt;="
 parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/LeftShift
@@ -28,11 +28,11 @@ Syntax:
 *count*
 : Any numeric expression giving the number of bit positions to shift.
 
-The data type of *result* matches the (integral) type of *number*. A shift of more bits than the type can hold yields `0` rather than wrapping. The sign bit is *not* preserved — `<<` is a logical left shift, equivalent to multiplication by 2<sup>*count*</sup> within the available width.
+The data type of *result* matches the (integral) type of *number*. A shift of more bits than the type can hold yields `0` rather than wrapping. The sign bit is *not* preserved --- `<<` is a logical left shift, equivalent to multiplication by 2<sup>*count*</sup> within the available width.
 
 ### Compound assignment
 
-`x <<= n` is the twinBASIC shorthand for `x = x << n`. **\<<=** is a statement, not an expression — it does not produce a value.
+`x <<= n` is the twinBASIC shorthand for `x = x << n`. **\<<=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Mask As Long = 1

@@ -16,11 +16,11 @@ Syntax:
 : Name of the event to fire. Must be the name of an [**Event**](Event) declared in the same module.
 
 *argumentlist*
-: *optional*  Comma-delimited list of variables, arrays, or expressions to pass as event arguments. The *argumentlist* must be enclosed by parentheses. If the event has no arguments, the parentheses must be omitted.
+: *optional* Comma-delimited list of variables, arrays, or expressions to pass as event arguments. The *argumentlist* must be enclosed by parentheses. If the event has no arguments, the parentheses must be omitted.
 
 If the event has not been declared within the module in which it is raised, an error occurs. If the event has no arguments, including empty parentheses in the **RaiseEvent** invocation causes an error.
 
-You can't use **RaiseEvent** to fire events that are not explicitly declared in the module. For example, if a form has a built-in **Click** event, you can't fire its **Click** event by using **RaiseEvent**. If you declare a **Click** event in the form module, it shadows the form's own **Click** event.
+**RaiseEvent** cannot fire events that are not explicitly declared in the module. For example, even if a form has a built-in **Click** event, **RaiseEvent** cannot fire it. Declaring a **Click** event in the form module shadows the form's own **Click** event.
 
 Event firing is done in the order that connections were established. Because events can have **ByRef** parameters, a process that connects late may receive parameters that have been changed by an earlier event handler.
 

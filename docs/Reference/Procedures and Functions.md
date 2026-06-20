@@ -7,9 +7,6 @@ permalink: /Reference/Procedures-and-Functions
 
 # Procedures and Functions
 
-> [!WARNING]
-> Work in Progress
-
 ## A
 
 - [Abs](../tB/Modules/Math/Abs) -- returns the absolute value of a number

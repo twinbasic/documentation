@@ -18,6 +18,6 @@ Once you open a project:
 
 Clicking on this menu option shows
 
-> 🛈 Sorry, this menu option has not been imlpemented yet
+> 🛈 Sorry, this menu option has not been implemented yet
 
 ![Global Search - Popup](Images/GlobalSearch-Popup.png "Global Search - Popup")

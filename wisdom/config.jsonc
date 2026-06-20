@@ -1,0 +1,42 @@
+{
+  // twinBASIC Discord server
+  "guild_id": "927638153546829845",
+
+  "channels": {
+    // Channel name patterns to exclude (case-insensitive regex).
+    "exclude_patterns": [
+      "github-.*",
+      "bot-.*",
+      "log-.*"
+    ],
+    // Channel IDs to exclude by exact match.
+    "exclude_ids": [],
+    // Channel types to include: "text" (type 0) and/or "forum" (type 15).
+    "include_types": ["text", "forum"]
+  },
+
+  "threads": {
+    // Skip threads with fewer messages than this.
+    "min_message_count": 1
+  },
+
+  "export": {
+    // Parallel channel/thread fetches (Discord recommends <= 5).
+    "concurrency": 3
+  },
+
+  // Tool-imposed rate and session limits, per token type.
+  // Auto-detection selects the active tier; see Authentication in PLAN-1.
+  "limits": {
+    "user": {
+      "requests_per_second": 2,
+      "session_query_cap": 100
+    },
+    "bot": {
+      "requests_per_second": 5,
+      "session_query_cap": 200
+    },
+    // Randomized delay (seconds) before the auto-detection probe fires.
+    "probe_delay": [5, 10]
+  }
+}

@@ -1,0 +1,384 @@
+# Chapter manifest for the twinBASIC documentation PDF.
+#
+# ── Selector schema ───────────────────────────────────────────────────
+# Shared by front_matter entries, parts, and chapter entries:
+#
+#   page          single URL prefix; shorthand for a one-element
+#                 `pages:` list. Default match is `contains` (the
+#                 page's URL contains this string). Combinable with
+#                 `pages:`, `nav_page:`, `nav_pages:`.
+#   pages         list of URL prefixes. Each entry is a `contains`
+#                 match unless `no_descent:` is set on this entry.
+#   nav_page      single nav-path prefix; shorthand for a one-element
+#                 `nav_pages:` list. The page's `nav_path` is the
+#                 slash-joined `grand_parent / parent / title` chain
+#                 populated by `_plugins/nav-path.rb`.
+#   nav_pages     list of nav-path prefixes.
+#   no_descent    optional truthy. Switches every `page` / `pages` /
+#                 `nav_page` / `nav_pages` match on this entry from
+#                 the default `contains` semantics to exact equality
+#                 (`==`). Use it when a prefix like `/Foo/` should
+#                 match only the index, not its sub-pages; or when
+#                 a one-page entry like `page: /` would otherwise
+#                 sweep in every page on the site.
+#
+# ── Common entry options ──────────────────────────────────────────────
+# Parts and chapter entries share all of the following options.
+# Where behaviour differs by level, the part form is noted first with
+# the chapter form in parentheses. "Divider heading" = H1 for parts,
+# H2 for chapters.
+#
+#   title / subtitle
+#                 -- divider page text.
+#   landing_page  -- single absolute URL emitted first in the entry's
+#                    content list, before any prefix-swept pages.
+#                    Filtered out from prefix matches so it is not
+#                    double-emitted. Unlike `foreword_page:`, it renders
+#                    as a regular article (running header, normal
+#                    styling). Its source H1 is stripped by the rewriter
+#                    so the divider heading remains the sole outline
+#                    entry. The strip is skipped when `no_outline_entry:`
+#                    is also set -- in that case the landing's first
+#                    heading IS the bookmark target.
+#   landing_is_target
+#                 -- optional truthy. Requires `landing_page:`. When
+#                    set, the divider renders silently and the entry
+#                    title is injected as the divider heading (H1 / H2)
+#                    at the start of the landing-page article, so the
+#                    PDF bookmark carries the entry title but navigates
+#                    directly to the landing page rather than the blank
+#                    divider page. The landing's own source H1 is still
+#                    stripped. Pair with `outline_closed:` to start the
+#                    bookmark collapsed. Contrast with `no_outline_entry`
+#                    + `no_heading_shift`, which promotes the landing's
+#                    own H1 text (not the entry title) as the outline
+#                    entry.
+#   no_outline_entry
+#                 -- optional truthy. When set, the divider emits its
+#                    title as a silent `<p>` instead of the divider
+#                    heading (H1 / H2), so PagedJS skips it for the PDF
+#                    outline. The divider page still renders visually.
+#                    When also used with `landing_page:`, the landing's
+#                    source H1 strip is skipped so the landing's first
+#                    heading becomes the bookmark target. Pair with
+#                    `no_heading_shift:` to keep that heading at the
+#                    right depth.
+#   no_heading_shift
+#                 -- optional truthy.
+#                    For parts: every page in the part skips the base
+#                    +1 heading shift, so source H1 renders as H1 (not
+#                    H2). Use with `no_outline_entry:` when a flat
+#                    part's only page would otherwise have its H1
+#                    shifted to H2 and buried under the silent divider.
+#                    For chapters: this chapter's body skips the
+#                    chaptered-part extra +1 shift (chapters normally
+#                    receive +2 total: base + extra), so its source H1
+#                    lands one level shallower. Pair with
+#                    `no_outline_entry:` to promote that heading into
+#                    the outline slot vacated by the silent divider.
+#   outline_closed
+#                 -- optional truthy. Starts the PDF bookmark for this
+#                    entry collapsed (children hidden until expanded).
+#                    For entries with a real divider heading (H1 / H2):
+#                    `data-pdf-bookmark-closed` is stamped on that
+#                    heading. For `no_outline_entry` entries (whose
+#                    bookmark is the first content heading): stamped on
+#                    the first content article; parseOutline finds the
+#                    heading via closest(). For `landing_is_target`
+#                    entries: stamped on the injected heading directly.
+#                    Ignored when the entry has no bookmark at all.
+#
+# ── front_matter ──────────────────────────────────────────────────────
+# An ordered list of sections emitted between the title page and the
+# first numbered Part. No divider page, no part number; each entry
+# contributes its pages inline. Each entry may set `title:` (used as
+# the anchor seed when the URL collapses to an empty path -- e.g. `/`
+# becomes `ch-introduction`) plus any selector-schema keys above.
+#
+# ── parts ─────────────────────────────────────────────────────────────
+# An ordered list of numbered book parts. Each part uses the selector
+# schema and common entry options above, plus:
+#
+#   foreword_page -- single absolute URL emitted as
+#                    `<article class="part-foreword">` right after the
+#                    part divider, before any chapter dividers. No
+#                    running header (CSS suppresses chrome via a named
+#                    page). Distinct from `landing_page:` -- no source-
+#                    H1 strip, no outline entry of its own.
+#   chapters      -- ordered list of chapter entries. Each chapter has
+#                    its own divider page; the part becomes a container
+#                    for several distinct subjects rather than a flat
+#                    folder. Each chapter entry uses the selector schema
+#                    and common entry options above. No chapter-specific
+#                    options exist beyond those shared with parts.
+#
+# ── Sort order ────────────────────────────────────────────────────────
+# Per-entry content lists are ordered by sort_by_nav_order: folder-
+# style index pages first (URL ends in `/`), then nav_order pages by
+# nav_order ascending with title tie-break, then nav_order-less pages
+# alphabetically by title. Groups by owning index URL so an index and
+# its sub-pages stay adjacent.
+
+front_matter:
+  - title: Introduction
+    page: /
+    no_outline_entry: true
+    no_heading_shift: true
+    no_descent: true
+    outline_closed: true
+
+parts:
+  - title: Features
+    subtitle: Language additions, tooling, and packaging
+    # DONE
+    landing_page: /Features/
+    outline_closed: true
+    chapters:
+      - title: Attributes
+        page: /Features/Attributes-Intro
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Language Syntax
+        page: /Features/Language/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Project Configuration
+        page: /Features/Project-Configuration/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Standard Library
+        page: /Features/Standard-Library/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: GUI Components
+        page: /Features/GUI-Components/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Package Management
+        page: /Features/Packages/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Advanced Features
+        page: /Features/Advanced/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Compiler and IDE
+        page: /Features/Compiler-IDE/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: 64-bit Compilation
+        page: /Features/64bit
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Fusion
+        page: /Features/Fusion
+        outline_closed: true
+
+  - title: Frequently Asked Questions
+    subtitle: Status, scope, and how to get help
+    page: /FAQ
+    outline_closed: true
+    #landing_is_target: true
+    no_outline_entry: true
+    no_heading_shift: true
+
+  - title: Tutorials
+    subtitle: Worked code examples for Arrays, CEF, WebView2, and CustomControls
+    outline_closed: true
+    # DONE
+    chapters:
+      - title: Arrays
+        page: /Tutorials/Arrays
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: CEF
+        subtitle: Chromium Embedded Framework
+        page: /Tutorials/CEF/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Custom Controls
+        page: /Tutorials/CustomControls/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: WebView2
+        page: /Tutorials/WebView2/
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+
+  - title: The Core Language
+    subtitle: Statements, operators, and built-in keywords
+    outline_closed: true
+    chapters:
+      - title: Categorical List
+        page: /Reference/Categories
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Statements
+        nav_page: Reference Section/Statements
+        nav_pages:
+          - Statements
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Procedures and Functions
+        page: /Reference/Procedures-and-Functions
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Operators
+        nav_page: Reference Section/Operators
+        outline_closed: true
+      - title: Compiler Constants
+        page: /Reference/Compiler-Constants
+        outline_closed: true
+      - title: Attributes
+        page: /tB/Core/Attributes
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+        
+
+  - title: Reference Section
+    subtitle: Controls and the project glossary
+    outline_closed: true
+    chapters:
+      - title: Controls
+        landing_page: /tB/Controls
+        outline_closed: true
+      - title: Glossary
+        landing_page: /tB/Gloss
+        outline_closed: true
+
+  - title: Packages
+    subtitle: The runtime and library packages shipped with twinBASIC
+    outline_closed: true
+    # The /tB/Packages/ landing page is the part's foreword; its content
+    # (an overview of all built-in packages) sits between the part divider
+    # and the first chapter divider, with no running header. Each package
+    # below becomes a chapter with a dedicated chapter-divider title
+    # page; the chapter's own source landing page emits next (with its
+    # source H1 stripped by the plugin to avoid the redundancy with the
+    # chapter divider's H2), followed by the package's class / module /
+    # control pages in URL order.
+    foreword_page: /tB/Packages/
+    chapters:
+      - title: Default Packages
+        subtitle: VB, VBA, and VBRUN --- included in every project by default
+        landing_page: /tB/Packages/Default/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: VBA Package
+        subtitle: Standard runtime modules --- Strings, Math, FileSystem, and the rest
+        landing_page: /tB/Packages/VBA
+        page: /tB/Modules/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: VBRUN Package
+        subtitle: Runtime types for controls, errors, and the property bag
+        landing_page: /tB/Packages/VBRUN/
+        page: /tB/Packages/VBRUN/
+        landing_is_target: true
+        outline_closed: true        
+
+      - title: VB Package
+        subtitle: Classic VB6 forms and intrinsic controls
+        landing_page: /tB/Packages/VB/
+        page: /tB/Packages/VB/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: Built-In Packages
+        subtitle: Nine optional packages shipped with twinBASIC, always available offline
+        landing_page: /tB/Packages/Built-In/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: WebView2 Package
+        subtitle: Chromium-based browser control via Microsoft Edge WebView2
+        landing_page: /tB/Packages/WebView2/
+        page: /tB/Packages/WebView2/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: Assert Package
+        subtitle: Test assertions with Exact, Strict, and Permissive comparison
+        landing_page: /tB/Packages/Assert/
+        page: /tB/Packages/Assert/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: CustomControls Package
+        subtitle: The WaynesControls suite and its supporting framework
+        landing_page: /tB/Packages/CustomControls/
+        page: /tB/Packages/CustomControls/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: CEF Package
+        subtitle: Chromium Embedded Framework browser control
+        landing_page: /tB/Packages/CEF/
+        page: /tB/Packages/CEF/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: WinEventLogLib Package
+        subtitle: Windows Event Log integration
+        landing_page: /tB/Packages/WinEventLogLib/
+        page: /tB/Packages/WinEventLogLib/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: WinNamedPipesLib Package
+        subtitle: Asynchronous named-pipe framework over IOCP
+        landing_page: /tB/Packages/WinNamedPipesLib/
+        page: /tB/Packages/WinNamedPipesLib/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: WinServicesLib Package
+        subtitle: Windows Services hosting
+        landing_page: /tB/Packages/WinServicesLib/
+        page: /tB/Packages/WinServicesLib/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: tbIDE Package
+        subtitle: IDE Extensibility --- the addin SDK
+        landing_page: /tB/Packages/tbIDE/
+        page: /tB/Packages/tbIDE/
+        landing_is_target: true
+        outline_closed: true
+
+      - title: WinNativeCommonCtls Package
+        subtitle: VB6-compatible Common Controls replacement on top of Win32 ComCtl32
+        landing_page: /tB/Packages/WinNativeCommonCtls/
+        page: /tB/Packages/WinNativeCommonCtls/
+        landing_is_target: true
+        outline_closed: true
+
+  - title: Appendices
+    outline_closed: false
+    
+    chapters:
+      - title: Documentation Development
+        subtitle: How does the documentation builder work and how to use it
+        landing_page: /Documentation/Development/
+        page: /Documentation/Development/
+        landing_is_target: true
+        outline_closed: true

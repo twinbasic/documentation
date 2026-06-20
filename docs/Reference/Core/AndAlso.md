@@ -23,7 +23,7 @@ Syntax:
 
 If *expression1* is **False**, *result* is **False** and *expression2* is not evaluated. Otherwise *expression2* is evaluated and its **Boolean** value becomes *result*.
 
-This is the standard "short-circuit AND". It is useful when *expression2* depends on *expression1* having succeeded — for example, a null-check guarding a property access.
+This is the standard "short-circuit AND". It is useful when *expression2* depends on *expression1* having succeeded --- for example, a null-check guarding a property access.
 
 ### Example
 

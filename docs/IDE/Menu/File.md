@@ -25,7 +25,3 @@ permalink: /tB/IDE/Project/Menu/File
 - Clean
 ---
 - Exit <kbd>ALT</kbd> + <kbd>F4</kbd>
-
-> [!NOTE]
->
->  TODO: Add each Menu item.
