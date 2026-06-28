@@ -81,24 +81,24 @@ While open source models are possible in the future, at this time the compiler i
 <details>
 <summary markdown=span id="cost"><b>How much does twinBASIC cost?</b></summary>
 
-There are 3 editions of twinBASIC: The Community Edition is FREE. A splash screen is placed on compiled 64bit binaries and certain features like advanced optimized compilation and future cross-platform compilation are unavailable, but there are no restrictions on core language features or royalties imposed. To get those features, subscriptions are available for the Professional and Ultimate editions. For more details, including current pricing for Professional and Ultimate editions, [see this page](https://twinbasic.com/preorder.html).
+There are 4 basic editions of twinBASIC: The Community Edition is FREE. A splash screen is placed on compiled 64bit binaries and certain features like advanced optimized compilation and future cross-platform compilation are unavailable, but there are no restrictions on core language features or royalties imposed. To get those features, subscriptions are available for the Personal, Professional and Ultimate editions. There are also VIP editions that come with perpetual licenses. For more details on what's included with each edition, and to see current pricing, [see this page](https://twinbasic.com/licensing).
 
 > [!NOTE]
-> You can change the subscription level at any time and the community edition is always available. There will be no lockout (see [the previous statement regarding escrow](#open-source)) so you will always have the ability to develop, test and compile. 
+> You can change the subscription level at any time and the Community Edition is always available. There will be no lockout (see [the previous statement regarding escrow](#open-source)) so you will always have the ability to develop, test and compile. 
 
 </details>
 
 <details>
 <summary markdown=span id="perpetual-license"><b>Can I pay a one-time fee for a perpetual license?</b></summary>
 
-Due to the need for continuing income to be able to develop twinBASIC, subscriptions are the primary model for premium versions, which [are available](https://twinbasic.com/preorder.html) on a month-to-month or yearly basis. However, right now for a limited time, a buy-once perpetual license is available in the form of the [VIP Gold Lifetime Licence Initiative](https://twinbasic.com/vip.html). This provides not only a lifetime license to twinBASIC including updates and new versions, but numerous additional benefits available only to people who purchase this license. 
+Due to the need for continuing income to be able to develop twinBASIC, subscriptions are the primary model for premium versions, which [are available](https://twinbasic.com/licensing) on a month-to-month or yearly basis. However, right now for a limited time, a buy-once perpetual license is available in the form of the [VIP Silver and Gold Lifetime Licence Initiatives](https://twinbasic.com/licensing). This provides not only a lifetime license to twinBASIC including updates and new versions, but numerous additional benefits available only to people who purchase this license. 
 
 </details>
 
 <details>
-<summary markdown=span id="commercial-use"><b>Can twinBASIC be used to develop commercial products, and what royalties are owed?</b></summary>
+<summary markdown=span id="commercial-use"><b>Can twinBASIC be used to develop commercial products, and are royalties are owed?</b></summary>
 
-There are no restrictions on any edition of twinBASIC; they can all be used to develop commercial products, on a ROYALTY FREE basis. Nothing is owed for selling programs or other products created with twinBASIC. The twinBASIC software itself, however, may not be redistributed without appropriate license.
+All versions of twinBASIC except the Personal Edition can be used to develop commercial products, on a ROYALTY FREE basis, including the free Community Edition. Nothing is owed for selling programs or other products created with twinBASIC editions allowing commercial use. The twinBASIC software itself, however, may not be redistributed without appropriate license.
 
 </details>
 
