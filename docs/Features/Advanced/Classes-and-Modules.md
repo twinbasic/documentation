@@ -37,6 +37,26 @@ A private module or class won't have its members entered into the type library i
 
 In a class, module-level variables can be declared as `ReadOnly`, e.g. `Private ReadOnly mStartDate As Date`. This allows more complex constant assignments: you can use a function return to set it inline, `Private ReadOnly mStartDate As Date = Now()`, or `ReadOnly` constants can be set in `Class_Initialize` or `Sub New(...)` (see parameterized class constructors above), but everywhere else, they can only be read, not changed.
 
+## Get/Let/Set Notification for Class Public Variables
+
+When have a variable in a class such as `Public myVar As Long`, it's treated as a property you can use the standard syntax to get or set. tB adds an optional notification event for when the Get/Let/Set occurs that's accessed through the regular `Handles` syntax:
+
+```tb
+Class MyClass
+    Public myVar As Long
+    Public myOtherVar As Long
+    Private Sub OnChangeMyVars() Handles myVar.OnPropertyLet, myOtherVar.OnPropertyLet, _
+                                         myVar.OnPropertySet, myOtherVar.OnPropertySet
+    ...
+    End Sub
+    Private Sub OnGetMyVar() Handles myVar.OnPropertyGet, myOtherVar.OnPropertyGet
+    ...
+    End Sub
+```
+
+These are notifications only, you can't change the `OnPropertyGet` method to a function and override the return.
+
+
 ## Exported Functions and Variables
 
 It's possible to export a function or variable from standard modules, including with CDecl.
