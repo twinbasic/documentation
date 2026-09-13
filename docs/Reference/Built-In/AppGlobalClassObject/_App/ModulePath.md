@@ -15,7 +15,7 @@ Syntax: *object*.**ModulePath**
 *object*
 : *required* An object expression that evaluates to an **_App** object. In practice this is the global **App** object.
 
-**ModulePath** returns the path to the source file or compiled module that is currently executing. When running inside the twinBASIC IDE, this is the path to the `.twin` source file. In a compiled executable, it is the path to the executable or DLL.
+**ModulePath** returns the full path of the binary module that is currently executing. In a compiled executable, this is the path to the executable or DLL. When running inside the twinBASIC IDE, the twinBASIC debugger DLL path is returned.
 
 > [!NOTE]
 >
