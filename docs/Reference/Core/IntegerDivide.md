@@ -27,13 +27,13 @@ Before division is performed, the numeric expressions are rounded to **Byte**, *
 
 Usually, the data type of *result* is a **Byte**, **Byte** variant, **Integer**, **Integer** variant, **Long**, **Long** variant, or **LongLong**, regardless of whether *result* is a whole number.
 
-Any fractional portion is truncated. However, if any expression is **Null**, *result* is **Null**. Any expression that is **Empty** is treated as 0.
+Any fractional portion of the quotient is discarded. However, if any expression is **Null**, *result* is **Null**. Any expression that is **Empty** is treated as 0.
 
 Dividing by zero raises a run-time error.
 
 ### Compound assignment
 
-`x \= y` is the twinBASIC shorthand for `x = x \ y`. The left-hand side is evaluated once and rounded to an integral type as described above. **\\=** is a statement, not an expression --- it does not produce a value.
+`x \= y` is the twinBASIC shorthand for `x = x \ y`. The left-hand side is evaluated once and rounded to an integral type before the division. **\\=** is a statement, not an expression --- it does not produce a value.
 
 ```tb
 Dim Value As Long = 100
