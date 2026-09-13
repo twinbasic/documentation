@@ -6,14 +6,14 @@ permalink: /tB/Modules/Compilation/CurrentSourceFile
 # CurrentSourceFile
 {: .no_toc }
 
-Returns the full path of the source file in which the function is called, as a **String**.
+Returns the name of the source file in which the function is called, as a **String**.
 
 Syntax: **CurrentSourceFile** [ **()** ]
 
-The value is the absolute path of the source file that lexically contains the call.
+The value is the file name (without directory components) of the source file that lexically contains the call --- for example, `"Form1.twin"`.
 
 > [!NOTE]
-> **CurrentSourceFile** is a compile-time intrinsic: the path is captured when the source is compiled. It reflects where the file lived on the build machine and may not correspond to any path that exists at run time.
+> **CurrentSourceFile** is a compile-time intrinsic: the name is captured when the source is compiled and embedded as a literal in the output.
 
 ### Example
 

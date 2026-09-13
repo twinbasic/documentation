@@ -19,7 +19,7 @@ Syntax: *object*.**LastBuildPath**
 
 > [!NOTE]
 >
-> **LastBuildPath** is a twinBASIC-specific property with no equivalent in VBA or VB6. It is only meaningful during IDE-hosted execution; in a compiled executable it returns the path of that executable.
+> **LastBuildPath** is a twinBASIC-specific property with no equivalent in VBA or VB6. It is only meaningful during IDE-hosted execution; in a compiled executable it returns an empty string.
 
 ### Example
 
