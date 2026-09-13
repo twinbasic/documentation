@@ -76,13 +76,13 @@ See [Features → Inline Initialization](../Features/Language/Inline-Initializat
 
 ### Parameterised New
 
-`New` accepts constructor arguments when a class exposes an `_Initialize` method with matching parameters:
+`New` accepts constructor arguments when a class exposes a `Sub New` with matching parameters:
 
 ```tb
 Dim conn As New NamedPipeClientConnection("\\.\pipe\mypipe", token)
 ```
 
-See [Features → New](../Features/GUI-Components/New).
+See [Features → Classes and Modules](../Features/Advanced/Classes-and-Modules).
 
 ---
 
