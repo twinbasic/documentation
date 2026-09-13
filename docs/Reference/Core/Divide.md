@@ -27,12 +27,11 @@ The data type of *result* is usually a **Double** or a **Double** variant. The f
 
 | If                                                              | Then *result* is                                                                       |
 |:----------------------------------------------------------------|:---------------------------------------------------------------------------------------|
-| Both expressions are **Byte**, **Integer**, or **Single**       | A **Single** unless it overflows its legal range, in which case an error occurs.       |
-| Both expressions are **Byte**, **Integer**, or **Single** variants | A **Single** variant unless it overflows its legal range, in which case *result* is a **Variant** containing a **Double**. |
+| At least one expression is **Single** and neither is **Long**   | A **Single** unless it overflows its legal range, in which case an error occurs.       |
+| One or both expressions are **Null**                            | **Null**.                                                                              |
+| An expression is **Empty**                                      | Treated as 0.                                                                          |
 
-If one or both expressions are **Null** expressions, *result* is **Null**. Any expression that is **Empty** is treated as 0.
-
-Dividing by zero is an error for integral types; for **Single** and **Double** it follows the IEEE-754 rules (positive infinity, negative infinity, or NaN). Use [**\\**](IntegerDivide) for truncating-integer division and [**Mod**](Mod) for remainder.
+Dividing by zero raises a run-time error. Use [**\\**](IntegerDivide) for truncating-integer division and [**Mod**](Mod) for remainder.
 
 ### Compound assignment
 
