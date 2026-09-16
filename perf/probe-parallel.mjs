@@ -48,7 +48,7 @@ if (!existsSync(inputPath)) {
   process.exit(1);
 }
 
-const pagedScriptPath = resolve(__dirname, '..', 'docs', 'lib', 'paged.browser.js');
+const pagedScriptPath = resolve(__dirname, '..', 'book', 'lib', 'paged.browser.js');
 const detachPagesPath = resolve(__dirname, 'detach-pages.js');
 for (const p of [pagedScriptPath, detachPagesPath]) {
   if (!existsSync(p)) {
