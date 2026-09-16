@@ -325,6 +325,7 @@ export function createMarkdownIt(ctx) {
   md.use(footnote);
   configureFootnotes(md);
   md.use(headerIdPlugin);
+  md.use(headingLevelNormalizePlugin);
   md.use(tocPlugin);
   md.use(relativeLinksPlugin, ctx);
   md.use(blockHtmlRecursionPlugin);
@@ -1040,6 +1041,43 @@ function configureFootnotes(md) {
 // an explicit `{: #foo }`. Slug algorithm: lowercase, runs of non-alnum
 // collapse to `-`, strip leading/trailing `-`, "section" fallback for
 // empty, suffix duplicates with `-1`, `-2`, ...
+
+// ---------- heading-level normalization (a11y: WCAG heading-order) ----------
+//
+// House style writes a chapter as `# X` and its sections as `### Y`, skipping
+// `##` on purpose: it keeps GitHub's own rendering of the raw markdown at a
+// modest heading size, without pushing any styling into the source. On the
+// built site that skip is a heading-order defect -- a section sits two levels
+// below its chapter with no h2 between (WCAG 1.3.1, best practice).
+//
+// Fix it in the pipeline so the markdown stays untouched and GitHub keeps its
+// `###`. Deliberately narrow, per the maintainer's rule: fire ONLY on a page
+// that uses h1 and h3 but no h2 -- the unambiguous house-style shape. A page
+// that already uses h2 is left exactly as authored (its levels are the
+// author's own structure, not the workaround). On a matching page every
+// sub-chapter heading is raised one level (h3->h2, h4->h3, ...), which closes
+// the missing-h2 gap; the one such page that also uses h4 (Reference/Core/Open)
+// becomes a clean h1/h2/h3. Runs before header-id and toc so heading ids and
+// the in-page table of contents are built from the final levels. Multiple h1
+// "chapters" on one page are intentional and preserved.
+function headingLevelNormalizePlugin(md) {
+  md.core.ruler.before("header-id", "heading-normalize-levels", (state) => {
+    const toks = state.tokens;
+    const present = new Set();
+    for (const t of toks) {
+      if (t.type === "heading_open") present.add(Number(t.tag.slice(1)));
+    }
+    if (!(present.has(1) && present.has(3) && !present.has(2))) return;
+    for (const t of toks) {
+      if (t.type !== "heading_open" && t.type !== "heading_close") continue;
+      const level = Number(t.tag.slice(1));
+      if (level < 3) continue;
+      const raised = level - 1;
+      t.tag = `h${raised}`;
+      if (t.markup) t.markup = "#".repeat(raised);
+    }
+  });
+}
 
 function headerIdPlugin(md) {
   md.core.ruler.push("header-id", (state) => {

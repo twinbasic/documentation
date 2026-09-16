@@ -84,11 +84,6 @@ async function checkPage(page, filePath, theme) {
         type: "tag",
         values: ["wcag2a", "wcag2aa", "wcag22aa"],
       },
-      rules: {
-        // Sidebar nav links are < 24px — a just-the-docs theme layout
-        // concern requiring a significant redesign to fix.
-        "target-size": { enabled: false },
-      },
     });
   });
 

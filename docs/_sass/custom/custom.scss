@@ -13,16 +13,27 @@
   border: 0;
 }
 
-// Inline SVG diagrams (Phase 13). Controls are float-right links above
-// the diagram; the SVG fills the column width.
+// Inline SVG diagrams (Phase 13). Controls sit right-aligned above the
+// diagram; the SVG fills the column width.
 .svg-controls {
-  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem 0.5rem;
   font-size: 0.85em;
 
   button {
-    float: right;
-    margin-left: 1em;
+    display: inline-flex;
+    align-items: center;
     cursor: pointer;
+    // WCAG 2.5.8 Target Size (Minimum): btn-reset strips all padding, leaving
+    // these ~21px-tall text buttons under the 24x24 CSS px floor -- and on a
+    // narrow column the old float layout wrapped them into rows spaced tighter
+    // than 24px. A 24px min-height clears the floor outright (no spacing
+    // exception needed); dropping the float also makes focus order follow the
+    // visual left-to-right order instead of reversing it.
+    min-height: 24px;
+    padding: 0 0.25rem;
   }
 }
 

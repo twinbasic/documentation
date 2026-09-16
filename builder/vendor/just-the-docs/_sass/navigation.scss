@@ -229,7 +229,13 @@
     margin-right: $sp-2;
     margin-left: $sp-2;
     color: $grey-dk-000;
+    // The slash is decorative: the <nav aria-label="Breadcrumb"><ol> already
+    // conveys order, so a spoken "slash" between every crumb is redundant.
+    // The empty CSS alt text hides it from assistive tech while keeping it
+    // visible. First declaration is the fallback for browsers without the
+    // `content` alt-text syntax (Safari < 17.4); they show "/" as before.
     content: "/";
+    content: "/" / "";
   }
 
   &:last-child {

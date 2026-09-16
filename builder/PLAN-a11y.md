@@ -19,13 +19,13 @@ If a fix *cannot* be expressed in the pipeline — i.e. it requires per-page sem
 
 ## Implementation status
 
-Phases 1, 2, 4, and 5 are **complete**, along with the contrast work of Phase 3. The site builds clean and `check.bat`'s axe-core scan (`scripts/check_a11y.mjs`) reports **0 violations** across all six sample pages in both themes at two viewports. The WCAG 2.2 AA chrome and contrast work landed in three commits:
+All five phases are **complete**, Phase 3 included. The site builds clean and `check.bat`'s axe-core scan (`scripts/check_a11y.mjs`) reports **0 violations** across all six sample pages in both themes at two viewports — now with the `target-size` rule enabled (see 3.2). The WCAG 2.2 AA chrome and contrast work landed in three commits, with the Phase 3 polish (3.2, 3.3, 3.4) following after:
 
 - **`c9f2dfe`** *WCAG 2.2 AA accessibility improvements* — Phase 1 (1.1–1.8) and Phase 2 (2.1–2.7) in full, plus Phase 4 (the axe-core check and its `check.bat` wiring). Also removed the redundant search-input `tabindex` (3.5) as a side effect of the combobox rework.
 - **`3db9794`** *Fix WCAG 1.4.3 contrast in both themes; unblind the a11y checker* — Phase 3.1 to WCAG 1.4.3 AA in both themes, and it **unblinded the checker**: `check_a11y.mjs` had been scanning `_site/` over `file://`, where the root-absolute asset URLs never resolve — every page was audited unstyled, so every contrast result was a meaningless black-on-white pass. It now scans `_site-offline/`, both themes, two viewports. Same commit fixed a new **WCAG 2.1.1** item (see 1.9 — horizontally scrolling code blocks are now keyboard-focusable) and moved syntax-token contrast clamping into `builder/highlight-theme.mjs` at emit time.
 - **`0813181`** *Raise text contrast to WCAG AAA (1.4.6) in both themes* — Phase 3.1 raised from AA to **WCAG 1.4.6 AAA** (7:1 body / 4.5:1 large text) in both themes. This resolved the previously-noted "known residual" active-nav-gradient defect by darkening the light-theme link colour to `$purple-200`.
 
-**Remaining** (none are AA blockers): Phase 3.2 (target size — needs in-browser measurement), 3.3 (heading-level integrity lint), 3.4 (breadcrumb separator — verify with real AT before touching; may need no change).
+**Phase 3 polish — DONE (this pass):** 3.2 (target size), 3.3 (heading-level skip), 3.4 (breadcrumb separator). None were AA blockers; details inline below. The measurement that had been "needed in-browser" for 3.2 was done with axe-core's own viewport emulation (the puppeteer scan renders the offline tree's relative CSS for real, unlike the app's `file://` snapshot which loads unstyled) — the only real target-size failures were the SVG diagram buttons, now fixed, so the rule is enabled.
 
 **Phase 5 — DONE:** the 3-state (system / light / dark) theme toggle now replaces the old 2-state light-default toggle, with system as the default and no-JS progressive enhancement (dark applies via `@media (prefers-color-scheme: dark)` with no script). Shipped with the interim rule-set duplication; the CSS-custom-properties refactor that removes it stays tracked in [FUTURE-WORK.md](FUTURE-WORK.md) (B19).
 
@@ -234,23 +234,31 @@ Syntax tokens stay clamped at 4.5:1; 7:1 would flatten the IDE palette.
 > [!NOTE]
 > The a11y scan still emits *incomplete* (not violation) contrast results for the active-nav gradient, SVG `<text>`, and syntax spans over the tinted code background — axe-core cannot compute contrast against a gradient, an SVG fill, or a nested background programmatically. These were verified by hand and by the emit-time clamp; they are not open defects.
 
-### 3.2  Target size (24×24 CSS px minimum) — PENDING
+### 3.2  Target size (24×24 CSS px minimum) — DONE
 
 **WCAG:** 2.5.8 Target Size (Minimum)  
-**Elements to measure:** nav expander buttons, theme toggle, copy-code button, SVG action buttons (now `<button>` after Phase 1), search icon/button. Measure in the browser now that the Phase 1 element types and padding have changed.
+**Files:** `docs/_sass/custom/custom.scss` (`.svg-controls`), `scripts/check_a11y.mjs`  
+**Measurement:** done with axe-core's own viewport emulation (its `target-size` rule implements the 24 px minimum plus the spacing and inline exceptions), not the app's `file://` preview — that preview renders the offline tree unstyled, so every hand-measurement against it was meaningless. Run in earnest across all six sample pages × both themes × both viewports, the *only* failures were the inline-SVG diagram control buttons (Download SVG / Copy SVG / Download PNG / Copy PNG / Zoom) at the mobile viewport. Nav expanders, nav links, theme toggle, menu button, copy-code button, and the search input all pass (24 px or the spacing exception). The checker's old blanket `"target-size": { enabled: false }` — justified by a "sidebar nav links are < 24px" note — was therefore an overcorrection; real emulation never flags them.  
+**Fix:** the SVG control buttons were `btn-reset` (zero padding) text buttons ~21 px tall, `float: right` — which also *reversed* their visual order against DOM/focus order, and on a narrow column wrapped into rows spaced tighter than 24 px. `.svg-controls` is now a wrapping flexbox (`justify-content: flex-end`, `gap`) with `min-height: 24px` buttons: each clears the 24 px floor outright, wrap spacing is clean, and focus order now matches visual order. With that fixed, the `target-size` rule is **enabled** in `check_a11y.mjs` (blanket disable removed) as a live guard — the full scan stays at 0 violations.
 
-### 3.3  Heading level integrity — PENDING
+### 3.3  Heading level skip (chapter `h1` → section `h3`) — DONE
+
+**WCAG:** 1.3.1 Info and Relationships (heading-order; a best-practice advisory, not an AA failure)  
+**File:** `builder/render.mjs` (`headingLevelNormalizePlugin`)  
+**Finding:** the injected children-nav "Table of contents" `<h2>` was never the problem — it always follows the page `<h1>`. The real pattern (measured: ~389 built pages) is the reference-page house style `# Chapter` then `### Section`, skipping `##`. That skip is deliberate: it keeps GitHub's own rendering of the raw markdown at a modest heading size without pushing styling into the source. Multiple `<h1>` per page is also intentional — an `h1` is a *chapter*, and a page may hold more than one — and is valid HTML that axe does not flag.  
+**Fix (pipeline, no markdown touched):** a markdown-it core rule, running before `header-id` and `toc`, raises sub-chapter headings one level (`h3`→`h2`, `h4`→`h3`, …) **only** on a page that uses `h1` and `h3` but no `h2` — the unambiguous house-style shape. Any page that already uses `h2` is its author's own structure and is left exactly as written (maintainer's rule: "fire only when h1 and h3 are present and h2 is not; otherwise disabled"). Heading ids are text-derived, so anchors and the in-page ToC are unaffected. Result: built-site heading skips dropped 389 → 5, and the 5 remaining are mixed `##`/`###` pages the rule intentionally skips. GitHub keeps its `###`; on the site a promoted section renders at h2 size (≈15.75 px vs the 28 px page `h1`), which reads as a normal section heading.
+
+### 3.4  Breadcrumb separator — DONE
 
 **WCAG:** 1.3.1 Info and Relationships  
-**Problem:** The children-nav section injects `<h2 class="text-delta">Table of contents</h2>` that may conflict with content heading levels. No build-time validation of heading order.  
-**Approach:** Consider changing the injected "Table of contents" to a styled `<p>` or `<div>` with `role="heading" aria-level="2"` only when an `<h1>` exists in the content. Or add a build-time lint to the existing nav integrity check in `builder/nav.mjs` that warns when a page's content starts at `<h2>` or higher without an `<h1>`.
-
-### 3.4  Breadcrumb separator — PENDING (verify first)
-
-**WCAG:** 1.3.1 Info and Relationships  
-**File:** `builder/vendor/just-the-docs/_sass/navigation.scss:225-229`  
-**Problem:** `::after { content: "/" }` is exposed to assistive tech, creating redundant "slash" announcements between breadcrumb items. The `<ol>` structure already communicates order.  
-**Fix:** Add `aria-hidden="true"` to a wrapper `<span>`, or hide the separator from AT with `content: "" / ""` (CSS `content` alt-text syntax, supported in modern browsers). Alternatively, since the `<nav aria-label="Breadcrumb"><ol>` pattern is already emitted (see `renderBreadcrumbs()`), most screen readers handle this correctly — verify with automated scan and real AT testing before changing.
+**File:** `builder/vendor/just-the-docs/_sass/navigation.scss`  
+**Problem:** `::after { content: "/" }` is exposed to assistive tech — most screen readers announce pseudo-element content, so a redundant "slash" is read between crumbs. The `<nav aria-label="Breadcrumb"><ol>` structure already communicates order.  
+**Fix:** the separator now uses the CSS `content` alt-text syntax to hide itself from AT while staying visible:
+```scss
+content: "/";        // fallback: browsers without alt-text syntax (Safari < 17.4) show "/" as before
+content: "/" / "";   // modern: renders "/", exposes "" to the accessibility tree
+```
+A pseudo-element cannot take `aria-hidden` (it is not a DOM node), so the alt-text descriptor is the CSS-only way; the plain-string first declaration is the graceful fallback.
 
 ### 3.5  Redundant `tabindex="0"` on search input — DONE (`c9f2dfe`)
 
@@ -350,7 +358,7 @@ The button inherits the `.btn-reset` `:focus-visible` ring (Phase 1.6); confirm 
 | 2 | Phase 4 | Automated tooling | **Done** (`c9f2dfe`, fixed `3db9794`) | **No** — new script + package.json |
 | 3 | Phase 2 | 2.1–2.7 | **Done** (`c9f2dfe`) | **No** — all in render.mjs, JS, SCSS, template.mjs |
 | 4 | Phase 3 | 3.1, 3.5 | **Done** (`3db9794`, `0813181`, `c9f2dfe`) | **No** |
-| 5 | Phase 3 | 3.2, 3.3, 3.4 | **Pending** | **No** (3.3 might add a build-time lint) |
+| 5 | Phase 3 | 3.2, 3.3, 3.4 | **Done** | **No** — custom.scss, render.mjs, navigation.scss, check_a11y.mjs |
 | 6 | Phase 5 | Theme toggle (5.1–5.5) | **Done** | **No** — template.mjs, JS, SCSS, scss.mjs |
 
 The "Markdown files touched?" column is the key constraint: every row is **No**. All fixes live in the builder pipeline.
