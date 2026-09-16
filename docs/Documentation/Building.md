@@ -1,7 +1,7 @@
 ---
 title: Building and Deployment
 parent: Documentation Development
-nav_order: 2
+nav_order: 3
 permalink: /Documentation/Development/Building
 ---
 
@@ -27,7 +27,7 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 - **Node.js 22+** for `tbdocs` itself.
 - **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root contains the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
-- **Chromium** is required only when the PDF book is rendered. It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it.
+- **Chromium** is required for two things: rendering the PDF book (`book.bat`) and the accessibility scan that `check.bat` runs after its link check (`scripts/check_a11y.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat` and `book.bat` do.
 
 ## Building
 
@@ -61,7 +61,13 @@ Before checking link integrity, the documentation must be built:
 
 This runs two passes of `scripts/check_links.mjs`: one against `_site/` (the online tree) and one against `_site-offline/` (the `file://`-browsable mirror) with `--forbid 'https://docs.twinbasic.com'` to also flag any surviving live-site link --- the offline mirror should never navigate back to the live docs site. Both checks also assert HTML well-formedness, duplicate-`id` detection, anchor resolution, accessibility hints, and (for the online tree) the sitemap and search-index integrity. The same two checks run in CI on every pull request and on every push to `staging`.
 
-A clean `check.bat` run is the bar for "ready to commit".
+## Checking accessibility
+
+When the link check passes, `check.bat` continues into an accessibility scan: [`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over six sample pages against the WCAG 2.2 AA ruleset, and exits non-zero on any violation. A link-check failure stops the run before this stage.
+
+Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
+
+A clean `check.bat` run --- link integrity and accessibility both --- is the bar for "ready to commit".
 
 ## Graphviz/DOT diagrams
 

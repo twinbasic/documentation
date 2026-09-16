@@ -88,7 +88,7 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
 ## What this directory does **not** contain
 
 - Project-owned theme assets (`print.css`, `just-the-docs-head-nav.css`,
-  `theme-switch.js`) --- those live under `docs/assets/` and are
+  `theme-toggle.js`) --- those live under `docs/assets/` and are
   authored locally, not vendored.
 - The generated `_site/assets/css/just-the-docs-combined.css` --- compiled
   fresh on every build by [`builder/scss.mjs`](../../scss.mjs), never

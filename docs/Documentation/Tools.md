@@ -1,7 +1,7 @@
 ---
 title: Tools and Scripts
 parent: Documentation Development
-nav_order: 3
+nav_order: 4
 permalink: /Documentation/Development/Tools
 ---
 
@@ -32,7 +32,7 @@ Starts a long-lived dev process. Wraps `node builder\tbdocs.mjs --src docs --ser
 
     check.bat
 
-Runs `scripts/check_links.mjs` against the rendered `_site/` and `_site-offline/` trees in two parallel passes. The offline pass also runs `--forbid "https://docs.twinbasic.com"` to flag any surviving live-site link the offline rewrite missed. Both passes assert link integrity, HTML well-formedness, duplicate-`id` detection, anchor resolution, and accessibility hints; the online pass additionally checks `sitemap.xml` and the search index. Requires `build.bat` to have run first.
+Runs `scripts/check_links.mjs` against the rendered `_site/` and `_site-offline/` trees in two parallel passes. The offline pass also runs `--forbid "https://docs.twinbasic.com"` to flag any surviving live-site link the offline rewrite missed. Both passes assert link integrity, HTML well-formedness, duplicate-`id` detection, anchor resolution, and accessibility hints; the online pass additionally checks `sitemap.xml` and the search index. If the link check passes, `check.bat` then runs [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan; a link-check failure short-circuits before it runs. Requires `build.bat` to have run first.
 
 ### book.bat
 
@@ -100,6 +100,21 @@ Exit code 1 indicates broken links; exit code 2 indicates integrity-only failure
     node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external]
 
 Online link crawler for the deployed site. Starts at `<start-url>`, GETs every same-origin / same-base-path page recursively, extracts links, and verifies that each link responds 2xx (HEAD for cross-origin, GET for same-origin). Exits 0 if all links are reachable, 1 if any are broken. Use it after a manual `workflow_dispatch` deploy to verify the published site --- `check_links.mjs` covers the local filesystem; `crawl_check.mjs` covers the live deployed site.
+
+### scripts/check_a11y.mjs
+{: #check-a11y }
+
+    node scripts/check_a11y.mjs [--root-dir <path>] [--theme light|dark|both] [--viewport desktop|mobile|both]
+
+Automated accessibility scan of the built site, run by `check.bat` after the link check passes. Loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against six sample pages --- the homepage, a deep reference page, a table-heavy module index, an SVG-diagram page, an admonition-heavy page, and the 404 --- using the `wcag2a`, `wcag2aa`, and `wcag22aa` rule tags. Exits 1 if any page has a violation and 2 on an internal error; incomplete (needs-review) results are reported but do not fail the run.
+
+| Flag | Effect |
+|---|---|
+| `--root-dir <path>` | Tree to scan. Default: `docs/_site-offline`. |
+| `--theme light\|dark\|both` | Which palette(s) to test. Default: `both`. |
+| `--viewport desktop\|mobile\|both` | Which viewport(s) to test (`desktop` = 1280×900, `mobile` = 375×812). Default: `both`, so each page is scanned four times. |
+
+Two details are essential and easy to break. It scans **`_site-offline/`, not `_site/`**: the online tree's root-absolute asset URLs (`/assets/css/…`) resolve to nothing under `file://`, so every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass --- the offline tree uses relative asset paths and renders for real. And it scans **each page in both themes**, because dark mode is a separate palette (applied via `[data-theme=dark]`) and a light-mode pass says nothing about it. Requires `build.bat` to have produced an up-to-date `_site-offline/`.
 
 ### scripts/convert_em_dash_separators.py
 
