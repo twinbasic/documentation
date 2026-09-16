@@ -42,3 +42,36 @@ The current implementation builds the full ~5.5 MB book.html string
 in memory and writes in one shot. A streaming write (Node's
 `createWriteStream` + chunked `bookHtml.slice(...)` per article)
 would reduce the peak memory footprint but add complexity.
+
+### B19. Theme layer: refactor to CSS custom properties — deferred
+
+**Routing**: → **defer**. Unblocks the clean form of the 3-state theme
+toggle ([PLAN-a11y.md](PLAN-a11y.md) Phase 5): no-JS
+`prefers-color-scheme` support without duplicating the whole dark rule
+set. The toggle can ship before this lands (with the interim
+duplication described in that phase); this refactor removes the
+duplication.
+
+**Trigger**: implementing the theme toggle's clean CSS path, or when
+the duplicated dark block becomes a size / maintenance burden.
+
+Today the dark theme is full **rule-set duplication**: every dark rule
+is compiled under `html.dark-mode { @include
+meta.load-css("modules-dark"); … }` in
+`docs/assets/css/just-the-docs-dark.scss` and concatenated into
+`just-the-docs-combined.css`, with a few hand-written dark rules in
+`docs/_sass/custom/admonitions.scss`, `docs/_sass/custom/custom.scss`,
+and `docs/assets/css/just-the-docs-head-nav.css`. That is how the
+vendored just-the-docs theme is built.
+
+Progressive-enhancement dark mode needs the dark styles available
+under `@media (prefers-color-scheme: dark)` **and** under an explicit
+`[data-theme="dark"]` override — two contexts, so the whole dark block
+must be emitted twice. A **design-token layer** — light values on
+`:root`, dark values restated only inside the media query and the
+`[data-theme="dark"]` block, every component reading `var(--…)` —
+makes that duplication cheap: only the small set of colour variables
+repeats, not the full rule set. This is a substantial change to the
+SCSS architecture and the two-compilation setup in `builder/scss.mjs`,
+which is why it is tracked separately rather than bundled into the
+toggle work.
