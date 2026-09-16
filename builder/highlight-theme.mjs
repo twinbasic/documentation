@@ -71,6 +71,109 @@ const SCOPE_TO_SYMBOL = [
   ["string.quoted.double",           "LiteralString"],
 ];
 
+// WCAG 1.4.3 contrast clamp.
+//
+// The vendored .theme files mirror the twinBASIC IDE's own palettes, where
+// several token colours fall below the 4.5:1 body-text threshold against the
+// code-block background. Rather than edit the vendored themes -- they should
+// keep matching the IDE -- the emit step nudges only the failing colours,
+// moving lightness away from the background until the ratio is met. Hue and
+// saturation are preserved, so a clamped token still reads as the same colour.
+const MIN_CONTRAST = 4.5;
+
+// Code-block backgrounds the emitted rules sit on. Light is
+// $code-background-color ($grey-lt-000); dark is the `.language-tb` override
+// in docs/_sass/custom/custom.scss.
+const CODE_BG = { light: "#f5f6fa", dark: "#212121" };
+
+const HEX_RE = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+function parseHex(value) {
+  const m = HEX_RE.exec(value.trim());
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+function toHex(rgb) {
+  const c = (n) =>
+    Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, "0");
+  return "#" + c(rgb[0]) + c(rgb[1]) + c(rgb[2]);
+}
+
+function relativeLuminance([r, g, b]) {
+  const lin = (v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+function contrastRatio(a, b) {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+function rgbToHsl([r, g, b]) {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return [0, 0, l];
+  const sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6;
+  else if (max === gn) h = ((bn - rn) / d + 2) / 6;
+  else h = ((rn - gn) / d + 4) / 6;
+  return [h, sat, l];
+}
+
+function hslToRgb([h, sat, l]) {
+  if (sat === 0) return [l * 255, l * 255, l * 255];
+  const q = l < 0.5 ? l * (1 + sat) : l + sat - l * sat;
+  const pp = 2 * l - q;
+  const channel = (t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return pp + (q - pp) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return pp + (q - pp) * (2 / 3 - t) * 6;
+    return pp;
+  };
+  return [channel(h + 1 / 3) * 255, channel(h) * 255, channel(h - 1 / 3) * 255];
+}
+
+// Returns the input unchanged when it already passes, when it is not a plain
+// hex literal, or when even pure black/white cannot reach the threshold.
+function clampContrast(value, bgHex) {
+  const fg = parseHex(value);
+  const bg = parseHex(bgHex);
+  if (!fg || !bg) return value;
+  if (contrastRatio(fg, bg) >= MIN_CONTRAST) return value;
+
+  const [h, sat, l0] = rgbToHsl(fg);
+  // Move away from the background: darken on a light ground, lighten on a
+  // dark one. 1/255 steps are finer than any perceptible colour change.
+  const darken = relativeLuminance(bg) > relativeLuminance(fg);
+  const step = darken ? -1 / 255 : 1 / 255;
+  for (let l = l0 + step; l >= 0 && l <= 1; l += step) {
+    // Measure the rounded hex, not the float triple -- rounding can drop a
+    // candidate that measured just over the threshold back under it.
+    const candidate = toHex(hslToRgb([h, sat, l]));
+    if (contrastRatio(parseHex(candidate), bg) >= MIN_CONTRAST) return candidate;
+  }
+  return value;
+}
+
 function parseTheme(text) {
   const stripped = text.replace(COMMENT_RE, "");
   const result = new Map();
@@ -186,14 +289,24 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
   const symbolListComment = (cls) =>
     classToSymbols.get(cls).map((s) => `Symbol${s}`).join(", ");
 
-  const renderRule = (selector, props, comment) => {
+  const renderRule = (selector, props, comment, bg) => {
     if (!props) return "";
     const lines = [];
+    let note = "";
     for (const k of PROP_ORDER) {
-      if (props[k]) lines.push(`  ${CSS_PROP[k]}: ${props[k]};`);
+      if (!props[k]) continue;
+      let value = props[k];
+      if (k === "Color") {
+        const clamped = clampContrast(value, bg);
+        if (clamped !== value) {
+          note = ` -- ${value} raised to ${MIN_CONTRAST}:1 on ${bg}`;
+          value = clamped;
+        }
+      }
+      lines.push(`  ${CSS_PROP[k]}: ${value};`);
     }
     if (lines.length === 0) return "";
-    const c = comment ? `  /* ${comment} */` : "";
+    const c = comment ? `  /* ${comment}${note} */` : "";
     return `${selector} {${c}\n${lines.join("\n")}\n}\n`;
   };
 
@@ -205,7 +318,12 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
     "/* Light palette (root). */\n";
   for (const cls of orderedClasses) {
     const sym = classToSample.get(cls);
-    css += renderRule(`.highlight .${cls}`, light.get(sym), symbolListComment(cls));
+    css += renderRule(
+      `.highlight .${cls}`,
+      light.get(sym),
+      symbolListComment(cls),
+      CODE_BG.light,
+    );
   }
   css += "\n/* Dark palette (active under html.dark-mode). */\n";
   for (const cls of orderedClasses) {
@@ -214,6 +332,7 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
       `html.dark-mode .highlight .${cls}`,
       dark.get(sym),
       symbolListComment(cls),
+      CODE_BG.dark,
     );
   }
 

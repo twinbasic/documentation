@@ -30,6 +30,27 @@
   height: auto;
 }
 
+// Secondary text in the main-content footer (page-modified date, edit link,
+// download links). WCAG 1.4.3: the `.text-grey-dk-000` utility this replaces
+// is #959396, which is 3.04:1 on the light body background. The two themes
+// need the grey to move in opposite directions, which a single palette
+// utility class cannot express.
+.text-muted {
+  color: #5c5962; // $grey-dk-100 -- 6.86:1 on #fff
+}
+
+html.dark-mode .text-muted {
+  color: #959396; // $grey-dk-000 -- 4.93:1 on #27262b ($grey-dk-300)
+}
+
+// WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container
+// tabindex="0" so a keyboard user can scroll an overflowing block. Give that
+// focus a visible indicator.
+div.highlight:focus-visible {
+  outline: 2px solid;
+  outline-offset: 2px;
+}
+
 .site-logo {
   padding-right: 3rem;
 }

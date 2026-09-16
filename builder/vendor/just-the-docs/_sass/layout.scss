@@ -208,7 +208,13 @@ body {
   left: 0;
   padding-top: $sp-4;
   padding-bottom: $sp-4;
-  color: $grey-dk-000;
+
+  // WCAG 1.4.3: $grey-dk-000 (#959396) on the light $sidebar-color
+  // (#f5f6fa) is only 2.82:1.  $grey-dk-100 -- the light scheme's
+  // $body-text-color -- gives 6.35:1.  Dark mode keeps #959396 via the
+  // explicit override in docs/assets/css/just-the-docs-dark.scss, where
+  // it sits at 4.93:1 against $grey-dk-300.
+  color: $grey-dk-100;
 
   @include container;
 

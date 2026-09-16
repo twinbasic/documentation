@@ -744,13 +744,13 @@ function renderEditAndOfflineBlock(page, config) {
   let inner = "";
   if (showLastModified) {
     const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
-    inner += `        <p class="text-small text-grey-dk-000 mb-0 mr-2">\n` +
+    inner += `        <p class="text-small text-muted mb-0 mr-2">\n` +
       `          Page last modified: <span class="d-inline-block">${escText(formatted)}</span>.\n` +
       `        </p>\n`;
   }
   if (showEdit) {
     const href = ghEditHref(page, config);
-    const cls = `text-small text-grey-dk-000 mb-0${showOffline ? " mr-2" : ""}`;
+    const cls = `text-small text-muted mb-0${showOffline ? " mr-2" : ""}`;
     inner += `        <p class="${cls}">\n` +
       `          <a href="${escAttr(href)}" id="edit-this-page">${escText(String(config.gh_edit_link_text))}</a>\n` +
       `        </p>\n`;
@@ -759,11 +759,11 @@ function renderEditAndOfflineBlock(page, config) {
     const pdfUrl = config.gh_pdf_link_url ? String(config.gh_pdf_link_url) : null;
     const offlineHref = escAttr(String(config.gh_offline_link_url));
     if (pdfUrl) {
-      inner += `        <p class="text-small text-grey-dk-000 mb-0">\n` +
+      inner += `        <p class="text-small text-muted mb-0">\n` +
         `          Download <a href="${offlineHref}" id="download-offline">Offline Copy</a> or <a href="${escAttr(pdfUrl)}" id="download-pdf">PDF</a>.\n` +
         `        </p>\n`;
     } else {
-      inner += `        <p class="text-small text-grey-dk-000 mb-0">\n` +
+      inner += `        <p class="text-small text-muted mb-0">\n` +
         `          <a href="${offlineHref}" id="download-offline">Offline Copy</a>\n` +
         `        </p>\n`;
     }

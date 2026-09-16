@@ -246,7 +246,7 @@ export function createMarkdownIt(ctx) {
   md.renderer.rules.code_block = (tokens, idx, _opts, _env, _slf) => {
     const tok = tokens[idx];
     const body = escapeHtmlMinimal(tok.content);
-    return `<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>${body}</code></pre></div></div>\n`;
+    return `<div class="language-plaintext highlighter-rouge"><div class="highlight" tabindex="0"><pre class="highlight"><code>${body}</code></pre></div></div>\n`;
   };
 
   // kramdown/just-the-docs tag inline `code` spans with the Rouge wrapper

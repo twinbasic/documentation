@@ -23,7 +23,11 @@
   $body-background-color: #27262b,
   $body-heading-color: #f5f6fa,
   $body-text-color: #e6e1e8,
-  $link-color: #2c84fa,
+  // WCAG 1.4.3: $blue-000 (#2c84fa) is only 4.13:1 on the dark
+  // $body-background-color, failing on every link on every page. This
+  // lighter blue is 5.94:1 there, 6.38:1 on the code-block background
+  // and 5.35:1 on $table-background-color.
+  $link-color: #58a6ff,
   $nav-child-link-color: #959396,
   $sidebar-color: #27262b,
   $base-button-color: #302d36,

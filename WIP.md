@@ -468,7 +468,7 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 
 - `build.bat` — runs `node builder\tbdocs.mjs --src docs` which produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
-- `check.bat` — link + integrity check (offline `scripts/check_links.mjs` against `_site/` and `_site-offline/`; the offline pass also runs `--forbid 'https://docs.twinbasic.com'` to catch surviving live-site links).
+- `check.bat` — link + integrity check (offline `scripts/check_links.mjs` against `_site/` and `_site-offline/`; the offline pass also runs `--forbid 'https://docs.twinbasic.com'` to catch surviving live-site links), then the accessibility check (`scripts/check_a11y.mjs`).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
 
@@ -481,6 +481,13 @@ build.bat && check.bat
 ```
 
 `check.bat` runs [scripts/check_links.mjs](scripts/check_links.mjs) in offline mode against both `_site/` and `_site-offline/` — it catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), and (via `--forbid 'https://docs.twinbasic.com'` on the offline pass) any extracted link that still points at the live docs site after the offlinify rewrite. A clean run is the bar for "ready to commit".
+
+It then runs [scripts/check_a11y.mjs](scripts/check_a11y.mjs), which drives puppeteer + axe-core over six sample pages against the WCAG 2.2 AA ruleset and exits non-zero on any violation. Two details of that script matter and are easy to break:
+
+- It scans **`_site-offline/`, not `_site/`**. The online tree references its assets with root-absolute URLs (`/assets/css/…`), which resolve to nothing under `file://` — every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass. The offline tree uses relative asset paths and renders for real.
+- It scans each page **in both themes and at two viewports** (`--theme`, `--viewport`). Dark mode is a separate stylesheet with its own palette, and defects such as horizontally scrolling code blocks only appear once the layout is narrow enough to overflow.
+
+Syntax-highlight token colours are kept above 4.5:1 automatically: [builder/highlight-theme.mjs](builder/highlight-theme.mjs) clamps any colour from the vendored `.theme` files that fails against the code-block background, moving lightness away from the background while preserving hue and saturation. The vendored themes stay faithful to the IDE; the emitted rule carries a `raised to 4.5:1` comment naming the original colour.
 
 Requires `build.bat` to have produced an up-to-date `_site/`.
 

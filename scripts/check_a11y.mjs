@@ -1,13 +1,27 @@
 // Automated accessibility check for the built site.
 //
-// Scans sample pages from _site/ using puppeteer + axe-core against
-// the WCAG 2.2 AA ruleset.  Covers all major content patterns:
-// homepage, deep reference page, table-heavy page, SVG diagrams,
-// admonitions, and the 404 page.
+// Scans sample pages using puppeteer + axe-core against the WCAG 2.2 AA
+// ruleset.  Covers all major content patterns: homepage, deep reference
+// page, table-heavy page, SVG diagrams, admonitions, and the 404 page.
 //
-// Usage:  node scripts/check_a11y.mjs [--root-dir DIR]
+// Two details matter for the results to mean anything:
 //
-// Requires `build.bat` to have produced an up-to-date _site/.
+//   * The scan runs against docs/_site-offline, not docs/_site.  The online
+//     tree references its assets with root-absolute URLs (/assets/css/...),
+//     which resolve to nothing under file://, so every page loads unstyled
+//     and every colour-contrast result is a meaningless black-on-white pass.
+//     The offline tree uses relative asset paths and renders for real.
+//
+//   * Each page is scanned in both themes and at both a desktop and a phone
+//     viewport.  Dark mode is a separate stylesheet (html.dark-mode in
+//     just-the-docs-dark.scss) with its own palette, so a light-mode pass says
+//     nothing about it; and defects such as horizontally scrolling code blocks
+//     only appear once the layout is narrow enough to overflow.
+//
+// Usage:  node scripts/check_a11y.mjs [--root-dir DIR] [--theme light|dark|both]
+//                                     [--viewport desktop|mobile|both]
+//
+// Requires `build.bat` to have produced an up-to-date _site-offline/.
 
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
@@ -15,11 +29,26 @@ import { pathToFileURL } from "node:url";
 import puppeteer from "puppeteer";
 
 const args = process.argv.slice(2);
-let rootDir = "docs/_site";
+let rootDir = "docs/_site-offline";
+let themeArg = "both";
+let viewportArg = "both";
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--root-dir" && args[i + 1]) rootDir = args[++i];
+  else if (args[i] === "--theme" && args[i + 1]) themeArg = args[++i];
+  else if (args[i] === "--viewport" && args[i + 1]) viewportArg = args[++i];
 }
 rootDir = resolve(rootDir);
+
+const THEMES = themeArg === "both" ? ["light", "dark"] : [themeArg];
+
+// Fixed sizes keep the media queries -- and therefore which elements are laid
+// out and visible to axe -- the same from run to run.
+const VIEWPORTS = {
+  desktop: { width: 1280, height: 900 },
+  mobile: { width: 375, height: 812 },
+};
+const VIEWPORT_NAMES =
+  viewportArg === "both" ? Object.keys(VIEWPORTS) : [viewportArg];
 
 const axeSource = readFileSync(
   resolve("node_modules/axe-core/axe.min.js"),
@@ -35,9 +64,17 @@ const SAMPLE_PAGES = [
   "/404.html",
 ];
 
-async function checkPage(page, filePath) {
+async function checkPage(page, filePath, theme) {
   const url = pathToFileURL(join(rootDir, filePath)).href;
   await page.goto(url, { waitUntil: "domcontentloaded" });
+
+  // theme-switch.js reads localStorage, which is unavailable on file://
+  // origins.  Set the class it would have set instead.
+  await page.evaluate((t) => {
+    const cl = document.documentElement.classList;
+    cl.toggle("dark-mode", t === "dark");
+    cl.toggle("light-mode", t !== "dark");
+  }, theme);
 
   await page.evaluate(axeSource);
   const results = await page.evaluate(async () => {
@@ -71,47 +108,53 @@ async function main() {
     return true;
   });
 
-  for (const filePath of pages) {
-    const results = await checkPage(page, filePath);
+  for (const viewport of VIEWPORT_NAMES) {
+    await page.setViewport(VIEWPORTS[viewport]);
+    for (const theme of THEMES) {
+      for (const filePath of pages) {
+        const label = `${filePath} [${theme}, ${viewport}]`;
+        const results = await checkPage(page, filePath, theme);
 
-    const violations = results.violations;
-    const incomplete = results.incomplete;
+        const violations = results.violations;
+        const incomplete = results.incomplete;
 
-    if (violations.length > 0 || incomplete.length > 0) {
-      console.log(`\n== ${filePath} ==`);
+        if (violations.length > 0 || incomplete.length > 0) {
+          console.log(`\n== ${label} ==`);
 
-      for (const v of violations) {
-        console.log(
-          `  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`
-        );
-        for (const node of v.nodes.slice(0, 3)) {
-          console.log(`    ${node.html.slice(0, 120)}`);
-        }
-        if (v.nodes.length > 3) {
-          console.log(`    ... and ${v.nodes.length - 3} more`);
+          for (const v of violations) {
+            console.log(
+              `  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`
+            );
+            for (const node of v.nodes.slice(0, 3)) {
+              console.log(`    ${node.html.slice(0, 120)}`);
+            }
+            if (v.nodes.length > 3) {
+              console.log(`    ... and ${v.nodes.length - 3} more`);
+            }
+          }
+
+          for (const inc of incomplete) {
+            console.log(`  INCOMPLETE [${inc.impact}] ${inc.id}: ${inc.help}`);
+            for (const node of inc.nodes.slice(0, 2)) {
+              console.log(`    ${node.html.slice(0, 120)}`);
+            }
+          }
+
+          totalViolations += violations.length;
+          totalIncomplete += incomplete.length;
+        } else {
+          console.log(`  OK  ${label}`);
         }
       }
-
-      for (const inc of incomplete) {
-        console.log(
-          `  INCOMPLETE [${inc.impact}] ${inc.id}: ${inc.help}`
-        );
-        for (const node of inc.nodes.slice(0, 2)) {
-          console.log(`    ${node.html.slice(0, 120)}`);
-        }
-      }
-
-      totalViolations += violations.length;
-      totalIncomplete += incomplete.length;
-    } else {
-      console.log(`  OK  ${filePath}`);
     }
   }
 
   await browser.close();
 
   console.log(
-    `\n${pages.length} pages checked: ${totalViolations} violation(s), ${totalIncomplete} incomplete check(s)`
+    `\n${pages.length} pages x ${THEMES.length} theme(s) x ` +
+      `${VIEWPORT_NAMES.length} viewport(s) checked: ` +
+      `${totalViolations} violation(s), ${totalIncomplete} incomplete check(s)`
   );
 
   if (totalViolations > 0) {

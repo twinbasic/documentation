@@ -184,10 +184,14 @@ This is the nuclear approach; a targeted version could override only the specifi
 
 ## Phase 3 — Lower-severity / polish
 
-### 3.1  Colour contrast audit
+### 3.1  Colour contrast audit — DONE
 
 **WCAG:** 1.4.3 Contrast (Minimum)  
-**Approach:** Automated scan (see Phase 4). Specific concerns to spot-check:
+**Outcome:** The Phase 4 scan was reporting clean because it loaded `_site/` over `file://`, where the root-absolute asset URLs never resolve — every page was audited unstyled. Pointing it at `_site-offline/` and adding a dark-mode pass surfaced the real defects, all now fixed: sidebar footer, main-footer secondary text, the dark link colour, `.btn-reset` inheriting the UA's black, the admonition palette (the gem ships GitHub's *dark* colours), and the syntax-highlight tokens (now clamped at emit time in `builder/highlight-theme.mjs`).
+
+**Known residual:** `.nav-list-link.active` is 4.30:1 where its right-edge gradient is most opaque (the left-aligned label normally sits over the 4.65:1 plain sidebar). Clearing it needs a slightly darker light-theme `$link-color`, which is a brand decision.
+
+Original concerns to spot-check:
 - `opacity: 0.5` on `.search-result-doc-parent` — halves effective contrast.
 - `$grey-dk-000` used for breadcrumb separators and secondary text.
 - Dark-mode link colour vs. dark background.
