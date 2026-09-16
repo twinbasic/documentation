@@ -13,7 +13,7 @@ To learn more about the conference: [https://www.donkarl.com/devcon][2].
 29 Apr 2026
 
 
-[![Access DevCon 2026 - Practical twinBASIC -- watch on YouTube](Images/yt-qUwTszCFQHA.jpg)](https://www.youtube.com/watch?v=qUwTszCFQHA){: .video-link }
+[Access DevCon 2026 - Practical twinBASIC](https://www.youtube.com/watch?v=qUwTszCFQHA){: .video }
 
  For the slide deck and project files see: https://nolongerset.com/devcon-2026/
 
@@ -21,7 +21,7 @@ To learn more about the conference: [https://www.donkarl.com/devcon][2].
 
 26 Apr 2025
 
-[![Access DevCon 2025 - twinBASIC Update -- watch on YouTube](Images/yt-vLmy1ZY-IT4.jpg)](https://www.youtube.com/watch?v=vLmy1ZY-IT4){: .video-link }
+[Access DevCon 2025 - twinBASIC Update](https://www.youtube.com/watch?v=vLmy1ZY-IT4){: .video }
 
 Access MVP Mike Wolfe presents a twinBASIC project update. 
 - For the slide deck and more information see: [https://nolongerset.com/devcon-2025][1].
@@ -37,7 +37,7 @@ Add-In creation with twinBASIC
 
 29 Apr 2024
 
-[![Access DevCon 2024 - twinBASIC -- watch on YouTube](Images/yt-7IfAkOOWSao.jpg)](https://www.youtube.com/watch?v=7IfAkOOWSao){: .video-link }
+[Access DevCon 2024 - twinBASIC](https://www.youtube.com/watch?v=7IfAkOOWSao){: .video }
 
 Mike Wolfe presents a twinBASIC project update and how to create add-ins for Access with twinBASIC. 
 - For more information see: [https://nolongerset.com/tag/twinbasic-weekly-update/][3].
@@ -50,7 +50,7 @@ Mike Wolfe presents a twinBASIC project update and how to create add-ins for Acc
 
 8 May 2023
 
-[![Access DevCon 2023 - twinBASIC Update -- watch on YouTube](Images/yt-Vq4ZFkeZyiA.jpg)](https://www.youtube.com/watch?v=Vq4ZFkeZyiA){: .video-link }
+[Access DevCon 2023 - twinBASIC Update](https://www.youtube.com/watch?v=Vq4ZFkeZyiA){: .video }
 
 Mike Wolfe presents a session on twinBASIC covering a brief project overview, progress, roadmap, demos and Access integration plans. 
 - For more information see [https://nolongerset.com/tag/twinbasic][5].
@@ -63,7 +63,7 @@ Mike Wolfe presents a session on twinBASIC covering a brief project overview, pr
 
 12 May 2022
 
-[![Access DevCon 2022 - twinBASIC Update -- watch on YouTube](Images/yt-y4DRAcdH9tg.jpg)](https://www.youtube.com/watch?v=y4DRAcdH9tg){: .video-link }
+[Access DevCon 2022 - twinBASIC Update](https://www.youtube.com/watch?v=y4DRAcdH9tg){: .video }
 
 Mike Wolfe presents the current state of twinBASIC focussing on the practical use and usefulness for Access developers.
 - For more information, see [https://nolongerset.com/tag/twinbasic][5]
@@ -74,6 +74,6 @@ Mike Wolfe presents the current state of twinBASIC focussing on the practical us
 
 12 May 2021
 
-[![Access DevCon 2021 - twinBasic -- watch on YouTube](Images/yt-dBvMBAUSyT8.jpg)](https://www.youtube.com/watch?v=dBvMBAUSyT8){: .video-link }
+[Access DevCon 2021 - twinBasic](https://www.youtube.com/watch?v=dBvMBAUSyT8){: .video }
 
 Mike Wolfe presents: The world premier of twinBasic, a new flavour of VB(A).

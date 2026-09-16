@@ -26,6 +26,7 @@ import { renderGantt } from "./gantt.mjs";
 
 import { discover } from "./discover.mjs";
 import { computeNav } from "./nav.mjs";
+import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
@@ -94,6 +95,10 @@ function parseArgs(argv) {
       args.skipPdf = true;
     } else if (a === "--tolerate-missing-images") {
       args.tolerateMissingImages = true;
+    } else if (a === "--fetch-assets") {
+      args.fetchAssets = true;
+    } else if (a === "--no-fetch-assets") {
+      args.fetchAssets = false;
     } else if (a === "--profile-offline") {
       args.profileOffline = true;
     } else if (a === "--serve") {
@@ -371,6 +376,36 @@ const TASKS = {
     },
   },
 
+  // Download third-party images (YouTube poster frames, GitHub
+  // user-attachment screenshots) into the committed source tree so the
+  // rendered site contacts nobody. Same shape as `dot`: idempotent,
+  // writes into <srcRoot>/assets/, and hands newly created files to the
+  // static-file copy pass. CI never fetches -- see vendor-assets.mjs.
+  vendorAssets: {
+    expected: ["discover"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      // CI must never download: an author who wrote the markdown but
+      // forgot to commit the image would otherwise get a green build
+      // while the site went on hotlinking a third party. Explicit flags
+      // win; otherwise presence of $CI decides.
+      const allowFetch = ctx.opts.fetchAssets ?? !process.env.CI;
+      return await vendorAssets(ctx.srcRoot, state.pages, {
+        baseurl: String(state.site.config.baseurl || ""),
+        allowFetch,
+      });
+    },
+    submit(out, state) {
+      state.site.vendoredVideos = out.videos;
+      state.site.vendoredImages = out.images;
+      const known = new Set(state.staticFiles.map((f) => f.srcRel));
+      for (const f of out.files) {
+        if (!known.has(f.srcRel)) state.staticFiles.push(f);
+      }
+      if (out.failed > 0) process.exitCode = 1;
+    },
+  },
+
   nav: {
     expected: ["discover"],
     runOnMain: true,
@@ -400,7 +435,7 @@ const TASKS = {
   // staticFiles). Per-page SEO fields are computed on render workers in
   // computeChunkSeo between renderPhase and templatePhase.
   markdownInit: {
-    expected: ["discover"],
+    expected: ["discover", "vendorAssets"],
     runOnMain: true,
     execute(_, ctx, state) {
       const linkTables    = buildLinkTables(state.pages);
@@ -408,6 +443,8 @@ const TASKS = {
       const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
       state.site.markdown             = createMarkdownIt({
         highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
+        vendoredVideos: state.site.vendoredVideos,
+        vendoredImages: state.site.vendoredImages,
       });
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
@@ -513,6 +550,9 @@ const TASKS = {
         offlineExcludePatterns: excludePatterns,
         skipOffline,
         svgContentsMap,
+        // Plain objects, not Maps -- packShared serialises to JSON.
+        vendoredVideosObj: Object.fromEntries(state.site.vendoredVideos ?? []),
+        vendoredImagesObj: Object.fromEntries(state.site.vendoredImages ?? []),
       };
       const sharedSAB = packShared(shared);
       return { chunks, sharedSAB };

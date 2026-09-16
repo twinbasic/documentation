@@ -333,6 +333,8 @@ export function createMarkdownIt(ctx) {
   md.use(kramdownEllipsisPlugin);
   md.use(flattenAdjacentStrongPlugin);
   md.use(svgInlinePlugin, ctx);
+  md.use(videoLinkPlugin, ctx);
+  md.use(remoteImagePlugin, ctx);
 
   return md;
 }
@@ -1623,6 +1625,137 @@ function normaliseBlockHtml(content) {
 const STANDALONE_INLINE_HTML_RE = /^(?:<(br|hr|img)\b[^>]*\/?>\s*)+$/i;
 
 // ---------- SVG inline plugin -----------------------------------------------
+
+// Video links: `[Title](https://www.youtube.com/watch?v=<id>){: .video }`
+// becomes a locally stored poster frame that links out to the video page.
+//
+// The embed this replaces (a YouTube <iframe>) loaded Google's player on
+// page view, contacting Google and setting third-party cookies before the
+// reader had done anything. A thumbnail plus a plain link contacts nobody
+// until the reader chooses to click.
+//
+// The thumbnail path is emitted root-absolute rather than page-relative,
+// because the PDF book flattens every page into one document -- a
+// page-relative src resolves against the book root there and the render
+// aborts with `pdf: missing image`.
+//
+// vendor-assets.mjs guarantees the file exists before render (or fails
+// the build), so a miss here means the link is marked `.video` but does
+// not point at YouTube. That is an authoring mistake, not a fetch
+// failure: warn and leave the plain link alone.
+const VIDEO_URL_RE =
+  /^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
+
+function videoLinkPlugin(md, ctx) {
+  // One core rule rather than renderer overrides: the link text has to be
+  // read BEFORE it is removed, and doing both in a single token-stream
+  // pass keeps that ordering obvious. The anchor ends up containing the
+  // poster frame and nothing else, so the image's alt carries the
+  // accessible name.
+  md.core.ruler.push("video_link", (state) => {
+    for (const blockToken of state.tokens) {
+      if (blockToken.type !== "inline" || !blockToken.children) continue;
+      const kids = blockToken.children;
+
+      for (let i = 0; i < kids.length; i++) {
+        const open = kids[i];
+        if (open.type !== "link_open" || !hasClass(open, "video")) continue;
+
+        const closeIdx = findLinkClose(kids, i);
+        if (closeIdx < 0) continue;
+
+        const hrefIdx = open.attrIndex("href");
+        const href = hrefIdx >= 0 ? open.attrs[hrefIdx][1] : "";
+        const m = VIDEO_URL_RE.exec(href);
+        if (!m) {
+          console.warn(`render: link marked {: .video } does not point at a YouTube video: ${href}`);
+          continue;
+        }
+
+        const thumb = ctx.vendoredVideos?.get(m[1]);
+        if (!thumb) {
+          // vendor-assets guarantees the file exists before render, so
+          // this means the marker was added without a build in between.
+          console.warn(`render: no vendored thumbnail for video ${m[1]}`);
+          continue;
+        }
+
+        const alt = kids.slice(i + 1, closeIdx)
+          .filter((t) => t.type === "text" || t.type === "code_inline")
+          .map((t) => t.content)
+          .join("")
+          .trim();
+
+        // The anchor leaves the site, and its whole content is the
+        // poster frame, so the alt is the only thing telling a screen
+        // reader where the link goes.
+        const label = alt ? `${alt} (watch on YouTube)` : "Watch on YouTube";
+        const img = new state.Token("html_inline", "", 0);
+        // No loading="lazy": the forked paged.js raises on an image that
+        // has not finished loading when the page-breaking pass runs, so a
+        // deferred image would abort the PDF book if the Videos pages ever
+        // join it. Matches every other image on the site.
+        img.content = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(label)}" />`;
+
+        setClass(open, "video-link");
+        kids.splice(i + 1, closeIdx - i - 1, img);
+        i += 2; // past the injected image and its link_close
+      }
+    }
+  });
+}
+
+function findLinkClose(kids, openIdx) {
+  let depth = 0;
+  for (let i = openIdx + 1; i < kids.length; i++) {
+    if (kids[i].type === "link_open") depth++;
+    else if (kids[i].type === "link_close") {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+  return -1;
+}
+
+function hasClass(token, name) {
+  const i = token.attrIndex("class");
+  if (i < 0) return false;
+  return String(token.attrs[i][1]).split(/\s+/).includes(name);
+}
+
+function setClass(token, name) {
+  const i = token.attrIndex("class");
+  if (i < 0) token.attrPush(["class", name]);
+  else token.attrs[i][1] = name;
+}
+
+// Rewrites a GitHub user-attachment <img src> to the copy vendor-assets
+// downloaded into the source tree. No marker is needed: an image pointing
+// at a user-attachment URL should always be served locally. Leaving it
+// remote would cost a redirect-plus-S3 round trip on every page view,
+// break the offline mirror, and abort the PDF book render -- the forked
+// paged.js raises on an image that has not finished loading.
+const GH_ATTACH_SRC_RE =
+  /^https:\/\/github\.com\/user-attachments\/assets\/([0-9a-fA-F-]{36})/;
+
+function remoteImagePlugin(md, ctx) {
+  const orig = md.renderer.rules.image;
+
+  md.renderer.rules.image = (tokens, idx, options, env, self) => {
+    const token = tokens[idx];
+    const srcIdx = token.attrIndex("src");
+    if (srcIdx >= 0) {
+      const m = GH_ATTACH_SRC_RE.exec(token.attrs[srcIdx][1]);
+      if (m) {
+        const local = ctx.vendoredImages?.get(m[1].toLowerCase());
+        if (local) token.attrs[srcIdx][1] = local;
+        else console.warn(`render: no vendored copy for attachment ${m[1]}`);
+      }
+    }
+    if (orig) return orig(tokens, idx, options, env, self);
+    return self.renderToken(tokens, idx, options);
+  };
+}
 
 function svgInlinePlugin(md, ctx) {
   const orig = md.renderer.rules.image;

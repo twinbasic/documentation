@@ -56,14 +56,20 @@ const handlers = {
 
     const { siteData, initData, linkTablesData, staticFilesArr,
             baseurl, buildInfo, sitePathsArr,
-            skipOffline, svgContentsMap } = unpackShared(_sharedSAB);
+            skipOffline, svgContentsMap,
+            vendoredVideosObj, vendoredImagesObj } = unpackShared(_sharedSAB);
 
     const { initHighlighter } = await import("./highlight.mjs");
     const highlighter = await initHighlighter();
     const linkTables  = reconstructLinkTables(linkTablesData);
     const staticFiles = new Set(staticFilesArr);
     const svgContents = new Map(Object.entries(svgContentsMap ?? {}));
-    const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles, svgContents });
+    const vendoredVideos = new Map(Object.entries(vendoredVideosObj ?? {}));
+    const vendoredImages = new Map(Object.entries(vendoredImagesObj ?? {}));
+    const markdown    = createMarkdownIt({
+      highlighter, linkTables, baseurl, staticFiles, svgContents,
+      vendoredVideos, vendoredImages,
+    });
     const site        = { ...siteData, markdown, buildInfo };
 
     let offlineBase = null;

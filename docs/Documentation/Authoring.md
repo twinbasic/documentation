@@ -101,7 +101,7 @@ Images live in an `Images/` folder beside the page that uses them, and are refer
 
 Use the markdown form. A raw `<img>` tag with a page-relative `src` is **not** rewritten when the PDF book is assembled: the book flattens every page into a single document, so a path like `Images/x.png` that resolves correctly on the site resolves against the book root instead and the render aborts with `pdf: missing image`. The markdown form is rewritten to a section-qualified path and works in all three outputs.
 
-**Never reference an image by a remote URL.** Pasting a screenshot into a GitHub issue or pull request produces a `https://github.com/user-attachments/assets/...` link, and it is tempting to paste that straight into a page. Download the file instead, commit it under the section's `Images/` folder, and link to it relatively.
+**A finished page never references an image by a remote URL.** Pasting a screenshot into a GitHub issue or pull request produces a `https://github.com/user-attachments/assets/...` link, and pasting that straight into a page is fine --- the build vendors it for you. The next local build downloads the file to `assets/attachments/gh-<uuid>.<ext>` and rewrites the page to point there; commit the downloaded file along with your edit. Any *other* remote host has no such handling: download it yourself and commit it under the section's `Images/` folder.
 
 There are three reasons, in increasing order of severity:
 
@@ -113,13 +113,23 @@ There are three reasons, in increasing order of severity:
 
 ### Videos
 
-The same rule is why the [Videos](/Videos/) pages do not embed YouTube players. A `<iframe>` embed loads Google's player as soon as the page is viewed, which contacts Google and sets third-party cookies before the reader has done anything. Instead each video is a locally stored thumbnail wrapped in a plain link to the video page, with a play button drawn over it in CSS:
+Link the video and mark it `.video`:
 
 ```markdown
-[![Video title -- watch on YouTube](Images/yt-<video-id>.jpg)](https://www.youtube.com/watch?v=<video-id>){: .video-link }
+[twinBASIC - Introduction](https://www.youtube.com/watch?v=havi3Dv4saY){: .video }
 ```
 
-Save the thumbnail as `Images/yt-<video-id>.jpg` under the Videos section. Do **not** hotlink `img.youtube.com` --- that reintroduces exactly the third-party request the thumbnail exists to avoid, and `check.bat` fails the build for it. Nothing reaches Google until the reader clicks, at which point they are on youtube.com and it is Google's own relationship with them. With no embeds anywhere, the site makes no third-party requests at all.
+The build renders that as a poster frame with a play button, linking out to the video page. The link text becomes the image's accessible name, so write the real title.
+
+The poster frame is downloaded once to `assets/thumbnails/yt-<video-id>.jpg` and committed; the build never re-fetches a thumbnail it already has. Do **not** hotlink `img.youtube.com` --- that reintroduces the third-party request, and `check.bat` fails the build for it.
+
+This is why the pages do not embed YouTube players. An `<iframe>` embed loads Google's player as soon as the page is viewed, contacting Google and setting third-party cookies before the reader has done anything. A local thumbnail contacts nobody until the reader clicks, at which point they are on youtube.com and it is Google's own relationship with them. With no embeds anywhere, the site makes no third-party requests at all.
+
+### Committing downloaded assets
+
+Both cases above download into the source tree on a **local** build, and both expect the result to be committed. That is deliberate: CI never downloads anything. If an asset is referenced but not committed, the CI build fails rather than quietly fetching it --- otherwise a forgotten file would produce a green build while the published site went on hotlinking a third party.
+
+So when you add a video or paste a screenshot: build locally once, then commit the new file under `docs/assets/thumbnails/` or `docs/assets/attachments/` together with your page edit. `git status` after a build shows you exactly what to add.
 
 ## Writing for an international audience
 
