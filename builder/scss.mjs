@@ -12,7 +12,8 @@
 //
 // TWO sass.compile() calls are used:
 //   1. just-the-docs-combined.scss -- light theme
-//   2. just-the-docs-dark.scss     -- dark theme (html.dark-mode { ... })
+//   2. just-the-docs-dark.scss     -- dark theme (dark-theme mixin: emits under
+//                                     @media prefers-color-scheme + [data-theme=dark])
 // The results are concatenated into a single CSS asset by scssJoin in tbdocs.mjs.
 //
 // Two separate compilations are required because Dart Sass maintains one

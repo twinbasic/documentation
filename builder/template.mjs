@@ -104,8 +104,8 @@ function templatePage(page, site, init) {
 // ---------- §5.2 renderHead ----------------------------------------------
 
 function renderHead(page, site, init) {
-  // Order matches docs/_includes/head.html: charset, X-UA, dark-mode
-  // early script, theme-switch.js (deferred), CSS combined, CSS head-
+  // Order matches docs/_includes/head.html: charset, X-UA, theme
+  // early script, theme-toggle.js (deferred), CSS combined, CSS head-
   // nav, activation <style>, GA snippet, lunr.min.js (when search on),
   // just-the-docs.js, viewport, head_seo, head_custom (favicon link).
   // The favicon AFTER head_seo is intentional (D2 of PLAN-4).
@@ -116,9 +116,9 @@ function renderHead(page, site, init) {
   return `<head>\n` +
     `  <meta charset="UTF-8">\n` +
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
-    `    if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-mode');\n` +
+    `    try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}\n` +
     `  </script>\n` +
-    `  <script type="text/javascript" src="${escAttr(relativeUrl("/assets/js/theme-switch.js", bu))}" defer></script>\n` +
+    `  <script type="text/javascript" src="${escAttr(relativeUrl("/assets/js/theme-toggle.js", bu))}" defer></script>\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-combined.css", bu))}">\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/tb-highlight.css", bu))}">\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-head-nav.css", bu))}" id="jtd-head-nav-stylesheet">\n` +
@@ -580,10 +580,14 @@ function renderAuxNav(config) {
       `      </li>`;
   }).join("\n");
   return `      <nav aria-label="Auxiliary" class="aux-nav">` +
-    AUX_NAV_SUN_MOON_SVG +
+    AUX_NAV_THEME_SVG +
     `        <ul class="aux-nav-list">\n` +
     `          <li class="aux-nav-list-item">\n` +
-    `            <button type="button" id="theme-toggle" class="site-button btn-reset" aria-label="Switch to dark mode"><svg width='18px' height='18px'><use href="#svg-sun"></use></svg></button>\n` +
+    `            <button type="button" id="theme-toggle" class="site-button btn-reset" hidden aria-label="Theme" data-label-system="Follow system" data-label-light="Light" data-label-dark="Dark" data-theme-choice="system">\n` +
+    `              <svg width='18px' height='18px' class="theme-icon" data-icon="system" aria-hidden="true"><use href="#svg-monitor"></use></svg>\n` +
+    `              <svg width='18px' height='18px' class="theme-icon" data-icon="light" aria-hidden="true"><use href="#svg-sun"></use></svg>\n` +
+    `              <svg width='18px' height='18px' class="theme-icon" data-icon="dark" aria-hidden="true"><use href="#svg-moon"></use></svg>\n` +
+    `            </button>\n` +
     `          </li>\n` +
     items + `\n` +
     `        </ul>\n` +
@@ -593,7 +597,7 @@ function renderAuxNav(config) {
 // No leading whitespace: docs/_includes/components/aux_nav.html has a
 // `{%- comment -%}...{%- endcomment -%}` between `<nav>` and `<svg>`
 // that strips it. Concatenated tight against the opening `<nav>`.
-const AUX_NAV_SUN_MOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+const AUX_NAV_THEME_SVG = `<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
           <symbol id="svg-sun" viewBox="0 0 24 24">
             <title>Light mode</title>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -615,6 +619,15 @@ const AUX_NAV_SUN_MOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" style="dis
               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
               <path stroke="none" d="M0 0h24v24H0z" fill="none" />
               <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+            </svg>
+          </symbol>
+          <symbol id="svg-monitor" viewBox="0 0 24 24">
+            <title>Follow system</title>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-monitor">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
             </svg>
           </symbol>
         </svg>

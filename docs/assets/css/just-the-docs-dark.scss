@@ -12,15 +12,21 @@
 // (tb-code-overrides) is reproduced inline below.
 
 @use "sass:meta";
+@use "custom/theme" as *;
 
 // ── Dark theme ────────────────────────────────────────────────────────────
 //
-// meta.load-css() includes modules-dark.scss's CSS output at this call site,
-// i.e. inside html.dark-mode {}.  modules-dark.scss @uses modules.scss with
-// dark configuration; that @use is valid because this is a fresh compilation
-// where modules.scss has not yet been loaded.
+// meta.load-css() includes modules-dark.scss's CSS output at this call site.
+// The dark-theme mixin (docs/_sass/custom/_theme.scss) emits @content under
+// both `@media (prefers-color-scheme: dark) html:not([data-theme="light"])`
+// and `html[data-theme="dark"]`, so the whole dark block ships twice -- once
+// for the no-JS system default, once for an explicit toggle choice.  That
+// means meta.load-css("modules-dark") is emitted twice; Dart Sass runs the
+// module once (its @use of modules.scss with dark config) and re-emits the
+// CSS at each call site.  This @use is valid because this is a fresh
+// compilation where modules.scss is loaded only here.
 
-html.dark-mode {
+@include dark-theme {
   @include meta.load-css("modules-dark");
 
   // $body-background-color dark = $grey-dk-300 = #27262b.
@@ -48,11 +54,11 @@ html.dark-mode {
   // Workaround for the dark-mode + .search-active interaction.
   //
   // Upstream search.scss emits .search-active rules assuming the class
-  // lives directly on <html>.  meta.load-css inside html.dark-mode {}
+  // lives directly on <html>.  meta.load-css inside the dark-theme scope
   // turns those into descendant-combinator selectors that never match.
-  // Re-emitting the block as &.search-active produces the compound
-  // selector html.dark-mode.search-active (specificity 0,3,1) which
-  // beats the dark-mode default.
+  // Re-emitting the block as &.search-active produces a compound selector
+  // on the theme root (e.g. html[data-theme="dark"].search-active) which
+  // beats the dark default.
   //
   // Sass members from support/support are not in scope here (no @use
   // of that module in this file, to avoid cache conflicts), so layout

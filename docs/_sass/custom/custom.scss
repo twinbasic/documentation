@@ -1,4 +1,5 @@
 @use "admonitions";
+@use "theme" as *;
 
 .sr-only {
   position: absolute;
@@ -41,8 +42,10 @@
   font-weight: 350;
 }
 
-html.dark-mode .text-muted {
-  color: #b6b4b7; // 7.30:1 on #27262b ($body-background-color)
+@include dark-theme {
+  .text-muted {
+    color: #b6b4b7; // 7.30:1 on #27262b ($body-background-color)
+  }
 }
 
 // WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container
@@ -89,7 +92,7 @@ div.highlight:focus-visible {
   }
 }
 
-html.dark-mode {
+@include dark-theme {
   /*
    * SCROLLBAR STYLING
    */
@@ -146,4 +149,25 @@ html.dark-mode {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+// Theme toggle (Phase 5): a 3-state cycle button (system / light / dark).
+// It ships `hidden` and is revealed by theme-toggle.js, so with JS off there
+// is no dead control and prefers-color-scheme governs. `.site-button` sets
+// `display: flex`, which would override the UA `[hidden]` rule -- restore it
+// explicitly so the button stays hidden until the script wires it.
+#theme-toggle[hidden] {
+  display: none;
+}
+
+// Show only the icon matching the current choice; theme-toggle.js sets
+// data-theme-choice on the button.
+#theme-toggle .theme-icon {
+  display: none;
+}
+
+#theme-toggle[data-theme-choice="system"] [data-icon="system"],
+#theme-toggle[data-theme-choice="light"] [data-icon="light"],
+#theme-toggle[data-theme-choice="dark"] [data-icon="dark"] {
+  display: block;
 }

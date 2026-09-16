@@ -54,3 +54,22 @@ div.opaque {
 span {
   color: #4e26af;
 }
+
+// Theme colour-scheme (Phase 5): tells the UA which form-control / scrollbar
+// palette to render, tracking the resolved theme. Light is the base; the dark
+// contexts mirror the dark-theme mixin's selectors so native UI follows the
+// no-JS system default and any explicit [data-theme] choice. A forced-light
+// choice on a dark OS falls through to the base rule.
+html {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}

@@ -282,9 +282,10 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
     return symbolToClass.get(symbolName) ?? null;
   }
 
-  // CSS emit. One rule per (palette, classId). The dark palette nests
-  // under `html.dark-mode` so the chrome's theme toggle flips the
-  // syntax highlight in lockstep with the rest of the page.
+  // CSS emit. One rule per (palette, classId). The dark palette is emitted
+  // under both `@media (prefers-color-scheme: dark) html:not([data-theme="light"])`
+  // (the no-JS system default) and `html[data-theme="dark"]` (an explicit toggle
+  // choice), so the syntax highlight flips in lockstep with the rest of the page.
   const orderedClasses = uniqueTuples.map((t) => tupleToClass.get(t));
   const symbolListComment = (cls) =>
     classToSymbols.get(cls).map((s) => `Symbol${s}`).join(", ");
@@ -325,11 +326,28 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
       CODE_BG.light,
     );
   }
-  css += "\n/* Dark palette (active under html.dark-mode). */\n";
+  // Dark palette, emitted under both the no-JS system default
+  // (prefers-color-scheme, unless the toggle forced light) and an explicit
+  // [data-theme="dark"] choice -- mirroring docs/_sass/custom/_theme.scss.
+  css += "\n/* Dark palette (system default via prefers-color-scheme). */\n";
+  let darkSystem = "";
+  for (const cls of orderedClasses) {
+    const sym = classToSample.get(cls);
+    darkSystem += renderRule(
+      `html:not([data-theme="light"]) .highlight .${cls}`,
+      dark.get(sym),
+      symbolListComment(cls),
+      CODE_BG.dark,
+    );
+  }
+  if (darkSystem) {
+    css += `@media (prefers-color-scheme: dark) {\n${darkSystem}}\n`;
+  }
+  css += "\n/* Dark palette (explicit [data-theme=dark] override). */\n";
   for (const cls of orderedClasses) {
     const sym = classToSample.get(cls);
     css += renderRule(
-      `html.dark-mode .highlight .${cls}`,
+      `html[data-theme="dark"] .highlight .${cls}`,
       dark.get(sym),
       symbolListComment(cls),
       CODE_BG.dark,

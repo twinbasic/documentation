@@ -19,7 +19,7 @@ If a fix *cannot* be expressed in the pipeline — i.e. it requires per-page sem
 
 ## Implementation status
 
-Phases 1, 2, and 4 are **complete**, along with the contrast work of Phase 3. The site builds clean and `check.bat`'s axe-core scan (`scripts/check_a11y.mjs`) reports **0 violations** across all six sample pages in both themes at two viewports. Landed in three commits:
+Phases 1, 2, 4, and 5 are **complete**, along with the contrast work of Phase 3. The site builds clean and `check.bat`'s axe-core scan (`scripts/check_a11y.mjs`) reports **0 violations** across all six sample pages in both themes at two viewports. The WCAG 2.2 AA chrome and contrast work landed in three commits:
 
 - **`c9f2dfe`** *WCAG 2.2 AA accessibility improvements* — Phase 1 (1.1–1.8) and Phase 2 (2.1–2.7) in full, plus Phase 4 (the axe-core check and its `check.bat` wiring). Also removed the redundant search-input `tabindex` (3.5) as a side effect of the combobox rework.
 - **`3db9794`** *Fix WCAG 1.4.3 contrast in both themes; unblind the a11y checker* — Phase 3.1 to WCAG 1.4.3 AA in both themes, and it **unblinded the checker**: `check_a11y.mjs` had been scanning `_site/` over `file://`, where the root-absolute asset URLs never resolve — every page was audited unstyled, so every contrast result was a meaningless black-on-white pass. It now scans `_site-offline/`, both themes, two viewports. Same commit fixed a new **WCAG 2.1.1** item (see 1.9 — horizontally scrolling code blocks are now keyboard-focusable) and moved syntax-token contrast clamping into `builder/highlight-theme.mjs` at emit time.
@@ -27,7 +27,7 @@ Phases 1, 2, and 4 are **complete**, along with the contrast work of Phase 3. Th
 
 **Remaining** (none are AA blockers): Phase 3.2 (target size — needs in-browser measurement), 3.3 (heading-level integrity lint), 3.4 (breadcrumb separator — verify with real AT before touching; may need no change).
 
-**Planned:** Phase 5 — a 3-state (system / light / dark) theme toggle with system as the default and no-JS progressive enhancement, replacing today's 2-state light-default toggle. Designed below; the clean CSS path depends on the theme-token refactor tracked in [FUTURE-WORK.md](FUTURE-WORK.md) (B19).
+**Phase 5 — DONE:** the 3-state (system / light / dark) theme toggle now replaces the old 2-state light-default toggle, with system as the default and no-JS progressive enhancement (dark applies via `@media (prefers-color-scheme: dark)` with no script). Shipped with the interim rule-set duplication; the CSS-custom-properties refactor that removes it stays tracked in [FUTURE-WORK.md](FUTURE-WORK.md) (B19).
 
 **Baseline for the a11y scan:** `check_a11y.mjs` exits 0 with 0 violations and ~20 *incomplete* ("needs review") results. Those incompletes are all colour-contrast cases axe-core cannot compute programmatically — the active-nav gradient background, SVG `<text>` in the BuildInfo charts, and syntax-highlight `<span>`s over the tinted code-block background. Each was verified by hand during the Phase 3 contrast passes (syntax tokens are clamped to 4.5:1 at emit time). An incomplete is not a violation; the run is clean.
 
@@ -286,7 +286,9 @@ Syntax tokens stay clamped at 4.5:1; 7:1 would flatten the IDE palette.
 
 ---
 
-## Phase 5 — Theme toggle: 3-state, system default, progressive enhancement
+## Phase 5 — Theme toggle: 3-state, system default, progressive enhancement — DONE
+
+**Status: DONE.** Implemented and verified (full cycle, `localStorage` persistence, no-flash on reload, no-JS system default, forced-light over a dark OS, and `check.bat` clean at 0 violations in both themes). Key pieces: the `dark-theme` mixin in `docs/_sass/custom/_theme.scss`; the `data-theme` attribute set by the no-flash `<head>` script + `docs/assets/js/theme-toggle.js` (which replaces `theme-switch.js`); and the gantt / syntax-highlight generators plus `check_a11y.mjs` updated to match. The generated dark block ships twice (media query + `[data-theme="dark"]`); the token refactor that removes the duplication is [FUTURE-WORK.md](FUTURE-WORK.md) B19.
 
 Replaces today's 2-state light/dark toggle (`docs/assets/js/theme-switch.js`), which defaults to **light** and ignores the OS entirely — there is no `prefers-color-scheme` anywhere, so a dark-OS visitor gets light until they click, and with JS off they are always light. The new control is a **3-state cycle — system → light → dark → system, defaulting to system** — built as progressive enhancement so the system default works with **no JS**.
 
@@ -349,6 +351,6 @@ The button inherits the `.btn-reset` `:focus-visible` ring (Phase 1.6); confirm 
 | 3 | Phase 2 | 2.1–2.7 | **Done** (`c9f2dfe`) | **No** — all in render.mjs, JS, SCSS, template.mjs |
 | 4 | Phase 3 | 3.1, 3.5 | **Done** (`3db9794`, `0813181`, `c9f2dfe`) | **No** |
 | 5 | Phase 3 | 3.2, 3.3, 3.4 | **Pending** | **No** (3.3 might add a build-time lint) |
-| 6 | Phase 5 | Theme toggle (5.1–5.5) | **Planned** | **No** — template.mjs, JS, SCSS, scss.mjs |
+| 6 | Phase 5 | Theme toggle (5.1–5.5) | **Done** | **No** — template.mjs, JS, SCSS, scss.mjs |
 
 The "Markdown files touched?" column is the key constraint: every row is **No**. All fixes live in the builder pipeline.

@@ -1,0 +1,27 @@
+// Dark-theme scoping mixin (Phase 5 theme toggle).
+//
+// Emits @content under both dark contexts so dark mode works with NO JS:
+//   1. system preference (prefers-color-scheme: dark), unless the visitor has
+//      forced light via the toggle -- the :not([data-theme="light"]) escape hatch;
+//   2. an explicit [data-theme="dark"] override, which wins even on a light OS.
+//
+// Both selectors are (0,1,1) specificity, so the explicit block is emitted last
+// and wins on a dark OS when a choice is set. Selectors inside @content are
+// relative to the <html> root: `.foo {}` -> `html[data-theme="dark"] .foo`,
+// `&.bar {}` -> the compound `html[data-theme="dark"].bar`.
+//
+// The dark declarations are duplicated across the media / attribute boundary
+// (identical text, so gzip/brotli compress it away). The clean single-source
+// alternative -- a CSS-custom-properties token layer -- is tracked in
+// builder/FUTURE-WORK.md (B19).
+@mixin dark-theme {
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+      @content;
+    }
+  }
+
+  html[data-theme="dark"] {
+    @content;
+  }
+}

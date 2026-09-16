@@ -11,6 +11,8 @@
 // colours, 4.8:1 to 6.0:1 on the dark background. Each variant's left border
 // tracks its title colour.
 
+@use "theme" as *;
+
 $alert-colors-light: (
   note: #0969da,
   important: #8250df,
@@ -73,7 +75,11 @@ $alert-colors-dark: (
 
 // custom.scss is emitted once at root level -- just-the-docs-dark.scss
 // deliberately does not @use it -- so the dark variants are scoped here
-// rather than inherited from a dark-theme compilation pass.
-html.dark-mode .markdown-alert {
-  @include alert-palette($alert-colors-dark);
+// rather than inherited from a dark-theme compilation pass. The dark-theme
+// mixin emits them under both the prefers-color-scheme media query (no-JS
+// system default) and the explicit [data-theme="dark"] override.
+@include dark-theme {
+  .markdown-alert {
+    @include alert-palette($alert-colors-dark);
+  }
 }

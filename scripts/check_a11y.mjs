@@ -13,10 +13,11 @@
 //     The offline tree uses relative asset paths and renders for real.
 //
 //   * Each page is scanned in both themes and at both a desktop and a phone
-//     viewport.  Dark mode is a separate stylesheet (html.dark-mode in
-//     just-the-docs-dark.scss) with its own palette, so a light-mode pass says
-//     nothing about it; and defects such as horizontally scrolling code blocks
-//     only appear once the layout is narrow enough to overflow.
+//     viewport.  Dark mode has its own palette (the dark-theme mixin in
+//     just-the-docs-dark.scss / _sass/custom/_theme.scss, applied via
+//     [data-theme=dark]), so a light-mode pass says nothing about it; and
+//     defects such as horizontally scrolling code blocks only appear once the
+//     layout is narrow enough to overflow.
 //
 // Usage:  node scripts/check_a11y.mjs [--root-dir DIR] [--theme light|dark|both]
 //                                     [--viewport desktop|mobile|both]
@@ -68,12 +69,12 @@ async function checkPage(page, filePath, theme) {
   const url = pathToFileURL(join(rootDir, filePath)).href;
   await page.goto(url, { waitUntil: "domcontentloaded" });
 
-  // theme-switch.js reads localStorage, which is unavailable on file://
-  // origins.  Set the class it would have set instead.
+  // theme-toggle.js reads localStorage, which is unavailable on file://
+  // origins.  Set the data-theme attribute it would have set instead (an
+  // explicit override; its declarations are identical to the no-JS
+  // prefers-color-scheme path, so this exercises the same dark palette).
   await page.evaluate((t) => {
-    const cl = document.documentElement.classList;
-    cl.toggle("dark-mode", t === "dark");
-    cl.toggle("light-mode", t !== "dark");
+    document.documentElement.setAttribute("data-theme", t);
   }, theme);
 
   await page.evaluate(axeSource);
