@@ -4,7 +4,7 @@
 // ruleset.  Covers all major content patterns: homepage, deep reference
 // page, table-heavy page, SVG diagrams, admonitions, and the 404 page.
 //
-// Two details matter for the results to mean anything:
+// Three details matter for the results to mean anything:
 //
 //   * The scan runs against docs/_site-offline, not docs/_site.  The online
 //     tree references its assets with root-absolute URLs (/assets/css/...),
@@ -18,6 +18,9 @@
 //     [data-theme=dark]), so a light-mode pass says nothing about it; and
 //     defects such as horizontally scrolling code blocks only appear once the
 //     layout is narrow enough to overflow.
+//
+//   * The search index is blocked during the scan (see BLOCKED_REQUESTS).
+//     It is inert for auditing purposes but dominated the run time.
 //
 // Usage:  node scripts/check_a11y.mjs [--root-dir DIR] [--theme light|dark|both]
 //                                     [--viewport desktop|mobile|both]
@@ -56,6 +59,24 @@ const axeSource = readFileSync(
   "utf-8"
 );
 
+// Requests aborted for the duration of the scan.
+//
+// Every page in the offline tree pulls in the ~3.2 MB search index
+// (assets/js/search-data.js) plus lunr. Loading and parsing it dominated
+// the run -- 18.9 s of a 27.1 s scan across the 24 page/theme/viewport
+// combinations -- and contributes nothing to the audit: it populates
+// window.store for the search box, it does not alter the DOM axe walks.
+// Aborting both cuts the scan to ~9.1 s (-66 %) with byte-identical
+// results; every rule id and node count, violations and incomplete
+// alike, matched the unblocked scan on all 24 combinations.
+//
+// just-the-docs.js is deliberately NOT blocked. It installs the search
+// combobox ARIA (role=listbox, aria-activedescendant) added by Phase 2.1
+// of builder/PLAN-a11y.md, and blocking it makes axe see *less* -- the
+// colour-contrast node count on Select-Case drops 54 -> 2 -- which would
+// silently mask coverage for ~130 ms.
+const BLOCKED_REQUESTS = [/search-data\.js/, /lunr\.min\.js/];
+
 const SAMPLE_PAGES = [
   "/index.html",
   "/tB/Core/Dim.html",
@@ -93,6 +114,15 @@ async function checkPage(page, filePath, theme) {
 async function main() {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
+
+  await page.setRequestInterception(true);
+  page.on("request", (req) => {
+    if (BLOCKED_REQUESTS.some((re) => re.test(req.url()))) {
+      req.abort().catch(() => {});
+    } else {
+      req.continue().catch(() => {});
+    }
+  });
 
   let totalViolations = 0;
   let totalIncomplete = 0;
