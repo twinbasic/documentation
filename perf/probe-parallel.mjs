@@ -12,6 +12,15 @@
 // looks like on this machine, and (b) whether the per-shard slices look
 // structurally sane (each opens via pdf-lib; page counts add up).
 //
+// One browser per shard is deliberate, not incidental: a single browser
+// process pools the PrintCompositor utility below the shard count (3 for
+// 4 concurrent print jobs), so the surplus shard queues behind another
+// and generate wall clock goes up ~33 %. See probe-tabs-vs-procs.mjs and
+// the *Tabs vs. processes* subsection of
+// notes/06-microtasks-pageranges-css.md. Don't "optimise" this into
+// browser.newPage() -- tabs get their own renderer process anyway, so
+// there is no memory to reclaim, only parallelism to lose.
+//
 // Usage:
 //   node probe-parallel.mjs [path/to/book.html] [--shards N]
 //
@@ -70,12 +79,20 @@ console.log(`[probe] shards : ${shardCount}`);
 async function runShard(shardIndex) {
   const tStart = Date.now();
   const browser = await puppeteer.launch({
-    // Matches book/render-book.mjs (production path).
+    // Matches book/render-book.mjs (production path). The --disable-gpu
+    // pair matters here for the same reason it does in production: it
+    // drops the GPU process from ~100 MB to ~16 MB and takes ~120 MB off
+    // the renderer. Multiplied by N shards that is the difference between
+    // a memory profile that fits a CI runner and one that doesn't -- and
+    // per-shard memory is the stated blocker on shipping sharding at all,
+    // so omitting them overstates the cost of the thing being evaluated.
     headless: true,
     args: [
       '--no-sandbox',
       '--disable-dev-shm-usage',
       '--allow-file-access-from-files',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
     ],
   });
   const tLaunched = Date.now();
