@@ -165,14 +165,77 @@
       }
     },
     "dim-keyword": {
-      "comment": "Begin/end so the whitespace between Dim and the identifier can span newlines (Rouge's :dim state mixes in :whitespace before matching the variable name). The end alternation matches the variable name OR pops at the next non-whitespace char if there's no identifier to consume.",
+      "comment": "Declaration list after Dim/Const/ReDim. Unlike Rouge's :dim state (which tagged only the FIRST name as a variable and popped), this stays open to the end of the statement so EVERY name in a comma-separated list becomes variable.tb. The As-clause, initializer, and subscript sub-states each consume up to the next TOP-LEVEL comma (or statement end), so their identifiers -- type names, expression names -- are handled there and never reach the variable-name rule; only names in declaration position (right after the keyword, or after a top-level comma) become variable.tb. `WithEvents` (Dim) and `Preserve` (ReDim) precede the first name and stay keywords. Pops at end of line like Rouge, so a `_`-continued list falls back to root handling on the next line.",
       "begin": "(?i)\\b(Dim|Const|ReDim)\\b",
       "beginCaptures": { "1": { "name": "keyword.control.tb" } },
-      "end": "(?i)([a-z_]\\w*[%&@!#$]?)|(?=\\S)",
-      "endCaptures": { "1": { "name": "variable.tb" } },
+      "end": "(?i)(?=[':])|$",
       "patterns": [
         { "include": "#line-continuation" },
-        { "include": "#comments" }
+        { "include": "#comments" },
+        { "match": "(?i)\\b(?:WithEvents|Preserve)\\b", "name": "keyword.control.tb" },
+        { "include": "#dim-as-clause" },
+        { "include": "#dim-initializer" },
+        { "include": "#dim-parens" },
+        { "match": ",", "name": "punctuation.tb" },
+        { "match": "(?i)[a-z_]\\w*[%&@!#$]?", "name": "variable.tb" }
+      ]
+    },
+    "dim-as-clause": {
+      "comment": "The `As [New] type` part of one declarator. Ends before the next top-level comma, an `=` initializer, a comment, a `:` statement separator, or end of line. Intrinsic types render as storage.type via #types-keyword; a user-defined or dotted type falls through to #identifier / #dotted-name as entity.name.tb, matching root. #dim-parens covers a `New Type(args)` argument list; a fixed-length `String * n` uses #operators + #numbers.",
+      "begin": "(?i)\\b(As)\\b",
+      "beginCaptures": { "1": { "name": "keyword.operator.word.tb" } },
+      "end": "(?i)(?=[,':=])|$",
+      "patterns": [
+        { "include": "#line-continuation" },
+        { "include": "#comments" },
+        { "match": "(?i)\\b(?:New)\\b", "name": "keyword.control.tb" },
+        { "include": "#dim-parens" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#dotted-name" },
+        { "include": "#types-keyword" },
+        { "include": "#operators" },
+        { "include": "#identifier" }
+      ]
+    },
+    "dim-initializer": {
+      "comment": "The `= expression` part of one declarator (a twinBASIC inline initialiser). Ends before the next top-level comma, a comment, a `:` statement separator, or end of line. The expression body reuses #dim-expr-inner, so identifiers inside are entity.name.tb -- never variable.tb.",
+      "begin": "=",
+      "beginCaptures": { "0": { "name": "keyword.operator.tb" } },
+      "end": "(?i)(?=[,':])|$",
+      "patterns": [
+        { "include": "#dim-expr-inner" }
+      ]
+    },
+    "dim-parens": {
+      "comment": "A parenthesised group inside a declaration -- array subscripts `(1 To 10, 2 To 5)` or constructor arguments. Balanced across nesting and across newlines (it ends on `)`, not end of line), so an inner comma never leaks out to prematurely end an enclosing As-clause or initializer.",
+      "begin": "\\(",
+      "end": "\\)",
+      "beginCaptures": { "0": { "name": "punctuation.tb" } },
+      "endCaptures": { "0": { "name": "punctuation.tb" } },
+      "patterns": [
+        { "include": "#dim-expr-inner" }
+      ]
+    },
+    "dim-expr-inner": {
+      "comment": "Expression content inside a subscript group or initialiser -- the same rule tail as the grammar root, minus the declaration-oriented rules (no dim/funcname/typename/variable-name handling). Identifiers here are ordinary names (entity.name.tb).",
+      "patterns": [
+        { "include": "#line-continuation" },
+        { "include": "#comments" },
+        { "include": "#dates" },
+        { "include": "#numbers" },
+        { "include": "#dotted-name" },
+        { "include": "#strings" },
+        { "include": "#literals" },
+        { "include": "#typed-identifier" },
+        { "include": "#types-keyword" },
+        { "include": "#operator-words" },
+        { "include": "#builtins" },
+        { "include": "#keywords" },
+        { "include": "#dim-parens" },
+        { "include": "#punctuation" },
+        { "include": "#operators" },
+        { "include": "#identifier" }
       ]
     },
     "funcname-keyword": {
