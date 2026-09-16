@@ -1050,8 +1050,12 @@ function configureFootnotes(md) {
 // built site that skip is a heading-order defect -- a section sits two levels
 // below its chapter with no h2 between (WCAG 1.3.1, best practice).
 //
-// Fix it in the pipeline so the markdown stays untouched and GitHub keeps its
-// `###`. Deliberately narrow, per the maintainer's rule: fire ONLY on a page
+// The house style is deprecated -- new content uses `##` for sections (see the
+// page template in WIP.md). This rule is a migration bridge: it repairs the
+// legacy pages at build time so they are not all edited at once (diff churn),
+// and it self-retires per page as each is rewritten to use `##` (a page with a
+// real h2 no longer matches the trigger). Fixing it here also keeps the
+// markdown untouched and GitHub keeps its `###`. Deliberately narrow, per the maintainer's rule: fire ONLY on a page
 // that uses h1 and h3 but no h2 -- the unambiguous house-style shape. A page
 // that already uses h2 is left exactly as authored (its levels are the
 // author's own structure, not the workaround). On a matching page every

@@ -102,7 +102,7 @@ Syntax: **<Symbol>** [ *args* ]
 
 <remarks paragraphs>
 
-### Example
+## Example
 
 This example...
 
@@ -110,13 +110,14 @@ This example...
 ' code
 ```
 
-### See Also
+## See Also
 
 - [Other](OtherSymbol)
 ````
 
 Formatting conventions:
 
+- Heading levels: the page title is `#` (a *chapter* -- a page may legitimately have more than one). Top-level sections (Example, See Also, ...) are `##`; subsections `###`. Do **not** skip `##` with the old `# Title` -> `### Example` "house style". That pattern (h1 straight to h3) exists on many older pages only to keep GitHub's raw-markdown view at a modest heading size; it is a heading-order defect on the built site. `headingLevelNormalizePlugin` in [builder/render.mjs](builder/render.mjs) repairs those legacy pages at build time (it raises `h3`->`h2` on any page that uses h1 and h3 but no h2), so existing pages are not being churned all at once -- but new content must use correct levels, and pages that already mix `##` and `###` are left untouched.
 - `**...**` for keywords/literal tokens; `*...*` for placeholders/arguments.
 - Code blocks use ` ```tb ` (highlighted via Shiki using the vendored `builder/twinbasic.tmLanguage.json` grammar).
 - Parameter lists use the deflist `term` + `: definition` indentation pattern (NOT the MS-style markdown table).
