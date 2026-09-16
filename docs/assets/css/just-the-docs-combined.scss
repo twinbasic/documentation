@@ -37,6 +37,13 @@
 
 @include meta.load-css("modules", $with: ("logo": "/favicon.png"));
 
+// Apply the code-size / inline-code-padding overrides AFTER modules so they
+// out-rank JTD's base.scss (`code { font-size: 0.75em }`) and code.scss
+// (`:not(pre, figure) > code { padding }`) by source order, at equal
+// specificity. The dark compilation inlines the same block after its own
+// load-css inside html.dark-mode {}.
+@include tb-code-overrides;
+
 // callouts.scss.liquid output -- only the unconditional div.opaque rule.
 // Light $body-background-color default = $white = #fff.
 div.opaque {
