@@ -484,6 +484,8 @@ build.bat && check.bat
 
 `check.bat` runs [scripts/check_links.mjs](scripts/check_links.mjs) in offline mode against both `_site/` and `_site-offline/` — it catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), and (via `--forbid 'https://docs.twinbasic.com'` on the offline pass) any extracted link that still points at the live docs site after the offlinify rewrite. A clean run is the bar for "ready to commit".
 
+Both blocking passes also run `--check-remote-assets`, which fails the run on any `<img src>` resolving off-box (`http://`, `https://`, or protocol-relative `//host`). The PDF pass over `book.html` is informational (`--no-fail`), so enforcement comes from the `_site/` pass -- every page in the book is also in `_site/`, making it a superset. The check is deliberately scoped to `<img>` only; `<iframe>` is untouched.
+
 It then runs [scripts/check_a11y.mjs](scripts/check_a11y.mjs), which drives puppeteer + axe-core over six sample pages against the WCAG 2.2 AA ruleset and exits non-zero on any violation. Three details of that script matter and are easy to break:
 
 - It scans **`_site-offline/`, not `_site/`**. The online tree references its assets with root-absolute URLs (`/assets/css/…`), which resolve to nothing under `file://` — every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass. The offline tree uses relative asset paths and renders for real.
@@ -509,6 +511,7 @@ Favor concise one-line git commit messages.
 - Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.py` normalises any strays.
 - Don't push or force-push without explicit user request.
+- Don't reference an image by a remote URL (`https://github.com/user-attachments/assets/...` and friends). Download it, commit it under the section's `Images/` folder, and link relatively. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` dropped async image loading, so an image still in flight when the page-breaking pass runs raises instead of degrading. `check.bat` enforces this via `--check-remote-assets`. `<iframe>` embeds (the YouTube players on the Videos pages) are exempt -- no local equivalent, and those pages are out of the book.
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
 - Don't add boilerplate sections (Remarks, See Also) if the source has nothing meaningful for them.
 - **Never add `Co-Authored-By:` (or any "Co-authored by" / "Generated with Claude" / similar) trailers to commit messages.** Repository policy. Plain commit messages only.

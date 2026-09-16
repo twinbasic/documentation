@@ -36,7 +36,7 @@
 // htmlparser2 SAX doesn't expose source positions.
 //
 // Integrity checks (--check-html, --check-a11y, --check-ids,
-// --check-sitemap, --check-search):
+// --check-sitemap, --check-search, --check-remote-assets):
 //   These share the existing htmlparser2 SAX parse pass -- no
 //   second file read.  Exit code 2 signals integrity-only failures
 //   so CI can distinguish "broken link" from "malformed HTML".
@@ -218,6 +218,7 @@ function checkSearchContents(rootStr, htmlFiles, redirectStubSet, basePath) {
 //   checkHtml   -- unclosed / mismatched tags (htmlErrors)
 //   checkA11y   -- img missing alt, empty anchors, empty href (a11yErrors)
 //   checkIds    -- duplicate id attributes on the same page (dupIds)
+//   checkRemoteAssets -- <img src> pointing off-box (remoteAssets)
 //   checkCanonical -- capture <link rel="canonical" href="..."> (canonicalHref)
 //   captureRedirectStub -- detect <meta http-equiv="refresh"> (isRedirectStub)
 function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
@@ -241,11 +242,13 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
   const doIds       = checkOpts?.checkIds   ?? false;
   const doCanonical = checkOpts?.checkCanonical ?? false;
   const doStub      = checkOpts?.captureRedirectStub ?? false;
+  const doRemote    = checkOpts?.checkRemoteAssets ?? false;
 
   const tagStack   = doHtml ? [] : null;
   const htmlErrors = doHtml ? [] : null;
   const a11yErrors = doA11y ? [] : null;
   const idMap      = doIds  ? new Map() : null;
+  const remoteAssets = doRemote ? [] : null;
 
   // a11y anchor-tracking state.
   let inAnchor        = false;
@@ -291,6 +294,19 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
       // ── check-ids: count id attributes ────────────────────────
       if (idMap && attribs.id) {
         idMap.set(attribs.id, (idMap.get(attribs.id) ?? 0) + 1);
+      }
+
+      // ── check-remote-assets ────────────────────────────────────
+      // An <img> whose src resolves off-box. Remote images cost a
+      // network round trip on every page view, break the offline
+      // mirror, and hard-fail the PDF book: book/lib/paged.browser.js
+      // dropped async image loading, so an image that has not finished
+      // loading when paged.js runs throws rather than degrading.
+      if (doRemote && name === "img") {
+        const src = attribs.src ?? "";
+        if (/^(?:https?:)?\/\//i.test(src)) {
+          remoteAssets.push({ tag: name, src });
+        }
       }
 
       // ── check-a11y ─────────────────────────────────────────────
@@ -385,7 +401,7 @@ function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
     }
   }
 
-  return { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub, canonicalHref };
+  return { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, remoteAssets, isRedirectStub, canonicalHref };
 }
 
 // Cross-file check: every page's <link rel="canonical" href="..."> must
@@ -616,6 +632,15 @@ Integrity checks (share the existing htmlparser2 SAX parse pass):
                              empty <a> tags, empty href attributes.
   --check-ids                Duplicate id="..." attributes on the same
                              page.
+  --check-remote-assets      <img src> pointing off-box (http://,
+                             https:// or protocol-relative //host).
+                             Remote images cost a network round trip
+                             per page view, break the offline mirror,
+                             and hard-fail the PDF book -- the forked
+                             paged.js dropped async image loading, so
+                             an image still in flight when it runs
+                             throws instead of degrading. Vendor the
+                             file under the section's Images/ folder.
   --check-sitemap            Every .html file in the input is in
                              sitemap.xml (or is a known exclusion).
                              Reads <root-dir>/sitemap.xml; skipped
@@ -654,6 +679,7 @@ function parseArgs(argv) {
     checkHtml: false,
     checkA11y: false,
     checkIds: false,
+    checkRemoteAssets: false,
     checkSitemap: false,
     checkSearch: false,
     checkCanonical: false,
@@ -682,6 +708,7 @@ function parseArgs(argv) {
     else if (a === "--check-html") opts.checkHtml = true;
     else if (a === "--check-a11y") opts.checkA11y = true;
     else if (a === "--check-ids") opts.checkIds = true;
+    else if (a === "--check-remote-assets") opts.checkRemoteAssets = true;
     else if (a === "--check-sitemap") opts.checkSitemap = true;
     else if (a === "--check-search") opts.checkSearch = true;
     else if (a === "--check-canonical") opts.checkCanonical = true;
@@ -777,12 +804,13 @@ function runCheck(argv) {
 
   // Build checkOpts only when at least one integrity flag is on, to
   // avoid adding handlers to the parser on runs that don't need them.
-  const needIntegrity = opts.checkHtml || opts.checkA11y || opts.checkIds;
+  const needIntegrity = opts.checkHtml || opts.checkA11y || opts.checkIds || opts.checkRemoteAssets;
   const needRedirectStub = opts.checkSitemap || opts.checkSearch || opts.checkCanonical;
   const checkOpts = (needIntegrity || needRedirectStub || opts.checkCanonical) ? {
     checkHtml: opts.checkHtml,
     checkA11y: opts.checkA11y,
     checkIds:  opts.checkIds,
+    checkRemoteAssets: opts.checkRemoteAssets,
     checkCanonical: opts.checkCanonical,
     captureRedirectStub: needRedirectStub,
   } : null;
@@ -808,13 +836,13 @@ function runCheck(argv) {
 
   for (const src of htmlFiles) {
     const srcDir = path.dirname(src);
-    const { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, isRedirectStub, canonicalHref } =
+    const { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, remoteAssets, isRedirectStub, canonicalHref } =
       extractLinksAndIds(src, opts.includeFragments, forbidPrefixes, checkOpts);
     for (const h of links) occurrences.push([src, srcDir, h]);
     if (idsByFile) idsByFile.set(src, ids);
     if (forbidden && forbidden.length) forbiddenBySource.set(src, forbidden);
-    if (integrityByFile && (htmlErrors?.length || a11yErrors?.length || dupIds?.length)) {
-      integrityByFile.set(src, { htmlErrors, a11yErrors, dupIds });
+    if (integrityByFile && (htmlErrors?.length || a11yErrors?.length || dupIds?.length || remoteAssets?.length)) {
+      integrityByFile.set(src, { htmlErrors, a11yErrors, dupIds, remoteAssets });
     }
     if (redirectStubSet && isRedirectStub) {
       redirectStubSet.add(path.resolve(src));
@@ -1015,7 +1043,7 @@ function runCheck(argv) {
     const lines = [];
     const sortedFiles = [...integrityByFile.keys()].sort();
     for (const src of sortedFiles) {
-      const { htmlErrors, a11yErrors, dupIds } = integrityByFile.get(src);
+      const { htmlErrors, a11yErrors, dupIds, remoteAssets } = integrityByFile.get(src);
       if (htmlErrors) {
         for (const e of htmlErrors) {
           lines.push(`${src}: html-${e.type}: <${e.tag}>`);
@@ -1037,6 +1065,12 @@ function runCheck(argv) {
       if (dupIds) {
         for (const e of dupIds) {
           lines.push(`${src}: duplicate-id: '${e.id}' appears ${e.count} times`);
+          integrityIssueCount++;
+        }
+      }
+      if (remoteAssets) {
+        for (const e of remoteAssets) {
+          lines.push(`${src}: remote-asset: <${e.tag} src="${e.src}"> -- vendor it under the section's Images/ folder`);
           integrityIssueCount++;
         }
       }

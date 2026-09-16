@@ -32,7 +32,7 @@ Starts a long-lived dev process. Wraps `node builder\tbdocs.mjs --src docs --ser
 
     check.bat
 
-Runs `scripts/check_links.mjs` against the rendered `_site/` and `_site-offline/` trees in two parallel passes. The offline pass also runs `--forbid "https://docs.twinbasic.com"` to flag any surviving live-site link the offline rewrite missed. Both passes assert link integrity, HTML well-formedness, duplicate-`id` detection, anchor resolution, and accessibility hints; the online pass additionally checks `sitemap.xml` and the search index. If the link check passes, `check.bat` then runs [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan; a link-check failure short-circuits before it runs. Requires `build.bat` to have run first.
+Runs `scripts/check_links.mjs` against the rendered `_site/` and `_site-offline/` trees in two parallel passes. The offline pass also runs `--forbid "https://docs.twinbasic.com"` to flag any surviving live-site link the offline rewrite missed. Both passes assert link integrity, HTML well-formedness, duplicate-`id` detection, anchor resolution, accessibility hints, and that no `<img>` points at a remote host; the online pass additionally checks `sitemap.xml` and the search index. If the link check passes, `check.bat` then runs [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan; a link-check failure short-circuits before it runs. Requires `build.bat` to have run first.
 
 ### book.bat
 
@@ -88,6 +88,7 @@ Offline (filesystem-only) link checker plus optional integrity checks. Multiple 
 | `--check-html` | Assert HTML well-formedness. |
 | `--check-a11y` | Report accessibility hints (missing `alt`, etc.). |
 | `--check-ids` | Flag duplicate `id` attributes within a page. |
+| `--check-remote-assets` | Flag any `<img>` whose `src` points off-box (`http://`, `https://`, or protocol-relative `//host`). Remote images cost a network round trip per view, break the offline mirror, and abort the PDF book render --- the forked paged.js raises an error on an image that has not finished loading. Vendor the file under the section's `Images/` folder instead. |
 | `--check-sitemap` | Assert `sitemap.xml` covers every page. |
 | `--check-search` | Assert search-index entries resolve to existing pages. |
 | `--check-canonical` | Assert each page's canonical URL matches its location. |

@@ -91,6 +91,28 @@ Do **not** jump from `#` straight to `###`. That old "house style" --- an h1 fol
 - Parameter lists use the definition-list pattern (a term line, then a `: definition` line beneath it), not a markdown table.
 - For dashes, write `--` in the source (it renders as an en-dash) or `---` (an em-dash). Never paste a literal `–` or `—` --- the build's typographer converts the ASCII forms, and literal dash characters in source are rejected.
 
+## Images
+
+Images live in an `Images/` folder beside the page that uses them, and are referenced by a relative path:
+
+```markdown
+![Create Package](Images/packPublishButton.png)
+```
+
+Use the markdown form. A raw `<img>` tag with a page-relative `src` is **not** rewritten when the PDF book is assembled: the book flattens every page into a single document, so a path like `Images/x.png` that resolves correctly on the site resolves against the book root instead and the render aborts with `pdf: missing image`. The markdown form is rewritten to a section-qualified path and works in all three outputs.
+
+**Never reference an image by a remote URL.** Pasting a screenshot into a GitHub issue or pull request produces a `https://github.com/user-attachments/assets/...` link, and it is tempting to paste that straight into a page. Download the file instead, commit it under the section's `Images/` folder, and link to it relatively.
+
+There are three reasons, in increasing order of severity:
+
+- **Every page view pays a network round trip.** A GitHub attachment URL answers with a redirect to S3, so a single image costs two requests --- up to about a second on a cold connection.
+- **The offline mirror stops being self-contained.** `_site-offline/` is meant to be browsable from a `file://` URL with no network at all. A remote image renders as a broken placeholder there.
+- **The PDF book fails to build.** This is the one that actually bites. The forked paged.js in `book/lib/` dropped support for loading images asynchronously, so an image that has not finished downloading by the time the page-breaking pass runs raises an error and aborts the whole render. A remote image makes `book.bat` depend on a reachable third-party host; when that host is slow, blocked, or has expired the asset, the build does not degrade to a missing picture --- it stops.
+
+[`check.bat`](Building#checking-link-integrity) enforces this. A remote `<img>` --- `http://`, `https://`, or protocol-relative `//host/...` --- is reported as `remote-asset:` and fails the run.
+
+The rule covers images only. A `<iframe>` embed, such as the YouTube players on the [Videos](/Videos/) pages, is a third-party player that has no local equivalent, and those pages are excluded from the PDF book.
+
 ## Writing for an international audience
 
 The audience is worldwide, and many readers do not have English as a first language. Reference and tutorial prose uses plain English.

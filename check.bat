@@ -1,11 +1,11 @@
 @pushd "%~dp0"
 node scripts/check_links.mjs --offline --include-fragments ^
-    --check-html --check-a11y --check-ids ^
+    --check-html --check-a11y --check-ids --check-remote-assets ^
     --check-sitemap --check-search --check-canonical ^
     --fallback-extensions html --index-files "index.html,." ^
     --root-dir docs/_site docs/_site /sep/ ^
     --offline --include-fragments ^
-    --check-html --check-a11y --check-ids ^
+    --check-html --check-a11y --check-ids --check-remote-assets ^
     --forbid "https://docs.twinbasic.com" ^
     --fallback-extensions html --index-files "index.html,." ^
     --root-dir docs/_site-offline docs/_site-offline /sep/ ^
