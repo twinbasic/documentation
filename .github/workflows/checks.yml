@@ -1,22 +1,33 @@
 name: Run Checks
 
 on:
-    workflow_dispatch:
-#   push:
-#     branches: [ main, dev ]
-#     paths: docs/**
-    pull_request:
-      branches: [ main ]
-      paths: docs/**
+  workflow_dispatch:
+  # `staging` is this repo's default branch and the one the deploy
+  # workflow publishes from, so that is what PRs target. Checking only
+  # PRs into `main` meant this never ran.
+  #
+  # Pushes are deliberately not listed: tbdocs-gh-pages.yml already
+  # builds and checks on every push to `staging` before it deploys, so a
+  # push trigger here would duplicate that work. This workflow's job is
+  # to catch the breakage BEFORE the merge.
+  pull_request:
+    branches: [ staging, main ]
 
+# No `paths:` filter. It used to be `docs/**`, which skipped any PR that
+# touched only builder/ or scripts/ -- exactly the code most able to break
+# the build, the link checker, or asset vendoring. The whole run is a couple
+# of minutes, so filtering buys little and silently drops real coverage.
+
+# Check-only job: it never deploys, so it needs no Pages or OIDC rights.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# Must NOT share the deploy workflow's "pages" group -- that made PR checks
+# queue against production deployments. Keyed per PR, and superseded runs are
+# cancelled when new commits arrive.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Build job
