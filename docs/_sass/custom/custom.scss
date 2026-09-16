@@ -182,3 +182,80 @@ div.highlight:focus-visible {
 #theme-toggle[data-theme-choice="dark"] [data-icon="dark"] {
   display: block;
 }
+
+// Video thumbnails (Videos section). The YouTube <iframe> embeds these
+// replaced loaded Google's player on page view, which set third-party
+// cookies before the reader had done anything. A locally vendored
+// thumbnail wrapped in a plain link to the video page keeps the site free
+// of third-party requests -- nothing contacts Google until the reader
+// chooses to click through, at which point they are on youtube.com and it
+// is Google's own relationship with them.
+//
+// Markup comes from `[![alt](Images/yt-<id>.jpg)](https://…){: .video-link }`,
+// so the anchor wraps a single <img>. The play button is drawn with two
+// pseudo-elements rather than a sprite, so it needs no extra asset and
+// scales with the thumbnail.
+.video-link {
+  position: relative;
+  display: inline-block;
+  max-width: 560px;   // matches the width the old iframes used
+  width: 100%;
+  line-height: 0;     // drop the inline descender gap under the image
+  border-radius: 6px;
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+  }
+
+  // Rounded plate behind the triangle.
+  &::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 68px;
+    height: 48px;
+    transform: translate(-50%, -50%);
+    background-color: rgba(18, 18, 18, 0.72);
+    border-radius: 12px;
+    transition: background-color 0.15s ease-in-out;
+  }
+
+  // Play triangle, nudged right of centre so it reads as optically centred.
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    transform: translate(-35%, -50%);
+    border-style: solid;
+    border-width: 11px 0 11px 19px;
+    border-color: transparent transparent transparent #fff;
+  }
+
+  &:hover::before,
+  &:focus-visible::before {
+    background-color: rgba(200, 0, 0, 0.92);
+  }
+
+  // The anchor's only content is the image, so the theme's link underline
+  // would render as a stray rule beneath it.
+  &,
+  &:hover {
+    text-decoration: none;
+    background-image: none;
+  }
+
+  // currentColor, matching the focus treatment used elsewhere in this
+  // file -- it tracks the link colour in both themes without needing the
+  // JTD variables, which this module does not @use.
+  &:focus-visible {
+    outline: 3px solid;
+    outline-offset: 3px;
+  }
+}

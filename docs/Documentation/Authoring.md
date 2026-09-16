@@ -111,7 +111,15 @@ There are three reasons, in increasing order of severity:
 
 [`check.bat`](Building#checking-link-integrity) enforces this. A remote `<img>` --- `http://`, `https://`, or protocol-relative `//host/...` --- is reported as `remote-asset:` and fails the run.
 
-The rule covers images only. A `<iframe>` embed, such as the YouTube players on the [Videos](/Videos/) pages, is a third-party player that has no local equivalent, and those pages are excluded from the PDF book.
+### Videos
+
+The same rule is why the [Videos](/Videos/) pages do not embed YouTube players. A `<iframe>` embed loads Google's player as soon as the page is viewed, which contacts Google and sets third-party cookies before the reader has done anything. Instead each video is a locally stored thumbnail wrapped in a plain link to the video page, with a play button drawn over it in CSS:
+
+```markdown
+[![Video title -- watch on YouTube](Images/yt-<video-id>.jpg)](https://www.youtube.com/watch?v=<video-id>){: .video-link }
+```
+
+Save the thumbnail as `Images/yt-<video-id>.jpg` under the Videos section. Do **not** hotlink `img.youtube.com` --- that reintroduces exactly the third-party request the thumbnail exists to avoid, and `check.bat` fails the build for it. Nothing reaches Google until the reader clicks, at which point they are on youtube.com and it is Google's own relationship with them. With no embeds anywhere, the site makes no third-party requests at all.
 
 ## Writing for an international audience
 
