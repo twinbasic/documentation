@@ -281,7 +281,15 @@ export function createMarkdownIt(ctx) {
     }
     return slf.renderToken(tokens, idx, opts);
   };
-  md.renderer.rules.th_open = styleSpace();
+  md.renderer.rules.th_open = ((defaultRule) => (tokens, idx, opts, env, slf) => {
+    const tok = tokens[idx];
+    const styleIdx = tok.attrIndex("style");
+    if (styleIdx >= 0) {
+      tok.attrs[styleIdx][1] = tok.attrs[styleIdx][1].replace(/:/g, ": ");
+    }
+    tok.attrSet("scope", "col");
+    return slf.renderToken(tokens, idx, opts);
+  })();
   md.renderer.rules.td_open = styleSpace();
 
   // kramdown renders ordered lists with no `start` attribute even when
@@ -1379,11 +1387,11 @@ const ICON_ALERT = '<svg class="octicon octicon-alert" viewBox="0 0 16 16" versi
 const ICON_STOP = '<svg class="octicon octicon-stop" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>';
 
 const ADMONITION_TYPES = {
-  note:      { title: "Note",      icon: ICON_INFO },
-  tip:       { title: "Tip",       icon: ICON_LIGHT_BULB },
-  important: { title: "Important", icon: ICON_REPORT },
-  warning:   { title: "Warning",   icon: ICON_ALERT },
-  caution:   { title: "Caution",   icon: ICON_STOP },
+  note:      { title: "Note",      icon: ICON_INFO,       role: "note" },
+  tip:       { title: "Tip",       icon: ICON_LIGHT_BULB, role: "note" },
+  important: { title: "Important", icon: ICON_REPORT,     role: "note" },
+  warning:   { title: "Warning",   icon: ICON_ALERT,      role: "alert" },
+  caution:   { title: "Caution",   icon: ICON_STOP,       role: "alert" },
 };
 
 // Matches an admonition fence with optional leading indent. Indented
@@ -1428,7 +1436,7 @@ export function rewriteAdmonitions(src) {
     // blockHtmlRecursionPlugin) parses it as an independent block.
     // The trailing blank line ensures any following text is parsed as
     // a separate markdown block rather than absorbed into the html_block.
-    return `${leading}<div class="markdown-alert markdown-alert-${type}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}</p>\n\n${body}\n</div>\n\n`;
+    return `${leading}<div class="markdown-alert markdown-alert-${type}" role="${meta.role}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}</p>\n\n${body}\n</div>\n\n`;
   });
 
   return work.replace(/```\{\{CODE_BLOCK_(\d+)\}\}```/g, (_, n) => stashed[Number(n)]);
@@ -1611,10 +1619,11 @@ function buildSvgWrapper(svgContent, alt, stem, srcRel) {
   const esc = escapeHtml;
   return `<div class="svg-inline-wrap">` +
     `<div class="svg-controls">` +
-    `<a href="#" data-action="download-svg" data-filename="${esc(stem)}">Download SVG</a>` +
-    `<a href="#" data-action="copy-svg">Copy SVG</a>` +
-    `<a href="#" data-action="download-png" data-filename="${esc(stem)}">Download PNG</a>` +
-    `<a href="#" data-action="copy-png" data-filename="${esc(stem)}">Copy PNG</a>` +
+    `<button type="button" class="btn-reset" data-action="download-svg" data-filename="${esc(stem)}">Download SVG</button>` +
+    `<button type="button" class="btn-reset" data-action="copy-svg">Copy SVG</button>` +
+    `<button type="button" class="btn-reset" data-action="download-png" data-filename="${esc(stem)}">Download PNG</button>` +
+    `<button type="button" class="btn-reset" data-action="copy-png" data-filename="${esc(stem)}">Copy PNG</button>` +
+    `<button type="button" class="btn-reset" data-action="zoom-svg" aria-label="Zoom diagram">Zoom</button>` +
     `</div>` +
     `<div class="svg-container" data-svg-src="${esc(srcRel)}" role="img" aria-label="${esc(alt)}">` +
     svgContent +

@@ -7,6 +7,7 @@
     "@hpcc-js/wasm-graphviz": "^1.21",
     "acorn": "^8.0",
     "acorn-walk": "^8.0",
+    "axe-core": "^4.13.0",
     "fast-glob": "^3.3",
     "gray-matter": "^4.0",
     "html-entities": "^2.6.0",
@@ -16,9 +17,9 @@
     "markdown-it-attrs": "^4.3",
     "markdown-it-deflist": "^3.0",
     "markdown-it-footnote": "^4.0",
-    "sass": "^1.0",
     "pdf-lib": "1.17.1",
     "puppeteer": "25.0.4",
+    "sass": "^1.0",
     "shiki": "^1.0"
   }
 }

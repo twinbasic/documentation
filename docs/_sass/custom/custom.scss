@@ -1,14 +1,27 @@
 @use "admonitions";
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 // Inline SVG diagrams (Phase 13). Controls are float-right links above
 // the diagram; the SVG fills the column width.
 .svg-controls {
   overflow: hidden;
   font-size: 0.85em;
 
-  a {
+  button {
     float: right;
     margin-left: 1em;
+    cursor: pointer;
   }
 }
 
@@ -92,5 +105,14 @@ html.dark-mode {
   .language-tb pre.highlight,
   .language-tb .highlight pre {
     background-color: rgb(33, 33, 33);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

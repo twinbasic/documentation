@@ -78,6 +78,7 @@ function templatePage(page, site, init) {
     renderHead(page, site, init) +
     `<body>\n` +
     `  <a class="skip-to-main" href="#main-content">Skip to main content</a>\n` +
+    `  <div id="a11y-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>\n` +
     init.svgSprites + `\n` +
     init.sidebar + `\n` +
     `  <div class="main" id="page-top">\n` +
@@ -299,7 +300,7 @@ function renderSidebar(site) {
   return `  <div class="side-bar">\n` +
     `    <div class="site-header" role="banner">\n` +
     `      <a href="${escAttr(relativeUrl("/", baseurl))}" class="site-title lh-tight">${renderSiteTitle(config)}</a>\n` +
-    `      <button id="menu-button" class="site-button btn-reset" aria-label="Toggle menu" aria-pressed="false">\n` +
+    `      <button id="menu-button" class="site-button btn-reset" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">\n` +
     `        <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>\n` +
     `      </button>\n` +
     `    </div>\n` +
@@ -311,7 +312,7 @@ function renderSidebar(site) {
     // (it is on this site), the else-branch emits the "Just the Docs"
     // fallback footer. The site doesn't override nav_footer_custom.html,
     // so the upstream default applies verbatim.
-    `    <footer class="site-footer">\n` +
+    `    <footer class="site-footer" aria-label="Site">\n` +
     `      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme originally for Jekyll.\n` +
     `    </footer>\n` +
     `  </div>`;
@@ -360,7 +361,7 @@ function renderNavTree(nodes, ancestorTitles, baseurl) {
       if (hasChildren) {
         // The upstream emits the button + svg across multiple source
         // lines; compress collapses to single spaces.
-        out += `<button class="nav-list-expander btn-reset" aria-label="toggle items in ${escAttr(String(node.title))} category" aria-pressed="false"> ` +
+        out += `<button class="nav-list-expander btn-reset" aria-label="toggle items in ${escAttr(String(node.title))} category" aria-expanded="false"> ` +
           `<svg viewBox="0 0 24 24" aria-hidden="true"><use xlink:href="#svg-arrow-right"></use></svg>` +
           ` </button>`;
       }
@@ -551,7 +552,7 @@ function renderSearchInput(config) {
   const placeholder = `Search ${escAttr(String(config.title ?? ""))}`;
   return `      <div class="search" role="search">\n` +
     `        <div class="search-input-wrap">\n` +
-    `          <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="${placeholder}" aria-label="${placeholder}" autocomplete="off">\n` +
+    `          <input type="text" id="search-input" class="search-input" role="combobox" placeholder="${placeholder}" aria-label="${placeholder}" autocomplete="off" aria-haspopup="listbox" aria-expanded="false">\n` +
     `          <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>\n` +
     `        </div>\n` +
     `        <div id="search-results" class="search-results"></div>\n` +
@@ -582,7 +583,7 @@ function renderAuxNav(config) {
     AUX_NAV_SUN_MOON_SVG +
     `        <ul class="aux-nav-list">\n` +
     `          <li class="aux-nav-list-item">\n` +
-    `            <span id="theme-toggle" class="site-button"><svg width='18px' height='18px'><use href="#svg-sun"></use></svg></span>\n` +
+    `            <button type="button" id="theme-toggle" class="site-button btn-reset" aria-label="Switch to dark mode"><svg width='18px' height='18px'><use href="#svg-sun"></use></svg></button>\n` +
     `          </li>\n` +
     items + `\n` +
     `        </ul>\n` +
@@ -700,7 +701,7 @@ function renderFooter(page, site) {
     : "";
 
   return `      <hr>\n` +
-    `      <footer>\n` +
+    `      <footer role="contentinfo">\n` +
     backToTop +
     footerCustom +
     editAndOffline +
