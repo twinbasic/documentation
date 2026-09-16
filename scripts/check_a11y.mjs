@@ -112,7 +112,16 @@ async function checkPage(page, filePath, theme) {
 }
 
 async function main() {
-  const browser = await puppeteer.launch({ headless: true });
+  // --no-sandbox: GitHub's ubuntu-24.04 runners carry the AppArmor
+  // restriction on unprivileged user namespaces, which Chrome's sandbox
+  // needs -- without this the launch fails in CI. --disable-dev-shm-usage
+  // avoids crashes where /dev/shm is small (containers). Neither touches
+  // layout or computed style, so axe sees exactly what it sees locally;
+  // book/render-book.mjs passes the same pair for the same reason.
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-dev-shm-usage"],
+  });
   const page = await browser.newPage();
 
   await page.setRequestInterception(true);

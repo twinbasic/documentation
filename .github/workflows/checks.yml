@@ -44,6 +44,13 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install dependencies
         run: npm ci
+      # check_a11y.mjs drives axe-core inside headless Chromium. The
+      # build itself needs no browser -- only this scan does.
+      - name: Install Chromium
+        # Same incantation as tbdocs-gh-pages.yml's install step, which
+        # is the proven-working one in this repo: --install-deps apt-installs
+        # the shared libraries Chromium needs, which requires root.
+        run: sudo npx puppeteer browsers install chrome --install-deps
       - name: Build with tbdocs
         # --no-fetch-assets: CI must never download a referenced image. An
         # author who wrote the markdown but forgot to commit the file would
@@ -85,3 +92,10 @@ jobs:
           --offline --no-fail --include-fragments
           --root-dir docs/_site-pdf
           docs/_site-pdf/book.html
+      # Matches check.bat: the link check gates this, and a link failure
+      # short-circuits before the (slower) browser scan runs. Scans
+      # _site-offline/, whose relative asset paths actually resolve --
+      # _site/ uses root-absolute URLs that render unstyled here, making
+      # every colour-contrast result meaningless.
+      - name: Accessibility check (check_a11y.mjs)
+        run: node scripts/check_a11y.mjs

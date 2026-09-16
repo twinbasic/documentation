@@ -94,6 +94,10 @@ jobs:
           --offline --no-fail --include-fragments
           --root-dir docs/_site-pdf
           docs/_site-pdf/book.html
+      # Same gate as check.bat and the PR workflow. Chromium is already
+      # installed above for the PDF render, so this costs only the scan.
+      - name: Accessibility check (check_a11y.mjs)
+        run: node scripts/check_a11y.mjs
       - name: Render book PDF
         run: |
           mkdir -p _pdf
