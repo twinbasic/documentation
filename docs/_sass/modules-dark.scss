@@ -23,16 +23,24 @@
   $body-background-color: #27262b,
   $body-heading-color: #f5f6fa,
   $body-text-color: #e6e1e8,
-  // WCAG 1.4.3: $blue-000 (#2c84fa) is only 4.13:1 on the dark
-  // $body-background-color, failing on every link on every page. This
-  // lighter blue is 5.94:1 there, 6.38:1 on the code-block background
-  // and 5.35:1 on $table-background-color.
-  $link-color: #58a6ff,
-  $nav-child-link-color: #959396,
+  // WCAG 1.4.6 (AAA): $blue-000 (#2c84fa) was 4.13:1 on the dark
+  // $body-background-color -- every link on every page failed even AA.
+  // This is 8.06:1 there, 8.65:1 on the code background, 7.25:1 on
+  // $table-background-color and 8.80:1 on the active-nav gradient.
+  $link-color: #8cc2ff,
+  // AAA for child nav links: #959396 was 4.92:1. Hierarchy against the
+  // parent items is carried by font-weight (navigation.scss), not by a
+  // dimmer colour.
+  $nav-child-link-color: #b6b4b7,
   $sidebar-color: #27262b,
   $base-button-color: #302d36,
   $btn-primary-color: #264caf,
-  $code-background-color: #31343f,
+  // One background for every code context. #31343f is lighter than the
+  // .language-tb override below it, so token colours clamped against
+  // #212121 in builder/highlight-theme.mjs failed on js/json/yaml/html
+  // blocks and on inline code inside links. Matches the twinBASIC IDE's
+  // CodePanelBackColor.
+  $code-background-color: #212121,
   $code-linenumber-color: #dee2f7,
   $table-background-color: #302d36,
   $search-background-color: #302d36,

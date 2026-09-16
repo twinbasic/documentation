@@ -107,8 +107,11 @@
       .nav-list-item {
         position: relative;
 
+        // Child items are de-emphasised by weight, not by a dimmer
+        // colour -- $nav-child-link-color clears AAA in both themes.
         .nav-list-link {
           color: $nav-child-link-color;
+          font-weight: 350;
         }
 
         .nav-list-expander {

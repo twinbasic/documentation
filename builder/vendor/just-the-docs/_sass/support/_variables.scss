@@ -32,7 +32,13 @@ $font-size-10-sm: 3rem !default;
 
 $white: #fff !default;
 $grey-dk-000: #959396 !default;
-$grey-dk-100: #5c5962 !default;
+// WCAG 1.4.6 (AAA): upstream's #5c5962 is 6.86:1 on $body-background-color
+// and 6.35:1 on $sidebar-color, just short of the 7:1 enhanced threshold.
+// This value is 7.77:1 and 7.20:1. Every text consumer of the token wants
+// that -- $body-text-color, $nav-child-link-color, the sidebar footer --
+// and the one non-text consumer is a focus ring (buttons.scss), which only
+// gains from the extra contrast.
+$grey-dk-100: #54515a !default;
 $grey-dk-200: #44434d !default;
 $grey-dk-250: #302d36 !default;
 $grey-dk-300: #27262b !default;
@@ -126,7 +132,11 @@ $color-scheme: light !default;
 $body-background-color: $white !default;
 $body-heading-color: $grey-dk-300 !default;
 $body-text-color: $grey-dk-100 !default;
-$link-color: $purple-000 !default;
+// WCAG 1.4.6 (AAA): $purple-000 (#7253ed) is 5.03:1 on the body
+// background, 4.66:1 on $sidebar-color and 4.30:1 at the opaque end of
+// the active-nav gradient ($feedback-color) -- the last of which does not
+// even reach AA. $purple-200 is 9.46 / 8.76 / 8.09:1.
+$link-color: $purple-200 !default;
 $nav-child-link-color: $grey-dk-100 !default;
 $sidebar-color: $grey-lt-000 !default;
 $base-button-color: #f7f7f7 !default;
