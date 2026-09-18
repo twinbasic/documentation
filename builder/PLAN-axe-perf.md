@@ -1003,14 +1003,145 @@ with. In descending order of what actually moves the number:
 4. **D3** — 826 KB of discarded serialisation. Worth taking, not transformative.
 5. **D4** — closed. 351 queries per audit; not a cost centre at this scale.
 
-### Phase 2 — mechanism
+### Phase 2 — mechanism — **DONE**
 
-Instruments 5–6 (and 4 if still warranted), aimed only at what Phase 1 says
-dominates. Specific question: what share of self-time is memoizee `indexOf` (D2)
-versus `getComputedStylePropertyValue` (D1)?
+The specific question was: what share of self-time is memoizee `indexOf` (D2)
+versus `getComputedStylePropertyValue` (D1)? The answer is **neither**.
 
-**Gate:** named functions and named mechanism, with a decision on whether D2 is
-worth a vendored patch.
+#### The super-linear term is entirely inside `color-contrast`
+
+`probe-axe-scaling.mjs --rules color-contrast` against
+`--scheme no-contrast`, same replication, 2 iterations per size:
+
+| | k(ms) | R² | us/element, 2,380 → 9,475 |
+|---|--:|--:|---|
+| `color-contrast` alone | **2.201** | 0.977 | 88 → 465 (5.3x) |
+| everything except contrast | **1.185** | 1.000 | 68 → 87 (1.3x) |
+
+Contrast's `getComputedStyle` count fits k = **1.998** — exactly quadratic.
+Everything else's fits 1.28. Sixty-three rules together are linear with a nearly
+flat per-element cost; one rule carries the whole exponent.
+
+#### D2 is refuted as the mechanism
+
+Two independent lines, and they agree.
+
+**From the profile.** In the 9,475-element run, every memoized frame combined —
+`getVisibleChildTextRectsMemoized`, `DqElementMemoized`, `isHiddenSelfMemoized`,
+`isVisibleToScreenReadersMemoized`, `getPseudoElementAreaMemoized`,
+`getOverflowHiddenAncestorsMemoized`, `isInertSelfMemoized`,
+`isFixedSelf`/`isFixedAncestorsMemoized`, and memoizee's own `memoized` frame —
+totals **~56 ms of 12,500 ms, 0.45 %**.
+
+**From the split curve.** The non-contrast half of the rule set leans on exactly
+the same memo layer for exactly the same nodes, and it is linear.
+
+The O(n²) shape in `get_1` / `get_fixed` is real as source and would bite at
+some page size. It is not what is biting now. **Do not spend a vendored patch on
+it** — that was draft 2's headline recommendation and it is wrong.
+
+#### What the profile names instead
+
+Bottom-up self-time, 100 us sampling, same two sizes:
+
+| function | n=2,380 | n=9,475 |
+|---|--:|--:|
+| `_classPrivateFieldInitSpec` | 3.86 % | **23.59 %** |
+| `matches` | 1.53 % | 6.71 % |
+| `_classPrivateMethodInitSpec` | — | 4.84 % |
+| `_checkPrivateRedeclaration` | 1.45 % | 3.18 % |
+| `_classPrivateFieldSet` | — | 2.53 % |
+| `getPropertyValue` | **10.06 %** | 3.19 % |
+
+Note `getPropertyValue` — D1's mechanism — is the *top* row at real page size
+and falls to 3 % at 4x the elements. D1 is linear, exactly as it should be.
+
+`find-callers.mjs` attributes `_classPrivateFieldInitSpec` almost entirely to
+**`Color2`** (`axe.js:18186`): 3.19 s of a 12.5 s run.
+
+#### Why `Color2` construction is expensive: a transpilation tax
+
+axe-core ships **only** a Babel-downleveled bundle — `package.json`'s `files:`
+lists `axe.js` and `axe.min.js`, and there is no ESM or modern build. `Color2`'s
+six `#private` fields and its brand check are therefore emulated with **six
+`WeakMap`s and a `WeakSet`** (`18184-18196`). Every construction runs:
+
+- `_classPrivateMethodInitSpec` → `WeakSet.has` + `WeakSet.add`
+- 6 x `_classPrivateFieldInitSpec` → `WeakMap.has` + `WeakMap.set`
+
+— **14 weak-collection operations before any colour maths happens.** The
+`.red` / `.green` / `.blue` setters then add two `_classPrivateFieldSet` calls
+each (`_assertClassBrand`'s `has`, plus a `set`), and each of those writes
+*both* a normalised and a 0-255 field, so a fully-initialised Color runs well
+over twenty WeakMap operations.
+
+Native `#private` fields are hidden-class slots and nearly free. We are paying an
+old-browser compatibility tax in current headless Chrome.
+
+So the cost is a product of two independent factors, and both are levers:
+
+1. **How many Colors are constructed** — contrast's background-stack walk, which
+   is what makes the count super-linear.
+2. **What each construction costs** — the WeakMap-emulated private fields.
+
+#### Phase 2 gate — **MET**
+
+- **Named function:** `Color2` (`axe.js:18186`), reached via
+  `_classPrivateFieldInitSpec` / `_classPrivateMethodInitSpec`.
+- **Named mechanism:** WeakMap-emulated private fields, multiplied by a
+  background element stack that deepens as the page grows.
+- **Decision on D2:** **not worth a vendored patch.** Under 1 % of self-time.
+  If a vendored patch is ever made, `Color2` is the target.
+
+#### Confirmed on real pages — the curve is not a replication artifact
+
+The replication method makes the document taller as well as larger, so the
+exponent needed checking against pages nobody generated. Nine real pages from
+`_site-offline`, production rule set, one audit each:
+
+| page | elements | ms | us/element |
+|---|--:|--:|--:|
+| `404.html` | 2,175 | 143 | 66 |
+| `index.html` | 2,412 | 236 | 98 |
+| `Core/Dim.html` | 2,409 | 285 | 118 |
+| `Core/Select-Case.html` | 2,380 | 297 | 125 |
+| `Development/BuildInfo.html` | 2,694 | 226 | 84 |
+| `VB/PictureBox/index.html` | 4,095 | **1,200** | 293 |
+| `VB/Form/index.html` | 4,388 | **1,297** | 296 |
+| `VB/UserControl/index.html` | 4,672 | **1,607** | 344 |
+| `Development/Pipeline-Stages.html` | 5,231 | **1,517** | 290 |
+
+Least-squares fit on real pages: **k = 2.73, R² = 0.95** — *steeper* than the
+2.0–2.2 the replicated curve gave. The scatter within the small cluster
+(143–297 ms at 2.2–2.7k elements) is content, not noise: `404.html` has almost
+no syntax-highlighted code, `Select-Case.html` is full of it, and every
+highlighted token is a `<span>` with its own colour for contrast to resolve.
+
+`PictureBox` costs **4x** `Select-Case` for **1.7x** the elements. The caveat is
+retired: the super-linearity is a property of the content, not of the harness.
+
+#### This changes the §Open questions arithmetic
+
+The five small pages average **237 ms**; the four large ones average
+**1,405 ms** — 5.9x the cost for 1.8x the elements. And the current
+`SAMPLE_PAGES` set contains *only* small pages: 2,175–2,694 elements, when the
+site's largest is 5,231.
+
+Concretely, adding those four pages to the sample — a 67 % increase in page
+count — would take the scan's axe time from **~5.7 s to ~28 s**, a 5x increase.
+The plan's estimate that a ~25-page representative set lands near 13 s assumed
+linear scaling and is wrong by a wide margin.
+
+Two consequences, both of which belong in the representative-set design:
+
+- **Weight page selection by size, not just by structural pattern.** A
+  representative set that happens to include several large reference pages costs
+  far more than its page count suggests.
+- **The large pages are exactly the ones currently unaudited.** The sample's
+  size range is narrow and low, so the pages most likely to have layout defects
+  under a narrow viewport are also the ones the scan never sees. That is a
+  coverage argument for including them *and* a cost argument for making contrast
+  cheaper first.
 
 ### Phase 3 — decide
 
@@ -1034,10 +1165,14 @@ the gate.
   dominates axe for duplicate ids, since `duplicate-id`/`duplicate-id-active` are
   `deprecated`/`wcag2a-obsolete` in 4.13 and excluded by our tag set.)
 - **Representative-set interaction.** Computing scan targets from page structure
-  changes *what* is scanned and therefore aggregate cost. If that set lands near
-  25 pages, aggregate is ~13 s at current rates — config-only wins plus the
-  theme collapse might get it under 5 s without touching axe. Worth knowing
-  before committing to Phase 2/3 depth.
+  changes *what* is scanned and therefore aggregate cost.
+  **Superseded by Phase 2's measurements:** the "~13 s for 25 pages" figure
+  assumed linear scaling in page size. Real-page cost fits k = 2.73, and the
+  four largest pages in the site cost 5.9x the current sample's average each.
+  Adding just those four would take axe time from ~5.7 s to ~28 s. Any
+  representative-set design has to weight by element count, and the case for
+  making `color-contrast` cheaper comes *before* the case for widening the
+  scan, not after it.
 
 ## Adjacent defects found during review — FIXED in `01883d4`
 

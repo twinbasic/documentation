@@ -29,10 +29,11 @@
 //   node probe-axe-scaling.mjs --targets 2000,4000,8000,16000 --iters 3
 //   node probe-axe-scaling.mjs --rules color-contrast      # curve for one rule
 //   node probe-axe-scaling.mjs --json scaling.json
+//   node probe-axe-scaling.mjs --targets 2380,9475 --cpu-profile prof/   # Phase 2
 //
 // Requires build.bat to have produced an up-to-date docs/_site-offline/.
 
-import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pinCpuIfWindows } from './pin-cpu.mjs';
@@ -41,6 +42,7 @@ import {
   DEFAULT_ROOT_DIR,
   VIEWPORTS,
   axeVersion,
+  getScheme,
   gotoPage,
   launchBrowser,
   newAuditPage,
@@ -62,6 +64,9 @@ let rulesArg = '';
 let rootDir = DEFAULT_ROOT_DIR;
 let jsonOut = null;
 let keep = false;
+let cpuProfileDir = null;
+let cpuSampling = 100;
+let schemeArg = null;
 
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
@@ -72,14 +77,23 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--viewport') viewport = args[++i];
   else if (a === '--iters') iters = parseInt(args[++i], 10);
   else if (a === '--rules') rulesArg = args[++i];
+  else if (a === '--scheme') schemeArg = args[++i];
   else if (a === '--root-dir') rootDir = resolve(args[++i]);
   else if (a === '--json') jsonOut = args[++i];
   else if (a === '--keep') keep = true;
+  else if (a === '--cpu-profile') cpuProfileDir = resolve(args[++i]);
+  else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
   else if (a === '--no-affinity') { /* handled by the relaunch shim */ }
   else if (a === '-h' || a === '--help') {
     console.error('usage: node probe-axe-scaling.mjs [--page P] [--targets N,N,N] [--iters N]');
-    console.error('                                  [--rules a,b] [--theme T] [--viewport V]');
+    console.error('                                  [--rules a,b | --scheme NAME] [--theme T]');
+    console.error('                                  [--viewport V]');
     console.error('                                  [--json FILE] [--keep] [--no-affinity]');
+    console.error('                                  [--cpu-profile DIR] [--cpu-sampling US]');
+    console.error('');
+    console.error('  --cpu-profile writes one .cpuprofile per size. Comparing the bottom-up');
+    console.error('  tables across sizes is what names the super-linear term: the functions');
+    console.error('  whose self-time SHARE grows with n are the ones that are not linear.');
     process.exit(0);
   } else {
     console.error('unknown arg: ' + a);
@@ -88,9 +102,23 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const ruleIds = rulesArg ? rulesArg.split(',').map(s => s.trim()).filter(Boolean) : [];
+if (ruleIds.length && schemeArg) {
+  console.error('--rules and --scheme are mutually exclusive');
+  process.exit(2);
+}
+// --scheme is what lets the curve be split: `--rules color-contrast` gives the
+// curve for contrast alone, `--scheme no-contrast` gives it for everything
+// else. If one is quadratic and the other is not, that settles which half owns
+// the exponent -- which no amount of whole-page fitting can.
+const scheme = schemeArg ? getScheme(schemeArg) : null;
+const configure = scheme ? scheme.configure : null;
 const runOptions = ruleIds.length
   ? { runOnly: { type: 'rule', values: ruleIds } }
+  : scheme ? scheme.runOptions
   : AXE_RUN_OPTIONS;
+const label = ruleIds.length ? `rules: ${ruleIds.join(', ')}`
+  : scheme ? `scheme: ${scheme.label} -- ${scheme.describe}`
+  : 'rules: production set';
 
 // ---- Setup -----------------------------------------------------------
 const axeSource = readAxeSource({ minified: false });
@@ -166,9 +194,23 @@ try {
     await page.evaluate(INSTRUMENT);
     await page.evaluate(axeSource);
 
-    const r = await page.evaluate(async (opts, n) => {
-      await axe.run(document, opts);           // discard: lazy compile + warm caches
+    // Discard run first: pays V8's lazy compilation and warms Blink's caches,
+    // and does so OUTSIDE the profiler so its frames do not swamp the table.
+    await page.evaluate(async (cfg, opts) => {
+      if (cfg) axe.configure(cfg);
+      await axe.run(document, opts);
       window.__axeDomStats.reset();
+    }, configure, runOptions);
+
+    let cdp = null;
+    if (cpuProfileDir) {
+      cdp = await page.createCDPSession();
+      await cdp.send('Profiler.enable');
+      await cdp.send('Profiler.setSamplingInterval', { interval: cpuSampling });
+      await cdp.send('Profiler.start');
+    }
+
+    const r = await page.evaluate(async (opts, n) => {
       const t0 = performance.now();
       for (let i = 0; i < n; i++) await axe.run(document, opts);
       const ms = (performance.now() - t0) / n;
@@ -179,6 +221,15 @@ try {
       }
       return { ms, stats: s, elements: document.getElementsByTagName('*').length };
     }, runOptions, iters);
+
+    if (cdp) {
+      const { profile } = await cdp.send('Profiler.stop');
+      mkdirSync(cpuProfileDir, { recursive: true });
+      const out = join(cpuProfileDir, `n${r.elements}.cpuprofile`);
+      writeFileSync(out, JSON.stringify(profile));
+      await cdp.detach();
+      console.error(`    profile -> ${out}`);
+    }
 
     rows.push({ target, copies, elements: r.elements, ms: r.ms, stats: r.stats });
     console.error(`  ${String(r.elements).padStart(7)} elements (${String(copies).padStart(3)} copies)  ${r.ms.toFixed(1).padStart(8)} ms`);
@@ -217,7 +268,13 @@ try {
   const pad = (s, w = 12) => String(s).padStart(w);
   console.log('');
   console.log(`${sourcePage} replicated [${theme}, ${viewport}] -- axe-core ${axeVersion()}`);
-  console.log(ruleIds.length ? `rules: ${ruleIds.join(', ')}` : 'rules: production set');
+  console.log(label);
+  if (cpuProfileDir) {
+    console.log('');
+    console.log('NOTE: --cpu-profile was on. The sampler inflates ms and can distort the');
+    console.log('fitted exponent; re-run without it for the curve. Profiles are for');
+    console.log('attribution only.');
+  }
   console.log('');
   console.log('elements'.padStart(10) + METRICS.map(([n]) => pad(n)).join('') + pad('us/element'));
   console.log('-'.repeat(10 + 12 * (METRICS.length + 1)));
@@ -251,7 +308,7 @@ try {
   if (jsonOut) {
     writeFileSync(resolve(jsonOut), JSON.stringify({
       axeCore: axeVersion(), sourcePage, theme, viewport, iters,
-      chrome, contentPerCopy: shape.content, rules: ruleIds, rows, fits,
+      chrome, contentPerCopy: shape.content, rules: ruleIds, scheme: schemeArg, rows, fits,
     }, null, 2));
     console.log('');
     console.log(`raw: ${resolve(jsonOut)}`);
