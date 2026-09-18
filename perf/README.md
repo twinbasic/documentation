@@ -425,18 +425,41 @@ from the embedded V8 profile -- and because `ab-axe.mjs` is a direct
 retarget of `ab-css.mjs`. The investigation it serves is
 [builder/PLAN-axe-perf.md](../builder/PLAN-axe-perf.md).
 
-Rule ablation (run from `perf/`; needs `build.bat` to have produced
-`docs/_site-offline/`):
+Three probes, answering three different questions.
+
+**How many milliseconds, and to which rule?** Rule ablation (run from
+`perf/`; needs `build.bat` to have produced `docs/_site-offline/`):
 
 ```
 node ab-axe.mjs --runs 7 --iters 10 --rules color-contrast
 ```
 
-Per-rule timing table instead of an ablation:
+Per-rule timing table instead of an ablation -- axe's own
+`performanceTimer` measures, aggregated across runs with SD:
 
 ```
-node ab-axe.mjs --rules none --per-rule
+node ab-axe.mjs --rules none --per-rule --top 20
 ```
+
+**Doing what?** Exact counts of the DOM operations one audit performs,
+per rule. Counts are deterministic, so one run per variant suffices:
+
+```
+node probe-axe-dom.mjs --all-rules --top 15
+```
+
+**How does it scale?** Replicates a real page's `#main-content` to hit
+each element count, audits each size, and fits the exponent. Reports
+operation counts alongside time, which is what separates "more DOM work"
+from "axe's own bookkeeping":
+
+```
+node probe-axe-scaling.mjs --targets 2400,4800,9600,19200
+```
+
+The generated pages are written next to the source page and removed in a
+`finally` block. Do not pass `--keep` and then run `check.bat` --
+`check_links.mjs` crawls that tree.
 
 Any change to what the scan runs goes through the correctness gate
 first, from the repo root:
@@ -501,7 +524,10 @@ or `--tracing`):
 | `grep-profile.mjs` | Lists every node in a `.cpuprofile` whose `functionName` matches a regex, with self-time and location. Quick check for "is this frame in the profile at all, and what's it called?" |
 | `ab-css.mjs` | CSS cost attribution for `docs/_site-pdf/assets/css/print.css` + `rouge.css`. Renders the book per variant (full / drop-rouge / drop-print-extras / baseline-minimal) and reports **paired-difference** CPU sample-time across N pairs (default 3), with the baseline re-measured immediately before each variant pair to cancel machine-state drift. Pulls per-`Document::recalcStyle` / `LocalFrameView::performLayout` / `rebuildLayoutTree` / `ShapeText` total time from the embedded V8 cpu profile in the hybrid trace; prints mean ± SD per variant so noise-floor rows are visible. Auto-pins on Windows via `pin-cpu.mjs`. Optional `--per-print-section` adds one drop-print-`<section>` variant per `/* ---- ---- */` divider in print.css; individual sections of print.css turned out to be below the noise floor on this book, so off by default. |
 | `ab-axe.mjs` | axe-core cost attribution for `scripts/check_a11y.mjs`. The sibling of `ab-css.mjs`, retargeted from CSS variants to axe rule sets; same pinning + paired-differencing + on-CPU-time methodology, plus two things this workload needs and the book does not (an in-page warmup that keeps V8's lazy compilation of `axe.js` out of the measured window, and `--iters` to measure a steady-state loop rather than one 0.4 s audit). Generates `drop-R` **and** `only-R` per rule, so a rule's marginal cost and the shared setup it triggers come apart. `--per-rule` switches to axe's own `performanceTimer` measures instead. `--schemes` pulls named configurations (`no-html`, `no-selectors`, `config-only`, ...) from `scripts/lib/axe-scan.mjs`. Prints the median paired Δ with mean ± SD beside it. |
-| `trace-cpu-stats.mjs` | `cpuStatsFromTrace` + `TRACE_CATEGORIES`, shared by `ab-css.mjs` and `ab-axe.mjs`. Reconstructs the V8 sampling profile from a hybrid trace's `Profile` / `ProfileChunk` events, snapshots the Blink event nest at each sample, and returns total on-CPU time plus per-Blink-label totals. Extracted from `ab-css.mjs` verbatim when the second rig needed it. |
+| `probe-axe-dom.mjs` | Counts the DOM operations one axe audit performs, per rule -- `getComputedStyle`, `getPropertyValue`, `getBoundingClientRect`, `getClientRects`, `querySelectorAll`, and `outerHTML` (calls **and** characters serialised). The companion to `ab-axe.mjs`: that one says how many milliseconds, this one says doing what. Counts are deterministic, so one run per variant is enough and the ms column is orientation only. `--all-rules` sweeps every rule the production tag set admits. This is the tool that turned D1/D3/D4 in `PLAN-axe-perf.md` from source-reading into measurements. |
+| `probe-axe-scaling.mjs` | Node-count scaling curve (instrument 3). Replicates the contents of a real page's `#main-content` until the element count hits each target -- keeping the DOM's character, which a hand-built synthetic page would not -- then audits each size and least-squares fits `metric = a * elements^k`, reporting `k` with R². Records operation counts alongside time: counts linear with time super-linear means the excess is axe's own bookkeeping (D2), not DOM work. Generated pages are written beside the source page and removed in a `finally`. |
+| `instrument-axe-dom.js` | The in-page half of `probe-axe-dom.mjs` / `probe-axe-scaling.mjs`. Wraps the DOM accessors that D1, D3 and D4 each name as their mechanism, exposing `window.__axeDomStats.{reset, read}`. Counts only -- no per-call timing, because `performance.now()` is clamped to ~5 us and timing 34,000 `getPropertyValue` calls would measure the clock. |
+| `trace-cpu-stats.mjs` | `cpuStatsFromTrace` + `TRACE_CATEGORIES` (and `TRACE_CATEGORIES_LIGHT`, which drops the Blink categories and takes an axe-scan trace from ~40 MB to a few MB -- `ab-axe.mjs --light-trace`), shared by `ab-css.mjs` and `ab-axe.mjs`. Reconstructs the V8 sampling profile from a hybrid trace's `Profile` / `ProfileChunk` events, snapshots the Blink event nest at each sample, and returns total on-CPU time plus per-Blink-label totals. Extracted from `ab-css.mjs` verbatim when the second rig needed it. |
 | `ab-aggregate.mjs` | Per-row mean + SD aggregator across 6 paired cpu profiles (`ab-A1..A3.cpuprofile` and `ab-B1..B3.cpuprofile`). Use when wall-clock noise drowns a structural change: capture 3+3 interleaved profiles via `measure.mjs --cpu-profile` with the change toggled on/off between runs, then point this at the 6 files for a mean-with-SD table that surfaces deltas wall-clock can't see (e.g. ~6 σ shifts on rows that move from 88 ms to 2 ms). See *Disabling the filter outright* in [notes/05-blink-trace.md](notes/05-blink-trace.md) for the methodology. |
 
 Memory probes (added during the phase-7 investigation):

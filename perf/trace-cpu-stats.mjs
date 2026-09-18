@@ -36,6 +36,17 @@ export const TRACE_CATEGORIES = [
   'disabled-by-default-v8.cpu_profiler',
 ];
 
+// The subset needed when only `cpu_total` is wanted. `blink` is by far the
+// most verbose category: dropping it and the disabled-by-default timeline
+// takes an axe-scan trace from ~40 MB to a few MB, which matters when a run
+// captures thirty of them and then parses them all. The cost is the
+// per-Blink-label split (recalcStyle / performLayout / ...), so use the full
+// list whenever those columns are the evidence.
+export const TRACE_CATEGORIES_LIGHT = [
+  'devtools.timeline',
+  'disabled-by-default-v8.cpu_profiler',
+];
+
 // Wrapper events that surround V8 execution; filtered from event-nest
 // reconstruction so they don't pollute "inner work" attribution.
 export const JS_WRAPPER_NAMES = new Set([

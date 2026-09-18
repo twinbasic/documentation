@@ -57,6 +57,7 @@
 //   node ab-axe.mjs --per-rule                       # instrument 1 instead: per-rule
 //                                                    # performance.measure table
 //   node ab-axe.mjs --page /tB/Core/Dim.html --theme dark --viewport mobile
+//   node ab-axe.mjs --light-trace                    # ~40 MB -> ~3 MB per trace
 //   node ab-axe.mjs --warmup 0                       # measure the cold curve instead
 //   node ab-axe.mjs --no-affinity                    # skip Windows CPU pinning
 //
@@ -65,7 +66,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pinCpuIfWindows } from './pin-cpu.mjs';
-import { cpuStatsFromTrace, TRACE_CATEGORIES } from './trace-cpu-stats.mjs';
+import { cpuStatsFromTrace, TRACE_CATEGORIES, TRACE_CATEGORIES_LIGHT } from './trace-cpu-stats.mjs';
 import {
   AXE_RUN_OPTIONS,
   DEFAULT_ROOT_DIR,
@@ -96,6 +97,7 @@ let theme = 'light';
 let viewport = 'desktop';
 let rootDir = DEFAULT_ROOT_DIR;
 let jsonOut = null;
+let top = 0;
 let perRule = false;
 let noOnly = false;
 let warmup = null;      // defaults per browser mode; see below
@@ -103,6 +105,7 @@ let freshBrowser = true;
 let iters = 5;          // axe.run calls inside one traced window
 let inPageWarmup = 1;   // axe.run calls before the trace starts
 let minified = false;   // profile against axe.js: axe.min.js frames are single letters
+let lightTrace = false; // drop the Blink categories; keeps only cpu_total
 
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
@@ -117,6 +120,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--root-dir') rootDir = resolve(args[++i]);
   else if (a === '--json') jsonOut = args[++i];
   else if (a === '--per-rule') perRule = true;
+  else if (a === '--top') top = parseInt(args[++i], 10);
   else if (a === '--no-only') noOnly = true;
   else if (a === '--warmup') warmup = parseInt(args[++i], 10);
   else if (a === '--iters') iters = parseInt(args[++i], 10);
@@ -124,12 +128,15 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--reuse-browser') freshBrowser = false;
   else if (a === '--fresh-browser') freshBrowser = true;
   else if (a === '--minified') minified = true;
+  else if (a === '--light-trace') lightTrace = true;
   else if (a === '--no-affinity') { /* handled in the relaunch shim above */ }
   else if (a === '-h' || a === '--help') {
     console.error('usage: node ab-axe.mjs [--runs N] [--out DIR] [--rules a,b] [--schemes a,b]');
     console.error('                       [--page PATH] [--theme T] [--viewport V] [--root-dir DIR]');
-    console.error('                       [--per-rule] [--no-only] [--iters N] [--in-page-warmup N]');
+    console.error('                       [--per-rule] [--top N] [--no-only] [--iters N]');
+    console.error('                       [--in-page-warmup N]');
     console.error('                       [--warmup N] [--reuse-browser] [--json FILE]');
+    console.error('                       [--light-trace]   # ~40 MB -> ~3 MB per trace; no Blink columns');
     console.error('                       [--minified] [--no-affinity]');
     console.error('');
     console.error('  Default: baseline + drop-/only- variants for color-contrast and');
@@ -266,7 +273,11 @@ async function runOnce(v, outDir) {
   }
 
   const tracePath = join(outDir, 'trace.json');
-  await page.tracing.start({ path: tracePath, screenshots: false, categories: TRACE_CATEGORIES });
+  await page.tracing.start({
+    path: tracePath,
+    screenshots: false,
+    categories: lightTrace ? TRACE_CATEGORIES_LIGHT : TRACE_CATEGORIES,
+  });
 
   const t0 = Date.now();
   const { nodeCount, measures } = await page.evaluate(
@@ -351,16 +362,15 @@ console.error(`[ab-axe] ${variants.length} variants x ${pairs} pair(s) x ${iters
   `${freshBrowser ? 'fresh browser per run' : 'one reused browser'}`);
 console.error('');
 
-// Warm up before measuring.  Puppeteer reuses one renderer process across
-// same-origin navigations, so V8 carries JIT state from run to run: an
-// unwarmed sequence trends monotonically downward (540 -> 475 -> 448 -> 412 ms
-// observed on the first smoke run), which biases every paired Δ upward because
-// the baseline of each pair is always measured first.  Discarding the first
-// few runs puts the measured ones on the flat part of the curve -- which is
-// also where production sits, since check_a11y.mjs reuses one page across all
-// 24 audits and only its first is cold.
+// Run-level warmup: discarded whole runs, for --reuse-browser only.
+//
+// Not to be confused with --in-page-warmup, which is the one that matters.
+// This knob exists because a reused browser carries V8 JIT state across
+// same-origin navigations, so an unwarmed sequence drifts; the in-page warmup
+// cannot absorb that because it happens inside each run. Default 0 under
+// fresh-browser mode, 3 under --reuse-browser.
 const results = [];
-let perRuleMeasures = null;
+const perRuleMeasures = [];
 try {
   for (let w = 0; w < warmup; w++) {
     const stats = await runVariant(baseline, -1 - w);
@@ -371,7 +381,7 @@ try {
   for (let p = 0; p < pairs; p++) {
     const stats = await runVariant(baseline, p);
     baselineRuns.push(stats);
-    if (perRule && !perRuleMeasures) perRuleMeasures = stats.measures;
+    if (perRule && stats.measures) perRuleMeasures.push(stats.measures);
     console.error(`  ${baseline.label} pair${p + 1}: wall=${stats.wallMs.toFixed(0)}ms/audit (${stats.nodeCount} elements)`);
   }
   results.push({ label: baseline.label, baselineRuns, isBaseline: true });
@@ -500,70 +510,69 @@ if (decomposable.length) {
 }
 
 // ---- Per-rule measures (instrument 1) --------------------------------
-if (perRule && perRuleMeasures) {
-  const byName = new Map();
-  for (const m of perRuleMeasures) byName.set(m.name, (byName.get(m.name) || 0) + m.dur);
+if (perRule && perRuleMeasures.length) {
+  // performance.getEntriesByType('measure') accumulates across the whole
+  // traced window -- performanceTimer clears the marks (axe.js:20071-20073)
+  // but not the measures -- so with --iters N each name appears N times and
+  // has to be divided back down to one audit.
+  const perRun = perRuleMeasures.map((measures) => {
+    const byName = new Map();
+    for (const m of measures) byName.set(m.name, (byName.get(m.name) || 0) + m.dur);
+    for (const [k, v] of byName) byName.set(k, v / iters);
+    return byName;
+  });
 
-  const phases = ['axe', 'audit_start_to_end', 'audit.after', 'reporter'];
+  const names = new Set();
+  for (const m of perRun) for (const k of m.keys()) names.add(k);
+  const stat = (name) => meanSD(perRun.map((m) => m.get(name) || 0));
+
   console.log('');
-  console.log('Per-rule timing (performanceTimer: true, first baseline run)');
+  console.log(`Per-rule timing -- performanceTimer: true, ${perRun.length} baseline run(s) x ${iters} iter(s)`);
   console.log('');
   console.log('  phases:');
-  for (const p of phases) {
-    if (byName.has(p)) console.log(`    ${p.padEnd(24)} ${byName.get(p).toFixed(1)} ms`);
+  for (const ph of ['axe', 'audit_start_to_end', 'audit.after', 'reporter']) {
+    if (!names.has(ph)) continue;
+    const st = stat(ph);
+    console.log(`    ${ph.padEnd(22)} ${st.mean.toFixed(1).padStart(8)} ms  ± ${st.sd.toFixed(1)}`);
   }
 
-  const rules = [...byName.entries()]
-    .filter(([n]) => n.startsWith('rule_') && !n.includes('#'))
-    .map(([n, d]) => [n.slice('rule_'.length), d])
-    .sort((a, b) => b[1] - a[1]);
+  const rules = [...names]
+    .filter((n) => n.startsWith('rule_') && !n.includes('#'))
+    .map((n) => ({ id: n.slice('rule_'.length), st: stat(n) }))
+    .sort((a, b) => b.st.mean - a.st.mean);
 
   console.log('');
-  console.log(`  top rules (${rules.length} ran):`);
-  for (const [id, dur] of rules.slice(0, 20)) {
-    const gather = byName.get(`rule_${id}#gather`) || 0;
-    const matches = byName.get(`rule_${id}#matches`) || 0;
-    const checks = byName.get(`runchecks_${id}`) || 0;
+  console.log(`  ${rules.length} rules ran:`);
+  console.log(
+    '    ' + 'rule'.padEnd(32) + 'total'.padStart(9) + '± SD'.padStart(8) +
+    'gather'.padStart(9) + 'matches'.padStart(9) + 'checks'.padStart(9)
+  );
+  const shown = top > 0 ? rules.slice(0, top) : rules;
+  for (const { id, st } of shown) {
+    const g = stat(`rule_${id}#gather`).mean;
+    const m = stat(`rule_${id}#matches`).mean;
+    const c = stat(`runchecks_${id}`).mean;
     console.log(
-      `    ${id.padEnd(34)} ${dur.toFixed(1).padStart(8)} ms` +
-      `   gather ${gather.toFixed(1).padStart(6)}` +
-      `   matches ${matches.toFixed(1).padStart(6)}` +
-      `   checks ${checks.toFixed(1).padStart(6)}`
+      '    ' + id.padEnd(32) +
+      st.mean.toFixed(1).padStart(9) + st.sd.toFixed(1).padStart(8) +
+      g.toFixed(1).padStart(9) + m.toFixed(1).padStart(9) + c.toFixed(1).padStart(9)
     );
   }
+  if (shown.length < rules.length) {
+    console.log(`    ... ${rules.length - shown.length} more (raise --top)`);
+  }
+
   console.log('');
   console.log('  CAVEAT: mark_rule_start_<id> / mark_rule_end_<id> are correct per rule,');
   console.log('  but _createGrid, the VirtualNode caches and all 23 memo caches are billed');
-  console.log('  to whichever rule touches them FIRST.  Cross-check the top row against the');
-  console.log('  decomposition above before calling it that rule\'s cost.');
+  console.log('  to whichever rule touches them FIRST. Cross-check the top row against the');
+  console.log("  decomposition above before calling it that rule's cost.");
+  console.log('  performanceTimer itself inflates the total; read the ranking, not absolutes.');
 
   writeFileSync(
     resolve(outRoot, 'per-rule-measures.json'),
-    JSON.stringify(perRuleMeasures, null, 2)
+    JSON.stringify({ iters, runs: perRuleMeasures }, null, 2)
   );
-}
-
-if (jsonOut) {
-  // Raw per-pair numbers, so a later analysis is not stuck with whatever
-  // summary statistics this script happens to print.
-  const dump = {
-    axeCore: axeVersion(),
-    page: pagePath, theme, viewport,
-    pairs, iters, inPageWarmup, warmup, freshBrowser, minified,
-    baseline: baselineResult.baselineRuns.map(r => ({
-      cpuMs: ms(r.totalCpuUs), wallMs: r.wallMs, nSamples: r.nSamples,
-    })),
-    variants: variantRows.map(v => ({
-      label: v.label, kind: v.kind, rule: v.rule,
-      pairs: v.pairsData.map(pr => ({
-        baseCpuMs: ms(pr.statsBase.totalCpuUs), baseWallMs: pr.statsBase.wallMs,
-        variantCpuMs: ms(pr.statsVariant.totalCpuUs), variantWallMs: pr.statsVariant.wallMs,
-      })),
-    })),
-  };
-  writeFileSync(resolve(jsonOut), JSON.stringify(dump, null, 2));
-  console.log('');
-  console.log(`raw per-pair data: ${resolve(jsonOut)}`);
 }
 
 console.log('');

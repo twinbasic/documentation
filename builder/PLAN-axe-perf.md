@@ -743,12 +743,265 @@ grid gets triggered — D1 and the contrast maths are separable and Phase 1
 should separate them. And `reporter` at 30.8 ms (~8 %) is the phase draft 1
 missed entirely; it is not nothing.
 
-### Phase 1 — attribution
+### Phase 1 — attribution — **DONE**
 
-Instruments 1–3 with pinning and paired differencing. Ablate in both rule orders.
+Instruments 1–3 with pinning and paired differencing, via `perf/ab-axe.mjs`
+(time), `perf/probe-axe-dom.mjs` (DOM operation counts) and
+`perf/probe-axe-scaling.mjs` (the curve).
 
 **Gate:** cost-by-rule table with SD; D1 isolated from `color-contrast`; a stated
 complexity class for the scaling curve.
+
+#### DOM operation counts **[measured]**
+
+`probe-axe-dom.mjs` counts what one audit actually does to the DOM. Counts are
+deterministic, so these are exact, not sampled. `Select-Case.html`, light,
+desktop, **2380 elements**, production rule set:
+
+| variant | gCS | gPV | gBCR | gCR | qSA | outerHTML | oHTML KB |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| baseline (all rules) | 14,400 | 65,627 | 4,931 | 404 | 351 | 503 | 826 |
+| `only-color-contrast` | 14,368 | 65,355 | 4,930 | 404 | 206 | 249 | 136 |
+| `only-target-size` | 3,292 | 47,866 | 2,817 | 404 | 113 | 124 | 11 |
+| `only-link-in-text-block` | 5,003 | 54,012 | 3,600 | 404 | 8 | 6 | 1 |
+| `only-aria-allowed-attr` | 2,291 | 5,474 | 0 | 0 | 19 | 25 | 125 |
+| `only-no-autoplay-audio` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+(gCS = `window.getComputedStyle`, gPV =
+`CSSStyleDeclaration.getPropertyValue`, gBCR/gCR = `getBoundingClientRect` /
+`getClientRects`, qSA = `querySelectorAll`.)
+
+This table settles three of the five defects.
+
+#### D1 — confirmed as a count, wrong as a cost model
+
+The per-element claim holds. `only-aria-allowed-attr` builds no grid (gBCR and
+gCR are both **0**); every rule that does build one shows gCR = **404** exactly,
+which is the grid's own fixed walk showing through.
+
+The grid's share has to be bracketed rather than differenced, because the
+no-grid rule's own work is not a subset of a grid rule's. The cheapest
+grid-building rule bounds it from above at **47,866 gPV**; subtracting the
+no-grid floor of 5,474 puts it near **42,000**. The two grid rules bracket it at
+42.4k–48.5k. Either way: **~42,000 gPV, ~2,800 gBCR, and only ~1,000 gCS**, i.e.
+**~18 property reads per element** against the plan's estimate of ~14.
+
+But "~34,000 style-property reads" invites reading this as 34,000 style
+resolutions, and it is not.
+`VirtualNode.getComputedStylePropertyValue` (`18853-18861`) caches the
+`CSSStyleDeclaration` per node **and** the resolved value per property. So the
+grid's real shape is **one** `window.getComputedStyle` per element — the
+expensive call, paid once — plus ~18 cheap `getPropertyValue` reads on the
+cached declaration, each behind a `'computedStyle_' + property` string concat
+and a `hasOwnProperty` probe on a plain object.
+
+That matters for what a fix would look like. Eliminating CSSOM reads is not the
+lever; the string concat and the object probe, at 42,000 a page, might be.
+
+#### The uncached `getComputedStyle` calls are the headline, not a footnote
+
+`only-color-contrast` performs **14,368** `window.getComputedStyle` calls —
+99.8 % of the whole audit's 14,400, and roughly **11,000 more** than any
+grid-building rule. At 2380 elements that is 6 per element where the
+VirtualNode cache should give 1.
+
+Those are the calls §Dead hypotheses files under "Also worth nothing": the raw
+`window.getComputedStyle(node)` at `27203`, and `findPseudoElement`'s ancestor
+walk (`27312-27318`) calling `getPseudoElementArea` →
+`getComputedStyle(node, pseudo)` (`27321`), which is **not** cached on the
+VirtualNode. That paragraph ends "worth timing". It is not a footnote — it is
+the single largest identified block of work in the audit, and it is contrast's
+own, not the grid's.
+
+So the §Current state warning that "the contrast delta is not attributable to
+contrast math" needs splitting in three, not two: the grid (D1), contrast's
+uncached style reads, and the contrast maths proper.
+
+#### Cost by rule **[measured]** — and D1 isolated
+
+`ab-axe.mjs`, 3 pairs x 5 iterations, pinned, same page. Baseline **385 ms**
+median per audit (mean 397, SD 26 — noisier than the 2 % Phase 0 saw, because
+this run spans thirty captures over five minutes; the median is doing real work
+here).
+
+| rule | `only-R` | `drop-R` (marginal) |
+|---|--:|--:|
+| `color-contrast` | 336 ms | **127 ms ± 16** |
+| `target-size` | 147 ms | −30 ms ± 25 — noise floor |
+| `link-in-text-block` | 145 ms | −19 ms ± 23 — noise floor |
+| `aria-allowed-attr` | 48 ms | 3 ms ± 23 — zero |
+
+**D1 is ~100 ms, measured two ways.**
+
+Directly: `target-size` and `link-in-text-block` do quite different jobs, and
+both land at ~146 ms. `aria-allowed-attr`, the one rule here that builds no grid
+(gBCR and gCR both 0), lands at **48 ms**. The ~98 ms gap is the grid.
+
+Independently, the rig's `shared` column — `only-R` minus `cost(R)`, i.e. the
+setup a rule pays for when it runs alone — comes out at **45 ms** for the
+non-grid rule and **163–176 ms** for the two grid rules. That difference,
+~120 ms, is the same quantity arrived at from the other side.
+
+So: **the grid costs ~100–120 ms of a ~385 ms audit, a little under a third.**
+It is a real cost and the largest single identified component after contrast's
+own work — but it is not the whole of what the contrast ablation appeared to
+show, which was the open question §Current state flagged.
+
+#### Only `color-contrast` has a marginal cost
+
+This is the finding that matters operationally, and it was not anticipated.
+
+Dropping `target-size`, `link-in-text-block` or `aria-allowed-attr` changes the
+audit by an amount indistinguishable from zero — every one of those Δ values is
+inside 2 SD — even though each of the first two costs ~146 ms when run alone.
+The reason is structural: the grid they pay for gets built anyway, by whichever
+grid-consuming rule is still in the set.
+
+**Per-rule disabling is therefore not a lever.** Only three things move the
+number: removing `color-contrast`, making `_createGrid` cheaper, or making the
+shared memoization layer cheaper. A landing option that switches off a handful
+of expensive-looking rules would buy nothing and cost coverage.
+
+#### The additive model does not close — which is itself the D2 signature
+
+`only-color-contrast` is 336 ms; its marginal cost is 127 ms. If per-rule costs
+were additive over a fixed shared setup S, then `only-R − cost(R)` would equal S
+for every rule. Instead it ranges **45 → 209 ms**.
+
+Most of that spread is explained — 45 is setup without the grid, ~170 is setup
+with it. The residual, roughly 40 ms on contrast, is not. The explanation
+consistent with the source is the memo layer: a rule running alone pays cache
+misses that, in a full run, an earlier rule has already paid. That makes
+per-rule costs non-additive by construction, and it is D2's fingerprint.
+
+It also means the `cost(R)` / `shared` decomposition should be read as a
+*bracket*, not an identity. The rig says so in its own output.
+
+#### D4 — refuted at this scale
+
+The whole audit issues **351** `querySelectorAll` calls. D4 predicts
+`generateSelector` climbing the ancestor chain with a document query per level,
+O(depth × n) per node — on 2380 elements that would be tens of thousands.
+Deque's `selectorSimilarFilterLimit = 700` band-aid (`6867`) is real, but
+nothing here is hitting it.
+
+`selectors: false` may still pay for itself by skipping other work in
+`trimElementSpec`, but **not** by removing thousands of document queries.
+D4 is closed as a cost centre pending a page where the count is actually large.
+
+#### D3 — real, modest, and lumpy
+
+**503** `outerHTML` reads per audit, serialising **826 KB** in total, then
+discarding everything above 300 chars. Worth having, not transformative.
+
+The interesting row is `only-aria-allowed-attr`: **25** reads for **125 KB** —
+5 KB per read. That is exactly the case D3 names, rules matching `html`, `body`
+or large containers, and it means the cost is concentrated in a few enormous
+subtree serialisations rather than spread across the 503.
+
+#### The scaling curve is quadratic **[measured]**
+
+`probe-axe-scaling.mjs`, `Select-Case.html` replicated, production rule set,
+3 iterations per size, pinned:
+
+| elements | ms | gCS | gPV | gBCR | qSA | oHTML KB | us/element |
+|--:|--:|--:|--:|--:|--:|--:|--:|
+| 2,380 | 276.8 | 12,604 | 63,509 | 4,819 | 347 | 827 | **116** |
+| 4,745 | 1,554.2 | 74,930 | 178,954 | 12,871 | 567 | 1,316 | **328** |
+| 9,475 | 5,325.3 | 199,582 | 409,844 | 28,975 | 1,021 | 2,295 | **562** |
+| 18,935 | 16,694.3 | 448,886 | 871,624 | 61,183 | 1,914 | 4,253 | **882** |
+
+Fitted `metric = a * elements^k`:
+
+| metric | k | R² |
+|---|--:|--:|
+| **ms** | **1.957** | 0.9898 |
+| gCS | 1.692 | 0.9636 |
+| gPV | 1.256 | 0.9944 |
+| gBCR | 1.220 | 0.9959 |
+| qSA | 0.826 | 0.9971 |
+| oHTML KB | 0.791 | 0.9962 |
+
+**Complexity class: quadratic.** k = 1.96 at R² = 0.99. An 8x page costs **60x**
+the time (277 ms → 16.7 s), and per-element cost rises 7.6x across the range.
+
+And the operation counts do **not** explain it. `getPropertyValue` and
+`getBoundingClientRect` grow at k ≈ 1.2; `querySelectorAll` and `outerHTML` are
+*sub*-linear. The gap between k(ms) = 1.96 and k(gPV) = 1.26 is work that never
+touches the DOM — axe's own bookkeeping.
+
+That is precisely D2's prediction and its predicted exponent. ~19 memoized
+functions are per-node, each `argsMap` grows to O(n), each lookup is an O(k)
+scan: O(n) lookups x O(n) scan = O(n²). Nothing else in the identified defect
+list predicts k = 2 — D1 is linear in elements, D3 and D4 are measured
+sub-linear here.
+
+Two honest caveats on this curve:
+
+- **Replication makes the document taller, not just larger.** At 18,935
+  elements the page is ~20 copies of the content, so some of the
+  super-linearity could be page geometry rather than element count. That would
+  most plausibly show up in contrast's `getRectStack` work — note gCS is itself
+  super-linear at k = 1.69, which element count alone does not explain. So
+  "quadratic" is established; *which* quadratic term dominates is Phase 2's
+  question, and D2 is the leading but not the only candidate.
+- **The absolute ms here (277 at 2,380) is below `ab-axe.mjs`'s 385**, because
+  this probe times in-page with `performance.now()` and no tracing attached.
+  Only the exponent is being claimed, and the method is constant across sizes.
+
+**Consequence for §Open questions.** The representative-set idea — computing
+scan targets from page structure and scanning more of them — is now
+*more* attractive, not less: cost is super-linear in page size, so scanning many
+small pages is far cheaper than scanning few large ones. But it also means any
+future page substantially larger than ~2.4k elements is disproportionately
+expensive, and the largest pages in the site should be checked before the scan
+is widened.
+
+#### D2 — source refined, and now the leading candidate
+
+The 23 `memoize_default(` call sites are confirmed. Classifying them: **~19 are
+per-node** (`isHiddenAncestors`, `isVisibleOnScreenVirtual`,
+`isVisibleToScreenReadersVirtual`, `isInertSelf` / `isInertAncestors`,
+`isFixedSelf` / `isFixedAncestors`, `getOverflowHiddenAncestors`,
+`getClosestAncestorRoleType`, `hasWidgetAncestorInTabOrder`,
+`getVisibleChildTextRects`, `DqElement`, …), so each one's `argsMap` grows to
+O(n) and every lookup is an O(k) scan. Only `isXHTML(doc)` and the arity-0
+`getModalDialog()` are genuinely cheap.
+
+One correction to the severity, though. `indexOf` here is es5-ext's, and for a
+non-NaN search element it **delegates to native `Array.prototype.indexOf`**
+(`require_e_index_of`) — so each comparison is a native pointer compare, not a
+JS-loop iteration. The quadratic term is genuine; the constant is smaller than
+the plan implies.
+
+`findSimilar` remains the worst *shape* (arity 2, second level scanning
+selector **strings**) but it cannot be the worst *cost*: only 351
+`querySelectorAll` calls means k never exceeds a few hundred.
+
+The scaling curve decided it: operation counts at k ≈ 1.2, time at k = 1.96.
+The excess is axe's own bookkeeping, and D2 is the only identified defect whose
+shape predicts that exponent.
+
+#### Phase 1 gate — **MET**
+
+- **cost-by-rule table with SD** — above; `ab-axe.mjs --per-rule` gives the full
+  64-rule version with cross-run SD.
+- **D1 isolated from `color-contrast`** — the grid is **~100–120 ms** of a
+  ~385 ms audit, measured two independent ways. Contrast's own work is the
+  larger remainder.
+- **complexity class** — **quadratic**, k = 1.96, R² = 0.99.
+
+The ranking that comes out of Phase 1 differs from the one the plan went in
+with. In descending order of what actually moves the number:
+
+1. **The quadratic term** (D2, or a geometry-driven term in contrast). Already
+   the dominant effect at 2.4k elements and catastrophic above it.
+2. **`color-contrast`'s uncached `getComputedStyle` calls** — ~11,000 per audit,
+   99.8 % of the page's total, and the plan had them as a footnote.
+3. **`_createGrid`** (D1) — real, ~100–120 ms, but a third of what the naive
+   contrast ablation suggested.
+4. **D3** — 826 KB of discarded serialisation. Worth taking, not transformative.
+5. **D4** — closed. 351 queries per audit; not a cost centre at this scale.
 
 ### Phase 2 — mechanism
 
