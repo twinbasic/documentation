@@ -7,6 +7,37 @@ Scope: measurement first, optimisation second. The deliverable is an
 attribution — time and heap, by axe phase and by rule — plus a ranked list of
 avoidable work backed by numbers.
 
+---
+
+## Outcome — all four phases complete
+
+**Decision: take nothing. The scan does not need optimising.**
+
+Every candidate that passes the correctness gate measures within noise of zero
+at the sizes the scan actually runs at. The config-only set — the safe early win
+the plan expected to land first — is **9 ms ± 14 on a 349 ms audit**. A vendored
+patch is not worth it either, for a measured reason rather than a cautious one.
+
+What the investigation produced instead:
+
+| | |
+|---|---|
+| **The cost model** | Audit cost fits **k = 2.73 in element count** on real pages, and the exponent lives almost entirely in `color-contrast`. The other 63 rules are linear with a flat per-element cost. |
+| **The mechanism** | `Color2` (`axe.js:18186`), whose six `#private` fields are Babel-emulated with six `WeakMap`s and a `WeakSet` — fourteen weak-collection operations per construction, multiplied by a background stack that deepens with the page. |
+| **A correctness gate** | `scripts/check_a11y_fingerprint.mjs`, plus a live demonstration (`no-html`) that it is necessary and **not sufficient**. |
+| **A sampling correction** | `SAMPLE_PAGES` contains only the site's *small* pages. The four largest cost ~5.9x each, so widening the scan costs far more than a page count implies — and those pages are the least-audited part of the site. |
+
+Four of the five "confirmed defects" below did not survive contact with
+measurement. D2 — draft 2's headline, a vendored patch on memoizee — is
+**0.45 %** of self-time. D4 is closed. D1 is confirmed but linear and a third of
+what it looked like. The item that actually dominates was a footnote in
+§Dead hypotheses.
+
+Read §Phase 1, §Phase 2 and §Phase 3 for the evidence; each defect below carries
+its verdict inline.
+
+---
+
 > [!IMPORTANT]
 > **Revision note.** The first draft of this plan ranked "axe yields to the
 > event loop like paged.js and pdf-lib did" as its headline hypothesis. Three
@@ -93,8 +124,8 @@ freeze coverage at its current level.
 
 ### The apparatus
 
-Phase 0 is **done**; the tools below exist and every later experiment runs
-through them. See §Phase 0 for what each one is and what it cost to get right.
+All phases are **done**; the tools below exist and every experiment ran through
+them. See §Phase 0 for what each one is and what it cost to get right.
 
 | Tool | Role |
 |---|---|
@@ -102,6 +133,10 @@ through them. See §Phase 0 for what each one is and what it cost to get right.
 | `scripts/check_a11y_fingerprint.mjs` | The correctness gate. Two schemes, one build, one process, diffed audit by audit. |
 | `perf/ab-axe.mjs` | The measurement rig. Rule ablation + config-lever A/B, pinned, paired, per-audit CPU sample-time. |
 | `perf/trace-cpu-stats.mjs` | Trace parsing extracted from `ab-css.mjs` so both rigs share it. |
+| `perf/probe-axe-dom.mjs` | Exact DOM operation counts per rule — what turned D1/D3/D4 into measurements. |
+| `perf/probe-axe-scaling.mjs` | The scaling curve, the `--rules`/`--scheme` split that localised the exponent, and `--cpu-profile` for the differential profile. |
+| `perf/instrument-axe-dom.js` | The in-page counters behind both probes. |
+| `SOURCE_PATCHES` in `axe-scan.mjs` | Named substitutions against the injected bundle, so a vendored-patch candidate can be gated and measured before anyone maintains a fork. |
 
 ```sh
 node scripts/check_a11y_fingerprint.mjs --list          # scheme registry
@@ -230,9 +265,23 @@ invariance — is the real argument for collapsing the variant matrix (H4).
 
 ## Confirmed defects
 
-Ranked. All **[source-confirmed]**, none yet timed — Phase 1 assigns the numbers.
+Ranked as of draft 2, all **[source-confirmed]** and none yet timed. **Phases 1
+and 2 have since measured every one of them, and the ranking below did not
+survive.** Each carries its verdict inline; the evidence is in §Phase 1 and
+§Phase 2, and the corrected ranking is at the end of §Phase 1.
+
+> [!IMPORTANT]
+> Read the verdicts before acting on this section. Two of the five are closed,
+> one is reframed, and the item that turned out to dominate — `color-contrast`'s
+> uncached `getComputedStyle` calls and its `Color2` construction — is not in
+> this list at all. It was a footnote in §Dead hypotheses.
 
 ### D1 — `_createGrid` does ~14 computed-style reads per element
+
+> **Verdict: confirmed as a count, wrong as a cost model, and linear.** ~18
+> reads per element, not ~14; ~100–120 ms of a ~385 ms audit. But they are
+> `getPropertyValue` reads on a *cached* declaration, not style resolutions, and
+> the cost scales linearly. See §Phase 1.
 
 `_createGrid()` (`15434-15489`) walks every element with a `TreeWalker`. Per
 element it runs `createStackingOrder` → `isStackingContext`, which makes roughly
@@ -245,6 +294,12 @@ it is billed to whichever rule touches it first — which is why the contrast
 ablation looks so dramatic.
 
 ### D2 — the memoization layer is itself O(n)
+
+> **Verdict: REFUTED as a cost centre.** The O(n²) shape is real in source, but
+> every memoized frame combined is **0.45 %** of self-time at 9,475 elements,
+> and the half of the rule set that does not include `color-contrast` uses the
+> same memo layer and scales linearly. The recommendation below to spend a
+> vendored patch here is **withdrawn**. See §Phase 2.
 
 `memoize_default` is plain `memoizee(fn)` with **no options** (`10885-10890`).
 Without the `primitive` flag, memoizee selects reference-identity normalizers
@@ -269,6 +324,10 @@ correctness gate by construction.
 
 ### D3 — `html` is serialised eagerly for every result node
 
+> **Verdict: real, modest, lumpy.** 503 `outerHTML` reads per audit totalling
+> 826 KB, concentrated in a few large-container serialisations. `noHtml: true`
+> passes the correctness gate. See §Phase 1 and §Phase 3.
+
 `DqElement`'s constructor sets `this.source = _getElementSource(this._element)`
 (`11369-11373`), and the constructor runs at `29237` inside `Rule.prototype.run`
 for **every** result node, passes included. `_getElementSource` (`11269-11287`)
@@ -283,6 +342,10 @@ full-document serialisation.
 
 ### D4 — `generateSelector` runs a document query per ancestor level
 
+> **Verdict: CLOSED at this scale.** The entire audit issues **351**
+> `querySelectorAll` calls, and the count is *sub*-linear in page size
+> (k = 0.83). Not a cost centre here. See §Phase 1.
+
 `generateSelector` (`11109-11142`) climbs the ancestor chain and at each level
 calls `findSimilar(doc, selector)` = `doc.querySelectorAll(selector)`
 (`11147-11148`) until the selector is unique. Per node: O(depth × n). Deque's own
@@ -292,6 +355,10 @@ Avoidable via `selectors: false` (`19212`), which skips `target` generation
 outright, or partially via `resultTypes`.
 
 ### D5 — preload fetches an asset nothing consumes
+
+> **Verdict: correct diagnosis, negligible cost.** `only-no-autoplay-audio` is
+> ~28 ms and performs zero DOM operations. Disabling the rule passes the gate;
+> the win is small. See §Phase 1 and §Phase 3.
 
 Exactly two rules carry `preload: true`: `css-orientation-lock`
 (`32670`/`32683`, tags `wcag21aa` + `experimental`) and `no-autoplay-audio`
@@ -586,12 +653,20 @@ capture feeding `diff-blink-classes.mjs`. Expect VirtualNode-per-element-and-tex
    `resultTypes` (with the revised gate). No maintenance burden; available as
    soon as the gate clears.
 2. **Scheduling** — theme-axis collapse only (see H4 below). Our code.
-3. **Vendored patch — now a serious candidate, re-aimed.** Draft 1 reserved this
-   for H1, which does not exist. The real target is **D2**: swap memoizee's
-   reference-identity normalizer for a `WeakMap`/`Map`. Behaviour-preserving,
-   passes the gate by construction, and consistent with
-   `book/lib/paged.browser.js` and the `fast-*.mjs` shims. Cost: pinning a patched
-   fork, and triaging axe's WCAG rule updates against the gate on each upgrade.
+3. **Vendored patch — serious candidate, but re-aimed again.** Draft 1 reserved
+   this for H1, which does not exist. Draft 2 re-aimed it at **D2**, which
+   Phase 2 measured at 0.45 % of self-time — so that aim is withdrawn too.
+
+   The measured target is **`Color2` (`axe.js:18186`)**. axe-core ships only a
+   Babel-downleveled bundle, so its six `#private` fields plus brand check are
+   emulated with six `WeakMap`s and a `WeakSet`: fourteen weak-collection
+   operations per construction before any colour maths, and `color-contrast`
+   builds enormous numbers of them. `SOURCE_PATCHES['cheap-private-fields']` in
+   `scripts/lib/axe-scan.mjs` implements and measures the cheapest
+   behaviour-preserving version (drop the redeclaration guard and the brand
+   assert). Cost of shipping it: pinning a patched fork, and re-deriving the
+   substitutions on each axe-core upgrade — which the patch asserts loudly
+   rather than silently skipping.
 
 ### H4 — variant collapse, corrected
 
@@ -1143,10 +1218,155 @@ Two consequences, both of which belong in the representative-set design:
   coverage argument for including them *and* a cost argument for making contrast
   cheaper first.
 
-### Phase 3 — decide
+### Phase 3 — decide — **DONE**
 
-Pick from the landing options against measured numbers. Every candidate through
-the gate.
+Every candidate through the gate, then measured. The headline is a negative
+result, and it is the most useful thing in this document.
+
+#### Every candidate passes the correctness gate
+
+`check_a11y_fingerprint.mjs`, full 24-audit matrix, one build, one process:
+
+| candidate | gate |
+|---|---|
+| `no-html` (D3) | **24/24 identical** |
+| `no-selectors` (D4) | **24/24 identical** |
+| `no-autoplay-audio` (D5) | **24/24 identical** |
+| `violations-only` (`resultTypes`) | **24/24 identical** |
+| `config-only` (D3+D4+D5) | **24/24 identical** |
+| `cheap-private-fields` source patch | **24/24 identical** |
+
+#### And none of them is worth taking
+
+`ab-axe.mjs`, 5 pairs x 5 iterations, pinned, `Select-Case.html` (2,380
+elements). Baseline **349 ms** median (mean 355, SD 13):
+
+| variant | Δcpu median | mean ± SD | 2xSD | verdict |
+|---|--:|--:|--:|---|
+| `no-selectors` | 23 ms | 22 ± 13 | 26 | consistent with zero |
+| `violations-only` | 13 ms | 13 ± 27 | 54 | consistent with zero |
+| `config-only` | 9 ms | 11 ± 14 | 28 | consistent with zero |
+| `cheap-private-fields` | 8 ms | 5 ± 18 | 36 | consistent with zero |
+| `no-html` | −11 ms | −14 ± 21 | 42 | consistent with zero |
+
+By the rig's own criterion — Δ below 2 SD is indistinguishable from zero —
+**every one of them is zero.** Landing option 1, the config-only set that looked
+like the safe early win, is 9 ms ± 14 on a 349 ms audit.
+
+This follows directly from Phase 1 and Phase 2 and should not be a surprise in
+hindsight. D3 and D4 were measured small and *sub*-linear; D5 was measured at
+~28 ms for the whole rule. The audit's cost is `color-contrast`, and none of
+these levers touches it.
+
+#### `no-html` would crash the reporter — a live case of the gate's blind spot
+
+Worth recording in its own right. Under `noHtml: true`, `trimElementSpec` sets
+`serialElm.html = null` outright (`19203-19204`) — not the `'Undefined'` string
+the non-`noHtml` branch falls back to. `check_a11y.mjs:91` does
+`node.html.slice(0, 120)`, so the production reporter would throw a TypeError on
+the first violation or incomplete node it printed.
+
+The fingerprint gate passed it 24/24, correctly: the fingerprint reads rule ids
+and node counts and never touches `.html`. **The gate is necessary, not
+sufficient.** It answers "does axe still find the same things", not "is the
+result still shaped the way consumers expect". Any candidate that changes the
+*shape* of a result node, rather than which nodes are found, needs a separate
+read of the consumers. Adopting `noHtml` would mean fixing `check_a11y.mjs`
+first — for a win of −11 ms.
+
+#### The vendored patch is not worth it either
+
+`SOURCE_PATCHES['cheap-private-fields']` removes Babel's redeclaration guard and
+brand assert — seven fewer `WeakMap`/`WeakSet` `has` calls per `Color2`
+construction, plus two per colour-channel write. It gates clean and measures
+**8 ms ± 18** at 2,380 elements and **28 ms** (mean −133 ± 302) at 4,672.
+
+The profile attributed 23.6 % of self-time to `_classPrivateFieldInitSpec` at
+9,475 elements, so why so little? Because that self-time is dominated by the
+`WeakMap.set` the patch necessarily keeps, not by the `has` it removes. Getting
+the rest would mean rewriting `Color2` to use plain properties — a far larger,
+far riskier substitution against a generated bundle, to be re-derived on every
+axe-core upgrade.
+
+**Recommendation: do not vendor a patch.** The cheap version buys nothing and
+the expensive version is not worth its maintenance cost. Draft 2's headline
+recommendation (patch memoizee) and this document's own re-aim (patch `Color2`)
+are both withdrawn, each for a measured reason.
+
+#### On large pages: suggestive, unresolved, and at the rig's limit
+
+`config-only` behaves differently on `VB/UserControl/index.html` (4,672
+elements, baseline ~2,100 ms). Two independent runs:
+
+| run | `config-only` Δ median | mean ± SD | baseline SD |
+|---|--:|--:|--:|
+| 5 pairs x 3 iters | 505 ms | 163 ± 790 | 53 |
+| 7 pairs x 2 iters | 486 ms | 583 ± 559 | 743 |
+
+The medians reproduce to within 4 %, which is hard to get from a zero effect.
+The means and SDs say do not cite it: 2 SD exceeds the effect in both runs, and
+the second run's *baseline* SD is 743 ms on a 2,601 ms mean — 28 %.
+
+That is a real limit of the rig, worth recording. A 2 s audit needs a fresh
+browser and a 253 KB page load per run, so a pair costs ~8 s and a seven-pair
+sweep runs four minutes — long enough for thermal drift to dominate. The
+techniques that got a 0.35 s audit to 2 % variance (in-page warmup, deferred
+trace parsing, steady-state iteration) do not scale to a 2 s one, because the
+fixed per-run overhead no longer amortises. Getting a citable large-page number
+needs a different approach, not more pairs.
+
+It does not change the recommendation, because **the scan contains no large
+pages today** — `SAMPLE_PAGES` spans 2,175 to 2,694 elements. It becomes the
+first thing to re-measure if the representative-set work adds any.
+
+#### H4 theme collapse — the largest measured win, and it is ours
+
+From the split curve at 2,380 elements: a full audit is ~349 ms, of which
+`color-contrast` is ~210 ms and the other 63 rules are ~160 ms.
+
+Collapsing the theme axis — full rule set in light, `{color-contrast,
+link-in-text-block}` in dark — leaves the dark audits paying the grid, the tree
+and two rules, ~215 ms instead of ~349 ms. Across 12 dark audits that is
+**~1.4 s of an ~8.4 s scan, about 17 %**.
+
+That is larger than every config lever combined, and it is in our code rather
+than axe's. It is also the only option here whose ceiling is set by something
+real: `color-contrast` is ~60 % of the audit and *must* run in both themes —
+that is the entire point of scanning dark mode — so no scheduling change can
+ever remove more than the non-contrast remainder in one theme.
+
+Not taken here, because it needs two things this phase did not build: per-theme
+rule sets in `runMatrix`, and a gate mode that compares findings **unioned over
+the theme axis** rather than per audit (a collapsed dark audit legitimately
+reports fewer rules, so the per-audit gate would fail it for the wrong reason).
+Both are small. The caveats in §H4 about `data-theme-choice` and
+`theme-toggle.js` still apply and should be re-read before starting.
+
+#### Phase 3 gate — **MET**. Decision: take nothing now.
+
+The scan costs ~8 s. Every lever that passes the correctness gate measures
+within noise of zero at the sizes the scan actually runs at, and the one
+structural option worth ~17 % costs real harness complexity to get.
+
+**The measured answer is that this scan does not need optimising.** What the
+work produced instead is worth more than the milliseconds would have been:
+
+1. **A correctness gate** (`check_a11y_fingerprint.mjs`) that any future change
+   to the scan runs through — plus a demonstration, in `no-html`, that it is
+   necessary and not sufficient.
+2. **A measured cost model.** Audit cost fits **k = 2.73 in element count** on
+   real pages, and the exponent lives almost entirely in `color-contrast`.
+   Everything else is linear.
+3. **A correction to the sampling strategy.** `SAMPLE_PAGES` contains only the
+   site's small pages. The four largest cost ~5.9x each, so widening the scan is
+   far more expensive than a page count suggests — and those large pages are
+   also the least-audited part of the site.
+
+If cost ever does become binding, the order of attack is: weight the
+representative set by element count; re-measure `config-only` against the large
+pages actually added; then the theme collapse. Not the config levers, not a
+vendored patch, and not per-rule disabling — Phase 1 showed the grid is shared,
+so switching off individual rules saves nothing.
 
 ---
 

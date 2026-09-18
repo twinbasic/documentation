@@ -209,6 +209,82 @@ export function getScheme(label) {
 // axe source
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Source patches
+// ---------------------------------------------------------------------------
+//
+// axe-core ships ONLY a Babel-downleveled bundle -- its package.json `files:`
+// lists axe.js and axe.min.js and nothing else, so there is no modern build to
+// switch to.  Phase 2 of builder/PLAN-axe-perf.md found the consequence: the
+// Color2 class (axe.js:18186) has six `#private` fields plus a brand check,
+// emulated with six WeakMaps and a WeakSet, so every `new Color2()` runs
+// fourteen weak-collection operations before any colour maths -- and
+// `color-contrast` constructs enormous numbers of them.
+//
+// These patches exist so that cost can be MEASURED before anyone commits to
+// maintaining a vendored fork.  They are text substitutions against the
+// injected source; nothing on disk is modified.
+//
+// Every substitution asserts its target was found, so an axe-core upgrade that
+// moves the code fails loudly instead of silently measuring nothing.  Targets
+// are single lines on purpose -- a multi-line target would be one reformatting
+// away from breaking, and harder to re-derive by eye.
+
+function substitute(src, name, from, to) {
+  if (!src.includes(from)) {
+    throw new Error(
+      `patch "${name}": target not found in axe.js:\n  ${from}\n` +
+        `The bundle has changed (axe-core upgrade?); re-derive before trusting it.`
+    );
+  }
+  return src.split(from).join(to);
+}
+
+export const SOURCE_PATCHES = {
+  // Babel emits a redeclaration guard on every private-field initialisation
+  // and a brand assertion on every private-field access.  Both exist to throw
+  // on misuse of the compiled output, which cannot happen here: the classes
+  // are internal to a generated bundle.  Removing them drops one WeakMap or
+  // WeakSet `has` per field init and one per access -- on Color2 that is seven
+  // fewer `has` calls per construction, plus two per colour-channel write.
+  //
+  // Behaviour-preserving by construction: the only observable difference is
+  // which TypeError is thrown by code that is already broken.
+  "cheap-private-fields": {
+    describe: "drop Babel's redeclaration guard and brand assert (Color2 hot path)",
+    apply(src) {
+      src = substitute(
+        src, "cheap-private-fields/field-init",
+        "_checkPrivateRedeclaration(e, t), t.set(e, a);",
+        "t.set(e, a);"
+      );
+      src = substitute(
+        src, "cheap-private-fields/method-init",
+        "_checkPrivateRedeclaration(e, a), a.add(e);",
+        "a.add(e);"
+      );
+      src = substitute(
+        src, "cheap-private-fields/brand",
+        "if ('function' == typeof e ? e === t : e.has(t)) {",
+        "if (true) {"
+      );
+      return src;
+    },
+  },
+};
+
+export function getPatches(names) {
+  return names.map((n) => {
+    const p = SOURCE_PATCHES[n];
+    if (!p) {
+      throw new Error(
+        `unknown patch "${n}"; known: ${Object.keys(SOURCE_PATCHES).join(", ")}`
+      );
+    }
+    return { name: n, ...p };
+  });
+}
+
 /**
  * Read the axe-core bundle to inject.
  *
@@ -217,11 +293,16 @@ export function getScheme(label) {
  * in axe.min.js every profile frame is a mangled single letter, so the
  * bottom-up table is unreadable and find-callers.mjs has nothing to match on.
  */
-export function readAxeSource({ minified = true } = {}) {
-  return readFileSync(
+export function readAxeSource({ minified = true, patches = [] } = {}) {
+  if (patches.length && minified) {
+    throw new Error("source patches target the unminified bundle; pass minified: false");
+  }
+  let src = readFileSync(
     join(REPO_ROOT, "node_modules/axe-core", minified ? "axe.min.js" : "axe.js"),
     "utf-8"
   );
+  for (const p of getPatches(patches)) src = p.apply(src);
+  return src;
 }
 
 /** Whatever axe-core version is installed; line citations in the plan pin 4.13.0. */

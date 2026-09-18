@@ -57,6 +57,7 @@
 //   node ab-axe.mjs --per-rule                       # instrument 1 instead: per-rule
 //                                                    # performance.measure table
 //   node ab-axe.mjs --page /tB/Core/Dim.html --theme dark --viewport mobile
+//   node ab-axe.mjs --patches cheap-private-fields   # A/B a vendored-patch candidate
 //   node ab-axe.mjs --light-trace                    # ~40 MB -> ~3 MB per trace
 //   node ab-axe.mjs --warmup 0                       # measure the cold curve instead
 //   node ab-axe.mjs --no-affinity                    # skip Windows CPU pinning
@@ -71,6 +72,7 @@ import {
   AXE_RUN_OPTIONS,
   DEFAULT_ROOT_DIR,
   SCHEMES,
+  SOURCE_PATCHES,
   VIEWPORTS,
   axeVersion,
   getScheme,
@@ -106,6 +108,7 @@ let iters = 5;          // axe.run calls inside one traced window
 let inPageWarmup = 1;   // axe.run calls before the trace starts
 let minified = false;   // profile against axe.js: axe.min.js frames are single letters
 let lightTrace = false; // drop the Blink categories; keeps only cpu_total
+let patchesArg = '';    // source patches, one variant each
 
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
@@ -129,6 +132,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fresh-browser') freshBrowser = true;
   else if (a === '--minified') minified = true;
   else if (a === '--light-trace') lightTrace = true;
+  else if (a === '--patches') patchesArg = args[++i];
   else if (a === '--no-affinity') { /* handled in the relaunch shim above */ }
   else if (a === '-h' || a === '--help') {
     console.error('usage: node ab-axe.mjs [--runs N] [--out DIR] [--rules a,b] [--schemes a,b]');
@@ -145,6 +149,7 @@ for (let i = 0; i < args.length; i++) {
     console.error('  instead of the ablation.');
     console.error('');
     console.error(`  schemes: ${Object.keys(SCHEMES).join(', ')}`);
+    console.error(`  patches: ${Object.keys(SOURCE_PATCHES).join(', ')}`);
     process.exit(0);
   } else {
     console.error('unknown arg: ' + a);
@@ -166,6 +171,11 @@ const ruleIds = (!rulesArg || rulesArg === 'none')
   ? []
   : rulesArg.split(',').map(s => s.trim()).filter(Boolean);
 const schemeIds = schemesArg ? schemesArg.split(',').map(s => s.trim()).filter(Boolean) : [];
+const patchIds = patchesArg ? patchesArg.split(',').map(s => s.trim()).filter(Boolean) : [];
+if (patchIds.length && minified) {
+  console.error('--patches needs the unminified bundle; drop --minified');
+  process.exit(2);
+}
 
 // ---- Variant list ----------------------------------------------------
 // Each variant carries the axe.configure() spec (or null) and the axe.run()
@@ -210,6 +220,22 @@ for (const id of schemeIds) {
 // ---- Browser ---------------------------------------------------------
 const axeSource = readAxeSource({ minified });
 
+// A source patch changes the injected bundle, not the run options, so it has to
+// ride on the variant rather than on the process. That way it still gets paired
+// differencing against a baseline measured moments earlier -- comparing two
+// whole ab-axe runs would throw that away and put machine drift straight into
+// the number.
+for (const id of patchIds) {
+  variants.push({
+    label: `patch-${id}`,
+    kind: 'patch',
+    patch: id,
+    configure: null,
+    runOptions: AXE_RUN_OPTIONS,
+    axeSource: readAxeSource({ minified: false, patches: [id] }),
+  });
+}
+
 // Browser lifecycle.
 //
 // Default is a fresh browser per measured run -- but note WHY, because the
@@ -250,7 +276,7 @@ async function closeBrowser() {
 async function runOnce(v, outDir) {
   if (!browser) await openBrowser();
   await gotoPage(page, { rootDir, filePath: pagePath, theme });
-  await page.evaluate(axeSource);
+  await page.evaluate(v.axeSource ?? axeSource);
 
   // Pay V8's lazy compilation of axe.js BEFORE the trace starts.
   //

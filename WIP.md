@@ -517,7 +517,12 @@ node scripts/check_a11y_fingerprint.mjs --candidate no-html
 
 It has one blind spot worth knowing: it compares a candidate against a baseline produced by that same scheme's element set, so it cannot detect a change that stops auditing elements *entirely*. Anything touching which DOM is walked -- viewport, visibility, request blocking -- has to be argued from source instead.
 
-Cost attribution for the scan lives in [perf/ab-axe.mjs](perf/ab-axe.mjs); the investigation it serves is [builder/PLAN-axe-perf.md](builder/PLAN-axe-perf.md).
+One thing the gate structurally cannot catch: it compares *which* findings axe produces, never their shape. The `no-html` scheme passes 24/24 and would still crash the reporter, because `noHtml: true` makes `node.html` null and `check_a11y.mjs` calls `.slice()` on it. Treat the gate as necessary, not sufficient.
+
+Cost attribution for the scan lives in [perf/ab-axe.mjs](perf/ab-axe.mjs), with [perf/probe-axe-dom.mjs](perf/probe-axe-dom.mjs) for DOM operation counts and [perf/probe-axe-scaling.mjs](perf/probe-axe-scaling.mjs) for the size curve. The investigation is [builder/PLAN-axe-perf.md](builder/PLAN-axe-perf.md), and it is **complete**: the measured conclusion is that the scan does not need optimising -- every lever that passes the gate is within noise of zero. Two results from it are worth knowing before touching the scan:
+
+- **Audit cost is super-linear in page size** -- `k = 2.73` on real pages, almost entirely inside `color-contrast`. The four largest pages in the site cost ~5.9x an average sample page each.
+- **`SAMPLE_PAGES` contains only small pages** (2,175--2,694 elements, against a site maximum of 5,231). Widening it costs much more than the page count suggests, and should weight by element count.
 
 The build itself includes an additional guard: tbdocs's nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during the COMPUTE phase and aborts the build if any nav-visible page has a `parent:` (or `parent:` + `grand_parent:`) that does not resolve to exactly one page in the nav tree. It catches two failure modes:
 

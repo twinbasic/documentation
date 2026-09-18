@@ -41,6 +41,7 @@
 //   --root-dir DIR      default: docs/_site-offline
 //   --theme / --viewport / --pages   narrow the matrix (for quick iteration;
 //                                    a real gate run uses the full 24)
+//   --patches NAME,NAME apply source patches to the CANDIDATE bundle
 //   --json FILE         write both fingerprint lists + the diff
 //   --list              print the scheme registry and exit
 //
@@ -67,6 +68,7 @@ import {
   newAuditPage,
   readAxeSource,
   runMatrix,
+  SOURCE_PATCHES,
 } from "./lib/axe-scan.mjs";
 
 // ---- CLI ------------------------------------------------------------------
@@ -78,6 +80,7 @@ let viewportArg = "both";
 let pagesArg = null;
 let jsonOut = null;
 let unminified = false;
+let patchesArg = "";
 
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
@@ -90,8 +93,14 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--pages" && args[i + 1]) pagesArg = args[++i].split(",");
   else if (a === "--json" && args[i + 1]) jsonOut = args[++i];
   else if (a === "--unminified") unminified = true;
+  else if (a === "--patches" && args[i + 1]) patchesArg = args[++i];
   else if (a === "--list") {
     console.log(`axe-core ${axeVersion()}\n`);
+    console.log("patches:");
+    for (const [label, p] of Object.entries(SOURCE_PATCHES)) {
+      console.log(`  ${label.padEnd(24)} ${p.describe}`);
+    }
+    console.log("");
     console.log("schemes:");
     for (const [label, s] of Object.entries(SCHEMES)) {
       const flag = s.gates === false ? "  [does not gate]" : "";
@@ -183,18 +192,30 @@ async function main() {
   }
   console.log(`matrix     ${matrix.length} audits\n`);
 
-  const axeSource = readAxeSource({ minified: !unminified });
+  // A source patch is applied to the CANDIDATE side only: the question the
+  // gate answers is whether the patched bundle still sees what the stock one
+  // sees. Applying it to both would compare a patched build against itself.
+  const patchIds = patchesArg
+    ? patchesArg.split(",").map((x) => x.trim()).filter(Boolean)
+    : [];
+  const baseSource = readAxeSource({ minified: !unminified && !patchIds.length });
+  const candSource = patchIds.length
+    ? readAxeSource({ minified: false, patches: patchIds })
+    : baseSource;
+  if (patchIds.length) {
+    console.log(`patches    ${patchIds.join(", ")}  (candidate side only)`);
+  }
   const browser = await launchBrowser();
   const page = await newAuditPage(browser);
 
   let base, cand;
   try {
     process.stdout.write(`running baseline  ... `);
-    base = await runScheme(page, baseline, axeSource);
+    base = await runScheme(page, baseline, baseSource);
     console.log(`${base.wallMs} ms`);
 
     process.stdout.write(`running candidate ... `);
-    cand = await runScheme(page, candidate, axeSource);
+    cand = await runScheme(page, candidate, candSource);
     console.log(`${cand.wallMs} ms`);
   } finally {
     await browser.close();
