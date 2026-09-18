@@ -1,4 +1,4 @@
-// CSS cost attribution: print.css extras + rouge.css.
+// CSS cost attribution: print.css extras + the syntax-highlight stylesheet.
 //
 // Renders the book per variant, capturing a hybrid trace and pulling
 // on-CPU time from the embedded V8 cpu profile (NOT wall-clock, which
@@ -9,17 +9,17 @@
 // below) brings per-pair variance down to ~3 % of baseline.
 //
 // **Default variants** (always run):
-//   baseline-full       = print.css (all sections) + rouge.css
-//   drop-rouge          = print.css (all sections); no rouge.css
-//   drop-print-extras   = print.css (always-kept sections only) + rouge.css
-//   baseline-minimal    = print.css (always-kept sections only); no rouge.css
+//   baseline-full       = print.css (all sections) + tb-highlight.css
+//   drop-highlight      = print.css (all sections); no tb-highlight.css
+//   drop-print-extras   = print.css (always-kept sections only) + tb-highlight.css
+//   baseline-minimal    = print.css (always-kept sections only); no highlight CSS
 //
 // "Always-kept" print.css sections (paged.js needs them to paginate at
 // the right page count): preamble + "Page geometry, running header,
 // page numbers" + "Chapter boundaries".
 //
 // With these four variants the pairwise differences reveal:
-//   baseline-full - drop-rouge        = rouge.css contribution
+//   baseline-full - drop-highlight    = highlight-CSS contribution
 //   baseline-full - drop-print-extras = print.css extras contribution
 //   baseline-full - baseline-minimal  = total CSS contribution
 //
@@ -34,10 +34,15 @@
 //   node ab-css.mjs --per-print-section   # also sweep each print.css section
 //   node ab-css.mjs --out my-run          # results folder (default: ab-css)
 //   node ab-css.mjs --no-affinity         # skip Windows CPU pinning
+//   node ab-css.mjs --dry-run             # build the variants, render nothing
+//
+// Runs from anywhere; paths are anchored on this file. Requires build.bat to
+// have produced an up-to-date docs/_site-pdf/.
 
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { pinCpuIfWindows } from './pin-cpu.mjs';
 import { cpuStatsFromTrace } from './trace-cpu-stats.mjs';
 
@@ -51,17 +56,20 @@ if (process.env.PERF_PINNED) console.error(`[ab-css] Running pinned (PERF_PINNED
 let outRoot = 'ab-css';
 let pairs = 3;
 let perPrintSection = false;
+let dryRun = false;
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--out') outRoot = args[++i];
   else if (args[i] === '--runs') pairs = parseInt(args[++i], 10);
   else if (args[i] === '--per-print-section') perPrintSection = true;
+  else if (args[i] === '--dry-run') dryRun = true;
   else if (args[i] === '--no-affinity') { /* handled in the relaunch shim above */ }
   else if (args[i] === '-h' || args[i] === '--help') {
     console.error('usage: node ab-css.mjs [--runs N] [--out DIR] [--per-print-section]');
+    console.error('                       [--dry-run]');
     console.error('');
     console.error('  Default: 3 top-level variants per stylesheet (baseline-full,');
-    console.error('  drop-rouge, drop-print-extras, baseline-minimal). Run with');
+    console.error('  drop-highlight, drop-print-extras, baseline-minimal). Run with');
     console.error('  --per-print-section to additionally sweep each /* ---- ---- */');
     console.error('  section of print.css (slower; per-section deltas tend to be');
     console.error('  below the noise floor on this book).');
@@ -74,19 +82,26 @@ for (let i = 0; i < args.length; i++) {
 if (pairs < 1) { console.error('--runs must be >= 1'); process.exit(2); }
 
 // ---- File paths ------------------------------------------------------
-const SITE_PDF = resolve('../docs/_site-pdf');
+// Anchored on this file, not on cwd. The old `resolve('../docs/_site-pdf')`
+// only worked when invoked from perf/; run from the repo root it reported a
+// missing print.css one directory above the repo, which reads as "the build
+// is stale" rather than "you are in the wrong folder".
+const SITE_PDF = resolve(fileURLToPath(import.meta.url), '../../docs/_site-pdf');
 const PRINT_CSS_PATH = join(SITE_PDF, 'assets/css/print.css');
-const ROUGE_CSS_PATH = join(SITE_PDF, 'assets/css/rouge.css');
+// The Shiki migration (builder/highlight.mjs + highlight-theme.mjs) replaced
+// Jekyll's rouge.css with a generated tb-highlight.css. This rig read the old
+// name and had been throwing ENOENT ever since.
+const HIGHLIGHT_CSS_PATH = join(SITE_PDF, 'assets/css/tb-highlight.css');
 const BOOK_HTML_PATH = join(SITE_PDF, 'book.html');
 // Single generated CSS that book-ab.html links to. Per-variant we write
-// it with whatever combination of print.css sections + rouge.css we want
-// to test; book-ab.html drops the rouge.css link, so the only stylesheet
-// the document loads is print-ab.css.
+// it with whatever combination of print.css sections + tb-highlight.css we
+// want to test; book-ab.html drops the tb-highlight.css link, so the only
+// stylesheet the document loads is print-ab.css.
 const SWAP_CSS_PATH = join(SITE_PDF, 'assets/css/print-ab.css');
 const SWAP_HTML_PATH = join(SITE_PDF, 'book-ab.html');
 
 const PRINT_CSS = readFileSync(PRINT_CSS_PATH, 'utf8');
-const ROUGE_CSS = readFileSync(ROUGE_CSS_PATH, 'utf8');
+const HIGHLIGHT_CSS = readFileSync(HIGHLIGHT_CSS_PATH, 'utf8');
 const BOOK_HTML = readFileSync(BOOK_HTML_PATH, 'utf8');
 
 // ---- Parse print.css into sections -----------------------------------
@@ -128,39 +143,59 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g
 // "extras" means print.css minus always-kept.
 const printAll       = sections.map(s => s.text).join('\n');
 const printMinimal   = sections.filter(s => ALWAYS_KEEP.has(s.name)).map(s => s.text).join('\n');
-const ROUGE_HEADER   = '\n/* ---- rouge.css inlined (concatenated by ab-css.mjs) ---- */\n';
+const HL_HEADER      = '\n/* ---- tb-highlight.css inlined (concatenated by ab-css.mjs) ---- */\n';
+
+// book.html links tb-highlight.css BEFORE print.css, so the concatenation has
+// to put it first too. Appending it instead inverts the cascade, which can
+// change which rules win, which changes layout and therefore the page count --
+// and a layout-cost A/B whose two sides paginate differently is measuring the
+// wrong thing.
+const withHighlight = (print) => HIGHLIGHT_CSS + HL_HEADER + print;
 
 const variants = [];
 // Top-level variants -- always run.
-variants.push({ label: 'baseline-full',       build: () => printAll     + ROUGE_HEADER + ROUGE_CSS });
-variants.push({ label: 'drop-rouge',          build: () => printAll });
-variants.push({ label: 'drop-print-extras',   build: () => printMinimal + ROUGE_HEADER + ROUGE_CSS });
+variants.push({ label: 'baseline-full',       build: () => withHighlight(printAll) });
+variants.push({ label: 'drop-highlight',      build: () => printAll });
+variants.push({ label: 'drop-print-extras',   build: () => withHighlight(printMinimal) });
 variants.push({ label: 'baseline-minimal',    build: () => printMinimal });
 
 // Optional per-section print.css sweep (opt-in via --per-print-section).
-// Each drop-<section> keeps full rouge.css and full print.css minus the
-// named section.
+// Each drop-<section> keeps the full highlight CSS and full print.css minus
+// the named section.
 if (perPrintSection) {
   for (const s of sections) {
     if (ALWAYS_KEEP.has(s.name)) continue;
     variants.push({
       label: 'drop-print-' + slug(s.name),
-      build: () => sections.filter(x => x.name !== s.name).map(x => x.text).join('\n') + ROUGE_HEADER + ROUGE_CSS,
+      build: () => withHighlight(sections.filter(x => x.name !== s.name).map(x => x.text).join('\n')),
     });
   }
 }
 
-// Swap book.html: replace the print.css link with print-ab.css, and
-// drop the rouge.css link (its content is inlined into print-ab.css
-// when the variant calls for it).
-let swappedHtml = BOOK_HTML
-  .replace('<link rel="stylesheet" href="assets/css/print.css">',
-           '<link rel="stylesheet" href="assets/css/print-ab.css">')
-  .replace(/\s*<link rel="stylesheet" href="assets\/css\/rouge\.css">/, '');
-if (swappedHtml === BOOK_HTML) {
-  console.error('failed to swap <link href=print.css> in book.html; aborting');
+// Swap book.html: replace the print.css link with print-ab.css, and drop the
+// tb-highlight.css link (its content is inlined into print-ab.css when the
+// variant calls for it).
+//
+// Both replacements are asserted, and the second one matters most. If the
+// highlight link survives, the document loads it on EVERY variant -- including
+// drop-highlight, whose whole purpose is not to. The rig would then report the
+// highlight stylesheet as costing nothing, which is a wrong answer rather than
+// an error. That is how this file came to be broken: the Shiki migration
+// renamed the stylesheet and only the readFileSync above failed loudly.
+const PRINT_LINK = '<link rel="stylesheet" href="assets/css/print.css">';
+const HL_LINK_RE = /\s*<link rel="stylesheet" href="assets\/css\/tb-highlight\.css">/;
+if (!BOOK_HTML.includes(PRINT_LINK)) {
+  console.error('no <link href=assets/css/print.css> in book.html; aborting');
   process.exit(3);
 }
+if (!HL_LINK_RE.test(BOOK_HTML)) {
+  console.error('no <link href=assets/css/tb-highlight.css> in book.html; aborting');
+  console.error('(has the highlight stylesheet been renamed again? see HIGHLIGHT_CSS_PATH)');
+  process.exit(3);
+}
+const swappedHtml = BOOK_HTML
+  .replace(PRINT_LINK, '<link rel="stylesheet" href="assets/css/print-ab.css">')
+  .replace(HL_LINK_RE, '');
 
 // ---- Render + measure ------------------------------------------------
 function runOnce(outDir) {
@@ -183,6 +218,28 @@ function runOnce(outDir) {
 // snapshot are identical for both rigs.  BLINK_LABELS is the default set of
 // labels CPU time is attributed to (any appearance in the hybrid stack counts
 // the sample, i.e. total-time semantics).
+
+// ---- Dry run ---------------------------------------------------------
+// Everything above is setup: locate the stylesheets, split print.css into
+// sections, build each variant's CSS, rewrite the <link> tags. Everything
+// below renders the book, several times, which is why nobody runs this
+// casually -- and why the Shiki rename sat here unnoticed until someone
+// went looking. --dry-run exercises the whole setup in about a second, so
+// the rot is cheap to detect.
+if (dryRun) {
+  console.log(`book.html:      ${BOOK_HTML.length} bytes`);
+  console.log(`print.css:      ${PRINT_CSS.length} bytes in ${sections.length} sections`);
+  console.log(`highlight CSS:  ${HIGHLIGHT_CSS.length} bytes  (${HIGHLIGHT_CSS_PATH})`);
+  console.log(`swapped HTML:   print-ab.css linked, highlight link removed`);
+  console.log('');
+  console.log('variants:');
+  for (const v of variants) {
+    console.log(`  ${v.label.padEnd(24)} ${String(v.build().length).padStart(7)} bytes`);
+  }
+  console.log('');
+  console.log('nothing written, nothing rendered.');
+  process.exit(0);
+}
 
 // ---- Main loop -------------------------------------------------------
 // Paired interleaving: for each variant, capture N (A, variant) pairs
