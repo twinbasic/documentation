@@ -42,8 +42,12 @@ import {
 pinCpuIfWindows({ toolName: 'ab-axe-pages' });
 
 // Ten real pages spanning the site's actual size range: five small ones around
-// the current SAMPLE_PAGES cluster, and the four largest pages in the site,
-// which is where a widened scan's cost would land.
+// the original SAMPLE_PAGES cluster, and the four largest pages in the site.
+//
+// Deliberately not SAMPLE_PAGES. The gate's sample is chosen for construct
+// coverage (scripts/pick_a11y_sample.mjs); this set is chosen to spread cost
+// evenly across the size curve, which is what a cost A/B needs. They overlap on
+// six pages and that is fine.
 const DEFAULT_PAGES = [
   '/404.html',
   '/index.html',

@@ -30,6 +30,44 @@ export const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 
 export const DEFAULT_ROOT_DIR = join(REPO_ROOT, "docs/_site-offline");
 
+// The pages the gate audits.  Not a hand-picked list any more: it is derived,
+// and scripts/pick_a11y_sample.mjs --check fails the build when the site grows
+// a construct no page here covers.
+//
+// The first six are the original sample.  They were chosen once, by hand, and
+// by the time anyone measured, the site had moved underneath them: all six sat
+// between 2,175 and 2,694 elements against a site maximum of 5,231, and not one
+// had a table, an image, a disclosure widget or a video card.  Rules for those
+// constructs ran against nothing and reported a pass.  A full-site sweep
+// (scripts/sweep_a11y.mjs, 3,488 audits) found six violation classes on 54
+// pages, every one of them in a construct the sample could not see.
+//
+// The rest close that gap, each earning its place:
+//
+//   Pipeline-Stages    the site's largest page (5,231 elements) and its
+//                      table-heaviest (35 tables, 109 <th>, 1,168 <code>).
+//                      Audit cost is super-linear in element count -- k = 2.73,
+//                      see builder/PLAN-axe-perf.md -- so this one page is 30 %
+//                      of the scan's audit time and is the only guard against
+//                      anything that degrades with page size.
+//   Features/index     callouts, footnotes, <sup>.  The footnote back-link is
+//                      what link-in-text-block caught.
+//   Menu/Window        images, <details>/<summary>, <kbd>.
+//   Videos/tB          the vendored video cards.
+//   Procedures-and-Functions   a bare index page: 1,157 list items, no prose.
+//
+// The site's 290 redirect stubs are deliberately absent, and cannot be added:
+// each carries `<script>location=...</script>`, which navigates before the
+// audit runs, so what axe walks is the redirect *target*.  A stub in this list
+// would silently be a duplicate audit of another page (measured: the stub for
+// /CustomControls.html and /Tutorials/CustomControls/index.html both report
+// 2,221 elements).  A page nobody sees for longer than 0 ms is not a page to
+// audit.
+//
+// Cost, measured across the full matrix: 15.3 s of audit against 6.2 s for the
+// original six -- 2.45x for eleven pages instead of six, because cost tracks
+// element count super-linearly rather than page count.  Pipeline-Stages alone
+// is 30 % of it.
 export const SAMPLE_PAGES = [
   "/index.html",
   "/tB/Core/Dim.html",
@@ -37,6 +75,11 @@ export const SAMPLE_PAGES = [
   "/Documentation/Development/BuildInfo.html",
   "/tB/Core/Select-Case.html",
   "/404.html",
+  "/Documentation/Development/Pipeline-Stages.html",
+  "/Features/index.html",
+  "/tB/IDE/Project/Menu/Window.html",
+  "/Videos/tB.html",
+  "/Reference/Procedures-and-Functions.html",
 ];
 
 // Fixed sizes keep the media queries -- and therefore which elements are laid
@@ -52,12 +95,12 @@ export const THEMES = ["light", "dark"];
 //
 // Every page in the offline tree pulls in the ~3.2 MB search index
 // (assets/js/search-data.js) plus lunr.  Loading and parsing it dominated the
-// run -- 18.9 s of a 27.1 s scan across the 24 page/theme/viewport
-// combinations -- and contributes nothing to the audit: it populates
-// window.store for the search box, it does not alter the DOM axe walks.
+// run -- 18.9 s of a 27.1 s scan, across what was then a 24-audit matrix --
+// and contributes nothing to the audit: it populates window.store for the
+// search box, it does not alter the DOM axe walks.
 // Aborting both cuts the scan to ~9.1 s (-66 %) with byte-identical results;
 // every rule id and node count, violations and incomplete alike, matched the
-// unblocked scan on all 24 combinations.
+// unblocked scan on every combination.
 //
 // just-the-docs.js is deliberately NOT blocked.  It installs the search
 // combobox ARIA (role=listbox, aria-activedescendant) added by Phase 2.1 of
@@ -312,7 +355,7 @@ export const SOURCE_PATCHES = {
   // The residual risk is enumeration: the private fields were invisible to
   // `Object.keys` / spread and the own properties are not. Nothing in the
   // bundle enumerates a Color, and the fingerprint gate covers the one
-  // consumer that would notice -- `color-contrast` results across 24 audits.
+  // consumer that would notice -- `color-contrast` results across the matrix.
   "plain-color-fields": {
     describe: "Color2's six #private fields as plain own properties (no WeakMaps)",
     apply(src) {
@@ -431,7 +474,7 @@ export async function gotoPage(page, { rootDir, filePath, theme }) {
  *
  * `performanceTimer` output does not appear in the return value --
  * _logGatherPerformance and performanceTimer.logMeasures go to console.log.
- * Relaying ~100 rules x 5 measures x 24 audits through CDP would be overhead
+ * Relaying ~100 rules x 5 measures per audit through CDP would be overhead
  * on the thing being measured, so the measures are read directly out of the
  * performance timeline instead; only the marks are cleared.
  *

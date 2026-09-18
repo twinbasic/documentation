@@ -9,7 +9,7 @@ avoidable work backed by numbers.
 
 ---
 
-## Outcome — all four phases complete
+## Outcome — all five phases complete
 
 **Decision: `plain-color-fields` adopted (−26 %). Take nothing else.**
 
@@ -20,9 +20,11 @@ though not the one the plan expected: replacing `Color2`'s WeakMap-emulated
 `#private` fields with plain properties is **26 % across a realistic page set
 and 30 % on large pages**, gated 24/24 and verified value-by-value.
 
-That decision is conditional on the scan being widened, which it is. At the
-current six small pages the same patch is worth ~0.7 s of a ~10 s scan and would
-not, on its own, have been worth the maintenance.
+That decision was conditional on the scan being widened. §Phase 4 widened it:
+six pages to eleven, 6.2 s of audit to 15.3 s, with one 5,231-element page
+carrying 30 % of the total — the shape the patch is worth most on. At the old
+six small pages it was worth ~0.7 s of a ~10 s scan and would not, on its own,
+have been worth the maintenance.
 
 It is wired into `check_a11y.mjs` (`AXE_PATCHES`), guarded by
 `check_axe_patch_equiv.mjs` in `check.bat` and both CI workflows, and reversible
@@ -35,7 +37,7 @@ What the investigation produced instead:
 | **The cost model** | Audit cost fits **k = 2.73 in element count** on real pages, and the exponent lives almost entirely in `color-contrast`. The other 63 rules are linear with a flat per-element cost. |
 | **The mechanism** | `Color2` (`axe.js:18186`), whose six `#private` fields are Babel-emulated with six `WeakMap`s and a `WeakSet` — fourteen weak-collection operations per construction, multiplied by a background stack that deepens with the page. Removing the emulation is the one change that pays. |
 | **A correctness gate** | `scripts/check_a11y_fingerprint.mjs`, plus a live demonstration (`no-html`) that it is necessary and **not sufficient**. |
-| **A sampling correction** | `SAMPLE_PAGES` contains only the site's *small* pages. The four largest cost ~5.9x each, so widening the scan costs far more than a page count implies — and those pages are the least-audited part of the site. |
+| **A sampling correction** | `SAMPLE_PAGES` contained only the site's *small* pages, and none of its tables, images, disclosure widgets or video cards. Widening it (§Phase 4) turned up **six violation classes on 54 pages**, every one in a construct the sample could not see. The sample is now derived, and its coverage gated by `scripts/pick_a11y_sample.mjs --check`. |
 
 Four of the five "confirmed defects" below did not survive contact with
 measurement. D2 — draft 2's headline, a vendored patch on memoizee — is
@@ -82,9 +84,15 @@ npx puppeteer browsers install chrome
 node scripts/check_a11y.mjs
 ```
 
-Expected today: **`0 violation(s), 20 incomplete check(s)`**, ~10 s wall clock.
+Expected today: **`0 violation(s), 32 incomplete check(s)`** over 11 pages.
 If that line differs, stop and reconcile — every experiment below is a delta
 against it.
+
+Phases 0–3 were measured against the *six*-page sample, whose line read
+`0 violation(s), 20 incomplete check(s)` at ~10 s wall clock. Phase 4 widened
+the sample to eleven pages; the extra `incomplete` groups are the added pages'
+`color-contrast`, not a regression. Absolute wall-clock figures below are from
+the six-page era unless they say otherwise — the *ratios* are what carry over.
 
 ### Provenance of the numbers in this plan
 
@@ -1415,6 +1423,10 @@ reports fewer rules, so the per-audit gate would fail it for the wrong reason).
 Both are small. The caveats in §H4 about `data-theme-choice` and
 `theme-toggle.js` still apply and should be re-read before starting.
 
+**Superseded: declined in §Phase 4.** Once the scan was widened, the dark pass
+was what caught a real defect that a light-only run would have passed, and
+~13 % of wall clock stopped being worth 97 % of dark-mode rule coverage.
+
 #### Phase 3 gate — **MET**. Decision: take `plain-color-fields`; take nothing else.
 
 The decision turns on whether the scan stays as it is. It is being widened, so:
@@ -1484,6 +1496,184 @@ actually added, since it is the one lever whose large-page behaviour is
 unresolved; then the theme collapse if still needed. **Not** per-rule disabling —
 Phase 1 showed the grid is shared, so switching off individual rules saves
 nothing.
+
+That order was followed. §Phase 4 is what happened.
+
+---
+
+### Phase 4 — widen — **DONE**
+
+The reason the other three phases happened. The scan was six pages of ~1,160;
+this is what widening it found and what it cost.
+
+#### The sample was not unrepresentative by degree — it was blind
+
+Phase 2 established the size problem: `SAMPLE_PAGES` spanned 2,175–2,694
+elements against a site maximum of 5,231. Counting *constructs* rather than
+elements turned out to be worse. Across the six pages:
+
+| construct | instances in the whole sample |
+|---|--:|
+| `<table>` / `<th>` | 0 |
+| `<img>` | 0 |
+| `<details>` / `<summary>` | 0 |
+| video card | 0 |
+| `<kbd>` | 0 |
+| footnote / `<sup>` | 0 |
+| `<blockquote>` | 1 |
+| admonition callout | 1 |
+| `<dl>` | 2 |
+
+`image-alt`, `th-has-data-cells`, `td-headers-attr`, `scope-attr-valid`,
+`definition-list`, `dlitem` and `scrollable-region-focusable` were all in the
+run options with **nothing to run on**. The gate's `0 violation(s)` was a true
+statement about six pages and was being read as a statement about the site.
+
+#### The full-site sweep — what the pass was hiding
+
+`scripts/sweep_a11y.mjs` audits every content page in the built tree, both
+themes, both viewports, streaming to JSONL so a ~20 min run survives an
+interruption. 869 content pages in production configuration — **3,488 audits**,
+counting twelve from a stub sample that turned out not to work (below):
+
+| rule | impact | pages | nodes | axes |
+|---|---|--:|--:|---|
+| `scrollable-region-focusable` | serious | 44 | 144 | all four |
+| `target-size` | serious | 2 | 34 | mobile only |
+| `heading-order` | moderate | 5 | 24 | all four |
+| `link-in-text-block` | serious | 4 | 16 | all four |
+| `role-img-alt` | serious | 2 | 8 | all four |
+| `color-contrast` | serious | 1 | 8 | all four |
+
+**Six violation classes on 54 pages, every one in a construct the sample could
+not see.** Each is now fixed, and a re-sweep of all 3,488 audits is clean:
+
+- `scrollable-region-focusable` — JTD's `.table-wrapper` is `overflow-x: auto`
+  (`tables.scss:11`) and had no `tabindex`. `div.highlight` got exactly this
+  treatment in PLAN-a11y.md 1.9; tables were missed because no sample page had
+  one. Fixed in `render.mjs`'s `table_open` rule (and `book.mjs`'s matching
+  strip).
+- `link-in-text-block` — the footnote back-link (`↩`) carries a class, so JTD's
+  `a:not([class])` underline never reached it, leaving colour as its only
+  distinction at 1.21:1 against the surrounding text. The footnote *reference*
+  is fine and needs no rule: its `<sup>` changes `font-size`, which axe's
+  `elementIsDistinct` counts as a non-colour distinction.
+- `target-size` — the FAQ's sixteen `<summary>` elements are 22.4 px tall at the
+  body size and stack tighter than the 24 px spacing allowance; and a heading
+  whose whole text is a link renders at 19 px in the mobile h3 size. Both are
+  standalone targets, so WCAG 2.5.8's inline exception does not cover them.
+- `heading-order` — five pages skip a level. `headingLevelNormalizePlugin`
+  repairs the legacy h1→h3 house style, but only on pages with *no* h2; a page
+  that mixes `##` and `###` and still skips is left alone, and five did.
+- `role-img-alt` — two tutorial diagrams were embedded with empty alt text, and
+  `buildSvgWrapper` turned that into `role="img" aria-label=""`: an explicit
+  claim that there is an image, with no name. `<img alt="">` would have passed
+  as decorative; an explicit role cannot. Both diagrams now have alt text, and
+  the builder warns and drops the role rather than emitting the broken form.
+- `color-contrast` — one Mermaid export was made with a dark theme while its
+  twin on the sibling tutorial used the default, leaving its edge labels at
+  4.43:1. Darkened to 6.06:1.
+
+#### The sample is now derived, and its coverage is gated
+
+The failure mode here is not that six pages were too few. It is that nothing
+*announced* the drift: a construct added to the docs is simply never audited,
+and the gate stays green. So `scripts/pick_a11y_sample.mjs` names the construct
+families, each with the rule that has nothing to run on without it, and
+`--check` fails when the site uses one no sample page carries. It runs in
+`check.bat` and both CI workflows, costs ~1 s, and needs no browser.
+
+`--propose` does the greedy set cover — cheapest page covering the most
+still-uncovered families — seeded from the current list so it prints what to
+*add*. `--fresh` covers from scratch, which is how to ask whether the existing
+pages still earn their place.
+
+The resulting sample is eleven pages: the original six, plus
+`Pipeline-Stages.html` (the site's largest and most table-dense),
+`Features/index.html` (callouts, footnotes, `<sup>`),
+`Menu/Window.html` (images, `<details>`, `<kbd>`), `Videos/tB.html` (video
+cards) and `Procedures-and-Functions.html` (1,157 list items, no prose).
+
+**Redirect stubs cannot be sampled**, which cost a false result to learn. The
+first version of both tools sampled three of the site's 290 stubs; every one
+reported ~2,200 elements. Each stub carries
+`<script>location=...</script>`, so the browser has navigated to the target
+before the audit runs — the stub audit *is* the target audit, duplicated. The
+stub for `/CustomControls.html` and `/Tutorials/CustomControls/index.html` both
+reported 2,221 elements, exactly. A page nobody sees for longer than 0 ms is not
+a page to audit, and both tools now exclude them by name rather than by cost.
+
+#### What the widening cost — and why `plain-color-fields` was the right call
+
+Measured per page from the sweep's own JSONL, summed over the full
+page x theme x viewport matrix:
+
+| sample | pages | audit time | vs. before |
+|---|--:|--:|--:|
+| original | 6 | 6.2 s | — |
+| widened | 11 | 15.3 s | **2.45x** |
+
+Not quite twice the pages for two and a half times the cost, exactly as Phase 2
+predicted: cost tracks element count super-linearly (k = 2.73), not page count.
+`Pipeline-Stages.html` alone is **30 %** of the widened total — one page of
+eleven.
+
+This is where `plain-color-fields` earns its maintenance. Phase 3 measured it at
+-26 % across a realistic page set and -30 % on large pages, and noted the
+decision was "conditional on the scan being widened". It has been, and the
+widened sample is exactly the shape the patch is worth most on: one very large
+page dominating, and `color-contrast` dominating that page.
+
+#### A fix that shipped half-broken, and what caught it
+
+The footnote underline went in as a root-level `.reversefootnote` rule,
+verified in light mode, and was wrong. The dark half of the re-sweep found it
+still failing on all four pages.
+
+The dark stylesheet is a second Sass compilation that re-emits every JTD base
+rule under its own scope, so `a { text-decoration: none }` (`base.scss:65`)
+reappears as `html[data-theme=dark] a`. That is specificity (0,1,2) against a
+bare `.reversefootnote`'s (0,1,0), so the underline applied in light and was
+overridden in dark — computed `text-decoration-line: underline` in one theme,
+`none` in the other. `.main-content .reversefootnote` is (0,2,0) and wins in
+both.
+
+Two things follow. **Any single-class rule in `custom/custom.scss` that
+overrides a bare element selector is beaten in dark mode**; prefix it with
+`.main-content`. And scanning both themes is not a formality — a light-only
+scan would have passed this, and the defect would have shipped.
+
+The same check clears the two `target-size` fixes in both themes: the heading
+link measures 25.0 px and the `<summary>` 24.0 px, light and dark alike.
+
+
+#### H4 theme collapse — declined, and the widening is why
+
+Phase 3 left the theme collapse on the table at ~17 %: full rule set in light,
+`{color-contrast, link-in-text-block}` in dark. On the widened scan that is
+roughly 2.7 s of a ~21 s run.
+
+**Not taken.** The case against it is no longer "harness complexity" — it is the
+evidence this phase produced.
+
+The collapse works by not running 62 of 64 rules in dark mode, on the argument
+that `_theme.scss` is a pure colour mixin so nothing non-colour can differ
+between themes. That argument is sound about the *stylesheet* and wrong about
+the *cascade*. The dark compilation re-emits every JTD base rule under
+`html[data-theme=dark]`, raising its specificity — which is how the footnote
+underline came to apply in light and not in dark, from one rule, with no colour
+change involved on our side at all. `link-in-text-block` happens to be in the
+collapsed dark set and would have caught that one. The next such defect need not
+be.
+
+So the trade is: give up 97 % of dark-mode rule coverage to save ~13 % of the
+scan's wall clock, immediately after discovering that narrow coverage had been
+hiding six violation classes on 54 pages. That is the wrong direction, and the
+saving is small enough that nothing forces it.
+
+It stays documented in §H4 and remains available if the scan's wall clock ever
+becomes the binding constraint. It is not one now: the whole scan is ~21 s,
+against `check_links.mjs` and the build itself in the same `check.bat` run.
 
 ---
 

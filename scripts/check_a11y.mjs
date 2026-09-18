@@ -1,9 +1,17 @@
 // Automated accessibility check for the built site.
 //
 // Scans sample pages using puppeteer + axe-core against WCAG 2.0, 2.1 and
-// 2.2 at Level A + AA, plus the heading-order best-practice rule.  Covers
-// all major content patterns: homepage, deep reference page, table-heavy
-// page, SVG diagrams, admonitions, and the 404 page.
+// 2.2 at Level A + AA, plus the heading-order best-practice rule.
+//
+// The sample is eleven pages out of ~1,160, so which eleven decides what this
+// script can possibly report.  They are no longer chosen by hand: the list in
+// lib/axe-scan.mjs is derived to cover every markup construct the site uses,
+// and `scripts/pick_a11y_sample.mjs --check` fails check.bat when the site
+// grows one the sample has no page for.  That guard exists because the previous
+// hand-picked six covered none of the site's tables, images, disclosure widgets
+// or video cards, and reported a clean pass while a full-site sweep found six
+// violation classes on 54 pages.  See sweep_a11y.mjs for the survey that
+// found them.
 //
 // Three details matter for the results to mean anything:
 //

@@ -40,7 +40,8 @@
 //   --candidate SCHEME  default: production (a self-test; must always pass)
 //   --root-dir DIR      default: docs/_site-offline
 //   --theme / --viewport / --pages   narrow the matrix (for quick iteration;
-//                                    a real gate run uses the full 24)
+//                                    a real gate run uses the full
+//                                    SAMPLE_PAGES x 2 themes x 2 viewports)
 //   --patches NAME,NAME apply source patches to the CANDIDATE bundle
 //   --json FILE         write both fingerprint lists + the diff
 //   --list              print the scheme registry and exit

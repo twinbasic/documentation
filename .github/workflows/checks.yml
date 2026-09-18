@@ -104,6 +104,13 @@ jobs:
       # PR that bumps axe-core is exactly when it earns its place.
       - name: Verify axe source patch (check_axe_patch_equiv.mjs)
         run: node scripts/check_axe_patch_equiv.mjs
+      # The scan is eleven pages of ~1,160, so its page list decides what it can
+      # report at all. This fails when the site grows a markup construct no
+      # sample page carries -- the drift that let the previous six-page sample
+      # report a clean pass while 54 pages had violations in constructs it never
+      # saw. No browser, ~1 s.
+      - name: Verify a11y sample coverage (pick_a11y_sample.mjs)
+        run: node scripts/pick_a11y_sample.mjs --check
       # Matches check.bat: the link check gates this, and a link failure
       # short-circuits before the (slower) browser scan runs. Scans
       # _site-offline/, whose relative asset paths actually resolve --

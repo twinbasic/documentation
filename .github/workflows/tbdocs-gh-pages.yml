@@ -99,6 +99,10 @@ jobs:
       # checks.yml for why the fingerprint gate does not cover this.
       - name: Verify axe source patch (check_axe_patch_equiv.mjs)
         run: node scripts/check_axe_patch_equiv.mjs
+      # Fails when the site grows a construct no sample page covers; see the
+      # same step in checks.yml. No browser, ~1 s.
+      - name: Verify a11y sample coverage (pick_a11y_sample.mjs)
+        run: node scripts/pick_a11y_sample.mjs --check
       # Same gate as check.bat and the PR workflow. Chromium is already
       # installed above for the PDF render, so this costs only the scan.
       - name: Accessibility check (check_a11y.mjs)

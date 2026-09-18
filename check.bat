@@ -15,5 +15,7 @@ node scripts/check_links.mjs --offline --include-fragments ^
 @if errorlevel 1 goto :eof
 node scripts/check_axe_patch_equiv.mjs
 @if errorlevel 1 goto :eof
+node scripts/pick_a11y_sample.mjs --check
+@if errorlevel 1 goto :eof
 node scripts/check_a11y.mjs
 @popd
