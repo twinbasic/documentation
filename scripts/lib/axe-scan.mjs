@@ -230,15 +230,29 @@ export function getScheme(label) {
 // are single lines on purpose -- a multi-line target would be one reformatting
 // away from breaking, and harder to re-derive by eye.
 
-function substitute(src, name, from, to) {
-  if (!src.includes(from)) {
+function substitute(src, name, from, to, expectedCount = null) {
+  const parts = src.split(from);
+  const found = parts.length - 1;
+  if (found === 0) {
     throw new Error(
       `patch "${name}": target not found in axe.js:\n  ${from}\n` +
         `The bundle has changed (axe-core upgrade?); re-derive before trusting it.`
     );
   }
-  return src.split(from).join(to);
+  if (expectedCount !== null && found !== expectedCount) {
+    throw new Error(
+      `patch "${name}": expected ${expectedCount} occurrence(s) of\n  ${from}\n` +
+        `but found ${found}. The bundle has changed; re-derive before trusting it.`
+    );
+  }
+  return parts.join(to);
 }
+
+// Color2's six private fields, in constructor-initialisation order. The
+// backing names are parameters of the bundle's top-level IIFE (axe.js:506) and
+// appear nowhere outside the class body, which is what makes a global
+// substitution safe -- verified by enumerating every occurrence.
+const COLOR2_FIELDS = ["_r", "_g", "_b", "_red", "_green", "_blue"];
 
 export const SOURCE_PATCHES = {
   // Babel emits a redeclaration guard on every private-field initialisation
@@ -268,6 +282,62 @@ export const SOURCE_PATCHES = {
         "if ('function' == typeof e ? e === t : e.has(t)) {",
         "if (true) {"
       );
+      return src;
+    },
+  },
+  // The full version of `cheap-private-fields`, scoped to the one class that
+  // matters: replace Color2's WeakMap-emulated `#private` fields with plain own
+  // properties.
+  //
+  // Phase 2 measured `_classPrivateFieldInitSpec` at 23.6 % of self-time on a
+  // 9,475-element page, with the sibling helpers taking it to ~34 %.
+  // `cheap-private-fields` only removes the guard calls and measured within
+  // noise, because the cost that remains is the `WeakMap.set` it keeps. This
+  // removes all of it: six `WeakMap.set` plus a `WeakSet.add` per construction,
+  // and a `WeakMap.get`/`set` on every colour-channel access.
+  //
+  // Safety, established by enumerating all 26 call sites (axe.js:18190-18356):
+  //
+  //   * The backing bindings (_r, _g, _b, _red, _green, _blue, _Class3_brand)
+  //     are IIFE parameters at axe.js:506 and are referenced nowhere outside
+  //     the Color2 body, so a global substitution cannot reach another class.
+  //   * `__r`-style names do not occur anywhere in the bundle.
+  //   * Color2 defines an explicit `toJSON` returning {red, green, blue,
+  //     alpha}, so serialisation does not see the new own properties.
+  //   * All six are initialised in the constructor before either return path,
+  //     ahead of `alpha`, so every instance keeps one hidden class.
+  //   * `_classPrivateFieldSet` returns the assigned value; every call site is
+  //     a statement, and `(this.__x = v)` has the same value anyway.
+  //
+  // The residual risk is enumeration: the private fields were invisible to
+  // `Object.keys` / spread and the own properties are not. Nothing in the
+  // bundle enumerates a Color, and the fingerprint gate covers the one
+  // consumer that would notice -- `color-contrast` results across 24 audits.
+  "plain-color-fields": {
+    describe: "Color2's six #private fields as plain own properties (no WeakMaps)",
+    apply(src) {
+      const n = "plain-color-fields";
+
+      // The brand only gates one private method call; drop both halves.
+      src = substitute(src, n + "/brand-init",
+        "_classPrivateMethodInitSpec(this, _Class3_brand);", "", 1);
+      src = substitute(src, n + "/brand-call",
+        "_assertClassBrand(_Class3_brand, this, _add)", "_add", 1);
+
+      for (const f of COLOR2_FIELDS) {
+        src = substitute(src, n + "/init" + f,
+          `_classPrivateFieldInitSpec(this, ${f}, void 0);`,
+          `this._${f} = void 0;`, 1);
+        src = substitute(src, n + "/get" + f,
+          `_classPrivateFieldGet(${f}, this)`,
+          `this._${f}`);
+        // Prefix-only substitution: the original call's closing paren becomes
+        // the closing paren of the assignment expression, so an arbitrary
+        // nested argument expression is carried across untouched.
+        src = substitute(src, n + "/set" + f,
+          `_classPrivateFieldSet(${f}, this, `,
+          `(this._${f} = `);
+      }
       return src;
     },
   },

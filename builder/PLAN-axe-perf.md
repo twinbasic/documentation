@@ -11,19 +11,25 @@ avoidable work backed by numbers.
 
 ## Outcome — all four phases complete
 
-**Decision: take nothing. The scan does not need optimising.**
+**Decision: take `plain-color-fields` (−26 %). Take nothing else.**
 
-Every candidate that passes the correctness gate measures within noise of zero
-at the sizes the scan actually runs at. The config-only set — the safe early win
-the plan expected to land first — is **9 ms ± 14 on a 349 ms audit**. A vendored
-patch is not worth it either, for a measured reason rather than a cautious one.
+Every *config* lever that passes the correctness gate measures within noise of
+zero — the config-only set, the safe early win the plan expected to land first,
+is **9 ms ± 14 on a 349 ms audit**. What does pay is a vendored source patch,
+though not the one the plan expected: replacing `Color2`'s WeakMap-emulated
+`#private` fields with plain properties is **26 % across a realistic page set
+and 30 % on large pages**, gated 24/24 and verified value-by-value.
+
+That decision is conditional on the scan being widened, which it is. At the
+current six small pages the same patch is worth ~140 ms of an ~8 s scan and
+would not be worth the maintenance.
 
 What the investigation produced instead:
 
 | | |
 |---|---|
 | **The cost model** | Audit cost fits **k = 2.73 in element count** on real pages, and the exponent lives almost entirely in `color-contrast`. The other 63 rules are linear with a flat per-element cost. |
-| **The mechanism** | `Color2` (`axe.js:18186`), whose six `#private` fields are Babel-emulated with six `WeakMap`s and a `WeakSet` — fourteen weak-collection operations per construction, multiplied by a background stack that deepens with the page. |
+| **The mechanism** | `Color2` (`axe.js:18186`), whose six `#private` fields are Babel-emulated with six `WeakMap`s and a `WeakSet` — fourteen weak-collection operations per construction, multiplied by a background stack that deepens with the page. Removing the emulation is the one change that pays. |
 | **A correctness gate** | `scripts/check_a11y_fingerprint.mjs`, plus a live demonstration (`no-html`) that it is necessary and **not sufficient**. |
 | **A sampling correction** | `SAMPLE_PAGES` contains only the site's *small* pages. The four largest cost ~5.9x each, so widening the scan costs far more than a page count implies — and those pages are the least-audited part of the site. |
 
@@ -1274,7 +1280,7 @@ result still shaped the way consumers expect". Any candidate that changes the
 read of the consumers. Adopting `noHtml` would mean fixing `check_a11y.mjs`
 first — for a win of −11 ms.
 
-#### The vendored patch is not worth it either
+#### The cheap patch is not worth it
 
 `SOURCE_PATCHES['cheap-private-fields']` removes Babel's redeclaration guard and
 brand assert — seven fewer `WeakMap`/`WeakSet` `has` calls per `Color2`
@@ -1283,15 +1289,78 @@ construction, plus two per colour-channel write. It gates clean and measures
 
 The profile attributed 23.6 % of self-time to `_classPrivateFieldInitSpec` at
 9,475 elements, so why so little? Because that self-time is dominated by the
-`WeakMap.set` the patch necessarily keeps, not by the `has` it removes. Getting
-the rest would mean rewriting `Color2` to use plain properties — a far larger,
-far riskier substitution against a generated bundle, to be re-derived on every
-axe-core upgrade.
+`WeakMap.set` the patch necessarily *keeps*, not by the `has` it removes.
 
-**Recommendation: do not vendor a patch.** The cheap version buys nothing and
-the expensive version is not worth its maintenance cost. Draft 2's headline
-recommendation (patch memoizee) and this document's own re-aim (patch `Color2`)
-are both withdrawn, each for a measured reason.
+#### The full rewrite is worth it — `plain-color-fields` **[measured]**
+
+`SOURCE_PATCHES['plain-color-fields']` takes the other half: `Color2`'s six
+`#private` fields become plain own properties, removing every `WeakMap.set` /
+`get` and the `WeakSet` brand as well.
+
+**Safety.** All 26 call sites (`18190-18356`) were enumerated before
+substituting, and the patch asserts an exact occurrence count at each one, so an
+axe-core upgrade that moves the code fails loudly:
+
+- The backing bindings (`_r`, `_g`, `_b`, `_red`, `_green`, `_blue`,
+  `_Class3_brand`) are parameters of the bundle's top-level IIFE (`axe.js:506`)
+  and appear **nowhere** outside the `Color2` body, so a global substitution
+  cannot reach another class. `__`-prefixed names do not occur in the bundle.
+- `_classPrivateFieldSet` returns the assigned value; every call site is a
+  statement, and the replacement `(this.__x = v)` has that value anyway.
+- All six fields are assigned in the constructor ahead of `alpha` and before
+  either return path, so every instance keeps one hidden class.
+
+**Correctness.** The fingerprint gate passes **24/24**. Because that gate
+compares `incomplete` as a rule-id *set*, a colour error that shifted ratios
+without flipping a classification could slip through it — so the patch was also
+checked directly, value by value: 11 colour-string forms (including `hsl` with
+`turn` and `rad` units), channel round-trips through both accessor pairs, the
+copy constructor, `getRelativeLuminance`, `toHexString`, and
+`getLuminosity`/`setLuminosity`, which exercises the private-method `#add` path
+behind the removed brand assert.
+
+**20 of 21 cases are byte-identical.** The one difference is exactly the
+expected one: `Object.keys(color)` now returns the six backing fields alongside
+`alpha`. It cannot reach a consumer — `Color2` defines an explicit `toJSON`
+returning `{red, green, blue, alpha}`, and `color-contrast` puts only
+`toHexString()` strings into result data (`27284-27285`), never a Color
+instance.
+
+**Cost of adoption.** The patch needs the unminified bundle. That is cheaper
+than it sounds: injection is **22 ms** per page for `axe.min.js` against
+**28 ms** for `axe.js` — 0.14 s across all 24 audits, against seconds saved.
+
+**The numbers.** Ten real pages, stock and patched interleaved per page per
+rep, 4 reps, median of each:
+
+| page | elements | stock | patched | Δ | % |
+|---|--:|--:|--:|--:|--:|
+| `404.html` | 2,175 | 138 | 131 | 7 | 4.8 |
+| `index.html` | 2,412 | 247 | 211 | 36 | 14.7 |
+| `Core/Dim.html` | 2,409 | 275 | 234 | 41 | 14.9 |
+| `Core/Select-Case.html` | 2,380 | 258 | 230 | 27 | 10.6 |
+| `Development/BuildInfo.html` | 2,694 | 205 | 202 | 3 | 1.4 |
+| `Modules/Interaction/index.html` | 2,404 | 283 | 256 | 26 | 9.3 |
+| `VB/PictureBox/index.html` | 4,095 | 1,298 | 970 | 328 | 25.3 |
+| `VB/Form/index.html` | 4,388 | 1,587 | 1,124 | 463 | 29.2 |
+| `VB/UserControl/index.html` | 4,672 | 1,838 | 1,285 | 552 | 30.1 |
+| `Development/Pipeline-Stages.html` | 5,231 | 1,752 | 1,174 | 578 | **33.0** |
+| **total** | | **7,880** | **5,818** | **2,062** | **26.2** |
+| small (<3k) | | 1,405 | 1,265 | 140 | 10.0 |
+| large (≥3k) | | 6,475 | 4,553 | 1,922 | **29.7** |
+
+The win rises monotonically with element count — 25.3, 29.2, 30.1, 33.0 — which
+is what the mechanism predicts, since Color construction volume is what grows
+super-linearly.
+
+> [!NOTE]
+> This supersedes an earlier, noisier reading. `ab-axe.mjs` put the same patch
+> at −39 ms median (mean 49 ± 166) on `Select-Case` and called it a wash. That
+> variant SD of 166, against a baseline SD of 9 in the same run, was the tell:
+> the tracer's overhead plus GC timing was swamping a ~10 % effect. The
+> interleaved, untraced, median-of-4 measurement above resolves it at +10.6 % on
+> that page. **When a variant's SD dwarfs the baseline's, distrust the variant,
+> not the effect.**
 
 #### On large pages: suggestive, unresolved, and at the rig's limit
 
@@ -1342,14 +1411,35 @@ reports fewer rules, so the per-audit gate would fail it for the wrong reason).
 Both are small. The caveats in §H4 about `data-theme-choice` and
 `theme-toggle.js` still apply and should be re-read before starting.
 
-#### Phase 3 gate — **MET**. Decision: take nothing now.
+#### Phase 3 gate — **MET**. Decision: take `plain-color-fields`; take nothing else.
 
-The scan costs ~8 s. Every lever that passes the correctness gate measures
-within noise of zero at the sizes the scan actually runs at, and the one
-structural option worth ~17 % costs real harness complexity to get.
+The decision turns on whether the scan stays as it is. It is being widened, so:
 
-**The measured answer is that this scan does not need optimising.** What the
-work produced instead is worth more than the milliseconds would have been:
+**Take `plain-color-fields`.** 26 % across a ten-page set spanning the real size
+range, 30 % on the pages that dominate a widened scan's cost, gated 24/24 and
+checked value-by-value. Adoption is one line in `check_a11y.mjs`:
+
+```js
+axeSource: readAxeSource({ minified: false, patches: ["plain-color-fields"] }),
+```
+
+The cost is real and should be stated plainly: it makes the site's correctness
+oracle depend on a text substitution against a pinned `axe-core` version. That
+is why the patch asserts an exact occurrence count at each of its eight
+substitution points — an upgrade that moves the code fails the build rather than
+silently reverting the optimisation. **Every axe-core bump now needs the
+fingerprint gate run across it**, which §Version already asks for on other
+grounds.
+
+**Take nothing else.** Every config lever measures within noise at every size
+tested. The theme collapse remains available at ~17 % and still costs harness
+complexity; with `plain-color-fields` taken it is worth less, because it saves
+non-contrast work and contrast is where the money is.
+
+Had the scan stayed at six small pages the answer would have been "take
+nothing": the same patch is worth ~140 ms there, against an ~8 s scan.
+
+What the work produced beyond the milliseconds:
 
 1. **A correctness gate** (`check_a11y_fingerprint.mjs`) that any future change
    to the scan runs through — plus a demonstration, in `no-html`, that it is
@@ -1362,11 +1452,13 @@ work produced instead is worth more than the milliseconds would have been:
    far more expensive than a page count suggests — and those large pages are
    also the least-audited part of the site.
 
-If cost ever does become binding, the order of attack is: weight the
-representative set by element count; re-measure `config-only` against the large
-pages actually added; then the theme collapse. Not the config levers, not a
-vendored patch, and not per-rule disabling — Phase 1 showed the grid is shared,
-so switching off individual rules saves nothing.
+For the widening itself, the order of attack is: take `plain-color-fields`;
+weight the representative set by element count (cost is k = 2.73 in page size,
+so a few large pages dominate); re-measure `config-only` against the large pages
+actually added, since it is the one lever whose large-page behaviour is
+unresolved; then the theme collapse if still needed. **Not** per-rule disabling —
+Phase 1 showed the grid is shared, so switching off individual rules saves
+nothing.
 
 ---
 

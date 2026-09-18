@@ -451,15 +451,24 @@ node probe-axe-dom.mjs --all-rules --top 15
 **Is a vendored patch worth it?** `scripts/lib/axe-scan.mjs` carries a
 `SOURCE_PATCHES` registry: named text substitutions applied to the
 injected axe bundle, so a patch can be measured and correctness-gated
-before anyone commits to maintaining a fork. Each substitution asserts
+before anyone commits to maintaining a fork. `plain-color-fields` is the
+one that paid -- 26 % across a realistic page set -- by replacing
+`Color2`'s WeakMap-emulated `#private` fields with plain properties. Each substitution asserts
 its target was found, so an axe-core upgrade that moves the code fails
 loudly rather than silently measuring nothing. The patch rides on a
 *variant*, so it still gets paired differencing:
 
 ```
-node ab-axe.mjs --patches cheap-private-fields
-node scripts/check_a11y_fingerprint.mjs --patches cheap-private-fields
+node ab-axe-pages.mjs --patch plain-color-fields
+node scripts/check_a11y_fingerprint.mjs --patches plain-color-fields
+node scripts/check_axe_patch_equiv.mjs --patch plain-color-fields
 ```
+
+The third is not optional for a patch to the colour maths. The
+fingerprint gate compares `incomplete` as a rule-id *set*, so a colour
+error that shifted contrast ratios without flipping a pass/fail
+classification would pass it; `check_axe_patch_equiv.mjs` compares the
+numbers themselves. Re-run both after every axe-core upgrade.
 
 **How does it scale?** Replicates a real page's `#main-content` to hit
 each element count, audits each size, and fits the exponent. Reports
@@ -537,6 +546,7 @@ or `--tracing`):
 | `grep-profile.mjs` | Lists every node in a `.cpuprofile` whose `functionName` matches a regex, with self-time and location. Quick check for "is this frame in the profile at all, and what's it called?" |
 | `ab-css.mjs` | CSS cost attribution for `docs/_site-pdf/assets/css/print.css` + `rouge.css`. Renders the book per variant (full / drop-rouge / drop-print-extras / baseline-minimal) and reports **paired-difference** CPU sample-time across N pairs (default 3), with the baseline re-measured immediately before each variant pair to cancel machine-state drift. Pulls per-`Document::recalcStyle` / `LocalFrameView::performLayout` / `rebuildLayoutTree` / `ShapeText` total time from the embedded V8 cpu profile in the hybrid trace; prints mean ± SD per variant so noise-floor rows are visible. Auto-pins on Windows via `pin-cpu.mjs`. Optional `--per-print-section` adds one drop-print-`<section>` variant per `/* ---- ---- */` divider in print.css; individual sections of print.css turned out to be below the noise floor on this book, so off by default. |
 | `ab-axe.mjs` | axe-core cost attribution for `scripts/check_a11y.mjs`. The sibling of `ab-css.mjs`, retargeted from CSS variants to axe rule sets; same pinning + paired-differencing + on-CPU-time methodology, plus two things this workload needs and the book does not (an in-page warmup that keeps V8's lazy compilation of `axe.js` out of the measured window, and `--iters` to measure a steady-state loop rather than one 0.4 s audit). Generates `drop-R` **and** `only-R` per rule, so a rule's marginal cost and the shared setup it triggers come apart. `--per-rule` switches to axe's own `performanceTimer` measures instead. `--schemes` pulls named configurations (`no-html`, `no-selectors`, `config-only`, ...) from `scripts/lib/axe-scan.mjs`. Prints the median paired Δ with mean ± SD beside it. |
+| `ab-axe-pages.mjs` | A/B one variant across a **page set** rather than across repeats of one page: interleaved stock/variant per page per rep, wall clock, untraced, per-page medians plus small/large bands. Use it when the question is "what does this buy on the pages we actually scan". It exists because `ab-axe.mjs` got `plain-color-fields` wrong -- it read a real +10 % as a wash, with a variant SD eighteen times its own baseline SD, because tracer overhead and GC timing swamped the effect. When a variant's SD dwarfs the baseline's, distrust the measurement. |
 | `probe-axe-dom.mjs` | Counts the DOM operations one axe audit performs, per rule -- `getComputedStyle`, `getPropertyValue`, `getBoundingClientRect`, `getClientRects`, `querySelectorAll`, and `outerHTML` (calls **and** characters serialised). The companion to `ab-axe.mjs`: that one says how many milliseconds, this one says doing what. Counts are deterministic, so one run per variant is enough and the ms column is orientation only. `--all-rules` sweeps every rule the production tag set admits. This is the tool that turned D1/D3/D4 in `PLAN-axe-perf.md` from source-reading into measurements. |
 | `probe-axe-scaling.mjs` | Node-count scaling curve (instrument 3). `--rules` / `--scheme` split the curve (contrast alone vs everything else), which is what localised the super-linear term; `--cpu-profile DIR` writes one `.cpuprofile` per size, and comparing the bottom-up tables across sizes is what *names* it -- the functions whose self-time share grows with n are the non-linear ones. Replicates the contents of a real page's `#main-content` until the element count hits each target -- keeping the DOM's character, which a hand-built synthetic page would not -- then audits each size and least-squares fits `metric = a * elements^k`, reporting `k` with R². Records operation counts alongside time: counts linear with time super-linear means the excess is axe's own bookkeeping (D2), not DOM work. Generated pages are written beside the source page and removed in a `finally`. |
 | `instrument-axe-dom.js` | The in-page half of `probe-axe-dom.mjs` / `probe-axe-scaling.mjs`. Wraps the DOM accessors that D1, D3 and D4 each name as their mechanism, exposing `window.__axeDomStats.{reset, read}`. Counts only -- no per-call timing, because `performance.now()` is clamped to ~5 us and timing 34,000 `getPropertyValue` calls would measure the clock. |
