@@ -29,13 +29,17 @@
 // correctness gate) and perf/ab-axe.mjs (the cost-attribution rig).  They have
 // to stay in step or the gate stops gating what this script runs.
 //
+// The scan runs a PATCHED axe bundle -- see AXE_PATCHES below.
+//
 // Usage:  node scripts/check_a11y.mjs [--root-dir DIR] [--theme light|dark|both]
 //                                     [--viewport desktop|mobile|both]
+//                                     [--stock-axe]
 //
 // Requires `build.bat` to have produced an up-to-date _site-offline/.
 
 import { resolve } from "node:path";
 import {
+  axeVersion,
   DEFAULT_ROOT_DIR,
   THEMES,
   VIEWPORTS,
@@ -52,10 +56,12 @@ const args = process.argv.slice(2);
 let rootDir = DEFAULT_ROOT_DIR;
 let themeArg = "both";
 let viewportArg = "both";
+let stockAxe = false;
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--root-dir" && args[i + 1]) rootDir = args[++i];
   else if (args[i] === "--theme" && args[i + 1]) themeArg = args[++i];
   else if (args[i] === "--viewport" && args[i + 1]) viewportArg = args[++i];
+  else if (args[i] === "--stock-axe") stockAxe = true;
 }
 rootDir = resolve(rootDir);
 
@@ -63,7 +69,42 @@ const themes = themeArg === "both" ? THEMES : [themeArg];
 const viewports =
   viewportArg === "both" ? Object.keys(VIEWPORTS) : [viewportArg];
 
+// Source patches applied to the axe bundle before injection.
+//
+// plain-color-fields replaces Color2's six WeakMap-emulated `#private` fields
+// with plain own properties.  axe-core ships only a Babel-downleveled bundle,
+// so every `new Color2()` otherwise runs fourteen weak-collection operations
+// before any colour maths -- and colour-contrast, which is ~60 % of an audit
+// and the source of its super-linear growth in page size, constructs enormous
+// numbers of them.  Measured at -26 % across a ten-page set spanning the site's
+// real size range, and -30 % on the large pages that dominate a widened scan.
+// See builder/PLAN-axe-perf.md.
+//
+// Two obligations come with this, and they are not optional:
+//
+//   1. Every axe-core upgrade must re-run BOTH
+//      `node scripts/check_a11y_fingerprint.mjs --patches plain-color-fields`
+//      and `node scripts/check_axe_patch_equiv.mjs`.  The first checks axe
+//      still finds the same things; the second checks the colour maths still
+//      produces the same numbers, which the first cannot see (it compares
+//      `incomplete` as a rule-id set).
+//   2. If a result ever looks wrong, re-run with --stock-axe before doing
+//      anything else.  That injects the unmodified bundle and tells you in one
+//      command whether the patch is implicated.
+//
+// The patch asserts an exact occurrence count at each substitution point, so an
+// upgrade that moves the code throws here rather than silently reverting to the
+// slow path.  If that happens, --stock-axe keeps the scan working while the
+// patch is re-derived.
+const AXE_PATCHES = stockAxe ? [] : ["plain-color-fields"];
+
 async function main() {
+  console.log(
+    AXE_PATCHES.length
+      ? `axe-core ${axeVersion()} + ${AXE_PATCHES.join(", ")}`
+      : `axe-core ${axeVersion()} (stock)`
+  );
+
   const browser = await launchBrowser();
   const page = await newAuditPage(browser);
 
@@ -75,7 +116,12 @@ async function main() {
   await runMatrix(page, {
     rootDir,
     matrix,
-    axeSource: readAxeSource(),
+    // Patches require the unminified bundle.  That costs ~6 ms more per page
+    // to inject (22 -> 28 ms), against seconds saved on the audit itself.
+    axeSource: readAxeSource({
+      minified: AXE_PATCHES.length === 0,
+      patches: AXE_PATCHES,
+    }),
     runOptions: AXE_RUN_OPTIONS,
     onAudit({ label, results }) {
       const { violations, incomplete } = results;

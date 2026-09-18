@@ -92,6 +92,18 @@ jobs:
           --offline --no-fail --include-fragments
           --root-dir docs/_site-pdf
           docs/_site-pdf/book.html
+      # check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
+      # -26 % on a realistic page set -- see builder/PLAN-axe-perf.md), so the
+      # patch has to be verified before its results are trusted. The patch
+      # asserts its substitution targets and so fails loudly if an axe-core
+      # bump moves the code; this catches the other case, where the text still
+      # matches but the colour maths has changed. The fingerprint gate cannot
+      # see that -- it compares `incomplete` as a rule-id set.
+      #
+      # Cheap (one page, two bundles) and Chromium is already installed. The
+      # PR that bumps axe-core is exactly when it earns its place.
+      - name: Verify axe source patch (check_axe_patch_equiv.mjs)
+        run: node scripts/check_axe_patch_equiv.mjs
       # Matches check.bat: the link check gates this, and a link failure
       # short-circuits before the (slower) browser scan runs. Scans
       # _site-offline/, whose relative asset paths actually resolve --

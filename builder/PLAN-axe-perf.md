@@ -11,7 +11,7 @@ avoidable work backed by numbers.
 
 ## Outcome — all four phases complete
 
-**Decision: take `plain-color-fields` (−26 %). Take nothing else.**
+**Decision: `plain-color-fields` adopted (−26 %). Take nothing else.**
 
 Every *config* lever that passes the correctness gate measures within noise of
 zero — the config-only set, the safe early win the plan expected to land first,
@@ -21,8 +21,12 @@ though not the one the plan expected: replacing `Color2`'s WeakMap-emulated
 and 30 % on large pages**, gated 24/24 and verified value-by-value.
 
 That decision is conditional on the scan being widened, which it is. At the
-current six small pages the same patch is worth ~140 ms of an ~8 s scan and
-would not be worth the maintenance.
+current six small pages the same patch is worth ~0.7 s of a ~10 s scan and would
+not, on its own, have been worth the maintenance.
+
+It is wired into `check_a11y.mjs` (`AXE_PATCHES`), guarded by
+`check_axe_patch_equiv.mjs` in `check.bat` and both CI workflows, and reversible
+in one command via `--stock-axe`.
 
 What the investigation produced instead:
 
@@ -1415,21 +1419,42 @@ Both are small. The caveats in §H4 about `data-theme-choice` and
 
 The decision turns on whether the scan stays as it is. It is being widened, so:
 
-**Take `plain-color-fields`.** 26 % across a ten-page set spanning the real size
-range, 30 % on the pages that dominate a widened scan's cost, gated 24/24 and
-checked value-by-value. Adoption is one line in `check_a11y.mjs`:
+**Taken: `plain-color-fields` is in production** as of `check_a11y.mjs`'s
+`AXE_PATCHES`. 26 % across a ten-page set spanning the real size range, 30 % on
+the pages that dominate a widened scan's cost, gated 24/24 and checked
+value-by-value.
 
-```js
-axeSource: readAxeSource({ minified: false, patches: ["plain-color-fields"] }),
-```
+Measured on the *current* six-page scan, stock vs patched, three interleaved
+reps — identical findings every time:
 
-The cost is real and should be stated plainly: it makes the site's correctness
-oracle depend on a text substitution against a pinned `axe-core` version. That
-is why the patch asserts an exact occurrence count at each of its eight
-substitution points — an upgrade that moves the code fails the build rather than
-silently reverting the optimisation. **Every axe-core bump now needs the
-fingerprint gate run across it**, which §Version already asks for on other
-grounds.
+| rep | stock | patched | Δ |
+|---|--:|--:|--:|
+| 1 | 10,870 ms | 9,595 ms | 1,275 |
+| 2 | 10,225 ms | 9,545 ms | 680 |
+| 3 | 9,057 ms | 8,717 ms | 340 |
+
+Modest, as expected — `SAMPLE_PAGES` is all small pages, and audit time is only
+part of a scan's wall clock. The win arrives with the widening.
+
+**The cost, stated plainly:** the site's correctness oracle now depends on a
+text substitution against a pinned `axe-core`. Three things contain that:
+
+1. **The patch asserts an exact occurrence count at each substitution point.**
+   Verified against all four failure modes — a moved target, a changed
+   occurrence count, an unknown patch name, and `patches` with `minified: true`
+   — each throws a named, actionable error. An upgrade that moves the code fails
+   the build; it cannot silently revert to the slow path.
+2. **`check_axe_patch_equiv.mjs` runs in `check.bat` and in both CI workflows**,
+   immediately before the a11y check. It catches the case the assertions cannot:
+   text that still matches while the colour maths has changed. The fingerprint
+   gate cannot see that, because it compares `incomplete` as a rule-id set.
+3. **`check_a11y.mjs --stock-axe` injects the unmodified bundle.** If a result
+   ever looks wrong, that is one command to find out whether the patch is
+   implicated.
+
+Every axe-core bump must re-run `check_a11y_fingerprint.mjs --patches
+plain-color-fields` as well; CI covers the equivalence half automatically, and
+§Version already asks for the fingerprint half on other grounds.
 
 **Take nothing else.** Every config lever measures within noise at every size
 tested. The theme collapse remains available at ~17 % and still costs harness

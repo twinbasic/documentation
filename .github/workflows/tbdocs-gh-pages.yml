@@ -94,6 +94,11 @@ jobs:
           --offline --no-fail --include-fragments
           --root-dir docs/_site-pdf
           docs/_site-pdf/book.html
+      # check_a11y.mjs injects a PATCHED axe bundle; verify the patch is still
+      # value-preserving before trusting what it reports. See the same step in
+      # checks.yml for why the fingerprint gate does not cover this.
+      - name: Verify axe source patch (check_axe_patch_equiv.mjs)
+        run: node scripts/check_axe_patch_equiv.mjs
       # Same gate as check.bat and the PR workflow. Chromium is already
       # installed above for the PDF render, so this costs only the scan.
       - name: Accessibility check (check_a11y.mjs)
