@@ -42,8 +42,12 @@ export function pinCpuIfWindows(opts = {}) {
   const mask = process.env.PERF_AFFINITY || opts.defaultMask || DEFAULT_MASK;
 
   const argv0 = process.argv[1];
+  // An empty-string argument must be quoted too: it contains neither
+  // whitespace nor a quote, so an unquoted `` simply vanishes when cmd.exe
+  // re-splits the line, silently shifting every later argument by one. That
+  // turned `--rules "" --per-rule` into `--rules --per-rule`.
   const userArgs = process.argv.slice(2)
-    .map(a => /[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a)
+    .map(a => (a === '' || /[\s"]/.test(a)) ? `"${a.replace(/"/g, '\\"')}"` : a)
     .join(' ');
 
   console.error(`[${toolName}] Re-launching with /affinity 0x${mask} /high to stabilise measurements.`);
