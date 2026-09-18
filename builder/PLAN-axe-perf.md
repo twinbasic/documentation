@@ -59,23 +59,30 @@ are not in the repo** — do not go looking for them. What is committed is
 `scripts/check_a11y.mjs` (the production scanner, which carries the
 search-index blocking) and the `perf/` apparatus described in §Methodology.
 
-### Version hazard — read before trusting any line number
+### Version — line numbers are pinned, and why
 
 Roughly fifty citations below are line numbers into
-`node_modules/axe-core/axe.js` at **4.13.0**, and `package.json` declares
-`"axe-core": "^4.13.0"` — a caret range. A minor upgrade silently invalidates
-every one of them.
+`node_modules/axe-core/axe.js`. `package.json` therefore pins
+**`"axe-core": "4.13.0"`** exactly — no caret — matching what this repo already
+does for the other two dependencies it reasons about at source level:
+`"puppeteer": "25.0.4"` and `"pdf-lib": "1.17.1"`. A caret range would let a
+minor upgrade silently invalidate every citation in this document.
 
-Check first:
+Sanity check before trusting a line number:
 
 ```sh
 node -p "require('axe-core/package.json').version"
 ```
 
-If it is not `4.13.x`, treat line numbers as approximate and re-locate by symbol
-name. Consider pinning exactly, which is what this repo already does for the
-other two dependencies with deep patches — `"puppeteer": "25.0.4"` and
-`"pdf-lib": "1.17.1"` both sit at exact versions for precisely this reason.
+If it is not `4.13.0`, someone bumped the pin: treat every line number as
+approximate and re-locate by symbol name instead.
+
+Upgrading axe-core is now a deliberate act with two consequences. It
+re-invalidates the citations, **and** it can legitimately change the scan's
+findings — axe ships new and revised WCAG rules between minors. Run the
+fingerprint harness across the bump and read the diff as *news*, not as a
+regression to be suppressed; the gate exists to make a change visible, not to
+freeze coverage at its current level.
 
 ### First task
 

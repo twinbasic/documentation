@@ -7,7 +7,7 @@
     "@hpcc-js/wasm-graphviz": "^1.21",
     "acorn": "^8.0",
     "acorn-walk": "^8.0",
-    "axe-core": "^4.13.0",
+    "axe-core": "4.13.0",
     "fast-glob": "^3.3",
     "gray-matter": "^4.0",
     "html-entities": "^2.6.0",
