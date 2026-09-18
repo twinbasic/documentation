@@ -273,7 +273,12 @@ A pseudo-element cannot take `aria-hidden` (it is not a DOM node), so the alt-te
 
 ### Approach: axe-core post-build check
 
-`scripts/check_a11y.mjs` drives `puppeteer` and injects `axe-core` (`node_modules/axe-core/axe.min.js`, then `axe.run`) to scan built pages, and is wired into `check.bat` after the link check. The ruleset is `["wcag2a", "wcag2aa", "wcag22aa"]`.
+`scripts/check_a11y.mjs` drives `puppeteer` and injects `axe-core` (`node_modules/axe-core/axe.min.js`, then `axe.run`) to scan built pages, and is wired into `check.bat` after the link check. The ruleset is `["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]` plus an explicitly-enabled `heading-order`.
+
+> [!NOTE]
+> The tag list originally read `["wcag2a", "wcag2aa", "wcag22aa"]`, which silently skipped every rule tagged only for WCAG 2.1 — `autocomplete-valid`, `avoid-inline-spacing` (1.4.12 text spacing), `css-orientation-lock`, `label-content-name-mismatch`. axe's `matchTags()` is a literal tag test with no version rollup, so "2.2 AA is a superset of 2.1 AA" does not hold at the tag level. Fixed along with re-admitting `heading-order`, which is `best-practice`-tagged and was therefore excluded by the tag filter while nothing else guarded heading structure. Neither change moved the result: still 0 violations, 20 incomplete.
+>
+> `heading-order` guards the six sampled pages against regression but does **not** catch the five known h1→h3 survivors listed in 3.3 — none of them is in `SAMPLE_PAGES`. That is a sampling gap, not a rule-selection gap.
 
 **Correction (`3db9794`):** the script originally scanned `_site/` over `file://`, where the online tree's root-absolute asset URLs (`/assets/css/…`) never resolve — every page loaded unstyled and every contrast result was a meaningless black-on-white pass. It now scans **`_site-offline/`** (relative asset paths, renders for real), in **both themes** (dark mode is a separate stylesheet with its own palette) at **two viewports** (defects such as horizontally scrolling code blocks only appear once the layout is narrow enough to overflow).
 
@@ -286,7 +291,7 @@ A pseudo-element cannot take `aria-hidden` (it is not a DOM node), so the alt-te
 6. `/404.html`
 
 **Configuration:**
-- WCAG 2.2 AA ruleset
+- WCAG 2.0 / 2.1 / 2.2 Level A + AA tags, plus `heading-order`
 - Reports violations and incomplete checks
 - Exit code 1 on any violation (currently 0 violations)
 

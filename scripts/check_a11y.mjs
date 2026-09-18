@@ -1,8 +1,9 @@
 // Automated accessibility check for the built site.
 //
-// Scans sample pages using puppeteer + axe-core against the WCAG 2.2 AA
-// ruleset.  Covers all major content patterns: homepage, deep reference
-// page, table-heavy page, SVG diagrams, admonitions, and the 404 page.
+// Scans sample pages using puppeteer + axe-core against WCAG 2.0, 2.1 and
+// 2.2 at Level A + AA, plus the heading-order best-practice rule.  Covers
+// all major content patterns: homepage, deep reference page, table-heavy
+// page, SVG diagrams, admonitions, and the 404 page.
 //
 // Three details matter for the results to mean anything:
 //
@@ -101,10 +102,26 @@ async function checkPage(page, filePath, theme) {
   await page.evaluate(axeSource);
   const results = await page.evaluate(async () => {
     return await axe.run(document, {
+      // WCAG 2.2 AA is a superset of 2.1 AA, which is a superset of 2.0 AA --
+      // but axe's matchTags() is a literal tag test with no version rollup, so
+      // a rule tagged only wcag21aa does NOT match "wcag22aa".  All five tags
+      // have to be listed or the 2.1 additions never run.  They never did
+      // until this was fixed: autocomplete-valid, avoid-inline-spacing
+      // (WCAG 1.4.12 text spacing), css-orientation-lock and
+      // label-content-name-mismatch were all silently skipped.  There is no
+      // "wcag22a" tag in axe-core 4.13.
       runOnly: {
         type: "tag",
-        values: ["wcag2a", "wcag2aa", "wcag22aa"],
+        values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
       },
+      // heading-order is tagged best-practice rather than WCAG, so the tag
+      // filter above excludes it -- and nothing else guards heading structure:
+      // check_links.mjs has no notion of headings, and render.mjs's
+      // headingLevelNormalizePlugin repairs the legacy h1->h3 house style at
+      // build time without reporting it.  ruleShouldRun() tests an explicit
+      // rules[id].enabled BEFORE the tag filter, so this re-admits the one
+      // rule without dragging in the rest of best-practice.
+      rules: { "heading-order": { enabled: true } },
     });
   });
 

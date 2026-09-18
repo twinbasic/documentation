@@ -108,7 +108,7 @@ Online link crawler for the deployed site. Starts at `<start-url>`, GETs every s
 
     node scripts/check_a11y.mjs [--root-dir <path>] [--theme light|dark|both] [--viewport desktop|mobile|both]
 
-Automated accessibility scan of the built site, run by `check.bat` after the link check passes. Loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against six sample pages --- the homepage, a deep reference page, a table-heavy module index, an SVG-diagram page, an admonition-heavy page, and the 404 --- using the `wcag2a`, `wcag2aa`, and `wcag22aa` rule tags. Exits 1 if any page has a violation and 2 on an internal error; incomplete (needs-review) results are reported but do not fail the run.
+Automated accessibility scan of the built site, run by `check.bat` after the link check passes. Loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against six sample pages --- the homepage, a deep reference page, a table-heavy module index, an SVG-diagram page, an admonition-heavy page, and the 404 --- using the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, and `wcag22aa` rule tags, plus the `heading-order` best-practice rule. All five WCAG tags must be listed because axe matches tags literally, with no version rollup --- a rule tagged only `wcag21aa` does not match `wcag22aa`, even though WCAG 2.2 AA is a superset of 2.1 AA. Exits 1 if any page has a violation and 2 on an internal error; incomplete (needs-review) results are reported but do not fail the run.
 
 | Flag | Effect |
 |---|---|

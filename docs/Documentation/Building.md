@@ -63,7 +63,7 @@ This runs two passes of `scripts/check_links.mjs`: one against `_site/` (the onl
 
 ## Checking accessibility
 
-When the link check passes, `check.bat` continues into an accessibility scan: [`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over six sample pages against the WCAG 2.2 AA ruleset, and exits non-zero on any violation. A link-check failure stops the run before this stage.
+When the link check passes, `check.bat` continues into an accessibility scan: [`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over six sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. A link-check failure stops the run before this stage.
 
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 
