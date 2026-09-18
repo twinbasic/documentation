@@ -8,3 +8,6 @@ node_modules/
 /after-*/
 /findoverflow-baseline/
 indexer/.packages/
+
+# Temporary session handoff notes. Root-anchored: only the repo-root file.
+/HANDOFF.md
