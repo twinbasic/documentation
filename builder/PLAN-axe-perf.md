@@ -13,12 +13,19 @@ avoidable work backed by numbers.
 
 **Decision: `plain-color-fields` adopted (−26 %). Take nothing else.**
 
-Every *config* lever that passes the correctness gate measures within noise of
-zero — the config-only set, the safe early win the plan expected to land first,
-is **9 ms ± 14 on a 349 ms audit**. What does pay is a vendored source patch,
-though not the one the plan expected: replacing `Color2`'s WeakMap-emulated
-`#private` fields with plain properties is **26 % across a realistic page set
-and 30 % on large pages**, gated 24/24 and verified value-by-value.
+What pays is a vendored source patch, and not the one the plan expected:
+replacing `Color2`'s WeakMap-emulated `#private` fields with plain properties is
+**26 % across a realistic page set and 30 % on large pages**, gated audit-by-audit
+and verified value-by-value.
+
+> [!IMPORTANT]
+> **Phase 3's other headline — "every config lever measures within noise of
+> zero" — is retracted.** It came from `ab-axe.mjs`, which read `config-only` at
+> 9 ms ± 14 on a 349 ms audit. Re-measured in §Phase 4 on the untraced rig it is
+> **−10.7 %**, eleven pages of eleven positive, against a **−0.4 %** A/A control.
+> `config-only` is still declined, but on diagnostic grounds rather than cost:
+> `noHtml` and `selectors: false` delete the two fields that say which element
+> failed, and every defect §Phase 4 fixed was found through them.
 
 That decision was conditional on the scan being widened. §Phase 4 widened it:
 six pages to eleven, 6.2 s of audit to 15.3 s, with one 5,231-element page
@@ -1646,6 +1653,55 @@ scan would have passed this, and the defect would have shipped.
 The same check clears the two `target-size` fixes in both themes: the heading
 link measures 25.0 px and the `<summary>` 24.0 px, light and dark alike.
 
+
+#### `config-only` re-measured — it is **not** within noise, and it is still declined
+
+Phase 3's headline was "every config lever that passes the correctness gate
+measures within noise of zero", from `ab-axe.mjs` reading `config-only` at
+**9 ms ± 14 on a 349 ms audit**. Re-measured on the widened sample with
+`ab-axe-pages.mjs` — untraced, interleaved per page — it is **−10.7 %**:
+
+| page | elems | base | config-only | Δ |
+|---|--:|--:|--:|--:|
+| `/404.html` | 2,175 | 141 | 126 | 11.0 % |
+| `/Videos/tB.html` | 2,288 | 166 | 157 | 5.8 % |
+| `/Features/index.html` | 2,295 | 373 | 328 | 12.2 % |
+| `/tB/Core/Select-Case.html` | 2,380 | 280 | 253 | 9.6 % |
+| `/tB/Modules/Interaction/index.html` | 2,404 | 291 | 256 | 11.9 % |
+| `/tB/Core/Dim.html` | 2,409 | 284 | 274 | 3.7 % |
+| `/index.html` | 2,412 | 263 | 224 | 15.0 % |
+| `/tB/IDE/Project/Menu/Window.html` | 2,624 | 297 | 261 | 12.2 % |
+| `/Documentation/Development/BuildInfo.html` | 2,700 | 214 | 180 | 15.8 % |
+| `/Reference/Procedures-and-Functions.html` | 2,777 | 552 | 501 | 9.2 % |
+| `/Documentation/Development/Pipeline-Stages.html` | 5,231 | 1,807 | 1,612 | 10.8 % |
+| **total** | | **4,669** | **4,171** | **10.7 %** |
+
+Eleven pages of eleven positive, small band −10.6 % and large band −10.8 %, so
+it is flat in page size rather than concentrated anywhere.
+
+**A/A control**, same rig, same day, six of the same pages, `production` against
+itself: **−0.4 %** total, per-page deltas from −3.6 % to +6.0 % with mixed
+signs. There is no baseline-first ordering bias to explain the effect away.
+
+So this is the second time `ab-axe.mjs` has mis-read a ~10 % effect as noise —
+the same failure it produced on `plain-color-fields` (§Phase 3), and for the
+same reason: tracer overhead plus GC timing swamping the signal. **Treat
+`ab-axe.mjs` as a tool for large effects and per-rule attribution, and
+`ab-axe-pages.mjs` as the one that decides anything under ~20 %.**
+
+**Still declined**, and not on cost grounds. `config-only` is
+`noHtml: true` + `selectors: false` + `no-autoplay-audio` off, and the first two
+delete the fields that say *which element failed*: `node.html` becomes null and
+`node.target` stops being generated. Every defect fixed in this phase was
+identified from exactly those two fields — `.table-wrapper`, `.reversefootnote`,
+`#current-status`, and a `<p style="background-color: rgb(88, 88, 88)">` buried
+in a `foreignObject`. A scan that reports "six violation classes, somewhere"
+costs far more than the ~2 s it saves across the full matrix.
+
+`noHtml` would also crash the reporter as written (`check_a11y.mjs` calls
+`.slice()` on `node.html`) — the live demonstration in §Phase 3 that the
+fingerprint gate is necessary and not sufficient. That is a two-line fix and is
+not the reason to decline.
 
 #### H4 theme collapse — declined, and the widening is why
 
