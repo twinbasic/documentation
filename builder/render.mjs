@@ -265,8 +265,17 @@ export function createMarkdownIt(ctx) {
   // default renderToken first so markdown-it's per-token block-prefix
   // whitespace handling still produces the leading newline when the
   // table sits at the start of a list-item / dd / blockquote child.
+  //
+  // tabindex="0" for the same reason highlight.mjs puts it on div.highlight
+  // (PLAN-a11y.md 1.9): the wrapper is `overflow-x: auto` (JTD
+  // tables.scss:11), and a scroll container a keyboard user cannot focus
+  // cannot be scrolled without a pointer. Unconditional, as on code blocks --
+  // whether a given table overflows depends on the viewport, so there is no
+  // render-time answer. custom.scss gives the focus a visible ring.
   md.renderer.rules.table_open = (tokens, idx, opts, _env, slf) =>
-    slf.renderToken(tokens, idx, opts).replace(/<table>/, `<div class="table-wrapper"><table>`);
+    slf
+      .renderToken(tokens, idx, opts)
+      .replace(/<table>/, `<div class="table-wrapper" tabindex="0"><table>`);
   md.renderer.rules.table_close = (tokens, idx, opts, _env, slf) =>
     `</table></div>` + slf.renderToken(tokens, idx, opts).replace(/<\/table>/, "");
 
@@ -1792,6 +1801,22 @@ function svgInlinePlugin(md, ctx) {
 
 function buildSvgWrapper(svgContent, alt, stem, srcRel) {
   const esc = escapeHtml;
+
+  // `role="img"` with an empty `aria-label` is worse than no role at all: it
+  // tells a screen reader there is an image here and then refuses to say what
+  // it is, which axe reports as role-img-alt (serious).  An `<img alt="">`
+  // would pass as decorative; an explicit role cannot.  A diagram is never
+  // decorative anyway, so an empty alt here is an authoring error -- say so,
+  // and drop the role rather than ship the broken form.
+  const labelled = alt.trim() !== "";
+  if (!labelled) {
+    console.warn(
+      `render: ${srcRel} is embedded with no alt text -- the diagram will have ` +
+        `no accessible name. Add one: ![describe the diagram](...)`
+    );
+  }
+  const imgRole = labelled ? ` role="img" aria-label="${esc(alt)}"` : "";
+
   return `<div class="svg-inline-wrap">` +
     `<div class="svg-controls">` +
     `<button type="button" class="btn-reset" data-action="download-svg" data-filename="${esc(stem)}">Download SVG</button>` +
@@ -1800,7 +1825,7 @@ function buildSvgWrapper(svgContent, alt, stem, srcRel) {
     `<button type="button" class="btn-reset" data-action="copy-png" data-filename="${esc(stem)}">Copy PNG</button>` +
     `<button type="button" class="btn-reset" data-action="zoom-svg" aria-label="Zoom diagram">Zoom</button>` +
     `</div>` +
-    `<div class="svg-container" data-svg-src="${esc(srcRel)}" role="img" aria-label="${esc(alt)}">` +
+    `<div class="svg-container" data-svg-src="${esc(srcRel)}"${imgRole}>` +
     svgContent +
     `</div>` +
     `</div>`;

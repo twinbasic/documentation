@@ -365,7 +365,9 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
   // (see render.mjs's table_open / table_close rules), so undo
   // the wrap here so the per-chapter body matches Jekyll's pre-wrap
   // shape.
-  result = result.replaceAll(`<div class="table-wrapper"><table>`, `<table>`);
+  // Attribute-tolerant: render.mjs adds `tabindex="0"` here for WCAG 2.1.1,
+  // and an exact-string match silently stopped stripping the moment it did.
+  result = result.replace(/<div class="table-wrapper"[^>]*><table>/g, `<table>`);
   result = result.replaceAll(`</table></div>`, `</table>`);
 
   // Step 3: whitespace span wrapping (longest first).

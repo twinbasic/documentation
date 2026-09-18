@@ -14,7 +14,7 @@ The complete project ships as *Sample 1b --- Chromium Embedded Framework Example
 
 ## Architecture
 
-![](Images/MonacoArchitecture.svg)
+![A twinBASIC form holding two CefBrowser controls. The left one hosts the Monaco editor and posts the edited HTML to a JsMessage handler in twinBASIC code; the handler passes it to the right control through NavigateToString, which renders the preview.](Images/MonacoArchitecture.svg)
 
 The editor runs as a local web app under a virtual hostname; the preview pane is fed raw HTML through [**NavigateToString**](../../tB/Packages/CEF/CefBrowser/#navigatetostring).
 

@@ -60,9 +60,11 @@
 }
 
 // WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container
-// tabindex="0" so a keyboard user can scroll an overflowing block. Give that
+// tabindex="0", and render.mjs does the same for the table wrapper, so a
+// keyboard user can scroll an overflowing block or a wide table. Give that
 // focus a visible indicator.
-div.highlight:focus-visible {
+div.highlight:focus-visible,
+.table-wrapper:focus-visible {
   outline: 2px solid;
   outline-offset: 2px;
 }
@@ -258,4 +260,56 @@ div.highlight:focus-visible {
     outline: 3px solid;
     outline-offset: 3px;
   }
+}
+
+// Footnote back-reference links (`↩`, appended to each footnote body).
+//
+// The theme underlines prose links with `a:not([class])` (base.scss:68), so a
+// link that carries a class gets colour and nothing else.  For the back-link
+// that is a WCAG 1.4.1 failure and axe reports it as link-in-text-block: it
+// sits inside the footnote paragraph, at the paragraph's own font size, with no
+// border, background or decoration to tell it apart from the text around it.
+//
+// The footnote *reference* -- the superscript marker -- needs no such rule.
+// Its `<sup>` wrapper changes font-size, which axe's elementIsDistinct counts
+// as a non-colour distinction on its own.
+//
+// The `.main-content` prefix is load-bearing, and the reason is a trap worth
+// knowing before writing any rule in this file. The dark compilation re-emits
+// every JTD base rule under its own scope, so `a { text-decoration: none }`
+// (base.scss:65) reappears as `html[data-theme=dark] a` -- specificity (0,1,2).
+// A bare `.reversefootnote` is (0,1,0) and loses to it, which is exactly what
+// happened: the underline applied in light mode and silently did not in dark,
+// and only the dark half of the sweep caught it. `.main-content
+// .reversefootnote` is (0,2,0) and wins in both themes.
+.main-content .reversefootnote {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+// WCAG 2.5.8 Target Size (Minimum). Two standalone targets in page content sit
+// under the 24x24 CSS px floor once the mobile type scale shrinks them. Neither
+// is covered by the criterion's inline exception: that exempts a link inside a
+// sentence, and these are not in sentences.
+//
+// A <summary> is 22.4px tall at the body size (16px x 1.4) and the FAQ stacks
+// sixteen of them, so the spacing allowance does not rescue it either -- axe
+// measures a safe clickable diameter of 20.8px between neighbours. min-height
+// clears the floor outright.
+.main-content summary {
+  min-height: 24px;
+}
+
+// A heading whose entire text is a link (Features/index.md uses ten) renders at
+// 19px in the mobile h3 size. Vertical padding grows the hit box -- which is
+// what the criterion measures -- without changing the line height or moving the
+// text. The anchor-heading link is excluded: it is the paragraph mark, hidden
+// until the heading is hovered.
+.main-content h1 > a:not(.anchor-heading),
+.main-content h2 > a:not(.anchor-heading),
+.main-content h3 > a:not(.anchor-heading),
+.main-content h4 > a:not(.anchor-heading),
+.main-content h5 > a:not(.anchor-heading),
+.main-content h6 > a:not(.anchor-heading) {
+  padding-block: 3px;
 }

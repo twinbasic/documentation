@@ -42,7 +42,7 @@ Events follow the same pattern in reverse:
 - The event is transmitted back across the IPC channel  
 - Your application receives it as if it originated locally  
 
-#### Important characteristics:
+### Important characteristics:
 
 - There is a small inherent overhead due to cross-process communication  
 - All parameters and return values must be serialised/deserialised  
@@ -155,12 +155,12 @@ This explicit path must be set **before** opening any Fusion-backed form or cont
 
 Fusion is a compatibility layer, but not all ActiveX controls are supported.
 
-#### Currently NOT supported:
+### Currently NOT supported:
 - Windowless controls
 - Container controls
 - Controls that depend on other sited controls
 
-#### Other Known Limitations:
+### Other Known Limitations:
 - No tab navigation between controls
 - Property pages are not yet implemented
 - Unsupported Properties
