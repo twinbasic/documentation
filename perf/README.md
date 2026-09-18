@@ -416,6 +416,56 @@ incompatibility applies (no process phase to profile).
 See [notes/08-pdf-lib.md](notes/08-pdf-lib.md) for the process-phase
 investigations these flags enabled.
 
+## Profiling the accessibility scan: canonical command
+
+The odd one out in this folder: everything above profiles the PDF book,
+this profiles `scripts/check_a11y.mjs`. It lives here because it reuses
+the same apparatus -- `pin-cpu.mjs`, paired differencing, on-CPU time
+from the embedded V8 profile -- and because `ab-axe.mjs` is a direct
+retarget of `ab-css.mjs`. The investigation it serves is
+[builder/PLAN-axe-perf.md](../builder/PLAN-axe-perf.md).
+
+Rule ablation (run from `perf/`; needs `build.bat` to have produced
+`docs/_site-offline/`):
+
+```
+node ab-axe.mjs --runs 7 --iters 10 --rules color-contrast
+```
+
+Per-rule timing table instead of an ablation:
+
+```
+node ab-axe.mjs --rules none --per-rule
+```
+
+Any change to what the scan runs goes through the correctness gate
+first, from the repo root:
+
+```
+node scripts/check_a11y_fingerprint.mjs --candidate no-html
+```
+
+Three things about this workload differ from the book and are easy to
+get wrong -- the full account is in
+[PLAN-axe-perf.md's methodology addendum](../builder/PLAN-axe-perf.md#what-phase-0-had-to-add--the-noise-was-not-where-this-section-assumed):
+
+- **Keep V8's lazy compilation out of the measured window.** The first
+  `axe.run` in a JS context compiles most of a 1.3 MB library.
+  `--in-page-warmup` (default 1) pays it before tracing starts. Skipping
+  this was 17 % variance; fixing it and the next item got to 2 %.
+- **A fresh browser per run makes things worse**, not better, because it
+  puts that lazy-compile into every sample. `ab-css.mjs` never hit this
+  because it shells out to `measure.mjs` and gets process isolation for
+  free. `--reuse-browser` is available; the default is fresh-per-run,
+  which is fine once the in-page warmup is doing its job.
+- **Parse traces after the run loop, not inside it.** A synchronous
+  `JSON.parse` of a multi-MB trace on a four-core affinity mask, between
+  two measurements, was the single largest noise source.
+
+`--runs 3 --iters 5` (the defaults) are for iteration. Cite `--runs 7
+--iters 10`, and cite the **median** paired difference -- the tool prints
+it as the headline with mean and SD beside it.
+
 ## What's in this folder
 
 The harness and core probes:
@@ -423,7 +473,7 @@ The harness and core probes:
 | File | Role |
 | --- | --- |
 | `measure.mjs` | Puppeteer harness. Drives the same flow as `docs/render-book.mjs` (loads the vendored paged.js bundle, runs `PagedPolyfill.preview()`, calls `page.pdf()`, then either the pdf-lib roundtrip or the incremental writer), with optional CPU profiling, in-page handler injection, and DOM-accessor instrumentation. Auto-pins to a fixed core mask on Windows via `pin-cpu.mjs` (see below) for stable measurements; pass `--no-affinity` to opt out. |
-| `pin-cpu.mjs` | Shared shim used by `measure.mjs`, `profile-load.mjs`, `profile-roundtrip.mjs`, and `ab-css.mjs`. On Windows, auto-relaunches the parent Node process under `start /affinity 0x5500 /high` (cores 4-7 physical, thread 0 each, on an 8C16T AMD Ryzen 7) so puppeteer's Chromium children inherit the mask + priority at spawn time. Reduces single-run CPU sample-time variance from ~15-25 % on a stock dev box to ~3 %. No-op on non-Windows; opt out per-invocation with `--no-affinity` or `PERF_PINNED=1`; override mask with `PERF_AFFINITY=<hex>`. |
+| `pin-cpu.mjs` | Shared shim used by `measure.mjs`, `profile-load.mjs`, `profile-roundtrip.mjs`, `ab-css.mjs`, and `ab-axe.mjs`. On Windows, auto-relaunches the parent Node process under `start /affinity 0x5500 /high` (cores 4-7 physical, thread 0 each, on an 8C16T AMD Ryzen 7) so puppeteer's Chromium children inherit the mask + priority at spawn time. Reduces single-run CPU sample-time variance from ~15-25 % on a stock dev box to ~3 %. No-op on non-Windows; opt out per-invocation with `--no-affinity` or `PERF_PINNED=1`; override mask with `PERF_AFFINITY=<hex>`. |
 | `timing-handler.js` | `Paged.Handler` that records per-page wall time + heap into `window.__pagedTiming` and streams a line per page to the console. Injected when `--timing` is passed; off by default because the per-page console relay costs ~2 % of render self-time. |
 | `detach-pages.js` | `Paged.Handler` that hides each completed page from the layout tree (registered against `finalizePage`). The shipping fix. Injected by default (both by `measure.mjs` and by `docs/book.bat`); pass `--no-detach-pages` to measure the pre-fix baseline. |
 | `instrument-flush-ops.js` | Wraps `getComputedStyle`, `getBoundingClientRect`, and the `offsetWidth` / `clientWidth` / `scrollWidth` family with counters + per-call timing. Injected by `--instrument`. |
@@ -450,6 +500,8 @@ or `--tracing`):
 | `find-callees.mjs` | The other direction of `find-callers.mjs`: splits a function's self+descendant time across its direct callees. Surfaces the cases where V8 has rolled native DOM work back into the calling JS frame (Range deletion in `removeOverflow`, HTML parser in `wrapContent`). |
 | `grep-profile.mjs` | Lists every node in a `.cpuprofile` whose `functionName` matches a regex, with self-time and location. Quick check for "is this frame in the profile at all, and what's it called?" |
 | `ab-css.mjs` | CSS cost attribution for `docs/_site-pdf/assets/css/print.css` + `rouge.css`. Renders the book per variant (full / drop-rouge / drop-print-extras / baseline-minimal) and reports **paired-difference** CPU sample-time across N pairs (default 3), with the baseline re-measured immediately before each variant pair to cancel machine-state drift. Pulls per-`Document::recalcStyle` / `LocalFrameView::performLayout` / `rebuildLayoutTree` / `ShapeText` total time from the embedded V8 cpu profile in the hybrid trace; prints mean ± SD per variant so noise-floor rows are visible. Auto-pins on Windows via `pin-cpu.mjs`. Optional `--per-print-section` adds one drop-print-`<section>` variant per `/* ---- ---- */` divider in print.css; individual sections of print.css turned out to be below the noise floor on this book, so off by default. |
+| `ab-axe.mjs` | axe-core cost attribution for `scripts/check_a11y.mjs`. The sibling of `ab-css.mjs`, retargeted from CSS variants to axe rule sets; same pinning + paired-differencing + on-CPU-time methodology, plus two things this workload needs and the book does not (an in-page warmup that keeps V8's lazy compilation of `axe.js` out of the measured window, and `--iters` to measure a steady-state loop rather than one 0.4 s audit). Generates `drop-R` **and** `only-R` per rule, so a rule's marginal cost and the shared setup it triggers come apart. `--per-rule` switches to axe's own `performanceTimer` measures instead. `--schemes` pulls named configurations (`no-html`, `no-selectors`, `config-only`, ...) from `scripts/lib/axe-scan.mjs`. Prints the median paired Δ with mean ± SD beside it. |
+| `trace-cpu-stats.mjs` | `cpuStatsFromTrace` + `TRACE_CATEGORIES`, shared by `ab-css.mjs` and `ab-axe.mjs`. Reconstructs the V8 sampling profile from a hybrid trace's `Profile` / `ProfileChunk` events, snapshots the Blink event nest at each sample, and returns total on-CPU time plus per-Blink-label totals. Extracted from `ab-css.mjs` verbatim when the second rig needed it. |
 | `ab-aggregate.mjs` | Per-row mean + SD aggregator across 6 paired cpu profiles (`ab-A1..A3.cpuprofile` and `ab-B1..B3.cpuprofile`). Use when wall-clock noise drowns a structural change: capture 3+3 interleaved profiles via `measure.mjs --cpu-profile` with the change toggled on/off between runs, then point this at the 6 files for a mean-with-SD table that surfaces deltas wall-clock can't see (e.g. ~6 σ shifts on rows that move from 88 ms to 2 ms). See *Disabling the filter outright* in [notes/05-blink-trace.md](notes/05-blink-trace.md) for the methodology. |
 
 Memory probes (added during the phase-7 investigation):

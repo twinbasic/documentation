@@ -494,7 +494,7 @@ Both blocking passes also run `--check-remote-assets`, which fails the run on an
 
 The render-side halves are `videoLinkPlugin` (marked link -> poster frame + outbound link) and `remoteImagePlugin` (user-attachment `<img src>` -> the vendored copy), both in [builder/render.mjs](builder/render.mjs). Both emit **root-absolute** paths, because the PDF book flattens every page into one document and a page-relative src resolves against the book root there.
 
-It then runs [scripts/check_a11y.mjs](scripts/check_a11y.mjs), which drives puppeteer + axe-core over six sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule) and exits non-zero on any violation. Note that all five WCAG tags — `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa` — must be listed: axe matches tags literally with no version rollup, so a rule tagged only `wcag21aa` does **not** match `wcag22aa`. Three details of that script matter and are easy to break:
+It then runs [scripts/check_a11y.mjs](scripts/check_a11y.mjs), which drives puppeteer + axe-core over six sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule) and exits non-zero on any violation. What the scan actually *is* -- the page list, the viewports, the themes, the blocked requests and the axe run options -- lives in [scripts/lib/axe-scan.mjs](scripts/lib/axe-scan.mjs), shared with the correctness gate and the measurement rig below; `check_a11y.mjs` itself is only the reporting front end. Note that all five WCAG tags — `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa` — must be listed: axe matches tags literally with no version rollup, so a rule tagged only `wcag21aa` does **not** match `wcag22aa`. Three details of that script matter and are easy to break:
 
 - It scans **`_site-offline/`, not `_site/`**. The online tree references its assets with root-absolute URLs (`/assets/css/…`), which resolve to nothing under `file://` — every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass. The offline tree uses relative asset paths and renders for real.
 - It scans each page **in both themes and at two viewports** (`--theme`, `--viewport`). Dark mode is a separate stylesheet with its own palette, and defects such as horizontally scrolling code blocks only appear once the layout is narrow enough to overflow.
@@ -503,6 +503,21 @@ It then runs [scripts/check_a11y.mjs](scripts/check_a11y.mjs), which drives pupp
 Syntax-highlight token colours are kept above 4.5:1 automatically: [builder/highlight-theme.mjs](builder/highlight-theme.mjs) clamps any colour from the vendored `.theme` files that fails against the code-block background, moving lightness away from the background while preserving hue and saturation. The vendored themes stay faithful to the IDE; the emitted rule carries a `raised to 4.5:1` comment naming the original colour.
 
 Requires `build.bat` to have produced an up-to-date `_site/`.
+
+### Changing the scan
+
+axe is the site's correctness oracle, which makes it a dangerous thing to tune: a change can make axe see *less* and still report a clean pass. This nearly happened once -- blocking `just-the-docs.js` during the scan looked like a 130 ms win and quietly dropped the colour-contrast node count on `Select-Case` from 54 to 2.
+
+So any change to *what the scan runs* goes through [scripts/check_a11y_fingerprint.mjs](scripts/check_a11y_fingerprint.mjs) first. It runs the full 24-audit matrix twice, once under each of two named configurations from the scheme registry in `axe-scan.mjs`, against one build in one process, and diffs the findings audit by audit -- violations by `ruleId:nodeCount`, incomplete by rule-id set.
+
+```sh
+node scripts/check_a11y_fingerprint.mjs --list
+node scripts/check_a11y_fingerprint.mjs --candidate no-html
+```
+
+It has one blind spot worth knowing: it compares a candidate against a baseline produced by that same scheme's element set, so it cannot detect a change that stops auditing elements *entirely*. Anything touching which DOM is walked -- viewport, visibility, request blocking -- has to be argued from source instead.
+
+Cost attribution for the scan lives in [perf/ab-axe.mjs](perf/ab-axe.mjs); the investigation it serves is [builder/PLAN-axe-perf.md](builder/PLAN-axe-perf.md).
 
 The build itself includes an additional guard: tbdocs's nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during the COMPUTE phase and aborts the build if any nav-visible page has a `parent:` (or `parent:` + `grand_parent:`) that does not resolve to exactly one page in the nav tree. It catches two failure modes:
 

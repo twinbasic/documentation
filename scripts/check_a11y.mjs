@@ -20,21 +20,36 @@
 //     defects such as horizontally scrolling code blocks only appear once the
 //     layout is narrow enough to overflow.
 //
-//   * The search index is blocked during the scan (see BLOCKED_REQUESTS).
-//     It is inert for auditing purposes but dominated the run time.
+//   * The search index is blocked during the scan (see BLOCKED_REQUESTS in
+//     lib/axe-scan.mjs).  It is inert for auditing purposes but dominated the
+//     run time.
+//
+// The page list, viewports, themes, blocked requests and axe run options all
+// live in lib/axe-scan.mjs, shared with check_a11y_fingerprint.mjs (the
+// correctness gate) and perf/ab-axe.mjs (the cost-attribution rig).  They have
+// to stay in step or the gate stops gating what this script runs.
 //
 // Usage:  node scripts/check_a11y.mjs [--root-dir DIR] [--theme light|dark|both]
 //                                     [--viewport desktop|mobile|both]
 //
 // Requires `build.bat` to have produced an up-to-date _site-offline/.
 
-import { readFileSync } from "node:fs";
-import { resolve, join } from "node:path";
-import { pathToFileURL } from "node:url";
-import puppeteer from "puppeteer";
+import { resolve } from "node:path";
+import {
+  DEFAULT_ROOT_DIR,
+  THEMES,
+  VIEWPORTS,
+  AXE_RUN_OPTIONS,
+  SAMPLE_PAGES,
+  buildMatrix,
+  launchBrowser,
+  newAuditPage,
+  readAxeSource,
+  runMatrix,
+} from "./lib/axe-scan.mjs";
 
 const args = process.argv.slice(2);
-let rootDir = "docs/_site-offline";
+let rootDir = DEFAULT_ROOT_DIR;
 let themeArg = "both";
 let viewportArg = "both";
 for (let i = 0; i < args.length; i++) {
@@ -44,168 +59,63 @@ for (let i = 0; i < args.length; i++) {
 }
 rootDir = resolve(rootDir);
 
-const THEMES = themeArg === "both" ? ["light", "dark"] : [themeArg];
-
-// Fixed sizes keep the media queries -- and therefore which elements are laid
-// out and visible to axe -- the same from run to run.
-const VIEWPORTS = {
-  desktop: { width: 1280, height: 900 },
-  mobile: { width: 375, height: 812 },
-};
-const VIEWPORT_NAMES =
+const themes = themeArg === "both" ? THEMES : [themeArg];
+const viewports =
   viewportArg === "both" ? Object.keys(VIEWPORTS) : [viewportArg];
 
-const axeSource = readFileSync(
-  resolve("node_modules/axe-core/axe.min.js"),
-  "utf-8"
-);
-
-// Requests aborted for the duration of the scan.
-//
-// Every page in the offline tree pulls in the ~3.2 MB search index
-// (assets/js/search-data.js) plus lunr. Loading and parsing it dominated
-// the run -- 18.9 s of a 27.1 s scan across the 24 page/theme/viewport
-// combinations -- and contributes nothing to the audit: it populates
-// window.store for the search box, it does not alter the DOM axe walks.
-// Aborting both cuts the scan to ~9.1 s (-66 %) with byte-identical
-// results; every rule id and node count, violations and incomplete
-// alike, matched the unblocked scan on all 24 combinations.
-//
-// just-the-docs.js is deliberately NOT blocked. It installs the search
-// combobox ARIA (role=listbox, aria-activedescendant) added by Phase 2.1
-// of builder/PLAN-a11y.md, and blocking it makes axe see *less* -- the
-// colour-contrast node count on Select-Case drops 54 -> 2 -- which would
-// silently mask coverage for ~130 ms.
-const BLOCKED_REQUESTS = [/search-data\.js/, /lunr\.min\.js/];
-
-const SAMPLE_PAGES = [
-  "/index.html",
-  "/tB/Core/Dim.html",
-  "/tB/Modules/Interaction/index.html",
-  "/Documentation/Development/BuildInfo.html",
-  "/tB/Core/Select-Case.html",
-  "/404.html",
-];
-
-async function checkPage(page, filePath, theme) {
-  const url = pathToFileURL(join(rootDir, filePath)).href;
-  await page.goto(url, { waitUntil: "domcontentloaded" });
-
-  // theme-toggle.js reads localStorage, which is unavailable on file://
-  // origins.  Set the data-theme attribute it would have set instead (an
-  // explicit override; its declarations are identical to the no-JS
-  // prefers-color-scheme path, so this exercises the same dark palette).
-  await page.evaluate((t) => {
-    document.documentElement.setAttribute("data-theme", t);
-  }, theme);
-
-  await page.evaluate(axeSource);
-  const results = await page.evaluate(async () => {
-    return await axe.run(document, {
-      // WCAG 2.2 AA is a superset of 2.1 AA, which is a superset of 2.0 AA --
-      // but axe's matchTags() is a literal tag test with no version rollup, so
-      // a rule tagged only wcag21aa does NOT match "wcag22aa".  All five tags
-      // have to be listed or the 2.1 additions never run.  They never did
-      // until this was fixed: autocomplete-valid, avoid-inline-spacing
-      // (WCAG 1.4.12 text spacing), css-orientation-lock and
-      // label-content-name-mismatch were all silently skipped.  There is no
-      // "wcag22a" tag in axe-core 4.13.
-      runOnly: {
-        type: "tag",
-        values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
-      },
-      // heading-order is tagged best-practice rather than WCAG, so the tag
-      // filter above excludes it -- and nothing else guards heading structure:
-      // check_links.mjs has no notion of headings, and render.mjs's
-      // headingLevelNormalizePlugin repairs the legacy h1->h3 house style at
-      // build time without reporting it.  ruleShouldRun() tests an explicit
-      // rules[id].enabled BEFORE the tag filter, so this re-admits the one
-      // rule without dragging in the rest of best-practice.
-      rules: { "heading-order": { enabled: true } },
-    });
-  });
-
-  return results;
-}
-
 async function main() {
-  // --no-sandbox: GitHub's ubuntu-24.04 runners carry the AppArmor
-  // restriction on unprivileged user namespaces, which Chrome's sandbox
-  // needs -- without this the launch fails in CI. --disable-dev-shm-usage
-  // avoids crashes where /dev/shm is small (containers). Neither touches
-  // layout or computed style, so axe sees exactly what it sees locally;
-  // book/render-book.mjs passes the same pair for the same reason.
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-dev-shm-usage"],
-  });
-  const page = await browser.newPage();
-
-  await page.setRequestInterception(true);
-  page.on("request", (req) => {
-    if (BLOCKED_REQUESTS.some((re) => re.test(req.url()))) {
-      req.abort().catch(() => {});
-    } else {
-      req.continue().catch(() => {});
-    }
-  });
+  const browser = await launchBrowser();
+  const page = await newAuditPage(browser);
 
   let totalViolations = 0;
   let totalIncomplete = 0;
 
-  const seen = new Set();
-  const pages = SAMPLE_PAGES.filter((p) => {
-    if (seen.has(p)) return false;
-    seen.add(p);
-    return true;
-  });
+  const matrix = buildMatrix({ pages: SAMPLE_PAGES, themes, viewports });
 
-  for (const viewport of VIEWPORT_NAMES) {
-    await page.setViewport(VIEWPORTS[viewport]);
-    for (const theme of THEMES) {
-      for (const filePath of pages) {
-        const label = `${filePath} [${theme}, ${viewport}]`;
-        const results = await checkPage(page, filePath, theme);
+  await runMatrix(page, {
+    rootDir,
+    matrix,
+    axeSource: readAxeSource(),
+    runOptions: AXE_RUN_OPTIONS,
+    onAudit({ label, results }) {
+      const { violations, incomplete } = results;
 
-        const violations = results.violations;
-        const incomplete = results.incomplete;
+      if (violations.length > 0 || incomplete.length > 0) {
+        console.log(`\n== ${label} ==`);
 
-        if (violations.length > 0 || incomplete.length > 0) {
-          console.log(`\n== ${label} ==`);
-
-          for (const v of violations) {
-            console.log(
-              `  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`
-            );
-            for (const node of v.nodes.slice(0, 3)) {
-              console.log(`    ${node.html.slice(0, 120)}`);
-            }
-            if (v.nodes.length > 3) {
-              console.log(`    ... and ${v.nodes.length - 3} more`);
-            }
+        for (const v of violations) {
+          console.log(
+            `  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`
+          );
+          for (const node of v.nodes.slice(0, 3)) {
+            console.log(`    ${node.html.slice(0, 120)}`);
           }
-
-          for (const inc of incomplete) {
-            console.log(`  INCOMPLETE [${inc.impact}] ${inc.id}: ${inc.help}`);
-            for (const node of inc.nodes.slice(0, 2)) {
-              console.log(`    ${node.html.slice(0, 120)}`);
-            }
+          if (v.nodes.length > 3) {
+            console.log(`    ... and ${v.nodes.length - 3} more`);
           }
-
-          totalViolations += violations.length;
-          totalIncomplete += incomplete.length;
-        } else {
-          console.log(`  OK  ${label}`);
         }
+
+        for (const inc of incomplete) {
+          console.log(`  INCOMPLETE [${inc.impact}] ${inc.id}: ${inc.help}`);
+          for (const node of inc.nodes.slice(0, 2)) {
+            console.log(`    ${node.html.slice(0, 120)}`);
+          }
+        }
+
+        totalViolations += violations.length;
+        totalIncomplete += incomplete.length;
+      } else {
+        console.log(`  OK  ${label}`);
       }
-    }
-  }
+    },
+  });
 
   await browser.close();
 
+  const pageCount = matrix.length / (themes.length * viewports.length);
   console.log(
-    `\n${pages.length} pages x ${THEMES.length} theme(s) x ` +
-      `${VIEWPORT_NAMES.length} viewport(s) checked: ` +
+    `\n${pageCount} pages x ${themes.length} theme(s) x ` +
+      `${viewports.length} viewport(s) checked: ` +
       `${totalViolations} violation(s), ${totalIncomplete} incomplete check(s)`
   );
 

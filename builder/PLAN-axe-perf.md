@@ -57,7 +57,14 @@ against it.
 The scratch probes that produced the §Current state tables were **throwaway and
 are not in the repo** — do not go looking for them. What is committed is
 `scripts/check_a11y.mjs` (the production scanner, which carries the
-search-index blocking) and the `perf/` apparatus described in §Methodology.
+search-index blocking), the `perf/` apparatus described in §Methodology, and
+the four Phase 0 tools listed under §The apparatus.
+
+The §Current state numbers below therefore predate the Phase 0 rig and were
+taken under its *unfixed* methodology — single runs, lazy compilation inside
+the measured window. Phase 0's own numbers (§Phase 0, "What it already shows")
+are not directly comparable with them and do not replace them; Phase 1
+re-derives the attribution properly.
 
 ### Version — line numbers are pinned, and why
 
@@ -84,11 +91,24 @@ fingerprint harness across the bump and read the diff as *news*, not as a
 regression to be suppressed; the gate exists to make a change visible, not to
 freeze coverage at its current level.
 
-### First task
+### The apparatus
 
-Phase 0 below. Its first item — the fingerprint harness — **does not exist yet
-and must be written**; every later experiment depends on it, so build it first.
-Its required shape is given in §Correctness gate.
+Phase 0 is **done**; the tools below exist and every later experiment runs
+through them. See §Phase 0 for what each one is and what it cost to get right.
+
+| Tool | Role |
+|---|---|
+| `scripts/lib/axe-scan.mjs` | The single definition of "the scan" — page list, viewports, themes, blocked requests, run options, the scheme registry, and the fingerprint function. |
+| `scripts/check_a11y_fingerprint.mjs` | The correctness gate. Two schemes, one build, one process, diffed audit by audit. |
+| `perf/ab-axe.mjs` | The measurement rig. Rule ablation + config-lever A/B, pinned, paired, per-audit CPU sample-time. |
+| `perf/trace-cpu-stats.mjs` | Trace parsing extracted from `ab-css.mjs` so both rigs share it. |
+
+```sh
+node scripts/check_a11y_fingerprint.mjs --list          # scheme registry
+node scripts/check_a11y_fingerprint.mjs --candidate no-html
+cd perf && node ab-axe.mjs --runs 5                      # default two-rule ablation
+cd perf && node ab-axe.mjs --rules none --per-rule       # per-rule timing table
+```
 
 ---
 
@@ -365,11 +385,11 @@ produces no entry. Any change touching *which DOM is walked* (viewport, visibili
 blocking) must be argued from source, not from the gate. This is why H4's
 viewport half is struck below.
 
-### Required harness shape
+### Required harness shape — **written**, `scripts/check_a11y_fingerprint.mjs`
 
-Not yet written. It must run the full 24-audit matrix under two configurations
-and diff the fingerprints — the throwaway version used to validate `78566d1`
-looked like this:
+It runs the full 24-audit matrix under two named schemes and diffs the
+fingerprints. The throwaway version used to validate `78566d1` looked like
+this, and the shipped one keeps the same core:
 
 ```js
 // per audit, after axe.run:
@@ -379,7 +399,7 @@ fingerprints.push(`${page}|${theme}|${viewport}|V[${fmt(res.violations)}]|I[${fm
 ```
 
 Two requirements the throwaway version did **not** meet and the committed one
-must:
+does:
 
 1. **`incomplete` compares rule-id sets, not `ruleId:nodeCount`** — see the
    truncation note above, or `resultTypes` experiments will fail spuriously.
@@ -387,8 +407,8 @@ must:
    produces false diffs: the BuildInfo page embeds the build's own Gantt chart,
    so its SVG `<text>` nodes change every build and show up in contrast results.
 
-Suggested home: `scripts/` alongside `check_a11y.mjs`, or `perf/` if it grows
-measurement flags.
+It lives in `scripts/`, alongside `check_a11y.mjs`, and shares
+`scripts/lib/axe-scan.mjs` with it so the two cannot drift.
 
 ---
 
@@ -415,6 +435,11 @@ rejected that approach:
   path-stripping. `ab-css.mjs` is the generalisable N-variant rig (programmatic
   variant list `:132-146`, `--runs N` `:51`, CPU pinning, Blink-label metric
   extraction `:191-192`). Retarget it from CSS variants to rule sets.
+  **Correction (Phase 0):** its *shape* was the thing worth copying; the script
+  itself no longer runs. It reads `_site-pdf/assets/css/rouge.css`, a
+  Jekyll-era artifact the Shiki migration removed, and dies at startup. The
+  retarget therefore landed as a sibling, `perf/ab-axe.mjs`, with the shared
+  trace parsing extracted to `perf/trace-cpu-stats.mjs`.
 - **Renderer `.cpuprofile` needs no adaptation.** `perf/analyze-profile.mjs:2-3`
   already reads *"the JSON returned by CDP's `Profiler.stop`"*, and
   `measure.mjs:626-631, 702-706` already captures that from a renderer via
@@ -440,6 +465,50 @@ rejected that approach:
   categories.
 - **Profile against `axe.js`, not `axe.min.js`.** `check_a11y.mjs:58` currently
   loads the minified build; every frame would be a mangled single letter.
+
+### What Phase 0 had to add — the noise was not where this section assumed
+
+The house rules above transfer, but pinning plus paired differencing alone left
+this workload at **17 % variance** (SD 79 ms on a 467 ms mean) — unpinned-grade,
+while pinned. Two causes, neither of them machine drift. Fixing both took it to
+**2 %** (SD 7 ms on 355 ms).
+
+1. **V8's lazy compilation of `axe.js` sat inside the measured window.**
+   `page.evaluate(axeSource)` runs only axe's top level; V8 compiles function
+   bodies lazily, so the *first* `axe.run` in a context compiles most of a
+   1.3 MB library. `ab-axe.mjs` now does one discarded in-page `axe.run` before
+   tracing starts (`--in-page-warmup`, default 1). `teardown()` (`30001-30010`)
+   clears every memoized function, the cache and `axe._tree` between runs, so
+   the discarded run leaves no axe-side state behind — only compiled code.
+2. **The parent was `JSON.parse`-ing multi-MB traces between measurements** — a
+   synchronous parse on a four-core affinity mask, immediately before the next
+   browser launch. Traces are now parsed once every run has been captured.
+   **This was the larger of the two.**
+
+Two corollaries, recorded so they are not re-tried:
+
+- **A fresh browser per run is *worse* than reusing one**, until (1) is fixed.
+  It is the obvious answer to cross-run drift and it made things worse
+  (461–780 ms on identical configurations), because it puts a full lazy-compile
+  into every sample. `ab-css.mjs` never hit any of this because it shells out to
+  `measure.mjs` and gets process isolation for free — which is exactly why its
+  methodology *looked* directly transferable when it was not.
+- **Measure a steady-state loop, not a single audit.** `--iters` (default 5)
+  runs N `axe.run` calls inside one traced window and divides. Blink's style and
+  layout caches stay warm across them, which is also true in production: the
+  page is loaded and laid out before the audit starts.
+
+**On-CPU time buys less here than on the book.** `Δwall` and `Δcpu` agree to
+within ~1 % on every variant (baseline 359 vs 355; drop-contrast 141 vs 143),
+because the audit is CPU-bound with no idle. The V8-profile metric is kept for
+consistency with `ab-css.mjs` and because it carries the Blink-label split — but
+on this workload wall clock was never the liability this section warns about.
+The lazy-compile and trace-parse artifacts were.
+
+Practical consequence: the defaults (`--runs 3 --iters 5`) are for iteration; a
+citable number wants `--runs 7 --iters 10`. `ab-axe.mjs` prints the **median**
+paired difference as its headline, with mean and SD beside it, because even at
+2 % the occasional run still lands 30 % high.
 
 ---
 
@@ -472,11 +541,16 @@ Measure names: `rule_<id>`, `runchecks_<id>`, `rule_<id>#gather`,
 whichever rule touches them **first**. Run the ablation in **both rule orders**
 to separate shared setup from rule cost.
 
-### 2. Ablation matrix
+### 2. Ablation matrix — `perf/ab-axe.mjs`
 
-Rule-at-a-time and leave-one-out, via a retargeted `ab-css.mjs`. Cross-check
-against (1) — disagreement localises shared setup, which is itself the D1
-measurement.
+Rule-at-a-time (`only-R`) and leave-one-out (`drop-R`), both generated per rule.
+Cross-check against (1) — disagreement localises shared setup, which is itself
+the D1 measurement.
+
+Running both halves supersedes the "both rule orders" suggestion in (1). Order
+reversal tells you *that* setup moved between rules; the `only-`/`drop-` pair
+tells you *how much* setup each rule triggers, which is the number D1 needs.
+The rig prints the decomposition directly.
 
 ### 3. Node-count scaling curve
 
@@ -551,21 +625,123 @@ scripts run before `DOMContentLoaded` and the harness waits on
 
 ## Phases
 
-### Phase 0 — harness
+### Phase 0 — harness — **DONE**
 
-**Write** the fingerprint harness — it does not exist; §Correctness gate gives
-the required shape and the two constraints it must satisfy. Then retarget
-`ab-css.mjs` to rule sets, write the ~10-line trace capture (categories copied
-verbatim from `measure.mjs:656-663`), and switch the profiling path from
-`axe.min.js` to `axe.js` (`check_a11y.mjs:58` loads the minified build; every
-profile frame would otherwise be a mangled single letter).
+Four tools landed. Invocations are in §The apparatus.
 
-Option-name verification is **already done** — `performanceTimer` (`29141`),
-`resultTypes` (`19152`), `preload` (`20439`) all confirmed, as is renderer
-`.cpuprofile` compatibility. Do not re-litigate.
+**`scripts/lib/axe-scan.mjs`** — extracted from `check_a11y.mjs` so the
+production scanner, the gate and the rig cannot drift apart. If they did, the
+gate would stop gating what production runs, which is the one failure mode it
+exists to prevent. Holds the page list, viewports, themes, blocked requests,
+run options, browser/page plumbing, the matrix builder and `fingerprint()`.
+`check_a11y.mjs` is now a thin consumer; its output is unchanged
+(`0 violation(s), 20 incomplete check(s)`) and `check.bat` passes clean.
 
-**Gate:** harness reproduces the current fingerprint; `ab-css.mjs` runs a
-two-rule ablation end to end with pinning.
+It also carries a **scheme registry**, so one name means the same thing to the
+gate and to the rig: `production`, `no-html` (D3), `no-selectors` (D4),
+`no-autoplay-audio` and `no-preload` (D5), `violations-only`, `config-only`
+(D3+D4+D5), and the `no-contrast` ablation, flagged `gates: false` because it is
+expected to change the findings.
+
+**`scripts/check_a11y_fingerprint.mjs`** — the gate. Meets both constraints
+§Correctness gate demanded: `incomplete` compares rule-id **sets**, and both
+schemes run in one process against one build. On a mismatch it re-derives the
+structured difference from the raw results rather than printing two opaque
+strings. Exit 0 identical / 1 differ / 2 harness error.
+
+Verified in both directions. `production` vs `production` is 24/24 identical.
+`production` vs `no-contrast` reports 20/24 differing, every one of them
+`incomplete color-contrast: present -> absent` — exactly the 20 incomplete
+checks the baseline carries.
+
+**`perf/ab-axe.mjs`** — the rig. Same methodology as `ab-css.mjs` (pinning,
+paired differencing against an interleaved baseline, on-CPU time from the
+embedded V8 profile), retargeted to rule sets. `ab-css.mjs` itself was left
+pointed at the book: retargeting it in place would have destroyed a working
+tool for nothing, since what transfers is its *shape*, not its plumbing.
+
+For each rule it generates **both** `drop-R` and `only-R`. That pairing, not
+the rule-order reversal §Instruments proposed, is what separates a rule's own
+cost from the shared setup it is billed for:
+
+- `cost(R)` = baseline − `drop-R` — R's marginal cost inside a full run
+- `shared` = `only-R` − `cost(R)` — the setup R triggers when it runs alone
+
+`only-R` is exact, and for a reason worth recording: `ruleShouldRun`
+(`20569-20583`) tests `runOnly.type === 'rule'` **before** the explicit
+`rules[id].enabled` branch, so production's `heading-order: { enabled: true }`
+does not leak into an `only-` variant. (The plan notes elsewhere that explicit
+`enabled` beats the *tag* filter. It does — but the rule filter beats both.)
+
+**`perf/trace-cpu-stats.mjs`** — `cpuStatsFromTrace` lifted out of `ab-css.mjs`
+verbatim (diffed to confirm, then smoke-tested against an existing book trace)
+plus `TRACE_CATEGORIES` copied verbatim from `measure.mjs:656-663`. `ab-css.mjs`
+imports it; behaviour unchanged.
+
+The profiling path runs `axe.js`, not `axe.min.js` (`--minified` opts back in).
+Confirmed against a captured trace: 362 distinct frames, 2 of them
+single-character, including `flattenTree`, `_getSelectorData`,
+`colorContrastEvaluate`, `DqElementMemoized` and the rest of the `*Memoized`
+wrappers D2 targets.
+
+**Also fixed:** `pin-cpu.mjs` silently dropped empty-string arguments when
+re-serialising argv for the `/affinity` relaunch — an unquoted `` vanishes when
+cmd.exe re-splits the line, shifting every later argument by one. It turned
+`--rules "" --per-rule` into `--rules --per-rule`. One line; it affected every
+tool importing the shim.
+
+#### What it already shows
+
+Indicative, **not** the Phase 1 attribution — one page (`Select-Case.html`,
+light, desktop), one machine. Recorded because it already narrows where Phase 1
+should aim.
+
+Ablation, 5 pairs × 5 iterations, pinned. Baseline **355 ms/audit, SD 7 ms**:
+
+| variant | Δcpu (median) | own cost |
+|---|--:|--:|
+| `drop-color-contrast` | 143 ms ± 6 | 212 ms |
+| `only-color-contrast` | 71 ms ± 18 | **278 ms** |
+| `drop-no-autoplay-audio` | −57 ms ± 100 | — (noise floor) |
+| `only-no-autoplay-audio` | 328 ms ± 9 | **28 ms** |
+
+The `only-` column is the informative one, and it says something the `drop-`
+column cannot. Running **one trivial rule** costs 28 ms. Running **one contrast
+rule** costs 278 ms. So the unconditional setup — flat tree, selector pre-pass
+— is **at most 28 ms**, and roughly 250 ms of the audit is contrast plus
+whatever contrast triggers. That is the shape D1 predicts: the grid is lazy and
+is billed to the first rule that touches it.
+
+`Δrecalc` and `Δlayout` were **0 on every variant**, with
+`Document::UpdateStyleAndLayout` at 41 ms on the baseline. That is the
+confirmation §Dead hypotheses expected: layout is one flush, not thousands.
+
+Per-rule timing (instrument 1, `--per-rule`; `performanceTimer` inflates the
+total to 398 ms, so read the ranking, not the absolutes) agrees and adds the
+split:
+
+| measure | ms |
+|---|--:|
+| `axe` (whole run) | 397.9 |
+| `audit_start_to_end` | 337.9 |
+| `reporter` | 30.8 |
+| `audit.after` | 0.6 |
+
+| rule (64 ran) | total | gather | matches | checks |
+|---|--:|--:|--:|--:|
+| `color-contrast` | 250.2 | 0.0 | 81.2 | 168.7 |
+| `aria-allowed-attr` | 19.9 | 18.6 | 0.0 | 1.1 |
+| `target-size` | 12.9 | 0.5 | 1.5 | 10.7 |
+| `scrollable-region-focusable` | 8.2 | 1.3 | 1.2 | 5.6 |
+| `link-in-text-block` | 8.0 | 0.3 | 5.6 | 2.0 |
+
+Three things to carry into Phase 1. `aria-allowed-attr`'s 18.6 ms `gather` is
+the flat-tree build billed to the first rule, and it is *small* — consistent
+with the 28 ms ceiling above. `color-contrast` splits 81 ms `matches` / 169 ms
+`checks`, so a third of it is in `colorContrastMatches`, which is where the
+grid gets triggered — D1 and the contrast maths are separable and Phase 1
+should separate them. And `reporter` at 30.8 ms (~8 %) is the phase draft 1
+missed entirely; it is not nothing.
 
 ### Phase 1 — attribution
 

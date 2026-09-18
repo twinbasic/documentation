@@ -1,0 +1,435 @@
+// Shared definition of "the accessibility scan".
+//
+// Three consumers:
+//
+//   * scripts/check_a11y.mjs            -- the production gate (check.bat, CI)
+//   * scripts/check_a11y_fingerprint.mjs -- the correctness gate: does a
+//     candidate configuration still see everything production sees?
+//   * perf/ab-axe.mjs                   -- the cost-attribution rig
+//
+// All three have to agree on the page list, the viewports, the themes, the
+// blocked requests and the axe run options.  If they drift, the fingerprint
+// gate stops gating what production actually runs, which is the one failure
+// mode the gate exists to prevent.  So everything that defines the scan lives
+// here and nowhere else.
+//
+// See builder/PLAN-axe-perf.md for why each knob below is a knob.
+
+import { readFileSync } from "node:fs";
+import { resolve, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import puppeteer from "puppeteer";
+
+// This module lives at <repo>/scripts/lib/axe-scan.mjs.  Anchoring the built
+// tree and the axe bundle to the repo root rather than to process.cwd() lets
+// perf/ab-axe.mjs run from perf/ (as ab-css.mjs does) while check_a11y.mjs
+// runs from the repo root, without either needing to know where the other is.
+// An explicit --root-dir still resolves against the caller's cwd, which is
+// what someone typing a relative path expects.
+export const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
+
+export const DEFAULT_ROOT_DIR = join(REPO_ROOT, "docs/_site-offline");
+
+export const SAMPLE_PAGES = [
+  "/index.html",
+  "/tB/Core/Dim.html",
+  "/tB/Modules/Interaction/index.html",
+  "/Documentation/Development/BuildInfo.html",
+  "/tB/Core/Select-Case.html",
+  "/404.html",
+];
+
+// Fixed sizes keep the media queries -- and therefore which elements are laid
+// out and visible to axe -- the same from run to run.
+export const VIEWPORTS = {
+  desktop: { width: 1280, height: 900 },
+  mobile: { width: 375, height: 812 },
+};
+
+export const THEMES = ["light", "dark"];
+
+// Requests aborted for the duration of the scan.
+//
+// Every page in the offline tree pulls in the ~3.2 MB search index
+// (assets/js/search-data.js) plus lunr.  Loading and parsing it dominated the
+// run -- 18.9 s of a 27.1 s scan across the 24 page/theme/viewport
+// combinations -- and contributes nothing to the audit: it populates
+// window.store for the search box, it does not alter the DOM axe walks.
+// Aborting both cuts the scan to ~9.1 s (-66 %) with byte-identical results;
+// every rule id and node count, violations and incomplete alike, matched the
+// unblocked scan on all 24 combinations.
+//
+// just-the-docs.js is deliberately NOT blocked.  It installs the search
+// combobox ARIA (role=listbox, aria-activedescendant) added by Phase 2.1 of
+// builder/PLAN-a11y.md, and blocking it makes axe see *less* -- the
+// colour-contrast node count on Select-Case drops 54 -> 2 -- which would
+// silently mask coverage for ~130 ms.
+export const BLOCKED_REQUESTS = [/search-data\.js/, /lunr\.min\.js/];
+
+// --no-sandbox: GitHub's ubuntu-24.04 runners carry the AppArmor restriction
+// on unprivileged user namespaces, which Chrome's sandbox needs -- without
+// this the launch fails in CI.  --disable-dev-shm-usage avoids crashes where
+// /dev/shm is small (containers).  Neither touches layout or computed style,
+// so axe sees exactly what it sees locally; book/render-book.mjs passes the
+// same pair for the same reason.
+export const LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"];
+
+// The production axe.run options.
+//
+// runOnly: WCAG 2.2 AA is a superset of 2.1 AA, which is a superset of 2.0 AA
+// -- but axe's matchTags() is a literal tag test with no version rollup, so a
+// rule tagged only wcag21aa does NOT match "wcag22aa".  All five tags have to
+// be listed or the 2.1 additions never run.  They never did until this was
+// fixed: autocomplete-valid, avoid-inline-spacing (WCAG 1.4.12 text spacing),
+// css-orientation-lock and label-content-name-mismatch were all silently
+// skipped.  There is no "wcag22a" tag in axe-core 4.13.
+//
+// rules: heading-order is tagged best-practice rather than WCAG, so the tag
+// filter above excludes it -- and nothing else guards heading structure:
+// check_links.mjs has no notion of headings, and render.mjs's
+// headingLevelNormalizePlugin repairs the legacy h1->h3 house style at build
+// time without reporting it.  ruleShouldRun() tests an explicit
+// rules[id].enabled BEFORE the tag filter, so this re-admits the one rule
+// without dragging in the rest of best-practice.
+export const AXE_RUN_OPTIONS = Object.freeze({
+  runOnly: {
+    type: "tag",
+    values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+  },
+  rules: { "heading-order": { enabled: true } },
+});
+
+/** Shallow-merge extra rule entries onto the production `rules` map. */
+export function withRules(extra) {
+  return { ...AXE_RUN_OPTIONS.rules, ...extra };
+}
+
+// ---------------------------------------------------------------------------
+// Schemes
+// ---------------------------------------------------------------------------
+//
+// A scheme is one way of configuring the scan: an optional axe.configure()
+// spec plus the axe.run() options.  `production` is what check_a11y.mjs runs;
+// the rest are the levers builder/PLAN-axe-perf.md lists under "Landing
+// options", named so the fingerprint gate and the ablation rig can refer to
+// the same thing.
+//
+// `gates: false` marks a scheme that is expected to change the findings -- it
+// exists to attribute cost, not to ship.  The fingerprint harness still runs
+// it, it just says up front that a diff is the point.
+
+export const SCHEMES = {
+  production: {
+    describe: "what check_a11y.mjs runs today",
+    configure: null,
+    runOptions: AXE_RUN_OPTIONS,
+  },
+
+  // D3 -- DqElement's constructor calls outerHTML on every result node, pass
+  // or fail, then throws the string away above 300 chars.  noHtml is a
+  // configure option, not a run option, and resultTypes cannot reach it.
+  "no-html": {
+    describe: "D3: axe.configure({ noHtml: true })",
+    configure: { noHtml: true },
+    runOptions: AXE_RUN_OPTIONS,
+  },
+
+  // D4 -- generateSelector climbs the ancestor chain running a document query
+  // per level until the selector is unique.  selectors:false skips `target`
+  // generation outright.
+  "no-selectors": {
+    describe: "D4: selectors: false",
+    configure: null,
+    runOptions: { ...AXE_RUN_OPTIONS, selectors: false },
+  },
+
+  // D5 -- the correct lever.  no-autoplay-audio is the only preload:true rule
+  // our tag set admits, so disabling it empties runLaterRules and removes the
+  // preload round trip without the blunt `preload: false`.
+  "no-autoplay-audio": {
+    describe: "D5: disable the one preload:true rule in our tag set",
+    configure: null,
+    runOptions: {
+      ...AXE_RUN_OPTIONS,
+      rules: withRules({ "no-autoplay-audio": { enabled: false } }),
+    },
+  },
+
+  // D5, blunt version -- kept for the A/B against the targeted lever above.
+  "no-preload": {
+    describe: "D5 (blunt): preload: false",
+    configure: null,
+    runOptions: { ...AXE_RUN_OPTIONS, preload: false },
+  },
+
+  // Needs the relaxed `incomplete` half of the gate: resultTypes truncates
+  // each excluded group's nodes to [nodes[0]] rather than dropping the group.
+  "violations-only": {
+    describe: "resultTypes: ['violations']",
+    configure: null,
+    runOptions: { ...AXE_RUN_OPTIONS, resultTypes: ["violations"] },
+  },
+
+  // All four config-only levers at once -- the "Landing option 1" candidate.
+  "config-only": {
+    describe: "D3 + D4 + D5 together (landing option 1, minus resultTypes)",
+    configure: { noHtml: true },
+    runOptions: {
+      ...AXE_RUN_OPTIONS,
+      selectors: false,
+      rules: withRules({ "no-autoplay-audio": { enabled: false } }),
+    },
+  },
+
+  // Ablation reference.  Disabling colour-contrast plausibly removes the whole
+  // _createGrid build (D1) along with the contrast maths, which is why the
+  // 364 -> 168 ms probe reads as dramatic.  It is not a landing candidate.
+  "no-contrast": {
+    describe: "D1 ablation: colour-contrast disabled (NOT a landing candidate)",
+    gates: false,
+    configure: null,
+    runOptions: {
+      ...AXE_RUN_OPTIONS,
+      rules: withRules({ "color-contrast": { enabled: false } }),
+    },
+  },
+};
+
+export function getScheme(label) {
+  const scheme = SCHEMES[label];
+  if (!scheme) {
+    throw new Error(
+      `unknown scheme "${label}"; known: ${Object.keys(SCHEMES).join(", ")}`
+    );
+  }
+  return { label, ...scheme };
+}
+
+// ---------------------------------------------------------------------------
+// axe source
+// ---------------------------------------------------------------------------
+
+/**
+ * Read the axe-core bundle to inject.
+ *
+ * Production uses the minified build -- it is the same code and parses
+ * faster.  Anything that CPU-profiles the scan must pass `minified: false`:
+ * in axe.min.js every profile frame is a mangled single letter, so the
+ * bottom-up table is unreadable and find-callers.mjs has nothing to match on.
+ */
+export function readAxeSource({ minified = true } = {}) {
+  return readFileSync(
+    join(REPO_ROOT, "node_modules/axe-core", minified ? "axe.min.js" : "axe.js"),
+    "utf-8"
+  );
+}
+
+/** Whatever axe-core version is installed; line citations in the plan pin 4.13.0. */
+export function axeVersion() {
+  return JSON.parse(
+    readFileSync(join(REPO_ROOT, "node_modules/axe-core/package.json"), "utf-8")
+  ).version;
+}
+
+// ---------------------------------------------------------------------------
+// Browser / page plumbing
+// ---------------------------------------------------------------------------
+
+export function launchBrowser(opts = {}) {
+  return puppeteer.launch({ headless: true, args: LAUNCH_ARGS, ...opts });
+}
+
+/** A page with the scan's request blocking installed. */
+export async function newAuditPage(browser) {
+  const page = await browser.newPage();
+  await page.setRequestInterception(true);
+  page.on("request", (req) => {
+    if (BLOCKED_REQUESTS.some((re) => re.test(req.url()))) {
+      req.abort().catch(() => {});
+    } else {
+      req.continue().catch(() => {});
+    }
+  });
+  return page;
+}
+
+/**
+ * Navigate to one page of the offline tree and apply the theme.
+ *
+ * theme-toggle.js reads localStorage, which is unavailable on file:// origins.
+ * Set the data-theme attribute it would have set instead (an explicit
+ * override; its declarations are identical to the no-JS prefers-color-scheme
+ * path, so this exercises the same dark palette).
+ *
+ * Note the ordering hazard recorded in PLAN-axe-perf.md H4: theme-toggle.js is
+ * `defer` and its apply("system") path calls removeAttribute("data-theme").
+ * Deferred scripts run before DOMContentLoaded and we wait on
+ * `domcontentloaded`, so this assignment lands last -- but change either side
+ * and every "dark" audit silently becomes a light one.
+ */
+export async function gotoPage(page, { rootDir, filePath, theme }) {
+  const url = pathToFileURL(join(rootDir, filePath)).href;
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.evaluate((t) => {
+    document.documentElement.setAttribute("data-theme", t);
+  }, theme);
+}
+
+/**
+ * Inject axe and run one audit.
+ *
+ * `performanceTimer` output does not appear in the return value --
+ * _logGatherPerformance and performanceTimer.logMeasures go to console.log.
+ * Relaying ~100 rules x 5 measures x 24 audits through CDP would be overhead
+ * on the thing being measured, so the measures are read directly out of the
+ * performance timeline instead; only the marks are cleared.
+ *
+ * @returns {{results: object, measures: Array<{name: string, dur: number}>|null,
+ *            timings: {inject: number, run: number}}}
+ */
+export async function runAxe(
+  page,
+  { axeSource, configure = null, runOptions = AXE_RUN_OPTIONS, performanceTimer = false }
+) {
+  const tInject = Date.now();
+  await page.evaluate(axeSource);
+  const injectMs = Date.now() - tInject;
+
+  const tRun = Date.now();
+  const { results, measures } = await page.evaluate(
+    async (cfg, opts, wantMeasures) => {
+      if (cfg) axe.configure(cfg);
+      const results = await axe.run(
+        document,
+        wantMeasures ? { ...opts, performanceTimer: true } : opts
+      );
+      const measures = wantMeasures
+        ? performance
+            .getEntriesByType("measure")
+            .map((e) => ({ name: e.name, dur: e.duration }))
+        : null;
+      return { results, measures };
+    },
+    configure,
+    runOptions,
+    performanceTimer
+  );
+  const runMs = Date.now() - tRun;
+
+  return { results, measures, timings: { inject: injectMs, run: runMs } };
+}
+
+/**
+ * The full page x theme x viewport matrix, in the order check_a11y.mjs walks
+ * it (viewport outermost -- setViewport is the expensive one).
+ *
+ * @returns {Array<{filePath: string, theme: string, viewport: string, label: string}>}
+ */
+export function buildMatrix({
+  pages = SAMPLE_PAGES,
+  themes = THEMES,
+  viewports = Object.keys(VIEWPORTS),
+} = {}) {
+  const seen = new Set();
+  const uniquePages = pages.filter((p) => {
+    if (seen.has(p)) return false;
+    seen.add(p);
+    return true;
+  });
+
+  const out = [];
+  for (const viewport of viewports) {
+    for (const theme of themes) {
+      for (const filePath of uniquePages) {
+        out.push({
+          filePath,
+          theme,
+          viewport,
+          label: `${filePath} [${theme}, ${viewport}]`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Walk the matrix, auditing each combination.  `onAudit` is called with
+ * `{ ...entry, results, measures, timings }` after each one.
+ */
+export async function runMatrix(
+  page,
+  {
+    rootDir = DEFAULT_ROOT_DIR,
+    matrix = buildMatrix(),
+    axeSource,
+    configure = null,
+    runOptions = AXE_RUN_OPTIONS,
+    performanceTimer = false,
+    onAudit = null,
+  }
+) {
+  const audits = [];
+  let currentViewport = null;
+
+  for (const entry of matrix) {
+    if (entry.viewport !== currentViewport) {
+      await page.setViewport(VIEWPORTS[entry.viewport]);
+      currentViewport = entry.viewport;
+    }
+    await gotoPage(page, { rootDir, filePath: entry.filePath, theme: entry.theme });
+    const audit = await runAxe(page, {
+      axeSource,
+      configure,
+      runOptions,
+      performanceTimer,
+    });
+    const record = { ...entry, ...audit };
+    audits.push(record);
+    if (onAudit) onAudit(record);
+  }
+
+  return audits;
+}
+
+// ---------------------------------------------------------------------------
+// Fingerprints -- the correctness gate
+// ---------------------------------------------------------------------------
+//
+// axe is the correctness oracle, so a change can silently make it see *less*
+// while still reporting a pass.  This nearly happened once: blocking
+// just-the-docs.js looked like a 130 ms win and quietly dropped color-contrast
+// nodes on Select-Case from 54 to 2.
+//
+// The gate, per builder/PLAN-axe-perf.md:
+//
+//   * violations -- identical sorted `ruleId:nodeCount`;
+//   * incomplete -- identical sorted `ruleId` SET, node counts excluded.
+//
+// The relaxation on `incomplete` is required, not sloppiness: resultTypes
+// truncates each excluded group's `nodes` to `[nodes[0]]` rather than dropping
+// the group, so a ruleId:nodeCount fingerprint would read `:1` everywhere and
+// silently stop discriminating.
+//
+// KNOWN BLIND SPOT: the gate compares a candidate against a baseline produced
+// by that same scheme's element set.  It therefore cannot detect a change that
+// stops auditing elements entirely -- a rule that never runs simply produces
+// no entry.  Any change touching *which DOM is walked* (viewport, visibility,
+// request blocking) must be argued from source, not from this gate.
+
+export const fmtViolations = (groups) =>
+  groups
+    .map((g) => `${g.id}:${g.nodes.length}`)
+    .sort()
+    .join(",");
+
+export const fmtIncomplete = (groups) =>
+  [...new Set(groups.map((g) => g.id))].sort().join(",");
+
+export function fingerprint({ filePath, theme, viewport, results }) {
+  return (
+    `${filePath}|${theme}|${viewport}` +
+    `|V[${fmtViolations(results.violations)}]` +
+    `|I[${fmtIncomplete(results.incomplete)}]`
+  );
+}
