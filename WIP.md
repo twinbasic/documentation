@@ -464,6 +464,8 @@ The site builds via [builder/](builder/), a custom Node.js static site generator
 
 A task-graph scheduler / parallelisation pass is designed in [builder/PLAN-scheduler.md](builder/PLAN-scheduler.md) and has been implemented (Phases 0--4).
 
+Folding `check.bat`'s gates into that same graph is designed in [builder/PLAN-checks.md](builder/PLAN-checks.md) --- **nothing there is implemented yet**. Phase A, the link checker, is planned in full: extraction moves into `flush`, where both trees' final HTML is already in worker memory, so the build stops writing 230 MB out only to read it back and re-parse it. The `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are follow-ons, seeded with measurements and open questions but not yet designed.
+
 Historical engineering notes from the Jekyll era --- the original build pipeline, the HTML-compress plugin, the per-phase optimisation passes that preceded the JS port, the migration notes, and the Phase 11 parity-update retrospective --- live in [WIP.OldJekyll.md](WIP.OldJekyll.md).
 
 ## Build / preview
@@ -481,6 +483,8 @@ After a batch of changes, verify the site builds clean and all links resolve:
 ```sh
 build.bat && check.bat
 ```
+
+On the dev box that is ~2.3 s of build against ~26 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) is the plan to fold the gates into the build's task graph and carries the per-stage measurements; it is not implemented, so what follows describes what runs today.
 
 `check.bat` runs [scripts/check_links.mjs](scripts/check_links.mjs) in offline mode against both `_site/` and `_site-offline/` — it catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), and (via `--forbid 'https://docs.twinbasic.com'` on the offline pass) any extracted link that still points at the live docs site after the offlinify rewrite. A clean run is the bar for "ready to commit".
 
