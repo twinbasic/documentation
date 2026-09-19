@@ -72,10 +72,11 @@ function templatePage(page, site, init) {
   // compress collapses them to single spaces. The body assembly mirrors
   // _layouts/default.html: skip-to-main link, icon sprite, sidebar,
   // <div class="main">, header, breadcrumbs, <main> wrapping body +
-  // children-nav + section-links, footer, then per-page-search-footer.
+  // children-nav, footer (section-links + actions + legal), then the
+  // per-page-search-footer.
 
   // Collected by injectAnchorHeadings as it walks the headings, then spent by
-  // renderSectionLinks at the end of <main>.
+  // renderSectionLinks, which renderFooter places at the top of the footer.
   const sectionHeadings = [];
   const mainHtml = injectAnchorHeadings(page.renderedContent, sectionHeadings);
 
@@ -96,9 +97,8 @@ function templatePage(page, site, init) {
     `        <main>\n` +
     mainHtml +
     renderChildrenNav(page, baseurl) +
-    renderSectionLinks(sectionHeadings) +
     `        </main>\n` +
-    renderFooter(page, site) +
+    renderFooter(page, site, renderSectionLinks(sectionHeadings)) +
     `      </div>\n` +
     `    </div>\n` +
     (init.searchEnabled ? init.searchFooter + `\n` : "") +
@@ -755,92 +755,86 @@ function renderChildrenNav(page, baseurl) {
 
 // ---------- §5.11 renderFooter -------------------------------------------
 
-function renderFooter(page, site) {
+// One rule, one block, one type size. The old shape had two dividers (this
+// <hr> plus the section-links border-top), a 16px "Back to top" sitting among
+// 12px siblings, and five stacked <p> where two wrapped rows do -- 224px of
+// page bottom. The section-links disclosure moved in here from the end of
+// <main>: it belongs with the other per-page utilities, and putting it inside
+// the existing contentinfo landmark makes it easier to find without adding a
+// landmark of its own.
+function renderFooter(page, site, sectionLinks) {
   const config = site.config;
-  const footerCustom = renderFooterCustom(page, config);
-  const editAndOffline = renderEditAndOfflineBlock(page, config);
-  const showFooter =
-    footerCustom !== "" ||
-    config.last_edit_timestamp ||
-    config.gh_edit_link ||
-    config.gh_offline_link ||
-    config.back_to_top;
-  if (!showFooter) return "";
-
-  const backToTop = config.back_to_top
-    ? `        <p><a href="#page-top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a></p>\n`
-    : "";
+  const footerLegal = renderFooterLegal(page, config);
+  const footerActions = renderFooterActions(page, config);
+  if (sectionLinks === "" && footerLegal === "" && footerActions === "") return "";
 
   return `      <hr>\n` +
     `      <footer role="contentinfo">\n` +
-    backToTop +
-    footerCustom +
-    editAndOffline +
+    sectionLinks +
+    footerActions +
+    footerLegal +
     `      </footer>\n`;
 }
 
-// Port of docs/_includes/footer_custom.html. Both `<p>` blocks use
-// `{%- if -%}` / `{%- endif -%}` trimming, so they concatenate tight
-// (no whitespace between `</p>` and the next `<p>`) when both fire.
-// Caller renderFooter handles the outer indentation -- this returns
-// the inner content directly.
-function renderFooterCustom(page, config) {
+// The legal row: copyright, plus the CC-BY-4.0 line on VBA-derived pages.
+// Both were `<p class="text-small mb-0">` stacked; they are now spans on one
+// wrapped flex row, and the type size comes from the footer rather than from
+// a utility class on each element, so nothing can drift out of step again.
+function renderFooterLegal(page, config) {
   let out = "";
   if (config.footer_content) {
     // Emitted verbatim, NOT escaped: the current value contains `&copy;`
     // which is the desired HTML entity; escaping would double-encode it.
-    out += `<p class="text-small mb-0">${config.footer_content}</p>`;
+    out += `          <span>${config.footer_content}</span>\n`;
   }
   if (page.frontmatter.vba_attribution) {
-    // Verbatim port of the include's literal anchor markup. Note the
-    // two-space gaps between "</a>" + "Code license:" and "</a>" +
-    // "Attribution:" in the source -- compress collapses to one space.
-    out += `<p class="text-small mb-0">License: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE">CC-BY-4.0</a>  Code license: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE-CODE">MIT</a>  Attribution: <a href="https://github.com/MicrosoftDocs/VBA-Docs/tree/main">VBA-Docs</a></p>`;
+    // Three items, not one: the row's flex `gap` is what separates them, and
+    // as a single span the three label/link pairs ran together.
+    out += `          <span>License: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE">CC-BY-4.0</a></span>\n` +
+      `          <span>Code license: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE-CODE">MIT</a></span>\n` +
+      `          <span>Attribution: <a href="https://github.com/MicrosoftDocs/VBA-Docs/tree/main">VBA-Docs</a></span>\n`;
   }
-  return out;
+  if (out === "") return "";
+  return `        <div class="footer-legal">\n` + out + `        </div>\n`;
 }
 
-function renderEditAndOfflineBlock(page, config) {
+// The actions row: back-to-top, the GitHub edit link, the downloads, and the
+// last-modified stamp when a page carries one. Separation is by flex `gap`
+// alone -- a "·" in a ::before would be announced by some screen readers on
+// every page, which is the noise the section-links work just removed.
+//
+// #back-to-top and #edit-this-page keep their ids: print.scss hides both by
+// id, and that is the only thing pinning them.
+function renderFooterActions(page, config) {
+  const showBackToTop = Boolean(config.back_to_top);
   const showEdit = config.gh_edit_link && config.gh_edit_link_text && config.gh_edit_repository
     && config.gh_edit_branch && config.gh_edit_view_mode;
   const showOffline = config.gh_offline_link && config.gh_offline_link_url;
   const showLastModified = config.last_edit_timestamp && config.last_edit_time_format
     && page.frontmatter.last_modified_date;
 
-  if (!showEdit && !showOffline && !showLastModified
-    && !config.last_edit_timestamp && !config.gh_edit_link && !config.gh_offline_link) {
-    return "";
-  }
-
   let inner = "";
-  if (showLastModified) {
-    const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
-    inner += `        <p class="text-small text-muted mb-0 mr-2">\n` +
-      `          Page last modified: <span class="d-inline-block">${escText(formatted)}</span>.\n` +
-      `        </p>\n`;
+  if (showBackToTop) {
+    inner += `          <a href="#page-top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a>\n`;
   }
   if (showEdit) {
     const href = ghEditHref(page, config);
-    const cls = `text-small text-muted mb-0${showOffline ? " mr-2" : ""}`;
-    inner += `        <p class="${cls}">\n` +
-      `          <a href="${escAttr(href)}" id="edit-this-page">${escText(String(config.gh_edit_link_text))}</a>\n` +
-      `        </p>\n`;
+    inner += `          <a href="${escAttr(href)}" id="edit-this-page">${escText(String(config.gh_edit_link_text))}</a>\n`;
   }
   if (showOffline) {
     const pdfUrl = config.gh_pdf_link_url ? String(config.gh_pdf_link_url) : null;
     const offlineHref = escAttr(String(config.gh_offline_link_url));
-    if (pdfUrl) {
-      inner += `        <p class="text-small text-muted mb-0">\n` +
-        `          Download <a href="${offlineHref}" id="download-offline">Offline Copy</a> or <a href="${escAttr(pdfUrl)}" id="download-pdf">PDF</a>.\n` +
-        `        </p>\n`;
-    } else {
-      inner += `        <p class="text-small text-muted mb-0">\n` +
-        `          <a href="${offlineHref}" id="download-offline">Offline Copy</a>\n` +
-        `        </p>\n`;
-    }
+    inner += pdfUrl
+      ? `          <span>Download <a href="${offlineHref}" id="download-offline">Offline Copy</a> or <a href="${escAttr(pdfUrl)}" id="download-pdf">PDF</a>.</span>\n`
+      : `          <a href="${offlineHref}" id="download-offline">Offline Copy</a>\n`;
   }
+  if (showLastModified) {
+    const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
+    inner += `          <span>Page last modified: <span class="d-inline-block">${escText(formatted)}</span>.</span>\n`;
+  }
+  if (inner === "") return "";
 
-  return `        <div class="d-flex mt-2">\n` + inner + `        </div>\n`;
+  return `        <div class="footer-actions">\n` + inner + `        </div>\n`;
 }
 
 // `gh_edit_repository` keeps its trailing slash (D9). The Liquid

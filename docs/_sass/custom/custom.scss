@@ -73,6 +73,75 @@ div.highlight:focus-visible,
 // that the aria-hidden chain icons offer to the mouse. Emitted at the end of
 // <main> by renderSectionLinks (builder/template.mjs).
 //
+// The page footer is one rule-divided block: the section-links disclosure,
+// a row of actions, then the legal row. It used to be two dividers (the <hr>
+// plus a border-top on the disclosure, which sat above it at the end of
+// <main>), a 16px "Back to top" among 12px siblings, and five stacked <p> --
+// 224px of page bottom for four short lines of content.
+//
+// The type size is set once, here, rather than by a `text-small` utility on
+// each element. That is the whole reason the old block looked mismatched:
+// "Back to top" was the one <p> that never got the class.
+// The divider itself. JTD gives every <hr> 32px top and bottom, which is
+// right in running prose and is half the reason this block sprawled. Scoped
+// to the direct child of the main-content element, which is only ever the
+// footer rule -- an <hr> written in a page is inside <main>.
+//
+// The id selector is load-bearing, and `.main-content > hr` is not enough:
+// the dark compilation re-emits JTD's bare `hr` rule as
+// `html[data-theme=dark] hr`, which is (0,1,2) against that selector's
+// (0,1,1). It applied in light and silently did not in dark -- 24/16px
+// against 32/32px -- which is the same failure the footnote underlines hit.
+// `#main-content > hr` is (1,0,1) and clears it in both themes.
+#main-content > hr {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.main-content > footer[role="contentinfo"] {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #54515a; // $grey-dk-100 -- 7.77:1 on #fff
+
+  // The combined stylesheet ends with a bare `span { color: #4e26af }` --
+  // Jekyll's callouts.scss.liquid output, emitted after this file, so it
+  // beats an inherited colour on every span in here and turns the copyright
+  // line link-purple. Opt the footer's spans back into inheritance.
+  span {
+    color: inherit;
+  }
+
+  // Rows, not stacks. `gap` alone separates the items: a "\00b7" in a
+  // ::before would be read out by some screen readers on every page.
+  .footer-actions,
+  .footer-legal {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.125rem 1.25rem;
+  }
+
+  .footer-actions { margin-top: 0.5rem; }
+  .footer-legal { margin-top: 0.25rem; }
+
+  // WCAG 2.5.8 again, and this time on *size* rather than spacing. Left
+  // alone, #back-to-top and #edit-this-page are standalone targets 15.8px
+  // tall that scrape through on the spacing exception -- axe measures "a
+  // diameter of 24px which is at least 24px", i.e. zero margin, on a
+  // measurement that moves with whatever `system-ui` resolves to. That is
+  // how the heading-link hit box passed here and failed on CI's fonts.
+  // min-height is font-independent and settles it outright.
+  //
+  // The legal row is deliberately excluded: its links sit inside sentences
+  // ("License: CC-BY-4.0"), which is the criterion's inline exception, and
+  // axe does not evaluate them.
+  .footer-actions > a,
+  .section-links li > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+}
+
 // Kept visually quiet -- one muted line closed, which is the whole point;
 // anyone who does not need it should be able to ignore it.
 //
@@ -83,27 +152,25 @@ div.highlight:focus-visible,
 // giving a <summary> `display: flex` makes Chrome drop the disclosure
 // triangle, which is the only thing marking this as something you can open.
 .section-links {
-  margin-top: 2rem;
-  font-size: 0.75rem;
-  border-top: 1px solid #eeebee; // $border-color / $grey-lt-100
-
   > summary {
-    padding-top: 0.5rem;
-    color: #54515a; // $grey-dk-100 -- 7.77:1 on #fff
+    color: inherit;
   }
 
   > ul {
-    margin: 0.25rem 0 0.75rem;
+    margin: 0.25rem 0 0;
+  }
+}
+
+// A list of same-page links is worth nothing on paper.
+@media print {
+  .section-links {
+    display: none;
   }
 }
 
 @include dark-theme {
-  .section-links {
-    border-top-color: #44434d; // $grey-dk-200
-
-    > summary {
-      color: #b6b4b7; // 7.30:1 on #27262b ($body-background-color)
-    }
+  .main-content > footer[role="contentinfo"] {
+    color: #b6b4b7; // 7.30:1 on #27262b ($body-background-color)
   }
 }
 
