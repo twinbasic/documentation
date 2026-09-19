@@ -353,6 +353,7 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 | `catches up` | resumes, processes the queue |
 | `comes up` (a connection) | is established, becomes ready |
 | `drive` / `driven` (figurative) | controlled by, determined by, powered by |
+| `footgun` / `footguns` | easy mistake to make, hazard, pitfall |
 | `for free` (figurative) | as a side effect, without extra effort |
 | `hand off` / `hand over` / `hand back` | returns, passes, delivers |
 | `hand-rolled` | manually constructed, custom-built |

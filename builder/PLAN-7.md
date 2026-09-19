@@ -542,7 +542,7 @@ during Phase 7 implementation along with `safeWrite`.
 directory itself? See §7.D2 -- Jekyll's `jekyll serve` watcher pattern
 would otherwise infinite-loop on the directory-recreated event.
 tbdocs doesn't ship a watcher today, but the convention is cheap to
-honour and removes one footgun if a watcher lands later.
+honour and removes one hazard if a watcher lands later.
 
 ### 5.2. `writeOfflinePages(pages, deps)`
 
@@ -1685,7 +1685,7 @@ tbdocs doesn't ship a watcher today, but follows the same convention:
 
 - Cheap to honour (one extra `readdir` + per-entry `rm` instead of one
   `fs.rm` of the parent).
-- Removes the footgun if a watcher lands later.
+- Removes the hazard if a watcher lands later.
 - Matches the Jekyll behaviour exactly, so a side-by-side build of
   both produces the same `_site-offline/` snapshot.
 

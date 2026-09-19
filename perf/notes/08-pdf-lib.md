@@ -5055,7 +5055,7 @@ pool, `decodeName`'s unconditional regex, `parseRawInt` /
 `PDFFlateStream.computeContents`'s synchronous pako call) are
 byte-identical to upstream. Paired A/B on the book confirmed:
 cantoo without shims runs the process phase in ~150 s vs our ~1.5 s
-with shims, and has its own footguns (silent compression-disable
+with shims, and has its own pitfalls (silent compression-disable
 on PDF < 1.5, separate save-path pathology with `useObjectStreams:
 true` that wasn't chased). Not a drop-in replacement; staying on
 Hopding + shims.
