@@ -69,6 +69,44 @@ div.highlight:focus-visible,
   outline-offset: 2px;
 }
 
+// Section links: the keyboard and screen-reader path to the per-section URLs
+// that the aria-hidden chain icons offer to the mouse. Emitted at the end of
+// <main> by renderSectionLinks (builder/template.mjs).
+//
+// Kept visually quiet -- one muted line closed, which is the whole point;
+// anyone who does not need it should be able to ignore it.
+//
+// Two things this rule deliberately does NOT set. `min-height` for WCAG 2.5.8
+// target-size is already handled site-wide by `.main-content summary` further
+// down this file, which is same-specificity and later -- a local `min-height`
+// here silently loses to it. And `display` stays at the UA's `list-item`:
+// giving a <summary> `display: flex` makes Chrome drop the disclosure
+// triangle, which is the only thing marking this as something you can open.
+.section-links {
+  margin-top: 2rem;
+  font-size: 0.75rem;
+  border-top: 1px solid #eeebee; // $border-color / $grey-lt-100
+
+  > summary {
+    padding-top: 0.5rem;
+    color: #54515a; // $grey-dk-100 -- 7.77:1 on #fff
+  }
+
+  > ul {
+    margin: 0.25rem 0 0.75rem;
+  }
+}
+
+@include dark-theme {
+  .section-links {
+    border-top-color: #44434d; // $grey-dk-200
+
+    > summary {
+      color: #b6b4b7; // 7.30:1 on #27262b ($body-background-color)
+    }
+  }
+}
+
 .site-logo {
   padding-right: 3rem;
 }

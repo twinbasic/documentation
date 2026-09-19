@@ -17,6 +17,7 @@
 // _includes/css/activation.scss.liquid.
 
 import { compressHtml } from "./compress.mjs";
+import { stripHtml } from "./seo.mjs";
 
 export async function templatePhase(pages, site, initData) {
   if (site.config.just_the_docs?.collections) {
@@ -71,7 +72,13 @@ function templatePage(page, site, init) {
   // compress collapses them to single spaces. The body assembly mirrors
   // _layouts/default.html: skip-to-main link, icon sprite, sidebar,
   // <div class="main">, header, breadcrumbs, <main> wrapping body +
-  // children-nav, footer, then per-page-search-footer.
+  // children-nav + section-links, footer, then per-page-search-footer.
+
+  // Collected by injectAnchorHeadings as it walks the headings, then spent by
+  // renderSectionLinks at the end of <main>.
+  const sectionHeadings = [];
+  const mainHtml = injectAnchorHeadings(page.renderedContent, sectionHeadings);
+
   const html =
     `<!DOCTYPE html>\n` +
     `<html lang="${escAttr(lang)}">\n` +
@@ -87,8 +94,9 @@ function templatePage(page, site, init) {
     renderBreadcrumbs(page, baseurl) +
     `      <div id="main-content" class="main-content">\n` +
     `        <main>\n` +
-    injectAnchorHeadings(page.renderedContent) +
+    mainHtml +
     renderChildrenNav(page, baseurl) +
+    renderSectionLinks(sectionHeadings) +
     `        </main>\n` +
     renderFooter(page, site) +
     `      </div>\n` +
@@ -671,15 +679,55 @@ const ID_ATTR_REGEX = /\bid="([^"]+)"/;
 const ANCHOR_SVG_TPL = (id) =>
   `<a href="#${id}" class="anchor-heading" tabindex="-1" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a>`;
 
-export function injectAnchorHeadings(html) {
+// `headingsOut`, when given, collects {id, text} for every heading that has
+// an id -- piggybacking on this pass rather than sweeping the page a second
+// time. `body` is rendered HTML whose text is already escaped, so dropping
+// the tags leaves a string that is still safe to emit as HTML; re-escaping
+// would double-encode headings like `&, &=`.
+export function injectAnchorHeadings(html, headingsOut) {
   return html.replace(HEADING_REGEX, (_, tag, attrs = "", body) => {
     const idMatch = attrs ? attrs.match(ID_ATTR_REGEX) : null;
     if (idMatch) {
       const id = idMatch[1];
+      if (headingsOut) {
+        const text = stripHtml(body).replace(/\s+/g, " ").trim();
+        if (text) headingsOut.push({ id, text });
+      }
       return `<${tag}${attrs}> ${ANCHOR_SVG_TPL(id)} ${body} </${tag}>`;
     }
     return `<${tag}${attrs}> ${body} </${tag}>`;
   });
+}
+
+// ---------- §5.8b renderSectionLinks -------------------------------------
+
+// The keyboard and screen-reader path to the per-section URLs whose only
+// other affordance is the aria-hidden chain icon beside each heading.
+//
+// A closed <details> subtree is `notRendered`: it contributes nothing to the
+// accessibility tree and nothing to the tab order beyond the <summary>
+// itself. So the whole feature costs one tab stop and zero links-list entries
+// per page, against the 7,031 entries the per-heading icons used to cost, and
+// expands on demand to the full set.
+//
+// Emitted from the template rather than from the markdown render, which is
+// what keeps it out of two places it does not belong: the PDF book assembles
+// its chapters from `page.renderedContent` (book.mjs) and the search index
+// reads the same field (search.mjs), and both are upstream of this. So there
+// is nothing to mark here and nothing to strip downstream.
+//
+// Deliberately not wrapped in <nav>: a fourth landmark on all 869 pages would
+// put back some of the noise this exists to remove. A single heading is not
+// worth a disclosure, so the block starts at two.
+function renderSectionLinks(headings) {
+  if (!headings || headings.length < 2) return "";
+  const items = headings
+    .map(({ id, text }) => `          <li><a href="#${escAttr(id)}">${text}</a></li>`)
+    .join("\n");
+  return `        <details class="section-links">\n` +
+    `        <summary>Link to a section</summary>\n` +
+    `        <ul>\n${items}\n        </ul>\n` +
+    `        </details>\n`;
 }
 
 // ---------- §5.9 renderChildrenNav ---------------------------------------
