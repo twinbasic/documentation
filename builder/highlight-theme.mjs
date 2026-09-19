@@ -152,13 +152,25 @@ function hslToRgb([h, sat, l]) {
   return [channel(h + 1 / 3) * 255, channel(h) * 255, channel(h - 1 / 3) * 255];
 }
 
-// Returns the input unchanged when it already passes, when it is not a plain
-// hex literal, or when even pure black/white cannot reach the threshold.
+// Returns { value, note }. `note` is empty when nothing was needed, and
+// otherwise says what happened -- including the two cases where the clamp
+// cannot do its job: a value that is not a plain hex literal (so the ratio
+// cannot be computed at all) and one that does not reach the threshold even
+// at pure black or white. Neither is reachable with the current .theme
+// files, and both used to return the colour unchanged with no warning and
+// nothing in the emitted CSS, which is how a below-threshold token would
+// have shipped looking exactly like a passing one.
 function clampContrast(value, bgHex) {
   const fg = parseHex(value);
   const bg = parseHex(bgHex);
-  if (!fg || !bg) return value;
-  if (contrastRatio(fg, bg) >= MIN_CONTRAST) return value;
+  if (!fg || !bg) {
+    console.warn(
+      `highlight-theme: cannot check contrast of "${value}" on ${bgHex} -- ` +
+      `not a plain hex literal; emitting it unchanged`
+    );
+    return { value, note: ` -- NOT CONTRAST-CHECKED (${value} is not a plain hex literal)` };
+  }
+  if (contrastRatio(fg, bg) >= MIN_CONTRAST) return { value, note: "" };
 
   const [h, sat, l0] = rgbToHsl(fg);
   // Move away from the background: darken on a light ground, lighten on a
@@ -169,9 +181,16 @@ function clampContrast(value, bgHex) {
     // Measure the rounded hex, not the float triple -- rounding can drop a
     // candidate that measured just over the threshold back under it.
     const candidate = toHex(hslToRgb([h, sat, l]));
-    if (contrastRatio(parseHex(candidate), bg) >= MIN_CONTRAST) return candidate;
+    if (contrastRatio(parseHex(candidate), bg) >= MIN_CONTRAST) {
+      return { value: candidate, note: ` -- ${value} raised to ${MIN_CONTRAST}:1 on ${bg}` };
+    }
   }
-  return value;
+  const got = contrastRatio(fg, bg).toFixed(2);
+  console.warn(
+    `highlight-theme: ${value} on ${bgHex} is ${got}:1 and cannot reach ` +
+    `${MIN_CONTRAST}:1 at any lightness with this hue -- emitting it unchanged`
+  );
+  return { value, note: ` -- ${got}:1 on ${bg}, BELOW ${MIN_CONTRAST}:1 (unreachable at this hue)` };
 }
 
 function parseTheme(text) {
@@ -299,10 +318,8 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
       let value = props[k];
       if (k === "Color") {
         const clamped = clampContrast(value, bg);
-        if (clamped !== value) {
-          note = ` -- ${value} raised to ${MIN_CONTRAST}:1 on ${bg}`;
-          value = clamped;
-        }
+        value = clamped.value;
+        note = clamped.note;
       }
       lines.push(`  ${CSS_PROP[k]}: ${value};`);
     }

@@ -41,7 +41,7 @@
 //
 // Usage:  node scripts/check_a11y.mjs [--root-dir DIR] [--theme light|dark|both]
 //                                     [--viewport desktop|mobile|both]
-//                                     [--stock-axe]
+//                                     [--stock-axe] [--minified]
 //
 // Requires `build.bat` to have produced an up-to-date _site-offline/.
 
@@ -65,17 +65,34 @@ let rootDir = DEFAULT_ROOT_DIR;
 let themeArg = "both";
 let viewportArg = "both";
 let stockAxe = false;
+let minified = false;
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--root-dir" && args[i + 1]) rootDir = args[++i];
   else if (args[i] === "--theme" && args[i + 1]) themeArg = args[++i];
   else if (args[i] === "--viewport" && args[i + 1]) viewportArg = args[++i];
   else if (args[i] === "--stock-axe") stockAxe = true;
+  else if (args[i] === "--minified") minified = true;
+  else {
+    console.error(`unknown arg: ${args[i]}`);
+    process.exit(2);
+  }
 }
 rootDir = resolve(rootDir);
 
-const themes = themeArg === "both" ? THEMES : [themeArg];
-const viewports =
-  viewportArg === "both" ? Object.keys(VIEWPORTS) : [viewportArg];
+// Validated, not trusted. An unrecognised value used to sail through:
+// `--theme drak` set data-theme="drak", which renders light, and then
+// labelled every line of the report `[drak, ...]` -- a full run of the
+// light theme presented as a run of something else.
+function pick(name, value, allowed) {
+  if (value === "both") return allowed;
+  if (allowed.includes(value)) return [value];
+  console.error(
+    `unknown --${name} "${value}"; expected one of ${allowed.join(", ")} or both`
+  );
+  process.exit(2);
+}
+const themes = pick("theme", themeArg, THEMES);
+const viewports = pick("viewport", viewportArg, Object.keys(VIEWPORTS));
 
 // Source patches applied to the axe bundle before injection.
 //
@@ -113,11 +130,31 @@ const viewports =
 const PRODUCTION = getScheme("production");
 const AXE_PATCHES = stockAxe ? [] : PRODUCTION.patches;
 
+// Minification is a SEPARATE axis from patching, and the two flags are kept
+// separate so each isolates one thing.
+//
+// --stock-axe used to switch the bundle to the minified build as well, so it
+// answered "the patch, or the minification?" -- which is not what a
+// first-response diagnostic is for. It now changes only the patch list; the
+// bundle stays unminified, exactly as the shipped scan runs it, and any
+// difference it shows is the patch.
+//
+// --minified asks the other question. Patches target the unminified source,
+// so it only makes sense alongside --stock-axe.
+if (minified && AXE_PATCHES.length) {
+  console.error(
+    "--minified needs --stock-axe: the source patches target the unminified " +
+    "bundle. Pass both to run stock minified axe."
+  );
+  process.exit(2);
+}
+const AXE_MINIFIED = minified;
+
 async function main() {
   console.log(
-    AXE_PATCHES.length
-      ? `axe-core ${axeVersion()} + ${AXE_PATCHES.join(", ")}`
-      : `axe-core ${axeVersion()} (stock)`
+    `axe-core ${axeVersion()} ` +
+    (AXE_PATCHES.length ? `+ ${AXE_PATCHES.join(", ")}` : "(stock)") +
+    (AXE_MINIFIED ? " [minified]" : " [unminified]")
   );
 
   const browser = await launchBrowser();
@@ -134,10 +171,7 @@ async function main() {
     matrix,
     // Patches require the unminified bundle.  That costs ~6 ms more per page
     // to inject (22 -> 28 ms), against seconds saved on the audit itself.
-    axeSource: readAxeSource({
-      minified: AXE_PATCHES.length === 0,
-      patches: AXE_PATCHES,
-    }),
+    axeSource: readAxeSource({ minified: AXE_MINIFIED, patches: AXE_PATCHES }),
     configure: PRODUCTION.configure,
     runOptions: PRODUCTION.runOptions,
     onAudit({ label, results, state, stateResult }) {

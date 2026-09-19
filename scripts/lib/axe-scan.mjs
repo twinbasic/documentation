@@ -575,6 +575,18 @@ export async function gotoPage(page, { rootDir, filePath, theme }) {
   await page.evaluate((t) => {
     document.documentElement.setAttribute("data-theme", t);
   }, theme);
+  // domcontentloaded does not wait for images, and no <img> in the tree
+  // carries width/height -- so an undecoded one lays out at 0x0 and the
+  // video card's target-size box depends on decode timing that nothing
+  // waits for. The A/A control is 48/48 identical today, so this is a
+  // latent flake rather than a live one; wait it out rather than find out.
+  // Giving the images intrinsic dimensions in the markup would be better
+  // still, and would help readers as well.
+  await page.evaluate(async () => {
+    const imgs = [...document.images].filter((i) => !i.complete);
+    if (!imgs.length) return;
+    await Promise.all(imgs.map((i) => i.decode().catch(() => {})));
+  });
 }
 
 /**
@@ -641,8 +653,20 @@ export function buildMatrix({
   });
 
   // Follow whatever narrowing the caller applied to `pages`, so --pages does
-  // not leave a state audit running on a page the caller excluded.
+  // not leave a state audit running on a page the caller excluded -- and say
+  // when that happens. The load-time assertion below SAMPLE_PAGES exists to
+  // stop a state audit being dropped silently; a --pages narrowing walked
+  // straight past it, which is the same hole from the other side.
   const states = stateAudits.filter((s) => seen.has(s.filePath));
+  for (const s of stateAudits) {
+    if (!seen.has(s.filePath)) {
+      console.warn(
+        `[axe-scan] page narrowing dropped the "${s.state}" state audit ` +
+        `(${s.filePath} is not in the page list); that construct is not ` +
+        `being checked in this run`
+      );
+    }
+  }
 
   const out = [];
   for (const viewport of viewports) {
