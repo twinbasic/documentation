@@ -1136,10 +1136,17 @@ function groupGanttTimings(timings, { check = false } = {}) {
   return grouped;
 }
 
+// The Gantt is rendered from the scheduler's own timings, so it cannot
+// exist until every task -- including the check -- has finished. That
+// makes it the one page whose shipped bytes the check never saw. It
+// carries no links and no ids today, which is exactly the kind of fact
+// that stops being true without anyone noticing, so the patched HTML
+// comes back for recheckInjected to run through the same check path.
 async function injectGanttChart(pages, destRoot, svgContent) {
-  if (!svgContent) return;
+  const injected = [];
+  if (!svgContent) return injected;
   const page = pages.find(p => p.permalink === "/Documentation/Development/BuildInfo");
-  if (!page) return;
+  if (!page) return injected;
 
   for (const root of [destRoot, `${destRoot}-offline`]) {
     const htmlPath = path.join(root, page.destPath);
@@ -1155,7 +1162,77 @@ async function injectGanttChart(pages, destRoot, svgContent) {
     const patched = html.slice(0, svgStart) + svgContent + html.slice(svgEnd + 6);
     await fs.writeFile(htmlPath, patched, "utf8");
     await fs.writeFile(path.join(root, "assets", "images", "gantt.svg"), svgContent, "utf8");
+    injected.push({
+      which: root === destRoot ? "online" : "offline",
+      destPath: page.destPath.replaceAll("\\", "/"),
+      html: patched,
+    });
   }
+  return injected;
+}
+
+// Run the injected pages back through checkChunk and report anything the
+// pre-injection pass did not already report for the same page. Only the
+// delta: the page was checked once already, and printing its existing
+// findings a second time would read as a regression.
+async function recheckInjected(injected, linkResults, state, destRoot) {
+  if (!injected.length || !linkResults) return { text: "", failed: false };
+  const { checkChunk, treeIndexFor, normalizeBasePath: normBase, TREES } =
+    await import("./check.mjs");
+
+  const out = [];
+  let failed = false;
+  for (const { which, destPath, html } of injected) {
+    const prior = linkResults[which];
+    const treeCfg = state.checkTrees?.[which];
+    if (!prior || !treeCfg) continue;
+    const root = destRoot + TREES[which].suffix;
+    const env = {
+      root, tree: TREES[which], basePath: normBase(treeCfg.baseurl),
+      index: treeIndexFor(root, treeCfg.rels),
+    };
+
+    let now;
+    try { now = checkChunk([{ destPath, html }], env); }
+    catch (err) {
+      out.push(`  ERROR  ${TREES[which].label}: rechecking the injected ` +
+               `${destPath} failed: ${err.message}
+`);
+      failed = true;
+      continue;
+    }
+
+    const was = JSON.stringify(prior.integrityByFile.get(destPath) ?? null);
+    const is  = JSON.stringify(now.integrity.find(([p]) => p === destPath)?.[1] ?? null);
+    if (was !== is) {
+      out.push(`  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
+               `changed this page's integrity findings: ${is}
+`);
+      failed = true;
+    }
+
+    // Fragment references into other pages come back as `pending` from a
+    // one-page chunk and are not decidable here; the SVG carries no
+    // links at all, so anything in `broken` or `forbidden` is new.
+    const priorBroken = new Set();
+    for (let i = 0; i < prior.broken.length; i += 3) {
+      if (prior.broken[i] === destPath) priorBroken.add(prior.broken[i + 1]);
+    }
+    for (let i = 0; i < now.broken.length; i += 3) {
+      if (priorBroken.has(now.broken[i + 1])) continue;
+      out.push(`  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
+               `added a broken reference: ${now.broken[i + 1]} -- ${now.broken[i + 2]}
+`);
+      failed = true;
+    }
+    for (let i = 0; i < now.forbidden.length; i += 3) {
+      out.push(`  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
+               `added a forbidden URL: ${now.forbidden[i + 1]}
+`);
+      failed = true;
+    }
+  }
+  return { text: out.join(""), failed };
 }
 
 // ── Build entry point ─────────────────────────────────────────────────────────
@@ -1254,21 +1331,12 @@ export async function runBuild(opts) {
     console.log(`           book.html (${mb} MB), ${pdfResult.css} CSS, ` +
                 `${pdfResult.images} images${missingClause}`);
   }
-  const checkResult = results.get("checkReport");
-  if (checkResult) {
-    console.log(`  ${pc.bold("check:")}`);
-    process.stdout.write(checkResult.text);
-    // Same code scheme scripts/check_links.mjs uses -- 1 for link
-    // failures, 2 for integrity failures, 3 for both -- so CI can still
-    // tell "broken link" from "malformed output" after check.bat stops
-    // invoking the script. OR'd in rather than assigned: the build's own
-    // failures (dot, scss, vendorAssets) already claim bit 0.
-    const code = (checkResult.linksFailed ? 1 : 0) | (checkResult.integrityFailed ? 2 : 0);
-    if (code) process.exitCode = (process.exitCode ?? 0) | code;
-  }
-
-  console.log(scheduler.summary());
-
+  // The Gantt injection rewrites BuildInfo.html in both trees, so it has
+  // to happen before the check report is printed -- otherwise the check
+  // has reported on bytes that no longer exist. It cannot happen before
+  // the check RUNS (it is built from that run's timings), so the patched
+  // pages go back through the same check path instead.
+  //
   // Boot timings come from the workers' very first message after spawn.
   // On rebuilds the workers are alive from the previous build and never
   // emit them again, so only inject on the first build to keep the Gantt
@@ -1287,8 +1355,34 @@ export async function runBuild(opts) {
   const grouped = groupGanttTimings(scheduler.timings, { check: !!opts.check });
 
   const injectStart = Date.now();
-  await injectGanttChart(scheduler.state.pages, destRoot, grouped ? renderGantt(grouped) : "");
-  console.log(pc.dim(`gantt-inject=${Date.now() - injectStart}ms`));
+  const injected = await injectGanttChart(
+    scheduler.state.pages, destRoot, grouped ? renderGantt(grouped) : ""
+  );
+  const injectMs = Date.now() - injectStart;
+  const recheck = await recheckInjected(
+    injected, results.get("linkJoin"), scheduler.state, destRoot
+  );
+
+  const checkResult = results.get("checkReport");
+  if (checkResult) {
+    console.log(`  ${pc.bold("check:")}`);
+    process.stdout.write(checkResult.text);
+    process.stdout.write(recheck.text);
+    // Same code scheme scripts/check_links.mjs uses -- 1 for link
+    // failures, 2 for integrity failures, 3 for both -- so CI can still
+    // tell "broken link" from "malformed output" after check.bat stops
+    // invoking the script. OR'd in rather than assigned: the build's own
+    // failures (dot, scss, vendorAssets) already claim bit 0.
+    const code = (checkResult.linksFailed ? 1 : 0)
+      | ((checkResult.integrityFailed || recheck.failed) ? 2 : 0);
+    if (code) process.exitCode = (process.exitCode ?? 0) | code;
+  } else if (recheck.failed) {
+    process.stdout.write(recheck.text);
+    process.exitCode = (process.exitCode ?? 0) | 2;
+  }
+
+  console.log(scheduler.summary());
+  console.log(pc.dim(`gantt-inject=${injectMs}ms`));
 
   // Drift guard from PLAN-1.md §1.
   if (pages.length < 836) {
