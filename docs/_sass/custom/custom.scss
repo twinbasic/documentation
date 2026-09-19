@@ -185,6 +185,24 @@ div.highlight:focus-visible,
   display: block;
 }
 
+// `.aux-nav` is `overflow-x: auto` (navigation.scss:182), and the overflow
+// spec forces the other axis from `visible` to `auto` when one axis is not
+// `visible` -- so the nav is a scroll container and clips at its padding box
+// on all four sides. The toggle is the nav's first item and `height: 100%`,
+// which puts its left, top and bottom edges exactly on that clip edge, so
+// `.btn-reset`'s outset ring (2px at 2px offset, buttons.scss:134) survives
+// only on the right, where the aux-nav link leaves room. Draw it inside the
+// border box instead; the button is 50x59 with 16px padding, so an inset ring
+// still clears the 18px icon by 14px.
+//
+// Only the offset is overridden -- width and colour stay with `.btn-reset`,
+// whose dark-mode copy re-emits the whole rule at (0,3,1). An id selector is
+// what clears that bar in both themes; a `.aux-nav .site-button` descendant
+// selector is (0,3,0) and would apply in light mode only.
+#theme-toggle:focus-visible {
+  outline-offset: -2px;
+}
+
 // Video thumbnails (Videos section). The YouTube <iframe> embeds these
 // replaced loaded Google's player on page view, which set third-party
 // cookies before the reader had done anything. A locally vendored
