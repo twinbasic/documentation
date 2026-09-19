@@ -658,8 +658,18 @@ function renderBreadcrumbs(page, baseurl) {
 
 const HEADING_REGEX = /<(h[1-6])(\s[^>]*?)?>([\s\S]*?)<\/\1>/g;
 const ID_ATTR_REGEX = /\bid="([^"]+)"/;
+// The icon is deliberately out of the accessibility tree and out of the tab
+// order. `aria-labelledby` used to point at the enclosing heading, which made
+// the accessible name the heading text verbatim -- so every heading appeared a
+// second time in a screen reader's links list, named identically, with nothing
+// saying it was a permalink. 7,031 of them across the site. It stays a real
+// `<a href>` so the mouse affordances that people actually use to copy these
+// (right-click Copy Link Address, middle-click, the status-bar URL preview) are
+// untouched; the keyboard/AT equivalent is the section-links disclosure that
+// renderSectionLinks emits once per page. axe reports `aria-hidden-focus` as a
+// pass because `tabindex="-1"` takes it out of the tab order.
 const ANCHOR_SVG_TPL = (id) =>
-  `<a href="#${id}" class="anchor-heading" aria-labelledby="${id}"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a>`;
+  `<a href="#${id}" class="anchor-heading" tabindex="-1" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a>`;
 
 export function injectAnchorHeadings(html) {
   return html.replace(HEADING_REGEX, (_, tag, attrs = "", body) => {
