@@ -39,7 +39,7 @@ export const DEFAULT_ROOT_DIR = join(REPO_ROOT, "docs/_site-offline");
 // between 2,175 and 2,694 elements against a site maximum of 5,231, and not one
 // had a table, an image, a disclosure widget or a video card.  Rules for those
 // constructs ran against nothing and reported a pass.  A full-site sweep
-// (scripts/sweep_a11y.mjs, 3,488 audits) found six violation classes on 54
+// (scripts/sweep_a11y.mjs, 3,476 audits) found six violation classes on 54
 // pages, every one of them in a construct the sample could not see.
 //
 // The rest close that gap, each earning its place:
@@ -64,10 +64,10 @@ export const DEFAULT_ROOT_DIR = join(REPO_ROOT, "docs/_site-offline");
 // 2,221 elements).  A page nobody sees for longer than 0 ms is not a page to
 // audit.
 //
-// Cost, measured across the full matrix: 15.3 s of audit against 6.2 s for the
-// original six -- 2.45x for eleven pages instead of six, because cost tracks
+// Cost, measured across the full matrix: 18.7 s of audit against 6.3 s for the
+// original six -- 2.96x for thirteen pages instead of six, because cost tracks
 // element count super-linearly rather than page count.  Pipeline-Stages alone
-// is 30 % of it.
+// is 26 % of it.
 export const SAMPLE_PAGES = [
   "/index.html",
   "/tB/Core/Dim.html",

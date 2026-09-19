@@ -1,11 +1,13 @@
 // Offline link checker for static sites.
 //
 // The routine check runs *inside the build* -- `tbdocs --check`, which
-// build.bat passes -- over the HTML the workers already hold, rather
-// than writing 230 MB out and reading it back. This script is the same
-// check as a standalone tool, for a tree the build did not produce: a
-// release zip, a bisect, someone else's artifact. Both CI workflows
-// still invoke it directly.
+// build.bat passes via --check-audit-index -- over the HTML the workers
+// already hold, rather than writing ~270 MB out and reading it back.
+// This script is the same check as a standalone tool, for a tree the
+// build did not produce: a release zip, a bisect, someone else's
+// artifact. Both CI workflows still run it, though not directly: they
+// invoke check_links_diff.mjs, which spawns this script as its `script`
+// side, and only against the fixtures.
 //
 // The two front ends share builder/link-check.mjs, and
 // scripts/check_links_diff.mjs is the gate that says they agree --

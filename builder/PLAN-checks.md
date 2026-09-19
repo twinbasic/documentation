@@ -3,7 +3,7 @@
 Move link extraction and resolution out of `scripts/check_links.mjs`'s
 standalone re-scan and into the tbdocs task graph, so the build checks the
 HTML it already has in memory instead of writing it out, exiting, and reading
-230 MB back.
+it all back -- 230 MB when this was written, ~270 MB today.
 
 This plan covers **the link checker only**. `pick_a11y_sample.mjs`, the axe
 scan's orchestration, and CI step fusion are separate follow-ons, sketched at
@@ -601,10 +601,13 @@ Actions UI is worth something). Tracked below.
 
 #### Shipped
 
-`build.bat` passes `--check`; `check.bat` is down to the three axe stages.
-`--no-check` exists so `build.bat --no-check` still gets a plain build (flags
-are read in order, so the later one wins). Both CI workflows are untouched,
-which also keeps `check_links.mjs` a live consumer rather than a museum piece.
+`build.bat` passes `--check-audit-index` (which implies `--check`); `check.bat`
+is down to a freshness gate and the three axe stages. `--no-check` exists so
+`build.bat --no-check` still gets a plain build (flags are read in order, so
+the later one wins). Neither CI workflow calls `check_links.mjs` directly any
+more -- both run `check_links_diff.mjs`, which spawns it as the `script` side
+of the comparison, so it stays a live consumer rather than a museum piece, but
+only over the fixture trees.
 
 `scripts/check_links_diff.mjs` is the regression test, run by hand when
 `link-check.mjs`, `check.mjs` or `check_links.mjs` changes -- the same contract
@@ -792,7 +795,7 @@ graph. Three ways out, in rough order of preference:
 
 ### Follow-on C — axe scan orchestration (20 288 ms)
 
-**Where the time goes.** Instrumented `check_a11y.mjs`'s matrix (11 pages × 2
+**Where the time goes.** Instrumented `check_a11y.mjs`'s matrix (11 pages at the time of measurement, 13 now × 2
 themes × 2 viewports = 44 audits):
 
 | | ms |
@@ -885,7 +888,7 @@ touches two files, adding a main task touches one.
 - **Browser lifetime under `--serve`.** Persisting across rebuilds is the whole
   attraction, but the pool's `destroy()` path and the rebuild queue both need
   to account for it.
-- **A skip cache.** The audit only ever reads 11 pages, 5 non-blocked assets
+- **A skip cache.** The audit only ever reads a dozen-odd pages, 5 non-blocked assets
   (3 CSS + `just-the-docs.js` + `theme-toggle.js`; `search-data.js` and
   `lunr.min.js` are blocked during the scan) and the 20 distinct images those
   pages reference — ~36 files. Keying a "last green" marker on their hashes

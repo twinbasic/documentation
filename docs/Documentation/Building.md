@@ -27,7 +27,7 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 - **Node.js 22+** for `tbdocs` itself.
 - **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root contains the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
-- **Chromium** is required for two things: rendering the PDF book (`book.bat`) and the accessibility scan that `check.bat` runs after its link check (`scripts/check_a11y.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat` and `book.bat` do.
+- **Chromium** is required for two things: rendering the PDF book (`book.bat`) and the accessibility scan `check.bat` runs (`scripts/check_a11y.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat` and `book.bat` do.
 
 ## Building
 
@@ -55,19 +55,25 @@ Serve writes to `docs/_serve/`, completely disjoint from `build.bat`'s `_site/` 
 
 ## Checking link integrity
 
-Before checking link integrity, the documentation must be built:
+The link check is part of the build. `build.bat` passes `--check-audit-index`, and the check reads the HTML the build already holds in memory rather than writing ~270 MB of it out and reading it back:
 
-    check.bat
+    build.bat
 
-This runs two passes of `scripts/check_links.mjs`: one against `_site/` (the online tree) and one against `_site-offline/` (the `file://`-browsable mirror) with `--forbid 'https://docs.twinbasic.com'` to also flag any surviving live-site link --- the offline mirror should never navigate back to the live docs site. Both checks also assert HTML well-formedness, duplicate-`id` detection, anchor resolution, accessibility hints, and (for the online tree) the sitemap and search-index integrity. The same two checks run in CI on every pull request and on every push to `staging`.
+It covers all three trees --- `_site/` (the online tree), `_site-offline/` (the `file://`-browsable mirror, which also carries `--forbid 'https://docs.twinbasic.com'` so a surviving live-site link is flagged: the offline mirror should never navigate back to the live docs site), and `_site-pdf/book.html` (informational). Every tree is also checked for HTML well-formedness, duplicate `id`s, anchor resolution, accessibility hints and remote `<img src>`; the online tree adds sitemap, search-index and canonical-URL integrity. The same check runs in CI on every pull request and on every push to `staging`.
+
+A failing check does not abort the build --- a broken link still produces a site worth looking at --- so it sets the exit code instead: 1 for link failures, 2 for integrity failures, 3 for both.
+
+[`scripts/check_links.mjs`](Tools#check-links) is still the tool for a tree this build did not produce: a release zip, a bisect, someone else's artifact.
 
 ## Checking accessibility
 
-When the link check passes, `check.bat` continues into an accessibility scan: [`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over six sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. A link-check failure stops the run before this stage.
+    check.bat
+
+[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. Three cheaper gates run first and stop the run if they fail: a freshness check that refuses a stale tree, the axe source-patch verification, and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses.
 
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 
-A clean `check.bat` run --- link integrity and accessibility both --- is the bar for "ready to commit".
+A clean `build.bat && check.bat` --- link integrity and accessibility both --- is the bar for "ready to commit".
 
 ## Graphviz/DOT diagrams
 

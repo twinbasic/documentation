@@ -533,6 +533,11 @@ to-worker transitions no longer pay it.
 
 4. Update `Atomics.store(views.taskCount, 0, newCount)`.
 
+5. Set each render:i's status to READY and notify workers.
+
+Workers that are waiting (Atomics.wait) wake up and see the new
+render tasks.
+
 ### A dep count of zero does not mean the submits have run
 
 **This is the easiest invariant in the scheduler to miss.** It removed
@@ -608,12 +613,7 @@ each was provoked deliberately to confirm it reports rather than shrugs.
 | `deriveSearchEntries` | `continue` on a page with no `renderedContent` | throws; unlike the `search_exclude` and no-title skips beside it, this one is never a content decision |
 | `writeSearchDataFromChunks` | `flat()` over a sparse array | throws naming the missing chunk indices |
 | `emitChapter` (book) | `if (!body \|\| !body.trim()) return` | separates an empty chapter (legitimate) from an absent one (throws) |
-| `formatReport` (check) | printed chunk errors, exited 0 | an errored chunk fails the run; a pass reported over a partial examination is worse than no pass |
-
-5. Set each render:i's status to READY and notify workers.
-
-Workers that are waiting (Atomics.wait) wake up and see the new
-render tasks.
+| `formatReport` (check) | printed chunk errors, exited 0 | an errored chunk fails the run; a pass reported over a partial examination is worse than no pass. The one exception is deliberate: `TREES.pdf` sets `noFail`, so a `checkBook` chunk error prints `(informational)` and exits 0 |
 
 ### Task inputs for render chunks
 

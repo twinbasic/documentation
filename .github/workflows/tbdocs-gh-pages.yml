@@ -74,7 +74,7 @@ jobs:
         #
         # --check runs the link and site-integrity check over the HTML the
         # build already holds in worker memory, across all three trees,
-        # instead of writing them out and reading 230 MB back through
+        # instead of writing them out and reading ~270 MB back through
         # scripts/check_links.mjs. Do NOT also add a check_links.mjs pass:
         # it would check the same bytes a second time.
         #
@@ -94,10 +94,11 @@ jobs:
         # online tree gets a base path -- the offline tree's links are all
         # relative after the rewrite.
         run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --check-audit-index
-      # Not a second pass over the site: a six-file synthetic tree carrying
+      # Not a second pass over the site: a nine-file synthetic tree carrying
       # one fault of every kind, so scripts/check_links.mjs -- still the
       # tool for a tree the build did not produce -- cannot rot unnoticed.
-      # ~0.3 s. See the same step in checks.yml.
+      # ~0.3 s. See the same step in checks.yml, which additionally runs the
+      # comparison against the build's own checker.
       - name: Verify the standalone link checker (check_links_diff.mjs)
         run: node scripts/check_links_diff.mjs --case fixture --a script --b index
       # check_a11y.mjs injects a PATCHED axe bundle; verify the patch is still

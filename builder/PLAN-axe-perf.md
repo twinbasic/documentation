@@ -11,6 +11,12 @@ avoidable work backed by numbers.
 
 ## Outcome — all five phases complete
 
+> **On the numbers in this document.** Every "24 audits" / "24/24" below is
+> the matrix as it was while this was measured: six sample pages x two themes
+> x two viewports. The sample has since been widened twice and is thirteen
+> pages, sixty audits. The ratios and the conclusion are unaffected --- they
+> are per-audit --- but no absolute figure here should be read as current.
+
 **Decision: `plain-color-fields` adopted (−26 %). Take nothing else.**
 
 What pays is a vendored source patch, and not the one the plan expected:

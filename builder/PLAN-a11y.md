@@ -290,6 +290,15 @@ A pseudo-element cannot take `aria-hidden` (it is not a DOM node), so the alt-te
 5. `/tB/Core/Select-Case.html` — code blocks + admonitions
 6. `/404.html`
 
+> **Superseded.** These six are what the sample was when this phase landed,
+> and every "six sample pages" in this document should be read that way. The
+> list is now thirteen pages and derived rather than hand-picked: all six of
+> these sat between 2,175 and 2,694 elements against a site maximum of 5,231,
+> and not one carried a table, an image, a disclosure widget or a video card,
+> so several rules in the tag set had nothing to run on and the gate reported
+> a clean pass anyway. `scripts/pick_a11y_sample.mjs` now derives the list
+> from construct coverage; see WIP.md's *Choosing the sample*.
+
 **Configuration:**
 - WCAG 2.0 / 2.1 / 2.2 Level A + AA tags, plus `heading-order`
 - Reports violations and incomplete checks

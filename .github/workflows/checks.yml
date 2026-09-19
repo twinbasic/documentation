@@ -73,7 +73,7 @@ jobs:
         #
         # --check runs the link and site-integrity check over the HTML the
         # build already holds in worker memory, instead of writing three
-        # trees out and reading 230 MB of them back through
+        # trees out and reading ~270 MB of them back through
         # scripts/check_links.mjs. Same findings -- that equivalence is
         # gated by scripts/check_links_diff.mjs, run by hand when either
         # implementation changes. Do NOT also add a check_links.mjs pass
@@ -100,7 +100,7 @@ jobs:
         run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index
       # The build above is the only pass over the site's HTML. This step is
       # NOT a second one: it runs the differential harness against a
-      # six-file synthetic tree that carries one fault of every kind, so
+      # nine-file synthetic tree that carries one fault of every kind, so
       # scripts/check_links.mjs -- still the tool for a tree the build did
       # not produce, and the oracle the fused path is defined against --
       # cannot rot unnoticed. ~0.3 s, no site files touched.

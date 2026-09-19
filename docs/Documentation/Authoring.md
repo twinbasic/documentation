@@ -89,7 +89,7 @@ Do **not** jump from `#` straight to `###`. That old "house style" --- an h1 fol
 - **Bold** (`**...**`) for keywords and literal tokens the reader would type verbatim; *italic* (`*...*`) for placeholders and argument names.
 - twinBASIC code goes in a ` ```tb ` fenced block --- Shiki highlights it with the vendored twinBASIC grammar. `yaml` and `json` are the other highlighted fence languages; anything else falls back to unhighlighted plain text.
 - Parameter lists use the definition-list pattern (a term line, then a `: definition` line beneath it), not a markdown table.
-- For dashes, write `--` in the source (it renders as an en-dash) or `---` (an em-dash). Never paste a literal `–` or `—` --- the build's typographer converts the ASCII forms, and literal dash characters in source are rejected.
+- For dashes, write `--` in the source (it renders as an en-dash) or `---` (an em-dash). Never paste a literal `–` or `—`. Nothing in the build rejects one: the typographer converts the ASCII forms and passes a literal character straight through, so a stray dash ships silently and only the source becomes inconsistent. `scripts/convert_em_dash_separators.py` is the normaliser, and it is run by hand.
 
 ## Images
 
@@ -109,7 +109,7 @@ There are three reasons, in increasing order of severity:
 - **The offline mirror stops being self-contained.** `_site-offline/` is meant to be browsable from a `file://` URL with no network at all. A remote image renders as a broken placeholder there.
 - **The PDF book fails to build.** This is the one that actually bites. The forked paged.js in `book/lib/` dropped support for loading images asynchronously, so an image that has not finished downloading by the time the page-breaking pass runs raises an error and aborts the whole render. A remote image makes `book.bat` depend on a reachable third-party host; when that host is slow, blocked, or has expired the asset, the build does not degrade to a missing picture --- it stops.
 
-[`check.bat`](Building#checking-link-integrity) enforces this. A remote `<img>` --- `http://`, `https://`, or protocol-relative `//host/...` --- is reported as `remote-asset:` and fails the run.
+[`build.bat`](Building#checking-link-integrity) enforces this. A remote `<img>` --- `http://`, `https://`, or protocol-relative `//host/...` --- is reported as `remote-asset:` and fails the run.
 
 ### Videos
 
@@ -172,7 +172,7 @@ Use one callout per concern, and reserve them for genuine notes --- plain "why t
 
 Relative links resolve against a page's **rendered URL** (its `permalink`), not its location in the source tree. A link to a sibling in the same URL folder is a bare name --- `[Dim](Dim)`; crossing into another folder climbs out with `../`. Always link to a page's canonical `permalink`, never to one of its `redirect_from` aliases.
 
-When the right number of `../` steps is not obvious, copy a working link from a neighbouring page that already points where you want to go and change the final segment. That is faster and less error-prone than counting folders, and [`check.bat`](Building#checking-link-integrity) catches any link that resolves to nothing before it reaches the site.
+When the right number of `../` steps is not obvious, copy a working link from a neighbouring page that already points where you want to go and change the final segment. That is faster and less error-prone than counting folders, and [`build.bat`](Building#checking-link-integrity) catches any link that resolves to nothing before it reaches the site.
 
 ## See also
 

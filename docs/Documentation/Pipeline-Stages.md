@@ -484,7 +484,7 @@ The same modules as above, with the full export list per file.
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `loadHighlightTheme` | `(themesDir?) → Promise<{ scopeToClass, css }>` | Reads the `.theme` files, groups TextMate-scope tokens by their (light-props, dark-props) pair, assigns one CSS class per unique pair, returns the scope-to-class lookup + generated CSS. Any token colour below 4.5:1 against the code-block background is raised to meet WCAG AA before emission --- lightness moved away from the background, hue and saturation preserved --- and the emitted rule carries a `raised to 4.5:1` comment naming the original colour. |
+| `loadHighlightTheme` | `(themesDir?) → Promise<{ scopeToClass, css }>` | Reads the `.theme` files, groups TextMate-scope tokens by their (light-props, dark-props) pair, assigns one CSS class per unique pair, returns the scope-to-class lookup + generated CSS. Any token colour below 4.5:1 against the code-block background is raised to meet WCAG AA before emission --- lightness moved away from the background, hue and saturation preserved --- and the emitted rule includes a `raised to 4.5:1` comment naming the original colour. |
 
 ### `template.mjs`
 
