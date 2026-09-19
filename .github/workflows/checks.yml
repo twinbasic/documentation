@@ -46,6 +46,18 @@ jobs:
         run: npm ci
       # check_a11y.mjs drives axe-core inside headless Chromium. The
       # build itself needs no browser -- only this scan does.
+      # fonts-liberation is installed explicitly, not incidentally. axe's
+      # target-size rule measures rendered boxes, and an inline element's
+      # measured height is its font's content area -- so the 24px floor is
+      # cleared or missed depending on what system-ui resolves to. At the
+      # mobile h3 size: Segoe UI 19px, Verdana and Tahoma 17px, Arial 16px,
+      # Liberation Sans / DejaVu Sans / Roboto 15px. The site's padding is
+      # calibrated against the smallest of those, so the runner has to have
+      # it. ubuntu-latest migrates to Ubuntu 26 on 19 October 2026; pinning
+      # the image would also work and expires differently, while this
+      # addresses the actual variable.
+      - name: Install Liberation fonts
+        run: sudo apt-get install -y --no-install-recommends fonts-liberation
       - name: Install Chromium
         # Same incantation as tbdocs-gh-pages.yml's install step, which
         # is the proven-working one in this repo: --install-deps apt-installs
@@ -67,6 +79,15 @@ jobs:
         # implementation changes. Do NOT also add a check_links.mjs pass
         # over _site/: it would check the same bytes a second time.
         #
+        # --check-audit-index adds the index audit on top: a diff of the
+        # tree index the build derives from its own records against what
+        # landed on disk. It is the one direction the findings comparison
+        # cannot see -- a spurious entry makes the oracle answer "exists"
+        # for a path that 404s in production, and on a clean site nothing
+        # links to a path that does not exist, so nothing else would
+        # notice. CI lost its previous coverage of this when the FsOracle
+        # pass was removed.
+        #
         # It covers all three trees: _site/ (links, fragments, duplicate
         # ids, well-formedness, remote <img src>, sitemap, search index,
         # canonical URLs), _site-offline/ (the same minus sitemap and
@@ -76,7 +97,7 @@ jobs:
         # broken link still produces a site worth inspecting -- so the
         # step fails on the exit code: 1 for link failures, 2 for
         # integrity failures, 3 for both.
-        run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check
+        run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index
       # The build above is the only pass over the site's HTML. This step is
       # NOT a second one: it runs the differential harness against a
       # six-file synthetic tree that carries one fault of every kind, so

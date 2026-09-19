@@ -41,8 +41,20 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
       - name: Install dependencies and Chromium
+        # fonts-liberation is installed explicitly, not incidentally.
+        # axe's target-size rule measures rendered boxes, and an inline
+        # element's measured height is its font's content area -- so the
+        # 24px floor is cleared or missed depending on what system-ui
+        # resolves to. At the mobile h3 size: Segoe UI 19px, Verdana and
+        # Tahoma 17px, Arial 16px, Liberation Sans / DejaVu Sans / Roboto
+        # 15px. The site's padding is calibrated against the smallest of
+        # those, so the runner has to have it. ubuntu-latest migrates to
+        # Ubuntu 26 on 19 October 2026; pinning the image would also work
+        # and expires differently, while this addresses the actual
+        # variable.
         run: |
           npm ci
+          sudo apt-get install -y --no-install-recommends fonts-liberation
           sudo npx puppeteer browsers install chrome --install-deps
       - name: Setup Pages
         id: pages
@@ -66,13 +78,22 @@ jobs:
         # scripts/check_links.mjs. Do NOT also add a check_links.mjs pass:
         # it would check the same bytes a second time.
         #
+        # --check-audit-index adds the index audit on top: a diff of the
+        # tree index the build derives from its own records against what
+        # landed on disk. It is the one direction the findings comparison
+        # cannot see -- a spurious entry makes the oracle answer "exists"
+        # for a path that 404s in production, and on a clean site nothing
+        # links to a path that does not exist, so nothing else would
+        # notice. CI lost its previous coverage of this when the FsOracle
+        # pass was removed.
+        #
         # It also removes a synchronisation point that used to be easy to
         # get wrong. The standalone pass needed --base-path to match this
         # step's --baseurl, in a different step, by hand; the fused check
         # reads the baseurl off the config it just built with. Only the
         # online tree gets a base path -- the offline tree's links are all
         # relative after the rewrite.
-        run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --check
+        run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --check-audit-index
       # Not a second pass over the site: a six-file synthetic tree carrying
       # one fault of every kind, so scripts/check_links.mjs -- still the
       # tool for a tree the build did not produce -- cannot rot unnoticed.

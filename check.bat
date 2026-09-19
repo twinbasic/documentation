@@ -4,6 +4,11 @@
 @rem is still the tool for a tree this build did not produce, and
 @rem scripts/check_links_diff.mjs is what says the two agree.
 @pushd "%~dp0"
+@rem Everything below reads docs\_site-offline\ as it stands. Edit a page,
+@rem run this without rebuilding, and it audits the previous build and
+@rem passes. Refuse instead, naming build.bat.
+node scripts/check_tree_fresh.mjs
+@if errorlevel 1 goto :fail
 node scripts/check_axe_patch_equiv.mjs
 @if errorlevel 1 goto :fail
 node scripts/pick_a11y_sample.mjs --check
