@@ -130,16 +130,16 @@ div.highlight:focus-visible,
   .footer-actions { margin-top: 0.5rem; }
   .footer-legal { margin-top: 0.25rem; }
 
-  // Every item in the actions row is the same shape regardless of which
-  // element it happens to be -- hence `> *` rather than `> a`. Selecting on
-  // the element type is exactly what let the two drift apart: min-height
-  // landed on the anchors only, so the plain-span items stayed shorter and
-  // their text sat 4px higher than their neighbours'.
+  // The actions row is all <a> and the legal row is all <span> (see
+  // renderFooterActions / renderFooterLegal), so one rule covers every item
+  // in the row and there is no second element type to fall out of step. The
+  // selector stays `> *` rather than `> a` so that a stray element added
+  // later is sized like its neighbours instead of quietly sitting 4px high,
+  // which is how the old <span> in this row behaved.
   //
-  // inline-block with a matching line-height, not flex: these items carry
-  // phrase content ("Download <a>Offline Copy</a> or <a>PDF</a>."), and
-  // making them flex containers turns each run of words into a flex item
-  // and collapses the spaces between them.
+  // inline-block, not flex: an item may carry phrase content with a link in
+  // it, and a flex container turns each run of words into a flex item and
+  // collapses the spaces between them.
   //
   // 24px is WCAG 2.5.8 target-size, met on *size* so no font swap can flip
   // it. Without it #back-to-top and #edit-this-page are 15.8px targets that

@@ -776,12 +776,21 @@ function renderFooter(page, site, sectionLinks) {
     `      </footer>\n`;
 }
 
-// The legal row: copyright, plus the CC-BY-4.0 line on VBA-derived pages.
-// Both were `<p class="text-small mb-0">` stacked; they are now spans on one
-// wrapped flex row, and the type size comes from the footer rather than from
-// a utility class on each element, so nothing can drift out of step again.
+// The legal row: the last-modified stamp, copyright, and the CC-BY-4.0 line
+// on VBA-derived pages. These were `<p class="text-small mb-0">` stacked; they
+// are now one wrapped flex row, and the type size comes from the footer rather
+// than a utility class on each element, so nothing can drift out of step.
+//
+// Every child is a <span> and nothing else, the mirror of the actions row's
+// all-<a> rule: this row is prose, which may contain a link, rather than a
+// link that may contain prose. Keep it that way if you add to it.
 function renderFooterLegal(page, config) {
   let out = "";
+  if (config.last_edit_timestamp && config.last_edit_time_format
+    && page.frontmatter.last_modified_date) {
+    const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
+    out += `          <span>Page last modified: ${escText(formatted)}.</span>\n`;
+  }
   if (config.footer_content) {
     // Emitted verbatim, NOT escaped: the current value contains `&copy;`
     // which is the desired HTML entity; escaping would double-encode it.
@@ -798,10 +807,22 @@ function renderFooterLegal(page, config) {
   return `        <div class="footer-legal">\n` + out + `        </div>\n`;
 }
 
-// The actions row: back-to-top, the GitHub edit link, the downloads, and the
-// last-modified stamp when a page carries one. Separation is by flex `gap`
-// alone -- a "·" in a ::before would be announced by some screen readers on
-// every page, which is the noise the section-links work just removed.
+// The actions row. Every child is an <a> and nothing else -- that is the
+// invariant the styling relies on, so keep it if you add to this row. It used
+// to hold a <span> too, wrapping "Download <a>Offline Copy</a> or <a>PDF</a>."
+// as one item, and that lone odd element out is what let the row's baselines
+// drift: the min-height that makes the links 24px targets applied to the
+// anchors and not to it. The framing sentence was the only reason for the
+// span, so it is gone and the two downloads are ordinary links that say what
+// they do. Their old text ("Offline Copy", "PDF") was ambiguous on its own in
+// a screen reader's links list anyway.
+//
+// The last-modified stamp is not an action, and moved to the legal row where
+// the prose items live.
+//
+// Separation is by flex `gap` alone -- a "·" in a ::before would be announced
+// by some screen readers on every page, which is the noise the section-links
+// work just removed.
 //
 // #back-to-top and #edit-this-page keep their ids: print.scss hides both by
 // id, and that is the only thing pinning them.
@@ -810,8 +831,6 @@ function renderFooterActions(page, config) {
   const showEdit = config.gh_edit_link && config.gh_edit_link_text && config.gh_edit_repository
     && config.gh_edit_branch && config.gh_edit_view_mode;
   const showOffline = config.gh_offline_link && config.gh_offline_link_url;
-  const showLastModified = config.last_edit_timestamp && config.last_edit_time_format
-    && page.frontmatter.last_modified_date;
 
   let inner = "";
   if (showBackToTop) {
@@ -822,15 +841,10 @@ function renderFooterActions(page, config) {
     inner += `          <a href="${escAttr(href)}" id="edit-this-page">${escText(String(config.gh_edit_link_text))}</a>\n`;
   }
   if (showOffline) {
-    const pdfUrl = config.gh_pdf_link_url ? String(config.gh_pdf_link_url) : null;
-    const offlineHref = escAttr(String(config.gh_offline_link_url));
-    inner += pdfUrl
-      ? `          <span>Download <a href="${offlineHref}" id="download-offline">Offline Copy</a> or <a href="${escAttr(pdfUrl)}" id="download-pdf">PDF</a>.</span>\n`
-      : `          <a href="${offlineHref}" id="download-offline">Offline Copy</a>\n`;
-  }
-  if (showLastModified) {
-    const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
-    inner += `          <span>Page last modified: <span class="d-inline-block">${escText(formatted)}</span>.</span>\n`;
+    inner += `          <a href="${escAttr(String(config.gh_offline_link_url))}" id="download-offline">Download offline copy</a>\n`;
+    if (config.gh_pdf_link_url) {
+      inner += `          <a href="${escAttr(String(config.gh_pdf_link_url))}" id="download-pdf">Download PDF</a>\n`;
+    }
   }
   if (inner === "") return "";
 
