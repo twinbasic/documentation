@@ -113,32 +113,49 @@ div.highlight:focus-visible,
 
   // Rows, not stacks. `gap` alone separates the items: a "\00b7" in a
   // ::before would be read out by some screen readers on every page.
+  //
+  // `align-items: center` is not cosmetic padding-out of the rule -- the
+  // default `stretch` pulls every item to the row's 24px height and then
+  // leaves its text at the top of that box, while the min-height anchors
+  // below centre theirs. That put the "Download ... or PDF." baseline 4px
+  // above "Back to top".
   .footer-actions,
   .footer-legal {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.125rem 1.25rem;
   }
 
   .footer-actions { margin-top: 0.5rem; }
   .footer-legal { margin-top: 0.25rem; }
 
-  // WCAG 2.5.8 again, and this time on *size* rather than spacing. Left
-  // alone, #back-to-top and #edit-this-page are standalone targets 15.8px
-  // tall that scrape through on the spacing exception -- axe measures "a
-  // diameter of 24px which is at least 24px", i.e. zero margin, on a
-  // measurement that moves with whatever `system-ui` resolves to. That is
-  // how the heading-link hit box passed here and failed on CI's fonts.
-  // min-height is font-independent and settles it outright.
+  // Every item in the actions row is the same shape regardless of which
+  // element it happens to be -- hence `> *` rather than `> a`. Selecting on
+  // the element type is exactly what let the two drift apart: min-height
+  // landed on the anchors only, so the plain-span items stayed shorter and
+  // their text sat 4px higher than their neighbours'.
   //
-  // The legal row is deliberately excluded: its links sit inside sentences
-  // ("License: CC-BY-4.0"), which is the criterion's inline exception, and
-  // axe does not evaluate them.
-  .footer-actions > a,
+  // inline-block with a matching line-height, not flex: these items carry
+  // phrase content ("Download <a>Offline Copy</a> or <a>PDF</a>."), and
+  // making them flex containers turns each run of words into a flex item
+  // and collapses the spaces between them.
+  //
+  // 24px is WCAG 2.5.8 target-size, met on *size* so no font swap can flip
+  // it. Without it #back-to-top and #edit-this-page are 15.8px targets that
+  // scrape through on the spacing exception -- axe measures "a diameter of
+  // 24px which is at least 24px", zero margin, against a number that moves
+  // with whatever `system-ui` resolves to. That is how the heading-link hit
+  // box passed here and failed on CI's fonts.
+  //
+  // The legal row is deliberately left out: its links sit inside sentences
+  // ("License: CC-BY-4.0"), the criterion's inline exception, and axe does
+  // not evaluate them.
+  .footer-actions > *,
   .section-links li > a {
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
     min-height: 24px;
+    line-height: 24px;
   }
 }
 
@@ -158,6 +175,20 @@ div.highlight:focus-visible,
 
   > ul {
     margin: 0.25rem 0 0;
+  }
+
+  // The marker is placed against the <li>'s line box, so it only lines up
+  // with the link text if the two are the same height. Two things are
+  // needed: a line-height matching the 24px anchor box, and `vertical-align`
+  // to stop that anchor -- an inline-block, so it sits on the baseline and
+  // reserves descender space beneath itself -- from stretching the <li> to
+  // 31px and dropping the bullet 3.5px out of line with its own text.
+  li {
+    line-height: 24px;
+
+    > a {
+      vertical-align: top;
+    }
   }
 }
 
