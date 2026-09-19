@@ -15,4 +15,5 @@ indexer/.packages/
 # scripts/check_links_diff.mjs builds test/fixtures/check-src into these.
 /test/fixtures/_out/
 /test/fixtures/_out-offline/
+/test/fixtures/_out-pdf/
 /test/fixtures/_out.json
