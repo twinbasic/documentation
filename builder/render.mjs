@@ -1069,27 +1069,64 @@ function configureFootnotes(md) {
 // markdown untouched and GitHub keeps its `###`. Deliberately narrow, per the maintainer's rule: fire ONLY on a page
 // that uses h1 and h3 but no h2 -- the unambiguous house-style shape. A page
 // that already uses h2 is left exactly as authored (its levels are the
-// author's own structure, not the workaround). On a matching page every
-// sub-chapter heading is raised one level (h3->h2, h4->h3, ...), which closes
-// the missing-h2 gap; the one such page that also uses h4 (Reference/Core/Open)
-// becomes a clean h1/h2/h3. Runs before header-id and toc so heading ids and
-// the in-page table of contents are built from the final levels. Multiple h1
-// "chapters" on one page are intentional and preserved.
+// author's own structure, not the workaround). A raw HTML `<h2>` counts as an
+// h2 for that check too, even though it never produces a heading_open token --
+// otherwise a page mixing a hand-written `<h2>` with markdown `###` sections
+// would get its h3s promoted right over the author's own structure.
+//
+// Each heading is renumbered against a stack of its still-open ancestors --
+// the same shape a document outline builds -- rather than shifted by a fixed
+// amount. Walking the headings in order: pop any stack entry whose raw level
+// is >= this heading's (it is a sibling or a finished deeper section, not an
+// ancestor), then this heading's normalized level is one below whatever
+// ancestor is left on top (or h1 if the stack is now empty), and it is
+// pushed in turn. That closes the h1->h3 gap (h3 becomes h2) and moves any
+// directly nested tail down with it (h4->h3, ...), which is what "raise h3
+// to h2" means in the common case. It also keeps two headings written at the
+// same raw level as SIBLINGS even when only one of them contains a deeper
+// run -- Reference/Core/Open has two `###` sections around a run of six
+// `####` subsections, and both `###`s must land on h2, not h2 then h3 for
+// the second one just because the stack was deeper when it was reached. A
+// fixed -1 offset would get that page right too (nothing in it is more than
+// one level deeper than its own section), but it only closes the FIRST gap
+// it meets: a page with a second, independent skip further down (h3
+// straight to h5, no h4) would come out h1/h2/h4 -- the skip reappears one
+// level over and no longer matches anything in the source, so it would go
+// unnoticed. The stack closes every gap in one pass; a heading returning to
+// a shallower level is left alone, since going shallower is never a skip.
+// Runs before header-id and toc so heading ids and the in-page table of
+// contents are built from the final levels. Multiple h1 "chapters" on one
+// page are intentional and preserved.
+const RAW_H2_BLOCK_RE = /<h2[\s>]/i;
+
 function headingLevelNormalizePlugin(md) {
   md.core.ruler.before("header-id", "heading-normalize-levels", (state) => {
     const toks = state.tokens;
     const present = new Set();
     for (const t of toks) {
       if (t.type === "heading_open") present.add(Number(t.tag.slice(1)));
+      else if (t.type === "html_block" && RAW_H2_BLOCK_RE.test(t.content)) present.add(2);
     }
     if (!(present.has(1) && present.has(3) && !present.has(2))) return;
+
+    const stack = []; // {raw, normalized} chain of still-open ancestor headings
+    let openNormalized = null; // level assigned to the open heading_open, reused by its heading_close
     for (const t of toks) {
-      if (t.type !== "heading_open" && t.type !== "heading_close") continue;
-      const level = Number(t.tag.slice(1));
-      if (level < 3) continue;
-      const raised = level - 1;
-      t.tag = `h${raised}`;
-      if (t.markup) t.markup = "#".repeat(raised);
+      let level;
+      if (t.type === "heading_open") {
+        level = Number(t.tag.slice(1));
+        while (stack.length && stack[stack.length - 1].raw >= level) stack.pop();
+        const parent = stack.length ? stack[stack.length - 1].normalized : 0;
+        openNormalized = parent + 1;
+        stack.push({ raw: level, normalized: openNormalized });
+      } else if (t.type === "heading_close" && openNormalized !== null) {
+        level = Number(t.tag.slice(1));
+      } else {
+        continue;
+      }
+      if (openNormalized === level) continue;
+      t.tag = `h${openNormalized}`;
+      if (t.markup) t.markup = "#".repeat(openNormalized);
     }
   });
 }
@@ -1706,6 +1743,12 @@ function videoLinkPlugin(md, ctx) {
         // join it. Matches every other image on the site.
         img.content = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(label)}" />`;
 
+        // `.video` is the marker that selected this link, not a styling
+        // hook -- nothing in the stylesheets matches it -- so it is
+        // consumed rather than emitted. Any OTHER class the author wrote
+        // in the same IAL survives, which is the whole point of merging
+        // below instead of replacing.
+        removeClass(open, "video");
         setClass(open, "video-link");
         kids.splice(i + 1, closeIdx - i - 1, img);
         i += 2; // past the injected image and its link_close
@@ -1733,9 +1776,22 @@ function hasClass(token, name) {
 }
 
 function setClass(token, name) {
+  // Merge into whatever classes the IAL already put on the token --
+  // replacing the attribute outright dropped every sibling class from the
+  // same `{: .video .float-right }` shorthand, silently.
   const i = token.attrIndex("class");
-  if (i < 0) token.attrPush(["class", name]);
-  else token.attrs[i][1] = name;
+  if (i < 0) { token.attrPush(["class", name]); return; }
+  if (!hasClass(token, name)) token.attrs[i][1] = `${token.attrs[i][1]} ${name}`;
+}
+
+// Drop one class, leaving the rest. Used for a marker class that selected
+// the token and has no business in the output.
+function removeClass(token, name) {
+  const i = token.attrIndex("class");
+  if (i < 0) return;
+  const kept = String(token.attrs[i][1]).split(/\s+/).filter(c => c && c !== name);
+  if (kept.length) token.attrs[i][1] = kept.join(" ");
+  else token.attrs.splice(i, 1);
 }
 
 // Rewrites a GitHub user-attachment <img src> to the copy vendor-assets
@@ -1747,6 +1803,40 @@ function setClass(token, name) {
 const GH_ATTACH_SRC_RE =
   /^https:\/\/github\.com\/user-attachments\/assets\/([0-9a-fA-F-]{36})/;
 
+// Shared between the markdown `![]()` path below and the raw-HTML path:
+// given a src/href string, returns the local vendored path if it's a GH
+// attachment URL vendor-assets already downloaded, or null if it's some
+// other URL (silently) or a GH attachment URL with no vendored copy yet
+// (warn -- vendor-assets should have run before render).
+function resolveVendoredAttachment(url, ctx) {
+  const m = GH_ATTACH_SRC_RE.exec(url);
+  if (!m) return null;
+  const local = ctx.vendoredImages?.get(m[1].toLowerCase());
+  if (!local) console.warn(`render: no vendored copy for attachment ${m[1]}`);
+  return local || null;
+}
+
+// vendor-assets.mjs's own scan for what to download matches "markdown
+// image syntax or a raw <img src>" (its GH_ATTACH_RE comment says so
+// explicitly), so a hand-written <img> tag gets the file downloaded to
+// disk exactly like a markdown image does. Only the renderer rule below
+// rewrote the reference, though -- a raw <img> pointing at a
+// user-attachment URL got vendored to disk and then still failed
+// --check-remote-assets, with nothing in the failure saying the tag
+// syntax was the reason. A raw <img> reaches the token stream as either
+// a standalone html_block (see wrap-standalone-inline-html above, which
+// may have already wrapped it in <p>...</p> by the time this runs -- the
+// regex below doesn't care) or an html_inline child mixed into a
+// sentence; rewrite both the same way the markdown path does.
+const RAW_IMG_SRC_RE = /(<img\b[^>]*\bsrc\s*=\s*)(["'])(.*?)\2/gi;
+
+function rewriteRawImgSrc(content, ctx) {
+  return content.replace(RAW_IMG_SRC_RE, (whole, head, quote, url) => {
+    const local = resolveVendoredAttachment(url, ctx);
+    return local ? `${head}${quote}${local}${quote}` : whole;
+  });
+}
+
 function remoteImagePlugin(md, ctx) {
   const orig = md.renderer.rules.image;
 
@@ -1754,16 +1844,24 @@ function remoteImagePlugin(md, ctx) {
     const token = tokens[idx];
     const srcIdx = token.attrIndex("src");
     if (srcIdx >= 0) {
-      const m = GH_ATTACH_SRC_RE.exec(token.attrs[srcIdx][1]);
-      if (m) {
-        const local = ctx.vendoredImages?.get(m[1].toLowerCase());
-        if (local) token.attrs[srcIdx][1] = local;
-        else console.warn(`render: no vendored copy for attachment ${m[1]}`);
-      }
+      const local = resolveVendoredAttachment(token.attrs[srcIdx][1], ctx);
+      if (local) token.attrs[srcIdx][1] = local;
     }
     if (orig) return orig(tokens, idx, options, env, self);
     return self.renderToken(tokens, idx, options);
   };
+
+  md.core.ruler.push("remote-image-raw-html", (state) => {
+    for (const t of state.tokens) {
+      if (t.type === "html_block") {
+        t.content = rewriteRawImgSrc(t.content, ctx);
+      } else if (t.type === "inline" && t.children) {
+        for (const c of t.children) {
+          if (c.type === "html_inline") c.content = rewriteRawImgSrc(c.content, ctx);
+        }
+      }
+    }
+  });
 }
 
 function svgInlinePlugin(md, ctx) {
@@ -1775,6 +1873,15 @@ function svgInlinePlugin(md, ctx) {
   // it by closing the paragraph early and leaving a stray empty <p>
   // behind, which is why it went unnoticed. Hide the paragraph tokens
   // instead, the same way markdown-it hides them inside tight lists.
+  //
+  // Only a paragraph whose ENTIRE content is the one image qualifies --
+  // `See this: ![d](x.svg)` keeps its <p>, and its image is left as a
+  // plain <img> rather than the <div> wrapper, because unwrapping only
+  // the paragraph's own <p>/<p> pair can't rescue an inline image that
+  // still has text siblings either side of it. Tag the image via
+  // meta.svgInline so the renderer rule below -- which is the one place
+  // that actually emits the wrapper -- makes the same decision instead of
+  // re-deriving it from the src alone.
   md.core.ruler.push("svg_inline_unwrap_paragraph", (state) => {
     const toks = state.tokens;
     for (let i = 0; i + 2 < toks.length; i++) {
@@ -1785,12 +1892,16 @@ function svgInlinePlugin(md, ctx) {
       if (!inlinableSvgRel(children[0])) continue;
       toks[i].hidden = true;
       toks[i + 2].hidden = true;
+      children[0].meta = { ...(children[0].meta || {}), svgInline: true };
     }
   });
 
-  // The one place that decides whether an image becomes an inlined SVG.
-  // The core rule above and the renderer rule below must agree exactly,
-  // or a paragraph gets hidden around an <img> that stayed an <img>.
+  // Whether the src qualifies for inlining at all -- used both by the
+  // core rule above (to decide whether to hide the paragraph) and by the
+  // renderer rule below (to fetch the SVG content once it knows it's
+  // rendering the wrapper). It says nothing about paragraph context, so
+  // it is NOT sufficient on its own to decide the wrapper gets emitted --
+  // see meta.svgInline below.
   function inlinableSvgRel(token) {
     const srcIdx = token.attrIndex("src");
     if (srcIdx < 0) return null;
@@ -1805,7 +1916,12 @@ function svgInlinePlugin(md, ctx) {
   md.renderer.rules.image = (tokens, idx, options, env, self) => {
     const token = tokens[idx];
     const srcRel = inlinableSvgRel(token);
-    if (srcRel === null) return fallback();
+    // meta.svgInline is set only by the core rule above, only on an image
+    // that is its paragraph's sole content. Without this check here, a
+    // src match alone would inline the wrapper for a mixed paragraph too
+    // (`See this: ![d](x.svg)`) -- and that <p> is never hidden, so the
+    // <div> wrapper would end up nested inside it, which is invalid HTML.
+    if (srcRel === null || !token.meta?.svgInline) return fallback();
     const svgContent = ctx.svgContents.get(srcRel);
 
     const alt = self.renderInlineAsText(token.children, options, env);
