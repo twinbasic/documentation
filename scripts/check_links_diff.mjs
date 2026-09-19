@@ -243,9 +243,19 @@ function writeFixture(dir) {
 // harness itself unchanged as the implementations multiply.
 
 const SIDES = {
+  // Pinned to --oracle fs, not left to the default. The script's default
+  // is platform-dependent (index on Windows, where NTFS makes FsOracle
+  // case-insensitive), and a side that silently became the same oracle
+  // as `index` would turn this comparison into a no-op on one platform.
+  //
+  // It is the reference implementation, not an oracle of record: on
+  // Windows, FsOracle answers "exists" for a wrong-case path that 404s on
+  // GitHub Pages, so on that one question the `index` side is the correct
+  // one and this side is the one with the missing finding.
   script: {
-    describe: "scripts/check_links.mjs, in-process (the oracle of record)",
+    describe: "scripts/check_links.mjs with --oracle fs, in-process",
     run(argv) {
+      argv = [...argv, "--oracle", "fs"];
       const { findings, exitCode, output } = runCheck(argv, { structured: true });
       if (!findings) {
         throw new Error(`runCheck refused the arguments (exit ${exitCode}):\n${output}`);
@@ -262,6 +272,8 @@ const SIDES = {
   index: {
     describe: "scripts/check_links.mjs with --oracle index",
     run(argv) {
+      // Appended after the script side's --oracle fs, and the parser
+      // takes the last value, so this wins.
       return SIDES.script.run([...argv, "--oracle", "index"]);
     },
   },

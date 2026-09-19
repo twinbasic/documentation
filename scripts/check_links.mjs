@@ -180,11 +180,16 @@ Options:
                              Errors are still printed. Useful for
                              informational checks that should not block.
   --oracle fs|index          How to answer "does this path exist".
-                             'fs' (default) stats the disk. 'index'
-                             walks --root-dir once and answers from a
-                             Set -- a development aid for checking that
-                             the build's in-memory index agrees with the
-                             filesystem. See builder/link-check.mjs.
+                             'index' walks --root-dir once and answers
+                             from a Set; 'fs' stats the disk. The
+                             default is 'index' on Windows and 'fs'
+                             elsewhere, because 'fs' inherits NTFS's
+                             case-insensitivity: a link to
+                             'tb/gloss.html' stats true against the file
+                             tB/Gloss.html and then 404s on GitHub
+                             Pages. 'index' compares strings and is
+                             case-sensitive on every platform. See
+                             builder/link-check.mjs.
   --threads N                Accepted for CLI compatibility; ignored.
   -v, --verbose              Print per-stage timing breakdown.
   -h, --help                 Show this help and exit.
@@ -256,7 +261,16 @@ function parseArgs(argv) {
     checkSitemap: false,
     checkSearch: false,
     checkCanonical: false,
-    oracle: "fs",
+    // GitHub Pages serves from a case-sensitive filesystem; NTFS is
+    // not. FsOracle asks the platform, so on Windows a wrong-case link
+    // passes here and 404s in production -- and because
+    // check_links_diff.mjs calls this script "the oracle of record",
+    // the harness would report the side that is RIGHT as the one with
+    // the extra finding. IndexOracle compares strings, so it behaves
+    // the same everywhere. --oracle fs stays available for the case
+    // where the question really is "what does this machine's
+    // filesystem say".
+    oracle: process.platform === "win32" ? "index" : "fs",
   };
   const inputs = [];
   const unknown = [];
