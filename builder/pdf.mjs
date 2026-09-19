@@ -37,7 +37,7 @@ const LIMIT = WRITE_LIMIT;
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMissingImages = false, highlightCss = null } = {}) {
+export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMissingImages = false, highlightCss = null, check = false } = {}) {
   if (!destRoot) {
     throw new Error("writePdf requires a destRoot");
   }
@@ -60,6 +60,20 @@ export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMis
   ]);
 
   reportMissingImages(missingPaths, tolerateMissingImages, counters);
+
+  // --check: hand the assembled book and the tree's exact contents to
+  // the link check rather than making it read 6.5 MB back off disk.
+  // `missingPaths` are the images that were NOT copied, so they must
+  // not appear in the index -- a reference to one is a broken link and
+  // the check should say so.
+  if (check) {
+    const missing = new Set(missingPaths);
+    counters.checkBook = {
+      html: bookHtml,
+      rels: ["book.html", ...REQUIRED_CSS,
+             ...imagePaths.filter(r => !missing.has(r))],
+    };
+  }
   return counters;
 }
 

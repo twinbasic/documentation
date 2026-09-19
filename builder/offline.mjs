@@ -114,7 +114,7 @@ function makeTimer() {
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false, precomputed = false, sitePaths } = {}) {
+export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false, precomputed = false, sitePaths, check = false } = {}) {
   if (!destRoot) {
     throw new Error("writeOffline requires a destRoot");
   }
@@ -135,6 +135,7 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
   const deps = {
     ...state,
     staticDestRels,
+    checkStubs: check ? [] : null,
     offlineRoot: destRoot + OFFLINE_SUFFIX,
     counters: {
       html: 0,
@@ -193,7 +194,7 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
     ]);
   }
 
-  return { ...deps.counters, jtdPatches, subT };
+  return { ...deps.counters, jtdPatches, subT, checkStubs: deps.checkStubs };
 }
 
 // Pure-compute state assembly. Shared by the writer (writeOffline) and
@@ -293,6 +294,11 @@ async function writeOfflineRedirects(stubs, deps) {
   const { offlineRoot } = deps;
   await runLimited(stubs, LIMIT, async (s) => {
     const html = deriveOfflineRedirect(s, deps);
+    // --check: the rewritten stub only exists here. The link check
+    // needs it -- 290 stubs carry 580 link occurrences, and skipping
+    // them would make the fused pass check strictly less than the
+    // standalone script does.
+    if (deps.checkStubs) deps.checkStubs.push({ destPath: s.destPath, html });
     await writeFileMkdirp(path.join(offlineRoot, s.destPath), html);
     deps.counters.redirects += 1;
   });

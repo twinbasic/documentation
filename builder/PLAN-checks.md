@@ -9,6 +9,13 @@ This plan covers **the link checker only**. `pick_a11y_sample.mjs`, the axe
 scan's orchestration, and CI step fusion are separate follow-ons, sketched at
 the end so the shared interfaces are designed with them in mind.
 
+> **Status: Phases 0–4 are implemented.** `tbdocs --src docs --check` runs the
+> link and integrity check inside the build; `build.bat` passes it and
+> `check.bat` no longer invokes `check_links.mjs`. What shipped differs from
+> what is designed below in four places, each recorded at the phase that
+> caused it and summarised in [Outcome](#outcome) at the end of Phase 4.
+> The follow-ons (B, C, D) remain unimplemented.
+
 ---
 
 ## Why
@@ -231,6 +238,43 @@ reports zero differences on all four, and `check.bat` output is unchanged.
 **Why first:** every later phase's exit criterion is "the harness is clean".
 Without it, Phase 2 and Phase 3 are unfalsifiable.
 
+#### Shipped
+
+[scripts/check_links_diff.mjs](../scripts/check_links_diff.mjs), with a
+registry of *sides* (`script`, `index`, `fused`, `mutant`) and *cases*, so
+later phases add an implementation rather than rewriting the harness. Findings
+come from `runCheck(argv, { structured: true })`, a new mode on
+[check_links.mjs](../scripts/check_links.mjs) that reduces a pass to sorted
+arrays of tree-relative strings; the CLI path is untouched and its output was
+verified byte-identical against the pre-change script.
+
+Two additions the plan did not call for, both because the gate as designed
+could pass while proving very little:
+
+- **A sixth case, `fixture`.** The real site is clean, so the four designed
+  cases compare empty against empty in nine of the ten categories. `fixture`
+  writes a synthetic tree carrying one fault of every kind -- broken target,
+  missing fragment, forbidden prefix, duplicate id, remote `<img>`, missing
+  alt, empty anchor, empty href, sitemap-missing, search-missing, canonical
+  mismatch -- and asserts the expected count per category, so a fixture that
+  stops provoking one fails loudly instead of quietly going back to
+  empty-vs-empty.
+- **`--self-test`.** Diffs `script` against a deliberately corrupted side and
+  fails unless all three detector kinds fire: an extra entry (set difference),
+  a check that stopped running (`null` vs `[]`), and files never looked at
+  (count difference). Everything else the harness prints reduces to "the two
+  sides agreed", which is also what a harness that compares nothing says.
+
+`fixture` also recorded a finding about the existing checker: **`--check-html`
+could not fire.** The implementation kept its own tag stack, but htmlparser2 in
+its default non-XML mode synthesises every implied end tag, so that stack was
+balanced by construction -- verified against an unclosed `<div>` before
+`</body>`, an unclosed `<div>` at EOF, crossed `<div><span></div></span>`, a
+stray `</section>`, unclosed `<svg><g>`, a malformed `<table>`, unclosed and
+crossed custom elements, and `<html><body><p>x`. All ten produced no errors.
+The flag had been in `check.bat` and both CI workflows gating nothing. Fixed
+separately -- see [Appendix: the dead `--check-html` gate](#appendix-the-dead---check-html-gate).
+
 ---
 
 ### Phase 1 — Split the pure core out
@@ -264,6 +308,32 @@ only when checking. Import it dynamically inside the handler, guarded on
 
 **Exit criteria:** Phase 0 harness clean on all four invocations; `check.bat`
 byte-identical; no measurable change to `check_links.mjs` wall time.
+
+#### Shipped
+
+[builder/link-check.mjs](link-check.mjs), close to the designed surface. Three
+deviations:
+
+- **The cross-file checks take content, not a root.** `checkSitemap(xml,
+  relFiles, basePath)` rather than `checkSitemapContents(rootStr, htmlFiles,
+  …)`: the caller supplies the sitemap XML and a list of tree-relative POSIX
+  paths with redirect stubs already filtered. That is what lets the build pass
+  the string it just wrote instead of reading the file back. `check_links.mjs`
+  keeps the old three-argument functions as four-line wrappers, so its
+  self-test is unchanged.
+- **`resolveOccurrences` gained `deferFragments` and `caches`.** The first lets
+  a chunked caller settle the fragments it can decide locally and hand back the
+  rest; the second is the reason the fusion is worth anything at all (see
+  Phase 3). `occurrences` is a flat triple array rather than an array of
+  triples -- one allocation instead of 793k.
+- **`formatFindings` split in two.** `formatLinkReport` and
+  `formatIntegrityReport`, because `runCheck` interleaves them with summary
+  lines that must stay byte-identical, and the fused reporter wants the same
+  two blocks in a different order.
+
+All three `check.bat` passes were diffed against the pre-change script and came
+back byte-identical (modulo timings), and four interleaved repetitions put the
+wall time inside noise.
 
 ---
 
@@ -308,6 +378,32 @@ tree produces findings identical to `--oracle fs`, on all four Phase 0
 invocations. The `--oracle` flag is a Phase 2 development aid; it can stay as
 a debugging escape hatch (the way `--stock-axe` did) or be dropped once
 Phase 3 lands — decide then, but do not remove it before Phase 3 is green.
+
+#### Shipped
+
+`FsOracle()` and `IndexOracle(treeIndex)` in link-check.mjs, plus
+`buildTreeIndex(rootStr, relFiles)`; `--oracle fs|index` on the script, kept as
+a debugging escape hatch the way `--stock-axe` was. The script's `index` mode
+builds its index by walking the tree, which is enough to prove the *lookup*
+semantics; whether the build's index holds the right entries is a different
+question, answered in Phase 3.
+
+The harness found the coordinate-space hazard the plan predicted, in two forms
+neither of which would have been caught by reasoning:
+
+- **`path.normalize` preserves a trailing separator.** A directory-shaped link
+  (`/Features/`) resolves to a target ending in `\`, while the index holds the
+  bare path. 95 839 phantom broken links.
+- **`resolve()` returns the source path untouched for a bare `#` link**, so
+  that target carries whatever separators the caller's argv had -- forward
+  slashes, where the index is built with native ones. 11 815 more, all from
+  `book.html`.
+
+Both are fixed by canonicalising in `indexKey()` rather than by assuming.
+`statSync` shrugs both off, which is exactly why a Set-backed oracle needs its
+own key discipline. After the fix, `script` and `index` agree on all six cases
+including `fixture`, and the `online-abs = online` invariant holds on both
+sides.
 
 ---
 
@@ -380,6 +476,117 @@ one per tree index. No headroom concern.
   fragment pointing at a missing anchor, a `--forbid` hit and a canonical
   mismatch are each detected by the fused path and reported identically.
 
+#### Shipped
+
+[builder/check.mjs](check.mjs) (the build-side plumbing) and
+[builder/check-tree.mjs](check-tree.mjs) (the index derivation), with the
+graph shape as designed: extraction folded into `flush()`, then `linkJoin`,
+`checkBook` and `checkReport` on main. Five deviations, the first three
+forced and the last two found by measurement.
+
+**1. `treeIndex` folded into `dispatch` rather than becoming its own task.**
+Workers can only be handed what goes into dispatch's shared payload --
+`packShared` runs in `dispatch.submit` -- so a task downstream of dispatch
+could not reach them. Everything the derivation needs is settled by then:
+pages from discover, stubs from `deriveRedirects`, `staticFiles` after `dot`
+and `vendorAssets` have appended theirs, theme assets computed a few lines
+above.
+
+**2. The index derivation is a separate module from the rest of the check.**
+`check-tree.mjs` imports nothing but `node:path`. Putting it in `check.mjs`
+would have dragged htmlparser2's ~23 ms import onto the main thread inside
+`dispatch`, which is on the render fan-out's critical path -- a 1 % regression
+on builds that asked for no check at all. The plan's cold-boot argument was
+about worker lanes; it applies to the main thread too.
+
+**3. `linkJoin` depends on `writeOffline`, not just `writeAux`.** The offline
+tree's redirect stubs exist only as strings inside `writeOfflineRedirects`,
+which rewrites each stub's URLs. Without them the fused pass checked 792 438
+occurrences against the script's 793 018 -- 290 stubs x 2 links each. Both
+trees' stubs are now checked as one extra chunk per tree, on main.
+
+**4. `counts.unique` is not reported.** The script's "N unique" counts entries
+deduped across the whole tree; the build resolves in 160 chunks of ~6 pages
+and a global figure would mean shipping every unique target key back from
+every chunk -- hundreds of thousands of strings for a number that appears in a
+summary line and is not a finding. `brokenUnique` *is* exact: broken entries
+carry a key and the join dedupes them, and on a clean site there are none.
+The harness skips a count either side reports as null.
+
+**5. A latent bug in the resolution cache had to be fixed first.** The cache is
+keyed by `(srcDir, href)`, but `resolve()` returns the *source page* for a link
+with nothing before the `#` -- so two pages in one directory shared an entry
+and the second page's same-page anchors were checked against the first page's
+ids. Invisible on this site, where the same-page anchors are chrome every page
+carries, but wrong, and it blocks hoisting the cache across chunks. Those
+hrefs now bypass the cache. The fix is why the summary line moved from 8 022
+to 10 694 unique entries on `_site/`: the checker now actually checks each
+page's own anchors. Findings are unchanged.
+
+##### Performance: the projection was wrong
+
+**+1.7 s, not +0.25 s.** Measured, interleaved, three repetitions:
+
+| | wall |
+|---|---|
+| `tbdocs --src docs` | 2.35 s |
+| `tbdocs --src docs --check` | 4.05 s |
+| — of which extraction | ~1.3 s |
+| — of which resolution | ~0.4 s |
+| — of which plumbing (import, index build, join) | ~0.2 s |
+
+The plan's "+0.11 s per tree" assumed ~1.8 s of parse spread over 16 lanes,
+i.e. a 16x speedup. The box has 8 physical cores and the build already
+saturates them -- a plain build spends ~20 s of thread time in 2.35 s of wall.
+Extra CPU-bound work cannot ride for free, and 4.2 s of added parse landing as
+1.3 s of wall is a 3.2x effective speedup, which is about what an already-busy
+machine gives. The floor here is the SAX parse of both trees; nothing in the
+plumbing is worth tuning further.
+
+Getting even that far needed the caches hoisted. With them created per chunk,
+the `(srcDir, href)` reuse that makes the resolve stage cheap -- the same nav
+and footer links on every page -- almost entirely disappeared across 160
+six-page chunks: 6.1 s of resolve per tree against the script's 0.57 s. They
+now live on `env`, which is per worker per tree.
+
+Against that, the 5.2 s standalone link stage disappears. Interleaved, three
+repetitions:
+
+| | wall |
+|---|---|
+| `build.bat --no-check` + the three `/sep/` passes | 8.5 s |
+| `build.bat` (check fused in) | 5.3 s |
+
+**~3.2 s saved, 38 %** on the build-plus-link portion. Smaller than projected
+because the projection double-counted parallelism, but real -- and the 230 MB
+re-read is gone.
+
+##### Verification
+
+- `check_links_diff --a script --b fused` is clean on `online`, `offline`,
+  `book` and `basepath`. (`online-abs` and `fixture` have no fused equivalent:
+  the fused pass checks what the build produced, so it has nothing to say
+  about a `--root-dir` shape variation or a synthetic tree.)
+- `--check-audit-index` reports **0 missing, 0 spurious** on both trees. This
+  is the one failure mode the findings comparison structurally cannot see: a
+  missing index entry turns a working link into a reported break, which is
+  loud, but a spurious entry masks a real break, and on a clean site nothing
+  links to a path that does not exist, so nothing would ever notice.
+- A probe page carrying eleven deliberate faults -- the six the plan asks for
+  plus a same-page missing fragment, a cross-page missing fragment,
+  `img-missing-alt`, an empty anchor and an empty `href` -- produced **zero
+  differences** between the two paths, on both trees.
+- With that page in the tree, `build.bat` exits 1 (links only) or 3 (links and
+  integrity), matching `check_links.mjs`'s code scheme, **and the output trees
+  are still on disk** -- non-negotiables 3 and 4.
+
+##### Harness hazard worth knowing
+
+The `fused` side *builds* the tree the `script` side then reads. Running the
+sides in registry order compared the script's view of the previous build
+against the new one and reported six phantom `search-missing` findings. The
+build now happens before either side runs.
+
 ---
 
 ### Phase 4 — Wiring
@@ -391,6 +598,110 @@ and the Phase 0 harness becomes its regression test.
 CI step fusion is deliberately **not** in this phase — it is entangled with the
 axe follow-ons and with a real trade-off (per-step pass/fail granularity in the
 Actions UI is worth something). Tracked below.
+
+#### Shipped
+
+`build.bat` passes `--check`; `check.bat` is down to the three axe stages.
+`--no-check` exists so `build.bat --no-check` still gets a plain build (flags
+are read in order, so the later one wins). Both CI workflows are untouched,
+which also keeps `check_links.mjs` a live consumer rather than a museum piece.
+
+`scripts/check_links_diff.mjs` is the regression test, run by hand when
+`link-check.mjs`, `check.mjs` or `check_links.mjs` changes -- the same contract
+`check_a11y_fingerprint.mjs` has, and for the same reason. It is deliberately
+not in `check.bat`: the script side costs ~3 s, which is the whole saving.
+
+**Both `.bat` files were swallowing failures.** `popd` resets `ERRORLEVEL`, so
+`build.bat` could not fail at all -- not on a `dot` failure, a `scss` failure,
+an uncommitted vendored asset, or the page-count drift guard -- and
+`check.bat`'s *last* stage, the 20-second axe scan, could not fail the run
+either. Both now capture the code before `popd` and `exit /b` it. This was
+pre-existing, but it becomes load-bearing the moment `build.bat` carries a
+gate.
+
+---
+
+## Outcome
+
+Phases 0–4 shipped. The four places the implementation departs from the design:
+
+1. **`treeIndex` is computed inside `dispatch`**, not as its own task -- the
+   shared payload is packed there and workers cannot be reached later.
+2. **The index derivation is its own module** (`check-tree.mjs`) to keep
+   htmlparser2 off the main thread's critical path.
+3. **`linkJoin` also depends on `writeOffline`**, for the offline tree's
+   rewritten redirect stubs.
+4. **`counts.unique` is not reported by the fused path**; `brokenUnique` is.
+
+And the number that did not land: **+1.7 s on the build, not +0.25 s**, because
+the projection assumed a 16x speedup on 8 physical cores the build already
+saturates. Net across build-plus-link is still **-3.2 s**.
+
+---
+
+## Appendix: the dead `--check-html` gate
+
+Phase 0's fixture found that `--check-html` could not report anything, and the
+three error kinds it could emit -- `unclosed-tag`, `mismatched-tag`,
+`unexpected-close` -- were all unreachable. The choice looked like "make it
+work at the cost of a second `xmlMode` parse, plus a void/optional-end-tag
+table of our own" against "retire it". Neither was necessary.
+
+**htmlparser2 already answers the question.** Its close callback is
+`onclosetag(name, isImplied)` --- `false` when the document contained a
+matching end tag, `true` when the parser synthesised one. The old
+implementation ignored the second argument and rebuilt, badly, the bookkeeping
+the parser had already done. Reading the flag costs nothing: same parse, same
+pass, one extra argument.
+
+Three implied closes are legitimate and filtered out:
+
+- **void elements** -- `endOpenTag` emits an implied close for every `<img>`,
+  `<meta>`, `<br>` the moment the open tag ends;
+- **anything inside `<svg>` or `<math>`** -- `<path/>` has no explicit end tag,
+  so its close is implied. A depth counter skips foreign content while still
+  checking the close of the `<svg>` element itself, so an unclosed one is
+  caught;
+- self-closing tags generally, which in non-XML mode only occur in foreign
+  content, so the same filter covers them.
+
+`unclosed-tag` and `mismatched-tag` both became reachable. They are now
+`unclosed-tag` (the document never closed it) and `closed-early` (something
+else closed around it first), separated by a flag set just before
+`parser.end()` --- everything still open when the document runs out is closed
+during `end()`. `unexpected-close` was dropped: htmlparser2 discards a close
+tag for an element that was never opened before any callback runs, so catching
+a stray `</section>` would need tokenizer access, and it is the harmless case
+anyway --- the rendered DOM is unaffected.
+
+**A census settled the design.** Over the 1 159 built pages: 2 035 654 explicit
+closes, 17 415 implied closes of void elements, and 5 784 implied non-void
+closes. Of those, 5 778 were `<path>`, `<rect>`, `<polygon>` and `<line>` ---
+SVG self-closing tags. The remaining **six were real defects**, all the same
+one:
+
+```html
+<p><div class="svg-inline-wrap">…</div></p>
+```
+
+`svgInlinePlugin` in [render.mjs](render.mjs) replaces an image with a `<div>`,
+and a lone `![alt](x.svg)` is a paragraph, so the wrapper landed inside a `<p>`
+--- which takes phrasing content only. Browsers repair it by closing the
+paragraph early and leaving a stray empty `<p>` behind, which is exactly why it
+survived unnoticed. Fixed with a core rule that hides the paragraph tokens, the
+same way markdown-it hides them inside tight lists; the decision of whether an
+image will be inlined now lives in one function that both the core rule and the
+renderer rule call, because if the two ever disagreed a paragraph would be
+hidden around an `<img>` that stayed an `<img>`.
+
+Verified after the fix: zero empty paragraphs on the affected pages, the
+diagram a direct child of `<main>`, 16 px above and below where the old markup
+left collapsed empty-paragraph margins, the axe scan clean in both themes and
+both viewports (`BuildInfo.html` is in `SAMPLE_PAGES` and was one of the six),
+and the PDF book still rendering --- 1 984 pages, no missing images.
+
+The fixture now provokes one of each reachable kind, so
+`FIXTURE_EXPECTED.html` is 2.
 
 ---
 

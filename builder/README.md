@@ -90,11 +90,22 @@ build of Graphviz, concurrently with discover.
 
 ## Verification
 
-Regression detection runs through [scripts/check_links.mjs](../scripts/check_links.mjs)
-(driven from [docs/check.bat](../docs/check.bat)) -- offline link
-check + HTML well-formedness, duplicate-`id` detection, anchor
-resolution, sitemap and search-index integrity. A clean `check.bat`
-run is the bar for "ready to commit".
+Regression detection runs inside the build. `tbdocs --check` (which
+`build.bat` passes) walks each tree's final HTML on the worker lane that
+produced it -- offline link check + duplicate-`id` detection, anchor
+resolution, remote-asset detection, sitemap, search-index and canonical
+integrity. A failing check sets the exit code but never aborts the
+graph. `check.bat` then runs the gates that need a browser. A clean
+`build.bat && check.bat` is the bar for "ready to commit".
+
+The pure core lives in [link-check.mjs](link-check.mjs); the build-side
+plumbing is [check.mjs](check.mjs) and [check-tree.mjs](check-tree.mjs).
+[scripts/check_links.mjs](../scripts/check_links.mjs) is the same check
+as a standalone tool, for trees this build did not produce, and is what
+both CI workflows still invoke.
+[scripts/check_links_diff.mjs](../scripts/check_links_diff.mjs) is the
+gate that says the two agree -- run it whenever any of the three
+changes. See [PLAN-checks.md](PLAN-checks.md).
 
 The per-phase `verify-phase{1..8}.mjs` harnesses and the bulk-triage
 tools (`_triage.mjs`, `_diff.mjs`, etc.) were retired in the Phase 10

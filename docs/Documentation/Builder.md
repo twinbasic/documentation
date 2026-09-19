@@ -423,7 +423,7 @@ The project JS is deliberately small. `theme-toggle.js` implements the three-sta
 Some build-adjacent code lives at the repo root rather than under `builder/`:
 
 - **PDF rendering** --- `book/render-book.mjs` plus its `book/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. Both `pdf-lib` and `puppeteer` are used only at PDF time. See [PDF Generation](PDF-Generation) for the internals.
-- **Link checking** --- `scripts/check_links.mjs` reads from disk after the build; not part of the generator.
+- **Standalone link checking** --- `scripts/check_links.mjs` reads a built tree from disk. The generator does its own link and integrity check under `--check`, over the HTML still in worker memory; the script remains the tool for a tree the build did not produce.
 - **External link crawling** --- `scripts/crawl_check.mjs` reads from HTTP; not part of the generator.
 - **Accessibility checking** --- `scripts/check_a11y.mjs` drives puppeteer + axe-core over the built offline tree after the build; not part of the generator.
 - **Graphviz/DOT source files** --- `docs/assets/images/dot/*.dot` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.
@@ -438,5 +438,6 @@ The build aborts or flips the exit code under a handful of conditions:
 - **SCSS compile failure.** The light/dark workers warn with the source location and continue with `failed: true`; the joiner sets `process.exitCode = 1`. Existing `_site/` CSS lingers.
 - **Nav integrity.** Orphan or ambiguous `parent:` declarations throw inside `nav.execute()`, which aborts the build via `Scheduler._abort()`.
 - **Worker crash.** A worker handler that throws posts `{ taskFailed, message, stack }` to main; the scheduler calls `_abort()`, the build rejects, and the orchestrator reports the error with the task name in the message.
+- **Link and integrity check** (`--check`). Deliberately the one failure that does *not* abort: a broken link still produces a valid site you want on disk to inspect, unlike a nav ambiguity, where the output itself would be wrong. The check tasks collect findings and `runBuild()` sets the exit code afterwards --- 1 for link failures, 2 for integrity failures, 3 for both, OR'd into whatever the build's own failures already claimed.
 
 Setup-class failures --- `@hpcc-js/wasm-graphviz` not installed, `sass` missing --- print a one-line recovery hint and continue with stale outputs. They do not flip the exit code; a fresh checkout still builds.

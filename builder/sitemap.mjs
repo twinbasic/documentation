@@ -32,7 +32,10 @@ export async function writeSitemap(pages, site, destRoot, precomputedUrls) {
 
   await Promise.all(writes);
 
-  return { entries: sitemapUrls.length, robots: !sourceHasRobots };
+  // `xml` rides back so the fused link check (builder/check.mjs) can run
+  // --check-sitemap against the string that was written rather than
+  // reading the file back -- same bytes, one fewer round trip.
+  return { entries: sitemapUrls.length, robots: !sourceHasRobots, xml };
 }
 
 // Derive the set of sitemap URLs from the in-memory page set, applying

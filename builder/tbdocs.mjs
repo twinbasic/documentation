@@ -2,7 +2,16 @@
 //
 // Usage: node builder/tbdocs.mjs [--src <path>] [--dest <path>]
 //        [--baseurl <prefix>] [--url <origin>] [--dry-run]
-//        [--serve] [--port <N>]
+//        [--check] [--check-audit-index] [--serve] [--port <N>]
+//
+// --check runs the link + integrity check over the HTML the build
+// already holds in worker memory, instead of writing 230 MB out and
+// reading it back through scripts/check_links.mjs. Findings are
+// identical -- scripts/check_links_diff.mjs is the gate that says so.
+// A failing check sets the exit code but never aborts the build: a
+// broken link still produces a site worth having on disk.
+// --check-audit-index additionally diffs the derived tree index against
+// what actually landed on disk; see builder/check.mjs.
 //
 // Default --src is "docs" relative to the current working directory.
 // Default --dest is "<src>/_site". --dry-run skips all filesystem writes.
@@ -44,6 +53,12 @@ import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
 import { buildSitePathsSync, deriveOfflineCss,
          normalizeBaseurl }  from "./offline-rewrite.mjs";
 import { writePdf } from "./pdf.mjs";
+// Only the index derivation is a static import: it runs inside dispatch,
+// on the render fan-out's critical path, and check-tree.mjs pulls
+// nothing heavier than node:path. The rest of the check -- and with it
+// htmlparser2 -- is imported dynamically by the tasks that need it, so a
+// build without --check pays nothing.
+import { deriveTreeRels } from "./check-tree.mjs";
 import { packShared } from "./sab-broadcast.mjs";
 import {
   allocSchedulerSAB, verifySchedulerSAB, SLICES_PER_WORKER,
@@ -66,6 +81,9 @@ function parseArgs(argv) {
     skipPdf: null,
     tolerateMissingImages: false,
     profileOffline: false,
+    check: false,
+    auditIndex: false,
+    checkFindings: null,
     serve: false,
     port: 4000,
   };
@@ -101,6 +119,21 @@ function parseArgs(argv) {
       args.fetchAssets = false;
     } else if (a === "--profile-offline") {
       args.profileOffline = true;
+    } else if (a === "--check") {
+      args.check = true;
+    } else if (a === "--no-check") {
+      // build.bat bakes in --check; this is how to ask for a plain
+      // build without editing it. Flags are read in order, so a later
+      // --no-check wins.
+      args.check = false;
+      args.auditIndex = false;
+      args.checkFindings = null;
+    } else if (a === "--check-audit-index") {
+      args.check = true;
+      args.auditIndex = true;
+    } else if (a === "--check-findings") {
+      args.check = true;
+      args.checkFindings = argv[++i];
     } else if (a === "--serve") {
       args.serve = true;
     } else if (a === "--port") {
@@ -490,7 +523,13 @@ const TASKS = {
     execute(_, ctx, state) {
       return { stubs: deriveRedirectStubs(state.pages, state.site) };
     },
-    submit() {},
+    submit(out, state) {
+      // linkJoin needs the stub set: redirect stubs are excluded from
+      // the sitemap / search / canonical checks, and the build knows
+      // exactly which pages it generated as stubs -- the standalone
+      // script has to sniff for a meta refresh instead.
+      state.checkStubs = out.stubs;
+    },
   },
 
   // Deferred to after dispatch so it runs while the main thread is idle
@@ -527,6 +566,35 @@ const TASKS = {
       const sitePaths = buildSitePathsSync(state.pages, state.staticFiles, excludePatterns, stubs, themeAssetRels);
       state.sitePaths = sitePaths;
       const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+
+      // --check: what each output tree will receive, derived from the
+      // build's own records. This is the treeIndex step, computed here
+      // rather than as its own task because the workers can only be
+      // handed data that goes into dispatch's shared payload -- it is
+      // packed and broadcast in submit() below.
+      //
+      // Everything it needs is already settled at this point: pages from
+      // discover, stubs from deriveRedirects, staticFiles after dot and
+      // vendorAssets have appended theirs, and the theme assets right
+      // above.
+      const checkTrees = ctx.opts.check && !ctx.opts.dryRun ? {} : null;
+      if (checkTrees) {
+        const common = {
+          pages: state.pages, staticFiles: state.staticFiles, stubs,
+          themeAssetRels, excludePatterns,
+        };
+        // Only the online tree carries a base path. The offline tree's
+        // links are all relative after the rewrite, which is why the
+        // deploy workflow passes --base-path to the online pass alone.
+        checkTrees.online = {
+          rels: deriveTreeRels("online", common),
+          baseurl: String(state.site.config.baseurl || ""),
+        };
+        if (!skipOffline) {
+          checkTrees.offline = { rels: deriveTreeRels("offline", common), baseurl: "" };
+        }
+        state.checkTrees = checkTrees;
+      }
       const svgContentsMap = Object.create(null);
       for (const f of state.staticFiles) {
         if (f.srcRel.endsWith(".svg")) {
@@ -550,6 +618,7 @@ const TASKS = {
         offlineExcludePatterns: excludePatterns,
         skipOffline,
         svgContentsMap,
+        checkTrees,
         // Plain objects, not Maps -- packShared serialises to JSON.
         vendoredVideosObj: Object.fromEntries(state.site.vendoredVideos ?? []),
         vendoredImagesObj: Object.fromEntries(state.site.vendoredImages ?? []),
@@ -571,6 +640,7 @@ const TASKS = {
       // renderJoin fires, scheduler.state.searchChunks[0..N-1] holds every
       // worker's per-chunk entries in pages-order.
       scheduler.state.searchChunks = new Array(N);
+      scheduler.state.checkChunks  = [];
 
       // 1. Allocate 2N slots from the generic pool.
       const renderBase = allocDynamicSlots(views, idMap, N);
@@ -642,7 +712,12 @@ const TASKS = {
           expected: [`render:${i}`],
           consolidate: true,
           ganttSection: "Write",
-          submit() {},
+          submit(flushOut, state) {
+            // --check: the per-chunk reduction rides back on flush's
+            // result. Sized by findings, not by the 793k occurrences --
+            // those never cross the thread boundary.
+            if (flushOut?.check) state.checkChunks.push(flushOut.check);
+          },
         });
       }
 
@@ -740,6 +815,7 @@ const TASKS = {
         precomputed: true,
         sitePaths: state.sitePaths,
         profileOffline: ctx.opts.profileOffline,
+        check: !!state.checkTrees,
       });
     },
     submit() { /* terminal */ },
@@ -759,7 +835,157 @@ const TASKS = {
       return writePdf(state.pages, state.staticFiles, state.site, ctx.destRoot, {
         tolerateMissingImages: ctx.opts.tolerateMissingImages,
         highlightCss: state.site.highlightCss,
+        check: !!state.checkTrees,
       });
+    },
+    submit() { /* terminal */ },
+  },
+
+  // ── Checks ────────────────────────────────────────────────────────
+  //
+  // Gated on --check. Without it these three are no-ops that return
+  // immediately, so a plain build keeps its shape.
+  //
+  // None of them may abort the graph: Scheduler._abort() rejects the
+  // whole build on a task failure, and nav.mjs is right to do that
+  // because a nav ambiguity means the *output* is wrong. A broken link
+  // does not -- it produces a site you want on disk to inspect. So
+  // these collect and report, and runBuild sets the exit code after
+  // the trees are complete.
+
+  // Merge the per-chunk reductions, settle the cross-page fragments no
+  // chunk could decide alone, and run the three cross-file checks.
+  //
+  // Depends on writeAux rather than merely on flushJoin because the
+  // sitemap and search-index checks need sitemap.xml and
+  // search-data.json -- and takes them as the strings the build wrote,
+  // not as bytes read back, so what is checked is what the tree got.
+  // Depends on writeOffline as well because the offline tree's redirect
+  // stubs only exist as strings inside it -- deriveOfflineRedirect
+  // rewrites each stub's URLs, and those 290 files carry 580 link
+  // occurrences the standalone script checks.
+  linkJoin: {
+    expected: ["flushJoin", "writeAux", "writeOffline"],
+    runOnMain: true,
+    async execute({ writeAux, writeOffline: offlineResult }, ctx, state) {
+      if (!state.checkTrees) return null;
+      const { checkChunk, joinChunks, treeIndexFor, normalizeBasePath: normBase, TREES } =
+        await import("./check.mjs");
+
+      const stubs     = state.checkStubs ?? [];
+      const stubRels  = new Set(stubs.map(s => s.destPath.replaceAll("\\", "/")));
+      const pageRels  = state.pages
+        .filter(p => p.frontmatter?.layout !== "book-combined")
+        .map(p => p.destPath.replaceAll("\\", "/"));
+      const relFiles  = [...pageRels, ...stubRels];
+
+      // Redirect stubs never went through flush -- writeRedirects and
+      // writeOfflineRedirects emit them -- so they are one extra chunk
+      // per tree, checked here on main. 290 tiny files.
+      const stubHtml = {
+        online:  stubs,
+        offline: offlineResult?.checkStubs ?? [],
+      };
+
+      const results = {};
+      for (const [which, { rels, baseurl }] of Object.entries(state.checkTrees)) {
+        const root     = ctx.destRoot + TREES[which].suffix;
+        const basePath = normBase(baseurl);
+        const chunks   = state.checkChunks.map(c => c?.[which]);
+
+        if (stubHtml[which]?.length) {
+          const env = { root, tree: TREES[which], basePath, index: treeIndexFor(root, rels) };
+          try {
+            chunks.push(checkChunk(stubHtml[which], env));
+          } catch (err) {
+            chunks.push({ error: `${which} redirect-stub check failed: ${err.message}` });
+          }
+        }
+
+        results[which] = joinChunks(chunks, {
+          root, tree: TREES[which], basePath, relFiles, stubRels,
+          aux: which === "online" ? {
+            sitemapXml: writeAux?.sitemapStats?.xml ?? null,
+            searchJson: writeAux?.searchStats?.json ?? null,
+          } : {},
+        });
+      }
+      return results;
+    },
+    submit() {},
+  },
+
+  // The book is one 6.5 MB document with almost entirely internal
+  // fragments, written by a different task from a different string.
+  // Keeping it its own pass is cheaper than special-casing the chunk
+  // path for a single file.
+  checkBook: {
+    expected: ["writePdf"],
+    runOnMain: true,
+    async execute({ writePdf: pdfResult }, ctx, state) {
+      if (!state.checkTrees || !pdfResult?.checkBook) return null;
+      const { checkChunk, joinChunks, treeIndexFor, TREES } = await import("./check.mjs");
+      const root = ctx.destRoot + TREES.pdf.suffix;
+      const env  = { root, tree: TREES.pdf, basePath: "",
+                     index: treeIndexFor(root, pdfResult.checkBook.rels) };
+      let chunk;
+      try {
+        chunk = checkChunk([{ destPath: "book.html", html: pdfResult.checkBook.html }], env);
+      } catch (err) {
+        chunk = { error: `book check failed: ${err.message}` };
+      }
+      return joinChunks([chunk], { root, tree: TREES.pdf, relFiles: ["book.html"] });
+    },
+    submit() {},
+  },
+
+  // Formats every tree's result and decides the exit code. Terminal:
+  // nothing depends on it, so a slow report never delays an output.
+  checkReport: {
+    expected: ["linkJoin", "checkBook"],
+    runOnMain: true,
+    async execute({ linkJoin: trees, checkBook: book }, ctx, state) {
+      if (!state.checkTrees) return null;
+      const { formatReport, findingsFor, auditIndex, TREES } = await import("./check.mjs");
+
+      const parts = [];
+      const byTree = { ...(trees ?? {}) };
+      if (book) byTree.pdf = book;
+      let linksFailed = false, integrityFailed = false;
+      for (const r of Object.values(byTree)) {
+        const f = formatReport(r);
+        parts.push(f.text);
+        linksFailed     ||= f.linksFailed;
+        integrityFailed ||= f.integrityFailed;
+      }
+
+      // --check-findings: the machine-readable view, for
+      // scripts/check_links_diff.mjs to diff against the standalone
+      // script's. Written before the exit code is decided so a failing
+      // check still produces the file that says what it found.
+      if (ctx.opts.checkFindings) {
+        const out = {};
+        for (const [which, r] of Object.entries(byTree)) out[which] = findingsFor(r);
+        await fs.writeFile(ctx.opts.checkFindings, JSON.stringify(out, null, 1), "utf8");
+      }
+
+      // Opt-in: the one failure mode the findings comparison cannot see,
+      // because a spurious index entry only matters once something links
+      // to the path it wrongly claims exists.
+      if (ctx.opts.auditIndex) {
+        for (const [which, { rels }] of Object.entries(state.checkTrees)) {
+          const root = ctx.destRoot + TREES[which].suffix;
+          const { missing, spurious } = await auditIndex(root, rels);
+          parts.push(`  ${TREES[which].label.padEnd(14)} index audit: ` +
+                     `${missing.length} on disk but not indexed, ` +
+                     `${spurious.length} indexed but not on disk\n`);
+          for (const r of missing.slice(0, 20))  parts.push(`      on disk only: ${r}\n`);
+          for (const r of spurious.slice(0, 20)) parts.push(`      indexed only: ${r}\n`);
+          if (missing.length || spurious.length) integrityFailed = true;
+        }
+      }
+
+      return { text: parts.join(""), linksFailed, integrityFailed };
     },
     submit() { /* terminal */ },
   },
@@ -785,16 +1011,21 @@ const GANTT_SECTION = {
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   renderJoin: "Render", flushJoin: "Write",
   writeAssets: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
+  linkJoin: "Check", checkBook: "Check", checkReport: "Check",
 };
-const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write"];
+const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write", "Check"];
+const CHECK_TASKS = new Set(["linkJoin", "checkBook", "checkReport"]);
 
-function groupGanttTimings(timings) {
+function groupGanttTimings(timings, { check = false } = {}) {
   if (timings.size === 0) return null;
   const t0 = Math.min(...[...timings.values()].map(t => t.start));
 
   const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
   for (const [id, { start, end, t3, workerStart, workerEnd, lane, consolidate, ganttSection }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
     if (id.endsWith("Join")) continue;
+    // Without --check these are no-ops; charting three zero-width bars
+    // would only make a plain build's Gantt harder to read.
+    if (!check && CHECK_TASKS.has(id)) continue;
     const section = ganttSection ?? GANTT_SECTION[id] ?? "Other";
     if (!grouped.has(section)) grouped.set(section, []);
     const entry = { id, start: start - t0, end: end - t0 };
@@ -925,6 +1156,19 @@ export async function runBuild(opts) {
     console.log(`           book.html (${mb} MB), ${pdfResult.css} CSS, ` +
                 `${pdfResult.images} images${missingClause}`);
   }
+  const checkResult = results.get("checkReport");
+  if (checkResult) {
+    console.log(`  ${pc.bold("check:")}`);
+    process.stdout.write(checkResult.text);
+    // Same code scheme scripts/check_links.mjs uses -- 1 for link
+    // failures, 2 for integrity failures, 3 for both -- so CI can still
+    // tell "broken link" from "malformed output" after check.bat stops
+    // invoking the script. OR'd in rather than assigned: the build's own
+    // failures (dot, scss, vendorAssets) already claim bit 0.
+    const code = (checkResult.linksFailed ? 1 : 0) | (checkResult.integrityFailed ? 2 : 0);
+    if (code) process.exitCode = (process.exitCode ?? 0) | code;
+  }
+
   console.log(scheduler.summary());
 
   // Boot timings come from the workers' very first message after spawn.
@@ -942,7 +1186,7 @@ export async function runBuild(opts) {
     }
   }
 
-  const grouped = groupGanttTimings(scheduler.timings);
+  const grouped = groupGanttTimings(scheduler.timings, { check: !!opts.check });
 
   const injectStart = Date.now();
   await injectGanttChart(scheduler.state.pages, destRoot, grouped ? renderGantt(grouped) : "");
