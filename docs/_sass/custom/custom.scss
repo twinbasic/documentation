@@ -300,16 +300,29 @@ div.highlight:focus-visible,
   min-height: 24px;
 }
 
-// A heading whose entire text is a link (Features/index.md uses ten) renders at
-// 19px in the mobile h3 size. Vertical padding grows the hit box -- which is
-// what the criterion measures -- without changing the line height or moving the
-// text. The anchor-heading link is excluded: it is the paragraph mark, hidden
-// until the heading is hovered.
+// A heading whose entire text is a link (Features/index.md uses ten) needs a
+// 24px hit box. Vertical padding grows it -- which is what the criterion
+// measures -- without changing the line height or moving the text. The
+// anchor-heading link is excluded: it is the paragraph mark, hidden until the
+// heading is hovered.
+//
+// The padding has to be generous, because what it is topping up is not a fixed
+// quantity. An inline element's measured height is its font's content area, so
+// it moves with whatever `system-ui` resolves to on the reader's machine.
+// Measured at the mobile h3 size:
+//
+//   Segoe UI  19px | Verdana, Tahoma  17px | Arial  16px
+//   Liberation Sans, DejaVu Sans, Roboto  15px
+//
+// 3px each side cleared 24px on Segoe UI alone, by 0.8px, and failed on every
+// other family -- so the check passed on Windows and failed on CI's Linux
+// fonts. 6px clears the worst measured case by 3px. Anything that tops up a
+// font-dependent measurement needs margin, not a hairline.
 .main-content h1 > a:not(.anchor-heading),
 .main-content h2 > a:not(.anchor-heading),
 .main-content h3 > a:not(.anchor-heading),
 .main-content h4 > a:not(.anchor-heading),
 .main-content h5 > a:not(.anchor-heading),
 .main-content h6 > a:not(.anchor-heading) {
-  padding-block: 3px;
+  padding-block: 6px;
 }
