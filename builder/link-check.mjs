@@ -703,6 +703,15 @@ export function resolveOccurrences(occurrences, oracle, {
       if (ids === undefined && deferFragments) {
         pendingFragments.push({
           target: entry.resolved, frag: entry.frag,
+          // The key must match entryKey's, which uses the PRE-resolution
+          // target.  `resolved` has been through the .html / index
+          // fallback, so keying on it would give the same broken
+          // reference two different keys depending on whether the target
+          // page happened to land in the referrer's chunk -- one settled
+          // locally as `target`, one deferred and counted as `resolved`.
+          // brokenUnique is a count of distinct findings; it must not
+          // depend on the chunk arrangement.
+          href: entry.target,
           isDir: entry.isDir, sources: entry.sources,
         });
         continue;
@@ -760,7 +769,7 @@ export function settleFragments(pendingFragments, idsByTarget) {
     const ids = idsByTarget.get(p.target);
     if (ids && ids.has(p.frag)) continue;
     brokenUniqueCount++;
-    brokenKeys.push(`${p.target} ${p.isDir ? 1 : 0} ${p.frag}`);
+    brokenKeys.push(entryKey({ target: p.href, isDir: p.isDir, frag: p.frag }));
     const reason = `fragment #${p.frag} not found`;
     for (let i = 0; i < p.sources.length; i += 2) {
       broken.push(p.sources[i], p.sources[i + 1], reason);
