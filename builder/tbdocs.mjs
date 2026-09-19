@@ -366,7 +366,24 @@ const TASKS = {
     expected: [],   // populated by dispatch.submit
     on_demand: true,
     runOnMain: true,
-    execute() { return {}; },
+    execute(_inputs, _ctx, state) {
+      // This barrier's entire meaning is "every page now has
+      // renderedContent". Its consumers -- the search index, the PDF
+      // book -- skip a page that has none rather than fail, so one that
+      // slipped through would vanish from their output without a word.
+      // That is precisely how the missing-expected-list bug stayed
+      // hidden. Assert the claim once, here, where it is made.
+      const missing = state.pages.filter(p => typeof p.renderedContent !== "string");
+      if (missing.length) {
+        throw new Error(
+          `${missing.length} of ${state.pages.length} pages have no renderedContent ` +
+          `(${missing.slice(0, 5).map(p => p.destPath).join(", ")}` +
+          `${missing.length > 5 ? ", ..." : ""}). A render chunk's submit() did not run ` +
+          `before the barrier -- see the expected-list wiring in dispatch.submit().`,
+        );
+      }
+      return {};
+    },
     submit() {},
   },
 
@@ -644,6 +661,10 @@ const TASKS = {
       // worker's per-chunk entries in pages-order.
       scheduler.state.searchChunks = new Array(N);
       scheduler.state.checkChunks  = [];
+      // linkJoin compares against this: a chunk that never arrived would
+      // otherwise mean the link check quietly examined fewer pages and
+      // still reported a clean pass.
+      scheduler.state.checkChunkCount = N;
 
       // 1. Allocate 2N slots from the generic pool.
       const renderBase = allocDynamicSlots(views, idMap, N);
@@ -700,7 +721,16 @@ const TASKS = {
           submit(renderOut, state) {
             for (const r of renderOut.pages) {
               const p = state.pageByDest.get(r.destPath);
-              if (!p) continue;
+              // Dropping the result would lose this page's
+              // renderedContent, and every consumer of that skips a page
+              // that has none rather than complaining. pageByDest is
+              // built from the same page list the chunks were sliced
+              // from, so a miss is a bug, not a condition to tolerate.
+              if (!p) {
+                throw new Error(
+                  `render:${i} returned a page the build does not know: ${r.destPath}`,
+                );
+              }
               p.renderedContent = r.renderedContent;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
             }
@@ -907,11 +937,22 @@ const TASKS = {
         offline: offlineResult?.checkStubs ?? [],
       };
 
+      // A check that silently examined less than the whole site is the
+      // failure this design exists to prevent, so a short chunk list is
+      // reported rather than tolerated. It cannot abort the build --
+      // check tasks collect and report -- so it rides back as an error
+      // on every tree, which formatReport turns into a failing exit code.
+      const short = state.checkChunks.length !== state.checkChunkCount
+        ? `only ${state.checkChunks.length} of ${state.checkChunkCount} page chunks ` +
+          `reached the link check; findings are incomplete`
+        : null;
+
       const results = {};
       for (const [which, { rels, baseurl }] of Object.entries(state.checkTrees)) {
         const root     = ctx.destRoot + TREES[which].suffix;
         const basePath = normBase(baseurl);
         const chunks   = state.checkChunks.map(c => c?.[which]);
+        if (short) chunks.push({ error: short });
 
         if (stubHtml[which]?.length) {
           const env = { root, tree: TREES[which], basePath, index: treeIndexFor(root, rels) };

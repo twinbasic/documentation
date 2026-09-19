@@ -591,8 +591,24 @@ So when adding a fan-out:
 - give the barrier an `expected` list covering every chunk task;
 - never store a per-chunk result in a sparse array that something later
   flattens — index into a pre-filled array, `push`, or assert
-  completeness at the consumer. `writeSearchDataFromChunks` now refuses
-  to write a partial index rather than lose pages quietly.
+  completeness at the consumer.
+
+### Where the completeness checks are
+
+The ordering bug was one instance; what made it invisible was a habit of
+treating "this piece is missing" as a condition to tolerate. Every such
+skip on the parallel-merge path has been audited and made loud. None of
+them can fire while the graph is wired correctly — that is the point, and
+each was provoked deliberately to confirm it reports rather than shrugs.
+
+| Where | Was | Is |
+|---|---|---|
+| `renderJoin.execute` | nothing | throws unless every page has `renderedContent` — one central assertion at the barrier that claims it |
+| `render:i.submit` | `if (!p) continue` on an unknown `destPath` | throws; the page list chunks were sliced from is the same one `pageByDest` is built from |
+| `deriveSearchEntries` | `continue` on a page with no `renderedContent` | throws; unlike the `search_exclude` and no-title skips beside it, this one is never a content decision |
+| `writeSearchDataFromChunks` | `flat()` over a sparse array | throws naming the missing chunk indices |
+| `emitChapter` (book) | `if (!body \|\| !body.trim()) return` | separates an empty chapter (legitimate) from an absent one (throws) |
+| `formatReport` (check) | printed chunk errors, exited 0 | an errored chunk fails the run; a pass reported over a partial examination is worse than no pass |
 
 5. Set each render:i's status to READY and notify workers.
 

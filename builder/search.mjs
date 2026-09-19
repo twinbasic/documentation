@@ -74,7 +74,16 @@ export function deriveSearchEntries(pages, site) {
     const title = page.frontmatter?.title;
     if (!title) continue;
     if (page.frontmatter?.search_exclude === true) continue;
-    if (typeof page.renderedContent !== "string") continue;
+    // Unlike the two skips above, this is not a content decision. No
+    // renderedContent means the page's render result never arrived, and
+    // quietly leaving it out of the index is exactly how a scheduling
+    // bug once removed six pages per build without anyone noticing.
+    if (typeof page.renderedContent !== "string") {
+      throw new Error(
+        `search index: ${page.destPath} has no renderedContent; refusing to ` +
+        `drop it from the index silently`,
+      );
+    }
 
     const { sections, titleFound, prefixContent } = extractSections(
       page,

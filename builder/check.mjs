@@ -305,8 +305,12 @@ export function formatReport(r) {
     for (const hits of r.forbiddenBySource.values()) forbiddenCount += hits.length;
   }
 
-  const linksFailed     = r.broken.length > 0 || forbiddenCount > 0;
-  const integrityFailed = integrityCount > 0;
+  const linksFailed = r.broken.length > 0 || forbiddenCount > 0;
+  // An error means the check did not complete, which has to fail the
+  // run: a pass reported over a partial examination is worse than no
+  // pass at all. Printing it and exiting 0 was the earlier behaviour
+  // and exactly the wrong shape.
+  const integrityFailed = integrityCount > 0 || r.errors.length > 0;
 
   const forbidNote = r.forbiddenBySource ? `, ${forbiddenCount} forbidden` : "";
   const failNote   = r.noFail && (linksFailed || integrityFailed) ? "  (informational)" : "";
