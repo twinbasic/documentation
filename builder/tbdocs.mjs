@@ -1059,7 +1059,14 @@ const TASKS = {
   // Formats every tree's result and decides the exit code. Terminal:
   // nothing depends on it, so a slow report never delays an output.
   checkReport: {
-    expected: ["linkJoin", "checkBook"],
+    // `scss` is listed because --check-audit-index reads the tree off
+    // disk, and the combined stylesheet is in the index from the moment
+    // dispatch builds it. Without this edge the audit can run first and
+    // report the file as "indexed but not on disk" -- which it was, for
+    // another few milliseconds. On the real site scss happens to finish
+    // long before the check; on a three-page fixture it does not, and
+    // the audit failed the build over nothing.
+    expected: ["linkJoin", "checkBook", "scss"],
     runOnMain: true,
     async execute({ linkJoin: trees, checkBook: book }, ctx, state) {
       if (!state.checkTrees) return null;

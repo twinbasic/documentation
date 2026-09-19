@@ -1,0 +1,15 @@
+# Deliberately minimal, and deliberately NOT docs/_config.yml. A fixture
+# that depends on the real config is a fixture that breaks when the real
+# config changes, and its findings then move for reasons that have
+# nothing to do with the checker under test.
+title: Link-check fixture
+url: https://probe.invalid
+baseurl: ""
+
+# Matches docs/_config.yml's list for the entries that matter here: the
+# offline tree writes search-data.js instead of search-data.json, so
+# leaving the .json in would put a file on disk that the index does not
+# claim -- a finding about the fixture's config, not about the checker.
+offline_exclude:
+  - sitemap.xml
+  - assets/js/search-data.json

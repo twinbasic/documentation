@@ -1,0 +1,5 @@
+// Deliberately trivial. The fixture exists to exercise the link and
+// integrity checks, not the theme -- and a compile that FAILS would put
+// a stylesheet in the build's index that is not on disk, which is a
+// finding about the fixture rather than about the checker.
+body { color: #000; }

@@ -668,7 +668,12 @@ function buildFindings({
 //      "canonical missing baseurl" (would 404 on subpath deploy)
 //      and the inverse "canonical includes baseurl on root deploy".
 
-function selfTest() {
+// Exported so scripts/check_links_diff.mjs can run it: these three guards
+// used to sit inside the `isEntry` branch below, and since b97c75f nothing
+// invokes this script as an entry point in CI -- so they ran in no
+// automated context at all. A clean differential against a broken
+// reference implementation means nothing, so the harness runs them first.
+export function selfTest() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "check-links-test-"));
   try {
     fs.writeFileSync(path.join(tmp, "Foo.html"), "<html><body>t</body></html>");

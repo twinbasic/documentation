@@ -11,3 +11,8 @@ indexer/.packages/
 
 # Temporary session handoff notes. Root-anchored: only the repo-root file.
 /HANDOFF.md
+
+# scripts/check_links_diff.mjs builds test/fixtures/check-src into these.
+/test/fixtures/_out/
+/test/fixtures/_out-offline/
+/test/fixtures/_out.json

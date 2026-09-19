@@ -35,7 +35,7 @@
 //              --base-path. The only pass where isOutsideBasePath() and
 //              stripBasePath() do anything.
 //
-// The other two exist because those four, on a healthy site, compare
+// The other four exist because those four, on a healthy site, compare
 // empty against empty in nine of the ten categories:
 //
 //   online-abs _site/          `online` with an absolute --root-dir.
@@ -45,12 +45,22 @@
 //                              index built from the build's own records
 //                              has to normalise both sides or it misses
 //                              silently. It did, twice.
-//   fixture    a synthetic tree with one fault of every kind, so every
-//              category has something in it to compare.
+//   fixture    a hand-written tree with one fault of every kind, so
+//              every category has something in it to compare.
+//   fixture-built          the same idea, but a tree the BUILD produces
+//   fixture-built-offline  from test/fixtures/check-src -- which is the
+//              only way the fused side can be held to it. Two cases over
+//              one build: no single tree carries all nine categories,
+//              because the online tree has the sitemap, search and
+//              canonical checks and the offline tree is the only one with
+//              a forbidden prefix.
 //
 // `online-abs` and `fixture` have no fused equivalent -- the fused pass
 // checks what the build produced, so it has nothing to say about a
-// --root-dir shape variation or a tree it did not write.
+// --root-dir shape variation or a tree it did not write. That is exactly
+// why the built pair had to exist: every `--b fused` run skipped
+// `fixture`, so the one case that makes more than one category non-empty
+// was never compared against the implementation this harness watches.
 
 import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
@@ -59,11 +69,56 @@ import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
-import { runCheck } from "./check_links.mjs";
+import { runCheck, selfTest as scriptSelfTest } from "./check_links.mjs";
 
 const REPO_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const BASE_PATH = "/twinBASIC-docs";
 const DEFAULT_BASEPATH_TREE = "docs/_site-basepath";
+const FIXTURE_SRC  = "test/fixtures/check-src";
+const FIXTURE_TREE = "test/fixtures/_out";
+
+// What each fixture case expects to find. Asserted after the run, so a
+// fixture that stopped provoking a category fails loudly instead of
+// quietly reducing the comparison to empty-vs-empty again.
+//
+// A count of `null` means "this check did not run", which is a different
+// statement from `0` and is asserted as such -- the online tree has no
+// --forbid, and the offline tree has no sitemap, search or canonical
+// check.
+//
+// On `html`: both shapes here are `closed-early`. An earlier comment
+// claimed one of each kind, including one the document never closed --
+// but `unclosed-tag` is not reachable through either fixture. htmlparser2
+// force-closes any still-open ancestor as soon as a later close tag
+// matches something further down the stack, and both this tree and
+// templatePage() always end with `</body></html>`. Only a truly truncated
+// document reaches `unclosed-tag`. (The third shape a reader might expect,
+// a stray `</section>` with nothing open, is also absent: htmlparser2
+// drops close tags for elements that were never opened without telling
+// anyone, so the check cannot see them.)
+const FIXTURE_EXPECTED = {
+  broken: 2, forbidden: 1, html: 2, a11y: 3, dupIds: 1,
+  remoteAssets: 1, sitemap: 1, search: 1, canonical: 1,
+};
+
+// The built fixture, per tree. Measured against test/fixtures/check-src.
+//
+// `sitemap: 0` and `search: 0` are the honest answer, not a gap: a
+// correct build cannot omit a page from either index. sitemap.mjs emits
+// every page the checker then looks for, and the two sides normalise the
+// URL identically; deriveSearchEntries pushes a fallback entry for any
+// page with no headings, so `sections.length === 0` never co-occurs with
+// an indexable page. Weird.md exists to hold that claim to the awkward
+// case -- a permalink ending in the literal text `index.html`.
+const FIXTURE_BUILT_ONLINE = {
+  broken: 3, forbidden: null, html: 1, a11y: 3, dupIds: 1,
+  remoteAssets: 1, sitemap: 0, search: 0, canonical: 1,
+};
+
+const FIXTURE_BUILT_OFFLINE = {
+  broken: 3, forbidden: 1, html: 1, a11y: 3, dupIds: 1,
+  remoteAssets: 1, sitemap: null, search: null, canonical: null,
+};
 
 // ── Cases ───────────────────────────────────────────────────────────
 
@@ -133,29 +188,45 @@ const CASES = {
   fixture: {
     describe: "synthetic tree with one fault of every kind",
     needsFixture: true,
+    expect: FIXTURE_EXPECTED,
     root: (opts) => opts.fixtureDir,
     argv: (root) => [
       ...CASES.online.argv(root),
       "--forbid", "https://docs.twinbasic.com",
     ],
   },
+
+  // The same idea as `fixture`, but a tree the BUILD produced -- which is
+  // the only way the fused side can be held to it. `fixture` above is a
+  // hand-written directory of HTML, so the fused pass has nothing to say
+  // about it, and every `--b fused` run skipped it: the one case that
+  // makes more than one category non-empty was never compared against the
+  // implementation the harness exists to watch.
+  //
+  // Two cases over one build, because no single tree carries all nine
+  // categories: the online tree has the sitemap, search and canonical
+  // checks, and the offline tree is the only one with a forbidden prefix.
+  "fixture-built": {
+    describe: "a tree tbdocs built from test/fixtures/check-src -- online",
+    fused: { tree: "online", baseurl: "", src: FIXTURE_SRC, dest: FIXTURE_TREE, offline: true },
+    expect: FIXTURE_BUILT_ONLINE,
+    root: () => FIXTURE_TREE,
+    argv: (root) => CASES.online.argv(root),
+  },
+
+  "fixture-built-offline": {
+    describe: "the same build's offline tree -- the only one with --forbid",
+    fused: { tree: "offline", baseurl: "", src: FIXTURE_SRC, dest: FIXTURE_TREE, offline: true },
+    expect: FIXTURE_BUILT_OFFLINE,
+    root: () => `${FIXTURE_TREE}-offline`,
+    argv: (root) => CASES.offline.argv(root),
+  },
 };
 
-const DEFAULT_CASES = ["online", "online-abs", "offline", "book", "basepath", "fixture"];
-
-// What the `fixture` case expects to find. Asserted after the run, so a
-// fixture that stopped provoking a category fails loudly instead of
-// quietly reducing the comparison to empty-vs-empty again.
-// `html` counts two shapes, one of each kind --check-html can report:
-// an element closed early because something else closed around it, and
-// one the document never closed at all. The third shape a reader might
-// expect, a stray `</section>` with nothing open, is deliberately not
-// here: htmlparser2 drops close tags for elements that were never
-// opened without telling anyone, so the check cannot see them.
-const FIXTURE_EXPECTED = {
-  broken: 2, forbidden: 1, html: 2, a11y: 3, dupIds: 1,
-  remoteAssets: 1, sitemap: 1, search: 1, canonical: 1,
-};
+const DEFAULT_CASES = [
+  "online", "online-abs", "offline", "book", "basepath", "fixture",
+  "fixture-built", "fixture-built-offline",
+];
 
 function writeFixture(dir) {
   const w = (rel, text) => {
@@ -325,14 +396,20 @@ const SIDES = {
 // build wrote. The trees the script side reads are the ones this build
 // produced, so both sides are looking at the same bytes.
 const FUSED_CACHE = new Map();
-function fusedBuild({ baseurl = "", dest = null } = {}) {
-  const key = `${baseurl} ${dest ?? ""}`;
+function fusedBuild({ baseurl = "", dest = null, src = "docs", offline = false } = {}) {
+  const key = `${src} ${baseurl} ${dest ?? ""}`;
   if (FUSED_CACHE.has(key)) return FUSED_CACHE.get(key);
 
   const out = path.join(os.tmpdir(), `tbdocs-findings-${process.pid}-${FUSED_CACHE.size}.json`);
-  const args = ["builder/tbdocs.mjs", "--src", "docs", "--check-findings", out];
+  const args = ["builder/tbdocs.mjs", "--src", src, "--check-findings", out];
   if (baseurl) args.push("--baseurl", baseurl);
-  if (dest)    args.push("--dest", dest, "--no-offline", "--no-pdf");
+  // A --dest build skips the sibling trees, because the only case that
+  // used one reads the online tree. `offline: true` asks for the offline
+  // tree back: the forbidden-prefix rule runs nowhere else.
+  if (dest) {
+    args.push("--dest", dest, "--no-pdf");
+    if (!offline) args.push("--no-offline");
+  }
 
   console.log(`  building: node ${args.join(" ")}`);
   const r = spawnSync(process.execPath, args, { cwd: REPO_ROOT, stdio: "pipe", encoding: "utf8" });
@@ -483,6 +560,17 @@ function printHelp() {
 // Guard on the guard. Everything below reduces to "the two sides agreed",
 // which is also what a harness that compares nothing says.
 function selfTest(opts) {
+  // check_links.mjs's own three regression guards first. If the reference
+  // implementation is broken, a clean differential against it means
+  // nothing -- and since b97c75f nothing else runs them.
+  try {
+    scriptSelfTest();
+    console.log("check_links.mjs self-test ok: base-path, isOutsideBasePath, canonical");
+  } catch (e) {
+    console.error(`check_links.mjs self-test FAILED: ${e.message}`);
+    return 1;
+  }
+
   const argv = CASES.online.argv(CASES.online.root(opts));
   const diffs = diffFindings(SIDES.script.run(argv), SIDES.mutant.run(argv));
   const cats = new Set(diffs.map(d => d.cat));
@@ -508,7 +596,7 @@ function main() {
     console.log("Cases:");
     for (const [name, c] of Object.entries(CASES)) {
       const same = c.sameAs ? `  [must equal ${c.sameAs}]` : "";
-      console.log(`  ${name.padEnd(11)} ${c.describe}${same}`);
+      console.log(`  ${name.padEnd(21)} ${c.describe}${same}`);
     }
     console.log("\nSides:");
     for (const [name, s] of Object.entries(SIDES)) {
@@ -528,6 +616,20 @@ function main() {
       console.error(`error: unknown case '${name}' (have: ${Object.keys(CASES).join(", ")})`);
       return 2;
     }
+  }
+
+  // A bare invocation used to default both sides to `script` and print
+  // "No differences across 6 case(s)" having compared nothing. The
+  // comparison that costs two builds is the one worth asking for.
+  if (opts.a === opts.b) {
+    console.error(
+      `error: --a and --b are both '${opts.a}', which compares nothing.
+` +
+      `  The comparison this harness exists for is --a script --b fused.
+` +
+      `  (--self-test is how to check the harness itself.)`
+    );
+    return 2;
   }
 
   console.log(`check_links_diff: ${opts.a} vs ${opts.b}`);
@@ -555,6 +657,12 @@ function main() {
     if (usesFused) {
       if (c.fused.dest) opts.basePathTree = c.fused.dest;
       fusedBuild(c.fused);
+    } else if (c.fused?.src && c.fused.src !== "docs") {
+      // The tree is one this harness produces, so it has to exist even
+      // when neither side is `fused` -- otherwise --a script --b index
+      // reads an empty directory and reports every category as absent
+      // on both sides, which looks like agreement about nothing.
+      fusedBuild(c.fused);
     } else if (c.needsBasePathTree && !ensureBasePathTree(opts.basePathTree, opts.buildBasePath)) {
       skipped.push(name);
       continue;
@@ -575,12 +683,19 @@ function main() {
     }
     const ms = performance.now() - t0;
 
-    if (c.needsFixture) {
-      for (const [cat, want] of Object.entries(FIXTURE_EXPECTED)) {
-        const got = perSide[opts.a][cat];
-        if (!Array.isArray(got) || got.length !== want) {
-          console.log(`\nFIXTURE  ${cat}: expected ${want} finding(s), got ` +
-                      `${Array.isArray(got) ? got.length : got}`);
+    // A fixture that stops provoking a category goes quietly back to
+    // empty-vs-empty, which is what every other case already is. Assert
+    // the counts on BOTH sides: a category only one side reports shows up
+    // in the diff, but one that both stopped reporting would not.
+    if (c.expect) {
+      for (const side of new Set([opts.a, opts.b])) {
+        for (const [cat, want] of Object.entries(c.expect)) {
+          const got = perSide[side][cat];
+          const n = got === null ? null : Array.isArray(got) ? got.length : got;
+          if (n === want) continue;
+          const wanted = want === null ? "the check not to run" : `${want} finding(s)`;
+          console.log(`\nFIXTURE  [${side}] ${cat}: expected ${wanted}, got ` +
+                      `${n === null ? "null (did not run)" : n}`);
           if (Array.isArray(got)) for (const line of got) console.log(`    ${line}`);
           differences++;
         }

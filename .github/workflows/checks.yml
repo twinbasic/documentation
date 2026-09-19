@@ -111,6 +111,20 @@ jobs:
       # folding the check into the build removed.
       - name: Verify the standalone link checker (check_links_diff.mjs)
         run: node scripts/check_links_diff.mjs --case fixture --a script --b index
+      # The step above compares two front ends over a hand-written tree.
+      # This one compares the script against the BUILD's own checker, over
+      # a three-page tree the build produces from test/fixtures/check-src.
+      # That is the pass the harness exists for and the one nothing
+      # exercised: `--b fused` skipped the synthetic `fixture` case every
+      # time, because the build cannot check a tree it did not write. A
+      # regression in builder/check.mjs that stopped REPORTING a category
+      # would have left every gate green.
+      #
+      # One extra three-page build, ~1 s. It is here and not in the deploy
+      # workflow because this is the PR gate: catching it before a merge is
+      # the point, and the deploy workflow has a site to ship.
+      - name: Verify the build's own link checker (check_links_diff.mjs)
+        run: node scripts/check_links_diff.mjs --case fixture-built --case fixture-built-offline --a script --b fused
       # check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
       # -26 % on a realistic page set -- see builder/PLAN-axe-perf.md), so the
       # patch has to be verified before its results are trusted. The patch
