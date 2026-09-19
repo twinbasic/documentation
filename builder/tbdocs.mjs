@@ -359,8 +359,11 @@ const TASKS = {
   // available). Dep count is set to N by dispatch.submit(); each render:i
   // completion decrements via the SAB successor edge. Tasks that only
   // need renderedContent (not page HTML on disk) depend on this.
+  //
+  // The SAB dep count alone does NOT make this a barrier over the
+  // *submits* -- see dispatch.submit, which populates `expected`.
   renderJoin: {
-    expected: [],
+    expected: [],   // populated by dispatch.submit
     on_demand: true,
     runOnMain: true,
     execute() { return {}; },
@@ -721,16 +724,33 @@ const TASKS = {
         });
       }
 
-      // Populate flushJoin's expected so _assembleInputs delivers all
-      // flush results to its execute().  Replace the Map entry with a
-      // shallow clone bearing a fresh expected array so the shared
-      // TASKS.flushJoin def stays untouched across rebuilds -- if we
+      // Populate both barriers' `expected` so _assembleInputs delivers
+      // every chunk result to their execute().  Replace the Map entry
+      // with a shallow clone bearing a fresh expected array so the
+      // shared TASKS def stays untouched across rebuilds -- if we
       // mutated it in place, the next build's allocSchedulerSAB would
-      // see leftover "flush:N" names and fail.
-      const flushJoinDef = scheduler.tasks.get("flushJoin");
-      const flushJoinExpected = [];
-      for (let i = 0; i < N; i++) flushJoinExpected.push(`flush:${i}`);
-      scheduler.tasks.set("flushJoin", { ...flushJoinDef, expected: flushJoinExpected });
+      // see leftover "render:N" / "flush:N" names and fail.
+      //
+      // This is load-bearing beyond delivering inputs. A barrier becomes
+      // READY when the *workers* decrement its SAB dep count, which they
+      // do right after posting their result -- so the main thread can
+      // see a dep count of zero while a result message is still in its
+      // queue and the matching submit() has not run. The only thing that
+      // holds the barrier back in that window is _claimMainTask's check
+      // that every name in `expected` is already in the results map.
+      //
+      // renderJoin went without it, and silently lost data: render:i's
+      // submit() is what fills scheduler.state.searchChunks[i], the
+      // array starts life as `new Array(N)` (holes, not undefined), and
+      // Array.prototype.flat() skips holes without a word. One chunk
+      // arriving late meant ~6 pages quietly missing from
+      // search-data.json, about one build in three.
+      for (const [join, prefix] of [["renderJoin", "render"], ["flushJoin", "flush"]]) {
+        const def = scheduler.tasks.get(join);
+        const expected = [];
+        for (let i = 0; i < N; i++) expected.push(`${prefix}:${i}`);
+        scheduler.tasks.set(join, { ...def, expected });
+      }
 
       // 6. Pack payload, broadcast, account, activate.
       const payloadSAB = packPayloads(views, renderBase, out.chunks);

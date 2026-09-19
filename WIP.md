@@ -353,6 +353,7 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 | `catches up` | resumes, processes the queue |
 | `comes up` (a connection) | is established, becomes ready |
 | `drive` / `driven` (figurative) | controlled by, determined by, powered by |
+| `footgun` / `footguns` | easy mistake to make, hazard, pitfall |
 | `for free` (figurative) | as a side effect, without extra effort |
 | `hand off` / `hand over` / `hand back` | returns, passes, delivers |
 | `hand-rolled` | manually constructed, custom-built |
@@ -463,6 +464,8 @@ The `extract` step itself is a three-stage flow that Claude orchestrates: prep â
 The site builds via [builder/](builder/), a custom Node.js static site generator (`tbdocs`). See [builder/PLAN.md](builder/PLAN.md) for the architecture overview, [builder/README.md](builder/README.md) for the quickstart, and the [tbdocs Internals](docs/Documentation/Builder.md) site page for the high-level tour.
 
 A task-graph scheduler / parallelisation pass is designed in [builder/PLAN-scheduler.md](builder/PLAN-scheduler.md) and has been implemented (Phases 0--4).
+
+**Before adding a fan-out to the task graph, read [why a dep count of zero does not mean the submits have run](builder/PLAN-sab-pull-scheduler.md#a-dep-count-of-zero-does-not-mean-the-submits-have-run).** A worker posts its result and *then* decrements its successors' dependency counts in shared memory, so a barrier's count can reach zero while results are still queued and the `submit()` calls that merge them into build state have not run --- the shared counter orders the work, not the state. A dynamic barrier must therefore list every chunk task in its `expected`, even when its own `execute()` ignores the inputs; that list is the only thing the scheduler checks before it lets the barrier proceed. `renderJoin` went without it and silently dropped ~6 pages from `search-data.json` on about one build in three, because the index is built by flattening a `new Array(N)` and `Array.prototype.flat()` skips holes without reporting anything. Two silent failures combining into one invisible one --- both halves are now fixed, and `writeSearchDataFromChunks` refuses to write a partial index.
 
 Folding `check.bat`'s gates into that same graph is designed in [builder/PLAN-checks.md](builder/PLAN-checks.md). Phase A, the link checker, is **implemented**: extraction runs inside `flush`, where both trees' final HTML is already in worker memory, so the build no longer writes 230 MB out only to read it back and re-parse it. The `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are follow-ons, seeded with measurements and open questions but not yet designed.
 

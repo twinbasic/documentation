@@ -30,6 +30,27 @@ export async function writeSearchData(pages, site, destRoot) {
 // is globally sequential, and writes the same byte-for-byte search-data.json
 // the single-threaded writeSearchData would have produced.
 export async function writeSearchDataFromChunks(searchChunks, destRoot) {
+  // searchChunks starts as `new Array(N)` -- holes, not undefined -- and
+  // each render:i.submit() fills its own slot. Array.prototype.flat()
+  // skips holes silently, so a slot that has not been filled yet does
+  // not throw: its pages just vanish from the index, and the only
+  // symptom is a slightly smaller entry count nobody reads. That is
+  // exactly what happened before renderJoin was given an `expected`
+  // list. Refuse to write a partial index rather than lose pages
+  // quietly.
+  const missing = [];
+  for (let i = 0; i < searchChunks.length; i++) {
+    if (!(i in searchChunks)) missing.push(i);
+  }
+  if (missing.length) {
+    throw new Error(
+      `search index is incomplete: ${missing.length} of ${searchChunks.length} ` +
+      `chunks never arrived (${missing.slice(0, 8).join(", ")}` +
+      `${missing.length > 8 ? ", ..." : ""}). This is a scheduling bug, not a ` +
+      `content one -- see the barrier wiring in dispatch.submit().`,
+    );
+  }
+
   const allEntries = searchChunks.flat();
   for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
   const body = allEntries.map(renderEntryString).join(",");

@@ -533,6 +533,67 @@ to-worker transitions no longer pay it.
 
 4. Update `Atomics.store(views.taskCount, 0, newCount)`.
 
+### A dep count of zero does not mean the submits have run
+
+**This is the easiest invariant in the scheduler to miss.** It removed
+about six pages from the search index on roughly one build in three,
+silently, for as long as `renderJoin` existed.
+
+A worker finishes a chunk and does two things, in this order: it
+`postMessage`s its result to the main thread, then it decrements its
+successors' SAB dep counts. The main thread reads those dep counts
+*directly out of shared memory* — it does not have to drain its message
+queue first. So there is a window in which a barrier's dep count is zero
+while one or more result messages are still queued, and the `submit()`
+calls that fold those results into `scheduler.state` have not run.
+
+Anything a barrier's dependents read out of `scheduler.state` is
+therefore **not** guaranteed to be there when the barrier fires. The
+SAB count orders the *work*; it does not order the *state*.
+
+The one thing that closes the window is `_claimMainTask`'s input check:
+it calls `_assembleInputs(def)` and releases the task back to READY if
+any name in `def.expected` is missing from the results map — and a
+result only lands in that map in `_onWorkerDone`, immediately before
+`submit()`. So:
+
+> **A dynamic barrier must list every chunk task in its `expected`,
+> even when its `execute()` ignores the inputs.** Setting the SAB dep
+> count is necessary and not sufficient.
+
+`dispatch.submit` does this for both barriers:
+
+```js
+for (const [join, prefix] of [["renderJoin", "render"], ["flushJoin", "flush"]]) {
+  const def = scheduler.tasks.get(join);
+  const expected = [];
+  for (let i = 0; i < N; i++) expected.push(`${prefix}:${i}`);
+  scheduler.tasks.set(join, { ...def, expected });   // clone: TASKS must stay clean
+}
+```
+
+`flushJoin` had it from the start, because its `execute()` sums the
+per-chunk write stats and so visibly needed the inputs. `renderJoin`'s
+`execute()` returns `{}` and needs nothing — which is exactly why the
+omission looked harmless and went unnoticed.
+
+**The second half of the bug is what made it silent.** `render:i.submit()`
+fills `scheduler.state.searchChunks[i]`, an array created as
+`new Array(N)` — holes, not `undefined` — and `writeSearchDataFromChunks`
+flattens it. `Array.prototype.flat()` **skips holes without a word**, so
+a late chunk did not throw, or log, or produce an `undefined` that
+something downstream would choke on. It just quietly removed that
+chunk's pages from `search-data.json`. Two independent quiet failures
+composed into one invisible one.
+
+So when adding a fan-out:
+
+- give the barrier an `expected` list covering every chunk task;
+- never store a per-chunk result in a sparse array that something later
+  flattens — index into a pre-filled array, `push`, or assert
+  completeness at the consumer. `writeSearchDataFromChunks` now refuses
+  to write a partial index rather than lose pages quietly.
+
 5. Set each render:i's status to READY and notify workers.
 
 Workers that are waiting (Atomics.wait) wake up and see the new

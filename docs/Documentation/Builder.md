@@ -439,5 +439,16 @@ The build aborts or flips the exit code under a handful of conditions:
 - **Nav integrity.** Orphan or ambiguous `parent:` declarations throw inside `nav.execute()`, which aborts the build via `Scheduler._abort()`.
 - **Worker crash.** A worker handler that throws posts `{ taskFailed, message, stack }` to main; the scheduler calls `_abort()`, the build rejects, and the orchestrator reports the error with the task name in the message.
 - **Link and integrity check** (`--check`). Deliberately the one failure that does *not* abort: a broken link still produces a valid site you want on disk to inspect, unlike a nav ambiguity, where the output itself would be wrong. The check tasks collect findings and `runBuild()` sets the exit code afterwards --- 1 for link failures, 2 for integrity failures, 3 for both, OR'd into whatever the build's own failures already claimed.
+- **Incomplete search index.** `writeSearchDataFromChunks` throws if any per-chunk slot is still a hole. That cannot happen while the barrier wiring is correct, and the guard exists because when it *was* wrong the failure was invisible --- see below.
+
+### Dependency counts order the work, not the build state
+
+A worker posts its result to the main thread and *then* decrements its successors' dependency counts in shared memory. The main thread reads those counts directly out of shared memory, without first processing its message queue. A barrier's count can therefore reach zero while results are still pending and the `submit()` calls that merge them into build state have not run.
+
+The scheduler's input check is what prevents this. A main-thread task returns to the ready set if any name in its `expected` list is absent from the results map, and a result is recorded there immediately before its `submit()` runs. So a dynamic barrier must list every chunk task in `expected`, **even when its own `execute()` ignores the inputs**. `flushJoin` always did, because it sums the per-chunk write statistics and visibly needs them. `renderJoin` returns an empty object and needs nothing, so the omission looked harmless.
+
+It was not. Results from `render:i` could arrive after the search index had already been written. That index is assembled by flattening an array created with `new Array(N)` --- holes, not `undefined` --- and `Array.prototype.flat()` skips holes without reporting anything. A late chunk therefore raised no error and logged nothing. About six pages were missing from `search-data.json`, on roughly one build in three, always as a contiguous run, because a chunk is a contiguous slice of the page list.
+
+Two silent failures combining into one invisible one is the pattern to check for when adding a fan-out. Both halves are now fixed: the barriers list their chunk tasks, and `writeSearchDataFromChunks` refuses to write a partial index.
 
 Setup-class failures --- `@hpcc-js/wasm-graphviz` not installed, `sass` missing --- print a one-line recovery hint and continue with stale outputs. They do not flip the exit code; a fresh checkout still builds.
