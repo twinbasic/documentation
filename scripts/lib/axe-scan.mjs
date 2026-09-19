@@ -82,6 +82,88 @@ export const SAMPLE_PAGES = [
   "/Reference/Procedures-and-Functions.html",
 ];
 
+// ---------------------------------------------------------------------------
+// Page states
+// ---------------------------------------------------------------------------
+//
+// axe walks the DOM as it finds it, and the subtree of a closed <details> is
+// `notRendered`: absent from the accessibility tree, and absent from the
+// audit.  That property is exactly what makes the per-page section-links
+// disclosure cheap -- one tab stop, nothing in the links list -- and it is
+// also a hole in this scan.  The construct is on 707 pages, and the state a
+// reader sees after one click was never audited at all.  It shipped with
+// `target-size` violations on every link inside it (69.6x14 against a 24px
+// floor) while check.bat reported a clean pass.
+//
+// A state is a DOM mutation applied after gotoPage and before the audit.  The
+// function is serialised into the page, so it must not close over anything in
+// this module.
+//
+// Each one MUST assert that it found what it expected.  A state that silently
+// no-ops degrades into a second audit of the default page -- the scan gets
+// slower, reports a pass, and covers nothing extra, which is precisely the
+// failure this mechanism exists to prevent.
+export const PAGE_STATES = {
+  "section-links-open": () => {
+    const found = document.querySelectorAll("details.section-links");
+    if (found.length !== 1) {
+      throw new Error(
+        `section-links-open: expected exactly 1 details.section-links, found ${found.length}`
+      );
+    }
+    found[0].open = true;
+    const links = found[0].querySelectorAll("li > a");
+    if (links.length < 2) {
+      throw new Error(
+        `section-links-open: disclosure holds ${links.length} link(s); nothing was added to the audit`
+      );
+    }
+    return links.length;
+  },
+};
+
+// Extra audits layered onto the page x theme x viewport matrix: each entry is
+// run at every theme and viewport, like an ordinary page, but with a state
+// applied first.
+//
+// Menu/Window is the host because it is already the sample's disclosure-widget
+// page, and because item count buys nothing here.  The obvious candidate was
+// Pipeline-Stages -- 72 items against this page's 14 -- but the defect class
+// is per-link geometry, which is identical for every item: the spacing between
+// two consecutive items does not change with how many follow them, and the
+// long labels that make Pipeline-Stages look like the stress case only *wrap*
+// at the mobile viewport, which makes a target taller and easier to pass.  It
+// is also the most expensive page in the sample.  Measured: both hosts catch
+// a reverted fix at both viewports (14 nodes here, 70 there), at 0.41 s per
+// audit against 1.28 s.
+//
+// One page is enough for the same reason -- the disclosure is structurally
+// identical on all 707 pages carrying it -- and if this page ever stops
+// carrying one, the state applier throws rather than quietly auditing nothing.
+//
+// Cost: 4 audits on top of 44, +7 % of the sample's audit time (2.64 s
+// against 39.8 s).  That is a within-run ratio deliberately -- absolute wall
+// times on this box moved between 18 s and 40 s for the same 44 audits across
+// runs, so a before/after difference of two runs measures the box, not the
+// change.  Same caveat as perf/ab-axe.mjs and its ~20 % resolution floor.
+export const STATE_AUDITS = [
+  {
+    filePath: "/tB/IDE/Project/Menu/Window.html",
+    state: "section-links-open",
+  },
+];
+
+for (const { filePath, state } of STATE_AUDITS) {
+  if (!SAMPLE_PAGES.includes(filePath)) {
+    throw new Error(
+      `STATE_AUDITS: ${filePath} is not in SAMPLE_PAGES, so --pages narrowing would drop it silently`
+    );
+  }
+  if (!Object.hasOwn(PAGE_STATES, state)) {
+    throw new Error(`STATE_AUDITS: unknown state "${state}"`);
+  }
+}
+
 // Fixed sizes keep the media queries -- and therefore which elements are laid
 // out and visible to axe -- the same from run to run.
 export const VIEWPORTS = {
@@ -523,6 +605,7 @@ export function buildMatrix({
   pages = SAMPLE_PAGES,
   themes = THEMES,
   viewports = Object.keys(VIEWPORTS),
+  stateAudits = STATE_AUDITS,
 } = {}) {
   const seen = new Set();
   const uniquePages = pages.filter((p) => {
@@ -530,6 +613,10 @@ export function buildMatrix({
     seen.add(p);
     return true;
   });
+
+  // Follow whatever narrowing the caller applied to `pages`, so --pages does
+  // not leave a state audit running on a page the caller excluded.
+  const states = stateAudits.filter((s) => seen.has(s.filePath));
 
   const out = [];
   for (const viewport of viewports) {
@@ -539,7 +626,17 @@ export function buildMatrix({
           filePath,
           theme,
           viewport,
+          state: null,
           label: `${filePath} [${theme}, ${viewport}]`,
+        });
+      }
+      for (const { filePath, state } of states) {
+        out.push({
+          filePath,
+          theme,
+          viewport,
+          state,
+          label: `${filePath} [${theme}, ${viewport}, ${state}]`,
         });
       }
     }
@@ -572,13 +669,24 @@ export async function runMatrix(
       currentViewport = entry.viewport;
     }
     await gotoPage(page, { rootDir, filePath: entry.filePath, theme: entry.theme });
+    // Applied after navigation, before the audit. PAGE_STATES entries throw
+    // in-page if the construct they expect is not there, and page.evaluate
+    // propagates that here rather than letting the audit quietly proceed
+    // against the default state.
+    // Whatever the applier returns is carried on the record as `stateResult`
+    // so a front end can report how much the state actually exposed. "The
+    // state ran" and "the state added something" are different claims, and
+    // only the second one is worth anything.
+    const stateResult = entry.state
+      ? await page.evaluate(PAGE_STATES[entry.state])
+      : null;
     const audit = await runAxe(page, {
       axeSource,
       configure,
       runOptions,
       performanceTimer,
     });
-    const record = { ...entry, ...audit };
+    const record = { ...entry, ...audit, stateResult };
     audits.push(record);
     if (onAudit) onAudit(record);
   }
@@ -620,9 +728,9 @@ export const fmtViolations = (groups) =>
 export const fmtIncomplete = (groups) =>
   [...new Set(groups.map((g) => g.id))].sort().join(",");
 
-export function fingerprint({ filePath, theme, viewport, results }) {
+export function fingerprint({ filePath, theme, viewport, state, results }) {
   return (
-    `${filePath}|${theme}|${viewport}` +
+    `${filePath}|${theme}|${viewport}|${state ?? "default"}` +
     `|V[${fmtViolations(results.violations)}]` +
     `|I[${fmtIncomplete(results.incomplete)}]`
   );

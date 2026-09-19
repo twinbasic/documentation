@@ -118,6 +118,7 @@ async function main() {
 
   let totalViolations = 0;
   let totalIncomplete = 0;
+  const stateCoverage = [];
 
   const matrix = buildMatrix({ pages: SAMPLE_PAGES, themes, viewports });
 
@@ -131,7 +132,8 @@ async function main() {
       patches: AXE_PATCHES,
     }),
     runOptions: AXE_RUN_OPTIONS,
-    onAudit({ label, results }) {
+    onAudit({ label, results, state, stateResult }) {
+      if (state) stateCoverage.push(`${state} exposed ${stateResult} link(s)`);
       const { violations, incomplete } = results;
 
       if (violations.length > 0 || incomplete.length > 0) {
@@ -166,10 +168,22 @@ async function main() {
 
   await browser.close();
 
-  const pageCount = matrix.length / (themes.length * viewports.length);
+  // matrix.length is no longer pages x themes x viewports: STATE_AUDITS adds
+  // entries that re-audit a page in a non-default state, so count the two
+  // kinds separately rather than dividing and reporting a wrong page count.
+  const stateAudits = matrix.filter((e) => e.state).length;
+  const pageAudits = matrix.length - stateAudits;
+  const pageCount = pageAudits / (themes.length * viewports.length);
+
+  // Report what the state audits actually exposed, not just that they ran.
+  // A count here that drops to nothing is the signal that a state has stopped
+  // covering anything -- though PAGE_STATES throws before it gets that far.
+  for (const line of [...new Set(stateCoverage)]) console.log(`\nstate: ${line}`);
   console.log(
     `\n${pageCount} pages x ${themes.length} theme(s) x ` +
-      `${viewports.length} viewport(s) checked: ` +
+      `${viewports.length} viewport(s)` +
+      (stateAudits ? ` + ${stateAudits} state audit(s)` : "") +
+      ` checked: ` +
       `${totalViolations} violation(s), ${totalIncomplete} incomplete check(s)`
   );
 
