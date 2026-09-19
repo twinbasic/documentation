@@ -234,18 +234,28 @@ export function withRules(extra) {
 // ---------------------------------------------------------------------------
 //
 // A scheme is one way of configuring the scan: an optional axe.configure()
-// spec plus the axe.run() options.  `production` is what check_a11y.mjs runs;
-// the rest are the levers builder/PLAN-axe-perf.md lists under "Landing
-// options", named so the fingerprint gate and the ablation rig can refer to
-// the same thing.
+// spec, the axe.run() options, and the source patches applied to the bundle.
+// `production` is the scheme check_a11y.mjs and sweep_a11y.mjs run -- they
+// read it from here rather than declaring their own copy, so a lever added to
+// the scheme reaches the shipped scan, and the fingerprint gate's A/A control
+// compares the bundle that actually ships against itself.  The rest are the
+// levers builder/PLAN-axe-perf.md lists under "Landing options", named so the
+// fingerprint gate and the ablation rig can refer to the same thing.
 //
 // `gates: false` marks a scheme that is expected to change the findings -- it
 // exists to attribute cost, not to ship.  The fingerprint harness still runs
 // it, it just says up front that a diff is the point.
+//
+// Every scheme inherits DEFAULT_PATCHES unless it names its own.  The other
+// schemes are variations OF production, so comparing one against production
+// has to hold the bundle fixed -- otherwise the diff mixes the config change
+// with a patch change and attributes both to the config.
+
+export const DEFAULT_PATCHES = ["plain-color-fields"];
 
 export const SCHEMES = {
   production: {
-    describe: "what check_a11y.mjs runs today",
+    describe: "what check_a11y.mjs and sweep_a11y.mjs run",
     configure: null,
     runOptions: AXE_RUN_OPTIONS,
   },
@@ -327,7 +337,7 @@ export function getScheme(label) {
       `unknown scheme "${label}"; known: ${Object.keys(SCHEMES).join(", ")}`
     );
   }
-  return { label, ...scheme };
+  return { label, patches: DEFAULT_PATCHES, ...scheme };
 }
 
 // ---------------------------------------------------------------------------

@@ -41,11 +41,11 @@ import {
 import { resolve, join, relative, sep, dirname } from "node:path";
 import {
   axeVersion,
-  AXE_RUN_OPTIONS,
   DEFAULT_ROOT_DIR,
   REPO_ROOT,
   THEMES,
   VIEWPORTS,
+  getScheme,
   gotoPage,
   launchBrowser,
   newAuditPage,
@@ -53,10 +53,12 @@ import {
   runAxe,
 } from "./lib/axe-scan.mjs";
 
-// The production bundle, patched exactly as check_a11y.mjs patches it.  A
-// survey run against a different axe than the gate runs would be reporting on
-// a configuration nobody ships.
-const AXE_PATCHES = ["plain-color-fields"];
+// The production scheme, read from the one registry check_a11y.mjs reads --
+// same bundle, same patches, same run options.  A survey run against a
+// different axe than the gate runs would be reporting on a configuration
+// nobody ships.
+const PRODUCTION = getScheme("production");
+const AXE_PATCHES = PRODUCTION.patches;
 
 // Pages below this tag count are redirect stubs -- a canonical link, a meta
 // refresh, `<script>location=...</script>` and a one-line body.  There are ~290
@@ -223,7 +225,8 @@ if (!reportOnly && matrix.length) {
       await gotoPage(page, { rootDir, filePath: entry.filePath, theme: entry.theme });
       const { results, timings } = await runAxe(page, {
         axeSource,
-        runOptions: AXE_RUN_OPTIONS,
+        configure: PRODUCTION.configure,
+        runOptions: PRODUCTION.runOptions,
       });
       const elements = await page.evaluate(
         () => document.getElementsByTagName("*").length

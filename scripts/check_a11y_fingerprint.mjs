@@ -103,9 +103,11 @@ for (let i = 0; i < args.length; i++) {
     }
     console.log("");
     console.log("schemes:");
-    for (const [label, s] of Object.entries(SCHEMES)) {
+    for (const label of Object.keys(SCHEMES)) {
+      const s = getScheme(label);
       const flag = s.gates === false ? "  [does not gate]" : "";
-      console.log(`  ${label.padEnd(20)} ${s.describe}${flag}`);
+      const p = s.patches.length ? `  (+${s.patches.join(", ")})` : "  (stock)";
+      console.log(`  ${label.padEnd(20)} ${s.describe}${flag}${p}`);
     }
     process.exit(0);
   } else if (a === "-h" || a === "--help") {
@@ -193,18 +195,39 @@ async function main() {
   }
   console.log(`matrix     ${matrix.length} audits\n`);
 
-  // A source patch is applied to the CANDIDATE side only: the question the
-  // gate answers is whether the patched bundle still sees what the stock one
-  // sees. Applying it to both would compare a patched build against itself.
+  // Two ways a patch reaches a side, and they answer different questions.
+  //
+  // With no --patches, each side runs ITS OWN scheme's patch list.  Every
+  // scheme inherits DEFAULT_PATCHES, so the bundle is held fixed and the diff
+  // isolates the config change -- and --baseline production --candidate
+  // production is a genuine A/A over the bundle that ships.
+  //
+  // With --patches, the flag overrides both sides explicitly: stock on the
+  // baseline, the named patches on the candidate.  That is the axe-upgrade
+  // obligation -- does the patched bundle still see what the stock one sees --
+  // and it would be a no-op if both sides kept their scheme's list.
   const patchIds = patchesArg
     ? patchesArg.split(",").map((x) => x.trim()).filter(Boolean)
     : [];
-  const baseSource = readAxeSource({ minified: !unminified && !patchIds.length });
-  const candSource = patchIds.length
-    ? readAxeSource({ minified: false, patches: patchIds })
-    : baseSource;
+  const basePatches = patchIds.length ? [] : baseline.patches;
+  const candPatches = patchIds.length ? patchIds : candidate.patches;
+  const sourceFor = (patches) =>
+    readAxeSource({
+      minified: !unminified && patches.length === 0,
+      patches,
+    });
+  const baseSource = sourceFor(basePatches);
+  const candSource =
+    candPatches.join(",") === basePatches.join(",")
+      ? baseSource
+      : sourceFor(candPatches);
   if (patchIds.length) {
     console.log(`patches    ${patchIds.join(", ")}  (candidate side only)`);
+  } else if (basePatches.length || candPatches.length) {
+    console.log(
+      `patches    baseline ${basePatches.join(", ") || "(stock)"}  ` +
+        `candidate ${candPatches.join(", ") || "(stock)"}`
+    );
   }
   const browser = await launchBrowser();
   const page = await newAuditPage(browser);

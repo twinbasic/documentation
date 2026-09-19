@@ -51,9 +51,9 @@ import {
   DEFAULT_ROOT_DIR,
   THEMES,
   VIEWPORTS,
-  AXE_RUN_OPTIONS,
   SAMPLE_PAGES,
   buildMatrix,
+  getScheme,
   launchBrowser,
   newAuditPage,
   readAxeSource,
@@ -104,7 +104,14 @@ const viewports =
 // upgrade that moves the code throws here rather than silently reverting to the
 // slow path.  If that happens, --stock-axe keeps the scan working while the
 // patch is re-derived.
-const AXE_PATCHES = stockAxe ? [] : ["plain-color-fields"];
+//
+// The list is not declared here.  It is `SCHEMES.production.patches`, read
+// through getScheme, so the fingerprint gate's A/A control runs the bundle
+// this script ships rather than stock minified axe -- and so a `configure:`
+// added to the scheme reaches production instead of being silently dropped.
+// --stock-axe overrides the scheme's list; it is not a second source of truth.
+const PRODUCTION = getScheme("production");
+const AXE_PATCHES = stockAxe ? [] : PRODUCTION.patches;
 
 async function main() {
   console.log(
@@ -131,7 +138,8 @@ async function main() {
       minified: AXE_PATCHES.length === 0,
       patches: AXE_PATCHES,
     }),
-    runOptions: AXE_RUN_OPTIONS,
+    configure: PRODUCTION.configure,
+    runOptions: PRODUCTION.runOptions,
     onAudit({ label, results, state, stateResult }) {
       if (state) stateCoverage.push(`${state} exposed ${stateResult} link(s)`);
       const { violations, incomplete } = results;
