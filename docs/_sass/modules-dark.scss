@@ -1,12 +1,20 @@
 // Dark-theme configuration of the full JTD module tree.
 //
-// This file is ONLY ever loaded via meta.load-css() inside html.dark-mode {}
-// in just-the-docs-dark.scss.  It is never @used directly.
+// This file is ONLY ever loaded via meta.load-css() from inside the
+// `dark-theme` mixin in just-the-docs-dark.scss.  It is never @used
+// directly.
 //
-// Because meta.load-css() includes this file's CSS output at the call site
-// (inside the html.dark-mode selector), every rule below ends up scoped to
-// html.dark-mode in the compiled CSS -- exactly what @import "modules" inside
-// html.dark-mode {} produced under the old @import architecture.
+// Because meta.load-css() includes this file's CSS output at the call site,
+// and the mixin emits its content twice -- once under
+// `@media (prefers-color-scheme: dark) html:not([data-theme="light"])` for
+// the no-JS system default, once under `html[data-theme="dark"]` for an
+// explicit toggle choice -- every rule below ships scoped to both. That
+// second form is what raises a JTD base rule from (0,0,1) to (0,1,2) in
+// dark mode, which is why a single-class override in custom/custom.scss
+// can apply in light mode and silently not in dark.
+//
+// (An earlier architecture wrapped this in a literal `html.dark-mode {}`;
+// that selector no longer exists anywhere in the build.)
 //
 // The @use here is at the TOP LEVEL of this file, which is required.
 // The $with map threads configuration through modules.scss's

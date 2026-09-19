@@ -42,23 +42,6 @@
   height: auto;
 }
 
-// Secondary text in the main-content footer (page-modified date, edit link,
-// download links). WCAG 1.4.6 (AAA): the `.text-grey-dk-000` utility this
-// replaces is #959396, only 3.04:1 on the light body background. The two
-// themes need the grey to move in opposite directions, which a single
-// palette utility class cannot express. Hierarchy comes from the lighter
-// weight, so neither value has to be dimmed below AAA.
-.text-muted {
-  color: #54515a; // $grey-dk-100 -- 7.77:1 on #fff
-  font-weight: 350;
-}
-
-@include dark-theme {
-  .text-muted {
-    color: #b6b4b7; // 7.30:1 on #27262b ($body-background-color)
-  }
-}
-
 // WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container
 // tabindex="0", and render.mjs does the same for the table wrapper, so a
 // keyboard user can scroll an overflowing block or a wide table. Give that
@@ -173,7 +156,15 @@ div.highlight:focus-visible,
     color: inherit;
   }
 
-  > ul {
+  // `.main-content ol, .main-content ul, ...` sets `margin-top: 0.5em`
+  // at the same (0,1,1) and later in the file, so a bare
+  // `.section-links > ul` here never applied at all -- the list has been
+  // taking the body-prose 0.5em since it shipped. `.main-content` in
+  // front clears that in light mode; the dark compilation re-emits the
+  // same JTD rule as `html[data-theme=dark] .main-content ul` at
+  // (0,2,2), which out-ranks (0,2,1), so the dark half is not optional.
+  // This is the third instance of that trap in this file.
+  .main-content & > ul {
     margin: 0.25rem 0 0;
   }
 
@@ -202,6 +193,12 @@ div.highlight:focus-visible,
 @include dark-theme {
   .main-content > footer[role="contentinfo"] {
     color: #b6b4b7; // 7.30:1 on #27262b ($body-background-color)
+  }
+
+  // See the light-mode rule above: the dark compilation's copy of JTD's
+  // list margin is (0,2,2) and would otherwise win.
+  .main-content .section-links > ul {
+    margin-top: 0.25rem;
   }
 }
 
@@ -337,6 +334,32 @@ div.highlight:focus-visible,
 // selector is (0,3,0) and would apply in light mode only.
 #theme-toggle:focus-visible {
   outline-offset: -2px;
+}
+
+// The aux nav's "twinBASIC Home" link has the same problem and the same
+// cause. Measured at 1280x900 in both themes: the nav's box is top 0 /
+// bottom 59 and the link's is top 0 / bottom 59 -- identical -- so
+// Chrome's UA `outline: auto` at `outline-offset: 1px` draws its top and
+// bottom segments outside the scroll container's padding box and they
+// are clipped away. Only the left and right bars survive, because the
+// link starts 50px inboard of the nav's left edge.
+//
+// Give it an author ring drawn inside the border box, matching
+// `.btn-reset:focus-visible` (buttons.scss:134) in width and colour so
+// the two aux-nav controls look the same. The link is not a
+// `.btn-reset`, and nothing else in either compilation sets an outline
+// on `.site-button`, so (0,3,1) here is unopposed in light mode -- but
+// the dark half still needs its own colour, and the dark-theme mixin
+// puts it at (0,4,2).
+.aux-nav a.site-button:focus-visible {
+  outline: 2px solid #4e26af; // $link-color -- as compiled for light
+  outline-offset: -2px;
+}
+
+@include dark-theme {
+  .aux-nav a.site-button:focus-visible {
+    outline-color: #8cc2ff; // dark $link-color
+  }
 }
 
 // Video thumbnails (Videos section). The YouTube <iframe> embeds these
