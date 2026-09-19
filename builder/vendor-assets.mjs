@@ -99,24 +99,177 @@ export function scanSources(pages) {
 }
 
 // ---------------------------------------------------------------------------
+// Image validation
+// ---------------------------------------------------------------------------
+//
+// An HTTP 200 is not proof the body is the image it claims to be: a
+// captive portal answers every request with its own HTML login page, and
+// YouTube answers a poster-size request it has no art for with a 120x90
+// grey placeholder instead of a 404. Both look like a successful fetch to
+// `res.ok`, so the body itself has to be checked before it is trusted
+// enough to write to disk.
+
+// Deliberately low: this floor only needs to catch a near-empty or
+// truncated body before it reaches the magic-byte check below. Even a
+// tiny real JPEG (the 120x90 YouTube placeholder included) has to clear
+// it and be rejected by the dimension check instead, on its own terms.
+const MIN_IMAGE_BYTES = 100;
+
+// JPEG opens with the SOI marker FF D8 FF (the third byte begins the next
+// marker, so it doubles as part of the signature here). PNG opens with a
+// fixed 8-byte signature.
+function detectImageFormat(buf) {
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpeg";
+  if (
+    buf.length >= 8 &&
+    buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+    buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a
+  ) {
+    return "png";
+  }
+  return null;
+}
+
+// A JPEG file is a sequence of FF <marker> <len hi> <len lo> <payload>
+// segments (a few markers carry no length at all). Pixel dimensions live
+// nowhere but the Start-Of-Frame segment's payload, so this steps through
+// segments until it finds one and reads straight out of it. Returns null
+// for anything it cannot make sense of rather than guessing.
+function jpegDimensions(buf) {
+  let offset = 2; // buf[0..2] is the FFD8FF signature already checked by detectImageFormat
+  while (offset + 1 < buf.length) {
+    if (buf[offset] !== 0xff) return null; // not aligned on a marker
+
+    // Any number of extra 0xFF fill bytes can precede the real marker byte.
+    let markerOffset = offset + 1;
+    while (buf[markerOffset] === 0xff) markerOffset++;
+    const marker = buf[markerOffset];
+    offset = markerOffset + 1;
+
+    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      continue; // SOI / TEM / RSTn -- none of these carry a length field
+    }
+    if (marker === 0xd9 || marker === 0xda) {
+      return null; // EOI or scan data reached with no SOF seen first
+    }
+    if (offset + 2 > buf.length) return null;
+    const len = buf.readUInt16BE(offset);
+    if (len < 2) return null; // malformed segment length; stop rather than loop forever
+
+    // SOF0-SOF15 carry the dimensions, except three codes in that range
+    // that are reserved for other markers (DHT, JPG, DAC).
+    const isSOF = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+    if (isSOF) {
+      // Payload is 1 byte precision, then height, then width, both
+      // big-endian, starting right after the 2-byte length field.
+      if (offset + 7 > buf.length) return null;
+      return { height: buf.readUInt16BE(offset + 3), width: buf.readUInt16BE(offset + 5) };
+    }
+    offset += len; // skip to the next segment; len includes the length field itself
+  }
+  return null;
+}
+
+// IHDR is required to be the first chunk, right after the 8-byte PNG
+// signature, so its fields can be read directly with no need to step
+// through a chunk list the way the JPEG segments above do: 4 bytes
+// length, 4 bytes type, then width and height, both big-endian 4-byte
+// fields.
+function pngDimensions(buf) {
+  if (buf.length < 24 || buf.toString("ascii", 12, 16) !== "IHDR") return null;
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+function imageDimensions(buf, format) {
+  if (format === "jpeg") return jpegDimensions(buf);
+  if (format === "png") return pngDimensions(buf);
+  return null;
+}
+
+// The one check every accepted image body has to pass, regardless of
+// which caller below is fetching it: a real image content type, a body
+// past a plausible size floor, and bytes that actually start with a
+// JPEG or PNG signature.
+function validateImageBody(buf, contentType) {
+  const ct = (contentType || "").split(";")[0].trim().toLowerCase();
+  if (!ct.startsWith("image/")) {
+    return { ok: false, reason: `unexpected content-type ${ct || "(none)"}` };
+  }
+  if (buf.length < MIN_IMAGE_BYTES) {
+    return { ok: false, reason: `body too small to be a real image (${buf.length} bytes)` };
+  }
+  const format = detectImageFormat(buf);
+  if (!format) {
+    return { ok: false, reason: "body is not a JPEG or PNG (magic bytes did not match)" };
+  }
+  return { ok: true, format };
+}
+
+// ---------------------------------------------------------------------------
 // Fetching
 // ---------------------------------------------------------------------------
 
-async function fetchToFile(url, destPath) {
-  const res = await fetch(url, { redirect: "follow" });
+// Downloads `url`, validates the body as a real image, and only then
+// writes it to `destPath` -- via a temp file renamed into place, so a
+// body that fails validation, or a process that dies mid-write, never
+// leaves anything sitting at the final name. That matters because
+// `present.has(name)` below treats any file already at destPath as
+// fetched and done, and will not try again.
+//
+// `rejectBody`, when given, runs after the generic image checks pass and
+// can still reject on other grounds (see the YouTube placeholder check
+// below); it returns a reason string to reject, or null to accept.
+async function fetchToFile(url, destPath, { rejectBody } = {}) {
+  let res;
+  try {
+    res = await fetch(url, { redirect: "follow" });
+  } catch (err) {
+    // DNS failure, TLS error, connection reset, proxy refusal, ... -- the
+    // network can fail before there is even a status code to look at.
+    return { ok: false, status: `network error (${err.message})` };
+  }
   if (!res.ok) return { ok: false, status: res.status };
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length === 0) return { ok: false, status: "empty body" };
+
+  let buf;
+  try {
+    buf = Buffer.from(await res.arrayBuffer());
+  } catch (err) {
+    return { ok: false, status: `network error (${err.message})` };
+  }
+
+  const check = validateImageBody(buf, res.headers.get("content-type"));
+  if (!check.ok) return { ok: false, status: check.reason };
+  if (rejectBody) {
+    const reason = rejectBody(buf, check.format);
+    if (reason) return { ok: false, status: reason };
+  }
+
+  const tmpPath = `${destPath}.tmp-${process.pid}-${Date.now()}`;
   await fs.mkdir(path.dirname(destPath), { recursive: true });
-  await fs.writeFile(destPath, buf);
+  await fs.writeFile(tmpPath, buf);
+  await fs.rename(tmpPath, destPath);
   return { ok: true, size: buf.length, contentType: res.headers.get("content-type") };
+}
+
+// YouTube answers a poster-size request it has no real art for with a
+// 120x90 grey "no thumbnail" image and a normal HTTP 200, rather than a
+// 404 the way a missing file normally would. That exact geometry is the
+// tell, so reject it here and let the variant loop below fall through to
+// the next size instead of writing the placeholder and treating the
+// video as done forever.
+function rejectPlaceholder(buf, format) {
+  const dims = imageDimensions(buf, format);
+  if (dims && dims.width === 120 && dims.height === 90) {
+    return "120x90 placeholder (no thumbnail at this size)";
+  }
+  return null;
 }
 
 async function fetchYouTubeThumb(videoId, destPath) {
   let lastStatus = null;
   for (const variant of YT_VARIANTS) {
     const url = `https://img.youtube.com/vi/${videoId}/${variant}.jpg`;
-    const r = await fetchToFile(url, destPath);
+    const r = await fetchToFile(url, destPath, { rejectBody: rejectPlaceholder });
     if (r.ok) return { ok: true, variant, size: r.size };
     lastStatus = r.status;
   }
@@ -125,17 +278,43 @@ async function fetchYouTubeThumb(videoId, destPath) {
 
 async function fetchAttachment(uuid, dirAbs) {
   const url = `https://github.com/user-attachments/assets/${uuid}`;
-  const res = await fetch(url, { redirect: "follow" });
+  let res;
+  try {
+    res = await fetch(url, { redirect: "follow" });
+  } catch (err) {
+    return { ok: false, status: `network error (${err.message})` };
+  }
   if (!res.ok) return { ok: false, status: res.status };
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length === 0) return { ok: false, status: "empty body" };
+
+  let buf;
+  try {
+    buf = Buffer.from(await res.arrayBuffer());
+  } catch (err) {
+    return { ok: false, status: `network error (${err.message})` };
+  }
+  if (buf.length < MIN_IMAGE_BYTES) {
+    return { ok: false, status: `body too small to be a real image (${buf.length} bytes)` };
+  }
   // The URL carries no extension; the served content-type decides it.
   const ct = (res.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
   const ext = CONTENT_TYPE_EXT.get(ct);
   if (!ext) return { ok: false, status: `unsupported content-type ${ct || "(none)"}` };
+
+  // Cross-check the two formats this module can read a signature for --
+  // a captive portal or an error page served under a spoofed image
+  // content-type still will not start with real JPEG or PNG bytes.
+  if (ext === "jpg" || ext === "png") {
+    const expected = ext === "jpg" ? "jpeg" : "png";
+    if (detectImageFormat(buf) !== expected) {
+      return { ok: false, status: `content-type said ${ct} but the body is not a ${expected} (bad magic bytes)` };
+    }
+  }
+
   const destPath = path.join(dirAbs, `gh-${uuid}.${ext}`);
+  const tmpPath = `${destPath}.tmp-${process.pid}-${Date.now()}`;
   await fs.mkdir(dirAbs, { recursive: true });
-  await fs.writeFile(destPath, buf);
+  await fs.writeFile(tmpPath, buf);
+  await fs.rename(tmpPath, destPath);
   return { ok: true, ext, destPath, size: buf.length };
 }
 
