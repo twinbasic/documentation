@@ -350,10 +350,13 @@ export function getScheme(label) {
 // maintaining a vendored fork.  They are text substitutions against the
 // injected source; nothing on disk is modified.
 //
-// Every substitution asserts its target was found, so an axe-core upgrade that
-// moves the code fails loudly instead of silently measuring nothing.  Targets
-// are single lines on purpose -- a multi-line target would be one reformatting
-// away from breaking, and harder to re-derive by eye.
+// Every substitution asserts an exact occurrence count, so an axe-core upgrade
+// that moves the code -- or rebinds a duplicated private-field name to another
+// class -- fails loudly instead of silently measuring nothing.  "At least one"
+// is not enough: a bump that made a target match somewhere else as well would
+// rewrite that site too and still pass.  Targets are single lines on purpose --
+// a multi-line target would be one reformatting away from breaking, and harder
+// to re-derive by eye.
 
 function substitute(src, name, from, to, expectedCount = null) {
   const parts = src.split(from);
@@ -453,15 +456,21 @@ export const SOURCE_PATCHES = {
         src = substitute(src, n + "/init" + f,
           `_classPrivateFieldInitSpec(this, ${f}, void 0);`,
           `this._${f} = void 0;`, 1);
+        // Counts are measured, not guessed: every field is read once (the
+        // getter) and written twice (the constructor and the setter) in
+        // axe-core 4.13.0.  Asserting them is what stops a bump that rebinds
+        // Babel's duplicate private names to a different class from rewriting
+        // that class instead -- consistently, silently, and past
+        // check_axe_patch_equiv.mjs, which only reads Color2 values.
         src = substitute(src, n + "/get" + f,
           `_classPrivateFieldGet(${f}, this)`,
-          `this._${f}`);
+          `this._${f}`, 1);
         // Prefix-only substitution: the original call's closing paren becomes
         // the closing paren of the assignment expression, so an arbitrary
         // nested argument expression is carried across untouched.
         src = substitute(src, n + "/set" + f,
           `_classPrivateFieldSet(${f}, this, `,
-          `(this._${f} = `);
+          `(this._${f} = `, 2);
       }
       return src;
     },
