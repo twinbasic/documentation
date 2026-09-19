@@ -270,11 +270,28 @@ export function stripSeo(html) {
 // block, or a real href|src attribute carrying either an absolute or
 // page-relative URL. The code/pre alternatives consume their bodies
 // atomically so href/src matches inside code samples are skipped.
-export const HTML_COMBINED_RE = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2/g;
+//
+// `(?<!-)\b` rather than a bare `\b`: a hyphen is a non-word character,
+// so `\b` succeeds inside `data-svg-src=` and the tail of that attribute
+// name matched as if it were a real `src`. The six inlined diagrams then
+// counted as unresolved on every build -- a permanently-nonzero number
+// with nothing behind it. A colon is deliberately NOT excluded:
+// `xlink:href` is a real URL attribute and there are 75,129 of them in
+// the built tree.
+export const HTML_COMBINED_RE = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|(?<!-)\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2/g;
+
+// How many distinct unresolved URLs a single rewrite reports back. The
+// count is the headline; this is what makes it actionable. Capped so a
+// pathological page cannot turn the build log into the page.
+const MISS_SAMPLE = 10;
 
 // §6.6  rewriteHtml -- single regex pass over the HTML.
 export function rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl) {
   let misses = 0;
+  // The URLs behind the count, not only the count. "6 unresolved"
+  // printed on every green build for as long as anyone can remember,
+  // and it was a regex artifact -- nobody could look, so nobody did.
+  const missed = [];
   const pageCache = getPageCache(caches.result, fileDir);
 
   const rewritten = html.replace(HTML_COMBINED_RE, (match, attrName, quote, rawUrl) => {
@@ -291,6 +308,7 @@ export function rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl)
     }
     if (rel === null) {
       misses++;
+      if (missed.length < MISS_SAMPLE) missed.push(rawUrl);
       return match;
     }
     if (rel === rawUrl) {
@@ -300,7 +318,7 @@ export function rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl)
     return `${attrName}=${quote}${rel}${quote}`;
   });
 
-  return { rewritten, misses };
+  return { rewritten, misses, missed };
 }
 
 export const JTD_SCRIPT_TAG_RE = /<script\s+src="([^"]*)just-the-docs\.js"/;
@@ -379,10 +397,23 @@ export function deriveOfflinePage(page, state) {
   const fileSegs = fileDirSegsFromRel(page.destPath);
   let html = page.html;
   html = stripSeo(html);
-  const { rewritten, misses } = rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl);
+  const { rewritten, misses, missed } = rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl);
   html = rewritten;
   html = injectSearchSetup(html, fileSegs);
+  if (misses) warnMisses(page.destPath, misses, missed);
   return { html, misses };
+}
+
+// One line per file that left something unrewritten, naming the URLs.
+// An unresolved root-absolute URL in the offline tree is a link that
+// will not work under file://, which is the whole point of the tree --
+// so it is worth a warning, not just a tally at the end.
+export function warnMisses(where, misses, missed) {
+  const more = misses > missed.length ? ` (+${misses - missed.length} more)` : "";
+  console.warn(
+    `offline: ${where}: ${misses} URL(s) not rewritten: ` +
+    `${missed.join(", ")}${more}`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -394,6 +425,7 @@ export const CSS_URL_RE = /url\(\s*(["']?)(\/(?!\/)[^"'()\s]*)\1\s*\)/g;
 // §6.7  rewriteCss -- url(/...) → page-relative.
 export function rewriteCss(css, fileDir, fileSegs, sitePaths, caches, baseurl) {
   let misses = 0;
+  const missed = [];
   const pageCache = getPageCache(caches.result, fileDir);
 
   const rewritten = css.replace(CSS_URL_RE, (match, quote, rawUrl) => {
@@ -404,12 +436,13 @@ export function rewriteCss(css, fileDir, fileSegs, sitePaths, caches, baseurl) {
     }
     if (rel === null) {
       misses++;
+      if (missed.length < MISS_SAMPLE) missed.push(rawUrl);
       return match;
     }
     return `url(${quote}${rel}${quote})`;
   });
 
-  return { rewritten, misses };
+  return { rewritten, misses, missed };
 }
 
 // Pure-compute: rewrite `url(/...)` references in a single CSS file.
@@ -419,7 +452,8 @@ export function deriveOfflineCss(cssIn, themeRel, state) {
   const { sitePaths, caches, baseurl } = state;
   const fileDir = posixDirname(themeRel);
   const fileSegs = fileDirSegsFromRel(themeRel);
-  const { rewritten, misses } = rewriteCss(cssIn, fileDir, fileSegs, sitePaths, caches, baseurl);
+  const { rewritten, misses, missed } = rewriteCss(cssIn, fileDir, fileSegs, sitePaths, caches, baseurl);
+  if (misses) warnMisses(themeRel, misses, missed);
   return { css: rewritten, misses };
 }
 
