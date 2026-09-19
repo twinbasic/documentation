@@ -260,9 +260,20 @@ let _checkChunk   = null;   // builder/check.mjs's checkChunk, imported with it
 async function runChunkCheck(items) {
   const out = {};
   for (const [which, env] of Object.entries(_checkEnv)) {
+    // Asserted rather than filtered. The offline pass runs for every
+    // page in the lane, so a page without offlineHtml means the rewrite
+    // did not happen -- and dropping it here would shrink the chunk
+    // quietly, checking fewer pages and still reporting a pass.
     const docs = which === "offline"
-      ? items.filter(p => p.offlineHtml !== undefined)
-             .map(p => ({ destPath: p.destPath, html: p.offlineHtml }))
+      ? items.map(p => {
+          if (p.offlineHtml === undefined) {
+            throw new Error(
+              `${p.destPath} reached the offline check with no offlineHtml; ` +
+              `the chunk would have covered fewer pages than the lane holds`
+            );
+          }
+          return { destPath: p.destPath, html: p.offlineHtml };
+        })
       : items.map(p => ({ destPath: p.destPath, html: p.html }));
     try {
       out[which] = _checkChunk(docs, env);

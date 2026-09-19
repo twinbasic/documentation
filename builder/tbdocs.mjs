@@ -397,10 +397,20 @@ const TASKS = {
     runOnMain: true,
     execute(inputs) {
       let written = 0, offlineWritten = 0, offlineMisses = 0;
-      for (const r of Object.values(inputs)) {
-        written        += r?.written        ?? 0;
-        offlineWritten += r?.offlineWritten ?? 0;
-        offlineMisses  += r?.offlineMisses  ?? 0;
+      for (const [name, r] of Object.entries(inputs)) {
+        // Asserted, not defaulted. A flush result that never arrived
+        // would otherwise contribute zero and the totals would simply
+        // read low -- a number nobody can tell apart from a smaller
+        // site.
+        if (!r || typeof r.written !== "number") {
+          throw new Error(
+            `flushJoin: ${name} produced no write stats; the page count ` +
+            `would silently read low`
+          );
+        }
+        written        += r.written;
+        offlineWritten += r.offlineWritten ?? 0;
+        offlineMisses  += r.offlineMisses  ?? 0;
       }
       return { written, offlineWritten, offlineMisses };
     },
@@ -966,7 +976,17 @@ const TASKS = {
       for (const [which, { rels, baseurl }] of Object.entries(state.checkTrees)) {
         const root     = ctx.destRoot + TREES[which].suffix;
         const basePath = normBase(baseurl);
-        const chunks   = state.checkChunks.map(c => c?.[which]);
+        const chunks   = state.checkChunks.map((c, i) => {
+          // No optional chaining here on purpose: every lane builds the
+          // same tree-key set, so a chunk with no entry for this tree
+          // means a lane produced something else entirely. Name the
+          // chunk rather than letting joinChunks report it generically.
+          if (!c) throw new Error(`link check: chunk ${i} produced no result`);
+          if (!c[which]) {
+            throw new Error(`link check: chunk ${i} produced no '${which}' result`);
+          }
+          return c[which];
+        });
         if (short) chunks.push({ error: short });
 
         if (stubHtml[which]?.length) {

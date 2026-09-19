@@ -212,7 +212,19 @@ export function joinChunks(chunks, {
   const errors = [];
 
   for (const c of chunks) {
-    if (!c) continue;
+    // On the chunk-merge path "the piece is missing" is a bug, not a
+    // case to handle. A skipped chunk means the check examined part of
+    // the tree and reported a pass over the whole of it, which is the
+    // exact failure this design exists to prevent -- and the one that
+    // dropped six pages from search-data.json on about one build in
+    // three. An `error` chunk is different: that piece ran and failed,
+    // and saying so is the point.
+    if (!c) {
+      throw new Error(
+        `joinChunks(${tree.label}): a chunk produced no result; the check ` +
+        `would have covered only part of the tree`
+      );
+    }
     if (c.error) { errors.push(c.error); continue; }
     occurrences += c.occurrences;
     files       += c.files;
