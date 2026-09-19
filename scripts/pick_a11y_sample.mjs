@@ -67,6 +67,14 @@ const FAMILIES = {
   pre: { re: /<pre[\s>]/g, min: 1, why: "scrollable-region-focusable; the contrast stress case" },
   dl: { re: /<dl[\s>]/g, min: 1, why: "definition-list, dlitem" },
   details: { re: /<details[\s>]/g, min: 1, why: "summary naming and disclosure semantics" },
+  // A second family for the same tag, at a count only one page reaches.
+  // target-size on a <summary> is a question about the gap between two
+  // CONSECUTIVE ones at the mobile type scale, so a page with a single
+  // disclosure does not exercise it -- and a page with four does not
+  // either. FAQ.html has 30; the next most is 4. With the site-wide
+  // min-height reverted, FAQ reports target-size x16 and no other page
+  // in the site reports anything.
+  detailsStacked: { re: /<details[\s>]/g, min: 8, why: "target-size between consecutive <summary> elements at the mobile scale" },
   video: { re: /class="[^"]*video-link/g, min: 1, why: "link-name and image-alt on video cards" },
   // One family per admonition variant, not one for all of them.  Each
   // variant has its own tint and its own title colour in each theme, so a

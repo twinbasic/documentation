@@ -127,6 +127,13 @@ const viewports = pick("viewport", viewportArg, Object.keys(VIEWPORTS));
 // this script ships rather than stock minified axe -- and so a `configure:`
 // added to the scheme reaches production instead of being silently dropped.
 // --stock-axe overrides the scheme's list; it is not a second source of truth.
+// What each state's applier counts, so the report says what was actually
+// exposed rather than labelling every number "link(s)".
+const STATE_UNITS = {
+  "section-links-open": "link",
+  "content-details-open": "element",
+};
+
 const PRODUCTION = getScheme("production");
 const AXE_PATCHES = stockAxe ? [] : PRODUCTION.patches;
 
@@ -175,7 +182,7 @@ async function main() {
     configure: PRODUCTION.configure,
     runOptions: PRODUCTION.runOptions,
     onAudit({ label, results, state, stateResult }) {
-      if (state) stateCoverage.push(`${state} exposed ${stateResult} link(s)`);
+      if (state) stateCoverage.push(`${state} exposed ${stateResult} ${STATE_UNITS[state] ?? "node"}(s)`);
       const { violations, incomplete } = results;
 
       if (violations.length > 0 || incomplete.length > 0) {

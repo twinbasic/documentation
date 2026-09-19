@@ -87,6 +87,14 @@ export const SAMPLE_PAGES = [
   // matrix.  Measured: 485/454/398/399 ms over the four theme x viewport
   // combinations.
   "/Features/Language/Generics.html",
+  // The site's only page that stacks disclosures -- 30 against
+  // Menu/Window's 4 -- and the only one where the target-size defect
+  // class on <summary> is reachable. `.main-content summary`'s
+  // min-height was guarded by nothing: reverted, this page reports
+  // target-size x16 at the mobile viewport and no other page in the
+  // site reports anything at all. Measured 272/236/229/215 ms over the
+  // four combinations.
+  "/FAQ.html",
 ];
 
 // ---------------------------------------------------------------------------
@@ -127,6 +135,41 @@ export const PAGE_STATES = {
     }
     return links.length;
   },
+
+  // The section-links disclosure is one construct; the ones the docs
+  // themselves use are another, and PAGE_STATES covered only the first.
+  // FAQ.html carries 29 of them and is not in SAMPLE_PAGES at all, and
+  // Menu/Window's three stayed closed during its own state audit -- so
+  // the content a reader sees after clicking a disclosure was audited
+  // nowhere. No live defect was found once they were opened, but at the
+  // mobile viewport this state takes colour-contrast from 0 incomplete
+  // nodes to 118, which is the measure of what was not being looked at.
+  "content-details-open": () => {
+    const found = [...document.querySelectorAll("details")]
+      .filter((d) => !d.classList.contains("section-links"));
+    if (found.length === 0) {
+      throw new Error(
+        "content-details-open: this page carries no content disclosure; " +
+        "the audit would be a second run of the default page"
+      );
+    }
+    let revealed = 0;
+    for (const d of found) {
+      d.open = true;
+      // The <summary> is rendered either way; what this state adds to the
+      // audit is everything after it.
+      for (const el of d.children) {
+        if (el.tagName !== "SUMMARY") revealed += 1 + el.getElementsByTagName("*").length;
+      }
+    }
+    if (revealed === 0) {
+      throw new Error(
+        `content-details-open: opened ${found.length} disclosure(s) and ` +
+        "revealed no elements; nothing was added to the audit"
+      );
+    }
+    return revealed;
+  },
 };
 
 // Extra audits layered onto the page x theme x viewport matrix: each entry is
@@ -153,10 +196,24 @@ export const PAGE_STATES = {
 // times on this box moved between 18 s and 40 s for the same 44 audits across
 // runs, so a before/after difference of two runs measures the box, not the
 // change.  Same caveat as perf/ab-axe.mjs and its ~20 % resolution floor.
+//
+// content-details-open is hosted on FAQ.html, which the sample now
+// carries anyway, and it audits a DIFFERENT thing from the closed pass --
+// not a stronger version of it.  Measured with `.main-content summary`'s
+// min-height reverted: FAQ reports target-size x16 CLOSED at the mobile
+// viewport and zero OPEN, because opening the disclosures pushes the
+// summaries apart until the spacing allowance rescues them.  So the
+// closed audit is what guards that fix, and this state is what audits the
+// content behind the summaries -- 118 colour-contrast nodes at mobile
+// that nothing looked at before.  Neither substitutes for the other.
 export const STATE_AUDITS = [
   {
     filePath: "/tB/IDE/Project/Menu/Window.html",
     state: "section-links-open",
+  },
+  {
+    filePath: "/FAQ.html",
+    state: "content-details-open",
   },
 ];
 
