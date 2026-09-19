@@ -1769,19 +1769,44 @@ function remoteImagePlugin(md, ctx) {
 function svgInlinePlugin(md, ctx) {
   const orig = md.renderer.rules.image;
 
+  // The wrapper below is a <div>, and a lone `![alt](x.svg)` is a
+  // paragraph, so without this the output is `<p><div …></div></p>` --
+  // invalid, because <p> takes phrasing content only. A browser repairs
+  // it by closing the paragraph early and leaving a stray empty <p>
+  // behind, which is why it went unnoticed. Hide the paragraph tokens
+  // instead, the same way markdown-it hides them inside tight lists.
+  md.core.ruler.push("svg_inline_unwrap_paragraph", (state) => {
+    const toks = state.tokens;
+    for (let i = 0; i + 2 < toks.length; i++) {
+      if (toks[i].type !== "paragraph_open") continue;
+      if (toks[i + 1].type !== "inline" || toks[i + 2].type !== "paragraph_close") continue;
+      const children = toks[i + 1].children;
+      if (!children || children.length !== 1 || children[0].type !== "image") continue;
+      if (!inlinableSvgRel(children[0])) continue;
+      toks[i].hidden = true;
+      toks[i + 2].hidden = true;
+    }
+  });
+
+  // The one place that decides whether an image becomes an inlined SVG.
+  // The core rule above and the renderer rule below must agree exactly,
+  // or a paragraph gets hidden around an <img> that stayed an <img>.
+  function inlinableSvgRel(token) {
+    const srcIdx = token.attrIndex("src");
+    if (srcIdx < 0) return null;
+    const src = token.attrs[srcIdx][1];
+    if (!src.endsWith(".svg")) return null;
+    const prefix = (ctx.baseurl || "") + "/";
+    if (!src.startsWith(prefix)) return null;
+    const srcRel = src.slice(prefix.length);
+    return ctx.svgContents?.get(srcRel) ? srcRel : null;
+  }
+
   md.renderer.rules.image = (tokens, idx, options, env, self) => {
     const token = tokens[idx];
-    const srcIdx = token.attrIndex("src");
-    if (srcIdx < 0) return fallback();
-    const src = token.attrs[srcIdx][1];
-    if (!src.endsWith(".svg")) return fallback();
-
-    const prefix = (ctx.baseurl || "") + "/";
-    if (!src.startsWith(prefix)) return fallback();
-    const srcRel = src.slice(prefix.length);
-
-    const svgContent = ctx.svgContents?.get(srcRel);
-    if (!svgContent) return fallback();
+    const srcRel = inlinableSvgRel(token);
+    if (srcRel === null) return fallback();
+    const svgContent = ctx.svgContents.get(srcRel);
 
     const alt = self.renderInlineAsText(token.children, options, env);
     const stem = srcRel.split("/").pop().replace(/\.svg$/, "");
