@@ -1,9 +1,30 @@
-# Plan — addressing `REVIEW-c9f2dfe0-1b6922b.md`
+# Addressing `REVIEW-c9f2dfe0-1b6922b.md` — plan, and what landed
 
 Companion to [REVIEW-c9f2dfe0-1b6922b.md](REVIEW-c9f2dfe0-1b6922b.md). Twenty commits in
 five phases, covering every numbered finding (1–21), every Tier 3 bullet, every Tier 4
 drift row, and the five decisions. A coverage table at the end maps each finding to its
 commit.
+
+## Status: complete
+
+All twenty landed, as `45e6336..9f6c38f` — 21 commits, `90dd617` through `9f6c38f`,
+C07 having needed a one-line follow-up.
+`build.bat && check.bat` is clean, `check_links_diff.mjs --a script --b fused` agrees
+across all six comparable cases, its `--self-test` passes, `check_axe_patch_equiv.mjs`
+reports the patch value-preserving, and the index audit is clean on both trees.
+
+**Each section below keeps its original plan text, and carries a `Landed` note where
+the code turned out to differ from what the plan described.** Those notes are the
+useful part of this document now. Eleven sections carry one: five because the plan's
+diagnosis was wrong, the rest because the commit landed wider than planned. Two
+defects also surfaced that the review did not have. The corrections are collected under
+[Where the plan was wrong](#where-the-plan-was-wrong) and the new defects under
+[Found while implementing](#found-while-implementing).
+
+The landing order was not the plan's order. C12 and C19 went early because they are
+self-contained and needed no build; C09 and C13 went late because they were delegated
+and came back after the commits numbered above them. Nothing depended on the difference:
+the only stated ordering constraint, C01 before C02, held.
 
 ## The organising idea
 
@@ -20,6 +41,12 @@ claim (D8), the aux-nav focus ring (D9), the merge-path tolerances (D7), and the
 lock in the defect. So the documentation batch lands **last**, after the code it describes
 has been made true — and three of those rows then need no edit at all.
 
+The shape of that held; the count did not. Two rows needed no edit (D8, and the
+tolerances half of D7). **D9 needed the opposite of no edit**: the prose asserts the
+aux-nav UA ring "renders in full", and the measurement in C15 shows it does not, so
+fixing the code made the sentence *more* wrong rather than true. Landing the batch last
+is also what exposed several of this plan's own figures as stale — see C20.
+
 ## Phase order
 
 | Phase | Commits | Why here |
@@ -31,13 +58,14 @@ has been made true — and three of those rows then need no edit at all.
 | 5 — documentation | C20 | Written against the code as it then is. |
 
 Commit subjects stay under 80 characters throughout (Tier 3's last bullet: 30 of this
-range's 38 exceeded it, one by 44). Longer explanation belongs in the body.
+range's 38 exceeded it, one by 44). Longer explanation belongs in the body. **Held**:
+the longest of the 21 subjects is 72 characters.
 
 ---
 
 # Phase 1 — make the gates check what they claim
 
-## C01 — `a11y: assert exact substitution counts on the Color2 get/set patches`
+## C01 (`90dd617`) — `a11y: assert exact substitution counts on the Color2 get/set patches`
 
 **Finding 3 (S2).** `substitute()` enforces a count only when one is passed. Eight of the
 twenty substitution points pass `1`; the twelve `get`/`set` points pass nothing and assert
@@ -59,7 +87,7 @@ run still pass. Deliberately corrupt one count and confirm the patch throws by n
 
 **Unlocks.** Tier 4 row D8 becomes true without a prose edit, in four files at once.
 
-## C02 — `a11y: route the production scan through the scheme registry`
+## C02 (`3187638`) — `a11y: route the production scan through the scheme registry`
 
 **Finding 2 (S2).** `SCHEMES.production` describes itself as "what check_a11y.mjs runs
 today" and carries no `patches`. `check_a11y.mjs` never calls `getScheme` at all; it
@@ -79,7 +107,7 @@ is now a genuine A/A over the shipped bundle and must be 48/48 identical. Findin
 **Note.** Do this after C01: if the counts are wrong, routing production through the
 registry changes which run throws first, and the failure gets harder to read.
 
-## C03 — `a11y: key the callout family on the admonition class`
+## C03 (`f4cd53c`) — `a11y: key the callout family on the admonition class`
 
 **Finding 1 (S1)** and **Tier 3's `why`-string bullet**. The family regex
 `/class="[^"]*(?:note|important|warning)/` matches `class="footnote"` and
@@ -103,7 +131,22 @@ problem: no current sample page is likely to carry two real admonitions. Run `--
 and add the cheapest page it names, in the same commit, with its measured audit cost
 recorded in the commit body.
 
-## C04 — `check: key brokenUnique on the pre-resolution target`
+**Landed**, with one addition the plan does not specify. Re-keying alone would not have
+fixed the finding: a single `callout` family is satisfied by a page carrying two NOTEs,
+and the review's point is that IMPORTANT and TIP have their own title colours and had
+never been audited. So the family is split per variant — `calloutNote`,
+`calloutImportant`, `calloutWarning`, `calloutTip`, `calloutCaution` — at `min: 1`,
+because one real admonition exercises that variant's colours exactly as fifty would.
+(`caution` has zero site-wide emissions, so `--check` skips it as a family the site does
+not use.) `--check` then failed on `calloutImportant` and `calloutTip`, as expected.
+
+`--propose` named two pages; the commit adds one.
+`/Features/Language/Generics.html` is the only page in the site carrying both variants,
+so it closes both gaps for one page load — 485/454/398/399 ms over the four
+combinations, +1,736 ms against `--propose`'s 1,591 ms for its two. The 145 ms is 0.9 %
+of the scan and buys a smaller matrix.
+
+## C04 (`39e03ab`) — `check: key brokenUnique on the pre-resolution target`
 
 **Finding 11 (S2).** `entryKey` (`builder/link-check.mjs:748`) keys on `entry.target`;
 `settleFragments` (`:763`) keys on `p.target`, which is `entry.resolved` — post `.html`
@@ -120,7 +163,7 @@ fixture first, to confirm the count is 1 in both chunk arrangements.
 **Blocks C07**: without this, the fused fixture case reports a phantom difference that
 reads as a fused-side bug.
 
-## C05 — `check: honour sitemap:false and search_exclude:true`
+## C05 (`7df8625`) — `check: honour sitemap:false and search_exclude:true`
 
 **Finding 12 (S2, latent).** `checkSitemap` and `checkSearch` exempt only `book.html` /
 `404.html`, while `sitemap.mjs:51` and `search.mjs:76` skip pages carrying `sitemap: false`
@@ -139,7 +182,21 @@ Also fix `checkSearch` (`link-check.mjs:814`), which applies only `stripHtmlSuff
 **Verify.** Add a page carrying each key to the fixture (C07) and confirm no finding;
 remove the key and confirm the finding returns. This is the probe the review already ran.
 
-## C06 — `check: say why a cross-file check was skipped`
+**Landed**, but not verified through C07's fixture, because that fixture is compared
+against the standalone script and this is the one thing the script structurally cannot
+do: nothing in the built HTML records a deliberate omission, so a `sitemap: false` page
+and a bug look identical to it. Putting one in the shared fixture would have produced a
+permanent script-vs-fused difference. Verified on a throwaway two-page tree instead —
+with both keys, 0 integrity findings; with the opt-out sets disabled, `sitemap-missing`
+and `search-missing` both return. `check_links.mjs` now records the limitation where its
+two flags are defined.
+
+The `/index.html` half is worse than the review describes. With the normaliser reverted,
+a page at `permalink: /probe/index.html` reports `search-missing` — and so does the root
+`index.html` of any tree whose home page has no explicit permalink, because
+`stripHtmlSuffix("/index.html")` is `/index` against `deriveUrlPath`'s `/`.
+
+## C06 (`d2c3a74`) — `check: say why a cross-file check was skipped`
 
 **Finding 7 (S2, latent)** and **Tier 3's `findingsFor` bullet**.
 
@@ -160,7 +217,7 @@ script uses. Add the error term to `findingsFor`.
 search JSON) and confirm the report names the skip. Confirm `--check-findings` and the
 process exit code agree on a run with a chunk error.
 
-## C07 — `check: run the fixture against the build's own checker`
+## C07 (`8eacc5c`) — `check: run a fixture through the build's own checker`
 
 **Finding 4 (S2)**, plus **finding 6 (S2)** and two Tier 3 harness bullets.
 
@@ -198,7 +255,39 @@ provoke all nine categories on both sides and agree. Then delete a category's re
 
 **CI.** Add this one case to `checks.yml` only — see Decision 1.
 
-## C08 — `build: audit the tree index on every build; gate check.bat on freshness`
+**Landed as two cases, and seven categories of nine — the other two are not
+provokable.**
+
+No single tree carries all nine: the online tree has the sitemap, search and canonical
+checks, and the offline tree is the only one with a forbidden prefix. So
+`test/fixtures/check-src` builds once and two cases read it, `fixture-built` and
+`fixture-built-offline`, each asserting its counts on both sides — including `null` for
+a check the tree does not enable, which is a different statement from `0`.
+
+`sitemap` and `search` are asserted as `0`, and that is the honest answer rather than a
+gap. A correct build cannot omit a page from either index, established rather than
+assumed:
+
+- `checkSitemap` runs the extracted `<loc>` through the same `normalizeUrlPath` as the
+  file-derived path, so the shapes that look like divergences converge. The fixture
+  carries `Weird.md` at `permalink: /Weird-index.html` — a permalink ending in the
+  literal text `index.html` — to hold that claim to the awkward case.
+- `deriveSearchEntries` pushes a fallback entry for a page with no headings, and
+  `titleFound` can only become true inside the loop that fills `sections`, so
+  `sections.length === 0` never co-occurs with an indexable page.
+
+The other seven are real: `broken` 3, `html` 1, `a11y` 3, `dupIds` 1, `remoteAssets` 1
+and `canonical` 1 on the online tree, `forbidden` 1 on the offline one. The canonical
+finding comes from a second `<link rel="canonical">` in the markdown body — the SAX
+walker keeps the last one it sees — which is also a link, so one tag provokes two
+categories.
+
+**Verified the way that matters**: deleting the `dupIds` and `canonical` reporting from
+`builder/check.mjs` makes the harness fail with 6 differences, naming both the count
+assertion and the diff. A one-line follow-up (`95f19b5`) gitignores the fixture's PDF
+tree.
+
+## C08 (`1c2f895`) — `build: audit the tree index on every build; gate check.bat on freshness`
 
 **Finding 5 (S2)** and **finding 8 (S2, local)**.
 
@@ -231,7 +320,7 @@ disk` for both trees. Add a file to `_site/` by hand and confirm the audit repor
 
 # Phase 2 — the two S1 code bugs
 
-## C09 — `vendor-assets: validate the response, and survive a dead network`
+## C09 (`3c0c6b6`) — `vendor-assets: validate the response, and survive a dead network`
 
 **Findings 9 (S1) and 10 (S2).** One module, one theme.
 
@@ -264,11 +353,22 @@ must be rejected and `failed` must be 1; a network rejection must warn, set the 
 and let the build finish. Confirm all 16 committed thumbnails still validate (they are
 genuine 1280×720).
 
+**Landed**, with `fetchAttachment` hardened alongside `fetchToFile` rather than left as
+the already-better half: it gains the size floor, the temp-file-then-rename, and a
+magic-byte cross-check, so a body served under a spoofed `image/png` is caught and not
+just an outright wrong content type.
+
+Verified against a stubbed fetch: an HTML captive-portal body is rejected on content
+type, and on magic bytes when served as `image/jpeg`; a 120x90 placeholder falls through
+to the next variant and the real image lands; a `fetch` rejection and an `arrayBuffer`
+rejection each warn, count as failed, and do not throw. No file is left at the final path
+in any failing case. All 16 committed thumbnails re-parse as genuine 1280×720.
+
 ---
 
 # Phase 3 — remaining code defects
 
-## C10 — `scheduler: put submit inside the abort path, and bind the barrier halves`
+## C10 (`648b607`) — `scheduler: put submit inside the abort path, and bind the barrier halves`
 
 **Findings 15 and 16 (S2)**, plus two Tier 3 `expected`-list bullets and one comment.
 
@@ -307,7 +407,14 @@ result `postMessage` with a delay, and confirm the build still fails loudly with
 `renderJoin` removed from the pair list and passes with it. Throw from inside a `submit` and
 confirm `_abort` runs and the pool is destroyed.
 
-## C11 — `build: make the three surviving merge-path tolerances loud`
+**Landed, and the reproduction is the clearest evidence in the range.** With
+`onTaskDone` moved ahead of the result post and a 40 ms delay, the build is clean with
+the pair list and fails on **every one of three runs** without it, naming 24, 36 and 30
+pages with no `renderedContent`. A throwing `submit` reports `task render:2 failed`
+through `_abort` on the worker path and `task flushJoin failed` on the main-task path;
+before the change the worker path escaped as an uncaught exception.
+
+## C11 (`f9ef5a4`) — `build: make the three surviving merge-path tolerances loud`
 
 **Finding 17 (S2 claim / S3 code).** `WIP.md` and `PLAN-sab-pull-scheduler.md:598-611` say
 every merge-path skip that used to tolerate a missing piece now refuses to continue. Three
@@ -326,7 +433,7 @@ and stays; only the row is wrong.
 **Verify.** Provoke each by hand on a scratch copy and confirm the build fails naming the
 missing piece. Then a clean `build.bat` to confirm none fires in normal operation.
 
-## C12 — `check: make the filesystem oracle case-sensitive`
+## C12 (`c0d5ff9`) — `check: make the standalone link checker case-sensitive on Windows`
 
 **Finding 18 (S2).** `IndexOracle.indexKey` normalises separators and trailing slashes but
 never case; `FsOracle` inherits NTFS's case-insensitivity, so
@@ -342,7 +449,7 @@ standalone script exists for.
 
 **Verify.** Create a wrong-case link on a scratch tree and confirm both sides report it.
 
-## C13 — `render: four narrow correctness fixes`
+## C13 (`b966f12`) — `render: four narrow correctness fixes`
 
 **Finding 20 (S3)** plus three Tier 3 bullets. All in `builder/render.mjs`, all with zero
 current site impact — which is the argument for fixing them now rather than when a page
@@ -372,7 +479,27 @@ first trips one.
 **Verify.** A scratch render of each shape, plus `build.bat && check.bat` for no change to
 the 1,159 real pages.
 
-## C14 — `offline: stop counting the six phantom unresolved links`
+**Landed.** Two things the plan's description understates.
+
+`setClass` dropped **both** classes, not only the sibling: `{: .video .float-right }`
+rendered `class="video-link"` with nothing of the author's left. And merging alone is not
+the fix — it leaks `.video` into the output, which changed 16 elements on the two Videos
+pages. `.video` is the marker that selects the link and matches nothing in any
+stylesheet, so it is consumed explicitly now, and any *other* class survives.
+`{: .video .float-right }` gives `class="float-right video-link"`.
+
+The heading normaliser needed a stack of still-open ancestors rather than the clamp the
+plan's wording suggests. `Reference/Core/Open` has two `###` sections around a run of six
+`####`, and a `min(raw, last + 1)` formula puts the second `###` at h3 — same raw level,
+different result — because it does not reset when a heading returns to a shallower level.
+A fixed offset also closes only the *first* gap on a page: `# / ### / ##### / ### /
+#####` comes out h1/h2/h4/h2/h4. The stack closes every gap in one pass.
+
+**Inert, demonstrated rather than argued**: every one of the 1,159 built pages hashes
+identically before and after, and the 7 `svg-container` and 16 `video-link` emissions are
+unchanged.
+
+## C14 (`8c93e02`) — `offline: stop counting the six phantom unresolved links`
 
 **Finding 21 (S3).** Every green offline build prints `6 unresolved`. `HTML_COMBINED_RE`'s
 `\b(href|src)=` matches the tail of the `data-svg-src` attribute on the six inlined
@@ -391,7 +518,7 @@ offline tree must still report nothing.
 
 # Phase 4 — styling, tooling, and the vendored theme
 
-## C15 — `style: four fixes axe cannot see`
+## C15 (`a581290`) — `style: four fixes axe cannot see`
 
 **Findings 13 and 14 (S2)** and two dead-code bullets.
 
@@ -419,7 +546,23 @@ offline tree must still report nothing.
 a manual keyboard pass over the aux nav in both themes — axe does not evaluate whether a
 focus ring is visible, only that focusable things are reachable and labelled.
 
-## C16 — `a11y: tighten five sharp edges in the scan tooling`
+**Landed. The `.section-links > ul` diagnosis is wrong**: the margin does not revert in
+dark mode, it never applied in either. `.main-content ol, .main-content ul, …` sets
+`margin-top: 0.5em` at the same (0,1,1) and later in the file, so the list has been taking
+the body-prose 6px since it shipped, light and dark alike. Measured in both themes: 6px
+before, 4px after.
+
+The remedy is the one the plan names anyway — `.main-content` in front — plus the dark
+override, because the dark compilation re-emits the JTD rule at (0,2,2) and out-ranks
+(0,2,1). So the trap the plan warns about is real here; it is just not what was breaking
+the rule.
+
+The aux-nav ring was measured rather than eyeballed: at 1280x900 in both themes the nav's
+box is top 0 / bottom 59 and the link's is identical, so the UA ring's `+1px` offset puts
+its top and bottom segments outside the clip box. After the fix, solid 2px at `-2px`,
+`#4e26af` light and `#8cc2ff` dark, with no edge outside the clip box.
+
+## C16 (`fdf157c`) — `a11y: tighten five sharp edges in the scan tooling`
 
 Five Tier 3 bullets, none affecting production results today.
 
@@ -445,7 +588,7 @@ Five Tier 3 bullets, none affecting production results today.
 48/48 after the `gotoPage` change; that is the control that would surface a
 nondeterministic audit.
 
-## C17 — `a11y: audit content disclosures, not just the section-links one`
+## C17 (`0e8753d`) — `a11y: audit content disclosures, and the page that stacks them`
 
 **Decision 4** and the matching Tier 3 bullet. `PAGE_STATES` opens only
 `details.section-links`. `FAQ.html` carries 29 content disclosures and is not in
@@ -467,7 +610,29 @@ reporting a pass and covering nothing.
 **Verify.** Revert a target-size fix in-page and confirm the new audit catches it at both
 viewports. Then the A/A control.
 
-## C18 — `build: inject the Gantt chart before the check reads the bytes`
+**Landed — and that verification is not achievable, which is what made the commit worth
+more than planned.** Opening the disclosures is precisely what *removes* the target-size
+defect: with `.main-content summary`'s `min-height` reverted, FAQ reports `target-size`
+x16 **closed** at the mobile viewport and **zero** open, because opening pushes the
+summaries apart until the spacing allowance rescues them. The open state audits
+different surface, not more of the same.
+
+What that measurement found instead is a bigger hole than the one it was testing. **The
+site-wide `<summary>` min-height was guarded by nothing.** FAQ.html stacks 30
+disclosures against the next page's 4, and is the only page in the site where the defect
+class is reachable at all — and it was not in `SAMPLE_PAGES`. Reverting the fix produced
+a clean pass.
+
+So the commit does both, and Decision 4's preference is overridden on the evidence:
+FAQ.html joins the sample (272/236/229/215 ms over the four combinations), and
+`content-details-open` is hosted on it rather than on Menu/Window. Reverting the fix now
+fails the gate with 2 violations. `pick_a11y_sample.mjs` gains a `detailsStacked` family
+at `min: 8` so `--check` demands a page that stacks them; only FAQ does.
+
+The applier asserts both ways, as the plan requires: it throws on a page with no content
+disclosure, and on one whose disclosures reveal nothing. A/A control: 60/60 identical.
+
+## C18 (`a7a040f`) — `build: check the Gantt chart's bytes, not the ones it replaced`
 
 **Tier 3.** `injectGanttChart` (`tbdocs.mjs:1253`) rewrites `BuildInfo.html` in both trees
 after `checkReport` runs at `:1220`, so the check did not see the bytes that shipped.
@@ -477,7 +642,16 @@ kind of thing that stops being true without anyone noticing.
 **Change.** Move the injection ahead of the check, or feed the injected HTML through the
 same check path.
 
-## C19 — `vendor: record the in-tree _sass patches`
+**Landed as the second option, because the first is impossible**: the Gantt is rendered
+from that run's own timings, so it cannot exist before the check runs. It now happens
+before the check is *reported*, and the patched pages go back through `checkChunk`
+against the same tree env. Only the delta against the pre-injection findings is printed,
+so a finding the page already had is not counted twice.
+
+Verified by injecting an SVG carrying a duplicate id, a remote `<img>` and a dead link:
+all three are reported, per tree, and the build exits 2.
+
+## C19 (`040aea1`) — `vendor: record the in-tree _sass patches`
 
 **Finding 19 (S2).** `builder/vendor/just-the-docs/README.md:12` says `_sass/` is the gem's
 tree "byte-for-byte", and the re-vendoring procedure at step 2 removes it wholesale.
@@ -502,11 +676,28 @@ the manifest should say which is which:
 commit and its reason, a note on groups 1 and 2, a corrected inventory row at `:12`, and a
 re-vendoring step that re-applies group 3.
 
+**Landed, with two additions the plan's group list misses.**
+
+**`c9f2dfe` is a fourth accessibility commit**, not a migration. It restores focus
+outlines that upstream suppresses — `.btn-reset:focus-visible` in `buttons.scss`, the
+copy-code control's `outline: none` in `code.scss`, and the search input's `outline: 0`
+in `search.scss`. A re-vendor following the old procedure would have lost all three.
+Group 3 is six files across four commits, not four files across three.
+
+**`1632d3d` is not purely a theme deletion.** `color_schemes/dark.scss` and `light.scss`
+each carried a `@use "./vendor/One*Jekyll/syntax"` pointing into the deleted directories,
+and those two lines had to go in the same commit or Dart Sass fails on a missing partial.
+Procedure step 3 as written deletes the directories and leaves the two `@use` statements,
+which breaks the build; it now says to remove both halves.
+
+Every ratio and value in the manifest was re-checked against the current tree rather than
+copied out of the commit bodies.
+
 ---
 
 # Phase 5 — documentation
 
-## C20 — `docs: correct the drift the link-check fold-in and sample widening left`
+## C20 (`9f6c38f`) — `docs: correct the drift the link-check fold-in and sample widening left`
 
 One commit across `Authoring.md`, `Building.md`, `Tools.md`, `Builder.md`, `WIP.md`, the two
 PLANs, `perf/README.md`, `Pipeline-Stages.md` and the two workflow comments. Written last,
@@ -590,97 +781,141 @@ half of D7 (fixed by C11). Re-read each before deciding it is clean.
 `build.bat && check.bat` for the anchors — `WIP.md` and the PLANs carry in-doc anchors that
 `redirect_from` does not cover.
 
+**Landed**, with several of the plan's own numbers found stale in turn — they were
+written against an eleven-page sample and the sample is thirteen by the time this batch
+runs. Corrected against measurement: "six sample pages" and "eleven" are **thirteen**;
+"all 24 combinations" is **60 audits**; the plan's own "48 audits" was already out of
+date. "3,488 audits" is **3,476** — in `WIP.md` and in `axe-scan.mjs`'s own comment, which
+the plan does not list. "230 MB" is **~270 MB**, in four files rather than the three the
+plan names. The synthetic fixture is **nine** files, not the six both workflows claim.
+
+`WIP.md:538`'s "7,031 permalinks … 172 on Gloss" checked out exactly and is unchanged,
+except to say 867 of the 869 pages carry one.
+
+Two rows needed no edit as predicted (D8 via C01, the tolerances half of D7 via C11).
+**D9 needed the opposite of no edit**: the paragraph asserts the aux-nav UA ring "renders
+in full", and the measurement in C15 shows it does not, so it had to be rewritten to
+describe the author ring that replaced it.
+
+`MonacoArchitecture.md` needed nothing. The plan recommends correcting its instruction to
+describe what was actually done; it already does, and the committed SVG's fill values
+confirm it.
+
+Two additions the plan does not list. `Tools.md` had no entry at all for
+`pick_a11y_sample.mjs` or `check_links_diff.mjs`, which is itself drift in a tool
+catalogue, so both were added. And `PLAN-a11y.md` / `PLAN-axe-perf.md` are phase logs
+rather than live documents, so their figures are marked as the matrix of their time
+rather than rewritten — the same treatment `axe-scan.mjs:244` already gives its own
+"what was then a 24-audit matrix".
+
 ---
 
-# Decisions, with recommendations
+# Decisions, with recommendations — and what was decided
 
 1. **Where the fused comparison lives.** Add the fixture-fused case to `checks.yml` only,
    not to the deploy workflow. `checks.yml` is a PR gate that does not deploy and has the
    time, and catching this before a merge is the point. The deploy workflow keeps its cheap
    fixture run against the index oracle. (C07, C08.)
+   → **Taken as recommended.** `checks.yml` runs `--case fixture-built --case
+   fixture-built-offline --a script --b fused`; the deploy workflow is unchanged apart
+   from its `--check-audit-index` flag and the font install.
 2. **Fonts before 19 October 2026.** Install `fonts-liberation` in both workflows. Pinning
    the runner image would also work and expires differently; the font install is the smaller
    commitment and addresses the actual variable. (C08.)
+   → **Taken as recommended**, in both workflows.
 3. **The aux-nav ring.** Fix it. One rule, and the prose already vouches for it. (C15.)
+   → **Taken**, though the prose vouched for the opposite: `WIP.md` said the UA ring
+   "renders in full". The measurement is in C15 and the sentence is corrected in C20.
 4. **`FAQ.html` and content disclosures.** Add the coverage, but measure first and prefer a
    state audit on a page already in the sample over a new page. (C17.)
+   → **Measured first, and the preference reversed by what the measurement showed.** A
+   state audit on a page already in the sample covers the construct but guards nothing:
+   opening the disclosures is what removes the target-size defect. `FAQ.html` is added as
+   a page *and* hosts the state. See C17.
 5. **The documentation batch.** One commit, last. (C20.)
+   → **Taken as recommended.** Landing it last is what let three Tier 4 rows resolve by
+   code rather than by prose, and it is also why several of the plan's own figures were
+   themselves stale by the time the batch ran.
 
 ---
 
 # Coverage
 
-Every finding in the review, mapped to the commit that addresses it.
+Every finding in the review, mapped to the commit that addresses it. All landed; a
+row whose premise turned out to be wrong says so, and the commit's `Landed` note has
+the measurement.
 
 | Finding | Severity | Commit |
 |---|---|---|
-| 1 — callout family matches footnotes | S1 | C03 |
-| 2 — `SCHEMES.production` lacks its patches | S2 | C02 |
-| 3 — 12 of 20 substitutions assert no count | S2 | C01 |
-| 4 — no gate exercises the fused detectors | S2 | C07 |
-| 5 — `--check-audit-index` invoked by nothing | S2 | C08 |
-| 6 — `selfTest()` runs in no automated context | S2 | C07 |
-| 7 — cross-file checks can go dark silently | S2 | C06 |
-| 8 — `check.bat` has no freshness check | S2 | C08 |
-| 9 — a 200 with a non-image body is cached forever | S1 | C09 |
-| 10 — a fetch rejection kills the build | S2 | C09 |
-| 11 — `brokenUnique` double-counts | S2 | C04 |
-| 12 — sitemap/search opt-outs ignored | S2 | C05 |
-| 13 — aux-nav focus ring clipped | S2 | C15 |
-| 14 — `.section-links > ul` reverts in dark | S2 | C15 |
-| 15 — `def.submit` outside every try/catch | S2 | C10 |
-| 16 — barrier invariant has two unbound halves | S2 | C10 |
-| 17 — three merge-path tolerances survive | S2 / S3 | C11 code, C20 PLAN row |
-| 18 — `FsOracle` case-insensitive on NTFS | S2 | C12 |
-| 19 — vendored README claims byte-for-byte `_sass` | S2 | C19 |
-| 20 — heading normaliser is a blanket shift | S3 | C13 |
-| 21 — "6 unresolved" is a regex artifact | S3 | C14 |
+| 1 — callout family matches footnotes | S1 | C03 (`f4cd53c`) |
+| 2 — `SCHEMES.production` lacks its patches | S2 | C02 (`3187638`) |
+| 3 — 12 of 20 substitutions assert no count | S2 | C01 (`90dd617`) |
+| 4 — no gate exercises the fused detectors | S2 | C07 (`8eacc5c`) — seven categories of nine |
+| 5 — `--check-audit-index` invoked by nothing | S2 | C08 (`1c2f895`) |
+| 6 — `selfTest()` runs in no automated context | S2 | C07 (`8eacc5c`) |
+| 7 — cross-file checks can go dark silently | S2 | C06 (`d2c3a74`) |
+| 8 — `check.bat` has no freshness check | S2 | C08 (`1c2f895`) |
+| 9 — a 200 with a non-image body is cached forever | S1 | C09 (`3c0c6b6`) |
+| 10 — a fetch rejection kills the build | S2 | C09 (`3c0c6b6`) |
+| 11 — `brokenUnique` double-counts | S2 | C04 (`39e03ab`) |
+| 12 — sitemap/search opt-outs ignored | S2 | C05 (`7df8625`) |
+| 13 — aux-nav focus ring clipped | S2 | C15 (`a581290`) |
+| 14 — `.section-links > ul` reverts in dark | S2 | C15 (`a581290`) — it never applied in either theme |
+| 15 — `def.submit` outside every try/catch | S2 | C10 (`648b607`) |
+| 16 — barrier invariant has two unbound halves | S2 | C10 (`648b607`) |
+| 17 — three merge-path tolerances survive | S2 / S3 | C11 (`f9ef5a4`) code, C20 (`9f6c38f`) PLAN row |
+| 18 — `FsOracle` case-insensitive on NTFS | S2 | C12 (`c0d5ff9`) |
+| 19 — vendored README claims byte-for-byte `_sass` | S2 | C19 (`040aea1`) — four patch commits, not three |
+| 20 — heading normaliser is a blanket shift | S3 | C13 (`b966f12`) |
+| 21 — "6 unresolved" is a regex artifact | S3 | C14 (`8c93e02`) |
 
 | Tier 3 item | Commit |
 |---|---|
-| `writePdf.expected` missing `renderJoin` | C10 |
-| `writeAssets` missing `vendorAssets` | C10 |
-| `setClass` replaces the class attribute | C13 |
-| SVG paragraph unwrap bails on mixed content | C13 |
-| `remoteImagePlugin` misses raw `<img>` | C13 |
-| `clampContrast` fails silently | C16 |
-| `findingsFor.integrityFailed` omits errors | C06 |
-| `--theme` unvalidated; `--stock-axe` conflates two things | C16 |
-| fixture `html` pair is not one of each kind | C07 |
-| bare invocation compares nothing | C07 |
-| Gantt injected after the check | C18 |
-| `why` strings name rules that never run | C03 |
-| `--pages` drops state audits silently | C16 |
-| `gotoPage` does not wait for image decode | C16 |
-| content disclosures never audited open | C17 |
-| `.text-muted` is dead | C15 |
-| `modules-dark.scss` header is stale | C15 |
-| `cpu-worker` comment denies the fix | C10 |
-| PLAN sections spliced into a procedure | C20 |
-| Monaco Mermaid source vs the shipped SVG | C20 |
-| commit subjects over 80 characters | convention, applied from C01 |
+| `writePdf.expected` missing `renderJoin` | C10 (`648b607`) |
+| `writeAssets` missing `vendorAssets` | C10 (`648b607`) |
+| `setClass` replaces the class attribute | C13 (`b966f12`) |
+| SVG paragraph unwrap bails on mixed content | C13 (`b966f12`) |
+| `remoteImagePlugin` misses raw `<img>` | C13 (`b966f12`) |
+| `clampContrast` fails silently | C16 (`fdf157c`) |
+| `findingsFor.integrityFailed` omits errors | C06 (`d2c3a74`) |
+| `--theme` unvalidated; `--stock-axe` conflates two things | C16 (`fdf157c`) |
+| fixture `html` pair is not one of each kind | C07 (`8eacc5c`) |
+| bare invocation compares nothing | C07 (`8eacc5c`) |
+| Gantt injected after the check | C18 (`a7a040f`) |
+| `why` strings name rules that never run | C03 (`f4cd53c`) |
+| `--pages` drops state audits silently | C16 (`fdf157c`) |
+| `gotoPage` does not wait for image decode | C16 (`fdf157c`) |
+| content disclosures never audited open | C17 (`0e8753d`) |
+| `.text-muted` is dead | C15 (`a581290`) |
+| `modules-dark.scss` header is stale | C15 (`a581290`) |
+| `cpu-worker` comment denies the fix | C10 (`648b607`) |
+| PLAN sections spliced into a procedure | C20 (`9f6c38f`) |
+| Monaco Mermaid source vs the shipped SVG | none — the comment is already accurate |
+| commit subjects over 80 characters | convention, held throughout — longest is 72 |
 
 | Tier 4 row | Commit |
 |---|---|
-| `Authoring.md:92` literal dashes "rejected" | C20 |
-| `Building.md:62-70`, `Tools.md:35,111` two check_links passes | C20 |
-| `Authoring.md:112,181` check.bat enforces remote assets | C20 |
-| `WIP.md:500`, `check_links.mjs:7-8`, `PLAN-checks.md:606` CI invokes it directly | C20 |
-| `WIP.md:540` disclosure "at the end of `<main>`" | C20 |
-| `WIP.md:496,621` `--check-remote-assets` as a build flag | C20 |
-| merge-path skips and the `formatReport` row | C11 + C20 |
-| exact occurrence count, 4 files | C01 — no edit needed |
-| aux-nav UA outline "renders in full" | C15 — no edit needed |
-| "six sample pages", 3 files | C20 |
-| "all 24 combinations", 3 files | C20 |
-| "3,488 audits" against 3,476 | C20 |
-| `Tools.md:23,48` build.bat flags and CLI table | C20 |
-| `Builder.md:385` axe-core caret | C20 |
-| `Builder.md:90,178-179` missing module, task and plugin rows | C20 |
-| `perf/README.md:547` renamed highlighter stylesheet | C20 |
-| `WIP.md:538` "869 pages" against 867 | C20 |
-| `WIP.md:490` and both workflows "230 MB" against ~280 MB | C20 |
-| `Builder.md:92`, `Pipeline-Stages.md:487` figurative "carries" | C20 |
+| `Authoring.md:92` literal dashes "rejected" | C20 (`9f6c38f`) |
+| `Building.md:62-70`, `Tools.md:35,111` two check_links passes | C20 (`9f6c38f`) |
+| `Authoring.md:112,181` check.bat enforces remote assets | C20 (`9f6c38f`) |
+| `WIP.md:500`, `check_links.mjs:7-8`, `PLAN-checks.md:606` CI invokes it directly | C20 (`9f6c38f`) |
+| `WIP.md:540` disclosure "at the end of `<main>`" | C20 (`9f6c38f`) |
+| `WIP.md:496,621` `--check-remote-assets` as a build flag | C20 (`9f6c38f`) |
+| merge-path skips and the `formatReport` row | C11 (`f9ef5a4`) + C20 (`9f6c38f`) |
+| `Tools.md` has no entry for two live tools | C20 (`9f6c38f`) — not in the review |
+| `axe-scan.mjs`'s own "3,488 audits" comment | C20 (`9f6c38f`) — not in the review |
+| exact occurrence count, 4 files | C01 (`90dd617`) — no edit needed |
+| aux-nav UA outline "renders in full" | C20 (`9f6c38f`) — the prose was wrong the other way |
+| "six sample pages", 3 files | C20 (`9f6c38f`) |
+| "all 24 combinations", 3 files | C20 (`9f6c38f`) |
+| "3,488 audits" against 3,476 | C20 (`9f6c38f`) |
+| `Tools.md:23,48` build.bat flags and CLI table | C20 (`9f6c38f`) |
+| `Builder.md:385` axe-core caret | C20 (`9f6c38f`) |
+| `Builder.md:90,178-179` missing module, task and plugin rows | C20 (`9f6c38f`) |
+| `perf/README.md:547` renamed highlighter stylesheet | C20 (`9f6c38f`) |
+| `WIP.md:538` "869 pages" against 867 | C20 (`9f6c38f`) |
+| `WIP.md:490` and both workflows "230 MB" against ~280 MB | C20 (`9f6c38f`) |
+| `Builder.md:92`, `Pipeline-Stages.md:487` figurative "carries" | C20 (`9f6c38f`) |
 
 ## The bar for each commit
 
@@ -688,3 +923,43 @@ Every finding in the review, mapped to the commit that addresses it.
 changes a gate, the gate must also be shown to fail on a deliberately reintroduced defect —
 a gate that passes after the fix proves nothing on its own, which is the whole subject of
 this review.
+
+**Met for all twenty**, and it is the thing that earned its keep. Every one of the five
+places the plan turned out to be wrong was caught by the reintroduced-defect half, not by
+reading the code: reverting `.main-content summary`'s `min-height` and watching the gate
+stay green (C17), reverting the normaliser and diffing 1,159 page hashes (C13), measuring
+the `<ul>` margin in both themes and finding it identical (C15), forcing the
+`renderJoin` race with the pair list removed (C10), and deleting two categories'
+reporting from `builder/check.mjs` (C07).
+
+## Where the plan was wrong
+
+Five, each found by provoking the defect rather than trusting the description.
+
+| Item | The plan said | What is actually true |
+|---|---|---|
+| C15 (`a581290`) | `.section-links > ul` reverts in dark mode | It never applied in *either* theme; `.main-content ul` wins at equal specificity, later in the file |
+| C17 (`0e8753d`) | The new open-disclosure audit catches a reverted `target-size` fix | Opening the disclosures *removes* that defect. The real gap was `FAQ.html` — the only page where the class is reachable — not being sampled at all |
+| C19 (`040aea1`) | Three accessibility commits to preserve | Four. And procedure step 3 leaves two dangling `@use` statements that break the Sass build |
+| C07 (`8eacc5c`) | A build fixture can carry one fault of each kind | Seven of nine. `sitemap` and `search` are not provokable from a correct build |
+| C13 (`b966f12`) | `setClass` drops `.float-right` | It dropped *both* classes, and the naive merge then leaks the `.video` build marker into the output |
+
+Two more where the plan was right but its figures were not: C20's own correction list was
+written against an eleven-page sample and needed re-measuring against thirteen, and its
+"three Tier 4 rows need no edit" is two — D9 needed rewriting in the opposite direction.
+
+## Found while implementing
+
+Two defects the review did not have, both surfaced by building something the plan asked
+for rather than by looking for them.
+
+- **`checkReport` did not depend on `scss`** (fixed in C07). `--check-audit-index` reads
+  the tree off disk, and the combined stylesheet is in the index from the moment
+  `dispatch` builds it — so the audit could run first and report it as "indexed but not
+  on disk". On the real site `scss` finishes long before the check and it never fires; on
+  a three-page fixture it does not, and the audit failed the build over nothing. This is
+  also the shape of a real production risk: had the SCSS compile ever failed, the index
+  would have claimed a stylesheet that was not there.
+- **`--pages` narrowing dropped state audits silently** (fixed in C16), walking straight
+  past the load-time assertion beside `SAMPLE_PAGES` that exists to prevent exactly that.
+  The same hole from the other side.
