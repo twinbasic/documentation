@@ -179,6 +179,38 @@ export function makeTimer() {
 
 const workerCount = os.availableParallelism();
 
+// Register a dynamic fan-in barrier: BOTH halves of its invariant, in
+// one call, because writing one without the other is a data-loss bug
+// that reproduces about one build in three and reports nothing.
+//
+// Half one is the SAB dep count, which is what orders the work. Half two
+// is the `expected` list, which is what orders the STATE. A barrier
+// becomes READY when the *workers* decrement its dep count, and they do
+// that right after posting their result -- so the main thread can see a
+// count of zero while a result message is still in its queue and the
+// matching submit() has not run. The only thing holding the barrier back
+// in that window is _claimMainTask's check that every name in `expected`
+// is already in the results map.
+//
+// renderJoin went without it and silently lost data: render:i's submit()
+// is what fills scheduler.state.searchChunks[i], the array starts life
+// as `new Array(N)` (holes, not undefined), and Array.prototype.flat()
+// skips holes without a word. One chunk arriving late meant ~6 pages
+// quietly missing from search-data.json.
+//
+// The Map entry is replaced with a shallow clone bearing a fresh
+// `expected` array, so the shared TASKS def stays untouched across
+// rebuilds -- mutating it in place would leave the next build's
+// allocSchedulerSAB looking at leftover "render:N" / "flush:N" names.
+function registerBarrier(scheduler, views, join, joinIdx, prefix, n) {
+  const def = scheduler.tasks.get(join);
+  if (!def) throw new Error(`registerBarrier: no task def for '${join}'`);
+  const expected = [];
+  for (let i = 0; i < n; i++) expected.push(`${prefix}:${i}`);
+  scheduler.tasks.set(join, { ...def, expected });
+  setDepCount(views, joinIdx, n);
+}
+
 const TASKS = {
   // ── Seeds ─────────────────────────────────────────────────────────────────
 
@@ -708,9 +740,9 @@ const TASKS = {
       for (let i = 0; i < N; i++) prepPageDirsToFlush.push(flushBase + i);
       appendDynamicSuccessors(views, [{ from: prepPageDirsIdx, to: prepPageDirsToFlush }]);
 
-      // 4. Set dep counts and pinning.
-      setDepCount(views, renderJoinIdx, N);
-      setDepCount(views, flushJoinIdx,  N);
+      // 4. Set dep counts and pinning. The two barriers go through
+      //    registerBarrier so the dep count cannot be written without
+      //    the matching `expected` list -- see its comment.
       for (let i = 0; i < N; i++) {
         setDepCount(views, flushBase + i, 2);  // gated on render:i + prepPageDirs
         Atomics.store(views.pinnedTo, flushBase + i, renderBase + i);
@@ -764,33 +796,8 @@ const TASKS = {
         });
       }
 
-      // Populate both barriers' `expected` so _assembleInputs delivers
-      // every chunk result to their execute().  Replace the Map entry
-      // with a shallow clone bearing a fresh expected array so the
-      // shared TASKS def stays untouched across rebuilds -- if we
-      // mutated it in place, the next build's allocSchedulerSAB would
-      // see leftover "render:N" / "flush:N" names and fail.
-      //
-      // This is load-bearing beyond delivering inputs. A barrier becomes
-      // READY when the *workers* decrement its SAB dep count, which they
-      // do right after posting their result -- so the main thread can
-      // see a dep count of zero while a result message is still in its
-      // queue and the matching submit() has not run. The only thing that
-      // holds the barrier back in that window is _claimMainTask's check
-      // that every name in `expected` is already in the results map.
-      //
-      // renderJoin went without it, and silently lost data: render:i's
-      // submit() is what fills scheduler.state.searchChunks[i], the
-      // array starts life as `new Array(N)` (holes, not undefined), and
-      // Array.prototype.flat() skips holes without a word. One chunk
-      // arriving late meant ~6 pages quietly missing from
-      // search-data.json, about one build in three.
-      for (const [join, prefix] of [["renderJoin", "render"], ["flushJoin", "flush"]]) {
-        const def = scheduler.tasks.get(join);
-        const expected = [];
-        for (let i = 0; i < N; i++) expected.push(`${prefix}:${i}`);
-        scheduler.tasks.set(join, { ...def, expected });
-      }
+      registerBarrier(scheduler, views, "renderJoin", renderJoinIdx, "render", N);
+      registerBarrier(scheduler, views, "flushJoin",  flushJoinIdx,  "flush",  N);
 
       // 6. Pack payload, broadcast, account, activate.
       const payloadSAB = packPayloads(views, renderBase, out.chunks);
@@ -807,7 +814,12 @@ const TASKS = {
   // Page HTML is written by per-worker flush; combined SCSS is written
   // by the scss task.
   writeAssets: {
-    expected: ["dot", "prepPageDirs", "highlighterInit"],
+    // vendorAssets is listed for the same reason `dot` is: it appends
+    // the files it downloaded to the static-file list, and writeAssets
+    // copies that list. The chain prepPageDirs <- prepDest <- dispatch
+    // <- markdownInit happens to order them today; naming the dependency
+    // is what keeps that true.
+    expected: ["dot", "vendorAssets", "prepPageDirs", "highlighterInit"],
     runOnMain: true,
     async execute({ dot: _dotSignal, highlighterInit: _highlightSignal }, ctx, state) {
       void _dotSignal;        // dependency signal only; append already happened in dot.submit
@@ -887,7 +899,14 @@ const TASKS = {
   // tb-highlight.css from state.site.highlighter, print.css from staticFiles.
   // Runs in parallel with writeAssets → searchData → writeAux → writeOffline.
   writePdf: {
-    expected: ["flushJoin", "dot", "resolveBookChapters"],
+    // renderJoin is listed although execute() ignores it. writePdf reads
+    // page.renderedContent, which render:i.submit fills -- and a dep
+    // count reaching zero is not a promise that those submits have run.
+    // It holds transitively today via flush:i being lane-pinned to
+    // render:i, which is not something to rely on in a list whose whole
+    // job is to say what must have merged. renderJoin is DONE by this
+    // point, so it costs nothing.
+    expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters"],
     runOnMain: true,
     async execute(_, ctx, state) {
       const skipPdf = ctx.opts.skipPdf ?? (state.site.config.also_build_pdf === false);

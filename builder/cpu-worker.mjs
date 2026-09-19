@@ -512,9 +512,17 @@ async function pullLoop() {
     }
     const t1 = Date.now();
 
-    // Post output BEFORE the SAB update (ordering constraint: the merge
-    // message must arrive on the main thread before any downstream
-    // main-thread task could be claimed).
+    // Post the output BEFORE the SAB update, so the result is at least
+    // QUEUED on the main thread before any successor's dep count drops.
+    //
+    // That is an ordering of the two operations, NOT a guarantee that
+    // the merge has happened: the message still has to be delivered and
+    // the matching submit() still has to run. A successor can reach a
+    // dep count of zero with the result sitting unread in the main
+    // thread's queue -- which is exactly how renderJoin lost pages from
+    // the search index. What closes that window is the barrier's
+    // `expected` list (see registerBarrier in tbdocs.mjs), not this
+    // ordering.
     parentPort.postMessage({
       done:   taskIdx,
       output: result,
