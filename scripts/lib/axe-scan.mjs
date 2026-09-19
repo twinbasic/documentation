@@ -80,6 +80,13 @@ export const SAMPLE_PAGES = [
   "/tB/IDE/Project/Menu/Window.html",
   "/Videos/tB.html",
   "/Reference/Procedures-and-Functions.html",
+  // The only page in the site carrying both an IMPORTANT and a TIP
+  // admonition, so it closes both gaps for one page load.  --propose names
+  // two cheaper pages instead (Unicode-Support + Anchoring-Docking, 1,591 ms
+  // against 1,736); the 145 ms is 0.9 % of the scan and buys a smaller
+  // matrix.  Measured: 485/454/398/399 ms over the four theme x viewport
+  // combinations.
+  "/Features/Language/Generics.html",
 ];
 
 // ---------------------------------------------------------------------------

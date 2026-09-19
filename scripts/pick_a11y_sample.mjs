@@ -56,16 +56,35 @@ import { DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES } from "./lib/axe-scan.mjs";
 //
 // `why` is the rule, or rule group, that has nothing to run on when no sample
 // page covers the family.  It is the reason the family is in this list, and it
-// is what a --check failure prints.
+// is what a --check failure prints -- so it must name a rule the scan actually
+// runs.  AXE_RUN_OPTIONS selects by WCAG tag and enables exactly one
+// best-practice rule (heading-order), so naming a best-practice-only rule here
+// tells a maintainer to feed a rule that is switched off.
 const FAMILIES = {
   img: { re: /<img[\s>]/g, min: 1, why: "image-alt" },
-  table: { re: /<table[\s>]/g, min: 1, why: "th-has-data-cells, td-headers-attr, scope-attr-valid" },
-  th: { re: /<th[\s>]/g, min: 2, why: "empty-table-header, table header association" },
+  table: { re: /<table[\s>]/g, min: 1, why: "th-has-data-cells, td-headers-attr" },
+  th: { re: /<th[\s>]/g, min: 2, why: "th-has-data-cells -- header/data-cell association" },
   pre: { re: /<pre[\s>]/g, min: 1, why: "scrollable-region-focusable; the contrast stress case" },
   dl: { re: /<dl[\s>]/g, min: 1, why: "definition-list, dlitem" },
   details: { re: /<details[\s>]/g, min: 1, why: "summary naming and disclosure semantics" },
   video: { re: /class="[^"]*video-link/g, min: 1, why: "link-name and image-alt on video cards" },
-  callout: { re: /class="[^"]*(?:note|important|warning)/g, min: 2, why: "color-contrast on tinted callout backgrounds" },
+  // One family per admonition variant, not one for all of them.  Each
+  // variant has its own tint and its own title colour in each theme, so a
+  // page carrying two NOTEs is not coverage of IMPORTANT.  Keying on the
+  // full emitted prefix (render.mjs's markdown-alert block) is what makes
+  // that possible: the previous `(?:note|important|warning)` also matched
+  // `class="footnote"` and `class="reversefootnote"`, and the only page
+  // reaching min: 2 did so on three footnote hits and zero callouts -- so
+  // --check printed full coverage while `important` and `tip` had never been
+  // colour-contrast-audited anywhere.
+  //
+  // min: 1 because the class is unambiguous: one real admonition exercises
+  // that variant's background and title colour exactly as fifty would.
+  calloutNote: { re: /class="markdown-alert markdown-alert-note/g, min: 1, why: "color-contrast on the NOTE tint and title" },
+  calloutImportant: { re: /class="markdown-alert markdown-alert-important/g, min: 1, why: "color-contrast on the IMPORTANT tint and title" },
+  calloutWarning: { re: /class="markdown-alert markdown-alert-warning/g, min: 1, why: "color-contrast on the WARNING tint and title" },
+  calloutTip: { re: /class="markdown-alert markdown-alert-tip/g, min: 1, why: "color-contrast on the TIP tint and title" },
+  calloutCaution: { re: /class="markdown-alert markdown-alert-caution/g, min: 1, why: "color-contrast on the CAUTION tint and title" },
   blockquote: { re: /<blockquote[\s>]/g, min: 1, why: "color-contrast on quoted text" },
   kbd: { re: /<kbd[\s>]/g, min: 2, why: "color-contrast on inline key caps" },
   footnote: { re: /class="footnote/g, min: 1, why: "footnote back-reference link names" },
