@@ -2,6 +2,15 @@
 
 38 commits · 110 files · +12,152 / −1,519 · branch `staging` at `1b6922b` · reviewed 2026-09-19
 
+> **Actioned in `45e6336..9f6c38f`** (21 commits), planned and recorded in
+> [PLAN-REVIEW-c9f2dfe0-1b6922b.md](PLAN-REVIEW-c9f2dfe0-1b6922b.md).
+>
+> **The observations below are left exactly as they were written at `1b6922b`.** Every
+> forward-pointer added afterwards begins with `→` and is the only later text in this
+> file. Five of them record the review's diagnosis being wrong about *why* something
+> was broken — the finding was real in each case, the mechanism was not — and those are
+> worth more than the fixes.
+
 ## Verdict
 
 The range is sound where it matters most. The `renderJoin` race is genuinely fixed — confirmed at source, by a harness over the real scheduler, and by a forced-race build that fails loudly 3/3 without the fix and passes 3/3 with it. The fused link/integrity checker detects every category it claims (a probe page provoked 9/9). Every one of ~20 claimed contrast ratios recomputes exactly; the theme toggle, the 16 thumbnails, the grammar change, exit-code plumbing, tree-index derivation and CI wiring all check out; `checks.yml` dispatched green at HEAD with numbers identical to a local run.
@@ -25,33 +34,69 @@ Severity used here: **S1** — silent wrong result, data loss, or a gate that ca
 1. **[S1] Callout coverage rests on footnotes** — `scripts/pick_a11y_sample.mjs:68`.
    The `callout` family regex `/class="[^"]*(?:note|important|warning)/` matches `class="footnote"` and `class="reversefootnote"`. The only sample page reaching `min: 2` (`Features/index.html`) has 3 footnote hits and **zero callouts**. The regex also never matches `tip` (16 site-wide) or `caution`. `--check` prints "every construct family in use is covered" — CI printed exactly that today. `markdown-alert-important` (49) and `-tip` (16), each with its own title colour per theme in `admonitions.scss:16-30`, are never colour-contrast-audited by the gate.
    *Fix:* key the family on `class="markdown-alert markdown-alert-` (covers all five variants, matches nothing else).
+   → **Fixed** in `f4cd53c`, keyed as suggested — plus the family is split per variant
+   (`calloutNote`, `calloutImportant`, `calloutWarning`, `calloutTip`, `calloutCaution`)
+   at `min: 1`. One lumped family is satisfied by a page carrying two NOTEs, which is
+   exactly the coverage this item says is missing. `--check` then failed on
+   `calloutImportant` and `calloutTip`; `/Features/Language/Generics.html` is the only
+   page in the site carrying both, so it closes both gaps for one page load.
 
 2. **[S2] `SCHEMES.production` is not what production runs** — `scripts/lib/axe-scan.mjs:248`, `scripts/check_a11y.mjs:107,130-134`, `scripts/sweep_a11y.mjs:59`.
    The scheme labelled "what check_a11y.mjs runs today" carries only `runOptions`, no `patches`. `check_a11y.mjs` never calls `getScheme` — it declares its own `AXE_PATCHES` and injects the unminified patched bundle; `sweep_a11y.mjs` holds a third copy of the patch list. So the fingerprint gate's A/A control (`--baseline production --candidate production`) validates stock-minified axe against itself, not the bundle `check.bat` ships; any future `configure:` on the scheme would not reach the production scan.
    *Fix:* `patches: ["plain-color-fields"]` on `SCHEMES.production`; `check_a11y.mjs` and `sweep_a11y.mjs` obtain everything through `getScheme("production")`.
+   → **Fixed** in `3187638`, as suggested. Every scheme inherits `DEFAULT_PATCHES`, so a
+   config-lever comparison still holds the bundle fixed; `--patches` keeps its meaning
+   (stock baseline, patched candidate), which is the axe-upgrade obligation and would
+   otherwise have become a no-op. A/A over the shipped bundle: 48/48 identical.
 
 3. **[S2] "The patch asserts an exact occurrence count at each substitution point" is false for 12 of 20** — `scripts/lib/axe-scan.mjs:456,462`.
    `substitute(src, name, from, to, expectedCount = null)` enforces a count only when one is passed. `brand-init`, `brand-call` and the six `init<f>` pass `1`; the six `get<f>` and six `set<f>` pass nothing and assert only "≥ 1". Babel numbers duplicate private-field bindings (`_r`, `_r2`), so an axe bump that changes class order can bind the names to a different class; if that class's fields are also uninitialised the eight counted assertions still see 1, the patch rewrites the wrong class consistently (no runtime error), Color2 keeps its WeakMaps, `check_axe_patch_equiv.mjs` (Color2 values only) passes, and the −26 % is silently gone with every gate green. The claim underwrites the upgrade procedure in `check_a11y.mjs:103`, `WIP.md:598`, `builder/PLAN-axe-perf.md:1320,1461` and `.github/workflows/checks.yml:96`.
    *Fix:* pass `1` and `2` on the get/set substitutions (current counts, measured).
+   → **Fixed** in `90dd617`, as suggested. A deliberately wrong count throws naming
+   `plain-color-fields/set_r`.
 
 4. **[S2] No gate exercises the fused checker's integrity detectors** — `scripts/check_links_diff.mjs:535-538`; CI `checks.yml:92`, `tbdocs-gh-pages.yml:81`.
    `if (usesFused && !c.fused) { skipped.push(...); continue; }` drops the `fixture` case on every `--b fused` run, and `FIXTURE_EXPECTED` (`:155`) is asserted only inside the branch that is then never reached. The real site is clean, so every fused case compares empty-against-empty in eight of nine categories — `broken` is the only category ever non-empty on a fused case (the book's ten). CI runs `--case fixture --a script --b index`: both sides are the standalone script, under two oracle strategies. **The implementation is fine** — a probe page provoked eight categories on the first run and `canonical` once genuinely provoked (see appendix) — but a regression in `builder/check.mjs` that stops *reporting* a category would leave every gate green.
    *Fix:* a fixture-fused case built from a small markdown source via `tbdocs --src <dir> --check-findings`; the natural home is `checks.yml`, which is a PR gate that does not deploy and has the time.
+   → **Fixed** in `8eacc5c`, in `checks.yml` as suggested — but as **two** cases covering
+   **seven** of the nine categories, not one covering nine. No single tree carries all
+   nine (the online tree has sitemap/search/canonical, the offline tree is the only one
+   with a forbidden prefix), and `sitemap` and `search` are not provokable from a
+   *correct* build at all: both sides normalise the URL identically, and
+   `deriveSearchEntries` emits a fallback entry for a page with no headings, so an
+   indexable page always gets one. They are asserted as `0` with that reasoning
+   recorded. Verified by deleting the `dupIds` and `canonical` reporting from
+   `builder/check.mjs`: the harness fails with 6 differences.
 
 5. **[S2] `--check-audit-index` is invoked by nothing** — `builder/check-tree.mjs:9-14`; parsed only at `builder/tbdocs.mjs:131`.
    It is the sole guard on the module that declares itself "most able to fail silently": a spurious entry in `deriveTreeRels` makes `IndexOracle` answer "exists" for a path that 404s in production, and every link to it passes. The direction it covers lost its previous coverage when `b97c75f` removed CI's `FsOracle` pass over the built trees. It is in no `.bat`, no workflow, no `package.json` script. Measured today: 0 spurious / 0 missing on both trees.
    *Fix:* bake it into `build.bat`'s flags and the two CI build steps — one `readdir` per tree; its result already feeds `integrityFailed`.
+   → **Fixed** in `1c2f895`, as suggested. It immediately earned its place: the C07
+   fixture exposed `checkReport` not depending on `scss`, so the audit could run before
+   the stylesheet was written and report it as "indexed but not on disk" — harmless
+   here, but the same shape as a failed SCSS compile leaving the index claiming a
+   stylesheet that is not there. Fixed in `8eacc5c`.
 
 6. **[S2] `check_links.mjs`'s three regression guards run in no automated context** — `scripts/check_links.mjs:736-749`.
    `selfTest()` (base-path stripping, `isOutsideBasePath`, canonical mismatch) is inside the `isEntry` branch; `check_links_diff.mjs:62` imports `runCheck` in-process, and since `b97c75f` CI no longer invokes the script directly.
    *Fix:* call `selfTest()` from `check_links_diff.mjs` (or its `--self-test`).
+   → **Fixed** in `8eacc5c`, from `--self-test`, as suggested.
 
 7. **[S2, latent] Fused cross-file checks can go dark silently** — `builder/check.mjs:246-261`, `:298`.
    `sitemapIssues` / `searchIssues` / `canonicalIssues` stay `null` when a precondition fails (`aux.sitemapXml == null`, `JSON.parse` failure, empty canonical map), and `formatReport`'s `if (!issues || !issues.length) continue` prints `0 integrity` for `null` and `[]` alike. The standalone script prints `warning: --check-sitemap: sitemap.xml not found ..., skipping`. Only `check_links_diff`'s deliberate `null`-vs-`[]` distinction would notice — a manual step. Not reachable today (`writeAux` always supplies both fields).
    *Fix:* record why a cross-file check was skipped and print it, as the script does.
+   → **Fixed** in `d2c3a74`, as suggested. The skip reason also rides in
+   `--check-findings`, so a gate can assert a check *ran* rather than only that it found
+   nothing. `findingsFor.integrityFailed` gained the missing `r.errors` term in the same
+   commit (Tier 3).
 
 8. **[S2, local only] `check.bat` has no freshness check** — `check.bat:7-11`, `scripts/check_a11y.mjs:46`.
    All three gates read whatever `docs/_site-offline/` holds; an edit-then-`check.bat` without a rebuild audits the previous build and passes. CI is unaffected (builds in the same job).
+   → **Fixed** in `1c2f895`: `scripts/check_tree_fresh.mjs` compares the newest mtime
+   under `docs/` and `builder/`, less the output trees, against the built tree's
+   `index.html`, and refuses naming `build.bat`. It caught a real mid-session case
+   during this work, when an agent edited `builder/render.mjs` between the build and
+   the check.
 
 ---
 
@@ -60,56 +105,145 @@ Severity used here: **S1** — silent wrong result, data loss, or a gate that ca
 9. **[S1] A 200 response with a non-image body becomes a permanent poster frame** — `builder/vendor-assets.mjs:105-113`, `:192`.
    `fetchToFile` checks only `res.ok` and `buf.length > 0` — no content-type, no magic bytes, no size floor — writes directly to the final path, and `present.has(name)` never re-fetches. Confirmed by execution with a stubbed `fetch`: a captive-portal HTML interstitial was written as `yt-….jpg` with `failed: 0` and a clean exit; the next run reported it present; CI-offline mode accepts it as satisfied. `fetchAttachment` (`:126-139`) *does* gate on content-type via `CONTENT_TYPE_EXT` — the asymmetry is the bug. The same hole covers the documented YouTube trap (`maxresdefault` 404 → `hqdefault` 200 as a 120×90 grey placeholder). All 16 committed thumbnails are genuine 1280×720.
    *Fix:* require `content-type` `image/*`, a size floor, reject a 120×90 SOF on the YouTube variants, write to a temp path and rename.
+   → **Fixed** in `3c0c6b6`, as suggested, with `fetchAttachment` hardened alongside
+   rather than left as the better half — it gains the size floor, the temp-and-rename,
+   and a magic-byte cross-check, so a body served under a spoofed `image/png` is caught
+   too.
 
 10. **[S2] A network-level fetch rejection aborts the whole build** — `builder/vendor-assets.mjs:106,108,128,130,201,232`.
     No `try`/`catch` around any `fetch` / `arrayBuffer`; only an HTTP non-2xx or an empty body takes the soft path. A rejection (DNS, TLS, reset, proxy) propagates out of `vendorAssets.execute` into `builder/scheduler.mjs:118` → `_abort` → the build dies with a raw stack. Contradicts the module's own comment at `:43-48` ("warn, record it ... one dead video should not stop a local preview") and `WIP.md:521`. Confirmed by execution.
     *Fix:* try/catch each fetch into the existing `failed++` / `console.warn` path.
+    → **Fixed** in `3c0c6b6`, as suggested. Verified against a stubbed fetch for both a
+    `fetch` rejection and an `arrayBuffer` rejection mid-transfer.
 
 11. **[S2] `brokenUnique` double-counts a cross-page broken fragment** — `builder/link-check.mjs:748` vs `:763`.
     `entryKey` keys on `entry.target` (pre-resolution); `settleFragments` keys on `p.target`, which is `entry.resolved` (`:704-707`, post-fallback `.html`). Both land in one `Set` (`builder/check.mjs:215`, `:236`). Confirmed by experiment: three pages, one broken cross-page fragment — `brokenUnique = 2` when the target page shares a chunk with one referrer, `1` otherwise. `build.bat` would print `2 broken` where the script prints `1`, and the harness would report a `counts.brokenUnique` difference that reads as a fused-side bug.
     *Fix:* carry `entry.target` on pending fragments and key `settleFragments` off it.
+    → **Fixed** in `39e03ab`, as suggested, with `settleFragments` routed through
+    `entryKey` so there is one key format in one place. The three-page experiment
+    reproduces: 1/1/1 after, 1/1/2 before.
 
 12. **[S2, latent] Fused `checkSitemap` / `checkSearch` ignore the opt-outs the generators honour** — `builder/link-check.mjs:778` vs `builder/sitemap.mjs:51`, `builder/search.mjs:76`.
     The checkers' only exemption is `EXCLUDE = new Set(["book.html", "404.html"])`; the generators skip `sitemap: false` and `search_exclude: true`. Any page using either key fails `--check` with `sitemap-missing` / `search-missing`. Confirmed by probe (removing `sitemap: false` dropped the finding). Also `checkSearch` (`:814`) applies only `stripHtmlSuffix`, so a `permalink:` ending in `/index.html` yields `/probe/index` against `deriveUrlPath`'s `/probe/`; `checkSitemap` escapes because `sitemap.mjs:74-77` strips `/index.html` first. No page under `docs/` uses either key today.
+    → **Fixed** in `7df8625`. Each generator now exports its filter as a predicate and
+    `linkJoin` builds the opt-out sets from the same predicates, so the rule is "every
+    page the generator was asked to emit". The `/index.html` half is worse than stated:
+    with the normaliser reverted, the root `index.html` of any tree whose home page has
+    no explicit permalink also reports `search-missing`, because
+    `stripHtmlSuffix("/index.html")` is `/index` against `deriveUrlPath`'s `/`.
+    The standalone script cannot do the opt-out half at all — nothing in the built HTML
+    records a deliberate omission — and now says so where its flags are defined.
 
 13. **[S2] The aux-nav "twinBASIC Home" focus ring is clipped** — `.aux-nav` (`overflow: auto`, `navigation.scss:182`) vs `a.site-button`.
     The link's box is `top: 0 / bottom: 59`, identical to the nav's; its ring is the UA `outline: auto 1px` at `+1px` offset (outset). Screenshots at 1050 px in both themes show the left and right bars ending in rounded corners with **no bottom segment** — only the header's border line beneath — while the toggle's inset ring (control) draws all four sides. `WIP.md` asserts the opposite: "Chrome's UA `outline: auto` on the aux-nav link renders in full, so only the author-defined ring needed the accommodation." Outside this range's fix list, but the range's prose vouches for it.
     *Fix:* `.aux-nav .site-button:focus-visible { outline: 2px solid <link colour>; outline-offset: -2px; }`, as for `#theme-toggle`.
+    → **Fixed** in `a581290`, as suggested. Re-measured at 1280x900 before the fix: the
+    nav's box and the link's are both `top 0 / bottom 59`, confirming the mechanism.
+    After: solid 2px at `-2px`, `#4e26af` light and `#8cc2ff` dark, no edge outside the
+    clip box. The `WIP.md` sentence this item contradicts was corrected in `9f6c38f`.
 
 14. **[S2] `.section-links > ul` margin silently reverts in dark mode** — `docs/_sass/custom/custom.scss:176-178`; compiled `just-the-docs-combined.css:208` vs `:8027` / `:14992`.
     `.section-links > ul { margin: 0.25rem 0 0 }` is (0,1,1). The dark pass re-emits JTD's `ul { margin-top: 0 }` reset as `html:not([data-theme=light]) ul` / `html[data-theme=dark] ul` at (0,1,2), later in the file, so it wins `margin-top`. Third instance of the trap `WIP.md` documents (footnote underline, `hr` margins). Cosmetic (4 px) — but axe cannot see it and nothing else does.
     *Fix:* `.main-content .section-links > ul`.
+    → **Fixed** in `a581290` — **but the diagnosis here is wrong.** The margin does not
+    revert in dark mode; it never applied in *either* theme. `.main-content ol,
+    .main-content ul, …` sets `margin-top: 0.5em` at the same (0,1,1) and later in the
+    file, so the list has been taking the body-prose 6px since it shipped. Measured in
+    both themes: 6px before, 4px after. The suggested remedy is right anyway, and the
+    dark override is still needed — the dark compilation re-emits the JTD rule at
+    (0,2,2) and out-ranks (0,2,1) — so the trap this item names is real here, just not
+    what was breaking the rule.
 
 15. **[S2] `def.submit` runs outside every try/catch** — `builder/scheduler.mjs:128`, `:178`.
     `_executeMainTask`'s try wraps only `execute`; the worker-message path has no try at all and is called from `worker-pool.mjs:33`'s `message` listener. The new assertion in `render:i.submit` (`tbdocs.mjs:727-733`) therefore escapes as an uncaught exception: `_abort` never runs, `runBuild`'s `finally` never destroys the pool, `main().catch` never runs; under `--serve` the dev server dies with a raw Node stack instead of `task render:3 failed`. Reproduced with a worker-thread harness.
     *Fix:* wrap both calls → `this._abort(name, err)`.
+    → **Fixed** in `648b607`, as suggested. Verified: a throwing `submit` reports
+    `task render:2 failed` on the worker path and `task flushJoin failed` on the main
+    path.
 
 16. **[S2] The barrier invariant has two unbound halves** — `builder/tbdocs.mjs:702` (`setDepCount(views, renderJoinIdx, N)`) and `:778` (the `expected` clone loop), 76 lines apart in a 140-line `dispatch.submit()`.
     Nothing ties them together; `verifySchedulerSAB` iterates static `taskDefs` only and runs before `dispatch.submit` exists; there are no tests. A third fan-out that copies the dep-count block and misses the clone loop reproduces the original bug exactly.
     *Fix:* one helper — `registerBarrier(scheduler, views, idMap, join, predNames)` — that does both, so the count cannot be written without the list.
+    → **Fixed** in `648b607`, as suggested. The forced-race reproduction was re-run at
+    40 ms: clean with the pair list, failing on all three runs without it (24 / 36 / 30
+    pages with no `renderedContent`). `writePdf.expected` gained `renderJoin` and
+    `writeAssets.expected` gained `vendorAssets` in the same commit (Tier 3), and the
+    `cpu-worker.mjs:504-506` comment was rewritten.
 
 17. **[S2 claim / S3 code] Three merge-path tolerances survive "everywhere on the merge path"** — `builder/check.mjs:210` (`if (!c) continue`), `builder/cpu-worker.mjs:264` (`items.filter(p => p.offlineHtml !== undefined)`), `builder/tbdocs.mjs:400-402` (`r?.written ?? 0`).
     None is live: the `short` count guard at `tbdocs.mjs:945-948` and identical per-lane tree-key sets cover them. But `WIP.md` ("every skip on the chunk-merge path that used to tolerate a missing piece now refuses to continue") and `PLAN-sab-pull-scheduler.md:598-611` say they are gone, and the PLAN's `formatReport` row ("an errored chunk fails the run") is false for the book: `TREES.pdf.noFail` (`check.mjs:95`) makes `formatReport` return `integrityFailed: false` (`:324-325`), so a `checkBook` chunk error prints and exits 0.
     *Fix:* `if (!c) throw`, drop the `c?.` at `tbdocs.mjs:954`, and correct the two documents.
+    → **Fixed** in `f9ef5a4` (code) and `9f6c38f` (the two documents), as suggested.
+    `linkJoin` names the offending chunk and tree itself, so `joinChunks`'s throw is
+    only a backstop. Each was provoked by hand to confirm it is loud.
 
 18. **[S2] `FsOracle` is case-insensitive on NTFS, and the script is called "the oracle of record"** — `builder/link-check.mjs:449-461` vs `:516-525`; `scripts/check_links_diff.mjs:247`.
     `IndexOracle`'s `indexKey` normalises separators and trailing slashes, never case. `fs.statSync("docs/_site/tb/gloss.html").isFile()` is `true` on this box for the file `tB/Gloss.html`. A wrong-case link passes the script on Windows and 404s on GitHub Pages; the harness would report the fused side (correct) as the one with the extra finding. No such link exists today.
     *Fix:* default `--oracle index` when `process.platform === "win32"`, or document it beside the flag.
+    → **Fixed** in `c0d5ff9` — both, not either. The harness's two sides are also pinned
+    to their oracles explicitly, because inheriting the new default would have made
+    `--a script --b index` compare nothing on Windows, and the "oracle of record"
+    description is corrected: on this one question the index side is the right one.
 
 19. **[S2] The vendored README says `_sass/` is byte-for-byte and names `buttons.scss`** — `builder/vendor/just-the-docs/README.md:12`.
     This range patched four `_sass` files (`buttons.scss` `.btn-reset { color: inherit }`, `layout.scss`, `navigation.scss`, `support/_variables.scss` `$grey-dk-100` / `$link-color`) with no patch manifest; the README has an "In-tree patches to `just-the-docs.js`" section but nothing for Sass, and its re-vendoring procedure `rm -rf`s `_sass` — which would silently revert the AAA contrast fixes and the 1.39:1 button fix.
     *Fix:* an "In-tree patches to `_sass/`" section naming the four files, and correct the inventory row.
+    → **Fixed** in `040aea1` — **the count here is low.** It is **six** files across
+    **four** commits, not four files across three. `c9f2dfe` is a fourth accessibility
+    commit, not a migration: it restores focus outlines upstream suppresses, in
+    `buttons.scss`, `code.scss` and `search.scss`. Separately, `1632d3d` is not purely a
+    theme deletion — `color_schemes/dark.scss` and `light.scss` each carried a `@use`
+    into the deleted directories, so the procedure's `rm -rf` step as written leaves two
+    dangling `@use` statements and Dart Sass fails on a missing partial. Step 3 now says
+    to remove both halves.
 
 20. **[S3] The heading normaliser is a blanket +1 shift** — `builder/render.mjs:1078`.
     Trigger: h1 present, h3 present, h2 absent. Action: every level ≥ 3 raised by one. `# / ### / #####` → h1/h2/**h4** — the skip survives, now invisible in source; `# / ####` never triggers; a raw `<h2>` HTML block is not counted, so a page mixing it with `###` gets its h3s promoted over the author's structure. Confirmed by scratch render. No page affected today (0 heading skips across all 1,159 built pages). `WIP.md` describes it as "raises h3→h2".
+    → **Fixed** in `b966f12`, with a stack of still-open ancestors rather than a clamp.
+    A `min(raw, last + 1)` formula gets `Reference/Core/Open` wrong — two `###` sections
+    around a run of six `####`, and the second `###` lands at h3 — and closes only the
+    *first* gap on a page: `# / ### / ##### / ### / #####` comes out h1/h2/h4/h2/h4.
+    Inertness was demonstrated rather than argued: all 1,159 built pages hash
+    identically before and after.
 
 21. **[S3] "6 unresolved" on every green offline build is a regex artifact** — `builder/offline-rewrite.mjs:292-295`, `:405-408`.
     `HTML_COMBINED_RE`'s `\b(href|src)=` matches the tail of the **`data-svg-src`** attribute on the six inlined diagrams (`-` is a non-word character, so `\b` succeeds). The misses are counted into `offlineMisses` and printed at `tbdocs.mjs:1208`; they are never listed anywhere. All six files exist in `_site-offline`; zero root-absolute `href`/`src` survive in the offline HTML.
     *Fix:* `(?<![\w-])(href|src)=` and a way to list the misses.
+    → **Fixed** in `8c93e02` as `(?<!-)\b(href|src)=` — the `\b` already excludes a
+    preceding word character, and a colour must *not* be excluded: `xlink:href` is a
+    real URL attribute and the tree has 75,129 of them. The count goes to 0 on a clean
+    build, and the misses are now listed by the file that produced them.
 
 ---
 
 ## Tier 3 — smaller code issues
+
+> → **All addressed.** `648b607` (the two `expected` lists, the `cpu-worker` comment),
+> `b966f12` (the three `render.mjs` items), `fdf157c` (`clampContrast`, `--theme`
+> validation, `--stock-axe`, `--pages` dropping state audits, `gotoPage` and image
+> decode), `d2c3a74` (`findingsFor.integrityFailed`), `8eacc5c` (the fixture's `html`
+> pair, the bare invocation), `a7a040f` (the Gantt injection), `f4cd53c` (the `why`
+> strings), `0e8753d` (content disclosures), `a581290` (`.text-muted`,
+> `modules-dark.scss`), `9f6c38f` (the spliced PLAN sections), and the commit-subject
+> convention held throughout — the longest of the 21 is 72 characters.
+>
+> Three departures from what is written here:
+>
+> - **`setClass` dropped *both* classes**, not only `.float-right`. And merging alone is
+>   not the fix: it leaks the `.video` marker into the output, which changed 16 elements
+>   on the two Videos pages. `.video` selects the link and matches nothing in any
+>   stylesheet, so `b966f12` consumes it explicitly.
+> - **The SVG paragraph unwrap** was fixed by leaving the mixed case un-inlined rather
+>   than splitting the paragraph — the image keeps its `<p>` and renders as a plain
+>   `<img>`. Splitting restructures the block token stream for arbitrary surrounding
+>   text and multiple images per paragraph, which is a large change for a shape no page
+>   uses.
+> - **The Gantt injection could not move before the check**, because it is rendered from
+>   that run's own timings. `a7a040f` moves it before the check is *reported* and feeds
+>   the patched pages back through `checkChunk`, printing only the delta.
+>
+> And one addition: `0e8753d` found that **the site-wide `<summary>` `min-height` was
+> guarded by nothing** — see Decision 4 below.
 
 - `builder/tbdocs.mjs:880` — `writePdf.expected` names `flushJoin` with a comment saying it guarantees `renderedContent`; that holds only transitively via `flush:i` being lane-pinned to `render:i`. Add `"renderJoin"` (already DONE by then; zero cost).
 - `builder/tbdocs.mjs:800` — `writeAssets` depends on `vendorAssets` only through `prepPageDirs ← prepDest ← dispatch ← markdownInit`; `dot` is listed explicitly for the identical reason. Add `"vendorAssets"`.
@@ -138,6 +272,27 @@ Severity used here: **S1** — silent wrong result, data loss, or a gate that ca
 ## Tier 4 — documentation drift
 
 Stale or false statements a maintainer would act on. All confirmed against the current files.
+
+> → **All corrected in `9f6c38f`**, written last so the three rows whose subject was the
+> code rather than the prose could be resolved by fixing the code first. Four notes on
+> this table specifically:
+>
+> - **The row on the aux-nav ring was the only one that needed the *opposite* of no
+>   edit.** Fixing the ring (`a581290`) made the sentence more wrong, not true, so it was
+>   rewritten to describe the author ring that replaced the UA one.
+> - **Three figures here were themselves stale by the time the batch ran**, because the
+>   sample was widened twice during it: "six sample pages" is **thirteen**, not eleven;
+>   "48 audits now" is **60**; and the fixture is **nine** files, not the six both
+>   workflow comments claim.
+> - **"~280 MB today" measures a little high.** Byte sum over both trees is 267.5 MB;
+>   `du` gives 273 MB block-rounded. The docs now say ~270 MB.
+> - **The `MonacoArchitecture.md` row (Tier 3) needed no edit at all.** Its comment
+>   already describes the dark export and the hand-darkened chips accurately, and the
+>   committed SVG's fill values confirm it.
+>
+> Two items not in this table were corrected alongside it: `Tools.md` had no entry for
+> `pick_a11y_sample.mjs` or `check_links_diff.mjs`, which is drift in a tool catalogue,
+> and `axe-scan.mjs` carries its own copy of the wrong "3,488 audits".
 
 | Where | Says | Reality |
 |---|---|---|
@@ -186,10 +341,27 @@ What was checked and found correct — so it need not be revisited.
 ## Decisions for you
 
 1. **Where the fused comparison lives.** `check_links_diff --a script --b fused` (plus a fixture-fused case, item 4) is the one gate CI lacks; `checks.yml` is a PR gate that does not deploy and has the time. Adding it there gives that workflow a purpose beyond timing.
+   → **`checks.yml`**, as two cases (`8eacc5c`). The deploy workflow keeps its cheap fixture run against the index oracle.
 2. **Fonts before 19 October 2026.** The dispatched run's annotation: `ubuntu-latest` migrates to Ubuntu 26 then. Neither workflow installs fonts, and `target-size` is calibrated against Liberation Sans 15 px. A `fonts-liberation` install step or a pinned runner image removes the variable.
+   → **The font install**, in both workflows (`1c2f895`). It addresses the actual variable and expires differently from a pinned image.
 3. **The aux-nav ring** (item 13) is outside the range's fix list; it is a one-rule fix and the prose already claims it is fine.
+   → **Fixed** (`a581290`), and the prose that vouched for it corrected (`9f6c38f`).
 4. **Whether `FAQ.html` should join the sample** and whether content `<details>` deserve an open-state audit (no live defect today, 118 unaudited nodes on one page).
+   → **Both** (`0e8753d`), and the measurement reversed the plan's preference for a state
+   audit on a page already in the sample. Opening the disclosures is precisely what
+   *removes* the `target-size` defect: with `.main-content summary`'s `min-height`
+   reverted, FAQ reports `target-size` x16 **closed** at the mobile viewport and **zero**
+   open, because opening pushes the summaries apart until the spacing allowance rescues
+   them. So the open state audits different surface, and the closed state is what guards
+   the fix — a fix that, it turned out, **was guarded by nothing**: FAQ.html stacks 30
+   disclosures against the next page's 4, is the only page in the site where the class is
+   reachable, and was not in `SAMPLE_PAGES`. Reverting it produced a clean pass. It now
+   fails the gate with 2 violations.
 5. **The documentation batch** (Tier 4) is one commit's worth of edits across `Authoring.md`, `Building.md`, `Tools.md`, `Builder.md`, `WIP.md`, the two PLANs, `perf/README.md`, the vendored README and two source comments.
+   → **One commit, last** (`9f6c38f`), except the vendored README, which landed with the
+   manifest it needed (`040aea1`). Landing it last is what let three Tier 4 rows resolve
+   by code rather than prose — and is also why several of its own figures had gone stale
+   in the meantime.
 
 ---
 
