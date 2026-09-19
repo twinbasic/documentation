@@ -247,28 +247,51 @@ export function joinChunks(chunks, {
     ? relFiles.filter(r => !stubRels.has(r))
     : relFiles;
 
+  // Each of the three is `null` when it did not run, and `[]` when it
+  // ran and found nothing. formatReport cannot tell those apart -- it
+  // prints `0 integrity` for both -- so a precondition that quietly
+  // stopped being met would take a check dark and still read as a pass.
+  // Every `null` therefore gets a reason, printed in the same shape the
+  // standalone script uses for the same situation.
   let sitemapIssues = null, searchIssues = null, canonicalIssues = null;
-  if (tree.crossFile.sitemap && aux.sitemapXml != null) {
+  const skipped = [];
+  if (!tree.crossFile.sitemap) {
+    // Not a skip: this tree's definition does not include the check.
+  } else if (aux.sitemapXml == null) {
+    skipped.push("sitemap: sitemap.xml was not generated, skipping");
+  } else {
     sitemapIssues = checkSitemap(
       aux.sitemapXml, contentRels, basePath, aux.sitemapOptOut
     ).sort();
   }
-  if (tree.crossFile.search && aux.searchJson != null) {
+
+  if (!tree.crossFile.search) {
+    // As above.
+  } else if (aux.searchJson == null) {
+    skipped.push("search: search-data.json was not generated, skipping");
+  } else {
     let data = null;
     try { data = JSON.parse(aux.searchJson); } catch { data = null; }
     if (data) {
       searchIssues = checkSearch(
         data, contentRels, basePath, aux.searchOptOut
       ).sort();
+    } else {
+      skipped.push("search: search-data.json did not parse as JSON, skipping");
     }
   }
+
   if (tree.crossFile.canonical) {
     const forCheck = new Map();
     for (const [rel, href] of canonicalByRel) {
       if (stubRels && stubRels.has(rel)) continue;
       forCheck.set(rel, href);
     }
-    canonicalIssues = forCheck.size ? checkCanonical(forCheck, basePath).sort() : null;
+    if (forCheck.size) {
+      canonicalIssues = checkCanonical(forCheck, basePath).sort();
+    } else {
+      skipped.push('canonical: no <link rel="canonical"> in any page, skipping');
+    }
   }
 
   return {
@@ -282,6 +305,7 @@ export function joinChunks(chunks, {
     forbiddenBySource,
     integrityByFile,
     sitemapIssues, searchIssues, canonicalIssues,
+    skipped,
     errors,
   };
 }
@@ -295,6 +319,11 @@ export function formatReport(r) {
   const out = [];
 
   for (const e of r.errors) out.push(`  ERROR  ${e}\n`);
+
+  // A cross-file check that did not run says so. Without this, a
+  // precondition quietly ceasing to hold reads as `0 integrity` -- the
+  // same thing the check prints when it ran and passed.
+  for (const s of r.skipped ?? []) out.push(`  WARN   ${r.label}: ${s}\n`);
 
   // The script prints bare walk paths; prefix the tree so a fused run
   // covering three trees says which one each finding came from.
@@ -417,10 +446,16 @@ export function findingsFor(r) {
       forbidden: forbiddenCount,
       integrity: integrityCount,
     },
+    // Skips ride along so --check-findings can assert a cross-file
+    // check ran, rather than only that it found nothing.
+    skipped: r.skipped ?? [],
     // Raw, before --no-fail is applied: the book pass reports its ten
     // broken links as failures here even though it never fails a build.
     linksFailed:     r.broken.length > 0 || forbiddenCount > 0,
-    integrityFailed: integrityCount > 0,
+    // An error means the check did not complete. formatReport counts it
+    // as an integrity failure and the process exits 2; omitting it here
+    // let --check-findings report `false` for a run that exited 2.
+    integrityFailed: integrityCount > 0 || r.errors.length > 0,
   };
 }
 
