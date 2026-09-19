@@ -96,6 +96,14 @@ function relFilesFor(rootStr, htmlFiles, redirectStubSet) {
 // Cross-file check: every .html file (except hardcoded exclusions and
 // redirect stubs) should appear in sitemap.xml.
 // Returns an array of issue strings, or null if sitemap.xml is absent.
+//
+// One thing this side cannot do, and the fused side can: a page carrying
+// `sitemap: false` or `search_exclude: true` is absent from the generated
+// file on purpose, and nothing in the built HTML says so. The build knows
+// because it still has the frontmatter and passes the generators' own
+// opt-out sets to the checker; a tree this build did not produce is just a
+// directory of HTML, so a deliberate omission and a bug look identical
+// here. Both checks are opt-in flags for that reason.
 function checkSitemapContents(rootStr, htmlFiles, redirectStubSet, basePath) {
   let xml;
   try { xml = fs.readFileSync(path.join(rootStr, "sitemap.xml"), "utf8"); } catch { return null; }

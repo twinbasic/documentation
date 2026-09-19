@@ -324,6 +324,18 @@ function stripHtmlSuffix(p) {
   return p.endsWith(".html") ? p.slice(0, -".html".length) : p;
 }
 
+// Bring a sitemap or search URL into deriveUrlPath's form. The
+// /index.html case has to come first: deriveUrlPath maps 'probe/index.html'
+// to '/probe/', so stripping only the extension would leave '/probe/index'
+// and report a page that is present as missing. sitemap.mjs strips
+// /index.html itself before emitting, so checkSitemap escaped this by
+// accident; checkSearch did not.
+function normalizeUrlPath(p) {
+  if (p === "/index.html") return "/";
+  if (p.endsWith("/index.html")) return p.slice(0, -"index.html".length);
+  return stripHtmlSuffix(p);
+}
+
 // URL-decode (sitemap entries percent-encode spaces and Unicode;
 // deriveUrlPath produces literal characters from the filename).
 function decodePath(p) {
@@ -783,11 +795,18 @@ export function settleFragments(pendingFragments, idsByTarget) {
 // All three take content the caller already has plus a list of
 // tree-relative POSIX paths, already filtered of redirect stubs. The
 // EXCLUDE set is part of each check's definition and stays here.
+//
+// checkSitemap and checkSearch also take `optOut`, a Set of rel paths
+// the corresponding generator was asked to skip -- `sitemap: false` and
+// `search_exclude: true` (plus, for search, a page with no title). The
+// rule each one enforces is "every page the generator was asked to
+// emit", not "every page", so the opt-out has to come from the
+// generator rather than being re-derived here.
 
 const EXCLUDE = new Set(["book.html", "404.html"]);
 
 // Every page (except the exclusions) should appear in sitemap.xml.
-export function checkSitemap(xml, relFiles, basePath) {
+export function checkSitemap(xml, relFiles, basePath, optOut = null) {
   // Extract <loc> paths, stripping the scheme+host prefix, any
   // --base-path prefix (e.g. '/twinBASIC-docs' from a GitHub Pages
   // subpath deploy), and trailing .html (tbdocs uses .html for pages
@@ -801,12 +820,13 @@ export function checkSitemap(xml, relFiles, basePath) {
       if (m2) siteRoot = m2[1];
     }
     const p = siteRoot ? url.slice(siteRoot.length) : url;
-    sitemapPaths.add(stripHtmlSuffix(decodePath(stripBasePath(p || "/", basePath))));
+    sitemapPaths.add(normalizeUrlPath(decodePath(stripBasePath(p || "/", basePath))));
   }
 
   const issues = [];
   for (const rel of relFiles) {
     if (EXCLUDE.has(path.posix.basename(rel))) continue;
+    if (optOut?.has(rel)) continue;
     const urlPath = deriveUrlPath(rel);
     if (!sitemapPaths.has(urlPath)) issues.push(`${rel}: sitemap-missing: ${urlPath}`);
   }
@@ -815,17 +835,18 @@ export function checkSitemap(xml, relFiles, basePath) {
 
 // Every page (except the exclusions) should have at least one entry in
 // search-data.json whose url matches the page's canonical path.
-export function checkSearch(searchData, relFiles, basePath) {
+export function checkSearch(searchData, relFiles, basePath, optOut = null) {
   // Strip fragment part, --base-path prefix, and .html suffix; some
   // pages without explicit permalink keep .html; URLs are
   // percent-encoded for spaces / Unicode.
   const searchPageUrls = new Set(
-    Object.values(searchData).map(e => stripHtmlSuffix(decodePath(stripBasePath((e.url ?? "").split("#")[0], basePath))))
+    Object.values(searchData).map(e => normalizeUrlPath(decodePath(stripBasePath((e.url ?? "").split("#")[0], basePath))))
   );
 
   const issues = [];
   for (const rel of relFiles) {
     if (EXCLUDE.has(path.posix.basename(rel))) continue;
+    if (optOut?.has(rel)) continue;
     const urlPath = deriveUrlPath(rel);
     if (!searchPageUrls.has(urlPath)) issues.push(`${rel}: search-missing: ${urlPath}`);
   }

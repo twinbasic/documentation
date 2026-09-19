@@ -189,6 +189,11 @@ function relTo(root, p) {
 // Merge the per-chunk reductions, settle the fragment references no
 // single chunk could decide, and run the three cross-file checks.
 //
+// `aux` also carries `sitemapOptOut` / `searchOptOut`: the rel paths
+// the two generators were asked to skip. Without them the first page to
+// use `sitemap: false` or `search_exclude: true` fails --check, even
+// though both keys are supported and one is documented.
+//
 // `aux` carries the content the cross-file checks need -- sitemap.xml
 // and search-data.json as the build wrote them, not as re-read from
 // disk. Checking the string the build emitted is checking the same
@@ -244,12 +249,18 @@ export function joinChunks(chunks, {
 
   let sitemapIssues = null, searchIssues = null, canonicalIssues = null;
   if (tree.crossFile.sitemap && aux.sitemapXml != null) {
-    sitemapIssues = checkSitemap(aux.sitemapXml, contentRels, basePath).sort();
+    sitemapIssues = checkSitemap(
+      aux.sitemapXml, contentRels, basePath, aux.sitemapOptOut
+    ).sort();
   }
   if (tree.crossFile.search && aux.searchJson != null) {
     let data = null;
     try { data = JSON.parse(aux.searchJson); } catch { data = null; }
-    if (data) searchIssues = checkSearch(data, contentRels, basePath).sort();
+    if (data) {
+      searchIssues = checkSearch(
+        data, contentRels, basePath, aux.searchOptOut
+      ).sort();
+    }
   }
   if (tree.crossFile.canonical) {
     const forCheck = new Map();

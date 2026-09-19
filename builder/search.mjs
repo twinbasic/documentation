@@ -64,6 +64,14 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
 // Each entry is `{ i, doc, title, content, url, relUrl, sourcePage }`.
 // `sourcePage` is the originating tbdocs page so callers (`_triage.mjs`,
 // `_diff.mjs`) can gate by `srcRel` against `accepted-divergences.mjs`.
+// The generator's two content skips, as a predicate: a page with no
+// title has nothing to index, and `search_exclude: true` is an explicit
+// opt-out.  The integrity check needs the same answer -- otherwise the
+// first page to use either key fails --check with no hint why.
+export function searchIncludes(page) {
+  return Boolean(page.frontmatter?.title) && page.frontmatter?.search_exclude !== true;
+}
+
 export function deriveSearchEntries(pages, site) {
   const headingLevel = site.config.search?.heading_level ?? 2;
   const baseurl = String(site.config.baseurl ?? "");
@@ -72,8 +80,7 @@ export function deriveSearchEntries(pages, site) {
 
   for (const page of pages) {
     const title = page.frontmatter?.title;
-    if (!title) continue;
-    if (page.frontmatter?.search_exclude === true) continue;
+    if (!searchIncludes(page)) continue;
     // Unlike the two skips above, this is not a content decision. No
     // renderedContent means the page's render result never arrived, and
     // quietly leaving it out of the index is exactly how a scheduling

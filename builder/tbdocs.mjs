@@ -921,13 +921,28 @@ const TASKS = {
       if (!state.checkTrees) return null;
       const { checkChunk, joinChunks, treeIndexFor, normalizeBasePath: normBase, TREES } =
         await import("./check.mjs");
+      const { sitemapIncludes } = await import("./sitemap.mjs");
+      const { searchIncludes }  = await import("./search.mjs");
 
       const stubs     = state.checkStubs ?? [];
       const stubRels  = new Set(stubs.map(s => s.destPath.replaceAll("\\", "/")));
-      const pageRels  = state.pages
-        .filter(p => p.frontmatter?.layout !== "book-combined")
-        .map(p => p.destPath.replaceAll("\\", "/"));
+      const contentPages = state.pages
+        .filter(p => p.frontmatter?.layout !== "book-combined");
+      const relOf     = p => p.destPath.replaceAll("\\", "/");
+      const pageRels  = contentPages.map(relOf);
       const relFiles  = [...pageRels, ...stubRels];
+
+      // The cross-file checks enforce "every page the generator was asked
+      // to emit", so they need the generators' own opt-out predicates --
+      // otherwise the first page carrying `sitemap: false` (documented in
+      // Pipeline-Stages.md) or `search_exclude: true` fails the build with
+      // no hint why.
+      const sitemapOptOut = new Set(
+        contentPages.filter(p => !sitemapIncludes(p)).map(relOf)
+      );
+      const searchOptOut = new Set(
+        contentPages.filter(p => !searchIncludes(p)).map(relOf)
+      );
 
       // Redirect stubs never went through flush -- writeRedirects and
       // writeOfflineRedirects emit them -- so they are one extra chunk
@@ -968,6 +983,8 @@ const TASKS = {
           aux: which === "online" ? {
             sitemapXml: writeAux?.sitemapStats?.xml ?? null,
             searchJson: writeAux?.searchStats?.json ?? null,
+            sitemapOptOut,
+            searchOptOut,
           } : {},
         });
       }
