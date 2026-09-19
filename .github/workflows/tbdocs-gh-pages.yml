@@ -47,7 +47,7 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v6
-      - name: Build with tbdocs
+      - name: Build and check links with tbdocs
         # --url + --baseurl together make canonical / og:url / sitemap
         # entries point at the actual deployment (e.g. on a fork that
         # deploys to kubao.github.io/twinBASIC-docs/, both bits move
@@ -59,41 +59,26 @@ jobs:
         # hotlinking a third party. A missing asset is a hard failure here,
         # naming the file to commit. ($CI already implies this; the flag
         # states it.) See builder/vendor-assets.mjs.
-        run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets
-      - name: Check links and site integrity
-        # Three passes run in parallel via /sep/:
-        #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
-        #      extensionless-URL behaviour.  --base-path strips the Pages baseurl
-        #      (e.g. `/twinBASIC-docs`) from absolute URLs before resolving.
-        #      Integrity checks (--check-html/a11y/ids/sitemap/search) run here.
-        #   2. Offline (_site-offline/): --forbid catches any surviving
-        #      https://docs.twinbasic.com/<path> link the offline rewrite missed
-        #      (bare root URL is exempt).  Integrity checks run here too (minus
-        #      sitemap/search -- the offline tree has neither).
-        #   3. Book (_site-pdf/book.html): --no-fail makes failures informational
-        #      (some links are not yet fully resolved).
-        run: >-
-          node scripts/check_links.mjs
-          --offline --include-fragments
-          --check-html --check-a11y --check-ids --check-remote-assets
-          --check-sitemap --check-search --check-canonical
-          --fallback-extensions html
-          --index-files 'index.html,.'
-          --base-path '${{ steps.pages.outputs.base_path }}'
-          --root-dir docs/_site
-          docs/_site
-          /sep/
-          --offline --include-fragments
-          --check-html --check-a11y --check-ids --check-remote-assets
-          --forbid 'https://docs.twinbasic.com'
-          --fallback-extensions html
-          --index-files 'index.html,.'
-          --root-dir docs/_site-offline
-          docs/_site-offline
-          /sep/
-          --offline --no-fail --include-fragments
-          --root-dir docs/_site-pdf
-          docs/_site-pdf/book.html
+        #
+        # --check runs the link and site-integrity check over the HTML the
+        # build already holds in worker memory, across all three trees,
+        # instead of writing them out and reading 230 MB back through
+        # scripts/check_links.mjs. Do NOT also add a check_links.mjs pass:
+        # it would check the same bytes a second time.
+        #
+        # It also removes a synchronisation point that used to be easy to
+        # get wrong. The standalone pass needed --base-path to match this
+        # step's --baseurl, in a different step, by hand; the fused check
+        # reads the baseurl off the config it just built with. Only the
+        # online tree gets a base path -- the offline tree's links are all
+        # relative after the rewrite.
+        run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --check
+      # Not a second pass over the site: a six-file synthetic tree carrying
+      # one fault of every kind, so scripts/check_links.mjs -- still the
+      # tool for a tree the build did not produce -- cannot rot unnoticed.
+      # ~0.3 s. See the same step in checks.yml.
+      - name: Verify the standalone link checker (check_links_diff.mjs)
+        run: node scripts/check_links_diff.mjs --case fixture --a script --b index
       # check_a11y.mjs injects a PATCHED axe bundle; verify the patch is still
       # value-preserving before trusting what it reports. See the same step in
       # checks.yml for why the fingerprint gate does not cover this.

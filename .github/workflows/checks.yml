@@ -51,47 +51,45 @@ jobs:
         # is the proven-working one in this repo: --install-deps apt-installs
         # the shared libraries Chromium needs, which requires root.
         run: sudo npx puppeteer browsers install chrome --install-deps
-      - name: Build with tbdocs
+      - name: Build and check links with tbdocs
         # --no-fetch-assets: CI must never download a referenced image. An
         # author who wrote the markdown but forgot to commit the file would
         # otherwise get a green build while the published site went on
         # hotlinking a third party. A missing asset is a hard failure here,
         # naming the file to commit. ($CI already implies this; the flag
         # states it.) See builder/vendor-assets.mjs.
-        run: node builder/tbdocs.mjs --src docs --no-fetch-assets
-      - name: Check links (check_links.mjs)
-        # Three passes run in parallel via /sep/:
-        #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
-        #      extensionless-URL behaviour.  No --base-path needed -- this
-        #      workflow builds without --baseurl (contrast jekyll-gh-pages.yml).
-        #      Integrity checks (--check-html/a11y/ids/sitemap/search) run here.
-        #   2. Offline (_site-offline/): --forbid catches any surviving
-        #      https://docs.twinbasic.com/<path> link the offline rewrite missed
-        #      (bare root URL is exempt).  Integrity checks run here too (minus
-        #      sitemap/search -- the offline tree has neither).
-        #   3. Book (_site-pdf/book.html): --no-fail makes failures informational
-        #      (some links are not yet fully resolved).
-        run: >-
-          node scripts/check_links.mjs
-          --offline --include-fragments
-          --check-html --check-a11y --check-ids --check-remote-assets
-          --check-sitemap --check-search --check-canonical
-          --fallback-extensions html
-          --index-files 'index.html,.'
-          --root-dir docs/_site
-          docs/_site
-          /sep/
-          --offline --include-fragments
-          --check-html --check-a11y --check-ids --check-remote-assets
-          --index-files 'index.html,.'
-          --fallback-extensions html
-          --forbid 'https://docs.twinbasic.com'
-          --root-dir docs/_site-offline
-          docs/_site-offline
-          /sep/
-          --offline --no-fail --include-fragments
-          --root-dir docs/_site-pdf
-          docs/_site-pdf/book.html
+        #
+        # --check runs the link and site-integrity check over the HTML the
+        # build already holds in worker memory, instead of writing three
+        # trees out and reading 230 MB of them back through
+        # scripts/check_links.mjs. Same findings -- that equivalence is
+        # gated by scripts/check_links_diff.mjs, run by hand when either
+        # implementation changes. Do NOT also add a check_links.mjs pass
+        # over _site/: it would check the same bytes a second time.
+        #
+        # It covers all three trees: _site/ (links, fragments, duplicate
+        # ids, well-formedness, remote <img src>, sitemap, search index,
+        # canonical URLs), _site-offline/ (the same minus sitemap and
+        # search, plus the forbidden-prefix rule that catches live-site
+        # links the offline rewrite missed), and _site-pdf/book.html
+        # (informational). A failing check never aborts the build -- a
+        # broken link still produces a site worth inspecting -- so the
+        # step fails on the exit code: 1 for link failures, 2 for
+        # integrity failures, 3 for both.
+        run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check
+      # The build above is the only pass over the site's HTML. This step is
+      # NOT a second one: it runs the differential harness against a
+      # six-file synthetic tree that carries one fault of every kind, so
+      # scripts/check_links.mjs -- still the tool for a tree the build did
+      # not produce, and the oracle the fused path is defined against --
+      # cannot rot unnoticed. ~0.3 s, no site files touched.
+      #
+      # The full script-vs-fused comparison over the real trees stays a
+      # manual gate (`check_links_diff.mjs --a script --b fused`): running
+      # it here would mean checking every page twice, which is exactly what
+      # folding the check into the build removed.
+      - name: Verify the standalone link checker (check_links_diff.mjs)
+        run: node scripts/check_links_diff.mjs --case fixture --a script --b index
       # check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
       # -26 % on a realistic page set -- see builder/PLAN-axe-perf.md), so the
       # patch has to be verified before its results are trusted. The patch
@@ -111,9 +109,9 @@ jobs:
       # saw. No browser, ~1 s.
       - name: Verify a11y sample coverage (pick_a11y_sample.mjs)
         run: node scripts/pick_a11y_sample.mjs --check
-      # Matches check.bat: the link check gates this, and a link failure
-      # short-circuits before the (slower) browser scan runs. Scans
-      # _site-offline/, whose relative asset paths actually resolve --
+      # Matches check.bat: the build's own link check gates this, and a
+      # link failure short-circuits before the (slower) browser scan runs.
+      # Scans _site-offline/, whose relative asset paths actually resolve --
       # _site/ uses root-absolute URLs that render unstyled here, making
       # every colour-contrast result meaningless.
       - name: Accessibility check (check_a11y.mjs)
