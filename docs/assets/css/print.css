@@ -81,11 +81,48 @@
 button.copy-code { display: none; }
 
 /* SVG inline controls are interactive chrome (zoom, download, copy);
-   hide them in the PDF.  Constrain the SVG to the page width and
-   scale text down so diagram labels don't dominate the page. */
+   hide them in the PDF.  Constraining the SVG to the page width is all
+   that is needed to keep diagram labels from dominating the page: a
+   diagram wider than the 170mm text column is scaled down to fit, and
+   that scales its labels with it.  Measured at this page size, four of
+   the five diagrams then set their labels BELOW body size on their own
+   (0.58x to 0.96x of 10.5pt); only toolchain-overview, which fits the
+   column at natural size, sits above it, at 1.14x.
+
+   There used to be a `.svg-container text { font-size: 75% }` here to
+   push that down further, and it must not come back.  Graphviz sizes
+   every node box to the text it measured and positions the label with
+   text-anchor="start" at an x computed for that size, so shrinking the
+   text alone leaves it undersized AND left of centre inside a box that
+   did not move -- by up to 15.6px, the worst misalignment of any
+   diagram in the book, against 1.4px without it.  It is the same defect
+   as letting Graphviz measure with the wrong font, arriving from the
+   stylesheet instead: see WIP.md, "Diagrams".
+
+   The `zoom` below is that lever, applied properly.  Graphviz authors labels
+   at 12pt, and on the web that is exactly the 16px body size, so a diagram at
+   natural size matches the prose beside it for free.  The book sets body text
+   at 10.5pt, so the same diagram comes out at 1.14x the prose -- which is why
+   toolchain-overview, the one diagram narrow enough (477pt) to render at
+   natural size in the 170mm column, looked oversized on the page.
+   10.5 / 12 = 0.875 restores the match.
+
+   `zoom`, not `font-size` and not `transform`: it scales geometry and labels
+   together, relative to the diagram's OWN size rather than the container's,
+   and unlike `transform` it changes the layout box, so paged.js still breaks
+   pages correctly.  A `max-width` percentage cannot express this -- it is
+   relative to the column, so it would also shrink the four diagrams that are
+   already scaled down to fit (measured: 0.96x -> 0.84x, 0.58x -> 0.51x).
+   Under `zoom` those four are untouched: they are wider than the column, so
+   `max-width: 100%` still decides their size. */
 .svg-controls { display: none; }
-.svg-container svg { max-width: 100%; height: auto; }
-.svg-container text { font-size: 75%; }
+.svg-container svg {
+  display: block;            /* with the auto margins below, centres a  */
+  margin-inline: auto;       /* diagram narrower than the text column   */
+  max-width: 100%;
+  height: auto;
+  zoom: 0.875;
+}
 
 
 @page {

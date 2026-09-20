@@ -293,8 +293,15 @@
       try {
         c.toBlob(function (b) {
           if (!b) return exportFailed("PNG export", "the image could not be encoded.");
-          if (action === "download-png") triggerDownload(b, filename + ".png");
-          else navigator.clipboard.write([new ClipboardItem({ "image/png": b })]);
+          if (action === "download-png") return triggerDownload(b, filename + ".png");
+          // The clipboard can refuse this -- an unfocused document and a
+          // denied permission both reject here -- and the rejection used to
+          // go nowhere, so the click looked like it had worked. Say so, the
+          // same way the SVG copy branch does.
+          navigator.clipboard.write([new ClipboardItem({ "image/png": b })])
+            .catch(function (err) {
+              exportFailed("PNG copy", "the clipboard refused the write (" + err.message + ").");
+            });
         }, "image/png");
       } catch (err) {
         exportFailed("PNG export", err && err.name === "SecurityError"

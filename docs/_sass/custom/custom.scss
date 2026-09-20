@@ -38,9 +38,50 @@
   }
 }
 
+// `width: 100%` stretched every diagram to the column regardless of its own
+// size, which made label size an accident of how wide Graphviz happened to
+// draw it: 1.16x body text on toolchain-overview (636px natural, blown up to
+// 736px) against 0.58x on the CEF Monaco diagram (1259px, shrunk to fit). A 2x
+// spread, with no typographic intent anywhere in it.
+//
+// Natural size is the right target, and not by coincidence: Graphviz writes
+// labels at `fontsize=12` in a space where 1 user unit is 1pt, and sizes the
+// root `<svg width="NNNpt">` to match -- so at natural size a label is 12pt,
+// which is 16px at 96dpi, which is this site's body size. Rendering 1:1 lands
+// on 1.00x exactly rather than approximately.
+//
+// `max-width` still shrinks anything too wide for the column, and that scales
+// geometry and labels together, so those stay legible-but-small rather than
+// misaligned. At mobile every diagram is capped anyway and this rule changes
+// nothing.
+// `display: block` + auto inline margins centre a diagram that is narrower
+// than the column. An SVG is inline-level by default, so it would otherwise
+// sit against the left edge with the shortfall pooled on the right, which
+// reads as a layout mistake rather than a small diagram. Diagrams that hit
+// `max-width` have no shortfall, so this changes nothing for them.
 .svg-container svg {
-  width: 100%;
+  display: block;
+  width: auto;
+  max-width: 100%;
   height: auto;
+  margin-inline: auto;
+}
+
+// Graphviz emits <text> with no fill attribute, so it inherits SVG's initial
+// black. That is fine for a node label -- those sit on the diagrams' light
+// amber fill in both themes -- but a cluster label and an edge label sit on
+// the page background, and black on the dark theme's background measures
+// 1.40:1. axe never reported it: its colour-contrast rule does not evaluate
+// SVG text, so the full-site sweep passes over these.
+//
+// currentColor tracks the body text colour, so each label reads correctly in
+// whichever theme without hardcoding either palette here -- the same thing
+// admonitions.scss does for its icons. Scoped to DIRECT children of the two
+// groups that sit on the background: node text is inside g.node and must keep
+// the dark ink its own light fill needs.
+.svg-container g.cluster > text,
+.svg-container g.edge > text {
+  fill: currentColor;
 }
 
 // WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container

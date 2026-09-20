@@ -9,6 +9,13 @@
 @rem passes. Refuse instead, naming build.bat.
 node scripts/check_tree_fresh.mjs
 @if errorlevel 1 goto :fail
+@rem Graphviz sizes its boxes from a width table; the browser paints the
+@rem text with a real font. Nothing in the build compares the two, so a
+@rem mismatch ships as a label hanging out of its box on a green build.
+@rem axe does not evaluate SVG <text> geometry either -- 27 labels were
+@rem overflowing on pages that had passed the full sweep.
+node scripts/check_dot_fit.mjs
+@if errorlevel 1 goto :fail
 node scripts/check_axe_patch_equiv.mjs
 @if errorlevel 1 goto :fail
 node scripts/pick_a11y_sample.mjs --check

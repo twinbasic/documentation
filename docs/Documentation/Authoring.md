@@ -99,9 +99,22 @@ The site ships its own fonts, so a page renders the same on every platform: **In
 
 Those two example glyphs are, deliberately, the only characters on the whole site that fall back --- so the ✔ and ⋮ above are being drawn by your system's symbol font right now, next to text that is not. That difference in weight and shape is the effect this section is about.
 
-Diagram exports carry the font with them. The Download / Copy SVG and PNG buttons above each diagram embed the typeface into the exported file, because an exported SVG has no access to the site's stylesheet and would otherwise render in whatever the viewer has installed. One consequence worth knowing: *Download PNG* and *Copy PNG* do not work on the two Mermaid diagrams, because the browser refuses to read back a canvas that has had HTML-in-SVG drawn into it. The buttons report that and point you at Download SVG.
+Diagram exports carry the font with them. The Download / Copy SVG and PNG buttons above each diagram embed the typeface into the exported file, because an exported SVG has no access to the site's stylesheet and would otherwise render in whatever the viewer has installed. All four buttons work on every diagram.
 
-**Do not hand-edit the `font-family` inside a Mermaid SVG.** Mermaid measures each label and sizes its node box to fit, so changing the face without re-measuring clips every label while the markup still looks correct. Re-export with `node scripts/render_mermaid.mjs`.
+**Do not hand-edit a diagram's `.svg`.** It is a build artifact: the `.dot` beside it is the source, and the next build overwrites your edit. Changing the face is the edit that looks most harmless and is not --- Graphviz sizes each box to the text it measured, so a diagram whose labels are painted in a font the layout never saw has text hanging outside its boxes. `check.bat` fails on that; see [Diagrams](#diagrams) below.
+
+## Diagrams
+
+A diagram is a Graphviz `.dot` file. Put it where it belongs: `docs/assets/images/dot/` if more than one page uses it, or in the `Images/` folder beside the page if only one does. The build renders an `.svg` next to it, inlines that into the page, and gives it the zoom and export controls. Both files belong in git.
+
+```
+docs/Tutorials/CEF/Images/MonacoArchitecture.dot     <-- you write this
+docs/Tutorials/CEF/Images/MonacoArchitecture.svg     <-- the build writes this
+```
+
+Name the font as the existing diagrams do --- copy the `node`, `edge` and `graph` blocks from one of them --- and let the build measure it. You do not need to do anything special for Inter: `builder/dot-metrics.mjs` installs its real widths into Graphviz before layout, and `check.bat` asserts afterwards that nothing overflowed.
+
+Two things to leave alone. Node text is deliberately dark against each node's light fill in both themes; only the cluster and edge labels follow the page's text colour, because those are the ones sitting on the page background. And a diagram needs alt text like any other image --- the whole diagram gets one accessible name, so describe what it shows, not what shapes it contains.
 
 ## Images
 

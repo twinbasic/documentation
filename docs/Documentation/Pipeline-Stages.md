@@ -157,7 +157,7 @@ Joins the two CSS strings, writes `assets/css/just-the-docs-combined.css` to bot
 
 ### `dot` (worker)
 
-Handler calls `regenerateDot(srcRoot)`. Traverses `<srcRoot>/assets/images/dot/*.dot`, compares mtimes against `.svg` siblings, calls `Graphviz.load()` once then `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends new SVG descriptors to `state.staticFiles`. The WASM render is fast (sub-millisecond per diagram after the ~50 ms one-time `Graphviz.load()`); runs on a worker so the init hides behind the main spine.
+Handler calls `regenerateDot(srcRoot)`. Traverses `<srcRoot>` for `*.dot` at any depth (skipping underscore-prefixed directories, which hold build output), compares mtimes against `.svg` siblings, calls `Graphviz.load()` once, installs Inter's width table via `applyInterMetrics()`, then `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends new SVG descriptors to `state.staticFiles`. The WASM render is fast (sub-millisecond per diagram after the ~50 ms one-time `Graphviz.load()`); runs on a worker so the init hides behind the main spine.
 
 ### `highlighterInit` (main)
 

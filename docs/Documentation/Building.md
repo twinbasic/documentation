@@ -77,9 +77,10 @@ A clean `build.bat && check.bat` --- link integrity and accessibility both --- i
 
 ## Graphviz/DOT diagrams
 
-Diagrams live as `.dot` source files under `docs/assets/images/dot/` and are referenced from markdown as `.svg`:
+Diagrams live as `.dot` source files and are referenced from markdown as `.svg`. A `.dot` anywhere under `docs/` is picked up, so a diagram can sit beside the page that uses it:
 
-    ![Diagram](/assets/images/dot/<name>.svg)
+    ![Diagram](/assets/images/dot/<name>.svg)      <!-- shared -->
+    ![Diagram](Images/<name>.svg)                  <!-- beside its page -->
 
 `tbdocs` regenerates each `.svg` from its `.dot` sibling when the SVG is missing or older than its source --- editing a `.dot` by one character regenerates the SVG on the next build. Both files belong in git; the `.dot` is the canonical source, the `.svg` is the build artifact.
 
@@ -90,7 +91,7 @@ The renderer calls `@hpcc-js/wasm-graphviz` directly: one WASM module load (~50 
 - **Setup failures** (`@hpcc-js/wasm-graphviz` not installed, WASM load fails) emit a one-line warning, retain the existing on-disk SVGs, and let the build exit 0 --- a fresh checkout without `npm install` still builds against the committed SVGs.
 - **Content failures** (broken DOT syntax, render throws) emit the error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and flip `process.exitCode = 1` so CI catches the bad diagram.
 
-In serve mode the watcher ignores writes to `assets/images/dot/*.svg`. The `.dot` is the source of truth; the `.svg` is the build artifact the renderer emits back under `srcRoot`. Without the filter, each `.dot` edit would fire two rebuilds (one on the edit, one on the SVG write) and the browser would reload twice for one user change.
+In serve mode the watcher ignores any `.svg` that has a `.dot` sibling. The `.dot` is the source of truth; the `.svg` is the build artifact the renderer emits back under `srcRoot`. Without the filter, each `.dot` edit would fire two rebuilds (one on the edit, one on the SVG write) and the browser would reload twice for one user change.
 
 ## Deploying to docs.twinbasic.com
 

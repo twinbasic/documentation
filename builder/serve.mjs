@@ -11,6 +11,7 @@
 
 import { createServer } from "node:http";
 import { readFile, stat, watch } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { runBuild, createWorkerPool } from "./tbdocs.mjs";
 
@@ -137,19 +138,23 @@ function createStaticHandler(destRoot) {
 const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_serve", "_serve-offline", "_serve-pdf", "_pdf", "node_modules", ".git"];
 const IGNORED_BASENAME_RE = /^\.|~$|\.tmp$|\.swp$|^4913$/;
 
-function shouldRebuild(filename) {
+function shouldRebuild(filename, srcRoot) {
   if (!filename) return false;
   const segs = filename.split(/[/\\]/);
   if (IGNORED_PREFIXES.includes(segs[0])) return false;
   if (IGNORED_BASENAME_RE.test(segs.at(-1) ?? "")) return false;
-  // Graphviz renders <name>.dot → <name>.svg back under srcRoot/assets/
-  // images/dot/. The .dot is the source of truth; the .svg is the
-  // build artifact. Without this filter, each .dot edit fires the
-  // watcher twice -- once on the .dot save, once on the .svg write
-  // mid-rebuild -- so the user sees a redundant second reload after
-  // the first.
-  if (segs[0] === "assets" && segs[1] === "images" && segs[2] === "dot"
-      && (segs.at(-1) ?? "").endsWith(".svg")) {
+  // Graphviz renders <name>.dot → <name>.svg back under srcRoot, beside the
+  // source. The .dot is the source of truth; the .svg is the build artifact.
+  // Without this filter, each .dot edit fires the watcher twice -- once on
+  // the .dot save, once on the .svg write mid-rebuild -- so the user sees a
+  // redundant second reload after the first.
+  //
+  // Keyed on "has a .dot sibling" rather than on a fixed folder, because a
+  // diagram may live beside the page that uses it. That is also strictly
+  // more accurate than the path test it replaces: a hand-authored .svg in
+  // assets/images/dot/ used to be ignored, and no longer is.
+  if (srcRoot && (segs.at(-1) ?? "").endsWith(".svg")
+      && existsSync(path.join(srcRoot, filename).replace(/\.svg$/, ".dot"))) {
     return false;
   }
   return true;
@@ -233,7 +238,7 @@ export async function runServe(opts) {
   (async () => {
     try {
       for await (const event of watcher) {
-        if (!shouldRebuild(event.filename)) continue;
+        if (!shouldRebuild(event.filename, srcRoot)) continue;
         changedFiles.add(event.filename.replaceAll("\\", "/"));
         schedule();
       }

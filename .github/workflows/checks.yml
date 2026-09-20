@@ -125,6 +125,18 @@ jobs:
       # the point, and the deploy workflow has a site to ship.
       - name: Verify the build's own link checker (check_links_diff.mjs)
         run: node scripts/check_links_diff.mjs --case fixture-built --case fixture-built-offline --a script --b fused
+      # Graphviz sizes each node box from a width table; the browser paints
+      # the label with a real font. Nothing in the build compares the two, so
+      # a mismatch ships as text hanging outside its box on a green build --
+      # which is how 27 labels across three diagrams went out, through a full
+      # accessibility sweep, unreported. axe does not evaluate SVG <text>
+      # geometry either.
+      #
+      # Safe on CI's font set: it loads Inter from the committed .woff2 by
+      # @font-face rather than relying on an installed face, so unlike the
+      # target-size rules it measures the same here as on a dev box.
+      - name: Verify DOT diagram fit (check_dot_fit.mjs)
+        run: node scripts/check_dot_fit.mjs
       # check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
       # -26 % on a realistic page set -- see builder/PLAN-axe-perf.md), so the
       # patch has to be verified before its results are trusted. The patch
