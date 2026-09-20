@@ -36,7 +36,7 @@ The rework documented here is internal. The build moved from a push-style schedu
 
 ## Architecture at a glance
 
-One entry point, ~28 modules, three output trees, N+1 threads.
+One entry point, ~34 modules, three output trees, N+1 threads.
 
 `runBuild()` allocates a `SharedArrayBuffer` holding the scheduling state (task status, dependency counts, successor edges), spawns one worker per available CPU, sends each worker a reference to the SAB, and lets the workers and the main thread compete for ready tasks. There is no central dispatcher; each thread scans the SAB, claims a task it is eligible to run, executes it, and updates the SAB so the next task becomes claimable. The main thread participates on equal footing for tasks marked `runOnMain` --- mostly the ones that mutate the master `pages[]` array or coordinate filesystem layout.
 
@@ -81,6 +81,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | File | Role |
 |---|---|
 | [`dot.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/dot.mjs) | Regenerates stale `.dot` → `.svg` via the WASM build of Graphviz (`@hpcc-js/wasm-graphviz`). |
+| [`dot-metrics.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/dot-metrics.mjs) | Installs Inter's real advance widths into the Graphviz WASM module before any layout runs, so a diagram's boxes are sized for the font the browser will actually paint. See [Diagram geometry](#diagram-geometry). |
 | [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs) | Dart Sass over the vendored just-the-docs SCSS. Split across `scssLight` + `scssDark` worker tasks, joined on main. |
 | [`vendor-assets.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/vendor-assets.mjs) | Downloads any YouTube poster frame or GitHub user-attachment image the markdown references and that is not already committed, into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. Idempotent; the artifacts are committed like the generated DOT SVGs. CI never downloads --- a referenced but uncommitted asset is a hard error there. |
 
@@ -111,6 +112,14 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`offline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline.mjs) | Offline-tree writer + just-the-docs.js AST patcher + `search-data.js` wrapper. |
 | [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) | Pure rewrite helpers (`deriveOfflinePageCached`, CSS url() rewrite, site-path set construction). Worker-safe; no node:fs dependency. |
 | [`pdf.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/pdf.mjs) | `_site-pdf/` writer: `book.html` + `tb-highlight.css` + `print.css` + referenced images. |
+
+**Verification**
+
+| File | Role |
+|---|---|
+| [`link-check.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/link-check.mjs) | The pure core: HTML in, findings out. No filesystem traversal and no CLI, which is what lets the build's fused check and the standalone [`scripts/check_links.mjs`](Tools#check-links) share one implementation. |
+| [`check.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/check.mjs) | Build-side plumbing: the `TREES` table, per-chunk `checkChunk`, the `joinChunks` merge, report formatting, and the `--check-audit-index` tree-index audit. |
+| [`check-tree.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/check-tree.mjs) | `deriveTreeRels` --- every relative path the build believes it emitted into a tree. The check's existence oracle is built from this rather than from a `readdir`, which is why the audit exists to keep it honest. |
 
 **Dev mode and reporting**
 
@@ -160,7 +169,7 @@ The SAB holds a single `notify` Int32 used as a generation counter. Workers that
 
 ## SAB memory layout
 
-A single `SharedArrayBuffer` contains every Int32 array the scheduler needs. The sizes are static: `MAX_TASKS = 512`, `MAX_LANES = 64`, `MAX_EDGES = 2048`, total roughly 140 KB. The arrays a reader is most likely to care about:
+A single `SharedArrayBuffer` contains every Int32 array the scheduler needs. The sizes are static: `MAX_TASKS = 512`, `MAX_LANES = 64`, `MAX_EDGES = 2048`, total 174,100 bytes (170 KB). The arrays a reader is most likely to care about:
 
 - `status[i]` --- the task lifecycle enum above.
 - `depCount[i]` --- remaining predecessor count. Decremented atomically on each predecessor's completion.
@@ -174,12 +183,13 @@ The complete layout, allocation helper, and the `readTaskMeta` / `writeTaskMeta`
 
 ## Task DAG by section
 
-The pipeline has 28 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into four sections that also organise the discussion below:
+The pipeline has 31 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections that also organise the discussion below:
 
 - **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`, `vendorAssets`
 - **Spine**: `nav`, `dot`, `buildInit`, `markdownInit`, `deriveSitemap`, `deriveRedirects`, `resolveBookChapters`
 - **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `renderEnvInit`, `render:i`, `renderJoin`
 - **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `writeAux`, `writeOffline`, `writePdf`
+- **Check**: `linkJoin`, `checkBook`, `checkReport` --- present on every ordinary build, because `build.bat` always passes `--check-audit-index`
 
 The full task DAG, with every cross-section edge, follows:
 
@@ -242,8 +252,8 @@ dispatch ┬→ render:0 ─┬→ flush:0 ─┐
 
 - `renderEnvInit` (worker, `on_demand` + `unique_per_worker`) --- per-lane render environment setup: unpack the shared SAB, reconstruct the link-table Maps, instantiate the worker's own markdown-it. Declared as a `perWorkerDeps` on every `render:i` so the first render claim per lane pulls it in.
 - `render:i` (worker, dynamic) --- the per-chunk compute. Each one runs five sub-stages over its slice of `state.pages`: `renderPhase` (markdown-it body render) → `computeChunkSeo` (per-page SEO fields) → `templatePhase` (just-the-docs layout wrap) → `deriveOfflinePageCached` (offline HTML rewrite) → `deriveSearchEntries` (per-section search entries). Returns a delta containing `renderedContent` per page, plus the per-chunk search entries.
-- `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it.
-- `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData`. Its dep count is set to N by `dispatch.submit()`.
+- `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it. **When `--check` is on, the link and integrity check runs here too**, over the chunk's just-written HTML --- both trees' final strings are already decoded and in worker memory at that moment, so the check never writes ~270 MB out to read it back.
+- `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData` and `writePdf`. `dispatch.submit()` sets its dep count to N *and* rewrites its `expected` list with every chunk name; the dep count alone is not a barrier over the submits. See [Pipeline Stages](Pipeline-Stages#renderjoin-main-on_demand).
 - `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `writePdf`.
 
 ### Write

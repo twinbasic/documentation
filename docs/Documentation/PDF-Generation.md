@@ -39,10 +39,10 @@ node book/render-book.mjs <input.html> -o <output.pdf>
 `book.bat` runs the standard production invocation:
 
 ```batch
-node ..\book\render-book.mjs _site-pdf\book.html -o "_pdf\twinBASIC Book.pdf" ^
-     --outline-tags h1,h2,h3,h4 ^
-     --additional-script ..\perf\detach-pages.js
+node book\render-book.mjs docs\_site-pdf\book.html -o "docs\_pdf\twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script perf\detach-pages.js
 ```
+
+Every path there is relative to the repository root, which is where `book.bat` lives and what its `@pushd "%~dp0"` selects.
 
 Always run `build.bat` first to populate `_site-pdf/`.
 

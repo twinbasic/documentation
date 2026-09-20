@@ -37,6 +37,7 @@ Every page opens with a YAML frontmatter block. The keys that matter:
 - **`nav_order`** --- optional integer that orders the page among its siblings in the sidebar.
 - **`redirect_from`** --- optional. List any earlier URL the page has moved from, so existing links keep resolving.
 - **`vba_attribution`** --- set to `true` only on pages adapted from the VBA-Docs source; see [Attribution](#attribution).
+- **`nav_exclude`**, **`sitemap: false`**, **`search_exclude: true`** --- optional opt-outs, each from exactly one thing: the sidebar, `sitemap.xml`, and the search index. They are independent; a page that should be unlisted everywhere sets all three. The build's own link check honours the last two, so a page that opts out is not then reported as missing from the index it opted out of.
 
 A minimal reference-page header:
 
