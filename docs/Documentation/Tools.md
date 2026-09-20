@@ -14,19 +14,31 @@ One-line-per-tool reference for every executable in the documentation repository
 {:toc}
 ## Batch wrappers under docs/
 
-Each batch file uses `@pushd "%~dp0"` to run from the repository root regardless of where it is invoked from. POSIX equivalents are listed in the per-batch entry below.
+Each batch file uses `@pushd "%~dp0"` to run from the repository root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Nothing else in the repository is Windows-specific: `tbdocs` and every gate is a Node script, and CI runs them on `ubuntu-latest`.
 
 ### build.bat
 
     build.bat [extra tbdocs flags]
 
-Renders the documentation. Wraps `node builder\tbdocs.mjs --src docs` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`. Build time on the current tree is ~3 seconds end-to-end.
+POSIX:
+
+    node builder/tbdocs.mjs --src docs --check-audit-index [extra tbdocs flags]
+
+Renders the documentation. Wraps `node builder/tbdocs.mjs --src docs --check-audit-index` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`.
+
+`--check-audit-index` is the part of that invocation most easily lost in transcription, and losing it is silent: it implies `--check`, so a bare `node builder/tbdocs.mjs --src docs` writes the same three trees, runs no link check at all, and reports success --- a check that never ran has nothing to report.
+
+There is no fixed build time worth quoting here, because every run prints its own (`Done in …`, with the page and static-file counts). What that number tracks is page count, core count, and which passes ran: the check, the offline mirror and the PDF tree are each part of the total, and `--no-check`, `--no-offline` and `--no-pdf` each remove one.
 
 ### serve.bat
 
-    serve.bat
+    serve.bat [extra tbdocs flags]
 
-Starts a long-lived dev process. Wraps `node builder\tbdocs.mjs --src docs --serve` and forwards extra arguments through `%*`. After an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each change, and a browser connected to the page auto-reloads via SSE on each successful rebuild. Offline and PDF passes are skipped each rebuild. Ctrl+C exits cleanly. **Only failures (4xx, 5xx, server exceptions) are logged** --- successful requests are silent.
+POSIX:
+
+    node builder/tbdocs.mjs --src docs --serve [extra tbdocs flags]
+
+Starts a long-lived dev process. Wraps `node builder/tbdocs.mjs --src docs --serve` and forwards extra arguments through `%*`. After an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each change, and a browser connected to the page auto-reloads via SSE on each successful rebuild. Offline and PDF passes are skipped each rebuild. Ctrl+C exits cleanly. **Only failures (4xx, 5xx, server exceptions) are logged** --- successful requests are silent.
 
 ### check.bat
 
@@ -41,13 +53,34 @@ The gates that need a browser, or a second pass over the built tree. Link and in
 5. [`scripts/pick_a11y_sample.mjs --check`](#pick-a11y-sample) --- verifies the sample still covers every markup construct the site uses.
 6. [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan.
 
-Requires `build.bat` to have run first.
+Requires `build.bat` to have run first. POSIX --- six commands, not one, chained so the run stops where `check.bat` would:
+
+    node scripts/check_publish_policy.mjs \
+      && node scripts/check_tree_fresh.mjs \
+      && node scripts/check_dot_fit.mjs \
+      && node scripts/check_axe_patch_equiv.mjs \
+      && node scripts/pick_a11y_sample.mjs --check \
+      && node scripts/check_a11y.mjs
+
+One of the six does not mean the same thing locally as it does in CI, on any platform. [`check_a11y.mjs`](#check-a11y)'s `target-size` rule measures rendered boxes, and an inline element's measured height is the content area of whatever `system-ui` resolves to on the machine running the scan --- which is why both workflows install `fonts-liberation` and the site's padding is calibrated against the smallest face in that band. A local pass does not predict the runner's, and it errs in the unhelpful direction: larger metrics clear controls that CI then fails. See [Building and Deployment](Building#fonts-liberation-installed-on-purpose) for the measurements.
 
 ### book.bat
 
     book.bat
 
+POSIX:
+
+    mkdir -p docs/_pdf
+    node book/render-book.mjs docs/_site-pdf/book.html \
+      -o "docs/_pdf/twinBASIC Book.pdf" \
+      --outline-tags h1,h2,h3,h4 \
+      --additional-script perf/detach-pages.js
+
 Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC Book.pdf`. Calls `node book\render-book.mjs` (see [below](#bookrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `book.bat` and in `.github/workflows/tbdocs-gh-pages.yml`.
+
+The `mkdir` is not housekeeping. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so a missing `docs/_pdf/` fails with `ENOENT` at the very end of the render, after the whole page-breaking pass has already run. `book.bat` and the deploy workflow both create it first, for that reason.
+
+Two of `book.bat`'s own steps have no equivalent in those commands. It checks that `docs\_site-pdf\book.html` exists and names `build.bat` as the fix, where `render-book.mjs` refuses a missing input with `input not found:` and the resolved path and nothing else; and it runs `npm install` itself when `node_modules\puppeteer` is absent, which the bare invocation will not --- run `npm ci` first if the renderer cannot find puppeteer.
 
 ## CLI tools
 

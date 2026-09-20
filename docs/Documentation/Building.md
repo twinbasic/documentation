@@ -15,7 +15,7 @@ The day-to-day workflow for editing documentation: requirements, building, servi
 
 ## Development environment
 
-The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). The day-to-day commands below are Windows batch files that wrap the generator; their POSIX equivalents are listed alongside.
+The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). The day-to-day commands below are Windows batch files that wrap the generator. They are the only wrappers in the repository --- there is no shell-script counterpart --- so [On macOS and Linux](#posix-equivalents) gives the command each one runs.
 
 1. Ensure the [requirements](#requirements) below are met.
 
@@ -29,15 +29,54 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 - **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root contains the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
 - **Chromium** is required for four things: rendering the PDF book (`book.bat`), and three of `check.bat`'s six steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont; the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`); and the accessibility scan (`scripts/check_a11y.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat` and `book.bat` do.
 
+### On macOS and Linux
+{: #posix-equivalents }
+
+Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all six gates are Node programs, and CI runs them on `ubuntu-latest`. The four wrappers are the only part that is, and what follows is what each of them runs.
+
+Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from any directory. The commands below have no equivalent of that, so **run them from the repository root**. It is not a formality: `tbdocs`'s `--src docs`, `check_publish_policy.mjs`'s default source root, and every path handed to `render-book.mjs` are all resolved against the working directory.
+
+| Wrapper | Runs |
+|---|---|
+| `build.bat [flags]` | `node builder/tbdocs.mjs --src docs --check-audit-index [flags]` |
+| `serve.bat [flags]` | `node builder/tbdocs.mjs --src docs --serve [flags]` |
+| `check.bat` | six scripts in a fixed order, below |
+| `book.bat` | a `mkdir`, then one `render-book.mjs` invocation, below |
+
+`--check-audit-index` is the part most easily dropped in transcription, and dropping it is silent --- see [Building](#building) below for what it costs. Anyone who types `build.bat` gets the link check without thinking about it; anyone who types the underlying command has to include it themselves.
+
+`check.bat` is six separate scripts rather than one, each stopping the run if it fails. The order is cheapest-first, so a failure stops the run before the expensive gates have cost anything --- the accessibility scan at the end is by a wide margin the slowest of the six:
+
+    node scripts/check_publish_policy.mjs \
+      && node scripts/check_tree_fresh.mjs \
+      && node scripts/check_dot_fit.mjs \
+      && node scripts/check_axe_patch_equiv.mjs \
+      && node scripts/pick_a11y_sample.mjs --check \
+      && node scripts/check_a11y.mjs
+
+`book.bat` has one step that is invisible from the command it ends with. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so `docs/_pdf/` has to exist first --- otherwise the render fails with `ENOENT` at the very last moment, after the whole page-breaking pass has already run. The deploy workflow does the same `mkdir` before its render, for the same reason:
+
+    mkdir -p docs/_pdf
+    node book/render-book.mjs docs/_site-pdf/book.html \
+      -o "docs/_pdf/twinBASIC Book.pdf" \
+      --outline-tags h1,h2,h3,h4 \
+      --additional-script perf/detach-pages.js
+
+Two of `book.bat`'s own steps have no equivalent above. It checks that `docs\_site-pdf\book.html` exists and names `build.bat` as the fix, where `render-book.mjs` refuses a missing input with `input not found:` and the resolved path and nothing else. And it runs `npm install` itself when `node_modules\puppeteer` is absent --- run `npm ci` first if the renderer cannot find puppeteer.
+
+One difference is not about paths at all, and it is the one that matters most: **a local accessibility pass is weaker than CI's, on every platform.** axe's `target-size` rule measures rendered boxes, and an inline element's measured height is the content area of whatever `system-ui` resolves to on the machine running the scan. Both workflows install `fonts-liberation` so the runner measures with the smallest face in that band, and the site's padding is calibrated against the smallest --- so a machine with larger metrics passes controls that the runner then fails. See [`fonts-liberation`, installed on purpose](#fonts-liberation-installed-on-purpose) for the measurements.
+
 ## Building
 
 To render the documentation from `.md` files into the `_site/` (online), `_site-offline/` (offline mirror), and `_site-pdf/` (sparse PDF source) folders:
 
     build.bat
 
-or directly:
+or directly, from the repository root:
 
-    node builder\tbdocs.mjs --src docs
+    node builder/tbdocs.mjs --src docs --check-audit-index
+
+`--check-audit-index` is what `build.bat` passes, and it is not decoration: it implies `--check`, and without it the build produces the same three trees while running no [link check](#checking-link-integrity) whatsoever.
 
 A single `tbdocs` run produces all three trees. The `also_build_offline` and `also_build_pdf` keys in `_config.yml` toggle the sibling outputs; the `--no-offline` and `--no-pdf` flags do the same from the command line if you only want `_site/`.
 
