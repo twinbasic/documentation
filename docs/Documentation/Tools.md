@@ -32,12 +32,13 @@ Starts a long-lived dev process. Wraps `node builder\tbdocs.mjs --src docs --ser
 
     check.bat
 
-The gates that need a browser, or a second pass over the built tree. Link and integrity checking is not among them any more --- that moved into `build.bat` (see [tbdocs](#tbdocs)). Four steps, each stopping the run if it fails:
+The gates that need a browser, or a second pass over the built tree. Link and integrity checking is not among them any more --- that moved into `build.bat` (see [tbdocs](#tbdocs)). Five steps, each stopping the run if it fails:
 
-1. `scripts/check_tree_fresh.mjs` --- refuses a tree older than the sources that produced it. Scanning a stale tree reports a pass for the previous build.
-2. `scripts/check_axe_patch_equiv.mjs` --- verifies the vendored axe source patch still produces identical colour values.
-3. `scripts/pick_a11y_sample.mjs --check` --- verifies the sample still covers every markup construct the site uses.
-4. [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan.
+1. [`scripts/check_tree_fresh.mjs`](#check-tree-fresh) --- refuses a tree older than the sources that produced it. Scanning a stale tree reports a pass for the previous build.
+2. [`scripts/check_dot_fit.mjs`](#check-dot-fit) --- re-renders every committed diagram with the real webfont and fails if a label sits outside its box.
+3. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+4. [`scripts/pick_a11y_sample.mjs --check`](#pick-a11y-sample) --- verifies the sample still covers every markup construct the site uses.
+5. [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan.
 
 Requires `build.bat` to have run first.
 
@@ -45,14 +46,20 @@ Requires `build.bat` to have run first.
 
     book.bat
 
-Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC Book.pdf`. Calls `node book\render-book.mjs` (see [below](#bookrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `book.bat` and in `.github/workflows/jekyll-gh-pages.yml`.
+Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC Book.pdf`. Calls `node book\render-book.mjs` (see [below](#bookrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `book.bat` and in `.github/workflows/tbdocs-gh-pages.yml`.
 
 ## CLI tools
 
 ### tbdocs --- node builder/tbdocs.mjs
 {: #tbdocs }
 
-Entry point for the static site generator. `build.bat` invokes it as `node builder\tbdocs.mjs --src docs`; CI invokes it the same way.
+Entry point for the static site generator. Every caller adds flags to the bare `--src docs`, and no two agree, so take the invocation from the caller rather than from memory:
+
+| Caller | Invocation |
+|---|---|
+| `build.bat` | `--src docs --check-audit-index` (plus anything passed through) |
+| `checks.yml` (PR checks) | `--src docs --no-fetch-assets --check-audit-index` |
+| `tbdocs-gh-pages.yml` (deploy) | the same, plus `--url` and `--baseurl` from the Pages environment |
 
 Full invocation:
 
@@ -126,13 +133,17 @@ Online link crawler for the deployed site. Starts at `<start-url>`, GETs every s
     node scripts/check_a11y.mjs [--root-dir <path>] [--theme light|dark|both] [--viewport desktop|mobile|both]
                                 [--stock-axe] [--minified]
 
-Automated accessibility scan of the built site, and the last of `check.bat`'s four steps. Loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against thirteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- the page list is derived rather than hand-maintained, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) is what keeps it representative. The scan uses the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, and `wcag22aa` rule tags, plus the `heading-order` best-practice rule. All five WCAG tags must be listed because axe matches tags literally, with no version rollup --- a rule tagged only `wcag21aa` does not match `wcag22aa`, even though WCAG 2.2 AA is a superset of 2.1 AA. Exits 1 if any page has a violation and 2 on an internal error; incomplete (needs-review) results are reported but do not fail the run.
+Automated accessibility scan of the built site, and the last of `check.bat`'s five steps. Loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against thirteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- 60 audits in all. The page list is derived rather than hand-maintained, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) is what keeps it representative.
+
+**This script is the reporting front end, not the scan.** What the scan *is* --- the page list, the themes and viewports, the blocked requests, the axe run options, the vendored source patches and the state audits --- lives in [`scripts/lib/axe-scan.mjs`](#axe-scan), which `check_a11y.mjs`, `sweep_a11y.mjs` and `check_a11y_fingerprint.mjs` all share. Change the scan there, not here. The scan uses the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, and `wcag22aa` rule tags, plus the `heading-order` best-practice rule. All five WCAG tags must be listed because axe matches tags literally, with no version rollup --- a rule tagged only `wcag21aa` does not match `wcag22aa`, even though WCAG 2.2 AA is a superset of 2.1 AA. Exits 1 if any page has a violation and 2 on an internal error; incomplete (needs-review) results are reported but do not fail the run.
 
 | Flag | Effect |
 |---|---|
 | `--root-dir <path>` | Tree to scan. Default: `docs/_site-offline`. |
 | `--theme light\|dark\|both` | Which palette(s) to test. Default: `both`. |
 | `--viewport desktop\|mobile\|both` | Which viewport(s) to test (`desktop` = 1280×900, `mobile` = 375×812). Default: `both`, so each page is scanned four times. |
+| `--stock-axe` | Inject the unmodified axe bundle instead of the patched one. **Run this first if a result ever looks wrong** --- it says in one command whether the source patch is implicated. |
+| `--minified` | Inject `axe.min.js`. The patched path needs the unminified bundle, so this and `--stock-axe` go together when reproducing a stock baseline. |
 
 Three details are essential and easy to break. It scans **`_site-offline/`, not `_site/`**: the online tree's root-absolute asset URLs (`/assets/css/…`) resolve to nothing under `file://`, so every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass --- the offline tree uses relative asset paths and renders for real. It scans **each page in both themes**, because dark mode is a separate palette (applied via `[data-theme=dark]`) and a light-mode pass says nothing about it. And it **blocks the search index** (`search-data.js` + `lunr.min.js`) while scanning: every page pulls in ~3.2 MB of index that never reaches the DOM axe walks, so aborting it cuts the run from ~27 s to ~9 s with identical results. `just-the-docs.js` is deliberately not blocked --- it installs the search combobox ARIA, and blocking it would make axe see less. Requires `build.bat` to have produced an up-to-date `_site-offline/`.
 
@@ -158,6 +169,72 @@ Differential harness for the link checker. There are two implementations of one 
 Run it after touching `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`. It builds the site itself, so both sides look at the same tree. It is deliberately not in `check.bat`: the script side costs a few seconds, which is the whole saving of having folded the check into the build.
 
 Most of its cases compare empty against empty on a healthy site, so two of them are synthetic: `fixture`, a hand-written tree with one fault of every kind, and `fixture-built`, the same idea built by `tbdocs` from `test/fixtures/check-src` --- which is the only way the build's own checker can be held to it. `--self-test` runs the reference implementation's own regression guards and then diffs it against a deliberately corrupted side, failing unless the difference is reported.
+
+### scripts/lib/axe-scan.mjs
+{: #axe-scan }
+
+Not a command --- the shared module that **defines** the accessibility scan, imported by [`check_a11y.mjs`](#check-a11y), [`sweep_a11y.mjs`](#sweep-a11y) and [`check_a11y_fingerprint.mjs`](#check-a11y-fingerprint). It holds `SAMPLE_PAGES`, `THEMES`, `VIEWPORTS`, `STATE_AUDITS`, `BLOCKED_REQUESTS`, `AXE_RUN_OPTIONS`, `SOURCE_PATCHES` and the `SCHEMES` registry, plus the `runMatrix` / `buildMatrix` drivers. Any change to *what the scan runs* belongs here and must go through the [fingerprint gate](#check-a11y-fingerprint) first.
+
+`STATE_AUDITS` deserves a note: a closed `<details>` subtree is `notRendered`, so axe never walks it. Entries here are layered onto the page × theme × viewport matrix and apply a DOM mutation from `PAGE_STATES` before the audit, which is how the section-links disclosure gets audited open as well as closed. **Every `PAGE_STATES` function must assert it found what it expected** --- a state that silently does nothing degrades into a second audit of the default page: slower, still green, covering nothing.
+
+### scripts/check_tree_fresh.mjs
+{: #check-tree-fresh }
+
+    node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
+
+First of `check.bat`'s gates. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
+
+### scripts/check_dot_fit.mjs
+{: #check-dot-fit }
+
+    node scripts/check_dot_fit.mjs [--verbose]
+
+Renders every committed diagram with the real webfont and fails if a label sits outside the box Graphviz drew for it. Graphviz lays out boxes from a width table while the browser paints text with an actual font --- two measurements of the same string that nothing inside the build compares. When they disagree the SVG is still well-formed and the build still green; the only symptom is a label hanging past its edge. Twenty-seven labels across three diagrams shipped that way, on pages that had passed the full accessibility sweep, because axe does not evaluate SVG `<text>` geometry either. `builder/dot-metrics.mjs` fixed the cause; this proves it stayed fixed. Needs a browser, which is why it lives in `check.bat` rather than the build. Run it after touching any `.dot`, `builder/dot-metrics.mjs`, or `builder/inter-metrics.json`.
+
+### scripts/check_axe_patch_equiv.mjs
+{: #check-axe-patch-equiv }
+
+    node scripts/check_axe_patch_equiv.mjs [--patch NAME]
+
+Value-equivalence check for the vendored axe source patches. Builds the same colours under the stock and patched bundles and compares every derived value `color-contrast` consumes. This is the companion to the [fingerprint gate](#check-a11y-fingerprint), and both are needed: the fingerprint gate compares `incomplete` as a rule-id *set*, so a colour error that shifted contrast ratios without flipping any pass/fail classification would sail straight through it. Run it before adopting a new `SOURCE_PATCHES` entry and after **every** axe-core upgrade --- the patches are pinned to the bundle's current text. Exits 0 equivalent, 1 a value differs, 2 harness error.
+
+### scripts/check_a11y_fingerprint.mjs
+{: #check-a11y-fingerprint }
+
+    node scripts/check_a11y_fingerprint.mjs --list
+    node scripts/check_a11y_fingerprint.mjs --candidate <scheme> [--baseline <scheme>]
+                                            [--patches <name>] [--unminified]
+                                            [--root-dir <path>] [--pages <list>]
+                                            [--theme <t>] [--viewport <v>] [--json]
+
+The gate for any change to *what the scan runs*. axe is the site's correctness oracle, which makes it dangerous to tune: a change can make axe see **less** and still report a clean pass. That nearly shipped once --- blocking `just-the-docs.js` looked like a 130 ms win and quietly dropped the colour-contrast node count on one page from 54 to 2. This runs the full page × theme × viewport matrix twice, once under each of two named schemes from `axe-scan.mjs`'s registry, against one build in one process, and diffs the findings audit by audit (violations by `ruleId:nodeCount`, incomplete by rule-id set).
+
+Two limits worth knowing. It compares a candidate against a baseline produced by that same scheme's element set, so it **cannot** detect a change that stops auditing elements entirely --- anything touching viewport, visibility or request blocking has to be argued from source instead. And it compares *which* findings axe produces, never their shape, so a scheme that passes every audit can still crash the reporter. Necessary, not sufficient. Run `--baseline production --candidate production` as an A/A control after touching the matrix.
+
+### scripts/sweep_a11y.mjs
+{: #sweep-a11y }
+
+    node scripts/sweep_a11y.mjs [--theme <t>] [--viewport <v>] [--filter <substr>]
+                                [--limit N] [--resume] [--report] [--out FILE]
+                                [--root-dir DIR] [--stock-axe] [--recycle-every N]
+
+The full-site accessibility sweep: every page, both themes, both viewports --- 3,476 audits, roughly 20 minutes. The thirteen-page sample exists because this is too slow for a commit gate, but the sample can only report on constructs it carries, and when the sample was six hand-picked pages this sweep found **six violation classes on 54 pages**, every one in a construct the sample could not see. Run it after any change that moves type metrics or page structure, and when adding a construct family to [`pick_a11y_sample.mjs`](#pick-a11y-sample). Note it audits every page with disclosures **closed** only; the open-state coverage is the sample scan's `STATE_AUDITS`.
+
+### scripts/build_fonts.py
+{: #build-fonts }
+
+    python -m pip install "fonttools[woff]"
+    python scripts/build_fonts.py
+
+Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream releases (SHA-256 verified), pinning the optical-size axis and keeping `wght` variable. Development tooling only: the `.woff2` files are committed like the generated DOT SVGs, and `build.bat` needs neither Python nor a network connection. **Regenerating Inter means regenerating the diagram metrics too** --- see below.
+
+### scripts/build_dot_metrics.mjs
+{: #build-dot-metrics }
+
+    node scripts/build_dot_metrics.mjs            # regenerate
+    node scripts/build_dot_metrics.mjs --check    # fail if stale
+
+Measures Inter's advance widths in a browser and writes `builder/inter-metrics.json`, the table `builder/dot-metrics.mjs` installs into Graphviz before any layout runs. The widths are measured from the committed `.woff2` files rather than read out of the font binary, because the browser's shaped advance is the number the layout has to match. Development tooling; the JSON is committed and the build never runs the generator. Run it after [`build_fonts.py`](#build-fonts) touches Inter --- forgetting is not silent, but it surfaces as [`check_dot_fit.mjs`](#check-dot-fit) failing rather than as anything naming the metrics.
 
 ### scripts/convert_em_dash_separators.py
 
