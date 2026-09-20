@@ -36,6 +36,11 @@
 //   node scripts/pick_a11y_sample.mjs --propose
 //   node scripts/pick_a11y_sample.mjs --census
 //   node scripts/pick_a11y_sample.mjs --propose --sweep perf/results/a11y-sweep.jsonl
+//   node scripts/pick_a11y_sample.mjs --propose --fresh   # ignore the current set
+//
+// Also parsed:
+//   --root-dir DIR   tree to take the census from (default docs/_site-offline)
+//   --budget MS      audit-time budget --propose may spend on the sample
 
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { resolve, join, relative, sep } from "node:path";

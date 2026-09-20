@@ -51,8 +51,9 @@
 // Integrity checks (--check-html, --check-a11y, --check-ids,
 // --check-sitemap, --check-search, --check-remote-assets):
 //   These share the existing htmlparser2 SAX parse pass -- no
-//   second file read.  Exit code 2 signals integrity-only failures
-//   so CI can distinguish "broken link" from "malformed HTML".
+//   second file read.  Exit codes are a bitwise pair so CI can tell
+//   the two apart: 0 clean, 1 link failures, 2 integrity failures,
+//   3 both.  --no-fail forces 0.
 
 import * as fs from "node:fs";
 import * as os from "node:os";

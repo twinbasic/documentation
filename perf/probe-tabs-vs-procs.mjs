@@ -32,7 +32,7 @@ import puppeteer from 'puppeteer';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const mode = process.argv[2];
 if (mode !== 'tabs' && mode !== 'procs') {
-  console.error('usage: node tabs-vs-procs.mjs tabs|procs [--shards N]');
+  console.error('usage: node perf/probe-tabs-vs-procs.mjs tabs|procs [--shards N]');
   process.exit(2);
 }
 let shardCount = 2;

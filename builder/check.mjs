@@ -2,7 +2,7 @@
 //
 // `tbdocs --src docs --check` reaches the same conclusions
 // scripts/check_links.mjs does, against the HTML the build already has
-// in worker memory rather than against 230 MB read back off disk. The
+// in worker memory rather than against ~270 MB read back off disk. The
 // two front ends share builder/link-check.mjs; this module is only the
 // build-side plumbing:
 //

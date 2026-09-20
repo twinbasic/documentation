@@ -2,10 +2,13 @@
 //
 // Usage: node builder/tbdocs.mjs [--src <path>] [--dest <path>]
 //        [--baseurl <prefix>] [--url <origin>] [--dry-run]
-//        [--check] [--check-audit-index] [--serve] [--port <N>]
+//        [--no-offline] [--no-pdf] [--tolerate-missing-images]
+//        [--fetch-assets | --no-fetch-assets] [--profile-offline]
+//        [--check | --no-check] [--check-audit-index]
+//        [--check-findings <path>] [--serve] [--port <N>]
 //
 // --check runs the link + integrity check over the HTML the build
-// already holds in worker memory, instead of writing 230 MB out and
+// already holds in worker memory, instead of writing ~270 MB out and
 // reading it back through scripts/check_links.mjs. Findings are
 // identical -- scripts/check_links_diff.mjs is the gate that says so.
 // A failing check sets the exit code but never aborts the build: a

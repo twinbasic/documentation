@@ -29,6 +29,12 @@
 //   node scripts/sweep_a11y.mjs --resume              # continue an interrupted sweep
 //   node scripts/sweep_a11y.mjs --report              # re-print the summary, no browser
 //
+// Also parsed, and not shown above because they are rarely needed:
+//   --root-dir DIR       tree to scan       (default docs/_site-offline)
+//   --out FILE           JSONL destination  (default perf/results/a11y-sweep.jsonl)
+//   --stock-axe          inject the unmodified bundle, bypassing SOURCE_PATCHES
+//   --recycle-every N    restart the browser every N audits, to cap memory growth
+//
 // Requires build.bat to have produced an up-to-date docs/_site-offline/.
 
 import {
