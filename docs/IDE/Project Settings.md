@@ -33,7 +33,7 @@ Listed below are the project settings, in the same order as they appear in the P
 
 See [Packages](../../../Features/Packages/)
 
-![432410211-d9f1e4d9-1805-47e5-93aa-251151b4e914](../Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png)
+![The Project Settings dialog open over the IDE, with hand-drawn red numbers marking the route: 1 on the toolbar settings gear, 2 on the Library References heading, 3 on the Available Packages tab. That tab lists the published packages with tick boxes and Library Symbol, Version and Publisher columns.](../Features/Packages/Images/e749e10f-e361-4f15-a977-d756fcb3b5dd.png)
 
 ## Compiler Warnings
 

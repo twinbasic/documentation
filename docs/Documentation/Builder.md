@@ -194,7 +194,7 @@ The pipeline has 31 named static tasks plus 2N dynamic ones (N render chunks + N
 
 The full task DAG, with every cross-section edge, follows:
 
-![Task DAG of the SAB pull scheduler](/assets/images/dot/scheduler-dag.svg)
+![A top-to-bottom dependency graph of the build tasks. Seeds with no predecessor sit at the top; discover feeds the spine, the spine feeds dispatch, and dispatch fans out the per-chunk render and flush work that the write and check tasks then consume. Node colour and a one-letter tag say whether a task runs on the main thread or on a worker, and dashed arrows mark the per-lane and data-only dependencies.](/assets/images/dot/scheduler-dag.svg)
 
 **[M]** runs on the main thread; **[W]** runs on a worker. Solid arrows are normal predecessor edges (`expected`); dotted arrows are per-lane dependencies (`perWorkerDeps`) or implicit data dependencies between tasks that share state through `SharedState`.
 
