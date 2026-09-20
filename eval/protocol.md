@@ -99,6 +99,12 @@ contradiction reported as three-way that was four-way. Every one was caught by a
 reading the source instead of trusting the brief, and each correction is recorded in the
 review it came from.
 
+**Tell agents not to background a `tbdocs` build.** It prints a long timing line, so a
+backgrounded run whose stdout nobody drains fills the pipe buffer and blocks on the write
+*after* finishing its work --- leaving a process that has already written correct output,
+burned its usual few seconds of CPU, and will never exit. Three accumulated in one fix pass
+before anyone noticed. Run builds in the foreground, or drain the output.
+
 **Examples are the part readers copy, and nothing tests them.** Two of `Extending.md`'s three
 worked examples were defective --- one duplicated a shipped renderer rule and weakened its
 accessibility fix, one rendered an empty element because the body was consumed by a line-skip
