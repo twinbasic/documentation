@@ -1089,6 +1089,59 @@ A task-graph scheduler / parallelisation pass is designed in [builder/PLAN-sched
 
 **Before adding a fan-out to the task graph, read [why a dep count of zero does not mean the submits have run](builder/PLAN-sab-pull-scheduler.md#a-dep-count-of-zero-does-not-mean-the-submits-have-run).** A worker posts its result and *then* decrements its successors' dependency counts in shared memory, so a barrier's count can reach zero while results are still queued and the `submit()` calls that merge them into build state have not run --- the shared counter orders the work, not the state. A dynamic barrier must therefore list every chunk task in its `expected`, even when its own `execute()` ignores the inputs; that list is the only thing the scheduler checks before it lets the barrier proceed. `renderJoin` went without it and silently dropped ~6 pages from `search-data.json` on about one build in three, because the index is built by flattening a `new Array(N)` and `Array.prototype.flat()` skips holes without reporting anything. Two silent failures combining into one invisible one. Both halves are fixed, and every skip on the chunk-merge path that used to tolerate a missing piece now refuses to continue --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). Keep it that way: on this path, "the piece is missing" is a bug, not a case to handle.
 
+**`search-data.json` used to differ between two builds of the same commit** ---
+545 of 3,724 entries, every time --- and the cause was not in the scheduler at
+all, which is why it survived the fix above. `discover()` fills `pages` from
+inside a `Promise.all`, so a page is pushed when its `readFile` resolves, not in
+`allFiles` order. `pages.sort(byName)` is stable, and Jekyll's sort key is the
+*basename*, so every tied basename kept that I/O completion order --- and ~111
+folder-style classes are all named `index.md`, so the ties are not rare. The
+chunking, and therefore the flattened index, reordered run to run. `byName` now
+breaks ties on `srcRel`; since `allFiles` is sorted by full path, that
+reproduces exactly the input order the old comment already claimed was in
+effect. Two builds of one commit are now byte-identical except for
+`BuildInfo.html` and `gantt.svg`, which record build timings and cannot be
+anything else.
+
+### A hung build times out and says where it hung
+
+**A task that a worker claims and never finishes wedges the whole graph in
+silence.** Its successors' dep counts never drop, `_remaining` never reaches
+zero, the scheduler's promise never settles, and the process sits there with its
+last log line on screen --- no error, no exit code, nothing to grep. Nothing in
+the SAB protocol can notice, because the scheduler is waiting on a message that
+is not coming.
+
+`Scheduler` now watches for that: if no task completes for `--stall-timeout`
+seconds (default **120**, `0` disables), it prints what was outstanding and
+fails the build. The default is deliberately generous --- the longest single task
+here is worker cold boot at ~1.6 s, so a loaded CI box may be an order of
+magnitude slower than the dev box without being called stalled.
+
+The report splits the outstanding tasks three ways, because listing them
+together buries the two names that matter under a dozen that do not:
+
+- **Claimed by a worker that never returned** --- the cause. For a `render:i` or
+  `flush:i` chunk it also prints the chunk's source pages, via an optional
+  `describe()` on the task def that nothing but this report reads. "render:33
+  never returned" is not actionable; the six paths under it are, because the
+  fault is nearly always one page's content.
+- **Runnable, but nothing picked it up** --- including the `F_PIN_TO_PRED` case,
+  which is worth spelling out: a pinned `flush:i` can only run on the lane its
+  `render:i` ran on, so when that lane is the wedged one the task is runnable and
+  permanently unrunnable at once. Unlabelled it reads as a second, unrelated
+  fault.
+- **Blocked on a predecessor** --- the consequence, with the missing input names.
+
+Two details worth knowing. `Worker.terminate()` *does* kill a thread spinning
+inside a regex, so the abort really does end the process rather than adding a
+second hang --- verified against the real fault. And under `--serve` the pool
+outlives a rebuild, so a wedged worker would poison every later build (the
+per-worker tasks wait on every lane); the stall error carries a `stalled` flag
+and `serve.mjs` replaces the whole pool when it sees one. Replacing just the
+wedged lane would mean identifying it, and the SAB records the lane a task
+*completed* on, not the one that claimed it.
+
 Folding `check.bat`'s gates into that same graph is designed in [builder/PLAN-checks.md](builder/PLAN-checks.md). Phase A, the link checker, is **implemented**: extraction runs inside `flush`, where both trees' final HTML is already in worker memory, so the build no longer writes ~270 MB out only to read it back and re-parse it. The `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are follow-ons, seeded with measurements and open questions but not yet designed.
 
 Historical engineering notes from the Jekyll era --- the original build pipeline, the HTML-compress plugin, the per-phase optimisation passes that preceded the JS port, the migration notes, and the Phase 11 parity-update retrospective --- live in [WIP.OldJekyll.md](WIP.OldJekyll.md).
@@ -1097,7 +1150,8 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 
 - `build.bat` — runs `node builder\tbdocs.mjs --src docs --check-audit-index` (which implies `--check`) and produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output. `--check` adds ~1.7 s and runs the link + integrity check over the HTML while it is still in worker memory; `build.bat --no-check` gets a plain build.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
-- `check.bat` — the gates that need a browser or a second pass over the built tree: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`, which needs neither and goes first), a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`.
+- `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`. ~37 s.
+- `test.bat` — the tests the *toolchain* has to pass, none of which read a page: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~6 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
@@ -1111,7 +1165,21 @@ After a batch of changes, verify the site builds clean and all links resolve:
 build.bat && check.bat
 ```
 
-On the dev box that is ~4 s of build against ~23 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker got folded into the build's task graph, what it cost and what it saved; the axe follow-ons are designed there but not implemented.
+On the dev box that is ~4 s of build against ~37 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker got folded into the build's task graph, what it cost and what it saved; the axe follow-ons are designed there but not implemented.
+
+**If the change touched `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, run `test.bat` as well** --- another ~6 s. It is separate because none of its gates read a page, so a change confined to `docs/` cannot alter any of their outcomes:
+
+```sh
+build.bat && check.bat && test.bat
+```
+
+### What belongs in test.bat rather than check.bat
+
+**The split is by what a gate interrogates, not by what it happens to open.** `check_axe_patch_equiv.mjs` loads a built page, but only because its probe needs some document to run inside --- what it tests is the axe source patch, and it would be worth running against an empty `docs/`. That is the test: a new gate belongs in `test.bat` if it would still mean something with no documentation in the tree.
+
+Two gates that pre-date the split moved into `test.bat` when it was created, and moving them was the point: leaving them behind would have made the boundary an exception list rather than a rule. `check_publish_policy.mjs` plants its own probes and reads nothing under `docs/`; `check_axe_patch_equiv.mjs` is the case above. Their comments and this file say `test.bat` now --- older notes under `builder/PLAN-*.md` still say `check.bat`, and are historical.
+
+**Both CI workflows run every one of these scripts as its own step, unconditionally**, and always did --- CI never invoked the `.bat` files. So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
 
 **The link and integrity check runs inside the build.** `build.bat` passes `--check-audit-index`, which implies `--check`, and the check walks the HTML on the worker lanes that produced it -- both trees' final strings are already decoded and in memory at `flush()`, so the ~270 MB the two trees weigh is never written out only to be read back. It also audits the tree index the build derives from its own records against what landed on disk -- the one direction the two-checker comparison structurally cannot see, since a spurious entry makes the oracle answer "exists" for a path that 404s in production. It catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), duplicate ids, remote `<img src>`, badly nested tags, sitemap and search-index gaps, canonical mismatches, and (via a forbidden-prefix rule on the offline tree) any extracted link that still points at the live docs site after the offlinify rewrite. A clean `build.bat && check.bat` is the bar for "ready to commit".
 
@@ -1211,7 +1279,7 @@ assertion is the other one, and no build over a clean tree can make it, so
 against named probes --- a `.bak`, a `.pem`, a `.docx`, a frontmatter-less `.md`,
 a `Thumbs.db` --- plus the reverse (a `.png`, a `.PNG`, a `.woff2`, `CNAME` must
 still publish, or a policy that refuses everything would also report a clean
-sweep). No browser, no built tree, ~40 ms. It runs first in `check.bat` and in
+sweep). No browser, no built tree, ~40 ms. It runs first in `test.bat` and in
 both CI workflows.
 
 ```sh
@@ -1222,6 +1290,93 @@ node scripts/check_publish_policy.mjs
 the point** --- the cost is paid once, by the person who knows they are adding it,
 instead of being paid silently by whoever drops a key file into `docs/` three
 years from now.
+
+### The regex-safety gate
+
+[scripts/check_regex_safety.mjs](scripts/check_regex_safety.mjs) parses every
+`.mjs` under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` with acorn,
+pulls out the regex literals, and refuses any that can backtrack exponentially.
+In `test.bat` and both CI workflows; ~5 s, no browser, no built tree.
+
+```sh
+node scripts/check_regex_safety.mjs           # the gate
+node scripts/check_regex_safety.mjs --census  # full classification, by kind
+node scripts/check_regex_safety.mjs --self-test
+```
+
+**An exponential regex does not fail a build, it stops one.** `VOID_TAGS_RE` in
+[builder/render.mjs](builder/render.mjs) spelled a void tag's attribute list as
+`(?:\s+[^>/]+...)*`. `[^>/]` matches a space and so does `\s`, so one run of
+attribute text could be partitioned in exponentially many ways, and every
+partition got tried whenever the match failed --- which it did on any `/` the
+quoted-value alternative did not cover. Two alt strings in `docs/` contained one,
+`Line/Column` and `/Packages/WinDevLib`, and each hung a render worker outright:
+two of 152 chunks stayed CLAIMED, the barriers behind them never reached a dep
+count of zero, and the build printed its last line and sat there. Three such
+processes accumulated in one session before the cause was found.
+
+Nothing existing could have caught it. The regex looks ordinary, the corpus
+passed for as long as no page happened to contain the trigger, and the failure
+was a hang rather than an error. This gate asks the question of the regex itself,
+so it does not wait for content to ask it.
+
+**Two things it found immediately, and both are the argument for keeping it.**
+`STANDALONE_INLINE_HTML_RE`, sitting in the same file, was exponential too and
+nobody knew: `[^>]*\/?` spells an optional slash that `[^>]` already covers, so
+each tag parses two ways and an html_block of *n* of them parses 2^n ways ---
+measured at 22 tags in 106 ms, rising ~4x per two added tags. And the *first*
+fix for `VOID_TAGS_RE` --- narrowing the name class to `[^\s>/]+`, which does
+stop both real alt strings --- was **still exponential**, because `[^\s>/]` still
+matches `=`, `"` and `'`, so an attribute could be consumed either by the name
+class or by the quoted-value alternative. That is the same 2^n one level down,
+and hand-reasoning had pronounced it fixed. The witness is `<BR\tG=` followed by
+`""\t"=''\t=='/">'\tG=` repeated: 186 characters took 97 ms.
+
+Both regexes now match to the first `>` and nothing else ---
+`<(br|hr|...)\b([^>]*)>` --- with the trailing `/` removed afterwards by
+`stripSelfClose()`. `[^>]*` and the `>` after it share no character, so there is
+nothing to partition. Verified byte-identical against every void tag in the built
+site (4,137 distinct tags) and against a full two-tree build diff.
+
+> **Do not reintroduce a per-attribute sub-pattern in either of them.** It was
+> written that way, fixed that way, and was wrong both times.
+
+**It gates on exponential only.** recheck also reports polynomial blowup, and 40
+of this repo's 178 literals are polynomial --- nearly all the ordinary
+`<tag[^>]*>` shape, degree 2, on bounded input. A gate that failed on those would
+fail on day one against 40 findings, and a gate that fails on day one gets
+switched off. Exponential is the class that turns a content edit into an
+unbounded hang.
+
+Three implementation details are load-bearing:
+
+- **The self-test probes ride along inside the normal run**, not behind a
+  `--self-test` nobody remembers. Eight probes, both directions: the three
+  regexes this repo actually shipped (including the incomplete fix), `^(a+)+$`,
+  and four that must *not* be flagged. A green line saying "no exponential regex"
+  is otherwise indistinguishable from a gate that has stopped detecting.
+- **Parallelism comes from separate processes.** Importing `recheck` spawns one
+  long-lived agent and feeds it requests one at a time, so awaiting several
+  checks concurrently in a single process buys nothing --- measured at 42.5 s for
+  concurrency 1 against 37.5 s for 16. Sharding across the CPUs, each shard its
+  own process and its own agent, is what takes it from ~19 s to ~4 s.
+- **recheck 4.5.0 cannot find its own backend on Windows**, and the failure is
+  quiet. It locates both `recheck-jar` and `recheck-<platform>-<arch>` by
+  stripping `/package.json` with a forward-slash regex from a path Node returns
+  with backslashes, so the strip does nothing and it tries to execute
+  `package.json`: an "Invalid or corrupt jarfile" line, then `spawn EFTYPE`, then
+  a silent fall back to the pure-JS implementation --- correct, but roughly a
+  hundred times slower. The script resolves the binary properly and sets
+  `RECHECK_BIN` itself. If no native backend is found it says so in its summary
+  line rather than just being slow. Both backends classify all eight probes
+  identically, so the fallback is slower, not weaker.
+
+Honest limitations, neither of which should be papered over: a regex recheck
+cannot decide comes back `unknown`, and an unknown is an *unchecked* regex rather
+than a passing one (currently 0; `--census` prints them). And the scan covers
+regex **literals** only --- a pattern built from a string at runtime is invisible
+to it, so `--census` reports how many `new RegExp(...)` constructions exist to
+keep that blind spot a number rather than a surprise.
 
 ### Remote-asset vendoring
 
@@ -1235,7 +1390,7 @@ It then runs [scripts/check_tree_fresh.mjs](scripts/check_tree_fresh.mjs), which
 
 - It scans **`_site-offline/`, not `_site/`**. The online tree references its assets with root-absolute URLs (`/assets/css/…`), which resolve to nothing under `file://` — every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass. The offline tree uses relative asset paths and renders for real.
 - It scans each page **in both themes and at two viewports** (`--theme`, `--viewport`). Dark mode is a separate stylesheet with its own palette, and defects such as horizontally scrolling code blocks only appear once the layout is narrow enough to overflow. The dark half is not a formality: the dark compilation re-emits every JTD base rule under `html[data-theme=dark]`, which raises its specificity from (0,0,1) to (0,1,2) -- so a root-level single-class rule in `custom/custom.scss` that overrides a bare element selector **applies in light mode and silently does not in dark**. That is exactly how the footnote-underline fix shipped half-broken, and only the dark pass caught it. Prefix such rules with `.main-content` to clear the bar.
-- It injects a **patched** axe bundle. `SOURCE_PATCHES['plain-color-fields']` in `axe-scan.mjs` replaces `Color2`'s six WeakMap-emulated `#private` fields with plain own properties, worth **-26 %** across a realistic page set and **-30 %** on large pages. Patches need the unminified bundle, which costs ~6 ms more per page to inject. Two obligations come with it: every axe-core upgrade re-runs both `check_a11y_fingerprint.mjs --patches plain-color-fields` and `check_axe_patch_equiv.mjs` (CI and `check.bat` run the second for you), and if a result ever looks wrong, re-run with `--stock-axe` first -- that injects the unmodified bundle and says in one command whether the patch is implicated.
+- It injects a **patched** axe bundle. `SOURCE_PATCHES['plain-color-fields']` in `axe-scan.mjs` replaces `Color2`'s six WeakMap-emulated `#private` fields with plain own properties, worth **-26 %** across a realistic page set and **-30 %** on large pages. Patches need the unminified bundle, which costs ~6 ms more per page to inject. Two obligations come with it: every axe-core upgrade re-runs both `check_a11y_fingerprint.mjs --patches plain-color-fields` and `check_axe_patch_equiv.mjs` (CI and `test.bat` run the second for you), and if a result ever looks wrong, re-run with `--stock-axe` first -- that injects the unmodified bundle and says in one command whether the patch is implicated.
 - It **blocks the search index** (`search-data.js` + `lunr.min.js`) via request interception — see `BLOCKED_REQUESTS`. Every page pulls in ~3.4 MB of index that never touches the DOM axe walks; loading it was 18.9 s of a 27.1 s run, and aborting it cuts the scan to ~9 s with byte-identical results (every rule id and node count, violations and incomplete alike, across every page/theme/viewport combination -- 24 of them when that was measured, 60 audits today). Do **not** extend the block list to `just-the-docs.js` — it installs the search combobox ARIA, and blocking it makes axe see *less* (colour-contrast nodes on `Select-Case` drop 54 → 2), silently masking coverage.
 
 **A local pass on the geometry rules used not to be authoritative, and the reason is worth keeping in mind.** `target-size` measures rendered boxes, and an inline element's measured height is its font's content area --- so it moved with whatever `system-ui` resolved to. Measured at the mobile h3 size: Segoe UI 19px, Inter / Verdana / Tahoma 17px, Arial 16px, Liberation Sans / DejaVu Sans / Roboto 15px. A heading link topped up with `padding-block: 3px` therefore cleared the 24px floor by 0.8px on Windows and missed it on CI's Linux fonts, and the local scan reported a clean pass throughout.

@@ -36,12 +36,12 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 - **Node.js 22+** for `tbdocs` itself.
 - **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root contains the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
-- **Chromium** is required for four things: rendering the PDF book (`book.bat`), and three of `check.bat`'s six steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont; the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`); and the accessibility scan (`scripts/check_a11y.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat` and `book.bat` do.
+- **Chromium** is required for four things: rendering the PDF book (`book.bat`), two of `check.bat`'s four steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont, and the accessibility scan (`scripts/check_a11y.mjs`) --- and one of `test.bat`'s three, the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat`, `test.bat` and `book.bat` do.
 
 ### On macOS and Linux
 {: #posix-equivalents }
 
-Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all six gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The four wrappers are the only part that is, and what follows is what each of them runs.
+Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all seven gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
 
 Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from any directory. The commands below have no equivalent of that, so **run them from the repository root**. It is not a formality: `tbdocs`'s `--src docs`, `check_publish_policy.mjs`'s default source root, and every path handed to `render-book.mjs` are all resolved against the working directory.
 
@@ -49,19 +49,24 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
 |---|---|
 | `build.bat [flags]` | `node builder/tbdocs.mjs --src docs --check-audit-index [flags]` |
 | `serve.bat [flags]` | `node builder/tbdocs.mjs --src docs --serve [flags]` |
-| `check.bat` | six scripts in a fixed order, below |
+| `check.bat` | four scripts in a fixed order, below |
+| `test.bat` | three scripts in a fixed order, below |
 | `book.bat` | a `mkdir`, then one `render-book.mjs` invocation, below |
 
 `--check-audit-index` is the part most easily dropped in transcription, and dropping it is silent --- see [Building](#building) below for what it costs. Anyone who types `build.bat` gets the link check without thinking about it; anyone who types the underlying command has to include it themselves.
 
-`check.bat` is six separate scripts rather than one, each stopping the run if it fails. The order is cheapest-first, so a failure stops the run before the expensive gates have cost anything --- the accessibility scan at the end is by a wide margin the slowest of the six:
+`check.bat` is four separate scripts rather than one, each stopping the run if it fails. The order is cheapest-first, so a failure stops the run before the expensive gates have cost anything --- the accessibility scan at the end is by a wide margin the slowest of the four:
 
-    node scripts/check_publish_policy.mjs \
-      && node scripts/check_tree_fresh.mjs \
+    node scripts/check_tree_fresh.mjs \
       && node scripts/check_dot_fit.mjs \
-      && node scripts/check_axe_patch_equiv.mjs \
       && node scripts/pick_a11y_sample.mjs --check \
       && node scripts/check_a11y.mjs
+
+`test.bat` is three more, in the same cheapest-first order:
+
+    node scripts/check_publish_policy.mjs \
+      && node scripts/check_regex_safety.mjs \
+      && node scripts/check_axe_patch_equiv.mjs
 
 `book.bat` has one step that is invisible from the command it ends with. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so `docs/_pdf/` has to exist first --- otherwise the render fails with `ENOENT` at the very last moment, after the whole page-breaking pass has already run. The deploy workflow does the same `mkdir` before its render, for the same reason:
 
@@ -152,7 +157,7 @@ Which one applies is a decision about the file rather than about the build ---
 `bundle_extra` syntax and says why it is the right answer far more often than
 widening `SOURCE_EXTENSIONS`, which re-blesses every stray file of that type.
 
-`check.bat` runs [`scripts/check_publish_policy.mjs`](Tools#check-publish-policy)
+`test.bat` runs [`scripts/check_publish_policy.mjs`](Tools#check-publish-policy)
 first, and it exists because a clean build proves only half of this. "Nothing in
 `docs/` is currently refused" is also what a list widened until it refuses
 nothing would report. The self-test asserts the other half against named probes
@@ -164,11 +169,48 @@ everything would also report a clean sweep.
 
     check.bat
 
-[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. Five cheaper gates run first and stop the run if they fail: the [publish-allowlist self-test](#what-the-build-refuses-to-publish), a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), the axe source-patch verification, and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses.
+[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. Three cheaper gates run first and stop the run if they fail: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses.
 
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 
-A clean `build.bat && check.bat` --- link integrity and accessibility both --- is the bar for "ready to commit".
+A clean `build.bat && check.bat` --- link integrity and accessibility both --- is the bar for "ready to commit". **If the change touched anything outside `docs/`, add `test.bat`** --- see [Tests of the toolchain](#tests-of-the-toolchain) below.
+
+## Tests of the toolchain
+{: #tests-of-the-toolchain }
+
+    test.bat
+
+Three gates that test the build system rather than the site:
+[`check_publish_policy.mjs`](Tools#check-publish-policy),
+[`check_regex_safety.mjs`](Tools#check-regex-safety) and
+[`check_axe_patch_equiv.mjs`](Tools#check-axe-patch-equiv). About six seconds.
+
+**None of them reads a page of documentation**, so an edit confined to `docs/`
+cannot change any of their outcomes. That is the whole reason they are not in
+`check.bat`: writing a reference page should not pay for tests of the toolchain,
+and a gate that costs nothing to a change it cannot possibly be affected by is a
+gate people start skipping. Run `test.bat` when the change touches `builder/`,
+`scripts/`, `book/`, `eval/` or `wisdom/`.
+
+Skipping it locally cannot let anything through: **both CI workflows run all
+three unconditionally**, and always did --- CI invokes the scripts directly and
+has never used the batch wrappers.
+
+The split is by what a gate *interrogates*, not by what it happens to open.
+`check_axe_patch_equiv.mjs` loads a built page and needs Chromium, but only
+because its probe has to run inside some document; what it tests is the axe
+source patch. The question to ask of a new gate is whether it would still mean
+something against an empty `docs/`.
+
+One of the three is worth knowing about before you write a regex.
+[`check_regex_safety.mjs`](Tools#check-regex-safety) refuses a pattern that can
+backtrack exponentially, because that class of fault does not fail a build --- it
+stops one. The corpus passes for as long as no page contains the trigger, and
+then a worker sits inside `String.replace` and never returns. It has happened
+here: the regex that normalises `<br>` and `<img>` tags was exponential, and the
+two alt strings that set it off (`Line/Column` and `/Packages/WinDevLib`) are
+ordinary English. Writing a slash into alt text is not the mistake; the regex
+was.
 
 ### A link failure cancels whatever was chained after `&&`
 {: #the-double-ampersand-trap }
@@ -240,7 +282,7 @@ Two workflows cover the repository:
 - `.github/workflows/checks.yml` runs on every pull request into `staging` or `main`. It builds, checks, and stops --- it has no deploy rights at all. It also has no `paths:` filter, deliberately: an earlier `docs/**` filter skipped any pull request touching only `builder/` or `scripts/`, which is exactly the code most able to break the build, the link checker or asset vendoring.
 - `.github/workflows/tbdocs-gh-pages.yml` runs on every push to `staging` and on manual dispatch. It runs the same gates, then renders the PDF book and publishes `docs/_site/` to Pages. A manual dispatch additionally cuts a GitHub release with the offline site copy and the book attached.
 
-Both run five of `check.bat`'s six gates, in the same relative order; the sixth is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
+Both run six of the seven local gates --- all three of `test.bat`'s and three of `check.bat`'s four --- in the same relative order; the seventh is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
 
 ### A missing image is an error there and a download here
 
@@ -273,7 +315,7 @@ Self-hosting the body face settles the *text* at 17px on every machine, and does
 
 ### What CI deliberately does not run
 
-`scripts/check_tree_fresh.mjs` --- `check.bat`'s second gate --- appears in neither workflow, and should not. It refuses a built tree older than the sources that produced it, which is the local failure mode where you edit a page, run `check.bat` without rebuilding, and audit the previous build to a clean pass. CI builds and checks inside one job, so the tree is current by construction.
+`scripts/check_tree_fresh.mjs` --- `check.bat`'s first gate --- appears in neither workflow, and should not. It refuses a built tree older than the sources that produced it, which is the local failure mode where you edit a page, run `check.bat` without rebuilding, and audit the previous build to a clean pass. CI builds and checks inside one job, so the tree is current by construction.
 
 ## Deploying to docs.twinbasic.com
 

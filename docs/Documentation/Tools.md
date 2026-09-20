@@ -8,14 +8,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the four Windows batch wrappers at the repository root, the cross-platform Node and Python scripts under `scripts/`, the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+One-line-per-tool reference for every executable in the documentation repository: the five Windows batch wrappers at the repository root, the cross-platform Node and Python scripts under `scripts/`, the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
 
 * TOC goes here
 {:toc}
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All four sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Nothing else in the repository is Windows-specific: `tbdocs` and all six gates are Node scripts, and CI runs every one of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All five sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Nothing else in the repository is Windows-specific: `tbdocs` and all seven gates are Node scripts, and CI runs every one of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -45,25 +45,41 @@ Starts a long-lived dev process. Wraps `node builder/tbdocs.mjs --src docs --ser
 
     check.bat
 
-The gates that need a browser, or a second pass over the built tree. Link and integrity checking is not among them any more --- that moved into `build.bat` (see [tbdocs](#tbdocs)). Six steps, each stopping the run if it fails:
+The gates that read the built site. Link and integrity checking is not among them any more --- that moved into `build.bat` (see [tbdocs](#tbdocs)). Tests of the toolchain itself are not among them either --- those are [`test.bat`](#testbat). Four steps, each stopping the run if it fails:
 
-1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
-2. [`scripts/check_tree_fresh.mjs`](#check-tree-fresh) --- refuses a tree older than the sources that produced it. Scanning a stale tree reports a pass for the previous build.
-3. [`scripts/check_dot_fit.mjs`](#check-dot-fit) --- re-renders every committed diagram with the real webfont and fails if a label sits outside its box.
-4. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
-5. [`scripts/pick_a11y_sample.mjs --check`](#pick-a11y-sample) --- verifies the sample still covers every markup construct the site uses.
-6. [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan.
+1. [`scripts/check_tree_fresh.mjs`](#check-tree-fresh) --- refuses a tree older than the sources that produced it. Scanning a stale tree reports a pass for the previous build.
+2. [`scripts/check_dot_fit.mjs`](#check-dot-fit) --- re-renders every committed diagram with the real webfont and fails if a label sits outside its box.
+3. [`scripts/pick_a11y_sample.mjs --check`](#pick-a11y-sample) --- verifies the sample still covers every markup construct the site uses.
+4. [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan.
 
-Requires `build.bat` to have run first. POSIX --- six commands, not one, chained so the run stops where `check.bat` would:
+Requires `build.bat` to have run first. POSIX --- four commands, not one, chained so the run stops where `check.bat` would:
 
-    node scripts/check_publish_policy.mjs \
-      && node scripts/check_tree_fresh.mjs \
+    node scripts/check_tree_fresh.mjs \
       && node scripts/check_dot_fit.mjs \
-      && node scripts/check_axe_patch_equiv.mjs \
       && node scripts/pick_a11y_sample.mjs --check \
       && node scripts/check_a11y.mjs
 
-One of the six does not mean the same thing locally as it does in CI, on any platform. [`check_a11y.mjs`](#check-a11y)'s `target-size` rule measures rendered boxes, and an inline element's measured height is the content area of whatever `system-ui` resolves to on the machine running the scan --- which is why both workflows install `fonts-liberation` and the site's padding is calibrated against the smallest face in that band. A local pass does not predict the runner's, and it errs in the unhelpful direction: larger metrics clear controls that CI then fails. See [Building and Deployment](Building#fonts-liberation-installed-on-purpose) for the measurements.
+One of the four does not mean the same thing locally as it does in CI, on any platform. [`check_a11y.mjs`](#check-a11y)'s `target-size` rule measures rendered boxes, and an inline element's measured height is the content area of whatever `system-ui` resolves to on the machine running the scan --- which is why both workflows install `fonts-liberation` and the site's padding is calibrated against the smallest face in that band. A local pass does not predict the runner's, and it errs in the unhelpful direction: larger metrics clear controls that CI then fails. See [Building and Deployment](Building#fonts-liberation-installed-on-purpose) for the measurements.
+
+### test.bat
+
+    test.bat
+
+The tests the toolchain has to pass. Three steps, each stopping the run if it fails:
+
+1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
+2. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex literal that can backtrack exponentially.
+3. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+
+POSIX:
+
+    node scripts/check_publish_policy.mjs \
+      && node scripts/check_regex_safety.mjs \
+      && node scripts/check_axe_patch_equiv.mjs
+
+**None of the three reads a page of documentation**, so an edit confined to `docs/` cannot change any of their outcomes --- which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`. Both CI workflows run all three unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+
+The split is by what a gate **interrogates**, not by what it happens to open. `check_axe_patch_equiv.mjs` loads a built page, so it does want `build.bat` to have run and it does want Chromium --- but only because its probe needs some document to run inside; what it tests is the axe patch. The test for where a new gate belongs is whether it would still mean something against an empty `docs/`.
 
 ### book.bat
 
@@ -170,7 +186,7 @@ Online link crawler for the deployed site. Starts at `<start-url>`, GETs every s
     node scripts/check_a11y.mjs [--root-dir <path>] [--theme light|dark|both] [--viewport desktop|mobile|both]
                                 [--stock-axe] [--minified]
 
-Automated accessibility scan of the built site, and the last of `check.bat`'s six steps. Loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against thirteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- 60 audits in all. The page list is derived rather than hand-maintained, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) is what keeps it representative.
+Automated accessibility scan of the built site, and the last of `check.bat`'s four steps. Loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against thirteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- 60 audits in all. The page list is derived rather than hand-maintained, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) is what keeps it representative.
 
 **This script is the reporting front end, not the scan.** What the scan *is* --- the page list, the themes and viewports, the blocked requests, the axe run options, the vendored source patches and the state audits --- lives in [`scripts/lib/axe-scan.mjs`](#axe-scan), which `check_a11y.mjs`, `sweep_a11y.mjs` and `check_a11y_fingerprint.mjs` all share. Change the scan there, not here. The scan uses the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, and `wcag22aa` rule tags, plus the `heading-order` best-practice rule. All five WCAG tags must be listed because axe matches tags literally, with no version rollup --- a rule tagged only `wcag21aa` does not match `wcag22aa`, even though WCAG 2.2 AA is a superset of 2.1 AA. Exits 1 if any page has a violation and 2 on an internal error; incomplete (needs-review) results are reported but do not fail the run.
 
@@ -261,14 +277,14 @@ A clean build only says **nothing in `docs/` is currently refused**, which is al
 
 It also checks that the refusal *message* for a `.md` still names a fault that can happen, which is a narrower thing than it sounds. The message tells the reader the opening `---` must be the first line, and that is the right advice only because the two causes that come to mind first are handled elsewhere: a UTF-8 BOM is stripped before parsing, and malformed YAML aborts with its own error. An earlier draft named the BOM and would have sent every reader hunting for something that cannot occur, so all three behaviours are now asserted against real files --- nothing else in the repository covers them.
 
-No browser, no built tree, ~40 ms, which is why it is `check.bat`'s first step. Run it after touching `builder/publish-policy.mjs`. Exits 1 naming each failed assertion.
+No browser, no built tree, ~40 ms, which is why it is `test.bat`'s first step. Run it after touching `builder/publish-policy.mjs`. Exits 1 naming each failed assertion.
 
 ### scripts/check_tree_fresh.mjs
 {: #check-tree-fresh }
 
     node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
 
-`check.bat`'s second gate, after [`check_publish_policy.mjs`](#check-publish-policy). Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
+`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
 
 ### scripts/check_dot_fit.mjs
 {: #check-dot-fit }
@@ -276,6 +292,21 @@ No browser, no built tree, ~40 ms, which is why it is `check.bat`'s first step. 
     node scripts/check_dot_fit.mjs [--verbose]
 
 Renders every committed diagram with the real webfont and fails if a label sits outside the box Graphviz drew for it. Graphviz lays out boxes from a width table while the browser paints text with an actual font --- two measurements of the same string that nothing inside the build compares. When they disagree the SVG is still well-formed and the build still green; the only symptom is a label hanging past its edge. Twenty-seven labels across three diagrams shipped that way, on pages that had passed the full accessibility sweep, because axe does not evaluate SVG `<text>` geometry either. `builder/dot-metrics.mjs` fixed the cause; this proves it stayed fixed. Needs a browser, which is why it lives in `check.bat` rather than the build. Run it after touching any `.dot`, `builder/dot-metrics.mjs`, or `builder/inter-metrics.json`.
+
+### scripts/check_regex_safety.mjs
+{: #check-regex-safety }
+
+    node scripts/check_regex_safety.mjs [--census] [--self-test]
+
+Refuses a regex literal that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` with acorn, extracts the regex literals, and classifies each with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
+
+**An exponential regex does not fail a build, it stops one.** The corpus passes for as long as no page happens to contain the trigger; then a worker sits inside `String.replace` and never returns, the build prints its last line, and nothing times out. That is not hypothetical --- `VOID_TAGS_RE` in `builder/render.mjs` shipped that way, and the two alt strings that triggered it (`Line/Column`, `/Packages/WinDevLib`) are ordinary English. This gate asks the question of the regex rather than waiting for content to ask it. When it first ran it found a second exponential regex in the same file that nobody knew about, and then found that the first attempt at fixing `VOID_TAGS_RE` was still exponential on a subtler input.
+
+It gates on **exponential only**. recheck also reports polynomial blowup, and about 40 of this repository's ~178 literals are polynomial --- nearly all the ordinary `<tag[^>]*>` shape on bounded input. Failing those would mean 40 findings on day one, and a gate that fails on day one gets switched off.
+
+The self-test probes run inside the normal pass rather than behind `--self-test`: eight regexes with known answers in both directions, including the three this repository actually shipped. A green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. `--census` lists every literal by classification, plus a count of runtime `new RegExp(...)` constructions, which the scan cannot see.
+
+Exits 1 on an exponential finding, on a file that would not parse, or on a probe that came back wrong.
 
 ### scripts/check_axe_patch_equiv.mjs
 {: #check-axe-patch-equiv }
