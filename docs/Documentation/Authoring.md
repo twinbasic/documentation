@@ -54,11 +54,36 @@ affected.
 Three things follow.
 
 **A file you do not want published does not belong under `docs/`,** unless a
-pattern in `_config.yml`'s `exclude:` already covers it. Three kinds of source
-file are excluded that way because they sit beside the pages they produce:
-`.scss` stylesheets, `.dot` diagram sources, and the Affinity `.af` screenshot
-sources under `_Images/`. Scratch notes, editor backups and working documents
-have no such exemption --- keep them outside the tree.
+pattern in `_config.yml`'s `exclude:` already covers it. Source that sits beside
+the pages it produces is excluded that way, at any depth in the tree: `.scss`
+stylesheets, `.dot` diagram sources, and the Affinity `.af` screenshot sources
+under `_Images/`. So is everything underscore-prefixed at the root of `docs/`
+--- `_config.yml` and `_book.yml`, the `_sass/` stylesheet tree, and the build's
+own output trees (`_site/`, `_site-offline/`, `_serve/`, `_pdf/` and their
+variants). Scratch notes, editor backups and working documents have no such
+exemption --- keep them outside the tree.
+
+That root-level underscore rule is two patterns --- `_*` for the root's own
+files, `_*/**` for the contents of its folders --- and where it stops matters to
+anyone documenting a COM interface. Both are matched against a
+file's path relative to `docs/` under fast-glob semantics, where `*` does not
+cross a directory separator, so `_*/**` reaches into a folder only when the
+underscore sits at the top level. A `docs/_Config/` is therefore dropped, and
+every page in it disappears without a message: excluded files are not missing
+files, and the build cannot report on a page it never saw. A
+`docs/Reference/Built-In/SomePackage/_Config/` is untouched, and so is an
+underscore-prefixed *page* at any depth, such as
+`Reference/Built-In/CustomControls/Framework/_CustomControlContext.md`.
+
+The rule is scoped that narrowly because a wider one did real damage. It was
+once `**/_*/**`, which matches an underscore folder anywhere in the tree, and it
+swallowed all 37 pages under
+`Reference/Built-In/AppGlobalClassObject/_App/` --- the twinBASIC interface is
+named `_App`, following the COM convention for a hidden interface, and the
+folder is named after the interface. Nothing reported the loss. An interface or
+class whose name begins with an underscore is documented exactly like any other,
+wherever it sits in the tree; the one placement to avoid is an underscore-named
+folder directly under `docs/`.
 
 **A `.md` the build reports as unpublishable is a file with no frontmatter block
 at all.** Either it genuinely has none --- a scratch note, a README --- or
