@@ -173,6 +173,50 @@ Four changes move a label back inside its box, roughly in order of preference. T
 
 Whichever of them you choose, the edit goes in the `.dot`, then `build.bat` regenerates the `.svg`, and both files are committed. The prohibitions above still hold: the `.svg` is a build artifact, and a `font-family` set anywhere but the `.dot` is a face the layout never measured.
 
+## What CI runs that a local build does not
+
+**Pull requests target `staging`.** It is the repository's default branch and the one the deploy workflow publishes from; `main` is not where documentation changes land.
+
+Two workflows cover the repository:
+
+- `.github/workflows/checks.yml` runs on every pull request into `staging` or `main`. It builds, checks, and stops --- it has no deploy rights at all. It also has no `paths:` filter, deliberately: an earlier `docs/**` filter skipped any pull request touching only `builder/` or `scripts/`, which is exactly the code most able to break the build, the link checker or asset vendoring.
+- `.github/workflows/tbdocs-gh-pages.yml` runs on every push to `staging` and on manual dispatch. It runs the same gates, then renders the PDF book and publishes `docs/_site/` to Pages. A manual dispatch additionally cuts a GitHub release with the offline site copy and the book attached.
+
+Both run five of `check.bat`'s six gates, in the same relative order; the sixth is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
+
+### A missing image is an error there and a download here
+
+Both workflows add `--no-fetch-assets` to the build, and this is the difference most likely to catch a contributor out. Locally, a build that meets a video marker or a `github.com/user-attachments/...` URL with no vendored copy downloads the file into `docs/assets/` and carries on: the page renders, and the only trace is a new untracked file you may not have looked for. CI refuses to download anything and fails, naming the file to commit.
+
+The asymmetry is the whole point. An author who wrote the markdown but forgot to commit the image would otherwise get a green build while the published site went on hotlinking a third party --- which is the failure the vendoring mechanism exists to prevent, so CI cannot be the place that quietly repairs it. Setting `$CI` already selects offline mode; the flag only states it. Build locally once after adding a video or pasting a screenshot, and `git status` names exactly what to add --- see [Authoring Pages](Authoring#committing-downloaded-assets).
+
+### The deployment tells the build where it is
+
+The deploy workflow passes `--url` and `--baseurl` from the `configure-pages` outputs, overriding `_config.yml`. Canonical links, `og:url` and every sitemap entry then advertise the origin the tree is actually served from rather than the configured production host. It matters on a fork: one deploying to `<user>.github.io/<repo>/` moves both the origin and the path prefix, and a page whose canonical tag still names `docs.twinbasic.com` is pointing search engines at somebody else's site. Nothing has to be kept in step by hand --- the check inside the build reads the base path off the config it just built with, which a separate `check_links.mjs` pass used to need repeated to it as `--base-path`.
+
+### The link-checker parity fixtures
+
+[`scripts/check_links_diff.mjs`](Tools#check-links-diff) compares two implementations of one check: the standalone [`scripts/check_links.mjs`](Tools#check-links), still the tool for a tree this build did not produce, and the pass fused into the build. Two implementations of one check is the shape that rots quietly, because **a checker that silently checks less reports a clean pass.** `check.bat` runs neither invocation; CI runs one or both.
+
+| Invocation | Where | What it holds to the comparison |
+|---|---|---|
+| `--case fixture --a script --b index` | both workflows | The standalone checker against itself with the index oracle substituted, over a nine-file synthetic tree. ~0.3 s. |
+| `--case fixture-built --case fixture-built-offline --a script --b fused` | pull requests only | The standalone checker against the *build's own* pass, over a three-page tree the build produces from `test/fixtures/check-src`. One extra build, ~1 s. |
+
+Neither goes near the real site, and that is not a shortcut: on a healthy tree almost every findings category compares empty against empty, so the comparison asserts nothing. The fixtures provoke one fault of each kind so every category has something in it. Two cases are needed for the fused side because no single tree carries them all --- the online tree has the sitemap, search and canonical checks, and the offline tree is the only one with a forbidden prefix.
+
+The second row is on pull requests and not on deploy because catching it before a merge is the point, and because the deploy workflow has a site to ship. The full script-against-fused comparison over the *real* trees stays a manual gate: running it in CI would mean checking every page twice, which is precisely what folding the check into the build removed.
+
+### `fonts-liberation`, installed on purpose
+
+Both workflows install `fonts-liberation` before anything runs. It reads like an incidental dependency and is not. axe's `target-size` rule measures rendered boxes, and an inline element's measured height is its font's content area --- so whether a control clears the 24px floor depends on what `system-ui` resolves to on the machine running the scan. Measured at the mobile h3 size: Segoe UI 19px, Verdana and Tahoma 17px, Arial 16px, Liberation Sans / DejaVu Sans / Roboto 15px. Liberation Sans is the smallest face in that band, the site's padding is calibrated against the smallest, and a runner image is not guaranteed to have it --- so a rule that passes on a Windows box and fails on the runner is a real defect being reported, not a CI quirk.
+
+Self-hosting the body face settles the *text* at 17px on every machine, and does not retire the band: `font-display: swap` spends the first frames of every load on the fallback, and a reader whose font request fails stays there. Give a font-dependent measurement margin against 15px, not against what your own machine renders.
+
+### What CI deliberately does not run
+
+`scripts/check_tree_fresh.mjs` --- `check.bat`'s second gate --- appears in neither workflow, and should not. It refuses a built tree older than the sources that produced it, which is the local failure mode where you edit a page, run `check.bat` without rebuilding, and audit the previous build to a clean pass. CI builds and checks inside one job, so the tree is current by construction.
+
 ## Deploying to docs.twinbasic.com
 
 1. Push your changes to your GitHub fork of the [documentation repository][docs-repo].
@@ -181,7 +225,7 @@ Whichever of them you choose, the edit goes in the `.dot`, then `build.bat` rege
 
 3. Click **compare across forks**.
 
-4. Select your repository and branch to merge from.
+4. Select your repository and branch to merge from, and set the base branch to **`staging`**. That is the repository's default branch, the branch the deploy workflow publishes from, and the one the pull-request checks run against.
 
    ![img](Images/compare-changes.png)
 
