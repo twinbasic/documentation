@@ -14,7 +14,7 @@ The reference is organized into three layers: the language constructs the compil
 - [**Statements**](Reference/Statements) -- alphabetical index of every language statement
 - [**Procedures and Functions**](Reference/Procedures-and-Functions) -- alphabetical index of every callable runtime member
 - [**Operators**](Reference/Operators) -- arithmetic, comparison, logical, bitwise, and twinBASIC's added operators
-- [**Enumerations**](Reference/Enumerations) -- index of all 141 enumeration types across all twelve packages, grouped by package and A--Z
+- [**Enumerations**](Reference/Enumerations) -- index of all 141 enumeration types across all thirteen packages, grouped by package and A--Z
 - [**Data Types**](Reference/Data-Types) -- storage size, range, and suffix for every intrinsic type (**Boolean** through **Variant**)
 - [**Compiler Constants**](Reference/Compiler-Constants) -- the `#If` symbols the compiler recognises
 - [**Attributes**](../tB/Core/Attributes) -- `[Documentation(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
@@ -27,4 +27,4 @@ The reference is organized into three layers: the language constructs the compil
 
 **Packages:**
 
-- [**Packages**](../tB/Packages/) -- all twelve built-in packages: the default runtime trio (VBA, VBRUN, VB), the GUI extensions (CustomControls, WinNativeCommonCtls), the browser embeds (WebView2, CEF), the Windows-integration libraries (WinServicesLib, WinEventLogLib, WinNamedPipesLib), and the tooling packages (Assert, tbIDE)
+- [**Packages**](../tB/Packages/) -- all thirteen built-in packages: the default runtime trio (VBA, VBRUN, VB), the `App` global object (AppGlobalClassObject), the GUI extensions (CustomControls, WinNativeCommonCtls), the browser embeds (WebView2, CEF), the Windows-integration libraries (WinServicesLib, WinEventLogLib, WinNamedPipesLib), and the tooling packages (Assert, tbIDE)

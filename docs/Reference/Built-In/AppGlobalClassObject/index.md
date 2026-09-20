@@ -1,6 +1,7 @@
-﻿---
+---
 title: AppGlobalClassObject Package
 parent: Built-In Packages
+permalink: /tB/Packages/AppGlobalClassObject/
 has_toc: false
 exclude_from_docs:
   - InternalStuff
@@ -14,7 +15,7 @@ The **AppGlobalClassObject** built-in package provides the `App` global object a
 
 ## Interfaces
 
-- [_App](_App/_App) -- Interface implemented by the global `App` object, exposing executable metadata, version information, instance handle, and related properties.
+- [_App](_App/) -- Interface implemented by the global `App` object, exposing executable metadata, version information, instance handle, and related properties.
 
 ## Properties
 
