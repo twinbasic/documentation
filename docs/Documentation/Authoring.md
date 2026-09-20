@@ -506,6 +506,52 @@ Relative links resolve against a page's **rendered URL** (its `permalink`), not 
 
 When the right number of `../` steps is not obvious, copy a working link from a neighbouring page that already points where you want to go and change the final segment. That is faster and less error-prone than counting folders, and [`build.bat`](Building#checking-link-integrity) catches any link that resolves to nothing before it reaches the site.
 
+## Crossing between VBA and a package: the depth asymmetry
+
+**VBA pages sit one URL segment shallower than every package page.** The VBA
+module scheme kept its original `/tB/Modules/` prefix while everything else moved
+under `/tB/Packages/<Package>/`, so counting `../` against the rendered URL gives
+a different answer in each direction:
+
+    /tB/Modules/Strings/Len                            VBA:    module, symbol
+    /tB/Packages/VBRUN/AmbientProperties/BackColor     VBRUN:  package, module, symbol
+
+So the two directions do not mirror each other. From a VBA page the climb is two
+levels; from the VBRUN page pointing back it is three:
+
+    from /tB/Modules/Strings/Len
+      [BackColor](../../Packages/VBRUN/AmbientProperties/BackColor)
+
+    from /tB/Packages/VBRUN/AmbientProperties/BackColor
+      [Len](../../../Modules/Strings/Len)
+
+Both land on `/tB/`, which is the only thing the two paths have in common; the
+difference is purely how far down each one started. The seven links of the second
+kind that exist in `docs/Reference/Default/VBRUN/` all count three, and are the
+ones to copy from.
+
+**There is nothing to copy for the first kind.** The advice above --- take a
+working link from a neighbouring page --- has no answer here, because no page in
+`docs/Reference/Default/VBA/` links to a package page at all: across all 285 of
+them there is not one markdown link pointing at a `Packages/` URL, and the single
+occurrence of the string is `VBA/index.md`'s own permalink. The first
+VBA-to-package link anyone writes will be the first on the site, with no
+precedent beside it and a `../` count that differs from every VBRUN example they
+might reach for instead. Count it against the two permalinks, and let
+[`build.bat`](Building#checking-link-integrity) confirm it.
+
+That permalink is worth a second look, because the split runs through VBA itself.
+`VBA/index.md` publishes at `/tB/Packages/VBA`, at package depth, while every
+symbol it introduces publishes under `/tB/Modules/`, so the package index reaches
+its own modules by climbing out of the package tree: `[Collection](../Modules/Collection)`.
+It is the nearest thing to a precedent in the tree, and it points the wrong way.
+
+Everything else follows from the same arithmetic once the two prefixes are in
+view. `Core/` is one segment below `/tB/`, so VBA reaches it with `../../Core/Y`
+and VBRUN with `../../../Core/Y`. Package-to-package stays inside `/tB/Packages/`
+and is shorter than either: from the folder-style `CefBrowser/` index to a VB
+class is `../../VB/CheckBox/`.
+
 ## Listing a new page
 
 A new page reaches the sidebar on its own --- the nav tree is generated from `parent`. The site's hand-written indexes are not generated, and a page missing from them is reachable only by search and by whatever happens to link to it.
