@@ -18,7 +18,7 @@ permalink: /tB/IDE/Project/Menu/File
 - Save Project <kbd>CTRL</kbd> + <kbd>S</kbd>
 - Save Project As...
 ---
-- Export Project...
+- Export Project... <kbd>CTRL</kbd> + <kbd>E</kbd>
 - Save Current Document
 ---
 - Build

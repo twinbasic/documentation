@@ -21,7 +21,7 @@ permalink: /tB/IDE/Project/Menu/Edit
 ---
 - Find... <kbd>CTRL</kbd> + <kbd>F</kbd>
 - Replace... <kbd>CTRL</kbd> + <kbd>H</kbd>
-- Find In Project... <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>Y</kbd>
+- Find In Project... <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F</kbd>
 ---
 - Indent <kbd>CTRL</kbd> + <kbd>]</kbd>
 - Outdent <kbd>CTRL</kbd> + <kbd>[</kbd>
@@ -30,7 +30,7 @@ permalink: /tB/IDE/Project/Menu/Edit
 ---
 - Quick Find... <kbd>ALT</kbd> + <kbd>F</kbd>
 - Quick Replace... <kbd>ALT</kbd> + <kbd>H</kbd>
-- Select All Matchtes <kbd>ALT</kbd> + <kbd>A</kbd>
+- Select All Matches <kbd>ALT</kbd> + <kbd>A</kbd>
 ---
 - Fold <kbd>CTRL</kbd> + <kbd>{</kbd>
 - Fold Procedures <kbd>CTRL</kbd> + <kbd>ALT</kbd> + <kbd>ARROWLEFT</kbd>
@@ -43,5 +43,5 @@ permalink: /tB/IDE/Project/Menu/Edit
 ---
 - Transform To Uppercase
 - Transform To Lowercase
-- TransformTo Titlecase
+- Transform To Titlecase
 - Transform To Snakecase

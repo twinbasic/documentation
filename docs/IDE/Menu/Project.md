@@ -12,8 +12,8 @@ permalink: /tB/IDE/Project/Menu/Project
 
 - Add
 ---
-- References
-- Project Settings
+- References... <kbd>CTRL</kbd> + <kbd>T</kbd>
+- Project Settings...
 ---
 - Open Project Folder...
 - Open Build Output Folder...
