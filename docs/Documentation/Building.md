@@ -146,6 +146,33 @@ Two consequences for anyone editing a diagram:
 - **Never hand-edit a `.svg`, and never set `font-family` anywhere but the `.dot`.** The SVG is a build artifact the next build overwrites, and Graphviz sizes every box to the text *it* measured --- a face the layout never saw leaves labels hanging outside their boxes.
 - **`check.bat` runs [`scripts/check_dot_fit.mjs`](Tools#check-dot-fit)**, which re-renders every committed diagram with the real webfont and fails if a label sits outside the box Graphviz drew for it. Nothing in the build compares the two, and axe does not evaluate SVG `<text>` geometry, so without this gate a mismatch ships on a green build.
 
+### When the diagram-fit check fails
+{: #dot-fit-remediation }
+
+A failure names the diagram and every label that outran its box, in user units past the edge:
+
+    OVERFLOW   docs/assets/images/dot/<name>.svg: 3 of 20 label(s) past the box edge
+                 +15.7  "the label text, truncated to 44 characters"
+                  +8.5  "the next worst one"
+
+A label may sit up to 1.0 unit past the edge before it counts --- that budget is for the rounding around kerning, which a per-character width table cannot express. Read the numbers before changing anything, because they separate two completely different problems:
+
+- **Several diagrams at once, overflowing by tens of units.** Nothing is wrong with the labels. Graphviz measured with Times because [`builder/dot-metrics.mjs`](Builder#diagram-geometry) did not get Inter's widths installed --- a `@hpcc-js/wasm-graphviz` bump that moved the width table is the usual cause, and a font subset regenerated without rerunning `node scripts/build_dot_metrics.mjs` is the other. `node scripts/build_dot_metrics.mjs --check` answers the second case directly; it fails when `builder/inter-metrics.json` is stale against the committed `.woff2` files. Editing labels here would be fixing the symptom on whichever diagrams happened to fail first.
+- **One diagram, one or two labels, a few units over, immediately after you edited that `.dot`.** The label outgrew its box, and the fix belongs in the `.dot`.
+
+`ERROR ... no text runs -- did the SVG render?` is a third case and means the diagram produced no text at all: look for a DOT syntax error, rebuild, and confirm the `.svg` was rewritten. The check reads the committed `.svg`, not the `.dot`, so an edit that has not been through a build is not the edit being measured.
+
+Four changes move a label back inside its box, roughly in order of preference. The numbers below are one real three-word label measured through the same Graphviz the build uses, starting from a 150pt box:
+
+1. **Break the label across lines.** `<BR/>` in an HTML-like label (`label=<one<BR/>two>`), or `\n` in a quoted one. Every diagram in this repository uses the HTML-like form. This is the most effective lever because each line becomes its own `<text>` run, measured separately, and the box is sized to the widest of them: one break took the box from 150pt to 98pt.
+2. **Shorten the text.** Usually the right answer when the label repeats something the surrounding prose already says --- a diagram label is a name, not a sentence.
+3. **Widen the box without touching the text.** Raising the x component of the node's `margin` from the `0.12` the diagrams set to `0.30` took the same box from 150pt to 176pt. `width=<inches>` is the other form and is a *minimum*: the box still grows past it when the label needs more room.
+4. **Reduce `fontsize`.** This moves both sides of the comparison at once --- Graphviz measures smaller and the browser paints smaller --- so it always works, which is why it is last: a diagram at natural size paints 12pt labels, and 12pt is exactly the site's 16px body size, so shrinking the whole diagram's type makes it read as smaller than the prose around it. Use it per-line instead, as `scheduler-dag.dot` does with `<FONT POINT-SIZE="10">` for its `[M]` and `[W]` annotations.
+
+**Do not use `fixedsize=true`.** It reinterprets `width` and `height` as exact rather than minimum, so the label stops being what sizes the box. Measured, `width=1 fixedsize=true` produced a 72pt box for a label needing about 150pt --- which is not a fix for the overflow, it is the mechanism that manufactures one. No diagram here uses it.
+
+Whichever of them you choose, the edit goes in the `.dot`, then `build.bat` regenerates the `.svg`, and both files are committed. The prohibitions above still hold: the `.svg` is a build artifact, and a `font-family` set anywhere but the `.dot` is a face the layout never measured.
+
 ## Deploying to docs.twinbasic.com
 
 1. Push your changes to your GitHub fork of the [documentation repository][docs-repo].
