@@ -6,7 +6,7 @@ permalink: /tB/IDE
 
 # The twinBASIC IDE
 
-![IDE](Images/IDE.png "IDE")
+![The twinBASIC IDE with no project loaded. A menu bar and toolbar run across the top, the Toolbox is docked on the left, an empty Editor 1 fills the centre, and Project Explorer sits above Properties on the right. Debug Console, Diagnostics, Call Stack and Variables share a row along the bottom. Every pane is empty, and the status bar reports tB Services unavailable and Community Edition.](Images/IDE.png)
 
 The IDE consists of several fixed panes and tool windows. The [**Project Explorer**](IDE/Project/Explorer) shows the file tree of the open project; the [**Editor**](IDE/Project/Editor) is the main code and designer surface; the [**Properties**](IDE/Project/Properties) pane shows and edits properties for the selected item; the [**Toolbox**](IDE/Project/Toolbox) lists the controls available to drop onto a form.
 

@@ -9,10 +9,10 @@ permalink: /tB/IDE/Project/OpenEditors
 
 When a project isn't open this will be empty.
 
-![Open Editors](Images/OpenEditors.png "Open Editors")
+![The Open Editors pane with nothing listed beneath its title bar.](Images/OpenEditors.png)
 
 When a project is open it will list the files that are currently open in your [Editor](Editor)
 
-![Open Editors](Images/OpenEditors_1.png "Open Editors")
+![The Open Editors pane listing two open files from the twinBASICMonthlyChallenge1 project, each with its own file type icon: Sources/frmMain.tbform and Sources/frmMain.twin.](Images/OpenEditors_1.png)
 
 Clicking a file in the list brings it into focus in the editor.
