@@ -24,7 +24,7 @@ permalink: /tB/IDE/Project/Menu/Window
 - Default Built-in Layout <kbd>CTRL</kbd> + <kbd>#</kbd>
 - Full Screen Editor Layout
 ---
-- ✔ Custom Layout (Unsaved)
+- ✓ Custom Layout (Unsaved)
 ---
 - Save Current Panel Layout As...
 - Manage Panel Layouts...
@@ -204,18 +204,18 @@ permalink: /tB/IDE/Project/Menu/Window
 
 ![Window Panel Features Menu](Images/Menu_Window_PanelFeatures.png "Window Panel Features Menu")
 
-- ✔ Allow resizing of docked panels
-- ✔ Allow rearrangement of docked panels
-- ✔ Allow tear-out of docked panels
+- ✓ Allow resizing of docked panels
+- ✓ Allow rearrangement of docked panels
+- ✓ Allow tear-out of docked panels
 ---
-- ✔ Allow resizing of floating panels
-- ✔ Allow movement of floating panels
+- ✓ Allow resizing of floating panels
+- ✓ Allow movement of floating panels
 
 ## Keyboard Shortcuts
 
 ![Window Keyboard Shortcuts Menu](Images/Menu_Window_KeyboardShortcuts.png "Window Keyboard Shortcuts Menu")
 
-- ✔ Default Built-in Keyboard Shortcuts
+- ✓ Default Built-in Keyboard Shortcuts
 ---
 - Manage Keyboard Shortcuts
 
@@ -957,7 +957,7 @@ permalink: /tB/IDE/Project/Menu/Window
 ![Window Theme Menu](Images/Menu_Window_Theme.png "Window Theme Menu")
 
 - Classic (Light)
-- ✔ Dark
+- ✓ Dark
 - Light
 ---
 - Reload from disk

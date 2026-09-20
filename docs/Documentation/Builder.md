@@ -232,7 +232,7 @@ config → discover ┬→ nav            ┐
 ```
 dispatch ┬→ render:0 ─┬→ flush:0 ─┐
          ├→ render:1 ─┼→ flush:1 ─┤
-         │   ⋮        │   ⋮       │
+         │   :        │   :       │
          ├→ render:N ─┴→ flush:N ─┤
          │                        │
          └→ renderJoin ←──────────┘
@@ -411,9 +411,11 @@ The site's `/assets/` tree at deploy time is assembled from three sources:
 
 | Source on disk | What lives there | Phase that delivers it |
 |---|---|---|
-| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-toggle.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
+| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-toggle.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), the self-hosted webfaces under `fonts/` (subset `.woff2` plus their OFL licences), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
 | `builder/vendor/just-the-docs/` | Vendored from the just-the-docs theme (v0.10.1): `_sass/` (the theme's SCSS sources, fed into the compilation) and `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (the chrome runtime, copied verbatim). See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the inventory, re-vendoring procedure, and the in-tree patches applied to `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `writeAssets`. |
 | Generated in-process | `just-the-docs-combined.css` (from `scss.mjs`) and `tb-highlight.css` (from `highlight-theme.mjs`). Neither is committed; both are rebuilt every run. | Written by `scss` (combined CSS) and `writeAssets` (highlight CSS). |
+
+The fonts are committed artifacts, like the DOT renders: `scripts/build_fonts.py` regenerates them from pinned upstream releases, and the build neither downloads nor subsets anything. The stylesheets reference them with a *relative* `url("../fonts/...")` rather than a root-absolute path, so the same compiled CSS resolves in the online tree, the `file://` offline mirror, a `--baseurl` deployment and the sparse PDF tree without any rewrite. `builder/pdf.mjs` copies the six faces `print.css` declares into `_site-pdf/` explicitly, since that tree is sparse and carries only what the book render needs.
 
 CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is non-empty; the same transform applies to generated CSS so the `url("/favicon.png")` the SCSS entry point emits resolves correctly under sub-path deployments.
 
@@ -428,6 +430,8 @@ Some build-adjacent code lives at the repo root rather than under `builder/`:
 - **External link crawling** --- `scripts/crawl_check.mjs` reads from HTTP; not part of the generator.
 - **Accessibility checking** --- `scripts/check_a11y.mjs` runs puppeteer + axe-core over the built offline tree after the build; not part of the generator.
 - **Graphviz/DOT source files** --- `docs/assets/images/dot/*.dot` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.
+- **Webfont generation** --- `scripts/build_fonts.py` downloads the pinned Inter, Cascadia Code and Source Serif 4 releases, verifies their SHA-256, pins the optical-size axis and subsets them into `docs/assets/fonts/`. Dev tooling only; the `.woff2` files are committed and the build never runs it.
+- **Mermaid re-export** --- `scripts/render_mermaid.mjs` renders the fenced diagram in each `_Images/*.md` with the site's own font loaded and asserts that no label overflows its node box. Also dev tooling; the `.svg` files are committed.
 
 ## Drift guards and failure modes
 

@@ -11,7 +11,7 @@ digraph toolchain {
     node [
         shape=box
         style="rounded,filled"
-        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
         fontsize=12
         margin="0.12,0.06"
         fillcolor="#fef7e0"

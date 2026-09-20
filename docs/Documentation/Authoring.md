@@ -91,6 +91,18 @@ Do **not** jump from `#` straight to `###`. That old "house style" --- an h1 fol
 - Parameter lists use the definition-list pattern (a term line, then a `: definition` line beneath it), not a markdown table.
 - For dashes, write `--` in the source (it renders as an en-dash) or `---` (an em-dash). Never paste a literal `–` or `—`. Nothing in the build rejects one: the typographer converts the ASCII forms and passes a literal character straight through, so a stray dash ships silently and only the source becomes inconsistent. `scripts/convert_em_dash_separators.py` is the normaliser, and it is run by hand.
 
+### Typography
+
+The site ships its own fonts, so a page renders the same on every platform: **Inter** for text, **Cascadia Mono** for code, and **Source Serif 4** for body text in the PDF book. Nothing is needed from you to use them --- they apply automatically --- but two things follow from it.
+
+**Characters outside the shipped subsets fall back to a system font**, which is visible as a glyph in the wrong face. The subsets cover Latin (including Latin Extended-A and -B), Greek, punctuation, arrows, mathematical operators, currency, fractions, geometric shapes, dingbats, and --- for code --- box drawing. Emoji are deliberately excluded and come from the platform's own emoji font. Two specifics worth knowing: write the check mark as **U+2713** (✓), not **U+2714** (✔), which no text face in the stack carries; and prefer `:` over **U+22EE** (⋮) inside a monospaced ASCII diagram, where a fallback glyph of a different width shears the box borders.
+
+Those two example glyphs are, deliberately, the only characters on the whole site that fall back --- so the ✔ and ⋮ above are being drawn by your system's symbol font right now, next to text that is not. That difference in weight and shape is the effect this section is about.
+
+Diagram exports carry the font with them. The Download / Copy SVG and PNG buttons above each diagram embed the typeface into the exported file, because an exported SVG has no access to the site's stylesheet and would otherwise render in whatever the viewer has installed. One consequence worth knowing: *Download PNG* and *Copy PNG* do not work on the two Mermaid diagrams, because the browser refuses to read back a canvas that has had HTML-in-SVG drawn into it. The buttons report that and point you at Download SVG.
+
+**Do not hand-edit the `font-family` inside a Mermaid SVG.** Mermaid measures each label and sizes its node box to fit, so changing the face without re-measuring clips every label while the markup still looks correct. Re-export with `node scripts/render_mermaid.mjs`.
+
 ## Images
 
 Images live in an `Images/` folder beside the page that uses them, and are referenced by a relative path:

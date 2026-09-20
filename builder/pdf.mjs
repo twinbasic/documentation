@@ -31,6 +31,19 @@ import {
 
 const PDF_SUFFIX = "-pdf";
 const REQUIRED_CSS = ["assets/css/print.css", "assets/css/tb-highlight.css"];
+
+// The six faces print.css declares, copied into the sparse tree so its
+// `url("../fonts/...")` resolves under the file:// URL render-book.mjs loads.
+// This list has to stay in step with the @font-face block at the top of
+// print.css.
+const REQUIRED_FONTS = [
+  "assets/fonts/source-serif-4-variable.woff2",
+  "assets/fonts/source-serif-4-variable-italic.woff2",
+  "assets/fonts/inter-variable.woff2",
+  "assets/fonts/inter-variable-italic.woff2",
+  "assets/fonts/cascadia-mono-variable.woff2",
+  "assets/fonts/cascadia-mono-variable-italic.woff2",
+];
 const LIMIT = WRITE_LIMIT;
 
 // ---------------------------------------------------------------------------
@@ -50,12 +63,13 @@ export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMis
   const staticByDestRel = new Map(
     staticFiles.map(s => [s.destRel.replaceAll("\\", "/"), s]),
   );
-  const counters = { bookBytes: 0, html: 0, css: 0, images: 0, missing: 0 };
+  const counters = { bookBytes: 0, html: 0, css: 0, fonts: 0, images: 0, missing: 0 };
   const missingPaths = [];
 
   await Promise.all([
     writePdfBook(bookHtml, pdfRoot, counters),
     copyPdfCss(staticByDestRel, highlightCss, pdfRoot, counters),
+    copyPdfFonts(staticByDestRel, pdfRoot, counters),
     copyPdfImages(imagePaths, staticByDestRel, pdfRoot, counters, missingPaths),
   ]);
 
@@ -70,7 +84,7 @@ export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMis
     const missing = new Set(missingPaths);
     counters.checkBook = {
       html: bookHtml,
-      rels: ["book.html", ...REQUIRED_CSS,
+      rels: ["book.html", ...REQUIRED_CSS, ...REQUIRED_FONTS,
              ...imagePaths.filter(r => !missing.has(r))],
     };
   }
@@ -175,6 +189,32 @@ async function copyPdfCss(staticByDestRel, highlightCss, pdfRoot, counters) {
     counters.css++;
   });
   for (const w of warnings) console.warn(`pdf: ${w}`);
+}
+
+// Copy the webfaces print.css declares into <pdfRoot>/assets/fonts/.
+//
+// This throws where copyPdfCss warns and copyPdfImages collects, because a
+// missing face is not a degradation the output survives: the book would set
+// that text in whatever the rendering machine happens to own, and embed it,
+// which is precisely the machine-dependent artifact self-hosting exists to
+// prevent. Downstream would only catch some of it -- the forked paged.js
+// rejects a face whose fetch errored, but a declared face the layout never
+// exercises is never fetched at all and passes silently. Failing here names
+// the path instead.
+async function copyPdfFonts(staticByDestRel, pdfRoot, counters) {
+  await runLimited(REQUIRED_FONTS, LIMIT, async (rel) => {
+    const sf = staticByDestRel.get(rel);
+    if (!sf) {
+      throw new Error(
+        `pdf: required font ${rel} is not in the source tree. Run ` +
+        `\`python scripts/build_fonts.py\` and commit docs/assets/fonts/.`,
+      );
+    }
+    const dest = path.join(pdfRoot, rel);
+    await mkdirRec(path.dirname(dest));
+    await safeWrite(dest, () => fs.copyFile(sf.srcPath, dest));
+    counters.fonts++;
+  });
 }
 
 // PLAN-8 §5.7: copy every image referenced from book.html to its

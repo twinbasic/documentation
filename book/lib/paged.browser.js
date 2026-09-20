@@ -3006,8 +3006,10 @@
 		//   - beforeParsed / afterParsed / afterRendered hooks: handlers
 		//     on our pipeline are all sync, so _assertSync guards them
 		//     the same way the per-page hot path does.
-		//   - loadFonts: now a sync assert (throws if any face isn't
-		//     loaded; page.goto waitUntil:'load' ensures they are).
+		//   - loadFonts: now a sync assert (throws if any face is still
+		//     loading or errored; page.goto waitUntil:'load' settles the
+		//     ones in use, and a declared-but-unused face stays unloaded,
+		//     which is fine).
 		//   - render: now a plain sync function.
 		// This was the last load-bearing await in the bundle. With
 		// flow() sync, the entire per-render call chain executes
@@ -3413,18 +3415,28 @@
 		// for any not-yet-loaded face, returning a Promise.all. Our
 		// headless pipeline drives `page.goto(url, { waitUntil: "load" })`
 		// before paged.js runs, which settles document.fonts.ready --
-		// every face is already in state "loaded" by the time we get
-		// here. The walk is a safety check: if a face is still loading
-		// (or hit an error), pipeline assumptions are broken and we
-		// should fail loudly rather than silently re-asyncify.
+		// every face the document actually uses has finished by the time
+		// we get here. The walk is a safety check: if a face is still in
+		// flight (or hit an error), pipeline assumptions are broken and
+		// we should fail loudly rather than silently re-asyncify.
+		//
+		// "unloaded" is NOT a failure and must not be treated as one. A
+		// CSS-connected FontFace starts life unloaded and is only fetched
+		// when the layout demands it, so a face print.css declares but the
+		// book never exercises -- Cascadia Mono Italic, say, when no code
+		// sample is italicised -- sits at "unloaded" forever. That is the
+		// browser correctly declining to download something nothing needs.
+		// Rejecting it would mean print.css could only ever declare faces
+		// whose use is guaranteed on every render, which is not a property
+		// any stylesheet can promise.
 		loadFonts() {
 			(document.fonts || []).forEach((fontFace) => {
-				if (fontFace.status !== "loaded") {
+				if (fontFace.status === "loading" || fontFace.status === "error") {
 					throw new Error(
 						"paged.js (forked): font-face '" + fontFace.family +
-						"' is not yet loaded (status=" + fontFace.status +
-						"). The headless pipeline expects every font to be " +
-						"loaded before PagedPolyfill.preview() runs; ensure " +
+						"' is not ready (status=" + fontFace.status +
+						"). The headless pipeline expects every font in use to " +
+						"have settled before PagedPolyfill.preview() runs; ensure " +
 						"page.goto uses { waitUntil: 'load' } or 'networkidle0'."
 					);
 				}

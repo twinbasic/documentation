@@ -33,15 +33,15 @@ permalink: /tB/IDE/Project/Editor
   - above
   - below
   - none
-- ✔ Show Indent Guides
-- ✔ Show Line Numbers
+- ✓ Show Indent Guides
+- ✓ Show Line Numbers
 - Code Hints Always Visible
 - Sticky Scroll
-- ✔ Show MiniMap
+- ✓ Show MiniMap
 - Show Advanced Info On Hover
 - Show Single Row Of Tabs
-- ✔ Auto Prettify Code
-- ✔ Show CodeLens Run Procedure
+- ✓ Auto Prettify Code
+- ✓ Show CodeLens Run Procedure
 
 ## Tabs List
 

@@ -1,5 +1,6 @@
 @use "admonitions";
 @use "theme" as *;
+@use "fonts" as *;
 
 .sr-only {
   position: absolute;
@@ -128,8 +129,10 @@ div.highlight:focus-visible,
   // it. Without it #back-to-top and #edit-this-page are 15.8px targets that
   // scrape through on the spacing exception -- axe measures "a diameter of
   // 24px which is at least 24px", zero margin, against a number that moves
-  // with whatever `system-ui` resolves to. That is how the heading-link hit
-  // box passed here and failed on CI's fonts.
+  // with the resolved face. That is how the heading-link hit box passed here
+  // and failed on CI's fonts. Pinning the face settles the number, but a rule
+  // that meets the floor on declared size cannot be unsettled by a font at
+  // all, which is the stronger guarantee -- keep it.
   //
   // The legal row is deliberately left out: its links sit inside sentences
   // ("License: CC-BY-4.0"), the criterion's inline exception, and axe does
@@ -224,6 +227,29 @@ div.highlight:focus-visible,
 //   Dark theme:  just-the-docs-dark.scss inlines an identical copy inside
 //                html.dark-mode {} after its own load-css (0,1,1 there).
 @mixin tb-code-overrides {
+  // normalize.scss puts `pre`, `code`, `kbd` and `samp` on generic
+  // `monospace`, and JTD's base.scss overrides only `code` -- so the other
+  // three resolve to whatever the UA calls `monospace`, which is Courier New
+  // on a stock Windows profile.
+  //
+  // For `pre` that was invisible, because the visible text is in the <code>
+  // inside it; it still meant the block's em-based padding and its scroll
+  // width were computed against a different face than the one painted in it.
+  // For `kbd` it is not invisible at all: eleven pages use it and every one
+  // was rendering keys in the wrong font. `samp` is unused today and is
+  // included so it does not become the next one.
+  //
+  // This belongs in the mixin rather than at root level: the dark
+  // compilation re-emits normalize's rule under `html[data-theme=dark]` at
+  // (0,1,1), which out-ranks a bare element selector at (0,0,1). The mixin is
+  // re-emitted inside that same scope (see just-the-docs-dark.scss), so the
+  // override survives into dark mode.
+  pre,
+  kbd,
+  samp {
+    font-family: $tb-mono-font-family;
+  }
+
   code {
     font-size: 0.95em;
   }
@@ -462,6 +488,30 @@ div.highlight:focus-visible,
 .main-content .reversefootnote {
   text-decoration: underline;
   text-underline-offset: 2px;
+
+  // WCAG 2.5.8 Target Size (Minimum). This link is one glyph with no padding,
+  // so its target is whatever box the font gives U+21A9: 12.09 x 19 on Segoe
+  // UI, 12.09 x 15 on Liberation Sans, 15.97 x 17 on Inter. Every one of those
+  // is under 24 x 24, and the rule only ever passed because axe's *spacing*
+  // exception let it -- a 24px circle centred on the target happened to clear
+  // its neighbours.
+  //
+  // That is a measurement standing on two moving parts at once, and pinning
+  // the face is what exposed it: Inter's arrow is 3.9px wider than the system
+  // fonts', which shifted the centre far enough on one footnote of one page
+  // (Features/GUI-Components/Windowless, footnote 3, mobile, both themes) to
+  // intersect a neighbour and fail. One page out of 869 is what a marginal
+  // spacing pass looks like just before it stops passing.
+  //
+  // So size it outright rather than nudging the spacing back. An explicit
+  // 24 x 24 box is the one form of this rule no font can unsettle -- the same
+  // reasoning as `.footer-actions > *` further up. inline-block is required:
+  // width and height do nothing to an inline box.
+  display: inline-block;
+  min-width: 24px;
+  min-height: 24px;
+  line-height: 24px;
+  text-align: center;
 }
 
 // WCAG 2.5.8 Target Size (Minimum). Two standalone targets in page content sit
@@ -483,18 +533,24 @@ div.highlight:focus-visible,
 // anchor-heading link is excluded: it is the paragraph mark, hidden until the
 // heading is hovered.
 //
-// The padding has to be generous, because what it is topping up is not a fixed
-// quantity. An inline element's measured height is its font's content area, so
-// it moves with whatever `system-ui` resolves to on the reader's machine.
-// Measured at the mobile h3 size:
+// The padding is generous because what it tops up is not a fixed quantity. An
+// inline element's measured height is its font's content area. Measured at the
+// mobile h3 size:
 //
-//   Segoe UI  19px | Verdana, Tahoma  17px | Arial  16px
+//   Segoe UI  19px | Inter, Verdana, Tahoma  17px | Arial  16px
 //   Liberation Sans, DejaVu Sans, Roboto  15px
 //
 // 3px each side cleared 24px on Segoe UI alone, by 0.8px, and failed on every
 // other family -- so the check passed on Windows and failed on CI's Linux
-// fonts. 6px clears the worst measured case by 3px. Anything that tops up a
-// font-dependent measurement needs margin, not a hairline.
+// fonts. 6px clears the worst measured case by 3px.
+//
+// Self-hosting Inter (custom/_fonts.scss) pins that number at 17px on every
+// platform, which is what made the Windows-vs-CI split disappear. It is NOT a
+// reason to trim the padding back: a reader whose webfont request fails, or
+// who has webfonts turned off, still lands somewhere in the 15-19px band, and
+// `font-display: swap` means even a normal load spends its first frames on the
+// fallback. Anything that tops up a font-dependent measurement needs margin,
+// not a hairline.
 .main-content h1 > a:not(.anchor-heading),
 .main-content h2 > a:not(.anchor-heading),
 .main-content h3 > a:not(.anchor-heading),

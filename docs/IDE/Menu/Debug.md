@@ -28,6 +28,6 @@ permalink: /tB/IDE/Project/Menu/Debug
 ![Debugger Options - Debug Menu](Images/Menu_Debug_DebuggerOptions.png "Debugger Options - Debug Menu")
 
 - Break On All Errors
-- ✔ Allow Breakpoints (Debuggable)
+- ✓ Allow Breakpoints (Debuggable)
 
 ![Debugger Options - Debug Menu](Images/Menu_Debug_DebuggerOptions_2.png "Debugger Options - Debug Menu")

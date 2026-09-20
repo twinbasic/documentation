@@ -32,7 +32,7 @@ In headless Chromium the event loop is not shared with any user-facing interacti
 | `flow()` | All five `await` sites removed; `beforeParsed`/`afterParsed`/`afterRendered` hooks are called synchronously and guarded by `_assertSync`. |
 | `renderOnIdle()` / `renderAsync()` | Removed entirely; both wrapped `renderer.next()` in unnecessary async machinery. |
 | `clonePage()` | `async` removed; only reachable via the `Footnotes` handler, which self-disables when the document has no footnotes. |
-| `loadFonts()` | Rewritten as a synchronous assertion. `waitUntil: "load"` in `render-book.mjs` guarantees every `FontFace` is loaded before paged.js runs. |
+| `loadFonts()` | Rewritten as a synchronous assertion. `waitUntil: "load"` in `render-book.mjs` guarantees every `FontFace` the book actually uses has settled before paged.js runs. The assertion rejects `loading` and `error`, not `unloaded` --- a CSS-connected face is fetched only when the layout demands it, so one `print.css` declares but this render never exercises stays `unloaded` by design. |
 | `parse()` | `async` removed; no registered handler in this pipeline is async for the hooks it fires. |
 | `request()` | Replaced with synchronous XHR (`XMLHttpRequest` with `async=false`), returning `responseText` directly. |
 | `add()` | `async` removed; all inputs are inline `{url: text}` objects requiring no fetch. |

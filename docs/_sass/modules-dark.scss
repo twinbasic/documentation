@@ -25,8 +25,19 @@
 // is sufficient -- the default expression runs with the configured dark value.
 // $search-result-preview-color is omitted: identical in both themes.
 
+@use "custom/fonts" as fonts;
+
+// The font stacks are NOT dark-specific -- they are passed here because this
+// compilation re-emits every JTD base rule under `html[data-theme="dark"]`,
+// which raises `body { font-family: ... }` from (0,0,1) to (0,1,2) and so
+// out-ranks whatever the light compilation emitted.  Omit them and the site
+// renders Inter in light mode and the old system stack in dark, which is the
+// specificity trap this file's header warns about.  The @font-face rules
+// themselves stay in the light compilation; see custom/_fonts.scss.
 @use "modules" with (
   $logo: "/favicon.png",
+  $body-font-family: fonts.$tb-body-font-family,
+  $mono-font-family: fonts.$tb-mono-font-family,
   $color-scheme: dark,
   $body-background-color: #27262b,
   $body-heading-color: #f5f6fa,

@@ -425,6 +425,277 @@ The source uses the ASCII forms; the rendered HTML uses the typographic characte
 
 WIP.md itself (and other files outside `docs/`) is not rendered through tbdocs and is exempt — literal em-dashes here render directly in the GitHub viewer, which is fine.
 
+## Typography
+
+Three self-hosted faces, one system, everywhere the docs render. All SIL OFL 1.1,
+all committed as subset `.woff2` under [docs/assets/fonts/](docs/assets/fonts/)
+alongside their licence files.
+
+| Face | Where | Variable axes | Subset size |
+|------|-------|---------------|-------------|
+| **Inter** | all web text; PDF headings, running heads and captions; DOT and Mermaid diagram labels | `wght 100-900` | 152 KB + 166 KB italic |
+| **Cascadia Mono** | all code, inline and block, web and PDF | `wght 200-700` | 67 KB + 77 KB italic |
+| **Source Serif 4** | PDF body text only | `wght 200-900` | 138 KB + 109 KB italic |
+
+Inter is the brand face: twinbasic.com has always named it first in its own
+stack, it just never shipped a `@font-face` to deliver it, so it rendered as
+Inter only for visitors who happened to have it installed. Cascadia Mono is the
+ligature-free cut of Microsoft's terminal font --- the Windows/Visual Studio
+lineage twinBASIC sits in, and in a *language* reference the literal characters
+are the subject matter, so a face that draws `->` as one mark is working against
+the text. Source Serif is the book's body face and nothing else's; a sans at
+10.5pt over nearly two thousand printed pages is tiring, and no web stylesheet
+references it, so no reader ever downloads it.
+
+Reader cost on the web is 219 KB on a cold visit --- the two roman faces, both
+preloaded --- then 166 KB the first time a page sets italic text, and 77 KB more
+only if some of that italic text is code, which most pages never do. All of it
+is cached across the other 868 pages. For scale, the search index every page
+already pulls is 3.4 MB.
+
+### Why this is not only a cosmetic change
+
+An inline element's measured height is its font's content area, so WCAG 2.5.8
+`target-size` results moved with whatever `system-ui` resolved to on the machine
+running the scan --- measured at the mobile h3 size: 19px on Segoe UI, 17px on
+Inter and Verdana, 16px on Arial, 15px on CI's Liberation Sans, all at the same
+declared size. That is how the heading-link hit box shipped clearing the 24px
+floor by 0.8px on Windows and missing it on CI. Pinning the face settles the
+number at 17px everywhere.
+
+It does **not** make the generous paddings unnecessary, and they must not be
+trimmed back. `font-display: swap` means even a normal load spends its first
+frames on the fallback, and a reader whose font request fails --- or who turns
+webfonts off --- stays there. The rule that actually cannot be unsettled by a
+font is one that meets the floor on *declared size*, which is what
+`.footer-actions > *` does; prefer that shape where the layout allows it.
+
+**Changing the face broke one `target-size` check, and that is worth reading as
+a warning rather than a one-off.** The full sweep found `target-size` failing
+on the footnote back-link of `Features/GUI-Components/Windowless`, footnote 3,
+at the mobile viewport, in both themes --- one node, one page out of 869.
+
+The back-link is a bare inline `<a>` holding a single U+21A9 with no padding,
+so its target is whatever box the font gives that glyph: 12.09 x 19 on Segoe
+UI, 12.09 x 15 on Liberation Sans, 15.97 x 17 on Inter. **None of those has
+ever met 24 x 24.** The rule was passing on axe's *spacing* exception --- a
+24px circle centred on the target happened to clear its neighbours --- and
+Inter's arrow is 3.9px wider than the system fonts', which moved the centre far
+enough on that one footnote to intersect a neighbour.
+
+So the font change did not introduce the defect; it collected on one that had
+been marginal all along, and it did so on exactly one page, which is what a
+spacing pass looks like just before it stops passing. The fix sizes the link
+outright (`display: inline-block; min-width/min-height: 24px`) rather than
+restoring the clearance, and it now measures 24 x 24 under Inter, Segoe UI,
+Arial and Liberation Sans alike.
+
+Two things to take from it. **Run the full sweep after any change that moves
+type metrics** --- the thirteen-page sample was clean through all of this, in
+both themes and both viewports, and would have shipped the regression. And
+**treat a target that passes only on the spacing exception as unfixed**: it is
+a measurement standing on the font, the surrounding layout and the viewport at
+once, and any of the three can move.
+
+### Where the wiring lives
+
+- [docs/_sass/custom/_fonts.scss](docs/_sass/custom/_fonts.scss) --- the
+  `@font-face` rules (as a **mixin**, see below) and the `$tb-body-font-family`
+  / `$tb-mono-font-family` stacks.
+- [docs/assets/css/just-the-docs-combined.scss](docs/assets/css/just-the-docs-combined.scss)
+  --- includes `fonts.emit-font-faces` and passes the stacks into JTD's
+  `$body-font-family` / `$mono-font-family` through the `meta.load-css` `$with`
+  map.
+- [docs/_sass/modules-dark.scss](docs/_sass/modules-dark.scss) --- passes the
+  same two stacks again. **This is not redundant.** The dark compilation
+  re-emits every JTD base rule under `html[data-theme="dark"]`, which lifts
+  `body { font-family: ... }` from (0,0,1) to (0,1,2); leave the dark side on
+  the defaults and the site renders Inter in light mode and system fonts in
+  dark. It is the same specificity trap `modules-dark.scss`'s own header warns
+  about, and it is invisible unless you check both themes.
+- [builder/template.mjs](builder/template.mjs) --- `fontPreloads()` emits the
+  two `<link rel="preload">` tags. `crossorigin` is mandatory even same-origin:
+  font fetches are always CORS-mode, and a preload whose mode does not match
+  the later `@font-face` fetch is not reused, so the file downloads twice.
+- [docs/assets/css/print.css](docs/assets/css/print.css) --- the book's own
+  `@font-face` block and three stacks.
+- [builder/pdf.mjs](builder/pdf.mjs) --- `REQUIRED_FONTS`, copied into the
+  sparse `_site-pdf/` tree. Keep it in step with print.css's `@font-face` block.
+
+Two rules that are easy to get wrong:
+
+1. **`@font-face` is emitted exactly once, from the light compilation.** That is
+   why `_fonts.scss` exposes a mixin rather than bare CSS: the dark entry point
+   emits its whole payload twice, once per dark selector, and an `@font-face`
+   nested inside a selector is invalid.
+2. **`url()` in both stylesheets is relative (`../fonts/...`), never
+   root-absolute.** The compiled CSS lands at `assets/css/` in all four trees,
+   so a relative URL resolves identically online, in the `file://` offline
+   mirror, in the `--baseurl` tree, and in the PDF source. A root-absolute path
+   would depend on the offline rewrite catching it and would break under a base
+   path.
+
+### Regenerating the fonts
+
+[scripts/build_fonts.py](scripts/build_fonts.py) downloads the pinned upstream
+releases (SHA-256 verified), pins the optical-size axis, subsets, and writes
+`docs/assets/fonts/`. It is dev tooling --- `build.bat` needs neither Python nor
+a network connection, exactly like the committed DOT SVGs.
+
+```sh
+python -m pip install "fonttools[woff]"
+python scripts/build_fonts.py
+```
+
+`opsz` is pinned and `wght` is not. Keeping the optical-size axis costs ~70 KB
+per face in `gvar`/`CFF2` delta data --- more than trimming the character set
+would save --- and buys a subtle refinement at display sizes. Keeping `wght`
+variable is what lets `custom.scss` go on asking for `font-weight: 350` (it does,
+twice) and get a real 350 rather than a browser-dependent snap to 300 or 400.
+
+The subset is specified as whole Unicode blocks rather than the exact character
+census, deliberately: an uncovered codepoint falls back to a system font, which
+is the precise inconsistency this whole exercise removes, so the blocks carry
+headroom for pages not yet written. Emoji are excluded --- a colour emoji font is
+several megabytes and every platform ships one --- and the stacks end with
+`"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"` to make that fallback
+deterministic rather than leaving it to each UA's last-resort lookup.
+
+Two content changes fell out of the coverage audit and should not be reverted:
+U+2714 HEAVY CHECK MARK (14 uses) became U+2713 CHECK MARK, because no text face
+in the stack carries U+2714 and it therefore rendered from the platform emoji
+font --- coloured on Windows, monochrome elsewhere; and one U+22EE VERTICAL
+ELLIPSIS inside a box-drawing ASCII diagram became `:`, because Cascadia has no
+U+22EE and a fallback glyph of a different advance width shears the box borders.
+
+### Diagrams
+
+Inline SVG inherits the page's font environment, so the self-hosted faces apply
+to diagram labels too --- `svg-inline.js` puts the SVG in the DOM rather than
+behind an `<img src>`, which would isolate it from the document's `@font-face`
+rules. The DOT sources under `docs/assets/images/dot/` and `builder/gantt.mjs`
+name the Inter stack directly.
+
+**Mermaid is the exception, and it will bite you.** Mermaid measures every label
+in the browser and sizes each node box to fit, so a committed export is only
+correct for the font it was measured with. Re-pointing `font-family` inside an
+existing SVG --- the obvious edit --- silently clips every label, because the
+geometry stays where the old font put it: Inter needed 5-9 user units more per
+label than the `sans-serif` the previous export was measured against, and every
+label of the six measured on the WebView2 diagram overflowed its box. Re-export
+instead:
+
+```sh
+node scripts/render_mermaid.mjs          # or --check, which fails if stale
+```
+
+That script reads the fenced block from each `_Images/*.md`, renders it with the
+site's Inter loaded, and asserts no label overflows its box. It needs a network
+connection (it pulls a pinned Mermaid build from a CDN inside headless Chromium)
+and is never run in CI. The light Mermaid theme is not incidental: an earlier
+dark-theme export put the edge labels at 4.43:1 and they had to be darkened by
+hand afterwards; on the light theme the same labels measure 10.3:1 untouched.
+
+### Diagram exports carry their own font
+
+The four buttons above each inlined diagram (Download / Copy, SVG / PNG) all
+route through `serializeWithFonts` in
+[docs/assets/js/svg-inline.js](docs/assets/js/svg-inline.js), which embeds the
+faces the diagram paints with as `data:` URIs in an inline `@font-face`.
+
+This is necessary because **an exported diagram is cut off from the page's
+`@font-face` rules**. An SVG handed to `new Image()` renders in the browser's
+"secure static mode", which fetches no external resource at all, and a
+downloaded `.svg` opened somewhere else has no access to this site's
+stylesheet either. Both fall back to whatever the viewer has installed.
+Measured on a machine with no local Inter: an exported PNG asking for
+`font-family="Inter"` rasterised *pixel-identical* to one asking for a font
+that does not exist --- same ink count, same extent.
+
+A `data:` URI is not an external fetch, so secure static mode permits it, and
+the bytes come from the HTTP cache because the page already downloaded them.
+The whole thing costs ~25 ms per click and nothing over the wire. Two details
+are load-bearing:
+
+- **Only the faces the diagram actually uses are embedded**, decided from the
+  live element's computed styles rather than from the markup. Every diagram
+  needs Inter roman; only the two Mermaid ones use italic, and that is a
+  second 203 KB. A DOT export is ~243 KB, a Mermaid export ~449 KB.
+- **Font paths resolve against the script's own URL**
+  (`document.currentScript.src`), not a hard-coded root-absolute path, which
+  is what makes them work unchanged in the offline mirror and under a
+  `--baseurl` deployment. In the offline mirror `fetch()` cannot read a
+  `file://` URL at all, so the embed silently degrades to the old behaviour;
+  that is the one context where an export still uses the viewer's fonts.
+
+#### PNG export does not work on the Mermaid diagrams, and cannot
+
+Chromium taints a canvas that has had an SVG containing `<foreignObject>`
+drawn into it, and a tainted canvas refuses `toBlob()` with a `SecurityError`.
+Mermaid puts every node label in a `foreignObject`, so *Download PNG* and
+*Copy PNG* have never worked on `Tutorials/{CEF,WebView2}/Images/
+MonacoArchitecture.svg`. The throw happened inside an `img.onload` handler
+where nothing surfaced it, so the click simply appeared to do nothing.
+
+`flowchart: { htmlLabels: false }` does **not** fix it --- tested against
+Mermaid 11, which moves only the edge labels to `<text>` and keeps node labels
+in `foreignObject` regardless. Closing it properly means not using Mermaid for
+those two diagrams; the DOT ones export fine because Graphviz emits plain
+`<text>`.
+
+What is fixed is the silence: the failure is now caught, logged, and announced
+through a `role="status"` live region naming *Download SVG* as the alternative.
+
+### The PDF, and two things the book pipeline does differently
+
+**The forked paged.js asserts that fonts have settled** before the page-breaking
+pass, and it used to reject any face not in state `loaded`. A CSS-connected
+`FontFace` is only fetched when the layout demands one, so a face print.css
+declares but a given render never exercises --- Cascadia Mono Italic, when no
+code sample is italicised --- sits at `unloaded` forever and tripped it. The
+assertion now rejects `loading` and `error` only; see `loadFonts()` in
+[book/lib/paged.browser.js](book/lib/paged.browser.js).
+
+**The book's fallback chains are self-hosted all the way down.** `Source Serif 4,
+Inter, Georgia, ...` rather than dropping straight to a system serif, and
+`"Cascadia Mono", monospace` with no named local face. The book is rendered once,
+on one machine, so a named local fallback bakes *that machine's* fonts into the
+artifact.
+
+Checking which fonts the PDF *actually embedded* is what found the remaining
+gaps, and it found two the CSS review had not:
+
+- Source Serif 4 covers 603 of the codepoints this book uses against Inter's
+  1103, so dropping straight from it to a system serif pulled a Times New Roman
+  subset in for seven footnote back-arrows and four U+2194. Putting Inter second
+  in the chain fixed it.
+- normalize.scss puts `pre`, `code`, `kbd` and `samp` on generic `monospace` and
+  JTD overrides only `code`; print.css loads no normalize but the UA default is
+  the same. Eleven pages use `<kbd>`, and every one of them was setting keys in
+  whatever the machine called `monospace` --- Consolas here. Fixed in both
+  stylesheets; `samp` is included although nothing uses it yet.
+
+What is left in 1,991 pages is three glyphs: a clock emoji, and the U+2714 and
+U+22EE that [Authoring](docs/Documentation/Authoring.md) prints as examples of
+characters the subsets do not carry. Those two are deliberate and the page says
+so --- but they are why a font census of the book reports a Segoe UI Symbol and a
+Cambria Math subset, which is otherwise a mystery worth an hour.
+
+To check what a built PDF actually embedded:
+
+```sh
+node -e "const z=require('zlib'),f=require('fs'),b=f.readFileSync('docs/_pdf/twinBASIC Book.pdf'),s=b.toString('latin1'),h={},a=t=>{for(const m of t.matchAll(/\/(BaseFont|FontFamily)\s*(?:\/|\()([\w+\-,. ]+)/g))h[m[2]]=(h[m[2]]||0)+1};a(s);for(const m of s.matchAll(/stream\r?\n/g)){const i=m.index+m[0].length,e=s.indexOf('endstream',i);try{a(z.inflateSync(b.subarray(i,e)).toString('latin1'))}catch{}}console.log(h)"
+```
+
+### The offline tree drops the preloads
+
+A font preload is a CORS-mode fetch. Under `file://` there is no origin to
+match, so Chrome fails it with `ERR_FAILED` and logs it, while the `@font-face`
+fetch beside it succeeds and the faces load anyway. The preload therefore buys
+an offline reader nothing and costs two red lines in the console, so
+`stripFontPreloads` in [builder/offline-rewrite.mjs](builder/offline-rewrite.mjs)
+removes it from that tree only.
+
 ## Scripts and tooling
 
 **Anything that participates in rendering the online site, the offline site, or the PDF book is handled by [tbdocs](builder/), the in-tree Node.js static site generator.** Module-level documentation lives next to the code under `builder/`; the user-facing summary is on the [tbdocs Internals](docs/Documentation/Builder.md) page.
@@ -478,6 +749,8 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 - `check.bat` — the gates that need a browser or a second pass over the built tree: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`.
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
+Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/`, and `node scripts/render_mermaid.mjs` re-exports the two Mermaid diagrams from their `_Images/*.md` sources. Both need a network connection; see [Typography](#typography).
+
 
 ## Site integrity check
 
@@ -529,7 +802,9 @@ It then runs [scripts/check_tree_fresh.mjs](scripts/check_tree_fresh.mjs), which
 - It injects a **patched** axe bundle. `SOURCE_PATCHES['plain-color-fields']` in `axe-scan.mjs` replaces `Color2`'s six WeakMap-emulated `#private` fields with plain own properties, worth **-26 %** across a realistic page set and **-30 %** on large pages. Patches need the unminified bundle, which costs ~6 ms more per page to inject. Two obligations come with it: every axe-core upgrade re-runs both `check_a11y_fingerprint.mjs --patches plain-color-fields` and `check_axe_patch_equiv.mjs` (CI and `check.bat` run the second for you), and if a result ever looks wrong, re-run with `--stock-axe` first -- that injects the unmodified bundle and says in one command whether the patch is implicated.
 - It **blocks the search index** (`search-data.js` + `lunr.min.js`) via request interception — see `BLOCKED_REQUESTS`. Every page pulls in ~3.2 MB of index that never touches the DOM axe walks; loading it was 18.9 s of a 27.1 s run, and aborting it cuts the scan to ~9 s with byte-identical results (every rule id and node count, violations and incomplete alike, across every page/theme/viewport combination -- 24 of them when that was measured, 60 audits today). Do **not** extend the block list to `just-the-docs.js` — it installs the search combobox ARIA, and blocking it makes axe see *less* (colour-contrast nodes on `Select-Case` drop 54 → 2), silently masking coverage.
 
-**A local pass on the geometry rules is not authoritative.** `target-size` measures rendered boxes, and an inline element's measured height is its font's content area --- so it moves with whatever `system-ui` resolves to. Measured at the mobile h3 size: Segoe UI 19px, Verdana and Tahoma 17px, Arial 16px, Liberation Sans / DejaVu Sans / Roboto 15px. A heading link topped up with `padding-block: 3px` therefore cleared the 24px floor by 0.8px on Windows and missed it on CI's Linux fonts, and the local scan reported a clean pass throughout. When a fix tops up a font-dependent measurement, give it margin against the *smallest* of those numbers rather than the one on the machine at hand, and check the whole site for the rule rather than the sample --- one rule over every page at one viewport takes about two minutes.
+**A local pass on the geometry rules used not to be authoritative, and the reason is worth keeping in mind.** `target-size` measures rendered boxes, and an inline element's measured height is its font's content area --- so it moved with whatever `system-ui` resolved to. Measured at the mobile h3 size: Segoe UI 19px, Inter / Verdana / Tahoma 17px, Arial 16px, Liberation Sans / DejaVu Sans / Roboto 15px. A heading link topped up with `padding-block: 3px` therefore cleared the 24px floor by 0.8px on Windows and missed it on CI's Linux fonts, and the local scan reported a clean pass throughout.
+
+[Self-hosting the text face](#typography) pins that number at 17px on every machine, which is what closed the gap between a local pass and CI's. It does not licence trimming the paddings back: `font-display: swap` puts the first frames of every load on the fallback, and a reader whose font request fails stays there, so the 15--19px band is still the range a fix has to clear. Give a font-dependent measurement margin against the *smallest* of those numbers, prefer a rule that meets the floor on declared size where the layout allows one, and check the whole site for the rule rather than the sample --- one rule over every page at one viewport takes about two minutes.
 
 **axe does not evaluate whether a focus ring is actually visible**, only that focusable things are reachable and labelled --- so a ring that is drawn and then clipped away passes every rule. The aux nav is where that bites. `.aux-nav` is `overflow-x: auto` (navigation.scss:182), and the overflow spec turns the other axis from `visible` to `auto` when one axis is not `visible`, so the nav is a scroll container that clips at its padding box on all four sides; its items are `height: 100%` and the first one starts at the left content edge. An outset ring on anything in there therefore loses every side that sits on the clip edge. The theme toggle shipped that way --- `.btn-reset`'s 2px ring at 2px offset survived only on the right, where the aux-nav link leaves room --- and a manual keyboard pass is what found it. The fix is an inset ring (`outline-offset: -2px` on `#theme-toggle`, in `custom/custom.scss`), which needs an id selector to out-rank the dark compilation's `html[data-theme=dark] .btn-reset:focus-visible` at (0,3,1).
 
@@ -621,6 +896,8 @@ Favor concise one-line git commit messages.
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.py` normalises any strays.
 - Don't push or force-push without explicit user request.
 - Don't leave a remote image URL in a finished page. A pasted `https://github.com/user-attachments/assets/...` link is fine to write --- [builder/vendor-assets.mjs](builder/vendor-assets.mjs) downloads it to `docs/assets/attachments/gh-<uuid>.<ext>` on the next local build and rewrites the render to point there; commit the downloaded file with the edit. Any other remote host has no such handling: download it yourself and commit it under the section's `Images/` folder. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` dropped async image loading, so an image still in flight when the page-breaking pass runs raises instead of degrading. The build enforces this unconditionally (see [Site integrity check](#site-integrity-check)); `--check-remote-assets` is the standalone checker's flag, not a `tbdocs` one. The check is scoped to `<img>`; `<iframe>` is untouched, but the site no longer has any embeds. A video is authored as a marked link -- `[Title](https://www.youtube.com/watch?v=<id>){: .video }` -- which `videoLinkPlugin` ([builder/render.mjs](builder/render.mjs)) renders as a locally vendored poster frame linking out to the video page, styled by `.video-link` in `docs/_sass/custom/custom.scss`. That makes the site free of third-party requests entirely; don't reintroduce an embed or a hotlinked `img.youtube.com` thumbnail.
+- **Don't change a Mermaid SVG's `font-family` in place.** Mermaid sized every node box to the text it measured, so re-pointing the face clips every label while leaving the markup looking correct. Re-export with `node scripts/render_mermaid.mjs`; see [Typography](#typography).
+- **Don't add a `@font-face` to `docs/_sass/custom/_fonts.scss` without also adding the stack to `modules-dark.scss`,** and don't move the `@font-face` block out of the `emit-font-faces` mixin. The dark compilation re-emits its whole payload under two selectors at raised specificity: a face declared there would be invalid, and a stack left out there applies in light mode and silently does not in dark.
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
 - Don't add boilerplate sections (Remarks, See Also) if the source has nothing meaningful for them.
 - **Never add `Co-Authored-By:` (or any "Co-authored by" / "Generated with Claude" / similar) trailers to commit messages.** Repository policy. Plain commit messages only.

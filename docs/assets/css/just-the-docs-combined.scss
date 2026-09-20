@@ -22,9 +22,23 @@
 @use "sass:meta";
 // custom/setup is the gem's empty pre-colour-scheme hook.
 @use "custom/setup";
+// custom/fonts holds the @font-face rules for the self-hosted faces and the
+// two stacks that configure JTD below.  The faces are emitted HERE and only
+// here -- the dark compilation re-emits its whole payload under two
+// selectors, and an @font-face nested in a selector is invalid.
+@use "custom/fonts" as fonts;
 // custom/custom generates admonitions, .site-logo, code-size overrides, and
 // dark-scrollbar CSS, and exposes the tb-code-overrides mixin.
 @use "custom/custom" as *;
+
+// ── Self-hosted faces ─────────────────────────────────────────────────────
+//
+// Before everything else, so the @font-face block sits at the top of the
+// emitted stylesheet and the UA can start the two font fetches as soon as it
+// has parsed the first rules.  (The <link rel="preload"> pair in
+// builder/template.mjs starts them earlier still, before the CSS has even
+// arrived.)
+@include fonts.emit-font-faces;
 
 // ── Light theme (root level) ──────────────────────────────────────────────
 //
@@ -33,9 +47,14 @@
 // meta.load-css() is the only load of modules.scss in this compilation.
 // The $with map configures _variables.scss through the @forward chain:
 //   modules → @forward "support/support" → @forward "_variables.scss"
-// Only $logo is passed; all other variables use their !default light values.
+// $logo and the two font stacks are passed; all other variables use their
+// !default light values.
 
-@include meta.load-css("modules", $with: ("logo": "/favicon.png"));
+@include meta.load-css("modules", $with: (
+  "logo": "/favicon.png",
+  "body-font-family": fonts.$tb-body-font-family,
+  "mono-font-family": fonts.$tb-mono-font-family,
+));
 
 // Apply the code-size / inline-code-padding overrides AFTER modules so they
 // out-rank JTD's base.scss (`code { font-size: 0.75em }`) and code.scss
