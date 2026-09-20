@@ -1009,6 +1009,15 @@ Python scripts are reserved for non-render concerns: one-off content conversion 
 
 `wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs.
 
+`eval/` — use-case evaluation of the developer documentation. `build_corpus.mjs` mirrors the
+repository with every non-prose file stubbed unreadable, so "documentation only" is a property
+of the tree rather than an instruction; `site_search.mjs` replays the site's real lunr index
+and query logic, because search and navigation fail on different pages. `usecases.md` is the
+catalogue, `protocol.md` is what an evaluator is given. **This asks whether the docs *work*,
+which is orthogonal to whether they are accurate** — most findings so far involve sentences
+that are individually true. Mine this file for cases: it is substantially a catalogue of
+"this shipped broken and nobody noticed", and each entry is a use case waiting to be written.
+
 ### The published docs assume manual work — and Wisdom is the exception
 
 **Nothing under `docs/Documentation/` should require Claude, an agent or a skill to follow.**

@@ -158,3 +158,14 @@ The per-phase `verify-phase{1..8}.mjs` harnesses and the bulk-triage
 tools (`_triage.mjs`, `_diff.mjs`, etc.) were retired in the Phase 10
 cutover; they asserted byte-equivalence with Jekyll, which is no
 longer the acceptance bar.
+
+Every gate above checks the site. [eval/](../eval/) checks the
+*documentation about* the site: it hands an evaluator a goal and a
+mirror of the repository with all source stubbed unreadable, and asks
+whether the goal can be reached. That is a different question from
+whether the prose is accurate, and it catches a class of defect no gate
+here can see -- a page can be true in every sentence and still send a
+reader to the wrong remedy. See [eval/README.md](../eval/README.md) for
+how to run a round, and
+[REVIEW-USECASES-874896e.md](REVIEW-USECASES-874896e.md) for what the
+first one found.
