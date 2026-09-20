@@ -162,14 +162,50 @@ When the docs start using a construct they have not used before, add a family fo
 ### scripts/check_links_diff.mjs
 {: #check-links-diff }
 
-    node scripts/check_links_diff.mjs --a script --b fused
+    node scripts/check_links_diff.mjs [--a SIDE] [--b SIDE] [--case NAME ...]
+                                      [--base-path-tree DIR] [--build-base-path]
+                                      [--max-lines N] [-v]
+    node scripts/check_links_diff.mjs --list
     node scripts/check_links_diff.mjs --self-test
 
-Differential harness for the link checker. There are two implementations of one check --- the standalone [`scripts/check_links.mjs`](#check-links) and the build's own `--check` pass --- and two implementations of one check is the shape that rots quietly, because **a checker that silently checks less reports a clean pass**. This runs both over the same bytes and diffs their findings category by category.
+Differential harness for the link checker. There are two implementations of one check --- the standalone [`scripts/check_links.mjs`](#check-links) and the build's own `--check` pass --- and two implementations of one check is the shape that rots quietly, because **a checker that silently checks less reports a clean pass**. This runs both over the same bytes and diffs their findings category by category, across the nine finding categories plus the per-run counts. Exits 0 when the two sides agree, 1 on a difference, 2 on a harness error.
 
-Run it after touching `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`. It builds the site itself, so both sides look at the same tree. It is deliberately not in `check.bat`: the script side costs a few seconds, which is the whole saving of having folded the check into the build.
+Two registries decide what a run actually does, and `--list` prints both. **Sides** are the implementations being compared, named by `--a` and `--b`:
 
-Most of its cases compare empty against empty on a healthy site, so two of them are synthetic: `fixture`, a hand-written tree with one fault of every kind, and `fixture-built`, the same idea built by `tbdocs` from `test/fixtures/check-src` --- which is the only way the build's own checker can be held to it. `--self-test` runs the reference implementation's own regression guards and then diffs it against a deliberately corrupted side, failing unless the difference is reported.
+| Side | What it is |
+|---|---|
+| `script` | `check_links.mjs` pinned to `--oracle fs`, run in-process. The reference implementation --- though not an oracle of record: on Windows its filesystem oracle answers "exists" for a wrong-case path that 404s on GitHub Pages, and on that one question `index` is the correct side. |
+| `index` | The same script over the same walk, with existence answered from a Set built off one directory listing rather than a stat per candidate. Proves the oracle's lookup semantics. |
+| `fused` | `tbdocs --check`, the build's own pass. The side the whole harness exists for: the one that could quietly check less, with nothing else on a clean site to say so. |
+| `mutant` | `script`, corrupted on purpose. Reachable only through `--self-test`. |
+
+Both default to `script`, and a bare invocation is refused rather than printing agreement between an implementation and itself.
+
+**Cases** are what gets checked and with which flags, selected by a repeatable `--case`. Omit it and all eight run:
+
+| Case | Tree and flags | Fused equivalent |
+|---|---|---|
+| `online` | `_site/` --- integrity + sitemap + search + canonical | yes |
+| `online-abs` | `online` again with an absolute `--root-dir`, asserted to reach identical findings | no |
+| `offline` | `_site-offline/` --- integrity + `--forbid` | yes |
+| `book` | `_site-pdf/book.html` --- fragments only, `--no-fail` | yes |
+| `basepath` | a tree built with `--baseurl`, checked with the matching `--base-path` | yes |
+| `fixture` | a synthetic tree written at run time, carrying one fault of every kind | no |
+| `fixture-built` | `test/fixtures/check-src` built by `tbdocs` --- the online tree | yes |
+| `fixture-built-offline` | the same build's offline tree, the only one with a forbidden prefix | yes |
+
+That last column is the part worth reading before trusting a green run. Under `--b fused` the two cases with no fused equivalent are skipped --- named in a `skipped:` line, not silently --- because the build's pass checks what the build produced and has nothing to say about a `--root-dir` shape variation or a hand-written tree it never wrote. The real-tree cases are empty in nearly every category on a healthy site, so for as long as `fixture` was the only fault-carrying case, **every `--b fused` run dropped the one case that gave the comparison anything to compare.** The built pair closes that: the same idea in a tree `tbdocs` produced, split across two cases because no single tree carries all nine categories --- the online tree has the sitemap, search and canonical checks, and the offline tree is the only one with a forbidden prefix.
+
+Both CI workflows run the harness, and neither runs it over the real site. `checks.yml` (pull requests) runs both halves:
+
+    node scripts/check_links_diff.mjs --case fixture --a script --b index
+    node scripts/check_links_diff.mjs --case fixture-built --case fixture-built-offline --a script --b fused
+
+`tbdocs-gh-pages.yml` (deploy) keeps only the first: ~0.3 s over a synthetic tree, enough that the reference implementation cannot rot unnoticed, while the extra three-page build stays on the PR gate. What is in neither, and deliberately not in `check.bat` either, is the full `--a script --b fused` over the real trees --- it builds the site itself so both sides read the same bytes, and the script side then costs a few seconds, which is the entire saving of having folded the check into the build. Run that one by hand after touching `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`.
+
+`--self-test` is the guard on the guard. It runs `check_links.mjs`'s own regression guards --- since `b97c75f` nothing else does --- and then diffs the reference implementation against a deliberately corrupted copy, failing unless the difference is reported. Everything else the harness prints reduces to *the two sides agreed*, which is also what a harness comparing nothing says.
+
+The fixtures have their own document, and it is the one to read before editing them: [`test/README.md`](https://github.com/twinbasic/documentation/blob/main/test/README.md) covers what each page under `check-src/` is there to provoke, and the hard-coded per-category counts (`FIXTURE_EXPECTED`, `FIXTURE_BUILT_ONLINE`, `FIXTURE_BUILT_OFFLINE`) that are asserted after every run, so a fixture that stops provoking a category fails loudly instead of quietly returning to empty-against-empty. It also covers the hazard that catches people out: **the fixture is built by the real `tbdocs`, so a template change can turn this gate red without anyone touching the fixture or the checker.** Adding the self-hosted fonts put two `<link rel="preload">` tags on every page, `check-src/` had no `assets/fonts/`, and its `broken` count went from 3 to 9. The fix for that shape of failure is to add the stub asset the template now expects --- never to raise the expected count, which dilutes a category the fixture exists to hold at an exact number.
 
 ### scripts/lib/axe-scan.mjs
 {: #axe-scan }
