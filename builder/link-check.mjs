@@ -766,7 +766,7 @@ function cachedCheckPath(pathCache, target, isDir, fallbackExts, indexFiles, ora
 }
 
 function entryKey(entry) {
-  return `${entry.target} ${entry.isDir ? 1 : 0} ${entry.frag ?? ""}`;
+  return `${entry.target}\0${entry.isDir ? 1 : 0}\0${entry.frag ?? ""}`;
 }
 
 // Settle the fragment references a chunked run could not decide locally.

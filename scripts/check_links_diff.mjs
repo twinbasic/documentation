@@ -23,6 +23,13 @@
 //   node scripts/check_links_diff.mjs --a script --b fused
 //   node scripts/check_links_diff.mjs --a script --b index
 //   node scripts/check_links_diff.mjs --self-test
+//
+// Also parsed:
+//   --max-lines N        cap the per-category finding dump
+//   --base-path-tree     check a tree built with a --baseurl prefix
+//   --build-base-path P  the base path to build that tree with
+//
+// Exits 0 when the two sides agree, 1 on a difference, 2 on a harness error.
 //   node scripts/check_links_diff.mjs --case online --case book -v
 //   node scripts/check_links_diff.mjs --list
 //
@@ -397,7 +404,7 @@ const SIDES = {
 // produced, so both sides are looking at the same bytes.
 const FUSED_CACHE = new Map();
 function fusedBuild({ baseurl = "", dest = null, src = "docs", offline = false } = {}) {
-  const key = `${src} ${baseurl} ${dest ?? ""}`;
+  const key = `${src}\0${baseurl}\0${dest ?? ""}`;
   if (FUSED_CACHE.has(key)) return FUSED_CACHE.get(key);
 
   const out = path.join(os.tmpdir(), `tbdocs-findings-${process.pid}-${FUSED_CACHE.size}.json`);
