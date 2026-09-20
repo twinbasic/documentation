@@ -81,10 +81,26 @@ function bySrcRel(a, b) {
   return a.srcRel < b.srcRel ? -1 : a.srcRel > b.srcRel ? 1 : 0;
 }
 
+// A UTF-8 BOM decodes to U+FEFF, which node's "utf8" reader hands back as
+// the first character rather than swallowing. gray-matter's `test` then sees
+// ﻿--- instead of ---, reports no frontmatter, and the caller files the
+// page as a static asset: it vanishes from the nav and the search index, and
+// its raw markdown is copied into the output tree and served verbatim,
+// frontmatter keys and all. That is what happened to
+// Reference/Built-In/AppGlobalClassObject/index.md, undetected, for months.
+//
+// Editors on Windows add a BOM without being asked, so this is a hazard any
+// contributor can reintroduce. Strip it here, at the one place every .md and
+// .html passes through, rather than policing the files.
+function stripBom(s) {
+  return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
+}
+
 function parseFrontmatter(raw, srcRel) {
-  if (!matter.test(raw)) return null;
+  const text = stripBom(raw);
+  if (!matter.test(text)) return null;
   try {
-    return matter(raw);
+    return matter(text);
   } catch (err) {
     throw new Error(`Failed to parse frontmatter in ${srcRel}: ${err.message}`);
   }
