@@ -39,6 +39,10 @@ Every page opens with a YAML frontmatter block. The keys that matter:
 - **`vba_attribution`** --- set to `true` only on pages adapted from the VBA-Docs source; see [Attribution](#attribution).
 - **`nav_exclude`**, **`sitemap: false`**, **`search_exclude: true`** --- optional opt-outs, each from exactly one thing: the sidebar, `sitemap.xml`, and the search index. They are independent; a page that should be unlisted everywhere sets all three. The build's own link check honours the last two, so a page that opts out is not then reported as missing from the index it opted out of.
 
+A package's `index.md` may also carry **`indexed_from`**, **`exclude_from_docs`** and **`exclude_kinds`**. Those are provenance for the authoring pass, not build input: they record which twinBASIC build the package download was indexed against, and what was deliberately left undocumented, so a later re-index can tell a genuine gap from a deliberate omission. The build ignores them and they never reach the HTML. **Leave them in place**, and bump `indexed_from` in the same commit if you re-index a package against a newer build.
+
+Any key the build does not recognise is simply inert --- nothing iterates frontmatter generically, so an unknown key is never emitted into the page.
+
 A minimal reference-page header:
 
 ```yaml

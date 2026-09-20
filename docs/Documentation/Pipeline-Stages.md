@@ -29,7 +29,7 @@ The pipeline passes three pieces of mutable state through every task: the `pages
 | `srcPath` | `discover` | `string` | Absolute filesystem path of the source file. |
 | `srcRel` | `discover` | `string` | POSIX-style path relative to `srcRoot`, e.g. `Reference/Core/Dim.md`. |
 | `ext` | `discover` | `string` | Lowercase file extension: `.md` or `.html`. |
-| `frontmatter` | `discover` | `object` | Parsed YAML frontmatter. |
+| `frontmatter` | `discover` | `object` | Parsed YAML frontmatter, with any leading UTF-8 BOM stripped before parsing (a BOM in front of the `---` otherwise makes `gray-matter` report no frontmatter at all, and the page is silently filed as a static asset). Only the named keys below are ever read --- nothing iterates this object, so an unrecognised key such as a package page's `indexed_from` is inert and never reaches the output. |
 | `rawContent` | `discover` | `string` | Body text after the frontmatter block. |
 | `permalink` | `discover` | `string` | URL path from `frontmatter.permalink`. A fallback of `/<srcRel>.html` exists in `computePermalink`, but `nav`'s `validatePermalinks` aborts the build before it can matter --- the file tree does not mirror the URL tree, so a derived permalink is structurally wrong here. |
 | `destPath` | `discover` | `string` | Filesystem path within the output root, e.g. `Reference/Core/Dim.html`. |

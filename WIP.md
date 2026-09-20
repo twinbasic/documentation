@@ -164,6 +164,42 @@ Formatting conventions:
 
 The attribution rule is **per-page**, determined by content provenance — not by package membership. A symbol existing in VBA is not sufficient to require the flag: the twinBASIC page must have been derived (verbatim or paraphrased) from a specific VBA-Docs source page. Many symbols that exist in VBA have no dedicated VBA-Docs page at all, and even where one exists the twinBASIC page may have been written independently. In particular, `VBA/HiddenModule`, `VBA/Compilation`, `VBA/TbExpressionService`, and twinBASIC-specific additions within VBA modules (`CType`, `If`, `CallByDispId`, `RaiseEventByName`, `ObjPtr`, `VarPtr`, `StrPtr`, ...) are twinBASIC-original and correctly omit `vba_attribution: true` regardless of their package location.
 
+#### Authoring-only frontmatter
+
+Three keys on a package's `index.md` are **provenance for the authoring pass, not build
+input**. The build never reads them and they do not reach the HTML --- `grep -r indexed_from docs/_site`
+returns nothing, because nothing in `template.mjs` iterates frontmatter generically; every
+consumer reads a named field. Leave them in place.
+
+| Key | Means |
+|-----|-------|
+| `indexed_from` | The twinBASIC build whose package download the documentation was indexed against. Currently `beta-x-0983` on all six. |
+| `exclude_from_docs` | Modules or classes in that package deliberately left undocumented --- internals, private helpers, API shims. |
+| `exclude_kinds` | Member *kinds* deliberately left undocumented. Only `WinEventLogLib` uses it, for `Declare`. |
+
+Together they say what a completeness check should expect: **re-index the package from a
+newer build, and anything new that is not named in `exclude_from_docs` or `exclude_kinds` is
+a documentation gap.** Without them a re-index cannot tell "not yet written" from
+"deliberately omitted", which is the whole point of recording them.
+
+The six packages carrying `indexed_from` are `AppGlobalClassObject`, `CustomControls`,
+`TwinBasicAssertions`, `WinEventLogLib`, `WinNamedPipesLib` and `WinServicesLib`, all set by
+the 2026-06-04 pass: `9f406eb`, `05ed96b`, `77c6a03`, `4cd4f4b`, `3429b97`, `6a68815`.
+`exclude_from_docs` is on three of them (`InternalStuff`; `EventLogHelperPrivate` +
+`EventLogAPIs`; `ServicesConstantsPublic`).
+
+**Bump `indexed_from` whenever a package is re-indexed against a newer build**, in the same
+commit as the content it adds. A stale value is worse than none: it asserts a completeness
+check was run against a build that no longer matches the package.
+
+> **These keys are also in active use by package documentation work that has not landed
+> yet**, covering packages beyond the six above. If you are about to document a package
+> from scratch, ask first --- it may already be written and waiting to merge.
+
+One other inert key exists, and is a different thing: `has_children` on four pages is a
+just-the-docs leftover. tbdocs derives the nav tree itself and never reads it. Harmless, but
+it is theme residue rather than something anyone is meant to maintain.
+
 ### Cross-section linking
 
 Relative links resolve against the **rendered URL** (the page's `permalink:`), not the file path. Pages that share a URL folder can use bare names (`[Y](Y)`); crossing folders needs `../` to climb out.
