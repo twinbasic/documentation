@@ -33,7 +33,7 @@ Every page opens with a YAML frontmatter block. The keys that matter:
 
 - **`title`** --- the page's name in the sidebar, breadcrumb, and search results.
 - **`parent`** (and sometimes **`grand_parent`**) --- the title of the nav parent. The build aborts if this does not resolve to exactly one page, so a typo is caught at build time rather than silently dropping the page from the sidebar or attaching it under the wrong branch.
-- **`permalink`** --- the page's stable URL, the contract the IDE help system and in-source `[Documentation(...)]` attribute links rely on. Reference pages follow a fixed scheme by section: a core keyword is `/tB/Core/<Symbol>`, a library symbol is `/tB/Packages/<Package>/...`, and so on. [Permanent Links](Permanent-Links) documents the full scheme.
+- **`permalink`** --- **required on every page.** The page's stable URL, and the contract the IDE help system and in-source `[Documentation(...)]` attribute links rely on. The build aborts if it is missing rather than deriving one from the file path: this tree deliberately does not mirror its URLs (`Reference/Built-In/CEF/` publishes at `/tB/Packages/CEF/`), so a derived URL would be wrong, and wrong silently. Reference pages follow a fixed scheme by section: a core keyword is `/tB/Core/<Symbol>`, a library symbol is `/tB/Packages/<Package>/...`, and so on. [Permanent Links](Permanent-Links) documents the full scheme.
 - **`nav_order`** --- optional integer that orders the page among its siblings in the sidebar.
 - **`redirect_from`** --- optional. List any earlier URL the page has moved from, so existing links keep resolving.
 - **`vba_attribution`** --- set to `true` only on pages adapted from the VBA-Docs source; see [Attribution](#attribution).

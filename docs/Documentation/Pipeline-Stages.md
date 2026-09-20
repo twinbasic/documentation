@@ -31,7 +31,7 @@ The pipeline passes three pieces of mutable state through every task: the `pages
 | `ext` | `discover` | `string` | Lowercase file extension: `.md` or `.html`. |
 | `frontmatter` | `discover` | `object` | Parsed YAML frontmatter. |
 | `rawContent` | `discover` | `string` | Body text after the frontmatter block. |
-| `permalink` | `discover` | `string` | URL path, taken from `frontmatter.permalink` or derived from `srcRel`. |
+| `permalink` | `discover` | `string` | URL path from `frontmatter.permalink`. A fallback of `/<srcRel>.html` exists in `computePermalink`, but `nav`'s `validatePermalinks` aborts the build before it can matter --- the file tree does not mirror the URL tree, so a derived permalink is structurally wrong here. |
 | `destPath` | `discover` | `string` | Filesystem path within the output root, e.g. `Reference/Core/Dim.html`. |
 | `layoutDefault` | `discover` | `boolean` | `true` when frontmatter has no explicit `layout:` key. |
 | `imageScope` | `discover` | `boolean` | `true` when `srcRel` contains an `Images/` segment. Phase 3 uses this to validate image paths. |
@@ -557,6 +557,8 @@ The pure core shared by the build's fused check and the standalone [`scripts/che
 | `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | Traverses the source tree, classifies pages vs static files, returns the two sorted arrays. |
 
 ### `nav.mjs`
+
+Runs two build-aborting integrity checks before building the tree: `validatePermalinks` (every page declares its own URL) and `validateNavIntegrity` (every `parent:` resolves to exactly one page). Both fail loudly at build time because both failures are otherwise silent --- a page at a URL nobody chose, or a page that vanishes from the sidebar.
 
 | Symbol | Signature | Description |
 |---|---|---|

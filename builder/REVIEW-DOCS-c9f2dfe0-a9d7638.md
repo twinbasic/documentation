@@ -67,9 +67,9 @@ three unpushed commits (`58f9c6e`, `6170e07`, `a9d7638`) are why CI had not yet 
 its designed 3 rather than raising the expectation to 9 --- six accidental broken links
 would dilute a category the fixture exists to hold at an exact number.
 
-**B. [S1] The `AppGlobalClassObject` package publishes nothing, and leaks raw markdown.**
-Not fixed --- it needs a decision. `docs/Reference/Built-In/AppGlobalClassObject/` holds 38
-authored files and produces **zero** HTML pages. Two independent causes:
+**B. [S1] The `AppGlobalClassObject` package published nothing, and leaked raw markdown.**
+*Fixed.* `docs/Reference/Built-In/AppGlobalClassObject/` held 38 authored files and produced
+**zero** HTML pages. Two independent causes:
 
 1. The 37 pages under `_App/` match `"**/_*/**"` in `_config.yml`'s `exclude:` --- the rule
    that exists to drop `_Images`, `_includes` and friends. The interface genuinely is named
@@ -88,8 +88,34 @@ site**, not just in a local build:
 | `docs.twinbasic.com/Reference/Built-In/AppGlobalClassObject/index.md` | **200** --- serves the raw markdown, YAML frontmatter and all (`title:`, `parent:`, `exclude_from_docs:`, `indexed_from: beta-x-0983`) as plain text |
 | `docs.twinbasic.com/tB/Packages/AppGlobalClassObject/_App/Build` | **404** --- the permalink that page's own links point at does not exist |
 
-So the package is simultaneously absent from the site at its intended URLs and present at
-an unintended one, leaking internal frontmatter keys. **Fixing the BOM alone
+So the package was simultaneously absent from the site at its intended URLs and present at
+an unintended one, leaking internal frontmatter keys.
+
+**How it was fixed.** Both halves had to land together --- stripping the BOM alone would
+have turned the build red, since `index.md` would become a page whose `_App/…` links
+resolved to nothing.
+
+- `_config.yml`'s `"**/_*/**"` narrowed to `"**/_Images/**"` plus `"**/*.af"`. Measured
+  before committing: pages 871 → 908, **nothing lost**, static files unchanged, and every
+  one of the 37 gained pages under `AppGlobalClassObject/_App/`. The five published
+  underscore-prefixed *pages* under `CustomControls/Framework/` were never at risk --- the
+  pattern matches a directory.
+- `discover.mjs` now strips a leading U+FEFF before `matter.test`, so **no source file can
+  fail this way again**. Windows editors add a BOM unasked, so policing the files would not
+  have held. Covered by a test over `.md` and `.html`, with a control run proving both are
+  misfiled as static without the fix.
+- `index.md` gained the conventional `permalink: /tB/Packages/AppGlobalClassObject/` and
+  one link corrected from `_App/_App` to `_App/`.
+
+Result: 907 content pages (was 869), the package at its conventional URLs, 38 sitemap and
+231 search entries, the raw-markdown path gone from the output tree, and `build.bat &&
+check.bat` clean.
+
+**And it prompted a third fix.** The derived-permalink fallback is what put the package at
+the wrong URL in the first place, so `nav.mjs` now refuses a page that does not declare
+one. 906 of 908 pages already did; both exceptions were mistakes, publishing at a `.html`
+URL their own siblings do not use. The check found a third omission immediately --- the
+test fixture's `Kitchen.md`. **Fixing the BOM alone
 turns the build red** --- `index.md` would become a page whose `_App/…` links resolve to
 nothing --- so both halves must land together. The `_App/` half is the decision: rename the
 folder, narrow the glob to `_Images` plus the known Jekyll directories, or add an explicit

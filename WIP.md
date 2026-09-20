@@ -4,7 +4,7 @@ Static site (`just-the-docs` theme look-and-feel) deploying to `docs.twinbasic.c
 
 ## Status
 
-Reference documentation is **complete** for all twelve published packages, adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages). The CEF and WebView2 packages also carry a tutorial set.
+Reference documentation is **complete** for all thirteen packages, adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages). The CEF and WebView2 packages also carry a tutorial set.
 
 | Package                              | Reference   | Tutorials |
 |--------------------------------------|-------------|-----------|
@@ -20,7 +20,7 @@ Reference documentation is **complete** for all twelve published packages, adapt
 | WinServicesLib                       | done        | —         |
 | tbIDE                                | done        | —         |
 | WinNativeCommonCtls                  | done        | —         |
-| AppGlobalClassObject                 | **written, not published** | — |
+| AppGlobalClassObject                 | done        | —         |
 
 The rest of this file is the maintenance guide for updating existing pages or adding new ones — high-level package surface notes, page templates, cross-section linking conventions, and the integrity check.
 
@@ -56,21 +56,23 @@ The rest of this file is the maintenance guide for updating existing pages or ad
 - `docs/Reference/Built-In/WinNativeCommonCtls/` — Windows Native Common Controls compatibility package: a VB6-compatible Microsoft Common Controls 6.0 (`MSCOMCTL.OCX`) replacement, written on top of the Win32 ComCtl32 controls. Eight controls (**DTPicker**, **ImageList**, **ListView**, **MonthView**, **ProgressBar**, **Slider**, **TreeView**, **UpDown**), plus eight sub-object classes (**ListImages** / **ListImage**, **ListItems** / **ListItem**, **ColumnHeaders** / **ColumnHeader**, **Nodes** / **Node**) reached through container properties on the three collection-bearing controls, plus ~16 user-facing enumerations. Each control is a `<Name>BaseCtl` (`[COMCreatable(False)]`) plus a thin `<Name>` leaf tagged `[WindowsControl(...)]` — the same split VB-package and CEF use.
 - `docs/Reference/Built-In/AppGlobalClassObject/` — the `App` global object available in every twinBASIC project: the `_App` interface plus its property pages under `_App/` (`Build`, `Comments`, `CompanyName`, `EXEName`, …). 38 files.
 
-  > **This package currently publishes nothing, for two independent reasons.**
-  > The 37 pages under `_App/` are swallowed by the `**/_*/**` glob in `_config.yml`'s
-  > `exclude:` --- the rule that exists to drop `_Images`, `_includes` and friends. The
-  > interface really is named `_App` in twinBASIC (the COM hidden-interface convention),
-  > so the folder name and the build convention collide head-on.
+  > **This package published nothing at all until it was fixed**, and the two
+  > causes are both worth knowing about.
   >
-  > Separately, `index.md` is the one file in `docs/` carrying a UTF-8 BOM. The BOM sits
-  > in front of the `---`, so the frontmatter never parses, `discover` files it as a
-  > *static file* rather than a page, and the **raw markdown is copied verbatim into
-  > `_site/Reference/Built-In/AppGlobalClassObject/index.md`** and served as-is.
+  > The 37 pages under `_App/` were swallowed by a blanket `**/_*/**` rule in
+  > `_config.yml`'s `exclude:`, which existed to drop `_Images`. The twinBASIC
+  > interface really is named `_App`, after the COM hidden-interface convention,
+  > so the folder name and the build convention collided. The rule is now scoped
+  > to `**/_Images/**` (plus `**/*.af`), and underscore-prefixed *pages* such as
+  > `CustomControls/Framework/_CustomControlContext.md` were never affected --
+  > the pattern matches a directory.
   >
-  > Fixing the BOM alone turns the build red: `index.md` would become a page whose
-  > `_App/...` links still resolve to nothing. Both halves have to land together, and
-  > the `_App/` half needs a decision --- rename the folder, narrow the glob to
-  > `_Images` and the known Jekyll directories, or add an explicit include exception.
+  > Separately `index.md` carried a UTF-8 BOM, which sits in front of the `---`
+  > and stops `gray-matter` recognising any frontmatter. `discover` then filed it
+  > as a *static file*, so its raw markdown was copied into the output tree and
+  > served verbatim on the live site, frontmatter keys and all. `discover.mjs`
+  > now strips a leading BOM before parsing, so no source file can fail that way
+  > again; editors on Windows add one without being asked.
 - `docs/Reference/Built-In/tbIDE/` — IDE Extensibility package (this is the **addin SDK**). The package is type-only — it ships **public interfaces + CoClasses** that an addin DLL binds to; every implementation behind them lives in the twinBASIC IDE itself. The user-facing surface is one entry-point factory (`tbCreateCompilerAddin`) plus 23 CoClasses grouped by role: the addin contract (`AddIn`), the root API (`Host`), the loaded `Project`, the editors collection (`Editor` / `CodeEditor` / `Editors`), the virtual file system (`FileSystem` / `FileSystemItem` / `Folder` / `File`), the in-IDE UI surface (`Toolbar` / `Toolbars` / `Button` / `ToolWindow` / `ToolWindows`), the HTML DOM inside a tool window (`HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` / `HtmlEventProperty` / `HtmlEventProperties`), the `DebugConsole`, `KeyboardShortcuts`, `Themes`, and the single concrete user-instantiable helper class `AddinTimer`. Flat layout — one page per CoClass / Class plus the index landing.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
