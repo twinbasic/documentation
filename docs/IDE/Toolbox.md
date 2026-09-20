@@ -13,16 +13,16 @@ See [Controls](../../Controls)
 
 <!-- ![Toolbox](../Controls/Images/toolbox.png "Toolbox") -->
 
-![+ More Components](Images/Toolbox_MoreComponents.png "+ More Components")
+![The Toolbox button labelled More components, a grey plus sign beside the text inside a dashed outline.](Images/Toolbox_MoreComponents.png)
 
-![Components Message](Images/Components_Message.png "Components Message")
+![A twinBASIC information box reading Components list coming soon, explaining that for now ordinary COM references to the appropriate ActiveX type library must be added and the components will then appear in the form designer automatically, above a GoTo COM References button and an OK button.](Images/Components_Message.png)
 
 The "GoTo COM References" button takes you to **Project Settings** and filters by "project.references".
 
-![Library References - Project Settings](Images/ProjectSettings_LibraryReferences.png "Library References - Project Settings")
+![The Project Settings dialog filtered to project.references, on its Enabled Libraries tab. Four ticked entries are listed in priority order against Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](Images/ProjectSettings_LibraryReferences.png)
 
 Click on the _Available COM References_ tab.
 
-![Available COM References - Project Settings](Images/ProjectSettings_AvailableCOMReferences.png "Available COM References - Project Settings")
+![The same dialog on its Available COM References tab, where a search box sits above an alphabetical list of unticked type libraries registered on the machine, AccessibilityCplAdmin, Active DS, ActiveMovie and AgentWmiLib among them, against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png)
 
 See [Project Settings](Settings) for more info.

@@ -7,21 +7,21 @@ permalink: /tB/IDE/Project/StatusBar
 
 # Status Bar
 
-![Status Bar](Images/StatusBar.png "Status Bar")
+![The full width of the status bar: a red tB Services: UNAVAILABLE badge and an olive COMMUNITY EDITION badge at the left, each with a warning triangle, then the Ko-fi, Discord, Twitter and GitHub icons, and dimmed text reading tbProject_Close at the far right.](Images/StatusBar.png)
 
 The Status Bar runs along the bottom of the IDE window and shows at-a-glance information about the health of backend services, the active licence tier, and quick-access links to community resources.
 
 ## Services
 
-![Services Unavailable](Images/Services_Unavailable.png "Services Unavailable")
+![A red status bar badge with a warning triangle, reading tB Services: UNAVAILABLE.](Images/Services_Unavailable.png)
 
-![Services](Images/Services_Unavailable_Tooltip.png "Services Unavailable Tooltip")
+![The tooltip that badge shows on hover, four lines giving COMPILER, FS, LSP and DEBUGGER each as Disconnected.](Images/Services_Unavailable_Tooltip.png)
 
-![Services Limited](Images/Services_Limited.png "Services Limited")
+![An olive status bar badge with a warning triangle, reading tB Services: LIMITED.](Images/Services_Limited.png)
 
-![Services Operational](Images/Services_Operational.png "Services Operational")
+![A green status bar badge with a tick, reading tB Services: OPERATIONAL.](Images/Services_Operational.png)
 
-![Services](Images/Services_Operational_Tooltip.png "Services Operational Tooltip")
+![The tooltip that badge shows on hover, four lines giving COMPILER, FS, LSP and DEBUGGER each as OPERATIONAL.](Images/Services_Operational_Tooltip.png)
 
 COMPILER: Disconnected / OPERATIONAL
 
@@ -37,7 +37,7 @@ DEBUGGER: Disconnected / OPERATIONAL
 
 - [Pre Order](https://twinbasic.com/preorder.html)
 
-![Licence - Community Edition](Images/Licence_CommunityEdition.png "Licence - Community Edition")
+![An olive status bar badge with a warning triangle, reading COMMUNITY EDITION.](Images/Licence_CommunityEdition.png)
 
 - Community Edition
 - Professional Edition
@@ -45,7 +45,7 @@ DEBUGGER: Disconnected / OPERATIONAL
 
 ## Links
 
-![Links](Images/Links.png "Links")
+![Four white icons at the right of the status bar: a Ko-fi coffee cup holding a heart, the Discord face, the Twitter bird and the GitHub cat.](Images/Links.png)
 
 - https://ko-fi.com/twinbasic
 - https://discord.com/invite/UaW9GgKKuE

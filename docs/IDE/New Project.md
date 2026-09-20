@@ -7,9 +7,9 @@ permalink: /tB/IDE/Project/New
 
 # New Project
 
-![New / Open Project](Images/New_Project.png "New / Open Project")
+![The New / Open Project dialog on its New tab, headed twinBASIC IDE BETA 950. Eight project templates sit in two rows: Standard EXE, which is selected, ActiveX Control, ActiveX DLL, Standard DLL marked non-ActiveX, Standard EXE (Console App), Standard EXE plus VBCCR v1.8 marked experimental, Import from VBP and Import from folder. Browse, Open and Cancel run along the bottom.](Images/New_Project.png)
 
-![File (Menu)](Menu/Images/Menu_File.png "File (Menu)")
+![The IDE File menu open with no project loaded. New Project, Open Project, Open Recent and Exit are available; Close Project, Save Project, Save Project As, Export Project, Save Current Document, Build and Clean are all greyed out.](Menu/Images/Menu_File.png)
 
 Shortcut: <kbd>CTRL</kbd> + <kbd>N</kbd>
 
@@ -28,7 +28,7 @@ Browse \| Open \| Cancel
 
 # Samples
 
-![Samples](Images/New_Project_Samples.png "Samples")
+![The same dialog on its Samples tab, a scrolling column of sample projects headed by Sample 0. Reports (Experimental), which is selected, then Sample 1. HelloWorld, Sample 1a. WebView2 Examples, Sample 2. GetIPAddresses and Sample 3. MyCodeLibrary, with the list running on past the bottom of the panel.](Images/New_Project_Samples.png)
 
 0. Reports (Experimental)
 1. WebView2 Examples
@@ -59,11 +59,11 @@ Browse \| Open \| Cancel
 
 If you haven't opened any projects, or removed all then this tab will be blank.
 
-![Recent](Images/New_Project_Recent_1.png "Recent")
+![The same dialog on its Recent tab with nothing listed, an empty grey panel between the tab strip and the Browse, Open and Cancel buttons.](Images/New_Project_Recent_1.png)
 
 A list of recent projects will be displayed, resizing depending on how many are in the list.
 
-![Recent](Images/New_Project_Recent_2.png "Recent")
+![The Recent tab holding two entries, the first highlighted white and the second grey, each with a small X button at its right edge. Both rows read blank because the project paths have been erased from the screenshot.](Images/New_Project_Recent_2.png)
 
 _Removed paths_
 

@@ -7,19 +7,19 @@ permalink: /tB/IDE/Project/Explorer
 
 # Project Explorer
 
-![Project Explorer](Images/ProjectExplorer.png "Project Explorer")
-![Project Explorer Sample](Images/ProjectExplorer_Sample.png "Project Explorer Sample")
+![The PROJECT EXPLORER panel with no project open: its title bar carries only a drag grip and a close button, and the body below it is empty.](Images/ProjectExplorer.png)
+![The same panel with SampleProject loaded, its root node expanded over six yellow folders, each with a plus box for expanding it: ImportedTypeLibraries, Miscellaneous, Packages, References, Resources and Sources, the last of them selected.](Images/ProjectExplorer_Sample.png)
 
-![Folder](Images/Folder.png "Folder") ImportedTypeLibraries  
-![Folder](Images/Folder.png "Folder") Miscellaneous  
-![Folder](Images/Folder.png "Folder") Packages  
-![Folder](Images/Folder.png "Folder") References  
-![Folder](Images/Folder.png "Folder") Resources  
-![Folder](Images/Folder.png "Folder") Sources  
+![A small yellow folder icon](Images/Folder.png) ImportedTypeLibraries  
+![A small yellow folder icon](Images/Folder.png) Miscellaneous  
+![A small yellow folder icon](Images/Folder.png) Packages  
+![A small yellow folder icon](Images/Folder.png) References  
+![A small yellow folder icon](Images/Folder.png) Resources  
+![A small yellow folder icon](Images/Folder.png) Sources  
 
 When a Project is open contextual icons will appear.
 
-![Project Explorer Header](Images/ProjectExplorer_Header.png "Project Explorer Header")
+![The PROJECT EXPLORER title bar once a project is open, with four buttons at its right: a settings gear, a toggle file view icon of two overlapping documents, a plus for adding items, and the panel close button.](Images/ProjectExplorer_Header.png)
 
 ## ![](Images/Settings.png) Project Settings
 
@@ -34,7 +34,7 @@ Same as Right-Click
 
 ## Right-Click - Add
 
-![Right-Click Add](Images/RightClick-Add.png "Right-Click Add")
+![The Project Explorer context menu with its Add submenu open alongside it. The submenu runs from Add Folder through the Windows Form, MDI Form, UserControl, PropertyPage and Report entries, the CustomControls form, the .TWIN module and class, the .BAS module and .CLS class, Add Other File, Import, and three Add Resource lines. The menu behind it lists Cut, Copy, Paste, Copy Path, View As JSON, View As Markdown Preview, Rename, Export and Delete Permanently, with Cut, Copy, Paste and the two View As entries greyed out.](Images/RightClick-Add.png)
 
 - ![](Images/Folder.png) Add Folder
 - ![](Images/tB-Green.png) Add Windows Form
@@ -96,7 +96,7 @@ Same as Right-Click
 ## ![](Images/tB-Green.png) CustomControls Forms
 {: #customcontrols-forms }
 
-![Add CustomControls Form Popup](Images/RightClick-Add-CustomControlsForm-Popup.png "Add CustomControls Form Popup")
+![A twinBASIC message box headed Package needed: CustomControls, saying that a reference to the CustomControls package must be added to the project first and that the compiler will be restarted once it is, above an Add CustomControls package button and a Cancel button.](Images/RightClick-Add-CustomControlsForm-Popup.png)
 
 ## ![](Images/tB-Red.png) Module
 {: #module }
@@ -112,7 +112,7 @@ Same as Right-Click
 
 ## Resource: Visual Styles Manifest
 
-See ![Folder](Images/Folder.png "Folder") `/.../Resources/MANIFEST/#1.xml`
+See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/MANIFEST/#1.xml`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -141,7 +141,7 @@ See ![Folder](Images/Folder.png "Folder") `/.../Resources/MANIFEST/#1.xml`
 
 ## Resource: String Table
 
-See ![Folder](Images/Folder.png "Folder") `/.../Resources/STRING/Strings.json`
+See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/STRING/Strings.json`
 
 ```json
 [
@@ -166,7 +166,7 @@ See ![Folder](Images/Folder.png "Folder") `/.../Resources/STRING/Strings.json`
 
 ## Resource: MESSAGETABLE
 
-See ![Folder](Images/Folder.png "Folder") `/.../Resources/MESSAGETABLE/Strings.json`
+See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/MESSAGETABLE/Strings.json`
 
 ```json
 {
