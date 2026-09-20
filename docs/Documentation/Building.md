@@ -227,11 +227,11 @@ Self-hosting the body face settles the *text* at 17px on every machine, and does
 
 4. Select your repository and branch to merge from, and set the base branch to **`staging`**. That is the repository's default branch, the branch the deploy workflow publishes from, and the one the pull-request checks run against.
 
-   ![img](Images/compare-changes.png)
+   ![GitHub's Compare changes page, with the compare across forks link marked, and below it the head repository and compare branch selectors](Images/compare-changes.png)
 
 5. Create the pull request.
 
-   ![img](Images/create-pull-request.png)
+   ![The comparison after choosing the fork and branch, reporting Able to merge, with the green Create pull request button marked](Images/create-pull-request.png)
 
    A maintainer will merge the pull request into the documentation repository. You may wish to mention an outstanding request on the [#docs][hash-docs] channel, although the [#github-docs][hash-github-docs] channel provides automated notifications of pull requests. Normally, a maintainer will get a notification of a new pull request via Discord, and will merge it or comment with a request for changes.
 
@@ -239,15 +239,15 @@ Self-hosting the body face settles the *text* at 17px on every machine, and does
 
 6. Review, then merge the pull request or comment with required changes.
 
-   ![img](Images/merge-pull-request.png)
+   ![A pull request reporting no conflicts with the base branch, with the green Merge pull request button marked](Images/merge-pull-request.png)
 
-   ![img](Images/confirm-merge.png)
+   ![The merge form's commit message, extended description and commit email fields, with the green Confirm merge button marked](Images/confirm-merge.png)
 
 7. Select the **Build & deploy docs** action.
-   ![img](Images/choose-workflow.png){:width="75%"}
+   ![The repository's Actions tab, and the workflow list in the left sidebar where the deploy workflow is chosen](Images/choose-workflow.png){:width="75%"}
 
 8. Manually run the build and deployment workflow if a release snapshot is needed. (Pushes to `staging` deploy to Pages automatically; only the manual run additionally cuts a GitHub release with the offline-browsable site copy attached as a zip and the PDF book attached.)
-   ![img](Images/run-workflow.png){:width="50%"}
+   ![The Run workflow dropdown open on its branch selector, with the green Run workflow button that starts the manual deployment](Images/run-workflow.png){:width="50%"}
 
 ## Editing screenshots
 
@@ -259,7 +259,7 @@ One way to edit screenshots is to use an integrated vector / pixel program like 
 
 3. Use the Vector Crop tool (from the Vector studio) to crop the screenshot down to the relevant part.
 
-   ![img](Images/af-vector-studio.png) ![img](Images/af-vector-crop-tool.png)
+   ![Affinity's studio switcher, with Vector selected rather than Pixel](Images/af-vector-studio.png) ![The Vector studio's tool column, with the Vector Crop tool highlighted](Images/af-vector-crop-tool.png)
 
 4. Select the cropped image and copy it to the clipboard with <kbd>Ctrl-C</kbd>.
 
