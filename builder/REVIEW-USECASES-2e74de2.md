@@ -259,6 +259,14 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 
 ### Needs someone with the twinBASIC IDE
 
+> **Command-line compilation is not a route to any of these.** Checked against
+> `twinBASIC_IDE_BETA_983`: the compiler executable's whole command-line surface is six
+> verbs --- `export`, `import`, `settings`, `licence`, `changelog`, `readme` --- and none of
+> them builds. Building is IDE-only, so verifying an `Applicable to:` line still means
+> putting the attribute in front of the compiler by hand. The six verbs are now documented
+> at [Import/Export Tool](../docs/Features/Packages/Import-export%20tool.md); they were not
+> before, and the usage message the tool prints names only two of them.
+
 - **`ConstantFoldableNumericsOnly`** carries the same unqualified *Applicable to: **Function***
   that `ConstantFoldable` did. The sibling turned out to be module-scoped only. Same check.
 - **The other 52 `Applicable to:` lines in `Reference/Attributes.md`** have never been verified
@@ -290,9 +298,15 @@ screenshot shows; `IDE/Links.png` is the old Twitter bird above an `x.com` URL.
 
 ### Documented shortcuts that disagree with their screenshots
 
-`Edit.md` Find In Project `CTRL+SHIFT+Y` against `CTRL+SHIFT+F`; `File.md` Export Project with
-no shortcut against `CTRL+E`; `Project.md` References with no shortcut against `CTRL+T`; and
-`Edit.md`'s "Select All Matchtes" against "Select All Matches".
+*Fixed in `00ca609`.* `Edit.md` Find In Project `CTRL+SHIFT+Y` against `CTRL+SHIFT+F`;
+`File.md` Export Project with no shortcut against `CTRL+E`; `Project.md` References with no
+shortcut against `CTRL+T`; and `Edit.md`'s "Select All Matchtes" against "Select All Matches".
+All four confirmed by opening the three screenshots, and a fifth found the same way:
+`Edit.md` wrote "TransformTo Titlecase" without the space.
+
+*Corrected while fixing.* This review's claim above that **`IDE/Menu/Edit.md`'s list omits
+five commands the screenshot shows is false.** The screenshot holds 28 commands and the page
+lists all 28, in order. What it had wrong was the three spellings, not the coverage.
 
 ### Smaller documentation items
 
