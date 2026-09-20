@@ -96,10 +96,39 @@ runs at two points, neither of them behind a flag --- a build run with
 Unlike the link check, **a finding here aborts the build**. A broken link still
 leaves a tree worth inspecting; a tree with a private key in it does not.
 
+When it aborts on a file of yours there are three remedies, and the message names
+only two. Which one applies depends on whether the file should be published at
+all, and if it should, on whether you are adding a *file* or a *type*:
+
+- **It should not be published.** Keep it outside `docs/`, or add a pattern to
+  `_config.yml`'s `exclude:` if it has to sit beside the page it produces, as the
+  `.scss`, `.dot` and Affinity `.af` sources do.
+- **This one file should be published.** Declare it in `_config.yml`'s
+  `bundle_extra`, which spells out a source and a published path and exempts that
+  exact path rather than the extension:
+
+  ```yaml
+  bundle_extra:
+    - src: ../scripts/impexp.py
+      dest: Features/Packages/downloads/impexp.py
+  ```
+
+  That is how `scripts/impexp.py` and `impexp.mjs` ship under
+  `Features/Packages/downloads/` while a stray `.py` or `.mjs` anywhere else
+  still fails. `src` is resolved against `docs/`, so the file can stay outside
+  the tree where it is maintained rather than being copied in to be published.
+- **The site is gaining a new asset type.** Add the extension to
+  `SOURCE_EXTENSIONS` in the same commit as the file --- one deliberate edit,
+  made by the person who knows they are making it.
+
+The second is right far more often than the third. Widening `SOURCE_EXTENSIONS`
+to `.json` so that one download can ship makes every stray `.json` under `docs/`
+publishable again --- the `secrets.json` case this section opens with, restored
+by the person fixing a build failure. `bundle_extra` costs two lines of config
+and blesses nothing beyond the path it names.
+
 What this means when writing a page is covered in
-[Authoring Pages](Authoring#what-may-live-in-docs): keep working files outside
-`docs/`, and if a genuinely new asset type belongs on the site, add it to
-`SOURCE_EXTENSIONS` in the same commit.
+[Authoring Pages](Authoring#what-may-live-in-docs).
 
 `check.bat` runs [`scripts/check_publish_policy.mjs`](Tools#check-publish-policy)
 first, and it exists because a clean build proves only half of this. "Nothing in

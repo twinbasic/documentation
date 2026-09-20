@@ -78,12 +78,43 @@ search:
   to this check; it aborts with `Failed to parse frontmatter in <file>` and the
   parser's own line and column.
 
-**If a new asset type genuinely belongs on the site,** add it to
-`SOURCE_EXTENSIONS` in
+**If a file genuinely belongs on the published site,** there are two ways to
+allow it, and picking the wrong one quietly undoes the allowlist. The question is
+whether you are adding a *type* or a *file*.
+
+A **type** is an extension the site will go on using --- a new image format, a new
+font format --- where the next file of that kind should publish without anyone
+having to think about it. Add the extension to `SOURCE_EXTENSIONS` in
 [`builder/publish-policy.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/publish-policy.mjs)
 in the same commit as the file. That is a deliberate one-line edit, and it is the
 point of the rule: the decision gets made once, by the person who knows they are
 making it.
+
+A **file** is one particular download or sample whose extension you would not
+want blessed everywhere --- a `.py` script, a `.json` data file, a `.zip`.
+Declare it in `_config.yml`'s `bundle_extra`, which spells out a source and a
+published path and exempts that exact path rather than the extension:
+
+```yaml
+bundle_extra:
+  - src: ../scripts/impexp.py
+    dest: Features/Packages/downloads/impexp.py
+```
+
+`src` is resolved against `docs/`, so it may point outside the tree --- the two
+real entries publish the [Import/Export Tool](../../Features/Packages/Import-Export-Tool)
+from `scripts/`, where it is maintained and run, instead of requiring a second
+copy under `docs/` that would drift from it. `dest` is the path in the built
+site, and it is what the page links to. A `src` that does not exist aborts the
+build, so a typo there is not silent either.
+
+Between the two, **prefer `bundle_extra` unless you really are adding a type.**
+Widening `SOURCE_EXTENSIONS` to `.json` so that one download can ship makes every
+stray `.json` under `docs/` publishable again --- a `docs/secrets.json` would
+reach a public URL, which is the whole class of accident the allowlist exists to
+refuse, reintroduced by the person fixing a build failure.
+`scripts/check_publish_policy.mjs` asserts that a `bundle_extra` exemption stays
+pinned to its declared path and never leaks to the extension.
 
 ## Frontmatter and permalinks
 
