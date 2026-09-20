@@ -455,7 +455,7 @@ The project JS is deliberately small. `theme-toggle.js` implements the three-sta
 
 ## Project styling
 
-**Every hand-written style rule the project owns lives under `docs/_sass/`.** A CSS rule for a new component goes there --- not into the vendored theme sources under `builder/vendor/just-the-docs/_sass/`, which are pristine upstream and re-vendored wholesale, and not into a separate stylesheet, because the site serves exactly one: `assets/css/just-the-docs-combined.css`.
+**Every hand-written style rule the project owns lives under `docs/_sass/`.** A CSS rule for a new component goes there --- not into the vendored theme sources under `builder/vendor/just-the-docs/_sass/`, which are pristine upstream and re-vendored wholesale, and not into a new stylesheet of its own. Everything under `docs/_sass/` compiles into one asset, `assets/css/just-the-docs-combined.css`, which is the stylesheet every page loads.
 
 `.scss` is build input, never a published asset. `_config.yml`'s `exclude:` drops `**/*.scss` from the source walk, so a partial is compiled and its source is not copied out. Nothing under `docs/_sass/` reaches a deploy tree as a file.
 
