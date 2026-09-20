@@ -246,20 +246,36 @@ Renders every committed diagram with the real webfont and fails if a label sits 
 
     node scripts/check_axe_patch_equiv.mjs [--patch NAME]
 
-Value-equivalence check for the vendored axe source patches. Builds the same colours under the stock and patched bundles and compares every derived value `color-contrast` consumes. This is the companion to the [fingerprint gate](#check-a11y-fingerprint), and both are needed: the fingerprint gate compares `incomplete` as a rule-id *set*, so a colour error that shifted contrast ratios without flipping any pass/fail classification would sail straight through it. Run it before adopting a new `SOURCE_PATCHES` entry and after **every** axe-core upgrade --- the patches are pinned to the bundle's current text. Exits 0 equivalent, 1 a value differs, 2 harness error.
+Value-equivalence check for the vendored axe source patches. Builds the same colours under the stock and patched bundles and compares every derived value `color-contrast` consumes. This is the companion to the [fingerprint gate](#check-a11y-fingerprint), and both are needed: the fingerprint gate compares `incomplete` as a rule-id *set*, so a colour error that shifted contrast ratios without flipping any pass/fail classification would sail straight through it. Run it before adopting a new `SOURCE_PATCHES` entry and after **every** axe-core upgrade --- the patches are pinned to the bundle's current text, and an upgrade needs this gate *and* the fingerprint gate, never one of the two. See [Upgrading axe-core](#upgrading-axe-core) for the sequence. Exits 0 equivalent, 1 a value differs, 2 harness error.
 
 ### scripts/check_a11y_fingerprint.mjs
 {: #check-a11y-fingerprint }
 
     node scripts/check_a11y_fingerprint.mjs --list
-    node scripts/check_a11y_fingerprint.mjs --candidate <scheme> [--baseline <scheme>]
+    node scripts/check_a11y_fingerprint.mjs [--candidate <scheme>] [--baseline <scheme>]
                                             [--patches <name>] [--unminified]
                                             [--root-dir <path>] [--pages <list>]
                                             [--theme <t>] [--viewport <v>] [--json]
 
 The gate for any change to *what the scan runs*. axe is the site's correctness oracle, which makes it dangerous to tune: a change can make axe see **less** and still report a clean pass. That nearly shipped once --- blocking `just-the-docs.js` looked like a 130 ms win and quietly dropped the colour-contrast node count on one page from 54 to 2. This runs the full page × theme × viewport matrix twice, once under each of two named schemes from `axe-scan.mjs`'s registry, against one build in one process, and diffs the findings audit by audit (violations by `ruleId:nodeCount`, incomplete by rule-id set).
 
-Two limits worth knowing. It compares a candidate against a baseline produced by that same scheme's element set, so it **cannot** detect a change that stops auditing elements entirely --- anything touching viewport, visibility or request blocking has to be argued from source instead. And it compares *which* findings axe produces, never their shape, so a scheme that passes every audit can still crash the reporter. Necessary, not sufficient. Run `--baseline production --candidate production` as an A/A control after touching the matrix.
+Two limits worth knowing. It compares a candidate against a baseline produced by that same scheme's element set, so it **cannot** detect a change that stops auditing elements entirely --- anything touching viewport, visibility or request blocking has to be argued from source instead. And it compares *which* findings axe produces, never their shape, so a scheme that passes every audit can still crash the reporter. Necessary, not sufficient. Both `--baseline` and `--candidate` default to `production`, so a bare run is already that A/A control --- run it after touching the matrix.
+
+#### Upgrading axe-core
+{: #upgrading-axe-core }
+
+`package.json` pins `axe-core` exactly --- no caret --- because the source patches are pinned to the bundle's current text and roughly fifty line citations in `builder/PLAN-axe-perf.md` are pinned to its current layout. A bump is therefore a deliberate act, and it needs **both** gates. Neither is implied by the other, and each needs Chromium and an up-to-date `_site-offline/`:
+
+    node scripts/check_a11y_fingerprint.mjs --patches plain-color-fields
+    node scripts/check_axe_patch_equiv.mjs
+
+The first asks whether the patched bundle still *finds* what the stock one finds, across the full page × theme × viewport matrix. `--patches` is what makes it ask that. Without the flag each side runs its own scheme's patch list, and since every scheme inherits `DEFAULT_PATCHES` the two sides would share a bundle --- a no-op for this question. With it the flag overrides both: stock on the baseline, the named patches on the candidate. It also selects the unminified bundle for the patched side on its own, so `--unminified` is not part of this run.
+
+Read that diff as **news, not as a regression to be suppressed.** axe ships new and revised WCAG rules between minors, so a bump can legitimately change what the scan reports. The gate exists to make the change visible, not to freeze coverage where it is.
+
+The second asks whether the patched bundle still *computes* what the stock one computes, and it is the half a reader is most likely to skip --- `check.bat` and both CI workflows run it, so a bump that breaks it surfaces as a red PR rather than as something the upgrade asked for. It is not optional for a patch to the colour maths, because the fingerprint gate compares `incomplete` as a rule-id *set*: a colour error that shifted contrast ratios without flipping any pass/fail classification produces the same set and sails through. `--patch` defaults to `plain-color-fields`, the single entry `DEFAULT_PATCHES` carries; name another when adopting a new one.
+
+A third failure mode needs no gate at all: each substitution inside a patch asserts its target was found, so a bump that moves the code fails loudly rather than silently reverting to the slow path. What none of the three reaches is a result that merely looks wrong. [`check_a11y.mjs --stock-axe`](#check-a11y) injects the unmodified bundle, which says in one command whether the patch is implicated.
 
 ### scripts/sweep_a11y.mjs
 {: #sweep-a11y }
