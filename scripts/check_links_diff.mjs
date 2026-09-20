@@ -33,7 +33,7 @@
 //   node scripts/check_links_diff.mjs --case online --case book -v
 //   node scripts/check_links_diff.mjs --list
 //
-// Four of the six cases are the real invocations, verbatim:
+// Four of the eight cases are the real invocations, verbatim:
 //
 //   online     _site/          integrity + sitemap + search + canonical
 //   offline    _site-offline/  integrity + --forbid
@@ -43,7 +43,7 @@
 //              stripBasePath() do anything.
 //
 // The other four exist because those four, on a healthy site, compare
-// empty against empty in nine of the ten categories:
+// empty against empty in eight of the nine categories:
 //
 //   online-abs _site/          `online` with an absolute --root-dir.
 //                              Must agree with it findings-for-findings:
@@ -189,7 +189,7 @@ const CASES = {
 
   // A tiny synthetic tree carrying one fault of every kind. The real
   // site is clean, which means the four cases above compare empty
-  // against empty in nine of the ten categories -- they prove the sides
+  // against empty in eight of the nine categories -- they prove the sides
   // agree about nothing being wrong, and almost nothing about whether
   // they agree about what *is*. This one makes every category non-empty.
   fixture: {
