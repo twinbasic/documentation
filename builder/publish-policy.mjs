@@ -146,6 +146,18 @@ export function unpublishableTreePaths(rels, policy) {
 // One message for both sweeps. Lists every finding rather than the first
 // few: the set is small by construction (a clean build reports none), and
 // a contributor who added four scratch files wants all four named.
+//
+// The two surfaces end differently, and only the source one names
+// `bundle_extra`. A declared path is exempt on both, and the source sweep
+// runs first (`discover`, which `dispatch` depends on transitively), so
+// anything still standing at the tree sweep was minted by the build --
+// where declaring a source file is no remedy at all.
+//
+// The order of the source remedies is deliberate: widening
+// SOURCE_EXTENSIONS for one download publishes every file of that type
+// under docs/ from then on, which is the `secrets.json` case the whole
+// allowlist exists to refuse, reintroduced by the person fixing a build
+// failure. It goes last, and says what it costs.
 export function formatPublishRefusal(findings, { surface, label }) {
   const one = findings.length === 1;
   const lines = findings.map(f => f.from
@@ -156,10 +168,14 @@ export function formatPublishRefusal(findings, { surface, label }) {
     `${label} but ${one ? "is" : "are"} not a publishable ` +
     `type:\n${lines.join("\n")}\n\n` +
     (surface === "source"
-      ? `Either remove ${one ? "it" : "them"} from docs/, add a pattern to ` +
-        "`exclude:` in docs/_config.yml, or -- if it really is meant to " +
-        "ship -- add the extension to SOURCE_EXTENSIONS in " +
-        "builder/publish-policy.mjs.\n"
+      ? `Either remove ${one ? "it" : "them"} from docs/, or add a pattern ` +
+        "to `exclude:` in docs/_config.yml. To publish one file, declare it " +
+        "there under `bundle_extra:` with `src` (resolved against docs/, so " +
+        "it may live outside) and `dest` -- exempt by path, which is how " +
+        "scripts/impexp.py ships. Add the extension to SOURCE_EXTENSIONS in " +
+        "builder/publish-policy.mjs only when the site is genuinely gaining " +
+        "an asset type: that publishes every file of that type under docs/, " +
+        "now and later.\n"
       : `Nothing in docs/ produced ${one ? "this" : "these"}; ` +
         `${one ? "it comes" : "they come"} from the build itself ` +
         "(generated auxiliaries, vendored theme assets, redirect stubs). " +
