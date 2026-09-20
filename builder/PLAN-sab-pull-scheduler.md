@@ -211,18 +211,36 @@ via `emit()`, and (b) mutate `SharedState`. Under the new model:
   into `SharedState` when it processes the message.
 
 The ordering constraint: a worker posts the output message BEFORE
-updating successor dep counts in the SAB. Since worker-to-main
-messages are FIFO, the merge message arrives before the main thread
-would claim any downstream `runOnMain` task. The main thread drains
-all pending messages before scanning the SAB for ready main-thread
-tasks, ensuring merges complete first.
+updating successor dep counts in the SAB. That much is true, and it is
+what keeps the window below narrow rather than wide.
 
-For **worker-to-worker chains** (e.g. render:i -> renderJoin where
-renderJoin is a trivial barrier), the successor dep count update
-happens directly in the SAB with no main-thread involvement. If
-`render:i.submit()` has state mutations (merging page deltas), the
-merge message is fire-and-forget --- it doesn't gate the next worker
-task because the downstream workers don't read `SharedState`.
+**It does not order the state, and reading it that way is the most
+expensive mistake this document records.** The main thread reads dep
+counts straight out of shared memory --- nothing obliges it to drain its
+message queue first. Per-port FIFO only orders one worker's own messages
+against each other; it says nothing about the other workers feeding the
+same barrier. So a `runOnMain` successor can become claimable while
+merge messages are still queued and their `submit()` calls have not run.
+`_scheduleMainScan`'s `setImmediate` gives those messages a turn to
+drain, which improves the odds; it is not a guarantee, and the code does
+not treat it as one.
+
+What actually closes the window is `_claimMainTask`: it releases a
+freshly claimed task back to READY whenever `_assembleInputs` finds a
+name in `def.expected` missing from the results map, and a result lands
+in that map immediately before its `submit()` runs. A barrier therefore
+needs its `expected` list as well as its dep count --- see §A dep count
+of zero does not mean the submits have run, which is the bug this exact
+assumption produced.
+
+For **worker-to-worker chains** (e.g. render:i -> flush:i, pinned to the
+same lane), the successor dep count update happens directly in the SAB
+with no main-thread involvement. If `render:i.submit()` has state
+mutations (merging page deltas), the merge message is fire-and-forget
+--- it doesn't gate the next worker task because the downstream workers
+don't read `SharedState`. `renderJoin` is not an instance of this shape:
+it runs on the main thread, which is precisely why its `expected` list
+carries weight.
 
 ### How submit() is triggered
 
@@ -464,9 +482,11 @@ worker.on('message', msg => {
 })
 ```
 
-`scheduleMainScan()` uses `queueMicrotask()` (coalesced --- skip if
-already scheduled) so all pending messages are processed (output
-stored + merges complete) before the scan runs.
+`scheduleMainScan()` defers the scan with `setImmediate` (coalesced ---
+skip if already scheduled), so messages already delivered in the current
+turn are processed (output stored + merges run) before the scan.  That
+is not an ordering guarantee, and nothing downstream may assume it is
+--- see §Draining messages before scanning.
 
 ### Main-thread task execution
 
@@ -504,10 +524,18 @@ function mainScan():
 ### Draining messages before scanning
 
 The main thread processes worker messages in the event loop's message
-handler. `scheduleMainScan()` posts a microtask. Since microtasks run
-after the current handler but before the next event, and multiple
-worker messages in the same event-loop tick are processed sequentially,
-all pending merges complete before the scan.
+handler. `_scheduleMainScan()` defers the scan with `setImmediate`, so
+messages already delivered in the current turn are handled before it
+runs.
+
+**That is a scheduling courtesy, not an ordering guarantee, and the
+scheduler does not lean on it.** A worker decrements its successors' dep
+counts in shared memory immediately after posting its result, and the
+main thread can read that count without touching its message queue at
+all. A merge still in flight is caught instead by `_claimMainTask`,
+which releases the task back to READY when its `expected` inputs are not
+yet in the results map --- see §A dep count of zero does not mean the
+submits have run.
 
 If messages arrive while a `runOnMain` execute() is in progress, they
 queue until execute() yields (await) or completes. This is the
@@ -2591,7 +2619,7 @@ interleave.
 render:i [W]  (stashes pages locally; delta carries renderedContent + offlineMisses only)
     render:i.submit()  merges renderedContent into state.pages on main
        |
-       |--- [successor edge] --→  renderJoin [M]  (pure barrier, no-op execute)
+       |--- [successor edge] --→  renderJoin [M]  (barrier; execute asserts every page has renderedContent)
        |
        +--- [successor edge] --→  flush:i [W, pin_to_predecessor, priority: 1]
                                      writes stashed html       → _site/<destPath>
@@ -2613,12 +2641,20 @@ flushJoin + mermaid + resolveBookChapters          → writePdf [M]
 
 `searchData` depends on `renderJoin` (not `flushJoin`): it needs
 `renderedContent` in memory, which requires all `render:i.submit()`
-calls to have run.  `renderJoin` provides that guarantee --- it
-becomes READY only after all `render:i` are DONE, and by that point
-the main thread has processed every `render:i` result message (FIFO
-property of worker-to-main postMessage: each worker's render-done
-messages precede its flush-done messages, and `_onWorkerDone`
-processes them in order).
+calls to have run.  `renderJoin` provides that guarantee --- but not
+by way of its dep count, which reaches zero as soon as every
+`render:i` is DONE and says nothing about whether the merges have run.
+It provides it because `registerBarrier` also gives `renderJoin` an
+`expected` list naming every `render:i`, so `_claimMainTask` will not
+hand it to `execute()` until every one of those results is in the
+results map.  See §A dep count of zero does not mean the submits have
+run.
+
+`renderJoin.execute` is not a formality either: it asserts that every
+page in `state.pages` has a `renderedContent` string and throws naming
+the first few that do not.  Its consumers skip a page that has none
+rather than fail, so the assertion belongs at the barrier that makes
+the claim --- see the table in §Where the completeness checks are.
 
 #### `dispatch.submit()` redesign
 
