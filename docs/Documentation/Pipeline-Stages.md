@@ -73,7 +73,7 @@ In addition, `SharedState` itself contains non-`site` fields that downstream tas
 | `sitePaths` | `Set<string>` | `dispatch` | All site-relative paths reachable in the online tree (pages + statics + redirects + theme assets). Built once and reused by the offline rewrite in every render worker, by the `scss` task's offline rewrite, and by `writeOffline`. |
 | `searchChunks` | `Array<Array<entry>>` | `dispatch` (allocated), `render:i.submit` (filled) | Per-chunk search entries collected from the render workers. Read by `searchData`. |
 | `checkTrees` | `object\|null` | `dispatch` | Per-tree `{ rels, baseurl }` for each tree being checked, or `null` when `--check` is off. Broadcast to the workers so each lane can build its own tree index. Its presence is what turns the check on everywhere downstream. |
-| `checkChunks` | `Array<object>` | `dispatch` (allocated), `flush:i.submit` (filled) | Per-chunk findings, keyed by tree. Read by `linkJoin`. |
+| `checkChunks` | `Array<object>` | `dispatch` (created empty), `flush:i.submit` (appended) | Per-chunk findings, keyed by tree. Held in arrival order, not indexed by lane --- unlike `searchChunks` above, which is pre-allocated because page order matters there. Read by `linkJoin`. |
 | `checkChunkCount` | `number` | `dispatch` | How many chunks `linkJoin` must see. A short list means the check examined less than the whole site, which is reported as an error rather than tolerated. |
 | `checkStubs` | `Array<{destPath, html}>` | `writeAux` | Redirect stubs, which never went through `flush` and are therefore checked on the main thread by `linkJoin` as one extra chunk per tree. |
 
@@ -343,7 +343,9 @@ flush:i.pinnedTo = render:i        // F_PIN_TO_PRED
 
 Handler (`flush` in `cpu-worker.mjs`): pops the next batch from `_pendingFlush`, writes each page's `.html` to `<destRoot>/p.destPath` and (when `offlineHtml !== undefined`) `<destRoot>-offline/p.destPath`. Concurrency bounded at 64 via a small worker-of-workers loop. The pinning is what guarantees the FIFO drain happens on the right lane.
 
-When `--check` is on, the **link and integrity check rides along here**: after the writes, `runChunkCheck(items)` walks this chunk's final HTML for every tree it was written to, and the result is returned alongside the write stats as `{ written, offlineWritten, offlineMisses, check }`. `submit` pushes `check` into `state.checkChunks[i]`.
+When `--check` is on, the **link and integrity check rides along here**: after the writes, `runChunkCheck(items)` walks this chunk's final HTML for every tree it was written to, and the result is returned alongside the write stats as `{ written, offlineWritten, offlineMisses, check }`. `submit` appends `check` to `state.checkChunks` with an unindexed `push`, so the array holds chunks in arrival order.
+
+That is deliberately unlike `render:i.submit`'s indexed `state.searchChunks[i]` write, and the two are not interchangeable. Findings are merged per tree rather than concatenated in page order, so nothing downstream indexes by lane --- and the append is what gives `checkChunks.length` its meaning, because [`linkJoin`](#linkjoin-main) asserts completeness by comparing that length against `checkChunkCount`. A pre-allocated array would report `length === N` from the first chunk onwards and the short-chunk check could never fire.
 
 This placement is the whole point of folding the checker into the build. Both trees' final strings are already decoded and in worker memory at this moment; a standalone pass would write ~270 MB out only to read it back and re-parse it. The check cannot abort the build --- a broken link still produces a site worth inspecting --- so a chunk that throws returns `{ error }` and [`checkReport`](#checkreport-main-terminal) decides what to do with it.
 
