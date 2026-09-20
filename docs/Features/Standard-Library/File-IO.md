@@ -2,6 +2,7 @@
 title: File I/O
 parent: Standard Library
 nav_order: 2
+permalink: /Features/Standard-Library/File-IO
 ---
 
 # Encoding Options for File I/O

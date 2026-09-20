@@ -2,6 +2,7 @@
 title: CodeLens
 parent: Compiler and IDE Features
 nav_order: 3
+permalink: /Features/Compiler-IDE/CodeLens
 ---
 
 # Run Subs from the IDE
