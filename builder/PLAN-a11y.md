@@ -19,7 +19,10 @@ If a fix *cannot* be expressed in the pipeline — i.e. it requires per-page sem
 
 ## Implementation status
 
-All five phases are **complete**, Phase 3 included. The site builds clean and `check.bat`'s axe-core scan (`scripts/check_a11y.mjs`) reports **0 violations** across all six sample pages in both themes at two viewports — now with the `target-size` rule enabled (see 3.2). The WCAG 2.2 AA chrome and contrast work landed in three commits, with the Phase 3 polish (3.2, 3.3, 3.4) following after:
+All five phases are **complete**, Phase 3 included. The site builds clean and `check.bat`'s axe-core scan (`scripts/check_a11y.mjs`) reports **0 violations** across all six sample pages in both themes at two viewports
+(the sample is **thirteen** pages today, plus two state audits --- see the
+*Superseded* note further down; every "six sample pages" in this document should be
+read as "the sample as it stood then") — now with the `target-size` rule enabled (see 3.2). The WCAG 2.2 AA chrome and contrast work landed in three commits, with the Phase 3 polish (3.2, 3.3, 3.4) following after:
 
 - **`c9f2dfe`** *WCAG 2.2 AA accessibility improvements* — Phase 1 (1.1–1.8) and Phase 2 (2.1–2.7) in full, plus Phase 4 (the axe-core check and its `check.bat` wiring). Also removed the redundant search-input `tabindex` (3.5) as a side effect of the combobox rework.
 - **`3db9794`** *Fix WCAG 1.4.3 contrast in both themes; unblind the a11y checker* — Phase 3.1 to WCAG 1.4.3 AA in both themes, and it **unblinded the checker**: `check_a11y.mjs` had been scanning `_site/` over `file://`, where the root-absolute asset URLs never resolve — every page was audited unstyled, so every contrast result was a meaningless black-on-white pass. It now scans `_site-offline/`, both themes, two viewports. Same commit fixed a new **WCAG 2.1.1** item (see 1.9 — horizontally scrolling code blocks are now keyboard-focusable) and moved syntax-token contrast clamping into `builder/highlight-theme.mjs` at emit time.

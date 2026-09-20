@@ -7,18 +7,20 @@ from the tree).
 
 ## Quickstart
 
-Requires Node.js 22+.
+Requires Node.js 22+. There is no `builder/package.json`; the whole
+dependency set lives in one `package.json` at the repository root.
 
 ```
-cd builder
-npm install
-node tbdocs.mjs               # builds docs/_site/, docs/_site-offline/, docs/_site-pdf/
+npm ci                                    # from the repository root
+node builder/tbdocs.mjs --src docs        # -> docs/_site/, _site-offline/, _site-pdf/
 ```
 
-The day-to-day driver is [docs/build.bat](../docs/build.bat) (and
-`serve.bat` / `check.bat` / `book.bat`) -- they invoke `tbdocs` with
-the right `--src` argument and route the link checker and PDF render
-behind the same wrappers.
+The day-to-day drivers are [build.bat](../build.bat), [serve.bat](../serve.bat),
+[check.bat](../check.bat) and [book.bat](../book.bat), all at the repository
+root -- they invoke `tbdocs` with the right arguments and route the
+browser-dependent gates and the PDF render behind the same wrappers.
+`build.bat` passes `--check-audit-index`, so an ordinary build also
+link-checks every tree it produced.
 
 CLI flags:
 
@@ -33,6 +35,10 @@ CLI flags:
 | `--no-pdf` | Skip the PDF-tree pass (Phase 8). |
 | `--tolerate-missing-images` | Downgrade Phase 8's missing-image error to a warning. |
 | `--profile-offline` | Per-substep timing for Phase 7. |
+| `--fetch-assets` / `--no-fetch-assets` | Force remote-asset vendoring on or off. Default: download on a dev box, never when `$CI` is set. |
+| `--check` / `--no-check` | Run (or skip) the link + integrity check over the HTML the build already holds in memory. Sets the exit code, never aborts the graph. |
+| `--check-audit-index` | Implies `--check`; also diffs the derived tree index against what landed on disk. What `build.bat` passes. |
+| `--check-findings <path>` | Implies `--check`; writes the findings as JSON for `scripts/check_links_diff.mjs`. |
 | `--serve` | Start the long-lived dev server (watch + rebuild + SSE live-reload). |
 | `--port <N>` | HTTP port for `--serve` mode (default 4000). |
 
@@ -44,9 +50,9 @@ source tree, debounced rebuild on changes, and SSE-driven browser
 auto-reload. The offline and PDF passes are skipped each rebuild
 (restore them with a non-`--serve` invocation).
 
-    cd builder && node tbdocs.mjs --src ../docs --serve
+    node builder/tbdocs.mjs --src docs --serve
 
-Or via the docs wrapper: `docs/serve.bat`.
+Or via the wrapper at the repository root: `serve.bat`.
 
 Ctrl+C exits cleanly (closes the server, aborts the watcher,
 drains SSE clients).
@@ -54,16 +60,31 @@ drains SSE clients).
 ## Documentation
 
 - [PLAN.md](PLAN.md) -- architecture overview and the 12-phase pipeline.
-- [PLAN-1.md](PLAN-1.md) .. [PLAN-12.md](PLAN-12.md) -- per-phase
+- [PLAN-1.md](PLAN-1.md) .. [PLAN-13.md](PLAN-13.md) -- per-phase
   specs (inputs, outputs, edge cases, acceptance checklists). Phases
   1-8 are the build itself; Phase 9 was the QoL consolidation pass;
   Phase 10 was the Jekyll cutover; Phase 11 is the output-changing
-  parity update; Phase 12 adds `--serve` watch mode.
+  parity update; Phase 12 adds `--serve` watch mode; Phase 13 is
+  build-time SVG inlining with the zoom / export controls.
+- [PLAN-sab-pull-scheduler.md](PLAN-sab-pull-scheduler.md) -- **the
+  current scheduler design** (pull model, SAB layout, Phases 14-18).
+  [PLAN-scheduler.md](PLAN-scheduler.md) is the superseded push-based
+  design, and [PLAN-scheduler-offline.md](PLAN-scheduler-offline.md)
+  covers moving the offline rewrite into the render workers.
+- [PLAN-checks.md](PLAN-checks.md) -- folding the link checker into
+  the build's task graph; Phase A shipped, the axe follow-ons are
+  designed but not implemented.
+- [PLAN-a11y.md](PLAN-a11y.md) -- the WCAG 2.2 AA work.
+  [PLAN-axe-perf.md](PLAN-axe-perf.md) -- the axe-core performance
+  investigation, complete.
+- `REVIEW-*.md` / `PLAN-REVIEW-*.md` -- frozen audit snapshots of a
+  commit range, not maintained reference documentation.
 - [FUTURE-WORK.md](FUTURE-WORK.md) -- open follow-ups, grouped by
   divergence investigations / deferred enhancements.
-- [assets/README.md](assets/README.md) -- the bundled theme assets,
-  the CSS class contract the generator targets, and the (now-historical)
-  re-extraction procedure.
+- [vendor/just-the-docs/README.md](vendor/just-the-docs/README.md) --
+  the vendored theme: what was taken, every in-tree patch to its
+  `_sass/` and `just-the-docs.js` with the commit that made it, and the
+  re-vendoring procedure.
 
 The end-user-facing documentation about how the build pipeline works
 lives on the site itself under [Documentation Development](../docs/Documentation/):
@@ -84,9 +105,13 @@ the architecture overview.
 | 7 | [offline.mjs](offline.mjs) | Mirror to `_site-offline/` with `file://` URL rewrites |
 | 8 | [pdf.mjs](pdf.mjs) + [book.mjs](book.mjs) (renderer half) | Sparse `_site-pdf/` tree (book.html + CSS + images) |
 
-A seed task ([dot.mjs](dot.mjs)) regenerates stale
-`docs/assets/images/dot/*.svg` from their `.dot` sources via the WASM
-build of Graphviz, concurrently with discover.
+Two seed tasks run alongside discover: [dot.mjs](dot.mjs) regenerates
+stale `*.svg` from their `.dot` siblings via the WASM build of Graphviz
+(with [dot-metrics.mjs](dot-metrics.mjs) installing Inter's real advance
+widths first, so boxes are sized for the font the browser will paint),
+and [vendor-assets.mjs](vendor-assets.mjs) downloads any referenced-but-
+uncommitted YouTube poster frame or GitHub user-attachment image -- never
+under CI, where a missing asset is a hard error instead.
 
 ## Verification
 
@@ -101,8 +126,9 @@ graph. `check.bat` then runs the gates that need a browser. A clean
 The pure core lives in [link-check.mjs](link-check.mjs); the build-side
 plumbing is [check.mjs](check.mjs) and [check-tree.mjs](check-tree.mjs).
 [scripts/check_links.mjs](../scripts/check_links.mjs) is the same check
-as a standalone tool, for trees this build did not produce, and is what
-both CI workflows still invoke.
+as a standalone tool, for trees this build did not produce. Neither CI
+workflow invokes it directly any more -- both reach it through
+`check_links_diff.mjs`, which runs it in-process against the fixtures.
 [scripts/check_links_diff.mjs](../scripts/check_links_diff.mjs) is the
 gate that says the two agree -- run it whenever any of the three
 changes. See [PLAN-checks.md](PLAN-checks.md).

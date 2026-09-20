@@ -168,7 +168,9 @@ Sizing: the script also injects
 `.svg-container svg { width: 100%; height: auto }` so every
 inlined SVG fills the column width and scales proportionally.
 
-Total size: ~80 lines / ~2.5 KB uncompressed.  No cost on pages
+Total size: ~80 lines / ~2.5 KB uncompressed.  (**As shipped it is 338 lines /
+~14 KB** --- the font-embedding export path, the zoom-overlay focus trap and the
+export-failure live region all landed later; see the note in §5.4.)  No cost on pages
 without SVGs (the `<script>` tag is not emitted).
 
 ---
@@ -363,7 +365,7 @@ In `renderHead`, after the `just-the-docs.js` `<script>` line
 
 ### 5.4. `svg-inline.js`
 
-New file at `docs/assets/js/svg-inline.js`.  ~80 lines, no
+New file at `docs/assets/js/svg-inline.js`.  Planned at ~80 lines, no
 dependencies, IIFE.
 
 Behaviours:

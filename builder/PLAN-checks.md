@@ -75,12 +75,17 @@ from what the build emitted is therefore **complete**, not an approximation of
 the filesystem — which is what lets `checkPath()`'s `statSync` calls become
 set lookups without losing fidelity.
 
-**2. CI never builds without checking.** Both workflows run the same four
-gates immediately after the build, in the same job, on the same runner —
+**2. CI never builds without checking.** Both workflows run their gates
+immediately after the build, in the same job, on the same runner —
 [checks.yml](../.github/workflows/checks.yml) on `pull_request`,
 [tbdocs-gh-pages.yml](../.github/workflows/tbdocs-gh-pages.yml) on `push` to
 `staging` (which then blocks the Pages deploy on the result). `checks.yml`
-says so in its trigger comment. There is no build that would start paying for
+says so in its trigger comment.
+
+> The two gate sets are **not** identical, and deliberately so. `checks.yml` runs six
+> post-build steps; `tbdocs-gh-pages.yml` runs four, omitting the fused-checker
+> comparison (`--case fixture-built ... --b fused`) and the DOT diagram fit check. The
+> deploy workflow keeps only the cheap fixture run against the index oracle. There is no build that would start paying for
 a check it does not already pay for, and the saving is proportionally larger
 on a 4-vCPU runner than it is here.
 
