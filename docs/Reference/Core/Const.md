@@ -6,7 +6,6 @@ vba_attribution: true
 ---
 
 # Const
-
 {: .no_toc }
 
 Declares constants for use in place of literal values.

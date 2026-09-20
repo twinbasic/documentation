@@ -27,7 +27,7 @@ While
 > [!NOTE]
 > **Continue** is a twinBASIC extension. Classic VBA has no skip-iteration form for any loop construct --- the closest equivalent is a forward [**GoTo**](GoTo) to a label placed just before the loop's terminator.
 
-### Example
+## Example
 
 This example uses **Continue For** to skip processing of certain characters of the string.
 

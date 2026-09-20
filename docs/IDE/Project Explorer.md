@@ -36,7 +36,7 @@ Same as Right-Click
 
 ![Right-Click Add](Images/RightClick-Add.png "Right-Click Add")
 
-- ![Folder](Images/Folder.png "Folder") Add Folder
+- ![](Images/Folder.png) Add Folder
 - ![](Images/tB-Green.png) Add Windows Form
 - ![](Images/tB-Green.png) Add Windows MDI Form
 - ![](Images/tB-Green.png) Add Windows UserControl
@@ -49,21 +49,21 @@ Same as Right-Click
 
 ---
 
-- ![Module](Images/tB-Red.png "Module") Add Module (.TWIN supporting Unicode)
-- ![Class](Images/tB-Red.png "Class") Add Class (.TWIN supporting Unicode)
+- ![](Images/tB-Red.png) Add Module (.TWIN supporting Unicode)
+- ![](Images/tB-Red.png) Add Class (.TWIN supporting Unicode)
 
 ---
 
-- ![Module](Images/tB-Blue.png "Module (BAS)") Add Module (.BAS)
-- ![Class](Images/tB-Orange.png "Class (CLS)") Add Class (.CLS)
+- ![](Images/tB-Blue.png) Add Module (.BAS)
+- ![](Images/tB-Orange.png) Add Class (.CLS)
 
 ---
 
-- ![File](Images/File-Green.png "File") Add Other File
+- ![](Images/File-Green.png) Add Other File
 
 ---
 
-- ![File](Images/File-Green.png "File") Import
+- ![](Images/File-Green.png) Import
 
 ---
 
