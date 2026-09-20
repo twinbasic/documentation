@@ -287,6 +287,7 @@ A few of the most common substitutions:
 | surface (as a verb) | expose, raise |
 | wire up | connect |
 | under the hood | internally |
+| bites (figurative) | affects, matters |
 
 Delete vague praise outright --- *powerful*, *robust*, *easily* --- and say something concrete instead. Terms with a specific technical meaning stay as they are: *no-op*, *round-trip*, *marshal*, *message pump*, *idiomatic*.
 
