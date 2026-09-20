@@ -45,13 +45,22 @@ The full set of `tbdocs` CLI flags --- every flag, what each one does, when to u
 
 ## Building and local serving
 
-The simplest local preview is `build.bat` followed by opening the rendered files in any browser. To get a localhost server instead:
+For anything you intend to *look* at --- a styling change, a new page's layout, a diagram in context --- the local preview is `serve.bat`, over HTTP:
 
     serve.bat
 
 This runs `tbdocs --serve`: after an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each file change, and any browser tab open on the page auto-reloads via SSE after each successful rebuild. Only failures (4xx, 5xx, server exceptions) are logged --- successful requests are silent. Ctrl+C exits cleanly.
 
 Serve writes to `docs/_serve/`, completely disjoint from `build.bat`'s `_site/` family. That separation means a one-off `build.bat` invocation (e.g., to refresh `_site-pdf/` for `book.bat`, or to re-check `_site-offline/` link integrity) never touches the tree the live preview is serving, and the preview keeps showing whatever serve last rebuilt.
+
+### Why not just open the built files
+{: #why-not-file-urls }
+
+Opening a page straight out of `_site/` by double-clicking it is the obvious shortcut, and it is the one that misleads. The online tree references its stylesheets, fonts and scripts with root-absolute URLs (`/assets/css/...`); under `file://` those resolve against the filesystem root rather than the tree root, find nothing there, and the page renders as unstyled markup. Nothing announces the failure --- all the text is present --- so it reads as a styling bug in the page rather than as three stylesheets that never loaded, and any conclusion drawn from it about colour, spacing, layout or contrast is worthless.
+
+`_site-offline/` is the exception, and the distinction is worth keeping straight rather than avoiding. The offline mirror exists so the site renders correctly with no server at all: the rewrite turns every root-absolute asset URL into a page-relative one, so a page opened from that tree over `file://` gets the real stylesheets and the real computed styles. That is exactly why the [accessibility scan](#checking-accessibility) points headless Chromium at `_site-offline/` and not at `_site/` --- its colour-contrast results would otherwise all be black text on a white void.
+
+The short form is **puppeteer for measuring, `serve.bat` for looking**. A headless browser driven over `file://` against the offline mirror measures correctly and is what the gates use; a person who wants to see a change should use the localhost server, which serves the tree a reader actually gets, with the search index and the theme toggle live.
 
 ## Checking link integrity
 
