@@ -4,6 +4,14 @@
 @rem is still the tool for a tree this build did not produce, and
 @rem scripts/check_links_diff.mjs is what says the two agree.
 @pushd "%~dp0"
+@rem The publish allowlist (builder/publish-policy.mjs) is enforced inside
+@rem the build, so a clean build.bat already says nothing unpublishable is
+@rem in docs/. It does NOT say the allowlist still refuses anything -- an
+@rem allowlist widened until it refuses nothing reports the same clean
+@rem pass. This asserts the refusals against named probes. No tree, no
+@rem browser, ~40 ms, so it goes first.
+node scripts/check_publish_policy.mjs
+@if errorlevel 1 goto :fail
 @rem Everything below reads docs\_site-offline\ as it stands. Edit a page,
 @rem run this without rebuilding, and it audits the previous build and
 @rem passes. Refuse instead, naming build.bat.

@@ -101,6 +101,15 @@ jobs:
       # comparison against the build's own checker.
       - name: Verify the standalone link checker (check_links_diff.mjs)
         run: node scripts/check_links_diff.mjs --case fixture --a script --b index
+      # The publish allowlist (builder/publish-policy.mjs) is enforced
+      # inside the build above, so a green build already says nothing
+      # unpublishable is in docs/. It does NOT say the allowlist still
+      # refuses anything: one widened until it refuses nothing reports the
+      # same clean pass. This asserts the refusals against named probes --
+      # a stray .bak, a .pem, a scratch .md with no frontmatter. No
+      # browser, no built tree, ~40 ms.
+      - name: Verify the publish allowlist (check_publish_policy.mjs)
+        run: node scripts/check_publish_policy.mjs
       # check_a11y.mjs injects a PATCHED axe bundle; verify the patch is still
       # value-preserving before trusting what it reports. See the same step in
       # checks.yml for why the fingerprint gate does not cover this.

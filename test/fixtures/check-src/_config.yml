@@ -13,3 +13,13 @@ baseurl: ""
 offline_exclude:
   - sitemap.xml
   - assets/js/search-data.json
+
+# Same role as docs/_config.yml's list, trimmed to what this tree holds.
+# Without it the fixture published its own _config.yml and both .scss
+# sources into _out/ -- harmless here, but builder/publish-policy.mjs
+# refuses unpublishable types now, and a fixture that has to widen the
+# allowlist to build is a fixture arguing against the gate it runs under.
+exclude:
+  - _*
+  - _*/**
+  - "**/*.scss"

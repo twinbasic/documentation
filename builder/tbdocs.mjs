@@ -62,6 +62,8 @@ import { writePdf } from "./pdf.mjs";
 // htmlparser2 -- is imported dynamically by the tasks that need it, so a
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
+import { publishPolicyFor, unpublishableSourceFiles,
+         unpublishableTreePaths, formatPublishRefusal } from "./publish-policy.mjs";
 import { packShared } from "./sab-broadcast.mjs";
 import {
   allocSchedulerSAB, verifySchedulerSAB, SLICES_PER_WORKER,
@@ -464,6 +466,15 @@ const TASKS = {
         const stat = await fs.stat(srcPath);
         staticFiles.push({ srcPath, srcRel: entry.dest, destRel: entry.dest, size: stat.size });
       }
+      // Everything discover() could not parse frontmatter from is about to
+      // be copied verbatim into a public tree. `exclude:` is a denylist and
+      // only refuses what someone named in advance, so the allowlist runs
+      // here -- before any write, while the source path is still in hand.
+      const policy = publishPolicyFor(config);
+      const strays = unpublishableSourceFiles(staticFiles, policy);
+      if (strays.length) {
+        throw new Error(formatPublishRefusal(strays, { surface: "source", label: ctx.srcRoot }));
+      }
       return { pages, staticFiles, config };
     },
     submit(out, state) {
@@ -632,31 +643,50 @@ const TASKS = {
       state.sitePaths = sitePaths;
       const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
 
+      // Everything deriveTreeRels needs is settled at this point: pages
+      // from discover, stubs from deriveRedirects, staticFiles after dot
+      // and vendorAssets have appended theirs, and the theme assets right
+      // above. Two consumers below share it.
+      const common = {
+        pages: state.pages, staticFiles: state.staticFiles, stubs,
+        themeAssetRels, excludePatterns,
+      };
+      const treeNames = skipOffline ? ["online"] : ["online", "offline"];
+      const treeRels = new Map(treeNames.map(w => [w, deriveTreeRels(w, common)]));
+
+      // Second enforcement point for the publish allowlist, over the
+      // inventory each tree will actually receive. The source sweep in
+      // `discover` cannot see any of this: redirect stubs, vendored theme
+      // assets and the generated auxiliaries (sitemap.xml,
+      // search-data.json) are all minted by the build, not found in docs/.
+      // Runs unconditionally, not under --check: a build with checks off
+      // is exactly when nothing else is watching.
+      const policy = publishPolicyFor(state.site.config);
+      for (const [which, rels] of treeRels) {
+        const strays = unpublishableTreePaths(rels, policy);
+        if (strays.length) {
+          throw new Error(formatPublishRefusal(strays, {
+            surface: "tree", label: `the ${which} tree`,
+          }));
+        }
+      }
+
       // --check: what each output tree will receive, derived from the
       // build's own records. This is the treeIndex step, computed here
       // rather than as its own task because the workers can only be
       // handed data that goes into dispatch's shared payload -- it is
       // packed and broadcast in submit() below.
-      //
-      // Everything it needs is already settled at this point: pages from
-      // discover, stubs from deriveRedirects, staticFiles after dot and
-      // vendorAssets have appended theirs, and the theme assets right
-      // above.
       const checkTrees = ctx.opts.check && !ctx.opts.dryRun ? {} : null;
       if (checkTrees) {
-        const common = {
-          pages: state.pages, staticFiles: state.staticFiles, stubs,
-          themeAssetRels, excludePatterns,
-        };
         // Only the online tree carries a base path. The offline tree's
         // links are all relative after the rewrite, which is why the
         // deploy workflow passes --base-path to the online pass alone.
         checkTrees.online = {
-          rels: deriveTreeRels("online", common),
+          rels: treeRels.get("online"),
           baseurl: String(state.site.config.baseurl || ""),
         };
         if (!skipOffline) {
-          checkTrees.offline = { rels: deriveTreeRels("offline", common), baseurl: "" };
+          checkTrees.offline = { rels: treeRels.get("offline"), baseurl: "" };
         }
         state.checkTrees = checkTrees;
       }

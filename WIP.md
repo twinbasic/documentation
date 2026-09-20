@@ -1048,7 +1048,7 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 
 - `build.bat` — runs `node builder\tbdocs.mjs --src docs --check-audit-index` (which implies `--check`) and produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output. `--check` adds ~1.7 s and runs the link + integrity check over the HTML while it is still in worker memory; `build.bat --no-check` gets a plain build.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
-- `check.bat` — the gates that need a browser or a second pass over the built tree: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`.
+- `check.bat` — the gates that need a browser or a second pass over the built tree: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`, which needs neither and goes first), a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`.
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
@@ -1088,6 +1088,85 @@ Two further modes matter:
 - `tbdocs --src docs --check-audit-index` diffs the tree index the build derives from its own records against what actually landed on disk. This is the one failure mode the findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one masks a real break, and on a clean site nothing links to a path that does not exist, so nothing would ever notice.
 
 The harness carries a synthetic `fixture` case for the same reason -- the real site is clean, so every other case compares empty against empty in eight of the nine categories. The fixture provokes one fault of each kind and asserts the count, so a fixture that stops provoking one fails loudly instead of quietly going back to empty-vs-empty.
+
+### The publish allowlist
+
+**`discover()` files every non-page it finds under `docs/` as a static file, and
+`write.mjs` copies it verbatim, so the source tree's shape *is* the site's shape.**
+The only filter used to be `_config.yml`'s `exclude:`, and a denylist can only
+refuse what someone thought to name in advance. Measured against the real config
+before this landed, every one of these published at a public URL on a green build:
+
+| planted in `docs/` | published at |
+|---|---|
+| `Reference/NOTES.md` (a scratch file, no frontmatter) | `/Reference/NOTES.md`, as raw markdown |
+| `Reference/Core/Dim.md.bak` | `/Reference/Core/Dim.md.bak` |
+| `Features/sample.twin` | `/Features/sample.twin` |
+| `Features/secrets.json` | `/Features/secrets.json` |
+| `Tutorials/draft.docx` | `/Tutorials/draft.docx` |
+| `assets/deploy.pem` | `/assets/deploy.pem` |
+| `Thumbs.db` | `/Thumbs.db` |
+| `IDE/build.log` | `/IDE/build.log` |
+
+Two publish surfaces reach the world from those trees: the deploy workflow
+uploads `docs/_site/` wholesale to Pages, and the manual-dispatch path zips
+`docs/_site-offline/` onto a GitHub release. Neither looks at what it is
+carrying.
+
+[builder/publish-policy.mjs](builder/publish-policy.mjs) inverts the rule ---
+name what may ship, refuse the rest --- and is enforced at two points, both
+**unconditional**, because a build run with `--no-check` is exactly when nothing
+else is watching:
+
+- **Source**, in the `discover` task, over the static-file inventory. Names the
+  file on disk and aborts before anything is written.
+- **Tree**, in the `dispatch` task, over each tree's derived inventory
+  (`deriveTreeRels`). Covers what the source sweep structurally cannot see:
+  redirect stubs, vendored theme assets, and the generated auxiliaries
+  (`sitemap.xml`, `search-data.json`) are all minted by the build, not found in
+  `docs/`.
+
+Unlike the link check, **a finding here aborts the build**. A broken link still
+leaves a tree worth inspecting; a tree with a private key in it is a tree nobody
+should be one `upload-pages-artifact` away from publishing.
+
+Three details of the policy are load-bearing:
+
+- **`SOURCE_EXTENSIONS` and `BUILD_EXTENSIONS` are separate sets, and must stay
+  separate.** The build emits `.xml` and `.json`; a contributor has no business
+  dropping either into `docs/`, and `.json` is among the extensions most worth
+  refusing at source. Folding the two together would pass every other assertion
+  in the self-test, so the self-test asserts the disjointness directly.
+- **`.md` is deliberately absent from both.** A markdown file that reaches the
+  check is one `discover()` could not parse frontmatter from --- the
+  AppGlobalClassObject shape, where a UTF-8 BOM in front of the `---` made
+  `gray-matter` report no frontmatter and the raw markdown was served verbatim
+  for months. `stripBom()` fixed that cause; this refuses the whole class, and
+  says so in the message.
+- **`bundle_extra` is exempt by *path*, not by extension.** `_config.yml`
+  declares `Features/Packages/downloads/impexp.py` and `impexp.mjs` with both
+  ends spelled out, which is what makes them shippable. The same extension
+  anywhere else still fails --- otherwise declaring one entry would quietly bless
+  a whole type.
+
+**A clean build says only that nothing in `docs/` is currently refused, which is
+also what an allowlist widened until it refuses nothing says.** The interesting
+assertion is the other one, and no build over a clean tree can make it, so
+[scripts/check_publish_policy.mjs](scripts/check_publish_policy.mjs) makes it
+against named probes --- a `.bak`, a `.pem`, a `.docx`, a frontmatter-less `.md`,
+a `Thumbs.db` --- plus the reverse (a `.png`, a `.PNG`, a `.woff2`, `CNAME` must
+still publish, or a policy that refuses everything would also report a clean
+sweep). No browser, no built tree, ~40 ms. It runs first in `check.bat` and in
+both CI workflows.
+
+```sh
+node scripts/check_publish_policy.mjs
+```
+
+**Adding a new asset type is a one-line edit to `publish-policy.mjs`, and that is
+the point** --- the cost is paid once, by the person who knows they are adding it,
+instead of being paid silently by whoever drops a key file into `docs/` three
+years from now.
 
 ### Remote-asset vendoring
 
@@ -1200,6 +1279,7 @@ Favor concise one-line git commit messages.
 - Don't leave a remote image URL in a finished page. A pasted `https://github.com/user-attachments/assets/...` link is fine to write --- [builder/vendor-assets.mjs](builder/vendor-assets.mjs) downloads it to `docs/assets/attachments/gh-<uuid>.<ext>` on the next local build and rewrites the render to point there; commit the downloaded file with the edit. Any other remote host has no such handling: download it yourself and commit it under the section's `Images/` folder. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` dropped async image loading, so an image still in flight when the page-breaking pass runs raises instead of degrading. The build enforces this unconditionally (see [Site integrity check](#site-integrity-check)); `--check-remote-assets` is the standalone checker's flag, not a `tbdocs` one. The check is scoped to `<img>`; `<iframe>` is untouched, but the site no longer has any embeds. A video is authored as a marked link -- `[Title](https://www.youtube.com/watch?v=<id>){: .video }` -- which `videoLinkPlugin` ([builder/render.mjs](builder/render.mjs)) renders as a locally vendored poster frame linking out to the video page, styled by `.video-link` in `docs/_sass/custom/custom.scss`. That makes the site free of third-party requests entirely; don't reintroduce an embed or a hotlinked `img.youtube.com` thumbnail.
 - **Don't hand-edit a diagram's `.svg`, and don't change its `font-family` anywhere but the `.dot`.** The `.svg` is a build artifact; the next build overwrites it. More to the point, Graphviz sizes every box to the text *it* measured, so a face the layout never saw leaves labels hanging outside their boxes --- which is exactly how 27 labels shipped that way across three diagrams. Edit the `.dot`, rebuild, and let `node scripts/check_dot_fit.mjs` confirm it; see [Diagrams](#diagrams).
 - **Don't add a `@font-face` to `docs/_sass/custom/_fonts.scss` without also adding the stack to `modules-dark.scss`,** and don't move the `@font-face` block out of the `emit-font-faces` mixin. The dark compilation re-emits its whole payload under two selectors at raised specificity: a face declared there would be invalid, and a stack left out there applies in light mode and silently does not in dark.
+- **Don't widen `SOURCE_EXTENSIONS` in [builder/publish-policy.mjs](builder/publish-policy.mjs) to make a build pass.** The build refusing a file is the gate working. Remove the file from `docs/`, or add a pattern to `exclude:` in `_config.yml`; widen the allowlist only when the type genuinely belongs on the published site, and never by folding `BUILD_EXTENSIONS` into it. See [The publish allowlist](#the-publish-allowlist).
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
 - Don't add boilerplate sections (Remarks, See Also) if the source has nothing meaningful for them.
 - **Never add `Co-Authored-By:` (or any "Co-authored by" / "Generated with Claude" / similar) trailers to commit messages.** Repository policy. Plain commit messages only.
