@@ -8,13 +8,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the Windows batch wrappers under `docs/`, the cross-platform Node and Python scripts under `scripts/`, the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+One-line-per-tool reference for every executable in the documentation repository: the four Windows batch wrappers at the repository root, the cross-platform Node and Python scripts under `scripts/`, the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
 
 * TOC goes here
 {:toc}
-## Batch wrappers under docs/
+## Batch wrappers at the repository root
+{: #batch-wrappers }
 
-Each batch file uses `@pushd "%~dp0"` to run from the repository root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Nothing else in the repository is Windows-specific: `tbdocs` and every gate is a Node script, and CI runs them on `ubuntu-latest`.
+All four sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Nothing else in the repository is Windows-specific: `tbdocs` and all six gates are Node scripts, and CI runs every one of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -81,6 +82,8 @@ Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC B
 The `mkdir` is not housekeeping. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so a missing `docs/_pdf/` fails with `ENOENT` at the very end of the render, after the whole page-breaking pass has already run. `book.bat` and the deploy workflow both create it first, for that reason.
 
 Two of `book.bat`'s own steps have no equivalent in those commands. It checks that `docs\_site-pdf\book.html` exists and names `build.bat` as the fix, where `render-book.mjs` refuses a missing input with `input not found:` and the resolved path and nothing else; and it runs `npm install` itself when `node_modules\puppeteer` is absent, which the bare invocation will not --- run `npm ci` first if the renderer cannot find puppeteer.
+
+**Do not chain the two as `build.bat && book.bat`.** `build.bat` sets a non-zero exit code when the link or integrity check finds something, and still writes all three trees --- the finding is a report, not an abort. `&&` reads only the exit code, so a broken link anywhere on the site cancels the render, for a reason that has nothing to do with the book. The terminal ends on the link findings and no PDF, which reads as a render that failed rather than as one that never started. Run them as two separate commands; see [Building and Deployment](Building#the-double-ampersand-trap).
 
 ## CLI tools
 
@@ -265,7 +268,7 @@ No browser, no built tree, ~40 ms, which is why it is `check.bat`'s first step. 
 
     node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
 
-First of `check.bat`'s gates. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
+`check.bat`'s second gate, after [`check_publish_policy.mjs`](#check-publish-policy). Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
 
 ### scripts/check_dot_fit.mjs
 {: #check-dot-fit }

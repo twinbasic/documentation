@@ -19,9 +19,18 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 1. Ensure the [requirements](#requirements) below are met.
 
-2. Fork [https://github.com/twinbasic/documentation][docs-repo] to your own GitHub account if you plan on making any changes, or for convenience. Skip this if you only want to build the docs locally without contributing changes.
+2. Fork [https://github.com/twinbasic/documentation][docs-repo] to your own GitHub account.
 
-3. Clone either your fork or the [documentation repository itself][docs-repo].
+3. Clone your fork.
+
+   Cloning [the documentation repository][docs-repo] itself builds just as well, and if you only ever intend to read and build locally, it is enough. It is the wrong starting point for a change, though, and it fails late: the [deployment steps](#deploying-to-docstwinbasiccom) below open with *push your changes to your GitHub fork*, and a clone of upstream has no remote you are able to push to. The first sign of that is a permission error on `git push`, once the work is already done.
+
+   It is recoverable without starting over. Fork the repository on GitHub, then add the fork as a second remote and push the branch there:
+
+       git remote add fork https://github.com/<your-account>/documentation.git
+       git push -u fork <your-branch>
+
+   Only the fork needs write access. `origin` can go on pointing at upstream, which is what you want for `git pull` anyway.
 
 ### Requirements
 
@@ -32,7 +41,7 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 ### On macOS and Linux
 {: #posix-equivalents }
 
-Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all six gates are Node programs, and CI runs them on `ubuntu-latest`. The four wrappers are the only part that is, and what follows is what each of them runs.
+Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all six gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The four wrappers are the only part that is, and what follows is what each of them runs.
 
 Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from any directory. The commands below have no equivalent of that, so **run them from the repository root**. It is not a formality: `tbdocs`'s `--src docs`, `check_publish_policy.mjs`'s default source root, and every path handed to `render-book.mjs` are all resolved against the working directory.
 
@@ -186,6 +195,13 @@ everything would also report a clean sweep.
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 
 A clean `build.bat && check.bat` --- link integrity and accessibility both --- is the bar for "ready to commit".
+
+### A link failure cancels whatever was chained after `&&`
+{: #the-double-ampersand-trap }
+
+`build.bat` sets a non-zero exit code when the link or integrity check finds something, and still writes all three trees: the finding is a report, not an abort. `&&` reads only the exit code, so the command after it does not run.
+
+That is usually what you want from `check.bat` --- a tree with broken links is not one to sign off on, and the accessibility scan is the slow half of the pair. **`build.bat && book.bat` is a different matter, and it fails quietly.** A broken link has no bearing on whether the book renders, so the render is cancelled for a reason unrelated to it. The terminal ends on the link findings with no PDF, which reads as a render that failed rather than as one that never started, and the next thing anyone does is go looking for a fault in `book.bat`. Run the two as separate commands whenever you want the second regardless of the first.
 
 ## Graphviz/DOT diagrams
 
