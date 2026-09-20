@@ -354,6 +354,24 @@ Common patterns:
 
 Always link to the **canonical** location (the page's `permalink:`), not to a `redirect_from` alias. Pages that have moved out of `Core/` retain a `redirect_from: /tB/Core/<X>` so legacy links still work, but forward-style links should point at the new home.
 
+### `Description` attributes are not connected to this documentation
+
+Package `.twin` sources carry `[Description("...")]` attributes whose content is Markdown,
+rendered in the IDE's own information popups. They look like documentation and they are not
+part of this project: **there is no sync between them and these pages, in either direction,
+and the `/tB/` permalinks have nothing to do with them.**
+
+Keeping them in step is deliberate future work, waiting on a proper help IDE plugin. Until
+that exists, do not write anything implying the two are connected --- not a "see also", not a
+claim that a permalink is referenced from source, not an obligation to update one when the
+other changes. A reviewer looking at a `Description` string and at a reference page for the
+same symbol will reach for that connection; there isn't one yet.
+
+Related: **`[Documentation(...)]` is not a twinBASIC attribute.** It does not exist. It was
+asserted in eight places, including a `tb` code sample teaching it, as the in-source consumer
+of the `/tB/` URL contract. The real attribute is `[Description(...)]`, which is not that.
+The IDE help system remains a genuine consumer of the permalinks.
+
 ## Per-symbol workflow
 
 1. **Decide placement** — pick the package's section convention:
@@ -379,7 +397,7 @@ Add a `> [!NOTE]` callout or rewrite the affected section when source diverges. 
 
 - `Date`, `Date$`, `Time`, `Time$` are **properties** in twinBASIC, not functions/statements — see `docs/Reference/Default/VBA/DateTime/Date.md` for the pattern.
 - `Decimal` is a **full data type** in twinBASIC, not just a **Variant** subtype: `Dim x As Decimal` compiles and runs. VBA-Docs text that calls it unsupported, or reachable only through `CDec`, must be rewritten --- see [Features → New Data Types](docs/Features/Language/Data-Types.md).
-- twinBASIC adds `Continue`, attribute syntax `[Documentation("...")]`, and other features documented under `docs/Features/`.
+- twinBASIC adds `Continue`, attribute syntax `[Description("...")]`, and other features documented under `docs/Features/`.
 - Some VBA-Docs pages have Office-host-specific Application objects — irrelevant; omit.
 - Mac-specific notes from VBA-Docs are typically irrelevant; trim.
 

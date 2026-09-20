@@ -31,15 +31,22 @@ const SILENT_LANGS = new Set(["plaintext", "text", "txt", ""]);
 // recognized automatically (shiki registers both canonical and alias
 // names, so loading `js` accepts `javascript` too, `yaml` accepts `yml`,
 // `batch` accepts `bat`). Counts from the last survey are noted.
+// Counts are as of the last edit and drift as pages are written; they say why a
+// language earns a place here, not how many blocks exist today. An unregistered
+// fence is not an error -- it renders as plain text and the build prints
+// `unknown fence language "<name>"` naming this list. Watch the build output:
+// nothing else reports it, and the page looks deliberate either way.
 const SHIKI_LANGS = [
-  "js",     // 56 blocks (CEF/WebView2 interop tutorials)
-  "yaml",   // 13 blocks (config snippets)
-  "json",   //  7 blocks
-  "c",      //  3 blocks (Win32 API examples, comment style demos)
-  "html",   //  2 blocks (transitively loads css + javascript)
-  "xml",    //  1 block
-  "sql",    //  1 block
-  "batch",  //  1 block (Windows .bat examples)
+  "js",       // 64 blocks (CEF/WebView2 interop tutorials)
+  "yaml",     // 15 blocks (config snippets, CI workflow excerpts)
+  "json",     //  7 blocks
+  "c",        //  3 blocks (Win32 API examples, comment style demos)
+  "html",     //  3 blocks (transitively loads css + javascript)
+  "markdown", //  2 blocks (authoring guide, showing page source)
+  "scss",     //  1 block (Builder.md's project styling section)
+  "xml",      //  1 block
+  "sql",      //  1 block
+  "batch",    //  1 block (Windows .bat examples)
 ];
 
 // Phase 11 (B5) server-side copy-button: emitted inside the wrapper

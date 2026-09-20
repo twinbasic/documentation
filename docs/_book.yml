@@ -372,6 +372,13 @@ parts:
         landing_is_target: true
         outline_closed: true
 
+      - title: AppGlobalClassObject Package
+        subtitle: The App global object available in every project
+        landing_page: /tB/Packages/AppGlobalClassObject/
+        page: /tB/Packages/AppGlobalClassObject/
+        landing_is_target: true
+        outline_closed: true
+
   - title: Appendices
     outline_closed: false
     
