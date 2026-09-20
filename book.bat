@@ -26,4 +26,8 @@ if not exist node_modules\puppeteer\package.json (
 )
 if not exist docs\_pdf mkdir docs\_pdf
 node book\render-book.mjs docs\_site-pdf\book.html -o "docs\_pdf\twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script perf\detach-pages.js
+@rem popd resets ERRORLEVEL, so capture it first -- otherwise a failed
+@rem render would report success to whatever called book.bat.
+@set "BOOK_ERR=%ERRORLEVEL%"
 @popd
+@exit /b %BOOK_ERR%
