@@ -414,12 +414,15 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 
 7. **See Also.** Last section on the page, after `Example`. Format: `- [Symbol](Symbol) <noun>` where `<noun>` is the kind: statement, function, property, method, class, module, package. Pages with annotations use `- [Symbol](Symbol) -- short description` — the `--` source renders as a typographic dash via markdown-it's typographer (en-dash for `--`, em-dash for `---`). Don't write literal `—` in source; keep `--` for consistency across the docs. Order by conceptual proximity, not strict alphabetical.
 
+8. **Name the fault directly; never build up to it.** Setting up a contrast and then withholding the point is coy, and it makes the reader parse the sentence twice to extract one fact. *Avoid:* "double-clicking it is the obvious shortcut, and it is the one that misleads"; "the specificity trap --- which is the one thing that reliably catches people out". *Use:* "double-clicking it is obvious, and wrong"; "the specificity trap: a rule that loses it applies in light mode and silently does not in dark". Say what the thing is and what it does, in that order, in one clause. The same applies to "and that is the one that…", "which is precisely the…" and "therein lies the…".
+
 ### Replace
 
 | Term | Use instead |
 |------|-------------|
 | `at rest` (idle state) | idle, in its default state |
 | `bake in` / `baked into` | embedded, stored, included |
+| `bite` / `bites` (figurative) | affects, matters, goes wrong |
 | `broker` (as verb) | manages, handles |
 | `carry` / `carries` (figurative) | has, contains, includes |
 | `catches up` | resumes, processes the queue |
@@ -843,7 +846,7 @@ text alone** --- and one does, for a reason worth keeping straight.
 Graphviz authors labels at 12pt. On the web that *is* the 16px body size, so a
 diagram at natural size matches the prose beside it for nothing. The book sets
 body text at 10.5pt, so the same diagram comes out at **1.14x the prose**. It
-only bites `toolchain-overview`, the one diagram narrow enough (477pt) to
+only affects `toolchain-overview`, the one diagram narrow enough (477pt) to
 render at natural size in the 170mm column; the other four are already scaled
 down to fit and land below body size on their own.
 
@@ -1005,6 +1008,19 @@ removes it from that tree only.
 Python scripts are reserved for non-render concerns: one-off content conversion (e.g. `scripts/convert_em_dash_separators.py`), repo audits, dev tooling, link checks beyond `check.bat`. They are never a prerequisite for the render pipeline.
 
 `wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs.
+
+### The published docs assume manual work — and Wisdom is the exception
+
+**Nothing under `docs/Documentation/` should require Claude, an agent or a skill to follow.**
+The audience is a contributor with an editor and a terminal; agent-assisted authoring is a
+local convenience, not part of the contract the published documentation makes. That is why
+the `document-symbol` skill lives under the gitignored `.claude/` and is described only here.
+
+**[Wisdom](docs/Documentation/Wisdom.md) is a deliberate exception and stays public.** The
+tool has no manual mode to document — Phase 3 *is* a set of Claude agents, and a page
+describing it without them would describe nothing. A reviewer applying the rule above will
+read its "tell Claude: …" instructions as a scope violation and propose relocating it to a
+`WIP.Wisdom.md`. That has been considered and declined; leave it where it is.
 
 ### Wisdom Phase 3 --- Extract invocation
 
@@ -1193,7 +1209,7 @@ It then runs [scripts/check_tree_fresh.mjs](scripts/check_tree_fresh.mjs), which
 
 [Self-hosting the text face](#typography) pins that number at 17px on every machine, which is what closed the gap between a local pass and CI's. It does not licence trimming the paddings back: `font-display: swap` puts the first frames of every load on the fallback, and a reader whose font request fails stays there, so the 15--19px band is still the range a fix has to clear. Give a font-dependent measurement margin against the *smallest* of those numbers, prefer a rule that meets the floor on declared size where the layout allows one, and check the whole site for the rule rather than the sample --- one rule over every page at one viewport takes about two minutes.
 
-**axe does not evaluate whether a focus ring is actually visible**, only that focusable things are reachable and labelled --- so a ring that is drawn and then clipped away passes every rule. The aux nav is where that bites. `.aux-nav` is `overflow-x: auto` (navigation.scss:182), and the overflow spec turns the other axis from `visible` to `auto` when one axis is not `visible`, so the nav is a scroll container that clips at its padding box on all four sides; its items are `height: 100%` and the first one starts at the left content edge. An outset ring on anything in there therefore loses every side that sits on the clip edge. The theme toggle shipped that way --- `.btn-reset`'s 2px ring at 2px offset survived only on the right, where the aux-nav link leaves room --- and a manual keyboard pass is what found it. The fix is an inset ring (`outline-offset: -2px` on `#theme-toggle`, in `custom/custom.scss`), which needs an id selector to out-rank the dark compilation's `html[data-theme=dark] .btn-reset:focus-visible` at (0,3,1).
+**axe does not evaluate whether a focus ring is actually visible**, only that focusable things are reachable and labelled --- so a ring that is drawn and then clipped away passes every rule. The aux nav is where that matters. `.aux-nav` is `overflow-x: auto` (navigation.scss:182), and the overflow spec turns the other axis from `visible` to `auto` when one axis is not `visible`, so the nav is a scroll container that clips at its padding box on all four sides; its items are `height: 100%` and the first one starts at the left content edge. An outset ring on anything in there therefore loses every side that sits on the clip edge. The theme toggle shipped that way --- `.btn-reset`'s 2px ring at 2px offset survived only on the right, where the aux-nav link leaves room --- and a manual keyboard pass is what found it. The fix is an inset ring (`outline-offset: -2px` on `#theme-toggle`, in `custom/custom.scss`), which needs an id selector to out-rank the dark compilation's `html[data-theme=dark] .btn-reset:focus-visible` at (0,3,1).
 
 The "twinBASIC Home" link next to it had the same defect, and this file used to say it did not -- that Chrome's UA `outline: auto` on it "renders in full". Measured at 1280x900 in both themes, the nav's box is top 0 / bottom 59 and the link's is identical, so the UA ring's `+1px` offset puts its top and bottom segments outside the clip box exactly as the toggle's did; only the left and right bars survive, because the link starts 50px inboard of the nav's left edge. It now takes an author ring at `outline-offset: -2px` too (`.aux-nav a.site-button:focus-visible`), with a dark-mode colour override -- the link is not a `.btn-reset`, so nothing in either compilation competes with it.
 
