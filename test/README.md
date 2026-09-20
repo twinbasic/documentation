@@ -4,6 +4,10 @@ There is no test runner here and no `npm test` --- `package.json` declares no `s
 at all. Everything under `test/` is input for [`scripts/check_links_diff.mjs`](../scripts/check_links_diff.mjs),
 the harness that proves the repository's two link-checker implementations agree.
 
+If a fixture case has just gone red, start at [The invariant, and how it
+breaks](#the-invariant-and-how-it-breaks) --- the commit that broke it need not have touched
+the fixture or the checker.
+
 ## Why this exists
 
 The link and integrity check has two front ends over one core

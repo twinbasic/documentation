@@ -44,6 +44,7 @@ Where to read more:
 - **The build and deployment workflow** --- [Building and Deployment](https://docs.twinbasic.com/Documentation/Development/Building).
 - **Every command and flag** --- [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools).
 - **Changing the generator itself** --- [tbdocs Internals](https://docs.twinbasic.com/Documentation/Development/Builder), with [`builder/README.md`](builder/README.md) next to the code.
+- **Adding a build task or a markdown-it plugin** --- [Extending the Builder](https://docs.twinbasic.com/Documentation/Development/Extending) covers all three extension points --- a task in the build graph, a markdown-it plugin, a render-worker sub-stage --- each with a worked example.
 
 
 

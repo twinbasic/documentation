@@ -90,7 +90,9 @@ The end-user-facing documentation about how the build pipeline works
 lives on the site itself under [Documentation Development](../docs/Documentation/):
 [Tools and Scripts](../docs/Documentation/Tools.md) is the one-line
 cheat sheet; [tbdocs Internals](../docs/Documentation/Builder.md) is
-the architecture overview.
+the architecture overview; [Extending the Builder](../docs/Documentation/Extending.md)
+is the how-to for adding a pipeline task, a markdown-it plugin or a
+render-worker sub-stage.
 
 ## Build phases
 
@@ -146,7 +148,11 @@ workflow invokes it directly any more -- both reach it through
 `check_links_diff.mjs`, which runs it in-process against the fixtures.
 [scripts/check_links_diff.mjs](../scripts/check_links_diff.mjs) is the
 gate that says the two agree -- run it whenever any of the three
-changes. See [PLAN-checks.md](PLAN-checks.md).
+changes; [test/README.md](../test/README.md) covers the fixtures that
+give it something to disagree about, the exact finding counts they must
+keep provoking, and why a template change can turn the gate red without
+touching the fixture or the checker. See
+[PLAN-checks.md](PLAN-checks.md).
 
 The per-phase `verify-phase{1..8}.mjs` harnesses and the bulk-triage
 tools (`_triage.mjs`, `_diff.mjs`, etc.) were retired in the Phase 10
