@@ -6,7 +6,6 @@ vba_attribution: true
 ---
 
 # Call
-
 {: .no_toc }
 
 Transfers control to a **Sub** [procedure](../Gloss#procedure), **Function** procedure, or dynamic-link library (DLL) procedure.

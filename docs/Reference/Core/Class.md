@@ -5,7 +5,6 @@ permalink: /tB/Core/Class
 ---
 
 # Class
-
 {: .no_toc }
 
 Defines a class. Classes are templates from which objects are created --- classes are object types, as opposed to value types. Objects are held by reference and are reference-counted. The memory an object occupies is freed when there are no more references to it --- when no variables in the process refer to them.

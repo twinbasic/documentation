@@ -5,7 +5,6 @@ permalink: /tB/Core/Continue
 ---
 
 # Continue
-
 {: .no_toc }
 
 Immediately begins the next iteration of the enclosing loop.
