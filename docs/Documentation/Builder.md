@@ -443,15 +443,81 @@ The site's `/assets/` tree at deploy time is assembled from three sources:
 
 | Source on disk | What lives there | Phase that delivers it |
 |---|---|---|
-| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-toggle.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), the self-hosted webfaces under `fonts/` (subset `.woff2` plus their OFL licences), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
+| `docs/assets/` | Project-owned content: the two SCSS entry points, project JS (`theme-toggle.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), the self-hosted webfaces under `fonts/` (subset `.woff2` plus their OFL licences), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
 | `builder/vendor/just-the-docs/` | Vendored from the just-the-docs theme (v0.10.1): `_sass/` (the theme's SCSS sources, fed into the compilation) and `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (the chrome runtime, copied verbatim). See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the inventory, re-vendoring procedure, and the in-tree patches applied to `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `writeAssets`. |
-| Generated in-process | `just-the-docs-combined.css` (from `scss.mjs`) and `tb-highlight.css` (from `highlight-theme.mjs`). Neither is committed; both are rebuilt every run. | Written by `scss` (combined CSS) and `writeAssets` (highlight CSS). |
+| Generated in-process | `just-the-docs-combined.css` (from `scss.mjs`, over the two entry points plus every partial under `docs/_sass/` --- see [Project styling](#project-styling)) and `tb-highlight.css` (from `highlight-theme.mjs`). Neither is committed; both are rebuilt every run. | Written by `scss` (combined CSS) and `writeAssets` (highlight CSS). |
 
 The fonts are committed artifacts, like the DOT renders: `scripts/build_fonts.py` regenerates them from pinned upstream releases, and the build neither downloads nor subsets anything. The stylesheets reference them with a *relative* `url("../fonts/...")` rather than a root-absolute path, so the same compiled CSS resolves in the online tree, the `file://` offline mirror, a `--baseurl` deployment and the sparse PDF tree without any rewrite. `builder/pdf.mjs` copies the six faces `print.css` declares into `_site-pdf/` explicitly, since that tree is sparse and carries only what the book render needs.
 
 CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is non-empty; the same transform applies to generated CSS so the `url("/favicon.png")` the SCSS entry point emits resolves correctly under sub-path deployments.
 
 The project JS is deliberately small. `theme-toggle.js` implements the three-state (system / light / dark) theme switch as a progressive enhancement over the no-JS `prefers-color-scheme` default: the correct palette renders even with scripting disabled, and the script only adds the manual override that persists a `data-theme` choice. `svg-inline.js` powers the click-to-zoom overlay and the download / copy controls on inlined diagrams. (An earlier `theme-switch.js` was replaced by `theme-toggle.js` when the two-state switch grew a system-follows-OS state.)
+
+## Project styling
+
+**Every hand-written style rule the project owns lives under `docs/_sass/`.** A CSS rule for a new component goes there --- not into the vendored theme sources under `builder/vendor/just-the-docs/_sass/`, which are pristine upstream and re-vendored wholesale, and not into a separate stylesheet, because the site serves exactly one: `assets/css/just-the-docs-combined.css`.
+
+`.scss` is build input, never a published asset. `_config.yml`'s `exclude:` drops `**/*.scss` from the source walk, so a partial is compiled and its source is not copied out. Nothing under `docs/_sass/` reaches a deploy tree as a file.
+
+| File | What it holds |
+|---|---|
+| `custom/custom.scss` | The bulk of the project's CSS: `.sr-only`, the inline-diagram controls and container, the table-wrapper focus ring, the page footer and its divider, the `.section-links` disclosure, `.site-logo`, the code-size overrides (as the `tb-code-overrides` mixin), the theme toggle, the aux-nav focus rings, `.video-link`, footnote back-links, `<summary>` target sizing, and in-heading links. Shadows the vendored theme's empty `custom/custom.scss` hook by load-path order. |
+| `custom/_theme.scss` | The `dark-theme` mixin and nothing else. Every dark-mode rule in the project passes through it. |
+| `custom/_fonts.scss` | The `@font-face` rules for the self-hosted faces, plus the `$tb-body-font-family` / `$tb-mono-font-family` stacks. The faces are wrapped in an `emit-font-faces` mixin so they are emitted exactly once, from the light compilation: the dark compilation re-emits its whole payload under two selectors, and an `@font-face` nested inside a selector is invalid. |
+| `custom/admonitions.scss` | The GFM admonition palette, light and dark, ported out of the old Jekyll gem so the rules ship once in the site stylesheet instead of being inlined into every page's `<head>`. |
+| `modules-dark.scss` | Not a partial anyone `@use`s directly: it is the dark **configuration** of the whole just-the-docs module tree --- one `@use "modules" with (…)` carrying the dark palette --- loaded only by `meta.load-css()` from inside the `dark-theme` mixin. It also re-passes the two font stacks, which are not dark-specific: omit them and the site renders Inter in light mode and the system stack in dark, for the specificity reason below. |
+
+Two plain-CSS stylesheets sit outside the Sass pipeline and are copied verbatim: `docs/assets/css/print.css`, which is the book's complete design and loads no just-the-docs styles at all, and `docs/assets/css/just-the-docs-head-nav.css`. A web style change does not belong in either.
+
+### Two compilations, one stylesheet
+
+`scss.mjs` runs Dart Sass twice, on two worker tasks, over two entry points:
+
+- `scssLight` compiles `docs/assets/css/just-the-docs-combined.scss` --- the light palette. This is where `custom/custom.scss` is `@use`d, so everything in it is emitted once, at root level, and where `emit-font-faces` is included.
+- `scssDark` compiles `docs/assets/css/just-the-docs-dark.scss` --- the same module tree configured from `modules-dark.scss`, wrapped in the `dark-theme` mixin.
+- `scss` (main) concatenates the two results and writes the single combined CSS asset to `_site/` and `_site-offline/`, applying the baseurl `url()` rewrite on the way.
+
+Two compilations rather than one because **Dart Sass keeps one module cache per `compile()` call, and a module URL can be loaded once per compilation with one variable configuration.** The dark theme needs `modules.scss` with different variable values, which is only reachable from a fresh compilation with its own empty cache. `meta.load-css()`'s `$with` map writes to that same cache, so it is no escape hatch either --- which is why the light entry point loads `modules` exactly once and hardcodes the two literal colours it would otherwise read from a Sass variable.
+
+The `dark-theme` mixin in `custom/_theme.scss` emits its content **twice**:
+
+```scss
+@mixin dark-theme {
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) { @content; }
+  }
+  html[data-theme="dark"] { @content; }
+}
+```
+
+The first copy is the no-JS system default, with `:not([data-theme="light"])` as the escape hatch for a reader who has forced light. The second is the explicit toggle choice, which wins even on a light OS because it is emitted last at equal specificity. The duplicated text compresses away over the wire. A single-source alternative --- a custom-properties token layer --- is tracked in `builder/FUTURE-WORK.md`.
+
+### The specificity trap
+
+**This is the one thing to know before writing any rule here.** The dark compilation re-emits *every* just-the-docs base rule inside that mixin, so a bare element selector in the theme reappears scoped to the theme root. Both dark selectors are (0,1,1), so:
+
+| Rule | Light | Dark re-emission |
+|---|---|---|
+| `a { text-decoration: none }` (theme `base.scss`) | (0,0,1) | `html[data-theme="dark"] a` --- (0,1,2) |
+| `hr { margin: $sp-6 0 }` (theme `base.scss`) | (0,0,1) | `html[data-theme="dark"] hr` --- (0,1,2) |
+| `.main-content ul { margin-top: 0.5em }` (theme `content.scss`) | (0,1,1) | `html[data-theme="dark"] .main-content ul` --- (0,2,2) |
+
+So a **single-class rule that overrides a bare element selector applies in light mode and silently does not in dark**. `.reversefootnote` at (0,1,0) loses to (0,1,2). The remedy is to prefix the selector with `.main-content`: `.main-content .reversefootnote` is (0,2,0) and wins in both themes.
+
+That is the general rule, and it has two extensions:
+
+- **`.main-content` is not always enough.** When the rule being overridden is itself scoped under `.main-content` upstream, the dark copy lands at (0,2,2) and a (0,2,1) override still loses --- which is what `.section-links > ul` hit. Either climb another level or emit a matching rule inside `dark-theme` yourself; `custom.scss` does the latter for that case.
+- **Site chrome outside `<main>` has no `.main-content` to reach for.** An `<hr>` that is a direct child of the main-content element takes `#main-content > hr` at (1,0,1); the theme toggle has to beat `html[data-theme="dark"] .btn-reset:focus-visible` at (0,3,1), so `#theme-toggle:focus-visible` at (1,1,0) is what clears it. An id selector is the usual answer here.
+
+**The trap has shipped at least three times** --- the footnote underline, the footer `hr` margins, and `.section-links > ul`, which had been silently inheriting the body-prose list margin since the day it landed. Each time the rule worked in light mode, so it looked correct to the person who wrote it.
+
+Prefer a selector that wins on its own terms over one that wins by source order. Equal-specificity rules are decided by position in the concatenated output, and the light half always precedes the dark half.
+
+### Verifying a style change
+
+Run `serve.bat` and look at the page **in both themes**. This is not a formality: a dark-mode specificity revert is usually cosmetic, produces no error and no warning, and no gate catches it. Use the theme toggle rather than the OS setting, so the `[data-theme]` half is what gets exercised. Do not judge styling by opening a built page as a `file://` URL --- the online tree references its assets root-absolutely, so a `file://` page loads unstyled and any conclusion about colour or spacing drawn from it is worthless.
+
+Then `build.bat && check.bat`. A malformed rule surfaces as an SCSS compile failure, which warns with the source location and flips the exit code rather than aborting --- so the previous build's CSS lingers in `_site/` and the site appears to still work; read the build output, do not judge by the page. `check.bat`'s accessibility scan covers every sample page in both themes for exactly the reason above, and its `target-size` and `color-contrast` rules are where a geometry or palette change lands. If the new component introduces markup the site has not used before, also add a construct family to `scripts/pick_a11y_sample.mjs` --- see [Tools and Scripts](Tools#pick-a11y-sample) --- or no axe rule keyed on it will run anywhere.
 
 ## What is NOT in builder/
 
