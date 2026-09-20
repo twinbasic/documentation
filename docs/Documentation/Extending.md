@@ -22,8 +22,10 @@ How to add a new pipeline task or a custom markdown-it plugin to `tbdocs`. Read 
 
 **Render-worker sub-stage** --- a transformation slotted into the per-chunk render handler in [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs), between two of the existing sub-stages (`renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`). This is the right shape when the new work is per-page CPU compute that should run in parallel with the rest of the page render.
 
+**Styling is not one of them.** A new component's CSS is not an extension point here at all: the site's own style rules live under `docs/_sass/`, are compiled into a single stylesheet by `scss.mjs`, and need no change to the task graph or the plugin chain. See [Project styling](Builder#project-styling) for where each rule belongs, the two-compilation model, and the dark-mode specificity trap --- which is the one thing that reliably catches people out, because a rule that loses it still works in light mode.
+
 > [!NOTE]
-> Changes to task definitions, worker handlers, or markdown-it plugins are not hot-reloaded by serve mode. The worker pool is persistent: after editing any of these, stop `serve.bat` (Ctrl+C) and re-run to load the new code.
+> Changes to task definitions, worker handlers, or markdown-it plugins are not hot-reloaded by serve mode. The worker pool is persistent: after editing any of these, stop `serve.bat` (Ctrl+C) and re-run to load the new code. SCSS and page content *are* watched and rebuilt.
 
 ---
 
@@ -288,9 +290,9 @@ That is the full pattern: per-chunk compute on the render workers, merge into th
 
 ### Background
 
-`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. Plugins are applied in a fixed order: `markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`, then fourteen in-tree plugins. A new plugin becomes part of that order.
+`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. Seventeen plugins are applied in a fixed order: three from npm (`markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`) interleaved with fourteen defined in `render.mjs` itself. A new plugin becomes part of that order.
 
-Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers; [Pipeline Stages](Pipeline-Stages) lists them all under `render.mjs`.
+Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers, most of them closing a behavioural gap between markdown-it and the kramdown dialect the content was authored against. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates all seventeen in registration order, with what each one does.
 
 The same factory is called twice on main (once for the shared site-level SEO instance via `markdownInit`, and once per dev-tooling harness that re-renders) and once per render worker (via `renderEnvInit`). Plugins that reach for module-scope state must therefore work across worker boundaries --- in practice, that means no mutable closure-captured state, since each worker has its own module-scope instance.
 
@@ -357,7 +359,7 @@ Add an import at the top of `render.mjs`:
 import { tableWrapPlugin } from "./table-wrap-plugin.mjs";
 ```
 
-Find `createMarkdownIt` and add `md.use(tableWrapPlugin)` in the plugin chain. **Order matters** --- place the new plugin after any plugin it depends on and before any plugin that could interfere with its token types:
+Find `createMarkdownIt` and add `md.use(tableWrapPlugin)` in the plugin chain. **Order matters** --- place the new plugin after any plugin it depends on and before any plugin that could interfere with its token types. Note that registration order only decides execution order for a rule added with `md.core.ruler.push()`; `.before(name)` and `.after(name)` insert at a named position regardless of when the plugin was registered, which is how `headingLevelNormalizePlugin` runs ahead of `headerIdPlugin` while being registered after it.
 
 ```js
 export function createMarkdownIt(ctx) {
@@ -372,6 +374,8 @@ export function createMarkdownIt(ctx) {
 ### 3. Verify
 
 Run `build.bat` and open an affected page; for live feedback, use `serve.bat`. A plugin that traverses the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
+
+**If the plugin emits markup the site has not carried before --- a new wrapper element, a widget, a figure, a control --- register a construct family for it in [`scripts/pick_a11y_sample.mjs`](Tools#pick-a11y-sample) in the same change.** The accessibility scan audits thirteen sample pages out of ~1,160, and a construct no sample page carries is a construct no axe rule keyed on it ever runs against. Leaving it out is not neutral: the gate goes on reporting a clean pass while covering less than it did before, which is the failure mode the derived sample exists to prevent. `node scripts/pick_a11y_sample.mjs --census` shows what the existing families are and which pages carry them; `--check` names the gaps and the cheapest page that closes each. The same obligation applies to a new task or sub-stage that changes the emitted HTML, and to a template change.
 
 ---
 
@@ -443,20 +447,24 @@ Then extend `dispatch.submit`'s `render:i` callback to merge the new field, exac
 
 Four commands cover the loop:
 
-1. **`build.bat`** --- full pipeline. A clean exit and a sensible Gantt placement is the bar.
-2. **`serve.bat`** --- live-reload dev server for visual checks. Remember the persistent pool: Ctrl+C and restart after handler-code or task-graph changes.
-3. **`check.bat`** --- offline link and integrity check. Catches broken links and missing pages introduced by the change.
+1. **`build.bat`** --- full pipeline, including the link and integrity check over both trees while their HTML is still in worker memory. A clean exit and a sensible Gantt placement is the bar.
+2. **`serve.bat`** --- live-reload dev server for visual checks. Remember the persistent pool: Ctrl+C and restart after handler-code or task-graph changes. Check both themes if the change touches anything visible.
+3. **`check.bat`** --- the gates that need a browser or a second pass over the built tree: the publish allowlist, tree freshness, diagram fit, the axe patch equivalence check, the accessibility sample-coverage check, and the accessibility scan itself.
 4. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
 
 A clean run of all four is the bar for "ready to commit".
 
+Two of `check.bat`'s gates are the ones a builder change is most likely to trip, and both fail for a reason worth reading rather than working around. `pick_a11y_sample.mjs --check` fails when the change introduced a construct the sample does not cover --- the fix is a new construct family, not a wider sample. `check_publish_policy.mjs` fails when a new emitted file type is not on the allowlist in `builder/publish-policy.mjs`; add it to `BUILD_EXTENSIONS`, which is deliberately a separate set from `SOURCE_EXTENSIONS` so blessing a generated type does not also bless a stray one a contributor drops into `docs/`.
+
 > [!NOTE]
-> `check.bat` requires `build.bat` to have run first; it reads from `_site/` and `_site-offline/`.
+> `check.bat` requires `build.bat` to have run first; `check_tree_fresh.mjs` refuses a tree older than the sources that produced it rather than letting the later gates report on stale output.
 
 ---
 
 ## See Also
 
-- [Pipeline Stages](Pipeline-Stages) -- full data model, per-task interface reference, per-module export tables.
+- [Pipeline Stages](Pipeline-Stages) -- full data model, per-task interface reference, per-module export tables, and the [markdown-it plugin chain](Pipeline-Stages#the-plugin-chain) in registration order.
+- [Project styling](Builder#project-styling) -- where a CSS rule goes, the light/dark two-compilation model, and the specificity trap that makes a dark-mode override silently do nothing.
 - [tbdocs Builder](Builder) -- architectural tour and design rationale.
+- [Tools and Scripts](Tools) -- every gate `check.bat` runs, and what each one is protecting.
 - [Building and Deployment](Building) -- the day-to-day build workflow for content contributors.

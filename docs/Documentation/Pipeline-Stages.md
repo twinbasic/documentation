@@ -633,7 +633,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | Symbol | Signature | Description |
 |---|---|---|
 | `renderPhase` | `(pages, site, staticFiles?) → Promise<void>` | Renders each page's `rawContent` to `renderedContent` via the supplied site's markdown-it. Skips `layout: book-combined`. |
-| `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles, svgContents? }) → MarkdownIt` | Builds the configured markdown-it instance. `svgContents` is a `Map<srcRel, string>` of pre-read SVG file contents; when present, the `svgInlinePlugin` replaces `<img>` tags for matching `.svg` sources with inline SVG wrappers. See [Extending](Extending) for the plugin list and ordering. |
+| `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles, svgContents? }) → MarkdownIt` | Builds the configured markdown-it instance: three npm plugins and fourteen in-tree ones, in the fixed order tabulated below. `svgContents` is a `Map<srcRel, string>` of pre-read SVG file contents; when present, the `svgInlinePlugin` replaces `<img>` tags for matching `.svg` sources with inline SVG wrappers. See [Extending](Extending#adding-a-markdown-it-plugin) for how to add one. |
 | `initHighlighter` | (re-export from `highlight.mjs`) | `() → Promise<object>`. Initialises Shiki with the bundled twinBASIC grammar. |
 | `buildLinkTables` | `(pages) → { byPath, byUrl, byRedirect }` | Map lookups keyed by `srcRel`, `permalink`, and `redirect_from` entries. |
 | `serializeLinkTables` | `(lt) → { byPath, byUrl, byRedirect }` | Serializes the Maps to `[key, permalink]` pair arrays for structured-clone transfer to workers. |
@@ -642,6 +642,36 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | `buildSvgWrapper` | `(svgContent, alt, stem, srcRel) → string` | Returns the `<div class="svg-inline-wrap">` HTML structure containing the SVG controls (download/copy SVG and PNG) and the `<div class="svg-container">` with the raw SVG content. |
 | `rewriteAdmonitions` | `(src) → string` | GFM admonition rewrite to the `markdown-alert markdown-alert-<type>` class structure with the five SVG octicons. |
 | `headingLevelNormalizePlugin` | `(md) → void` | markdown-it core rule (registered before `header-id`). On any page that uses `h1` and `h3` but no `h2` --- the legacy "h1 straight to h3" house style --- it raises every heading of level 3 or deeper by one (`h3`→`h2`, `h4`→`h3`, …) so the built page has no skipped heading level. Pages that already use `h2` are left untouched, so correctly-levelled content is never modified. |
+
+#### The plugin chain
+
+`createMarkdownIt` applies seventeen plugins in a fixed order: three from npm, and fourteen defined in `render.mjs` itself. Most of the in-tree ones exist to close a behavioural gap between markdown-it and kramdown, which rendered this content under Jekyll --- the site's ~870 pages were authored against kramdown's dialect, so matching it is a compatibility requirement rather than a preference.
+
+| # | Plugin | Source | What it does |
+|---:|---|---|---|
+| 1 | `markdown-it-attrs` | npm | kramdown's `{: … }` attribute syntax. Delimiters are overridden to `{:` / `}` so a bare `{` is not an attribute block. |
+| 2 | `standaloneIalForwardPlugin` | in-tree | A block IAL occupying a whole paragraph attaches to the **following** block, as kramdown does, not to the paragraph itself. |
+| 3 | `tightLooseListPlugin` | in-tree | kramdown decides list tightness **per item**; markdown-it decides it per list. Unwraps the `<p>` markdown-it adds to an item that holds only inline content plus a nested list. |
+| 4 | `markdown-it-deflist` | npm | Definition lists --- the `term` + `: definition` shape every parameter list in the reference uses. |
+| 5 | `looseDeflistPlugin` | in-tree | The same per-item tightness rule applied to `<dd>`. |
+| 6 | `markdown-it-footnote` | npm | Footnotes. `configureFootnotes(md)` then overrides five renderer rules to match kramdown's markup. |
+| 7 | `headerIdPlugin` | in-tree | kramdown-compatible heading ids via `kramdownSlug`, with per-page deduplication. |
+| 8 | `headingLevelNormalizePlugin` | in-tree | Detailed above. Inserted `before("header-id")`, so ids are slugged from the corrected levels. |
+| 9 | `tocPlugin` | in-tree | The `* TOC` + `{:toc}` marker becomes a nested `<ul id="markdown-toc">`. Runs `after("header-id")`, since it links to the ids that rule assigned. |
+| 10 | `relativeLinksPlugin` | in-tree | Resolves every relative and root-absolute `href` / `src` against the link tables, so a link written as a file path lands on the target page's canonical permalink. Static assets resolve to root-absolute paths instead. |
+| 11 | `blockHtmlRecursionPlugin` | in-tree | Four rules over raw HTML: strip `markdown="1"`, tag admonition fences, wrap standalone inline HTML, normalise block HTML. |
+| 12 | `kramdownDashesPlugin` | in-tree | Three typographer repairs, not just dashes: `--` → en-dash and `---` → em-dash even when whitespace is adjacent (markdown-it requires a word on both sides), plus possessive and quote-near-emphasis fixes. Code spans and fences are separate token types and are untouched. |
+| 13 | `kramdownEllipsisPlugin` | in-tree | markdown-it collapses any run of 2+ dots to one ellipsis; kramdown converts exactly three and leaves the rest. Recovers the dropped dots. |
+| 14 | `flattenAdjacentStrongPlugin` | in-tree | kramdown pairs adjacent `**` markers left to right; CommonMark prefers nesting. Flattens the nested shape back to two siblings. |
+| 15 | `svgInlinePlugin` | in-tree | Detailed above. Also hides the `<p>` around a lone image, since the wrapper it emits is a `<div>` and a paragraph takes phrasing content only. |
+| 16 | `videoLinkPlugin` | in-tree | A link marked `{: .video }` becomes a locally vendored poster frame linking out to the video page. The thumbnail `src` is emitted **root-absolute**, because the PDF book flattens every page into one document and a page-relative `src` resolves against the book root there. |
+| 17 | `remoteImagePlugin` | in-tree | A `github.com/user-attachments/…` image becomes the copy [`vendor-assets.mjs`](#vendor-assetsmjs) downloaded, in both markdown `![…]()` and raw `<img>` syntax. Also root-absolute, for the same reason. |
+
+**Registration order is not execution order**, in two different ways, and both matter when inserting a new plugin.
+
+For **core rules**, only `md.core.ruler.push()` runs at the position its `md.use()` call implies. `.before(name)` and `.after(name)` insert at a named rule regardless of when the plugin was registered --- which is how `headingLevelNormalizePlugin` runs ahead of `headerIdPlugin` despite being registered after it, and how the typographer repairs (12, 13) run `after("replacements")` and `after("smartquotes")` rather than at position 12 and 13.
+
+For **renderer rules**, order inverts. Both image plugins capture the current `md.renderer.rules.image` as `orig` and install a wrapper that delegates to it, so the chain runs **outermost first**: `remoteImagePlugin` (17, registered last) rewrites the `src` and hands on to `svgInlinePlugin` (15), which hands on to markdown-it's own image renderer. A third image plugin registered after these would run before both. `videoLinkPlugin` (16) is not part of that chain --- it transforms a marked *link*, from a core rule.
 
 ### `highlight.mjs`
 
