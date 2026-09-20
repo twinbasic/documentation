@@ -110,6 +110,22 @@ jobs:
       # browser, no built tree, ~40 ms.
       - name: Verify the publish allowlist (check_publish_policy.mjs)
         run: node scripts/check_publish_policy.mjs
+      # Graphviz sizes each node box from a width table; the browser paints the
+      # label with a real font, and nothing in the build compares the two -- so a
+      # mismatch ships as text hanging outside its box on a green build. See the
+      # same step in checks.yml for how 27 labels once went out that way.
+      #
+      # checks.yml only runs on pull requests, so this is the one gate a diagram
+      # merged by a direct push to `staging` -- or by a manual dispatch -- would
+      # otherwise never meet.
+      #
+      # After the build on purpose: builder/dot.mjs rewrites a stale .svg from
+      # its .dot in place, so this measures the bytes about to be deployed, not
+      # the ones that were committed. Chromium is already installed above, and
+      # the check loads Inter from the committed .woff2 rather than an installed
+      # face, so it measures the same here as on a dev box. Five diagrams, ~1 s.
+      - name: Verify DOT diagram fit (check_dot_fit.mjs)
+        run: node scripts/check_dot_fit.mjs
       # check_a11y.mjs injects a PATCHED axe bundle; verify the patch is still
       # value-preserving before trusting what it reports. See the same step in
       # checks.yml for why the fingerprint gate does not cover this.
