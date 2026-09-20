@@ -192,7 +192,7 @@ Typical use would be `[CompilerOptions("+llvm,+optimize,+optimizesize")]` ⁠to 
 
 Syntax: **[ConstantFoldable** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Function**](Function)
+Applicable to: [**Function**](Function) in a [**Module**](Module). The compiler rejects it on a method in a [**Class**](Class).
 
 Specify this attribute for functions where when called with non-variable input, will be computed at compile time, rather than runtime. For example, a function to converted string literals to ANSI. The result would never change, so the resulting ANSI string is stored, rather than recomputing every run. Such functions are also called *pure functions*, because their output only depends on the arguments, and not on the state of the program.
 
