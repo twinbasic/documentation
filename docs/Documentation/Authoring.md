@@ -145,7 +145,22 @@ A reference page follows a predictable shape: the title, a one-line summary, the
 
 The page title is a single `#` (a *chapter* --- a page may legitimately have more than one). Top-level sections such as **Example** and **See Also** are `##`; subsections are `###`.
 
-Do **not** jump from `#` straight to `###`. That old "house style" --- an h1 followed directly by an h3 --- is a heading-order defect on the built site, where headings must not skip a level. Older pages that still do it are repaired automatically at build time by the `headingLevelNormalizePlugin` (it raises an orphaned `h3` up to `h2`), but new content must use the correct levels from the start. See [Extending the Builder](Extending) for where that plugin sits in the render stage.
+Do **not** jump from `#` straight to `###`. That old "house style" --- an h1 followed directly by an h3 --- is a heading-order defect on the built site, where headings must not skip a level. Older pages that still do it are repaired at build time by the `headingLevelNormalizePlugin`, but new content must use the correct levels from the start. See [Extending the Builder](Extending) for where that plugin sits in the render stage.
+
+The repair is a re-levelling of the whole page, not a patch to one heading. The plugin raises **every** heading of level 3 or deeper until each one sits exactly one level below the heading it belongs under, closing every gap in a single pass: `#` / `###` renders as h1 / h2, and `#` / `###` / `#####` renders as h1 / h2 / h3. Only the h1 chapters are left as they are, since a page may legitimately have several.
+
+### Editing a page that still uses the old style
+
+The repair is conditional, and the condition is easy to break without noticing. **The plugin runs only on a page that uses `#` and `###` and no `##` anywhere** --- a single `##` and it does not run at all. More than four hundred pages on this site are currently in that state, so on most of them, adding one `##` section disarms the normalizer for the whole page: every `###` that was already there stops being repaired and becomes a live heading-order defect, in the same edit that added a correctly-levelled section.
+
+Nothing tells you. The build still succeeds --- heading order is not one of the things it checks --- and `check.bat`'s accessibility scan audits thirteen sample pages out of roughly 1,160, so unless you happened to edit one of those thirteen, the defect ships.
+
+So when you add a section to a page whose headings start at `###`, pick one of these and finish it:
+
+- **Leave the page in the old style** and write your new section as `###` too. The normalizer goes on repairing the whole page, your addition included. This is the smaller and safer edit, and it is the right one when you are adding a section to a page you are otherwise not touching.
+- **Convert the page, in the same commit.** Renumber every heading so it sits one level below its parent --- which is precisely what the normalizer was computing for you --- then add your section at the level it belongs. Done correctly the rendered HTML does not change at all, which is what makes the conversion safe to make on its own and easy to review: the diff is only `#` characters.
+
+What you must not do is mix the two and leave it there.
 
 ## Formatting conventions
 
@@ -184,8 +199,14 @@ Two things to leave alone. Node text is deliberately dark against each node's li
 Images live in an `Images/` folder beside the page that uses them, and are referenced by a relative path:
 
 ```markdown
-![Create Package](Images/packPublishButton.png)
+![The Package Manager panel, with arrows pointing at the PUBLISH THIS PACKAGE button](Images/packPublishButton.png)
 ```
+
+**The text in the square brackets is the image's alt text, and every image needs one.** Write what a reader who cannot see the picture would otherwise miss --- what the screenshot shows and which part of it the surrounding prose is pointing at --- rather than a label for the file. A caption-length phrase is usually right; the file name, the word *screenshot*, and the name of the button you happened to be looking for are not.
+
+Nothing in the build will correct you, and it is worth knowing exactly why. The accessibility scan's `image-alt` rule asks only whether an accessible name *exists*, never whether it is the right one. `![image](…)` passes it. So does `![img](…)`. So does an empty `![](…)`, because an empty alt is the explicit signal that an image is decorative and a screen reader should skip it --- true of a spacer or a bullet glyph, never true of a screenshot. A green `check.bat` therefore says only that something is present in the brackets. Whether it describes the picture is a judgement no gate here makes, and the scan samples thirteen pages in any case, so most images are never looked at by it at all.
+
+One habit to avoid in particular: copy the *shape* of a neighbouring page's image markdown, never its alt text. The example above used to read `![Create Package]`, and that one string travelled from it onto ten further images across the site --- a references dialog, a toolbox, a properties window, an animated GIF --- describing none of them, on pages that passed every check the project has.
 
 Use the markdown form. A raw `<img>` tag with a page-relative `src` is **not** rewritten when the PDF book is assembled: the book flattens every page into a single document, so a path like `Images/x.png` that resolves correctly on the site resolves against the book root instead and the render aborts with `pdf: missing image`. The markdown form is rewritten to a section-qualified path and works in all three outputs.
 
@@ -261,6 +282,24 @@ Use one callout per concern, and reserve them for genuine notes --- plain "why t
 Relative links resolve against a page's **rendered URL** (its `permalink`), not its location in the source tree. A link to a sibling in the same URL folder is a bare name --- `[Dim](Dim)`; crossing into another folder climbs out with `../`. Always link to a page's canonical `permalink`, never to one of its `redirect_from` aliases.
 
 When the right number of `../` steps is not obvious, copy a working link from a neighbouring page that already points where you want to go and change the final segment. That is faster and less error-prone than counting folders, and [`build.bat`](Building#checking-link-integrity) catches any link that resolves to nothing before it reaches the site.
+
+## Listing a new page
+
+A new page reaches the sidebar on its own --- the nav tree is generated from `parent`. The site's hand-written indexes are not generated, and a page missing from them is reachable only by search and by whatever happens to link to it.
+
+**Nothing catches the omission.** The link check verifies that the links a page *makes* resolve; it has no opinion about whether anything links *to* it, and an unlisted page is a perfectly valid page. So the entry has to go in deliberately, in the same commit as the page, or it does not go in at all.
+
+The indexes to join depend on what the page documents:
+
+- **A core statement or keyword** (a page under `docs/Reference/Core/`) is listed in three places: [Statements](../../Reference/Statements), as one alphabetical bullet with a short description; [Categories](../../Reference/Categories), under the heading matching what it does; and [Permanent Links](Permanent-Links), whose `/tB/Core/` section enumerates core pages individually because that list is the URL contract the IDE help system relies on.
+- **An operator** goes in [Operators](../../Reference/Operators) rather than Statements, grouped by kind. The other two still apply.
+- **A twinBASIC addition** --- a symbol or construct standard VBA does not have --- is additionally listed in [twinBASIC Additions](../../Reference/twinBASIC-Additions), under the category it belongs to. A page for a symbol VBA already has does not belong there.
+- **A runtime procedure, function, or property** is listed in [Procedures and Functions](../../Reference/Procedures-and-Functions) under its initial letter, and introduced in the prose of its own module's `index.md`. Those module pages present their members in themed groups rather than as a flat list, so add the link to the paragraph it fits rather than to the end. [Permanent Links](Permanent-Links) lists the modules, not their members, so it needs no edit.
+- **A class, control, or enumeration inside a package** is introduced on that package's `index.md`. A control in the VB package is additionally listed in [Controls](../../tB/Controls), under the group matching its purpose.
+- **An enumeration** is listed in [Enumerations](../../Reference/Enumerations) **twice** --- once in the by-package section and once in the alphabetical index below it --- and moves the enumeration total stated on the [Reference Section](../../Reference) landing page.
+- **A whole new package** needs a bullet on [Default Packages](../../tB/Packages/Default/) or [Built-In Packages](../../tB/Packages/Built-In/), and moves the package counts written into the prose of [Packages](../../tB/Packages/) and the [Reference Section](../../Reference) landing page.
+
+Every one of these entries is a link plus a one-line description in the style of its neighbours, so the reliable way to write one is to copy the entry above the position you are inserting at and replace its contents.
 
 ## See also
 
