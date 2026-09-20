@@ -68,6 +68,36 @@ Either architecture works and both behave identically:
 > installation root. That one is the IDE launcher: given `export` or `import` it
 > prints nothing, writes nothing, and exits with a success code.
 
+### The four verbs the usage message leaves out
+
+Run the executable with no recognised verb and it prints a usage message naming only
+`export` and `import`. Four more verbs work. Each takes a single `.twinproj` path and
+writes to standard output:
+
+| Verb | Prints |
+|------|--------|
+| `settings` | the project's settings, as JSON |
+| `licence` | the project's `LICENCE.md` |
+| `changelog` | the project's `CHANGELOG.md` |
+| `readme` | the project's `README.md` |
+
+```batch
+twinBASIC_win32.exe settings "C:\MyProject.twinproj"
+```
+
+`settings` prints the same keys the Project Settings pane edits, including
+`project.buildType`, `project.startupObject` and the full `project.references` list.
+
+> [!NOTE]
+>
+> The three document verbs print nothing when the project does not hold that file, and
+> nothing is also what a failure looks like. Test for an empty output rather than
+> treating it as an empty document.
+
+An installed package is a project file too --- every folder under the installation's
+`packages\` directory holds one named `package.twinproj` --- so all six verbs work on
+packages as well as on projects.
+
 ### Only `.twinproj` is accepted
 
 The input and output paths must end in `.twinproj`. Any other path has `.twinproj`
@@ -99,10 +129,10 @@ find "... DONE" tb.log > nul || exit /b 1
 
 > [!NOTE]
 >
-> There is no command that compiles a project. The executable accepts `export` and
-> `import` and nothing else; building is done from the IDE. Passing any argument that
-> begins with `--` on its own puts the process into one of its internal server roles,
-> where it waits instead of exiting.
+> There is no command that compiles a project. The six verbs above are the whole
+> command-line surface; building is done from the IDE. Passing any argument that begins
+> with `--` on its own puts the process into one of its internal server roles, where it
+> waits instead of exiting.
 
 ## The standalone scripts
 
