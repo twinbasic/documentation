@@ -675,8 +675,9 @@ Flags compose. The CPU profile lands as `render.cpuprofile`
 Chrome DevTools -> Memory -> "Load profile..."); `--instrument`
 prints a per-op table at end-of-render.
 
-You need `_site-pdf\book.html` to exist first -- run `docs\build.bat`
-(which is `bundle exec jekyll build`) if you haven't already.
+You need `_site-pdf\book.html` to exist first -- run `build.bat` at
+the repository root (which runs `tbdocs`, the site generator in
+[builder/](../builder/)) if you haven't already.
 
 Outputs land in `perf/results/<ISO-timestamp>/`:
 

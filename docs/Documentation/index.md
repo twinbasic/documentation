@@ -13,11 +13,11 @@ This section covers everything related to the twinBASIC documentation: the URL c
 
 ## Toolchain overview
 
-Three commands handle the entire build-and-verify workflow. `build.bat` produces three output trees from the markdown source; `check.bat` validates link integrity on the two HTML trees; `book.bat` renders the PDF from the third.
+Three commands handle the entire build-and-verify workflow. `build.bat` produces three output trees from the markdown source and link-checks them in the same pass; `check.bat` runs six further gates, from the publish allowlist to the accessibility scan; `book.bat` renders the PDF from the third tree.
 
 ![Toolchain overview](/assets/images/dot/toolchain-overview.svg)
 
-`build.bat` must run before either of the other two --- `check.bat` reads from `_site/` and `_site-offline/`, while `book.bat` reads from `_site-pdf/`. A clean `build.bat && check.bat` is the bar for "ready to commit".
+`build.bat` must run before either of the other two --- `check.bat` audits `_site-offline/` and refuses a tree older than the sources that produced it, while `book.bat` reads from `_site-pdf/`. A clean `build.bat && check.bat` is the bar for "ready to commit".
 
 ## Build pipeline
 

@@ -67,7 +67,11 @@ drains SSE clients).
   parity update; Phase 12 adds `--serve` watch mode; Phase 13 is
   build-time SVG inlining with the zoom / export controls.
 - [PLAN-sab-pull-scheduler.md](PLAN-sab-pull-scheduler.md) -- **the
-  current scheduler design** (pull model, SAB layout, Phases 14-18).
+  shipped scheduler**, and maintained reference rather than a frozen
+  design record: pull model, SAB layout, Phases 5-18, and worked
+  examples that are corrected when the code moves -- most recently to
+  the landed `registerBarrier` form in [tbdocs.mjs](tbdocs.mjs). It
+  names pipeline tasks throughout; read them as current.
   [PLAN-scheduler.md](PLAN-scheduler.md) is the superseded push-based
   design, and [PLAN-scheduler-offline.md](PLAN-scheduler-offline.md)
   covers moving the offline rewrite into the render workers.

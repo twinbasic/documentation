@@ -32,7 +32,7 @@ The site is rendered by `tbdocs`, a Node.js static site generator kept in [`buil
 npm ci        # once, from the repository root
 build.bat     # renders _site/, _site-offline/ and _site-pdf/, and link-checks them
 serve.bat     # localhost:4000 with watch + live reload
-check.bat     # the gates that need a browser (diagram fit, accessibility)
+check.bat     # six more gates, from the publish allowlist to the accessibility scan
 book.bat      # renders the PDF book; run build.bat first
 ```
 
