@@ -266,6 +266,50 @@ Diagram exports carry the font with them. The Download / Copy SVG and PNG button
 
 **Do not hand-edit a diagram's `.svg`.** It is a build artifact: the `.dot` beside it is the source, and the next build overwrites your edit. Changing the face is the edit that looks most harmless and is not --- Graphviz sizes each box to the text it measured, so a diagram whose labels are painted in a font the layout never saw has text hanging outside its boxes. `check.bat` fails on that; see [Diagrams](#diagrams) below.
 
+## Bullet lists, dashes, and parentheses
+
+Most bullets on this site are a term, a dash, and a description, and which dash
+depends on what precedes it. The practice is near-absolute and has never been
+written down, so it survives only by imitation:
+
+- A **bold-term** bullet takes `---`, the em-dash: `- **Reference** --- the language and library reference.` 50 of the 50 such bullets in `docs/Reference/` do this, with no exceptions.
+- A **link** bullet takes `--`, the en-dash: `- [Permanent Links](Permanent-Links) -- the stable URL scheme.` 1,570 of 1,570 in `docs/Reference/`, again with none the other way.
+
+The reason is visual rather than grammatical. A bold term is a label with a
+definition after it, so the separator has to be strong enough to read as a break;
+a link already ends in its own visual boundary, and an em-dash after it crowds
+the line. The distinction matters only because it is consistent: a page that
+mixes the two looks like two people wrote it.
+
+**The description after the dash continues the sentence and is not capitalised.**
+Of the bold-term bullets in `docs/Reference/` that begin with a letter, 26 of 26
+are lowercase, and in `docs/Documentation/` 16 of 16. Link bullets hold to the
+same rule where they can: 1,411 begin lowercase, and almost all of the 94 that do
+not begin with a word that carries its own capital anyway --- `Win32`, `OLE`,
+`GDI`, `Variant`, `JavaScript`. The only genuine exceptions are 36 bullets on
+`Reference/Built-In/AppGlobalClassObject/index.md`, which writes each annotation
+as a full sentence starting `Returns` or `Gets`. That is one page's local habit,
+not a second convention to choose between.
+
+**Parentheses are for a short label, `---` for an aside that is a clause.** The
+split is real practice, not a preference: across the prose of `docs/Reference/`,
+78% of parenthesised spans are 25 characters or shorter and the median is 12. What
+fills them is a tag the reader takes in without stopping --- `(default)` 152
+times, `(VBRUN)` 86, `(twinBASIC)` 59, `(optional Bool)` 38, and the kind markers
+`(Class)`, `(Property)`, `(Sub)`. Once the aside has a verb in it, it is part of
+the argument of the sentence and belongs between em-dashes, where the reader
+still reads it:
+
+    ... or **Any** (twinBASIC; the type is inferred from *expression*)
+
+    ... equivalent to a separate assignment immediately after the **Dim**
+    --- `Dim i As Long = 1` is the same as `Dim i As Long: i = 1`.
+
+`Reference/Core/Dim.md` currently does both within four lines of each other,
+which is what an unstated rule looks like. Apply the length test: a tag of two or
+three words goes in parentheses, anything that could stand as its own sentence
+takes `---`.
+
 ## Diagrams
 
 A diagram is a Graphviz `.dot` file. Put it where it belongs: `docs/assets/images/dot/` if more than one page uses it, or in the `Images/` folder beside the page if only one does. The build renders an `.svg` next to it, inlines that into the page, and gives it the zoom and export controls. Both files belong in git.
