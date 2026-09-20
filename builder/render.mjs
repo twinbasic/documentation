@@ -246,7 +246,7 @@ export function createMarkdownIt(ctx) {
   md.renderer.rules.code_block = (tokens, idx, _opts, _env, _slf) => {
     const tok = tokens[idx];
     const body = escapeHtmlMinimal(tok.content);
-    return `<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>${body}</code></pre></div></div>\n`;
+    return `<div class="language-plaintext highlighter-rouge"><div class="highlight" tabindex="0"><pre class="highlight"><code>${body}</code></pre></div></div>\n`;
   };
 
   // kramdown/just-the-docs tag inline `code` spans with the Rouge wrapper
@@ -265,8 +265,17 @@ export function createMarkdownIt(ctx) {
   // default renderToken first so markdown-it's per-token block-prefix
   // whitespace handling still produces the leading newline when the
   // table sits at the start of a list-item / dd / blockquote child.
+  //
+  // tabindex="0" for the same reason highlight.mjs puts it on div.highlight
+  // (PLAN-a11y.md 1.9): the wrapper is `overflow-x: auto` (JTD
+  // tables.scss:11), and a scroll container a keyboard user cannot focus
+  // cannot be scrolled without a pointer. Unconditional, as on code blocks --
+  // whether a given table overflows depends on the viewport, so there is no
+  // render-time answer. custom.scss gives the focus a visible ring.
   md.renderer.rules.table_open = (tokens, idx, opts, _env, slf) =>
-    slf.renderToken(tokens, idx, opts).replace(/<table>/, `<div class="table-wrapper"><table>`);
+    slf
+      .renderToken(tokens, idx, opts)
+      .replace(/<table>/, `<div class="table-wrapper" tabindex="0"><table>`);
   md.renderer.rules.table_close = (tokens, idx, opts, _env, slf) =>
     `</table></div>` + slf.renderToken(tokens, idx, opts).replace(/<\/table>/, "");
 
@@ -281,7 +290,15 @@ export function createMarkdownIt(ctx) {
     }
     return slf.renderToken(tokens, idx, opts);
   };
-  md.renderer.rules.th_open = styleSpace();
+  md.renderer.rules.th_open = ((defaultRule) => (tokens, idx, opts, env, slf) => {
+    const tok = tokens[idx];
+    const styleIdx = tok.attrIndex("style");
+    if (styleIdx >= 0) {
+      tok.attrs[styleIdx][1] = tok.attrs[styleIdx][1].replace(/:/g, ": ");
+    }
+    tok.attrSet("scope", "col");
+    return slf.renderToken(tokens, idx, opts);
+  })();
   md.renderer.rules.td_open = styleSpace();
 
   // kramdown renders ordered lists with no `start` attribute even when
@@ -317,6 +334,7 @@ export function createMarkdownIt(ctx) {
   md.use(footnote);
   configureFootnotes(md);
   md.use(headerIdPlugin);
+  md.use(headingLevelNormalizePlugin);
   md.use(tocPlugin);
   md.use(relativeLinksPlugin, ctx);
   md.use(blockHtmlRecursionPlugin);
@@ -324,6 +342,8 @@ export function createMarkdownIt(ctx) {
   md.use(kramdownEllipsisPlugin);
   md.use(flattenAdjacentStrongPlugin);
   md.use(svgInlinePlugin, ctx);
+  md.use(videoLinkPlugin, ctx);
+  md.use(remoteImagePlugin, ctx);
 
   return md;
 }
@@ -1033,6 +1053,84 @@ function configureFootnotes(md) {
 // collapse to `-`, strip leading/trailing `-`, "section" fallback for
 // empty, suffix duplicates with `-1`, `-2`, ...
 
+// ---------- heading-level normalization (a11y: WCAG heading-order) ----------
+//
+// House style writes a chapter as `# X` and its sections as `### Y`, skipping
+// `##` on purpose: it keeps GitHub's own rendering of the raw markdown at a
+// modest heading size, without pushing any styling into the source. On the
+// built site that skip is a heading-order defect -- a section sits two levels
+// below its chapter with no h2 between (WCAG 1.3.1, best practice).
+//
+// The house style is deprecated -- new content uses `##` for sections (see the
+// page template in WIP.md). This rule is a migration bridge: it repairs the
+// legacy pages at build time so they are not all edited at once (diff churn),
+// and it self-retires per page as each is rewritten to use `##` (a page with a
+// real h2 no longer matches the trigger). Fixing it here also keeps the
+// markdown untouched and GitHub keeps its `###`. Deliberately narrow, per the maintainer's rule: fire ONLY on a page
+// that uses h1 and h3 but no h2 -- the unambiguous house-style shape. A page
+// that already uses h2 is left exactly as authored (its levels are the
+// author's own structure, not the workaround). A raw HTML `<h2>` counts as an
+// h2 for that check too, even though it never produces a heading_open token --
+// otherwise a page mixing a hand-written `<h2>` with markdown `###` sections
+// would get its h3s promoted right over the author's own structure.
+//
+// Each heading is renumbered against a stack of its still-open ancestors --
+// the same shape a document outline builds -- rather than shifted by a fixed
+// amount. Walking the headings in order: pop any stack entry whose raw level
+// is >= this heading's (it is a sibling or a finished deeper section, not an
+// ancestor), then this heading's normalized level is one below whatever
+// ancestor is left on top (or h1 if the stack is now empty), and it is
+// pushed in turn. That closes the h1->h3 gap (h3 becomes h2) and moves any
+// directly nested tail down with it (h4->h3, ...), which is what "raise h3
+// to h2" means in the common case. It also keeps two headings written at the
+// same raw level as SIBLINGS even when only one of them contains a deeper
+// run -- Reference/Core/Open has two `###` sections around a run of six
+// `####` subsections, and both `###`s must land on h2, not h2 then h3 for
+// the second one just because the stack was deeper when it was reached. A
+// fixed -1 offset would get that page right too (nothing in it is more than
+// one level deeper than its own section), but it only closes the FIRST gap
+// it meets: a page with a second, independent skip further down (h3
+// straight to h5, no h4) would come out h1/h2/h4 -- the skip reappears one
+// level over and no longer matches anything in the source, so it would go
+// unnoticed. The stack closes every gap in one pass; a heading returning to
+// a shallower level is left alone, since going shallower is never a skip.
+// Runs before header-id and toc so heading ids and the in-page table of
+// contents are built from the final levels. Multiple h1 "chapters" on one
+// page are intentional and preserved.
+const RAW_H2_BLOCK_RE = /<h2[\s>]/i;
+
+function headingLevelNormalizePlugin(md) {
+  md.core.ruler.before("header-id", "heading-normalize-levels", (state) => {
+    const toks = state.tokens;
+    const present = new Set();
+    for (const t of toks) {
+      if (t.type === "heading_open") present.add(Number(t.tag.slice(1)));
+      else if (t.type === "html_block" && RAW_H2_BLOCK_RE.test(t.content)) present.add(2);
+    }
+    if (!(present.has(1) && present.has(3) && !present.has(2))) return;
+
+    const stack = []; // {raw, normalized} chain of still-open ancestor headings
+    let openNormalized = null; // level assigned to the open heading_open, reused by its heading_close
+    for (const t of toks) {
+      let level;
+      if (t.type === "heading_open") {
+        level = Number(t.tag.slice(1));
+        while (stack.length && stack[stack.length - 1].raw >= level) stack.pop();
+        const parent = stack.length ? stack[stack.length - 1].normalized : 0;
+        openNormalized = parent + 1;
+        stack.push({ raw: level, normalized: openNormalized });
+      } else if (t.type === "heading_close" && openNormalized !== null) {
+        level = Number(t.tag.slice(1));
+      } else {
+        continue;
+      }
+      if (openNormalized === level) continue;
+      t.tag = `h${openNormalized}`;
+      if (t.markup) t.markup = "#".repeat(openNormalized);
+    }
+  });
+}
+
 function headerIdPlugin(md) {
   md.core.ruler.push("header-id", (state) => {
     const used = new Map();
@@ -1379,11 +1477,11 @@ const ICON_ALERT = '<svg class="octicon octicon-alert" viewBox="0 0 16 16" versi
 const ICON_STOP = '<svg class="octicon octicon-stop" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>';
 
 const ADMONITION_TYPES = {
-  note:      { title: "Note",      icon: ICON_INFO },
-  tip:       { title: "Tip",       icon: ICON_LIGHT_BULB },
-  important: { title: "Important", icon: ICON_REPORT },
-  warning:   { title: "Warning",   icon: ICON_ALERT },
-  caution:   { title: "Caution",   icon: ICON_STOP },
+  note:      { title: "Note",      icon: ICON_INFO,       role: "note" },
+  tip:       { title: "Tip",       icon: ICON_LIGHT_BULB, role: "note" },
+  important: { title: "Important", icon: ICON_REPORT,     role: "note" },
+  warning:   { title: "Warning",   icon: ICON_ALERT,      role: "alert" },
+  caution:   { title: "Caution",   icon: ICON_STOP,       role: "alert" },
 };
 
 // Matches an admonition fence with optional leading indent. Indented
@@ -1428,7 +1526,7 @@ export function rewriteAdmonitions(src) {
     // blockHtmlRecursionPlugin) parses it as an independent block.
     // The trailing blank line ensures any following text is parsed as
     // a separate markdown block rather than absorbed into the html_block.
-    return `${leading}<div class="markdown-alert markdown-alert-${type}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}</p>\n\n${body}\n</div>\n\n`;
+    return `${leading}<div class="markdown-alert markdown-alert-${type}" role="${meta.role}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}</p>\n\n${body}\n</div>\n\n`;
   });
 
   return work.replace(/```\{\{CODE_BLOCK_(\d+)\}\}```/g, (_, n) => stashed[Number(n)]);
@@ -1574,22 +1672,257 @@ const STANDALONE_INLINE_HTML_RE = /^(?:<(br|hr|img)\b[^>]*\/?>\s*)+$/i;
 
 // ---------- SVG inline plugin -----------------------------------------------
 
-function svgInlinePlugin(md, ctx) {
+// Video links: `[Title](https://www.youtube.com/watch?v=<id>){: .video }`
+// becomes a locally stored poster frame that links out to the video page.
+//
+// The embed this replaces (a YouTube <iframe>) loaded Google's player on
+// page view, contacting Google and setting third-party cookies before the
+// reader had done anything. A thumbnail plus a plain link contacts nobody
+// until the reader chooses to click.
+//
+// The thumbnail path is emitted root-absolute rather than page-relative,
+// because the PDF book flattens every page into one document -- a
+// page-relative src resolves against the book root there and the render
+// aborts with `pdf: missing image`.
+//
+// vendor-assets.mjs guarantees the file exists before render (or fails
+// the build), so a miss here means the link is marked `.video` but does
+// not point at YouTube. That is an authoring mistake, not a fetch
+// failure: warn and leave the plain link alone.
+const VIDEO_URL_RE =
+  /^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
+
+function videoLinkPlugin(md, ctx) {
+  // One core rule rather than renderer overrides: the link text has to be
+  // read BEFORE it is removed, and doing both in a single token-stream
+  // pass keeps that ordering obvious. The anchor ends up containing the
+  // poster frame and nothing else, so the image's alt carries the
+  // accessible name.
+  md.core.ruler.push("video_link", (state) => {
+    for (const blockToken of state.tokens) {
+      if (blockToken.type !== "inline" || !blockToken.children) continue;
+      const kids = blockToken.children;
+
+      for (let i = 0; i < kids.length; i++) {
+        const open = kids[i];
+        if (open.type !== "link_open" || !hasClass(open, "video")) continue;
+
+        const closeIdx = findLinkClose(kids, i);
+        if (closeIdx < 0) continue;
+
+        const hrefIdx = open.attrIndex("href");
+        const href = hrefIdx >= 0 ? open.attrs[hrefIdx][1] : "";
+        const m = VIDEO_URL_RE.exec(href);
+        if (!m) {
+          console.warn(`render: link marked {: .video } does not point at a YouTube video: ${href}`);
+          continue;
+        }
+
+        const thumb = ctx.vendoredVideos?.get(m[1]);
+        if (!thumb) {
+          // vendor-assets guarantees the file exists before render, so
+          // this means the marker was added without a build in between.
+          console.warn(`render: no vendored thumbnail for video ${m[1]}`);
+          continue;
+        }
+
+        const alt = kids.slice(i + 1, closeIdx)
+          .filter((t) => t.type === "text" || t.type === "code_inline")
+          .map((t) => t.content)
+          .join("")
+          .trim();
+
+        // The anchor leaves the site, and its whole content is the
+        // poster frame, so the alt is the only thing telling a screen
+        // reader where the link goes.
+        const label = alt ? `${alt} (watch on YouTube)` : "Watch on YouTube";
+        const img = new state.Token("html_inline", "", 0);
+        // No loading="lazy": the forked paged.js raises on an image that
+        // has not finished loading when the page-breaking pass runs, so a
+        // deferred image would abort the PDF book if the Videos pages ever
+        // join it. Matches every other image on the site.
+        img.content = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(label)}" />`;
+
+        // `.video` is the marker that selected this link, not a styling
+        // hook -- nothing in the stylesheets matches it -- so it is
+        // consumed rather than emitted. Any OTHER class the author wrote
+        // in the same IAL survives, which is the whole point of merging
+        // below instead of replacing.
+        removeClass(open, "video");
+        setClass(open, "video-link");
+        kids.splice(i + 1, closeIdx - i - 1, img);
+        i += 2; // past the injected image and its link_close
+      }
+    }
+  });
+}
+
+function findLinkClose(kids, openIdx) {
+  let depth = 0;
+  for (let i = openIdx + 1; i < kids.length; i++) {
+    if (kids[i].type === "link_open") depth++;
+    else if (kids[i].type === "link_close") {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+  return -1;
+}
+
+function hasClass(token, name) {
+  const i = token.attrIndex("class");
+  if (i < 0) return false;
+  return String(token.attrs[i][1]).split(/\s+/).includes(name);
+}
+
+function setClass(token, name) {
+  // Merge into whatever classes the IAL already put on the token --
+  // replacing the attribute outright dropped every sibling class from the
+  // same `{: .video .float-right }` shorthand, silently.
+  const i = token.attrIndex("class");
+  if (i < 0) { token.attrPush(["class", name]); return; }
+  if (!hasClass(token, name)) token.attrs[i][1] = `${token.attrs[i][1]} ${name}`;
+}
+
+// Drop one class, leaving the rest. Used for a marker class that selected
+// the token and has no business in the output.
+function removeClass(token, name) {
+  const i = token.attrIndex("class");
+  if (i < 0) return;
+  const kept = String(token.attrs[i][1]).split(/\s+/).filter(c => c && c !== name);
+  if (kept.length) token.attrs[i][1] = kept.join(" ");
+  else token.attrs.splice(i, 1);
+}
+
+// Rewrites a GitHub user-attachment <img src> to the copy vendor-assets
+// downloaded into the source tree. No marker is needed: an image pointing
+// at a user-attachment URL should always be served locally. Leaving it
+// remote would cost a redirect-plus-S3 round trip on every page view,
+// break the offline mirror, and abort the PDF book render -- the forked
+// paged.js raises on an image that has not finished loading.
+const GH_ATTACH_SRC_RE =
+  /^https:\/\/github\.com\/user-attachments\/assets\/([0-9a-fA-F-]{36})/;
+
+// Shared between the markdown `![]()` path below and the raw-HTML path:
+// given a src/href string, returns the local vendored path if it's a GH
+// attachment URL vendor-assets already downloaded, or null if it's some
+// other URL (silently) or a GH attachment URL with no vendored copy yet
+// (warn -- vendor-assets should have run before render).
+function resolveVendoredAttachment(url, ctx) {
+  const m = GH_ATTACH_SRC_RE.exec(url);
+  if (!m) return null;
+  const local = ctx.vendoredImages?.get(m[1].toLowerCase());
+  if (!local) console.warn(`render: no vendored copy for attachment ${m[1]}`);
+  return local || null;
+}
+
+// vendor-assets.mjs's own scan for what to download matches "markdown
+// image syntax or a raw <img src>" (its GH_ATTACH_RE comment says so
+// explicitly), so a hand-written <img> tag gets the file downloaded to
+// disk exactly like a markdown image does. Only the renderer rule below
+// rewrote the reference, though -- a raw <img> pointing at a
+// user-attachment URL got vendored to disk and then still failed
+// --check-remote-assets, with nothing in the failure saying the tag
+// syntax was the reason. A raw <img> reaches the token stream as either
+// a standalone html_block (see wrap-standalone-inline-html above, which
+// may have already wrapped it in <p>...</p> by the time this runs -- the
+// regex below doesn't care) or an html_inline child mixed into a
+// sentence; rewrite both the same way the markdown path does.
+const RAW_IMG_SRC_RE = /(<img\b[^>]*\bsrc\s*=\s*)(["'])(.*?)\2/gi;
+
+function rewriteRawImgSrc(content, ctx) {
+  return content.replace(RAW_IMG_SRC_RE, (whole, head, quote, url) => {
+    const local = resolveVendoredAttachment(url, ctx);
+    return local ? `${head}${quote}${local}${quote}` : whole;
+  });
+}
+
+function remoteImagePlugin(md, ctx) {
   const orig = md.renderer.rules.image;
 
   md.renderer.rules.image = (tokens, idx, options, env, self) => {
     const token = tokens[idx];
     const srcIdx = token.attrIndex("src");
-    if (srcIdx < 0) return fallback();
+    if (srcIdx >= 0) {
+      const local = resolveVendoredAttachment(token.attrs[srcIdx][1], ctx);
+      if (local) token.attrs[srcIdx][1] = local;
+    }
+    if (orig) return orig(tokens, idx, options, env, self);
+    return self.renderToken(tokens, idx, options);
+  };
+
+  md.core.ruler.push("remote-image-raw-html", (state) => {
+    for (const t of state.tokens) {
+      if (t.type === "html_block") {
+        t.content = rewriteRawImgSrc(t.content, ctx);
+      } else if (t.type === "inline" && t.children) {
+        for (const c of t.children) {
+          if (c.type === "html_inline") c.content = rewriteRawImgSrc(c.content, ctx);
+        }
+      }
+    }
+  });
+}
+
+function svgInlinePlugin(md, ctx) {
+  const orig = md.renderer.rules.image;
+
+  // The wrapper below is a <div>, and a lone `![alt](x.svg)` is a
+  // paragraph, so without this the output is `<p><div …></div></p>` --
+  // invalid, because <p> takes phrasing content only. A browser repairs
+  // it by closing the paragraph early and leaving a stray empty <p>
+  // behind, which is why it went unnoticed. Hide the paragraph tokens
+  // instead, the same way markdown-it hides them inside tight lists.
+  //
+  // Only a paragraph whose ENTIRE content is the one image qualifies --
+  // `See this: ![d](x.svg)` keeps its <p>, and its image is left as a
+  // plain <img> rather than the <div> wrapper, because unwrapping only
+  // the paragraph's own <p>/<p> pair can't rescue an inline image that
+  // still has text siblings either side of it. Tag the image via
+  // meta.svgInline so the renderer rule below -- which is the one place
+  // that actually emits the wrapper -- makes the same decision instead of
+  // re-deriving it from the src alone.
+  md.core.ruler.push("svg_inline_unwrap_paragraph", (state) => {
+    const toks = state.tokens;
+    for (let i = 0; i + 2 < toks.length; i++) {
+      if (toks[i].type !== "paragraph_open") continue;
+      if (toks[i + 1].type !== "inline" || toks[i + 2].type !== "paragraph_close") continue;
+      const children = toks[i + 1].children;
+      if (!children || children.length !== 1 || children[0].type !== "image") continue;
+      if (!inlinableSvgRel(children[0])) continue;
+      toks[i].hidden = true;
+      toks[i + 2].hidden = true;
+      children[0].meta = { ...(children[0].meta || {}), svgInline: true };
+    }
+  });
+
+  // Whether the src qualifies for inlining at all -- used both by the
+  // core rule above (to decide whether to hide the paragraph) and by the
+  // renderer rule below (to fetch the SVG content once it knows it's
+  // rendering the wrapper). It says nothing about paragraph context, so
+  // it is NOT sufficient on its own to decide the wrapper gets emitted --
+  // see meta.svgInline below.
+  function inlinableSvgRel(token) {
+    const srcIdx = token.attrIndex("src");
+    if (srcIdx < 0) return null;
     const src = token.attrs[srcIdx][1];
-    if (!src.endsWith(".svg")) return fallback();
-
+    if (!src.endsWith(".svg")) return null;
     const prefix = (ctx.baseurl || "") + "/";
-    if (!src.startsWith(prefix)) return fallback();
+    if (!src.startsWith(prefix)) return null;
     const srcRel = src.slice(prefix.length);
+    return ctx.svgContents?.get(srcRel) ? srcRel : null;
+  }
 
-    const svgContent = ctx.svgContents?.get(srcRel);
-    if (!svgContent) return fallback();
+  md.renderer.rules.image = (tokens, idx, options, env, self) => {
+    const token = tokens[idx];
+    const srcRel = inlinableSvgRel(token);
+    // meta.svgInline is set only by the core rule above, only on an image
+    // that is its paragraph's sole content. Without this check here, a
+    // src match alone would inline the wrapper for a mixed paragraph too
+    // (`See this: ![d](x.svg)`) -- and that <p> is never hidden, so the
+    // <div> wrapper would end up nested inside it, which is invalid HTML.
+    if (srcRel === null || !token.meta?.svgInline) return fallback();
+    const svgContent = ctx.svgContents.get(srcRel);
 
     const alt = self.renderInlineAsText(token.children, options, env);
     const stem = srcRel.split("/").pop().replace(/\.svg$/, "");
@@ -1609,14 +1942,31 @@ function svgInlinePlugin(md, ctx) {
 
 function buildSvgWrapper(svgContent, alt, stem, srcRel) {
   const esc = escapeHtml;
+
+  // `role="img"` with an empty `aria-label` is worse than no role at all: it
+  // tells a screen reader there is an image here and then refuses to say what
+  // it is, which axe reports as role-img-alt (serious).  An `<img alt="">`
+  // would pass as decorative; an explicit role cannot.  A diagram is never
+  // decorative anyway, so an empty alt here is an authoring error -- say so,
+  // and drop the role rather than ship the broken form.
+  const labelled = alt.trim() !== "";
+  if (!labelled) {
+    console.warn(
+      `render: ${srcRel} is embedded with no alt text -- the diagram will have ` +
+        `no accessible name. Add one: ![describe the diagram](...)`
+    );
+  }
+  const imgRole = labelled ? ` role="img" aria-label="${esc(alt)}"` : "";
+
   return `<div class="svg-inline-wrap">` +
     `<div class="svg-controls">` +
-    `<a href="#" data-action="download-svg" data-filename="${esc(stem)}">Download SVG</a>` +
-    `<a href="#" data-action="copy-svg">Copy SVG</a>` +
-    `<a href="#" data-action="download-png" data-filename="${esc(stem)}">Download PNG</a>` +
-    `<a href="#" data-action="copy-png" data-filename="${esc(stem)}">Copy PNG</a>` +
+    `<button type="button" class="btn-reset" data-action="download-svg" data-filename="${esc(stem)}">Download SVG</button>` +
+    `<button type="button" class="btn-reset" data-action="copy-svg">Copy SVG</button>` +
+    `<button type="button" class="btn-reset" data-action="download-png" data-filename="${esc(stem)}">Download PNG</button>` +
+    `<button type="button" class="btn-reset" data-action="copy-png" data-filename="${esc(stem)}">Copy PNG</button>` +
+    `<button type="button" class="btn-reset" data-action="zoom-svg" aria-label="Zoom diagram">Zoom</button>` +
     `</div>` +
-    `<div class="svg-container" data-svg-src="${esc(srcRel)}" role="img" aria-label="${esc(alt)}">` +
+    `<div class="svg-container" data-svg-src="${esc(srcRel)}"${imgRole}>` +
     svgContent +
     `</div>` +
     `</div>`;

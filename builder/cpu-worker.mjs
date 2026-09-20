@@ -56,14 +56,20 @@ const handlers = {
 
     const { siteData, initData, linkTablesData, staticFilesArr,
             baseurl, buildInfo, sitePathsArr,
-            skipOffline, svgContentsMap } = unpackShared(_sharedSAB);
+            skipOffline, svgContentsMap, checkTrees,
+            vendoredVideosObj, vendoredImagesObj } = unpackShared(_sharedSAB);
 
     const { initHighlighter } = await import("./highlight.mjs");
     const highlighter = await initHighlighter();
     const linkTables  = reconstructLinkTables(linkTablesData);
     const staticFiles = new Set(staticFilesArr);
     const svgContents = new Map(Object.entries(svgContentsMap ?? {}));
-    const markdown    = createMarkdownIt({ highlighter, linkTables, baseurl, staticFiles, svgContents });
+    const vendoredVideos = new Map(Object.entries(vendoredVideosObj ?? {}));
+    const vendoredImages = new Map(Object.entries(vendoredImagesObj ?? {}));
+    const markdown    = createMarkdownIt({
+      highlighter, linkTables, baseurl, staticFiles, svgContents,
+      vendoredVideos, vendoredImages,
+    });
     const site        = { ...siteData, markdown, buildInfo };
 
     let offlineBase = null;
@@ -74,6 +80,23 @@ const handlers = {
       };
     }
 
+    // htmlparser2 costs ~23 ms to import, and a build without --check
+    // must not pay it on sixteen lanes. Hence the dynamic import here
+    // rather than a static one at module scope.
+    if (checkTrees) {
+      const { checkChunk, treeIndexFor, normalizeBasePath: normBase, TREES } =
+        await import("./check.mjs");
+      _checkChunk = checkChunk;
+      _checkEnv = {};
+      for (const [which, { rels, baseurl: bu }] of Object.entries(checkTrees)) {
+        const root = ctx.destRoot + TREES[which].suffix;
+        _checkEnv[which] = {
+          root, tree: TREES[which], basePath: normBase(bu),
+          index: treeIndexFor(root, rels),
+        };
+      }
+    }
+
     _renderEnv = { site, initData, offlineBase };
     return {};
   },
@@ -81,9 +104,23 @@ const handlers = {
   async flush() {
     const items = _pendingFlush.shift() ?? [];
     let written = 0, offlineWritten = 0, offlineMisses = 0;
+
+    // The check rides along here rather than becoming its own task
+    // because this is the one moment both trees' final HTML is already
+    // decoded and in this lane's memory. A separate task would have to
+    // be handed the strings back, which is the payload cost the whole
+    // design exists to avoid.
+    let writes = null;
     if (!ctx.opts.dryRun) {
       let next = 0;
       const limit = Math.min(64, items.length || 1);
+      // Building the array issues the first `limit` writes before
+      // returning -- each async arrow runs synchronously up to its
+      // first await -- so constructing it ahead of the check puts the
+      // I/O in libuv's threadpool while this thread parses. Measured as
+      // a wash, because the lanes are CPU-bound rather than waiting on
+      // disk; it is kept because it is the right order and costs
+      // nothing.
       const workers = Array.from({ length: limit }, async () => {
         while (next < items.length) {
           const p = items[next++];
@@ -96,9 +133,13 @@ const handlers = {
           offlineMisses += p.offlineMisses ?? 0;
         }
       });
-      await Promise.all(workers);
+      writes = Promise.all(workers);
     }
-    return { written, offlineWritten, offlineMisses };
+
+    const check = _checkEnv ? await runChunkCheck(items) : null;
+    if (writes) await writes;
+
+    return { written, offlineWritten, offlineMisses, check };
   },
 
   async scssLight() {
@@ -207,6 +248,41 @@ for (const [name, id] of Object.entries(HANDLERS)) handlerById[id] = handlers[na
 
 let _renderEnv    = null;
 let _pendingFlush = [];
+let _checkEnv     = null;   // set by renderEnvInit when --check is on
+let _checkChunk   = null;   // builder/check.mjs's checkChunk, imported with it
+
+// One chunk of pages, checked against every tree it was written to.
+//
+// A failing check must never take the build's output down with it, so
+// everything here is inside a try: a broken link still produces a valid
+// site you want on disk to inspect. The error comes back as a finding
+// and checkReport decides what to do with it.
+async function runChunkCheck(items) {
+  const out = {};
+  for (const [which, env] of Object.entries(_checkEnv)) {
+    // Asserted rather than filtered. The offline pass runs for every
+    // page in the lane, so a page without offlineHtml means the rewrite
+    // did not happen -- and dropping it here would shrink the chunk
+    // quietly, checking fewer pages and still reporting a pass.
+    const docs = which === "offline"
+      ? items.map(p => {
+          if (p.offlineHtml === undefined) {
+            throw new Error(
+              `${p.destPath} reached the offline check with no offlineHtml; ` +
+              `the chunk would have covered fewer pages than the lane holds`
+            );
+          }
+          return { destPath: p.destPath, html: p.offlineHtml };
+        })
+      : items.map(p => ({ destPath: p.destPath, html: p.html }));
+    try {
+      out[which] = _checkChunk(docs, env);
+    } catch (err) {
+      out[which] = { error: `${which} chunk check failed: ${err.message}` };
+    }
+  }
+  return out;
+}
 
 // ── Message handler (init + dynamicData only) ───────────────────────────────
 
@@ -218,6 +294,7 @@ parentPort.on("message", (msg) => {
     _payloadSAB   = null;
     _sharedSAB    = null;
     _renderEnv    = null;
+    _checkEnv     = null;
     _pendingFlush = [];
     pullLoop();
     return;
@@ -435,9 +512,17 @@ async function pullLoop() {
     }
     const t1 = Date.now();
 
-    // Post output BEFORE the SAB update (ordering constraint: the merge
-    // message must arrive on the main thread before any downstream
-    // main-thread task could be claimed).
+    // Post the output BEFORE the SAB update, so the result is at least
+    // QUEUED on the main thread before any successor's dep count drops.
+    //
+    // That is an ordering of the two operations, NOT a guarantee that
+    // the merge has happened: the message still has to be delivered and
+    // the matching submit() still has to run. A successor can reach a
+    // dep count of zero with the result sitting unread in the main
+    // thread's queue -- which is exactly how renderJoin lost pages from
+    // the search index. What closes that window is the barrier's
+    // `expected` list (see registerBarrier in tbdocs.mjs), not this
+    // ordering.
     parentPort.postMessage({
       done:   taskIdx,
       output: result,

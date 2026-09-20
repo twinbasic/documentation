@@ -208,7 +208,14 @@ body {
   left: 0;
   padding-top: $sp-4;
   padding-bottom: $sp-4;
-  color: $grey-dk-000;
+
+  // WCAG 1.4.6 (AAA): $grey-dk-000 (#959396) on the light $sidebar-color
+  // (#f5f6fa) is only 2.82:1.  $grey-dk-100 -- the light scheme's
+  // $body-text-color -- gives 7.20:1.  Dark mode takes #b6b4b7 (7.30:1)
+  // via docs/assets/css/just-the-docs-dark.scss.  Neither theme dims the
+  // text for hierarchy; the lighter weight below does that instead.
+  color: $grey-dk-100;
+  font-weight: 350;
 
   @include container;
 

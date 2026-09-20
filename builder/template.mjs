@@ -17,6 +17,7 @@
 // _includes/css/activation.scss.liquid.
 
 import { compressHtml } from "./compress.mjs";
+import { stripHtml } from "./seo.mjs";
 
 export async function templatePhase(pages, site, initData) {
   if (site.config.just_the_docs?.collections) {
@@ -71,13 +72,21 @@ function templatePage(page, site, init) {
   // compress collapses them to single spaces. The body assembly mirrors
   // _layouts/default.html: skip-to-main link, icon sprite, sidebar,
   // <div class="main">, header, breadcrumbs, <main> wrapping body +
-  // children-nav, footer, then per-page-search-footer.
+  // children-nav, footer (section-links + actions + legal), then the
+  // per-page-search-footer.
+
+  // Collected by injectAnchorHeadings as it walks the headings, then spent by
+  // renderSectionLinks, which renderFooter places at the top of the footer.
+  const sectionHeadings = [];
+  const mainHtml = injectAnchorHeadings(page.renderedContent, sectionHeadings);
+
   const html =
     `<!DOCTYPE html>\n` +
     `<html lang="${escAttr(lang)}">\n` +
     renderHead(page, site, init) +
     `<body>\n` +
     `  <a class="skip-to-main" href="#main-content">Skip to main content</a>\n` +
+    `  <div id="a11y-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>\n` +
     init.svgSprites + `\n` +
     init.sidebar + `\n` +
     `  <div class="main" id="page-top">\n` +
@@ -86,10 +95,10 @@ function templatePage(page, site, init) {
     renderBreadcrumbs(page, baseurl) +
     `      <div id="main-content" class="main-content">\n` +
     `        <main>\n` +
-    injectAnchorHeadings(page.renderedContent) +
+    mainHtml +
     renderChildrenNav(page, baseurl) +
     `        </main>\n` +
-    renderFooter(page, site) +
+    renderFooter(page, site, renderSectionLinks(sectionHeadings)) +
     `      </div>\n` +
     `    </div>\n` +
     (init.searchEnabled ? init.searchFooter + `\n` : "") +
@@ -103,8 +112,8 @@ function templatePage(page, site, init) {
 // ---------- §5.2 renderHead ----------------------------------------------
 
 function renderHead(page, site, init) {
-  // Order matches docs/_includes/head.html: charset, X-UA, dark-mode
-  // early script, theme-switch.js (deferred), CSS combined, CSS head-
+  // Order matches docs/_includes/head.html: charset, X-UA, theme
+  // early script, theme-toggle.js (deferred), CSS combined, CSS head-
   // nav, activation <style>, GA snippet, lunr.min.js (when search on),
   // just-the-docs.js, viewport, head_seo, head_custom (favicon link).
   // The favicon AFTER head_seo is intentional (D2 of PLAN-4).
@@ -115,9 +124,9 @@ function renderHead(page, site, init) {
   return `<head>\n` +
     `  <meta charset="UTF-8">\n` +
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
-    `    if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-mode');\n` +
+    `    try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}\n` +
     `  </script>\n` +
-    `  <script type="text/javascript" src="${escAttr(relativeUrl("/assets/js/theme-switch.js", bu))}" defer></script>\n` +
+    `  <script type="text/javascript" src="${escAttr(relativeUrl("/assets/js/theme-toggle.js", bu))}" defer></script>\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-combined.css", bu))}">\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/tb-highlight.css", bu))}">\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-head-nav.css", bu))}" id="jtd-head-nav-stylesheet">\n` +
@@ -299,7 +308,7 @@ function renderSidebar(site) {
   return `  <div class="side-bar">\n` +
     `    <div class="site-header" role="banner">\n` +
     `      <a href="${escAttr(relativeUrl("/", baseurl))}" class="site-title lh-tight">${renderSiteTitle(config)}</a>\n` +
-    `      <button id="menu-button" class="site-button btn-reset" aria-label="Toggle menu" aria-pressed="false">\n` +
+    `      <button id="menu-button" class="site-button btn-reset" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">\n` +
     `        <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>\n` +
     `      </button>\n` +
     `    </div>\n` +
@@ -311,7 +320,7 @@ function renderSidebar(site) {
     // (it is on this site), the else-branch emits the "Just the Docs"
     // fallback footer. The site doesn't override nav_footer_custom.html,
     // so the upstream default applies verbatim.
-    `    <footer class="site-footer">\n` +
+    `    <footer class="site-footer" aria-label="Site">\n` +
     `      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme originally for Jekyll.\n` +
     `    </footer>\n` +
     `  </div>`;
@@ -360,7 +369,7 @@ function renderNavTree(nodes, ancestorTitles, baseurl) {
       if (hasChildren) {
         // The upstream emits the button + svg across multiple source
         // lines; compress collapses to single spaces.
-        out += `<button class="nav-list-expander btn-reset" aria-label="toggle items in ${escAttr(String(node.title))} category" aria-pressed="false"> ` +
+        out += `<button class="nav-list-expander btn-reset" aria-label="toggle items in ${escAttr(String(node.title))} category" aria-expanded="false"> ` +
           `<svg viewBox="0 0 24 24" aria-hidden="true"><use xlink:href="#svg-arrow-right"></use></svg>` +
           ` </button>`;
       }
@@ -551,7 +560,7 @@ function renderSearchInput(config) {
   const placeholder = `Search ${escAttr(String(config.title ?? ""))}`;
   return `      <div class="search" role="search">\n` +
     `        <div class="search-input-wrap">\n` +
-    `          <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="${placeholder}" aria-label="${placeholder}" autocomplete="off">\n` +
+    `          <input type="text" id="search-input" class="search-input" role="combobox" placeholder="${placeholder}" aria-label="${placeholder}" autocomplete="off" aria-haspopup="listbox" aria-expanded="false">\n` +
     `          <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>\n` +
     `        </div>\n` +
     `        <div id="search-results" class="search-results"></div>\n` +
@@ -579,10 +588,14 @@ function renderAuxNav(config) {
       `      </li>`;
   }).join("\n");
   return `      <nav aria-label="Auxiliary" class="aux-nav">` +
-    AUX_NAV_SUN_MOON_SVG +
+    AUX_NAV_THEME_SVG +
     `        <ul class="aux-nav-list">\n` +
     `          <li class="aux-nav-list-item">\n` +
-    `            <span id="theme-toggle" class="site-button"><svg width='18px' height='18px'><use href="#svg-sun"></use></svg></span>\n` +
+    `            <button type="button" id="theme-toggle" class="site-button btn-reset" hidden aria-label="Theme" data-label-system="Follow system" data-label-light="Light" data-label-dark="Dark" data-theme-choice="system">\n` +
+    `              <svg width='18px' height='18px' class="theme-icon" data-icon="system" aria-hidden="true"><use href="#svg-monitor"></use></svg>\n` +
+    `              <svg width='18px' height='18px' class="theme-icon" data-icon="light" aria-hidden="true"><use href="#svg-sun"></use></svg>\n` +
+    `              <svg width='18px' height='18px' class="theme-icon" data-icon="dark" aria-hidden="true"><use href="#svg-moon"></use></svg>\n` +
+    `            </button>\n` +
     `          </li>\n` +
     items + `\n` +
     `        </ul>\n` +
@@ -592,7 +605,7 @@ function renderAuxNav(config) {
 // No leading whitespace: docs/_includes/components/aux_nav.html has a
 // `{%- comment -%}...{%- endcomment -%}` between `<nav>` and `<svg>`
 // that strips it. Concatenated tight against the opening `<nav>`.
-const AUX_NAV_SUN_MOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+const AUX_NAV_THEME_SVG = `<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
           <symbol id="svg-sun" viewBox="0 0 24 24">
             <title>Light mode</title>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -614,6 +627,15 @@ const AUX_NAV_SUN_MOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" style="dis
               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
               <path stroke="none" d="M0 0h24v24H0z" fill="none" />
               <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+            </svg>
+          </symbol>
+          <symbol id="svg-monitor" viewBox="0 0 24 24">
+            <title>Follow system</title>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-monitor">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
             </svg>
           </symbol>
         </svg>
@@ -644,18 +666,68 @@ function renderBreadcrumbs(page, baseurl) {
 
 const HEADING_REGEX = /<(h[1-6])(\s[^>]*?)?>([\s\S]*?)<\/\1>/g;
 const ID_ATTR_REGEX = /\bid="([^"]+)"/;
+// The icon is deliberately out of the accessibility tree and out of the tab
+// order. `aria-labelledby` used to point at the enclosing heading, which made
+// the accessible name the heading text verbatim -- so every heading appeared a
+// second time in a screen reader's links list, named identically, with nothing
+// saying it was a permalink. 7,031 of them across the site. It stays a real
+// `<a href>` so the mouse affordances that people actually use to copy these
+// (right-click Copy Link Address, middle-click, the status-bar URL preview) are
+// untouched; the keyboard/AT equivalent is the section-links disclosure that
+// renderSectionLinks emits once per page. axe reports `aria-hidden-focus` as a
+// pass because `tabindex="-1"` takes it out of the tab order.
 const ANCHOR_SVG_TPL = (id) =>
-  `<a href="#${id}" class="anchor-heading" aria-labelledby="${id}"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a>`;
+  `<a href="#${id}" class="anchor-heading" tabindex="-1" aria-hidden="true"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a>`;
 
-export function injectAnchorHeadings(html) {
+// `headingsOut`, when given, collects {id, text} for every heading that has
+// an id -- piggybacking on this pass rather than sweeping the page a second
+// time. `body` is rendered HTML whose text is already escaped, so dropping
+// the tags leaves a string that is still safe to emit as HTML; re-escaping
+// would double-encode headings like `&, &=`.
+export function injectAnchorHeadings(html, headingsOut) {
   return html.replace(HEADING_REGEX, (_, tag, attrs = "", body) => {
     const idMatch = attrs ? attrs.match(ID_ATTR_REGEX) : null;
     if (idMatch) {
       const id = idMatch[1];
+      if (headingsOut) {
+        const text = stripHtml(body).replace(/\s+/g, " ").trim();
+        if (text) headingsOut.push({ id, text });
+      }
       return `<${tag}${attrs}> ${ANCHOR_SVG_TPL(id)} ${body} </${tag}>`;
     }
     return `<${tag}${attrs}> ${body} </${tag}>`;
   });
+}
+
+// ---------- §5.8b renderSectionLinks -------------------------------------
+
+// The keyboard and screen-reader path to the per-section URLs whose only
+// other affordance is the aria-hidden chain icon beside each heading.
+//
+// A closed <details> subtree is `notRendered`: it contributes nothing to the
+// accessibility tree and nothing to the tab order beyond the <summary>
+// itself. So the whole feature costs one tab stop and zero links-list entries
+// per page, against the 7,031 entries the per-heading icons used to cost, and
+// expands on demand to the full set.
+//
+// Emitted from the template rather than from the markdown render, which is
+// what keeps it out of two places it does not belong: the PDF book assembles
+// its chapters from `page.renderedContent` (book.mjs) and the search index
+// reads the same field (search.mjs), and both are upstream of this. So there
+// is nothing to mark here and nothing to strip downstream.
+//
+// Deliberately not wrapped in <nav>: a fourth landmark on all 869 pages would
+// put back some of the noise this exists to remove. A single heading is not
+// worth a disclosure, so the block starts at two.
+function renderSectionLinks(headings) {
+  if (!headings || headings.length < 2) return "";
+  const items = headings
+    .map(({ id, text }) => `          <li><a href="#${escAttr(id)}">${text}</a></li>`)
+    .join("\n");
+  return `        <details class="section-links">\n` +
+    `        <summary>Link to a section</summary>\n` +
+    `        <ul>\n${items}\n        </ul>\n` +
+    `        </details>\n`;
 }
 
 // ---------- §5.9 renderChildrenNav ---------------------------------------
@@ -683,92 +755,100 @@ function renderChildrenNav(page, baseurl) {
 
 // ---------- §5.11 renderFooter -------------------------------------------
 
-function renderFooter(page, site) {
+// One rule, one block, one type size. The old shape had two dividers (this
+// <hr> plus the section-links border-top), a 16px "Back to top" sitting among
+// 12px siblings, and five stacked <p> where two wrapped rows do -- 224px of
+// page bottom. The section-links disclosure moved in here from the end of
+// <main>: it belongs with the other per-page utilities, and putting it inside
+// the existing contentinfo landmark makes it easier to find without adding a
+// landmark of its own.
+function renderFooter(page, site, sectionLinks) {
   const config = site.config;
-  const footerCustom = renderFooterCustom(page, config);
-  const editAndOffline = renderEditAndOfflineBlock(page, config);
-  const showFooter =
-    footerCustom !== "" ||
-    config.last_edit_timestamp ||
-    config.gh_edit_link ||
-    config.gh_offline_link ||
-    config.back_to_top;
-  if (!showFooter) return "";
-
-  const backToTop = config.back_to_top
-    ? `        <p><a href="#page-top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a></p>\n`
-    : "";
+  const footerLegal = renderFooterLegal(page, config);
+  const footerActions = renderFooterActions(page, config);
+  if (sectionLinks === "" && footerLegal === "" && footerActions === "") return "";
 
   return `      <hr>\n` +
-    `      <footer>\n` +
-    backToTop +
-    footerCustom +
-    editAndOffline +
+    `      <footer role="contentinfo">\n` +
+    sectionLinks +
+    footerActions +
+    footerLegal +
     `      </footer>\n`;
 }
 
-// Port of docs/_includes/footer_custom.html. Both `<p>` blocks use
-// `{%- if -%}` / `{%- endif -%}` trimming, so they concatenate tight
-// (no whitespace between `</p>` and the next `<p>`) when both fire.
-// Caller renderFooter handles the outer indentation -- this returns
-// the inner content directly.
-function renderFooterCustom(page, config) {
+// The legal row: the last-modified stamp, copyright, and the CC-BY-4.0 line
+// on VBA-derived pages. These were `<p class="text-small mb-0">` stacked; they
+// are now one wrapped flex row, and the type size comes from the footer rather
+// than a utility class on each element, so nothing can drift out of step.
+//
+// Every child is a <span> and nothing else, the mirror of the actions row's
+// all-<a> rule: this row is prose, which may contain a link, rather than a
+// link that may contain prose. Keep it that way if you add to it.
+function renderFooterLegal(page, config) {
   let out = "";
+  if (config.last_edit_timestamp && config.last_edit_time_format
+    && page.frontmatter.last_modified_date) {
+    const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
+    out += `          <span>Page last modified: ${escText(formatted)}.</span>\n`;
+  }
   if (config.footer_content) {
     // Emitted verbatim, NOT escaped: the current value contains `&copy;`
     // which is the desired HTML entity; escaping would double-encode it.
-    out += `<p class="text-small mb-0">${config.footer_content}</p>`;
+    out += `          <span>${config.footer_content}</span>\n`;
   }
   if (page.frontmatter.vba_attribution) {
-    // Verbatim port of the include's literal anchor markup. Note the
-    // two-space gaps between "</a>" + "Code license:" and "</a>" +
-    // "Attribution:" in the source -- compress collapses to one space.
-    out += `<p class="text-small mb-0">License: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE">CC-BY-4.0</a>  Code license: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE-CODE">MIT</a>  Attribution: <a href="https://github.com/MicrosoftDocs/VBA-Docs/tree/main">VBA-Docs</a></p>`;
+    // Three items, not one: the row's flex `gap` is what separates them, and
+    // as a single span the three label/link pairs ran together.
+    out += `          <span>License: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE">CC-BY-4.0</a></span>\n` +
+      `          <span>Code license: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE-CODE">MIT</a></span>\n` +
+      `          <span>Attribution: <a href="https://github.com/MicrosoftDocs/VBA-Docs/tree/main">VBA-Docs</a></span>\n`;
   }
-  return out;
+  if (out === "") return "";
+  return `        <div class="footer-legal">\n` + out + `        </div>\n`;
 }
 
-function renderEditAndOfflineBlock(page, config) {
+// The actions row. Every child is an <a> and nothing else -- that is the
+// invariant the styling relies on, so keep it if you add to this row. It used
+// to hold a <span> too, wrapping "Download <a>Offline Copy</a> or <a>PDF</a>."
+// as one item, and that lone odd element out is what let the row's baselines
+// drift: the min-height that makes the links 24px targets applied to the
+// anchors and not to it. The framing sentence was the only reason for the
+// span, so it is gone and the two downloads are ordinary links that say what
+// they do. Their old text ("Offline Copy", "PDF") was ambiguous on its own in
+// a screen reader's links list anyway.
+//
+// The last-modified stamp is not an action, and moved to the legal row where
+// the prose items live.
+//
+// Separation is by flex `gap` alone -- a "·" in a ::before would be announced
+// by some screen readers on every page, which is the noise the section-links
+// work just removed.
+//
+// #back-to-top and #edit-this-page keep their ids: print.scss hides both by
+// id, and that is the only thing pinning them.
+function renderFooterActions(page, config) {
+  const showBackToTop = Boolean(config.back_to_top);
   const showEdit = config.gh_edit_link && config.gh_edit_link_text && config.gh_edit_repository
     && config.gh_edit_branch && config.gh_edit_view_mode;
   const showOffline = config.gh_offline_link && config.gh_offline_link_url;
-  const showLastModified = config.last_edit_timestamp && config.last_edit_time_format
-    && page.frontmatter.last_modified_date;
-
-  if (!showEdit && !showOffline && !showLastModified
-    && !config.last_edit_timestamp && !config.gh_edit_link && !config.gh_offline_link) {
-    return "";
-  }
 
   let inner = "";
-  if (showLastModified) {
-    const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
-    inner += `        <p class="text-small text-grey-dk-000 mb-0 mr-2">\n` +
-      `          Page last modified: <span class="d-inline-block">${escText(formatted)}</span>.\n` +
-      `        </p>\n`;
+  if (showBackToTop) {
+    inner += `          <a href="#page-top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a>\n`;
   }
   if (showEdit) {
     const href = ghEditHref(page, config);
-    const cls = `text-small text-grey-dk-000 mb-0${showOffline ? " mr-2" : ""}`;
-    inner += `        <p class="${cls}">\n` +
-      `          <a href="${escAttr(href)}" id="edit-this-page">${escText(String(config.gh_edit_link_text))}</a>\n` +
-      `        </p>\n`;
+    inner += `          <a href="${escAttr(href)}" id="edit-this-page">${escText(String(config.gh_edit_link_text))}</a>\n`;
   }
   if (showOffline) {
-    const pdfUrl = config.gh_pdf_link_url ? String(config.gh_pdf_link_url) : null;
-    const offlineHref = escAttr(String(config.gh_offline_link_url));
-    if (pdfUrl) {
-      inner += `        <p class="text-small text-grey-dk-000 mb-0">\n` +
-        `          Download <a href="${offlineHref}" id="download-offline">Offline Copy</a> or <a href="${escAttr(pdfUrl)}" id="download-pdf">PDF</a>.\n` +
-        `        </p>\n`;
-    } else {
-      inner += `        <p class="text-small text-grey-dk-000 mb-0">\n` +
-        `          <a href="${offlineHref}" id="download-offline">Offline Copy</a>\n` +
-        `        </p>\n`;
+    inner += `          <a href="${escAttr(String(config.gh_offline_link_url))}" id="download-offline">Download offline copy</a>\n`;
+    if (config.gh_pdf_link_url) {
+      inner += `          <a href="${escAttr(String(config.gh_pdf_link_url))}" id="download-pdf">Download PDF</a>\n`;
     }
   }
+  if (inner === "") return "";
 
-  return `        <div class="d-flex mt-2">\n` + inner + `        </div>\n`;
+  return `        <div class="footer-actions">\n` + inner + `        </div>\n`;
 }
 
 // `gh_edit_repository` keeps its trailing slash (D9). The Liquid

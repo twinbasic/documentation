@@ -34,7 +34,7 @@ When used within nested **Do…Loop** statements, **Exit Do** transfers control 
 
 Any number of [**Continue Do**](Continue) statements may be placed anywhere in the **Do…Loop** to skip the rest of the statements and proceed with a new iteration.
 
-### Example
+## Example
 
 This example shows how **Do...Loop** statements can be used. The inner **Do...Loop** statement loops 10 times, asks the user if it should keep going, sets the value of the flag to **False** when they select **No**, and exits prematurely by using the **Exit Do** statement. The outer loop exits immediately upon checking the value of the flag.
 

@@ -1,20 +1,205 @@
 @use "admonitions";
+@use "theme" as *;
 
-// Inline SVG diagrams (Phase 13). Controls are float-right links above
-// the diagram; the SVG fills the column width.
-.svg-controls {
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Inline SVG diagrams (Phase 13). Controls sit right-aligned above the
+// diagram; the SVG fills the column width.
+.svg-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem 0.5rem;
   font-size: 0.85em;
 
-  a {
-    float: right;
-    margin-left: 1em;
+  button {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    // WCAG 2.5.8 Target Size (Minimum): btn-reset strips all padding, leaving
+    // these ~21px-tall text buttons under the 24x24 CSS px floor -- and on a
+    // narrow column the old float layout wrapped them into rows spaced tighter
+    // than 24px. A 24px min-height clears the floor outright (no spacing
+    // exception needed); dropping the float also makes focus order follow the
+    // visual left-to-right order instead of reversing it.
+    min-height: 24px;
+    padding: 0 0.25rem;
   }
 }
 
 .svg-container svg {
   width: 100%;
   height: auto;
+}
+
+// WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container
+// tabindex="0", and render.mjs does the same for the table wrapper, so a
+// keyboard user can scroll an overflowing block or a wide table. Give that
+// focus a visible indicator.
+div.highlight:focus-visible,
+.table-wrapper:focus-visible {
+  outline: 2px solid;
+  outline-offset: 2px;
+}
+
+// Section links: the keyboard and screen-reader path to the per-section URLs
+// that the aria-hidden chain icons offer to the mouse. Emitted at the end of
+// <main> by renderSectionLinks (builder/template.mjs).
+//
+// The page footer is one rule-divided block: the section-links disclosure,
+// a row of actions, then the legal row. It used to be two dividers (the <hr>
+// plus a border-top on the disclosure, which sat above it at the end of
+// <main>), a 16px "Back to top" among 12px siblings, and five stacked <p> --
+// 224px of page bottom for four short lines of content.
+//
+// The type size is set once, here, rather than by a `text-small` utility on
+// each element. That is the whole reason the old block looked mismatched:
+// "Back to top" was the one <p> that never got the class.
+// The divider itself. JTD gives every <hr> 32px top and bottom, which is
+// right in running prose and is half the reason this block sprawled. Scoped
+// to the direct child of the main-content element, which is only ever the
+// footer rule -- an <hr> written in a page is inside <main>.
+//
+// The id selector is load-bearing, and `.main-content > hr` is not enough:
+// the dark compilation re-emits JTD's bare `hr` rule as
+// `html[data-theme=dark] hr`, which is (0,1,2) against that selector's
+// (0,1,1). It applied in light and silently did not in dark -- 24/16px
+// against 32/32px -- which is the same failure the footnote underlines hit.
+// `#main-content > hr` is (1,0,1) and clears it in both themes.
+#main-content > hr {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.main-content > footer[role="contentinfo"] {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #54515a; // $grey-dk-100 -- 7.77:1 on #fff
+
+  // The combined stylesheet ends with a bare `span { color: #4e26af }` --
+  // Jekyll's callouts.scss.liquid output, emitted after this file, so it
+  // beats an inherited colour on every span in here and turns the copyright
+  // line link-purple. Opt the footer's spans back into inheritance.
+  span {
+    color: inherit;
+  }
+
+  // Rows, not stacks. `gap` alone separates the items: a "\00b7" in a
+  // ::before would be read out by some screen readers on every page.
+  //
+  // `align-items: center` is not cosmetic padding-out of the rule -- the
+  // default `stretch` pulls every item to the row's 24px height and then
+  // leaves its text at the top of that box, while the min-height anchors
+  // below centre theirs. That put the "Download ... or PDF." baseline 4px
+  // above "Back to top".
+  .footer-actions,
+  .footer-legal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.125rem 1.25rem;
+  }
+
+  .footer-actions { margin-top: 0.5rem; }
+  .footer-legal { margin-top: 0.25rem; }
+
+  // The actions row is all <a> and the legal row is all <span> (see
+  // renderFooterActions / renderFooterLegal), so one rule covers every item
+  // in the row and there is no second element type to fall out of step. The
+  // selector stays `> *` rather than `> a` so that a stray element added
+  // later is sized like its neighbours instead of quietly sitting 4px high,
+  // which is how the old <span> in this row behaved.
+  //
+  // inline-block, not flex: an item may carry phrase content with a link in
+  // it, and a flex container turns each run of words into a flex item and
+  // collapses the spaces between them.
+  //
+  // 24px is WCAG 2.5.8 target-size, met on *size* so no font swap can flip
+  // it. Without it #back-to-top and #edit-this-page are 15.8px targets that
+  // scrape through on the spacing exception -- axe measures "a diameter of
+  // 24px which is at least 24px", zero margin, against a number that moves
+  // with whatever `system-ui` resolves to. That is how the heading-link hit
+  // box passed here and failed on CI's fonts.
+  //
+  // The legal row is deliberately left out: its links sit inside sentences
+  // ("License: CC-BY-4.0"), the criterion's inline exception, and axe does
+  // not evaluate them.
+  .footer-actions > *,
+  .section-links li > a {
+    display: inline-block;
+    min-height: 24px;
+    line-height: 24px;
+  }
+}
+
+// Kept visually quiet -- one muted line closed, which is the whole point;
+// anyone who does not need it should be able to ignore it.
+//
+// Two things this rule deliberately does NOT set. `min-height` for WCAG 2.5.8
+// target-size is already handled site-wide by `.main-content summary` further
+// down this file, which is same-specificity and later -- a local `min-height`
+// here silently loses to it. And `display` stays at the UA's `list-item`:
+// giving a <summary> `display: flex` makes Chrome drop the disclosure
+// triangle, which is the only thing marking this as something you can open.
+.section-links {
+  > summary {
+    color: inherit;
+  }
+
+  // `.main-content ol, .main-content ul, ...` sets `margin-top: 0.5em`
+  // at the same (0,1,1) and later in the file, so a bare
+  // `.section-links > ul` here never applied at all -- the list has been
+  // taking the body-prose 0.5em since it shipped. `.main-content` in
+  // front clears that in light mode; the dark compilation re-emits the
+  // same JTD rule as `html[data-theme=dark] .main-content ul` at
+  // (0,2,2), which out-ranks (0,2,1), so the dark half is not optional.
+  // This is the third instance of that trap in this file.
+  .main-content & > ul {
+    margin: 0.25rem 0 0;
+  }
+
+  // The marker is placed against the <li>'s line box, so it only lines up
+  // with the link text if the two are the same height. Two things are
+  // needed: a line-height matching the 24px anchor box, and `vertical-align`
+  // to stop that anchor -- an inline-block, so it sits on the baseline and
+  // reserves descender space beneath itself -- from stretching the <li> to
+  // 31px and dropping the bullet 3.5px out of line with its own text.
+  li {
+    line-height: 24px;
+
+    > a {
+      vertical-align: top;
+    }
+  }
+}
+
+// A list of same-page links is worth nothing on paper.
+@media print {
+  .section-links {
+    display: none;
+  }
+}
+
+@include dark-theme {
+  .main-content > footer[role="contentinfo"] {
+    color: #b6b4b7; // 7.30:1 on #27262b ($body-background-color)
+  }
+
+  // See the light-mode rule above: the dark compilation's copy of JTD's
+  // list margin is (0,2,2) and would otherwise win.
+  .main-content .section-links > ul {
+    margin-top: 0.25rem;
+  }
 }
 
 .site-logo {
@@ -25,12 +210,19 @@
 // commit db4e3b0 "Make the code blocks more readable by growing their
 // font size.", which originally hand-edited the pre-compiled CSS. JTD's
 // base.scss sets `code { font-size: 0.75em }` and code.scss sets
-// `:not(pre, figure) > code { padding: 0.2em 0.15em }`; we override both.
+// `:not(pre, figure) > code { padding: 0.2em 0.15em }`; we override both
+// at equal specificity, so source order decides the winner.
 //
-// `@include tb-code-overrides` is included a second time inside
-// `html.dark-mode { ... }` in just-the-docs-combined.scss so the dark-
-// theme JTD rules (`html.dark-mode code { ... }` at specificity 0,1,1)
-// don't out-rank our root-level overrides.
+// This mixin is therefore @included by the callers *after* their
+// meta.load-css() of modules -- never at this module's root. A root-level
+// include here would be emitted before modules in the light compilation
+// (custom/custom is @used at the top of just-the-docs-combined.scss), so
+// base.scss / code.scss would come later and win -- the bug that made
+// light-mode code render at 0.75em while dark rendered at 0.95em.
+//
+//   Light theme: just-the-docs-combined.scss @includes it after load-css.
+//   Dark theme:  just-the-docs-dark.scss inlines an identical copy inside
+//                html.dark-mode {} after its own load-css (0,1,1 there).
 @mixin tb-code-overrides {
   code {
     font-size: 0.95em;
@@ -46,9 +238,7 @@
   }
 }
 
-@include tb-code-overrides;
-
-html.dark-mode {
+@include dark-theme {
   /*
    * SCROLLBAR STYLING
    */
@@ -84,7 +274,10 @@ html.dark-mode {
   }
 
   // Dark-mode background for ```tb fenced code blocks, matching the
-  // twinBASIC IDE's CodePanelBackColor. Token colours come from Shiki via
+  // twinBASIC IDE's CodePanelBackColor. Now the same value as
+  // $code-background-color (see docs/_sass/modules-dark.scss); kept
+  // explicit so tb blocks stay pinned to the IDE colour if that moves.
+  // Token colours come from Shiki via
   // assets/css/tb-highlight.css (generated by builder/highlight-theme.mjs
   // from builder/themes/{Light,Dark}.theme).
   .language-tb.highlighter-rouge,
@@ -93,4 +286,220 @@ html.dark-mode {
   .language-tb .highlight pre {
     background-color: rgb(33, 33, 33);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+// Theme toggle (Phase 5): a 3-state cycle button (system / light / dark).
+// It ships `hidden` and is revealed by theme-toggle.js, so with JS off there
+// is no dead control and prefers-color-scheme governs. `.site-button` sets
+// `display: flex`, which would override the UA `[hidden]` rule -- restore it
+// explicitly so the button stays hidden until the script wires it.
+#theme-toggle[hidden] {
+  display: none;
+}
+
+// Show only the icon matching the current choice; theme-toggle.js sets
+// data-theme-choice on the button.
+#theme-toggle .theme-icon {
+  display: none;
+}
+
+#theme-toggle[data-theme-choice="system"] [data-icon="system"],
+#theme-toggle[data-theme-choice="light"] [data-icon="light"],
+#theme-toggle[data-theme-choice="dark"] [data-icon="dark"] {
+  display: block;
+}
+
+// `.aux-nav` is `overflow-x: auto` (navigation.scss:182), and the overflow
+// spec forces the other axis from `visible` to `auto` when one axis is not
+// `visible` -- so the nav is a scroll container and clips at its padding box
+// on all four sides. The toggle is the nav's first item and `height: 100%`,
+// which puts its left, top and bottom edges exactly on that clip edge, so
+// `.btn-reset`'s outset ring (2px at 2px offset, buttons.scss:134) survives
+// only on the right, where the aux-nav link leaves room. Draw it inside the
+// border box instead; the button is 50x59 with 16px padding, so an inset ring
+// still clears the 18px icon by 14px.
+//
+// Only the offset is overridden -- width and colour stay with `.btn-reset`,
+// whose dark-mode copy re-emits the whole rule at (0,3,1). An id selector is
+// what clears that bar in both themes; a `.aux-nav .site-button` descendant
+// selector is (0,3,0) and would apply in light mode only.
+#theme-toggle:focus-visible {
+  outline-offset: -2px;
+}
+
+// The aux nav's "twinBASIC Home" link has the same problem and the same
+// cause. Measured at 1280x900 in both themes: the nav's box is top 0 /
+// bottom 59 and the link's is top 0 / bottom 59 -- identical -- so
+// Chrome's UA `outline: auto` at `outline-offset: 1px` draws its top and
+// bottom segments outside the scroll container's padding box and they
+// are clipped away. Only the left and right bars survive, because the
+// link starts 50px inboard of the nav's left edge.
+//
+// Give it an author ring drawn inside the border box, matching
+// `.btn-reset:focus-visible` (buttons.scss:134) in width and colour so
+// the two aux-nav controls look the same. The link is not a
+// `.btn-reset`, and nothing else in either compilation sets an outline
+// on `.site-button`, so (0,3,1) here is unopposed in light mode -- but
+// the dark half still needs its own colour, and the dark-theme mixin
+// puts it at (0,4,2).
+.aux-nav a.site-button:focus-visible {
+  outline: 2px solid #4e26af; // $link-color -- as compiled for light
+  outline-offset: -2px;
+}
+
+@include dark-theme {
+  .aux-nav a.site-button:focus-visible {
+    outline-color: #8cc2ff; // dark $link-color
+  }
+}
+
+// Video thumbnails (Videos section). The YouTube <iframe> embeds these
+// replaced loaded Google's player on page view, which set third-party
+// cookies before the reader had done anything. A locally vendored
+// thumbnail wrapped in a plain link to the video page keeps the site free
+// of third-party requests -- nothing contacts Google until the reader
+// chooses to click through, at which point they are on youtube.com and it
+// is Google's own relationship with them.
+//
+// Markup comes from `[![alt](Images/yt-<id>.jpg)](https://…){: .video-link }`,
+// so the anchor wraps a single <img>. The play button is drawn with two
+// pseudo-elements rather than a sprite, so it needs no extra asset and
+// scales with the thumbnail.
+.video-link {
+  position: relative;
+  display: inline-block;
+  max-width: 560px;   // matches the width the old iframes used
+  width: 100%;
+  line-height: 0;     // drop the inline descender gap under the image
+  border-radius: 6px;
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+  }
+
+  // Rounded plate behind the triangle.
+  &::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 68px;
+    height: 48px;
+    transform: translate(-50%, -50%);
+    background-color: rgba(18, 18, 18, 0.72);
+    border-radius: 12px;
+    transition: background-color 0.15s ease-in-out;
+  }
+
+  // Play triangle, nudged right of centre so it reads as optically centred.
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    transform: translate(-35%, -50%);
+    border-style: solid;
+    border-width: 11px 0 11px 19px;
+    border-color: transparent transparent transparent #fff;
+  }
+
+  &:hover::before,
+  &:focus-visible::before {
+    background-color: rgba(200, 0, 0, 0.92);
+  }
+
+  // The anchor's only content is the image, so the theme's link underline
+  // would render as a stray rule beneath it.
+  &,
+  &:hover {
+    text-decoration: none;
+    background-image: none;
+  }
+
+  // currentColor, matching the focus treatment used elsewhere in this
+  // file -- it tracks the link colour in both themes without needing the
+  // JTD variables, which this module does not @use.
+  &:focus-visible {
+    outline: 3px solid;
+    outline-offset: 3px;
+  }
+}
+
+// Footnote back-reference links (`↩`, appended to each footnote body).
+//
+// The theme underlines prose links with `a:not([class])` (base.scss:68), so a
+// link that carries a class gets colour and nothing else.  For the back-link
+// that is a WCAG 1.4.1 failure and axe reports it as link-in-text-block: it
+// sits inside the footnote paragraph, at the paragraph's own font size, with no
+// border, background or decoration to tell it apart from the text around it.
+//
+// The footnote *reference* -- the superscript marker -- needs no such rule.
+// Its `<sup>` wrapper changes font-size, which axe's elementIsDistinct counts
+// as a non-colour distinction on its own.
+//
+// The `.main-content` prefix is load-bearing, and the reason is a trap worth
+// knowing before writing any rule in this file. The dark compilation re-emits
+// every JTD base rule under its own scope, so `a { text-decoration: none }`
+// (base.scss:65) reappears as `html[data-theme=dark] a` -- specificity (0,1,2).
+// A bare `.reversefootnote` is (0,1,0) and loses to it, which is exactly what
+// happened: the underline applied in light mode and silently did not in dark,
+// and only the dark half of the sweep caught it. `.main-content
+// .reversefootnote` is (0,2,0) and wins in both themes.
+.main-content .reversefootnote {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+// WCAG 2.5.8 Target Size (Minimum). Two standalone targets in page content sit
+// under the 24x24 CSS px floor once the mobile type scale shrinks them. Neither
+// is covered by the criterion's inline exception: that exempts a link inside a
+// sentence, and these are not in sentences.
+//
+// A <summary> is 22.4px tall at the body size (16px x 1.4) and the FAQ stacks
+// sixteen of them, so the spacing allowance does not rescue it either -- axe
+// measures a safe clickable diameter of 20.8px between neighbours. min-height
+// clears the floor outright.
+.main-content summary {
+  min-height: 24px;
+}
+
+// A heading whose entire text is a link (Features/index.md uses ten) needs a
+// 24px hit box. Vertical padding grows it -- which is what the criterion
+// measures -- without changing the line height or moving the text. The
+// anchor-heading link is excluded: it is the paragraph mark, hidden until the
+// heading is hovered.
+//
+// The padding has to be generous, because what it is topping up is not a fixed
+// quantity. An inline element's measured height is its font's content area, so
+// it moves with whatever `system-ui` resolves to on the reader's machine.
+// Measured at the mobile h3 size:
+//
+//   Segoe UI  19px | Verdana, Tahoma  17px | Arial  16px
+//   Liberation Sans, DejaVu Sans, Roboto  15px
+//
+// 3px each side cleared 24px on Segoe UI alone, by 0.8px, and failed on every
+// other family -- so the check passed on Windows and failed on CI's Linux
+// fonts. 6px clears the worst measured case by 3px. Anything that tops up a
+// font-dependent measurement needs margin, not a hairline.
+.main-content h1 > a:not(.anchor-heading),
+.main-content h2 > a:not(.anchor-heading),
+.main-content h3 > a:not(.anchor-heading),
+.main-content h4 > a:not(.anchor-heading),
+.main-content h5 > a:not(.anchor-heading),
+.main-content h6 > a:not(.anchor-heading) {
+  padding-block: 6px;
 }

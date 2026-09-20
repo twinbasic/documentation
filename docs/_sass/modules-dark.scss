@@ -1,12 +1,20 @@
 // Dark-theme configuration of the full JTD module tree.
 //
-// This file is ONLY ever loaded via meta.load-css() inside html.dark-mode {}
-// in just-the-docs-dark.scss.  It is never @used directly.
+// This file is ONLY ever loaded via meta.load-css() from inside the
+// `dark-theme` mixin in just-the-docs-dark.scss.  It is never @used
+// directly.
 //
-// Because meta.load-css() includes this file's CSS output at the call site
-// (inside the html.dark-mode selector), every rule below ends up scoped to
-// html.dark-mode in the compiled CSS -- exactly what @import "modules" inside
-// html.dark-mode {} produced under the old @import architecture.
+// Because meta.load-css() includes this file's CSS output at the call site,
+// and the mixin emits its content twice -- once under
+// `@media (prefers-color-scheme: dark) html:not([data-theme="light"])` for
+// the no-JS system default, once under `html[data-theme="dark"]` for an
+// explicit toggle choice -- every rule below ships scoped to both. That
+// second form is what raises a JTD base rule from (0,0,1) to (0,1,2) in
+// dark mode, which is why a single-class override in custom/custom.scss
+// can apply in light mode and silently not in dark.
+//
+// (An earlier architecture wrapped this in a literal `html.dark-mode {}`;
+// that selector no longer exists anywhere in the build.)
 //
 // The @use here is at the TOP LEVEL of this file, which is required.
 // The $with map threads configuration through modules.scss's
@@ -23,12 +31,24 @@
   $body-background-color: #27262b,
   $body-heading-color: #f5f6fa,
   $body-text-color: #e6e1e8,
-  $link-color: #2c84fa,
-  $nav-child-link-color: #959396,
+  // WCAG 1.4.6 (AAA): $blue-000 (#2c84fa) was 4.13:1 on the dark
+  // $body-background-color -- every link on every page failed even AA.
+  // This is 8.06:1 there, 8.65:1 on the code background, 7.25:1 on
+  // $table-background-color and 8.80:1 on the active-nav gradient.
+  $link-color: #8cc2ff,
+  // AAA for child nav links: #959396 was 4.92:1. Hierarchy against the
+  // parent items is carried by font-weight (navigation.scss), not by a
+  // dimmer colour.
+  $nav-child-link-color: #b6b4b7,
   $sidebar-color: #27262b,
   $base-button-color: #302d36,
   $btn-primary-color: #264caf,
-  $code-background-color: #31343f,
+  // One background for every code context. #31343f is lighter than the
+  // .language-tb override below it, so token colours clamped against
+  // #212121 in builder/highlight-theme.mjs failed on js/json/yaml/html
+  // blocks and on inline code inside links. Matches the twinBASIC IDE's
+  // CodePanelBackColor.
+  $code-background-color: #212121,
   $code-linenumber-color: #dee2f7,
   $table-background-color: #302d36,
   $search-background-color: #302d36,

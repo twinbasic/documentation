@@ -3,6 +3,43 @@
 // so that the rules are bundled once into the site stylesheet rather than
 // minified and inlined into every page's <head>. The per-page injection is
 // suppressed by `_plugins/jekyll-gfm-admonitions-patch.rb`.
+//
+// WCAG 1.4.3: the gem ships GitHub's dark-theme alert colours, which sit at
+// 2.3:1 to 3.3:1 on a white page. The title colours below are GitHub's light
+// palette (the same one docs/assets/css/print.css already uses), 4.8:1 to
+// 5.4:1 on $body-background-color; the dark block restores the gem's original
+// colours, 4.8:1 to 6.0:1 on the dark background. Each variant's left border
+// tracks its title colour.
+
+@use "theme" as *;
+
+$alert-colors-light: (
+  note: #0969da,
+  important: #8250df,
+  warning: #9a6700,
+  tip: #1a7f37,
+  caution: #cf222e,
+);
+
+$alert-colors-dark: (
+  note: #4493f8,
+  important: #ab7df8,
+  warning: #d29922,
+  tip: #3fb950,
+  caution: #ff7b72,
+);
+
+@mixin alert-palette($colors) {
+  @each $name, $color in $colors {
+    &.markdown-alert-#{$name} {
+      border-left-color: $color;
+
+      .markdown-alert-title {
+        color: $color;
+      }
+    }
+  }
+}
 
 .markdown-alert {
   padding: 0.5rem 1rem;
@@ -33,43 +70,16 @@
     fill: currentColor;
   }
 
-  &.markdown-alert-note {
-    border-left-color: #4493f8;
+  @include alert-palette($alert-colors-light);
+}
 
-    .markdown-alert-title {
-      color: #4493f8;
-    }
-  }
-
-  &.markdown-alert-important {
-    border-left-color: #ab7df8;
-
-    .markdown-alert-title {
-      color: #ab7df8;
-    }
-  }
-
-  &.markdown-alert-warning {
-    border-left-color: #9e6a03;
-
-    .markdown-alert-title {
-      color: #d29922;
-    }
-  }
-
-  &.markdown-alert-tip {
-    border-left-color: #238636;
-
-    .markdown-alert-title {
-      color: #3fb950;
-    }
-  }
-
-  &.markdown-alert-caution {
-    border-left-color: #da3633;
-
-    .markdown-alert-title {
-      color: #f85149;
-    }
+// custom.scss is emitted once at root level -- just-the-docs-dark.scss
+// deliberately does not @use it -- so the dark variants are scoped here
+// rather than inherited from a dark-theme compilation pass. The dark-theme
+// mixin emits them under both the prefers-color-scheme media query (no-JS
+// system default) and the explicit [data-theme="dark"] override.
+@include dark-theme {
+  .markdown-alert {
+    @include alert-palette($alert-colors-dark);
   }
 }

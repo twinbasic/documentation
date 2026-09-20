@@ -14,7 +14,7 @@ The complete project ships as *Sample 0 --- WebView2 Examples* in the New-Projec
 
 ## Architecture
 
-![](Images/MonacoArchitecture.svg)
+![A twinBASIC form holding two WebView2 controls. The left one hosts the Monaco editor and posts the edited HTML to a JsMessage handler in twinBASIC code; the handler passes it to the right control through NavigateToString, which renders the preview.](Images/MonacoArchitecture.svg)
 
 The editor runs as a local web app under a virtual hostname; the preview pane is fed raw HTML through [**NavigateToString**](../../tB/Packages/WebView2/WebView2/#navigatetostring).
 

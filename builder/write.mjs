@@ -8,7 +8,7 @@
 //   * writePages       -- page.destPath ← page.html (book.html skipped).
 //   * copyTheme        -- builder/vendor/just-the-docs/assets/ → <destRoot>/assets/.
 //                          Project-owned theme assets (head-nav.css, print.css,
-//                          theme-switch.js) live under docs/assets/ and ride
+//                          theme-toggle.js) live under docs/assets/ and ride
 //                          the static-file copy path instead.
 //   * copyStaticFiles  -- each staticFile.srcPath → <destRoot>/<destRel>.
 //

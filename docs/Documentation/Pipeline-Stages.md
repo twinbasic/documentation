@@ -472,6 +472,7 @@ The same modules as above, with the full export list per file.
 | `svgInlinePlugin` | `(md, ctx) → void` | markdown-it plugin. Overrides the image renderer: when the `src` ends in `.svg` and its content exists in `ctx.svgContents`, replaces the `<img>` with an inline SVG wrapper (via `buildSvgWrapper`) and sets `page.hasSvg = true`. Non-matching images fall through to the default renderer. Registered last in the plugin chain. |
 | `buildSvgWrapper` | `(svgContent, alt, stem, srcRel) → string` | Returns the `<div class="svg-inline-wrap">` HTML structure containing the SVG controls (download/copy SVG and PNG) and the `<div class="svg-container">` with the raw SVG content. |
 | `rewriteAdmonitions` | `(src) → string` | GFM admonition rewrite to the `markdown-alert markdown-alert-<type>` class structure with the five SVG octicons. |
+| `headingLevelNormalizePlugin` | `(md) → void` | markdown-it core rule (registered before `header-id`). On any page that uses `h1` and `h3` but no `h2` --- the legacy "h1 straight to h3" house style --- it raises every heading of level 3 or deeper by one (`h3`→`h2`, `h4`→`h3`, …) so the built page has no skipped heading level. Pages that already use `h2` are left untouched, so correctly-levelled content is never modified. |
 
 ### `highlight.mjs`
 
@@ -483,7 +484,7 @@ The same modules as above, with the full export list per file.
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `loadHighlightTheme` | `(themesDir?) → Promise<{ scopeToClass, css }>` | Reads the `.theme` files, groups TextMate-scope tokens by their (light-props, dark-props) pair, assigns one CSS class per unique pair, returns the scope-to-class lookup + generated CSS. |
+| `loadHighlightTheme` | `(themesDir?) → Promise<{ scopeToClass, css }>` | Reads the `.theme` files, groups TextMate-scope tokens by their (light-props, dark-props) pair, assigns one CSS class per unique pair, returns the scope-to-class lookup + generated CSS. Any token colour below 4.5:1 against the code-block background is raised to meet WCAG AA before emission --- lightness moved away from the background, hue and saturation preserved --- and the emitted rule includes a `raised to 4.5:1` comment naming the original colour. |
 
 ### `template.mjs`
 

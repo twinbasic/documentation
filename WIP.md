@@ -41,6 +41,7 @@ The rest of this file is the maintenance guide for updating existing pages or ad
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
 - Footer rendering — [builder/template.mjs](builder/template.mjs)'s `renderFooterCustom()` renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
+- Contributor authoring guide — [docs/Documentation/Authoring.md](docs/Documentation/Authoring.md) is the public "start here" page that distils this file's authoring conventions (page template, heading levels, formatting, plain-English prose, attribution policy, cross-section linking) for a new contributor. This file remains the exhaustive maintainer source of truth; keep the two in sync when a convention changes.
 
 ## Package API notes
 
@@ -102,7 +103,7 @@ Syntax: **<Symbol>** [ *args* ]
 
 <remarks paragraphs>
 
-### Example
+## Example
 
 This example...
 
@@ -110,13 +111,14 @@ This example...
 ' code
 ```
 
-### See Also
+## See Also
 
 - [Other](OtherSymbol)
 ````
 
 Formatting conventions:
 
+- Heading levels: the page title is `#` (a *chapter* -- a page may legitimately have more than one). Top-level sections (Example, See Also, ...) are `##`; subsections `###`. Do **not** skip `##` with the old `# Title` -> `### Example` "house style". That pattern (h1 straight to h3) exists on many older pages only to keep GitHub's raw-markdown view at a modest heading size; it is a heading-order defect on the built site. `headingLevelNormalizePlugin` in [builder/render.mjs](builder/render.mjs) repairs those legacy pages at build time (it raises `h3`->`h2` on any page that uses h1 and h3 but no h2), so existing pages are not being churned all at once -- but new content must use correct levels, and pages that already mix `##` and `###` are left untouched. A mixed page that skips a level is a real defect the normalizer will not save you from: five were found and fixed this way, and axe's `heading-order` rule now guards the sample against more.
 - `**...**` for keywords/literal tokens; `*...*` for placeholders/arguments.
 - Code blocks use ` ```tb ` (highlighted via Shiki using the vendored `builder/twinbasic.tmLanguage.json` grammar).
 - Parameter lists use the deflist `term` + `: definition` indentation pattern (NOT the MS-style markdown table).
@@ -351,6 +353,7 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 | `catches up` | resumes, processes the queue |
 | `comes up` (a connection) | is established, becomes ready |
 | `drive` / `driven` (figurative) | controlled by, determined by, powered by |
+| `footgun` / `footguns` | easy mistake to make, hazard, pitfall |
 | `for free` (figurative) | as a side effect, without extra effort |
 | `hand off` / `hand over` / `hand back` | returns, passes, delivers |
 | `hand-rolled` | manually constructed, custom-built |
@@ -462,13 +465,17 @@ The site builds via [builder/](builder/), a custom Node.js static site generator
 
 A task-graph scheduler / parallelisation pass is designed in [builder/PLAN-scheduler.md](builder/PLAN-scheduler.md) and has been implemented (Phases 0--4).
 
+**Before adding a fan-out to the task graph, read [why a dep count of zero does not mean the submits have run](builder/PLAN-sab-pull-scheduler.md#a-dep-count-of-zero-does-not-mean-the-submits-have-run).** A worker posts its result and *then* decrements its successors' dependency counts in shared memory, so a barrier's count can reach zero while results are still queued and the `submit()` calls that merge them into build state have not run --- the shared counter orders the work, not the state. A dynamic barrier must therefore list every chunk task in its `expected`, even when its own `execute()` ignores the inputs; that list is the only thing the scheduler checks before it lets the barrier proceed. `renderJoin` went without it and silently dropped ~6 pages from `search-data.json` on about one build in three, because the index is built by flattening a `new Array(N)` and `Array.prototype.flat()` skips holes without reporting anything. Two silent failures combining into one invisible one. Both halves are fixed, and every skip on the chunk-merge path that used to tolerate a missing piece now refuses to continue --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). Keep it that way: on this path, "the piece is missing" is a bug, not a case to handle.
+
+Folding `check.bat`'s gates into that same graph is designed in [builder/PLAN-checks.md](builder/PLAN-checks.md). Phase A, the link checker, is **implemented**: extraction runs inside `flush`, where both trees' final HTML is already in worker memory, so the build no longer writes ~270 MB out only to read it back and re-parse it. The `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are follow-ons, seeded with measurements and open questions but not yet designed.
+
 Historical engineering notes from the Jekyll era --- the original build pipeline, the HTML-compress plugin, the per-phase optimisation passes that preceded the JS port, the migration notes, and the Phase 11 parity-update retrospective --- live in [WIP.OldJekyll.md](WIP.OldJekyll.md).
 
 ## Build / preview
 
-- `build.bat` — runs `node builder\tbdocs.mjs --src docs` which produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output.
+- `build.bat` — runs `node builder\tbdocs.mjs --src docs --check` which produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output. `--check` adds ~1.7 s and runs the link + integrity check over the HTML while it is still in worker memory; `build.bat --no-check` gets a plain build.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
-- `check.bat` — link + integrity check (offline `scripts/check_links.mjs` against `_site/` and `_site-offline/`; the offline pass also runs `--forbid 'https://docs.twinbasic.com'` to catch surviving live-site links).
+- `check.bat` — the gates that need a browser or a second pass over the built tree: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`.
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
 
@@ -480,9 +487,122 @@ After a batch of changes, verify the site builds clean and all links resolve:
 build.bat && check.bat
 ```
 
-`check.bat` runs [scripts/check_links.mjs](scripts/check_links.mjs) in offline mode against both `_site/` and `_site-offline/` — it catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), and (via `--forbid 'https://docs.twinbasic.com'` on the offline pass) any extracted link that still points at the live docs site after the offlinify rewrite. A clean run is the bar for "ready to commit".
+On the dev box that is ~4 s of build against ~23 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker got folded into the build's task graph, what it cost and what it saved; the axe follow-ons are designed there but not implemented.
+
+**The link and integrity check runs inside the build.** `build.bat` passes `--check-audit-index`, which implies `--check`, and the check walks the HTML on the worker lanes that produced it -- both trees' final strings are already decoded and in memory at `flush()`, so the ~270 MB the two trees weigh is never written out only to be read back. It also audits the tree index the build derives from its own records against what landed on disk -- the one direction the two-checker comparison structurally cannot see, since a spurious entry makes the oracle answer "exists" for a path that 404s in production. It catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), duplicate ids, remote `<img src>`, badly nested tags, sitemap and search-index gaps, canonical mismatches, and (via a forbidden-prefix rule on the offline tree) any extracted link that still points at the live docs site after the offlinify rewrite. A clean `build.bat && check.bat` is the bar for "ready to commit".
+
+A failing check never aborts the build: a broken link still produces a site you want on disk to inspect. It sets the exit code instead, using the same scheme `check_links.mjs` has always used -- 1 for link failures, 2 for integrity failures, 3 for both -- so CI can tell them apart.
+
+The remote-asset rule fails the run on any `<img src>` resolving off-box (`http://`, `https://`, or protocol-relative `//host`). In the build it is unconditional -- `checkRemoteAssets: true` on both trees in `builder/check.mjs`'s `TREES` -- and is *not* reachable by a flag: `tbdocs` rejects `--check-remote-assets` as an unknown argument. That name belongs to the standalone `scripts/check_links.mjs`, where it is opt-in. The PDF pass over `book.html` is informational, so enforcement comes from the `_site/` pass -- every page in the book is also in `_site/`, making it a superset. The check is deliberately scoped to `<img>` only; `<iframe>` is untouched.
+
+### The two link checkers, and the gate that keeps them honest
+
+[scripts/check_links.mjs](scripts/check_links.mjs) is still the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows still run it, though not directly: they invoke `check_links_diff.mjs`, which spawns the script as its `script` side. It is exercised only against the fixtures, never against the real trees. The pure core both front ends share lives in [builder/link-check.mjs](builder/link-check.mjs); the build-side plumbing is [builder/check.mjs](builder/check.mjs) and [builder/check-tree.mjs](builder/check-tree.mjs).
+
+Two implementations of one check is exactly the shape that rots quietly: **a checker that silently checks less reports a clean pass.** [scripts/check_links_diff.mjs](scripts/check_links_diff.mjs) is the gate against that, and it plays the same role on this side that `check_a11y_fingerprint.mjs` plays on the axe side. Run it whenever `link-check.mjs`, `check.mjs` or `check_links.mjs` changes:
+
+```sh
+node scripts/check_links_diff.mjs --a script --b fused
+```
+
+It diffs the two implementations' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html`, and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`: the script side costs ~3 s, which is the whole saving.
+
+Two further modes matter:
+
+- `--self-test` diffs the script against a deliberately corrupted side and fails unless the difference is reported. Everything else the harness prints reduces to "the two sides agreed", which is also what a harness comparing nothing says.
+- `tbdocs --src docs --check-audit-index` diffs the tree index the build derives from its own records against what actually landed on disk. This is the one failure mode the findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one masks a real break, and on a clean site nothing links to a path that does not exist, so nothing would ever notice.
+
+The harness carries a synthetic `fixture` case for the same reason -- the real site is clean, so every other case compares empty against empty in nine of the ten categories. The fixture provokes one fault of each kind and asserts the count, so a fixture that stops provoking one fails loudly instead of quietly going back to empty-vs-empty.
+
+### Remote-asset vendoring
+
+[builder/vendor-assets.mjs](builder/vendor-assets.mjs) is a seed task (`vendorAssets`, modelled on `dot`) that scans the discovered markdown for YouTube video markers and GitHub user-attachment URLs, downloads anything missing into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. It is idempotent -- a present file is never re-fetched -- and the artifacts are committed to git exactly like the generated DOT SVGs.
+
+**CI never downloads.** `process.env.CI` selects offline mode (`--fetch-assets` / `--no-fetch-assets` override it), and in offline mode a referenced-but-uncommitted asset throws rather than fetching. If CI could fetch, an author who wrote the markdown but forgot to commit the image would get a green build while the published site went on hotlinking a third party -- the exact failure the whole mechanism exists to prevent. A fetch *failure* in dev mode is softer: warn, keep building, and flip the exit code, so one dead video doesn't block a local preview.
+
+The render-side halves are `videoLinkPlugin` (marked link -> poster frame + outbound link) and `remoteImagePlugin` (user-attachment `<img src>` -> the vendored copy), both in [builder/render.mjs](builder/render.mjs). Both emit **root-absolute** paths, because the PDF book flattens every page into one document and a page-relative src resolves against the book root there.
+
+It then runs [scripts/check_tree_fresh.mjs](scripts/check_tree_fresh.mjs), which refuses a tree older than the sources that produced it, then [scripts/check_axe_patch_equiv.mjs](scripts/check_axe_patch_equiv.mjs) -- see [Changing the scan](#changing-the-scan) for why -- then [scripts/pick_a11y_sample.mjs --check](scripts/pick_a11y_sample.mjs) -- see [Choosing the sample](#choosing-the-sample) -- and then [scripts/check_a11y.mjs](scripts/check_a11y.mjs), which runs puppeteer + axe-core over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule) and exits non-zero on any violation. What the scan actually *is* -- the page list, the viewports, the themes, the blocked requests and the axe run options -- lives in [scripts/lib/axe-scan.mjs](scripts/lib/axe-scan.mjs), shared with the correctness gate and the measurement rig below; `check_a11y.mjs` itself is only the reporting front end. Note that all five WCAG tags — `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa` — must be listed: axe matches tags literally with no version rollup, so a rule tagged only `wcag21aa` does **not** match `wcag22aa`. Three details of that script matter and are easy to break:
+
+- It scans **`_site-offline/`, not `_site/`**. The online tree references its assets with root-absolute URLs (`/assets/css/…`), which resolve to nothing under `file://` — every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass. The offline tree uses relative asset paths and renders for real.
+- It scans each page **in both themes and at two viewports** (`--theme`, `--viewport`). Dark mode is a separate stylesheet with its own palette, and defects such as horizontally scrolling code blocks only appear once the layout is narrow enough to overflow. The dark half is not a formality: the dark compilation re-emits every JTD base rule under `html[data-theme=dark]`, which raises its specificity from (0,0,1) to (0,1,2) -- so a root-level single-class rule in `custom/custom.scss` that overrides a bare element selector **applies in light mode and silently does not in dark**. That is exactly how the footnote-underline fix shipped half-broken, and only the dark pass caught it. Prefix such rules with `.main-content` to clear the bar.
+- It injects a **patched** axe bundle. `SOURCE_PATCHES['plain-color-fields']` in `axe-scan.mjs` replaces `Color2`'s six WeakMap-emulated `#private` fields with plain own properties, worth **-26 %** across a realistic page set and **-30 %** on large pages. Patches need the unminified bundle, which costs ~6 ms more per page to inject. Two obligations come with it: every axe-core upgrade re-runs both `check_a11y_fingerprint.mjs --patches plain-color-fields` and `check_axe_patch_equiv.mjs` (CI and `check.bat` run the second for you), and if a result ever looks wrong, re-run with `--stock-axe` first -- that injects the unmodified bundle and says in one command whether the patch is implicated.
+- It **blocks the search index** (`search-data.js` + `lunr.min.js`) via request interception — see `BLOCKED_REQUESTS`. Every page pulls in ~3.2 MB of index that never touches the DOM axe walks; loading it was 18.9 s of a 27.1 s run, and aborting it cuts the scan to ~9 s with byte-identical results (every rule id and node count, violations and incomplete alike, across every page/theme/viewport combination -- 24 of them when that was measured, 60 audits today). Do **not** extend the block list to `just-the-docs.js` — it installs the search combobox ARIA, and blocking it makes axe see *less* (colour-contrast nodes on `Select-Case` drop 54 → 2), silently masking coverage.
+
+**A local pass on the geometry rules is not authoritative.** `target-size` measures rendered boxes, and an inline element's measured height is its font's content area --- so it moves with whatever `system-ui` resolves to. Measured at the mobile h3 size: Segoe UI 19px, Verdana and Tahoma 17px, Arial 16px, Liberation Sans / DejaVu Sans / Roboto 15px. A heading link topped up with `padding-block: 3px` therefore cleared the 24px floor by 0.8px on Windows and missed it on CI's Linux fonts, and the local scan reported a clean pass throughout. When a fix tops up a font-dependent measurement, give it margin against the *smallest* of those numbers rather than the one on the machine at hand, and check the whole site for the rule rather than the sample --- one rule over every page at one viewport takes about two minutes.
+
+**axe does not evaluate whether a focus ring is actually visible**, only that focusable things are reachable and labelled --- so a ring that is drawn and then clipped away passes every rule. The aux nav is where that bites. `.aux-nav` is `overflow-x: auto` (navigation.scss:182), and the overflow spec turns the other axis from `visible` to `auto` when one axis is not `visible`, so the nav is a scroll container that clips at its padding box on all four sides; its items are `height: 100%` and the first one starts at the left content edge. An outset ring on anything in there therefore loses every side that sits on the clip edge. The theme toggle shipped that way --- `.btn-reset`'s 2px ring at 2px offset survived only on the right, where the aux-nav link leaves room --- and a manual keyboard pass is what found it. The fix is an inset ring (`outline-offset: -2px` on `#theme-toggle`, in `custom/custom.scss`), which needs an id selector to out-rank the dark compilation's `html[data-theme=dark] .btn-reset:focus-visible` at (0,3,1).
+
+The "twinBASIC Home" link next to it had the same defect, and this file used to say it did not -- that Chrome's UA `outline: auto` on it "renders in full". Measured at 1280x900 in both themes, the nav's box is top 0 / bottom 59 and the link's is identical, so the UA ring's `+1px` offset puts its top and bottom segments outside the clip box exactly as the toggle's did; only the left and right bars survive, because the link starts 50px inboard of the nav's left edge. It now takes an author ring at `outline-offset: -2px` too (`.aux-nav a.site-button:focus-visible`), with a dark-mode colour override -- the link is not a `.btn-reset`, so nothing in either compilation competes with it.
+
+### Heading permalinks
+
+The chain icon beside every heading is **deliberately `aria-hidden="true" tabindex="-1"`**, which looks like a defect and is not. It used to carry `aria-labelledby` pointing at its own enclosing heading, so Chrome computed its accessible name as the heading text verbatim: every heading turned up a second time in a screen reader's links list, named identically, with nothing marking it as a permalink. 7,031 of them across the site's 869 content pages -- 867 carry at least one -- and 172 on `tB/Gloss.html` alone. axe passed `link-name` throughout, because the rule asks whether a name exists, not whether it is worth announcing.
+
+It stays a real `<a href>` so the mouse affordances that people actually use to copy these -- right-click Copy Link Address, middle-click, the status-bar URL preview -- are untouched. The keyboard and screen-reader equivalent is `renderSectionLinks` in [builder/template.mjs](builder/template.mjs): one `<details class="section-links">` per page, listing every heading. Since `e045ab5` it sits at the top of the page footer, immediately after `</main>` closes (`renderFooter` places it; see `template.mjs`), and it is omitted on a page with fewer than two headings -- 452 of the 1,159 built files lack it, 290 redirect stubs and 162 content pages. **A closed `<details>` subtree is `notRendered`** -- it contributes nothing to the accessibility tree and no tab stop beyond the `<summary>` -- so the whole feature costs one tab stop per page and expands on demand. Verified on the built tree: `Gloss.html` exposes 166 links closed and 338 open.
+
+Two things about that placement are load-bearing:
+
+- **It is emitted from the template, not from the markdown render.** The PDF book assembles its chapters from `page.renderedContent` ([book.mjs](builder/book.mjs)) and the search index reads the same field ([search.mjs](builder/search.mjs)); both are upstream of the template, so the block reaches neither and nothing has to be marked or stripped downstream. The same is true of the anchor icons themselves, and of `renderChildrenNav`. If a future page-level addition *does* need to reach the book, that is the field to put it in -- not a marker attribute.
+- **`min-height` for target-size belongs to `.main-content summary`**, which is same-specificity and later in `custom/custom.scss`. A local `min-height` on `.section-links > summary` silently loses to it. And the summary keeps the UA's `display: list-item`: giving a `<summary>` `display: flex` makes Chrome drop the disclosure triangle, which is the only thing marking it as openable.
+
+One caveat on how this was checked. axe excludes `aria-hidden` subtrees from rule evaluation wholesale, so the icon vanishing from `link-name` and `target-size` is axe seeing less, not the markup being better -- exactly the pattern the rest of this section warns about. What makes the change sound is that the element was confirmed gone from the accessibility tree (Chrome CDP: ignored, `ariaHiddenElement`) and from the tab order (real Tab presses), independently of what axe reports.
+
+#### State audits, and the hole they close
+
+**A closed `<details>` is invisible to the scan.** Its subtree is `notRendered`, so axe never walks it -- the same property that makes the section-links disclosure cheap is what hides it. The construct went out on 707 pages with `target-size` violations on every link inside it (69.6x14 against a 24px floor) and `check.bat` reported a clean pass, because the state a reader sees after one click was never audited at all.
+
+`STATE_AUDITS` in [scripts/lib/axe-scan.mjs](scripts/lib/axe-scan.mjs) closes that: entries layered onto the page x theme x viewport matrix that apply a DOM mutation from `PAGE_STATES` after navigation and before the audit. Four extra audits, +7 % of the sample's audit time.
+
+Three things about it are load-bearing:
+
+- **Every `PAGE_STATES` function must assert it found what it expected.** A state that silently no-ops degrades into a second audit of the default page: slower, still green, covering nothing. The `section-links-open` applier throws unless it finds exactly one disclosure holding at least two links, and returns the count so `check_a11y.mjs` can print what was actually exposed. Verified both ways -- it throws on a page with no disclosure and on one whose disclosure has been emptied.
+- **The gate cannot vouch for this.** `check_a11y_fingerprint.mjs` compares a candidate against a baseline produced by that same scheme's element set, so a change to *which DOM is walked* is its documented blind spot. Adding elements is the safe direction, but it still has to be argued from source and demonstrated: the open audit walks 57 more nodes than the closed one, and with the fix reverted in-page it reports `target-size` x14 where the closed audit reports nothing. Run the A/A control (`--baseline production --candidate production`) after touching the matrix -- a nondeterministic state audit would surface there.
+- **Item count buys nothing; pick the cheap host.** Menu/Window hosts it at 14 items and 0.41 s per audit rather than Pipeline-Stages at 72 and 1.28 s. The defect class is per-link geometry, identical for every item -- spacing between two consecutive items does not change with how many follow, and the long labels that make the big page look like the stress case only *wrap* at mobile, which makes a target taller and easier to pass. Both catch a reverted fix at both viewports.
+
+`sweep_a11y.mjs` still audits every page closed only; the full-site sweep does not cover the open state.
+
+Syntax-highlight token colours are kept above 4.5:1 automatically: [builder/highlight-theme.mjs](builder/highlight-theme.mjs) clamps any colour from the vendored `.theme` files that fails against the code-block background, moving lightness away from the background while preserving hue and saturation. The vendored themes stay faithful to the IDE; the emitted rule carries a `raised to 4.5:1` comment naming the original colour.
 
 Requires `build.bat` to have produced an up-to-date `_site/`.
+
+### Choosing the sample
+
+The scan audits thirteen pages out of ~1,160, so its page list decides what it can report at all -- and a page list that stops being representative fails *silently*. That happened: the original six were picked by hand, the site grew around them, and by the time anyone measured, all six sat between 2,175 and 2,694 elements against a site maximum of 5,231 and not one carried a table, an image, a `<details>` widget or a video card. `image-alt`, the table rules and `scrollable-region-focusable` were all in the run options with nothing to run on, and the gate reported a clean pass.
+
+A full-site sweep ([scripts/sweep_a11y.mjs](scripts/sweep_a11y.mjs) — every page, both themes, both viewports, 3,476 audits, ~20 min) settled what that pass had been hiding: **six violation classes on 54 pages**, every one of them in a construct the sample could not see. `scrollable-region-focusable` on 44 pages (table wrappers carried no `tabindex`), `link-in-text-block` on the footnote back-links, `target-size` on the FAQ's `<summary>` elements at the phone viewport, `heading-order` on five pages, `role-img-alt` on two unlabelled diagrams, and one `color-contrast` failure at 4.43:1 inside a Mermaid export. All fixed; the sweep is clean.
+
+So the sample is derived rather than maintained by hand. [scripts/pick_a11y_sample.mjs](scripts/pick_a11y_sample.mjs) holds a list of **construct families** — markup shapes some axe rule keys on, each recording the rule that would otherwise have nothing to run on — and three modes:
+
+- `--check` (the default, and what `check.bat` and both CI workflows run): every family the site uses is covered by at least one sample page, or exit 1 naming the gaps and the cheapest page that would close each. No browser, ~1 s.
+- `--propose`: greedy set cover, seeded from the current `SAMPLE_PAGES`, so it prints what to *add*. `--fresh` ignores the current set and covers from scratch, which is how to ask whether the existing pages still earn their place.
+- `--census`: what each family is, how many pages use it, which page uses it most.
+
+Cost is part of the choice, not an afterthought: audit cost is super-linear in element count (k = 2.73), so the cheapest cover is not the smallest one, and `--propose` ranks candidates by measured per-page cost from the sweep's JSONL when one has been run. Measured across the full matrix, the thirteen-page sample costs 18.7 s of audit against 6.3 s for the original six -- 2.96x for a bit over twice the pages, because cost tracks element count super-linearly rather than page count. `Pipeline-Stages.html` alone is 26 % of it, and earns that as the site's largest and most table-dense page.
+
+**When the docs start using a construct they have not used before** — a new admonition shape, a figure, a widget — add a family for it in `FAMILIES` and let `--check` say whether the sample already covers it. Leaving it out is not neutral: it means the rule for that construct never runs anywhere.
+
+### Changing the scan
+
+axe is the site's correctness oracle, which makes it a dangerous thing to tune: a change can make axe see *less* and still report a clean pass. This nearly happened once -- blocking `just-the-docs.js` during the scan looked like a 130 ms win and quietly dropped the colour-contrast node count on `Select-Case` from 54 to 2.
+
+So any change to *what the scan runs* goes through [scripts/check_a11y_fingerprint.mjs](scripts/check_a11y_fingerprint.mjs) first. It runs the full page x theme x viewport matrix twice, once under each of two named configurations from the scheme registry in `axe-scan.mjs`, against one build in one process, and diffs the findings audit by audit -- violations by `ruleId:nodeCount`, incomplete by rule-id set.
+
+```sh
+node scripts/check_a11y_fingerprint.mjs --list
+node scripts/check_a11y_fingerprint.mjs --candidate no-html
+```
+
+It has one blind spot worth knowing: it compares a candidate against a baseline produced by that same scheme's element set, so it cannot detect a change that stops auditing elements *entirely*. Anything touching which DOM is walked -- viewport, visibility, request blocking -- has to be argued from source instead.
+
+One thing the gate structurally cannot catch: it compares *which* findings axe produces, never their shape. The `no-html` scheme passes the gate on every audit and would still crash the reporter, because `noHtml: true` makes `node.html` null and `check_a11y.mjs` calls `.slice()` on it. Treat the gate as necessary, not sufficient.
+
+Cost attribution for the scan lives in [perf/ab-axe.mjs](perf/ab-axe.mjs), with [perf/probe-axe-dom.mjs](perf/probe-axe-dom.mjs) for DOM operation counts and [perf/probe-axe-scaling.mjs](perf/probe-axe-scaling.mjs) for the size curve. The investigation is [builder/PLAN-axe-perf.md](builder/PLAN-axe-perf.md), and it is **complete**. Its conclusion: one vendored source patch is worth **26 %** across a realistic page set and **30 %** on large pages -- `SOURCE_PATCHES['plain-color-fields']` in `axe-scan.mjs`, which replaces `Color2`'s WeakMap-emulated `#private` fields with plain properties. It is gated audit-by-audit by [check_a11y_fingerprint.mjs](scripts/check_a11y_fingerprint.mjs) and verified value-by-value by [check_axe_patch_equiv.mjs](scripts/check_axe_patch_equiv.mjs) -- both are needed, because the fingerprint gate compares `incomplete` as a rule-id set and would not notice a colour error that shifted ratios without flipping a pass/fail. The patch asserts an exact occurrence count at each substitution point, so an axe-core bump fails loudly rather than silently reverting. Three results are worth knowing before touching the scan:
+
+- **Audit cost is super-linear in page size** -- `k = 2.73` on real pages, almost entirely inside `color-contrast`. The four largest pages in the site cost ~5.9x an average sample page each.
+- **`SAMPLE_PAGES` used to contain only small pages** (2,175--2,694 elements, against a site maximum of 5,231) and none of the site's tables, images, disclosure widgets or video cards. Widening it -- see [Choosing the sample](#choosing-the-sample) -- found six violation classes on 54 pages, and cost 2.96x the audit time for 2.2x the pages, because cost tracks element count rather than page count.
+- **Every axe-core upgrade needs the fingerprint gate run across it** -- axe ships new and revised WCAG rules between minors, and the source patches are pinned to the bundle's current text.
+- **`ab-axe.mjs` cannot resolve an effect under ~20 %** -- its tracer overhead plus GC timing swamps the signal, and it has now mis-read a real ~10 % effect as noise twice (`plain-color-fields`, then `config-only`). Use [perf/ab-axe-pages.mjs](perf/ab-axe-pages.mjs) to decide anything modest, and run `--scheme production` as an A/A control before believing a small delta. `config-only` measures **-10.7 %** there against a **-0.4 %** A/A, and is declined anyway: `noHtml` and `selectors: false` remove the `html` and `target` fields that say which element failed.
 
 The build itself includes an additional guard: tbdocs's nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during the COMPUTE phase and aborts the build if any nav-visible page has a `parent:` (or `parent:` + `grand_parent:`) that does not resolve to exactly one page in the nav tree. It catches two failure modes:
 
@@ -497,8 +617,10 @@ Favor concise one-line git commit messages.
 
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
+- **Don't judge rendered styling by opening a built page as a `file://` URL in the in-app browser pane.** It does not apply the page's stylesheets, so everything renders unstyled and any conclusion about colour, spacing, layout or contrast drawn from it is worthless. Use `serve.bat`, which serves over HTTP at localhost and renders for real. The confusing part is that `file://` is fine *through puppeteer* -- `scripts/check_a11y.mjs`, `scripts/sweep_a11y.mjs` and the `perf/` rigs all load `_site-offline/` over `file://` and get correct computed styles, which is the entire reason the offline tree exists (see [Site integrity check](#site-integrity-check)). So: puppeteer for measuring, `serve.bat` for looking. Never the preview pane on a `file://` path.
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.py` normalises any strays.
 - Don't push or force-push without explicit user request.
+- Don't leave a remote image URL in a finished page. A pasted `https://github.com/user-attachments/assets/...` link is fine to write --- [builder/vendor-assets.mjs](builder/vendor-assets.mjs) downloads it to `docs/assets/attachments/gh-<uuid>.<ext>` on the next local build and rewrites the render to point there; commit the downloaded file with the edit. Any other remote host has no such handling: download it yourself and commit it under the section's `Images/` folder. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` dropped async image loading, so an image still in flight when the page-breaking pass runs raises instead of degrading. The build enforces this unconditionally (see [Site integrity check](#site-integrity-check)); `--check-remote-assets` is the standalone checker's flag, not a `tbdocs` one. The check is scoped to `<img>`; `<iframe>` is untouched, but the site no longer has any embeds. A video is authored as a marked link -- `[Title](https://www.youtube.com/watch?v=<id>){: .video }` -- which `videoLinkPlugin` ([builder/render.mjs](builder/render.mjs)) renders as a locally vendored poster frame linking out to the video page, styled by `.video-link` in `docs/_sass/custom/custom.scss`. That makes the site free of third-party requests entirely; don't reintroduce an embed or a hotlinked `img.youtube.com` thumbnail.
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
 - Don't add boilerplate sections (Remarks, See Also) if the source has nothing meaningful for them.
 - **Never add `Co-Authored-By:` (or any "Co-authored by" / "Generated with Claude" / similar) trailers to commit messages.** Repository policy. Plain commit messages only.

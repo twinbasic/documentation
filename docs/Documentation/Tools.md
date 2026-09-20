@@ -1,7 +1,7 @@
 ---
 title: Tools and Scripts
 parent: Documentation Development
-nav_order: 3
+nav_order: 4
 permalink: /Documentation/Development/Tools
 ---
 
@@ -32,7 +32,14 @@ Starts a long-lived dev process. Wraps `node builder\tbdocs.mjs --src docs --ser
 
     check.bat
 
-Runs `scripts/check_links.mjs` against the rendered `_site/` and `_site-offline/` trees in two parallel passes. The offline pass also runs `--forbid "https://docs.twinbasic.com"` to flag any surviving live-site link the offline rewrite missed. Both passes assert link integrity, HTML well-formedness, duplicate-`id` detection, anchor resolution, and accessibility hints; the online pass additionally checks `sitemap.xml` and the search index. Requires `build.bat` to have run first.
+The gates that need a browser, or a second pass over the built tree. Link and integrity checking is not among them any more --- that moved into `build.bat` (see [tbdocs](#tbdocs)). Four steps, each stopping the run if it fails:
+
+1. `scripts/check_tree_fresh.mjs` --- refuses a tree older than the sources that produced it. Scanning a stale tree reports a pass for the previous build.
+2. `scripts/check_axe_patch_equiv.mjs` --- verifies the vendored axe source patch still produces identical colour values.
+3. `scripts/pick_a11y_sample.mjs --check` --- verifies the sample still covers every markup construct the site uses.
+4. [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan.
+
+Requires `build.bat` to have run first.
 
 ### book.bat
 
@@ -53,8 +60,13 @@ Full invocation:
                             [--baseurl <prefix>] [--url <origin>]
                             [--dry-run]
                             [--no-offline] [--no-pdf] [--tolerate-missing-images]
+                            [--fetch-assets] [--no-fetch-assets]
                             [--profile-offline]
+                            [--check] [--no-check] [--check-audit-index]
+                            [--check-findings <path>]
                             [--serve] [--port <N>]
+
+`build.bat` passes `--src docs --check-audit-index`, and forwards anything else given to it.
 
 | Flag | Effect |
 |---|---|
@@ -66,11 +78,17 @@ Full invocation:
 | `--no-offline` | Skip the offline tree pass. |
 | `--no-pdf` | Skip the PDF tree pass. |
 | `--tolerate-missing-images` | Downgrade Phase 8's missing-image error to a warning. Use when the source tree is mid-edit and may temporarily reference an image that does not yet exist. |
+| `--fetch-assets` / `--no-fetch-assets` | Force remote-asset vendoring on or off. Without either flag, the build downloads missing YouTube thumbnails and GitHub user-attachment images on a dev machine, and refuses to download anything when `$CI` is set --- a referenced but uncommitted asset is a hard build error there. See [Authoring Pages](Authoring#committing-downloaded-assets). |
 | `--profile-offline` | Print per-substep timing for the offline tree pass. |
+| `--check` | Run the link and site-integrity check over the HTML the build already holds in memory, across every tree it produced. A failing check does not abort the build; it sets the exit code --- 1 for link failures, 2 for integrity failures, 3 for both. |
+| `--no-check` | Turn the check off again. Flags are read in order, so this wins over a `--check` baked into `build.bat`. |
+| `--check-audit-index` | Implies `--check`, and additionally diffs the tree index the build derives from its own records against what landed on disk. A spurious entry makes the link oracle answer "exists" for a path that 404s in production, and nothing else would notice. This is what `build.bat` passes. |
+| `--check-findings <path>` | Implies `--check`, and writes the findings as JSON for a tool to read. Used by [`scripts/check_links_diff.mjs`](#check-links-diff). |
 | `--serve` | Start the long-lived dev server (watch + rebuild + SSE live-reload). Offline and PDF passes are skipped each rebuild. |
 | `--port <N>` | HTTP port for `--serve` mode. Default: 4000. |
 
 ### scripts/check_links.mjs
+{: #check-links }
 
     node scripts/check_links.mjs [pass-args...] [/sep/ [pass-args...] ...]
 
@@ -88,6 +106,7 @@ Offline (filesystem-only) link checker plus optional integrity checks. Multiple 
 | `--check-html` | Assert HTML well-formedness. |
 | `--check-a11y` | Report accessibility hints (missing `alt`, etc.). |
 | `--check-ids` | Flag duplicate `id` attributes within a page. |
+| `--check-remote-assets` | Flag any `<img>` whose `src` points off-box (`http://`, `https://`, or protocol-relative `//host`). Remote images cost a network round trip per view, break the offline mirror, and abort the PDF book render --- the forked paged.js raises an error on an image that has not finished loading. Vendor the file under the section's `Images/` folder instead. |
 | `--check-sitemap` | Assert `sitemap.xml` covers every page. |
 | `--check-search` | Assert search-index entries resolve to existing pages. |
 | `--check-canonical` | Assert each page's canonical URL matches its location. |
@@ -100,6 +119,45 @@ Exit code 1 indicates broken links; exit code 2 indicates integrity-only failure
     node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external]
 
 Online link crawler for the deployed site. Starts at `<start-url>`, GETs every same-origin / same-base-path page recursively, extracts links, and verifies that each link responds 2xx (HEAD for cross-origin, GET for same-origin). Exits 0 if all links are reachable, 1 if any are broken. Use it after a manual `workflow_dispatch` deploy to verify the published site --- `check_links.mjs` covers the local filesystem; `crawl_check.mjs` covers the live deployed site.
+
+### scripts/check_a11y.mjs
+{: #check-a11y }
+
+    node scripts/check_a11y.mjs [--root-dir <path>] [--theme light|dark|both] [--viewport desktop|mobile|both]
+                                [--stock-axe] [--minified]
+
+Automated accessibility scan of the built site, and the last of `check.bat`'s four steps. Loads `axe-core` into headless Chromium (via `puppeteer`) and runs it against thirteen sample pages in both themes at two viewports, plus two state audits that open a disclosure first --- the page list is derived rather than hand-maintained, and [`scripts/pick_a11y_sample.mjs`](#pick-a11y-sample) is what keeps it representative. The scan uses the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, and `wcag22aa` rule tags, plus the `heading-order` best-practice rule. All five WCAG tags must be listed because axe matches tags literally, with no version rollup --- a rule tagged only `wcag21aa` does not match `wcag22aa`, even though WCAG 2.2 AA is a superset of 2.1 AA. Exits 1 if any page has a violation and 2 on an internal error; incomplete (needs-review) results are reported but do not fail the run.
+
+| Flag | Effect |
+|---|---|
+| `--root-dir <path>` | Tree to scan. Default: `docs/_site-offline`. |
+| `--theme light\|dark\|both` | Which palette(s) to test. Default: `both`. |
+| `--viewport desktop\|mobile\|both` | Which viewport(s) to test (`desktop` = 1280×900, `mobile` = 375×812). Default: `both`, so each page is scanned four times. |
+
+Three details are essential and easy to break. It scans **`_site-offline/`, not `_site/`**: the online tree's root-absolute asset URLs (`/assets/css/…`) resolve to nothing under `file://`, so every page would load unstyled and every colour-contrast result would be a meaningless black-on-white pass --- the offline tree uses relative asset paths and renders for real. It scans **each page in both themes**, because dark mode is a separate palette (applied via `[data-theme=dark]`) and a light-mode pass says nothing about it. And it **blocks the search index** (`search-data.js` + `lunr.min.js`) while scanning: every page pulls in ~3.2 MB of index that never reaches the DOM axe walks, so aborting it cuts the run from ~27 s to ~9 s with identical results. `just-the-docs.js` is deliberately not blocked --- it installs the search combobox ARIA, and blocking it would make axe see less. Requires `build.bat` to have produced an up-to-date `_site-offline/`.
+
+### scripts/pick_a11y_sample.mjs
+{: #pick-a11y-sample }
+
+    node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]
+
+Decides, and keeps honest, which pages the accessibility scan looks at. The scan reads thirteen pages out of ~1,160, so the page list decides what it can report at all --- and a list that stops being representative fails silently: the rule for a construct no sample page carries simply never runs, and the gate stays green.
+
+The script holds a list of **construct families**: markup shapes some axe rule keys on, each recording the rule that would otherwise have nothing to run on. `--check` (the default, and what `check.bat` and both CI workflows run) verifies every family the site uses is covered by at least one sample page, and exits 1 naming the gaps and the cheapest page that would close each. `--propose` runs a greedy set cover, ranked by measured per-page audit cost, and prints a replacement page list. `--census` reports what each family is, how many pages use it, and which page uses it most.
+
+When the docs start using a construct they have not used before, add a family for it. Leaving it out is not neutral --- it means the rule for that construct runs nowhere.
+
+### scripts/check_links_diff.mjs
+{: #check-links-diff }
+
+    node scripts/check_links_diff.mjs --a script --b fused
+    node scripts/check_links_diff.mjs --self-test
+
+Differential harness for the link checker. There are two implementations of one check --- the standalone [`scripts/check_links.mjs`](#check-links) and the build's own `--check` pass --- and two implementations of one check is the shape that rots quietly, because **a checker that silently checks less reports a clean pass**. This runs both over the same bytes and diffs their findings category by category.
+
+Run it after touching `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`. It builds the site itself, so both sides look at the same tree. It is deliberately not in `check.bat`: the script side costs a few seconds, which is the whole saving of having folded the check into the build.
+
+Most of its cases compare empty against empty on a healthy site, so two of them are synthetic: `fixture`, a hand-written tree with one fault of every kind, and `fixture-built`, the same idea built by `tbdocs` from `test/fixtures/check-src` --- which is the only way the build's own checker can be held to it. `--self-test` runs the reference implementation's own regression guards and then diffs it against a deliberately corrupted side, failing unless the difference is reported.
 
 ### scripts/convert_em_dash_separators.py
 

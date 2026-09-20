@@ -9,7 +9,7 @@ redirect_from:
 
 # Painting / Drawing to Your Control
 
-### The ICustomControl.Paint method
+## The ICustomControl.Paint method
 This is by far the most important method of a CustomControl.  It tells the form engine exactly how you want it to render your control. See the [`ICustomControl.Paint`](../../tB/Packages/CustomControls/Framework/ICustomControl#paint) reference for the host-side contract.
 
 > [!TIP]
@@ -42,7 +42,7 @@ The `Canvas.DpiScaleFactor` property gives a floating point value representing t
 The `Canvas.AddElement` method is used for adding elements to your control.  An *element* is considered to be something that the form-engine will render for you.  For example, you might have a grid control that displays 100 cells at a time.  Each of those cells would be an *element*.  Elements can overlap each over (allowing for opacity/transparency).  The form engine draws them in the order that you call AddElement, meaning that the last element added will have the highest z-order.
 
 ***
-### AddElement(ElementDescriptor)
+## AddElement(ElementDescriptor)
 The AddElement method takes a single argument; an ElementDescriptor.  ElementDescriptor is a UDT that defines exactly how the element will be drawn and how it reacts to events like mouse clicks.
 
 ```tb
@@ -72,7 +72,7 @@ End Type
 ```
 
 ***
-### Tips
+## Tips
 - Each time your OnPaint method is called, you start with a blank canvas.
 
 - Left/Top/Width/Height can legitimately be outside of the canvas area.  For example, negative Left/Top, or a Width/Height past the Canvas.Width/Canvas.Height has no ill-effects.  The form engine will clip everything appropriately for you, allowing for much simpler designing of your control.

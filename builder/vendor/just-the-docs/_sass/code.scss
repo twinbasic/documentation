@@ -100,12 +100,13 @@ figure.highlight {
 
     &:active {
       text-decoration: none;
-      outline: none;
       opacity: 1;
     }
 
-    &:focus {
+    &:focus-visible {
       opacity: 1;
+      outline: 2px solid $link-color;
+      outline-offset: 2px;
     }
   }
 

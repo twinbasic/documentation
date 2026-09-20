@@ -5,3 +5,6 @@ _serve/
 _pdf/
 *.af~lock~
 _bak
+_site-basepath/
+_site-basepath-offline/
+_site-basepath-pdf/

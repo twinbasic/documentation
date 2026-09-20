@@ -1,4 +1,4 @@
-// CSS cost attribution: print.css extras + rouge.css.
+// CSS cost attribution: print.css extras + the syntax-highlight stylesheet.
 //
 // Renders the book per variant, capturing a hybrid trace and pulling
 // on-CPU time from the embedded V8 cpu profile (NOT wall-clock, which
@@ -9,17 +9,17 @@
 // below) brings per-pair variance down to ~3 % of baseline.
 //
 // **Default variants** (always run):
-//   baseline-full       = print.css (all sections) + rouge.css
-//   drop-rouge          = print.css (all sections); no rouge.css
-//   drop-print-extras   = print.css (always-kept sections only) + rouge.css
-//   baseline-minimal    = print.css (always-kept sections only); no rouge.css
+//   baseline-full       = print.css (all sections) + tb-highlight.css
+//   drop-highlight      = print.css (all sections); no tb-highlight.css
+//   drop-print-extras   = print.css (always-kept sections only) + tb-highlight.css
+//   baseline-minimal    = print.css (always-kept sections only); no highlight CSS
 //
 // "Always-kept" print.css sections (paged.js needs them to paginate at
 // the right page count): preamble + "Page geometry, running header,
 // page numbers" + "Chapter boundaries".
 //
 // With these four variants the pairwise differences reveal:
-//   baseline-full - drop-rouge        = rouge.css contribution
+//   baseline-full - drop-highlight    = highlight-CSS contribution
 //   baseline-full - drop-print-extras = print.css extras contribution
 //   baseline-full - baseline-minimal  = total CSS contribution
 //
@@ -34,11 +34,17 @@
 //   node ab-css.mjs --per-print-section   # also sweep each print.css section
 //   node ab-css.mjs --out my-run          # results folder (default: ab-css)
 //   node ab-css.mjs --no-affinity         # skip Windows CPU pinning
+//   node ab-css.mjs --dry-run             # build the variants, render nothing
+//
+// Runs from anywhere; paths are anchored on this file. Requires build.bat to
+// have produced an up-to-date docs/_site-pdf/.
 
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { pinCpuIfWindows } from './pin-cpu.mjs';
+import { cpuStatsFromTrace } from './trace-cpu-stats.mjs';
 
 // On Windows, re-launch under `start /affinity 0x5500 /high` to stabilise
 // CPU sample-time. See pin-cpu.mjs for the rationale; the default mask
@@ -50,17 +56,20 @@ if (process.env.PERF_PINNED) console.error(`[ab-css] Running pinned (PERF_PINNED
 let outRoot = 'ab-css';
 let pairs = 3;
 let perPrintSection = false;
+let dryRun = false;
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--out') outRoot = args[++i];
   else if (args[i] === '--runs') pairs = parseInt(args[++i], 10);
   else if (args[i] === '--per-print-section') perPrintSection = true;
+  else if (args[i] === '--dry-run') dryRun = true;
   else if (args[i] === '--no-affinity') { /* handled in the relaunch shim above */ }
   else if (args[i] === '-h' || args[i] === '--help') {
     console.error('usage: node ab-css.mjs [--runs N] [--out DIR] [--per-print-section]');
+    console.error('                       [--dry-run]');
     console.error('');
     console.error('  Default: 3 top-level variants per stylesheet (baseline-full,');
-    console.error('  drop-rouge, drop-print-extras, baseline-minimal). Run with');
+    console.error('  drop-highlight, drop-print-extras, baseline-minimal). Run with');
     console.error('  --per-print-section to additionally sweep each /* ---- ---- */');
     console.error('  section of print.css (slower; per-section deltas tend to be');
     console.error('  below the noise floor on this book).');
@@ -73,19 +82,26 @@ for (let i = 0; i < args.length; i++) {
 if (pairs < 1) { console.error('--runs must be >= 1'); process.exit(2); }
 
 // ---- File paths ------------------------------------------------------
-const SITE_PDF = resolve('../docs/_site-pdf');
+// Anchored on this file, not on cwd. The old `resolve('../docs/_site-pdf')`
+// only worked when invoked from perf/; run from the repo root it reported a
+// missing print.css one directory above the repo, which reads as "the build
+// is stale" rather than "you are in the wrong folder".
+const SITE_PDF = resolve(fileURLToPath(import.meta.url), '../../docs/_site-pdf');
 const PRINT_CSS_PATH = join(SITE_PDF, 'assets/css/print.css');
-const ROUGE_CSS_PATH = join(SITE_PDF, 'assets/css/rouge.css');
+// The Shiki migration (builder/highlight.mjs + highlight-theme.mjs) replaced
+// Jekyll's rouge.css with a generated tb-highlight.css. This rig read the old
+// name and had been throwing ENOENT ever since.
+const HIGHLIGHT_CSS_PATH = join(SITE_PDF, 'assets/css/tb-highlight.css');
 const BOOK_HTML_PATH = join(SITE_PDF, 'book.html');
 // Single generated CSS that book-ab.html links to. Per-variant we write
-// it with whatever combination of print.css sections + rouge.css we want
-// to test; book-ab.html drops the rouge.css link, so the only stylesheet
-// the document loads is print-ab.css.
+// it with whatever combination of print.css sections + tb-highlight.css we
+// want to test; book-ab.html drops the tb-highlight.css link, so the only
+// stylesheet the document loads is print-ab.css.
 const SWAP_CSS_PATH = join(SITE_PDF, 'assets/css/print-ab.css');
 const SWAP_HTML_PATH = join(SITE_PDF, 'book-ab.html');
 
 const PRINT_CSS = readFileSync(PRINT_CSS_PATH, 'utf8');
-const ROUGE_CSS = readFileSync(ROUGE_CSS_PATH, 'utf8');
+const HIGHLIGHT_CSS = readFileSync(HIGHLIGHT_CSS_PATH, 'utf8');
 const BOOK_HTML = readFileSync(BOOK_HTML_PATH, 'utf8');
 
 // ---- Parse print.css into sections -----------------------------------
@@ -127,39 +143,59 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g
 // "extras" means print.css minus always-kept.
 const printAll       = sections.map(s => s.text).join('\n');
 const printMinimal   = sections.filter(s => ALWAYS_KEEP.has(s.name)).map(s => s.text).join('\n');
-const ROUGE_HEADER   = '\n/* ---- rouge.css inlined (concatenated by ab-css.mjs) ---- */\n';
+const HL_HEADER      = '\n/* ---- tb-highlight.css inlined (concatenated by ab-css.mjs) ---- */\n';
+
+// book.html links tb-highlight.css BEFORE print.css, so the concatenation has
+// to put it first too. Appending it instead inverts the cascade, which can
+// change which rules win, which changes layout and therefore the page count --
+// and a layout-cost A/B whose two sides paginate differently is measuring the
+// wrong thing.
+const withHighlight = (print) => HIGHLIGHT_CSS + HL_HEADER + print;
 
 const variants = [];
 // Top-level variants -- always run.
-variants.push({ label: 'baseline-full',       build: () => printAll     + ROUGE_HEADER + ROUGE_CSS });
-variants.push({ label: 'drop-rouge',          build: () => printAll });
-variants.push({ label: 'drop-print-extras',   build: () => printMinimal + ROUGE_HEADER + ROUGE_CSS });
+variants.push({ label: 'baseline-full',       build: () => withHighlight(printAll) });
+variants.push({ label: 'drop-highlight',      build: () => printAll });
+variants.push({ label: 'drop-print-extras',   build: () => withHighlight(printMinimal) });
 variants.push({ label: 'baseline-minimal',    build: () => printMinimal });
 
 // Optional per-section print.css sweep (opt-in via --per-print-section).
-// Each drop-<section> keeps full rouge.css and full print.css minus the
-// named section.
+// Each drop-<section> keeps the full highlight CSS and full print.css minus
+// the named section.
 if (perPrintSection) {
   for (const s of sections) {
     if (ALWAYS_KEEP.has(s.name)) continue;
     variants.push({
       label: 'drop-print-' + slug(s.name),
-      build: () => sections.filter(x => x.name !== s.name).map(x => x.text).join('\n') + ROUGE_HEADER + ROUGE_CSS,
+      build: () => withHighlight(sections.filter(x => x.name !== s.name).map(x => x.text).join('\n')),
     });
   }
 }
 
-// Swap book.html: replace the print.css link with print-ab.css, and
-// drop the rouge.css link (its content is inlined into print-ab.css
-// when the variant calls for it).
-let swappedHtml = BOOK_HTML
-  .replace('<link rel="stylesheet" href="assets/css/print.css">',
-           '<link rel="stylesheet" href="assets/css/print-ab.css">')
-  .replace(/\s*<link rel="stylesheet" href="assets\/css\/rouge\.css">/, '');
-if (swappedHtml === BOOK_HTML) {
-  console.error('failed to swap <link href=print.css> in book.html; aborting');
+// Swap book.html: replace the print.css link with print-ab.css, and drop the
+// tb-highlight.css link (its content is inlined into print-ab.css when the
+// variant calls for it).
+//
+// Both replacements are asserted, and the second one matters most. If the
+// highlight link survives, the document loads it on EVERY variant -- including
+// drop-highlight, whose whole purpose is not to. The rig would then report the
+// highlight stylesheet as costing nothing, which is a wrong answer rather than
+// an error. That is how this file came to be broken: the Shiki migration
+// renamed the stylesheet and only the readFileSync above failed loudly.
+const PRINT_LINK = '<link rel="stylesheet" href="assets/css/print.css">';
+const HL_LINK_RE = /\s*<link rel="stylesheet" href="assets\/css\/tb-highlight\.css">/;
+if (!BOOK_HTML.includes(PRINT_LINK)) {
+  console.error('no <link href=assets/css/print.css> in book.html; aborting');
   process.exit(3);
 }
+if (!HL_LINK_RE.test(BOOK_HTML)) {
+  console.error('no <link href=assets/css/tb-highlight.css> in book.html; aborting');
+  console.error('(has the highlight stylesheet been renamed again? see HIGHLIGHT_CSS_PATH)');
+  process.exit(3);
+}
+const swappedHtml = BOOK_HTML
+  .replace(PRINT_LINK, '<link rel="stylesheet" href="assets/css/print-ab.css">')
+  .replace(HL_LINK_RE, '');
 
 // ---- Render + measure ------------------------------------------------
 function runOnce(outDir) {
@@ -176,151 +212,33 @@ function runOnce(outDir) {
   }
 }
 
-// Wrapper events that surround V8 execution; filtered from event-nest
-// reconstruction so they don't pollute "inner work" attribution.
-const JS_WRAPPER_NAMES = new Set([
-  'RunTask', 'RunMicrotasks', 'FunctionCall', 'EvaluateScript',
-  'V8.Execute', 'V8.RunMicrotasks', 'Task', 'ThreadControllerImpl::RunTask',
-]);
-// V8 virtual frames; filtered from JS lineage so they don't shadow named
-// Blink work in the hybrid stack.
-const V8_VIRTUAL = new Set(['(root)', '(program)', '(idle)', '(garbage collector)', '']);
-// Labels we want CPU-attribution for (any appearance in the hybrid stack
-// counts the sample for total-time semantics).
-const WANT_LABELS = new Set([
-  'Document::recalcStyle',
-  'LocalFrameView::performLayout',
-  'Document::UpdateStyleAndLayout',
-  'Document::rebuildLayoutTree',
-  'InlineNode::ShapeTextIncludingFirstLine',
-  'Blink.Style.UpdateTime',
-  'Blink.Layout.UpdateTime',
-]);
+// Trace parsing lives in trace-cpu-stats.mjs, shared with ab-axe.mjs: the
+// CrRendererMain filter, the JS-wrapper / V8-virtual frame exclusions, the
+// Profile / ProfileChunk reconstruction and the per-sample Blink event-nest
+// snapshot are identical for both rigs.  BLINK_LABELS is the default set of
+// labels CPU time is attributed to (any appearance in the hybrid stack counts
+// the sample, i.e. total-time semantics).
 
-function cpuStatsFromTrace(tracePath) {
-  const t = JSON.parse(readFileSync(tracePath, 'utf8'));
-  const events = Array.isArray(t) ? t : t.traceEvents;
-
-  // CrRendererMain thread key(s).
-  const mainKeys = new Set();
-  for (const e of events) {
-    if (e.ph === 'M' && e.name === 'thread_name' && e.args?.name === 'CrRendererMain') {
-      mainKeys.add(e.pid + '.' + e.tid);
-    }
+// ---- Dry run ---------------------------------------------------------
+// Everything above is setup: locate the stylesheets, split print.css into
+// sections, build each variant's CSS, rewrite the <link> tags. Everything
+// below renders the book, several times, which is why nobody runs this
+// casually -- and why the Shiki rename sat here unnoticed until someone
+// went looking. --dry-run exercises the whole setup in about a second, so
+// the rot is cheap to detect.
+if (dryRun) {
+  console.log(`book.html:      ${BOOK_HTML.length} bytes`);
+  console.log(`print.css:      ${PRINT_CSS.length} bytes in ${sections.length} sections`);
+  console.log(`highlight CSS:  ${HIGHLIGHT_CSS.length} bytes  (${HIGHLIGHT_CSS_PATH})`);
+  console.log(`swapped HTML:   print-ab.css linked, highlight link removed`);
+  console.log('');
+  console.log('variants:');
+  for (const v of variants) {
+    console.log(`  ${v.label.padEnd(24)} ${String(v.build().length).padStart(7)} bytes`);
   }
-
-  // Main-thread X-events, minus JS-entry wrappers.
-  const mainEvents = [];
-  for (const e of events) {
-    if (e.ph !== 'X' || typeof e.dur !== 'number' || e.dur <= 0) continue;
-    if (!mainKeys.has(e.pid + '.' + e.tid)) continue;
-    if (JS_WRAPPER_NAMES.has(e.name)) continue;
-    mainEvents.push({ ts: e.ts, end: e.ts + e.dur, name: e.name });
-  }
-
-  // V8 cpu profile reconstruction.
-  const profiles = new Map();
-  for (const e of events) {
-    if (e.name !== 'Profile' && e.name !== 'ProfileChunk') continue;
-    const id = e.id || (e.args?.id) || '0x1';
-    if (!profiles.has(id)) profiles.set(id, { startTime: null, nodes: new Map(), samples: [], deltas: [] });
-    const p = profiles.get(id);
-    if (e.name === 'Profile') {
-      const d = e.args?.data;
-      if (d && typeof d.startTime === 'number') p.startTime = d.startTime;
-      continue;
-    }
-    const d = e.args?.data;
-    if (!d) continue;
-    if (d.cpuProfile?.nodes) for (const n of d.cpuProfile.nodes) p.nodes.set(n.id, n);
-    if (d.cpuProfile?.samples) for (const sid of d.cpuProfile.samples) p.samples.push(sid);
-    if (d.timeDeltas) for (const dt of d.timeDeltas) p.deltas.push(dt);
-  }
-  const allSamples = [];
-  const nodes = new Map();
-  for (const p of profiles.values()) {
-    for (const [k, v] of p.nodes) nodes.set(k, v);
-    if (p.startTime == null) continue;
-    let tcur = p.startTime;
-    for (let i = 0; i < p.samples.length; i++) {
-      const dt = p.deltas[i] || 0;
-      tcur += dt;
-      allSamples.push({ ts: tcur, nodeId: p.samples[i], deltaUs: dt });
-    }
-  }
-  allSamples.sort((a, b) => a.ts - b.ts);
-  if (!allSamples.length) throw new Error('no V8 cpu samples in trace (cpu_profiler category missing?)');
-
-  // Event-nest snapshot per sample via timeline merge: end < start < sample.
-  const TYPE_END = 0, TYPE_START = 1, TYPE_SAMPLE = 2;
-  const timeline = new Array(mainEvents.length * 2 + allSamples.length);
-  let wi = 0;
-  for (const ev of mainEvents) {
-    timeline[wi++] = { ts: ev.ts, type: TYPE_START, ev };
-    timeline[wi++] = { ts: ev.end, type: TYPE_END, ev };
-  }
-  for (const s of allSamples) timeline[wi++] = { ts: s.ts, type: TYPE_SAMPLE, s };
-  timeline.sort((a, b) => a.ts - b.ts || a.type - b.type);
-  const active = [];
-  for (const item of timeline) {
-    if (item.type === TYPE_START) active.push(item.ev);
-    else if (item.type === TYPE_END) {
-      const top = active[active.length - 1];
-      if (top === item.ev) active.pop();
-      else { const i = active.lastIndexOf(item.ev); if (i >= 0) active.splice(i, 1); }
-    } else {
-      item.s.eventStackNames = active.length ? active.map(e => e.name) : null;
-    }
-  }
-
-  // V8 lineage per node (filter virtual frames). Cached.
-  const lineageCache = new Map();
-  function lineageNamesOf(id) {
-    if (lineageCache.has(id)) return lineageCache.get(id);
-    const out = [];
-    let cur = id, g = 0;
-    while (cur != null && g++ < 4096) {
-      const n = nodes.get(cur);
-      if (!n) break;
-      const fn = n.callFrame?.functionName || '';
-      if (!V8_VIRTUAL.has(fn)) out.push(fn || '(anonymous)');
-      cur = n.parent;
-    }
-    lineageCache.set(id, out);
-    return out;
-  }
-
-  // Aggregate per-sample: total cpu + per-WANT_LABEL totals (total-time
-  // semantics: count once per sample if the label appears anywhere in
-  // the hybrid stack).
-  let totalUs = 0;
-  const labelUs = new Map();
-  for (const s of allSamples) {
-    totalUs += s.deltaUs;
-    const jsLineage = lineageNamesOf(s.nodeId);
-    const evStack = s.eventStackNames || [];
-    // hybrid stack = jsRootToLeaf ++ eventOuterToInner (we don't care
-    // about order for total-time semantics; just need set membership).
-    const seen = new Set();
-    for (const name of jsLineage) {
-      if (WANT_LABELS.has(name) && !seen.has(name)) {
-        seen.add(name);
-        labelUs.set(name, (labelUs.get(name) || 0) + s.deltaUs);
-      }
-    }
-    for (const name of evStack) {
-      if (WANT_LABELS.has(name) && !seen.has(name)) {
-        seen.add(name);
-        labelUs.set(name, (labelUs.get(name) || 0) + s.deltaUs);
-      }
-    }
-  }
-
-  return {
-    totalCpuUs: totalUs,
-    labelUs,
-    nSamples: allSamples.length,
-  };
+  console.log('');
+  console.log('nothing written, nothing rendered.');
+  process.exit(0);
 }
 
 // ---- Main loop -------------------------------------------------------

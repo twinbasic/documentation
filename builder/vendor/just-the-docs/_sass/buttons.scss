@@ -122,9 +122,17 @@
 .btn-reset {
   background: none;
   border: none;
+  // Without this the button keeps the UA's `buttontext` (black), which is
+  // 1.39:1 on the dark background.
+  color: inherit;
   margin: 0;
   text-align: inherit;
   font: inherit;
   border-radius: 0;
   appearance: none;
+
+  &:focus-visible {
+    outline: 2px solid $link-color;
+    outline-offset: 2px;
+  }
 }

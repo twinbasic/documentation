@@ -32,7 +32,10 @@ export async function writeSitemap(pages, site, destRoot, precomputedUrls) {
 
   await Promise.all(writes);
 
-  return { entries: sitemapUrls.length, robots: !sourceHasRobots };
+  // `xml` rides back so the fused link check (builder/check.mjs) can run
+  // --check-sitemap against the string that was written rather than
+  // reading the file back -- same bytes, one fewer round trip.
+  return { entries: sitemapUrls.length, robots: !sourceHasRobots, xml };
 }
 
 // Derive the set of sitemap URLs from the in-memory page set, applying
@@ -45,11 +48,18 @@ export async function writeSitemap(pages, site, destRoot, precomputedUrls) {
 export function deriveSitemapUrls(pages, site) {
   const config = site.config;
   return new Set(
-    pages
-      .filter(p => p.frontmatter?.sitemap !== false)
-      .filter(p => p.permalink !== "/404.html")
-      .map(p => sitemapUrlFor(p, config)),
+    pages.filter(sitemapIncludes).map(p => sitemapUrlFor(p, config)),
   );
+}
+
+// jekyll-sitemap's two filters, as a predicate rather than an inline
+// chain, because the integrity check needs the same answer.  A checker
+// that asks "is every page in the sitemap" without knowing which pages
+// the generator was told to skip reports a failure on the first page to
+// use `sitemap: false` -- which Pipeline-Stages.md documents as a
+// supported key.
+export function sitemapIncludes(page) {
+  return page.frontmatter?.sitemap !== false && page.permalink !== "/404.html";
 }
 
 // Parse the raw `<loc>...</loc>` URL values out of an on-disk

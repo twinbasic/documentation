@@ -131,7 +131,7 @@ function renderCodeBlock(shiki, theme, code, lang, warn) {
     tokenizedHtml = escapeHtml(codeBody);
   }
 
-  return `<div class="language-${wrapperLang} highlighter-rouge">${COPY_BUTTON_HTML}<div class="highlight"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
+  return `<div class="language-${wrapperLang} highlighter-rouge">${COPY_BUTTON_HTML}<div class="highlight" tabindex="0"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
 }
 
 // Shiki's `codeToTokensBase` with `includeExplanation` returns

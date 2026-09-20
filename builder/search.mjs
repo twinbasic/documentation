@@ -30,6 +30,27 @@ export async function writeSearchData(pages, site, destRoot) {
 // is globally sequential, and writes the same byte-for-byte search-data.json
 // the single-threaded writeSearchData would have produced.
 export async function writeSearchDataFromChunks(searchChunks, destRoot) {
+  // searchChunks starts as `new Array(N)` -- holes, not undefined -- and
+  // each render:i.submit() fills its own slot. Array.prototype.flat()
+  // skips holes silently, so a slot that has not been filled yet does
+  // not throw: its pages just vanish from the index, and the only
+  // symptom is a slightly smaller entry count nobody reads. That is
+  // exactly what happened before renderJoin was given an `expected`
+  // list. Refuse to write a partial index rather than lose pages
+  // quietly.
+  const missing = [];
+  for (let i = 0; i < searchChunks.length; i++) {
+    if (!(i in searchChunks)) missing.push(i);
+  }
+  if (missing.length) {
+    throw new Error(
+      `search index is incomplete: ${missing.length} of ${searchChunks.length} ` +
+      `chunks never arrived (${missing.slice(0, 8).join(", ")}` +
+      `${missing.length > 8 ? ", ..." : ""}). This is a scheduling bug, not a ` +
+      `content one -- see the barrier wiring in dispatch.submit().`,
+    );
+  }
+
   const allEntries = searchChunks.flat();
   for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
   const body = allEntries.map(renderEntryString).join(",");
@@ -43,6 +64,14 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
 // Each entry is `{ i, doc, title, content, url, relUrl, sourcePage }`.
 // `sourcePage` is the originating tbdocs page so callers (`_triage.mjs`,
 // `_diff.mjs`) can gate by `srcRel` against `accepted-divergences.mjs`.
+// The generator's two content skips, as a predicate: a page with no
+// title has nothing to index, and `search_exclude: true` is an explicit
+// opt-out.  The integrity check needs the same answer -- otherwise the
+// first page to use either key fails --check with no hint why.
+export function searchIncludes(page) {
+  return Boolean(page.frontmatter?.title) && page.frontmatter?.search_exclude !== true;
+}
+
 export function deriveSearchEntries(pages, site) {
   const headingLevel = site.config.search?.heading_level ?? 2;
   const baseurl = String(site.config.baseurl ?? "");
@@ -51,9 +80,17 @@ export function deriveSearchEntries(pages, site) {
 
   for (const page of pages) {
     const title = page.frontmatter?.title;
-    if (!title) continue;
-    if (page.frontmatter?.search_exclude === true) continue;
-    if (typeof page.renderedContent !== "string") continue;
+    if (!searchIncludes(page)) continue;
+    // Unlike the two skips above, this is not a content decision. No
+    // renderedContent means the page's render result never arrived, and
+    // quietly leaving it out of the index is exactly how a scheduling
+    // bug once removed six pages per build without anyone noticing.
+    if (typeof page.renderedContent !== "string") {
+      throw new Error(
+        `search index: ${page.destPath} has no renderedContent; refusing to ` +
+        `drop it from the index silently`,
+      );
+    }
 
     const { sections, titleFound, prefixContent } = extractSections(
       page,

@@ -37,13 +37,39 @@
 
 @include meta.load-css("modules", $with: ("logo": "/favicon.png"));
 
+// Apply the code-size / inline-code-padding overrides AFTER modules so they
+// out-rank JTD's base.scss (`code { font-size: 0.75em }`) and code.scss
+// (`:not(pre, figure) > code { padding }`) by source order, at equal
+// specificity. The dark compilation inlines the same block after its own
+// load-css inside html.dark-mode {}.
+@include tb-code-overrides;
+
 // callouts.scss.liquid output -- only the unconditional div.opaque rule.
 // Light $body-background-color default = $white = #fff.
 div.opaque {
   background-color: #fff;
 }
 
-// Light $link-color default = $purple-000 = #7253ed.
+// Light $link-color = $purple-200 = #4e26af (see support/_variables.scss).
 span {
-  color: #7253ed;
+  color: #4e26af;
+}
+
+// Theme colour-scheme (Phase 5): tells the UA which form-control / scrollbar
+// palette to render, tracking the resolved theme. Light is the base; the dark
+// contexts mirror the dark-theme mixin's selectors so native UI follows the
+// no-JS system default and any explicit [data-theme] choice. A forced-light
+// choice on a dark OS falls through to the base rule.
+html {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
 }

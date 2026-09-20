@@ -1,7 +1,7 @@
 ---
 title: tbdocs Builder
 parent: Documentation Development
-nav_order: 4
+nav_order: 5
 has_children: true
 has_toc: false
 permalink: /Documentation/Development/Builder
@@ -82,15 +82,16 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 |---|---|
 | [`dot.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/dot.mjs) | Regenerates stale `.dot` → `.svg` via the WASM build of Graphviz (`@hpcc-js/wasm-graphviz`). |
 | [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs) | Dart Sass over the vendored just-the-docs SCSS. Split across `scssLight` + `scssDark` worker tasks, joined on main. |
+| [`vendor-assets.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/vendor-assets.mjs) | Downloads any YouTube poster frame or GitHub user-attachment image the markdown references and that is not already committed, into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. Idempotent; the artifacts are committed like the generated DOT SVGs. CI never downloads --- a referenced but uncommitted asset is a hard error there. |
 
 **Render hot path**
 
 | File | Role |
 |---|---|
-| [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) | markdown-it configuration + plugin stack (including `svgInlinePlugin` for build-time SVG embedding) + `renderPhase`. Built once on main and once per worker. |
+| [`render.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/render.mjs) | markdown-it configuration + plugin stack + `renderPhase`. Built once on main and once per worker. The plugins worth knowing by name: `svgInlinePlugin` (build-time SVG embedding), `videoLinkPlugin` (a `{: .video }` link becomes a locally vendored poster frame), `remoteImagePlugin` (a user-attachment URL becomes the vendored copy, in both markdown and raw `<img>` syntax), and `headingLevelNormalizePlugin` (renumbers a page that uses h1 and h3 but no h2, so the built page has no heading skip). |
 | [`highlight.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight.mjs) | Shiki bootstrap + the bundled twinBASIC grammar. Emits the just-the-docs wrapper structure. |
-| [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs) | Loads `Light.theme` + `Dark.theme`, emits `tb-highlight.css` + scope-to-class lookup. |
-| [`template.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/template.mjs) | `templatePhase` (per-page layout wrap) + `buildInitConfig` + `renderSidebar`. JS template literals; no template engine. |
+| [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs) | Loads `Light.theme` + `Dark.theme`, emits `tb-highlight.css` + scope-to-class lookup. Clamps any token colour that falls below 4.5:1 against the code-block background --- moving lightness away from the background while preserving hue and saturation --- so highlighted code meets WCAG AA; the emitted rule includes a `raised to 4.5:1` comment naming the original colour. |
+| [`template.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/template.mjs) | `templatePhase` (per-page layout wrap) + `buildInitConfig` + `renderSidebar`. JS template literals; no template engine. Also `injectAnchorHeadings(html, headingsOut)`, which adds the permalink icon to each heading and collects the heading list as it goes, and `renderSectionLinks`, which spends that list on the per-page disclosure at the top of the footer. |
 | [`compress.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/compress.mjs) | Whitespace compression outside `<pre>` blocks. |
 
 **Write phase**
@@ -175,7 +176,7 @@ The complete layout, allocation helper, and the `readTaskMeta` / `writeTaskMeta`
 
 The pipeline has 28 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into four sections that also organise the discussion below:
 
-- **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`
+- **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`, `vendorAssets`
 - **Spine**: `nav`, `dot`, `buildInit`, `markdownInit`, `deriveSitemap`, `deriveRedirects`, `resolveBookChapters`
 - **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `renderEnvInit`, `render:i`, `renderJoin`
 - **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `writeAux`, `writeOffline`, `writePdf`
@@ -382,6 +383,7 @@ A single `package.json` at the repo root contains everything --- the static site
     "@hpcc-js/wasm-graphviz": "^1.21",
     "acorn": "^8.0",
     "acorn-walk": "^8.0",
+    "axe-core": "4.13.0",
     "fast-glob": "^3.3",
     "gray-matter": "^4.0",
     "html-entities": "^2.6.0",
@@ -399,7 +401,7 @@ A single `package.json` at the repo root contains everything --- the static site
 }
 ```
 
-No template engine, no framework, no bundler, no postinstall hooks. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` for the AST-based offline patcher; the `markdown-it-*` packages cover the dialect extensions the legacy parser supported; `shiki` is the syntax highlighter; `@hpcc-js/wasm-graphviz` is the WASM build of Graphviz that renders `.dot` diagram sources; `sass` is Dart Sass for the SCSS compile. `pdf-lib` + `html-entities` + `htmlparser2` + `puppeteer` are the PDF renderer's toolchain (puppeteer controls headless Chromium for the paged.js layout pass).
+No template engine, no framework, no bundler, no postinstall hooks. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` for the AST-based offline patcher; the `markdown-it-*` packages cover the dialect extensions the legacy parser supported; `shiki` is the syntax highlighter; `@hpcc-js/wasm-graphviz` is the WASM build of Graphviz that renders `.dot` diagram sources; `sass` is Dart Sass for the SCSS compile. `pdf-lib` + `html-entities` + `htmlparser2` + `puppeteer` are the PDF renderer's toolchain (puppeteer controls headless Chromium for the paged.js layout pass). `axe-core` + `puppeteer` also back the standalone accessibility checker ([`scripts/check_a11y.mjs`](https://github.com/twinbasic/documentation/blob/main/scripts/check_a11y.mjs)), which runs the same headless Chromium over the built pages --- neither the checker nor `axe-core` is used by `tbdocs` itself. `axe-core` is the one dependency pinned to an exact version rather than a caret range: the scan injects a patched copy of its bundle, and the patch asserts an exact occurrence count at each substitution point, so a minor bump would fail loudly rather than silently reverting to the slow path.
 
 Node 22+ is required: the SAB scheduler uses `Atomics.wait`, `Atomics.notify`, and `SharedArrayBuffer` --- all baseline in Node 22 without flags.
 
@@ -409,19 +411,22 @@ The site's `/assets/` tree at deploy time is assembled from three sources:
 
 | Source on disk | What lives there | Phase that delivers it |
 |---|---|---|
-| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-switch.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
+| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-toggle.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
 | `builder/vendor/just-the-docs/` | Vendored from the just-the-docs theme (v0.10.1): `_sass/` (the theme's SCSS sources, fed into the compilation) and `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (the chrome runtime, copied verbatim). See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the inventory, re-vendoring procedure, and the in-tree patches applied to `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `writeAssets`. |
 | Generated in-process | `just-the-docs-combined.css` (from `scss.mjs`) and `tb-highlight.css` (from `highlight-theme.mjs`). Neither is committed; both are rebuilt every run. | Written by `scss` (combined CSS) and `writeAssets` (highlight CSS). |
 
 CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is non-empty; the same transform applies to generated CSS so the `url("/favicon.png")` the SCSS entry point emits resolves correctly under sub-path deployments.
+
+The project JS is deliberately small. `theme-toggle.js` implements the three-state (system / light / dark) theme switch as a progressive enhancement over the no-JS `prefers-color-scheme` default: the correct palette renders even with scripting disabled, and the script only adds the manual override that persists a `data-theme` choice. `svg-inline.js` powers the click-to-zoom overlay and the download / copy controls on inlined diagrams. (An earlier `theme-switch.js` was replaced by `theme-toggle.js` when the two-state switch grew a system-follows-OS state.)
 
 ## What is NOT in builder/
 
 Some build-adjacent code lives at the repo root rather than under `builder/`:
 
 - **PDF rendering** --- `book/render-book.mjs` plus its `book/lib/*.mjs` helpers and the `paged.browser.js` bundle. `tbdocs` produces `_site-pdf/book.html`; the actual PDF render runs separately via `book.bat`. Both `pdf-lib` and `puppeteer` are used only at PDF time. See [PDF Generation](PDF-Generation) for the internals.
-- **Link checking** --- `scripts/check_links.mjs` reads from disk after the build; not part of the generator.
+- **Standalone link checking** --- `scripts/check_links.mjs` reads a built tree from disk. The generator does its own link and integrity check under `--check`, over the HTML still in worker memory; the script remains the tool for a tree the build did not produce.
 - **External link crawling** --- `scripts/crawl_check.mjs` reads from HTTP; not part of the generator.
+- **Accessibility checking** --- `scripts/check_a11y.mjs` runs puppeteer + axe-core over the built offline tree after the build; not part of the generator.
 - **Graphviz/DOT source files** --- `docs/assets/images/dot/*.dot` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.
 
 ## Drift guards and failure modes
@@ -434,5 +439,17 @@ The build aborts or flips the exit code under a handful of conditions:
 - **SCSS compile failure.** The light/dark workers warn with the source location and continue with `failed: true`; the joiner sets `process.exitCode = 1`. Existing `_site/` CSS lingers.
 - **Nav integrity.** Orphan or ambiguous `parent:` declarations throw inside `nav.execute()`, which aborts the build via `Scheduler._abort()`.
 - **Worker crash.** A worker handler that throws posts `{ taskFailed, message, stack }` to main; the scheduler calls `_abort()`, the build rejects, and the orchestrator reports the error with the task name in the message.
+- **Link and integrity check** (`--check`). Deliberately the one failure that does *not* abort: a broken link still produces a valid site you want on disk to inspect, unlike a nav ambiguity, where the output itself would be wrong. The check tasks collect findings and `runBuild()` sets the exit code afterwards --- 1 for link failures, 2 for integrity failures, 3 for both, OR'd into whatever the build's own failures already claimed.
+- **Incomplete parallel results.** Six checks along the chunk-merge path refuse to carry on with a piece missing: `renderJoin` asserts that every page has rendered content, `render:i`'s merge rejects a page the build does not know, the search index refuses both a page without content and a chunk that never arrived, the book refuses a chapter whose content is absent (as opposed to empty, which is legitimate), and a link-check chunk that errored fails the run instead of printing and passing. None can fire while the task graph is wired correctly. They exist because when it *was* wrong, every one of those places quietly skipped instead --- see below.
+
+### Dependency counts order the work, not the build state
+
+A worker posts its result to the main thread and *then* decrements its successors' dependency counts in shared memory. The main thread reads those counts directly out of shared memory, without first processing its message queue. A barrier's count can therefore reach zero while results are still pending and the `submit()` calls that merge them into build state have not run.
+
+The scheduler's input check is what prevents this. A main-thread task returns to the ready set if any name in its `expected` list is absent from the results map, and a result is recorded there immediately before its `submit()` runs. So a dynamic barrier must list every chunk task in `expected`, **even when its own `execute()` ignores the inputs**. `flushJoin` always did, because it sums the per-chunk write statistics and visibly needs them. `renderJoin` returns an empty object and needs nothing, so the omission looked harmless.
+
+It was not. Results from `render:i` could arrive after the search index had already been written. That index is assembled by flattening an array created with `new Array(N)` --- holes, not `undefined` --- and `Array.prototype.flat()` skips holes without reporting anything. A late chunk therefore raised no error and logged nothing. About six pages were missing from `search-data.json`, on roughly one build in three, always as a contiguous run, because a chunk is a contiguous slice of the page list.
+
+Two silent failures combining into one invisible one is the pattern to check for when adding a fan-out. Both halves are now fixed: the barriers list their chunk tasks, and every place on that path that used to skip a missing piece now refuses to continue instead.
 
 Setup-class failures --- `@hpcc-js/wasm-graphviz` not installed, `sass` missing --- print a one-line recovery hint and continue with stale outputs. They do not flip the exit code; a fresh checkout still builds.

@@ -70,15 +70,23 @@ export function renderGantt(grouped) {
   o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_W} ${h}" style="width:100%;max-width:${SVG_W}px">`);
   o.push(`<title>Build task timeline</title>`);
 
+  // Dark palette rule bodies (theme-neutral selectors); emitted below under
+  // both the no-JS system default and an explicit [data-theme="dark"] choice,
+  // mirroring the dark-theme mixin in docs/_sass/custom/_theme.scss.
+  const darkRules = [
+    `.gl{fill:#e6e1e8}`,
+    `.gs{fill:#e6e1e8}`,
+    `.ga{fill:#959396}`,
+    `.gg{stroke:#44434d}`,
+    ...Object.entries(COLORS).map(([s, c]) => `.gb-${s.toLowerCase()}{fill:${c.dark}}`),
+  ];
+  const darkScoped = prefix => darkRules.map(r => `${prefix} ${r}`).join("");
   const css = [
     `.gantt{font-family:system-ui,-apple-system,sans-serif}`,
     `.gl{fill:#333}.gs{fill:#333;font-weight:600}.ga{fill:#666}.gg{stroke:#e0e0e0}`,
     ...Object.entries(COLORS).map(([s, c]) => `.gb-${s.toLowerCase()}{fill:${c.light}}`),
-    `html.dark-mode .gl{fill:#e6e1e8}`,
-    `html.dark-mode .gs{fill:#e6e1e8}`,
-    `html.dark-mode .ga{fill:#959396}`,
-    `html.dark-mode .gg{stroke:#44434d}`,
-    ...Object.entries(COLORS).map(([s, c]) => `html.dark-mode .gb-${s.toLowerCase()}{fill:${c.dark}}`),
+    `@media (prefers-color-scheme:dark){${darkScoped("html:not([data-theme=light])")}}`,
+    darkScoped("html[data-theme=dark]"),
   ];
   o.push(`<style>${css.join("")}</style>`);
   o.push(`<g class="gantt">`);

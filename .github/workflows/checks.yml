@@ -1,22 +1,33 @@
 name: Run Checks
 
 on:
-    workflow_dispatch:
-#   push:
-#     branches: [ main, dev ]
-#     paths: docs/**
-    pull_request:
-      branches: [ main ]
-      paths: docs/**
+  workflow_dispatch:
+  # `staging` is this repo's default branch and the one the deploy
+  # workflow publishes from, so that is what PRs target. Checking only
+  # PRs into `main` meant this never ran.
+  #
+  # Pushes are deliberately not listed: tbdocs-gh-pages.yml already
+  # builds and checks on every push to `staging` before it deploys, so a
+  # push trigger here would duplicate that work. This workflow's job is
+  # to catch the breakage BEFORE the merge.
+  pull_request:
+    branches: [ staging, main ]
 
+# No `paths:` filter. It used to be `docs/**`, which skipped any PR that
+# touched only builder/ or scripts/ -- exactly the code most able to break
+# the build, the link checker, or asset vendoring. The whole run is a couple
+# of minutes, so filtering buys little and silently drops real coverage.
+
+# Check-only job: it never deploys, so it needs no Pages or OIDC rights.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# Must NOT share the deploy workflow's "pages" group -- that made PR checks
+# queue against production deployments. Keyed per PR, and superseded runs are
+# cancelled when new commits arrive.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Build job
@@ -33,38 +44,110 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Build with tbdocs
-        run: node builder/tbdocs.mjs --src docs
-      - name: Check links (check_links.mjs)
-        # Three passes run in parallel via /sep/:
-        #   1. Online (_site/): --fallback-extensions html mirrors GitHub Pages'
-        #      extensionless-URL behaviour.  No --base-path needed -- this
-        #      workflow builds without --baseurl (contrast jekyll-gh-pages.yml).
-        #      Integrity checks (--check-html/a11y/ids/sitemap/search) run here.
-        #   2. Offline (_site-offline/): --forbid catches any surviving
-        #      https://docs.twinbasic.com/<path> link the offline rewrite missed
-        #      (bare root URL is exempt).  Integrity checks run here too (minus
-        #      sitemap/search -- the offline tree has neither).
-        #   3. Book (_site-pdf/book.html): --no-fail makes failures informational
-        #      (some links are not yet fully resolved).
-        run: >-
-          node scripts/check_links.mjs
-          --offline --include-fragments
-          --check-html --check-a11y --check-ids
-          --check-sitemap --check-search --check-canonical
-          --fallback-extensions html
-          --index-files 'index.html,.'
-          --root-dir docs/_site
-          docs/_site
-          /sep/
-          --offline --include-fragments
-          --check-html --check-a11y --check-ids
-          --index-files 'index.html,.'
-          --fallback-extensions html
-          --forbid 'https://docs.twinbasic.com'
-          --root-dir docs/_site-offline
-          docs/_site-offline
-          /sep/
-          --offline --no-fail --include-fragments
-          --root-dir docs/_site-pdf
-          docs/_site-pdf/book.html
+      # check_a11y.mjs drives axe-core inside headless Chromium. The
+      # build itself needs no browser -- only this scan does.
+      # fonts-liberation is installed explicitly, not incidentally. axe's
+      # target-size rule measures rendered boxes, and an inline element's
+      # measured height is its font's content area -- so the 24px floor is
+      # cleared or missed depending on what system-ui resolves to. At the
+      # mobile h3 size: Segoe UI 19px, Verdana and Tahoma 17px, Arial 16px,
+      # Liberation Sans / DejaVu Sans / Roboto 15px. The site's padding is
+      # calibrated against the smallest of those, so the runner has to have
+      # it. ubuntu-latest migrates to Ubuntu 26 on 19 October 2026; pinning
+      # the image would also work and expires differently, while this
+      # addresses the actual variable.
+      - name: Install Liberation fonts
+        run: sudo apt-get install -y --no-install-recommends fonts-liberation
+      - name: Install Chromium
+        # Same incantation as tbdocs-gh-pages.yml's install step, which
+        # is the proven-working one in this repo: --install-deps apt-installs
+        # the shared libraries Chromium needs, which requires root.
+        run: sudo npx puppeteer browsers install chrome --install-deps
+      - name: Build and check links with tbdocs
+        # --no-fetch-assets: CI must never download a referenced image. An
+        # author who wrote the markdown but forgot to commit the file would
+        # otherwise get a green build while the published site went on
+        # hotlinking a third party. A missing asset is a hard failure here,
+        # naming the file to commit. ($CI already implies this; the flag
+        # states it.) See builder/vendor-assets.mjs.
+        #
+        # --check runs the link and site-integrity check over the HTML the
+        # build already holds in worker memory, instead of writing three
+        # trees out and reading ~270 MB of them back through
+        # scripts/check_links.mjs. Same findings -- that equivalence is
+        # gated by scripts/check_links_diff.mjs, run by hand when either
+        # implementation changes. Do NOT also add a check_links.mjs pass
+        # over _site/: it would check the same bytes a second time.
+        #
+        # --check-audit-index adds the index audit on top: a diff of the
+        # tree index the build derives from its own records against what
+        # landed on disk. It is the one direction the findings comparison
+        # cannot see -- a spurious entry makes the oracle answer "exists"
+        # for a path that 404s in production, and on a clean site nothing
+        # links to a path that does not exist, so nothing else would
+        # notice. CI lost its previous coverage of this when the FsOracle
+        # pass was removed.
+        #
+        # It covers all three trees: _site/ (links, fragments, duplicate
+        # ids, well-formedness, remote <img src>, sitemap, search index,
+        # canonical URLs), _site-offline/ (the same minus sitemap and
+        # search, plus the forbidden-prefix rule that catches live-site
+        # links the offline rewrite missed), and _site-pdf/book.html
+        # (informational). A failing check never aborts the build -- a
+        # broken link still produces a site worth inspecting -- so the
+        # step fails on the exit code: 1 for link failures, 2 for
+        # integrity failures, 3 for both.
+        run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index
+      # The build above is the only pass over the site's HTML. This step is
+      # NOT a second one: it runs the differential harness against a
+      # nine-file synthetic tree that carries one fault of every kind, so
+      # scripts/check_links.mjs -- still the tool for a tree the build did
+      # not produce, and the oracle the fused path is defined against --
+      # cannot rot unnoticed. ~0.3 s, no site files touched.
+      #
+      # The full script-vs-fused comparison over the real trees stays a
+      # manual gate (`check_links_diff.mjs --a script --b fused`): running
+      # it here would mean checking every page twice, which is exactly what
+      # folding the check into the build removed.
+      - name: Verify the standalone link checker (check_links_diff.mjs)
+        run: node scripts/check_links_diff.mjs --case fixture --a script --b index
+      # The step above compares two front ends over a hand-written tree.
+      # This one compares the script against the BUILD's own checker, over
+      # a three-page tree the build produces from test/fixtures/check-src.
+      # That is the pass the harness exists for and the one nothing
+      # exercised: `--b fused` skipped the synthetic `fixture` case every
+      # time, because the build cannot check a tree it did not write. A
+      # regression in builder/check.mjs that stopped REPORTING a category
+      # would have left every gate green.
+      #
+      # One extra three-page build, ~1 s. It is here and not in the deploy
+      # workflow because this is the PR gate: catching it before a merge is
+      # the point, and the deploy workflow has a site to ship.
+      - name: Verify the build's own link checker (check_links_diff.mjs)
+        run: node scripts/check_links_diff.mjs --case fixture-built --case fixture-built-offline --a script --b fused
+      # check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
+      # -26 % on a realistic page set -- see builder/PLAN-axe-perf.md), so the
+      # patch has to be verified before its results are trusted. The patch
+      # asserts its substitution targets and so fails loudly if an axe-core
+      # bump moves the code; this catches the other case, where the text still
+      # matches but the colour maths has changed. The fingerprint gate cannot
+      # see that -- it compares `incomplete` as a rule-id set.
+      #
+      # Cheap (one page, two bundles) and Chromium is already installed. The
+      # PR that bumps axe-core is exactly when it earns its place.
+      - name: Verify axe source patch (check_axe_patch_equiv.mjs)
+        run: node scripts/check_axe_patch_equiv.mjs
+      # The scan is eleven pages of ~1,160, so its page list decides what it can
+      # report at all. This fails when the site grows a markup construct no
+      # sample page carries -- the drift that let the previous six-page sample
+      # report a clean pass while 54 pages had violations in constructs it never
+      # saw. No browser, ~1 s.
+      - name: Verify a11y sample coverage (pick_a11y_sample.mjs)
+        run: node scripts/pick_a11y_sample.mjs --check
+      # Matches check.bat: the build's own link check gates this, and a
+      # link failure short-circuits before the (slower) browser scan runs.
+      # Scans _site-offline/, whose relative asset paths actually resolve --
+      # _site/ uses root-absolute URLs that render unstyled here, making
+      # every colour-contrast result meaningless.
+      - name: Accessibility check (check_a11y.mjs)
+        run: node scripts/check_a11y.mjs

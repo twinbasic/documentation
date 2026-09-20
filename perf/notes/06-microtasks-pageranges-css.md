@@ -442,6 +442,62 @@ Probe stays available as `node perf/probe-parallel.mjs
 [--shards N]` for re-evaluation if either constraint
 changes (CI machine grows, or book size forces it).
 
+### Tabs vs. processes (later session)
+
+The probe launches one full browser per shard. The
+obvious "optimisation" is to open N tabs on a single
+browser instead and save the per-browser process
+overhead. Measured, that is strictly worse.
+
+[perf/probe-tabs-vs-procs.mjs](../probe-tabs-vs-procs.mjs)
+runs the identical workload -- same book, same paged.js
+render, same N-way `pageRanges` split -- and varies only
+the topology. Two runs each at N=4, on the book as it
+now stands at 1982 pages:
+
+| topology | generate wall | per-shard spread | PrintCompositors |
+| --- | --- | --- | --- |
+| 1 browser, 4 tabs | 36.11 s / 34.87 s | 9.30 s / 9.25 s | 3 for 4 shards |
+| 4 browsers        | 27.62 s / 26.22 s | 1.40 s / 1.11 s | 4 for 4 shards |
+
+At N=2 the gap is wider: 45.54 s (tabs) vs 29.81 s
+(processes).
+
+The mechanism shows up in the compositor count. A single
+browser process pools the `printing.mojom.PrintCompositor`
+utility *below* the shard count -- three of them for four
+concurrent print jobs. Since the ~35 s SkPDF step is
+single-threaded per compositor (see *How the print path
+actually works* in [CHROMIUM.md](../CHROMIUM.md)), the
+surplus shard queues behind another rather than running
+alongside it. That queueing is exactly the 9.25 s spread
+between the first and last shard to finish; with one
+browser per shard every shard lands within ~1.1 s.
+
+Tabs also reclaim no memory, which was the other reason
+to want them. A tab gets its own renderer process
+regardless -- measured at +1 process per tab against +8
+for a whole browser -- so the ~1.8 GB of paged.js layout
+per shard is unavoidable under either topology. Tabs
+share only the browser, GPU, network and storage
+processes, roughly 100 MB per shard, and pay 8-10 s of
+generate wall clock for it.
+
+So the per-shard browser in `probe-parallel.mjs` is
+load-bearing, not incidental.
+
+The same session found the probe's launch args had
+drifted from production despite a comment claiming they
+matched: `--disable-gpu` and `--disable-software-rasterizer`
+were missing. That matters more here than the ~1 s of
+generate wall clock it costs at N=4 (25.19 s vs 26.22 s),
+because the pair is worth ~100 MB of GPU process plus
+~120 MB of renderer *per shard* -- and per-shard memory
+is the stated blocker on shipping sharding at all. The
+probe was overstating the cost of the thing it exists to
+evaluate. Fixed; the numbers in the N=2 table above and
+in the *Probe results* section predate the fix.
+
 ## CSS cost attribution
 
 Render is at ~10 s on a 1651-page book, down from ~104 s

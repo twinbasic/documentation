@@ -6,7 +6,7 @@ permalink: /FAQ
 
 # Frequently Asked Questions
 
-### [General](#general) - [Installation](#install-section) - [Using twinBASIC](#using-twinbasic)
+**[General](#general)** - **[Installation](#install-section)** - **[Using twinBASIC](#using-twinbasic)**
 
 ## General
 
@@ -294,13 +294,13 @@ You can create additional folders here, using their standard names. For example 
 
 If you're importing a project, the resources in a linked .res file will be imported automatically.
 
-#### Strings
+### Strings
 
 String table resources are currently treated specially; they're edited in the IDE as JSON. If you import from VBP with a .res, string resources will be automatically converted. If you right click the 'Resources' folder, and go to the 'Add' submenu, at the bottom, you'll find "Add resource: String table" that adds one populated with example strings:
 
 ![image](Images/97cc8655-7a8b-47f3-b52c-eb1ddfce662f.png)
 
-#### Group names
+### Group names
 
 If you create a new folder for a standard resource type, twinBASIC currently recognizes the following names, which you should use to create a folder under Resources:
 

@@ -107,8 +107,11 @@
       .nav-list-item {
         position: relative;
 
+        // Child items are de-emphasised by weight, not by a dimmer
+        // colour -- $nav-child-link-color clears AAA in both themes.
         .nav-list-link {
           color: $nav-child-link-color;
+          font-weight: 350;
         }
 
         .nav-list-expander {
@@ -226,7 +229,13 @@
     margin-right: $sp-2;
     margin-left: $sp-2;
     color: $grey-dk-000;
+    // The slash is decorative: the <nav aria-label="Breadcrumb"><ol> already
+    // conveys order, so a spoken "slash" between every crumb is redundant.
+    // The empty CSS alt text hides it from assistive tech while keeping it
+    // visible. First declaration is the fallback for browsers without the
+    // `content` alt-text syntax (Safari < 17.4); they show "/" as before.
     content: "/";
+    content: "/" / "";
   }
 
   &:last-child {

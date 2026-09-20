@@ -365,7 +365,9 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
   // (see render.mjs's table_open / table_close rules), so undo
   // the wrap here so the per-chapter body matches Jekyll's pre-wrap
   // shape.
-  result = result.replaceAll(`<div class="table-wrapper"><table>`, `<table>`);
+  // Attribute-tolerant: render.mjs adds `tabindex="0"` here for WCAG 2.1.1,
+  // and an exact-string match silently stopped stripping the moment it did.
+  result = result.replace(/<div class="table-wrapper"[^>]*><table>/g, `<table>`);
   result = result.replaceAll(`</table></div>`, `</table>`);
 
   // Step 3: whitespace span wrapping (longest first).
@@ -414,8 +416,19 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
 //   extraHeadingShift      truthy. Apply an additional +1 shift (1.9
 //                          chaptered-part extra).
 function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
+  // An empty body is a legitimate chapter -- a landing page that carries
+  // only a title. An *absent* one means the page's render result never
+  // reached writePdf, and dropping it would remove a chapter from the
+  // book with nothing to show for it. The two look identical to a
+  // falsy test, so separate them.
+  if (typeof chapter.renderedContent !== "string") {
+    throw new Error(
+      `book: chapter ${chapter.permalink ?? chapter.destPath ?? "(unknown)"} has no ` +
+      `renderedContent; refusing to drop it from the book silently`,
+    );
+  }
   let body = chapter.renderedContent;
-  if (!body || !body.trim()) return;
+  if (!body.trim()) return;
 
   // book-chapter-body.html line 59-64: if content starts with `<`, use
   // verbatim; otherwise run through markdownify. tbdocs's Phase 3 has

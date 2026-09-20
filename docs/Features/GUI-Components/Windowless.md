@@ -22,7 +22,7 @@ redirect_from:
 
 ---
 
-### Benefits of Windowless Controls
+## Benefits of Windowless Controls
 
 - **Performance Boost**: No hWnd means less GDI overhead---great for forms with many static elements.<sup>3</sup> 
 - **Visual Flexibility**: Enables transparent or shaped UI elements (e.g., rounded buttons, overlays).  
@@ -30,7 +30,7 @@ redirect_from:
 
 ---
 
-### Drawbacks
+## Drawbacks
 
 - **Complex Input Handling**: You must manually forward focus, mouse, and keyboard events from the container.  
 - **Z-Order Limitations**: Cannot appear above windowed controls---problematic for overlays or tooltips.<sup>4</sup>  
@@ -84,16 +84,16 @@ redirect_from:
 
 ---
 
-### Printing Mixed-Control Forms in VBx/twinBASIC
+## Printing Mixed-Control Forms in VBx/twinBASIC
 
-#### What Works Out of the Box
+### What Works Out of the Box
 
 * **Windowed controls** (e.g., `TextBox`, `CommandButton`) can often be captured using `Form.DrawToDC` or `PrintForm` in VB6, or by rendering the form’s `hDC` in twinBASIC.
 * **Windowless controls**, however, don’t have their own `hWnd` or device context, so they won’t appear unless you explicitly draw them.
 
 ---
 
-#### Recommended Strategy
+### Recommended Strategy
 
 1. **Render the Entire Form to a Bitmap**
 
@@ -112,7 +112,7 @@ redirect_from:
 
 ---
 
-#### Tips for Accuracy
+### Tips for Accuracy
 
 * **Z-Order Matters**: Since windowless controls render behind windowed ones, draw them first.
 * **DPI Awareness**: Match the printer’s DPI to your form’s layout scale to avoid blurry output.
@@ -120,7 +120,7 @@ redirect_from:
 
 ---
 
-#### Code Snippet for twinBASIC
+### Code Snippet for twinBASIC
 
 ```tb
 ' Example: Printing a Mixed-Control Form in twinBASIC

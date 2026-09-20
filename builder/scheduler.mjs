@@ -124,8 +124,19 @@ export class Scheduler {
     // Store result.
     this.results.set(name, output);
 
-    // State mutation.
-    def.submit(output, this.state, this);
+    // State mutation. Inside the same try as execute(), because a
+    // submit() is where a merge assertion lives -- render:i.submit is
+    // what refuses to lose a page from the search index -- and an
+    // assertion that escapes as an uncaught exception skips _abort
+    // entirely: the pool is never destroyed, and under --serve the dev
+    // server dies with a raw Node stack instead of "task render:3
+    // failed".
+    try {
+      def.submit(output, this.state, this);
+    } catch (err) {
+      this._abort(name, err);
+      return;
+    }
     const t3 = Date.now();
 
     // Timing.
@@ -174,8 +185,17 @@ export class Scheduler {
     // Store result.
     this.results.set(name, output);
 
-    // State mutation.
-    if (def) def.submit(output, this.state, this);
+    // State mutation. Wrapped for the same reason as the main-task
+    // path: this runs from worker-pool.mjs's message listener, where an
+    // uncaught throw does not reach _abort at all.
+    if (def) {
+      try {
+        def.submit(output, this.state, this);
+      } catch (err) {
+        this._abort(name, err);
+        return;
+      }
+    }
 
     this._remaining--;
     if (this._remaining === 0) {
