@@ -252,3 +252,62 @@ One measurement from building the harness is worth keeping: inverting the corpus
 a denylist of source extensions to an allowlist of prose extensions immediately surfaced
 `.theme`, `.csv`, `.token`, `.jsonc`, `.twinpack` and `.keep` --- six file types nobody would
 have thought to name in advance, and any of which would have silently become readable.
+
+## Open at handoff
+
+Everything above was fixed unless listed here. This section is the queue, not a finding list.
+
+### Needs someone with the twinBASIC IDE
+
+- **`ConstantFoldableNumericsOnly`** carries the same unqualified *Applicable to: **Function***
+  that `ConstantFoldable` did. The sibling turned out to be module-scoped only. Same check.
+- **The other 52 `Applicable to:` lines in `Reference/Attributes.md`** have never been verified
+  against the compiler. Three were relied on in one day's work; one was wrong. A checklist of
+  all 52 would turn this into a finite task.
+- **Two IDE defects visible in committed screenshots**, confirmed at 3x: the Align submenu
+  renders `Bottom}` with a stray brace, and Align and Make Same Size both render `ARROWLUP`.
+  Documentation bugs these are not.
+
+### Prose that contradicts its own screenshot
+
+Found by opening every image. The alt text now describes the picture, so on these pages the
+alt and the body disagree; one of the two is stale in each case.
+
+| page | prose says | picture shows |
+|---|---|---|
+| `IDE/Call Stack.md` | the active chain of procedure calls | two threads, no call frames |
+| `IDE/Splash Screen.md` | version, build date, community links | a VIP Gold Supporters sponsor board |
+| `IDE/Memory.md` | addresses and byte values | an empty pane |
+| `IDE/Properties.md` | a name/value grid | an empty pane |
+| `IDE/Variables.md` | name/type/value columns | an empty pane |
+| `IDE/Webpage.md` | documentation or release notes | google.com at 70% zoom |
+| `IDE/New Project.md` | a sample list without HelloWorld | `Sample 1. HelloWorld` present; `GetIPAddresses` plural |
+| `IDE/Status Bar.md` | three regions | a fourth, `tbProject_Close`; the `## Status` heading is empty |
+
+Also: `IDE/Menu/Format.md`'s two images are the same menu greyed and enabled, presented as a
+pair with nothing saying which is which; `IDE/Menu/Edit.md`'s list omits five commands the
+screenshot shows; `IDE/Links.png` is the old Twitter bird above an `x.com` URL.
+
+### Documented shortcuts that disagree with their screenshots
+
+`Edit.md` Find In Project `CTRL+SHIFT+Y` against `CTRL+SHIFT+F`; `File.md` Export Project with
+no shortcut against `CTRL+E`; `Project.md` References with no shortcut against `CTRL+T`; and
+`Edit.md`'s "Select All Matchtes" against "Select All Matches".
+
+### Smaller documentation items
+
+- The book's page count is stated four ways: 1,638 (`Tools.md`), 1,651 (`Fixes-PDFLib.md`,
+  `Fixes-PagedJS.md`, five occurrences), 1,991 (`WIP.md`).
+- `Authoring.md`'s listing checklist covers core statements and excuses module members, but
+  says nothing for a class, control or enumeration inside a package, nor for a whole new
+  package, which needs its own `###` section in `Permanent-Links.md`.
+- `_site-pdf/` freshness is unchecked: `book.bat` tests only that `book.html` exists, and
+  `check_tree_fresh.mjs` defaults to `_site-offline` with `check.bat` passing no `--tree`.
+  Rendering after a content edit without rebuilding silently renders the previous book.
+- `PDF-Generation.md`'s `![PDF render pipeline]` is the fourth caption-parroting diagram alt;
+  the other three were rewritten.
+- `Attributes.md` pins 55 heading ids while `Permanent-Links.md` lists 56 anchors. Three
+  published URLs rest on the default slug and break if a type is appended to the heading;
+  two pinned ids are listed nowhere.
+- The `Description` entry's `Public Function CurrentProjectName() As String` wrapper is an
+  agent's reconstruction, not from the maintainer's quoted source.
