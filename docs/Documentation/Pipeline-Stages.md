@@ -635,7 +635,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | Symbol | Signature | Description |
 |---|---|---|
 | `renderPhase` | `(pages, site, staticFiles?) → Promise<void>` | Renders each page's `rawContent` to `renderedContent` via the supplied site's markdown-it. Skips `layout: book-combined`. |
-| `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles, svgContents? }) → MarkdownIt` | Builds the configured markdown-it instance: three npm plugins and fourteen in-tree ones, in the fixed order tabulated below. `svgContents` is a `Map<srcRel, string>` of pre-read SVG file contents; when present, the `svgInlinePlugin` replaces `<img>` tags for matching `.svg` sources with inline SVG wrappers. See [Extending](Extending#adding-a-markdown-it-plugin) for how to add one. |
+| `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles, svgContents? }) → MarkdownIt` | Builds the configured markdown-it instance: three npm plugins and fourteen in-tree ones in the fixed order tabulated below, plus eight renderer-rule overrides assigned directly. `svgContents` is a `Map<srcRel, string>` of pre-read SVG file contents; when present, the `svgInlinePlugin` replaces `<img>` tags for matching `.svg` sources with inline SVG wrappers. See [Extending](Extending#adding-a-markdown-it-plugin) for how to add one. |
 | `initHighlighter` | (re-export from `highlight.mjs`) | `() → Promise<object>`. Initialises Shiki with the bundled twinBASIC grammar. |
 | `buildLinkTables` | `(pages) → { byPath, byUrl, byRedirect }` | Map lookups keyed by `srcRel`, `permalink`, and `redirect_from` entries. |
 | `serializeLinkTables` | `(lt) → { byPath, byUrl, byRedirect }` | Serializes the Maps to `[key, permalink]` pair arrays for structured-clone transfer to workers. |
@@ -648,6 +648,8 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 #### The plugin chain
 
 `createMarkdownIt` applies seventeen plugins in a fixed order: three from npm, and fourteen defined in `render.mjs` itself. Most of the in-tree ones exist to close a behavioural gap between markdown-it and kramdown, which rendered this content under Jekyll --- the site's ~870 pages were authored against kramdown's dialect, so matching it is a compatibility requirement rather than a preference.
+
+The table below is the plugin chain only. The renderer rules `createMarkdownIt` replaces directly --- among them the one that wraps every table --- are listed under [Renderer overrides](#renderer-overrides).
 
 | # | Plugin | Source | What it does |
 |---:|---|---|---|
@@ -674,6 +676,27 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 For **core rules**, only `md.core.ruler.push()` runs at the position its `md.use()` call implies. `.before(name)` and `.after(name)` insert at a named rule regardless of when the plugin was registered --- which is how `headingLevelNormalizePlugin` runs ahead of `headerIdPlugin` despite being registered after it, and how the typographer repairs (12, 13) run `after("replacements")` and `after("smartquotes")` rather than at position 12 and 13.
 
 For **renderer rules**, order inverts. Both image plugins capture the current `md.renderer.rules.image` as `orig` and install a wrapper that delegates to it, so the chain runs **outermost first**: `remoteImagePlugin` (17, registered last) rewrites the `src` and hands on to `svgInlinePlugin` (15), which hands on to markdown-it's own image renderer. A third image plugin registered after these would run before both. `videoLinkPlugin` (16) is not part of that chain --- it transforms a marked *link*, from a core rule.
+
+#### Renderer overrides
+
+`createMarkdownIt` also replaces eight of markdown-it's own renderer rules, assigning them straight onto `md.renderer.rules` rather than registering a plugin. They take no part in the registration order above --- each one replaces the default output for a single token type. Most exist to match kramdown, for the same compatibility reason as the in-tree plugins. Some also emit markup for accessibility that nothing in the source asks for: the `tabindex` that makes a scrollable wrapper reachable from the keyboard, and `scope="col"` on every table header cell.
+
+| Rule | What it emits instead of the default |
+|---|---|
+| `fence` | The highlight callback's wrapper HTML verbatim. That wrapper opens with a `<div>`, so markdown-it's own fence rule would enclose it in a second `<pre><code>`. A fence nested in a list item, admonition, or other block container also gets a newline spliced between the two closing `</div>` tags, where kramdown's indented-block pretty-printing put one. |
+| `code_block` | The same Rouge wrapper shape for an indented (4-space) block, which has no language info --- `<div class="language-plaintext highlighter-rouge"><div class="highlight" tabindex="0">`, against markdown-it's bare `<pre><code>`. |
+| `code_inline` | An inline `<code>` tagged with the Rouge wrapper class, so one set of CSS rules styles block and inline code alike. Escapes `&`, `<` and `>` only, matching kramdown's code-span escape, which leaves embedded HTML attribute syntax readable. |
+| `table_open` / `table_close` | Every table, wrapped in `<div class="table-wrapper" tabindex="0">`. Detailed below. |
+| `th_open` | `scope="col"` on every header cell, and a space after the colon in `style="text-align: left"` --- kramdown emits the spaced form, markdown-it the compact one. |
+| `td_open` | The same colon spacing, without the `scope`. |
+| `ordered_list_open` | An `<ol>` with no `start` attribute, even where the source numbering does not begin at 1. kramdown ignores source numbering entirely; markdown-it preserves it. |
+
+**The table wrapper is automatic.** An author writes a plain markdown table and gets the wrapper, on every table on the site, without marking anything up. Nothing needs to add it, and a plugin that wraps tables produces a second wrapper around the shipped one, whose outer `<div>` has no `tabindex` --- which is the part that matters. Two separate things depend on the rule:
+
+- just-the-docs wraps every table the same way, through its `_includes/table_wrappers.html` Liquid pass. Mirroring it here keeps the vendored CSS rules keyed on `.table-wrapper > table` working.
+- `tabindex="0"` is the `scrollable-region-focusable` fix. The wrapper is `overflow-x: auto` (just-the-docs `tables.scss:11`), and a scroll container that cannot take focus cannot be scrolled without a pointer. It is unconditional, for the same reason `highlight.mjs` sets the attribute on `div.highlight`: whether a given table overflows depends on the reader's viewport, so there is no render-time answer. `custom.scss` gives the focus a visible ring.
+
+`table_open` calls the default `renderToken` and rewrites its output rather than returning a hand-built string. That preserves markdown-it's per-token block-prefix whitespace handling, which is what produces the leading newline when a table is the first child of a list item, a `<dd>`, or a blockquote.
 
 ### `highlight.mjs`
 
