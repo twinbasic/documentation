@@ -69,7 +69,7 @@ A failing check does not abort the build --- a broken link still produces a site
 
     check.bat
 
-[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. Three cheaper gates run first and stop the run if they fail: a freshness check that refuses a stale tree, the axe source-patch verification, and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses.
+[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. Four cheaper gates run first and stop the run if they fail: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), the axe source-patch verification, and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses.
 
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 
@@ -86,12 +86,21 @@ Diagrams live as `.dot` source files and are referenced from markdown as `.svg`.
 
 At render time, any markdown image reference to a build-local `.svg` is replaced with the SVG content inlined directly in the HTML. Each inlined SVG gets a click-to-zoom overlay and four control links (Download SVG, Copy SVG, Download PNG, Copy PNG). The controls are hidden in print output. See the [SVG inlining](Builder#svg-inlining) section of the Builder page for the implementation details.
 
-The renderer calls `@hpcc-js/wasm-graphviz` directly: one WASM module load (~50 ms) covers the whole batch, then each diagram is a synchronous `gv.dot(src)` call. No headless browser, no in-tree patches, no Chromium dependency for diagrams. Two failure modes are handled distinctly:
+The renderer calls `@hpcc-js/wasm-graphviz` directly: one WASM module load (~50 ms) covers the whole batch, then each diagram is a synchronous `gv.dot(src)` call. No headless browser and no Chromium dependency for diagrams. Two failure modes are handled distinctly:
 
 - **Setup failures** (`@hpcc-js/wasm-graphviz` not installed, WASM load fails) emit a one-line warning, retain the existing on-disk SVGs, and let the build exit 0 --- a fresh checkout without `npm install` still builds against the committed SVGs.
 - **Content failures** (broken DOT syntax, render throws) emit the error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and flip `process.exitCode = 1` so CI catches the bad diagram.
 
 In serve mode the watcher ignores any `.svg` that has a `.dot` sibling. The `.dot` is the source of truth; the `.svg` is the build artifact the renderer emits back under `srcRoot`. Without the filter, each `.dot` edit would fire two rebuilds (one on the edit, one on the SVG write) and the browser would reload twice for one user change.
+
+### Diagram fonts, and why `check.bat` measures them
+
+One thing does happen to Graphviz before it lays anything out. The WASM build carries no font machinery at all --- only built-in width tables for the core PostScript families, and it falls back to Times for anything it does not recognise, which means `fontname="Inter"` measured exactly like a font that does not exist. Times is far narrower than Inter through the lowercase, so every box came out about 11% too small and 27 labels across three diagrams were painted outside their boxes. [`builder/dot-metrics.mjs`](Builder#diagram-geometry) installs Inter's real advance widths into the module's memory first, which closes it.
+
+Two consequences for anyone editing a diagram:
+
+- **Never hand-edit a `.svg`, and never set `font-family` anywhere but the `.dot`.** The SVG is a build artifact the next build overwrites, and Graphviz sizes every box to the text *it* measured --- a face the layout never saw leaves labels hanging outside their boxes.
+- **`check.bat` runs [`scripts/check_dot_fit.mjs`](Tools#check-dot-fit)**, which re-renders every committed diagram with the real webfont and fails if a label sits outside the box Graphviz drew for it. Nothing in the build compares the two, and axe does not evaluate SVG `<text>` geometry, so without this gate a mismatch ships on a green build.
 
 ## Deploying to docs.twinbasic.com
 
