@@ -515,6 +515,12 @@ markdown-it's typographer (enabled in `builder/render.mjs`) converts the ASCII s
 | `--`   | en-dash `–`  | bullet-list separator (rule 7), ranges |
 | `---`  | em-dash `—`  | parenthetical asides (rule 3), breaks in thought |
 
+**The one place this does not apply is alt text.** markdown-it's `replacements` rule walks
+inline tokens' children but does not descend into an image token's own children, so `--` and
+`---` inside `![...]` survive literally into the `alt` string and a screen reader announces
+two or three hyphens. Punctuate alt text with commas and colons instead. Verified by
+rendering through the repository's own markdown-it, not inferred.
+
 The source uses the ASCII forms; the rendered HTML uses the typographic characters. Literal `–` or `—` in `docs/` markdown source is forbidden — see the Don'ts at the end of this file. `scripts/convert_em_dash_separators.py` is the canonical normaliser if any literals slip back in.
 
 WIP.md itself (and other files outside `docs/`) is not rendered through tbdocs and is exempt — literal em-dashes here render directly in the GitHub viewer, which is fine.
