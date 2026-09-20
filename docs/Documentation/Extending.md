@@ -298,28 +298,32 @@ The same factory is called twice on main (once for the shared site-level SEO ins
 
 ### 1. Write the plugin
 
-A markdown-it plugin is a function that receives the `md` instance and mutates it. Two common shapes:
+A markdown-it plugin is a function that receives the `md` instance and mutates it. Two common shapes follow. The first is presented as it ships rather than as something to write: the pattern reads more clearly from a rule that is live in the tree and can be inspected on any page, and this particular rule must not be written a second time.
 
-**Renderer override** --- wrap every `<table>` in a scrollable container:
+**Renderer override** --- replace the function markdown-it uses to emit one token type. The site's live example is the table wrapper. `createMarkdownIt` applies it inline rather than through `md.use()`, which is the right shape for a pair of rules that no other plugin has to be ordered against:
 
 ```js
-// builder/table-wrap-plugin.mjs
+// builder/render.mjs, inside createMarkdownIt
 
-export function tableWrapPlugin(md) {
-  const originalOpen = md.renderer.rules.table_open
-    ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
-  const originalClose = md.renderer.rules.table_close
-    ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
+md.renderer.rules.table_open = (tokens, idx, opts, _env, slf) =>
+  slf
+    .renderToken(tokens, idx, opts)
+    .replace(/<table>/, `<div class="table-wrapper" tabindex="0"><table>`);
 
-  md.renderer.rules.table_open = (tokens, idx, options, env, self) =>
-    `<div class="table-wrapper">${originalOpen(tokens, idx, options, env, self)}`;
-
-  md.renderer.rules.table_close = (tokens, idx, options, env, self) =>
-    `${originalClose(tokens, idx, options, env, self)}</div>`;
-}
+md.renderer.rules.table_close = (tokens, idx, opts, _env, slf) =>
+  `</table></div>` + slf.renderToken(tokens, idx, opts).replace(/<\/table>/, "");
 ```
 
-**Block rule** --- a new fenced syntax that emits a `<div class="callout">`:
+Three decisions sit in those six lines, and a rewrite drops all three:
+
+- **The default renderer runs first and its output is rewritten,** rather than the tag being built by hand. `renderToken` is what applies markdown-it's per-token block-prefix whitespace, so calling it keeps the leading newline the parser would have emitted when the table opens a list item, a definition, or a blockquote child. A wrapper concatenated around a literal `<table>` string loses it.
+- **`tabindex="0"` is an accessibility fix.** just-the-docs's `tables.scss` gives `.table-wrapper` `overflow-x: auto`, and a scroll container that cannot take focus cannot be scrolled without a pointer; axe's `scrollable-region-focusable` rule keys on exactly that, and it failed across 44 pages before the attribute was added. It is unconditional for the same reason `highlight.mjs` marks every `div.highlight`: whether a table overflows depends on the viewport, so there is no answer at render time. `custom/custom.scss` gives the resulting focus a visible ring.
+- **The wrapper exists because tbdocs renders no Liquid.** just-the-docs emitted it from an `_includes/table_wrappers.html` pass; the theme's vendored `_sass` still keys its table rules on `.table-wrapper`, so the div has to come from the renderer instead.
+
+> [!IMPORTANT]
+> **Every table the site publishes is already wrapped, and a plugin must not wrap them again.** A second `table_open` override does not replace the shipped rule --- it composes with it, because the "original" such a plugin captures *is* the rule above. Each table then comes out inside two `.table-wrapper` divs, which the stylesheet makes two nested scroll containers, the outer one with no `tabindex` on it. Write the markdown; the wrapper and its focusability are automatic.
+
+**Block rule** --- a new fenced syntax that emits a `<div class="callout">`. This one is genuinely unbuilt: nothing in the tree registers a `md.block.ruler` rule today, and the GFM admonitions the pages use are a pre-render text rewrite rather than a block rule.
 
 ```js
 // builder/callout-plugin.mjs
@@ -332,41 +336,57 @@ export function calloutPlugin(md) {
     if (silent) return true;
 
     const label = state.src.slice(pos + 3, max).trim();
-    state.push("callout_open", "div", 1).attrSet("class", `callout callout-${label}`);
-    state.line = startLine + 1;
 
-    while (state.line < endLine) {
-      const line = state.src.slice(
-        state.bMarks[state.line] + state.tShift[state.line],
-        state.eMarks[state.line],
-      );
-      if (line === ":::") { state.line++; break; }
-      state.line++;
+    // Locate the closing fence before emitting anything. An unterminated
+    // callout runs to the end of the enclosing block, as an unclosed ``` does.
+    let closeLine = startLine + 1;
+    for (; closeLine < endLine; closeLine++) {
+      const p = state.bMarks[closeLine] + state.tShift[closeLine];
+      if (state.src.slice(p, state.eMarks[closeLine]).trim() === ":::") break;
     }
+
+    state.push("callout_open", "div", 1).attrSet("class", `callout callout-${label}`);
+
+    // Tokenize the body. Advancing state.line past those lines instead
+    // consumes them: the div renders empty and the content is gone, with
+    // nothing to report because no rule failed.
+    const parentType = state.parentType;
+    const lineMax = state.lineMax;
+    state.parentType = "callout";
+    state.lineMax = closeLine;
+    state.md.block.tokenize(state, startLine + 1, closeLine);
+    state.parentType = parentType;
+    state.lineMax = lineMax;
+
     state.push("callout_close", "div", -1);
+    state.line = closeLine + 1;
     return true;
-  });
+  }, { alt: ["paragraph", "blockquote", "list"] });
 }
 ```
+
+The `alt` list names the parse modes the rule is also consulted in. Without `"paragraph"` in it, a `:::` line following a line of prose is absorbed into that paragraph as literal text instead of opening a callout.
 
 For the full rule API see the [markdown-it documentation](https://markdown-it.github.io/markdown-it/) and the existing in-tree plugins in `render.mjs` as worked examples.
 
 ### 2. Register in `createMarkdownIt`
 
+A plugin written as its own module is registered in two steps. A renderer override written inline, as the table rules above are, needs neither --- it is already in the factory body.
+
 Add an import at the top of `render.mjs`:
 
 ```js
-import { tableWrapPlugin } from "./table-wrap-plugin.mjs";
+import { calloutPlugin } from "./callout-plugin.mjs";
 ```
 
-Find `createMarkdownIt` and add `md.use(tableWrapPlugin)` in the plugin chain. **Order matters** --- place the new plugin after any plugin it depends on and before any plugin that could interfere with its token types. Note that registration order only decides execution order for a rule added with `md.core.ruler.push()`; `.before(name)` and `.after(name)` insert at a named position regardless of when the plugin was registered, which is how `headingLevelNormalizePlugin` runs ahead of `headerIdPlugin` while being registered after it.
+Find `createMarkdownIt` and add `md.use(calloutPlugin)` in the plugin chain. **Order matters** --- place the new plugin after any plugin it depends on and before any plugin that could interfere with its token types. Note that registration order only decides execution order for a rule added with `md.core.ruler.push()`; `.before(name)` and `.after(name)` insert at a named position regardless of when the plugin was registered, which is how `headingLevelNormalizePlugin` runs ahead of `headerIdPlugin` while being registered after it.
 
 ```js
 export function createMarkdownIt(ctx) {
   const md = new MarkdownIt({ /* ... */ });
   // ... existing npm plugins ...
   // ... existing in-tree plugins ...
-  md.use(tableWrapPlugin);
+  md.use(calloutPlugin);
   return md;
 }
 ```
