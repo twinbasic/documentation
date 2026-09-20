@@ -362,6 +362,7 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 | `in flight` / `in-flight` | pending, in progress |
 | `in one shot` | in a single call |
 | `in order to` | to |
+| `keep honest` / `keeps it honest` | verifies, guards against silent failure |
 | `kick off` / `kicks off` | start, begin |
 | `land` (figurative — "where the call lands") | appears, arrives, ends up at |
 | `leverage` / `leveraging` | use, take advantage of |
@@ -994,7 +995,7 @@ A failing check never aborts the build: a broken link still produces a site you 
 
 The remote-asset rule fails the run on any `<img src>` resolving off-box (`http://`, `https://`, or protocol-relative `//host`). In the build it is unconditional -- `checkRemoteAssets: true` on both trees in `builder/check.mjs`'s `TREES` -- and is *not* reachable by a flag: `tbdocs` rejects `--check-remote-assets` as an unknown argument. That name belongs to the standalone `scripts/check_links.mjs`, where it is opt-in. The PDF pass over `book.html` is informational, so enforcement comes from the `_site/` pass -- every page in the book is also in `_site/`, making it a superset. The check is deliberately scoped to `<img>` only; `<iframe>` is untouched.
 
-### The two link checkers, and the gate that keeps them honest
+### The two link checkers, and the gate that catches divergence
 
 [scripts/check_links.mjs](scripts/check_links.mjs) is still the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows still run it, though not directly: they invoke `check_links_diff.mjs`, which spawns the script as its `script` side. It is exercised only against the fixtures, never against the real trees. The pure core both front ends share lives in [builder/link-check.mjs](builder/link-check.mjs); the build-side plumbing is [builder/check.mjs](builder/check.mjs) and [builder/check-tree.mjs](builder/check-tree.mjs).
 
