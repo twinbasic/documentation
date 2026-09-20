@@ -196,7 +196,7 @@ What you must not do is mix the two and leave it there.
 ## Formatting conventions
 
 - **Bold** (`**...**`) for keywords and literal tokens the reader would type verbatim; *italic* (`*...*`) for placeholders and argument names.
-- twinBASIC code goes in a ` ```tb ` fenced block --- Shiki highlights it with the vendored twinBASIC grammar. `yaml` and `json` are the other highlighted fence languages; anything else falls back to unhighlighted plain text.
+- twinBASIC code goes in a ` ```tb ` fenced block --- Shiki highlights it with the vendored twinBASIC grammar, and `twinbasic`, `vb` and `vba` select the same grammar. The other highlighted fence languages are `js`, `yaml`, `json`, `c`, `html`, `xml`, `sql` and `batch`. Anything else renders as unhighlighted plain text: the build does not fail, but it prints `highlight: unknown fence language "<name>"` naming the language and the list to add it to, so check the build output rather than the page.
 - Parameter lists use the definition-list pattern (a term line, then a `: definition` line beneath it), not a markdown table.
 - For dashes, write `--` in the source (it renders as an en-dash) or `---` (an em-dash). Never paste a literal `–` or `—`. Nothing in the build rejects one: the typographer converts the ASCII forms and passes a literal character straight through, so a stray dash ships silently and only the source becomes inconsistent. `scripts/convert_em_dash_separators.py` is the normaliser, and it is run by hand.
 
