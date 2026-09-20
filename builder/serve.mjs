@@ -173,7 +173,23 @@ export async function runServe(opts) {
   // Pool persists across rebuilds: skips ~100--200 ms of worker cold boot
   // per rebuild and lets warmInit's survives_reset short-circuit on builds
   // after the first.
-  const pool = createWorkerPool();
+  let pool = createWorkerPool();
+
+  // A stalled build means a worker is still inside a handler that never
+  // returned. The pool outlives a rebuild here, so that worker stays
+  // wedged: it will not pick up the next build's sendInit, and the
+  // per-worker tasks (warmInit, renderEnvInit) wait on every lane, so
+  // the next rebuild would stall too -- for a reason that has nothing
+  // to do with whatever the author just edited. Replace the pool
+  // wholesale; it costs one cold boot and is certainly correct,
+  // whereas replacing only the wedged lane means identifying it, and
+  // the SAB records the lane a task completed on, not the one that
+  // claimed it.
+  async function replacePool(oldPool) {
+    console.error("serve: a worker is wedged; restarting the worker pool.");
+    pool = createWorkerPool();
+    try { await oldPool.destroy(); } catch {}
+  }
 
   // Initial build
   try {
@@ -225,6 +241,7 @@ export async function runServe(opts) {
       notifyReload();
     } catch (err) {
       console.error("rebuild failed:", describeBuildError(err));
+      if (err?.stalled) await replacePool(pool);
     } finally {
       running = false;
       if (pending) { pending = false; schedule(); }

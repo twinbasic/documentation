@@ -91,6 +91,12 @@ function parseArgs(argv) {
     checkFindings: null,
     serve: false,
     port: 4000,
+    // Wall-clock with no task completing before the build gives up and
+    // reports what was outstanding. Generous on purpose: the longest
+    // single task here is worker cold boot at ~1.6 s, and a loaded CI
+    // box is allowed to be an order of magnitude slower than that
+    // without being called stalled. 0 disables the watchdog.
+    stallTimeoutMs: 120000,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -145,6 +151,13 @@ function parseArgs(argv) {
       args.port = Number(argv[++i]);
     } else if (a.startsWith("--port=")) {
       args.port = Number(a.slice("--port=".length));
+    } else if (a === "--stall-timeout" || a.startsWith("--stall-timeout=")) {
+      const raw = a === "--stall-timeout" ? argv[++i] : a.slice("--stall-timeout=".length);
+      const secs = Number(raw);
+      if (!Number.isFinite(secs) || secs < 0) {
+        throw new Error(`--stall-timeout expects seconds (0 disables), got: ${raw}`);
+      }
+      args.stallTimeoutMs = secs * 1000;
     } else {
       throw new Error(`Unknown argument: ${a}`);
     }
@@ -793,6 +806,11 @@ const TASKS = {
           expected: [],
           consolidate: true,
           ganttSection: "Render",
+          // Only consulted by the stall watchdog. "render:33 never
+          // returned" is not actionable on its own; the six source
+          // paths in that chunk are, because the fault is nearly always
+          // one page's content.
+          describe: () => out.chunks[i].map(p => p.srcRel ?? p.srcPath),
           submit(renderOut, state) {
             for (const r of renderOut.pages) {
               const p = state.pageByDest.get(r.destPath);
@@ -820,6 +838,7 @@ const TASKS = {
           expected: [`render:${i}`],
           consolidate: true,
           ganttSection: "Write",
+          describe: () => out.chunks[i].map(p => p.srcRel ?? p.srcPath),
           submit(flushOut, state) {
             // --check: the per-chunk reduction rides back on flush's
             // result. Sized by findings, not by the 793k occurrences --
@@ -1327,7 +1346,11 @@ export async function runBuild(opts) {
   verifySchedulerSAB(TASKS, views, idMapping);
 
   const pool = externalPool ?? new WorkerPool(workerCount, CPU_WORKER_URL);
-  const scheduler = new Scheduler({ pool, tasks: TASKS, views, idMapping, ganttSections: GANTT_SECTION });
+  const scheduler = new Scheduler({
+    pool, tasks: TASKS, views, idMapping,
+    ganttSections: GANTT_SECTION,
+    stallMs: opts.stallTimeoutMs ?? 120000,
+  });
 
   pool.onWorkerDone     = (msg) => scheduler._onWorkerDone(msg);
   pool.onWorkerError    = (msg) => scheduler._onWorkerError(msg);
@@ -1465,7 +1488,11 @@ async function main() {
 const isEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isEntry) {
   main().catch((err) => {
-    console.error(err);
+    // A stall report is the diagnostic; the Error wrapping it carries a
+    // stack pointing at the watchdog's own setInterval, which tells the
+    // reader nothing and buries the part that does.
+    if (err?.stalled && err.cause?.message) console.error(err.cause.message);
+    else console.error(err);
     process.exit(1);
   });
 }
