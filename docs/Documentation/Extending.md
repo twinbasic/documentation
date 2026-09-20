@@ -463,6 +463,65 @@ Then extend `dispatch.submit`'s `render:i` callback to merge the new field, exac
 
 ---
 
+## What a change obliges in the documentation
+
+Everything in [Verify](#7-verify) and [Testing](#testing) is a code gate. Not one of them reads a documentation page. So a contributor who follows this page exactly can ship a correct task, a green `build.bat`, a green `check.bat`, and a pipeline reference that describes a build which no longer exists --- and nothing anywhere will report it. Most of the defects two successive documentation audits turned up were made that way, which is why the obligation is written down here rather than left to be reconstructed.
+
+Four files under `docs/` model the task graph: `Pipeline-Stages.md`, `Builder.md`, this page, and `scheduler-dag.dot`. None of them is generated from `TASKS`. Every surface below is maintained by hand.
+
+### `Pipeline-Stages.md`
+
+Three surfaces, and the second is the one that gets missed.
+
+**The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section, opening with a fenced block that gives its `expected` array --- and its `execute()` return shape where the return value matters --- followed by prose for what `submit()` merges into `SharedState`. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
+
+**The reverse edges.** A task's position in the graph is stated once in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list, because nothing connects the two. `Pipeline-Stages.md` names `renderJoin` on nine lines; two of them are the `expected` declarations belonging to `searchData` and `writePdf`. Grep the task name across the whole file rather than editing only the section that carries its name.
+
+**The module export table.** [Module export tables](Pipeline-Stages#module-export-tables) gives the signature of the function each task calls, return shape included --- so a return shape is documented twice on one page, and the two copies go stale independently.
+
+### `Builder.md`
+
+Four surfaces, none derived from `TASKS`:
+
+- The **static-task count** in [Task DAG by section](Builder#task-dag-by-section) --- the literal number in *"The pipeline has N named static tasks plus 2N dynamic ones"*.
+- The **section-membership lists** immediately below it, one line per Gantt section.
+- The **per-task bullet** under the matching `### Seeds` / `### Spine` / `### Render` / `### Write` subsection, plus the task's row in [What runs where](Builder#what-runs-where).
+- The **two ASCII DAG sketches**, one under Spine and one under Render.
+
+Those four are not kept in step with each other either: a task can be named in a membership list and absent from both the per-task bullets and the "What runs where" table. So do not treat a neighbouring task's coverage as proof of what the full set is. Take the union of two, which is what the completeness test below does.
+
+### `scheduler-dag.dot`
+
+`docs/assets/images/dot/scheduler-dag.dot` is the DAG rendered on `Builder.md`, and it is **written by hand** --- node by node and edge by edge, against two-letter aliases declared at the top of the file. A new task needs a node (fill `#fef7e0` with stroke `#f9ab00` for main-thread, `#e8f0fe` with `#4285f4` for worker), one outgoing edge per entry in its `expected`, and one new incoming edge on every task that now depends on it.
+
+`check_dot_fit.mjs` is not a guard against getting this wrong. It renders each committed `.svg` in a browser and asks whether every label still sits inside the box Graphviz drew for it, which is a geometry question. A diagram whose edges contradict `TASKS` passes that check, passes the build, and renders cleanly on the page. Nothing in the repository compares the diagram against the graph, so it has to be read against `TASKS` by eye.
+
+### What not to update
+
+A grep for a task name also hits `builder/`, which holds design documents at three different life stages. [`builder/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/README.md)'s Documentation list is the authority on which is which, and it marks two classes as not maintained reference:
+
+- **`REVIEW-*.md` and `PLAN-REVIEW-*.md`** --- frozen audit snapshots of a commit range. Their whole value is that they record what was true at that commit; editing one to match a later change destroys it.
+- **`PLAN-scheduler.md`** --- the superseded push-based scheduler design, kept for its reasoning rather than as a description of the build. `PLAN-sab-pull-scheduler.md` is the current one, and it does need updating.
+
+Read the README entry for a `builder/` file before editing it.
+
+### The completeness test
+
+There is no drift gate. Nothing fails when a task's documentation goes stale, so the honest test is a grep, run before committing:
+
+    grep -rn "myTask" docs/ builder/
+
+Then triage every hit by the file it landed in. Under `docs/` the legitimate homes are the four above; a hit anywhere else is either a page that has grown a dependency on the task graph or an ordinary English word, and both `dispatch` and `render` collide that way. Expect one more diagram in the results if the task is `writePdf`: `pdf-render-pipeline.dot` names it in a cluster label without modelling the graph.
+
+The more useful half is the inverse, and it is worth running before writing anything. Grep **two** existing tasks you did not touch, and take the union of the files they appear in:
+
+    grep -rl "searchData" docs/ builder/
+    grep -rl "writePdf"   docs/ builder/
+
+One task is not a template, because an existing task can itself be missing from a surface. Two are a much better one: where they agree is the obligatory set, and where they disagree is worth reading before deciding which of the two is wrong.
+
+---
+
 ## Testing
 
 Four commands cover the loop:
