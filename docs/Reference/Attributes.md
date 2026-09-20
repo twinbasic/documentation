@@ -265,9 +265,37 @@ End Sub
 
 Syntax: **[Description("** arbitrary text **")]**
 
-Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Const**](Const), [**Declare** (API declaration)](Declare), [**Interface**](Interface), [**Module**](Module), [**Type** (UDT)](Type)
+Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Const**](Const), [**Declare** (API declaration)](Declare), [**Interface**](Interface), [**Module**](Module), [procedure](../Gloss#procedure), [**Type** (UDT)](Type)
 
 Provides a description in information popups in the IDE, and is exported as a `helpstring` attribute in the type library (if applicable).
+
+The value is a **String** whose content is Markdown. The IDE renders it when it displays the popup, so headings, code spans and fenced code blocks all work. The attribute takes a single string literal, so a description running to several lines is assembled with `& vbCrLf & _` continuations, one source line per line of Markdown.
+
+The packages that ship with twinBASIC follow a consistent shape, shown here on `CurrentProjectName` from the VBA package's `Compilation` module:
+
+```tb
+[Description("Retrieves the name of the current project as a literal string.  " & vbCrLf & _
+             "### Syntax" & vbCrLf & _
+             "`projectName = CurrentProjectName()`  " & vbCrLf & _
+             "### Parameters" & vbCrLf & _
+             "This function does not take any parameters.  " & vbCrLf & _
+             "### Return value" & vbCrLf & _
+             "Returns the name of the current project as a String.  " & vbCrLf & _
+             "### Example" & vbCrLf & _
+             "```basic" & vbCrLf & _
+             "Dim projectName As String" & vbCrLf & _
+             "projectName = CurrentProjectName()" & vbCrLf & _
+             "MsgBox ""The name of this project is "" & projectName" & vbCrLf & _
+             "```")]
+Public Function CurrentProjectName() As String
+```
+
+Four details of that are easy to get wrong:
+
+- **The two spaces before several of the closing quotes are Markdown hard line breaks.** A bare newline is a soft break in Markdown and renders as a space, so removing them runs the lead sentence and the prose under each heading together into one paragraph. They appear on the prose lines only: the `###` headings and the lines inside the fenced block are already block-level and do not need them. They read as stray trailing whitespace and are easy to delete by accident.
+- **A literal `"` inside the string is doubled**, as in `""The name of this project is ""`. That is ordinary twinBASIC string syntax rather than anything Markdown-specific, but it is dense enough here to be misread as part of the description.
+- **The fence tag is `basic`**, which is what the IDE's Markdown renderer understands. It has nothing to do with the fence languages this documentation site highlights.
+- **The section order is conventional**: a lead sentence, then `### Syntax`, `### Parameters`, `### Return value` and `### Example`. The example above keeps `### Parameters` even though the function takes none, and says so in the body.
 
 ## DispId  (Integer)
 {: #dispid }
