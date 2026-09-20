@@ -218,6 +218,27 @@ So when you add a section to a page whose headings start at `###`, pick one of t
 
 What you must not do is mix the two and leave it there.
 
+## Renaming a heading without breaking its links
+
+A heading's text is its anchor. Nothing in the source declares the `id` --- `headerIdPlugin` derives it from the words, by lowercasing them, dropping every character that is not a letter, digit, hyphen or space, and turning each remaining space into a hyphen. `## Heading levels` becomes `id="heading-levels"`, and `#heading-levels` is what every link into that section uses. Reword the heading and the id changes with it. The old link does not fail visibly: a fragment that matches no element leaves the reader at the top of the page --- the right page, no error --- with nothing to say the section they asked for was ever there.
+
+Two details of the slug surprise people. Runs of hyphens are not collapsed and the ends are not trimmed, so `## AppObject  (optional Bool)` --- two spaces, a parenthesised type --- produces `appobject--optional-bool`, not `appobject-optional-bool`. And repeated heading text is disambiguated by position: the first keeps the bare slug, the second gets `-1` appended, the third `-2`. Adding a second `## Example` *above* an existing one renames the existing one's anchor without touching a character of its text.
+
+**Pin the id when the wording might change, or when anything outside the page links to it.** Write the attribute on the line directly below the heading, as `Reference/Attributes.md` does for all 55 of its attribute headings:
+
+    ## AppObject  (optional Bool)
+    {: #appobject }
+
+`headerIdPlugin` skips a heading that already carries an `id`, so the pinned value wins and the heading can then be reworded freely. Two things about the syntax are load-bearing. The delimiters are `{:` and `}`, not the bare braces the upstream plugin defaults to. And the blank line decides the direction: an attribute list on the line *immediately* after a block attaches backward to that block, while one separated by a blank line attaches forward to the next one. Leave a blank line in and the id silently lands on the following paragraph.
+
+The same attribute works inline, attached to a span instead of a block, and that is where most of its use is --- `| **vbPRCMColor**{: #vbPRCMColor } | 2 | ...` gives one enumeration member in a table its own anchor. Across `docs/` 1,342 attribute lists set an id, in 179 files. Only 159 stand alone on a line of their own, 146 of them pinning a heading; the other 1,183 are inline.
+
+**`redirect_from` cannot rescue a renamed anchor,** and it is the first thing most people reach for. It emits a whole-page stub --- one destination URL written four times, as the canonical link, a `location=` assignment, a meta refresh and a visible fallback link --- and nothing in it maps one fragment to another. It moves a page. It cannot move a section.
+
+To find what a rename would break, start with `grep -rn "#old-anchor" docs`, then let the build settle it. `build.bat` resolves every fragment in the tree against the ids that actually reached the HTML and reports `fragment #old-anchor not found` for each link that misses. It is the oracle rather than grep because almost every id is generated: it exists in the built page and in no source file, so there is nothing for grep to match on the receiving end.
+
+That check sees only links made from inside this repository, and the `/tB/` anchors have a consumer outside it. [Permanent Links](Permanent-Links) enumerates 56 `#<attribute>` anchors on `/tB/Core/Attributes` --- the URLs the IDE help system and in-source `[Documentation(...)]` references resolve against. They are covered by the build's check only because that page links to each one. An anchor nothing in the repository links to is invisible here, and two of `Attributes.md`'s pinned ids are in exactly that position: `#customcontrol` and `#specialcompilerbinding` are listed nowhere. Three of the 56 are more fragile still. `#classinterface`, `#dispinterface` and `#dualinterface` carry no pinned id at all, and resolve only because those three headings happen to be a single bare word where their 55 neighbours carry a parenthesised type. Appending a type to one of them, to match the others, would break the published URL for it.
+
 ## Formatting conventions
 
 - **Bold** (`**...**`) for keywords and literal tokens the reader would type verbatim; *italic* (`*...*`) for placeholders and argument names.
