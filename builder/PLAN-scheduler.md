@@ -365,6 +365,17 @@ on `state.pages` -- no delta needed.
 
 ## Task definition
 
+> **Superseded — do not implement against this section.** It specifies
+> the push-based contract, in which `submit()` routed data downstream
+> through an `emit(targetTaskId, dataSlice)` callback. `emit()` no
+> longer exists anywhere in the build, here or in the other sections of
+> this document that use it: dependency signalling moved into the
+> SharedArrayBuffer, and the shipped signature is
+> `submit(output, state, scheduler)`. The current contract is
+> [PLAN-sab-pull-scheduler.md](PLAN-sab-pull-scheduler.md) §Task
+> definition format, with §`submit()` split for why the callback went
+> away. What follows is kept as the historical design.
+
 Each task is a plain object:
 
 - **`expected`**: array of predecessor task IDs. The scheduler runs

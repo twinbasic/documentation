@@ -566,21 +566,43 @@ result only lands in that map in `_onWorkerDone`, immediately before
 > even when its `execute()` ignores the inputs.** Setting the SAB dep
 > count is necessary and not sufficient.
 
-`dispatch.submit` does this for both barriers:
+Both halves go through one helper, `registerBarrier` in
+[tbdocs.mjs](tbdocs.mjs), which `dispatch.submit` calls once per
+barrier. Pairing them in a single call is the point — the dep count
+cannot be written without the `expected` list, because writing one
+without the other is the bug.
 
 ```js
-for (const [join, prefix] of [["renderJoin", "render"], ["flushJoin", "flush"]]) {
+function registerBarrier(scheduler, views, join, joinIdx, prefix, n) {
   const def = scheduler.tasks.get(join);
+  if (!def) throw new Error(`registerBarrier: no task def for '${join}'`);
   const expected = [];
-  for (let i = 0; i < N; i++) expected.push(`${prefix}:${i}`);
-  scheduler.tasks.set(join, { ...def, expected });   // clone: TASKS must stay clean
+  for (let i = 0; i < n; i++) expected.push(`${prefix}:${i}`);
+  scheduler.tasks.set(join, { ...def, expected });   // clone, never mutate -- see below
+  setDepCount(views, joinIdx, n);
 }
+
+// in dispatch.submit, after the per-chunk render:i / flush:i defs are registered:
+registerBarrier(scheduler, views, "renderJoin", renderJoinIdx, "render", N);
+registerBarrier(scheduler, views, "flushJoin",  flushJoinIdx,  "flush",  N);
 ```
+
+**Replace the Map entry with a clone. Never rewrite `expected` on the
+def in place** — that is the one rule, and there is no second form in
+the source. `scheduler.tasks` is `new Map(Object.entries(TASKS))`, so
+the Map's `flushJoin` entry *is* `TASKS.flushJoin`, the same object.
+`flushJoinDef.expected = [...]` therefore writes `["flush:0", ...]` back
+into the module-level `TASKS`; in serve mode the next rebuild hands that
+same `TASKS` to `allocSchedulerSAB`, which walks `expected`, cannot
+resolve `"flush:0"`, and throws. The in-place form appears in this
+document only as history: Phase 15 specified it, and Phase 16's second
+divergence (§Phase 16) replaced it with the clone when pool persistence
+made rebuilds share the table.
 
 `flushJoin` had it from the start, because its `execute()` sums the
 per-chunk write stats and so visibly needed the inputs. `renderJoin`'s
-`execute()` returns `{}` and needs nothing — which is exactly why the
-omission looked harmless and went unnoticed.
+`execute()` returns `{}` and reads nothing from its inputs — which is
+exactly why the omission looked harmless and went unnoticed.
 
 **The second half of the bug is what made it silent.** `render:i.submit()`
 fills `scheduler.state.searchChunks[i]`, an array created as
