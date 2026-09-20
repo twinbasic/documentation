@@ -134,6 +134,27 @@ jobs:
       # browser, no built tree, ~40 ms.
       - name: Verify the publish allowlist (check_publish_policy.mjs)
         run: node scripts/check_publish_policy.mjs
+      # A regex that backtracks exponentially does not fail a build, it
+      # stops one: the corpus passes until a page happens to contain the
+      # trigger, and then a render worker sits inside String.replace
+      # forever. VOID_TAGS_RE shipped that way for as long as no alt text
+      # contained a slash, and its first fix was still exponential on a
+      # subtler witness. Nothing else here can see it, because there is
+      # nothing to see until the content changes.
+      #
+      # Gates on exponential only -- 40 of this repo's literals are
+      # polynomial, nearly all the ordinary `<tag[^>]*>` shape on bounded
+      # input, and a gate that fails on day one gets switched off. The
+      # self-test probes run inside the same pass, so a green line here
+      # cannot be a gate that has stopped detecting. No browser, no built
+      # tree, a few seconds sharded across the runner's CPUs.
+      #
+      # recheck's native backend is an optional dependency resolved per
+      # platform; if it is missing the script says so and falls back to
+      # the pure-JS implementation, which is slower but reaches the same
+      # verdict on every probe.
+      - name: Verify regex safety (check_regex_safety.mjs)
+        run: node scripts/check_regex_safety.mjs
       # Graphviz sizes each node box from a width table; the browser paints
       # the label with a real font. Nothing in the build compares the two, so
       # a mismatch ships as text hanging outside its box on a green build --

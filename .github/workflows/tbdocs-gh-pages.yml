@@ -110,6 +110,19 @@ jobs:
       # browser, no built tree, ~40 ms.
       - name: Verify the publish allowlist (check_publish_policy.mjs)
         run: node scripts/check_publish_policy.mjs
+      # An exponentially backtracking regex does not fail a build, it
+      # stops one -- a render worker sits inside String.replace forever
+      # the first time a page contains the trigger. VOID_TAGS_RE shipped
+      # that way, and so did its first fix. See the same step in
+      # checks.yml for what it gates on and why only exponential.
+      #
+      # Here for the same reason check_dot_fit.mjs is: checks.yml runs
+      # only on pull requests, so this is the one gate a regex merged by
+      # a direct push to `staging` would otherwise never meet. No browser
+      # and no built tree, so its position relative to the build does not
+      # matter.
+      - name: Verify regex safety (check_regex_safety.mjs)
+        run: node scripts/check_regex_safety.mjs
       # Graphviz sizes each node box from a width table; the browser paints the
       # label with a real font, and nothing in the build compares the two -- so a
       # mismatch ships as text hanging outside its box on a green build. See the

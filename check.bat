@@ -12,6 +12,16 @@
 @rem browser, ~40 ms, so it goes first.
 node scripts/check_publish_policy.mjs
 @if errorlevel 1 goto :fail
+@rem A regex that backtracks exponentially is a hang waiting for the
+@rem right input, and nothing else here can see it: the corpus passes
+@rem until some page happens to contain the trigger, and then the build
+@rem stops rather than failing. VOID_TAGS_RE shipped that way, and so did
+@rem its first fix. Asks the question of each regex literal instead of
+@rem waiting for content to ask it. Its own probes ride along in the same
+@rem run, so a green line here cannot be a dead gate. No tree, no
+@rem browser, ~6 s.
+node scripts/check_regex_safety.mjs
+@if errorlevel 1 goto :fail
 @rem Everything below reads docs\_site-offline\ as it stands. Edit a page,
 @rem run this without rebuilding, and it audits the previous build and
 @rem passes. Refuse instead, naming build.bat.
