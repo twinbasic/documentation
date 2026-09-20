@@ -58,7 +58,7 @@ When no data type or object type is specified, and there is no [**Deftype**](Def
 
 By convention, a **Dim** statement inside a procedure is placed at the beginning of the procedure.
 
-### Example
+## Example
 
 This example shows the **Dim** statement used to declare variables. It also shows the **Dim** statement used to declare arrays. The default lower bound for array subscripts is 0 and can be overridden at the module level by using the **Option Base** statement.
 

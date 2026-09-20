@@ -51,7 +51,7 @@ When the constant type is not explicitly declared by using **As** *type*, the co
 Constants declared in a **Sub**, **Function**, or **Property** procedure are local to that procedure. A constant declared outside a procedure is defined throughout the module in which it is declared. Constants can be used anywhere an expression is allowed.
 
 
-### Example
+## Example
 
 This example uses the **Const** statement to declare constants for use in place of literal values. **Public** constants are declared in the General section of a standard module, rather than a class module. **Private** constants are declared in the General section of any type of module.
 
