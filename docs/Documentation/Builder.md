@@ -298,15 +298,20 @@ Per-chunk page HTML writes were similarly pulled off the main thread: each `flus
 
 ## Page deltas and shared state
 
-The scheduler owns a `SharedState` instance with five fields:
+The scheduler owns a `SharedState` instance. Five fields are declared on the class in `builder/scheduler.mjs`; five more are attached by tasks as the build runs, for ten in all --- though `checkTrees` appears only under `--check`:
 
 | Field | Type | Filled by |
 |---|---|---|
 | `pages` | `Page[]` | `discover.submit()`. Never reassigned afterwards --- only mutated in place. |
-| `staticFiles` | `StaticFile[]` | `discover.submit()`, plus appends from `dot.submit()` for freshly-regenerated SVGs. |
+| `staticFiles` | `StaticFile[]` | `discover.submit()`, plus appends from `dot.submit()` and `vendorAssets.submit()` for freshly-generated or freshly-downloaded files. |
 | `site` | `object` | Populated progressively by every spine task's `submit()`. |
 | `pageByDest` | `Map<destPath, Page>` | `discover.submit()`. Used by render `submit()` to merge deltas into the master `Page` objects. |
 | `searchChunks` | `Array<Array<entry>>` | Pre-allocated to length N by `dispatch.submit()`; each `render:i.submit()` writes one slot. |
+| `sitePaths` | `Set<string>` | `deriveSitemap.execute()`. Every path the offline rewrite may point at --- pages, static files, redirect stubs, vendored theme assets --- broadcast to the render workers in dispatch's shared payload. |
+| `checkStubs` | `Stub[]` | `deriveRedirects.submit()`. The link check needs it because redirect stubs are excluded from the sitemap / search / canonical assertions. |
+| `checkTrees` | `{ [tree]: { rels, baseurl } }` | `deriveSitemap.execute()`, and only under `--check`. `rels` is what each tree is about to receive, derived from the build's own records, and `treeIndexFor()` turns it into the existence oracle the link check resolves against; `--check-audit-index` additionally compares it with what landed on disk. |
+| `checkChunks` | `Array<chunkFindings>` | Created empty by `dispatch.submit()`; each `flush:i.submit()` pushes its chunk's reduction, which rides back on the flush result rather than crossing the thread boundary as raw link occurrences. |
+| `checkChunkCount` | `number` | `dispatch.submit()`, set to N. `linkJoin` compares `checkChunks.length` against it and reports a short chunk list as an error on every tree, which fails the exit code --- a chunk that never arrived would otherwise mean the check quietly examined fewer pages and still reported a clean pass. |
 
 Worker output flow: a worker posts `{ done: taskIdx, output, timing, lane }` to the main thread → the pool callback hands it to `Scheduler._onWorkerDone()` → the task's `submit()` runs on the main thread and merges the delta into the master `pages[]` via `pageByDest` → the worker then runs `onTaskDone()` to flip the SAB status to `DONE` and wake any sibling that was waiting on this task. The message-then-SAB ordering matters: a downstream main-thread task could otherwise be claimed before its predecessor's output had arrived.
 

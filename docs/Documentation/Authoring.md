@@ -189,7 +189,7 @@ Images live in an `Images/` folder beside the page that uses them, and are refer
 
 Use the markdown form. A raw `<img>` tag with a page-relative `src` is **not** rewritten when the PDF book is assembled: the book flattens every page into a single document, so a path like `Images/x.png` that resolves correctly on the site resolves against the book root instead and the render aborts with `pdf: missing image`. The markdown form is rewritten to a section-qualified path and works in all three outputs.
 
-**A finished page never references an image by a remote URL.** Pasting a screenshot into a GitHub issue or pull request produces a `https://github.com/user-attachments/assets/...` link, and pasting that straight into a page is fine --- the build vendors it for you. The next local build downloads the file to `assets/attachments/gh-<uuid>.<ext>` and rewrites the page to point there; commit the downloaded file along with your edit. Any *other* remote host has no such handling: download it yourself and commit it under the section's `Images/` folder.
+**A finished page never *renders* an image from a remote URL.** Pasting a screenshot into a GitHub issue or pull request produces a `https://github.com/user-attachments/assets/...` link, and pasting that straight into a page is fine --- the build vendors it for you. The next local build downloads the file to `assets/attachments/gh-<uuid>.<ext>` and substitutes that path while rendering, so the published HTML, the offline mirror and the PDF all point at the local copy. Your markdown keeps the remote URL, which is why the downloaded file has to be committed along with your edit: it is the only copy the site has. Any *other* remote host has no such handling --- download it yourself, commit it under the section's `Images/` folder, and reference that path in the page.
 
 There are three reasons, in increasing order of severity:
 
@@ -209,7 +209,7 @@ Link the video and mark it `.video`:
 
 The build renders that as a poster frame with a play button, linking out to the video page. The link text becomes the image's accessible name, so write the real title.
 
-The poster frame is downloaded once to `assets/thumbnails/yt-<video-id>.jpg` and committed; the build never re-fetches a thumbnail it already has. Do **not** hotlink `img.youtube.com` --- that reintroduces the third-party request, and `check.bat` fails the build for it.
+The poster frame is downloaded once to `assets/thumbnails/yt-<video-id>.jpg` and committed; the build never re-fetches a thumbnail it already has. Do **not** hotlink `img.youtube.com` --- that reintroduces the third-party request, and [`build.bat`](Building#checking-link-integrity) fails the run for it, exactly as it does for any other remote `<img>`.
 
 This is why the pages do not embed YouTube players. An `<iframe>` embed loads Google's player as soon as the page is viewed, contacting Google and setting third-party cookies before the reader has done anything. A local thumbnail contacts nobody until the reader clicks, at which point they are on youtube.com and it is Google's own relationship with them. With no embeds anywhere, the site makes no third-party requests at all.
 

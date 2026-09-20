@@ -257,7 +257,7 @@ Two additions the plan did not call for, both because the gate as designed
 could pass while proving very little:
 
 - **A sixth case, `fixture`.** The real site is clean, so the four designed
-  cases compare empty against empty in nine of the ten categories. `fixture`
+  cases compare empty against empty in eight of the nine categories. `fixture`
   writes a synthetic tree carrying one fault of every kind -- broken target,
   missing fragment, forbidden prefix, duplicate id, remote `<img>`, missing
   alt, empty anchor, empty href, sitemap-missing, search-missing, canonical
@@ -800,8 +800,11 @@ graph. Three ways out, in rough order of preference:
 
 ### Follow-on C — axe scan orchestration (20 288 ms)
 
-**Where the time goes.** Instrumented `check_a11y.mjs`'s matrix (11 pages at the time of measurement, 13 now × 2
-themes × 2 viewports = 44 audits):
+**Where the time goes.** Instrumented `check_a11y.mjs`'s matrix as it stood at the
+time of measurement — 11 pages × 2 themes × 2 viewports = 44 audits. The sample is
+13 pages today and the matrix is 60 audits (13 × 2 × 2, plus two state audits over the
+same themes and viewports), so the totals below are historical; the per-audit figures
+and the shape of the curve are not.
 
 | | ms |
 |---|---|

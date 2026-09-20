@@ -158,7 +158,7 @@ jobs:
       # PR that bumps axe-core is exactly when it earns its place.
       - name: Verify axe source patch (check_axe_patch_equiv.mjs)
         run: node scripts/check_axe_patch_equiv.mjs
-      # The scan is eleven pages of ~1,160, so its page list decides what it can
+      # The scan is thirteen pages of ~1,160, so its page list decides what it can
       # report at all. This fails when the site grows a markup construct no
       # sample page carries -- the drift that let the previous six-page sample
       # report a clean pass while 54 pages had violations in constructs it never
