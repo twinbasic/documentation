@@ -54,7 +54,7 @@ Past the main-vs-worker decision, the scheduling primitives compose. The common 
 | Speculative execution during idle time (e.g. warmup that overlaps the main spine). | `run_when_idle: true` |
 | Must run on the lane that ran a specific predecessor. | `pinnedTo` set by `submit()` via the SAB `pinnedTo` array (see `dispatch.submit` for the pattern). |
 | Per-lane done flags survive serve-mode rebuilds. | `survives_reset: true` (`unique_per_worker` tasks only). |
-| Lower-number priority claims first when multiple tasks are READY. | `priority: N` |
+| Higher-number priority claims first when multiple tasks are READY. | `priority: N` |
 | Combine per-lane timings into one Gantt swimlane. | `consolidate: true` |
 
 The full reference is in the [Scheduler-level concepts](Pipeline-Stages#scheduler-level-concepts) section of Pipeline Stages.
@@ -229,7 +229,12 @@ scheduler.tasks.set(rName, {
   submit(renderOut, state) {
     for (const r of renderOut.pages) {
       const p = state.pageByDest.get(r.destPath);
-      if (!p) continue;
+      // A miss is a bug, not a condition to tolerate -- see below.
+      if (!p) {
+        throw new Error(
+          `render:${i} returned a page the build does not know: ${r.destPath}`,
+        );
+      }
       p.renderedContent = r.renderedContent;
       if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
       if (r.wordCount !== undefined)     p.wordCount     = r.wordCount;   // ← new
@@ -238,6 +243,16 @@ scheduler.tasks.set(rName, {
   },
 });
 ```
+
+> [!IMPORTANT]
+> **Throw on the merge path; never skip.** `pageByDest` is built from the same page
+> list the chunks were sliced from, so a page the callback cannot find means a chunk
+> produced something the build never dispatched. Skipping it silently drops that
+> page's `renderedContent`, and every consumer of that field --- the search index,
+> the PDF book --- skips a page that has none rather than complaining. That is
+> exactly how ~6 pages went missing from `search-data.json` on about one build in
+> three, undetected. Every skip on the chunk-merge path has since been made loud;
+> new fan-out code must keep it that way.
 
 **Step 6d.** Write a consolidator task that runs after `renderJoin`:
 
@@ -273,7 +288,7 @@ That is the full pattern: per-chunk compute on the render workers, merge into th
 
 ### Background
 
-`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. Plugins are applied in a fixed order: `markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`, then roughly ten in-tree plugins. A new plugin becomes part of that order.
+`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. Plugins are applied in a fixed order: `markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`, then fourteen in-tree plugins. A new plugin becomes part of that order.
 
 Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers; [Pipeline Stages](Pipeline-Stages) lists them all under `render.mjs`.
 
