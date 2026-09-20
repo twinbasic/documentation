@@ -276,6 +276,29 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   renders `Bottom}` with a stray brace, and Align and Make Same Size both render `ARROWLUP`.
   Documentation bugs these are not.
 
+- **`Reference/Attributes.md` is missing attributes the documentation itself uses.** The
+  compiler's token table names `Enumerator`, `NonBrowsable` and `AllowUnpopulatedVtableEntry`;
+  all three are used as attributes in published reference pages --- `WinServicesLib/Services.md:208`,
+  `WinNativeCommonCtls/ListView/index.md:159`, `tbIDE/Host.md:133` --- and none has an entry in
+  the attribute reference a reader would consult. Semantics for the three are not guessable from
+  the binary, so no entries were written.
+
+- **Eight more names the compiler knows appear nowhere in `docs/` at all:**
+  `WithDispatchForwarding`, `ImplementsViaPrivateFriendlies`, `ExecuteHostCommand`,
+  `CustomDesigner`, `DefaultDesignerEvent`, `ComExport`, `RunBeforeStartupObject`,
+  `RedirectToStaticImplementation`. Two are siblings of documented attributes --- `ComExport`
+  beside `DllExport`, `RunBeforeStartupObject` beside `RunAfterBuild` --- which is what makes
+  them worth asking about. The table mixes keywords with attributes, so whether each is an
+  attribute or a modifier needs the compiler to settle.
+
+- **What the name check did settle:** all 57 attribute names in `Attributes.md` occur in the
+  compiler binary, so none is invented. `DispInterface` and `DualInterface` are absent from the
+  token table but present elsewhere in it, which is also what says that table is not an
+  exhaustive list of attributes. The risk in that page is in the `Applicable to:` targets, not
+  in the names --- and the compiler does diagnose a misplaced attribute, with
+  `This attribute is not supported in this context`, so a probe project would settle all 52
+  lines in one build.
+
 ### Prose that contradicts its own screenshot
 
 Found by opening every image. The alt text now describes the picture, so on these pages the
