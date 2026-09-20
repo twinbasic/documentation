@@ -6,8 +6,10 @@
 // refusing are still refused -- and a build over a clean tree can never
 // make it. So it is made here, against named probes.
 //
-// No browser, no built tree, ~40 ms. Runs before everything else in
-// check.bat for that reason.
+// No browser, no built tree, ~40 ms. It reads nothing under docs/ --
+// every input is a probe this file plants -- so it is a test of the
+// toolchain rather than of the site, and it runs first in test.bat
+// rather than in check.bat.
 
 import { promises as fs } from "node:fs";
 import os from "node:os";
