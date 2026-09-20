@@ -1138,11 +1138,17 @@ Three details of the policy are load-bearing:
   refusing at source. Folding the two together would pass every other assertion
   in the self-test, so the self-test asserts the disjointness directly.
 - **`.md` is deliberately absent from both.** A markdown file that reaches the
-  check is one `discover()` could not parse frontmatter from --- the
-  AppGlobalClassObject shape, where a UTF-8 BOM in front of the `---` made
-  `gray-matter` report no frontmatter and the raw markdown was served verbatim
-  for months. `stripBom()` fixed that cause; this refuses the whole class, and
-  says so in the message.
+  check is one `gray-matter` found no frontmatter block in --- the
+  AppGlobalClassObject shape, where the raw markdown was served verbatim for
+  months. Be careful what the message claims, though: the two faults that come
+  to mind first are both handled elsewhere. A **UTF-8 BOM** is stripped before
+  parsing, so a BOM'd page renders normally and never reaches here (`stripBom()`
+  fixed that cause; this refuses the class it belonged to). **Malformed YAML**
+  inside the block throws `Failed to parse frontmatter in <file>` from
+  `discover.mjs` and never falls through. What is actually left is a file with
+  no block at all, or one where something precedes the opening `---` --- a blank
+  line is enough. The message names that, and an earlier draft naming the BOM
+  would have sent every reader looking for something that cannot happen.
 - **`bundle_extra` is exempt by *path*, not by extension.** `_config.yml`
   declares `Features/Packages/downloads/impexp.py` and `impexp.mjs` with both
   ends spelled out, which is what makes them shippable. The same extension

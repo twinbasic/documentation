@@ -105,8 +105,14 @@ function refuse(rel, extensions, declared) {
   if (extensions.has(ext)) return null;
 
   if (ext === ".md") {
-    return "markdown with no parsable frontmatter -- it would be served " +
-           "as raw markdown (check for a UTF-8 BOM before the `---`)";
+    // Not "check for a BOM": stripBom() removes one before parsing, so a
+    // BOM'd page renders normally and never reaches here. Nor is it
+    // malformed YAML, which throws its own error naming the file and the
+    // parse fault. What is left is gray-matter finding no frontmatter
+    // block at all -- either there is none, or something precedes the
+    // opening `---`.
+    return "markdown with no frontmatter block -- it would be served as " +
+           "raw markdown (the opening `---` must be the first line)";
   }
   return `${ext} is not a publishable type`;
 }

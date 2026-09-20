@@ -79,7 +79,7 @@ In addition, `SharedState` itself contains non-`site` fields that downstream tas
 
 ### Static files (`staticFiles[]`)
 
-Also produced by `discover`. Every file that is not a page --- images, fonts, prebuilt CSS/JS, and any `.md`/`.html` file without frontmatter --- becomes a static file object. `dot.submit()` appends additional SVG descriptors for any freshly-regenerated diagrams.
+Also produced by `discover`. Every file that is not a page --- images, fonts, prebuilt CSS/JS, and any `.md`/`.html` file without frontmatter --- becomes a static file object, and is copied into the output verbatim. `discover` then runs the [publish allowlist](#publish-policymjs) over the finished inventory and throws on anything that is not a publishable type, which is what stops a frontmatter-less `.md` being served as raw markdown. `dot.submit()` appends additional SVG descriptors for any freshly-regenerated diagrams, and `vendorAssets.submit()` appends any image it downloaded.
 
 | Field | Type | Description |
 |---|---|---|
@@ -201,7 +201,7 @@ discover.execute({ config: { config } }, ctx) →
   { pages, staticFiles, config }
 ```
 
-Calls `discover(srcRoot, config.exclude ?? [])` from `discover.mjs`. `submit()` writes the three fields to `SharedState` and populates `state.pageByDest`.
+Calls `discover(srcRoot, config.exclude ?? [])` from `discover.mjs`, then appends each `bundle_extra` entry to `staticFiles`, then runs `unpublishableSourceFiles` from `publish-policy.mjs` over the result and **throws** if anything is not a publishable type --- before any write, while the source path is still in hand. `submit()` writes the three fields to `SharedState` and populates `state.pageByDest`.
 
 ### `vendorAssets` (main)
 
@@ -291,7 +291,8 @@ The fan-out point. `execute`:
 
 1. Slices `state.pages` into `workerCount × SLICES_PER_WORKER` chunks (capped at one chunk per worker for small page counts).
 2. Computes the `sitePaths` set via `buildSitePathsSync` from `offline-rewrite.mjs`, using the vendored theme asset list from `enumerateVendoredThemeAssets()` rather than traversing `_site/assets/`.
-3. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
+3. Derives each output tree's inventory with `deriveTreeRels` and runs `unpublishableTreePaths` from `publish-policy.mjs` over it, **throwing** on anything that is not a publishable type. This is the sweep that sees what `discover`'s cannot: redirect stubs, vendored theme assets, and the generated `sitemap.xml` and `search-data.json`. The inventory is derived unconditionally now and shared with `checkTrees` below, which previously computed it only under `--check`.
+4. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
 
 `submit` allocates 2N dynamic SAB slots, writes their handler IDs, wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dep on `render:i → renderEnvInit`, pins each `flush:i` to its `render:i`, packs the per-chunk page data into a payload SAB, registers `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and finally activates the `render:i` slots.
 
@@ -555,6 +556,20 @@ The pure core shared by the build's fused check and the standalone [`scripts/che
 | Symbol | Signature | Description |
 |---|---|---|
 | `discover` | `(srcRoot, ignore) → Promise<{ pages, staticFiles }>` | Traverses the source tree, classifies pages vs static files, returns the two sorted arrays. |
+
+### `publish-policy.mjs`
+
+The allowlist of file types that may reach a published tree. Every non-page under `docs/` is copied into the output verbatim, so a denylist (`_config.yml`'s `exclude:`) only refuses what somebody named in advance; this names what may ship instead. Enforced unconditionally at two points --- `discover` over the static-file inventory, `dispatch` over each tree's derived inventory --- and a finding **aborts** the build rather than setting an exit code. `SOURCE_EXTENSIONS` and `BUILD_EXTENSIONS` are deliberately disjoint: the build emits `.xml` and `.json`, but a stray `docs/secrets.json` must still fail. `.md` is in neither, so a page whose frontmatter did not parse is refused instead of being served as raw markdown.
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `SOURCE_EXTENSIONS` | `Set<string>` | Extensions a file discovered under `docs/` may carry. |
+| `BUILD_EXTENSIONS` | `Set<string>` | Extensions the build itself emits, additionally allowed in a tree inventory. |
+| `EXTENSIONLESS_FILENAMES` | `Set<string>` | Exact basenames allowed with no extension (`CNAME`). |
+| `publishPolicyFor` | `(config) → { declared }` | Reads `bundle_extra` into the set of individually declared published paths, which are exempt by path rather than by extension. |
+| `unpublishableSourceFiles` | `(staticFiles, policy) → findings[]` | Source sweep. Each finding has `rel`, `from` (the path on disk) and `why`. |
+| `unpublishableTreePaths` | `(rels, policy) → findings[]` | Tree sweep over a `deriveTreeRels` inventory. |
+| `formatPublishRefusal` | `(findings, { surface, label }) → string` | The abort message: every finding named, plus the fix appropriate to the surface. |
 
 ### `nav.mjs`
 

@@ -65,11 +65,46 @@ A failing check does not abort the build --- a broken link still produces a site
 
 [`scripts/check_links.mjs`](Tools#check-links) is still the tool for a tree this build did not produce: a release zip, a bisect, someone else's artifact.
 
+## What the build refuses to publish
+
+Every file under `docs/` that is not a page is copied into the published site
+unchanged. `_config.yml`'s `exclude:` used to be the only filter, and a list of
+things to leave out only leaves out what somebody thought to name --- so a
+scratch `.md` with no frontmatter, an editor's `.bak`, a `.twin` sample, a
+`secrets.json`, a `.pem` and a `Thumbs.db` all published at public URLs, on a
+green build, straight into the Pages deployment and the offline release zip.
+
+The build now decides the other way round: [`builder/publish-policy.mjs`](Builder#module-map)
+holds the list of types that may be published, and refuses everything else. It
+runs at two points, neither of them behind a flag --- a build run with
+`--no-check` is exactly when nothing else is looking:
+
+- over the source inventory, before anything is written, naming the file on disk;
+- over the inventory each output tree will receive, which covers what the first
+  sweep cannot see: redirect stubs, vendored theme assets, and the generated
+  `sitemap.xml` and `search-data.json`.
+
+Unlike the link check, **a finding here aborts the build**. A broken link still
+leaves a tree worth inspecting; a tree with a private key in it does not.
+
+What this means when writing a page is covered in
+[Authoring Pages](Authoring#what-may-live-in-docs): keep working files outside
+`docs/`, and if a genuinely new asset type belongs on the site, add it to
+`SOURCE_EXTENSIONS` in the same commit.
+
+`check.bat` runs [`scripts/check_publish_policy.mjs`](Tools#check-publish-policy)
+first, and it exists because a clean build proves only half of this. "Nothing in
+`docs/` is currently refused" is also what a list widened until it refuses
+nothing would report. The self-test asserts the other half against named probes
+--- a `.bak`, a `.pem`, a `.docx`, a frontmatter-less `.md` --- plus the reverse,
+that a `.png`, a `.woff2` and `CNAME` still publish, since a policy refusing
+everything would also report a clean sweep.
+
 ## Checking accessibility
 
     check.bat
 
-[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. Four cheaper gates run first and stop the run if they fail: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), the axe source-patch verification, and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses.
+[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. Five cheaper gates run first and stop the run if they fail: the [publish-allowlist self-test](#what-the-build-refuses-to-publish), a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), the axe source-patch verification, and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses.
 
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 

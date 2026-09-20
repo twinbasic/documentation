@@ -96,7 +96,7 @@ the architecture overview.
 
 | Phase | Module(s) | Job |
 |---|---|---|
-| 1 | [discover.mjs](discover.mjs) | Read .md/.html + frontmatter, enumerate static files |
+| 1 | [discover.mjs](discover.mjs) + [publish-policy.mjs](publish-policy.mjs) | Read .md/.html + frontmatter, enumerate static files, refuse any that is not a publishable type |
 | 2 | [nav.mjs](nav.mjs) / [seo.mjs](seo.mjs) / [book.mjs](book.mjs) / [build-info.mjs](build-info.mjs) / [data.mjs](data.mjs) | Compute nav tree, SEO, book chapters, git commit info, `_data/*.yml` |
 | 3 | [render.mjs](render.mjs) + [highlight.mjs](highlight.mjs) + [highlight-theme.mjs](highlight-theme.mjs) | Markdown -> HTML body |
 | 4 | [template.mjs](template.mjs) + [compress.mjs](compress.mjs) | Wrap in layout, anchor-heading injection, whitespace compress |
@@ -114,6 +114,21 @@ uncommitted YouTube poster frame or GitHub user-attachment image -- never
 under CI, where a missing asset is a hard error instead.
 
 ## Verification
+
+Two gates abort the build outright, because their failure means the
+output itself is wrong rather than merely incomplete: `nav.mjs`'s
+permalink and nav-integrity checks, and [publish-policy.mjs](publish-policy.mjs),
+which holds the allowlist of file types that may reach a published tree.
+Everything under `docs/` that is not a page is copied into the output
+verbatim, so a denylist only refuses what somebody named in advance --
+before the allowlist, a stray `.bak`, `.pem`, `.twin` or frontmatter-less
+`.md` published at a public URL on a green build. It is enforced over the
+static-file inventory in `discover` and over each tree's derived
+inventory in `dispatch`, neither behind `--check`.
+[scripts/check_publish_policy.mjs](../scripts/check_publish_policy.mjs)
+is the gate on that gate: a clean build says only that nothing is
+currently refused, which is also what an allowlist widened to nothing
+would say.
 
 Regression detection runs inside the build. `tbdocs --check` (which
 `build.bat` passes) walks each tree's final HTML on the worker lane that

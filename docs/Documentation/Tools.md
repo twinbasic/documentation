@@ -32,13 +32,14 @@ Starts a long-lived dev process. Wraps `node builder\tbdocs.mjs --src docs --ser
 
     check.bat
 
-The gates that need a browser, or a second pass over the built tree. Link and integrity checking is not among them any more --- that moved into `build.bat` (see [tbdocs](#tbdocs)). Five steps, each stopping the run if it fails:
+The gates that need a browser, or a second pass over the built tree. Link and integrity checking is not among them any more --- that moved into `build.bat` (see [tbdocs](#tbdocs)). Six steps, each stopping the run if it fails:
 
-1. [`scripts/check_tree_fresh.mjs`](#check-tree-fresh) --- refuses a tree older than the sources that produced it. Scanning a stale tree reports a pass for the previous build.
-2. [`scripts/check_dot_fit.mjs`](#check-dot-fit) --- re-renders every committed diagram with the real webfont and fails if a label sits outside its box.
-3. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
-4. [`scripts/pick_a11y_sample.mjs --check`](#pick-a11y-sample) --- verifies the sample still covers every markup construct the site uses.
-5. [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan.
+1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
+2. [`scripts/check_tree_fresh.mjs`](#check-tree-fresh) --- refuses a tree older than the sources that produced it. Scanning a stale tree reports a pass for the previous build.
+3. [`scripts/check_dot_fit.mjs`](#check-dot-fit) --- re-renders every committed diagram with the real webfont and fails if a label sits outside its box.
+4. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+5. [`scripts/pick_a11y_sample.mjs --check`](#pick-a11y-sample) --- verifies the sample still covers every markup construct the site uses.
+6. [`scripts/check_a11y.mjs`](#check-a11y) --- the puppeteer + axe-core accessibility scan.
 
 Requires `build.bat` to have run first.
 
@@ -177,6 +178,19 @@ Not a command --- the shared module that **defines** the accessibility scan, imp
 
 `STATE_AUDITS` deserves a note: a closed `<details>` subtree is `notRendered`, so axe never walks it. Entries here are layered onto the page × theme × viewport matrix and apply a DOM mutation from `PAGE_STATES` before the audit, which is how the section-links disclosure gets audited open as well as closed. **Every `PAGE_STATES` function must assert it found what it expected** --- a state that silently does nothing degrades into a second audit of the default page: slower, still green, covering nothing.
 
+### scripts/check_publish_policy.mjs
+{: #check-publish-policy }
+
+    node scripts/check_publish_policy.mjs [--src <path>]
+
+The gate on the publish allowlist. Everything under `docs/` that is not a page is copied into the published site verbatim, so the source tree's shape is the site's shape --- [`builder/publish-policy.mjs`](Builder#module-map) is the list of types that may be published, enforced inside the build at the source inventory and again at each output tree's inventory. A finding there aborts the build rather than setting an exit code: a broken link still leaves a tree worth inspecting, a tree with a private key in it does not.
+
+A clean build only says **nothing in `docs/` is currently refused**, which is also what an allowlist widened until it refuses nothing would say, and no build over a clean tree can distinguish the two. So this asserts the other half: thirteen named probes that must stay refused (a `.bak`, a `.pem`, a `.docx`, a `.twin`, a `secrets.json`, a `Thumbs.db`, a frontmatter-less `.md`, an extensionless `LICENSE`, a dotfile), six that must keep publishing (`.png`, `.PNG`, `.woff2`, `.txt`, `.html`, `CNAME`), that `bundle_extra` exemptions stay scoped to the exact declared path rather than blessing the extension everywhere, and that `SOURCE_EXTENSIONS` and `BUILD_EXTENSIONS` stay disjoint --- folding the two together would pass every other assertion here while quietly making a stray `docs/secrets.json` publishable.
+
+It also checks that the refusal *message* for a `.md` still names a fault that can happen, which is a narrower thing than it sounds. The message tells the reader the opening `---` must be the first line, and that is the right advice only because the two causes that come to mind first are handled elsewhere: a UTF-8 BOM is stripped before parsing, and malformed YAML aborts with its own error. An earlier draft named the BOM and would have sent every reader hunting for something that cannot occur, so all three behaviours are now asserted against real files --- nothing else in the repository covers them.
+
+No browser, no built tree, ~40 ms, which is why it is `check.bat`'s first step. Run it after touching `builder/publish-policy.mjs`. Exits 1 naming each failed assertion.
+
 ### scripts/check_tree_fresh.mjs
 {: #check-tree-fresh }
 
@@ -226,7 +240,7 @@ The full-site accessibility sweep: every page, both themes, both viewports --- 3
     python -m pip install "fonttools[woff]"
     python scripts/build_fonts.py
 
-Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream releases (SHA-256 verified), pinning the optical-size axis and keeping `wght` variable. Development tooling only: the `.woff2` files are committed like the generated DOT SVGs, and `build.bat` needs neither Python nor a network connection. **Regenerating Inter means regenerating the diagram metrics too** --- see below.
+Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream releases (SHA-256 verified), pinning the optical-size axis and keeping `wght` variable. Development tooling only: the `.woff2` files are committed like the generated DOT SVGs, and `build.bat` needs neither Python nor a network connection --- though the PDF pass aborts if one of the faces it needs is missing from the source tree, naming this script. **Regenerating Inter means regenerating the diagram metrics too** --- see below.
 
 ### scripts/build_dot_metrics.mjs
 {: #build-dot-metrics }
@@ -263,7 +277,7 @@ The build pipeline also reads a handful of declarative files. They are not execu
 
 | File | Effect |
 |---|---|
-| `docs/_config.yml` | Site config. `tbdocs` reads `url`, `baseurl`, `title`, `logo`, `also_build_offline`, `also_build_pdf`, `offline_exclude`, `exclude`, the footer / aux-link knobs, the GitHub edit-link knobs, and the download-link knobs (`gh_offline_link`, `gh_offline_link_url`, `gh_pdf_link_url`). Jekyll-only keys (`markdown`, `kramdown`, `theme`, `highlighter`, the `defaults` block, the `compress_html` block) are ignored. |
+| `docs/_config.yml` | Site config. `tbdocs` reads `url`, `baseurl`, `title`, `logo`, `also_build_offline`, `also_build_pdf`, `offline_exclude`, `exclude` (which filters the source walk but is **not** the publish safety net --- see [`check_publish_policy.mjs`](#check-publish-policy)), the footer / aux-link knobs, the GitHub edit-link knobs, and the download-link knobs (`gh_offline_link`, `gh_offline_link_url`, `gh_pdf_link_url`). Jekyll-only keys (`markdown`, `kramdown`, `theme`, `highlighter`, the `defaults` block, the `compress_html` block) are ignored. |
 | `docs/_book.yml` | The PDF book's chapter manifest. Entries are resolved to pages via the selector schema (`page` / `pages` / `nav_page` / `nav_pages` / `no_descent`) and control PDF outline behaviour via `landing_page:`, `landing_is_target:`, `no_outline_entry:`, `no_heading_shift:`, and `outline_closed:`. Full schema is documented in the file header. Phase 2 resolves chapter arrays; Phase 8 assembles `book.html`. |
 | `builder/themes/Light.theme`, `Dark.theme`, `Classic.theme` | twinBASIC IDE theme files, vendored from the BETA installer. `builder/highlight-theme.mjs` parses them into a Symbol-keyed palette that determines both the renderer's scope-to-class mapping and the generated `tb-highlight.css`. Refresh from the installer when the IDE adds new palette entries. |
 | `builder/twinbasic.tmLanguage.json` | TextMate grammar for the twinBASIC language. Shiki uses it to tokenise every ` ```tb ` code block. |

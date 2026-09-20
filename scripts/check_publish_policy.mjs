@@ -10,6 +10,7 @@
 // check.bat for that reason.
 
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import yaml from "js-yaml";
@@ -127,6 +128,60 @@ for (const ext of BUILD_EXTENSIONS) {
   }
 }
 if (!failures) console.log(`  ok    build-only types (${[...BUILD_EXTENSIONS].join(", ")}) are refused at source`);
+
+// ── 5. The .md refusal names a cause that can actually happen ───────
+// The message for a `.md` tells the reader the opening `---` must be the
+// first line. That is the right advice only while the two faults which
+// come to mind first are handled elsewhere -- and an earlier draft named
+// one of them, which would have sent every reader looking for something
+// that cannot happen. Both halves are asserted here against real files,
+// because nothing else in the repo does:
+//
+//   * a UTF-8 BOM is stripped before parsing, so a BOM'd page is a page;
+//   * malformed YAML throws from discover.mjs and never falls through.
+//
+// If either stops holding, the message is wrong and this says so.
+{
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "publish-policy-"));
+  const probe = async (name, body) => {
+    const dir = path.join(tmp, name);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "probe.md"), body);
+    try {
+      const { pages } = await discover(dir, []);
+      return pages.length ? "page" : "static";
+    } catch (err) {
+      return "throws: " + err.message.split("\n")[0];
+    }
+  };
+  const FM = "---\ntitle: X\npermalink: /x\n---\nbody\n";
+
+  // Written as an escape, not as the character: a literal BOM inside a
+  // string literal is invisible, and an editor stripping it would turn
+  // this assertion into a no-op that still passes.
+  const bom = await probe("bom", "\u{FEFF}" + FM);
+  if (bom !== "page") {
+    fail(`a UTF-8 BOM now yields "${bom}", not a page -- discover.mjs's ` +
+         `stripBom() is gone, and publish-policy.mjs's .md message should ` +
+         `name the BOM again`);
+  }
+
+  const bad = await probe("badyaml", "---\ntitle: [unclosed\n---\nbody\n");
+  if (!bad.startsWith("throws:")) {
+    fail(`malformed frontmatter YAML now yields "${bad}" instead of its own ` +
+         `error -- it would reach the publish policy, whose .md message does ` +
+         `not mention it`);
+  }
+
+  const lead = await probe("leadingblank", "\n" + FM);
+  if (lead !== "static") {
+    fail(`a blank line before the opening delimiter now yields "${lead}" -- ` +
+         `the .md message's advice no longer describes a real fault`);
+  }
+
+  await fs.rm(tmp, { recursive: true, force: true });
+  if (!failures) console.log("  ok    the .md refusal names a fault that can actually occur");
+}
 
 if (failures) {
   console.error(`\ncheck_publish_policy: ${failures} failure(s). ` +

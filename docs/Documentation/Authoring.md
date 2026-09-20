@@ -27,6 +27,64 @@ The documentation is grouped by area, each a folder under `docs/`:
 
 Where a page sits in the source tree matters less than its `permalink`, which fixes the page's URL independently of the folder the file lives in. Get the permalink right (next section) and the file can move without breaking a single link.
 
+## What may live in docs/
+
+Anything under `docs/` that is not a page is copied into the published site
+unchanged, at a URL matching its path. That is how images, fonts and stylesheets
+get published, and it used to be how a stray file got published too --- a `.bak`
+left beside a page, a `.twin` sample, a scratch `.md`, a `Thumbs.db` the shell
+wrote without being asked. All of them went to a public URL on a green build.
+
+The build now refuses anything that is not a publishable type, names the file,
+and stops before writing:
+
+```
+1 file would be published from docs but is not a publishable type:
+  Reference/NOTES.md
+      from docs\Reference\NOTES.md
+      markdown with no frontmatter block -- it would be served as raw
+      markdown (the opening `---` must be the first line)
+```
+
+The types a source file may use: `.html`, `.png`, `.jpg`, `.jpeg`, `.gif`,
+`.svg`, `.woff2`, `.css`, `.js`, `.txt`, and `CNAME` at the site root. Pages
+(`.md` with frontmatter) are rendered rather than copied, so they are not
+affected.
+
+Three things follow.
+
+**A file you do not want published does not belong under `docs/`,** unless a
+pattern in `_config.yml`'s `exclude:` already covers it. Three kinds of source
+file are excluded that way because they sit beside the pages they produce:
+`.scss` stylesheets, `.dot` diagram sources, and the Affinity `.af` screenshot
+sources under `_Images/`. Scratch notes, editor backups and working documents
+have no such exemption --- keep them outside the tree.
+
+**A `.md` the build reports as unpublishable is a file with no frontmatter block
+at all.** Either it genuinely has none --- a scratch note, a README --- or
+something precedes the opening `---`, which has to be the first line. A blank
+line before it is enough. A file in that state is not a broken page: without the
+refusal it would be copied out and served as raw markdown, frontmatter keys and
+all, which is how one package index page was published for months.
+
+Two neighbouring faults are *not* this, and knowing which you have saves a
+search:
+
+- **A UTF-8 BOM is handled.** Windows editors add one without asking, and it
+  used to be exactly this failure --- it sits in front of the `---` and the
+  parser then reports no frontmatter. The build strips it before parsing, so a
+  BOM'd page renders normally and never reaches this message.
+- **Malformed YAML inside the block reports itself.** It does not fall through
+  to this check; it aborts with `Failed to parse frontmatter in <file>` and the
+  parser's own line and column.
+
+**If a new asset type genuinely belongs on the site,** add it to
+`SOURCE_EXTENSIONS` in
+[`builder/publish-policy.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/publish-policy.mjs)
+in the same commit as the file. That is a deliberate one-line edit, and it is the
+point of the rule: the decision gets made once, by the person who knows they are
+making it.
+
 ## Frontmatter and permalinks
 
 Every page opens with a YAML frontmatter block. The keys that matter:
@@ -35,13 +93,13 @@ Every page opens with a YAML frontmatter block. The keys that matter:
 - **`parent`** (and sometimes **`grand_parent`**) --- the title of the nav parent. The build aborts if this does not resolve to exactly one page, so a typo is caught at build time rather than silently dropping the page from the sidebar or attaching it under the wrong branch.
 - **`permalink`** --- **required on every page.** The page's stable URL, and the contract the IDE help system and in-source `[Documentation(...)]` attribute links rely on. The build aborts if it is missing rather than deriving one from the file path: this tree deliberately does not mirror its URLs (`Reference/Built-In/CEF/` publishes at `/tB/Packages/CEF/`), so a derived URL would be wrong, and wrong silently. Reference pages follow a fixed scheme by section: a core keyword is `/tB/Core/<Symbol>`, a library symbol is `/tB/Packages/<Package>/...`, and so on. [Permanent Links](Permanent-Links) documents the full scheme.
 - **`nav_order`** --- optional integer that orders the page among its siblings in the sidebar.
-- **`redirect_from`** --- optional. List any earlier URL the page has moved from, so existing links keep resolving.
+- **`redirect_from`** --- optional. List any earlier URL the page has moved from, so existing links keep resolving. Each entry becomes a small stub page at that URL, so two rules apply and the build aborts naming both files if either is broken: a `redirect_from` entry may not point at a URL some page already publishes at, and no two pages may claim the same one.
 - **`vba_attribution`** --- set to `true` only on pages adapted from the VBA-Docs source; see [Attribution](#attribution).
 - **`nav_exclude`**, **`sitemap: false`**, **`search_exclude: true`** --- optional opt-outs, each from exactly one thing: the sidebar, `sitemap.xml`, and the search index. They are independent; a page that should be unlisted everywhere sets all three. The build's own link check honours the last two, so a page that opts out is not then reported as missing from the index it opted out of.
 
 A package's `index.md` may also carry **`indexed_from`**, **`exclude_from_docs`** and **`exclude_kinds`**. Those are provenance for the authoring pass, not build input: they record which twinBASIC build the package download was indexed against, and what was deliberately left undocumented, so a later re-index can tell a genuine gap from a deliberate omission. The build ignores them and they never reach the HTML. **Leave them in place**, and bump `indexed_from` in the same commit if you re-index a package against a newer build.
 
-Any key the build does not recognise is simply inert --- nothing iterates frontmatter generically, so an unknown key is never emitted into the page.
+Any key the build does not recognise is simply inert --- nothing iterates frontmatter generically, so an unknown key is never emitted into the page. A key whose *value* is not valid YAML is a different matter: the build aborts with `Failed to parse frontmatter in <file>`, quoting the YAML parser's own line and column.
 
 A minimal reference-page header:
 
