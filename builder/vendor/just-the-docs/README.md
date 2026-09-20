@@ -13,8 +13,8 @@ everything here either feeds a compile step or is copied verbatim into
 | `assets/js/just-the-docs.js` | Gem's `assets/js/just-the-docs.js` at v0.10.1, **patched in tree**. | [`builder/write.mjs`](../../write.mjs)'s `copyTheme` copies it to `_site/assets/js/just-the-docs.js`; [`builder/offline.mjs`](../../offline.mjs) re-derives an offline-mode variant via [`acorn`](https://www.npmjs.com/package/acorn)-AST patching. |
 | `assets/js/vendor/lunr.min.js` | Gem's `assets/js/vendor/lunr.min.js` at v0.10.1, unmodified. | Copied verbatim by `copyTheme`. The search index that drives it is the in-process [`builder/search.mjs`](../../search.mjs) output (`assets/js/search-data.json`). |
 
-No upstream `LICENSE` is vendored alongside them, and one should be --- see
-[Licence](#licence).
+`LICENSE.txt` is the upstream MIT licence, copied verbatim from the tag and
+covering all three --- see [Licence](#licence).
 
 ## In-tree patches to `_sass/`
 
@@ -103,14 +103,18 @@ copy-button retirement above is structural and has to be re-applied.
 
 ## Licence
 
-just-the-docs is MIT-licensed and **its `LICENSE.txt` is not vendored here**.
-`e7dd843` and `090b3a1` copied the gem's `_sass/` and `assets/` directories
-only; the licence sits at the gem root, which was never copied. The two
-upstream `LICENSE` files that *were* vendored --- OneDarkJekyll's and
-OneLightJekyll's, both MIT --- went with the syntax themes in `1632d3d`, so
-this tree now carries no licence text at all.
+just-the-docs is MIT-licensed, and `LICENSE.txt` beside this file is the
+upstream notice at v0.10.1, copied byte-for-byte from the tag (MIT, "Copyright
+(c) 2016 Patrick Marsceill", 1084 bytes,
+sha256 `2ca62729bcac3d0b534e7e03b7693d4436e1aec4a6e0f2a766fab8263a3a1b85`).
 
-It should carry one. The MIT terms require the copyright notice and the
+It was missing until `HEAD`. `e7dd843` and `090b3a1` copied the gem's `_sass/`
+and `assets/` directories only, and the licence sits at the gem root. The two
+upstream `LICENSE` files that *were* vendored --- OneDarkJekyll's and
+OneLightJekyll's, both MIT --- went with the syntax themes in `1632d3d`, so for
+a period this tree carried no licence text at all.
+
+It has to carry one. The MIT terms require the copyright notice and the
 permission notice to be included with "copies or substantial portions of the
 Software", and what is vendored here is the theme's entire stylesheet tree plus
 its runtime JS, compiled into `assets/css/just-the-docs-combined.css` and served
@@ -120,9 +124,10 @@ each of the three webfaces under `docs/assets/fonts/` sits beside its OFL
 licence, and [`builder/template.mjs`](../../template.mjs) keeps the Feather and
 Bootstrap Icons MIT notices inline with the SVG data they cover.
 
-The fix is one file --- copy `LICENSE.txt` from the tagged upstream tree to
-`builder/vendor/just-the-docs/LICENSE.txt`. Re-vendoring step 2 below does it.
-The current tree predates this note and does not have it yet.
+**Re-vendoring must bring the licence with the code.** Step 2 below copies it
+from the same tarball as `_sass/` and `assets/`, so the notice always matches
+the version it covers --- taking it from anywhere else is how the two drift
+apart.
 
 ## Re-vendoring
 
@@ -212,4 +217,6 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
 - The twinBASIC IDE syntax theme --- that's vendored separately under
   [`builder/themes/`](../../themes/) and consumed by
   [`builder/highlight-theme.mjs`](../../highlight-theme.mjs).
-- The upstream MIT `LICENSE.txt` --- not by design; see [Licence](#licence).
+- Anything from the gem outside `_sass/` and `assets/` --- no `_includes/`,
+  `_layouts/` or `_config.yml`. The one exception is `LICENSE.txt`, which is
+  vendored because it has to be; see [Licence](#licence).
