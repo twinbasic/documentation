@@ -188,8 +188,8 @@ Nothing tells you. The build still succeeds --- heading order is not one of the 
 
 So when you add a section to a page whose headings start at `###`, pick one of these and finish it:
 
-- **Leave the page in the old style** and write your new section as `###` too. The normalizer goes on repairing the whole page, your addition included. This is the smaller and safer edit, and it is the right one when you are adding a section to a page you are otherwise not touching.
-- **Convert the page, in the same commit.** Renumber every heading so it sits one level below its parent --- which is precisely what the normalizer was computing for you --- then add your section at the level it belongs. Done correctly the rendered HTML does not change at all, which is what makes the conversion safe to make on its own and easy to review: the diff is only `#` characters.
+- **Leave the page in the old style** and write your new section as `###` too. The normalizer goes on repairing the whole page, your addition included. This is the smaller and safer edit, and the right one when you are adding a section to a page you are otherwise not touching.
+- **Convert the page, in the same commit.** Renumber every heading so it sits one level below its parent --- which is what the normalizer was computing for you --- then add your section at the level it belongs. Done correctly the rendered HTML does not change at all, which is what makes the conversion safe to make on its own and easy to review: the diff is only `#` characters.
 
 What you must not do is mix the two and leave it there.
 
@@ -247,7 +247,7 @@ There are three reasons, in increasing order of severity:
 
 - **Every page view pays a network round trip.** A GitHub attachment URL answers with a redirect to S3, so a single image costs two requests --- up to about a second on a cold connection.
 - **The offline mirror stops being self-contained.** `_site-offline/` is meant to be browsable from a `file://` URL with no network at all. A remote image renders as a broken placeholder there.
-- **The PDF book fails to build.** This is the one that actually bites. The forked paged.js in `book/lib/` dropped support for loading images asynchronously, so an image that has not finished downloading by the time the page-breaking pass runs raises an error and aborts the whole render. A remote image makes `book.bat` depend on a reachable third-party host; when that host is slow, blocked, or has expired the asset, the build does not degrade to a missing picture --- it stops.
+- **The PDF book fails to build.** The forked paged.js in `book/lib/` dropped support for loading images asynchronously, so an image that has not finished downloading by the time the page-breaking pass runs raises an error and aborts the whole render. A remote image makes `book.bat` depend on a reachable third-party host; when that host is slow, blocked, or has expired the asset, the build does not degrade to a missing picture --- it stops.
 
 [`build.bat`](Building#checking-link-integrity) enforces this. A remote `<img>` --- `http://`, `https://`, or protocol-relative `//host/...` --- is reported as `remote-asset:` and fails the run.
 
@@ -291,6 +291,8 @@ A few of the most common substitutions:
 Delete vague praise outright --- *powerful*, *robust*, *easily* --- and say something concrete instead. Terms with a specific technical meaning stay as they are: *no-op*, *round-trip*, *marshal*, *message pump*, *idiomatic*.
 
 Beyond word choice: prefer the active voice and the present tense (`returns`, not `will return`), keep one idea per sentence, and write the reference body in the third person (*the constant*, *the source*) rather than addressing the reader as *you*. *You* is fine in the lead-in to an example and throughout tutorials.
+
+**Name the fault directly; never build up to it.** Setting up a contrast and then withholding the point is coy, and it makes the reader parse the sentence twice to get one fact out of it. Write *double-clicking it is obvious, and wrong* --- not *double-clicking it is the obvious shortcut, and it is the one that misleads*. Say what the thing is and what it does, in that order, in one clause. The same applies to *and that is the one that...*, *which is the one thing that...*, *which is precisely the...* and *therein lies the...*.
 
 ## Attribution
 

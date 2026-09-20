@@ -56,9 +56,9 @@ Serve writes to `docs/_serve/`, completely disjoint from `build.bat`'s `_site/` 
 ### Why not just open the built files
 {: #why-not-file-urls }
 
-Opening a page straight out of `_site/` by double-clicking it is the obvious shortcut, and it is the one that misleads. The online tree references its stylesheets, fonts and scripts with root-absolute URLs (`/assets/css/...`); under `file://` those resolve against the filesystem root rather than the tree root, find nothing there, and the page renders as unstyled markup. Nothing announces the failure --- all the text is present --- so it reads as a styling bug in the page rather than as three stylesheets that never loaded, and any conclusion drawn from it about colour, spacing, layout or contrast is worthless.
+Opening a page straight out of `_site/` by double-clicking it is obvious, and wrong. The online tree references its stylesheets, fonts and scripts with root-absolute URLs (`/assets/css/...`); under `file://` those resolve against the filesystem root rather than the tree root, find nothing there, and the page renders as unstyled markup. Nothing announces the failure --- all the text is present --- so it reads as a styling bug in the page rather than as three stylesheets that never loaded, and any conclusion drawn from it about colour, spacing, layout or contrast is worthless.
 
-`_site-offline/` is the exception, and the distinction is worth keeping straight rather than avoiding. The offline mirror exists so the site renders correctly with no server at all: the rewrite turns every root-absolute asset URL into a page-relative one, so a page opened from that tree over `file://` gets the real stylesheets and the real computed styles. That is exactly why the [accessibility scan](#checking-accessibility) points headless Chromium at `_site-offline/` and not at `_site/` --- its colour-contrast results would otherwise all be black text on a white void.
+`_site-offline/` is the exception, and it renders correctly over `file://` by design. The offline mirror exists so the site works with no server at all: the rewrite turns every root-absolute asset URL into a page-relative one, so a page opened from that tree gets the real stylesheets and the real computed styles. That is why the [accessibility scan](#checking-accessibility) points headless Chromium at `_site-offline/` and not at `_site/` --- its colour-contrast results would otherwise all be black text on a white void.
 
 The short form is **puppeteer for measuring, `serve.bat` for looking**. A headless browser driven over `file://` against the offline mirror measures correctly and is what the gates use; a person who wants to see a change should use the localhost server, which serves the tree a reader actually gets, with the search index and the theme toggle live.
 
@@ -234,7 +234,7 @@ The deploy workflow passes `--url` and `--baseurl` from the `configure-pages` ou
 
 Neither goes near the real site, and that is not a shortcut: on a healthy tree almost every findings category compares empty against empty, so the comparison asserts nothing. The fixtures provoke one fault of each kind so every category has something in it. Two cases are needed for the fused side because no single tree carries them all --- the online tree has the sitemap, search and canonical checks, and the offline tree is the only one with a forbidden prefix.
 
-The second row is on pull requests and not on deploy because catching it before a merge is the point, and because the deploy workflow has a site to ship. The full script-against-fused comparison over the *real* trees stays a manual gate: running it in CI would mean checking every page twice, which is precisely what folding the check into the build removed.
+The second row is on pull requests and not on deploy because catching it before a merge is the point, and because the deploy workflow has a site to ship. The full script-against-fused comparison over the *real* trees stays a manual gate: running it in CI would mean checking every page twice, which is what folding the check into the build removed.
 
 ### `fonts-liberation`, installed on purpose
 
