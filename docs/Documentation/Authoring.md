@@ -310,6 +310,50 @@ which is what an unstated rule looks like. Apply the length test: a tag of two o
 three words goes in parentheses, anything that could stand as its own sentence
 takes `---`.
 
+## Tables
+
+A table is plain GitHub-flavoured markdown --- a header row, a delimiter row, then
+the body. Nothing else is needed, and in particular **the scroll wrapper is not
+yours to write.** The renderer's `table_open` rule wraps every table in
+`<div class="table-wrapper" tabindex="0">` on its way out, and that `tabindex` is
+an accessibility fix rather than decoration: the wrapper is `overflow-x: auto`, and
+a scroll container a keyboard user cannot focus cannot be scrolled without a
+mouse. It is unconditional because whether a given table overflows depends on the
+reader's viewport, so there is no answer to give at render time. `th` gets its
+`scope="col"` from the same place. If you are writing a markdown-it plugin, do not
+add a second wrapper: the outer one would have no `tabindex`, which is the shipped
+fix undone.
+
+**A literal `|` inside a cell must be escaped as `\|`,** or the parser reads it as
+the next column boundary and the row silently gains a cell. Backticks are no
+protection: the row is split into cells before inline parsing runs, so an
+unescaped pipe inside a code span breaks the row exactly as a bare one does. It
+comes up in this documentation more than in most, because `|` is twinBASIC's
+separator for alternatives in a syntax line and the builder's own reference writes
+type unions with it --- `[ ( True \| False ) ]`, `string\|undefined`. It is escaped
+in 37 files and explained in none of them.
+
+Per-column alignment goes in the delimiter row, with a colon on the side the
+content should sit: `:---` left, `---:` right, `:---:` centred, and a bare `---`
+for the default. Use it for numeric columns, where ragged right edges make values
+hard to compare. Most tables do not need it --- 1,175 columns across the site take
+the default against 73 explicit left, 24 centred and 4 right.
+
+**Keep the column count down.** Of the 452 tables on the site, 430 have two or
+three columns, 16 have four, and five have five. Exactly one has more:
+`Reference/Default/VBA/Interaction/Partition.md` at seven, and it is the model to
+copy if you need one that wide. It right-aligns the three numeric argument columns
+and left-aligns the four result columns, and it spends a sentence of prose before
+the table explaining what the two least obvious column headings mean, which is
+what makes seven columns readable at all.
+
+Check a wide table in the PDF as well as on the site, because the two behave
+differently and only one of them degrades gracefully. `book.mjs` strips the
+`table-wrapper` before assembling the book, and `print.css` sets `table { width:
+100% }` with no overflow rule anywhere --- so a table too wide for the 170mm text
+column has no scroll affordance to fall back on and simply runs into the margin.
+Nothing reports it. Run `book.bat` and look at the page.
+
 ## Diagrams
 
 A diagram is a Graphviz `.dot` file. Put it where it belongs: `docs/assets/images/dot/` if more than one page uses it, or in the `Images/` folder beside the page if only one does. The build renders an `.svg` next to it, inlines that into the page, and gives it the zoom and export controls. Both files belong in git.
