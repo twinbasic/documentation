@@ -189,7 +189,27 @@ function kramdownHardBreakNewline(state, silent) {
 // markdown-it with `xhtmlOut: true` emits the same form for tokens it
 // generates, but raw block / inline HTML (like author-written `<br>`)
 // passes through verbatim. Rewrite those to match.
-const VOID_TAGS_RE = /<(br|hr|img|input|link|meta|area|base|col|embed|source|track|wbr)((?:\s+[^>/]+(?:="[^"]*"|='[^']*')?)*)\s*\/?>/gi;
+//
+// The attribute-name class excludes whitespace, and that is what keeps
+// this regex linear -- do not relax it back to `[^>/]+`. With whitespace
+// allowed, `(?:\s+[^>/]+...)*` is the classic `(a+)+` shape: `\s+` and the
+// name class both match a space, so one run of attribute text can be
+// partitioned in exponentially many ways. Every partition gets tried when
+// the match ultimately fails, and it fails on any `/` the quoted-value
+// alternative does not cover -- a slash inside a long `alt` string is
+// enough.
+//
+// That is not hypothetical. `Line/Column` in the alt text of
+// IDE/Menu/Edit.md, and `/Packages/WinDevLib` in
+// Features/Packages/Updating a package.md, each hung a render worker
+// outright: two of 152 chunks stayed CLAIMED, the renderJoin and
+// flushJoin barriers behind them never reached a dep count of zero, and
+// the build printed its last line and sat there forever. Growth measured
+// at ~4.5x per two added words, so a 250-character alt string does not
+// finish in any useful sense. Excluding whitespace makes the partition
+// unique; the same 394-character string then normalises in under a
+// millisecond.
+const VOID_TAGS_RE = /<(br|hr|img|input|link|meta|area|base|col|embed|source|track|wbr)((?:\s+[^\s>/]+(?:="[^"]*"|='[^']*')?)*)\s*\/?>/gi;
 function normaliseVoidTags(html) {
   return html.replace(VOID_TAGS_RE, (_, tag, attrs) => `<${tag.toLowerCase()}${attrs} />`);
 }
