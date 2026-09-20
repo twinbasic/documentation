@@ -1,0 +1,80 @@
+# Use-case evaluation protocol
+
+Hand this file to an evaluator, then give it one goal from [usecases.md](usecases.md).
+Nothing else. In particular do not tell it what the case is testing, which page answers it,
+or that a hazard exists --- walking into the hazard is the finding.
+
+---
+
+You are evaluating a documentation set by trying to USE it. Play a competent developer who
+is NEW to this project and knows nothing about it beyond what you read here.
+
+## Corpus
+
+    <CORPUS_ROOT>
+
+- Work ONLY inside that root. Never read the repository the corpus was built from.
+- Read-only. Do not write or edit any file.
+- A file whose content is `/* [ source withheld ... ] */` is UNREADABLE source. Note it as a
+  dead end; never guess its contents.
+- Do not use prior knowledge of this project. If you cannot cite a corpus file, say UNKNOWN.
+
+## The site's search box
+
+The published site has a search box. This replica uses the real index and the real query
+logic:
+
+    node eval/site_search.mjs "your query here"
+
+It prints ranked results as title + URL + snippet. A URL like
+`/Documentation/Development/Extending#adding-a-pipeline-task` corresponds to the corpus file
+`docs/Documentation/Extending.md`. Only published pages are indexed --- files under
+`builder/`, `perf/`, `test/` and the repository root are NOT reachable this way.
+
+## Three channels, measured independently
+
+Run all three. Do not let what you learn in one channel contaminate how you report another.
+
+- **Channel 0 --- cold guess.** Before opening anything, write the 1--3 places you would look
+  first, given only the goal.
+- **Channel 1 --- site search.** Issue 2--4 queries phrased the way a person with this goal
+  would actually type them, not terms you have since learned. For each, record the top 5.
+  Report whether the page that answers the goal appears, and at what rank. If no query
+  surfaces it, say MISS.
+- **Channel 2 --- navigation.** Start at the corpus `README.md`. Follow links, headings and
+  directory listings ONLY --- no content search. Log every file opened in order with one
+  line on whether it helped. Report hops to the first genuinely useful content, or STALL.
+- **Channel 3 --- full-text search.** Last resort, only if 1 and 2 both fail. Log every
+  query. Reaching the answer only here means both reader-facing channels failed; say so.
+
+Measuring search and navigation separately is not ceremony. They fail on different pages: a
+round-1 case found its answer at search rank 1 and six navigation hops away, and another
+found it in two navigation hops having missed on four of four searches.
+
+## Deliver (under 900 words)
+
+1. **THE ANSWER** --- the actual deliverable the goal asks for, as you would hand it to a
+   colleague: concrete, ordered, exact file paths and commands. Cite `path:line` for every
+   substantive claim.
+2. **CONFIDENCE** --- would you act on this without asking a maintainer? What are you still
+   guessing at?
+3. **TRACE** --- Channel 0 guesses; Channel 1 queries with the rank of the answer page or
+   MISS; Channel 2 ordered file list, hops, dead ends; whether Channel 3 was needed.
+4. **GAPS** --- anything missing, ambiguous, contradictory, or stated in two places that
+   disagree. Quote both sides. Be blunt; a flattering report is a useless one.
+5. **SCORES** 0--4 with one-line justification: completeness, discoverability, actionability.
+
+## For the orchestrator
+
+**Re-verify every finding against the file before recording it.** In round 1, seven of
+twenty-six findings needed amendment after an agent checked the source, every one in the
+direction of the reviewer having overstated severity. Evaluators reason from prose and can
+misread; so can whoever writes the use cases. Two round-1 briefs contained outright errors
+--- one asserted the image files were unreadable when they render, another predicted a table
+of contents change on a page that has no table of contents --- and in both cases the agent
+was right to check instead of comply.
+
+A case whose premise turns out to be false is not a wasted run. Record what the evaluator
+found instead; round 2's page-move case discovered the move had already happened and audited
+it against the documented checklist, which surfaced three findings the intended scenario
+would not have.
