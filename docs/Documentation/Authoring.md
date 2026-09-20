@@ -157,6 +157,7 @@ Every page opens with a YAML frontmatter block. The keys that matter:
 - **`parent`** (and sometimes **`grand_parent`**) --- the title of the nav parent. The build aborts if this does not resolve to exactly one page, so a typo is caught at build time rather than silently dropping the page from the sidebar or attaching it under the wrong branch.
 - **`permalink`** --- **required on every page.** The page's stable URL, and the contract the IDE help system and in-source `[Documentation(...)]` attribute links rely on. The build aborts if it is missing rather than deriving one from the file path: this tree deliberately does not mirror its URLs (`Reference/Built-In/CEF/` publishes at `/tB/Packages/CEF/`), so a derived URL would be wrong, and wrong silently. Reference pages follow a fixed scheme by section: a core keyword is `/tB/Core/<Symbol>`, a library symbol is `/tB/Packages/<Package>/...`, and so on. [Permanent Links](Permanent-Links) documents the full scheme.
 - **`nav_order`** --- optional integer that orders the page among its siblings in the sidebar.
+- **`has_toc`** --- set to `false` to suppress the automatic list of child pages the template appends to a page that has any; see [Folder-style pages](#folder-style-pages-and-has_toc). Every page that sets it sets it to `false`.
 - **`redirect_from`** --- optional. List any earlier URL the page has moved from, so existing links keep resolving. Each entry becomes a small stub page at that URL, so two rules apply and the build aborts naming both files if either is broken: a `redirect_from` entry may not point at a URL some page already publishes at, and no two pages may claim the same one.
 - **`vba_attribution`** --- set to `true` only on pages adapted from the VBA-Docs source; see [Attribution](#attribution).
 - **`nav_exclude`**, **`sitemap: false`**, **`search_exclude: true`** --- optional opt-outs, each from exactly one thing: the sidebar, `sitemap.xml`, and the search index. They are independent; a page that should be unlisted everywhere sets all three. The build's own link check honours the last two, so a page that opts out is not then reported as missing from the index it opted out of.
@@ -175,6 +176,52 @@ permalink: /tB/Modules/Interaction/MyFunction
 vba_attribution: true
 ---
 ```
+
+## Folder-style pages and `has_toc`
+
+A symbol that needs sub-pages is documented as a folder: `<Class>/index.md` for
+the class itself, and one sibling `.md` beside it per sub-page. CEF's browser
+control is the smallest complete example --- `Reference/Built-In/CEF/CefBrowser/`
+holds `index.md` and `EnvironmentOptions.md`, and publishes at
+`/tB/Packages/CEF/CefBrowser/` and `/tB/Packages/CEF/CefBrowser/EnvironmentOptions`.
+93 pages under `Reference/` are `index.md` files of this shape, 91 of them
+declaring a permalink that ends in a slash, and the layout is written down
+nowhere but in them.
+
+**The filename carries no meaning; the permalink does all the work.** `index.md`
+is not special to the build --- nothing in `discover` looks at basenames except to
+sort by them --- and the source folder is not the URL folder either: that CEF page
+lives at `Reference/Built-In/CEF/CefBrowser/` and publishes under
+`/tB/Packages/CEF/`. What decides the shape of the output is one character:
+
+    permalink: /tB/Packages/CEF/CefBrowser/     ->  tB/Packages/CEF/CefBrowser/index.html
+    permalink: /tB/Packages/CEF/CefBrowser      ->  tB/Packages/CEF/CefBrowser.html
+
+A trailing slash makes the page an `index.html` inside a folder of that name;
+without one it is a file beside its siblings. That is not cosmetic, because
+relative links resolve against the rendered URL: the trailing-slash form has one
+more URL segment than the other, so every `../` count on the page and every link
+written *to* it changes with the slash. Pick the form first and do not change it
+afterwards.
+
+The frontmatter follows the same nesting. The index declares `parent: <Package>
+Package`; each sibling declares `parent: <Class>` and `grand_parent: <Package>
+Package`, so the sidebar nests one level deeper. A sibling addresses its own index
+as `[CefBrowser](.)`, and a section of it as `[Create](.#create)`.
+
+**Set `has_toc: false` on every page in the group.** It is a real key the template
+reads, and it suppresses `renderChildrenNav` --- the automatic "Table of contents"
+heading and list of child pages that the template otherwise appends to a parent
+page, after its own content. On a reference index that list repeats the members
+the page already introduces in prose, so every one of the 238 pages that sets the
+key sets it to `false`; it is never `true` anywhere on the site. The whole
+`AppGlobalClassObject` package is the precedent to copy --- its `index.md` and all
+37 pages under `_App/` carry it.
+
+Note what it does not do. `has_toc` has nothing to do with the in-page table of
+contents, which is the separate `* TOC goes here` / `{:toc}` marker, or with
+`{: .no_toc }` on the page title, which keeps the title out of that list. A page
+can use all three, and most reference index pages do.
 
 ## Page skeleton
 
