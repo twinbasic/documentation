@@ -46,7 +46,7 @@ Find the row for what changed. The middle column is the step that explains the m
 | A field on the per-page render delta | [Worked example B](#6-worked-example-b-distributed-compute) | The `pages.map(…)` projection at the end of the render handler **and** the merge in `dispatch.submit`'s `render:i` callback. Both, or the field never reaches main at all. |
 | What a markdown-it rule emits | [Write the plugin](#1-write-the-plugin) | Nothing in the chain, if the rule is self-contained. But changing the emitted HTML changes what the accessibility scan can see --- read the construct-family note at the end of [Verify](#3-verify). |
 
-Two things bite a changer specifically and are easy to miss.
+Two things are easy to miss from a changer's position.
 
 **The worker pool is persistent, so an edit to a handler or a task definition does not reach a running `serve.bat`.** The NOTE at the top of this page says so, and it matters more when changing than when adding: a new task simply does not appear, which is obvious, while a changed one goes on running its old body, which looks like the change having no effect.
 
@@ -520,7 +520,7 @@ Separating 1 from 2 is what stops a broken gate reading as a clean site, and it 
 
 **A gate that silently checks less reports exactly what a clean site reports.** A green run is therefore not evidence about the site until something independent says the gate can still go red.
 
-That is not a style note. The accessibility sample reported a clean pass over six hand-picked pages while 54 pages carried violations, every one in a construct no sample page had. Separately, blocking one more script during the scan looked like a free 130 ms and cut the colour-contrast node count on one page from 54 to 2 --- axe seeing less, reported as a pass. Both were green throughout.
+That is not a style note. The accessibility sample reported a clean pass over six hand-picked pages while 54 pages carried violations, every one in a construct no sample page had. Separately, blocking one more script during the scan looked like a 130 ms win and cut the colour-contrast node count on one page from 54 to 2 --- axe seeing less, reported as a pass. Both were green throughout.
 
 So a new gate needs a second assertion of the opposite sign, and there are four shapes in the repository to copy:
 
@@ -581,7 +581,7 @@ There is no drift gate. Nothing fails when a task's documentation goes stale, so
 
     grep -rn "myTask" docs/ builder/
 
-Then triage every hit by the file it landed in. Under `docs/` the legitimate homes are the four above; a hit anywhere else is either a page that has grown a dependency on the task graph or an ordinary English word, and both `dispatch` and `render` collide that way. Expect one more diagram in the results if the task is `writePdf`: `pdf-render-pipeline.dot` names it in a cluster label without modelling the graph.
+Then triage every hit by the file it is in. Under `docs/` the legitimate homes are the four above; a hit anywhere else is either a page that has grown a dependency on the task graph or an ordinary English word, and both `dispatch` and `render` collide that way. Expect one more diagram in the results if the task is `writePdf`: `pdf-render-pipeline.dot` names it in a cluster label without modelling the graph.
 
 The more useful half is the inverse, and it is worth running before writing anything. Grep **two** existing tasks you did not touch, and take the union of the files they appear in:
 
