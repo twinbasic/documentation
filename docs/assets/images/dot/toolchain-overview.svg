@@ -105,27 +105,15 @@
 <!-- CHECK -->
 <g id="node9" class="node">
 <title>CHECK</title>
-<path fill="#fef7e0" stroke="#f9ab00" d="M277.42,-116.64C277.42,-116.64 196.09,-116.64 196.09,-116.64 190.09,-116.64 184.09,-110.64 184.09,-104.64 184.09,-104.64 184.09,-91.2 184.09,-91.2 184.09,-85.2 190.09,-79.2 196.09,-79.2 196.09,-79.2 277.42,-79.2 277.42,-79.2 283.42,-79.2 289.42,-85.2 289.42,-91.2 289.42,-91.2 289.42,-104.64 289.42,-104.64 289.42,-110.64 283.42,-116.64 277.42,-116.64"/>
+<path fill="#fef7e0" stroke="#f9ab00" d="M287.22,-116.64C287.22,-116.64 186.29,-116.64 186.29,-116.64 180.29,-116.64 174.29,-110.64 174.29,-104.64 174.29,-104.64 174.29,-91.2 174.29,-91.2 174.29,-85.2 180.29,-79.2 186.29,-79.2 186.29,-79.2 287.22,-79.2 287.22,-79.2 293.22,-79.2 299.22,-85.2 299.22,-91.2 299.22,-91.2 299.22,-104.64 299.22,-104.64 299.22,-110.64 293.22,-116.64 287.22,-116.64"/>
 <text xml:space="preserve" text-anchor="start" x="209.1" y="-100.32" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="12.00">check.bat</text>
-<text xml:space="preserve" text-anchor="start" x="192.73" y="-85.92" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="12.00">check_links.mjs</text>
-</g>
-<!-- SITE&#45;&gt;CHECK -->
-<g id="edge8" class="edge">
-<title>SITE&#45;&gt;CHECK</title>
-<path fill="none" stroke="#7a8090" d="M151.99,-159.52C167.78,-148.23 188.26,-133.59 205.13,-121.53"/>
-<polygon fill="#7a8090" stroke="#7a8090" points="206.14,-123.82 210.41,-117.76 203.29,-119.84 206.14,-123.82"/>
+<text xml:space="preserve" text-anchor="start" x="182.93" y="-85.92" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="12.00">6 verification gates</text>
 </g>
 <!-- OFFLINE&#45;&gt;CHECK -->
-<g id="edge9" class="edge">
+<g id="edge8" class="edge">
 <title>OFFLINE&#45;&gt;CHECK</title>
 <path fill="none" stroke="#7a8090" d="M236.76,-159.72C236.76,-149.53 236.76,-136.58 236.76,-125.24"/>
 <polygon fill="#7a8090" stroke="#7a8090" points="239.21,-125.48 236.76,-118.48 234.31,-125.48 239.21,-125.48"/>
-</g>
-<!-- PDFSRC&#45;&gt;CHECK -->
-<g id="edge10" class="edge">
-<title>PDFSRC&#45;&gt;CHECK</title>
-<path fill="none" stroke="#7a8090" stroke-dasharray="5,2" d="M351.57,-159.52C329.79,-148.02 301.42,-133.05 278.33,-120.86"/>
-<polygon fill="#7a8090" stroke="#7a8090" points="279.71,-118.82 272.38,-117.72 277.42,-123.15 279.71,-118.82"/>
 </g>
 <!-- BOOK -->
 <g id="node10" class="node">
@@ -135,7 +123,7 @@
 <text xml:space="preserve" text-anchor="start" x="338.97" y="-85.92" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="12.00">render&#45;book.mjs</text>
 </g>
 <!-- PDFSRC&#45;&gt;BOOK -->
-<g id="edge11" class="edge">
+<g id="edge9" class="edge">
 <title>PDFSRC&#45;&gt;BOOK</title>
 <path fill="none" stroke="#7a8090" d="M385.76,-159.72C385.76,-149.53 385.76,-136.58 385.76,-125.24"/>
 <polygon fill="#7a8090" stroke="#7a8090" points="388.21,-125.48 385.76,-118.48 383.31,-125.48 388.21,-125.48"/>
@@ -147,7 +135,7 @@
 <text xml:space="preserve" text-anchor="start" x="314.72" y="-13.2" font-family="Inter,system-ui,-apple-system,Segoe UI,sans-serif" font-size="12.00">_pdf/twinBASIC Book.pdf</text>
 </g>
 <!-- BOOK&#45;&gt;PDF -->
-<g id="edge12" class="edge">
+<g id="edge10" class="edge">
 <title>BOOK&#45;&gt;PDF</title>
 <path fill="none" stroke="#7a8090" d="M385.76,-78.85C385.76,-68.77 385.76,-56.05 385.76,-44.93"/>
 <polygon fill="#7a8090" stroke="#7a8090" points="388.21,-44.95 385.76,-37.95 383.31,-44.95 388.21,-44.95"/>
