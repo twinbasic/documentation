@@ -179,7 +179,7 @@ export async function runServe(opts) {
   try {
     await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, pool });
   } catch (err) {
-    console.error("serve: initial build failed:", err.message);
+    console.error("serve: initial build failed:", describeBuildError(err));
     await pool.destroy();
     process.exit(1);
   }
@@ -224,7 +224,7 @@ export async function runServe(opts) {
       await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, pool });
       notifyReload();
     } catch (err) {
-      console.error("rebuild failed:", err.message);
+      console.error("rebuild failed:", describeBuildError(err));
     } finally {
       running = false;
       if (pending) { pending = false; schedule(); }
@@ -264,4 +264,19 @@ export async function runServe(opts) {
     console.log(`Serving ${destRoot} at http://localhost:${port}/`);
     console.log(`Watching ${srcRoot} for changes.`);
   });
+}
+
+// A scheduler abort's own message is only "task <name> failed"; what it
+// was actually refusing sits in `cause`. Printing just `err.message` in
+// the serve loop therefore turns a build gate's carefully-worded refusal
+// -- the publish allowlist naming four stray files, say -- into four
+// words that say nothing. Walk the chain.
+function describeBuildError(err) {
+  const seen = new Set();
+  const parts = [];
+  for (let e = err; e && !seen.has(e); e = e.cause) {
+    seen.add(e);
+    if (e.message) parts.push(e.message);
+  }
+  return parts.join("\n  caused by: ");
 }
