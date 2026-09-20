@@ -190,28 +190,50 @@ function kramdownHardBreakNewline(state, silent) {
 // generates, but raw block / inline HTML (like author-written `<br>`)
 // passes through verbatim. Rewrite those to match.
 //
-// The attribute-name class excludes whitespace, and that is what keeps
-// this regex linear -- do not relax it back to `[^>/]+`. With whitespace
-// allowed, `(?:\s+[^>/]+...)*` is the classic `(a+)+` shape: `\s+` and the
-// name class both match a space, so one run of attribute text can be
-// partitioned in exponentially many ways. Every partition gets tried when
-// the match ultimately fails, and it fails on any `/` the quoted-value
-// alternative does not cover -- a slash inside a long `alt` string is
-// enough.
+// The attributes are one flat `[^>]*`, and the trailing `/` is removed
+// afterwards rather than described in the pattern. That is deliberate,
+// and the history is worth keeping because the obvious shape was tried
+// twice and was wrong twice.
 //
-// That is not hypothetical. `Line/Column` in the alt text of
-// IDE/Menu/Edit.md, and `/Packages/WinDevLib` in
-// Features/Packages/Updating a package.md, each hung a render worker
+// This used to spell the attribute list out as
+// `(?:\s+[^>/]+(?:="[^"]*"|='[^']*')?)*`. `[^>/]` matches a space and so
+// does `\s`, which makes it the classic `(a+)+`: one run of attribute
+// text can be partitioned in exponentially many ways, and every
+// partition gets tried when the match fails -- which it does on any `/`
+// the quoted-value alternative does not cover. `Line/Column` in the alt
+// text of IDE/Menu/Edit.md and `/Packages/WinDevLib` in
+// Features/Packages/Updating a package.md each hung a render worker
 // outright: two of 152 chunks stayed CLAIMED, the renderJoin and
 // flushJoin barriers behind them never reached a dep count of zero, and
-// the build printed its last line and sat there forever. Growth measured
-// at ~4.5x per two added words, so a 250-character alt string does not
-// finish in any useful sense. Excluding whitespace makes the partition
-// unique; the same 394-character string then normalises in under a
-// millisecond.
-const VOID_TAGS_RE = /<(br|hr|img|input|link|meta|area|base|col|embed|source|track|wbr)((?:\s+[^\s>/]+(?:="[^"]*"|='[^']*')?)*)\s*\/?>/gi;
+// the build printed its last line and sat there forever.
+//
+// Narrowing the class to `[^\s>/]+` fixed those two strings and did not
+// fix the regex: `[^\s>/]` still matches `=`, `"` and `'`, so an
+// attribute could be consumed either by the name class or by the
+// quoted-value alternative, and that binary choice per attribute is the
+// same 2^n one level down. scripts/check_regex_safety.mjs caught it with
+// the witness `<BR\tG=` + `""\t"=''\t=='/">'\tG=` -- 186 characters took
+// 97 ms and it grew from there.
+//
+// So do not reintroduce a per-attribute sub-pattern. Matching to the
+// first `>` cannot be ambiguous, because `[^>]*` and the `>` that
+// follows it share no character. Verified against every void tag in the
+// built site -- 4,137 distinct tags, byte-identical output -- and
+// recheck's own worst witness now runs in under a millisecond at 288,006
+// characters.
+const VOID_TAGS_RE = /<(br|hr|img|input|link|meta|area|base|col|embed|source|track|wbr)\b([^>]*)>/gi;
+
+// Drop an existing self-closing slash and the whitespace around it, so
+// the emitted tag ends in exactly one ` />`. Three anchored one-liners
+// rather than one combined pattern: each is separately trivial to read
+// and none of them can backtrack.
+function stripSelfClose(attrs) {
+  return attrs.replace(/\s+$/, "").replace(/\/$/, "").replace(/\s+$/, "");
+}
+
 function normaliseVoidTags(html) {
-  return html.replace(VOID_TAGS_RE, (_, tag, attrs) => `<${tag.toLowerCase()}${attrs} />`);
+  return html.replace(VOID_TAGS_RE, (_, tag, attrs) =>
+    `<${tag.toLowerCase()}${stripSelfClose(attrs)} />`);
 }
 
 // ---------- markdown-it configuration ---------------------------------------
@@ -1688,7 +1710,16 @@ function normaliseBlockHtml(content) {
 // Match an html_block whose content is one or more self-closing inline
 // tags (separated by whitespace): <br>, <br/>, <br />, <hr ...>,
 // <img ...>. kramdown wraps any such sequence in a single <p>.
-const STANDALONE_INLINE_HTML_RE = /^(?:<(br|hr|img)\b[^>]*\/?>\s*)+$/i;
+//
+// No `\/?` before the `>`, deliberately. `/` is already inside `[^>]`,
+// so `[^>]*\/?` matches exactly the same language as `[^>]*` -- but it
+// matches it two ways per tag, once with the slash inside the class and
+// once with it in the optional. Under `(?:...)+` that is 2^n partitions
+// of an n-tag block, all of which get tried when the anchored `$`
+// fails. Measured at ~4x per two added tags: 22 tags took 106 ms, and
+// the curve does not flatten. An html_block of `<br />` lines ending in
+// anything that is not another such tag is enough to reach it.
+const STANDALONE_INLINE_HTML_RE = /^(?:<(br|hr|img)\b[^>]*>\s*)+$/i;
 
 // ---------- SVG inline plugin -----------------------------------------------
 
