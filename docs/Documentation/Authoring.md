@@ -141,6 +141,14 @@ refuse, reintroduced by the person fixing a build failure.
 `scripts/check_publish_policy.mjs` asserts that a `bundle_extra` exemption stays
 pinned to its declared path and never leaks to the extension.
 
+The other half of this --- how the refusal is enforced --- is on the build page.
+[What the build refuses to publish](Building#what-the-build-refuses-to-publish)
+covers the two inventories the policy sweeps (the source files on disk, before
+anything is written, and what each output tree is about to receive), why a
+finding there aborts the build outright where a broken link only sets an exit
+code, and how that self-test proves the allowlist can still refuse something
+rather than having been widened until it refuses nothing.
+
 ## Frontmatter and permalinks
 
 Every page opens with a YAML frontmatter block. The keys that matter:
