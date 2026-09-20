@@ -89,12 +89,29 @@ bundle_extra:
     dest: Features/Packages/downloads/impexp.py
 
 exclude:
-  # Underscore-prefixed files and directories -- catches _config.yml,
-  # _book.yml, _site, _site-offline, _site-pdf, _pdf, _includes,
-  # _layouts, _sass, _plugins, _profile, and every _Images at any depth.
+  # Underscore-prefixed entries AT THE SOURCE ROOT -- _config.yml,
+  # _book.yml, _sass, and every build-output tree (_site*, _serve*, _pdf).
   - _*
   - _*/**
-  - "**/_*/**"
+  # Affinity sources, kept beside the pages they illustrate. Only the
+  # exported .png under the sibling Images/ folder is published.
+  #
+  # Scoped to _Images rather than the `**/_*/**` this used to be. That
+  # blanket rule silently swallowed every page under
+  # Reference/Built-In/AppGlobalClassObject/_App/ -- 37 of them -- because
+  # the twinBASIC interface really is named `_App`, after the COM
+  # hidden-interface convention, and the folder is named for it. Nothing
+  # reported the loss: excluded files are not missing files.
+  #
+  # Note the rule matches a _Images *directory*, so it does not touch
+  # underscore-prefixed *pages* such as
+  # Reference/Built-In/CustomControls/Framework/_CustomControlContext.md,
+  # which are published and always have been.
+  - "**/_Images/**"
+  # Defensive, now that the underscore rule no longer covers them: the
+  # Affinity sources are the only thing _Images holds, and a stray one
+  # filed anywhere else must not ship either.
+  - "**/*.af"
   # Defensive: caches and unrelated trees that should never be in docs/.
   - "**/.git/**"
   - "**/node_modules/**"
