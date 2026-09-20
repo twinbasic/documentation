@@ -50,13 +50,22 @@ export async function discover(srcRoot, ignore = []) {
 
   // Jekyll sorts site.pages by basename (`name` = basename with
   // extension) via `lib/jekyll/reader.rb:44`'s `site.pages.sort_by!
-  // (&:name)`. Mirror that with JS's stable Array#sort. Tied
-  // basenames (e.g. ~111 `index.md` pages from folder-style classes)
-  // are kept in fast-glob's input order; their relative position
-  // among sibling pages is then deterministically broken in Phase 2
-  // by the explicit `nav_order` values in each page's frontmatter,
-  // so the unstable-sort divergence Ruby exhibits between versions
-  // doesn't reach the rendered output.
+  // (&:name)`. Mirror that, but with an explicit `srcRel` tie-break
+  // rather than by leaning on Array#sort's stability.
+  //
+  // Stability is not enough here, and the reason is easy to miss:
+  // `pages` is filled from inside the `Promise.all` above, so a page
+  // is pushed when its `readFile` resolves, NOT in `allFiles` order.
+  // A stable sort then preserves that I/O completion order for every
+  // tied basename -- and ~111 folder-style classes are all named
+  // `index.md`, so the ties are not rare. Two builds of identical
+  // sources ordered those pages differently, which reordered
+  // `search-data.json` (545 of 3724 entries moved between two runs of
+  // the same commit) and made the file non-reproducible.
+  //
+  // `allFiles` is sorted by full path, so breaking ties on `srcRel`
+  // reproduces exactly the input order the old comment claimed was
+  // already in effect -- same output, now actually deterministic.
   pages.sort(byName);
   // Static files keep the full-path sort -- Jekyll's reader sorts
   // them with `site.static_files.sort_by!(&:relative_path)`, which
@@ -74,7 +83,8 @@ function basename(p) {
 function byName(a, b) {
   const an = basename(a.srcRel);
   const bn = basename(b.srcRel);
-  return an < bn ? -1 : an > bn ? 1 : 0;
+  if (an !== bn) return an < bn ? -1 : 1;
+  return bySrcRel(a, b);
 }
 
 function bySrcRel(a, b) {
