@@ -78,3 +78,29 @@ A case whose premise turns out to be false is not a wasted run. Record what the 
 found instead; round 2's page-move case discovered the move had already happened and audited
 it against the documented checklist, which surfaced three findings the intended scenario
 would not have.
+
+## For the fix pass
+
+**A finding that spans two pages needs a canonical-plus-pointer decision before dispatch.**
+Asking one agent to close the same gap in two files, pitched for each audience, is a
+reasonable-sounding instruction that produces two full copies which then drift independently.
+It happened on the publish-allowlist remedies: roughly 40 lines of near-parallel prose across
+`Authoring.md` and `Building.md`, created in a single commit. Decide which page owns the
+answer and what the other one says instead, then say so in the brief.
+
+**Partition agents by file, never by finding**, and run a phase alone when its files overlap
+everyone else's. Parallel agents committing with explicit pathspecs do not collide; two
+agents holding one file do.
+
+**Tell agents to verify rather than comply.** Several briefs in the first two fix passes
+contained errors --- image files described as unreadable when they render, a table-of-contents
+change predicted on a page with no table of contents, a gate count wrong on three of six, a
+contradiction reported as three-way that was four-way. Every one was caught by an agent
+reading the source instead of trusting the brief, and each correction is recorded in the
+review it came from.
+
+**Examples are the part readers copy, and nothing tests them.** Two of `Extending.md`'s three
+worked examples were defective --- one duplicated a shipped renderer rule and weakened its
+accessibility fix, one rendered an empty element because the body was consumed by a line-skip
+loop. Both had been published for months. Any brief that adds or changes an example must say
+to execute it.

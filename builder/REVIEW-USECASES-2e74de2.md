@@ -51,6 +51,14 @@ degrades it.** Its **Renderer override** worked example has the reader write a
 `originalOpen` **is** the shipped rule, so following the tutorial produces a nested wrapper
 whose outer `div` has no `tabindex`.
 
+*Found while fixing the above:* **the same tutorial's other worked example produced empty
+output.** Its block-rule callout plugin, run exactly as documented, rendered
+`<div class="callout callout-warning"></div>` --- the body was consumed by the line-skip loop
+and silently discarded. Verified by executing both the documented version and the corrected
+one against the repository's own markdown-it. So of `Extending.md`'s three worked examples,
+two were defective: one duplicated a shipped fix and weakened it, one did not work at all.
+A tutorial's examples are the part readers copy verbatim, and nothing tests them.
+
 **2. `Builder.md` says the vendored theme is pristine; thirty files differ.**
 `Builder.md:458` describes the vendored sources as *"pristine upstream and re-vendored
 wholesale"*. `builder/vendor/just-the-docs/README.md:18` says thirty files differ, six of
@@ -59,6 +67,22 @@ them measured accessibility patches with commit SHAs --- a 1.39:1 contrast fix, 
 the published page re-vendors wholesale and silently drops all six. `Builder.md:447` also
 advertises the vendor README as covering *"the in-tree patches applied to
 `just-the-docs.js`"*, omitting the `_sass/` patches entirely.
+
+*Refined while fixing.* `check.bat` catches this **half**: the axe scan reports the two
+contrast regressions; the three focus rings are reported by nothing, because axe checks that a
+control is reachable and named rather than that its ring is visible. Verified against the
+tree, the divergence is 30 paths --- 26 modified, 4 deleted --- of the 36 files vendored at
+`e7dd843`, and all six accessibility patches are physically present in the source.
+
+*Also found:* **no upstream MIT `LICENSE` is vendored.** `find builder/vendor -iname "*licen*"`
+returns nothing; the vendoring commits copied `_sass/` and `assets/` only, and `LICENSE.txt`
+sits at the gem root. Confirmed upstream as MIT, "Copyright (c) 2016 Patrick Marsceill". MIT
+requires the notice with substantial portions, and this is the entire stylesheet tree plus the
+runtime JS, compiled into a stylesheet every page loads; the footer's "Just the Docs" link is
+attribution, not the notice. The repository's own practice agrees --- three OFL licences sit
+beside the webfaces, and the Feather and Bootstrap Icons MIT notices are inline in
+`template.mjs`. The file has not been added; the vendor README now records the gap and its
+re-vendoring step copies it.
 
 **3. Every "direct command" in the published docs fails on a non-Windows machine, and two
 pages promise POSIX equivalents they never give.** `Building.md:18` --- *"their POSIX
@@ -107,11 +131,18 @@ single most common destructive documentation edit is undocumented.
 
 **10. The list-bullet dash convention is near-absolute and unwritten.** Bold-term bullets
 take `---` (50 of 50 in `docs/Reference/`); link bullets take `--` (1460 of 1460). Nothing
-states it, and `Authoring.md`'s own "See also" uses `--`, so a contributor imitating the
-guide becomes the only counterexample on the site. Capitalisation after the dash is
-lowercase 26 times with zero counterexamples and is likewise unstated. So is the rule for a
-parenthetical aside --- practice is split inside a single page (`Dim.md:33` uses parentheses,
-`:37` uses `---`).
+states it. Capitalisation after the dash is lowercase with zero counterexamples and is
+likewise unstated. So is the rule for a parenthetical aside --- practice is split inside a
+single page (`Dim.md:33` uses parentheses, `:37` uses `---`).
+
+*Corrected while fixing, on three counts.* This review claimed `Authoring.md`'s own "See
+also" was the counterexample. **It is not.** `--` on a link bullet *is* the site rule ---
+1,570 of 1,570 in `docs/Reference/`, 70 of 72 in Tutorials, 8 of 8 in Features. The guide was
+already right, and the genuinely mixed section is `docs/Documentation/` itself, 23 `--`
+against 20 `---`, which is probably what was seen. The lowercase rule is narrower than stated
+too: absolute for bold-term bullets (26/26, and 16/16 in Documentation) but **not** for link
+bullets, 94 of which begin with a capital, 58 of those proper nouns such as `Win32` and
+`Variant`. And the link-bullet count here was low --- 1,570, not 1,460.
 
 **11. `Authoring.md` has no table section.** Its only mention of tables is a prohibition
 ("not a markdown table", for parameter lists). It does not say the scroll wrapper is
@@ -165,10 +196,18 @@ timing history of any kind, so "the build got slower" cannot be answered by comp
 only by re-running history by hand.
 
 **20. The page-count drift guard cannot do what its description claims.**
-`Builder.md:539`: `if (pages.length < 836) process.exitCode = 1`, described as catching "a
-discover-rule regression that silently drops content". There are 864 pages today, so 28 can
-vanish before it fires, and one never will. Against the 37-page `_App` incident it names
-elsewhere, it would have fired only barely. A floor is not a drift check.
+`Builder.md:539`: `if (pages.length < 836)`, described as catching "a discover-rule
+regression that silently drops content". A floor is not a drift check.
+
+*Corrected while fixing, and the real figure is worse than this review's.* Measured by
+running the real `discover()` against `_config.yml`'s exclude list rather than counting files
+on disk: **908 pages**, not the 864 stated here. So the margin is **72**, not 28 — and an
+identical repeat of the 37-page `_App` loss would leave 871 and **not fire at all**, rather
+than "firing only barely". Raising the constant to a tight floor is not the answer either;
+it would then fire on every legitimate page removal, which is why it was left loose. The
+guard that would have caught `_App` is a comparison against the previous build's count held
+in a committed file, the same shape as `builder/inter-metrics.json`. That is a code change
+and has not been made.
 
 **21. `README.md` calls `check.bat` "the gates that need a browser (diagram fit,
 accessibility)".** It is six gates, two of which need neither a browser nor a built tree ---
