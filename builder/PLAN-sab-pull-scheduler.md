@@ -2646,9 +2646,11 @@ submit(out, _state, scheduler) {
   for (let i = 0; i < N; i++) prepToFlush.push(flushBase + i);
   appendDynamicSuccessors(views, [{ from: prepPageDirsIdx, to: prepToFlush }]);
 
-  // 4. Set dep counts and pinning.
-  setDepCount(views, renderJoinIdx, N);
-  setDepCount(views, flushJoinIdx,  N);
+  // 4. Set flush dep counts and pinning.  The two barriers' counts are
+  //    deliberately NOT written here --- they go through registerBarrier
+  //    in step 5b, which writes the count and the `expected` list
+  //    together.  See §A dep count of zero does not mean the submits
+  //    have run.
   for (let i = 0; i < N; i++) {
     setDepCount(views, flushBase + i, 2);   // gated on render:i + prepPageDirs
     Atomics.store(views.pinnedTo, flushBase + i, renderBase + i);
@@ -2667,7 +2669,16 @@ submit(out, _state, scheduler) {
       submit(renderOut, state) {
         for (const r of renderOut.pages) {
           const p = state.pageByDest.get(r.destPath);
-          if (!p) continue;
+          // Not `continue`.  pageByDest is built from the same page list
+          // the chunks were sliced from, so a miss is a bug --- and every
+          // consumer of renderedContent skips a page that has none rather
+          // than complaining, so dropping the result loses that page
+          // without a word.
+          if (!p) {
+            throw new Error(
+              `render:${i} returned a page the build does not know: ${r.destPath}`,
+            );
+          }
           p.renderedContent = r.renderedContent;
           if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
         }
@@ -2685,13 +2696,15 @@ submit(out, _state, scheduler) {
     });
   }
 
-  // Populate flushJoin's expected array so _assembleInputs delivers
-  // all flush results to its execute().  Reset first --- in serve mode
-  // the task def object is reused across rebuilds; without the reset,
-  // names from the previous build would accumulate.
-  const flushJoinDef = scheduler.tasks.get("flushJoin");
-  flushJoinDef.expected = [];
-  for (let i = 0; i < N; i++) flushJoinDef.expected.push(`flush:${i}`);
+  // 5b. Register BOTH barriers.  registerBarrier writes the SAB dep
+  //     count and the `expected` list in one call, because writing one
+  //     without the other is a data-loss bug: the count orders the
+  //     work, the list orders the state.  renderJoin needs the list
+  //     even though its execute() ignores the inputs --- that omission
+  //     is the ~6-missing-pages bug.  See §A dep count of zero does not
+  //     mean the submits have run.
+  registerBarrier(scheduler, views, "renderJoin", renderJoinIdx, "render", N);
+  registerBarrier(scheduler, views, "flushJoin",  flushJoinIdx,  "flush",  N);
 
   // 6. Pack payload, broadcast, and activate.
   const payloadSAB = packPayloads(views, renderBase, out.chunks);
@@ -2705,6 +2718,15 @@ submit(out, _state, scheduler) {
 No `_renderExpected`, no `wireJoins()`, no name-prefix matching.
 The successor edges, dep counts, and pinning are all explicit data
 written into the SAB before any task activates.
+
+`registerBarrier` is the module-level helper in [tbdocs.mjs](tbdocs.mjs)
+that pairs a barrier's dep count with its `expected` list so neither can
+be written alone; §A dep count of zero does not mean the submits have
+run shows it in full and gives the reasoning, including why the task def
+is cloned rather than rewritten in place.  The sample above is the
+landed form: Phase 15 originally inlined a `flushJoinDef.expected = []`
+mutation here and gave `renderJoin` no list at all, which is the
+~6-missing-pages bug.
 
 **Ordering guarantee.**  `wireDynamicEdges` and `setDepCount` run
 before `activateDynamicTasks`.  No render task can *complete* before
@@ -3530,7 +3552,10 @@ the pure-compute `deriveSearchEntries` function is called.
 assignment preserves page order across the chunks --- chunk 0's
 entries come before chunk 1's, matching the serial iteration order
 over `state.pages`.  By the time `renderJoin` fires, every slot is
-populated.
+populated --- **but only because `renderJoin` lists every `render:i`
+in its `expected` array.**  Its SAB dep count reaching zero does not
+say the submits have run; see §A dep count of zero does not mean the
+submits have run, which is the bug this exact assumption produced.
 
 **`searchData` task.**  Dependencies unchanged: `renderJoin` +
 `prepDest`.  The `execute()` body changes from "derive from
@@ -3572,7 +3597,8 @@ render:i.submit() [M]
    └── state.searchChunks[i] = renderOut.searchEntries         ← NEW
               │
               ▼
-renderJoin [M]  (barrier — all searchChunks slots populated)
+renderJoin [M]  (barrier — all searchChunks slots populated,
+                 because renderJoin.expected lists every render:i)
               │
               ▼
 searchData [M]
@@ -3636,6 +3662,14 @@ cost negligible (~400 KB total across all workers for ~2000 entries).
 
 ```js
 export async function writeSearchDataFromChunks(searchChunks, destRoot) {
+  // flat() skips holes without a word, so a chunk whose submit() has
+  // not run yet costs its pages silently.  Refuse to write a partial
+  // index --- see §Where the completeness checks are.
+  const missing = [];
+  for (let i = 0; i < searchChunks.length; i++) {
+    if (!(i in searchChunks)) missing.push(i);
+  }
+  if (missing.length) throw new Error(`search index is incomplete: chunks ${missing.join(", ")} never arrived`);
   const allEntries = searchChunks.flat();
   for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
   const body = allEntries.map(renderEntryString).join(",");
@@ -3682,7 +3716,7 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
      submit(renderOut, state) {
        for (const r of renderOut.pages) {
          const p = state.pageByDest.get(r.destPath);
-         if (!p) continue;
+         if (!p) throw new Error(`render:${i} returned an unknown page: ${r.destPath}`);
          p.renderedContent = r.renderedContent;
          if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
        }
