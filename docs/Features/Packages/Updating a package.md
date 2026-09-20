@@ -12,7 +12,7 @@ redirect_from:
 
 The compiler will notify you if a newer version of a package in your project is available on TWINSERV when you load your project:
 
-![image](Images/db4636f6-d988-4e31-94a2-c4c170418e81.png)
+![The DEBUG CONSOLE showing a PACKAGE CHECK notice that a newer version of the WinDevLib package is available](Images/db4636f6-d988-4e31-94a2-c4c170418e81.png)
 
 
 If you find an updated package is available on TWINSERV, you must first remove the old package from your project by deselecting it. Open Settings to References and untick the box. You will then be prompted to remove it from the filesystem:

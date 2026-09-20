@@ -29,7 +29,7 @@ This sets an alpha blending level for the entire form. Like transparency, this i
 
 The following image shows a Form with a `TransparencyKey` of Red, using a Shape control to define the transparent area, while also specifying 75% `Opacity` for the entire form:
 
-![image](../Images/85f25aa2-abc8-4d42-8510-078f8ee4a324.png)
+![A translucent form over the twinBASIC IDE, with a red Shape control marking the area set as the TransparencyKey colour](../Images/85f25aa2-abc8-4d42-8510-078f8ee4a324.png)
 
 ## Additional Form Features
 

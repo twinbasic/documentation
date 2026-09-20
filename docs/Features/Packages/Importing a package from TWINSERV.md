@@ -30,7 +30,7 @@ Once you're finished, save and close the Settings file which will cause the comp
 
 Note: If you have any PRIVATE packages that you have published, they are only available when signed in.   If you are not already signed in, you will see a warning link that you can click to login:
 
-![image](Images/0fa1272d-41d6-4d0f-b19c-f47f24a47c4d.png)
+![The yellow TIP link below the package list, offering to log in to see private packages](Images/0fa1272d-41d6-4d0f-b19c-f47f24a47c4d.png)
 <br>
 <br>
 

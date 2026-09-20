@@ -104,10 +104,10 @@ If you wish to treat these as `Boolean`, you can use the `CBool()` function, e.g
 The tB editor has the helpful feature of showing you in real time which compiler constants are active. Code in `#If` blocks is inactive and will appear grayed out if it will not execute under current settings. Note that unlike VBx, inactive code is not evaluated for errors.
 
 For example, in 32bit mode:\
-![image](Images/oHpCiV1.png)
+![The editor in win32 mode, with the declares in the Win64 branch greyed out and those in the Else branch active](Images/oHpCiV1.png)
 
 Then switching to 64bit mode:\
-![image](Images/TYizrRW.png)
+![The same code in win64 mode, with the Win64 branch now active and the Else branch greyed out](Images/TYizrRW.png)
 
 
 ---
