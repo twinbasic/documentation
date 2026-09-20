@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Pipeline-Stages
 # Pipeline Stages
 {: .no_toc }
 
-Complete interface reference for `tbdocs`. The first half covers every task in the scheduler's DAG, grouped by the four Gantt sections (Seeds / Spine / Render / Write). The second half covers every module, with the full export table for each.
+Complete interface reference for `tbdocs`. The first half covers every task in the scheduler's DAG, grouped by the five Gantt sections (Seeds / Spine / Render / Write / Check). The second half covers every module, with the full export table for each.
 
 For design rationale and the narrative tour, see [tbdocs Builder](Builder). To add a new task or markdown-it plugin, see [Extending the Builder](Extending).
 
@@ -66,12 +66,16 @@ Populated progressively. Each task's `execute()` or `submit()` stores its output
 | `seoLogoUrl` | `string\|null` | `markdownInit` (via `computeSiteSeo`) | Absolute URL of the site logo. |
 | `highlightCss` | `string\|null` | `highlighterInit` | Generated `tb-highlight.css` content. Read by `writeAssets` and `writePdf`. |
 
-In addition, `SharedState` itself contains two non-`site` fields that downstream tasks read directly:
+In addition, `SharedState` itself contains non-`site` fields that downstream tasks read directly:
 
 | Field | Type | Set by | Description |
 |---|---|---|---|
 | `sitePaths` | `Set<string>` | `dispatch` | All site-relative paths reachable in the online tree (pages + statics + redirects + theme assets). Built once and reused by the offline rewrite in every render worker, by the `scss` task's offline rewrite, and by `writeOffline`. |
 | `searchChunks` | `Array<Array<entry>>` | `dispatch` (allocated), `render:i.submit` (filled) | Per-chunk search entries collected from the render workers. Read by `searchData`. |
+| `checkTrees` | `object\|null` | `dispatch` | Per-tree `{ rels, baseurl }` for each tree being checked, or `null` when `--check` is off. Broadcast to the workers so each lane can build its own tree index. Its presence is what turns the check on everywhere downstream. |
+| `checkChunks` | `Array<object>` | `dispatch` (allocated), `flush:i.submit` (filled) | Per-chunk findings, keyed by tree. Read by `linkJoin`. |
+| `checkChunkCount` | `number` | `dispatch` | How many chunks `linkJoin` must see. A short list means the check examined less than the whole site, which is reported as an error rather than tolerated. |
+| `checkStubs` | `Array<{destPath, html}>` | `writeAux` | Redirect stubs, which never went through `flush` and are therefore checked on the main thread by `linkJoin` as one extra chunk per tree. |
 
 ### Static files (`staticFiles[]`)
 
@@ -103,7 +107,7 @@ Every task is declared as an entry in the static `TASKS` object in [`tbdocs.mjs`
 | `survives_reset` | `boolean` | no | The per-lane done flags survive an SAB reset between builds in serve mode. |
 | `perWorkerDeps` | `string[]` | no | Names of `unique_per_worker` tasks that must have run on the claiming lane. |
 | `pinnedTo` / `F_PIN_TO_PRED` | (dynamic) | no | Must run on the same lane that ran the named predecessor. Set via the `pinnedTo` array, not in the task def directly. |
-| `priority` | `number` | no | When multiple tasks are READY, lower priority numbers claim first. |
+| `priority` | `number` | no | When multiple tasks are READY, the **highest** priority value claims first (`scanAndClaim` keeps the largest `pri` it finds). Default `0`; `dispatch.submit` gives each `flush:i` `priority: 1` so a pending flush outranks a fresh render. |
 | `consolidate` | `boolean` | no | Combine timings across lanes into one Gantt swimlane (used by `render:i` / `flush:i`). |
 | `ganttSection` | `string` | no | Section header for the Gantt chart row (`Seeds` / `Spine` / `Render` / `Write`). |
 
@@ -199,6 +203,20 @@ discover.execute({ config: { config } }, ctx) →
 
 Calls `discover(srcRoot, config.exclude ?? [])` from `discover.mjs`. `submit()` writes the three fields to `SharedState` and populates `state.pageByDest`.
 
+### `vendorAssets` (main)
+
+```js
+vendorAssets.expected = ["discover"]
+vendorAssets.execute() → { videos, images, files, fetched, failed }
+```
+
+Calls `vendorAssets(srcRoot, pages, { baseurl, allowFetch })` from `vendor-assets.mjs`. Scans the discovered markdown for YouTube video markers and GitHub user-attachment URLs, downloads anything not already committed into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. Idempotent --- a file already present is never re-fetched --- and the artifacts are committed to git exactly like the generated DOT SVGs. `submit()` puts the two lookup maps on `state.site` (where `dispatch` picks them up for the render workers), appends new descriptors to `state.staticFiles`, and flips `process.exitCode = 1` if any fetch failed.
+
+`markdownInit` and `writeAssets` both depend on this: the render plugins need the maps to rewrite a marker into a local poster frame, and the copy pass needs the files.
+
+> [!IMPORTANT]
+> **CI never downloads.** `allowFetch` is `opts.fetchAssets ?? !process.env.CI`, and in offline mode a referenced-but-uncommitted asset **throws** rather than fetching. If CI could fetch, an author who wrote the markdown but forgot to commit the image would get a green build while the published site went on hotlinking a third party --- the exact failure the mechanism exists to prevent. A fetch *failure* on a development box is softer: warn, keep building, set the exit code.
+
 ### `nav` (main)
 
 ```js
@@ -220,7 +238,7 @@ Calls `buildInitConfig(state.site)` from `template.mjs`. Pre-renders the config-
 ### `markdownInit` (main)
 
 ```js
-markdownInit.expected = ["discover"]
+markdownInit.expected = ["discover", "vendorAssets"]
 ```
 
 Builds the link tables (`buildLinkTables(state.pages)`), instantiates the shared markdown-it (`createMarkdownIt({ highlighter: null, linkTables, baseurl, staticFiles })`), serializes the link tables (`serializeLinkTables(linkTables)`) for transfer to workers, and computes site-level SEO (`computeSiteSeo(state.site.config, state.site.markdown)`). Writes `markdown`, `linkTablesSerialized`, `seoSiteTitle`, `seoLogoUrl` to `state.site`. Per-page SEO is **not** computed here --- that runs inside each render worker via `computeChunkSeo`.
@@ -273,7 +291,7 @@ The fan-out point. `execute`:
 
 1. Slices `state.pages` into `workerCount × SLICES_PER_WORKER` chunks (capped at one chunk per worker for small page counts).
 2. Computes the `sitePaths` set via `buildSitePathsSync` from `offline-rewrite.mjs`, using the vendored theme asset list from `enumerateVendoredThemeAssets()` rather than traversing `_site/assets/`.
-3. Builds the shared payload (config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info) and packs it into one SAB via `packShared` from `sab-broadcast.mjs`.
+3. Builds the shared payload and packs it into one SAB via `packShared` from `sab-broadcast.mjs`: config, site-level SEO, pre-rendered chrome + sidebar, serialized link tables, static-file relative-path set, baseurl, site-paths array, offline-exclude patterns, skip-offline flag, build info, the inlined `svgContents`, the `vendoredVideos` / `vendoredImages` maps from `vendorAssets`, and `checkTrees` (per-tree `rels` + `baseurl`, or absent when `--check` is off).
 
 `submit` allocates 2N dynamic SAB slots, writes their handler IDs, wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dep on `render:i → renderEnvInit`, pins each `flush:i` to its `render:i`, packs the per-chunk page data into a payload SAB, registers `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and finally activates the `render:i` slots.
 
@@ -295,10 +313,11 @@ Per-lane render environment setup. Handler:
 1. Awaits `_sharedSAB` to be set by the `dynamicData` message (which `dispatch` broadcasts before activating any `render:i`).
 2. Unpacks the shared payload via `unpackShared(_sharedSAB)`.
 3. Awaits `initHighlighter()`.
-4. Reconstructs the link-table `Map`s from the serialized pair arrays.
-5. Builds the worker's own markdown-it via `createMarkdownIt({...})`.
+4. Reconstructs the link-table `Map`s from the serialized pair arrays, and the `svgContents`, `vendoredVideos` and `vendoredImages` `Map`s from their serialized objects.
+5. Builds the worker's own markdown-it via `createMarkdownIt({...})`, passing those maps in --- they are what let `svgInlinePlugin`, `videoLinkPlugin` and `remoteImagePlugin` resolve a reference without touching the filesystem.
 6. Builds the offline base state (site-paths set, normalised baseurl) when `!skipOffline`.
-7. Stores the result in the worker's module-scope `_renderEnv`.
+7. When `checkTrees` is set, dynamically imports `check.mjs` and builds this lane's per-tree check environment (`root`, `tree`, `basePath`, and a `treeIndexFor` index per tree) into `_checkEnv`. The import is dynamic rather than static because `htmlparser2` costs ~23 ms and a build without `--check` must not pay it on every lane.
+8. Stores the result in the worker's module-scope `_renderEnv`.
 
 ### `render:i` (worker, dynamic)
 
@@ -321,16 +340,40 @@ flush:i.expected = ["render:i"]    // depCount: 2 — render:i + prepPageDirs
 flush:i.pinnedTo = render:i        // F_PIN_TO_PRED
 ```
 
-Handler (`flush` in `cpu-worker.mjs`): pops the next batch from `_pendingFlush`, writes each page's `.html` to `<destRoot>/p.destPath` and (when `offlineHtml !== undefined`) `<destRoot>-offline/p.destPath`. Concurrency bounded at 64 via a small worker-of-workers loop. Returns `{ written, offlineWritten, offlineMisses }`. The pinning is what guarantees the FIFO drain happens on the right lane.
+Handler (`flush` in `cpu-worker.mjs`): pops the next batch from `_pendingFlush`, writes each page's `.html` to `<destRoot>/p.destPath` and (when `offlineHtml !== undefined`) `<destRoot>-offline/p.destPath`. Concurrency bounded at 64 via a small worker-of-workers loop. The pinning is what guarantees the FIFO drain happens on the right lane.
+
+When `--check` is on, the **link and integrity check rides along here**: after the writes, `runChunkCheck(items)` walks this chunk's final HTML for every tree it was written to, and the result is returned alongside the write stats as `{ written, offlineWritten, offlineMisses, check }`. `submit` pushes `check` into `state.checkChunks[i]`.
+
+This placement is the whole point of folding the checker into the build. Both trees' final strings are already decoded and in worker memory at this moment; a standalone pass would write ~270 MB out only to read it back and re-parse it. The check cannot abort the build --- a broken link still produces a site worth inspecting --- so a chunk that throws returns `{ error }` and [`checkReport`](#checkreport-main-terminal) decides what to do with it.
 
 ### `renderJoin` (main, `on_demand`)
 
 ```js
-renderJoin.expected = []   // depCount set to N by dispatch.submit
+renderJoin.expected = []                       // in the static TASKS table…
+// …replaced by dispatch.submit via registerBarrier():
+renderJoin.expected = ["render:0", …, "render:N-1"]   // and depCount set to N
 renderJoin.execute() → {}
 ```
 
-Barrier. Becomes ready when every `render:i` has completed (each `render:i → renderJoin` edge decrements the count via `sab-scheduler.mjs:onTaskDone`). Unblocks `searchData`.
+Barrier over every `render:i`. Unblocks `searchData` and `writePdf`.
+
+> [!IMPORTANT]
+> **A dep count of zero does not mean the submits have run**, so the `expected` list
+> is not optional. A worker posts its result and *then* decrements its successors'
+> dependency counts in shared memory --- the shared counter orders the work, not the
+> build state --- so the count can reach zero while results are still queued and the
+> `submit()` calls that merge them into `state.pages` have not run. `registerBarrier`
+> (`tbdocs.mjs`) therefore rewrites this task's `expected` with every chunk name
+> before the fan-out starts, because `_assembleInputs` releases a task back to READY
+> if any `expected` name has no result yet. That list is the only thing the scheduler
+> checks.
+>
+> `renderJoin` shipped without it and silently dropped ~6 pages from
+> `search-data.json` on about one build in three. Its `execute()` now asserts that
+> every page has `renderedContent` rather than trusting the wiring. **A dynamic
+> barrier must list every chunk task in `expected`, even when its own `execute()`
+> ignores the inputs.** See
+> [PLAN-sab-pull-scheduler.md](https://github.com/twinbasic/documentation/blob/main/builder/PLAN-sab-pull-scheduler.md).
 
 ### `flushJoin` (main, `on_demand`)
 
@@ -350,7 +393,7 @@ Main-thread tasks that materialise the rest of the output after the render fan-o
 ### `writeAssets` (main)
 
 ```js
-writeAssets.expected = ["dot", "prepPageDirs", "highlighterInit"]
+writeAssets.expected = ["dot", "vendorAssets", "prepPageDirs", "highlighterInit"]
 ```
 
 Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedAssets, baseurl, skipPages: true })` from `write.mjs`. Copies vendored theme JS, copies project static files, writes generated CSS (`tb-highlight.css` from `state.site.highlightCss`). **Does not** write page HTML --- the per-chunk `flush:i` tasks already did that. The CSS baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) applies to both copy paths and to generated assets.
@@ -376,7 +419,7 @@ In parallel:
 
 Returns `{ redirectStats, sitemapStats, searchStats }` (the search stats pass through from the `searchData` input).
 
-### `writeOffline` (main, terminal)
+### `writeOffline` (main)
 
 ```js
 writeOffline.expected = ["writeAux", "writeAssets"]
@@ -384,19 +427,128 @@ writeOffline.expected = ["writeAux", "writeAssets"]
 
 Calls `writeOffline(state.pages, state.staticFiles, state.site, destRoot, { auxStats, precomputed: true, sitePaths, profileOffline })` from `offline.mjs`. With `precomputed: true`, the per-page HTML rewrite is skipped --- it was already done inside `render:i` and written by `flush:i`. This task handles the cross-cutting work: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the `search-data.js` wrapper (`deriveOfflineSearchDataJs`), theme assets, redirect stubs. Reads `sitePaths` from `state.sitePaths` (computed by `dispatch`).
 
-### `writePdf` (main, terminal)
+### `writePdf` (main)
 
 ```js
-writePdf.expected = ["flushJoin", "dot", "resolveBookChapters"]
+writePdf.expected = ["flushJoin", "renderJoin", "dot", "resolveBookChapters"]
 ```
 
 Calls `writePdf(state.pages, state.staticFiles, state.site, destRoot, { tolerateMissingImages, highlightCss })` from `pdf.mjs`. Internally calls `assembleBook(site, pages)` from `book.mjs` for the `book.html` HTML string, writes `tb-highlight.css` from the highlight string passed in, copies `print.css` via the `staticFiles` inventory, copies every image referenced in `book.html`. Missing images throw by default; `--tolerate-missing-images` downgrades to a warning.
+
+`renderJoin` is listed although `execute()` ignores it: an `expected` list says what must have *merged*, not what the body reads, and the book is assembled from `page.renderedContent`.
+
+---
+
+## Section 5 --- Check and report
+
+Three main-thread tasks that run only when `--check` is on. Everything they consume was produced upstream: the per-chunk findings came back with each `flush:i`, so these tasks join, audit and report rather than parse anything a second time.
+
+Two invariants run through all three. **A failing check never aborts the build** --- a broken link still produces a site worth inspecting --- so failures ride back as data and become an exit code at the end. And **a check that silently examined less than the whole site is the failure this design exists to prevent**, so a short chunk list, a missing per-tree result or an errored chunk is reported rather than skipped.
+
+### `linkJoin` (main)
+
+```js
+linkJoin.expected = ["flushJoin", "writeAux", "writeOffline"]
+linkJoin.execute() → { [tree]: joinedResult } | null
+```
+
+Joins the per-chunk findings into one result per tree. Returns `null` immediately when `state.checkTrees` is unset, which is how a `--no-check` build skips the whole section.
+
+Four things happen here that could not happen on a worker:
+
+- **Redirect stubs are checked.** They never went through `flush` --- `writeRedirects` and `writeOfflineRedirects` emit them --- so they are checked here as one extra chunk per tree. ~290 tiny files.
+- **The generators' own opt-out predicates are applied.** The cross-file checks enforce "every page the generator was asked to emit", so they need `sitemapIncludes` and `searchIncludes`. Without them the first page carrying `sitemap: false` or `search_exclude: true` would fail the build with no hint why.
+- **Chunk completeness is asserted.** A count mismatch against `state.checkChunkCount` becomes an error on every tree; a chunk with no entry for a tree is named rather than reported generically, because every lane builds the same tree-key set and a missing one means a lane produced something else entirely.
+- **`book-combined` pages are excluded** from the page list --- `writePdf` owns those, and `checkBook` covers them.
+
+### `checkBook` (main)
+
+```js
+checkBook.expected = ["writePdf"]
+checkBook.execute({ writePdf }) → joinedResult | null
+```
+
+Checks `_site-pdf/book.html` as a single one-document chunk, against a tree index built from the sparse PDF tree. **Informational**: the book is a superset-of-`_site` assembly whose cross-page links legitimately do not resolve within that tree, so its findings are printed but do not set the exit code. Enforcement comes from the `_site` pass, which covers every page the book contains.
+
+### `checkReport` (main, terminal)
+
+```js
+checkReport.expected = ["linkJoin", "checkBook", "scss"]
+checkReport.execute({ linkJoin, checkBook }) → void
+```
+
+Formats every tree's result, decides the exit code, and optionally writes the machine-readable findings.
+
+- **Exit code** follows the same scheme `check_links.mjs` has always used, so CI can tell the two apart: `1` link failures, `2` integrity failures, `3` both. Set via `process.exitCode`, never by throwing.
+- **`--check-findings <path>`** writes the findings as JSON for [`check_links_diff.mjs`](Tools#check-links-diff) to diff against the standalone script's. Written *before* the exit code is decided, so a failing check still produces the file that says what it found.
+- **`--check-audit-index`** additionally diffs the tree index the build derived from its own records against what actually landed on disk. This is the one failure mode the two-checker findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one makes the oracle answer "exists" for a path that 404s in production, and on a clean site nothing links to a path that does not exist, so nothing would ever notice. Cost is one `readdir` per tree.
+
+`scss` is in `expected` for a reason worth keeping: `--check-audit-index` reads the tree off disk, and the combined stylesheet is in the index from the moment `dispatch` builds it. Without that edge the audit can run first and report the file as "indexed but not on disk" --- which it was, for another few milliseconds. On the real site `scss` finishes long before the check; on a three-page fixture it does not, and the audit failed the build over nothing.
 
 ---
 
 ## Module export tables
 
 The same modules as above, with the full export list per file.
+
+### `check.mjs`
+
+The build-side plumbing for the link and integrity check. Imported dynamically --- on the workers by `renderEnvInit`, on main by `linkJoin` / `checkBook` / `checkReport` --- because `htmlparser2` costs ~23 ms to import and a build without `--check` must not pay it on sixteen lanes.
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `TREES` | `object` | Per-tree configuration: `suffix`, `label`, the `checkOpts` that tree enables, and its `forbid` prefixes. `online` and `offline` both set `checkRemoteAssets: true` unconditionally --- there is no flag to turn it off. |
+| `FALLBACK_EXTS` | `string[]` | Extensions appended when a target does not exist as-is (`["html"]`, mirroring Pages' extensionless URLs). |
+| `INDEX_FILES` | `string[]` | Filenames tried when a URL resolves to a directory. |
+| `checkChunk` | `(docs, env) → chunkResult` | Checks one chunk of `{ destPath, html }` against one tree. The unit of work that rides along inside `flush:i`. |
+| `joinChunks` | `(chunks, opts) → treeResult` | Merges per-chunk results into one per-tree result, settling cross-chunk fragment references. |
+| `formatReport` | `(r) → { text, linksFailed, integrityFailed }` | Human-readable report plus the two booleans `checkReport` turns into an exit code. |
+| `findingsFor` | `(r) → object` | The machine-readable view, written by `--check-findings`. |
+| `treeIndexFor` | `(root, rels) → treeIndex` | Builds the existence oracle a tree is checked against, from the build's own records rather than a `readdir`. |
+| `auditIndex` | `(root, rels) → Promise<{ missing, spurious }>` | Diffs that derived index against what actually landed on disk. `--check-audit-index` only. |
+| `deriveTreeRels` | re-exported from `check-tree.mjs` | --- |
+| `normalizeBasePath` | re-exported from `link-check.mjs` | --- |
+
+### `check-tree.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `deriveTreeRels` | `(which, …) → string[]` | Every relative path the build believes it emitted into a given tree: pages, redirect stubs, auxiliaries, static files, theme assets, generated DOT SVGs, minus offline exclusions. This is what makes the check's oracle independent of the filesystem --- and what `auditIndex` exists to keep honest. |
+| `posix` | `(p) → string` | Backslash-to-slash path normalisation. |
+
+### `link-check.mjs`
+
+The pure core shared by the build's fused check and the standalone [`scripts/check_links.mjs`](Tools#check-links). No filesystem traversal and no CLI --- it takes HTML and an oracle and returns findings, which is what lets one implementation serve both front ends. **Two implementations of one check is the shape that rots quietly, so run [`check_links_diff.mjs`](Tools#check-links-diff) whenever this file, `check.mjs` or `check_links.mjs` changes.**
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `extractFromHtml` | `(html, captureIds, forbidPrefixes, checkOpts) → occurrences` | One SAX pass that yields link occurrences, ids, canonical URLs and every integrity finding together. `captureIds` takes ids from *every* element, so anchor icons and the section-links disclosure are both checked against post-dedup ids. |
+| `resolve` | `(href, sourceDir, sourcePath, rootStr, basePath) → target` | URL-to-filesystem-path resolution, including base-path stripping. |
+| `checkPath` | `(target, isDirLink, fallbackExts, indexFiles, oracle) → verdict` | Existence check for one resolved target. |
+| `resolveOccurrences` | `(occurrences, oracle, …) → { broken, pendingFragments }` | Deduped resolution of a chunk's occurrences. Each unique `(target, fragment)` is checked exactly once regardless of how many pages link to it. |
+| `settleFragments` | `(pendingFragments, idsByTarget) → broken[]` | Settles the fragment references a chunked run could not decide locally --- the piece that makes per-chunk checking equivalent to a whole-tree pass. |
+| `buildTreeIndex` | `(rootStr, relFiles) → treeIndex` | Index built from a known file list. |
+| `FsOracle` / `IndexOracle` | `() → oracle` | The two existence backends: real `stat` calls, or the derived index. |
+| `checkSitemap` | `(xml, relFiles, basePath, optOut) → findings` | Every page the generator was asked to emit is present. `optOut` carries `sitemapIncludes`'s verdict. |
+| `checkSearch` | `(searchData, relFiles, basePath, optOut) → findings` | Same, for the search index; `optOut` carries `searchIncludes`'s verdict. |
+| `checkCanonical` | `(canonicalByRel, basePath) → findings` | Each page's canonical URL matches its location. |
+| `deriveUrlPath`, `normalizeBasePath`, `stripBasePath`, `isOutsideBasePath` | --- | Path helpers. `OUTSIDE_BASEPATH_MARKER` tags a target that resolved outside the configured base path. |
+| `formatLinkReport`, `formatIntegrityReport` | `(…) → string` | Report rendering, shared by both front ends. |
+
+### `vendor-assets.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `vendorAssets` | `(srcRoot, pages, { baseurl, allowFetch }) → Promise<{ videos, images, files, fetched, failed }>` | The `vendorAssets` task body. With `allowFetch: false` a referenced-but-uncommitted asset throws rather than fetching. |
+| `scanSources` | `(pages) → { videos, images }` | Finds YouTube markers and user-attachment URLs in the discovered markdown. |
+| `THUMB_DIR_REL` / `ATTACH_DIR_REL` | `string` | `assets/thumbnails` / `assets/attachments`. |
+
+### `dot-metrics.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `applyInterMetrics` | `(graphviz) → void` | Overwrites the Times family's four width arrays in the Graphviz WASM module's linear memory with Inter's advances from `builder/inter-metrics.json`, so `fontname="Inter"` is measured with Inter's metrics rather than Times'. Idempotent --- it keeps a `WeakSet` of patched instances and re-verifies rather than re-writing, because `Graphviz.load()` memoises its module and serve mode hands the same instance back on every rebuild. Locates the table by an exact signature match against the published Times AFM widths and proves the patch took by laying out a real string afterwards; on failure `regenerateDot` emits nothing and flips the exit code, because a stale but correct SVG beats a freshly wrong one. |
+| `DotMetricsError` | `class` | Thrown when the table cannot be located or the patch cannot be verified --- the expected symptom of an `@hpcc-js/wasm-graphviz` bump that moves it. |
 
 ### `discover.mjs`
 
@@ -495,7 +647,7 @@ The same modules as above, with the full export list per file.
 | `buildInitFn` | (alias of internal `buildInit`) | Available for harnesses; combines `buildInitConfig` + `renderSidebar` in one call. |
 | `renderSidebar` | `(site) → string` | Pre-renders the sidebar HTML. Called by the `nav` task; the output is folded into the shared payload by `dispatch`. |
 | `navActivationCss` | `(page) → string` | Per-page `<style id="jtd-nav-activation">` block. |
-| `injectAnchorHeadings` | `(html) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id`. |
+| `injectAnchorHeadings` | `(html, headingsOut) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id`, and pushes each heading onto `headingsOut` as it goes. The icon is deliberately `aria-hidden="true" tabindex="-1"`; the keyboard and screen-reader equivalent is the per-page `<details class="section-links">` block that `renderFooter` builds from `headingsOut`. |
 
 ### `compress.mjs`
 
@@ -537,6 +689,7 @@ The same modules as above, with the full export list per file.
 |---|---|---|
 | `writeSitemap` | `(pages, site, destRoot, urls?) → Promise<{ entries }>` | Writes `sitemap.xml` + `robots.txt`. Accepts pre-computed URL list from `deriveSitemap`. |
 | `deriveSitemapUrls` | `(pages, site) → string[]` | Sorted absolute URL list. Filters `sitemap: false` and `/404.html`. |
+| `sitemapIncludes` | `(page) → boolean` | The opt-out predicate on its own: `frontmatter.sitemap !== false && permalink !== "/404.html"`. Exported so `linkJoin` can exempt the same pages the generator skipped --- otherwise the first page carrying `sitemap: false` fails the build with no hint why. |
 | `extractSitemapUrls` | `(xml) → string[]` | Parses an existing `sitemap.xml` string. Useful for diffing two builds. |
 | `renderRobotsTxt` | `(config) → string` | Returns the `robots.txt` content string. |
 
@@ -548,6 +701,7 @@ The same modules as above, with the full export list per file.
 | `writeSearchDataFromChunks` | `(searchChunks, destRoot) → Promise<{ entries, json }>` | Per-chunk consolidator. Flattens, renumbers global `i`, writes `assets/js/search-data.json`. Used by the `searchData` task. |
 | `deriveSearchEntries` | `(pages, site) → object[]` | Pure compute. One entry per heading-bounded section of each titled page. Each entry: `{ i, doc, title, content, url, relUrl, sourcePage }`. Called by render workers; the worker drops `sourcePage` and chunk-local `i` from the returned objects before posting back. |
 | `renderEntryString` | `(entry) → string` | Per-entry JSON shape matching the upstream template output byte-for-byte. |
+| `searchIncludes` | `(page) → boolean` | The opt-out predicate: a page is indexed when it has a `title` and does not set `search_exclude: true`. Exported so `linkJoin` exempts the same pages the generator skipped. |
 
 ### `offline.mjs`
 
@@ -573,6 +727,7 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 | `deriveOfflineCss` | `(cssIn, themeRel, state) → { css, misses }` | Rewrites `url()` references in a CSS file to page-relative paths. |
 | `deriveOfflineRedirect` | `(stub, state) → string` | Rewrites a redirect stub's HTML for offline use. |
 | `offlineExcluded` | `(rel, patterns) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob from `_config.yml`. |
+| `stripFontPreloads` | `(html) → string` | Removes the `<link rel="preload" as="font">` tags from the offline tree only. A font preload is a CORS-mode fetch; under `file://` there is no origin to match, so Chrome fails it with `ERR_FAILED` while the `@font-face` fetch beside it succeeds and the faces load anyway. The preload therefore buys an offline reader nothing and costs two red lines in the console. |
 | `normalizeBaseurl` | `(raw) → string` | Normalises a baseurl string to the canonical trailing-slash form. |
 | `posixDirname` | `(rel) → string` | POSIX directory component of a relative path. |
 | `fileDirSegsFromRel` | `(rel) → string[]` | Splits a destination path into directory segments. |
@@ -678,6 +833,10 @@ The handler table is built from the imported `HANDLERS` constant:
 | `skipPdf` | `null` | Skip the PDF pass. `null` reads `also_build_pdf` from `_config.yml`. |
 | `tolerateMissingImages` | `false` | Downgrade missing-image errors to warnings in `writePdf`. |
 | `profileOffline` | `false` | Emit per-substep timings for `writeOffline`. |
+| `check` | `false` | Run the link and integrity check over the HTML the build holds in memory. Sets `state.checkTrees`, which is what turns the check on across the workers and the Section 5 tasks. |
+| `auditIndex` | `false` | Implies `check`. Additionally diff the derived tree index against what landed on disk. |
+| `checkFindings` | `null` | Implies `check`. Path to write the findings JSON to. |
+| `fetchAssets` | `null` | Force remote-asset vendoring on or off. `null` means "download unless `$CI` is set". |
 | `serve` | `false` | Start the dev server instead of the one-shot build. |
 | `port` | `4000` | HTTP port for serve mode. |
 | `pool` | `null` | Optional external `WorkerPool`. Set by `serve.mjs` to reuse the pool across rebuilds. |
