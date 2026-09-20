@@ -26,7 +26,7 @@ The reference section is split into language constructs (the things the compiler
 - [**Procedures and Functions**](Reference/Procedures-and-Functions) --- alphabetical index of every callable runtime member
 - [**Operators**](Reference/Operators) --- arithmetic, comparison, logical, bitwise, and twinBASIC's added operators
 - [**Compiler Constants**](Reference/Compiler-Constants) --- the `#If` symbols recognised by the compiler
-- [**Attributes**](tB/Core/Attributes) --- `[Documentation(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
+- [**Attributes**](tB/Core/Attributes) --- `[Description(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
 - [**Controls**](tB/Controls) --- the standard UI controls ([**CheckBox**](tB/Packages/VB/CheckBox/), [**TextBox**](tB/Packages/VB/TextBox/), [**CommandButton**](tB/Packages/VB/CommandButton/), ...) grouped by purpose
 - [**Glossary**](tB/Gloss) --- technical terms used across the docs
 

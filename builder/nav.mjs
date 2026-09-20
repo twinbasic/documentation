@@ -52,11 +52,10 @@ function computeNavPaths(pages) {
 // nothing reports either. That is exactly how the whole AppGlobalClassObject
 // package came to sit at /Reference/Built-In/AppGlobalClassObject/index.html.
 //
-// It is also the URL the IDE help system and in-source [Documentation("...")]
-// attributes resolve against, so a permalink nobody chose is a contract
-// nobody agreed to. 906 of 908 pages already declared one when this check was
-// added; it makes a settled convention enforceable rather than introducing a
-// new rule.
+// It is also the URL the IDE help system resolves against, so a permalink
+// nobody chose is a contract nobody agreed to. 906 of 908 pages already
+// declared one when this check was added; it makes a settled convention
+// enforceable rather than introducing a new rule.
 //
 // Deliberately covers every page, not just nav-visible ones: a page carrying
 // nav_exclude is reachable by URL and still needs a stable one.

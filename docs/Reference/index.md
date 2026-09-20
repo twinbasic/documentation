@@ -17,7 +17,7 @@ The reference is organized into three layers: the language constructs the compil
 - [**Enumerations**](Reference/Enumerations) -- index of all 141 enumeration types across all thirteen packages, grouped by package and A--Z
 - [**Data Types**](Reference/Data-Types) -- storage size, range, and suffix for every intrinsic type (**Boolean** through **Variant**)
 - [**Compiler Constants**](Reference/Compiler-Constants) -- the `#If` symbols the compiler recognises
-- [**Attributes**](../tB/Core/Attributes) -- `[Documentation(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
+- [**Attributes**](../tB/Core/Attributes) -- `[Description(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
 - [**twinBASIC Additions**](Reference/twinBASIC-Additions) -- curated list of language and runtime additions beyond standard VBA
 
 **Controls and glossary:**

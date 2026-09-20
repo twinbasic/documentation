@@ -25,7 +25,7 @@ A single `build.bat` run executes `tbdocs` against a shared task DAG, dispatched
 
 ## Sub-pages
 
-- [Permanent Links](Development/Permanent-Links) --- the stable `/tB/` URL contract under which the IDE help system, in-source `[Documentation(...)]` attribute links, and external references resolve.
+- [Permanent Links](Development/Permanent-Links) --- the stable `/tB/` URL contract under which the IDE help system and external references resolve.
 - [Authoring Pages](Development/Authoring) --- how to write or edit a page so it matches the rest of the site: frontmatter and permalinks, heading levels, formatting, plain-English prose, attribution, and cross-section links.
 - [Building and Deployment](Development/Building) --- the day-to-day workflow for editing content: requirements, building, serving locally, link checking, Graphviz diagrams, screenshots, and the GitHub Pages deployment.
 - [Tools and Scripts](Development/Tools) --- one-line-per-tool reference for every script, batch file, and CLI flag exposed by the documentation toolchain (intended audience: doc contributors).
