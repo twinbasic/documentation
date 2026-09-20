@@ -8,16 +8,16 @@ permalink: /tB/IDE/Project/Menu/AddIns
 
 # Add-Ins Menu
 
-![Add-Ins Menu](Images/Menu_Add-Ins.png "Add-Ins Menu")
+![The Add-Ins menu open on a greyed-out placeholder line reading no addins loaded, and nothing else.](Images/Menu_Add-Ins.png)
 
 {no addins loaded}
 
 Once you open a project:
 
-![Global Search - Add-Ins Menu](Images/Menu_Add-Ins_GlobalSearch.png "Global Search - Add-Ins Menu")
+![The Add-Ins menu open on a single available entry, GlobalSearchAddIn AddIn, with a tick beside it.](Images/Menu_Add-Ins_GlobalSearch.png)
 
 Clicking on this menu option shows
 
 > 🛈 Sorry, this menu option has not been implemented yet
 
-![Global Search - Popup](Images/GlobalSearch-Popup.png "Global Search - Popup")
+![A notification strip with an information icon at the left and a close cross at the right, reading Sorry, this menu option has not been implemented yet.](Images/GlobalSearch-Popup.png)

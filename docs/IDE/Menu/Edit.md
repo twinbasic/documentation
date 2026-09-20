@@ -8,7 +8,7 @@ permalink: /tB/IDE/Project/Menu/Edit
 
 # Edit Menu
 
-![Edit Menu](Images/Menu_Edit.png "Edit Menu")
+![The Edit menu open with every command greyed out. Its groups run from Undo and Redo through the clipboard commands, Find, Replace and Find In Project, the indent and format commands, the Quick Find group, the fold and unfold commands, and finally Go To Line/Column and four Transform To case commands. Most entries show a keyboard shortcut at the right.](Images/Menu_Edit.png)
 
 - Undo <kbd>CTRL</kbd> + <kbd>Z</kbd>
 - Redo <kbd>CTRL</kbd> + <kbd>Y</kbd>

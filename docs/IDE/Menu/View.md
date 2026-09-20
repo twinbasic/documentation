@@ -8,7 +8,7 @@ permalink: /tB/IDE/Project/Menu/View
 
 # View Menu
 
-![View Menu](Images/Menu_View.png "View Menu")
+![The View menu open. The upper commands --- Code Editor, Object Designer, Definition, Last Position, Object Browser, Zoom In and Zoom Out --- are greyed out. Below them the seventeen panel names from EDITOR down to MEMORY 1 are all available, each beside its own icon, with CTRL+L against CALL STACK and CTRL+G against DEBUG CONSOLE.](Images/Menu_View.png)
 
 - Code Editor
 - Object Designer <kbd>SHIFT</kbd> + <kbd>F7</kbd>
