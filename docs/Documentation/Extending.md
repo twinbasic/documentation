@@ -9,12 +9,12 @@ permalink: /Documentation/Development/Extending
 # Extending the Builder
 {: .no_toc }
 
-How to add a new pipeline task or a custom markdown-it plugin to `tbdocs`. Read [tbdocs Builder](Builder) first for the architectural tour and [Pipeline Stages](Pipeline-Stages) for the data contracts each task operates on.
+How to extend `tbdocs` --- a new pipeline task, a markdown-it plugin, a render-worker sub-stage, or a verification gate --- and how to change one that already exists. Read [tbdocs Builder](Builder) first for the architectural tour and [Pipeline Stages](Pipeline-Stages) for the data contracts each task operates on.
 
 * TOC goes here
 {:toc}
 
-## Three extension points
+## The extension points
 
 **Pipeline task** --- a new entry in the static `TASKS` graph in [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs). The task declares its predecessors and either runs on the main thread or dispatches to a worker handler. No plugin registry or hook system is involved.
 
@@ -22,10 +22,35 @@ How to add a new pipeline task or a custom markdown-it plugin to `tbdocs`. Read 
 
 **Render-worker sub-stage** --- a transformation slotted into the per-chunk render handler in [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs), between two of the existing sub-stages (`renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`). This is the right shape when the new work is per-page CPU compute that should run in parallel with the rest of the page render.
 
+**Verification gate** --- a script under `scripts/`, run by `check.bat` after the build, that decides whether what the build produced is acceptable. Nothing in `TASKS` or the plugin chain changes for one. It is the only extension point here that is not part of rendering the site, and the conventions it has to follow are not the ones above; see [Adding a verification gate](#adding-a-verification-gate).
+
 **Styling is not one of them.** A new component's CSS is not an extension point here at all: the site's own style rules live under `docs/_sass/`, are compiled into a single stylesheet by `scss.mjs`, and need no change to the task graph or the plugin chain. See [Project styling](Builder#project-styling) for where each rule belongs, the two-compilation model, and the dark-mode specificity trap: a rule that loses it applies in light mode and silently does not in dark.
 
 > [!NOTE]
 > Changes to task definitions, worker handlers, or markdown-it plugins are not hot-reloaded by serve mode. The worker pool is persistent: after editing any of these, stop `serve.bat` (Ctrl+C) and re-run to load the new code. SCSS and page content *are* watched and rebuilt.
+
+---
+
+## Changing what is already there
+
+Most builder work is not an addition. The walkthroughs below are written forwards, from nothing to a working task, and a reader who arrives having already changed something should not have to read one of them backwards. This section is the index into them.
+
+Find the row for what changed. The middle column is the step that explains the mechanism; the right-hand column is what else moves with it **in code**. What a change obliges in the *documentation* is a separate list and applies to every row alike --- see [What a change obliges in the documentation](#what-a-change-obliges-in-the-documentation).
+
+| Changed | Mechanism | Also moves, in code |
+|---|---|---|
+| A task's `expected` list | [Pick the right flags](#2-pick-the-right-flags) | Nothing. The scheduler derives successor edges from `expected`, so a static edge is declared exactly once. The dynamic edges are the exception: `render:i` and `flush:i` are wired in `dispatch.submit`, not in `TASKS`. |
+| A task's `execute()` or handler return shape | [Define the task in `TASKS`](#4-define-the-task-in-tasks) | The task's own `submit()`, and every downstream task that reads the field back off `state`. |
+| Which thread a task runs on | [Decide where the work runs](#1-decide-where-the-work-runs) | Swap `runOnMain: true` + `execute` for `handler:` plus a `cpu-worker.mjs` entry, and add the name to `HANDLERS` in `sab-scheduler.mjs`. Moving a task onto a worker costs it direct access to `state`: everything it reads has to arrive through the payload SAB, and everything it produces has to come back through its return value. |
+| Which Gantt section a task charts under | --- | **`GANTT_SECTION` in `tbdocs.mjs`**, not the task definition. A `ganttSection` on the definition does win where it is set, which is why the walkthroughs below set one --- but of the 31 static tasks only `dispatch` does, 28 are listed in the map, and the three that are in neither (`warmInit`, `renderEnvInit`, `vendorAssets`) fall back to `Other`, or to `Boot` for a `unique_per_worker` task's per-lane timings. |
+| A field on the per-page render delta | [Worked example B](#6-worked-example-b-distributed-compute) | The `pages.map(…)` projection at the end of the render handler **and** the merge in `dispatch.submit`'s `render:i` callback. Both, or the field never reaches main at all. |
+| What a markdown-it rule emits | [Write the plugin](#1-write-the-plugin) | Nothing in the chain, if the rule is self-contained. But changing the emitted HTML changes what the accessibility scan can see --- read the construct-family note at the end of [Verify](#3-verify). |
+
+Two things bite a changer specifically and are easy to miss.
+
+**The worker pool is persistent, so an edit to a handler or a task definition does not reach a running `serve.bat`.** The NOTE at the top of this page says so, and it matters more when changing than when adding: a new task simply does not appear, which is obvious, while a changed one goes on running its old body, which looks like the change having no effect.
+
+**An `expected` list says what must have *merged*, not what the body reads.** Removing a predecessor because `execute()` ignores its input is the way to reintroduce a race. `writePdf` lists `renderJoin` and never touches it, because the book is assembled from `page.renderedContent` and `renderJoin` is what guarantees every chunk's content has been merged into the master pages. A dependency count reaching zero does not mean the `submit()` calls that merge those results have run; the barrier's `expected` list is the only thing the scheduler checks before letting it proceed.
 
 ---
 
@@ -460,6 +485,51 @@ Then extend `dispatch.submit`'s `render:i` callback to merge the new field, exac
 
 > [!NOTE]
 > Anything you mutate on a worker's chunk page must travel back through the delta to be visible on main. The worker's `chunk` is a structured-clone copy; main never sees those copies directly. The `pages.map(…)` projection at the end of the render handler is the single channel.
+
+---
+
+## Adding a verification gate
+
+A gate runs after the build and decides whether what the build produced is acceptable. `check.bat` runs six of them today. [Testing](#testing) lists them; [Tools and Scripts](Tools#checkbat) documents each one, and a new gate gets its entry there.
+
+**First decide whether it is a gate at all.** The link and integrity check used to be one and now runs inside the build, because both trees' final HTML is already decoded in worker memory when `flush:i` runs --- checking it on disk meant writing ~270 MB out to read it straight back. The test is whether the check needs something the build does not already hold: a browser, a real font, a second implementation to compare against, a tree from an earlier run. If it needs none of those, it is a pipeline task, and the walkthroughs above apply instead.
+
+### Conventions
+
+**Exit codes.** Three values, used the same way by all six:
+
+| Code | Means |
+|---|---|
+| `0` | The checked thing is fine. |
+| `1` | The checked thing failed. This is the finding. |
+| `2` | The harness or the environment failed --- an unknown argument, an absent tree, an unhandled throw. Nothing was checked. |
+
+Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. End the script with `main().catch((err) => { console.error(err); process.exit(2); })`, the way `check_a11y.mjs` does, so a crash cannot fall through to node's default exit 1 and be mistaken for a finding.
+
+**Say what a pass covered.** Five of the six print it: `check_dot_fit.mjs` gives the diagram count, `pick_a11y_sample.mjs --check` the number of construct families in use, `check_publish_policy.mjs` the probe counts on both sides, `check_a11y.mjs` the page × theme × viewport product it audited. A gate silent on success says nothing about whether it examined anything, which is the state a gate that has quietly stopped working also reports.
+
+**Name the artifact and the remedy.** A gate's output is read by someone who was in the middle of something else. `check_dot_fit.mjs` names the failing diagram, then `builder/dot-metrics.mjs` and an `@hpcc-js/wasm-graphviz` bump as the usual cause, then `build.bat` as the fix. `check_tree_fresh.mjs` names the source file that is newer than the tree and says to run `build.bat`. `pick_a11y_sample.mjs --check` names the uncovered construct *and* the cheapest page that would cover it.
+
+**Resolve paths from `import.meta.url`.** `resolve(fileURLToPath(new URL("..", import.meta.url)))` is what five of the six do, directly or through `axe-scan.mjs`'s `REPO_ROOT`, and it makes the gate work from any directory. `check_publish_policy.mjs` is the exception, with a working-directory-relative `docs` default, which is why the batch wrappers `pushd` to the repository root before running anything.
+
+**Be explicit about what may already have run.** `check.bat` is ordered cheapest-first and stops at the first failure, so a gate's position decides what it can assume. Everything after step 2 may assume `_site-offline/` is current, because `check_tree_fresh.mjs` refuses a stale tree. Nothing may assume the build's own link check passed: a link failure sets the build's exit code without aborting the build, so a tree that failed it is still on disk and still fresh.
+
+**Register it in three places** --- `check.bat`, `.github/workflows/checks.yml` and `.github/workflows/tbdocs-gh-pages.yml` --- each with a comment saying what the gate protects against, which is the convention already in all three. Leaving it out of the workflows is a decision, not an omission, and gets the same comment: `check_tree_fresh.mjs` is in neither, because CI builds in the same job and cannot have a stale tree.
+
+### It must be able to fail
+
+**A gate that silently checks less reports exactly what a clean site reports.** A green run is therefore not evidence about the site until something independent says the gate can still go red.
+
+That is not a style note. The accessibility sample reported a clean pass over six hand-picked pages while 54 pages carried violations, every one in a construct no sample page had. Separately, blocking one more script during the scan looked like a free 130 ms and cut the colour-contrast node count on one page from 54 to 2 --- axe seeing less, reported as a pass. Both were green throughout.
+
+So a new gate needs a second assertion of the opposite sign, and there are four shapes in the repository to copy:
+
+- **Named probes on both sides.** `check_publish_policy.mjs` asserts that thirteen file types stay refused *and* that six stay published, because a policy that refuses everything also reports a clean sweep.
+- **A deliberately corrupted side.** `check_links_diff.mjs --self-test` diffs the checker against a mutated copy of itself and fails unless the difference is reported.
+- **A fixture that provokes one fault of each kind,** with the count asserted afterwards. The real site is clean, so without one every category compares empty against empty --- and a category that has stopped being checked looks identical to a category with nothing to find.
+- **An A/A control.** Running `check_a11y_fingerprint.mjs` with the same scheme on both sides says whether the harness is stable, before any A/B result from it is believed.
+
+When the gate cannot assert its own correctness from the inside, the proof goes in a sibling script and is named in the gate's header comment, so whoever changes the gate next finds it in the file they are already reading.
 
 ---
 
