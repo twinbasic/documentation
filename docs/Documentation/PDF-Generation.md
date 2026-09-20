@@ -61,7 +61,7 @@ Each phase prints one summary line as it completes, all aligned to the same colu
     saved:    <output path>  (<n> MB)
     total:    <elapsed>
 
-The last line printed is the last phase that finished, so the failure is in the one after it. No `render:` line means [Phase 1](#phase-1-render); `render:` but no `generate:` means [Phase 2](#phase-2-generate); `generate:` but no `process:` means [Phase 3](#phase-3-process). `process:` with no `saved:` means the PDF was built and the write to disk failed --- on Windows, usually because the output file is open in a PDF viewer.
+The last line printed is the last phase that finished, so the failure is in the one after it. No `render:` line means [Phase 1](#phase-1-render); `render:` but no `generate:` means [Phase 2](#phase-2-generate); `generate:` but no `process:` means [Phase 3](#phase-3-process). `process:` with no `saved:` means the PDF was built and the write to disk failed, after every expensive phase has already run. `render-book.mjs` writes the file directly and never creates the directory above it, so an absent `docs/_pdf/` raises `ENOENT` here --- which is what `book.bat`'s `mkdir` exists to prevent, and what a hand-written invocation has to do for itself. On Windows the other common cause is the output file being open in a PDF viewer.
 
 ### Stalled, or still working
 
