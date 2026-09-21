@@ -29,6 +29,19 @@ node scripts/check_publish_policy.mjs
 @rem a green line cannot be a dead gate. No tree, no browser, ~5 s.
 node scripts/check_regex_safety.mjs
 @if errorlevel 1 goto :fail
+@rem The pre-render rewrites in render.mjs run over RAW markdown, so none
+@rem of them knows what is code -- and this site's subject matter is code.
+@rem Four defects of that shape shipped: Liquid tags stripped inside
+@rem fences, admonition bodies losing their code indentation, media-URL
+@rem spaces percent-encoded inside a fence, and a YAML sample's closing
+@rem --- deleted outright. Nothing caught any of them, because the damage
+@rem is inside <code> and no other gate looks there.
+@rem
+@rem Tokenise, rewrite, re-tokenise, compare the literal regions. Its own
+@rem probes ride along, so a clean corpus cannot masquerade as a working
+@rem gate. No tree, no browser, ~2 s.
+node scripts/check_code_regions.mjs
+@if errorlevel 1 goto :fail
 @rem check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
 @rem -26 % on a realistic page set). The patch asserts its substitution
 @rem targets, so an axe-core bump fails loudly; this catches the other

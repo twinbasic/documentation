@@ -123,6 +123,15 @@ jobs:
       # matter.
       - name: Verify regex safety (check_regex_safety.mjs)
         run: node scripts/check_regex_safety.mjs
+      # The pre-render rewrites in render.mjs run over raw markdown and
+      # cannot tell prose from code; four defects of that shape shipped,
+      # and nothing else looks inside <code>. See the same step in
+      # checks.yml. Here for the same reason the gate above is: checks.yml
+      # runs only on pull requests, so this is the one place a rewrite
+      # merged by a direct push to `staging` would meet it. No browser and
+      # no built tree.
+      - name: Verify code regions survive the pre-render rewrites (check_code_regions.mjs)
+        run: node scripts/check_code_regions.mjs
       # Graphviz sizes each node box from a width table; the browser paints the
       # label with a real font, and nothing in the build compares the two -- so a
       # mismatch ships as text hanging outside its box on a green build. See the
