@@ -257,6 +257,18 @@ have thought to name in advance, and any of which would have silently become rea
 
 Everything above was fixed unless listed here. This section is the queue, not a finding list.
 
+> **Queue state after the follow-on session.** Struck-through entries are closed and carry the
+> commit that closed them. What is left is: everything under
+> [Needs someone with the twinBASIC IDE](#needs-someone-with-the-twinbasic-ide), the
+> `_site-pdf/` freshness check, and the `Description` entry's reconstructed wrapper.
+>
+> Two entries were **overstated** and are marked where they sit --- `Authoring.md`'s listing
+> checklist was already half-fixed before it was checked, and `IDE/Links.png` is not a defect
+> at all. One was **understated**: `IDE/New Project.md` had every sample number off by one, not
+> two wrong entries. Re-verifying before acting is what separated those three from the rest,
+> and it is the same discipline this review's own [method
+> note](#what-round-2-confirms-about-the-method) records.
+
 ### Needs someone with the twinBASIC IDE
 
 > **Command-line compilation is not a route to any of these.** Checked against
@@ -320,25 +332,35 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   `This attribute is not supported in this context`, so a probe project would settle all 52
   lines in one build.
 
-### Prose that contradicts its own screenshot
+### ~~Prose that contradicts its own screenshot~~ **Done**, in `280cb19`.
 
 Found by opening every image. The alt text now describes the picture, so on these pages the
-alt and the body disagree; one of the two is stale in each case.
+alt and the body disagreed; one of the two was stale in each case.
 
-| page | prose says | picture shows |
-|---|---|---|
-| `IDE/Call Stack.md` | the active chain of procedure calls | two threads, no call frames |
-| `IDE/Splash Screen.md` | version, build date, community links | a VIP Gold Supporters sponsor board |
-| `IDE/Memory.md` | addresses and byte values | an empty pane |
-| `IDE/Properties.md` | a name/value grid | an empty pane |
-| `IDE/Variables.md` | name/type/value columns | an empty pane |
-| `IDE/Webpage.md` | documentation or release notes | google.com at 70% zoom |
-| `IDE/New Project.md` | a sample list without HelloWorld | `Sample 1. HelloWorld` present; `GetIPAddresses` plural |
-| `IDE/Status Bar.md` | three regions | a fourth, `tbProject_Close`; the `## Status` heading is empty |
+| page | prose said | picture shows | resolution |
+|---|---|---|---|
+| `IDE/Call Stack.md` | the active chain of procedure calls | two threads, no call frames | prose was incomplete: the pane groups calls **by thread**, and each thread row expands to its own frames |
+| `IDE/Splash Screen.md` | version, build date, community links | a VIP Gold Supporters sponsor board | prose was simply wrong; the version is on the **About** dialog, and the page now says so |
+| `IDE/Memory.md` | addresses and byte values | an empty pane | both true: the toolbar is now documented, and the pane is empty until an expression is watched |
+| `IDE/Properties.md` | a name/value grid | an empty pane | same shape: empty with nothing selected |
+| `IDE/Variables.md` | name/type/value columns | an empty pane | same shape: empty outside a paused debugging session |
+| `IDE/Webpage.md` | documentation or release notes | google.com at 70% zoom | prose over-narrowed a general browser pane with an address bar and zoom control |
+| `IDE/New Project.md` | a sample list without HelloWorld | `Sample 1. HelloWorld` present; `GetIPAddresses` plural | **worse than recorded** --- see below |
+| `IDE/Status Bar.md` | three regions | a fourth, `tbProject_Close`; the `## Status` heading is empty | it is the **command under the mouse cursor**, settled by the maintainer; the empty heading now documents it |
 
-Also: `IDE/Menu/Format.md`'s two images are the same menu greyed and enabled, presented as a
-pair with nothing saying which is which; `IDE/Menu/Edit.md`'s list omits five commands the
-screenshot shows; `IDE/Links.png` is the old Twitter bird above an `x.com` URL.
+**The New Project entry understated the defect.** The list was written as a markdown ordered
+list numbered `0.` to `23.`, which renders as an `<ol>` starting at **1** --- so every sample
+number on the published page was off by one from the dialog, not just the two entries named
+here. It is now a bullet list carrying the dialog's own labels, which is also the only way to
+express `1a`.
+
+*Corrected while fixing:* the claim that `IDE/Links.png` is a defect is wrong. The icon is the
+old Twitter bird and the documented URL is `x.com`, but the page is faithful to the IDE and
+the alt text describes what is drawn. That is an IDE artifact, not a documentation bug.
+
+`IDE/Menu/Format.md`'s unexplained image pair is fixed in the same commit --- the menu is
+greyed until the form designer has a selection, and the page now says which screenshot is
+which. The `IDE/Menu/Edit.md` claim in this paragraph was already retracted below.
 
 ### Documented shortcuts that disagree with their screenshots
 
@@ -354,18 +376,49 @@ lists all 28, in order. What it had wrong was the three spellings, not the cover
 
 ### Smaller documentation items
 
-- The book's page count is stated four ways: 1,638 (`Tools.md`), 1,651 (`Fixes-PDFLib.md`,
-  `Fixes-PagedJS.md`, five occurrences), 1,991 (`WIP.md`).
-- `Authoring.md`'s listing checklist covers core statements and excuses module members, but
+- ~~The book's page count is stated four ways: 1,638 (`Tools.md`), 1,651 (`Fixes-PDFLib.md`,
+  `Fixes-PagedJS.md`, five occurrences), 1,991 (`WIP.md`).~~ **Done** in `558dc28`. The perf
+  figures are measurement conditions rather than claims about the book, so they keep their
+  numbers and now read as such ("on a 1,651-page book"); `PDF-Generation.md` states the
+  current size once and says the perf notes quote the size at the time of measurement.
+- ~~`Authoring.md`'s listing checklist covers core statements and excuses module members, but
   says nothing for a class, control or enumeration inside a package, nor for a whole new
-  package, which needs its own `###` section in `Permanent-Links.md`.
+  package~~ --- **the first half was already fixed**; both bullets existed by the time this
+  was checked. The live part was the tail: a new package also needs its own `###` section in
+  `Permanent-Links.md`, which nothing said. Added in `b3df7ea`.
 - `_site-pdf/` freshness is unchecked: `book.bat` tests only that `book.html` exists, and
   `check_tree_fresh.mjs` defaults to `_site-offline` with `check.bat` passing no `--tree`.
   Rendering after a content edit without rebuilding silently renders the previous book.
-- `PDF-Generation.md`'s `![PDF render pipeline]` is the fourth caption-parroting diagram alt;
-  the other three were rewritten.
-- `Attributes.md` pins 55 heading ids while `Permanent-Links.md` lists 56 anchors. Three
+  **Still open, and it bit during the follow-on session** --- a stale PDF was nearly used as
+  the baseline for a page-count comparison.
+- ~~`PDF-Generation.md`'s `![PDF render pipeline]` is the fourth caption-parroting diagram
+  alt~~ **Done** in `558dc28`. The same commit corrected the diagram's own `(~5 MB)` label
+  for `book.html`, which measures 6.9 MB.
+- ~~`Attributes.md` pins 55 heading ids while `Permanent-Links.md` lists 56 anchors. Three
   published URLs rest on the default slug and break if a type is appended to the heading;
-  two pinned ids are listed nowhere.
+  two pinned ids are listed nowhere.~~ **Done** in `b3df7ea`: `#classinterface`,
+  `#dispinterface` and `#dualinterface` now carry pinned ids (same slugs, so no URL moved),
+  and `#customcontrol` and `#specialcompilerbinding` were added to the contract, which is
+  also what puts them under the build's link check. Now 58 pinned against 58 listed.
 - The `Description` entry's `Public Function CurrentProjectName() As String` wrapper is an
-  agent's reconstruction, not from the maintainer's quoted source.
+  agent's reconstruction, not from the maintainer's quoted source. **Still open.**
+
+### A follow-on audit, recorded elsewhere
+
+The session that closed the items above also asked a question this round did not: whether any
+*build-time rewrite* silently corrupts the content it passes over. It does, and the findings
+are not use-case findings, so they live with the code rather than here:
+
+- **[WIP.md](../WIP.md), "Never rewrite markdown source without knowing what is code"** --- four
+  rewrites that ran over raw markdown with no idea what was code, and the same class on
+  rendered HTML in `book.mjs`. Shipped consequences included a language reference printing its
+  `If`/`ElseIf`/`Else` bodies flush left, and six corrupted code spans in the published PDF.
+- **`scripts/check_code_regions.mjs`** --- the gate that would have caught all of it, now in
+  `test.bat` and both CI workflows.
+- **[builder/PLAN-counts.md](PLAN-counts.md)** --- a design for giving build-time counts names
+  in prose, motivated by the stale figures this round found.
+
+The relevance to *this* document is the shape of the miss: every gate was green throughout,
+because the damage sat inside `<code>` and nothing inspected that. Round 2's method could not
+have found it either --- an evaluator reads what the page says, not whether the builder
+mangled it on the way out.
