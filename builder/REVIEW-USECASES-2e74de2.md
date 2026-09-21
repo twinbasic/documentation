@@ -254,6 +254,41 @@ a denylist of source extensions to an allowlist of prose extensions immediately 
 `.theme`, `.csv`, `.token`, `.jsonc`, `.twinpack` and `.keep` --- six file types nobody would
 have thought to name in advance, and any of which would have silently become readable.
 
+## What to do next
+
+**The queue below is empty.** This section is what replaces it, in the order worth doing.
+
+**1. Run round 3.** Six new cases are written into
+[eval/usecases.md](../eval/usecases.md#round-3--the-fixes-and-gates-that-report-success),
+along with the two of round 2's to re-run unchanged. This round's ~35 commits of fixes have
+had no equivalent of the measurement round 2 gave round 1 --- which remains the only direct
+evidence a documentation change works. The harness is intact and the run is two commands,
+given in [eval/README.md](../eval/README.md#running-a-round):
+
+```sh
+node builder/tbdocs.mjs --src docs
+node eval/build_corpus.mjs --dest <path>
+```
+
+**2. Recovery, which is this review's headline finding and is half-addressed.** The
+[verdict](#verdict) said every page in `docs/Documentation/` is written for someone about to
+do something and not one for someone to whom something has happened, with
+`Building.md`'s *When the diagram-fit check fails* the only exception. There are two now ---
+`PDF-Generation.md` gained *When the render fails* --- across fifteen pages. The recovery
+prose that does exist is real but sits under headings that do not say so: `Building.md:154`
+tells a contributor what to do when the publish policy aborts, `Extending.md:606` covers two
+gates for a builder developer. Neither is reachable by scanning a page list, which is what
+this review scored as *discoverability*.
+
+Gates that can fail somebody's build with no "when this fails" passage anywhere:
+`check_regex_safety`, `check_code_regions`, `check_a11y`, `pick_a11y_sample`, and nav
+integrity.
+
+**3. The tail.** [PLAN-counts.md](PLAN-counts.md)'s Phase 3 is four call sites converted
+against ~270 numeric claims in `docs/Documentation/` prose.
+[PLAN-checks.md](PLAN-checks.md)'s `pick_a11y_sample --check` census and the axe scan's
+orchestration are designed and not implemented.
+
 ## Open at handoff
 
 Everything above was fixed unless listed here. This section is the queue, not a finding list.

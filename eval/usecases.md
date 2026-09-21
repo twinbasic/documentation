@@ -83,6 +83,52 @@ consumer. Both are where the repository's most expensive historical failures sit
 | UC-31 | Review a pull request that changes `builder/`. | **H** the fixture's hard-coded counts break from a template change alone |
 | UC-32 | I changed a build task. Which documentation must follow, and how do I know I found it all? | |
 
+## Round 3 --- the fixes, and gates that report success
+
+**Not yet run.** Round 2's own ~35 commits of fixes have had no equivalent of the measurement
+round 2 gave round 1, which is the only direct evidence a documentation change works: five
+independent evaluators cited `Authoring.md:185-192` unprompted, a section that had not
+existed that morning, and one reported it caught a regression for them.
+
+Two things to sample that the earlier rounds could not.
+
+**Re-run round 2's two worst cases unchanged.** UC-24 (`book.bat` failed) and UC-22 (add a
+wide table) each *stalled* on navigation and *missed* on search. Both now have the page they
+lacked --- `PDF-Generation.md` has a *When the render fails* section, `Authoring.md` has a
+`## Tables` section. Whether either is **findable** is the thing the harness measures and
+nothing else does. Re-running a case against a corpus that has changed is the design, not a
+repeat.
+
+**Sample surface no evaluator has read.** The page-count drift guard and its accept command,
+`{{tbdocs:...}}` counts, `check_code_regions.mjs` (which had no `Tools.md` entry at all until
+the session that added these cases), and the `LibraryId` / `Version` attribute entries.
+
+### Persona A: content contributor
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-33 | Write a page that shows a fenced code sample whose *contents* include a fence marker, and put a note callout after it. | **H** the fence stasher once closed on the inner marker, and every admonition after it on that page shipped as the literal text `[!NOTE]` |
+| UC-34 | State in prose how many packages the reference documents, so the sentence cannot go stale. | **H** the syntax exists, is one page away, and nothing in a page about counts points at it |
+
+### Persona B: toolchain user
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-35 | The build says there are fewer pages than last time, and the removal was deliberate. Make it accept that. | **H** the number is in a committed file, and the remedy is a flag rather than an edit |
+| UC-36 | Compile a one-module twinBASIC project from a script to check an attribute, without opening the IDE. | **H** an invalid `project.id` wedges the IDE at *Services: LIMITED* behind a 2% progress dialog, reports no error anywhere, and the harness still exits 0 |
+
+### Persona C: builder developer, and a reviewer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-37 | Add a regression test for a build-time rewrite that silently stopped firing. | **H** the first draft of exactly this test passed against the very defect it was written to catch |
+| UC-38 | Add a gate that compares this build against the previous one, and decide what it must not do in CI. | **H** a guard keyed to nothing met a three-page fixture with *905 pages missing* |
+
+**The theme is gates that report success.** UC-33, UC-37 and UC-38 are all one shape --- a
+check that is green because it is looking in the wrong place --- and it is the failure this
+repository keeps rediscovering. A case that finds the documentation silent on it is worth
+more than one that finds a broken link.
+
 ## Scoring
 
 Per case, 0--4 each:
