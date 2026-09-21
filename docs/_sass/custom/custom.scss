@@ -600,3 +600,25 @@ div.highlight:focus-visible,
 .main-content h6 > a:not(.anchor-heading) {
   padding-block: 6px;
 }
+
+// Whitespace inside inline code is content, not layout.
+//
+// A browser's default for inline `<code>` is `white-space: normal`, so a run
+// of spaces collapses to one. For most code spans that is invisible, and for
+// some it destroys the thing being documented: **Partition** returns
+// fixed-width, space-padded range strings -- its page says so in prose -- and
+// its table rendered `" 0: 4"` where the function returns `"  0:  4"`.
+// Thirteen spans on that page stated wrong return values.
+//
+// `pre-wrap` rather than `pre`: runs and leading spaces are preserved, but the
+// span still wraps, so a long inline snippet cannot push the column into a
+// horizontal scroll. `builder/compress.mjs` had to stop collapsing inline
+// `<code>` for this rule to have anything to preserve -- the two are a pair,
+// and neither alone changes what a reader sees.
+//
+// Scoped with `.main-content` per the dark-compilation specificity note at the
+// top of modules-dark.scss. Nothing else declares `white-space` on inline code
+// in either compilation, so this is belt-and-braces rather than load-bearing.
+.main-content :not(pre, figure) > code {
+  white-space: pre-wrap;
+}

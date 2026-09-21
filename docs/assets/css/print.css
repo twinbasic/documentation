@@ -598,6 +598,13 @@ samp {
   border: 0.5pt solid #e0e0e4;
   border-radius: 2pt;
   padding: 0 0.2em;
+  /* Whitespace inside inline code is content. The default collapses runs,
+     which rendered **Partition**'s space-padded return values as `" 0: 4"`
+     where the function returns `"  0:  4"`. `pre-wrap`, not `pre`, so a long
+     snippet still wraps instead of overflowing the 170mm column. The rule
+     below for code inside <pre> resets this to `inherit`, which is what keeps
+     block code taking its whitespace from its own wrapper. */
+  white-space: pre-wrap;
   /* Smaller font-size makes the chip visually tight: glyphs fit naturally
      inside the em-box rather than being forced into a cropped height.
      Negative top/bottom `margin` on the inline-block keeps the chip's
