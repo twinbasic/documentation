@@ -130,6 +130,51 @@ check that is green because it is looking in the wrong place --- and it is the f
 repository keeps rediscovering. A case that finds the documentation silent on it is worth
 more than one that finds a broken link.
 
+## Round 4 --- recovery from a gate, and the boundary
+
+**Run 2026-09-21 at `4f97bac`** --- [builder/REVIEW-USECASES-4f97bac.md](../builder/REVIEW-USECASES-4f97bac.md).
+Round 3 closed thirteen findings and added two gates; this
+round asks whether the prose those fixes produced is *reachable*, and samples the one
+category round 3 named and could not cover: a gate that fails with no "when this fails"
+passage anywhere. Two of the site's fifteen developer pages carry such a heading
+(`Building.md`'s diagram-fit section and `PDF-Generation.md`'s render section), and both
+were written by earlier rounds of this harness.
+
+**Re-run round 3's three worst cases unchanged.** UC-36 scored 1/1/1, UC-33 2/1/2 with the
+hazard walked into, UC-34 3/2/3 likewise. Each now has the page it lacked --- a
+`scripts/tbbuild.mjs` entry, a fence subsection, two package-count call sites. Whether any
+of them is *findable* is what this measures and nothing else does.
+
+### Persona A: content contributor
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-33 | *(re-run)* A fenced sample whose contents include a fence marker, then a note callout. | **H** the fence stasher once closed on the inner marker and shipped every later admonition as literal `[!NOTE]` |
+| UC-34 | *(re-run)* State in prose how many packages the reference documents, so it cannot go stale. | **H** the syntax exists one page away and the same page's checklist once said to hand-edit the number |
+| UC-42 | Delete a reference page that other pages link to, and leave nothing broken behind. | **H** the URL is a contract, and the page-count guard fails on a fall |
+
+### Persona B: toolchain user
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-36 | *(re-run)* Compile a one-module twinBASIC project from a script to check an attribute. | **H** the harness existed and was documented nowhere under `docs/` |
+| UC-40 | A gate refused a regex I added to the builder. Understand it and fix it. | **H** the obvious narrowing of the character class is still exponential |
+| UC-41 | The build printed its last line and stopped. Nothing since, no error. | **H** `--stall-timeout` appears zero times in `docs/`; the cause class is on another page |
+
+### Persona C: builder developer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-39 | I wrote a gate that reads no page. Where does it go, and what must I register? | **H** two wrappers, and the rule for choosing is one sentence added this morning |
+| UC-43 | `pick_a11y_sample --check` failed after my change. Fix it. | **H** widening the sample is the obvious move and the wrong one |
+
+**The theme is the failure path.** Every round so far has found that this documentation is
+written for someone about to do something. Round 2 named that; round 3 found the recovery
+prose it produced had gone stale against the code. UC-40, UC-41 and UC-43 are three gates
+that can stop somebody's work, and the question is not whether the repository knows the
+answer --- it does, in `WIP.md` and in the gates' own comments --- but whether a reader
+meets it.
+
 ## Scoring
 
 Per case, 0--4 each:

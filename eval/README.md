@@ -85,6 +85,7 @@ The structural findings held up. The per-finding severity claims did not, reliab
 | 1 | 16 --- contributor, toolchain user, builder developer | [builder/REVIEW-USECASES-874896e.md](../builder/REVIEW-USECASES-874896e.md); 26 findings, 30 commits of fixes |
 | 2 | 16 --- recovery, and the `/tB/` URL contract | [builder/REVIEW-USECASES-2e74de2.md](../builder/REVIEW-USECASES-2e74de2.md); 16 findings, ~35 commits of fixes |
 | 3 | 8 --- the fixes, and gates that report success | [builder/REVIEW-USECASES-cd141f1.md](../builder/REVIEW-USECASES-cd141f1.md); 13 findings |
+| 4 | 8 --- the failure path, and a fix pass auditing itself | [builder/REVIEW-USECASES-4f97bac.md](../builder/REVIEW-USECASES-4f97bac.md); 14 findings, six of them introduced by round 3's own fix pass |
 
 Round 1's headline was a gradient: documentation quality fell monotonically with depth into
 the toolchain (contributor 3.8 discoverability, toolchain user 2.8, builder developer 1.8),
