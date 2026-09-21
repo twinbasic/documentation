@@ -1857,26 +1857,31 @@ anything: reverting `README.md`, `Building.md` and `Documentation/index.md` to
 `4f97bac` and running it, which reports six sites --- round 4's three on
 `Building.md`, README's, plus two nobody had found.
 
-**Its own patterns had to be checked by hand, and one needed fixing.** They are
-built with `new RegExp(...)` from shared string constants, so they are not regex
-*literals* and [check_regex_safety.mjs](#the-regex-safety-gate) cannot see them
---- the blind spot that file's `--census` exists to keep visible. Run through
-recheck directly, the line-initial rule came back **polynomial degree 3**: a
-lazy gap (`[^\n]{0,80}?`) and the count after it could divide the same text. It
-is now two steps, an anchored match for the wrapper at the head of the line and
-a search of a bounded slice of what follows, with no division to try; a second
-pattern was degree 2 for two groups that could each eat the same leading space,
-and is one character class now. All six are `safe`. **A gate that can go
-quadratic on a long table row is the shape the repository refuses everywhere
-else**, and writing patterns as constructed strings is enough to walk past the
-gate that would have said so.
+**Its own patterns had to be checked by hand, and one needed fixing --- and that
+is what made [check_regex_safety.mjs](#the-regex-safety-gate) read constructed
+regexes.** They are built with `new RegExp(...)` from shared string constants, so
+at the time they were not regex *literals* and the gate could not see them; the
+blind spot was a count in `--census` and nothing more. Run through recheck
+directly, the line-initial rule came back **polynomial**: a lazy gap
+(`[^\n]{0,80}?`) and the count after it could divide the same text. It is now two
+steps, an anchored match for the wrapper at the head of the line and a search of
+a bounded slice of what follows, with no division to try; a second pattern was
+polynomial for two groups that could each eat the same leading space, and is one
+character class now. All six are `safe`, and all six are checked by the gate on
+every run.
+
+**A gate that can go quadratic on a long table row is the shape the repository
+refuses everywhere else**, and writing patterns as constructed strings was enough
+to walk past the gate that would have said so. That is fixed at the gate rather
+than here.
 
 ### The regex-safety gate
 
 [scripts/check_regex_safety.mjs](scripts/check_regex_safety.mjs) parses every
 `.mjs` under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` with acorn,
-pulls out the regex literals, and refuses any that can backtrack exponentially.
-In `test.bat` and both CI workflows; ~5 s, no browser, no built tree.
+takes the regex literals *and* every `new RegExp(...)` whose arguments the source
+decides, and refuses any that can backtrack exponentially. In `test.bat` and both
+CI workflows; ~5 s, no browser, no built tree.
 
 ```sh
 node scripts/check_regex_safety.mjs           # the gate
@@ -1921,20 +1926,30 @@ site (4,137 distinct tags) and against a full two-tree build diff.
 > **Do not reintroduce a per-attribute sub-pattern in either of them.** It was
 > written that way, fixed that way, and was wrong both times.
 
-**It gates on exponential only.** recheck also reports polynomial blowup, and 40
-of this repo's 178 literals are polynomial --- nearly all the ordinary
+**It gates on exponential only.** recheck also reports polynomial blowup, and
+about a fifth of the patterns here are polynomial --- nearly all the ordinary
 `<tag[^>]*>` shape, degree 2, on bounded input. A gate that failed on those would
-fail on day one against 40 findings, and a gate that fails on day one gets
+fail on day one against fifty findings, and a gate that fails on day one gets
 switched off. Exponential is the class that turns a content edit into an
 unbounded hang.
+
+**The `degN` in a census is worth less than the verdict beside it**, and that is
+worth knowing before quoting one. Measured on a single pattern, three runs each:
+the native agent says polynomial degree 2 where the pure-JavaScript fallback says
+degree 3. They agree on exponential-or-not, which is what the gate rests on, and
+they agree on all eight classification probes --- but a degree is a ranking aid
+for reading a census, not a number to write into prose. An earlier draft of this
+file quoted a "degree 3" that was the fallback's answer, arrived at because the
+manual run had silently taken the slow path.
 
 Three implementation details are load-bearing:
 
 - **The self-test probes ride along inside the normal run**, not behind a
-  `--self-test` nobody remembers. Eight probes, both directions: the three
-  regexes this repo actually shipped (including the incomplete fix), `^(a+)+$`,
-  and four that must *not* be flagged. A green line saying "no exponential regex"
-  is otherwise indistinguishable from a gate that has stopped detecting.
+  `--self-test` nobody remembers. Eight classification probes, both directions:
+  the three regexes this repo actually shipped (including the incomplete fix),
+  `^(a+)+$`, and four that must *not* be flagged --- plus fourteen fold probes,
+  below. A green line saying "no exponential regex" is otherwise
+  indistinguishable from a gate that has stopped detecting.
 - **Parallelism comes from separate processes.** Importing `recheck` spawns one
   long-lived agent and feeds it requests one at a time, so awaiting several
   checks concurrently in a single process buys nothing --- measured at 42.5 s for
@@ -1951,12 +1966,54 @@ Three implementation details are load-bearing:
   line rather than just being slow. Both backends classify all eight probes
   identically, so the fallback is slower, not weaker.
 
-Honest limitations, neither of which should be papered over: a regex recheck
-cannot decide comes back `unknown`, and an unknown is an *unchecked* regex rather
-than a passing one (currently 0; `--census` prints them). And the scan covers
-regex **literals** only --- a pattern built from a string at runtime is invisible
-to it, so `--census` reports how many `new RegExp(...)` constructions exist to
-keep that blind spot a number rather than a surprise.
+Honest limitation, which should not be papered over: a regex recheck cannot
+decide comes back `unknown`, and an unknown is an *unchecked* regex rather than a
+passing one (currently 0; `--census` prints them).
+
+#### It reads constructed regexes too, and that was not a rounding error
+
+The scan used to cover regex **literals** only. `--census` reported how many
+`new RegExp(...)` constructions existed, which kept the blind spot a number
+rather than a surprise --- and a number is all it was. **Building a pattern out
+of shared fragments is the ordinary way to avoid writing a sub-pattern six
+times**, and doing it made the regex invisible to the gate that exists to read
+it. Round 4's own fix pass wrote six of them into `check_gate_lists.mjs`; one
+came back polynomial when finally put through recheck by hand, and nothing in
+the repository would have said so. A gate whose coverage you can leave by
+writing idiomatic JavaScript is not covering much.
+
+[scripts/lib/regex-fold.mjs](scripts/lib/regex-fold.mjs) folds a construction to
+the pattern it builds, where the source decides that: string and template
+literals, `+` concatenation, `String.raw`, a `const` declared once in the file,
+`X.source` of a `const` regex, `A.join(sep)` over a `const` array of string
+literals, and a ternary (checked as both branches). Twelve of the tree's
+eighteen constructions resolve; each is then checked exactly as a literal is.
+
+**One rule is a model rather than an exact fold, and it is marked as one.** A
+call to an escaping helper --- `escapeRegExp(x)` and anything written to the same
+shape, recognised by body rather than by name so all three copies in the tree are
+covered without a list --- yields a fixed character sequence with no regex
+operator in it, whatever `x` holds. Those fold to a one-character placeholder and
+are tagged `modelled`, in the census and in any finding. The gap is stated rather
+than hidden: an escaped splice *inside a quantified alternation* could be
+ambiguous with a sibling branch in a way the placeholder is not --- `(${esc}|a)+`
+is exponential when `esc` holds `a` and safe when it holds `x`. A fixed sequence
+cannot be a quantified atom by itself, so the surrounding pattern has to quantify
+a group containing it; none of the three in the tree does.
+
+**The remaining six are a list with a reason each, not a count.** *`pattern` is a
+function parameter --- check the call sites* says where to look; *`re` is a `let`,
+so its value is not fixed* says not to bother, because it is a glob compiler
+building a pattern character by character. That is the difference between a blind
+spot someone can close and one they can only watch.
+
+Fourteen more probes ride along in the normal run, eight that must resolve to an
+exact pattern and six that must be refused with a reason. **The negative six are
+the ones that matter**: a folder that resolves less than it claims does not fail,
+it moves constructions into the unresolved list, where nothing checks them and
+the run goes green --- which is what the gate looked like before it could fold at
+all. A folder that resolves *more* than it can know is worse, and the negatives
+are what say it does not.
 
 ### Remote-asset vendoring
 

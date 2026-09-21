@@ -150,12 +150,20 @@ jobs:
       # subtler witness. Nothing else here can see it, because there is
       # nothing to see until the content changes.
       #
-      # Gates on exponential only -- 40 of this repo's literals are
-      # polynomial, nearly all the ordinary `<tag[^>]*>` shape on bounded
-      # input, and a gate that fails on day one gets switched off. The
-      # self-test probes run inside the same pass, so a green line here
-      # cannot be a gate that has stopped detecting. No browser, no built
-      # tree, a few seconds sharded across the runner's CPUs.
+      # Reads regex literals AND every `new RegExp(...)` the source
+      # decides the arguments of. That second half is not a refinement:
+      # assembling a pattern from shared string constants is ordinary
+      # JavaScript, and for as long as this read literals only it was
+      # also a way out of the gate. Six such regexes went into one gate
+      # unseen, one of them polynomial.
+      #
+      # Gates on exponential only -- about a fifth of the patterns here
+      # are polynomial, nearly all the ordinary `<tag[^>]*>` shape on
+      # bounded input, and a gate that fails on day one gets switched
+      # off. The self-test probes run inside the same pass, classification
+      # and folding both, so a green line here cannot be a gate that has
+      # stopped detecting. No browser, no built tree, a few seconds
+      # sharded across the runner's CPUs.
       #
       # recheck's native backend is an optional dependency resolved per
       # platform; if it is missing the script says so and falls back to

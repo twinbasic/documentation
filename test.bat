@@ -47,8 +47,11 @@ node scripts/check_gate_lists.mjs
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the
 @rem build stops rather than failing. VOID_TAGS_RE shipped that way, and
-@rem so did its first fix. Its own probes ride along in the same run, so
-@rem a green line cannot be a dead gate. No tree, no browser, ~5 s.
+@rem so did its first fix. Reads literals and every new RegExp(...) whose
+@rem arguments the source decides -- assembling a pattern from constants
+@rem was a way out of this gate until it did. Its own probes ride along
+@rem in the same run, so a green line cannot be a dead gate. No tree, no
+@rem browser, ~5 s.
 node scripts/check_regex_safety.mjs
 @if errorlevel 1 goto :fail
 @rem The pre-render rewrites in render.mjs run over RAW markdown, so none

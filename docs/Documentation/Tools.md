@@ -69,7 +69,7 @@ The tests the toolchain has to pass. Six steps, each stopping the run if it fail
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
-3. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex literal that can backtrack exponentially.
+3. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
 4. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
 5. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 6. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
@@ -345,7 +345,9 @@ Renders every committed diagram with the real webfont and fails if a label sits 
 
     node scripts/check_regex_safety.mjs [--census] [--self-test]
 
-Refuses a regex literal that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` with acorn, extracts the regex literals, and classifies each with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
+Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` with acorn and classifies each pattern with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
+
+**It reads two things: regex literals, and every `new RegExp(...)` whose arguments can be resolved from the source.** The second half matters more than it sounds, because building a pattern out of shared fragments --- `const NUM = "..."; new RegExp(`${WRAP}${NUM}`)` --- is the ordinary way to avoid writing a sub-pattern six times, and for as long as the gate read literals only, doing that made a regex invisible to it. Six in one gate were, and one of them turned out to be polynomial rather than safe; it was found by a person running recheck against it by hand, which is not a process. A construction it cannot resolve is listed by `--census` with the reason --- *a function parameter, check the call sites*, *a `let`, so its value is not fixed* --- so the remaining blind spot is a short list rather than a count.
 
 **An exponential regex does not fail a build, it stops one.** The corpus passes for as long as no page happens to contain the trigger; then a worker sits inside `String.replace` and never returns, and the build prints its last line. That is not hypothetical --- `VOID_TAGS_RE` in `builder/render.mjs` shipped that way, and the two alt strings that triggered it (`Line/Column`, `/Packages/WinDevLib`) are ordinary English. This gate asks the question of the regex rather than waiting for content to ask it. When it first ran it found a second exponential regex in the same file that nobody knew about, and then found that the first attempt at fixing `VOID_TAGS_RE` was still exponential on a subtler input. The [stall watchdog](Building#when-a-build-stops) ends such a run after two minutes and names the wedged task and the pages it was rendering, which turns a silent hang into a diagnosis --- it does not make the regex safe.
 
@@ -355,9 +357,9 @@ The cause is one shape, every time: **two parts of the pattern can match the sam
 
 **The rewrite that works is to stop describing the structure between the delimiters.** Both regexes are now `<(br|hr|...)\b([^>]*)>`, and the attribute handling happens afterwards in ordinary JavaScript, where it is easier to read and cannot backtrack at all. `[^>]*` and the `>` after it share no character, so there is no division to try. **Do not reintroduce a per-attribute sub-pattern in either one**: it was written that way, fixed that way, and was wrong both times.
 
-It gates on **exponential only**. recheck also reports polynomial blowup, and about 40 of this repository's ~178 literals are polynomial --- nearly all the ordinary `<tag[^>]*>` shape on bounded input. Failing those would mean 40 findings on day one, and a gate that fails on day one gets switched off.
+It gates on **exponential only**. recheck also reports polynomial blowup, and about a fifth of the patterns here are polynomial --- nearly all the ordinary `<tag[^>]*>` shape on bounded input. Failing those would mean fifty findings on day one, and a gate that fails on day one gets switched off. The `degN` a census prints is worth even less than that: measured on one pattern over three runs each, the native backend calls it degree 2 and the pure-JavaScript fallback calls it degree 3. Both agree on exponential-or-not, which is the only thing the gate rests on.
 
-The self-test probes run inside the normal pass rather than behind `--self-test`: eight regexes with known answers in both directions, including the three this repository actually shipped. A green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. `--census` lists every literal by classification, plus a count of runtime `new RegExp(...)` constructions, which the scan cannot see.
+Two sets of probes run inside the normal pass rather than behind `--self-test`, because a green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. Eight are regexes with known answers in both directions, including the three this repository actually shipped. Fourteen more cover the folding: eight constructions that must resolve to an exact pattern, and six that must be refused with a reason --- a folder that quietly resolves nothing moves every construction into the unresolved list and the run still passes.
 
 Exits 1 on an exponential finding, on a file that would not parse, or on a probe that came back wrong.
 

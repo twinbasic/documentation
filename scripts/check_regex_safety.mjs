@@ -24,22 +24,37 @@
 //
 // What it gates on, and what it does not
 // --------------------------------------
-// **Exponential only.** recheck also reports polynomial blowup, and 37 of
-// this repo's 176 regex literals are polynomial -- almost all of them the
+// **Exponential only.** recheck also reports polynomial blowup, and about
+// a fifth of the regexes here are polynomial -- almost all of them the
 // ordinary `<tag[^>]*>` shape, degree 2, applied to bounded inputs. A gate
-// that failed on those would fail on day one against 37 findings, and a
+// that failed on those would fail on day one against fifty findings, and a
 // gate that fails on day one gets switched off. Exponential is the class
 // that turns a content edit into an unbounded hang, and it has been stable
-// at exactly the real faults across every checker and every run.
+// at exactly the real faults across every checker and every run. The
+// summary line prints the current counts, so they are not written here.
 //
 // Honest limitation: a regex recheck cannot decide comes back `unknown`,
 // and an unknown is NOT a pass -- it is an unchecked regex. `--census`
 // prints them and the count is worth watching.
 //
-// Scope: regex *literals*, found by parsing with acorn. A regex built from
-// a string at runtime (`new RegExp(someVar)`) is not analysed; `--census`
-// reports how many such constructions exist, so the blind spot has a
-// number rather than being invisible.
+// **The `degN` in `--census` is a backend-dependent number, and the
+// exponential/not verdict is not.** Measured on one pattern, three runs
+// each: the native agent says polynomial degree 2 where the pure-JS
+// fallback says degree 3. Both backends classify all eight probes
+// identically, which is the assertion this gate rests on; the degree is
+// for ranking a census, not for quoting.
+//
+// Scope: regex literals, plus every `new RegExp(...)` whose arguments can
+// be folded to constants from the source alone -- see
+// `scripts/lib/regex-fold.mjs` for which shapes fold and why each rule is
+// exact. A construction that cannot be folded is listed by `--census` with
+// the reason, which is a better blind spot than a count.
+//
+// That scope used to be literals only, and the cost of it was measured:
+// the shared-fragment style -- `const NUM = ...; new RegExp(`${W}${NUM}`)`
+// -- is how anyone avoids repeating a sub-pattern six times, and it made
+// six regexes in one gate invisible here. One of them was polynomial, and
+// was found only by someone running recheck against it by hand.
 //
 //   node scripts/check_regex_safety.mjs             # the gate
 //   node scripts/check_regex_safety.mjs --census    # full classification
@@ -56,6 +71,8 @@ import { readFile } from "node:fs/promises";
 import { parse } from "acorn";
 import * as walk from "acorn-walk";
 import fg from "fast-glob";
+
+import { foldConstructedRegexes } from "./lib/regex-fold.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -139,12 +156,97 @@ const PROBES = [
     pattern: String.raw`^(?:<(br|hr|img)\b[^>]*>\s*)+$`, flags: "i" },
 ];
 
+// ── Fold probes ──────────────────────────────────────────────────────────────
+//
+// The probes above assert that recheck still classifies. These assert that
+// the folder still reaches it, which is a separate question with the same
+// failure mode: a folder that quietly resolves nothing leaves the summary
+// line reading `0 constructed` and every construction in the unresolved
+// list, which is exactly what this gate looked like before it could fold at
+// all. Both directions, because a folder that resolves *everything* --
+// including a pattern it cannot actually know -- is the worse failure.
+//
+// These run in-process in a few milliseconds; nothing here calls recheck.
+const FOLD_PROBES = [
+  { name: "a template over module consts",
+    src: 'const A = "^(a"; const B = "+)+$"; const R = new RegExp(`${A}${B}`, "g");',
+    expect: [{ pattern: "^(a+)+$", flags: "g" }] },
+  { name: "string concatenation",
+    src: 'const A = "^x"; const R = new RegExp(A + "y$", "i");',
+    expect: [{ pattern: "^xy$", flags: "i" }] },
+  { name: "Array.join over a const array",
+    src: 'const W = ["a","b"]; const R = new RegExp(`\\\\b(${W.join("|")})\\\\b`);',
+    expect: [{ pattern: String.raw`\b(a|b)\b`, flags: "" }] },
+  { name: "the .source of a const regex",
+    src: 'const P = /<pre[^>]*>/g; const R = new RegExp(`(${P.source})`, "g");',
+    expect: [{ pattern: "(<pre[^>]*>)", flags: "g" }] },
+  { name: "String.raw concatenated with a const",
+    src: 'const D = "-"; const R = new RegExp(String.raw`^\\w+` + D);',
+    expect: [{ pattern: String.raw`^\w+-`, flags: "" }] },
+  { name: "a ternary, checked as both branches",
+    src: 'const C = 1 ? "`" : "~"; const R = new RegExp(`^${C}{3,}$`);',
+    expect: [{ pattern: "^`{3,}$", flags: "" }, { pattern: "^~{3,}$", flags: "" }] },
+  { name: "an escaping call, modelled as literal text",
+    src: 'function esc(s){return s.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&");}\n' +
+         'const R = new RegExp(`^${esc(x)}[ ]*$`, "gm");',
+    expect: [{ pattern: "^x[ ]*$", flags: "gm", modelled: true }] },
+  { name: "RegExp called without new",
+    src: 'const A = "ab"; const R = RegExp(A, "g");',
+    expect: [{ pattern: "ab", flags: "g" }] },
+];
+
+const FOLD_NEGATIVES = [
+  { name: "a function parameter is not resolved",
+    src: 'function f(p) { return new RegExp(`^${p}$`); }', reason: /function parameter/ },
+  { name: "a let is not resolved",
+    src: 'let re = ""; for (const c of "ab") re += c; const R = new RegExp(re + "$");',
+    reason: /`let` or `var`/ },
+  { name: "a name declared twice is not resolved",
+    src: 'function a(){ const s = "x"; return s; }\nfunction b(){ const s = "y"; return new RegExp(s); }',
+    reason: /more than once/ },
+  { name: "a loop binding is not resolved",
+    src: 'for (const pat of list) { new RegExp(pat, "i"); }', reason: /bound by a loop/ },
+  { name: "unknown flags are not guessed",
+    src: 'const A = "ab"; function f(fl) { return new RegExp(A, fl); }', reason: /^flags: / },
+  { name: "an unknown call is not resolved",
+    src: 'const R = new RegExp(buildPattern(), "g");', reason: /a call to `buildPattern`/ },
+];
+
+function foldSelfTest() {
+  const out = [];
+  const parseProbe = (src) => parse(src, {
+    ecmaVersion: "latest", sourceType: "module", locations: true, allowReturnOutsideFunction: true,
+  });
+  for (const p of FOLD_PROBES) {
+    let ok = false, detail = "";
+    try {
+      const { resolved, unresolved } = foldConstructedRegexes(parseProbe(p.src), "<probe>");
+      const got = resolved.map((r) => ({ pattern: r.pattern, flags: r.flags, modelled: r.modelled }));
+      ok = unresolved.length === 0 && got.length === p.expect.length &&
+        p.expect.every((e, i) => got[i].pattern === e.pattern && got[i].flags === e.flags &&
+          got[i].modelled === Boolean(e.modelled));
+      detail = ok ? "" : `got ${JSON.stringify(got)}${unresolved.length ? ` + unresolved ${JSON.stringify(unresolved.map(u => u.reason))}` : ""}`;
+    } catch (err) { detail = err.message; }
+    out.push([ok, `fold: ${p.name}`, detail]);
+  }
+  for (const p of FOLD_NEGATIVES) {
+    let ok = false, detail = "";
+    try {
+      const { resolved, unresolved } = foldConstructedRegexes(parseProbe(p.src), "<probe>");
+      ok = resolved.length === 0 && unresolved.length === 1 && p.reason.test(unresolved[0].reason);
+      detail = ok ? "" : `resolved ${JSON.stringify(resolved.map(r => r.pattern))}, unresolved ${JSON.stringify(unresolved.map(u => u.reason))}`;
+    } catch (err) { detail = err.message; }
+    out.push([ok, `fold: ${p.name}`, detail]);
+  }
+  return out;
+}
+
 // ── Extraction ───────────────────────────────────────────────────────────────
 
 async function extractRegexes() {
   const files = (await fg(SOURCE_GLOBS, { cwd: ROOT, ignore: IGNORE })).sort();
   const found = new Map();
-  let dynamic = 0;
+  const unresolved = [];
   const parseFailures = [];
 
   for (const rel of files) {
@@ -167,21 +269,36 @@ async function extractRegexes() {
     walk.simple(ast, {
       Literal(node) {
         if (!node.regex) return;
-        const key = `${node.regex.pattern} ${node.regex.flags}`;
-        if (!found.has(key)) {
-          found.set(key, {
-            pattern: node.regex.pattern,
-            flags: node.regex.flags,
-            file: rel, line: node.loc.start.line,
-          });
-        }
-      },
-      NewExpression(node) {
-        if (node.callee?.type === "Identifier" && node.callee.name === "RegExp") dynamic++;
+        add({
+          pattern: node.regex.pattern,
+          flags: node.regex.flags,
+          file: rel, line: node.loc.start.line,
+        });
       },
     });
+
+    // Constructions whose arguments fold to constants are checked exactly
+    // like a literal; the rest are reported with the reason they could not
+    // be, which is a blind spot a reader can act on rather than a count.
+    const folded = foldConstructedRegexes(ast, rel);
+    for (const r of folded.resolved) add(r);
+    unresolved.push(...folded.unresolved);
   }
-  return { regexes: [...found.values()], files, dynamic, parseFailures };
+
+  const regexes = [...found.values()];
+  return {
+    regexes, files, parseFailures, unresolved,
+    literals: regexes.filter((r) => !r.constructed).length,
+    constructed: regexes.filter((r) => r.constructed).length,
+  };
+
+  // One check per distinct pattern, first site seen owning the report --
+  // the rule literals have always had, since render.mjs alone holds 69 and
+  // several repeat.
+  function add(entry) {
+    const key = `${entry.pattern} ${entry.flags}`;
+    if (!found.has(key)) found.set(key, entry);
+  }
 }
 
 // ── Checking ─────────────────────────────────────────────────────────────────
@@ -253,8 +370,21 @@ async function checkAll(regexes) {
 
 // ── Reporting ────────────────────────────────────────────────────────────────
 
+/**
+ * How the pattern was obtained, when that is not "it is written there".
+ * A `new RegExp` site does not show the pattern at that line, so a finding
+ * that printed only `file:line` and a pattern would look like a typo.
+ */
+function tagOf(r) {
+  if (!r.constructed) return "";
+  const bits = ["constructed"];
+  if (r.variants > 1) bits.push(`branch ${r.variant} of ${r.variants}`);
+  if (r.modelled) bits.push("escaped splice modelled as \"x\"");
+  return `  [${bits.join("; ")}]`;
+}
+
 function printFinding(r) {
-  console.error(`  ${r.file}:${r.line}`);
+  console.error(`  ${r.file}:${r.line}${tagOf(r)}`);
   console.error(`    /${r.pattern}/${r.flags}`);
   if (r.attack) {
     const a = r.attack.length > 70 ? `${r.attack.slice(0, 70)}...` : r.attack;
@@ -264,7 +394,8 @@ function printFinding(r) {
 
 async function gate({ census }) {
   const t0 = Date.now();
-  const { regexes, files, dynamic, parseFailures } = await extractRegexes();
+  const { regexes, files, literals, constructed, unresolved, parseFailures } = await extractRegexes();
+  const foldProbes = foldSelfTest();
 
   // The probes ride along in the same sharded run rather than sitting
   // behind a separate --self-test nobody remembers to invoke. They cost
@@ -287,9 +418,10 @@ async function gate({ census }) {
   const errors = by.error ?? [];
 
   console.log(
-    `regex safety: ${regexes.length} literals in ${files.length} files, ${secs}s -- ` +
+    `regex safety: ${literals} literals + ${constructed} constructed in ${files.length} files, ${secs}s -- ` +
     `${(by.safe ?? []).length} safe, ${(by.polynomial ?? []).length} polynomial, ` +
     `${(by.unknown ?? []).length} undecided, ${exponential.length} exponential` +
+    `${unresolved.length ? `; ${unresolved.length} construction(s) not resolvable` : ""}` +
     `${nativeBin ? "" : "  (no native backend: slow JS fallback)"}`,
   );
 
@@ -300,10 +432,20 @@ async function gate({ census }) {
       console.log(`\n${kind} (${list.length}):`);
       for (const r of [...list].sort((a, b) => (b.degree ?? 0) - (a.degree ?? 0))) {
         const deg = r.degree ? ` deg${r.degree}` : "";
-        console.log(`  ${r.file}:${r.line}${deg}  /${r.pattern.slice(0, 90)}/${r.flags}`);
+        console.log(`  ${r.file}:${r.line}${deg}${tagOf(r)}  /${r.pattern.slice(0, 90)}/${r.flags}`);
       }
     }
-    console.log(`\n${dynamic} runtime \`new RegExp(...)\` construction(s) -- not analysed.`);
+    const modelled = results.filter((r) => r.modelled);
+    if (modelled.length) {
+      console.log(`\nmodelled (${modelled.length}) -- an escaped splice stood in for as "x":`);
+      for (const r of modelled) console.log(`  ${r.file}:${r.line}  /${r.pattern.slice(0, 90)}/${r.flags}`);
+    }
+    // Not "N constructions, not analysed". A reason per site is the
+    // difference between a blind spot someone can close and one they can
+    // only count: `pattern` being a function parameter says to go and read
+    // the call sites, and a `let` accumulated in a loop says not to bother.
+    console.log(`\nnot resolvable (${unresolved.length}):`);
+    for (const u of unresolved) console.log(`  ${u.file}:${u.line}  ${u.reason}`);
   }
 
   let failed = false;
@@ -314,6 +456,16 @@ async function gate({ census }) {
     console.error(`\nFAIL: ${misclassified.length} of ${probeResults.length} self-test probes misclassified.`);
     for (const r of misclassified) console.error(`  ${r.name}: expected ${r.probe}, got ${r.verdict}`);
     console.error("  The gate is not measuring what it claims; its verdict above means nothing.");
+  }
+  const badFolds = foldProbes.filter(([ok]) => !ok);
+  if (badFolds.length) {
+    failed = true;
+    console.error(`\nFAIL: ${badFolds.length} of ${foldProbes.length} fold probes failed.`);
+    for (const [, name, detail] of badFolds) console.error(`  ${name}${detail ? `: ${detail}` : ""}`);
+    console.error(
+      "  A folder that resolves less than it claims moves constructions into the\n" +
+      "  unresolved list, where nothing checks them and the run still passes.",
+    );
   }
   if (parseFailures.length) {
     failed = true;
@@ -338,15 +490,19 @@ async function gate({ census }) {
     );
   }
   if (!failed) {
-    console.log(`ok    no regex literal can backtrack exponentially ` +
-                `(${probeResults.length} self-test probes classified correctly)`);
+    console.log(`ok    no regex can backtrack exponentially ` +
+                `(${probeResults.length} classification + ${foldProbes.length} fold probes correct)`);
   }
   return failed ? 1 : 0;
 }
 
 async function selfTest() {
-  const results = await checkList(PROBES.map(p => ({ ...p })));
   let bad = 0;
+  for (const [ok, name, detail] of foldSelfTest()) {
+    if (!ok) bad++;
+    console.log(`  ${ok ? "ok   " : "FAIL "} ${name}${ok || !detail ? "" : `: ${detail}`}`);
+  }
+  const results = await checkList(PROBES.map(p => ({ ...p })));
   for (const r of results) {
     // An `error` verdict is never a pass, whichever way the probe was
     // expected to go -- otherwise a backend that cannot run at all
@@ -358,10 +514,11 @@ async function selfTest() {
     console.log(`  ${ok ? "ok   " : "FAIL "} ${r.name}: expected ${r.expect}, got ${r.verdict}`);
   }
   if (bad) {
-    console.error(`\nFAIL: ${bad} probe(s) misclassified -- the gate is not measuring what it claims.`);
+    console.error(`\nFAIL: ${bad} probe(s) wrong -- the gate is not measuring what it claims.`);
     return 1;
   }
-  console.log(`ok    ${results.length} probes classified correctly, both directions`);
+  console.log(`ok    ${results.length} classification + ${FOLD_PROBES.length + FOLD_NEGATIVES.length} ` +
+              `fold probes correct, both directions`);
   return 0;
 }
 
