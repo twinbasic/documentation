@@ -48,12 +48,53 @@ const SEPARATOR_RE = new RegExp(
   String.raw`^(- \[.*?\]\(.*?\)[^` + EM_DASH + String.raw`\n\x60]*)` + EM_DASH,
 );
 
-// A fenced-code-block opener / closer.
-const FENCE_RE = /^```/;
+// A fenced-code-block opener. CommonMark allows up to three leading spaces,
+// tilde fences as well as backtick ones, and any run length of three or more;
+// a closer must use the same character and be at least as long. Anchoring this
+// at column 0 with exactly three backticks -- as it was -- let an indented
+// fence through as prose. Reference/Core/Get.md and Option.md carry 2-space
+// fences of exactly that shape.
+const FENCE_OPEN_RE = /^[ \t]{0,3}(`{3,}|~{3,})/;
+const FENCE_CLOSE_RE = /^[ \t]{0,3}(`+|~+)[ \t]*$/;
 
-// Split a line into alternating prose / inline-code segments. The capture group
-// keeps the code spans in the output, so joining restores the line.
-const INLINE_CODE_SPLIT = /(`[^`\n]*`)/;
+// Known gap: an indented (4-space) code block is still treated as prose --
+// Documentation/Authoring.md's page-template skeleton is one, and the ```tb
+// inside it is literal text rather than a fence. Telling such a block from a
+// list-item continuation needs block context this line-at-a-time pass does
+// not have, and guessing would rewrite real list content. Nothing in the
+// corpus currently trips it, and a missed conversion is the safe direction:
+// it leaves a literal dash in source rather than corrupting a code sample.
+
+// Split a line into alternating prose / inline-code segments, handling a
+// backtick run of any length -- ``a `b` c`` is one span. The previous regex
+// matched single-backtick spans only, so an em-dash inside a doubled-backtick
+// span was rewritten as prose.
+function splitInlineCode(line) {
+  const parts = [];
+  let buf = "";
+  let k = 0;
+  while (k < line.length) {
+    if (line[k] !== "`") { buf += line[k++]; continue; }
+    let n = 0;
+    while (line[k + n] === "`") n++;
+    let p = k + n;
+    let found = -1;
+    while (p < line.length) {
+      if (line[p] === "`") {
+        let m = 0;
+        while (line[p + m] === "`") m++;
+        if (m === n) { found = p; break; }
+        p += m;
+      } else p++;
+    }
+    if (found < 0) { buf += line.slice(k, k + n); k += n; continue; }
+    if (buf) { parts.push({ code: false, text: buf }); buf = ""; }
+    parts.push({ code: true, text: line.slice(k, found + n) });
+    k = found + n;
+  }
+  if (buf) parts.push({ code: false, text: buf });
+  return parts;
+}
 
 // Split keeping line terminators, so the text rejoins unchanged. Python's
 // `splitlines(keepends=True)` also breaks on a bare CR; this matches that
@@ -79,11 +120,11 @@ function processLine(line) {
   // Step 2: remaining em-dash -> `---`, en-dash -> `--`, outside code spans.
   let em = 0;
   let en = 0;
-  const parts = line.split(INLINE_CODE_SPLIT).map((part) => {
-    if (part.length >= 2 && part.startsWith("`") && part.endsWith("`")) return part;
-    em += countOf(part, EM_DASH);
-    en += countOf(part, EN_DASH);
-    return part.split(EM_DASH).join("---").split(EN_DASH).join("--");
+  const parts = splitInlineCode(line).map(({ code, text }) => {
+    if (code) return text;
+    em += countOf(text, EM_DASH);
+    en += countOf(text, EN_DASH);
+    return text.split(EM_DASH).join("---").split(EN_DASH).join("--");
   });
 
   return { line: parts.join(""), sep, em, en };
@@ -91,18 +132,24 @@ function processLine(line) {
 
 export function convertText(text) {
   const out = [];
-  let inFence = false;
   let sep = 0;
   let em = 0;
   let en = 0;
 
+  let fenceMarker = null;
   for (const line of text.split(KEEP_ENDS)) {
-    if (FENCE_RE.test(line)) {
-      inFence = !inFence;
-      out.push(line);
-      continue;
-    }
-    if (inFence) {
+    if (fenceMarker === null) {
+      const open = line.match(FENCE_OPEN_RE);
+      if (open) {
+        fenceMarker = open[1];
+        out.push(line);
+        continue;
+      }
+    } else {
+      const close = line.match(FENCE_CLOSE_RE);
+      if (close && close[1][0] === fenceMarker[0] && close[1].length >= fenceMarker.length) {
+        fenceMarker = null;
+      }
       out.push(line);
       continue;
     }
