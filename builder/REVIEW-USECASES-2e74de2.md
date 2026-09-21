@@ -259,7 +259,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 
 > **Queue state after the follow-on sessions.** Struck-through entries are closed and carry
 > the commit that closed them. What is left is three items, all of which want one answer from
-> the maintainer rather than another build: the placement of `ImplementsViaPrivateFriendlies`
+> the maintainer rather than another build: the applicability of `ImplementsViaPrivateFriendlies`
 > and of `ExecuteHostCommand`. A second exploratory round sweeps the remaining plausible
 > targets for both and has not been run yet. The two IDE rendering defects below are
 > twinBASIC bugs rather than documentation ones and are recorded, not queued.
@@ -274,7 +274,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 ### Needs someone with the twinBASIC IDE
 
 > **Closed in a later session, on a machine with BETA 983 installed.** Everything under this
-> heading is now settled except two attribute names whose placement is still unknown; those
+> heading is now settled except two attribute names whose applicability is still unknown; those
 > are marked **Still open** where they sit. Two methods did the work, and the cheaper one
 > was not the IDE:
 >
@@ -285,7 +285,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 > attributes the packages use and the reference omitted, not the three recorded below, and
 > handed over the argument forms for four attributes that had gone unprobed for want of a
 > usable value. **Prefer this to a probe wherever it reaches**: shipped source that compiles
-> is stronger evidence of a placement than a synthetic probe, and it costs no build.
+> is stronger evidence of applicability than a synthetic probe, and it costs no build.
 >
 > What it cannot give is meaning, and it is worth being careful about what it *looks* like it
 > gives. A census counts `[Name` at the start of a line, and twinBASIC spells an escaped
@@ -311,7 +311,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   build, so the new diagnostic could be read against one of settled meaning produced by the
   same compiler run.
 - ~~**The other 52 `Applicable to:` lines in `Reference/Attributes.md`**~~ **Done.**
-  `scripts/gen_attribute_probes.mjs` writes one source file per claimed placement and packs it
+  `scripts/gen_attribute_probes.mjs` writes one source file per claimed target and packs it
   into a `.twinproj` with the `import` verb; every probe is expected to compile, so a
   diagnostic naming a probe module is a wrong line. Built against BETA 983 over two rounds,
   69 probes in the first: **45 of the 52 lines were probed, 43 of them confirmed correct
@@ -327,12 +327,12 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   Two facts the page did not state, both now on it: only one `[RunAfterBuild]` is allowed per
   project (TB5114), and a module-level variable cannot carry `[DllExport]`.
 
-  **Five entries stated no placement at all**, which the key had been reporting all along as
+  **Five entries stated no applicability at all**, which the key had been reporting all along as
   "nothing to verify and nothing for a reader to rely on". All five now have one, written
   from the package census and confirmed by probe, and two of the five had a *wrong* `Syntax:`
   line as well --- both documented an optional Boolean and neither takes one:
 
-  | entry | placement, from the packages | syntax correction |
+  | entry | applicability, from the packages | syntax correction |
   |---|---|---|
   | `EventInterfaceId` | **Class** (19 uses) | -- |
   | `EventsUseDispInterface` | **Class** (88 uses) | -- |
@@ -345,7 +345,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   `ICONS30`, `ICONS32`, `ICONS36` and `ICONS40`, case-insensitively --- the package ships
   `Checkbox24.png` beside `CheckBox30.png` and both are found.
 
-  **Every entry on the page now states a placement**, and 86 probes over 62 attributes build
+  **Every entry on the page now states its applicability**, and 86 probes over 62 attributes build
   clean. Six are excluded and each says why in the key.
 
   **All 52 lines are now accounted for.** Of the seven left unprobed above, five were
@@ -368,7 +368,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   project. It cannot be manually created" --- so the page had stated the very thing that
   looked suspicious. Three probes confirm it: `Library`, `End Library` and `[LibraryId(...)]`
   are each rejected with TB5182 in project source, while the `Interface` nested inside parsed
-  cleanly, and `[DispInterface]` on an ordinary `Interface` is rejected too. The placement is
+  cleanly, and `[DispInterface]` on an ordinary `Interface` is rejected too. The applicability is
   real, correctly described, and unreachable from user code, which is why no package
   contains one. `[FormDesignerId]` remains as recorded.
 - **Two IDE defects visible in committed screenshots**, confirmed at 3x: the Align submenu
@@ -383,7 +383,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   the binary, so no entries were written.~~ **Done, and it was ten, not three.** The census of
   the exported package sources found every attribute the packages use and the page omits:
 
-  | attribute | uses | placement the packages demonstrate |
+  | attribute | uses | applicability the packages demonstrate |
   |---|---:|---|
   | `CustomDesigner("…")` | 154 | a property-backing variable in a control **Class** |
   | `RedirectToStaticImplementation("Mod.Proc")` | 116 | `Property Get` / `Function` / `Sub` in a **Class** |
@@ -398,7 +398,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 
   Three of them are in the **VB**, **VBA** and **VBRUN** packages every project references,
   which is the part the token-table check could not see. Entries are written for all ten:
-  placement stated as verified, effect described only as far as the usage shows, and the rest
+  applicability stated as verified, effect described only as far as the usage shows, and the rest
   marked unconfirmed. Three of the ten are documented by the source itself rather than by
   inference --- the **MyCOMAddin** sample explains `[WithDispatchForwarding]` in a comment
   beside it, cefPackage's `MainModule` explains `[RunBeforeStartupObject]` the same way, and
@@ -434,7 +434,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 
   **Still open, and now exhausted from this side: `ImplementsViaPrivateFriendlies` and
   `ExecuteHostCommand`.** Both are in the compiler's token table and neither appears in any
-  package or sample. Three placements were probed for each, all rejected:
+  package or sample. Three targets were probed for each, all rejected:
 
   | attribute | tried | result |
   |---|---|---|

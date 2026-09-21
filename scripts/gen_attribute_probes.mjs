@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Generate a twinBASIC probe project for Reference/Attributes.md placements.
+// Generate a twinBASIC probe project for Reference/Attributes.md applicability.
 //
 //     node scripts/gen_attribute_probes.mjs <out_dir> [key.md]
 //
@@ -7,7 +7,7 @@
 // and none of them had been checked against the compiler --- the one that was
 // checked turned out to be wrong. twinBASIC cannot compile a project from the
 // command line (see Features/Packages/Import-Export-Tool), so this does the
-// next best thing: it writes one source file per claimed placement, so a single
+// next best thing: it writes one source file per claimed target, so a single
 // IDE build answers every claim at once.
 //
 // A misplaced attribute is reported as `This attribute is not supported in
@@ -18,7 +18,7 @@
 // Up to three trees are written, on two different contracts:
 //
 //   <out_dir>           AttributeProbes   -- every probe expected to compile
-//   <out_dir>-2         AttributeProbes2  -- the same, for placements that
+//   <out_dir>-2         AttributeProbes2  -- the same, for targets that
 //                                            cannot share a project (one
 //                                            [RunAfterBuild] per project)
 //   <out_dir>-explore   AttributeExplore  -- **a diagnostic is the answer**:
@@ -42,11 +42,11 @@ import { fileURLToPath } from "node:url";
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DOCS = path.join(REPO, "docs", "Reference", "Attributes.md");
 
-const USAGE = `Generate a twinBASIC probe project for Reference/Attributes.md placements.
+const USAGE = `Generate a twinBASIC probe project for Reference/Attributes.md applicability.
 
     node scripts/gen_attribute_probes.mjs <out_dir> [key.md]
 
-Writes one source file per claimed attribute placement, plus a key naming the
+Writes one source file per claimed attribute target, plus a key naming the
 Attributes.md line each probe came from. Every probe is expected to compile; a
 diagnostic naming a probe module is a finding.`;
 
@@ -91,14 +91,14 @@ async function parseAttributes(file) {
 
 // --------------------------------------------------------------- arguments
 // An attribute with a mandatory argument needs a value that is itself valid, or
-// the compiler reports the argument instead of the placement. GUIDs are unique
-// per probe so two probes can never collide on one id.
+// the compiler reports the argument instead of the applicability. GUIDs are
+// unique per probe so two probes can never collide on one id.
 const GUID_ATTRS = new Set([
   "ClassId", "CoClassId", "InterfaceId", "EventInterfaceId",
   "EnumId", "FormDesignerId",
 ]);
 const FIXED_ARGS = {
-  Description: '("attribute placement probe")',
+  Description: '("attribute applicability probe")',
   DispId: "(1000)",
   IdeButton: '("probe")',
   PackingAlignment: "(4)",
@@ -132,8 +132,8 @@ const FIXED_ARGS = {
   // is not documented". It is: the entry documents +llvm, +optimize,
   // +optimizesize and +optimizespeed. `+optimize` is used here rather than
   // `+llvm`, which the page says cannot compile procedures taking objects,
-  // strings or dynamic arrays -- a probe should fail on its placement or not at
-  // all. An empty string is also accepted, confirmed by the X04 probe.
+  // strings or dynamic arrays -- a probe should fail on its applicability or
+  // not at all. An empty string is also accepted, confirmed by the X04 probe.
   CompilerOptions: '("+optimize")',
   // Names a module procedure the compiler must resolve, and whose signature has
   // to match the member carrying the attribute; `_ProbeFactory.twin` declares a
@@ -146,45 +146,48 @@ const FIXED_ARGS = {
   // TB5155. Grouping the same 82 uses by *enclosing construct* instead shows
   // every one of them is inside an Interface -- `_App`, `_Clipboard`, `_Screen`,
   // `_Forms`, `VBGlobal`. A census answers the question it was asked, and
-  // "which keyword" is not "which scope".
+  // "which keyword" is not "where it is applicable".
   RedirectToStaticImplementation: '("ProbeFactoryModule.ProbeRedirect")',
 };
 
-// Placements the packages evidence but a generic skeleton cannot probe
+// Targets the packages evidence but a generic skeleton cannot probe
 // faithfully. Excluded deliberately, and named in the key, because a probe that
 // tests the wrong thing is worse than no probe: it fails for a reason that is
 // not the documentation's and sends the reader after a defect that is not there.
 const NOT_FAITHFULLY_PROBEABLE = {
   CustomDesigner: "the designer name has to suit the property's type -- " +
     "`designer_SpectrumWindows` is for an OLE_COLOR, `designer_MultiLineText` for a " +
-    "String -- so a rejection could mean the placement or the pairing, and the probe " +
-    "could not tell you which. Placement evidenced by 154 uses across four packages",
+    "String -- so a rejection could mean the applicability or the pairing, and the " +
+    "probe could not tell you which. Applicability evidenced by 154 uses across " +
+    "four packages",
   Enumerator: "the member has to return stdole.IUnknown or a Variant; the generic " +
     "procedure skeleton returns neither, so the probe would test the return type " +
-    "rather than the placement. Evidenced by 25 uses across five packages",
+    "rather than the applicability. Evidenced by 25 uses across five packages",
   SpecialCompilerBinding: "the argument is an index into the compiler's own internal " +
     "implementations -- the six uses in the VB package pass 1, 2, 3, 4 and 254 -- so " +
-    "there is no value a probe could pass that would test the placement rather than " +
-    "the number. Evidenced by those six uses, on a Sub, a Declare and a Property Get",
+    "there is no value a probe could pass that would test the applicability " +
+    "rather than the number. Evidenced by those six uses, on a Sub, a Declare " +
+    "and a Property Get",
 };
 // Arguments that cannot be synthesised without something else being true.
 // FormDesignerId earned its place the hard way: probed on a Class it reached
 // TB5247 `unable to find matching form designer JSON`, which is the compiler
-// accepting the placement and then failing a lookup. That confirms the
-// documented placement and tells us nothing further, so it is not worth a probe.
+// accepting the applicability and then failing a lookup. That confirms the
+// documented applicability and tells us nothing further, so it is not worth a
+// probe.
 const UNSYNTHESISABLE = {
   FormDesignerId: "needs a form designer JSON to match; probing it reached TB5247, " +
-    "which already confirms the documented placement on a Class",
+    "which already confirms the documented applicability on a Class",
 };
 
 // Attributes the compiler allows only once per project, so their second and
-// later placements cannot share a project with the first. TB5114 for
+// later targets cannot share a project with the first. TB5114 for
 // [RunAfterBuild].
 const SINGLETON = {
   RunAfterBuild: "the compiler allows only one [RunAfterBuild] per project",
 };
 
-// Placements a page's own worked example uses but its `Applicable to:` line does
+// Targets a page's own worked example uses but its `Applicable to:` line does
 // not name. Expected to compile for the same reason: the page says so.
 //
 // The DllExport entry was the case this existed for: the line said "variables",
@@ -233,8 +236,9 @@ const PROBE_FACTORY_TWIN =
 // A third project, `AttributeExplore`, on the opposite contract to the probes
 // above: **a diagnostic here is the answer, not a defect.** These ask questions
 // `Attributes.md` cannot answer and no shipped package demonstrates, so there
-// is no placement to expect. Each entry carries what a clean build would mean
-// and what a rejection would mean, because a result nobody can read is not one.
+// is no applicability to expect. Each entry carries what a clean build would
+// mean and what a rejection would mean, because a result nobody can read is
+// not one.
 //
 // Kept in its own project so the "every probe compiles" contract on
 // AttributeProbes stays true and a red build there stays meaningful.
@@ -255,8 +259,8 @@ const EXPLORATORY = [
   {
     tag: "X01_ConstantFoldableNumericsOnly_Module",
     asks: "Is [ConstantFoldableNumericsOnly] accepted on a Function in a Module?",
-    got: "BETA 983: clean. The documented placement holds.",
-    clean: "the documented placement holds",
+    got: "BETA 983: clean. The documented applicability holds.",
+    clean: "the documented applicability holds",
     rejected: "`Applicable to: Function` is wrong even for a module function",
     body:
       "Public Module X01_ConstantFoldableNumericsOnly_Module\n" +
@@ -290,7 +294,7 @@ const EXPLORATORY = [
     clean: "the earlier finding has regressed or was wrong -- re-check it before trusting X02",
     rejected: "expected; this is what the X02 diagnostic should be compared against",
     body:
-      "' Control probe. This placement is already known to be rejected, and it is\n" +
+      "' Control probe. This is already known to be rejected, and it is\n" +
       "' here so X02's result can be read against a diagnostic of known meaning\n" +
       "' produced by the same build.\n\n" +
       "Public Class X03_ConstantFoldable_Class_control\n" +
@@ -303,10 +307,11 @@ const EXPLORATORY = [
   {
     tag: "X04_CompilerOptions_Module",
     asks: "Is [CompilerOptions(\"\")] accepted on a procedure, and is an empty string a legal option set?",
-    got: "BETA 983: clean. The documented placement holds and an empty " +
+    got: "BETA 983: clean. The documented applicability holds and an empty " +
       "option string is accepted.",
-    clean: "the documented placement holds and the argument may be empty",
-    rejected: "read the diagnostic: a placement complaint answers the `Applicable to:` " +
+    clean: "the documented applicability holds and the argument may be empty",
+    rejected: "read the diagnostic: a complaint about where the attribute sits " +
+      "answers the `Applicable to:` " +
       "line, an argument complaint may name the option vocabulary, which is " +
       "documented nowhere",
     body:
@@ -349,7 +354,7 @@ const EXPLORATORY = [
       "WithDispatchForwarding in the token table, which is used 44 times on an " +
       "Implements statement.",
     got: "BETA 983: TB5155 on the attribute. REJECTED -- it does NOT take " +
-      "its neighbour's position, so the placement is still unknown.",
+      "its neighbour's position, so its applicability is still unknown.",
     clean: "it exists and takes the same position as its neighbour",
     rejected: "it is not an attribute for an Implements statement",
     body:
@@ -368,7 +373,7 @@ const EXPLORATORY = [
       "and the binary also carries a `custom/executeHostCommand` JSON-RPC method, " +
       "so it is probably an IDE-addin hook rather than a compiler directive.",
     got: "BETA 983: TB5182 on the attribute. REJECTED on a procedure in a " +
-      "Module; placement still unknown.",
+      "Module; applicability still unknown.",
     clean: "it is accepted on a procedure in a Module, like IdeButton",
     rejected: "it needs an argument, a different target, or is not an attribute",
     body:
@@ -381,7 +386,7 @@ const EXPLORATORY = [
   {
     tag: "X09_Library_DispInterface",
     asks: "What is the `Library` block, and is [DispInterface] accepted on an " +
-      "Interface inside one? `Attributes.md` claims exactly this placement. No " +
+      "Interface inside one? `Attributes.md` claims exactly this. No " +
       "hand-written source in any package uses it -- `Library`/`End Library` and " +
       "[LibraryId(\"\")] appear in the compiler alongside `' Original type " +
       "library:`, which suggests the construct is emitted when a COM type " +
@@ -392,9 +397,10 @@ const EXPLORATORY = [
       "scaffolding and not this reconstruction of the Interface. That " +
       "matches what the entry already says: the construct is generated " +
       "for a COM reference and cannot be written by hand.",
-    clean: "the documented placement holds and the block can be hand-written",
+    clean: "the documented applicability holds and the block can be hand-written",
     rejected: "read the diagnostic: a syntax complaint means the block shape below is " +
-      "wrong and the attribute is untested; a placement complaint answers the line",
+      "wrong and the attribute is untested; a complaint about where it sits " +
+      "answers the line",
     body:
       "' The Library block shape here is reconstructed from the compiler's own\n" +
       "' strings, not copied from a working source, because no shipped package\n" +
@@ -411,8 +417,8 @@ const EXPLORATORY = [
     tag: "X10_Library_DualInterface",
     asks: "Same question for [DualInterface].",
     got: "BETA 983: TB5182 on lines 6, 7, 8 and 12 -- the same shape as X09.",
-    clean: "the documented placement holds",
-    rejected: "as X09 -- distinguish a syntax complaint from a placement one",
+    clean: "the documented applicability holds",
+    rejected: "as X09 -- distinguish a syntax complaint from an applicability one",
     body:
       '[LibraryId("00000000-0000-4000-8000-000000000910")]\n' +
       "Library X10ProbeLib\n" +
@@ -466,7 +472,7 @@ const EXPLORATORY = [
     asks: "Same attribute on the Interface being implemented, which would make it the " +
       "interface author's choice rather than the implementor's.",
     got: "BETA 983: TB5182 on the attribute. REJECTED on the Interface too, " +
-      "so all three plausible targets are exhausted and the placement is " +
+      "so all three plausible targets are exhausted and its applicability is " +
       "a question for the maintainer.",
     clean: "it belongs on the Interface",
     rejected: "neither side of an Implements relationship takes it",
@@ -501,7 +507,7 @@ const EXPLORATORY = [
       "targets tried, all rejected; a question for the maintainer.",
     clean: "it takes a String argument, and the bare form in X08 failed for want of one",
     rejected: "read the diagnostic: complaining about the argument rather than the " +
-      "placement would say the target is right and the argument type is not",
+      "applicability would say the target is right and the argument type is not",
     body:
       "Public Module X15_ExecuteHostCommand_with_argument\n" +
       '    [ExecuteHostCommand("probe")]\n' +
@@ -582,7 +588,7 @@ const RULES = [
   // the generic rule it would otherwise fall through to: a "prototype in an
   // Interface" reaches `/procedure/i` and probes a module Sub, and an
   // "Interface declaration within a CoClass" reaches `/^interface\b/i` and
-  // probes a free-standing Interface, which is exactly the placement the line
+  // probes a free-standing Interface, which is exactly the target the line
   // is distinguishing itself from.
   [/prototype\s+in\s+an\s+interface/i, ["PROC_INTERFACE"]],
   [/interface\s+declaration\s+within\s+a\s+coclass/i, ["COCLASS_INTERFACE"]],
@@ -671,7 +677,7 @@ function render(target, tag, attr, needsHintEnum, idx) {
     case "FUNC_MODULE_BOOL":
       return `Public Module ${tag}\n${hint}    ${attr}\n` +
         "    Public Function Probe() As Boolean\n    End Function\nEnd Module\n";
-    // An Interface line inside a CoClass, which is a different placement from a
+    // An Interface line inside a CoClass, which is a different target from a
     // free-standing Interface -- [Default] and [Source] take this one and not
     // that one.
     case "COCLASS_INTERFACE":
@@ -742,7 +748,7 @@ const HUMAN = {
 // Tab indent and key order match what the IDE writes.
 const SETTINGS_OBJ = {
   "configuration.inherits": "Defaults",
-  "project.appTitle": "Attribute placement probes",
+  "project.appTitle": "Attribute applicability probes",
   "project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
   "project.buildType": "Standard EXE",
   "project.description": "Generated from docs/Reference/Attributes.md. Every module is expected to compile; a diagnostic is a finding.",
@@ -856,10 +862,10 @@ async function main(argv) {
         // manually created", and the compiler agrees: the X09/X10 probes had
         // `Library`, `End Library` and `[LibraryId(...)]` all rejected with
         // TB5182 while the Interface nested inside parsed cleanly, and X11 had
-        // [DispInterface] rejected on an ordinary Interface. The placement is
-        // real and unreachable from project source, so there is nothing here a
+        // [DispInterface] rejected on an ordinary Interface. The applicability
+        // is real and unreachable from project source, so there is nothing here a
         // probe can assert.
-        skipped.push([e, "the placement exists only in compiler-generated Library " +
+        skipped.push([e, "it applies only inside compiler-generated Library " +
           "modules, which project source cannot declare -- confirmed by the X09/X11 probes"]);
         continue;
       }
@@ -924,31 +930,31 @@ async function main(argv) {
 
   const distinct = new Set(probes.map((p) => p[1].name));
   const k = [];
-  k.push("# Attribute placement probes -- key\n\n");
+  k.push("# Attribute applicability probes -- key\n\n");
   k.push("Generated from `docs/Reference/Attributes.md` by " +
     `\`scripts/gen_attribute_probes.mjs\`. ${probes.length} probes over ` +
     `${distinct.size} attributes.\n\n`);
   k.push("**Every probe is expected to compile.** Each applies one attribute at one " +
-    "placement `Attributes.md` says is legal, in its own source file. A clean " +
+    "target `Attributes.md` says is legal, in its own source file. A clean " +
     "build means all of those claims hold.\n\n");
   k.push("A diagnostic naming a probe module is a finding. The one to look for is " +
     "`This attribute is not supported in this context`, which says the " +
     "`Applicable to:` line is wrong. Any other diagnostic more likely means the " +
     "probe itself is malformed.\n\n");
-  k.push("| Probe | Attribute | Placement | Attributes.md |\n|---|---|---|---|\n");
+  k.push("| Probe | Attribute | Applies to | Attributes.md |\n|---|---|---|---|\n");
   for (const [tag, e, target] of probes) {
     k.push(`| \`${tag}\` | \`[${e.name}]\` | ${HUMAN[target]} | line ${e.line} |\n`);
   }
   k.push("\n## Expected diagnostics that are not findings\n\n");
   k.push("- `[COMControl]` on an Interface draws two TB0013 recommendations, to " +
     "specify `[InterfaceId()]` and `[EventInterfaceId()]`. They are advice about " +
-    "stable COM ids, not a placement failure, and the probe deliberately omits " +
+    "stable COM ids, not an applicability failure, and the probe deliberately omits " +
     "both rather than risk testing two attributes at once.\n");
   if (overflow.length) {
     k.push("\n## Second project\n\n");
-    k.push("These placements cannot share a project with the ones above, so they " +
+    k.push("These targets cannot share a project with the ones above, so they " +
       "are packed separately as `AttributeProbes2`. Build it the same way.\n\n");
-    k.push("| Probe | Attribute | Placement | Why separate |\n|---|---|---|---|\n");
+    k.push("| Probe | Attribute | Applies to | Why separate |\n|---|---|---|---|\n");
     for (const [tag, e, target] of overflow) {
       k.push(`| \`${tag}\` | \`[${e.name}]\` | ${HUMAN[target]} | ${SINGLETON[e.name]} |\n`);
     }
@@ -956,7 +962,7 @@ async function main(argv) {
   k.push("\n## Third project -- `AttributeExplore`\n\n");
   k.push("**The opposite contract: a diagnostic here is the answer, not a defect.** " +
     "These ask questions `Attributes.md` cannot answer and no shipped package " +
-    "demonstrates, so no placement is expected. Build it and record what each " +
+    "demonstrates, so no applicability is expected. Build it and record what each " +
     "one does; each source file carries its own `ASKS` / `CLEAN` / `REJECTED` " +
     "header saying how to read its result.\n\n");
   k.push("| Probe | Asks | Last recorded result |\n|---|---|---|\n");
@@ -969,7 +975,7 @@ async function main(argv) {
   }
   if (noApp.length) {
     k.push("\n## No `Applicable to:` line in the documentation\n\n");
-    k.push("These entries state no placement at all, so there is nothing to verify " +
+    k.push("These entries state no applicability at all, so there is nothing to verify " +
       "and nothing for a reader to rely on:\n\n");
     for (const e of noApp) k.push(`- **\`[${e.name}]\`** (line ${e.line})\n`);
   }
