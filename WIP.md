@@ -299,6 +299,47 @@ distinct DevTools ports, WebView2 user-data folders and private desktops, so ins
 not collide. Three projects: **26 s sequentially, 10 s in parallel**, with each run
 reporting its own diagnostics and no bleed between them.
 
+#### Capturing what a probe prints, not just whether it compiles
+
+`tbbuild` answers *does this compile*. [scripts/tbrun.mjs](scripts/tbrun.mjs) answers *what
+does this print*, which is the only way to settle a question no shipped source
+demonstrates. It exists because one did: the width of a `Debug.Print` print zone, which
+four documentation pages between them could not establish and which took ten minutes to
+measure once there was a way to run code.
+
+    node scripts/tbrun.mjs <source-dir>
+
+It takes an **exported tree** rather than a `.twinproj`, stages a copy, pins the build path
+in the copy, packs it, builds it through `tbbuild --keep`, then reads the DEBUG CONSOLE
+back over CDP. The probe is a module with a `[RunAfterBuild]` Sub, which the IDE runs once
+the exe is linked. Reader-facing documentation is the [`tbrun.mjs` entry in
+Tools.md](docs/Documentation/Tools.md).
+
+**The trap that cost two silent runs, and the reason the script owns the tree.** A project
+whose `project.buildPath` is still the default `${SourcePath}\Build\...` template opens a
+native *Save* dialog when you build it. On the private desktop `tbbuild` uses, that dialog
+is invisible and unreachable, so the build simply never happens --- and **the WebView2
+renderer stays responsive throughout**, so `Runtime.evaluate` answers normally and every
+health check says the IDE is fine. It is the wedged-IDE failure mode from the section
+above with the one symptom that detects it removed. `tbrun` pins the path in its staged
+copy, which is why it insists on a source tree it can edit rather than a packed project it
+cannot.
+
+Three smaller things it knows, each of which cost a run:
+
+- **`element.click()` on `#buildIcon` does nothing.** It is a plain DIV behind the IDE's own
+  pointer handling and needs real `Input.dispatchMouseEvent` presses at its centre.
+- **The console interleaves a timestamp line per output line**, because the pane's *Show
+  Timestamps* option is on by default. Those are stripped unless `--raw`.
+- **A probe must start with `Debug.Cls`.** The IDE logs its own build to the same console
+  and the linker writes there *after* the build, so without a clear you capture your output
+  interleaved with `[LINKER]` lines. The script warns rather than guessing which lines are
+  yours.
+
+It settles on a quiet period rather than a sentinel, so no probe has to print a marker the
+script knows about. Distinct `--port` values let probes run concurrently, exactly as
+`tbbuild`'s do.
+
 ## Page template
 
 Match the existing style. Worked examples to imitate:

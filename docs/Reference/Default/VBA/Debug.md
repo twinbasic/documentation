@@ -25,15 +25,17 @@ Writes text to the [Debug Console](../IDE/Project/DebugConsole).
 Syntax: **Debug.Print** [ *outputlist* ]
 
 *outputlist*
-: *optional* Expressions to write. Separate them with a comma to start each at the next print zone, or with a semicolon to place them immediately after one another. A trailing semicolon holds the cursor on the same line, so the next **Print** continues it; without one, the line ends. With no *outputlist* at all, **Print** writes a blank line.
+: *optional* Expressions to write. Separate them with a comma to start each at the next **print zone** --- a fixed column every 14 characters, so zones begin at columns 0, 14, 28 and so on --- or with a semicolon to place them immediately after one another. An expression longer than its zone pushes the next one into the zone after. A trailing semicolon holds the cursor on the same line, so the next **Print** continues it; without one, the line ends. With no *outputlist* at all, **Print** writes a blank line.
 
 ```tb
 Debug.Print                       ' a blank line
 Debug.Print "value: "; 42         ' value: 42
-Debug.Print "left", "right"       ' padded to the next print zone
+Debug.Print "left", "right"       ' right starts at column 14
 Debug.Print "no newline yet";
 Debug.Print " --- continued"
 ```
+
+Numbers are written with a leading space where the sign would go, and a trailing space after the value, so `Debug.Print 1, 2, 3` puts `1`, `2` and `3` at columns 1, 15 and 29 rather than 0, 14 and 28.
 
 ## Debug.TracePrint
 {: #traceprint }

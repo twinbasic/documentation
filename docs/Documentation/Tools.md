@@ -510,6 +510,62 @@ Exit codes: **0** clean, **1** the project has errors, **2** the harness failed,
 
 Two files under `scripts/lib/` belong to it and are never run directly. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. `tb-launch.ps1` holds the two Win32 calls Node cannot make without a native FFI addon, `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop`. It is the only PowerShell under `scripts/`, and it is not executed as a file: `tbbuild.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
+### tbrun.mjs
+{: #tbrun }
+
+    node scripts/tbrun.mjs <source-dir> [--port N] [--timeout S] [--quiet MS]
+                           [--json] [--raw] [--keep] [--show|--hide]
+
+Builds a probe project and captures what it writes to the IDE's
+[Debug Console](../../tB/IDE/Project/DebugConsole). Where [`tbbuild.mjs`](#tbbuild) answers
+*does this compile*, this answers *what does this print* --- the questions no shipped source
+demonstrates and no amount of reading settles. The width of a `Debug.Print` print zone was
+measured with it.
+
+It takes an **exported source tree** (the folder holding `Sources/` and `Settings`), not a
+`.twinproj`, because it has to adjust the project before packing it. It stages a copy and
+leaves your tree untouched.
+
+The probe is an ordinary module with a [`[RunAfterBuild]`](../../tB/Core/Attributes#runafterbuild)
+Sub, which the IDE runs once the exe is linked:
+
+```tb
+Module ZoneProbe
+    [RunAfterBuild]
+    Sub ShowZones()
+        Debug.Cls
+        Debug.Print "0123456789012345678901234567890123456789"
+        Debug.Print "A", "B"
+    End Sub
+End Module
+```
+
+**Begin the probe with `Debug.Cls`.** The Debug Console is also where the IDE writes its own
+build log, and the linker writes there *after* the build, so a probe that does not clear it
+first comes back interleaved with `[LINKER]` lines. The script warns when a probe omits it,
+and warns again when there is no `[RunAfterBuild]` at all.
+
+| Flag | Effect |
+|---|---|
+| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently. |
+| `--timeout <secs>` | Give up waiting for console output. Default 120. |
+| `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. |
+| `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
+| `--json` | One object with the built exe's path and the captured lines. |
+| `--keep` | Leave the IDE running. |
+| `--show` / `--hide` | Passed through to `tbbuild.mjs`. |
+
+Exit codes: **0** captured output, **1** the project has compile errors (the diagnostics are
+printed), **2** the harness failed, **3** nothing reached the console before the timeout.
+
+> [!IMPORTANT]
+> The one trap worth knowing even if you never read the script: a project whose
+> `project.buildPath` is still the default `${SourcePath}\Build\...` template opens a native
+> *Save* dialog on build. Under `tbbuild` the IDE runs on a private desktop, so that dialog
+> is invisible, takes no input, and the build silently never happens --- the WebView2
+> renderer stays responsive throughout, so even a health check says the IDE is fine. `tbrun`
+> pins the path to a concrete file in its staged copy, which makes the trap unreachable.
+
 ### gen_attribute_probes.mjs
 {: #gen-attribute-probes }
 

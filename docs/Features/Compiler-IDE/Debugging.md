@@ -22,6 +22,17 @@ Public Sub ProcessOrder(ByVal orderId As Long)
 End Sub
 ```
 
+## Clearing the Debug Console
+
+[**Debug.Cls**](../../tB/Modules/Debug#cls) empties the [Debug Console](../../tB/IDE/Project/DebugConsole) from code, the same as its *Clear Debug Console* button. Calling it as a run begins separates that run's output from the previous one, which is the difference between reading a log and scrolling for where it started:
+
+```tb
+Private Sub Form_Load()
+    Debug.Cls
+    Debug.Print "--- run starting ---"
+End Sub
+```
+
 ## Stale/Dangling Pointer Detection
 
 Bugs result from using Strings and Variants after they have been freed. It may not be noticed immediately if the memory has not been overwritten, but it's sometimes hard to detect and can cause issues like a String displaying it's previous value or garbage. This debugging option detects use-after-free, and replaces the data with a special symbol indicating the problem.
