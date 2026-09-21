@@ -64,6 +64,27 @@ found it in two navigation hops having missed on four of four searches.
    disagree. Quote both sides. Be blunt; a flattering report is a useless one.
 5. **SCORES** 0--4 with one-line justification: completeness, discoverability, actionability.
 
+## The site-entry variant
+
+For a case about the twinBASIC reference rather than the toolchain, the evaluator is a
+reader of `docs.twinbasic.com`, not a developer in the repository. Two lines of the above
+change, and nothing else:
+
+- The corpus root is `<CORPUS_ROOT>/docs`, and **only files under it may be opened** ---
+  that is what the site publishes. `README.md`, `builder/`, `scripts/` and the repository
+  root do not exist for this reader.
+- **Channel 2 starts at `docs/index.md`**, the published welcome page, rather than the
+  repository README.
+
+Round 6 introduced this because rounds 1--5 had tested 4% of the search index and left the
+reference's 80.9% unopened. It immediately returned the harness's first hazard failure in
+two rounds and its first non-compiling code samples --- a ListView example that raises a
+documented run-time error, and an `Event` sample with a nameless `Sub`.
+
+**A site-protocol run is not comparable with a repo-protocol run of the same goal.** They
+see different trees and start navigation in different places, so a re-run must keep the
+protocol it was first run under.
+
 ## For the orchestrator
 
 **Re-verify every finding against the file before recording it.** In round 1, seven of

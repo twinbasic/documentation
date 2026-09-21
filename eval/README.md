@@ -24,6 +24,13 @@ case is testing or that a hazard exists.
 
 Cases are independent, so they run in parallel. Sixteen is comfortable.
 
+**Two protocols.** The default one plays a developer working in the repository. The
+**site-entry variant** plays a reader of `docs.twinbasic.com`, who never sees `README.md`,
+`WIP.md` or `builder/`: Channel 2 starts at `docs/index.md` and the evaluator may open only
+files under `docs/`. Nothing else changes. Use it for anything about the twinBASIC
+reference --- which is 80.9% of the index and was untouched until round 6 --- and never
+compare a site-protocol run with a repo-protocol run of the same goal.
+
 ```sh
 node eval/site_search.mjs "how do I add a build task"   # the site's real search box
 node eval/site_search.mjs --composition                 # what the index is made of
@@ -61,8 +68,8 @@ They fail on different pages, so either alone is misleading. `Extending.md` is s
 and was six navigation hops away. `Tools#check-links-diff` is two navigation hops away and
 was missed by four searches out of four.
 
-The structural finding behind that: **`docs/Documentation/` holds about 3.5% of the search
-index**, against roughly 81% twinBASIC language reference which shares its entire vocabulary.
+The structural finding behind that: **`docs/Documentation/` holds about 4% of the search
+index**, against 80.9% twinBASIC language reference which shares its entire vocabulary.
 *Font*, *add*, *download*, *colour*, *build*, *image* and *style* are all twinBASIC API names,
 so a developer-docs query competes with hundreds of reference pages. `--composition` prints
 the current split. Nothing under `builder/`, `perf/` or `test/` is indexed at all.
@@ -87,11 +94,18 @@ The structural findings held up. The per-finding severity claims did not, reliab
 | 3 | 8 --- the fixes, and gates that report success | [builder/REVIEW-USECASES-cd141f1.md](../builder/REVIEW-USECASES-cd141f1.md); 13 findings |
 | 4 | 8 --- the failure path, and a fix pass auditing itself | [builder/REVIEW-USECASES-4f97bac.md](../builder/REVIEW-USECASES-4f97bac.md); 14 findings, six of them introduced by round 3's own fix pass |
 | 5 | 8 --- the fixes again, and three unread surfaces | [builder/REVIEW-USECASES-4b50c0c.md](../builder/REVIEW-USECASES-4b50c0c.md); 15 findings, no hazard walked into, and discoverability flat across three re-runs |
+| 6 | 8 --- a discoverability fix measured, and the reference half | [builder/REVIEW-USECASES-9b8e70c.md](../builder/REVIEW-USECASES-9b8e70c.md); 14 findings, the first non-compiling samples the harness has found |
 
 Round 1's headline was a gradient: documentation quality fell monotonically with depth into
 the toolchain (contributor 3.8 discoverability, toolchain user 2.8, builder developer 1.8),
 and was worst exactly where the project has written most --- because `builder/`'s 1.4 MB of
 plan documents are not published pages and no reader-facing channel reaches them.
+
+Round 6 added a second protocol and a second answer. Splitting its cases by which one
+they used: **the developer documentation is hard to find and reliable once found
+(discoverability 2.25, actionability 3.50); the reference is easy to find and its
+examples do not work (3.25, 2.50).** Rounds 1--5 measured only the first, on 4.0% of
+the search index. The reference is 80.9%.
 
 Round 5's headline is what four rounds of fixes have and have not bought. Re-running three
 cases across round 4's fix pass moved completeness +1.33 and actionability +1.34 and moved

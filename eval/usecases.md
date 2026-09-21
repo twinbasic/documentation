@@ -257,3 +257,50 @@ walks recursively and reaches alt. The case still returned the round's best disc
 score and two verified findings the intended scenario would not have reached. **The check
 that would have caught the bad premise is the one the review now recommends generally** ---
 render through the pipeline the repository runs, not through the library it depends on.
+
+## Round 6 --- does a discoverability fix work, and does the reference half work at all
+
+**Run 2026-09-21 at `9b8e70c`.** Round 5 measured something no earlier round could: across
+round 4's fix pass, three re-run cases gained +1.33 completeness and +1.34 actionability
+and moved discoverability **±0.00**. Round 5's own fix pass then went at discoverability
+directly. Whether *that* works is the thing to measure now, and re-running is the only
+instrument that can.
+
+**Re-run round 5's three discoverability-1 cases unchanged.** UC-40, UC-44 and UC-45 each
+scored 1 on reachability with content rated 3 or 4 --- the answer was there and nobody
+could get to it. Each now has a specific fix: 21 tool headings lost a directory prefix so
+lunr can prefix-match a bare script name, the serve-mode caveat is a section with a
+symptom-shaped title instead of an un-anchored NOTE, and the offline copy has a welcome-page
+door. A rank measured before and after is the whole point.
+
+**Sample the 81% of the site no round has ever read.** Every case in rounds 1--5 was about
+`docs/Documentation/` --- roughly 3.5% of the search index. The twinBASIC *reference* is the
+rest, it is what the site is for, and nothing here has asked whether it works. These cases
+use the **site-entry protocol** below.
+
+### The site-entry protocol variant
+
+A reader of `docs.twinbasic.com` never sees `README.md`, `WIP.md` or `builder/`. For the
+cases marked *(site)* the protocol changes in two ways: **Channel 2 starts at
+`docs/index.md`**, the published welcome page, rather than the repository README; and the
+evaluator may open **only files under `docs/`**, which is what the site publishes. Nothing
+else moves. A case run this way is not comparable with a repo-protocol run of the same
+goal, so do not mix them in a re-run.
+
+### Persona B: toolchain user, and a maintainer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-40 | *(re-run)* A gate refused a regex I added to the builder. Understand it and fix it. | **H** the answering section appeared in none of seven queries, including the gate's own filename |
+| UC-44 | *(re-run)* `serve.bat` never shows a builder change. Diagnose it and give a workflow. | **H** the answer was an un-anchored NOTE; both pages documenting `serve.bat` were silent |
+| UC-45 | *(re-run)* Hand somebody a copy to read on a laptop with no network. | **H** four reader-phrased queries missed; no reader-facing page said the copy existed |
+| UC-52 | Cut a release carrying the offline site copy and the PDF book, and say what a consumer gets. | **H** only a manual dispatch attaches them, and the release can lag the live site arbitrarily |
+
+### Persona D: a twinBASIC developer on the published site *(new)*
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-49 | *(site)* Port a VB6 form that uses an `MSCOMCTL.OCX` ListView: what replaces it, and how do I fill it? | **H** the package ships with the IDE but is referenced on demand, and the items live on sub-objects reached through the control |
+| UC-50 | *(site)* Port a VBA routine that assigns to `Date` and does currency maths with `CDec`. | **H** `Date` is a property in twinBASIC, not a function/statement, and `Decimal` is a full data type rather than a Variant subtype |
+| UC-51 | *(site)* I want these docs on my laptop with no connection, or printed. | **H** the same deliverable as UC-45 from the reader's side, against a door added the same day |
+| UC-53 | *(site)* Write a class that raises an event and a form that handles it. | **H** `WithEvents` has no page of its own, and twinBASIC adds `Handles`, which VB6 does not have |
