@@ -270,8 +270,13 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 - **`ConstantFoldableNumericsOnly`** carries the same unqualified *Applicable to: **Function***
   that `ConstantFoldable` did. The sibling turned out to be module-scoped only. Same check.
 - **The other 52 `Applicable to:` lines in `Reference/Attributes.md`** have never been verified
-  against the compiler. Three were relied on in one day's work; one was wrong. A checklist of
-  all 52 would turn this into a finite task.
+  against the compiler. Three were relied on in one day's work; one was wrong.
+  `scripts/gen_attribute_probes.py` now turns this into one IDE build: it writes a source file
+  per claimed placement --- 69 probes over 46 attributes --- which packs into a `.twinproj` with
+  the `import` verb. Every probe is expected to compile, so a diagnostic naming a probe module
+  is a wrong line. Six attributes are not probed because their argument cannot be synthesised
+  without a real factory method, image file, `.json` resource, warning code or option string;
+  the generated key names them.
 - **Two IDE defects visible in committed screenshots**, confirmed at 3x: the Align submenu
   renders `Bottom}` with a stray brace, and Align and Make Same Size both render `ARROWLUP`.
   Documentation bugs these are not.
