@@ -1136,7 +1136,7 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
 - `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`. ~37 s.
 - `test.bat` — the tests the *toolchain* has to pass, none of which interrogate a page: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
-- `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
+- `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](#the-book-refuses-a-stale-source-tree)).
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
 
@@ -1371,6 +1371,47 @@ stay byte-identical to what they produced before.
 
 Blast radius across the whole site was 6 pages plus the two stylesheets; every
 change was a padded value being restored.
+
+### The book refuses a stale source tree
+
+`book.bat` used to test only that `docs\_site-pdf\book.html` **exists**. Edit a
+page, run `book.bat` without `build.bat`, and it spent two minutes rendering the
+*previous* book and reported success. Nothing downstream could notice: the PDF
+it produces is internally consistent, correctly paginated and correctly
+bookmarked --- it is simply the wrong book. That nearly put a stale render into a
+page-count comparison during the session that added the check.
+
+It now runs the freshness gate first:
+
+```sh
+node scripts/check_tree_fresh.mjs --tree docs/_site-pdf --marker book.html
+```
+
+**`--marker` is new, and the reason is worth knowing.** The script identified a
+tree by its `index.html`, which every output tree has *except* `_site-pdf/` ---
+that one holds a single `book.html`. So `--tree docs/_site-pdf` looked for an
+`index.html` that never exists and exited 2 with "there is no built tree to
+check". The flag to check the PDF source tree was there all along and could not
+actually be used on it.
+
+Exit codes are the script's: **2** when the tree is absent (the case the old
+existence test covered) and **1** when it is older than `docs/` or `builder/`.
+All three paths were exercised --- absent, stale, and fresh through a full
+2,086-page render.
+
+> **One batch detail that is easy to get wrong**, and which the first attempt at
+> this got wrong: `%ERRORLEVEL%` inside a parenthesised `if errorlevel 1 (...)`
+> block expands when the block is **parsed**, not when it runs, so the value
+> captured there is the one from before the check. The guard uses
+> `goto :fail` and captures outside the block, which is the same shape
+> `test.bat` already uses, and for the same reason.
+
+**Known false positive, inherited rather than introduced.** `DEFAULT_SOURCES` is
+`["docs", "builder"]` and does not distinguish code from notes, so editing a
+`builder/PLAN-*.md` or `REVIEW-*.md` marks every tree stale even though nothing
+in the build reads those files. It errs toward refusing, which is the safe
+direction, and a rebuild is ~4 s --- but wiring the check into `book.bat` means
+a pure note edit now also blocks a render until you rebuild.
 
 ### The code-region gate
 

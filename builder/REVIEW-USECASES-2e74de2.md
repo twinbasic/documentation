@@ -258,9 +258,9 @@ have thought to name in advance, and any of which would have silently become rea
 Everything above was fixed unless listed here. This section is the queue, not a finding list.
 
 > **Queue state after the follow-on session.** Struck-through entries are closed and carry the
-> commit that closed them. What is left is: everything under
-> [Needs someone with the twinBASIC IDE](#needs-someone-with-the-twinbasic-ide), the
-> `_site-pdf/` freshness check, and the `Description` entry's reconstructed wrapper.
+> commit that closed them. What is left is everything under
+> [Needs someone with the twinBASIC IDE](#needs-someone-with-the-twinbasic-ide), plus the
+> `Description` entry's reconstructed wrapper. Nothing else in this queue needs a decision.
 >
 > Two entries were **overstated** and are marked where they sit --- `Authoring.md`'s listing
 > checklist was already half-fixed before it was checked, and `IDE/Links.png` is not a defect
@@ -386,11 +386,14 @@ lists all 28, in order. What it had wrong was the three spellings, not the cover
   package~~ --- **the first half was already fixed**; both bullets existed by the time this
   was checked. The live part was the tail: a new package also needs its own `###` section in
   `Permanent-Links.md`, which nothing said. Added in `b3df7ea`.
-- `_site-pdf/` freshness is unchecked: `book.bat` tests only that `book.html` exists, and
+- ~~`_site-pdf/` freshness is unchecked: `book.bat` tests only that `book.html` exists, and
   `check_tree_fresh.mjs` defaults to `_site-offline` with `check.bat` passing no `--tree`.
-  Rendering after a content edit without rebuilding silently renders the previous book.
-  **Still open, and it bit during the follow-on session** --- a stale PDF was nearly used as
-  the baseline for a page-count comparison.
+  Rendering after a content edit without rebuilding silently renders the previous book.~~
+  **Done.** It bit during the follow-on session --- a stale PDF was nearly used as the
+  baseline for a page-count comparison --- and `book.bat` now runs the freshness gate before
+  rendering. The entry missed *why* `--tree` had never been pointed at this tree: the script
+  identified a tree by its `index.html`, which `_site-pdf/` does not have, so the flag existed
+  but exited 2 on the one tree it was wanted for. `--marker book.html` closes that.
 - ~~`PDF-Generation.md`'s `![PDF render pipeline]` is the fourth caption-parroting diagram
   alt~~ **Done** in `558dc28`. The same commit corrected the diagram's own `(~5 MB)` label
   for `book.html`, which measures 6.9 MB.
