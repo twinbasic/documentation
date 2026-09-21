@@ -81,8 +81,8 @@ requires the notice with substantial portions, and this is the entire stylesheet
 runtime JS, compiled into a stylesheet every page loads; the footer's "Just the Docs" link is
 attribution, not the notice. The repository's own practice agrees --- three OFL licences sit
 beside the webfaces, and the Feather and Bootstrap Icons MIT notices are inline in
-`template.mjs`. The file has not been added; the vendor README now records the gap and its
-re-vendoring step copies it.
+`template.mjs`. *Added since, in `30d2c39`* --- `builder/vendor/just-the-docs/LICENSE.txt`
+is the upstream notice verbatim, and the vendor README's re-vendoring step copies it forward.
 
 **3. Every "direct command" in the published docs fails on a non-Windows machine, and two
 pages promise POSIX equivalents they never give.** `Building.md:18` --- *"their POSIX
@@ -257,7 +257,18 @@ have thought to name in advance, and any of which would have silently become rea
 
 Everything above was fixed unless listed here. This section is the queue, not a finding list.
 
-> **The queue is empty.** Struck-through entries are closed and carry the commit that closed
+> **One item is open, and it is a code change: the page-count drift guard**, Tier 3 item 20.
+> `builder/tbdocs.mjs:1470` still reads `if (pages.length < 836)` against a measured **908**
+> pages, so the margin is 72 and an identical repeat of the 37-page `_App` loss would not fire
+> it. The guard that would --- a comparison against the previous build's count held in a
+> committed file, the shape of `builder/inter-metrics.json` --- has not been written.
+>
+> It is recorded in Tier 3 and was never carried down into this section, which is how *"the
+> queue is empty"* stood here while one item was outstanding. **A finding that states its own
+> fix has not been made belongs in the queue**, whatever tier found it; that is the only place
+> anyone looks.
+>
+> **Everything else is closed.** Struck-through entries carry the commit that closed
 > them. The last two --- the applicability of `ImplementsViaPrivateFriendlies` and of
 > `ExecuteHostCommand` --- are settled, and neither needed the maintainer question this
 > section had been holding out for. Both had been asked the wrong question:
@@ -285,8 +296,8 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 ### Needs someone with the twinBASIC IDE
 
 > **Closed in a later session, on a machine with BETA 983 installed.** Everything under this
-> heading is now settled except two attribute names whose applicability is still unknown; those
-> are marked **Still open** where they sit. Two methods did the work, and the cheaper one
+> heading is settled. The two attribute names this note once held open were closed in turn ---
+> see [The last two names](#the-last-two-names). Two methods did the work, and the cheaper one
 > was not the IDE:
 >
 > **Exporting the shipped packages settles more than probing does.** `twinBASIC_win32.exe
@@ -546,12 +557,15 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   recorded as unknown.
 
 - **Eight more names the compiler knows appear nowhere in `docs/` at all:**
-  ~~`WithDispatchForwarding`~~, `ImplementsViaPrivateFriendlies`, `ExecuteHostCommand`,
+  ~~`WithDispatchForwarding`~~, ~~`ImplementsViaPrivateFriendlies`~~, `ExecuteHostCommand`,
   ~~`CustomDesigner`~~, ~~`DefaultDesignerEvent`~~, ~~`ComExport`~~,
-  ~~`RunBeforeStartupObject`~~, ~~`RedirectToStaticImplementation`~~. **Six of the eight are
-  now documented** --- five from package usage in the table above, and `[ComExport]` from a
-  probe: it is rejected on a procedure (TB5155) and compiles on a `Public Const`, which is
-  exactly the target `[DllExport]` turned out to mean.
+  ~~`RunBeforeStartupObject`~~, ~~`RedirectToStaticImplementation`~~. **Seven of the eight are
+  now documented** --- five from package usage in the table above, `[ComExport]` from a probe
+  (rejected on a procedure with TB5155, clean on a `Public Const`, which is exactly the target
+  `[DllExport]` turned out to mean), and `[ImplementsViaPrivateFriendlies]` from the round
+  recorded under [The last two names](#the-last-two-names). The eighth, `ExecuteHostCommand`,
+  is owed nothing: it is not an attribute, and the `Debug` member it turned out to be is being
+  removed.
 
   ~~**Still open, and now exhausted from this side: `ImplementsViaPrivateFriendlies` and
   `ExecuteHostCommand`.**~~ **Both settled, and neither needed the maintainer question this
