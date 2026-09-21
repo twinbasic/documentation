@@ -13,10 +13,18 @@
 // common mistake stops being silent.
 //
 // Usage:
-//   node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
+//   node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...]
 //
 // Exits 0 when the tree is at least as new as its inputs, 1 when it is
 // stale (naming build.bat), 2 when the tree is absent.
+//
+// `--marker` names the file inside the tree whose mtime stands for the
+// build. It defaults to index.html, which every tree has EXCEPT
+// docs/_site-pdf/ -- that one holds a single book.html. Without the
+// option `--tree docs/_site-pdf` looked for an index.html that never
+// exists and exited 2, so the flag was there but the PDF source tree
+// could not actually be checked with it. book.bat passes
+// `--marker book.html`.
 
 import { readdirSync, statSync, existsSync } from "node:fs";
 import { join, resolve, relative, sep } from "node:path";
@@ -38,15 +46,20 @@ const IGNORED_DIRS = new Set([
 // commands in the wrong order.
 const DEFAULT_SOURCES = ["docs", "builder"];
 const DEFAULT_TREE = "docs/_site-offline";
+const DEFAULT_MARKER = "index.html";
 
 let tree = DEFAULT_TREE;
+let markerName = DEFAULT_MARKER;
 const sources = [];
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === "--tree" && argv[i + 1]) tree = argv[++i];
+  else if (argv[i] === "--marker" && argv[i + 1]) markerName = argv[++i];
   else if (argv[i] === "--source" && argv[i + 1]) sources.push(argv[++i]);
   else if (argv[i] === "-h" || argv[i] === "--help") {
-    console.log("usage: node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]");
+    console.log(
+      "usage: node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...]",
+    );
     process.exit(0);
   } else {
     console.error(`unknown arg: ${argv[i]}`);
@@ -56,7 +69,7 @@ for (let i = 0; i < argv.length; i++) {
 if (!sources.length) sources.push(...DEFAULT_SOURCES);
 
 const treeDir = resolve(REPO_ROOT, tree);
-const marker = join(treeDir, "index.html");
+const marker = join(treeDir, markerName);
 if (!existsSync(marker)) {
   console.error(
     `check_tree_fresh: ${relative(REPO_ROOT, marker).replaceAll(sep, "/")} does not exist.\n` +
