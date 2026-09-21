@@ -44,6 +44,7 @@ Syntax:
   - [variable](../Gloss#variable) defined using [**Public**](Public), [**Protected**](Protected), [**Private**](Private), or [**Dim**](Dim),
   - [procedure](../Gloss#procedure) defined using [**Sub**](Sub), [**Function**](Function), or [**Property**](Property) --- including the special instance constructor `Sub New(`*args*`)`, which the runtime invokes when the class is created with [**New**](New),
   - [user-defined type (UDTs)](../Gloss#user-defined-type) defined using [**Type**](Type),
+  - event defined using [**Event**](Event) --- events may only be declared in a class module, and a [**WithEvents**](WithEvents) field is how another module receives them,
   - (twinBASIC) [**Implements**](Implements) clauses, listing interfaces or classes whose members this class provides bodies for.
 
 In `.twin` files, a **Class** block may share a file with [**Interface**](Interface), [**CoClass**](CoClass), and [**Alias**](Alias) declarations (which appear *before* the **Class** block) and with a [**Module**](Module) block. In legacy `.cls` files the class is implicit and the **Class**/**End Class** keywords are not written.

@@ -68,26 +68,25 @@ End Class
 A sink subscribes by using a `WithEvents` field and supplying handler procedures named `<field>_<EventName>`:
 
 ```tb
-Class Form1
-    Private WithEvents ts As TimerState
+' In Form1's code-behind:
+Private WithEvents ts As TimerState
 
-    Private Sub UserForm_Initialize()
-        Set ts = New TimerState
-    End Sub
+Private Sub Form_Load()
+    Set ts = New TimerState
+End Sub
 
-    Private Sub Command1_Click()
-        ts.TimerTask 9.58
-    End Sub
+Private Sub Command1_Click()
+    ts.TimerTask 9.58
+End Sub
 
-    Private Sub ts_UpdateElapsedTime(ByVal elapsedTime As Double)
-        Text2.Text = Format(elapsedTime, "0.00")
-    End Sub
+Private Sub ts_UpdateElapsedTime(ByVal elapsedTime As Double)
+    Text2.Text = Format(elapsedTime, "0.00")
+End Sub
 
-    Private Sub ts_DisplayFinalTime()
-        Text1.Text = "Until Now"
-        Text2.Text = "9.58"
-    End Sub
-End Class
+Private Sub ts_DisplayFinalTime()
+    Text1.Text = "Until Now"
+    Text2.Text = "9.58"
+End Sub
 ```
 
 ### See Also

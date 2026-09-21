@@ -34,12 +34,11 @@ Syntax: [ **Public** ] **Event** *procedurename* [ (*arglist*) ]
 After the event has been declared, use the [**RaiseEvent**](RaiseEvent) statement to fire the event. A syntax error occurs if an **Event** declaration appears in a standard module. An event can't be declared to return a value. A typical event might be declared and raised as shown in the following fragments.
 
 ```tb
-' Declare an event at module level of a class module 
- 
-Event LogonCompleted (UserName as String) 
- 
-Sub 
- RaiseEvent LogonCompleted("AntoineJan") 
+' Declare an event at module level of a class module
+Public Event LogonCompleted(UserName As String)
+
+Sub Demo()
+    RaiseEvent LogonCompleted("AntoineJan")
 End Sub
 ```
 
@@ -56,42 +55,39 @@ The example also uses a form (`Form1`) with a button (`Command1`), a label (`Lab
 The code specifies the initial and terminal states of the form. It also contains the code executed when events are raised.
 
 ```tb
-Class Form1
-  Option Explicit 
- 
-  Private WithEvents mText As TimerState 
- 
-  Private Sub Command1_Click() 
-    Text1.Text = "From Now" 
-    Text1.Refresh 
-    Text2.Text = "0" 
-    Text2.Refresh 
-    Call mText.TimerTask(9.84) 
-  End Sub 
- 
-  Private Sub Form_Load() 
-    Command1.Caption = "Click to Start Timer" 
-    Text1.Text = "" 
-    Text2.Text = "" 
-    Label1.Caption = "The fastest 100 meter run took this long:" 
-    Set mText = New TimerState 
-  End Sub 
- 
-  Private Sub mText_ChangeText() 
-    Text1.Text = "Until Now" 
-    Text2.Text = "9.84" 
-  End Sub 
- 
-  Private Sub mText_UpdateTime(ByVal dblJump As Double) 
-    Text2.Text = Str(Format(dblJump, "0")) 
-    DoEvents 
-  End Sub
-End Class
+' In Form1's code-behind:
+Option Explicit
+
+Private WithEvents mText As TimerState
+
+Private Sub Command1_Click()
+  Text1.Text = "From Now"
+  Text1.Refresh
+  Text2.Text = "0"
+  Text2.Refresh
+  Call mText.TimerTask(9.84)
+End Sub
+
+Private Sub Form_Load()
+  Command1.Caption = "Click to Start Timer"
+  Text1.Text = ""
+  Text2.Text = ""
+  Label1.Caption = "The fastest 100 meter run took this long:"
+  Set mText = New TimerState
+End Sub
+
+Private Sub mText_ChangeText()
+  Text1.Text = "Until Now"
+  Text2.Text = "9.84"
+End Sub
+
+Private Sub mText_UpdateTime(ByVal dblJump As Double)
+  Text2.Text = Str(Format(dblJump, "0"))
+  DoEvents
+End Sub
 ```
 
 The remaining code is in a class module named TimerState. The **Event** statements declare the procedures initiated when events are raised.
-
-VB
 
 ```tb
 Class TimerState

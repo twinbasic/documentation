@@ -42,6 +42,11 @@ gh_edit_view_mode: "tree"
 # theirs against the latest release.
 gh_offline_link: true
 gh_offline_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinbasic-docs-offline.zip"
+# The released asset is "twinBASIC Book.pdf", with a space. GitHub replaces spaces
+# with dots in release download URLs, so the dotted spelling here is correct and the
+# spaced one 404s. Verified against the live release. Do not "fix" this to match the
+# workflow's filename. It also depends on make_latest: 'true' in tbdocs-gh-pages.yml,
+# which is what makes /releases/latest/download/ resolve at all.
 gh_pdf_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinBASIC.Book.pdf"
 
 # When true, tbdocs's Phase 7 writes a `file://`-browsable mirror of

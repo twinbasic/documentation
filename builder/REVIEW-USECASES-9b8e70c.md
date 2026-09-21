@@ -282,3 +282,101 @@ remedy is now known to be about vocabulary rather than matching --- and **UC-49*
 change this harness can measure. The unread surface remaining is the Features section
 (6.5%) and the Tutorials (4.3%), and one case worth writing deliberately: a reader who
 follows a tutorial end to end and runs what it produces.
+
+## Outcome
+
+**Twelve of the fourteen findings are closed.** `build.bat`, `check.bat` and `test.bat` are
+green; the site is 909 pages, one more than at review time.
+
+### The samples
+
+Both ListView calls now pass the icon key in the fifth slot with a comment saying why the
+fourth is wrong, and `ListItem.md`'s copy --- which had no image list bound at all --- drops
+the argument entirely. `Event.md`'s sample is `Sub Demo()`, matching the correct twin at
+`RaiseEvent.md:35` that it had diverged from.
+
+**The stray `VB` label turned out to be a one-off, and a sweep is what says so.** A scan
+for bare `VB` / `VBA` / `VB.NET` lines outside fences across all 956 markdown files returns
+**zero** now and returned one before. Worth doing rather than assuming, since it is exactly
+the shape that arrives in bulk from a converter.
+
+### The event cluster
+
+`WithEvents` has a page. It was the one part of the mechanism with no page, no index entry
+and no category, while being the half the receiving side needs; searching the keyword
+returned tbIDE and CustomControls internals at ranks 1 and 2, and now returns
+`/tB/Core/WithEvents` at rank 1. It is in `Statements.md` and in `Categories.md`'s *Events*
+section, which also gained `Handles`.
+
+The four pages that disagreed now agree. Both reference samples that wrapped form
+code-behind in `Class Form1 … End Class` are unwrapped --- a designed form already *is* a
+class derived from `Form`, so the wrapper nested a class inside a class ---
+`RaiseEvent.md`'s `UserForm_Initialize` is `Form_Load`, `Class.md`'s member list includes
+`Event`, and the stale "events triggered by an **ActiveX object**" wording on `Dim`,
+`Private` and `Public` now describes a twinBASIC class and links the new page.
+
+### The cheap ones
+
+Six `Date` / `Time` links across three index pages point at the canonical
+`/tB/Modules/DateTime/…` instead of the `redirect_from` alias. `Controls.md` --- the page
+the welcome page sells as "the standard UI controls" and which mentioned neither
+`WinNativeCommonCtls` nor `ListView` --- has a *Controls in other packages* section naming
+both control packages and the two browser hosts. `docs/index.md` says the book is A4 and
+~2,000 pages, and its staleness caveat now links the build-it-yourself remedy. `Building.md`
+has a *Cutting a release* section with both asset names, the `release_tag` input and the
+`make_latest` coupling that makes the site's download buttons resolve.
+
+`_config.yml` carries five lines explaining that `twinBASIC.Book.pdf` is dotted on purpose.
+That is the whole fix for the finding two evaluators raised: the link works, and what was
+missing was the sentence stopping someone correcting it.
+
+### I nearly shipped a wrong fix, and only checking the code caught it
+
+UC-40 found that `Tools.md:368` gives `check_regex_safety.mjs` exit 1 "on a probe that came
+back wrong", while `Extending.md:546` reserves 2 for the harness failing. I rewrote the
+line to say it exits 2 --- and then read the script. **It returns 0 or 1 and nothing else.**
+The original sentence was accurate about the code; my correction would have made the
+documentation wrong in the name of consistency, on a page whose job is to describe what the
+tools do.
+
+Reverted. The line now states what the gate does, notes that two of its three exit-1 cases
+are harness failures the convention would put at 2, and says the gate predates the
+convention. **The honest fix is in the code, not the prose**, and it is left as such rather
+than papered over: both are non-zero, so no wrapper behaves differently today.
+
+That is the second time in two rounds that a fix pass has been caught by reading the source
+instead of the brief --- round 5's tokeniser recommendation, and this. The protocol's *tell
+agents to verify rather than comply* applies to the orchestrator writing edits by hand.
+
+### The census (queue item 2)
+
+Recorded in `WIP.md`. **1,100 `tb` fences across 600 files**:
+
+| shape | count | compilable |
+|---|---:|---|
+| whole `Class` / `Module` | 36 | as-is |
+| whole procedure | 357 | wrapped in a module |
+| declarations only | 457 | wrapped in a module |
+| neither --- a fragment | 250 | not without judgement |
+
+**3% compile as they stand and 23% cannot be made to.** That settles the design question
+the review left open: a gate demanding every fence compile needs 250 opt-outs on day one,
+and a 250-entry opt-out list is not maintained. The tractable direction is to mark the
+fences that claim to be complete and compile only those --- which makes the marker the
+design problem, not the harness. **Not started, deliberately.**
+
+### Two findings left open, both for the same reason
+
+**Finding 11 (`Debug.Print` has no page) and finding 12 (date literals are undocumented)
+need a primary source this repository does not contain.** `Debug` appears in worked
+examples on eight-plus Features pages and nowhere is its member list stated; whether
+`#1/1/2026#` is month-first is stated nowhere either. Writing either page means either
+exporting the package `.twin` sources or compiling a probe --- both documented, both real
+work --- and the alternative is inventing semantics into a language reference, which is the
+one thing the authoring rules forbid outright.
+
+**Finding 10 (no numeric type-promotion rules) is the same, and larger.** It is the question
+UC-50 was actually set --- whether `Decimal * Integer` stays `Decimal` --- and answering it
+properly means documenting promotion across the operator set, not one probe's answer. An
+IDE install is present, so `scripts/tbbuild.mjs` can settle it; that is a session's work
+with a compiler, not a line of prose.

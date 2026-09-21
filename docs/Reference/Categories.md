@@ -160,6 +160,8 @@ Procedures:
 Statements:
 
 * [RaiseEvent](../tB/Core/RaiseEvent) - raise an event that may be handled by event handlers
+* [WithEvents](../tB/Core/WithEvents) - declare the field through which a module receives another object's events
+* [Handles](../tB/Core/Handles) - (twinBASIC) bind a procedure as a handler without relying on its name
 
 Procedures:
 
@@ -353,7 +355,7 @@ See also:
 
 Procedures:
 
-* [Date](../tB/Core/Date), [Time](../tB/Core/Time) - set the current date and time
+* [Date](../tB/Modules/DateTime/Date), [Time](../tB/Modules/DateTime/Time) - set the current date and time
 * [FormatDateTime](../tB/Modules/Strings/FormatDateTime) - formats an expression as a date/time string
 * [MonthName](../tB/Modules/Strings/MonthName) - returns the name of the specified month
 * [WeekdayName](../tB/Modules/Strings/WeekdayName) - returns the name of the specified day of the week

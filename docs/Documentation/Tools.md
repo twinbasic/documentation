@@ -365,7 +365,7 @@ It gates on **exponential only**. recheck also reports polynomial blowup, and ab
 
 Two sets of probes run inside the normal pass rather than behind `--self-test`, because a green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. Eight are regexes with known answers in both directions, including the three this repository actually shipped. Fourteen more cover the folding: eight constructions that must resolve to an exact pattern, and six that must be refused with a reason --- a folder that quietly resolves nothing moves every construction into the unresolved list and the run still passes.
 
-Exits 1 on an exponential finding, on a file that would not parse, or on a probe that came back wrong.
+Exits 1 on an exponential finding, on a file that would not parse, or on a probe that came back wrong. Note that the last two are the harness failing rather than the tree, which the [convention for a gate's exit codes](Extending#it-must-be-able-to-fail) would put at 2; this gate predates that convention and returns 1 for everything. Both are non-zero, so no wrapper or workflow behaves differently --- but do not read a 1 here as proof that a regex was found.
 
 ### check_code_regions.mjs
 {: #check-code-regions }

@@ -65,3 +65,27 @@ These three controls are normally connected together to build a complete file pi
 - [Data](Packages/VB/Data/) -- Win32 native control that opens a DAO recordset and exposes record-navigation buttons for bound controls.
 - [OLE](Packages/VB/OLE/) -- OLE container hosting a linked or embedded OLE Automation object (Word document, Excel sheet, …).
 - [Timer](Packages/VB/Timer/) -- non-visual control that raises a periodic event at a programmable interval.
+
+## Controls in other packages
+
+The **VB** package is not the whole story, and a control you remember from VB6 may live
+elsewhere:
+
+- [WinNativeCommonCtls](Packages/WinNativeCommonCtls/) replaces Microsoft Common Controls
+  6.0 (`MSCOMCTL.OCX`) with Win32-native equivalents, keeping the VB6 member names so most
+  ported code compiles unchanged. This is where
+  [ListView](Packages/WinNativeCommonCtls/ListView/),
+  [TreeView](Packages/WinNativeCommonCtls/TreeView/),
+  [ImageList](Packages/WinNativeCommonCtls/ImageList/),
+  [DTPicker](Packages/WinNativeCommonCtls/DTPicker),
+  [MonthView](Packages/WinNativeCommonCtls/MonthView),
+  [ProgressBar](Packages/WinNativeCommonCtls/ProgressBar),
+  [Slider](Packages/WinNativeCommonCtls/Slider) and
+  [UpDown](Packages/WinNativeCommonCtls/UpDown) are.
+- [CustomControls](Packages/CustomControls/) holds the owner-drawn **Waynes...** controls,
+  which have no VB6 counterpart.
+- [WebView2](Packages/WebView2/) and [CEF](Packages/CEF/) each host a browser engine.
+
+Both of the first two ship with the IDE but are referenced on demand --- add them from
+Project → References before the controls appear in the toolbox. See
+[Built-In Packages](Packages/Built-In/).

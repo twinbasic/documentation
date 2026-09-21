@@ -1288,6 +1288,36 @@ effect. Two builds of one commit are now byte-identical except for
 `BuildInfo.html` and `gantt.svg`, which record build timings and cannot be
 anything else.
 
+### Nothing compiles the reference's code samples, and a census says what it would take
+
+Round 6 pointed the harness at the twinBASIC reference for the first time and found two
+samples that do not run: `WinNativeCommonCtls/ListView`'s flagship example passed an icon
+key in the `Icon` slot, which the same package's prose says is validated against the
+unbound `ListView.Icons` and raises 35613, and `Core/Event`'s first sample was a `Sub` with
+no name. Both had shipped. Every gate was green over them, because a `tb` fence is
+something `check_code_regions.mjs` protects the *contents* of and never evaluates.
+
+[scripts/tbbuild.mjs](scripts/tbbuild.mjs) compiles a project unattended in 8--11 seconds
+and is pointed at none of them. Before anyone writes that gate, the census of what is
+actually in the fences --- 1,100 `tb` blocks across 600 files:
+
+| shape | count | compilable |
+|---|---:|---|
+| whole `Class` / `Module` | 36 | as-is |
+| whole procedure | 357 | wrapped in a module |
+| declarations only | 457 | wrapped in a module |
+| neither --- a fragment | 250 | not without judgement |
+
+**So 3% compile as they stand and 23% cannot be made to**, which is the number that decides
+the design. A gate that demands every fence compile would need 250 opt-outs on day one, and
+a gate with 250 opt-outs is a list nobody maintains. The tractable shape is the other
+direction: mark the fences that *claim* to be complete, compile those, and leave the
+fragments alone --- which makes the marker the thing to get right, not the harness.
+
+Batching matters too. One project per IDE is the scaling unit, so 393 whole units at ~10 s
+each is over an hour serially; several fences per probe project, run concurrently, is what
+makes it minutes. That is the same arithmetic the probe-suite note above works through.
+
 ### A script is findable only if its bare name is a token prefix somewhere
 
 lunr's tokeniser splits on **whitespace and hyphens only** (`/[\s\-]+/`), and the site's

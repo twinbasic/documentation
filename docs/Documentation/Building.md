@@ -553,8 +553,43 @@ Self-hosting the body face settles the *text* at 17px on every machine, and does
 7. Select the **Build & deploy docs** action.
    ![The repository's Actions tab, and the workflow list in the left sidebar where the deploy workflow is chosen](Images/choose-workflow.png){:width="75%"}
 
-8. Manually run the build and deployment workflow if a release snapshot is needed. (Pushes to `staging` deploy to Pages automatically; only the manual run additionally cuts a GitHub release with the offline-browsable site copy attached as a zip and the PDF book attached.)
+8. Manually run the build and deployment workflow if a release snapshot is needed. Pushes to `staging` deploy to Pages automatically; only the manual run additionally cuts a GitHub release. See [Cutting a release](#cutting-a-release) for what it attaches and the one input it takes.
    ![The Run workflow dropdown open on its branch selector, with the green Run workflow button that starts the manual deployment](Images/run-workflow.png){:width="50%"}
+
+
+### Cutting a release
+{: #cutting-a-release }
+
+A release is a downloadable snapshot of the documentation. **Only a manual dispatch cuts
+one** --- an ordinary push to `staging` deploys Pages and attaches nothing --- so the newest
+release can lag the live site by any amount. The welcome page tells readers to check the
+date for that reason.
+
+Actions → **Build & deploy docs** → **Run workflow**. It takes one input:
+
+| input | effect |
+|---|---|
+| `release_tag` | Used verbatim as both the tag and the release name. Leave it blank for `docs-YYYY-MM-DD-HHMM` in UTC. |
+
+The release job runs only after a green deploy, and is pinned to the dispatched commit.
+Two assets are attached, and a missing one fails the job rather than publishing half a
+release:
+
+| asset | what it is |
+|---|---|
+| `twinbasic-docs-offline.zip` | `_site-offline/` zipped from the inside, so `index.html` sits at the archive root. Extract anywhere and open it --- no server, and search, navigation and dark mode all work. |
+| `twinBASIC Book.pdf` | The PDF book, A4, a little under 2,000 pages, bookmarked to `h1`--`h4`. |
+
+> [!IMPORTANT]
+> The release is marked *latest*, and the site's own two download buttons are
+> `releases/latest/download/` URLs. A custom `release_tag` that is not the latest release
+> therefore breaks both buttons silently. Note also that GitHub replaces the space in the
+> PDF's filename with a dot in those URLs, which is why `_config.yml` spells it
+> `twinBASIC.Book.pdf` --- that is correct and must not be "fixed".
+
+Afterwards, check the live site:
+
+    node scripts/crawl_check.mjs https://docs.twinbasic.com
 
 ## Editing screenshots
 

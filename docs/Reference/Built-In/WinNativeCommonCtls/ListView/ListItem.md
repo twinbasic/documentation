@@ -14,7 +14,7 @@ A **ListItem** is a single row in a [**ListView**](.). Returned from [**ListItem
 The class is tagged `[COMCreatable(False)]` --- user code accesses **ListItem** instances through the parent [**ListView**](.)'s [**ListItems**](ListItems) collection, never by direct instantiation.
 
 ```tb
-Dim item As ListItem = ListView1.ListItems.Add(, "doc1", "Report.docx", "doc")
+Dim item As ListItem = ListView1.ListItems.Add(, "doc1", "Report.docx")
 item.SubItems(1) = "Word document"
 item.SubItems(2) = "24 KB"
 item.Bold = True

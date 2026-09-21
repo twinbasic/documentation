@@ -146,6 +146,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [With](../tB/Core/With) -- executes a series of statements on a single object or a user-defined type
 
+* [WithEvents](../tB/Core/WithEvents) -- declares a field whose object raises events this module handles
+
 * [Write #](../tB/Core/Write) -- writes raw, delimited data to a sequential file (paired with [**Input #**](../tB/Core/Input))
 
 * [#If ... Then ... Else](../tB/Core/Topic-Preprocessor), [#Const](../tB/Core/Topic-Preprocessor) -- compiler directives that conditionally include code blocks at compile time
