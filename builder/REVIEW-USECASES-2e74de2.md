@@ -272,8 +272,9 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 - ~~**The other 52 `Applicable to:` lines in `Reference/Attributes.md`**~~ **Done.**
   `scripts/gen_attribute_probes.py` writes one source file per claimed placement and packs it
   into a `.twinproj` with the `import` verb; every probe is expected to compile, so a
-  diagnostic naming a probe module is a wrong line. Built against BETA 983 over two rounds:
-  **69 probes, 45 of the 52 lines confirmed correct, two wrong.**
+  diagnostic naming a probe module is a wrong line. Built against BETA 983 over two rounds,
+  69 probes in the first: **45 of the 52 lines were probed, 43 of them confirmed correct
+  and two wrong.**
 
   - **`[COMExtensible]` is not accepted on a procedure in an Interface** --- TB5182
     `No handler for this symbol`. The `[DispId]` and `[PreserveSig]` probes use the identical
