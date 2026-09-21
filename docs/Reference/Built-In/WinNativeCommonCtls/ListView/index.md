@@ -32,7 +32,9 @@ Private Sub Form_Load()
 
     ' Add rows
     Dim item As ListItem
-    Set item = ListView1.ListItems.Add(, "doc1", "Report.docx", "doc")
+    ' The 5th argument is SmallIcon -- the one lvwReport renders. Passing a key
+    ' in the 4th (Icon) slot validates it against ListView.Icons, which is unbound.
+    Set item = ListView1.ListItems.Add(, "doc1", "Report.docx", , "doc")
     item.SubItems(1) = "Word document"
     item.SubItems(2) = "24 KB"
 End Sub

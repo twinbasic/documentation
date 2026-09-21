@@ -11,7 +11,8 @@
 //                         buildSegs, decode, fileDirSegsFromRel,
 //                         posixDirname, normalizeBaseurl, escapeRegExp,
 //                         getPageCache)
-//   §D  HTML rewrite     (stripSeo, rewriteHtml, injectSearchSetup,
+//   §D  HTML rewrite     (stripSeo, stripFontPreloads, rewriteHtml,
+//                         injectSearchSetup,
 //                         sliceNavBlock, NAV_OPEN_RE, NAV_CLOSE,
 //                         NAV_PLACEHOLDER, deriveOfflinePageCached,
 //                         deriveOfflinePage, SEO_BLOCK_RE, TITLE_RE,
@@ -255,7 +256,24 @@ export function getPageCache(resultCache, fileDir) {
 // ---------------------------------------------------------------------------
 
 export const SEO_BLOCK_RE = /<!-- Begin Jekyll SEO tag.*?<!-- End Jekyll SEO tag -->/s;
+
+// A font preload is fetched in CORS mode -- that is why template.mjs marks it
+// `crossorigin`, so the online preload is actually reused by the later
+// @font-face fetch instead of the file being downloaded twice.  Under
+// `file://` there is no origin to match, so Chrome fails the preload with
+// ERR_FAILED and logs it.  The @font-face fetch itself still succeeds and the
+// faces still load, so the preload buys the offline reader nothing and costs
+// two red lines in the console.  Drop it from this tree.
+export const FONT_PRELOAD_RE =
+  /[ \t]*<link rel="preload"[^>]*as="font"[^>]*>\r?\n?/g;
+
 export const TITLE_RE = /<title>.*?<\/title>/s;
+
+// §6.2a  stripFontPreloads -- see FONT_PRELOAD_RE.
+export function stripFontPreloads(html) {
+  if (!html.includes('as="font"')) return html;
+  return html.replace(FONT_PRELOAD_RE, "");
+}
 
 // §6.2  stripSeo -- drop the jekyll-seo-tag block, keep its <title>.
 export function stripSeo(html) {
@@ -397,6 +415,7 @@ export function deriveOfflinePage(page, state) {
   const fileSegs = fileDirSegsFromRel(page.destPath);
   let html = page.html;
   html = stripSeo(html);
+  html = stripFontPreloads(html);
   const { rewritten, misses, missed } = rewriteHtml(html, fileDir, fileSegs, sitePaths, caches, baseurl);
   html = rewritten;
   html = injectSearchSetup(html, fileSegs);

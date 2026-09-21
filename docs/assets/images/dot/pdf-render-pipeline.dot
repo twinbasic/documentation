@@ -13,7 +13,7 @@ digraph pdf_render {
     node [
         shape=box
         style="rounded,filled"
-        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
         fontsize=12
         margin="0.12,0.06"
         fillcolor="#fef7e0"
@@ -22,7 +22,7 @@ digraph pdf_render {
     edge [color="#7a8090" arrowsize=0.7]
     graph [
         color="#7a8090"
-        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
         fontsize=13
         style="rounded"
         labeljust="l"
@@ -37,7 +37,7 @@ digraph pdf_render {
         { rank=same; ASM; CSS; IMG }
     }
 
-    PDFSRC [label=<_site-pdf/book.html<BR/>(~5 MB)<BR/>print.css, tb-highlight.css,<BR/>images>]
+    PDFSRC [label=<_site-pdf/book.html<BR/>(~7 MB)<BR/>print.css, tb-highlight.css,<BR/>images>]
 
     subgraph cluster_render {
         margin=12

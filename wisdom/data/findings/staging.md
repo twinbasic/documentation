@@ -168,7 +168,7 @@ _Reviewer note: Package: VB. Affects the Image and PictureBox controls (docs/Ref
 
 _Source threads: 1336975989464633344 · confidence: medium_
 _Date range: 2025-02-06_
-_Reviewer note: VBA/ArrayList -- no ArrayList page exists in the docs. Once an ArrayList reference page is created, this bug note should be placed in its after-remarks section. The affected package appears to be the contributed ArrayListLib (sources at .claude/worktrees/elegant-elion-ba6399/indexer/.packages/contributed/ArrayListLib/). Verify whether the bug has since been fixed in the twinBASIC repository before publishing._
+_Reviewer note: VBA/ArrayList -- no ArrayList page exists in the docs. Once an ArrayList reference page is created, this bug note should be placed in its after-remarks section. The affected package appears to be the contributed ArrayListLib (the contributed ArrayListLib package download). Verify whether the bug has since been fixed in the twinBASIC repository before publishing._
 
 ---
 

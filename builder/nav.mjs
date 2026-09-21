@@ -16,6 +16,7 @@ const REVERSE_FLAGS = new Set(["desc", "reversed"]);
 
 export function computeNav(pages, config) {
   computeNavPaths(pages);
+  validatePermalinks(pages);
   validateNavIntegrity(pages);
   const state = buildSharedNavState(pages, config);
   const navTree = buildNavTree(state);
@@ -37,6 +38,40 @@ function computeNavPaths(pages) {
     parts.push(String(title));
     page.navPath = parts.join("/");
   }
+}
+
+// ---------- §5.1a permalink-integrity-check --------------------------------
+
+// Every page must declare its own URL.
+//
+// discover.mjs falls back to "/" + srcRel + ".html" when `permalink:` is
+// absent, which is only ever right on a site whose file tree mirrors its URL
+// tree. This one deliberately does not: Reference/Built-In/CEF/ publishes at
+// /tB/Packages/CEF/. So outside Features/ the derived URL is structurally
+// wrong, and it is wrong silently -- the page builds, links into it 404, and
+// nothing reports either. That is exactly how the whole AppGlobalClassObject
+// package came to sit at /Reference/Built-In/AppGlobalClassObject/index.html.
+//
+// It is also the URL the IDE help system resolves against, so a permalink
+// nobody chose is a contract nobody agreed to. 906 of 908 pages already
+// declared one when this check was added; it makes a settled convention
+// enforceable rather than introducing a new rule.
+//
+// Deliberately covers every page, not just nav-visible ones: a page carrying
+// nav_exclude is reachable by URL and still needs a stable one.
+function validatePermalinks(pages) {
+  const missing = pages.filter(p => !isNonEmpty(p.frontmatter.permalink));
+  if (missing.length === 0) return;
+
+  const lines = [
+    `Missing permalink in ${missing.length} page(s). Every page must declare ` +
+    `its own URL -- the derived fallback is "/<source path>.html", which is ` +
+    `not this site's URL scheme:`,
+  ];
+  for (const p of missing) {
+    lines.push(`  ${p.srcRel}: would publish at ${p.permalink}`);
+  }
+  throw new Error(lines.join("\n"));
 }
 
 // ---------- §5.2 nav-integrity-check ---------------------------------------

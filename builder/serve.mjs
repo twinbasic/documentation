@@ -11,6 +11,7 @@
 
 import { createServer } from "node:http";
 import { readFile, stat, watch } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { runBuild, createWorkerPool } from "./tbdocs.mjs";
 
@@ -137,19 +138,23 @@ function createStaticHandler(destRoot) {
 const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_serve", "_serve-offline", "_serve-pdf", "_pdf", "node_modules", ".git"];
 const IGNORED_BASENAME_RE = /^\.|~$|\.tmp$|\.swp$|^4913$/;
 
-function shouldRebuild(filename) {
+function shouldRebuild(filename, srcRoot) {
   if (!filename) return false;
   const segs = filename.split(/[/\\]/);
   if (IGNORED_PREFIXES.includes(segs[0])) return false;
   if (IGNORED_BASENAME_RE.test(segs.at(-1) ?? "")) return false;
-  // Graphviz renders <name>.dot → <name>.svg back under srcRoot/assets/
-  // images/dot/. The .dot is the source of truth; the .svg is the
-  // build artifact. Without this filter, each .dot edit fires the
-  // watcher twice -- once on the .dot save, once on the .svg write
-  // mid-rebuild -- so the user sees a redundant second reload after
-  // the first.
-  if (segs[0] === "assets" && segs[1] === "images" && segs[2] === "dot"
-      && (segs.at(-1) ?? "").endsWith(".svg")) {
+  // Graphviz renders <name>.dot → <name>.svg back under srcRoot, beside the
+  // source. The .dot is the source of truth; the .svg is the build artifact.
+  // Without this filter, each .dot edit fires the watcher twice -- once on
+  // the .dot save, once on the .svg write mid-rebuild -- so the user sees a
+  // redundant second reload after the first.
+  //
+  // Keyed on "has a .dot sibling" rather than on a fixed folder, because a
+  // diagram may live beside the page that uses it. That is also strictly
+  // more accurate than the path test it replaces: a hand-authored .svg in
+  // assets/images/dot/ used to be ignored, and no longer is.
+  if (srcRoot && (segs.at(-1) ?? "").endsWith(".svg")
+      && existsSync(path.join(srcRoot, filename).replace(/\.svg$/, ".dot"))) {
     return false;
   }
   return true;
@@ -168,13 +173,29 @@ export async function runServe(opts) {
   // Pool persists across rebuilds: skips ~100--200 ms of worker cold boot
   // per rebuild and lets warmInit's survives_reset short-circuit on builds
   // after the first.
-  const pool = createWorkerPool();
+  let pool = createWorkerPool();
+
+  // A stalled build means a worker is still inside a handler that never
+  // returned. The pool outlives a rebuild here, so that worker stays
+  // wedged: it will not pick up the next build's sendInit, and the
+  // per-worker tasks (warmInit, renderEnvInit) wait on every lane, so
+  // the next rebuild would stall too -- for a reason that has nothing
+  // to do with whatever the author just edited. Replace the pool
+  // wholesale; it costs one cold boot and is certainly correct,
+  // whereas replacing only the wedged lane means identifying it, and
+  // the SAB records the lane a task completed on, not the one that
+  // claimed it.
+  async function replacePool(oldPool) {
+    console.error("serve: a worker is wedged; restarting the worker pool.");
+    pool = createWorkerPool();
+    try { await oldPool.destroy(); } catch {}
+  }
 
   // Initial build
   try {
     await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, pool });
   } catch (err) {
-    console.error("serve: initial build failed:", err.message);
+    console.error("serve: initial build failed:", describeBuildError(err));
     await pool.destroy();
     process.exit(1);
   }
@@ -219,7 +240,8 @@ export async function runServe(opts) {
       await runBuild({ ...opts, dest: destRoot, skipOffline: true, skipPdf: true, pool });
       notifyReload();
     } catch (err) {
-      console.error("rebuild failed:", err.message);
+      console.error("rebuild failed:", describeBuildError(err));
+      if (err?.stalled) await replacePool(pool);
     } finally {
       running = false;
       if (pending) { pending = false; schedule(); }
@@ -233,7 +255,7 @@ export async function runServe(opts) {
   (async () => {
     try {
       for await (const event of watcher) {
-        if (!shouldRebuild(event.filename)) continue;
+        if (!shouldRebuild(event.filename, srcRoot)) continue;
         changedFiles.add(event.filename.replaceAll("\\", "/"));
         schedule();
       }
@@ -259,4 +281,19 @@ export async function runServe(opts) {
     console.log(`Serving ${destRoot} at http://localhost:${port}/`);
     console.log(`Watching ${srcRoot} for changes.`);
   });
+}
+
+// A scheduler abort's own message is only "task <name> failed"; what it
+// was actually refusing sits in `cause`. Printing just `err.message` in
+// the serve loop therefore turns a build gate's carefully-worded refusal
+// -- the publish allowlist naming four stray files, say -- into four
+// words that say nothing. Walk the chain.
+function describeBuildError(err) {
+  const seen = new Set();
+  const parts = [];
+  for (let e = err; e && !seen.has(e); e = e.cause) {
+    seen.add(e);
+    if (e.message) parts.push(e.message);
+  }
+  return parts.join("\n  caused by: ");
 }

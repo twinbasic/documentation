@@ -80,7 +80,7 @@ Integer overflow raises a run-time error (error 6) by default. Overflow does not
 
 **Date** is stored as an IEEE 754 double: the integer part counts days from the epoch (December 30, 1899), and the fractional part represents the time of day (0.0 at midnight, 0.5 at noon). The representable range is January 1, 100 to December 31, 9999.
 
-The [**Date**](../tB/Core/Date) and [**Time**](../tB/Core/Time) properties return the current date and time. [**Now**](../tB/Modules/DateTime/Now) returns both combined. Because **Date** is ultimately a **Double**, arithmetic on **Date** values works: adding 1 advances by one day, subtracting two dates gives the number of days between them.
+The [**Date**](../tB/Modules/DateTime/Date) and [**Time**](../tB/Modules/DateTime/Time) properties return the current date and time. [**Now**](../tB/Modules/DateTime/Now) returns both combined. Because **Date** is ultimately a **Double**, arithmetic on **Date** values works: adding 1 advances by one day, subtracting two dates gives the number of days between them.
 
 ---
 

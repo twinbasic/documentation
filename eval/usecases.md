@@ -1,0 +1,306 @@
+# Use-case catalogue
+
+Each case is a **task**, not a topic. "Explain the scheduler" is a topic and every document
+passes it; "add a task that fans out over pages and merges the results" is a task, and it
+either walks into the barrier-`expected` hazard or it does not.
+
+`H` marks a case with a known hazard: a way to do the task that looks right, is wrong, and is
+recorded somewhere in the repository. **The evaluator is never told the hazard exists.**
+Walking into it is the finding.
+
+Do not paste this file into a corpus an evaluation will read --- `eval/` is excluded from the
+mirror for exactly that reason.
+
+---
+
+## Round 1 --- the three personas
+
+### Persona A: content contributor (never touches the builder)
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-01 | Add a reference page for a language statement: where does the file go, what frontmatter, how does it reach the nav and the indexes? | |
+| UC-02 | Put a screenshot into a page --- where does it live, what is it named, what will the build refuse? | |
+| UC-03 | A contributor's draft pastes a `github.com/user-attachments/...` image URL. Merge as-is? | **H** leaving the vendored copy uncommitted fails CI; the URL itself is fine |
+| UC-04 | Embed a YouTube video. | **H** an `<iframe>` or hotlinked thumbnail is the obvious move and is banned |
+| UC-05 | A page uses `#` then `###`. Is that acceptable? | **H** the build silently repairs legacy pages, which hides the defect from new authors |
+
+### Persona B: toolchain user (runs the build, chases a gate, deploys)
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-06 | The build aborted: a file type may not be published. Diagnose and fix. | **H** widening `SOURCE_EXTENSIONS` is the obvious fix and the wrong one |
+| UC-07 | The accessibility gate failed on one page. Reproduce it, look at it, fix it, prove it. | **H** `file://` in a preview pane renders unstyled; the scan targets `_site-offline/` |
+| UC-08 | I edited a `.dot` diagram. What do I run, what do I commit? | **H** hand-editing the `.svg`, or setting the font anywhere but the `.dot` |
+| UC-09 | Get my change deployed; what does CI run that my local build does not? | |
+| UC-10 | Preview an edit and judge how it looks. | **H** `file://` is worthless for styling; `serve.bat` is required |
+
+### Persona C: builder developer (modifies tbdocs itself)
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-11 | Add a task that fans out over pages and merges results into build state. | **H** a barrier must list every chunk task in `expected`; a zero dep count does not mean the submits ran |
+| UC-12 | Add a markdown-it plugin that rewrites one kind of link. | **H** page-relative paths break the PDF book; emit root-absolute |
+| UC-13 | Upgrade axe-core. What must be re-run before trusting a green check? | **H** the fingerprint gate alone is insufficient; two gates are required |
+| UC-14 | Change the site's body typeface. What else must change? | **H** dark mode silently keeps system fonts; diagram metrics go stale |
+| UC-15 | I edited the link checker. How do I know one implementation didn't quietly check less? | |
+| UC-16 | Add a CSS rule for a component that works in both themes. | **H** the dark compilation raises specificity; a single-class rule silently loses |
+
+## Round 2 --- recovery, and the URL contract
+
+Round 1 under-sampled two things: **recovery** (something already went wrong and must be
+diagnosed) and **the `/tB/` URL contract**, the one part of the site with an external
+consumer. Both are where the repository's most expensive historical failures sit.
+
+### Persona A: content contributor
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-17 | Document a COM interface whose real name begins with an underscore, with a folder of property pages. | **H** a blanket `**/_*/**` exclude once swallowed 37 pages and a package published nothing for months |
+| UC-18 | Move a reference page between sections without breaking the `/tB/` links the IDE help system resolves against. | **H** the permalink is a contract; `redirect_from` is owed |
+| UC-20 | Link from a VBA module page to a VBRUN module page, and back. | **H** the two sit at different URL depths, so the `../` counts are asymmetric |
+| UC-21 | Write a passage with a parenthetical aside and a term list. | **H** literal `—` is forbidden in source; the bullet dash differs by list kind |
+| UC-22 | Add a wide comparison table. | **H** a bare table once failed `scrollable-region-focusable` on 44 pages |
+| UC-23 | Rename a section heading that other pages link to by anchor. | **H** `redirect_from` emits whole-page stubs and cannot remap a fragment |
+| UC-30 | Add a fenced code sample in a language the highlighter has never seen. | **H** silently falls back to plain text with only a build-log warning |
+
+### Persona B: toolchain user
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-19 | A new page built green and is not on the site. Diagnose. | **H** several distinct causes, most of them silent |
+| UC-24 | `book.bat` failed. Triage it. | |
+| UC-25 | The build has got slower. Find where the time went. | |
+| UC-26 | Build and verify on macOS, where the `.bat` wrappers do not run. | |
+| UC-29 | First contribution: what to read, in what order, what to run before opening a PR. | |
+
+### Persona C: builder developer, and a reviewer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-27 | Re-vendor a newer just-the-docs and keep the in-tree patches. | |
+| UC-28 | Add a new verification gate to `check.bat`. | **H** not one of the three documented extension points |
+| UC-31 | Review a pull request that changes `builder/`. | **H** the fixture's hard-coded counts break from a template change alone |
+| UC-32 | I changed a build task. Which documentation must follow, and how do I know I found it all? | |
+
+## Round 3 --- the fixes, and gates that report success
+
+**Run 2026-09-21 at `cd141f1`** --- [builder/REVIEW-USECASES-cd141f1.md](../builder/REVIEW-USECASES-cd141f1.md).
+Round 2's own ~35 commits of fixes had had no equivalent of the measurement
+round 2 gave round 1, which is the only direct evidence a documentation change works: five
+independent evaluators cited `Authoring.md:185-192` unprompted, a section that had not
+existed that morning, and one reported it caught a regression for them.
+
+Two things to sample that the earlier rounds could not.
+
+**Re-run round 2's two worst cases unchanged.** UC-24 (`book.bat` failed) and UC-22 (add a
+wide table) each *stalled* on navigation and *missed* on search. Both now have the page they
+lacked --- `PDF-Generation.md` has a *When the render fails* section, `Authoring.md` has a
+`## Tables` section. Whether either is **findable** is the thing the harness measures and
+nothing else does. Re-running a case against a corpus that has changed is the design, not a
+repeat.
+
+**Sample surface no evaluator has read.** The page-count drift guard and its accept command,
+`{{tbdocs:...}}` counts, `check_code_regions.mjs` (which had no `Tools.md` entry at all until
+the session that added these cases), and the `LibraryId` / `Version` attribute entries.
+
+### Persona A: content contributor
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-33 | Write a page that shows a fenced code sample whose *contents* include a fence marker, and put a note callout after it. | **H** the fence stasher once closed on the inner marker, and every admonition after it on that page shipped as the literal text `[!NOTE]` |
+| UC-34 | State in prose how many packages the reference documents, so the sentence cannot go stale. | **H** the syntax exists, is one page away, and nothing in a page about counts points at it |
+
+### Persona B: toolchain user
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-35 | The build says there are fewer pages than last time, and the removal was deliberate. Make it accept that. | **H** the number is in a committed file, and the remedy is a flag rather than an edit |
+| UC-36 | Compile a one-module twinBASIC project from a script to check an attribute, without opening the IDE. | **H** an invalid `project.id` wedges the IDE at *Services: LIMITED* behind a 2% progress dialog, reports no error anywhere, and the harness still exits 0 |
+
+### Persona C: builder developer, and a reviewer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-37 | Add a regression test for a build-time rewrite that silently stopped firing. | **H** the first draft of exactly this test passed against the very defect it was written to catch |
+| UC-38 | Add a gate that compares this build against the previous one, and decide what it must not do in CI. | **H** a guard keyed to nothing met a three-page fixture with *905 pages missing* |
+
+**The theme is gates that report success.** UC-33, UC-37 and UC-38 are all one shape --- a
+check that is green because it is looking in the wrong place --- and it is the failure this
+repository keeps rediscovering. A case that finds the documentation silent on it is worth
+more than one that finds a broken link.
+
+## Round 4 --- recovery from a gate, and the boundary
+
+**Run 2026-09-21 at `4f97bac`** --- [builder/REVIEW-USECASES-4f97bac.md](../builder/REVIEW-USECASES-4f97bac.md).
+Round 3 closed thirteen findings and added two gates; this
+round asks whether the prose those fixes produced is *reachable*, and samples the one
+category round 3 named and could not cover: a gate that fails with no "when this fails"
+passage anywhere. Two of the site's fifteen developer pages carry such a heading
+(`Building.md`'s diagram-fit section and `PDF-Generation.md`'s render section), and both
+were written by earlier rounds of this harness.
+
+**Re-run round 3's three worst cases unchanged.** UC-36 scored 1/1/1, UC-33 2/1/2 with the
+hazard walked into, UC-34 3/2/3 likewise. Each now has the page it lacked --- a
+`scripts/tbbuild.mjs` entry, a fence subsection, two package-count call sites. Whether any
+of them is *findable* is what this measures and nothing else does.
+
+### Persona A: content contributor
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-33 | *(re-run)* A fenced sample whose contents include a fence marker, then a note callout. | **H** the fence stasher once closed on the inner marker and shipped every later admonition as literal `[!NOTE]` |
+| UC-34 | *(re-run)* State in prose how many packages the reference documents, so it cannot go stale. | **H** the syntax exists one page away and the same page's checklist once said to hand-edit the number |
+| UC-42 | Delete a reference page that other pages link to, and leave nothing broken behind. | **H** the URL is a contract, and the page-count guard fails on a fall |
+
+### Persona B: toolchain user
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-36 | *(re-run)* Compile a one-module twinBASIC project from a script to check an attribute. | **H** the harness existed and was documented nowhere under `docs/` |
+| UC-40 | A gate refused a regex I added to the builder. Understand it and fix it. | **H** the obvious narrowing of the character class is still exponential |
+| UC-41 | The build printed its last line and stopped. Nothing since, no error. | **H** `--stall-timeout` appears zero times in `docs/`; the cause class is on another page |
+
+### Persona C: builder developer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-39 | I wrote a gate that reads no page. Where does it go, and what must I register? | **H** two wrappers, and the rule for choosing is one sentence added this morning |
+| UC-43 | `pick_a11y_sample --check` failed after my change. Fix it. | **H** widening the sample is the obvious move and the wrong one |
+
+**The theme is the failure path.** Every round so far has found that this documentation is
+written for someone about to do something. Round 2 named that; round 3 found the recovery
+prose it produced had gone stale against the code. UC-40, UC-41 and UC-43 are three gates
+that can stop somebody's work, and the question is not whether the repository knows the
+answer --- it does, in `WIP.md` and in the gates' own comments --- but whether a reader
+meets it.
+
+## Scoring
+
+Per case, 0--4 each:
+
+- **Completeness** --- does the corpus answer the goal well enough to act without guessing?
+- **Discoverability** --- reachable from the goal alone? Measured separately per channel,
+  because search and navigation fail on different pages.
+- **Actionability** --- specific enough to execute (exact commands, files, order) and to
+  verify afterwards?
+- **Hazard coverage** --- pass / fail / n-a: was the reader warned at the place they were
+  reading, or did they walk into it?
+
+Also recorded, not scored: hops to first useful hit, dead ends, and whether full-text search
+was needed.
+
+## Writing a new case
+
+**Mine the hazards.** `WIP.md` is substantially a catalogue of "this shipped broken and
+nobody noticed" --- 27 mislabelled diagram boxes, ~6 pages silently dropped from the search
+index, a package that published nothing. Each is a use case waiting to be written, and the
+real question is never whether the warning exists but whether the reader meets it at the
+point they would go wrong.
+
+**Word the goal the way a person would say it**, and never hint at the hazard. If the case
+mentions the trap, it measures reading comprehension instead of documentation.
+
+**Expect premises to be wrong.** UC-18 assumed a page still needed moving; it had already
+moved, and the evaluator audited the completed move against the documented checklist
+instead, which produced three findings the intended scenario would not have. That is a
+successful run, not a wasted one.
+
+## Round 5 --- the fixes again, and three surfaces no round has read
+
+**Run 2026-09-21 at `4b50c0c`** --- [builder/REVIEW-USECASES-4b50c0c.md](../builder/REVIEW-USECASES-4b50c0c.md).
+Round 4 found that six of its fourteen findings were
+introduced by round 3's own fix pass, seven hours old, and that re-running a case is the
+only instrument that catches either a fix working or a fix pass damaging what it touched.
+It has now gone three-for-three twice.
+
+**Re-run round 4's worst three unchanged.** UC-40 scored 2/2/2, UC-41 2/1/3 with the hazard
+walked into, UC-43 2/3/2. Each now has what it lacked: `Building.md` has a *When a build
+stops instead of failing* section and `Tools.md` a `--stall-timeout` row, `Tools.md` states
+what makes a regex exponential and that the report hands you a witness, and `Extending.md`
+carries the shape of a construct family with its three fields.
+
+**Sample three surfaces no round has touched**, all named by round 4's own queue: the
+persistent worker pool under `serve.bat`, the offline mirror as something you hand to a
+person rather than something a scan reads, and a cold start from a fresh clone. Two more
+are mined from the places this file says to mine: adding a diagram, and the *producer* side
+of `{{tbdocs:...}}` --- four extension points are documented and adding a count name is not
+one of them.
+
+### Persona A: content contributor
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-46 | Add an architecture diagram to a page: what to create, where it goes, what to commit, how to know it is right. | ~~**H** the dash convention does not apply inside alt text~~ --- **premise false**, see below |
+
+### Persona B: toolchain user
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-41 | *(re-run)* The build printed its last line and stopped. Nothing since, no error. | **H** `--stall-timeout` appeared zero times in `docs/` and two pages asserted nothing times out |
+| UC-44 | `serve.bat` is running for live preview and a builder change never appears in the browser. Diagnose it and give a workflow that works. | **H** the pool outlives a rebuild *and* the watcher only watches `docs/`; the page that says so is one a toolchain user has no reason to open |
+| UC-45 | Hand somebody a copy of the documentation they can read on a laptop with no network. | **H** `_site/` is the tree that looks right and is the one that does not work under `file://` |
+| UC-48 | Fresh clone on a new machine: confirm it is healthy and say what a healthy run looks like. | **H** three wrappers with an order between them, and `check.bat` refuses a tree it considers stale |
+
+### Persona C: builder developer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-40 | *(re-run)* A gate refused a regex I added to the builder. Understand it and fix it. | **H** the obvious narrowing of the character class is still exponential |
+| UC-43 | *(re-run)* `pick_a11y_sample --check` failed after my change. Fix it. | **H** widening the sample is the obvious move and the wrong one |
+| UC-47 | A landing page states a total as a hand-written digit that goes stale. Make the build supply it. | **H** a registry entry holding the number is the obvious shape and moves the stale figure rather than removing it |
+
+**UC-46's hazard did not exist**, and the case was productive anyway --- third time this has
+happened, after UC-18 and round 4's UC-42. It was written from `WIP.md`'s claim that image
+alt text escapes the typographer, which is false for this repository: `kramdownDashesPlugin`
+walks recursively and reaches alt. The case still returned the round's best discoverability
+score and two verified findings the intended scenario would not have reached. **The check
+that would have caught the bad premise is the one the review now recommends generally** ---
+render through the pipeline the repository runs, not through the library it depends on.
+
+## Round 6 --- does a discoverability fix work, and does the reference half work at all
+
+**Run 2026-09-21 at `9b8e70c`.** Round 5 measured something no earlier round could: across
+round 4's fix pass, three re-run cases gained +1.33 completeness and +1.34 actionability
+and moved discoverability **±0.00**. Round 5's own fix pass then went at discoverability
+directly. Whether *that* works is the thing to measure now, and re-running is the only
+instrument that can.
+
+**Re-run round 5's three discoverability-1 cases unchanged.** UC-40, UC-44 and UC-45 each
+scored 1 on reachability with content rated 3 or 4 --- the answer was there and nobody
+could get to it. Each now has a specific fix: 21 tool headings lost a directory prefix so
+lunr can prefix-match a bare script name, the serve-mode caveat is a section with a
+symptom-shaped title instead of an un-anchored NOTE, and the offline copy has a welcome-page
+door. A rank measured before and after is the whole point.
+
+**Sample the 81% of the site no round has ever read.** Every case in rounds 1--5 was about
+`docs/Documentation/` --- roughly 3.5% of the search index. The twinBASIC *reference* is the
+rest, it is what the site is for, and nothing here has asked whether it works. These cases
+use the **site-entry protocol** below.
+
+### The site-entry protocol variant
+
+A reader of `docs.twinbasic.com` never sees `README.md`, `WIP.md` or `builder/`. For the
+cases marked *(site)* the protocol changes in two ways: **Channel 2 starts at
+`docs/index.md`**, the published welcome page, rather than the repository README; and the
+evaluator may open **only files under `docs/`**, which is what the site publishes. Nothing
+else moves. A case run this way is not comparable with a repo-protocol run of the same
+goal, so do not mix them in a re-run.
+
+### Persona B: toolchain user, and a maintainer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-40 | *(re-run)* A gate refused a regex I added to the builder. Understand it and fix it. | **H** the answering section appeared in none of seven queries, including the gate's own filename |
+| UC-44 | *(re-run)* `serve.bat` never shows a builder change. Diagnose it and give a workflow. | **H** the answer was an un-anchored NOTE; both pages documenting `serve.bat` were silent |
+| UC-45 | *(re-run)* Hand somebody a copy to read on a laptop with no network. | **H** four reader-phrased queries missed; no reader-facing page said the copy existed |
+| UC-52 | Cut a release carrying the offline site copy and the PDF book, and say what a consumer gets. | **H** only a manual dispatch attaches them, and the release can lag the live site arbitrarily |
+
+### Persona D: a twinBASIC developer on the published site *(new)*
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-49 | *(site)* Port a VB6 form that uses an `MSCOMCTL.OCX` ListView: what replaces it, and how do I fill it? | **H** the package ships with the IDE but is referenced on demand, and the items live on sub-objects reached through the control |
+| UC-50 | *(site)* Port a VBA routine that assigns to `Date` and does currency maths with `CDec`. | **H** `Date` is a property in twinBASIC, not a function/statement, and `Decimal` is a full data type rather than a Variant subtype |
+| UC-51 | *(site)* I want these docs on my laptop with no connection, or printed. | **H** the same deliverable as UC-45 from the reader's side, against a door added the same day |
+| UC-53 | *(site)* Write a class that raises an event and a form that handles it. | **H** `WithEvents` has no page of its own, and twinBASIC adds `Handles`, which VB6 does not have |

@@ -1,5 +1,6 @@
 ---
 title: Kitchen
+permalink: /Kitchen
 ---
 # Kitchen
 {: .no_toc }

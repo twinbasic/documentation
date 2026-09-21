@@ -12,13 +12,13 @@ redirect_from:
 
 To create a new TWINPACK package, navigate to the twinBASIC New Project dialog, and under the 'Samples' tab, choose the option labelled 'Package':
 
-![image](Images/6ad7a172-0e1b-4276-ac89-042681552507.png)
+![The New / Open Project dialog on the Samples tab with Sample 7. Package circled](Images/6ad7a172-0e1b-4276-ac89-042681552507.png)
 <br>
 <br>
 
 Once you've created the project, you should find the extra 'PACKAGE PUBLISHING' panel as a popup:
 
-![image](Images/9eeffbcf-d73e-4a92-bce5-811ed60aba98.png)
+![The PACKAGE PUBLISHING panel with EDIT links for Publisher, Namespace, Description, Licence, Visibility and Version, above the PUBLISH THIS PACKAGE button](Images/9eeffbcf-d73e-4a92-bce5-811ed60aba98.png)
 <br>
 <br>
 
@@ -39,10 +39,10 @@ You can now create components (Class, Module, Interface) in your project as norm
 
 Use this option if you want to just create a local TWINPACK file that you can use in other projects.  For this, the build process is the same as any ordinary twinBASIC build... just hit the Build button in the TWINBASIC toolbar:
 
-![image](Images/4d90f313-35d5-426d-8fc3-852ca03382fa.png)
+![The twinBASIC toolbar with the Build button circled](Images/4d90f313-35d5-426d-8fc3-852ca03382fa.png)
 <br>
 <br>
-![image](Images/8d74d820-9907-4e76-ac42-71d0233187f1.png)
+![The DEBUG CONSOLE reporting the TWINPACK file being created and the build succeeding](Images/8d74d820-9907-4e76-ac42-71d0233187f1.png)
 
 You'll see the build output notification in the `DEBUG CONSOLE`, as seen above.
 
@@ -54,7 +54,7 @@ Job done.  See [Importing a package from a TWINPACK file](Importing-TWINPACK) fo
 
 If you're publishing your package onto TWINSERV, you don't need to create the TWINPACK file manually.  Just use the 'PUBLISH THIS PACKAGE' button:
 
-![Create Package](Images/packPublishButton.png){:style="width:45%; height:auto;"}
+![The TWINBASIC PACKAGE MANAGER panel with arrows pointing to the PUBLISH THIS PACKAGE button](Images/packPublishButton.png){:style="width:45%; height:auto;"}
 <br>
 <br>
 
@@ -62,13 +62,13 @@ If you're publishing your package onto TWINSERV, you don't need to create the TW
 
 You will then be prompted to confirm the package details:
 
-![Create Package](Images/packPublishPackage1.png){:style="width:65%; height:auto;"}
+![A confirmation dialog listing the publisher, package namespace, description, version and licence, asking whether to proceed](Images/packPublishPackage1.png){:style="width:65%; height:auto;"}
 <br>
 <br>
 
 After pressing `YES`, the package will be uploaded to TWINSERV.   Check the `DEBUG CONSOLE` for completion notices:
 
-![Create Package](Images/packPublishComplete1.png){:style="width:85%; height:auto;"}
+![The DEBUG CONSOLE showing the publish attempt followed by a successful result](Images/packPublishComplete1.png){:style="width:85%; height:auto;"}
 
 <br>
 <br>
@@ -84,7 +84,7 @@ See [Importing a package from TWINSERV](Importing-TWINSERV) for referencing and 
 
 When you create a new package project, you'll see two additional files created for you in the project filesystem:
 
-![Create Package](Images/packLicenceFiles.png){:style="width:55%; height:auto;"}
+![The project file tree with arrows pointing to the CHANGELOG.md and LICENCE.md files](Images/packLicenceFiles.png){:style="width:55%; height:auto;"}
 <br>
 <br>
 

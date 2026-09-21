@@ -5,7 +5,6 @@ permalink: /tB/Core/Class
 ---
 
 # Class
-
 {: .no_toc }
 
 Defines a class. Classes are templates from which objects are created --- classes are object types, as opposed to value types. Objects are held by reference and are reference-counted. The memory an object occupies is freed when there are no more references to it --- when no variables in the process refer to them.
@@ -45,6 +44,7 @@ Syntax:
   - [variable](../Gloss#variable) defined using [**Public**](Public), [**Protected**](Protected), [**Private**](Private), or [**Dim**](Dim),
   - [procedure](../Gloss#procedure) defined using [**Sub**](Sub), [**Function**](Function), or [**Property**](Property) --- including the special instance constructor `Sub New(`*args*`)`, which the runtime invokes when the class is created with [**New**](New),
   - [user-defined type (UDTs)](../Gloss#user-defined-type) defined using [**Type**](Type),
+  - event defined using [**Event**](Event) --- events may only be declared in a class module, and a [**WithEvents**](WithEvents) field is how another module receives them,
   - (twinBASIC) [**Implements**](Implements) clauses, listing interfaces or classes whose members this class provides bodies for.
 
 In `.twin` files, a **Class** block may share a file with [**Interface**](Interface), [**CoClass**](CoClass), and [**Alias**](Alias) declarations (which appear *before* the **Class** block) and with a [**Module**](Module) block. In legacy `.cls` files the class is implicit and the **Class**/**End Class** keywords are not written.

@@ -160,6 +160,8 @@ Procedures:
 Statements:
 
 * [RaiseEvent](../tB/Core/RaiseEvent) - raise an event that may be handled by event handlers
+* [WithEvents](../tB/Core/WithEvents) - declare the field through which a module receives another object's events
+* [Handles](../tB/Core/Handles) - (twinBASIC) bind a procedure as a handler without relying on its name
 
 Procedures:
 
@@ -353,7 +355,7 @@ See also:
 
 Procedures:
 
-* [Date](../tB/Core/Date), [Time](../tB/Core/Time) - set the current date and time
+* [Date](../tB/Modules/DateTime/Date), [Time](../tB/Modules/DateTime/Time) - set the current date and time
 * [FormatDateTime](../tB/Modules/Strings/FormatDateTime) - formats an expression as a date/time string
 * [MonthName](../tB/Modules/Strings/MonthName) - returns the name of the specified month
 * [WeekdayName](../tB/Modules/Strings/WeekdayName) - returns the name of the specified day of the week
@@ -452,6 +454,20 @@ Procedures:
 * [NPV](../tB/Modules/Financial/NPV) - net present value of an investment
 * [NPer](../tB/Modules/Financial/NPer) - number of periods for an investment with constant deposits and interest
 * [FormatCurrency](../tB/Modules/Strings/FormatCurrency) - format an expression as a currency string
+
+## Debugging
+
+Methods of the intrinsic [Debug](../tB/Modules/Debug) object:
+
+* [Debug.Print](../tB/Modules/Debug#print) - write to the [Debug Console](../tB/IDE/Project/DebugConsole)
+* [Debug.TracePrint](../tB/Modules/Debug#traceprint) - write to the active trace output, which also works in a compiled executable
+* [Debug.Cls](../tB/Modules/Debug#cls) - clear the Debug Console
+* [Debug.Assert](../tB/Modules/Debug#assert) - halt when a condition is **False**
+
+See also
+
+* [Stop](../tB/Core/Stop) - suspend execution unconditionally
+* [Unit Testing](#unit-testing) - assertions that report results, for tests
 
 ## Unit Testing
 

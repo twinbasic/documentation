@@ -42,6 +42,11 @@ gh_edit_view_mode: "tree"
 # theirs against the latest release.
 gh_offline_link: true
 gh_offline_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinbasic-docs-offline.zip"
+# The released asset is "twinBASIC Book.pdf", with a space. GitHub replaces spaces
+# with dots in release download URLs, so the dotted spelling here is correct and the
+# spaced one 404s. Verified against the live release. Do not "fix" this to match the
+# workflow's filename. It also depends on make_latest: 'true' in tbdocs-gh-pages.yml,
+# which is what makes /releases/latest/download/ resolve at all.
 gh_pdf_link_url: "https://github.com/twinbasic/documentation/releases/latest/download/twinBASIC.Book.pdf"
 
 # When true, tbdocs's Phase 7 writes a `file://`-browsable mirror of
@@ -77,6 +82,16 @@ offline_exclude:
 # tree. Uses fast-glob syntax: ** crosses directory separators, * stays
 # within one level. Same role as Jekyll's built-in `exclude:` list.
 #
+# This list is NOT the safety net. It is a denylist, and a denylist only
+# refuses what someone thought to name in advance -- a stray .bak, a
+# .pem, a scratch .md with no frontmatter all used to publish straight
+# through it. builder/publish-policy.mjs is the allowlist that decides
+# what may reach a published tree, enforced unconditionally inside the
+# build; see WIP.md's "The publish allowlist". What belongs here is the
+# noise a contributor should not have to see refused: source files that
+# sit beside the pages they produce (.scss, .dot, .af) and the build's
+# own output trees.
+#
 # Patterns that start with * must be quoted so YAML does not interpret them
 # as alias references.
 # Extra files from outside the docs tree to bundle as site assets.
@@ -89,12 +104,29 @@ bundle_extra:
     dest: Features/Packages/downloads/impexp.py
 
 exclude:
-  # Underscore-prefixed files and directories -- catches _config.yml,
-  # _book.yml, _site, _site-offline, _site-pdf, _pdf, _includes,
-  # _layouts, _sass, _plugins, _profile, and every _Images at any depth.
+  # Underscore-prefixed entries AT THE SOURCE ROOT -- _config.yml,
+  # _book.yml, _sass, and every build-output tree (_site*, _serve*, _pdf).
   - _*
   - _*/**
-  - "**/_*/**"
+  # Affinity sources, kept beside the pages they illustrate. Only the
+  # exported .png under the sibling Images/ folder is published.
+  #
+  # Scoped to _Images rather than the `**/_*/**` this used to be. That
+  # blanket rule silently swallowed every page under
+  # Reference/Built-In/AppGlobalClassObject/_App/ -- 37 of them -- because
+  # the twinBASIC interface really is named `_App`, after the COM
+  # hidden-interface convention, and the folder is named for it. Nothing
+  # reported the loss: excluded files are not missing files.
+  #
+  # Note the rule matches a _Images *directory*, so it does not touch
+  # underscore-prefixed *pages* such as
+  # Reference/Built-In/CustomControls/Framework/_CustomControlContext.md,
+  # which are published and always have been.
+  - "**/_Images/**"
+  # Defensive, now that the underscore rule no longer covers them: the
+  # Affinity sources are the only thing _Images holds, and a stray one
+  # filed anywhere else must not ship either.
+  - "**/*.af"
   # Defensive: caches and unrelated trees that should never be in docs/.
   - "**/.git/**"
   - "**/node_modules/**"

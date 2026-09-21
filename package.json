@@ -19,6 +19,7 @@
     "markdown-it-footnote": "^4.0",
     "pdf-lib": "1.17.1",
     "puppeteer": "25.0.4",
+    "recheck": "4.5.0",
     "sass": "^1.0",
     "shiki": "^1.0"
   }

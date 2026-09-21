@@ -11,14 +11,25 @@ twinBASIC includes several features to help with debugging.
 
 ## Debug Trace Logger
 
-New to the debugging experience is a trace logging feature that automatically creates detailed logs to either the debug console or a file. Messages can be output with `Debug.TracePrint`. The logger works both when running from the IDE and in compiled executables.
+New to the debugging experience is a trace logging feature that automatically creates detailed logs to either the debug console or a file. Messages can be output with [**Debug.TracePrint**](../../tB/Modules/Debug#traceprint). The logger works both when running from the IDE and in compiled executables.
 
-![image](../Images/4fc2bf99-2bec-4943-837d-21038d791574.png)
+![The Project Settings page showing the Compilation: Trace Flags and Compilation: Trace Output options](../Images/4fc2bf99-2bec-4943-837d-21038d791574.png)
 
 ```tb
 Public Sub ProcessOrder(ByVal orderId As Long)
     Debug.TracePrint "ProcessOrder called, orderId=" & CStr(orderId)
     ' ... processing ...
+End Sub
+```
+
+## Clearing the Debug Console
+
+[**Debug.Cls**](../../tB/Modules/Debug#cls) empties the [Debug Console](../../tB/IDE/Project/DebugConsole) from code, the same as its *Clear Debug Console* button. Calling it as a run begins separates that run's output from the previous one, which is the difference between reading a log and scrolling for where it started:
+
+```tb
+Private Sub Form_Load()
+    Debug.Cls
+    Debug.Print "--- run starting ---"
 End Sub
 ```
 
@@ -28,6 +39,6 @@ Bugs result from using Strings and Variants after they have been freed. It may n
 
 Below shows an example where the ListView ColumnHeader text had been set by previously-freed string and detected by this feature:
 
-![image](../Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png)
+![A ListView whose column header text has been replaced by rows of warning symbols, marking the use of a freed string](../Images/021f6cbf-acce-445d-ade7-3fcad0af4927.png)
 
 Previously, it had shown the same text for every column-- but only under certain circumstances, leading to the issue being overlooked for a long time.

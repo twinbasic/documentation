@@ -10,4 +10,4 @@ has_toc: false
 A *package* groups related code --- modules, classes, controls, and enumerations --- under a single namespace, and is referenced from a project as a single dependency. See [Features → Packages](../../Features/Packages/) for how packages are built and distributed in general.
 
 - [**Default Packages**](Default/) -- VB, VBA, and VBRUN -- included in every project by default
-- [**Built-In Packages**](Built-In/) -- nine optional packages shipped with twinBASIC, always available offline
+- [**Built-In Packages**](Built-In/) -- {{tbdocs:builtInPackages}} optional packages shipped with twinBASIC, always available offline

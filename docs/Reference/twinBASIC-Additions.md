@@ -55,8 +55,8 @@ twinBASIC supports generic types and generic modules using the `Of` keyword. A g
 twinBASIC uses a square-bracket attribute syntax on declarations and modules:
 
 ```tb
-[Documentation("Returns the absolute value of n.")]
-[COMCreatable(False)]
+[Description("Returns the absolute value of n.")]
+[ConstantFoldable]
 Public Function Abs(ByVal n As Double) As Double
 ```
 

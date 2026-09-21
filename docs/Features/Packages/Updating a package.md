@@ -12,12 +12,12 @@ redirect_from:
 
 The compiler will notify you if a newer version of a package in your project is available on TWINSERV when you load your project:
 
-![image](Images/db4636f6-d988-4e31-94a2-c4c170418e81.png)
+![The DEBUG CONSOLE showing a PACKAGE CHECK notice that a newer version of the WinDevLib package is available](Images/db4636f6-d988-4e31-94a2-c4c170418e81.png)
 
 
 If you find an updated package is available on TWINSERV, you must first remove the old package from your project by deselecting it. Open Settings to References and untick the box. You will then be prompted to remove it from the filesystem:
 
-![415937809-87a11bc3-9a9c-4551-86c2-69d206d95087](Images/a1331a0e-3ba3-45cf-8dc3-2e24f0fa1fe6.png)
+![The Enabled Libraries tab listing the four ticked compatibility packages with their VBA, VBRUN, VB and stdole symbols, and in front of it a twinBASIC message box asking whether to also remove the imported package from the filesystem, warning that it will delete the folder /Packages/WinDevLib, with Remove It and Leave It buttons.](Images/a1331a0e-3ba3-45cf-8dc3-2e24f0fa1fe6.png)
 <br/>
 <br/>
 <br/>

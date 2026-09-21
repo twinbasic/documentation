@@ -61,7 +61,7 @@ permalink: /Reference/Procedures-and-Functions
 
 ## D
 
-- [Date](../tB/Core/Date) -- sets or returns the current system date
+- [Date](../tB/Modules/DateTime/Date) -- sets or returns the current system date
 - [DateAdd](../tB/Modules/DateTime/DateAdd) -- adds a time interval to a date
 - [DateDiff](../tB/Modules/DateTime/DateDiff) -- returns the number of time intervals between two dates
 - [DatePart](../tB/Modules/DateTime/DatePart) -- returns a specified part of a given date
@@ -251,7 +251,7 @@ permalink: /Reference/Procedures-and-Functions
 ## T
 
 - [Tan](../tB/Modules/Math/Tan) -- returns the tangent of an angle
-- [Time](../tB/Core/Time) -- sets or returns the current system time
+- [Time](../tB/Modules/DateTime/Time) -- sets or returns the current system time
 - [Timer](../tB/Modules/DateTime/Timer) -- returns the number of seconds elapsed since midnight
 - [TimeSerial](../tB/Modules/DateTime/TimeSerial) -- returns a time for a specific hour, minute, and second
 - [TimeValue](../tB/Modules/DateTime/TimeValue) -- converts a string to a time

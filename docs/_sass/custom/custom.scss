@@ -1,5 +1,6 @@
 @use "admonitions";
 @use "theme" as *;
+@use "fonts" as *;
 
 .sr-only {
   position: absolute;
@@ -37,9 +38,50 @@
   }
 }
 
+// `width: 100%` stretched every diagram to the column regardless of its own
+// size, which made label size an accident of how wide Graphviz happened to
+// draw it: 1.16x body text on toolchain-overview (636px natural, blown up to
+// 736px) against 0.58x on the CEF Monaco diagram (1259px, shrunk to fit). A 2x
+// spread, with no typographic intent anywhere in it.
+//
+// Natural size is the right target, and not by coincidence: Graphviz writes
+// labels at `fontsize=12` in a space where 1 user unit is 1pt, and sizes the
+// root `<svg width="NNNpt">` to match -- so at natural size a label is 12pt,
+// which is 16px at 96dpi, which is this site's body size. Rendering 1:1 lands
+// on 1.00x exactly rather than approximately.
+//
+// `max-width` still shrinks anything too wide for the column, and that scales
+// geometry and labels together, so those stay legible-but-small rather than
+// misaligned. At mobile every diagram is capped anyway and this rule changes
+// nothing.
+// `display: block` + auto inline margins centre a diagram that is narrower
+// than the column. An SVG is inline-level by default, so it would otherwise
+// sit against the left edge with the shortfall pooled on the right, which
+// reads as a layout mistake rather than a small diagram. Diagrams that hit
+// `max-width` have no shortfall, so this changes nothing for them.
 .svg-container svg {
-  width: 100%;
+  display: block;
+  width: auto;
+  max-width: 100%;
   height: auto;
+  margin-inline: auto;
+}
+
+// Graphviz emits <text> with no fill attribute, so it inherits SVG's initial
+// black. That is fine for a node label -- those sit on the diagrams' light
+// amber fill in both themes -- but a cluster label and an edge label sit on
+// the page background, and black on the dark theme's background measures
+// 1.40:1. axe never reported it: its colour-contrast rule does not evaluate
+// SVG text, so the full-site sweep passes over these.
+//
+// currentColor tracks the body text colour, so each label reads correctly in
+// whichever theme without hardcoding either palette here -- the same thing
+// admonitions.scss does for its icons. Scoped to DIRECT children of the two
+// groups that sit on the background: node text is inside g.node and must keep
+// the dark ink its own light fill needs.
+.svg-container g.cluster > text,
+.svg-container g.edge > text {
+  fill: currentColor;
 }
 
 // WCAG 2.1.1: builder/highlight.mjs marks the code-block scroll container
@@ -128,8 +170,10 @@ div.highlight:focus-visible,
   // it. Without it #back-to-top and #edit-this-page are 15.8px targets that
   // scrape through on the spacing exception -- axe measures "a diameter of
   // 24px which is at least 24px", zero margin, against a number that moves
-  // with whatever `system-ui` resolves to. That is how the heading-link hit
-  // box passed here and failed on CI's fonts.
+  // with the resolved face. That is how the heading-link hit box passed here
+  // and failed on CI's fonts. Pinning the face settles the number, but a rule
+  // that meets the floor on declared size cannot be unsettled by a font at
+  // all, which is the stronger guarantee -- keep it.
   //
   // The legal row is deliberately left out: its links sit inside sentences
   // ("License: CC-BY-4.0"), the criterion's inline exception, and axe does
@@ -224,6 +268,29 @@ div.highlight:focus-visible,
 //   Dark theme:  just-the-docs-dark.scss inlines an identical copy inside
 //                html.dark-mode {} after its own load-css (0,1,1 there).
 @mixin tb-code-overrides {
+  // normalize.scss puts `pre`, `code`, `kbd` and `samp` on generic
+  // `monospace`, and JTD's base.scss overrides only `code` -- so the other
+  // three resolve to whatever the UA calls `monospace`, which is Courier New
+  // on a stock Windows profile.
+  //
+  // For `pre` that was invisible, because the visible text is in the <code>
+  // inside it; it still meant the block's em-based padding and its scroll
+  // width were computed against a different face than the one painted in it.
+  // For `kbd` it is not invisible at all: eleven pages use it and every one
+  // was rendering keys in the wrong font. `samp` is unused today and is
+  // included so it does not become the next one.
+  //
+  // This belongs in the mixin rather than at root level: the dark
+  // compilation re-emits normalize's rule under `html[data-theme=dark]` at
+  // (0,1,1), which out-ranks a bare element selector at (0,0,1). The mixin is
+  // re-emitted inside that same scope (see just-the-docs-dark.scss), so the
+  // override survives into dark mode.
+  pre,
+  kbd,
+  samp {
+    font-family: $tb-mono-font-family;
+  }
+
   code {
     font-size: 0.95em;
   }
@@ -462,6 +529,30 @@ div.highlight:focus-visible,
 .main-content .reversefootnote {
   text-decoration: underline;
   text-underline-offset: 2px;
+
+  // WCAG 2.5.8 Target Size (Minimum). This link is one glyph with no padding,
+  // so its target is whatever box the font gives U+21A9: 12.09 x 19 on Segoe
+  // UI, 12.09 x 15 on Liberation Sans, 15.97 x 17 on Inter. Every one of those
+  // is under 24 x 24, and the rule only ever passed because axe's *spacing*
+  // exception let it -- a 24px circle centred on the target happened to clear
+  // its neighbours.
+  //
+  // That is a measurement standing on two moving parts at once, and pinning
+  // the face is what exposed it: Inter's arrow is 3.9px wider than the system
+  // fonts', which shifted the centre far enough on one footnote of one page
+  // (Features/GUI-Components/Windowless, footnote 3, mobile, both themes) to
+  // intersect a neighbour and fail. One page out of 869 is what a marginal
+  // spacing pass looks like just before it stops passing.
+  //
+  // So size it outright rather than nudging the spacing back. An explicit
+  // 24 x 24 box is the one form of this rule no font can unsettle -- the same
+  // reasoning as `.footer-actions > *` further up. inline-block is required:
+  // width and height do nothing to an inline box.
+  display: inline-block;
+  min-width: 24px;
+  min-height: 24px;
+  line-height: 24px;
+  text-align: center;
 }
 
 // WCAG 2.5.8 Target Size (Minimum). Two standalone targets in page content sit
@@ -483,18 +574,24 @@ div.highlight:focus-visible,
 // anchor-heading link is excluded: it is the paragraph mark, hidden until the
 // heading is hovered.
 //
-// The padding has to be generous, because what it is topping up is not a fixed
-// quantity. An inline element's measured height is its font's content area, so
-// it moves with whatever `system-ui` resolves to on the reader's machine.
-// Measured at the mobile h3 size:
+// The padding is generous because what it tops up is not a fixed quantity. An
+// inline element's measured height is its font's content area. Measured at the
+// mobile h3 size:
 //
-//   Segoe UI  19px | Verdana, Tahoma  17px | Arial  16px
+//   Segoe UI  19px | Inter, Verdana, Tahoma  17px | Arial  16px
 //   Liberation Sans, DejaVu Sans, Roboto  15px
 //
 // 3px each side cleared 24px on Segoe UI alone, by 0.8px, and failed on every
 // other family -- so the check passed on Windows and failed on CI's Linux
-// fonts. 6px clears the worst measured case by 3px. Anything that tops up a
-// font-dependent measurement needs margin, not a hairline.
+// fonts. 6px clears the worst measured case by 3px.
+//
+// Self-hosting Inter (custom/_fonts.scss) pins that number at 17px on every
+// platform, which is what made the Windows-vs-CI split disappear. It is NOT a
+// reason to trim the padding back: a reader whose webfont request fails, or
+// who has webfonts turned off, still lands somewhere in the 15-19px band, and
+// `font-display: swap` means even a normal load spends its first frames on the
+// fallback. Anything that tops up a font-dependent measurement needs margin,
+// not a hairline.
 .main-content h1 > a:not(.anchor-heading),
 .main-content h2 > a:not(.anchor-heading),
 .main-content h3 > a:not(.anchor-heading),
@@ -502,4 +599,26 @@ div.highlight:focus-visible,
 .main-content h5 > a:not(.anchor-heading),
 .main-content h6 > a:not(.anchor-heading) {
   padding-block: 6px;
+}
+
+// Whitespace inside inline code is content, not layout.
+//
+// A browser's default for inline `<code>` is `white-space: normal`, so a run
+// of spaces collapses to one. For most code spans that is invisible, and for
+// some it destroys the thing being documented: **Partition** returns
+// fixed-width, space-padded range strings -- its page says so in prose -- and
+// its table rendered `" 0: 4"` where the function returns `"  0:  4"`.
+// Thirteen spans on that page stated wrong return values.
+//
+// `pre-wrap` rather than `pre`: runs and leading spaces are preserved, but the
+// span still wraps, so a long inline snippet cannot push the column into a
+// horizontal scroll. `builder/compress.mjs` had to stop collapsing inline
+// `<code>` for this rule to have anything to preserve -- the two are a pair,
+// and neither alone changes what a reader sees.
+//
+// Scoped with `.main-content` per the dark-compilation specificity note at the
+// top of modules-dark.scss. Nothing else declares `white-space` on inline code
+// in either compilation, so this is belt-and-braces rather than load-bearing.
+.main-content :not(pre, figure) > code {
+  white-space: pre-wrap;
 }

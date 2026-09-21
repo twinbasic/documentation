@@ -15,7 +15,9 @@ Internals of the two-stage PDF pipeline: `tbdocs` Phase 8 assembles a sparse `_s
 
 ## Data flow
 
-![PDF render pipeline](/assets/images/dot/pdf-render-pipeline.svg)
+![A flow chart running top to bottom through two boxed stages. The first, tbdocs writePdf, holds three steps side by side: assembleBook combining the chapter HTML, copyPdfCss copying the two stylesheets, and copyPdfImages copying the referenced images. Together they produce _site-pdf/book.html with its stylesheets and images. That file feeds the second stage, render-book.mjs, whose three phases run in sequence: Phase 1 lays the document out with puppeteer and paged.js into one element per output page, Phase 2 extracts the metadata and outline tree and calls page.pdf for a raw buffer, and Phase 3 reloads that buffer through the fast pdf-lib shims, sets the metadata and outline, and saves. The result is the finished PDF under _pdf.](/assets/images/dot/pdf-render-pipeline.svg)
+
+The book currently runs to a little under 2,000 pages. Page counts quoted in the performance notes --- [paged.js Fixes](Fixes/PagedJS) and [pdf-lib Fixes](Fixes/PDFLib) --- are the size of the book when that measurement was taken, not its size now.
 
 The two stages are decoupled: `tbdocs` builds `_site-pdf/` as part of its normal run; `render-book.mjs` runs only when `book.bat` calls it explicitly. This keeps `puppeteer` and `pdf-lib` --- both large --- out of the site generator's dependency tree.
 
@@ -34,17 +36,138 @@ node book/render-book.mjs <input.html> -o <output.pdf>
 | `-o` / `--output` | required | Destination PDF path. |
 | `--outline-tags` | `h1,h2,h3,h4` | Comma-separated heading tags to include in the PDF bookmark tree. |
 | `-t` / `--timeout` | `0` (disabled) | Per-operation puppeteer timeout in milliseconds. |
-| `--additional-script` | — | Inject an extra in-page script after the paged.js bundle. Repeatable. |
+| `--additional-script` | --- | Inject an extra in-page script after the paged.js bundle. Repeatable. |
 
 `book.bat` runs the standard production invocation:
 
 ```batch
-node ..\book\render-book.mjs _site-pdf\book.html -o "_pdf\twinBASIC Book.pdf" ^
-     --outline-tags h1,h2,h3,h4 ^
-     --additional-script ..\perf\detach-pages.js
+node book\render-book.mjs docs\_site-pdf\book.html -o "docs\_pdf\twinBASIC Book.pdf" --outline-tags h1,h2,h3,h4 --additional-script perf\detach-pages.js
 ```
 
-Always run `build.bat` first to populate `_site-pdf/`.
+Every path there is relative to the repository root, which is where `book.bat` lives and what its `@pushd "%~dp0"` selects.
+
+Always run `build.bat` first to populate `_site-pdf/`. `book.bat` refuses a source tree that is absent or older than the sources that produced it, before it starts Chromium --- see [When the render fails](#render-troubleshooting).
+
+## When the render fails
+{: #render-troubleshooting }
+
+`book.bat` takes around two minutes and has more ways to stop than anything else in the repository. Two questions get you to the cause: which of the three phases stopped, and whether the run failed or is still working.
+
+### Which phase stopped
+
+Each phase prints one summary line as it completes, all aligned to the same column:
+
+    render:   <elapsed>  (<n> pages)
+    generate: <elapsed>  (raw <n> MB)
+    process:  <elapsed>
+    saved:    <output path>  (<n> MB)
+    total:    <elapsed>
+
+The last line printed is the last phase that finished, so the failure is in the one after it. No `render:` line means [Phase 1](#phase-1-render) --- or that the run never got as far as Phase 1, which is the case for a refused source tree and for a [missing Chromium](#chromium-is-not-installed); `render:` but no `generate:` means [Phase 2](#phase-2-generate); `generate:` but no `process:` means [Phase 3](#phase-3-process). `process:` with no `saved:` means the PDF was built and the write to disk failed, after every expensive phase has already run. `render-book.mjs` writes the file directly and never creates the directory above it, so an absent `docs/_pdf/` raises `ENOENT` here --- which is what `book.bat`'s `mkdir` exists to prevent, and what a hand-written invocation has to do for itself. On Windows the other common cause is the output file being open in a PDF viewer.
+
+### Stalled, or still working
+
+`-t` defaults to `0`, which the driver passes straight to `page.setDefaultTimeout()`, and `0` disables it. Navigation and element waits therefore never give up, so a stalled render stalls until you interrupt it. Pass `-t 600000` to get an error instead of a hang.
+
+Live progress is what separates a stall from ordinary slowness. It differs per phase, and per whether stdout is a terminal:
+
+| Phase | Live output | What silence means |
+|---|---|---|
+| Render | `rendering: <n> pages (<elapsed>s)`, rewritten in place on a terminal; one line per 100 pages when stdout is piped | A count that has stopped advancing is a layout stall. A run that never printed a count stopped earlier than that --- before `PagedPolyfill.preview()` finished its first page. |
+| Generate | `generating: <elapsed>s`, a heartbeat every 500 ms, **on a terminal only** | Nothing is wrong. `page.pdf()` buffers the whole document internally and returns it at the end, so a piped run has no output at all for the length of the call. |
+| Process | none | Nothing is wrong. The pdf-lib round trip reports only when it finishes. |
+
+The renderer relays three kinds of in-browser fault, each with its own prefix:
+
+- **`[request failed] <url> <errorText>`** --- Chromium could not load a resource. Under `file://` a file missing from `_site-pdf/` appears here as `net::ERR_FILE_NOT_FOUND` with its path, which is the quickest way to spot an incomplete Phase 8 tree.
+- **`[page error] <message>`** --- an uncaught exception inside the page.
+- **`[render-book] error: <error>`** --- the top-level catch. It closes the browser and sets the exit code to 1.
+
+A paged.js stylesheet fetch that fails arrives as `error on LINK: <url>`. paged.js throws an undecorated `ProgressEvent` there; the driver unwraps it so the message carries the URL.
+
+### Most of these failures belong to `build.bat`
+
+`_site-pdf/` is `build.bat`'s output, so a render that stops before Chromium starts is reporting on the previous command.
+
+`book.bat`'s first action is [`check_tree_fresh.mjs`](Tools#check-tree-fresh) over `docs/_site-pdf`. It refuses two states, and neither one reaches the renderer.
+
+**The tree is absent.** Exit code 2:
+
+    check_tree_fresh: docs/_site-pdf/book.html does not exist.
+      Run build.bat first -- there is no built tree to check.
+
+Besides never having run the build, four things produce that: `build.bat --no-pdf`, `also_build_pdf: false` in `_config.yml`, a session where only `serve.bat` ran (it writes `docs/_serve/` and skips the PDF pass), and a Phase 8 that aborted. Phase 8 aborts on three things:
+
+- **``Phase 8: no page with `layout: book-combined` found``** --- or `multiple pages with ... found`, naming them. Exactly one page must carry that layout, and `docs/book.html` is it.
+- **`pdf: required font <path> is not in the source tree`** --- names `scripts/build_fonts.py`. `print.css` declares six faces and all six are copied into the sparse tree, so a subset regenerated but not committed fails here.
+- **`pdf: missing image <path> (referenced from book.html, not present under source tree)`** --- one line per path, then a summary naming the count. This is the one that fires in practice. `--tolerate-missing-images` downgrades it to a warning.
+
+**The tree is older than the sources that produced it.** Exit code 1, naming the file that is newer:
+
+    check_tree_fresh: docs/_site-pdf is 424s older than docs/Documentation/Extending.md.
+      Run build.bat first. Scanning a stale tree reports a pass for the
+      previous build, which is the one thing these gates must never do.
+
+That second message is the gate's general wording, shared with `check.bat`. What it prevents here is worse than a stale scan: rendering the previous book takes the full two minutes and reports success, and the PDF it writes is internally consistent --- it is simply the wrong book, so nothing downstream notices. The mechanism, including the option the PDF source tree needs, belongs to [`book.bat`](Tools#bookbat).
+
+The gate compares against everything under `docs/` and `builder/`, including files the build never reads, so editing a `builder/PLAN-*.md` marks the tree stale too. Rebuild rather than looking for a content change you did not make.
+
+### Chromium is not installed
+
+`book.bat` needs the Chromium that `npx puppeteer browsers install chrome` downloads, the same one `check.bat` and `test.bat` use. Without it the run stops before any phase starts, and the failure looks unlike anything else on this page --- a bare Node stack trace, with no `[render-book]` prefix in front of it:
+
+    Error: Could not find Chrome (ver. <version>). This can occur if either
+     1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or
+     2. your cache path is incorrectly configured (which is: <cache path>).
+    For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.
+
+`<version>` is the Chrome build the installed `puppeteer` pins and `<cache path>` is the machine's own; the rest is fixed text from puppeteer. Nothing prefixes it, because `puppeteer.launch()` runs above the driver's `try` block --- the throw is an unhandled rejection, not something the driver catches and reports. The exit code is 1.
+
+**`book.bat`'s `npm install` does not fix this.** It runs only when `node_modules\puppeteer\package.json` is absent, and that file says nothing about the browser. `puppeteer`'s postinstall script is what downloads Chromium, so an install run with `--ignore-scripts` or with `PUPPETEER_SKIP_DOWNLOAD` set, or a puppeteer cache cleared afterwards, leaves the package in place and the browser missing --- the test passes and the launch still fails. Install the browser yourself; see [Building and Deployment](Building#requirements).
+
+### Images
+
+Images abort two different commands for two different reasons.
+
+**`pdf: missing image <path>` aborts Phase 8**, inside `build.bat`. The usual cause is a raw `<img>` tag with a page-relative `src`: the book flattens every page into one document, so `Images/x.png` resolves against the book root rather than the page's folder. The markdown form is rewritten to a section-qualified path; the raw tag is not. See [Images](Authoring#images) in the authoring guide.
+
+**`paged.js (forked): image not loaded at render time` aborts Phase 1**, inside `book.bat`:
+
+    paged.js (forked): image not loaded at render time. This branch
+    dropped async image-loading support; the render pipeline must finish
+    loading all images before calling paged.js. Image: <src>
+
+The fork removed async image loading to keep the layout chain synchronous, so every image must have finished loading before `PagedPolyfill.preview()` runs. `page.goto(..., { waitUntil: 'load' })` guarantees that for files inside `_site-pdf/` and cannot guarantee it for anything fetched over the network. That is why the build refuses a remote `<img src>` unconditionally rather than letting the book discover it: the render raises instead of degrading to a missing picture.
+
+The same fork checks fonts on the same principle:
+
+    paged.js (forked): font-face '<family>' is not ready (status=loading)
+
+`loadFonts()` rejects `loading` and `error` only. A face `print.css` declares but this render never sets any text in stays at `unloaded` forever, which is the browser correctly declining to download something nothing needs, and is not a fault.
+
+### Exit codes
+
+`render-book.mjs` has three:
+
+| Code | Meaning |
+|---|---|
+| `0` | The PDF was written. |
+| `1` | A file the run needs is missing --- the input HTML, `lib/paged.browser.js`, `lib/progress-handler.js`, or an `--additional-script` path --- or the render threw. |
+| `2` | Bad arguments: an unrecognised flag, or a missing `<input.html>` or `-o`. |
+
+**`book.bat` propagates all three.** It copies `%ERRORLEVEL%` into a variable immediately after the renderer runs and exits with that variable once `popd` has restored the caller's directory --- the same pattern `build.bat` and `check.bat` already used. A batch file's exit code is otherwise its last command's, and an unguarded `popd` resets `ERRORLEVEL` to `0`; `book.bat` used to end on a bare `popd`, so a failed render always reported success to whatever launched it. A script can check `book.bat`'s own exit code directly now. Calling `node book\render-book.mjs` directly and reading its exit code, or watching for the `saved:` line, remain equally valid.
+
+**`book.bat`'s own pre-flight refusals never reach the renderer, and they reuse the same two numbers.** [`check_tree_fresh.mjs`](Tools#check-tree-fresh) exits 2 for an absent `_site-pdf/` and 1 for a stale one, and a failed `npm install` exits 1. So what a script sees from `book.bat` is:
+
+| Code | Sources |
+|---|---|
+| `0` | The PDF was written. |
+| `1` | A stale `_site-pdf/`, a failed `npm install`, or a failed render. |
+| `2` | `_site-pdf/` is absent. |
+
+Code 2 is unambiguous: the renderer's own 2 means bad arguments, and `book.bat` passes it a fixed argument list. Code 1 is not, and stderr separates the cases --- a pre-flight refusal prints one message beginning `check_tree_fresh:` and nothing runs after it, so any further output means the gate passed.
+
+One case runs the other way and is worth stating on its own: **`build.bat && book.bat` skips the render whenever the link and integrity check reports anything.** That check sets a non-zero exit code while still writing a complete tree, so `&&` suppresses the book over a broken link that has no bearing on it. Run the two as separate statements.
 
 ## render-book.mjs
 
@@ -75,7 +198,7 @@ This prevents paged.js from running automatically when its bundle loads. Then it
 
 `PagedPolyfill.preview()` is called next via `page.evaluate()`. In the vendored bundle the call is fully synchronous; the `await` on `page.evaluate()` is just the CDP round-trip puppeteer needs to bring the result back to Node.
 
-`perf/detach-pages.js` implements the aggressive-detach optimisation: it physically removes each finalised page from the DOM immediately after layout, then restores all pages in order at `afterRendered`. This keeps `getBoundingClientRect` (which paged.js calls per page) at ~0.7 ms/page flat instead of growing at ~8 ms/page on a 1638-page book. CSS counters break across detached pages, so `print.css` uses `var(--page-num)` (a custom property paged.js writes per page) rather than `counter(page)` for running page numbers.
+`perf/detach-pages.js` implements the aggressive-detach optimisation: it physically removes each finalised page from the DOM immediately after layout, then restores all pages in order at `afterRendered`. This keeps `getBoundingClientRect` (which paged.js calls per page) at ~0.7 ms/page flat instead of climbing towards ~8 ms/page by the last chapters of a book this long. CSS counters break across detached pages, so `print.css` uses `var(--page-num)` (a custom property paged.js writes per page) rather than `counter(page)` for running page numbers.
 
 ### Phase 2: Generate
 

@@ -11,10 +11,10 @@ The Outline pane shows a structural overview of the declarations in the active s
 
 When a project isn't open this will be empty.
 
-![Outline](Images/Outline.png "Outline")
+![The Outline pane with nothing listed beneath its title bar.](Images/Outline.png)
 
 Once you open a project it will list the `Modules`/`Classes` etc.
 
-![Outline](Images/Outline_1.png "Outline")
+![The Outline pane listing the two top level items of the open project, MainModule and WaynesWorldAddin.](Images/Outline_1.png)
 
 You can click on an item to navigate to that point in the code file.

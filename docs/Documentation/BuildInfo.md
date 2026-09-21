@@ -11,4 +11,4 @@ permalink: /Documentation/Development/BuildInfo
 
 Gantt chart of this build's task timeline.
 
-![Build task timeline](/assets/images/gantt.svg)
+![Horizontal bars against a time axis in seconds, one bar per task, grouped into four bands labelled down the left edge: Seeds, Spine, Workers and Write. The Workers band holds one row per worker lane, each starting with its cold start, warm up and env bars and then filling with render and flush work.](/assets/images/gantt.svg)

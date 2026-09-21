@@ -75,12 +75,17 @@ from what the build emitted is therefore **complete**, not an approximation of
 the filesystem — which is what lets `checkPath()`'s `statSync` calls become
 set lookups without losing fidelity.
 
-**2. CI never builds without checking.** Both workflows run the same four
-gates immediately after the build, in the same job, on the same runner —
+**2. CI never builds without checking.** Both workflows run their gates
+immediately after the build, in the same job, on the same runner —
 [checks.yml](../.github/workflows/checks.yml) on `pull_request`,
 [tbdocs-gh-pages.yml](../.github/workflows/tbdocs-gh-pages.yml) on `push` to
 `staging` (which then blocks the Pages deploy on the result). `checks.yml`
-says so in its trigger comment. There is no build that would start paying for
+says so in its trigger comment.
+
+> The two gate sets are **not** identical, and deliberately so. `checks.yml` runs six
+> post-build steps; `tbdocs-gh-pages.yml` runs four, omitting the fused-checker
+> comparison (`--case fixture-built ... --b fused`) and the DOT diagram fit check. The
+> deploy workflow keeps only the cheap fixture run against the index oracle. There is no build that would start paying for
 a check it does not already pay for, and the saving is proportionally larger
 on a 4-vCPU runner than it is here.
 
@@ -252,7 +257,7 @@ Two additions the plan did not call for, both because the gate as designed
 could pass while proving very little:
 
 - **A sixth case, `fixture`.** The real site is clean, so the four designed
-  cases compare empty against empty in nine of the ten categories. `fixture`
+  cases compare empty against empty in eight of the nine categories. `fixture`
   writes a synthetic tree carrying one fault of every kind -- broken target,
   missing fragment, forbidden prefix, duplicate id, remote `<img>`, missing
   alt, empty anchor, empty href, sitemap-missing, search-missing, canonical
@@ -795,8 +800,11 @@ graph. Three ways out, in rough order of preference:
 
 ### Follow-on C — axe scan orchestration (20 288 ms)
 
-**Where the time goes.** Instrumented `check_a11y.mjs`'s matrix (11 pages at the time of measurement, 13 now × 2
-themes × 2 viewports = 44 audits):
+**Where the time goes.** Instrumented `check_a11y.mjs`'s matrix as it stood at the
+time of measurement — 11 pages × 2 themes × 2 viewports = 44 audits. The sample is
+13 pages today and the matrix is 60 audits (13 × 2 × 2, plus two state audits over the
+same themes and viewports), so the totals below are historical; the per-audit figures
+and the shape of the curve are not.
 
 | | ms |
 |---|---|

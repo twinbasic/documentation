@@ -47,7 +47,7 @@ Class MyClass
 
 tB allows simple inheritance among classes. For example, if you have class cVehicle which implements IVehicle containing method Honk, you could create child classes like cCar or cTruck, which inherit the methods of the original, so you could call cCar.Honk without writing a separate implementation.
 
-![image](../Images/b0724fe2-636d-47db-a8fc-531a585ddaf9.png)
+![Code where class cCar implements IVehicle Via cVehicle, with the DEBUG CONSOLE showing HONK printed by both cars](../Images/b0724fe2-636d-47db-a8fc-531a585ddaf9.png)
 
 You can see that the Honk method is only implemented by the parent class, then called from the child class when you click the CodeLens button to run the sub in place from the IDE.
 

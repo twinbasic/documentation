@@ -16,13 +16,13 @@ To create projects that use WebView2, your projects must include both the `WinNa
 
 Both of these packages can be added through the `Project` > `References` menu option, and selecting the `TWINPACK PACKAGES` button.  Ensure both packages are ticked, and then close and save the Settings file and restart the compiler.
 
-![Create Package](Images/tbWebView2References.png){:style="width:45%; height:auto;"}
+![The COM Type Library / ActiveX References list with the WebView2 and WinNativeForms packages ticked](Images/tbWebView2References.png){:style="width:45%; height:auto;"}
 <br>
 <br>
 
 Once you've added the package references, you should find that the WebView2 control is now available to you in the form designer:
 
-![Create Package](Images/tbWebView2Toolbox.png){:style="width:15%; height:auto;"}
+![The form designer TOOLBOX with an arrow pointing to the WEBVIEW control](Images/tbWebView2Toolbox.png){:style="width:15%; height:auto;"}
 <br>
 <br>
 
@@ -30,7 +30,7 @@ Once you've added the package references, you should find that the WebView2 cont
 
 We use the WebView2 control just like any ordinary control:
 
-![Create Package](Images/tbWebView2InAForm.gif){:style="width:60%; height:auto;"}
+![Animation of a WebView2 control being drawn onto a blank form in the designer](Images/tbWebView2InAForm.gif){:style="width:60%; height:auto;"}
 <br>
 <br>
 
@@ -38,7 +38,7 @@ We use the WebView2 control just like any ordinary control:
 
 There are lots of WebView2 properties and events to experiment with.
 
-![Create Package](Images/tbWebView2Properties.png){:style="width:45%; height:auto;"}
+![The PROPERTIES pane for a WebView2 control, with an explanation of the selected property shown at the bottom](Images/tbWebView2Properties.png){:style="width:45%; height:auto;"}
 <br>
 <br>
 Note that toggling any property will show extra information at the bottom of the properties list to give you a little bit more information. For the full reference, see the [WebView2 control class](../../tB/Packages/WebView2/WebView2/); for the underlying browser feature, try searching the official <a href="https://docs.microsoft.com/en-us/microsoft-edge/webview2/">WebView2 documentation</a>
@@ -47,4 +47,4 @@ Note that toggling any property will show extra information at the bottom of the
 
 If you prefer to start with a sample, have a look at `Sample 0.  WebView2 Examples`, available in the new-project dialog:
 
-![Create Package](Images/tbWebView2Sample0.png){:style="width:45%; height:auto;"}
+![The new-project dialog on the Samples tab with an arrow pointing to Sample 0. WebView2 Examples](Images/tbWebView2Sample0.png){:style="width:45%; height:auto;"}

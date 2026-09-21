@@ -7,10 +7,10 @@ permalink: /tB/IDE/Project/Toolbar
 
 # Toolbar
 
-![Toolbar](Images/Toolbar_1.png "Toolbar")
-![Toolbar](Images/Toolbar_2.png "Toolbar")
-![Toolbar](Images/Toolbar_3.png "Toolbar")
-![Toolbar](Images/Toolbar_4.png "Toolbar")
+![The IDE toolbar with no project open. Every button is greyed out, from save and find through the start, break, stop and stepping controls to the build, alignment, resize and z-order groups; the zoom box beside the PREVIEW button is empty, and there is no Global Search box at the right. Only the build configuration box, reading win32, is active.](Images/Toolbar_1.png)
+![The same toolbar with a project open but not running. Start is a green triangle, Restart the compiler a blue circular arrow, and Clean and Build are white, while Break and Stop stay grey. A Global Search box now sits at the right, and the zoom box is still empty.](Images/Toolbar_2.png)
+![The same toolbar with a form open in the designer. Switch Between Form And Code has become a red circle holding a white lightning bolt and the zoom box reads 100%; Start is still green and the debugging buttons are still grey.](Images/Toolbar_3.png)
+![The same toolbar while the project runs. Start has gone grey, Break is blue and Stop is a red square; the red form and code button and the 100% zoom box are unchanged.](Images/Toolbar_4.png)
 
 - Save All Changes (<kbd>CTRL</kbd> + <kbd>S</kbd>)
 - Find In Project... (<kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F</kbd>) (<kbd>CTRL</kbd> + <kbd>⇧</kbd> + <kbd>F</kbd>)

@@ -57,7 +57,7 @@ const handlers = {
     const { siteData, initData, linkTablesData, staticFilesArr,
             baseurl, buildInfo, sitePathsArr,
             skipOffline, svgContentsMap, checkTrees,
-            vendoredVideosObj, vendoredImagesObj } = unpackShared(_sharedSAB);
+            vendoredVideosObj, vendoredImagesObj, counts } = unpackShared(_sharedSAB);
 
     const { initHighlighter } = await import("./highlight.mjs");
     const highlighter = await initHighlighter();
@@ -68,7 +68,7 @@ const handlers = {
     const vendoredImages = new Map(Object.entries(vendoredImagesObj ?? {}));
     const markdown    = createMarkdownIt({
       highlighter, linkTables, baseurl, staticFiles, svgContents,
-      vendoredVideos, vendoredImages,
+      vendoredVideos, vendoredImages, counts,
     });
     const site        = { ...siteData, markdown, buildInfo };
 

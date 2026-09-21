@@ -3,8 +3,8 @@
 // Scans sample pages using puppeteer + axe-core against WCAG 2.0, 2.1 and
 // 2.2 at Level A + AA, plus the heading-order best-practice rule.
 //
-// The sample is eleven pages out of ~1,160, so which eleven decides what this
-// script can possibly report.  They are no longer chosen by hand: the list in
+// The sample is thirteen pages out of ~1,160, so which thirteen decides what
+// this script can possibly report.  They are no longer chosen by hand: the list in
 // lib/axe-scan.mjs is derived to cover every markup construct the site uses,
 // and `scripts/pick_a11y_sample.mjs --check` fails check.bat when the site
 // grows one the sample has no page for.  That guard exists because the previous

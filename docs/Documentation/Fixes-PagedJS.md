@@ -16,7 +16,7 @@ permalink: /Documentation/Development/Fixes/PagedJS
 
 ## Synchronous execution chain
 
-**Problem.** Upstream paged.js is built from a chain of `async function`s. The central yield mechanism is `waitForTick()`, called every 100 laid-out objects inside the core `*layout` generator. On a 1651-page book this adds thousands of forced event-loop turns. Beyond `waitForTick()`, the async machinery itself --- each function compiles to a tslib `__awaiter` + `__generator` state machine --- allocates a Promise per call even on paths that never actually yield.
+**Problem.** Upstream paged.js is built from a chain of `async function`s. The central yield mechanism is `waitForTick()`, called every 100 laid-out objects inside the core `*layout` generator. On a 1,651-page book this adds thousands of forced event-loop turns. Beyond `waitForTick()`, the async machinery itself --- each function compiles to a tslib `__awaiter` + `__generator` state machine --- allocates a Promise per call even on paths that never actually yield.
 
 In headless Chromium the event loop is not shared with any user-facing interaction; yielding to it adds latency with no benefit. `preview()` returning a Promise also complicated the per-page hook architecture: an accidentally-async handler could have its awaitable work silently dropped.
 
@@ -32,7 +32,7 @@ In headless Chromium the event loop is not shared with any user-facing interacti
 | `flow()` | All five `await` sites removed; `beforeParsed`/`afterParsed`/`afterRendered` hooks are called synchronously and guarded by `_assertSync`. |
 | `renderOnIdle()` / `renderAsync()` | Removed entirely; both wrapped `renderer.next()` in unnecessary async machinery. |
 | `clonePage()` | `async` removed; only reachable via the `Footnotes` handler, which self-disables when the document has no footnotes. |
-| `loadFonts()` | Rewritten as a synchronous assertion. `waitUntil: "load"` in `render-book.mjs` guarantees every `FontFace` is loaded before paged.js runs. |
+| `loadFonts()` | Rewritten as a synchronous assertion. `waitUntil: "load"` in `render-book.mjs` guarantees every `FontFace` the book actually uses has settled before paged.js runs. The assertion rejects `loading` and `error`, not `unloaded` --- a CSS-connected face is fetched only when the layout demands it, so one `print.css` declares but this render never exercises stays `unloaded` by design. |
 | `parse()` | `async` removed; no registered handler in this pipeline is async for the hooks it fires. |
 | `request()` | Replaced with synchronous XHR (`XMLHttpRequest` with `async=false`), returning `responseText` directly. |
 | `add()` | `async` removed; all inputs are inline `{url: text}` objects requiring no fetch. |
@@ -62,7 +62,7 @@ At each call site that now receives the sync sentinel, `_assertSync(result, hook
 
 ### indexOfRefs dictionary
 
-**Problem.** `findElement(ref, root)` looked up elements by their `data-ref` attribute. When the `indexOfRefs` fast-path dictionary was not populated, it fell through to `root.querySelector("[data-ref='X']")`, which scanned the entire `root` subtree. On a 1651-page book, 848 + 42 such scans inside `createBreakToken` alone accounted for over one second of render time.
+**Problem.** `findElement(ref, root)` looked up elements by their `data-ref` attribute. When the `indexOfRefs` fast-path dictionary was not populated, it fell through to `root.querySelector("[data-ref='X']")`, which scanned the entire `root` subtree. On a 1,651-page book, 848 + 42 such scans inside `createBreakToken` alone accounted for over one second of render time.
 
 **Fix.** `[PATCH: findRef fast-path]` During the `addRefs()` walk, every element with a `data-ref` attribute is recorded in `root.indexOfRefs`. Subsequent `findElement` calls hit the dictionary and skip the `querySelector` scan entirely.
 
@@ -92,7 +92,7 @@ At each call site that now receives the sync sentinel, `_assertSync(result, hook
 
 ## Render queue scheduler
 
-**Problem.** The internal render queue used `requestAnimationFrame` as its per-task tick. In headless puppeteer renders, `rAF` still waits for the next compositor frame even with no visual output and no interaction. On a 1651-page book, the per-page queue iterations accumulated ~700 ms of V8 idle time from `rAF` deferred callbacks.
+**Problem.** The internal render queue used `requestAnimationFrame` as its per-task tick. In headless puppeteer renders, `rAF` still waits for the next compositor frame even with no visual output and no interaction. On a 1,651-page book, the per-page queue iterations accumulated ~700 ms of V8 idle time from `rAF` deferred callbacks.
 
 **Fix.** `[PATCH: queue-tick]` The per-task callback is scheduled with `queueMicrotask` instead of `requestAnimationFrame`. It fires in the microtask checkpoint rather than waiting for a compositor frame.
 
@@ -112,7 +112,7 @@ At each call site that now receives the sync sentinel, `_assertSync(result, hook
 
 ### Loop detection
 
-**Problem.** Break-token loop detection used `tokens.lastIndexOf(breakToken)` on an Array, which scanned up to N entries per page. Across a 1651-page render this was O(n²).
+**Problem.** Break-token loop detection used `tokens.lastIndexOf(breakToken)` on an Array, which scanned up to N entries per page. Across a 1,651-page render this was O(n²).
 
 **Fix.** `[PATCH: tokens-set]` The Array is replaced with a `Set`, reducing the per-lookup cost from O(n) to O(1).
 

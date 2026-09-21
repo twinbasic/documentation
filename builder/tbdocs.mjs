@@ -2,10 +2,13 @@
 //
 // Usage: node builder/tbdocs.mjs [--src <path>] [--dest <path>]
 //        [--baseurl <prefix>] [--url <origin>] [--dry-run]
-//        [--check] [--check-audit-index] [--serve] [--port <N>]
+//        [--no-offline] [--no-pdf] [--tolerate-missing-images]
+//        [--fetch-assets | --no-fetch-assets] [--profile-offline]
+//        [--check | --no-check] [--check-audit-index]
+//        [--check-findings <path>] [--serve] [--port <N>]
 //
 // --check runs the link + integrity check over the HTML the build
-// already holds in worker memory, instead of writing 230 MB out and
+// already holds in worker memory, instead of writing ~270 MB out and
 // reading it back through scripts/check_links.mjs. Findings are
 // identical -- scripts/check_links_diff.mjs is the gate that says so.
 // A failing check sets the exit code but never aborts the build: a
@@ -34,6 +37,7 @@ import { Scheduler }  from "./scheduler.mjs";
 import { renderGantt } from "./gantt.mjs";
 
 import { discover } from "./discover.mjs";
+import { deriveCounts, validateCountNames } from "./counts.mjs";
 import { computeNav } from "./nav.mjs";
 import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
@@ -59,6 +63,9 @@ import { writePdf } from "./pdf.mjs";
 // htmlparser2 -- is imported dynamically by the tasks that need it, so a
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
+import { checkPageBaseline } from "./page-baseline.mjs";
+import { publishPolicyFor, unpublishableSourceFiles,
+         unpublishableTreePaths, formatPublishRefusal } from "./publish-policy.mjs";
 import { packShared } from "./sab-broadcast.mjs";
 import {
   allocSchedulerSAB, verifySchedulerSAB, SLICES_PER_WORKER,
@@ -69,6 +76,11 @@ import {
 } from "./sab-scheduler.mjs";
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
+
+// builder/ sits one level under the repository root. Used to state a build's
+// source root the same way however it was invoked, for the page-count drift
+// guard -- see page-baseline.mjs.
+const REPO_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 function parseArgs(argv) {
   const args = {
@@ -83,9 +95,16 @@ function parseArgs(argv) {
     profileOffline: false,
     check: false,
     auditIndex: false,
+    updatePageBaseline: false,
     checkFindings: null,
     serve: false,
     port: 4000,
+    // Wall-clock with no task completing before the build gives up and
+    // reports what was outstanding. Generous on purpose: the longest
+    // single task here is worker cold boot at ~1.6 s, and a loaded CI
+    // box is allowed to be an order of magnitude slower than that
+    // without being called stalled. 0 disables the watchdog.
+    stallTimeoutMs: 120000,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -134,12 +153,24 @@ function parseArgs(argv) {
     } else if (a === "--check-findings") {
       args.check = true;
       args.checkFindings = argv[++i];
+    } else if (a === "--update-page-baseline") {
+      // Record the current inventory as the drift guard's new baseline,
+      // whichever direction it moved. The build only ever raises it on its
+      // own; lowering it is a deliberate act, so it takes a deliberate flag.
+      args.updatePageBaseline = true;
     } else if (a === "--serve") {
       args.serve = true;
     } else if (a === "--port") {
       args.port = Number(argv[++i]);
     } else if (a.startsWith("--port=")) {
       args.port = Number(a.slice("--port=".length));
+    } else if (a === "--stall-timeout" || a.startsWith("--stall-timeout=")) {
+      const raw = a === "--stall-timeout" ? argv[++i] : a.slice("--stall-timeout=".length);
+      const secs = Number(raw);
+      if (!Number.isFinite(secs) || secs < 0) {
+        throw new Error(`--stall-timeout expects seconds (0 disables), got: ${raw}`);
+      }
+      args.stallTimeoutMs = secs * 1000;
     } else {
       throw new Error(`Unknown argument: ${a}`);
     }
@@ -461,6 +492,15 @@ const TASKS = {
         const stat = await fs.stat(srcPath);
         staticFiles.push({ srcPath, srcRel: entry.dest, destRel: entry.dest, size: stat.size });
       }
+      // Everything discover() could not parse frontmatter from is about to
+      // be copied verbatim into a public tree. `exclude:` is a denylist and
+      // only refuses what someone named in advance, so the allowlist runs
+      // here -- before any write, while the source path is still in hand.
+      const policy = publishPolicyFor(config);
+      const strays = unpublishableSourceFiles(staticFiles, policy);
+      if (strays.length) {
+        throw new Error(formatPublishRefusal(strays, { surface: "source", label: ctx.srcRoot }));
+      }
       return { pages, staticFiles, config };
     },
     submit(out, state) {
@@ -530,16 +570,33 @@ const TASKS = {
   // staticFiles). Per-page SEO fields are computed on render workers in
   // computeChunkSeo between renderPhase and templatePhase.
   markdownInit: {
-    expected: ["discover", "vendorAssets"],
+    // deriveRedirects is here for the counts registry alone: {{tbdocs:redirectStubs}}
+    // is derived from the stub set, and nothing else on this task needs it.
+    expected: ["discover", "vendorAssets", "deriveRedirects"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute({ deriveRedirects: { stubs } }, ctx, state) {
       const linkTables    = buildLinkTables(state.pages);
       const baseurl       = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
+
+      // Derived here, on main, because a count has to exist before any page
+      // renders -- and validated here for the same reason. An unknown name
+      // cannot be an error inside the substitution rule: markdown-it emits an
+      // unrecognised inline verbatim, so the rule would publish the typo to
+      // readers rather than fail. See counts.mjs.
+      state.site.counts = deriveCounts(state, { redirectStubs: stubs.length });
+      const badNames = validateCountNames(state.pages, state.site.counts);
+      if (badNames.length) {
+        throw new Error(
+          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` +
+          badNames.join("\n\n"));
+      }
+
       state.site.markdown             = createMarkdownIt({
         highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
         vendoredVideos: state.site.vendoredVideos,
         vendoredImages: state.site.vendoredImages,
+        counts: state.site.counts,
       });
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
@@ -629,31 +686,50 @@ const TASKS = {
       state.sitePaths = sitePaths;
       const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
 
+      // Everything deriveTreeRels needs is settled at this point: pages
+      // from discover, stubs from deriveRedirects, staticFiles after dot
+      // and vendorAssets have appended theirs, and the theme assets right
+      // above. Two consumers below share it.
+      const common = {
+        pages: state.pages, staticFiles: state.staticFiles, stubs,
+        themeAssetRels, excludePatterns,
+      };
+      const treeNames = skipOffline ? ["online"] : ["online", "offline"];
+      const treeRels = new Map(treeNames.map(w => [w, deriveTreeRels(w, common)]));
+
+      // Second enforcement point for the publish allowlist, over the
+      // inventory each tree will actually receive. The source sweep in
+      // `discover` cannot see any of this: redirect stubs, vendored theme
+      // assets and the generated auxiliaries (sitemap.xml,
+      // search-data.json) are all minted by the build, not found in docs/.
+      // Runs unconditionally, not under --check: a build with checks off
+      // is exactly when nothing else is watching.
+      const policy = publishPolicyFor(state.site.config);
+      for (const [which, rels] of treeRels) {
+        const strays = unpublishableTreePaths(rels, policy);
+        if (strays.length) {
+          throw new Error(formatPublishRefusal(strays, {
+            surface: "tree", label: `the ${which} tree`,
+          }));
+        }
+      }
+
       // --check: what each output tree will receive, derived from the
       // build's own records. This is the treeIndex step, computed here
       // rather than as its own task because the workers can only be
       // handed data that goes into dispatch's shared payload -- it is
       // packed and broadcast in submit() below.
-      //
-      // Everything it needs is already settled at this point: pages from
-      // discover, stubs from deriveRedirects, staticFiles after dot and
-      // vendorAssets have appended theirs, and the theme assets right
-      // above.
       const checkTrees = ctx.opts.check && !ctx.opts.dryRun ? {} : null;
       if (checkTrees) {
-        const common = {
-          pages: state.pages, staticFiles: state.staticFiles, stubs,
-          themeAssetRels, excludePatterns,
-        };
         // Only the online tree carries a base path. The offline tree's
         // links are all relative after the rewrite, which is why the
         // deploy workflow passes --base-path to the online pass alone.
         checkTrees.online = {
-          rels: deriveTreeRels("online", common),
+          rels: treeRels.get("online"),
           baseurl: String(state.site.config.baseurl || ""),
         };
         if (!skipOffline) {
-          checkTrees.offline = { rels: deriveTreeRels("offline", common), baseurl: "" };
+          checkTrees.offline = { rels: treeRels.get("offline"), baseurl: "" };
         }
         state.checkTrees = checkTrees;
       }
@@ -684,6 +760,7 @@ const TASKS = {
         // Plain objects, not Maps -- packShared serialises to JSON.
         vendoredVideosObj: Object.fromEntries(state.site.vendoredVideos ?? []),
         vendoredImagesObj: Object.fromEntries(state.site.vendoredImages ?? []),
+        counts: state.site.counts,
       };
       const sharedSAB = packShared(shared);
       return { chunks, sharedSAB };
@@ -760,6 +837,11 @@ const TASKS = {
           expected: [],
           consolidate: true,
           ganttSection: "Render",
+          // Only consulted by the stall watchdog. "render:33 never
+          // returned" is not actionable on its own; the six source
+          // paths in that chunk are, because the fault is nearly always
+          // one page's content.
+          describe: () => out.chunks[i].map(p => p.srcRel ?? p.srcPath),
           submit(renderOut, state) {
             for (const r of renderOut.pages) {
               const p = state.pageByDest.get(r.destPath);
@@ -787,6 +869,7 @@ const TASKS = {
           expected: [`render:${i}`],
           consolidate: true,
           ganttSection: "Write",
+          describe: () => out.chunks[i].map(p => p.srcRel ?? p.srcPath),
           submit(flushOut, state) {
             // --check: the per-chunk reduction rides back on flush's
             // result. Sized by findings, not by the 793k occurrences --
@@ -1294,7 +1377,11 @@ export async function runBuild(opts) {
   verifySchedulerSAB(TASKS, views, idMapping);
 
   const pool = externalPool ?? new WorkerPool(workerCount, CPU_WORKER_URL);
-  const scheduler = new Scheduler({ pool, tasks: TASKS, views, idMapping, ganttSections: GANTT_SECTION });
+  const scheduler = new Scheduler({
+    pool, tasks: TASKS, views, idMapping,
+    ganttSections: GANTT_SECTION,
+    stallMs: opts.stallTimeoutMs ?? 120000,
+  });
 
   pool.onWorkerDone     = (msg) => scheduler._onWorkerDone(msg);
   pool.onWorkerError    = (msg) => scheduler._onWorkerError(msg);
@@ -1410,11 +1497,24 @@ export async function runBuild(opts) {
   console.log(scheduler.summary());
   console.log(pc.dim(`gantt-inject=${injectMs}ms`));
 
-  // Drift guard from PLAN-1.md §1.
-  if (pages.length < 836) {
-    console.error(`WARN: page count ${pages.length} below baseline 836`);
-    process.exitCode = 1;
-  }
+  // Drift guard from PLAN-1.md §1, against a committed baseline rather than
+  // the literal 836 it was written with -- see page-baseline.mjs for why a
+  // floor could not do the job. OR'd into the exit code rather than assigned:
+  // the check above claims bits 1 and 2, and the old `= 1` here clobbered
+  // them, so a build with both an integrity failure and a page drop reported
+  // only the drop.
+  const drift = await checkPageBaseline({
+    // Repo-relative and forward-slashed, so it matches GUARDED_SRC however the
+    // build was invoked. tbdocs also runs over test/fixtures/check-src, which
+    // has no baseline and must not be measured against the site's.
+    src: path.relative(REPO_ROOT, path.resolve(opts.src ?? "docs")).replaceAll(path.sep, "/"),
+    pages: pages.length,
+    staticFiles: staticFiles.length,
+    write: !process.env.CI && !opts.serve && !opts.dryRun,
+    force: !!opts.updatePageBaseline,
+  });
+  if (drift.text) process.stdout.write(drift.text);
+  if (drift.failed) process.exitCode = (process.exitCode ?? 0) | 1;
 
   return { pages, staticFiles, site, destRoot };
 }
@@ -1432,7 +1532,11 @@ async function main() {
 const isEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isEntry) {
   main().catch((err) => {
-    console.error(err);
+    // A stall report is the diagnostic; the Error wrapping it carries a
+    // stack pointing at the watchdog's own setInterval, which tells the
+    // reader nothing and buries the part that does.
+    if (err?.stalled && err.cause?.message) console.error(err.cause.message);
+    else console.error(err);
     process.exit(1);
   });
 }

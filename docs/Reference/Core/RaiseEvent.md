@@ -71,7 +71,7 @@ A sink subscribes by using a `WithEvents` field and supplying handler procedures
 Class Form1
     Private WithEvents ts As TimerState
 
-    Private Sub UserForm_Initialize()
+    Private Sub Form_Load()
         Set ts = New TimerState
     End Sub
 

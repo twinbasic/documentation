@@ -14,7 +14,7 @@ Syntax: **Dim** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ 
 
 **WithEvents**
 
-: *optional* Keyword that specifies that *varname* is an object variable used to respond to events triggered by an ActiveX object. **WithEvents** is valid only in class modules. Any number of individual variables may be declared by using **WithEvents**, but arrays cannot be declared with **WithEvents**. **New** cannot be combined with **WithEvents**.
+: *optional* Keyword that specifies that *varname* is an object variable used to respond to events raised by the object it holds --- ordinarily a twinBASIC [**Class**](Class) that declares them with [**Event**](Event), though any COM object with an event source works too. **WithEvents** is valid only in class modules; see [**WithEvents**](WithEvents) for the full rules and a worked example. Any number of individual variables may be declared by using **WithEvents**, but arrays cannot be declared with **WithEvents**. **New** cannot be combined with **WithEvents**.
 
 *varname*
 
@@ -58,7 +58,7 @@ When no data type or object type is specified, and there is no [**Deftype**](Def
 
 By convention, a **Dim** statement inside a procedure is placed at the beginning of the procedure.
 
-### Example
+## Example
 
 This example shows the **Dim** statement used to declare variables. It also shows the **Dim** statement used to declare arrays. The default lower bound for array subscripts is 0 and can be overridden at the module level by using the **Option Base** statement.
 

@@ -44,23 +44,23 @@ Fully theme-able, with Dark (default), Light, and Classic (Light) built in, and 
 
 On the Form Designer, control with `Visible = False` are faded to visually indicate this. Also, pressing and holding Control shows the tab index of each tab stop.
 
-![image](../Images/014a1d28-30af-4a4d-8b9b-83ab6084f00a.png)
+![An annotated twinBASIC IDE screenshot labelling sticky scroll, colour matching, indent guides, the advanced info popup, inline code hints, Unicode in the editor, folding controls, the mini-map, the Outline, History and Problems panels, and memory usage and object counts](../Images/014a1d28-30af-4a4d-8b9b-83ab6084f00a.png)
 [Full size](../Images/fafaloneIDEscreenshot1.png)
 
 ### New Code-Based Project Explorer
 
 A new code structure based Project Explorer:
 
-![image](../Images/9a5c50d5-a9f8-44a7-96f7-ae84548bd7ef.png)
+![The Project Explorer in code-based view, grouping the project into Modules, Forms, Interfaces, UserDefinedTypes and Enumerations](../Images/9a5c50d5-a9f8-44a7-96f7-ae84548bd7ef.png)
 
 The classic file-based view is still used by default, you can activate the new view with a toggle button:
 
-![image](../Images/b000d3aa-3689-4d94-88e3-bca44f8b7de6.png)
+![The Project Explorer title bar with the file view toggle button highlighted](../Images/b000d3aa-3689-4d94-88e3-bca44f8b7de6.png)
 
 ## View Forms and Packages as JSON
 
 Project forms and packages are stored as JSON format data, and you can view this by right-click in Project Explorer and selecting 'View as JSON'. This is particularly interesting for packages as it exposes the entire code in a more parseable format.
 
-![image](../Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png)
+![The Project Explorer right-click menu with View As JSON highlighted](../Images/22660f54-ff5d-4b21-93d3-39715f1f35ed.png)
 
-![image](../Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png)
+![A package shown as JSON in the editor, listing its components, interfaces and procedures](../Images/a6525b1d-ac22-4303-ae27-7984c20eba0c.png)

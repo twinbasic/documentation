@@ -19,6 +19,14 @@ Syntax: **LBound(** *arrayname* [ **,** *dimension* ] **)**
 *dimension*
 : *optional* A **Long** indicating which dimension's lower bound is returned. Use 1 for the first dimension, 2 for the second, and so on. If *dimension* is omitted, 1 is assumed.
 
+> [!IMPORTANT]
+> On a dynamic array that has never been sized --- one declared `Dim a() As Long` and
+> not yet **ReDim**'d, or one **Erase** has released --- this raises run-time error 9,
+> *Subscript out of range*, rather than returning anything. Test with
+> [**IsArrayInitialized**](IsArrayInitialized) first. A **ParamArray** is always
+> initialized, so it needs no guard: with no arguments passed it reports bounds of 0
+> and -1.
+
 **LBound** is used together with [**UBound**](UBound) to determine the size of an array.
 
 For an array `Dim A(1 To 100, 0 To 3, -3 To 4)`, **LBound** returns:

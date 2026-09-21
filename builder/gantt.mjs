@@ -82,7 +82,10 @@ export function renderGantt(grouped) {
   ];
   const darkScoped = prefix => darkRules.map(r => `${prefix} ${r}`).join("");
   const css = [
-    `.gantt{font-family:system-ui,-apple-system,sans-serif}`,
+    // Same stack the page uses (docs/_sass/custom/_fonts.scss). The chart
+    // is inlined into the DOM, not loaded through <img>, so the
+    // self-hosted face applies here as it does to surrounding prose.
+    `.gantt{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}`,
     `.gl{fill:#333}.gs{fill:#333;font-weight:600}.ga{fill:#666}.gg{stroke:#e0e0e0}`,
     ...Object.entries(COLORS).map(([s, c]) => `.gb-${s.toLowerCase()}{fill:${c.light}}`),
     `@media (prefers-color-scheme:dark){${darkScoped("html:not([data-theme=light])")}}`,

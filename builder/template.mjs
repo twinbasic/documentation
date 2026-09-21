@@ -111,10 +111,36 @@ function templatePage(page, site, init) {
 
 // ---------- §5.2 renderHead ----------------------------------------------
 
+// The two roman faces every page uses, started before the stylesheet that
+// declares them has even arrived. Without this the UA cannot discover a
+// @font-face src until the CSS has downloaded and parsed, which puts the
+// whole font fetch one round trip later and widens the `font-display: swap`
+// flash correspondingly.
+//
+// The italic faces are deliberately NOT preloaded. Preload fetches
+// unconditionally, so a page with no italic text would pay 166 KB for
+// nothing; the CSS discovers them on demand, which is the right behaviour
+// for a face most pages use lightly.
+//
+// `crossorigin` is required even though these are same-origin: font fetches
+// are always made in CORS mode, and a preload whose mode does not match the
+// later @font-face fetch is not reused -- the browser downloads the file
+// twice and warns about it in the console.
+const PRELOAD_FONTS = [
+  "/assets/fonts/inter-variable.woff2",
+  "/assets/fonts/cascadia-mono-variable.woff2",
+];
+
+function fontPreloads(bu) {
+  return PRELOAD_FONTS.map(f =>
+    `  <link rel="preload" href="${escAttr(relativeUrl(f, bu))}" as="font" ` +
+    `type="font/woff2" crossorigin>\n`).join("");
+}
+
 function renderHead(page, site, init) {
   // Order matches docs/_includes/head.html: charset, X-UA, theme
-  // early script, theme-toggle.js (deferred), CSS combined, CSS head-
-  // nav, activation <style>, GA snippet, lunr.min.js (when search on),
+  // early script, theme-toggle.js (deferred), font preloads, CSS combined,
+  // CSS head-nav, activation <style>, GA snippet, lunr.min.js (when search on),
   // just-the-docs.js, viewport, head_seo, head_custom (favicon link).
   // The favicon AFTER head_seo is intentional (D2 of PLAN-4).
   // The `<meta IE=Edge>` is directly followed by `<script>` (no
@@ -127,6 +153,7 @@ function renderHead(page, site, init) {
     `    try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}\n` +
     `  </script>\n` +
     `  <script type="text/javascript" src="${escAttr(relativeUrl("/assets/js/theme-toggle.js", bu))}" defer></script>\n` +
+    fontPreloads(bu) +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-combined.css", bu))}">\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/tb-highlight.css", bu))}">\n` +
     `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-head-nav.css", bu))}" id="jtd-head-nav-stylesheet">\n` +

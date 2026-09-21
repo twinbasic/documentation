@@ -17,3 +17,9 @@ indexer/.packages/
 /test/fixtures/_out-offline/
 /test/fixtures/_out-pdf/
 /test/fixtures/_out.json
+
+
+# scripts/build_fonts.py caches the upstream font release archives here
+# (~190 MB). The subset .woff2 it produces ARE committed, under
+# docs/assets/fonts/ -- only the archives are throwaway.
+/.font-cache/

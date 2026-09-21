@@ -8,10 +8,23 @@ permalink: /Documentation/Development/Permanent-Links
 # Permanent Links
 {: .no_toc }
 
-The stable, or machine-accessible, part of the documentation tree is rooted on the `/tB/` prefix. URLs with this prefix --- and the internal links that target them, e.g. [`docs.twinbasic.com/tB/Modules/Math/Round`](../../tB/Modules/Math/Round) --- are guaranteed not to move. This is the contract the IDE help system, `[Documentation(...)]` attribute references, and external links rely on; anything documented below should be treated as essential.
+The stable, or machine-accessible, part of the documentation tree is rooted on the `/tB/` prefix. URLs with this prefix --- and the internal links that target them, e.g. [`docs.twinbasic.com/tB/Modules/Math/Round`](../../tB/Modules/Math/Round) --- are guaranteed not to move. This is the contract the IDE help system and external links rely on; anything documented below should be treated as essential.
 
 * TOC goes here
 {:toc}
+
+## What the guarantee covers, and what retires a URL
+{: #retiring-a-url }
+
+The guarantee is that a published `/tB/` URL is never **re-pointed**: it is not renamed, not restructured, and never made to resolve to a different symbol. A page that moves on disk keeps its `permalink`, which is why [the Default / Built-In split](../../tB/Packages/) changed no URL at all, and a page that takes over another's subject declares the old URL in `redirect_from:` rather than leaving it dead.
+
+**One case falls outside it: a symbol that no longer exists in twinBASIC.** Its page is [removed](Authoring#removing-a-page) and its URL goes with it, and that is a deliberate decision rather than a routine edit --- nothing in the build will stop you, because the link check only resolves links made from inside the tree and no link inside the tree survives the removal. Three things are expected of one:
+
+- **A redirect wherever anything can carry the URL.** If another page covers the subject now, it takes a `redirect_from:` entry for the old URL. Only a URL nothing can stand in for is allowed to 404.
+- **The entry comes out of this page in the same commit.** This page is the contract; a URL listed here that no longer resolves is worse than one that was never listed, because it is the thing an implementer reads to decide what is safe to link to.
+- **The commit message says which URL was retired.** Consumers of the contract are outside this repository --- the IDE help system above all --- and a commit message naming the URL is the only record they can be pointed at.
+
+Renaming a heading is the quieter version of the same thing: `redirect_from:` emits whole-page stubs and has no fragment remapping, so an anchor that some page links into breaks silently when its heading is reworded. Anchors named in the sections below are part of the contract for the same reason the URLs are.
 
 ## /tB/Core/\<Statement\>
 
@@ -56,7 +69,9 @@ Within each VBA module, each procedure, property, or statement has its own stand
 
 ## /tB/Packages/\<Package\>/...
 
-Each package lives under `/tB/Packages/<Package>/`. The sub-structure depends on the package: modules, classes, enumerations, and sub-objects each have their own page.
+Each package lives under `/tB/Packages/<Package>/`. The sub-structure depends on the package: modules, classes, enumerations, sub-objects, and interface members each have their own page.
+
+Depth differs by section. VBRUN is listed by module, and its members are reached from the module page, exactly as under `/tB/Modules/`. Every other package is listed page by page --- so **a new class, control, enumeration, sub-object, or member needs its own bullet here, in the commit that adds the page.** Nothing catches the omission: the link check confirms that the links a page makes resolve, and has no opinion about whether anything links to a published URL. [Authoring Pages](Authoring#listing-a-new-page) covers the other indexes a new page must join.
 
 ### VBRUN -- /tB/Packages/VBRUN/\<Module\>/
 
@@ -137,24 +152,35 @@ Each package lives under `/tB/Packages/<Package>/`. The sub-structure depends on
 - Sub-objects: [ListImages](../../tB/Packages/WinNativeCommonCtls/ImageList/ListImages), [ListImage](../../tB/Packages/WinNativeCommonCtls/ImageList/ListImage), [ListItems](../../tB/Packages/WinNativeCommonCtls/ListView/ListItems), [ListItem](../../tB/Packages/WinNativeCommonCtls/ListView/ListItem), [ColumnHeaders](../../tB/Packages/WinNativeCommonCtls/ListView/ColumnHeaders), [ColumnHeader](../../tB/Packages/WinNativeCommonCtls/ListView/ColumnHeader), [Nodes](../../tB/Packages/WinNativeCommonCtls/TreeView/Nodes), [Node](../../tB/Packages/WinNativeCommonCtls/TreeView/Node)
 - Enumerations: [DTPickerFormatConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/DTPickerFormatConstants), [ImlDrawConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/ImlDrawConstants), [OrientationConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/OrientationConstants), [TreeBorderStyleConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/TreeBorderStyleConstants), [TreeLabelEditConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/TreeLabelEditConstants), [TreeLineStyleConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/TreeLineStyleConstants), [TreeRelationshipConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/TreeRelationshipConstants), [TreeSortOrderConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/TreeSortOrderConstants), [TreeSortTypeConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/TreeSortTypeConstants), [TreeStyleConstants](../../tB/Packages/WinNativeCommonCtls/Enumerations/TreeStyleConstants)
 
+### AppGlobalClassObject -- /tB/Packages/AppGlobalClassObject/_App/\<Member\>
+
+The **App** global object is available in every project without a reference, and each of its members is documented on a page of its own. Those pages sit under the interface **App** implements, so every member URL carries an `_App/` segment --- `App.EXEName` is documented at [/tB/Packages/AppGlobalClassObject/_App/EXEName](../../tB/Packages/AppGlobalClassObject/_App/EXEName). The leading underscore is part of the interface name, after the COM hidden-interface convention; it is not a private-page marker.
+
+- Interface: [_App](../../tB/Packages/AppGlobalClassObject/_App/)
+- Properties: [Build](../../tB/Packages/AppGlobalClassObject/_App/Build), [Comments](../../tB/Packages/AppGlobalClassObject/_App/Comments), [CompanyName](../../tB/Packages/AppGlobalClassObject/_App/CompanyName), [EXEName](../../tB/Packages/AppGlobalClassObject/_App/EXEName), [FileDescription](../../tB/Packages/AppGlobalClassObject/_App/FileDescription), [HelpFile](../../tB/Packages/AppGlobalClassObject/_App/HelpFile), [hInstance](../../tB/Packages/AppGlobalClassObject/_App/hInstance), [IsInIDE](../../tB/Packages/AppGlobalClassObject/_App/IsInIDE), [LastBuildPath](../../tB/Packages/AppGlobalClassObject/_App/LastBuildPath), [LegalCopyright](../../tB/Packages/AppGlobalClassObject/_App/LegalCopyright), [LegalTrademarks](../../tB/Packages/AppGlobalClassObject/_App/LegalTrademarks), [LogMode](../../tB/Packages/AppGlobalClassObject/_App/LogMode), [LogPath](../../tB/Packages/AppGlobalClassObject/_App/LogPath), [Major](../../tB/Packages/AppGlobalClassObject/_App/Major), [Minor](../../tB/Packages/AppGlobalClassObject/_App/Minor), [ModulePath](../../tB/Packages/AppGlobalClassObject/_App/ModulePath), [NonModalAllowed](../../tB/Packages/AppGlobalClassObject/_App/NonModalAllowed), [OleRequestPendingMsgText](../../tB/Packages/AppGlobalClassObject/_App/OleRequestPendingMsgText), [OleRequestPendingMsgTitle](../../tB/Packages/AppGlobalClassObject/_App/OleRequestPendingMsgTitle), [OleRequestPendingTimeout](../../tB/Packages/AppGlobalClassObject/_App/OleRequestPendingTimeout), [OleServerBusyMsgText](../../tB/Packages/AppGlobalClassObject/_App/OleServerBusyMsgText), [OleServerBusyMsgTitle](../../tB/Packages/AppGlobalClassObject/_App/OleServerBusyMsgTitle), [OleServerBusyRaiseError](../../tB/Packages/AppGlobalClassObject/_App/OleServerBusyRaiseError), [OleServerBusyTimeout](../../tB/Packages/AppGlobalClassObject/_App/OleServerBusyTimeout), [Path](../../tB/Packages/AppGlobalClassObject/_App/Path), [PrevInstance](../../tB/Packages/AppGlobalClassObject/_App/PrevInstance), [ProductName](../../tB/Packages/AppGlobalClassObject/_App/ProductName), [RetainedProject](../../tB/Packages/AppGlobalClassObject/_App/RetainedProject), [Revision](../../tB/Packages/AppGlobalClassObject/_App/Revision), [StartMode](../../tB/Packages/AppGlobalClassObject/_App/StartMode), [TaskVisible](../../tB/Packages/AppGlobalClassObject/_App/TaskVisible), [ThreadID](../../tB/Packages/AppGlobalClassObject/_App/ThreadID), [Title](../../tB/Packages/AppGlobalClassObject/_App/Title), [UnattendedApp](../../tB/Packages/AppGlobalClassObject/_App/UnattendedApp)
+- Methods: [LogEvent](../../tB/Packages/AppGlobalClassObject/_App/LogEvent), [StartLogging](../../tB/Packages/AppGlobalClassObject/_App/StartLogging)
+
 ## /tB/Core/Attributes#\<attribute\>
 
 > [!NOTE]
 >
 > All non-alphabetic characters, as well as parameters, are removed from the links. All attribute names are in lowercase in the links. E.g. `ArrayBoundsChecks(Bool)` is referenced as `/tB/Core/Attributes#arrayboundschecks`.
 
-- [AppObject](../../tB/Core/Attributes#appobject), [ArrayBoundsChecks](../../tB/Core/Attributes#arrayboundschecks)
+- [AllowUnpopulatedVtableEntry](../../tB/Core/Attributes#allowunpopulatedvtableentry), [AppObject](../../tB/Core/Attributes#appobject), [ArrayBoundsChecks](../../tB/Core/Attributes#arrayboundschecks)
 - [BindOnlyIfNoArguments](../../tB/Core/Attributes#bindonlyifnoarguments), [BindOnlyIfStringSuffix](../../tB/Core/Attributes#bindonlyifstringsuffix)
-- [ClassId](../../tB/Core/Attributes#classid), [ClassInterface](../../tB/Core/Attributes#classinterface), [CoClassCustomConstructor](../../tB/Core/Attributes#coclasscustomconstructor), [CoClassId](../../tB/Core/Attributes#coclassid), [COMControl](../../tB/Core/Attributes#comcontrol), [COMCreatable](../../tB/Core/Attributes#comcreatable), [COMExtensible](../../tB/Core/Attributes#comextensible), [ComImport](../../tB/Core/Attributes#comimport), [CompileIf](../../tB/Core/Attributes#compileif), [CompilerOptions](../../tB/Core/Attributes#compileroptions), [ConstantFoldable](../../tB/Core/Attributes#constantfoldable), [ConstantFoldableNumericsOnly](../../tB/Core/Attributes#constantfoldablenumericsonly)
-- [Debuggable](../../tB/Core/Attributes#debuggable), [DebugOnly](../../tB/Core/Attributes#debugonly), [DefaultMember](../../tB/Core/Attributes#defaultmember), [Description](../../tB/Core/Attributes#description), [DispId](../../tB/Core/Attributes#dispid), [DispInterface](../../tB/Core/Attributes#dispinterface), [DllExport](../../tB/Core/Attributes#dllexport), [DLLStackCheck](../../tB/Core/Attributes#dllstackcheck), [DualInterface](../../tB/Core/Attributes#dualinterface)
-- [EnforceErrors](../../tB/Core/Attributes#enforceerrors), [EnforceWarnings](../../tB/Core/Attributes#enforcewarnings), [EnumId](../../tB/Core/Attributes#enumid), [EventInterfaceId](../../tB/Core/Attributes#eventinterfaceid), [EventsUseDispInterface](../../tB/Core/Attributes#eventsusedispinterface)
+- [ClassId](../../tB/Core/Attributes#classid), [ClassInterface](../../tB/Core/Attributes#classinterface), [CoClassCustomConstructor](../../tB/Core/Attributes#coclasscustomconstructor), [CoClassId](../../tB/Core/Attributes#coclassid), [COMControl](../../tB/Core/Attributes#comcontrol), [COMCreatable](../../tB/Core/Attributes#comcreatable), [ComExport](../../tB/Core/Attributes#comexport), [COMExtensible](../../tB/Core/Attributes#comextensible), [ComImport](../../tB/Core/Attributes#comimport), [CompileIf](../../tB/Core/Attributes#compileif), [CompilerOptions](../../tB/Core/Attributes#compileroptions), [ConstantFoldable](../../tB/Core/Attributes#constantfoldable), [ConstantFoldableNumericsOnly](../../tB/Core/Attributes#constantfoldablenumericsonly), [CustomControl](../../tB/Core/Attributes#customcontrol), [CustomDesigner](../../tB/Core/Attributes#customdesigner)
+- [Debuggable](../../tB/Core/Attributes#debuggable), [DebugOnly](../../tB/Core/Attributes#debugonly), [Default](../../tB/Core/Attributes#default), [DefaultDesignerEvent](../../tB/Core/Attributes#defaultdesignerevent), [DefaultMember](../../tB/Core/Attributes#defaultmember), [Description](../../tB/Core/Attributes#description), [DispId](../../tB/Core/Attributes#dispid), [DispInterface](../../tB/Core/Attributes#dispinterface), [DllExport](../../tB/Core/Attributes#dllexport), [DLLStackCheck](../../tB/Core/Attributes#dllstackcheck), [DualInterface](../../tB/Core/Attributes#dualinterface)
+- [EnforceErrors](../../tB/Core/Attributes#enforceerrors), [EnforceWarnings](../../tB/Core/Attributes#enforcewarnings), [Enumerator](../../tB/Core/Attributes#enumerator), [EnumId](../../tB/Core/Attributes#enumid), [EventInterfaceId](../../tB/Core/Attributes#eventinterfaceid), [EventsUseDispInterface](../../tB/Core/Attributes#eventsusedispinterface)
 - [Flags](../../tB/Core/Attributes#flags), [FloatingPointErrorChecks](../../tB/Core/Attributes#floatingpointerrorchecks), [FormDesignerId](../../tB/Core/Attributes#formdesignerid), [Hidden](../../tB/Core/Attributes#hidden)
-- [IdeButton](../../tB/Core/Attributes#idebutton), [IgnoreWarnings](../../tB/Core/Attributes#ignorewarnings), [IntegerOverflowChecks](../../tB/Core/Attributes#integeroverflowchecks), [InterfaceId](../../tB/Core/Attributes#interfaceid)
+- [IdeButton](../../tB/Core/Attributes#idebutton), [IgnoreWarnings](../../tB/Core/Attributes#ignorewarnings), [ImplementsViaPrivateFriendlies](../../tB/Core/Attributes#implementsviaprivatefriendlies), [IntegerOverflowChecks](../../tB/Core/Attributes#integeroverflowchecks), [InterfaceId](../../tB/Core/Attributes#interfaceid)
+- [LibraryId](../../tB/Core/Attributes#libraryid)
 - [MustBeQualified](../../tB/Core/Attributes#mustbequalified)
+- [NonBrowsable](../../tB/Core/Attributes#nonbrowsable)
 - [OleAutomation](../../tB/Core/Attributes#oleautomation)
 - [PackingAlignment](../../tB/Core/Attributes#packingalignment), [PopulateFrom](../../tB/Core/Attributes#populatefrom), [PredeclaredID](../../tB/Core/Attributes#predeclaredid), [PreserveSig](../../tB/Core/Attributes#preservesig)
-- [Restricted](../../tB/Core/Attributes#restricted), [RunAfterBuild](../../tB/Core/Attributes#runafterbuild)
-- [Serialize](../../tB/Core/Attributes#serialize), [SetDllDirectory](../../tB/Core/Attributes#setdlldirectory), [SimplerByVals](../../tB/Core/Attributes#simplerbyvals)
+- [RedirectToStaticImplementation](../../tB/Core/Attributes#redirecttostaticimplementation), [Restricted](../../tB/Core/Attributes#restricted), [RunAfterBuild](../../tB/Core/Attributes#runafterbuild), [RunBeforeStartupObject](../../tB/Core/Attributes#runbeforestartupobject)
+- [Serialize](../../tB/Core/Attributes#serialize), [SetDllDirectory](../../tB/Core/Attributes#setdlldirectory), [SimplerByVals](../../tB/Core/Attributes#simplerbyvals), [Source](../../tB/Core/Attributes#source), [SpecialCompilerBinding](../../tB/Core/Attributes#specialcompilerbinding)
 - [TestCase](../../tB/Core/Attributes#testcase), [TestFixture](../../tB/Core/Attributes#testfixture), [TypeHint](../../tB/Core/Attributes#typehint)
 - [Unimplemented](../../tB/Core/Attributes#unimplemented), [UseGetLastError](../../tB/Core/Attributes#usegetlasterror), [UserDefinedTypeIsAnAlias](../../tB/Core/Attributes#userdefinedtypeisanalias)
-- [WindowsControl](../../tB/Core/Attributes#windowscontrol)
+- [Version](../../tB/Core/Attributes#version)
+- [WindowsControl](../../tB/Core/Attributes#windowscontrol), [WithDispatchForwarding](../../tB/Core/Attributes#withdispatchforwarding)

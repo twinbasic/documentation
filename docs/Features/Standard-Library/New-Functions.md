@@ -78,7 +78,7 @@ Array(a, b, c) = d
 Debug.Print a, b, c
 ```
 
-This would print `1   2   3`. You could also assign multiple variables at once like this and get the same result:
+This would print `1             2             3` --- a comma starts each value in the next 14-column [print zone](../../tB/Modules/Debug#print). You could also assign multiple variables at once like this and get the same result:
 
 ```tb
 Dim a As Long, b As Long, c As Long

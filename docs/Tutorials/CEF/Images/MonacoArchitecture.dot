@@ -1,0 +1,51 @@
+// Source for MonacoArchitecture.svg, beside the page that uses it. The SVG
+// is a build artifact: tbdocs regenerates it whenever this file is newer.
+//
+// Graphviz has no font machinery and would otherwise measure these labels
+// with Times; builder/dot-metrics.mjs installs Inter's real widths before
+// layout, and scripts/check_dot_fit.mjs asserts afterwards that no label
+// outgrew its box. See WIP.md, "Diagrams".
+
+digraph cef_monaco {
+    rankdir=LR
+    bgcolor="transparent"
+    nodesep=0.35
+    ranksep=0.7
+    splines=true
+
+    node [
+        shape=box
+        style="rounded,filled"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=12
+        margin="0.16,0.09"
+        fillcolor="#fef7e0"
+        color="#f9ab00"
+    ]
+    edge [
+        color="#7a8090"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=11
+        arrowsize=0.7
+    ]
+    graph [
+        color="#7a8090"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
+        fontsize=13
+        style="rounded"
+        labeljust="l"
+        margin=0
+    ]
+
+    subgraph cluster_form {
+        margin=14
+        label="twinBASIC form"
+
+        WEBVIEW [label=<<B>WebView</B><BR/><I>CefBrowser hosting Monaco editor</I>>]
+        HANDLER [label=<JsMessage handler<BR/><I>(twinBASIC code)</I>>]
+        PREVIEW [label=<<B>WebViewPreview</B><BR/><I>CefBrowser hosting HTML preview</I>>]
+
+        WEBVIEW -> HANDLER [label="postMessage(html)"]
+        HANDLER -> PREVIEW [label="NavigateToString(html)"]
+    }
+}

@@ -11,7 +11,7 @@ digraph toolchain {
     node [
         shape=box
         style="rounded,filled"
-        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
         fontsize=12
         margin="0.12,0.06"
         fillcolor="#fef7e0"
@@ -27,7 +27,7 @@ digraph toolchain {
     SITE    [label=<_site/<BR/>online HTML>]
     OFFLINE [label=<_site-offline/<BR/>file:// mirror>]
     PDFSRC  [label=<_site-pdf/<BR/>book.html + CSS + images>]
-    CHECK   [label=<check.bat<BR/>check_links.mjs>]
+    CHECK   [label=<check.bat<BR/>6 verification gates>]
     BOOK    [label=<book.bat<BR/>render-book.mjs>]
     PDF     [label=<_pdf/twinBASIC Book.pdf>]
 
@@ -36,8 +36,6 @@ digraph toolchain {
     BUILD -> SITE
     BUILD -> OFFLINE
     BUILD -> PDFSRC
-    SITE    -> CHECK
     OFFLINE -> CHECK
-    PDFSRC  -> CHECK [style=dashed]
     PDFSRC  -> BOOK -> PDF
 }

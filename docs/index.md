@@ -26,7 +26,7 @@ The reference section is split into language constructs (the things the compiler
 - [**Procedures and Functions**](Reference/Procedures-and-Functions) --- alphabetical index of every callable runtime member
 - [**Operators**](Reference/Operators) --- arithmetic, comparison, logical, bitwise, and twinBASIC's added operators
 - [**Compiler Constants**](Reference/Compiler-Constants) --- the `#If` symbols recognised by the compiler
-- [**Attributes**](tB/Core/Attributes) --- `[Documentation(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
+- [**Attributes**](tB/Core/Attributes) --- `[Description(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
 - [**Controls**](tB/Controls) --- the standard UI controls ([**CheckBox**](tB/Packages/VB/CheckBox/), [**TextBox**](tB/Packages/VB/TextBox/), [**CommandButton**](tB/Packages/VB/CommandButton/), ...) grouped by purpose
 - [**Glossary**](tB/Gloss) --- technical terms used across the docs
 
@@ -79,6 +79,23 @@ The [**IDE section**](tB/IDE) documents the editor, project explorer, debugging 
 - Third-party guides by Mike Wolfe at [@nolongerset](https://nolongerset.com):
   - [Create a Custom ActiveX Control with twinBASIC](https://nolongerset.com/create-activex-control-with-twinbasic/)
   - [Create a Tool Window in the VBIDE with twinBASIC](https://nolongerset.com/create-a-vbe-addin-with-twinbasic/)
+
+## Reading offline, and the PDF book
+
+Everything on this site is also published in two forms you can keep, both attached to the
+[documentation releases](https://github.com/twinbasic/documentation/releases) on GitHub:
+
+- **`twinbasic-docs-offline.zip`** --- the whole site, browsable with no server and no
+  network. Extract it anywhere and open `index.html` in any browser; links, navigation,
+  dark mode and the search box all work.
+- **`twinBASIC Book.pdf`** --- the complete reference as one PDF with bookmarks for every
+  section. It is A4 and runs to a little under 2,000 pages, so it suits a tablet or a
+  printer better than a small e-reader.
+
+Releases are cut on demand rather than on every change, so check the date against what
+you need; this site is always current. If the newest release is older than you want,
+you can build both yourself from the repository --- see
+[Building and Deployment](Documentation/Development/Building).
 
 ## Contributing to the documentation
 

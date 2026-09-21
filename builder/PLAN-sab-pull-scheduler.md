@@ -211,18 +211,36 @@ via `emit()`, and (b) mutate `SharedState`. Under the new model:
   into `SharedState` when it processes the message.
 
 The ordering constraint: a worker posts the output message BEFORE
-updating successor dep counts in the SAB. Since worker-to-main
-messages are FIFO, the merge message arrives before the main thread
-would claim any downstream `runOnMain` task. The main thread drains
-all pending messages before scanning the SAB for ready main-thread
-tasks, ensuring merges complete first.
+updating successor dep counts in the SAB. That much is true, and it is
+what keeps the window below narrow rather than wide.
 
-For **worker-to-worker chains** (e.g. render:i -> renderJoin where
-renderJoin is a trivial barrier), the successor dep count update
-happens directly in the SAB with no main-thread involvement. If
-`render:i.submit()` has state mutations (merging page deltas), the
-merge message is fire-and-forget --- it doesn't gate the next worker
-task because the downstream workers don't read `SharedState`.
+**It does not order the state, and reading it that way is the most
+expensive mistake this document records.** The main thread reads dep
+counts straight out of shared memory --- nothing obliges it to drain its
+message queue first. Per-port FIFO only orders one worker's own messages
+against each other; it says nothing about the other workers feeding the
+same barrier. So a `runOnMain` successor can become claimable while
+merge messages are still queued and their `submit()` calls have not run.
+`_scheduleMainScan`'s `setImmediate` gives those messages a turn to
+drain, which improves the odds; it is not a guarantee, and the code does
+not treat it as one.
+
+What actually closes the window is `_claimMainTask`: it releases a
+freshly claimed task back to READY whenever `_assembleInputs` finds a
+name in `def.expected` missing from the results map, and a result lands
+in that map immediately before its `submit()` runs. A barrier therefore
+needs its `expected` list as well as its dep count --- see §A dep count
+of zero does not mean the submits have run, which is the bug this exact
+assumption produced.
+
+For **worker-to-worker chains** (e.g. render:i -> flush:i, pinned to the
+same lane), the successor dep count update happens directly in the SAB
+with no main-thread involvement. If `render:i.submit()` has state
+mutations (merging page deltas), the merge message is fire-and-forget
+--- it doesn't gate the next worker task because the downstream workers
+don't read `SharedState`. `renderJoin` is not an instance of this shape:
+it runs on the main thread, which is precisely why its `expected` list
+carries weight.
 
 ### How submit() is triggered
 
@@ -464,9 +482,11 @@ worker.on('message', msg => {
 })
 ```
 
-`scheduleMainScan()` uses `queueMicrotask()` (coalesced --- skip if
-already scheduled) so all pending messages are processed (output
-stored + merges complete) before the scan runs.
+`scheduleMainScan()` defers the scan with `setImmediate` (coalesced ---
+skip if already scheduled), so messages already delivered in the current
+turn are processed (output stored + merges run) before the scan.  That
+is not an ordering guarantee, and nothing downstream may assume it is
+--- see §Draining messages before scanning.
 
 ### Main-thread task execution
 
@@ -504,10 +524,18 @@ function mainScan():
 ### Draining messages before scanning
 
 The main thread processes worker messages in the event loop's message
-handler. `scheduleMainScan()` posts a microtask. Since microtasks run
-after the current handler but before the next event, and multiple
-worker messages in the same event-loop tick are processed sequentially,
-all pending merges complete before the scan.
+handler. `_scheduleMainScan()` defers the scan with `setImmediate`, so
+messages already delivered in the current turn are handled before it
+runs.
+
+**That is a scheduling courtesy, not an ordering guarantee, and the
+scheduler does not lean on it.** A worker decrements its successors' dep
+counts in shared memory immediately after posting its result, and the
+main thread can read that count without touching its message queue at
+all. A merge still in flight is caught instead by `_claimMainTask`,
+which releases the task back to READY when its `expected` inputs are not
+yet in the results map --- see §A dep count of zero does not mean the
+submits have run.
 
 If messages arrive while a `runOnMain` execute() is in progress, they
 queue until execute() yields (await) or completes. This is the
@@ -566,21 +594,43 @@ result only lands in that map in `_onWorkerDone`, immediately before
 > even when its `execute()` ignores the inputs.** Setting the SAB dep
 > count is necessary and not sufficient.
 
-`dispatch.submit` does this for both barriers:
+Both halves go through one helper, `registerBarrier` in
+[tbdocs.mjs](tbdocs.mjs), which `dispatch.submit` calls once per
+barrier. Pairing them in a single call is the point — the dep count
+cannot be written without the `expected` list, because writing one
+without the other is the bug.
 
 ```js
-for (const [join, prefix] of [["renderJoin", "render"], ["flushJoin", "flush"]]) {
+function registerBarrier(scheduler, views, join, joinIdx, prefix, n) {
   const def = scheduler.tasks.get(join);
+  if (!def) throw new Error(`registerBarrier: no task def for '${join}'`);
   const expected = [];
-  for (let i = 0; i < N; i++) expected.push(`${prefix}:${i}`);
-  scheduler.tasks.set(join, { ...def, expected });   // clone: TASKS must stay clean
+  for (let i = 0; i < n; i++) expected.push(`${prefix}:${i}`);
+  scheduler.tasks.set(join, { ...def, expected });   // clone, never mutate -- see below
+  setDepCount(views, joinIdx, n);
 }
+
+// in dispatch.submit, after the per-chunk render:i / flush:i defs are registered:
+registerBarrier(scheduler, views, "renderJoin", renderJoinIdx, "render", N);
+registerBarrier(scheduler, views, "flushJoin",  flushJoinIdx,  "flush",  N);
 ```
+
+**Replace the Map entry with a clone. Never rewrite `expected` on the
+def in place** — that is the one rule, and there is no second form in
+the source. `scheduler.tasks` is `new Map(Object.entries(TASKS))`, so
+the Map's `flushJoin` entry *is* `TASKS.flushJoin`, the same object.
+`flushJoinDef.expected = [...]` therefore writes `["flush:0", ...]` back
+into the module-level `TASKS`; in serve mode the next rebuild hands that
+same `TASKS` to `allocSchedulerSAB`, which walks `expected`, cannot
+resolve `"flush:0"`, and throws. The in-place form appears in this
+document only as history: Phase 15 specified it, and Phase 16's second
+divergence (§Phase 16) replaced it with the clone when pool persistence
+made rebuilds share the table.
 
 `flushJoin` had it from the start, because its `execute()` sums the
 per-chunk write stats and so visibly needed the inputs. `renderJoin`'s
-`execute()` returns `{}` and needs nothing — which is exactly why the
-omission looked harmless and went unnoticed.
+`execute()` returns `{}` and reads nothing from its inputs — which is
+exactly why the omission looked harmless and went unnoticed.
 
 **The second half of the bug is what made it silent.** `render:i.submit()`
 fills `scheduler.state.searchChunks[i]`, an array created as
@@ -2569,7 +2619,7 @@ interleave.
 render:i [W]  (stashes pages locally; delta carries renderedContent + offlineMisses only)
     render:i.submit()  merges renderedContent into state.pages on main
        |
-       |--- [successor edge] --→  renderJoin [M]  (pure barrier, no-op execute)
+       |--- [successor edge] --→  renderJoin [M]  (barrier; execute asserts every page has renderedContent)
        |
        +--- [successor edge] --→  flush:i [W, pin_to_predecessor, priority: 1]
                                      writes stashed html       → _site/<destPath>
@@ -2591,12 +2641,20 @@ flushJoin + mermaid + resolveBookChapters          → writePdf [M]
 
 `searchData` depends on `renderJoin` (not `flushJoin`): it needs
 `renderedContent` in memory, which requires all `render:i.submit()`
-calls to have run.  `renderJoin` provides that guarantee --- it
-becomes READY only after all `render:i` are DONE, and by that point
-the main thread has processed every `render:i` result message (FIFO
-property of worker-to-main postMessage: each worker's render-done
-messages precede its flush-done messages, and `_onWorkerDone`
-processes them in order).
+calls to have run.  `renderJoin` provides that guarantee --- but not
+by way of its dep count, which reaches zero as soon as every
+`render:i` is DONE and says nothing about whether the merges have run.
+It provides it because `registerBarrier` also gives `renderJoin` an
+`expected` list naming every `render:i`, so `_claimMainTask` will not
+hand it to `execute()` until every one of those results is in the
+results map.  See §A dep count of zero does not mean the submits have
+run.
+
+`renderJoin.execute` is not a formality either: it asserts that every
+page in `state.pages` has a `renderedContent` string and throws naming
+the first few that do not.  Its consumers skip a page that has none
+rather than fail, so the assertion belongs at the barrier that makes
+the claim --- see the table in §Where the completeness checks are.
 
 #### `dispatch.submit()` redesign
 
@@ -2646,9 +2704,11 @@ submit(out, _state, scheduler) {
   for (let i = 0; i < N; i++) prepToFlush.push(flushBase + i);
   appendDynamicSuccessors(views, [{ from: prepPageDirsIdx, to: prepToFlush }]);
 
-  // 4. Set dep counts and pinning.
-  setDepCount(views, renderJoinIdx, N);
-  setDepCount(views, flushJoinIdx,  N);
+  // 4. Set flush dep counts and pinning.  The two barriers' counts are
+  //    deliberately NOT written here --- they go through registerBarrier
+  //    in step 5b, which writes the count and the `expected` list
+  //    together.  See §A dep count of zero does not mean the submits
+  //    have run.
   for (let i = 0; i < N; i++) {
     setDepCount(views, flushBase + i, 2);   // gated on render:i + prepPageDirs
     Atomics.store(views.pinnedTo, flushBase + i, renderBase + i);
@@ -2667,7 +2727,16 @@ submit(out, _state, scheduler) {
       submit(renderOut, state) {
         for (const r of renderOut.pages) {
           const p = state.pageByDest.get(r.destPath);
-          if (!p) continue;
+          // Not `continue`.  pageByDest is built from the same page list
+          // the chunks were sliced from, so a miss is a bug --- and every
+          // consumer of renderedContent skips a page that has none rather
+          // than complaining, so dropping the result loses that page
+          // without a word.
+          if (!p) {
+            throw new Error(
+              `render:${i} returned a page the build does not know: ${r.destPath}`,
+            );
+          }
           p.renderedContent = r.renderedContent;
           if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
         }
@@ -2685,13 +2754,15 @@ submit(out, _state, scheduler) {
     });
   }
 
-  // Populate flushJoin's expected array so _assembleInputs delivers
-  // all flush results to its execute().  Reset first --- in serve mode
-  // the task def object is reused across rebuilds; without the reset,
-  // names from the previous build would accumulate.
-  const flushJoinDef = scheduler.tasks.get("flushJoin");
-  flushJoinDef.expected = [];
-  for (let i = 0; i < N; i++) flushJoinDef.expected.push(`flush:${i}`);
+  // 5b. Register BOTH barriers.  registerBarrier writes the SAB dep
+  //     count and the `expected` list in one call, because writing one
+  //     without the other is a data-loss bug: the count orders the
+  //     work, the list orders the state.  renderJoin needs the list
+  //     even though its execute() ignores the inputs --- that omission
+  //     is the ~6-missing-pages bug.  See §A dep count of zero does not
+  //     mean the submits have run.
+  registerBarrier(scheduler, views, "renderJoin", renderJoinIdx, "render", N);
+  registerBarrier(scheduler, views, "flushJoin",  flushJoinIdx,  "flush",  N);
 
   // 6. Pack payload, broadcast, and activate.
   const payloadSAB = packPayloads(views, renderBase, out.chunks);
@@ -2705,6 +2776,15 @@ submit(out, _state, scheduler) {
 No `_renderExpected`, no `wireJoins()`, no name-prefix matching.
 The successor edges, dep counts, and pinning are all explicit data
 written into the SAB before any task activates.
+
+`registerBarrier` is the module-level helper in [tbdocs.mjs](tbdocs.mjs)
+that pairs a barrier's dep count with its `expected` list so neither can
+be written alone; §A dep count of zero does not mean the submits have
+run shows it in full and gives the reasoning, including why the task def
+is cloned rather than rewritten in place.  The sample above is the
+landed form: Phase 15 originally inlined a `flushJoinDef.expected = []`
+mutation here and gave `renderJoin` no list at all, which is the
+~6-missing-pages bug.
 
 **Ordering guarantee.**  `wireDynamicEdges` and `setDepCount` run
 before `activateDynamicTasks`.  No render task can *complete* before
@@ -3530,7 +3610,10 @@ the pure-compute `deriveSearchEntries` function is called.
 assignment preserves page order across the chunks --- chunk 0's
 entries come before chunk 1's, matching the serial iteration order
 over `state.pages`.  By the time `renderJoin` fires, every slot is
-populated.
+populated --- **but only because `renderJoin` lists every `render:i`
+in its `expected` array.**  Its SAB dep count reaching zero does not
+say the submits have run; see §A dep count of zero does not mean the
+submits have run, which is the bug this exact assumption produced.
 
 **`searchData` task.**  Dependencies unchanged: `renderJoin` +
 `prepDest`.  The `execute()` body changes from "derive from
@@ -3572,7 +3655,8 @@ render:i.submit() [M]
    └── state.searchChunks[i] = renderOut.searchEntries         ← NEW
               │
               ▼
-renderJoin [M]  (barrier — all searchChunks slots populated)
+renderJoin [M]  (barrier — all searchChunks slots populated,
+                 because renderJoin.expected lists every render:i)
               │
               ▼
 searchData [M]
@@ -3636,6 +3720,14 @@ cost negligible (~400 KB total across all workers for ~2000 entries).
 
 ```js
 export async function writeSearchDataFromChunks(searchChunks, destRoot) {
+  // flat() skips holes without a word, so a chunk whose submit() has
+  // not run yet costs its pages silently.  Refuse to write a partial
+  // index --- see §Where the completeness checks are.
+  const missing = [];
+  for (let i = 0; i < searchChunks.length; i++) {
+    if (!(i in searchChunks)) missing.push(i);
+  }
+  if (missing.length) throw new Error(`search index is incomplete: chunks ${missing.join(", ")} never arrived`);
   const allEntries = searchChunks.flat();
   for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
   const body = allEntries.map(renderEntryString).join(",");
@@ -3682,7 +3774,7 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
      submit(renderOut, state) {
        for (const r of renderOut.pages) {
          const p = state.pageByDest.get(r.destPath);
-         if (!p) continue;
+         if (!p) throw new Error(`render:${i} returned an unknown page: ${r.destPath}`);
          p.renderedContent = r.renderedContent;
          if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
        }

@@ -82,6 +82,6 @@ Winner selected at the sole discretion of the twinBASIC team within 7 days after
 
 Entries must be received by:
 
-🗓️ 9th April — 12:00 PM (GMT)
+🗓️ 9th April --- 12:00 PM (GMT)
 
 Submissions will be locked after the deadline.

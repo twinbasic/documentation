@@ -16,6 +16,12 @@ import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
 
 import { initHighlighter } from "./highlight.mjs";
+// Circular with counts.mjs, which imports maskCodeRegions from here so that
+// "what is code" has one definition across the pre-render rewrites and the
+// count validator. Safe because both sides export function DECLARATIONS, which
+// are hoisted and bound before either module body runs, and neither calls into
+// the other at module-evaluation time. Verified in both import orders.
+import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
 
 export async function renderPhase(pages, site, staticFiles = []) {
   // Allow the orchestrator to pre-build the markdown-it instance (so
@@ -33,6 +39,20 @@ export async function renderPhase(pages, site, staticFiles = []) {
 
   await Promise.all(pages.map(async (page) => {
     page.renderedContent = renderPage(page, md);
+    // A count placeholder that reached the output is the failure the feature
+    // exists to prevent, arriving by a new route. Source validation cannot see
+    // this case -- a placeholder inside a raw HTML block has a perfectly good
+    // name, so it passes there, and markdown-it keeps an html_block as one
+    // opaque token the substitution rule never enters. One string scan per
+    // page, and it catches every cause rather than the ones anticipated.
+    const survivor = findSurvivingPlaceholder(page.renderedContent);
+    if (survivor) {
+      throw new Error(
+        `${page.srcRel}: ${survivor} survived rendering.\n` +
+        "  The name is known, so this is a placement markdown-it cannot reach --\n" +
+        "  a raw HTML block is the usual one. Put it in prose, or write the\n" +
+        "  number by hand and say in the page why it is not derived.");
+    }
   }));
 }
 
@@ -42,16 +62,7 @@ function renderPage(page, md) {
     // consumed by Phase 8. Either way, no markdown rendering happens here.
     return page.rawContent;
   }
-  // CommonMark normalises CRLF/CR to LF before block parsing. The
-  // pre-render rewrites below all rely on LF-only input -- do the
-  // normalisation up front so they see consistent line shapes.
-  let source = page.rawContent.replace(/\r\n?/g, "\n");
-  source = stripLiquidRawTags(source);
-  source = rewriteTripleAsteriskEmphasis(source);
-  source = encodeSpacesInMediaUrls(source);
-  source = rewriteListItemSetextHeadings(source);
-  source = absorbTrailingHtmlComments(source);
-  source = rewriteAdmonitions(source);
+  const source = applyPreRenderRewrites(page.rawContent);
   let html = md.render(source, { page });
   html = normaliseVoidTags(html);
   html = padEmptyCells(html);
@@ -68,15 +79,6 @@ function padEmptyCells(html) {
   return html.replace(/<(t[dh])([^>]*)><\/\1>/g, "<$1$2> </$1>");
 }
 
-// Jekyll's Liquid renderer strips `{% raw %}` / `{% endraw %}` tags
-// before kramdown sees the source; markdown-it does not understand
-// Liquid, so the tags survive into the rendered HTML. Strip them so
-// the same content reaches the markdown parser as kramdown sees.
-const LIQUID_RAW_RE = /\{%\s*(?:end)?raw\s*%\}/g;
-function stripLiquidRawTags(src) {
-  return src.replace(LIQUID_RAW_RE, "");
-}
-
 // kramdown accepts unescaped spaces inside `![alt](url)` and `[text](url)`
 // URLs; CommonMark / markdown-it does NOT and leaves the source text
 // unparsed. URL-encode spaces inside image and link URL components so
@@ -86,6 +88,121 @@ function stripLiquidRawTags(src) {
 // spaces and NO embedded quotes or parens. Anything trickier (titles,
 // nested parens) gets left alone -- the regex is too coarse to safely
 // rewrite those.
+// The whole pre-render rewrite chain, exactly as renderPage applies it.
+// Exported so scripts/check_code_regions.mjs can gate the real thing rather
+// than a reconstruction of it -- in particular so that removing the mask from
+// one of these rewrites is caught, which a gate that only exercised
+// maskCodeRegions would miss.
+export function applyPreRenderRewrites(rawContent) {
+  // CommonMark normalises CRLF/CR to LF before block parsing. The rewrites
+  // below all rely on LF-only input -- do the normalisation up front so they
+  // see consistent line shapes.
+  const source = rawContent.replace(/\r\n?/g, "\n");
+
+  // These four are kramdown-parity fixes over raw source, so none of them
+  // knows what is code. On a site whose subject matter IS code that is a
+  // standing hazard, and it was demonstrated for each: `Items[1](a, b)` became
+  // `Items[1](a,%20b)`, `' *** banner ***` became `' **_ banner _**`, and a
+  // YAML sample ending in `---` had that line DELETED and the entry above it
+  // promoted to a heading. Mask the code regions, rewrite, then restore.
+  const code = maskCodeRegions(source);
+  let work = code.masked;
+  work = rewriteTripleAsteriskEmphasis(work);
+  work = encodeSpacesInMediaUrls(work);
+  work = rewriteListItemSetextHeadings(work);
+  work = absorbTrailingHtmlComments(work);
+
+  // rewriteAdmonitions runs OUTSIDE the mask, and must: a fence inside an
+  // admonition still carries its `> ` markers at this point, so the mask does
+  // not see it as a fence, and the admonition rewrite is what strips those
+  // markers. It does its own code handling.
+  return rewriteAdmonitions(code.restore(work));
+}
+
+// ---------- code-region mask for the pre-render rewrites --------------------
+//
+// Hides fenced code blocks (backtick or tilde, any fence length) and inline
+// code spans (any backtick-run length) behind opaque placeholders, so a
+// source-level rewrite cannot reach into a code sample.
+//
+// The placeholder is wrapped in backticks deliberately. A masked fence
+// collapses several lines into one, and `absorbTrailingHtmlComments`
+// classifies the PREVIOUS line to decide whether to join a comment to it --
+// its PARAGRAPH_CONTINUATION_RE excludes a line starting with a backtick,
+// which is what a real fence line started with. Keeping that leading
+// backtick keeps the classification identical.
+//
+// Indented code blocks are NOT masked: telling one from a list-item
+// continuation needs block context that a pre-render pass does not have, and
+// guessing would change how real list content renders. That gap is a known,
+// measured one -- scripts/check_code_regions.mjs covers it.
+const CODE_MASK_RE = /`\u0000CM(\d+)\u0000`/g;
+
+export function maskCodeRegions(src) {
+  const stash = [];
+  const lines = src.split("\n");
+  const out = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const open = lines[i].match(/^[ \t]{0,3}(`{3,}|~{3,})/);
+    if (open) {
+      const marker = open[1];
+      const fenceChar = marker[0];
+      const block = [lines[i]];
+      let j = i + 1;
+      for (; j < lines.length; j++) {
+        block.push(lines[j]);
+        const close = lines[j].match(/^[ \t]{0,3}(`+|~+)[ \t]*$/);
+        if (close && close[1][0] === fenceChar && close[1].length >= marker.length) {
+          j++;
+          break;
+        }
+      }
+      stash.push(block.join("\n"));
+      out.push(`\`\u0000CM${stash.length - 1}\u0000\``);
+      i = j;
+      continue;
+    }
+    out.push(maskInlineCode(lines[i], stash));
+    i++;
+  }
+
+  return {
+    masked: out.join("\n"),
+    restore: (s) => s.replace(CODE_MASK_RE, (_, n) => stash[Number(n)] ?? ""),
+  };
+}
+
+// A code span is a run of N backticks, the shortest possible content, then a
+// run of exactly N backticks. An unmatched run is literal text in CommonMark
+// and simply never matches here, which is the correct outcome.
+function maskInlineCode(line, stash) {
+  let res = "";
+  let k = 0;
+  while (k < line.length) {
+    if (line[k] !== "`") { res += line[k++]; continue; }
+    let n = 0;
+    while (line[k + n] === "`") n++;
+    const open = k;
+    let p = k + n;
+    let found = -1;
+    while (p < line.length) {
+      if (line[p] === "`") {
+        let m = 0;
+        while (line[p + m] === "`") m++;
+        if (m === n) { found = p; break; }
+        p += m;
+      } else p++;
+    }
+    if (found < 0) { res += line.slice(open, open + n); k = open + n; continue; }
+    stash.push(line.slice(open, found + n));
+    res += `\`\u0000CM${stash.length - 1}\u0000\``;
+    k = found + n;
+  }
+  return res;
+}
+
 const MEDIA_URL_SPACES_RE = /(!?\[(?:[^\]\n]*)\])\(([^)"'\n]+)\)/g;
 function encodeSpacesInMediaUrls(src) {
   return src.replace(MEDIA_URL_SPACES_RE, (whole, prefix, url) => {
@@ -189,9 +306,51 @@ function kramdownHardBreakNewline(state, silent) {
 // markdown-it with `xhtmlOut: true` emits the same form for tokens it
 // generates, but raw block / inline HTML (like author-written `<br>`)
 // passes through verbatim. Rewrite those to match.
-const VOID_TAGS_RE = /<(br|hr|img|input|link|meta|area|base|col|embed|source|track|wbr)((?:\s+[^>/]+(?:="[^"]*"|='[^']*')?)*)\s*\/?>/gi;
+//
+// The attributes are one flat `[^>]*`, and the trailing `/` is removed
+// afterwards rather than described in the pattern. That is deliberate,
+// and the history is worth keeping because the obvious shape was tried
+// twice and was wrong twice.
+//
+// This used to spell the attribute list out as
+// `(?:\s+[^>/]+(?:="[^"]*"|='[^']*')?)*`. `[^>/]` matches a space and so
+// does `\s`, which makes it the classic `(a+)+`: one run of attribute
+// text can be partitioned in exponentially many ways, and every
+// partition gets tried when the match fails -- which it does on any `/`
+// the quoted-value alternative does not cover. `Line/Column` in the alt
+// text of IDE/Menu/Edit.md and `/Packages/WinDevLib` in
+// Features/Packages/Updating a package.md each hung a render worker
+// outright: two of 152 chunks stayed CLAIMED, the renderJoin and
+// flushJoin barriers behind them never reached a dep count of zero, and
+// the build printed its last line and sat there forever.
+//
+// Narrowing the class to `[^\s>/]+` fixed those two strings and did not
+// fix the regex: `[^\s>/]` still matches `=`, `"` and `'`, so an
+// attribute could be consumed either by the name class or by the
+// quoted-value alternative, and that binary choice per attribute is the
+// same 2^n one level down. scripts/check_regex_safety.mjs caught it with
+// the witness `<BR\tG=` + `""\t"=''\t=='/">'\tG=` -- 186 characters took
+// 97 ms and it grew from there.
+//
+// So do not reintroduce a per-attribute sub-pattern. Matching to the
+// first `>` cannot be ambiguous, because `[^>]*` and the `>` that
+// follows it share no character. Verified against every void tag in the
+// built site -- 4,137 distinct tags, byte-identical output -- and
+// recheck's own worst witness now runs in under a millisecond at 288,006
+// characters.
+const VOID_TAGS_RE = /<(br|hr|img|input|link|meta|area|base|col|embed|source|track|wbr)\b([^>]*)>/gi;
+
+// Drop an existing self-closing slash and the whitespace around it, so
+// the emitted tag ends in exactly one ` />`. Three anchored one-liners
+// rather than one combined pattern: each is separately trivial to read
+// and none of them can backtrack.
+function stripSelfClose(attrs) {
+  return attrs.replace(/\s+$/, "").replace(/\/$/, "").replace(/\s+$/, "");
+}
+
 function normaliseVoidTags(html) {
-  return html.replace(VOID_TAGS_RE, (_, tag, attrs) => `<${tag.toLowerCase()}${attrs} />`);
+  return html.replace(VOID_TAGS_RE, (_, tag, attrs) =>
+    `<${tag.toLowerCase()}${stripSelfClose(attrs)} />`);
 }
 
 // ---------- markdown-it configuration ---------------------------------------
@@ -344,6 +503,10 @@ export function createMarkdownIt(ctx) {
   md.use(svgInlinePlugin, ctx);
   md.use(videoLinkPlugin, ctx);
   md.use(remoteImagePlugin, ctx);
+  // Substitutes {{tbdocs:<name>}} in prose. Registered last so it runs after
+  // `replacements` has done the dash and quote transforms -- see counts.mjs
+  // for why the layer matters and what it deliberately cannot reach.
+  md.use(countPlugin, ctx);
 
   return md;
 }
@@ -1489,7 +1652,66 @@ const ADMONITION_TYPES = {
 // indentation; the gem's regex captures that into \1 and uses it as a
 // per-line anchor on the body lines.
 const ADMONITION_RE = /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][^\n]*\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
-const CODE_FENCE_RE = /(?:^|\n)(?<!>)[ \t]*```[\s\S]*?```/g;
+// Stashing the fences used to be one regex --
+// `/(?:^|\n)[ \t]*```[\s\S]*?```/g` -- which paired an opening fence with the
+// next ``` ANYWHERE, including one in the middle of a line.
+// Reference/Attributes.md contains exactly that: a [Description(...)] sample
+// whose argument is a Markdown string built from twinBASIC string literals,
+// two of which are "```basic" and "```". The fence opened at that sample's
+// ```tb line closed on the literal instead of on its own closing line, and
+// every pairing after it was off by one -- so for the rest of the file the
+// stasher had prose and code exactly the wrong way round. None of the page's
+// six admonitions was rewritten, and all six shipped as literal "[!NOTE]"
+// text. One page in 869, and nothing reported it: check_code_regions.mjs
+// compares the code regions, and the damage here is to the prose between them.
+//
+// CommonMark closes a fence on a line that is only the fence character,
+// repeated at least as often as in the opener. That is a rule about lines, so
+// this is a line scan rather than a cleverer regex.
+//
+// **Tildes are recognised here, and leaving them out was a live defect.** The
+// comment that stood here said they were deliberately skipped because
+// maskCodeRegions knows about them -- but rewriteAdmonitions runs OUTSIDE the
+// mask, by design, because a fence inside an admonition still carries its
+// `> ` markers at that point and this rewrite is what strips them. So nothing
+// protected a tilde fence, and a standalone ``` line inside one was read as an
+// opener: with an odd number of them the pairing ran past the end of the
+// sample and swallowed the prose after it. That is the Attributes.md failure
+// exactly, reachable by a construct CommonMark allows. Measured before the
+// fix: a ~~~ block holding one standalone ``` shipped the following
+// `> [!NOTE]` as literal text, while the 4-backtick form rendered correctly.
+//
+// A fence is closed only by its OWN character, so the close pattern is built
+// from what opened it. An info string may not contain a backtick on a backtick
+// fence, and may contain anything on a tilde fence -- CommonMark's rule, and
+// the reason the two cases are checked separately.
+const FENCE_OPEN_RE = /^([ \t]*)(`{3,}|~{3,})(.*)$/;
+
+function stashCodeFences(src, stashed) {
+  const lines = src.split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = FENCE_OPEN_RE.exec(lines[i]);
+    if (!m) { out.push(lines[i]); continue; }
+    const [, indent, ticks, info] = m;
+    if (ticks[0] === "`" && info.includes("`")) { out.push(lines[i]); continue; }
+    const fenceChar = ticks[0] === "`" ? "`" : "~";
+    const closeRe = new RegExp("^[ \\t]*" + fenceChar + "{" + ticks.length + ",}[ \\t]*$");
+    let j = i + 1;
+    while (j < lines.length && !closeRe.test(lines[j])) j++;
+    // An unclosed fence runs to the end of the document, as CommonMark says.
+    const end = Math.min(j, lines.length - 1);
+    // Stashed WITHOUT the opener's own indent: the placeholder is emitted with
+    // that indent in front of it and the restore puts the stashed text back in
+    // the placeholder's place, so carrying the indent in both would double it.
+    // That is visible wherever a literal fence sits inside an indented code
+    // block, such as the page-template skeleton in Documentation/Authoring.md.
+    stashed.push(lines.slice(i, end + 1).join("\n").slice(indent.length));
+    out.push(`${indent}\`\`\`{{CODE_BLOCK_${stashed.length - 1}}}\`\`\``);
+    i = end;
+  }
+  return out.join("\n");
+}
 
 export function rewriteAdmonitions(src) {
   // CommonMark's normalisation pass converts CRLF/CR to LF before block
@@ -1497,25 +1719,26 @@ export function rewriteAdmonitions(src) {
   src = src.replace(/\r\n?/g, "\n");
 
   const stashed = [];
-  let work = src.replace(CODE_FENCE_RE, (match) => {
-    // Preserve any leading whitespace so the placeholder lands in the
-    // same column the fence did -- prevents the placeholder from being
-    // appended to a preceding line and pulled into an admonition body
-    // capture. Mirrors the patched gem's process_doc behaviour.
-    stashed.push(match);
-    const lead = match.match(/^[ \t\n]+/)?.[0] ?? "";
-    const body = match.slice(lead.length);
-    return `${lead}\`\`\`{{CODE_BLOCK_${stashed.length - 1}}}\`\`\``;
-  });
+  let work = stashCodeFences(src, stashed);
 
   work = work.replace(ADMONITION_RE, (m, leading, indent, typeRaw, bodyRaw) => {
     const type = typeRaw.toLowerCase();
     const meta = ADMONITION_TYPES[type];
-    // The body lines all share the same leading indent; strip it plus
-    // the `>` marker. Matches the gem's `gsub(/^#{indent}\s*>\s*/, "")`.
+    // The body lines all share the same leading indent; strip it plus the
+    // `>` marker and AT MOST ONE following space, which is what blockquote
+    // unwrapping means.
+    //
+    // The gem's `gsub(/^#{indent}\s*>\s*/, "")` was mirrored literally here
+    // and the trailing `\s*` is greedy over `\s`, which includes newlines --
+    // so it also ate the body's own indentation and swallowed blank lines.
+    // CODE_FENCE_RE cannot protect a fence inside an admonition (the fence
+    // opener is preceded by `> `, which `[ \t]*` does not match), so this
+    // ran over real code samples: Reference/Default/VBA/Interaction/InputBox
+    // shipped its If/ElseIf/Else bodies flush left, and Reference/Core/Option
+    // lost the blank line between its Module and Class examples.
     const stripRe = indent
-      ? new RegExp(`^${escapeRegExp(indent)}\\s*>\\s*`, "gm")
-      : /^\s*>\s*/gm;
+      ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm")
+      : /^[ \t]*>[ \t]?/gm;
     const body = (bodyRaw ?? "").replace(stripRe, "").trimEnd();
 
     // The gem emits the replacement <div> at column 0 regardless of how
@@ -1668,7 +1891,16 @@ function normaliseBlockHtml(content) {
 // Match an html_block whose content is one or more self-closing inline
 // tags (separated by whitespace): <br>, <br/>, <br />, <hr ...>,
 // <img ...>. kramdown wraps any such sequence in a single <p>.
-const STANDALONE_INLINE_HTML_RE = /^(?:<(br|hr|img)\b[^>]*\/?>\s*)+$/i;
+//
+// No `\/?` before the `>`, deliberately. `/` is already inside `[^>]`,
+// so `[^>]*\/?` matches exactly the same language as `[^>]*` -- but it
+// matches it two ways per tag, once with the slash inside the class and
+// once with it in the optional. Under `(?:...)+` that is 2^n partitions
+// of an n-tag block, all of which get tried when the anchored `$`
+// fails. Measured at ~4x per two added tags: 22 tags took 106 ms, and
+// the curve does not flatten. An html_block of `<br />` lines ending in
+// anything that is not another such tag is enough to reach it.
+const STANDALONE_INLINE_HTML_RE = /^(?:<(br|hr|img)\b[^>]*>\s*)+$/i;
 
 // ---------- SVG inline plugin -----------------------------------------------
 

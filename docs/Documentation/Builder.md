@@ -36,7 +36,7 @@ The rework documented here is internal. The build moved from a push-style schedu
 
 ## Architecture at a glance
 
-One entry point, ~28 modules, three output trees, N+1 threads.
+One entry point, ~34 modules, three output trees, N+1 threads.
 
 `runBuild()` allocates a `SharedArrayBuffer` holding the scheduling state (task status, dependency counts, successor edges), spawns one worker per available CPU, sends each worker a reference to the SAB, and lets the workers and the main thread compete for ready tasks. There is no central dispatcher; each thread scans the SAB, claims a task it is eligible to run, executes it, and updates the SAB so the next task becomes claimable. The main thread participates on equal footing for tasks marked `runOnMain` --- mostly the ones that mutate the master `pages[]` array or coordinate filesystem layout.
 
@@ -81,6 +81,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | File | Role |
 |---|---|
 | [`dot.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/dot.mjs) | Regenerates stale `.dot` → `.svg` via the WASM build of Graphviz (`@hpcc-js/wasm-graphviz`). |
+| [`dot-metrics.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/dot-metrics.mjs) | Installs Inter's real advance widths into the Graphviz WASM module before any layout runs, so a diagram's boxes are sized for the font the browser will actually paint. See [Diagram geometry](#diagram-geometry). |
 | [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs) | Dart Sass over the vendored just-the-docs SCSS. Split across `scssLight` + `scssDark` worker tasks, joined on main. |
 | [`vendor-assets.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/vendor-assets.mjs) | Downloads any YouTube poster frame or GitHub user-attachment image the markdown references and that is not already committed, into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. Idempotent; the artifacts are committed like the generated DOT SVGs. CI never downloads --- a referenced but uncommitted asset is a hard error there. |
 
@@ -111,6 +112,17 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`offline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline.mjs) | Offline-tree writer + just-the-docs.js AST patcher + `search-data.js` wrapper. |
 | [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) | Pure rewrite helpers (`deriveOfflinePageCached`, CSS url() rewrite, site-path set construction). Worker-safe; no node:fs dependency. |
 | [`pdf.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/pdf.mjs) | `_site-pdf/` writer: `book.html` + `tb-highlight.css` + `print.css` + referenced images. |
+
+**Verification**
+
+| File | Role |
+|---|---|
+| [`link-check.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/link-check.mjs) | The pure core: HTML in, findings out. No filesystem traversal and no CLI, which is what lets the build's fused check and the standalone [`scripts/check_links.mjs`](Tools#check-links) share one implementation. |
+| [`check.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/check.mjs) | Build-side plumbing: the `TREES` table, per-chunk `checkChunk`, the `joinChunks` merge, report formatting, and the `--check-audit-index` tree-index audit. |
+| [`check-tree.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/check-tree.mjs) | `deriveTreeRels` --- every relative path the build believes it emitted into a tree. The check's existence oracle is built from this rather than from a `readdir`, which is why the audit exists to keep it honest. |
+| [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs) | The registry behind `{{tbdocs:<name>}}` in prose. `deriveCounts(state)` computes every name from build state; `countPlugin` substitutes them as a core rule over the inline token stream, which is what makes code immune without a rule for it. `validateCountNames` rejects an unknown name on main before any worker renders, and `findSurvivingPlaceholder` rejects one that reached the output --- two checks because they fail differently. See [Authoring Pages](Authoring#counts). |
+| [`page-baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/page-baseline.mjs) | The page-count drift guard, and the committed `page-baseline.json` it compares against. A rise rewrites the file, a fall fails the build, and neither CI nor `--serve` may write. See [Building and Deployment](Building#the-page-count-drift-guard). |
+| [`publish-policy.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/publish-policy.mjs) | The allowlist of file types that may reach a published tree. Enforced twice, unconditionally: over the static-file inventory in `discover`, and over each tree's `deriveTreeRels` inventory in `dispatch`. A finding aborts the build. See [Drift guards](#drift-guards-and-failure-modes). |
 
 **Dev mode and reporting**
 
@@ -160,7 +172,7 @@ The SAB holds a single `notify` Int32 used as a generation counter. Workers that
 
 ## SAB memory layout
 
-A single `SharedArrayBuffer` contains every Int32 array the scheduler needs. The sizes are static: `MAX_TASKS = 512`, `MAX_LANES = 64`, `MAX_EDGES = 2048`, total roughly 140 KB. The arrays a reader is most likely to care about:
+A single `SharedArrayBuffer` contains every Int32 array the scheduler needs. The sizes are static: `MAX_TASKS = 512`, `MAX_LANES = 64`, `MAX_EDGES = 2048`, total 174,100 bytes (170 KB). The arrays a reader is most likely to care about:
 
 - `status[i]` --- the task lifecycle enum above.
 - `depCount[i]` --- remaining predecessor count. Decremented atomically on each predecessor's completion.
@@ -174,16 +186,17 @@ The complete layout, allocation helper, and the `readTaskMeta` / `writeTaskMeta`
 
 ## Task DAG by section
 
-The pipeline has 28 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into four sections that also organise the discussion below:
+The pipeline has 31 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections that also organise the discussion below:
 
 - **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`, `vendorAssets`
 - **Spine**: `nav`, `dot`, `buildInit`, `markdownInit`, `deriveSitemap`, `deriveRedirects`, `resolveBookChapters`
 - **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `renderEnvInit`, `render:i`, `renderJoin`
 - **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `writeAux`, `writeOffline`, `writePdf`
+- **Check**: `linkJoin`, `checkBook`, `checkReport` --- present on every ordinary build, because `build.bat` always passes `--check-audit-index`
 
-The full task DAG, with every cross-section edge, follows:
+The task DAG, with every static task and every dependency between them, follows:
 
-![Task DAG of the SAB pull scheduler](/assets/images/dot/scheduler-dag.svg)
+![A top-to-bottom dependency graph of the build tasks. Seeds with no predecessor sit at the top; discover feeds the spine, the spine feeds dispatch, and dispatch fans out the per-chunk render and flush work that the write and check tasks then consume. Node colour and a one-letter tag say whether a task runs on the main thread or on a worker, and dashed arrows mark the per-lane and data-only dependencies.](/assets/images/dot/scheduler-dag.svg)
 
 **[M]** runs on the main thread; **[W]** runs on a worker. Solid arrows are normal predecessor edges (`expected`); dotted arrows are per-lane dependencies (`perWorkerDeps`) or implicit data dependencies between tasks that share state through `SharedState`.
 
@@ -232,7 +245,7 @@ config → discover ┬→ nav            ┐
 ```
 dispatch ┬→ render:0 ─┬→ flush:0 ─┐
          ├→ render:1 ─┼→ flush:1 ─┤
-         │   ⋮        │   ⋮       │
+         │   :        │   :       │
          ├→ render:N ─┴→ flush:N ─┤
          │                        │
          └→ renderJoin ←──────────┘
@@ -242,8 +255,8 @@ dispatch ┬→ render:0 ─┬→ flush:0 ─┐
 
 - `renderEnvInit` (worker, `on_demand` + `unique_per_worker`) --- per-lane render environment setup: unpack the shared SAB, reconstruct the link-table Maps, instantiate the worker's own markdown-it. Declared as a `perWorkerDeps` on every `render:i` so the first render claim per lane pulls it in.
 - `render:i` (worker, dynamic) --- the per-chunk compute. Each one runs five sub-stages over its slice of `state.pages`: `renderPhase` (markdown-it body render) → `computeChunkSeo` (per-page SEO fields) → `templatePhase` (just-the-docs layout wrap) → `deriveOfflinePageCached` (offline HTML rewrite) → `deriveSearchEntries` (per-section search entries). Returns a delta containing `renderedContent` per page, plus the per-chunk search entries.
-- `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it.
-- `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData`. Its dep count is set to N by `dispatch.submit()`.
+- `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it. **When `--check` is on, the link and integrity check runs here too**, over the chunk's just-written HTML --- both trees' final strings are already decoded and in worker memory at that moment, so the check never writes ~270 MB out to read it back.
+- `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData` and `writePdf`. `dispatch.submit()` sets its dep count to N *and* rewrites its `expected` list with every chunk name; the dep count alone is not a barrier over the submits. See [Pipeline Stages](Pipeline-Stages#renderjoin-main-on_demand).
 - `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `writePdf`.
 
 ### Write
@@ -287,15 +300,20 @@ Per-chunk page HTML writes were similarly pulled off the main thread: each `flus
 
 ## Page deltas and shared state
 
-The scheduler owns a `SharedState` instance with five fields:
+The scheduler owns a `SharedState` instance. Five fields are declared on the class in `builder/scheduler.mjs`; five more are attached by tasks as the build runs, for ten in all --- though `checkTrees` appears only under `--check`:
 
 | Field | Type | Filled by |
 |---|---|---|
 | `pages` | `Page[]` | `discover.submit()`. Never reassigned afterwards --- only mutated in place. |
-| `staticFiles` | `StaticFile[]` | `discover.submit()`, plus appends from `dot.submit()` for freshly-regenerated SVGs. |
+| `staticFiles` | `StaticFile[]` | `discover.submit()`, plus appends from `dot.submit()` and `vendorAssets.submit()` for freshly-generated or freshly-downloaded files. |
 | `site` | `object` | Populated progressively by every spine task's `submit()`. |
 | `pageByDest` | `Map<destPath, Page>` | `discover.submit()`. Used by render `submit()` to merge deltas into the master `Page` objects. |
 | `searchChunks` | `Array<Array<entry>>` | Pre-allocated to length N by `dispatch.submit()`; each `render:i.submit()` writes one slot. |
+| `sitePaths` | `Set<string>` | `deriveSitemap.execute()`. Every path the offline rewrite may point at --- pages, static files, redirect stubs, vendored theme assets --- broadcast to the render workers in dispatch's shared payload. |
+| `checkStubs` | `Stub[]` | `deriveRedirects.submit()`. The link check needs it because redirect stubs are excluded from the sitemap / search / canonical assertions. |
+| `checkTrees` | `{ [tree]: { rels, baseurl } }` | `deriveSitemap.execute()`, and only under `--check`. `rels` is what each tree is about to receive, derived from the build's own records, and `treeIndexFor()` turns it into the existence oracle the link check resolves against; `--check-audit-index` additionally compares it with what landed on disk. |
+| `checkChunks` | `Array<chunkFindings>` | Created empty by `dispatch.submit()`; each `flush:i.submit()` pushes its chunk's reduction, which rides back on the flush result rather than crossing the thread boundary as raw link occurrences. |
+| `checkChunkCount` | `number` | `dispatch.submit()`, set to N. `linkJoin` compares `checkChunks.length` against it and reports a short chunk list as an error on every tree, which fails the exit code --- a chunk that never arrived would otherwise mean the check quietly examined fewer pages and still reported a clean pass. |
 
 Worker output flow: a worker posts `{ done: taskIdx, output, timing, lane }` to the main thread → the pool callback hands it to `Scheduler._onWorkerDone()` → the task's `submit()` runs on the main thread and merges the delta into the master `pages[]` via `pageByDest` → the worker then runs `onTaskDone()` to flip the SAB status to `DONE` and wake any sibling that was waiting on this task. The message-then-SAB ordering matters: a downstream main-thread task could otherwise be claimed before its predecessor's output had arrived.
 
@@ -365,6 +383,22 @@ The wrapper HTML emitted by `buildSvgWrapper`:
 
 Only SVGs whose content is present in `svgContents` are inlined; external URLs and missing files fall through to the default `<img>` renderer. The main-thread markdown-it instance (used only for site-level SEO) passes an empty map --- no SVG content needed there.
 
+## Diagram geometry
+
+Graphviz decides how wide a node box must be, and the browser then paints the label inside it. Those are two measurements of the same string, and they only agree if both use the same font.
+
+They did not. The WASM Graphviz build carries no font machinery at all --- no pango, no fontconfig, no freetype --- only the built-in width tables for the core PostScript families, and it falls back to Times for anything else. `fontname="Inter"` therefore measured exactly the same as a font that does not exist. Times is far narrower than Inter through the lowercase (`a` is 444 against 557 per 1000 em), so every box came out about 11% too small, and 27 labels across the three diagrams that predate this were painted outside their boxes.
+
+[`dot-metrics.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/dot-metrics.mjs)'s `applyInterMetrics()` fixes that before any layout runs. After `Graphviz.load()`, the family table lives in the module's linear memory, reachable through `_module.HEAPU8`, and it is read on every layout rather than cached --- so overwriting the Times family's four width arrays (regular, bold, italic, bold-italic) with Inter's advances is enough, and Inter's own fallback to Times is what routes the lookup there. The widths come from `builder/inter-metrics.json`, generated by `scripts/build_dot_metrics.mjs`. Measured against the site's diagram labels, this takes Graphviz from 11.4% under on average to 0.5% over.
+
+Three things stop that from failing silently:
+
+- `locateTimesFamily()` requires **exactly one** match against the published Times AFM widths, and spot-checks all four arrays. An `@hpcc-js/wasm-graphviz` bump that moves the table fails loudly rather than silently reverting to Times metrics.
+- `assertMeasuresInter()` lays out a real string afterwards and checks the box came back Inter-sized, so the whole chain is proven rather than the byte-writing assumed.
+- If either fails, `regenerateDot` emits nothing and flips the exit code. A stale but correct SVG beats a freshly wrong one.
+
+The residual 0.5% is kerning, which a per-character table cannot express. It errs wide --- the table over-estimates --- so boxes come out slightly generous rather than slightly tight. `scripts/check_dot_fit.mjs`, run from `check.bat`, is what proves that stayed true: it renders every committed diagram with the real webface and fails if any label sits outside its box.
+
 ## Gantt chart and build introspection
 
 Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `renderGantt(grouped)` takes the `Map<section, taskTiming[]>` the scheduler accumulates and renders one SVG row per main-thread task plus one row per worker lane. Workers appear as a single row each with multiple coloured rectangles (one per task they ran, in completion order); the colour encodes the originating section. Boot timings (cold start, `warmInit`, `renderEnvInit`) appear as a distinct row group on the first build of a session.
@@ -411,13 +445,83 @@ The site's `/assets/` tree at deploy time is assembled from three sources:
 
 | Source on disk | What lives there | Phase that delivers it |
 |---|---|---|
-| `docs/assets/` | Project-owned content: the SCSS entry point, project JS (`theme-toggle.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
-| `builder/vendor/just-the-docs/` | Vendored from the just-the-docs theme (v0.10.1): `_sass/` (the theme's SCSS sources, fed into the compilation) and `assets/js/just-the-docs.js` + `assets/js/vendor/lunr.min.js` (the chrome runtime, copied verbatim). See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the inventory, re-vendoring procedure, and the in-tree patches applied to `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `writeAssets`. |
-| Generated in-process | `just-the-docs-combined.css` (from `scss.mjs`) and `tb-highlight.css` (from `highlight-theme.mjs`). Neither is committed; both are rebuilt every run. | Written by `scss` (combined CSS) and `writeAssets` (highlight CSS). |
+| `docs/assets/` | Project-owned content: the two SCSS entry points, project JS (`theme-toggle.js`, `svg-inline.js`), hand-written stylesheets (`print.css`, `just-the-docs-head-nav.css`), Graphviz/DOT diagrams (`.dot` sources + `.svg` renders), the self-hosted webfaces under `fonts/` (subset `.woff2` plus their OFL licences), and any content images contributors add. | Discovered by [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs), copied by `writeAssets`. |
+| `builder/vendor/just-the-docs/` | Vendored from the just-the-docs theme (v0.10.1), and patched in tree rather than held pristine: `_sass/` (the theme's SCSS sources, fed into the compilation --- 30 of its files differ from the v0.10.1 originals) and `assets/js/just-the-docs.js` (also patched) + `assets/js/vendor/lunr.min.js` (unmodified); both JS files are copied verbatim into the output. See [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) for the file-by-file inventory, the re-vendoring procedure, and the in-tree patches --- which cover `_sass/` as well as `just-the-docs.js`. | `_sass/` consumed by [`scss.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scss.mjs); `assets/` copied by `writeAssets`. |
+| Generated in-process | `just-the-docs-combined.css` (from `scss.mjs`, over the two entry points plus every partial under `docs/_sass/` --- see [Project styling](#project-styling)) and `tb-highlight.css` (from `highlight-theme.mjs`). Neither is committed; both are rebuilt every run. | Written by `scss` (combined CSS) and `writeAssets` (highlight CSS). |
+
+The fonts are committed artifacts, like the DOT renders: `scripts/build_fonts.py` regenerates them from pinned upstream releases, and the build neither downloads nor subsets anything. The stylesheets reference them with a *relative* `url("../fonts/...")` rather than a root-absolute path, so the same compiled CSS resolves in the online tree, the `file://` offline mirror, a `--baseurl` deployment and the sparse PDF tree without any rewrite. `builder/pdf.mjs` copies the six faces `print.css` declares into `_site-pdf/` explicitly, since that tree is sparse and carries only what the book render needs.
 
 CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is non-empty; the same transform applies to generated CSS so the `url("/favicon.png")` the SCSS entry point emits resolves correctly under sub-path deployments.
 
 The project JS is deliberately small. `theme-toggle.js` implements the three-state (system / light / dark) theme switch as a progressive enhancement over the no-JS `prefers-color-scheme` default: the correct palette renders even with scripting disabled, and the script only adds the manual override that persists a `data-theme` choice. `svg-inline.js` powers the click-to-zoom overlay and the download / copy controls on inlined diagrams. (An earlier `theme-switch.js` was replaced by `theme-toggle.js` when the two-state switch grew a system-follows-OS state.)
+
+## Project styling
+
+**Every hand-written style rule the project owns lives under `docs/_sass/`.** A CSS rule for a new component goes there --- not into the vendored theme sources under `builder/vendor/just-the-docs/_sass/`, and not into a new stylesheet of its own. Everything under `docs/_sass/` compiles into one asset, `assets/css/just-the-docs-combined.css`, which is the stylesheet every page loads.
+
+**The vendored tree is not pristine upstream and must not be re-vendored wholesale.** 30 of its files differ from the v0.10.1 originals: 26 modified and 4 deleted. Most of that is a mechanical Sass `@import`-to-`@use` migration, which is repeated against the new upstream rather than ported. Six files are not mechanical --- `buttons.scss`, `code.scss`, `layout.scss`, `navigation.scss`, `search.scss` and `support/_variables.scss` hold accessibility fixes made against measured failures: `.btn-reset` at 1.39:1 on the dark background, the site footer moved from 2.82:1 to 7.20:1, three focus rings upstream ships without, and two palette variables raised to AAA. Overwriting the tree from a fresh tarball reverts all six at once. The build does not notice, and `check.bat` only half does: the axe scan reports the contrast regressions, but axe checks only that a control is reachable and named, not that its focus ring is visible, so the three ring patches would go back without a word. [`builder/vendor/just-the-docs/README.md`](https://github.com/twinbasic/documentation/blob/main/builder/vendor/just-the-docs/README.md) is the procedure of record: it names every diverged file, the commit each patch came from, and the step order a re-vendor has to follow.
+
+`.scss` is build input, never a published asset. `_config.yml`'s `exclude:` drops `**/*.scss` from the source walk, so a partial is compiled and its source is not copied out. Nothing under `docs/_sass/` reaches a deploy tree as a file.
+
+| File | What it holds |
+|---|---|
+| `custom/custom.scss` | The bulk of the project's CSS: `.sr-only`, the inline-diagram controls and container, the table-wrapper focus ring, the page footer and its divider, the `.section-links` disclosure, `.site-logo`, the code-size overrides (as the `tb-code-overrides` mixin), the theme toggle, the aux-nav focus rings, `.video-link`, footnote back-links, `<summary>` target sizing, and in-heading links. Shadows the vendored theme's empty `custom/custom.scss` hook by load-path order. |
+| `custom/_theme.scss` | The `dark-theme` mixin and nothing else. Every dark-mode rule in the project passes through it. |
+| `custom/_fonts.scss` | The `@font-face` rules for the self-hosted faces, plus the `$tb-body-font-family` / `$tb-mono-font-family` stacks. The faces are wrapped in an `emit-font-faces` mixin so they are emitted exactly once, from the light compilation: the dark compilation re-emits its whole payload under two selectors, and an `@font-face` nested inside a selector is invalid. |
+| `custom/admonitions.scss` | The GFM admonition palette, light and dark, ported out of the old Jekyll gem so the rules ship once in the site stylesheet instead of being inlined into every page's `<head>`. |
+| `modules-dark.scss` | Not a partial anyone `@use`s directly: it is the dark **configuration** of the whole just-the-docs module tree --- one `@use "modules" with (…)` carrying the dark palette --- loaded only by `meta.load-css()` from inside the `dark-theme` mixin. It also re-passes the two font stacks, which are not dark-specific: omit them and the site renders Inter in light mode and the system stack in dark, for the specificity reason below. |
+
+Two plain-CSS stylesheets sit outside the Sass pipeline and are copied verbatim: `docs/assets/css/print.css`, which is the book's complete design and loads no just-the-docs styles at all, and `docs/assets/css/just-the-docs-head-nav.css`. A web style change does not belong in either.
+
+### Two compilations, one stylesheet
+
+`scss.mjs` runs Dart Sass twice, on two worker tasks, over two entry points:
+
+- `scssLight` compiles `docs/assets/css/just-the-docs-combined.scss` --- the light palette. This is where `custom/custom.scss` is `@use`d, so everything in it is emitted once, at root level, and where `emit-font-faces` is included.
+- `scssDark` compiles `docs/assets/css/just-the-docs-dark.scss` --- the same module tree configured from `modules-dark.scss`, wrapped in the `dark-theme` mixin.
+- `scss` (main) concatenates the two results and writes the single combined CSS asset to `_site/` and `_site-offline/`, applying the baseurl `url()` rewrite on the way.
+
+Two compilations rather than one because **Dart Sass keeps one module cache per `compile()` call, and a module URL can be loaded once per compilation with one variable configuration.** The dark theme needs `modules.scss` with different variable values, which is only reachable from a fresh compilation with its own empty cache. `meta.load-css()`'s `$with` map writes to that same cache, so it is no escape hatch either --- which is why the light entry point loads `modules` exactly once and hardcodes the two literal colours it would otherwise read from a Sass variable.
+
+The `dark-theme` mixin in `custom/_theme.scss` emits its content **twice**:
+
+```scss
+@mixin dark-theme {
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) { @content; }
+  }
+  html[data-theme="dark"] { @content; }
+}
+```
+
+The first copy is the no-JS system default, with `:not([data-theme="light"])` as the escape hatch for a reader who has forced light. The second is the explicit toggle choice, which wins even on a light OS because it is emitted last at equal specificity. The duplicated text compresses away over the wire. A single-source alternative --- a custom-properties token layer --- is tracked in `builder/FUTURE-WORK.md`.
+
+### The specificity trap
+
+**This is the one thing to know before writing any rule here.** The dark compilation re-emits *every* just-the-docs base rule inside that mixin, so a bare element selector in the theme reappears scoped to the theme root. Both dark selectors are (0,1,1), so:
+
+| Rule | Light | Dark re-emission |
+|---|---|---|
+| `a { text-decoration: none }` (theme `base.scss`) | (0,0,1) | `html[data-theme="dark"] a` --- (0,1,2) |
+| `hr { margin: $sp-6 0 }` (theme `base.scss`) | (0,0,1) | `html[data-theme="dark"] hr` --- (0,1,2) |
+| `.main-content ul { margin-top: 0.5em }` (theme `content.scss`) | (0,1,1) | `html[data-theme="dark"] .main-content ul` --- (0,2,2) |
+
+So a **single-class rule that overrides a bare element selector applies in light mode and silently does not in dark**. `.reversefootnote` at (0,1,0) loses to (0,1,2). The remedy is to prefix the selector with `.main-content`: `.main-content .reversefootnote` is (0,2,0) and wins in both themes.
+
+That is the general rule, and it has two extensions:
+
+- **`.main-content` is not always enough.** When the rule being overridden is itself scoped under `.main-content` upstream, the dark copy lands at (0,2,2) and a (0,2,1) override still loses --- which is what `.section-links > ul` hit. Either climb another level or emit a matching rule inside `dark-theme` yourself; `custom.scss` does the latter for that case.
+- **Site chrome outside `<main>` has no `.main-content` to reach for.** An `<hr>` that is a direct child of the main-content element takes `#main-content > hr` at (1,0,1); the theme toggle has to beat `html[data-theme="dark"] .btn-reset:focus-visible` at (0,3,1), so `#theme-toggle:focus-visible` at (1,1,0) is what clears it. An id selector is the usual answer here.
+
+**The trap has shipped at least three times** --- the footnote underline, the footer `hr` margins, and `.section-links > ul`, which had been silently inheriting the body-prose list margin since the day it landed. Each time the rule worked in light mode, so it looked correct to the person who wrote it.
+
+Prefer a selector that wins on its own terms over one that wins by source order. Equal-specificity rules are decided by position in the concatenated output, and the light half always precedes the dark half.
+
+### Verifying a style change
+
+Run `serve.bat` and look at the page **in both themes**. This is not a formality: a dark-mode specificity revert is usually cosmetic, produces no error and no warning, and no gate catches it. Use the theme toggle rather than the OS setting, so the `[data-theme]` half is what gets exercised. Do not judge styling by opening a built page as a `file://` URL --- the online tree references its assets root-absolutely, so a `file://` page loads unstyled and any conclusion about colour or spacing drawn from it is worthless.
+
+Then `build.bat && check.bat`. A malformed rule surfaces as an SCSS compile failure, which warns with the source location and flips the exit code rather than aborting --- so the previous build's CSS lingers in `_site/` and the site appears to still work; read the build output, do not judge by the page. `check.bat`'s accessibility scan covers every sample page in both themes for exactly the reason above, and its `target-size` and `color-contrast` rules are where a geometry or palette change lands. If the new component introduces markup the site has not used before, also add a construct family to `scripts/pick_a11y_sample.mjs` --- see [Tools and Scripts](Tools#pick-a11y-sample) --- or no axe rule keyed on it will run anywhere.
 
 ## What is NOT in builder/
 
@@ -427,18 +531,26 @@ Some build-adjacent code lives at the repo root rather than under `builder/`:
 - **Standalone link checking** --- `scripts/check_links.mjs` reads a built tree from disk. The generator does its own link and integrity check under `--check`, over the HTML still in worker memory; the script remains the tool for a tree the build did not produce.
 - **External link crawling** --- `scripts/crawl_check.mjs` reads from HTTP; not part of the generator.
 - **Accessibility checking** --- `scripts/check_a11y.mjs` runs puppeteer + axe-core over the built offline tree after the build; not part of the generator.
-- **Graphviz/DOT source files** --- `docs/assets/images/dot/*.dot` are source, `*.svg` are build artifacts that `tbdocs` regenerates as needed.
+- **Graphviz/DOT source files** --- a `.dot` anywhere under `docs/` is source and its `.svg` sibling is a build artifact that `tbdocs` regenerates as needed. Shared diagrams live in `docs/assets/images/dot/`; one that belongs to a single page sits beside it, as `docs/Tutorials/CEF/Images/MonacoArchitecture.dot` does.
+- **Webfont generation** --- `scripts/build_fonts.py` downloads the pinned Inter, Cascadia Code and Source Serif 4 releases, verifies their SHA-256, pins the optical-size axis and subsets them into `docs/assets/fonts/`. Dev tooling only; the `.woff2` files are committed and the build never runs it.
+- **Diagram font metrics** --- `scripts/build_dot_metrics.mjs` measures Inter's advance widths in a browser and writes `builder/inter-metrics.json`, which `builder/dot-metrics.mjs` installs into Graphviz before any layout runs. Dev tooling; the JSON is committed and the build never runs the generator. See [Diagram geometry](#diagram-geometry).
+- **Diagram fit checking** --- `scripts/check_dot_fit.mjs` renders every committed diagram with the real webface and asserts no label sits outside the box Graphviz drew for it. Runs from `check.bat`, not from the build.
 
 ## Drift guards and failure modes
 
 The build aborts or flips the exit code under a handful of conditions:
 
-- **Page-count drift.** `runBuild()` ends with `if (pages.length < 836) process.exitCode = 1` so a discover-rule regression that silently drops content appears as a non-zero exit even though the build itself completed.
+- **Page-count drift.** `runBuild()` ends by comparing this build's inventory against `builder/page-baseline.json` --- a committed file holding the page and static-file counts of the last build anyone committed. A rise rewrites it and says so; a fall fails the build. `discover()` returns {{tbdocs:pages}} pages today --- every `.md` and `.html` under `docs/` with a parseable frontmatter block, after `_config.yml`'s `exclude:`. It used to be `if (pages.length < 836)`, a constant written when the site had 836 pages, which by then left a margin of more than seventy: a collapse alarm rather than a drift check, and one that would not have fired on a repeat of the 37-page `AppGlobalClassObject/_App/` loss that [Authoring](Authoring#what-may-live-in-docs) describes. See [the page-count drift guard](Building#the-page-count-drift-guard) for why the baseline is a file rather than a tighter constant. What reports a single page depends on how it went missing: a page that loses its frontmatter --- a UTF-8 BOM in front of the `---`, or any line before it --- is reclassified as a static file, and the publish-policy sweep below then aborts the build naming the path, because `.md` is in neither extension set; a page dropped by an `exclude:` pattern is never seen at all, and the only report is the link check flagging broken links into it, so a page nothing links to disappears without a message. Nav integrity covers the remaining case only indirectly --- it fires when a *parent* disappears and strands its children, not when a leaf does.
 - **SAB structural validation.** `verifySchedulerSAB(TASKS, views, idMapping)` runs immediately after allocation. A misconfigured `expected`/`perWorkerDeps` list, a duplicate task name, or a successor edge to an unknown task aborts the build before any task runs.
 - **DOT render failure.** Per-diagram failures retain the previous SVG and continue the batch so every broken diagram appears in one run; the orchestrator flips `process.exitCode = 1` based on the failure count.
 - **SCSS compile failure.** The light/dark workers warn with the source location and continue with `failed: true`; the joiner sets `process.exitCode = 1`. Existing `_site/` CSS lingers.
 - **Nav integrity.** Orphan or ambiguous `parent:` declarations throw inside `nav.execute()`, which aborts the build via `Scheduler._abort()`.
+- **Unpublishable file type.** Every non-page under `docs/` is copied into the output verbatim, so `publish-policy.mjs` holds an allowlist of types that may be published and throws on anything else --- in `discover` over the static-file inventory, naming the source path before a byte is written, and again in `dispatch` over each tree's derived inventory, which is the only sweep that sees redirect stubs, vendored theme assets and the generated auxiliaries. Neither is behind `--check`: a build run with checks off is exactly when nothing else is looking. This one aborts rather than setting an exit code, on the opposite reasoning to the link check below --- a broken link leaves a tree worth inspecting, a tree carrying a private key does not. `SOURCE_EXTENSIONS` and `BUILD_EXTENSIONS` are separate sets so the build can emit `sitemap.xml` and `search-data.json` without blessing a stray `docs/secrets.json`; [`scripts/check_publish_policy.mjs`](Tools#check-publish-policy) asserts they stay separate.
+- **Redirect collision.** A `redirect_from:` entry becomes a stub page at that URL, so two ways of claiming one URL are refused in `deriveRedirectStubs()`: an entry pointing at a URL some page already publishes at, and two pages declaring the same entry. Both name the source file on each side --- a stub silently overwriting a real page, or one of two stubs silently winning, would be invisible in the output.
+- **Destination collision.** `assertNoDestinationCollisions()` runs before the write phase and throws if any static file's destination path equals a page's. The static-file copy and the page write run in parallel, so without the check which one survived would depend on I/O ordering.
+- **Missing PDF input.** Phase 8 aborts on three things the book cannot be assembled without: no page (or more than one) carrying `layout: book-combined`, a font listed in `REQUIRED_FONTS` absent from the source tree (naming `scripts/build_fonts.py`), and any image `book.html` references that is not under the source tree. The last is the one that fires in practice, and `--tolerate-missing-images` downgrades only that one to a warning.
 - **Worker crash.** A worker handler that throws posts `{ taskFailed, message, stack }` to main; the scheduler calls `_abort()`, the build rejects, and the orchestrator reports the error with the task name in the message.
+- **A worker that never returns at all.** The one failure with no error to report: a handler stuck in an unbounded loop, an exponentially backtracking regex or a promise that never settles posts nothing, so its successors' dependency counts never fall, `_remaining` never reaches zero, and the scheduler's promise never settles. Nothing in the SAB protocol can see it --- the scheduler is waiting on a message that is not coming. `Scheduler` therefore runs a `setInterval` watchdog: if no task completes for `--stall-timeout` seconds (default 120, `0` disables), it aborts with `{ stalled: true }` and prints the outstanding tasks split three ways --- claimed by a worker that never returned (the cause), runnable but unclaimed (including an `F_PIN_TO_PRED` task whose lane is the wedged one), and blocked on a predecessor (the consequence). A `render:` or `flush:` chunk additionally prints its source pages, through an optional `describe()` on the task def that nothing else reads. `Worker.terminate()` does end a thread spinning inside a regex, so the abort really ends the process. Under `--serve` the pool outlives a rebuild, so `serve.mjs` replaces the whole pool when it sees the `stalled` flag rather than identifying the wedged lane --- the SAB records the lane a task *completed* on, not the one that claimed it. See [when a build stops instead of failing](Building#when-a-build-stops) for the reader-facing form.
 - **Link and integrity check** (`--check`). Deliberately the one failure that does *not* abort: a broken link still produces a valid site you want on disk to inspect, unlike a nav ambiguity, where the output itself would be wrong. The check tasks collect findings and `runBuild()` sets the exit code afterwards --- 1 for link failures, 2 for integrity failures, 3 for both, OR'd into whatever the build's own failures already claimed.
 - **Incomplete parallel results.** Six checks along the chunk-merge path refuse to carry on with a piece missing: `renderJoin` asserts that every page has rendered content, `render:i`'s merge rejects a page the build does not know, the search index refuses both a page without content and a chunk that never arrived, the book refuses a chapter whose content is absent (as opposed to empty, which is legitimate), and a link-check chunk that errored fails the run instead of printing and passing. None can fire while the task graph is wired correctly. They exist because when it *was* wrong, every one of those places quietly skipped instead --- see below.
 

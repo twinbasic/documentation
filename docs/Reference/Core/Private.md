@@ -13,7 +13,7 @@ Syntax:
 > **Private** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ **As** [ **New** ] *type* ] [ **,** [ **WithEvents** ] *varname* [ **(** [ *subscripts* ] **)** ] [ **As** [ **New** ] *type* ]] **. . .**
 
 **WithEvents**
-: *optional* Keyword that specifies that *varname* is an object variable used to respond to events triggered by an ActiveX object. **WithEvents** is valid only in class modules. Any number of individual variables may be declared by using **WithEvents**, but arrays cannot be declared with **WithEvents**, nor can **New** be combined with **WithEvents**.
+: *optional* Keyword that specifies that *varname* is an object variable used to respond to events raised by the object it holds --- ordinarily a twinBASIC [**Class**](Class) that declares them with [**Event**](Event), though any COM object with an event source works too. **WithEvents** is valid only in class modules; see [**WithEvents**](WithEvents) for the full rules and a worked example. Any number of individual variables may be declared by using **WithEvents**, but arrays cannot be declared with **WithEvents**, nor can **New** be combined with **WithEvents**.
 
 *varname*
 : Name of the variable; follows standard variable naming conventions.

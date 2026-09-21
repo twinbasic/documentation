@@ -62,7 +62,6 @@ The runtime ships separately from the package. Download the ZIP that matches bot
 See also [CEF Runtime Releases](https://github.com/twinbasic/cef-runtimes/releases/) for the latest release.
 
 ### Installing runtime files
-
 {: .no_toc }
 
 Extract the ZIP into:

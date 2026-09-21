@@ -34,12 +34,11 @@ Syntax: [ **Public** ] **Event** *procedurename* [ (*arglist*) ]
 After the event has been declared, use the [**RaiseEvent**](RaiseEvent) statement to fire the event. A syntax error occurs if an **Event** declaration appears in a standard module. An event can't be declared to return a value. A typical event might be declared and raised as shown in the following fragments.
 
 ```tb
-' Declare an event at module level of a class module 
- 
-Event LogonCompleted (UserName as String) 
- 
-Sub 
- RaiseEvent LogonCompleted("AntoineJan") 
+' Declare an event at module level of a class module
+Public Event LogonCompleted(UserName As String)
+
+Sub Demo()
+    RaiseEvent LogonCompleted("AntoineJan")
 End Sub
 ```
 
@@ -90,8 +89,6 @@ End Class
 ```
 
 The remaining code is in a class module named TimerState. The **Event** statements declare the procedures initiated when events are raised.
-
-VB
 
 ```tb
 Class TimerState

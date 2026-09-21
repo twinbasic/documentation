@@ -43,6 +43,8 @@
 //                                    a real gate run uses the full
 //                                    SAMPLE_PAGES x 2 themes x 2 viewports)
 //   --patches NAME,NAME apply source patches to the CANDIDATE bundle
+//   --unminified        inject axe.js rather than axe.min.js (the source
+//                       patches need the unminified bundle)
 //   --json FILE         write both fingerprint lists + the diff
 //   --list              print the scheme registry and exit
 //

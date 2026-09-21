@@ -30,7 +30,7 @@ load. `_diff.mjs` gained `--against-disk` and `--multi` modes; a new
 already-accepted entries; `verify-phase8.mjs` got a cross-reference
 completeness audit. The codebase gained [README.md](README.md).
 
-**Phase 10** (planned, see [PLAN-10.md](PLAN-10.md)) is the
+**Phase 10** (shipped, see [PLAN-10.md](PLAN-10.md)) was the
 Jekyll-to-tbdocs cutover: flip the default destination from
 `_site-new` to `_site`, swap CI (`build.bat` / `serve.bat` /
 `check.bat` / the GitHub Pages workflow) to invoke tbdocs instead
@@ -62,13 +62,20 @@ live-reloads the browser via SSE. Renames `--serving` to
 static server; `docs/serve.bat` becomes a one-line `--serve` shim.
 Closes the PLAN-10 §7.D4 and §7.D11 watch-mode deferrals.
 
-A **task-graph scheduler** for the build pipeline is designed in
-[PLAN-scheduler.md](PLAN-scheduler.md) and has been implemented
-(Phases 0--4). It covers a thin in-tree scheduler + `WorkerPool` over
-`node:worker_threads`, moves CPU-bound seed tasks (`scss`, `mermaid`,
-`buildInfo`) onto workers, runs `prepDest` (destination clean/recreate)
-as a main-thread seed in parallel with the spine, and fans out
-`renderPhase` + `templatePhase` across CPUs via SAB broadcast.
+A **task-graph scheduler** for the build pipeline was designed in
+[PLAN-scheduler.md](PLAN-scheduler.md) and implemented as its Phases 0--4:
+a thin in-tree scheduler + `WorkerPool` over `node:worker_threads`,
+CPU-bound seed tasks moved onto workers, `prepDest` running as a
+main-thread seed in parallel with the spine, and `renderPhase` +
+`templatePhase` fanned out across CPUs via SAB broadcast.
+
+> **That push-based design has since been replaced, and
+> [PLAN-scheduler.md](PLAN-scheduler.md) is no longer the current one.**
+> [PLAN-sab-pull-scheduler.md](PLAN-sab-pull-scheduler.md) describes what the
+> build runs today --- workers claim work from shared memory rather than being
+> handed it --- and is current through Phase 18. Read it first; PLAN-scheduler.md
+> is kept for the history and still refers to `mermaid.mjs`, which was deleted
+> when the diagrams moved to Graphviz.
 
 Open follow-ups (deferred enhancements, divergence investigations)
 live in [FUTURE-WORK.md](FUTURE-WORK.md).
@@ -145,6 +152,14 @@ for the full breakdown.
   }
 }
 ```
+
+> **Stale.** `package.json` has no `dependencies` key at all --- everything is a
+> `devDependency`, because nothing here is published as a library --- and `lunr` is
+> not among them (the search UI loads the vendored static
+> `assets/js/vendor/lunr.min.js`; `builder/search.mjs` only emits the JSON it reads).
+> The set has also grown: `@hpcc-js/wasm-graphviz`, `acorn`, `acorn-walk`,
+> `axe-core`, `html-entities`, `htmlparser2`, `pdf-lib`, `puppeteer` and `sass` all
+> joined since. Read `package.json` rather than this block.
 
 Seven production dependencies. No template engine, no framework, no
 bundler. `js-yaml` is technically a transitive dep of `gray-matter`
@@ -425,7 +440,7 @@ plus a per-module header consistency pass. Switched the PDF
 title-page date from `commitDate` to wall-clock to match Jekyll's
 `site.time`. Full spec: [PLAN-9.md](PLAN-9.md).
 
-### Phase 10: CUTOVER (planned)
+### Phase 10: CUTOVER (shipped)
 
 The Jekyll-to-tbdocs cutover. Flips the default destination from
 `_site-new` to `_site` in [tbdocs.mjs](tbdocs.mjs); updates
@@ -502,6 +517,16 @@ patches; procedure in the vendor README.
 - Ruby/Bundler/Gem toolchain -- replaced by Node.js + npm
 
 ## Verification Strategy
+
+> **The verification strategy below is historical.** It describes asserting
+> byte-equivalence against a Jekyll build via `verify-phase1..8.mjs`,
+> `accepted-divergences.mjs`, `_diff.mjs` and `_triage.mjs`. Those harnesses were
+> retired in the Phase 10 cutover and none of them exists in the tree; there is no
+> Jekyll build left to diff against either. What replaced them is the build's own
+> link and integrity check (`tbdocs --check`, and `--check-audit-index` as
+> `build.bat` passes it), designed in [PLAN-checks.md](PLAN-checks.md) and
+> documented for users on the
+> [Building and Deployment](../docs/Documentation/Building.md) page.
 
 The content files don't change. Correctness is asserted by diffing
 output against Jekyll's:

@@ -1764,7 +1764,7 @@ to do with it.
 | Page with Unicode in headings | Unicode letters are preserved by the slugger (via `\p{L}\p{N}\p{M}\p{Pc}\- ` keep-set). A heading "À" produces `id="à"`. **Matches kramdown's GFM slugger.** |
 | Page with HTML entities in source (`&amp;` etc.) | Pass through verbatim. markdown-it does NOT re-escape. |
 | Inline `<svg>` with embedded markdown -- `<svg><text>**bold**</text></svg>` | NOT recursed unless wrapped in `markdown="1"`. None on the site. |
-| Page with Jekyll Liquid `{% raw %}` / `{% endraw %}` | Stripped up-front by `stripLiquidRawTags()`. Used by 2 pages (`SendKeys.md`, `Documentation Development.md`). |
+| Page with Jekyll Liquid `{% raw %}` / `{% endraw %}` | Passed through verbatim. `stripLiquidRawTags()` stripped them for kramdown parity, but it ran over raw source with no block awareness and so ate the tags inside fences and code spans too, making a literal `{% raw %}` impossible to document. The last inert use was removed from `SendKeys.md` and the stripper deleted; the rendered tree was byte-identical either way. |
 
 ### Code blocks
 
@@ -2286,7 +2286,7 @@ a prospective plan.
 8. **Footnote rendering overrides (§5.5 patch).** Shipped.
 9. **Pre-render rewrites** (added incrementally):
    - CRLF → LF normalisation
-   - `stripLiquidRawTags`
+   - ~~`stripLiquidRawTags`~~ (deleted -- see the edge-case table above)
    - `rewriteTripleAsteriskEmphasis` (`***x***` → `**_x_**`)
    - `encodeSpacesInMediaUrls` (plain-path URLs with spaces)
    - `rewriteListItemSetextHeadings` (`- text\n---\n` → `- ## text\n`)

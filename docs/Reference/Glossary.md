@@ -44,7 +44,7 @@ The American Standard Code for Information Interchange (ASCII) 7-bit character s
 
 ## attribute
 
-(twinBASIC) Metadata attached to a [module](#module), procedure, parameter, or other declaration, written in square brackets --- for example, `[Documentation("...")]`. Some attributes control compiler behaviour (such as `[PackingAlignment]` on a [user-defined type](#user-defined-type) or `[VB_UserMemId]` on a member); others are informational. Attributes are a twinBASIC addition; classic VBA exposes only a small fixed set via the `Attribute` directive.
+(twinBASIC) Metadata attached to a [module](#module), procedure, parameter, or other declaration, written in square brackets --- for example, `[Description("...")]`. Some attributes control compiler behaviour (such as `[PackingAlignment]` on a [user-defined type](#user-defined-type) or `[VB_UserMemId]` on a member); others are informational. Attributes are a twinBASIC addition; classic VBA exposes only a small fixed set via the `Attribute` directive.
 
 ## Automation object
 

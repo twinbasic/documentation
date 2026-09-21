@@ -10,13 +10,13 @@ digraph scheduler {
     node [
         shape=box
         style="rounded,filled"
-        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
         fontsize=12
         margin="0.12,0.06"
     ]
     edge [
         color="#7a8090"
-        fontname="system-ui,-apple-system,Segoe UI,sans-serif"
+        fontname="Inter,system-ui,-apple-system,Segoe UI,sans-serif"
         fontsize=10
         arrowsize=0.7
     ]
@@ -39,6 +39,7 @@ digraph scheduler {
     WI  [label=<warmInit<BR/><FONT POINT-SIZE="10">[W] per-lane<BR/>on_demand, idle</FONT>>, fillcolor="#e8f0fe", color="#4285f4"]
 
     DI  [label=<discover<BR/><FONT POINT-SIZE="10">[M]</FONT>>,           fillcolor="#fef7e0", color="#f9ab00"]
+    VA  [label=<vendorAssets<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
     NV  [label=<nav<BR/><FONT POINT-SIZE="10">[M]</FONT>>,                fillcolor="#fef7e0", color="#f9ab00"]
     BU  [label=<buildInit<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
     MI  [label=<markdownInit<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
@@ -63,6 +64,10 @@ digraph scheduler {
     WO   [label=<writeOffline<BR/><FONT POINT-SIZE="10">[M]</FONT>>,      fillcolor="#fef7e0", color="#f9ab00"]
     WP   [label=<writePdf<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
 
+    LJ   [label=<linkJoin<BR/><FONT POINT-SIZE="10">[M]</FONT>>,          fillcolor="#fef7e0", color="#f9ab00"]
+    CB   [label=<checkBook<BR/><FONT POINT-SIZE="10">[M]</FONT>>,         fillcolor="#fef7e0", color="#f9ab00"]
+    CR   [label=<checkReport<BR/><FONT POINT-SIZE="10">[M]</FONT>>,       fillcolor="#fef7e0", color="#f9ab00"]
+
     // ── Edges ───────────────────────────────────────────────────────────
 
     CF -> DI
@@ -72,6 +77,8 @@ digraph scheduler {
     DI -> BU
     DI -> MI
     DI -> DR
+    DI -> VA
+    VA -> MI
 
     NV -> DP
     BU -> DP
@@ -91,6 +98,7 @@ digraph scheduler {
     SD -> SCSS
 
     DSi -> RBC
+    LD  -> RBC [style=dashed]
 
     WI  -> REI [style=dashed]
     REI -> Ri  [style=dashed]
@@ -103,6 +111,7 @@ digraph scheduler {
     DT  -> WA
     PPD -> WA
     HI  -> WA
+    VA  -> WA
 
     RJ -> SDt
     PD -> SDt
@@ -117,6 +126,18 @@ digraph scheduler {
     WA -> WO
 
     FJ  -> WP
+    RJ  -> WP
     DT  -> WP
     RBC -> WP
+    HI  -> WP [style=dashed]
+
+    FJ -> LJ
+    WX -> LJ
+    WO -> LJ
+
+    WP -> CB
+
+    LJ   -> CR
+    CB   -> CR
+    SCSS -> CR
 }
