@@ -257,10 +257,12 @@ have thought to name in advance, and any of which would have silently become rea
 
 Everything above was fixed unless listed here. This section is the queue, not a finding list.
 
-> **Queue state after the follow-on session.** Struck-through entries are closed and carry the
-> commit that closed them. What is left is everything under
-> [Needs someone with the twinBASIC IDE](#needs-someone-with-the-twinbasic-ide), plus the
-> `Description` entry's reconstructed wrapper. Nothing else in this queue needs a decision.
+> **Queue state after the follow-on sessions.** Struck-through entries are closed and carry
+> the commit that closed them. What is left is three items, all of which want one answer from
+> the maintainer rather than another build: the placement of `ImplementsViaPrivateFriendlies`
+> and of `ExecuteHostCommand`, and the `Description` entry's reconstructed wrapper. The two
+> IDE rendering defects below are twinBASIC bugs rather than documentation ones and are
+> recorded, not queued.
 >
 > Two entries were **overstated** and are marked where they sit --- `Authoring.md`'s listing
 > checklist was already half-fixed before it was checked, and `IDE/Links.png` is not a defect
@@ -271,6 +273,27 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 
 ### Needs someone with the twinBASIC IDE
 
+> **Closed in a later session, on a machine with BETA 983 installed.** Everything under this
+> heading is now settled except two attribute names whose placement is still unknown; those
+> are marked **Still open** where they sit. Two methods did the work, and the cheaper one
+> was not the IDE:
+>
+> **Exporting the shipped packages settles more than probing does.** `twinBASIC_win32.exe
+> export` unpacks any `.twinproj`, and the IDE installs sixteen packages and thirty-two
+> sample projects as `.twinproj` files --- 820 `.twin` sources between them, all of code the
+> compiler already accepts. A census of that corpus against `Attributes.md` found **ten**
+> attributes the packages use and the reference omitted, not the three recorded below, and
+> handed over the argument forms for four attributes that had gone unprobed for want of a
+> usable value. **Prefer this to a probe wherever it reaches**: shipped source that compiles
+> is stronger evidence of a placement than a synthetic probe, and it costs no build.
+>
+> What it cannot give is meaning, and it is worth being careful about what it *looks* like it
+> gives. A census counts `[Name` at the start of a line, and twinBASIC spells an escaped
+> identifier the same way --- `[_HiddenModule].vbaObjAddref(...)`, `[_MAX] = 0`. Read
+> naively, `_HiddenModule` came third in the table at 139 uses. What separates the two is the
+> tail after the closing bracket: an attribute is followed by a declaration, an escaped
+> identifier by `.`, `=` or `(`.
+
 > **Command-line compilation is not a route to any of these.** Checked against
 > `twinBASIC_IDE_BETA_983`: the compiler executable's whole command-line surface is six
 > verbs --- `export`, `import`, `settings`, `licence`, `changelog`, `readme` --- and none of
@@ -279,10 +302,16 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 > at [Import/Export Tool](../docs/Features/Packages/Import-export%20tool.md); they were not
 > before, and the usage message the tool prints names only two of them.
 
-- **`ConstantFoldableNumericsOnly`** carries the same unqualified *Applicable to: **Function***
-  that `ConstantFoldable` did. The sibling turned out to be module-scoped only. Same check.
+- ~~**`ConstantFoldableNumericsOnly`** carries the same unqualified *Applicable to:
+  **Function*** that `ConstantFoldable` did. The sibling turned out to be module-scoped only.
+  Same check.~~ **Done, and the line was wrong.** Probed both ways in one build: accepted on
+  a **Function** in a **Module**, TB5182 on a method in a **Class**. It behaves exactly like
+  its sibling, and the entry now carries the same `in a Module` qualification. A control
+  probe put `[ConstantFoldable]` --- already known to be rejected there --- in the same
+  build, so the new diagnostic could be read against one of settled meaning produced by the
+  same compiler run.
 - ~~**The other 52 `Applicable to:` lines in `Reference/Attributes.md`**~~ **Done.**
-  `scripts/gen_attribute_probes.py` writes one source file per claimed placement and packs it
+  `scripts/gen_attribute_probes.mjs` writes one source file per claimed placement and packs it
   into a `.twinproj` with the `import` verb; every probe is expected to compile, so a
   diagnostic naming a probe module is a wrong line. Built against BETA 983 over two rounds,
   69 probes in the first: **45 of the 52 lines were probed, 43 of them confirmed correct
@@ -295,34 +324,96 @@ Everything above was fixed unless listed here. This section is the queue, not a 
     variable, clean on a `Public Const`. The page's own worked example had been using a
     `Public Const` all along, so the example was right and the line disagreed with it.
 
-  Seven attributes are still unprobed: six whose argument cannot be synthesised without a real
-  factory method, image file, `.json` resource, warning code or option string, and
-  `[FormDesignerId]`, which reached TB5247 `unable to find matching form designer JSON` ---
-  the compiler accepting the placement and then failing a lookup, which confirms its line.
-  `[DispInterface]` and `[DualInterface]` remain the least trustworthy entries on the page:
-  both claim an `Interface` in a `Library`, a construct with no reference page in `docs/`, and
-  both are absent from the compiler's lexer token table.
-
   Two facts the page did not state, both now on it: only one `[RunAfterBuild]` is allowed per
   project (TB5114), and a module-level variable cannot carry `[DllExport]`.
+
+  **All 52 lines are now accounted for.** Of the seven left unprobed above, five were
+  unprobed only for want of a usable argument value, and the shipped packages carry one
+  apiece --- `[CoClassCustomConstructor("CreatePropertyBagObject")]` in VBRUN,
+  `[CustomControl("/miscellaneous/frmButton.png")]` in CustomControlsPackage,
+  `[PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", "events", "name", "id")]`
+  in Sample 22, `[IgnoreWarnings(TB0001)]` in VB. The generator now writes the resources
+  those point at into the tree (a real PNG, a `Strings.json`, a factory module) and all five
+  build clean, taking the run to **73 probes over 50 attributes**.
+
+  `[CompilerOptions]` was the fifth, and it was never blocked: the reason recorded for it was
+  *"the option string vocabulary is not documented"*, and the entry documents `+llvm`,
+  `+optimize`, `+optimizesize` and `+optimizespeed` in a bulleted list directly beneath the
+  line being doubted. An empty string is accepted too.
+
+  **The claim that `[DispInterface]` and `[DualInterface]` are "the least trustworthy entries
+  on the page" is withdrawn.** Both entries already carry a note saying the attribute "is
+  generated in the **Library** modules that twinBASIC generates for COM references in a
+  project. It cannot be manually created" --- so the page had stated the very thing that
+  looked suspicious. Three probes confirm it: `Library`, `End Library` and `[LibraryId(...)]`
+  are each rejected with TB5182 in project source, while the `Interface` nested inside parsed
+  cleanly, and `[DispInterface]` on an ordinary `Interface` is rejected too. The placement is
+  real, correctly described, and unreachable from user code, which is why no package
+  contains one. `[FormDesignerId]` remains as recorded.
 - **Two IDE defects visible in committed screenshots**, confirmed at 3x: the Align submenu
   renders `Bottom}` with a stray brace, and Align and Make Same Size both render `ARROWLUP`.
   Documentation bugs these are not.
 
-- **`Reference/Attributes.md` is missing attributes the documentation itself uses.** The
+- ~~**`Reference/Attributes.md` is missing attributes the documentation itself uses.** The
   compiler's token table names `Enumerator`, `NonBrowsable` and `AllowUnpopulatedVtableEntry`;
   all three are used as attributes in published reference pages --- `WinServicesLib/Services.md:208`,
   `WinNativeCommonCtls/ListView/index.md:159`, `tbIDE/Host.md:133` --- and none has an entry in
   the attribute reference a reader would consult. Semantics for the three are not guessable from
-  the binary, so no entries were written.
+  the binary, so no entries were written.~~ **Done, and it was ten, not three.** The census of
+  the exported package sources found every attribute the packages use and the page omits:
+
+  | attribute | uses | placement the packages demonstrate |
+  |---|---:|---|
+  | `CustomDesigner("…")` | 154 | a property-backing variable in a control **Class** |
+  | `RedirectToStaticImplementation("Mod.Proc")` | 116 | `Property Get` / `Function` / `Sub` in a **Class** |
+  | `AllowUnpopulatedVtableEntry` | 71 | a prototype in an **Interface** |
+  | `Default` | 54 | an **Interface** line inside a **CoClass** |
+  | `WithDispatchForwarding` | 44 | an **Implements** statement in a **Class** |
+  | `DefaultDesignerEvent` | 37 | an **Event** in a control **Class** |
+  | `Enumerator` | 25 | the `_NewEnum` **Function** or `Property Get` |
+  | `NonBrowsable` \| `(True)` | 17 | a variable or `Property Get` in a **Class** |
+  | `Source` | 6 | an **Interface** inside a **CoClass**, always `[Default, Source]` |
+  | `RunBeforeStartupObject` | 3 | `Function … As Boolean` in a **Module** |
+
+  Three of them are in the **VB**, **VBA** and **VBRUN** packages every project references,
+  which is the part the token-table check could not see. Entries are written for all ten:
+  placement stated as verified, effect described only as far as the usage shows, and the rest
+  marked unconfirmed. Three of the ten are documented by the source itself rather than by
+  inference --- the **MyCOMAddin** sample explains `[WithDispatchForwarding]` in a comment
+  beside it, cefPackage's `MainModule` explains `[RunBeforeStartupObject]` the same way, and
+  `WinServicesLib/Services` carries a `[Description]` saying `[Enumerator]` "provides For-Each
+  support".
+
+  A detail worth keeping: the page's own `CoClassId` example had been writing
+  `[Default] Interface <name>` and `[Default, Source] Interface <event interface name>` all
+  along, so the reference was **teaching two attributes it did not document**.
 
 - **Eight more names the compiler knows appear nowhere in `docs/` at all:**
-  `WithDispatchForwarding`, `ImplementsViaPrivateFriendlies`, `ExecuteHostCommand`,
-  `CustomDesigner`, `DefaultDesignerEvent`, `ComExport`, `RunBeforeStartupObject`,
-  `RedirectToStaticImplementation`. Two are siblings of documented attributes --- `ComExport`
-  beside `DllExport`, `RunBeforeStartupObject` beside `RunAfterBuild` --- which is what makes
-  them worth asking about. The table mixes keywords with attributes, so whether each is an
-  attribute or a modifier needs the compiler to settle.
+  ~~`WithDispatchForwarding`~~, `ImplementsViaPrivateFriendlies`, `ExecuteHostCommand`,
+  ~~`CustomDesigner`~~, ~~`DefaultDesignerEvent`~~, ~~`ComExport`~~,
+  ~~`RunBeforeStartupObject`~~, ~~`RedirectToStaticImplementation`~~. **Six of the eight are
+  now documented** --- five from package usage in the table above, and `[ComExport]` from a
+  probe: it is rejected on a procedure (TB5155) and compiles on a `Public Const`, which is
+  exactly the target `[DllExport]` turned out to mean.
+
+  **Still open: `ImplementsViaPrivateFriendlies` and `ExecuteHostCommand`.** Both are in the
+  compiler's token table and neither appears in any package or sample. Probed at the
+  placement their neighbours take --- the first on an `Implements` statement, beside
+  `WithDispatchForwarding`; the second on a procedure in a **Module**, beside `IdeButton` ---
+  and both were rejected. Their placement is still unknown, and guessing further is not worth
+  another build; one question to the maintainer would settle both.
+
+  One reading rule this produced, which the earlier round's notes imply the opposite of:
+  **the diagnostic code does not distinguish "no such attribute" from "wrong place for it".**
+  `[ConstantFoldable]`, unquestionably real, draws TB5182 `No handler for this symbol` on a
+  class method; `[ComExport]` draws TB5155 on a Sub and then compiles on a Const. Existence
+  is settled by the token table, not by which code comes back.
+
+- **One name the token table does not have:** `[LibraryId("…")]`, which appears in the
+  compiler binary beside `Library `, `End Library` and `' Original type library: `. It is
+  undocumented, and unreachable for the same reason `[DispInterface]` is --- rejected with
+  TB5182 in project source. That the token table lacks it is the second piece of evidence
+  that the table is not an exhaustive list of attributes.
 
 - **What the name check did settle:** all 57 attribute names in `Attributes.md` occur in the
   compiler binary, so none is invented. `DispInterface` and `DualInterface` are absent from the

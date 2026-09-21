@@ -95,6 +95,38 @@ Per-package content-shape references live in sibling files. Open the relevant on
 
 The three "winlibs" packages — [WinServicesLib](WIP.WinServicesLib.md), [WinEventLogLib](WIP.WinEventLogLib.md), and [WinNamedPipesLib](WIP.WinNamedPipesLib.md) — share an essential set of integration idioms: composition-delegation on `EventLog(Of …)`, the `ManualMessageLoopEnter` / `Leave` pattern coupling `NamedPipeServer` to a service's `ChangeState` handler, and `PropertyBag` as the canonical pipe payload. When working on any of the three, check the other two for cross-references.
 
+### Getting at the `.twin` sources
+
+"Read the package's `.twin` sources" is the rule everywhere below, and the sources are not
+in this repository. They are inside the `.twinproj` files an IDE install ships, and the
+compiler's `export` verb unpacks any of them without opening the IDE:
+
+```sh
+"$TB/bin/twinBASIC_win32.exe" export "<some>.twinproj" "C:\out\dir\" --overwrite
+```
+
+Against BETA 983 that yields **820 `.twin` files** --- 661 from the sixteen packages under
+`packages/`, 159 from the thirty-two sample and template projects under `projects/` and
+`addins/`. All of it is code the compiler accepts, which makes it the strongest available
+evidence for anything the documentation asserts about legal syntax.
+
+Two operational notes, both learned the annoying way. **The output folder must already
+exist**, and only one level of it is created, so `mkdir -p` first or every call fails with
+`output folder does not exist and could not be created`. And **redirect stdin** when looping
+(`</dev/null`), or the executable consumes the loop's input and the second iteration never
+runs.
+
+The samples matter as much as the packages: several constructs appear in exactly one sample
+and nowhere else. `[PopulateFrom]`'s only real use in the whole corpus is in Sample 22, and
+the only prose anywhere explaining `[WithDispatchForwarding]` is a comment in Sample 5.
+
+> **A census of `[Name` at the start of a line over-reports.** twinBASIC spells an escaped
+> identifier the same way --- `[_HiddenModule].vbaObjAddref(…)`, `[_MAX] = 0` --- so an
+> expression can read as an attribute. What separates them is the tail after the closing
+> bracket: an attribute is followed by a declaration, an escaped identifier by `.`, `=` or
+> `(`. Argument text needs stripping too, or `[Description("Sets or returns, given …")]`
+> contributes an attribute named `given`.
+
 ## Page template
 
 Match the existing style. Worked examples to imitate:
