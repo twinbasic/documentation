@@ -10,11 +10,25 @@
 // next best thing: it writes one source file per claimed placement, so a single
 // IDE build answers every claim at once.
 //
-// Every probe is expected to compile. The compiler reports a misplaced
-// attribute as `This attribute is not supported in this context`, so a
-// diagnostic naming a probe module means that `Applicable to:` line is wrong.
+// A misplaced attribute is reported as `This attribute is not supported in
+// this context` (TB5155) or `Syntax error.  No handler for this symbol`
+// (TB5182); which of the two comes back does not say whether the attribute
+// exists, only that it is not accepted there.
 //
-// Then pack the tree and open the result in the IDE:
+// Up to three trees are written, on two different contracts:
+//
+//   <out_dir>           AttributeProbes   -- every probe expected to compile
+//   <out_dir>-2         AttributeProbes2  -- the same, for placements that
+//                                            cannot share a project (one
+//                                            [RunAfterBuild] per project)
+//   <out_dir>-explore   AttributeExplore  -- **a diagnostic is the answer**:
+//                                            questions the page cannot settle
+//
+// Keeping the two contracts apart is what makes either build readable: red in
+// AttributeProbes is a documentation defect, red in AttributeExplore is a
+// result.
+//
+// Then pack each tree and open the result in the IDE:
 //
 //     bin\twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
 //
@@ -89,6 +103,34 @@ const FIXED_ARGS = {
   IdeButton: '("probe")',
   PackingAlignment: "(4)",
   CompileIf: "(True)",
+  // The five below were once in UNSYNTHESISABLE, four of them for want of a
+  // usable argument value. `Attributes.md` states each shape but no value, and
+  // the shipped packages turned out to carry one apiece -- so these are copied
+  // from code the compiler already accepts rather than guessed:
+  //
+  //   [CoClassCustomConstructor("CreatePropertyBagObject")]  VBRUN/PropertyBag
+  //   [CustomControl("/miscellaneous/frmButton.png")]        CustomControlsPackage
+  //   [PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json",
+  //                 "events", "name", "id")]                 Sample 22
+  //   [IgnoreWarnings(TB0001)]                               VB/QRCodeHelper
+  //
+  // The image and .json those two point at are written into the tree beside the
+  // probes, and the factory into `_ProbeFactory.twin`; see the emission in
+  // main(). All five probes build clean on BETA 983.
+  //
+  // Qualified, because the documented shape is "fully qualified path to factory
+  // method" and that is the claim under test. VBRUN uses the bare form too.
+  CoClassCustomConstructor: '("ProbeFactoryModule.ProbeFactory")',
+  CustomControl: '("/miscellaneous/probe.png")',
+  PopulateFrom: '("json", "/Resources/PROBE/Strings.json", "events", "name", "id")',
+  IgnoreWarnings: "(TB0001)",
+  // Listed as unsynthesisable on the grounds that "the option string vocabulary
+  // is not documented". It is: the entry documents +llvm, +optimize,
+  // +optimizesize and +optimizespeed. `+optimize` is used here rather than
+  // `+llvm`, which the page says cannot compile procedures taking objects,
+  // strings or dynamic arrays -- a probe should fail on its placement or not at
+  // all. An empty string is also accepted, confirmed by the X04 probe.
+  CompilerOptions: '("+optimize")',
 };
 // Arguments that cannot be synthesised without something else being true.
 // FormDesignerId earned its place the hard way: probed on a Class it reached
@@ -96,11 +138,6 @@ const FIXED_ARGS = {
 // accepting the placement and then failing a lookup. That confirms the
 // documented placement and tells us nothing further, so it is not worth a probe.
 const UNSYNTHESISABLE = {
-  CoClassCustomConstructor: "needs a fully qualified path to an existing factory method",
-  CustomControl: "needs an image file present in the project",
-  PopulateFrom: "needs a .json resource plus three field names",
-  IgnoreWarnings: "needs a valid TBnnnn warning code; the codes are not documented",
-  CompilerOptions: "the option string vocabulary is not documented",
   FormDesignerId: "needs a form designer JSON to match; probing it reached TB5247, " +
     "which already confirms the documented placement on a Class",
 };
@@ -119,7 +156,252 @@ const SINGLETON = {
 // the example used a Public Const, and probing both settled it -- the variable
 // is rejected (TB5155), the Const compiles. The line now says "constants", so
 // the ordinary target parser covers it and no extra probe is needed.
-const EXTRA_PROBES = [];
+//
+// [IgnoreWarnings] is here because its entry states no `Applicable to:` line at
+// all, so the target parser yields nothing and it would go unprobed for want of
+// a claim to test. The three placements are the ones the shipped packages use
+// -- 113 occurrences across VB, cefPackage and Sample 22 -- so a diagnostic
+// here would mean the probe is malformed. What the probe settles is the missing
+// line: whatever compiles is what `Applicable to:` should say.
+const EXTRA_PROBES = [
+  ["IgnoreWarnings", "MODULE", "no `Applicable to:` line; Module is what VB/QRCodeHelper uses"],
+  ["IgnoreWarnings", "CLASS", "no `Applicable to:` line; Class is what VB/Fusion uses"],
+  ["IgnoreWarnings", "PROC_MODULE", "no `Applicable to:` line; a Sub is the commonest use"],
+];
+
+// Resources the argument forms above refer to. `import` packs the whole tree,
+// so these ride along into the .twinproj exactly as a hand-made project's would.
+//
+// The PNG is a 1x1 opaque black image, written as bytes rather than fetched:
+// [CustomControl] needs a real image at the path, not merely a path.
+const PROBE_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9" +
+  "awAAAABJRU5ErkJggg==",
+  "base64",
+);
+const PROBE_STRINGS_JSON = JSON.stringify(
+  { events: [{ id: 1, name: "probe_event_one" }, { id: 2, name: "probe_event_two" }] },
+  null,
+  4,
+) + "\n";
+// [CoClassCustomConstructor] names a factory the compiler must be able to
+// resolve. VBRUN's real one is `() As stdole.IUnknown`; this mirrors it.
+const PROBE_FACTORY_TWIN =
+  "' Factory that [CoClassCustomConstructor] probes name. Mirrors VBRUN's\n" +
+  "' CreatePropertyBagObject, which is `() As stdole.IUnknown`.\n\n" +
+  "Public Module ProbeFactoryModule\n" +
+  "    Public Function ProbeFactory() As stdole.IUnknown\n" +
+  "    End Function\n" +
+  "End Module\n";
+
+// ------------------------------------------------------------ exploratory
+// A third project, `AttributeExplore`, on the opposite contract to the probes
+// above: **a diagnostic here is the answer, not a defect.** These ask questions
+// `Attributes.md` cannot answer and no shipped package demonstrates, so there
+// is no placement to expect. Each entry carries what a clean build would mean
+// and what a rejection would mean, because a result nobody can read is not one.
+//
+// Kept in its own project so the "every probe compiles" contract on
+// AttributeProbes stays true and a red build there stays meaningful.
+//
+// `got` records what BETA 983 answered, so re-running the generator does not
+// lose the result and a later build can be compared against it. A probe whose
+// `got` is out of date is worse than one with none, so update it in the same
+// commit as any change to the probe.
+//
+// One reading rule, learned here: **the diagnostic code does not distinguish
+// "no such attribute" from "wrong place for it".** [ConstantFoldable] is
+// unquestionably a real attribute and drew TB5182 `No handler for this symbol`
+// on a class method, the same code an invented name would draw; [ComExport]
+// drew TB5155 `This attribute is not supported in this context` on a Sub and
+// then compiled clean on a Const. Existence is settled by the compiler's token
+// table, not by which of the two codes comes back.
+const EXPLORATORY = [
+  {
+    tag: "X01_ConstantFoldableNumericsOnly_Module",
+    asks: "Is [ConstantFoldableNumericsOnly] accepted on a Function in a Module?",
+    got: "BETA 983: clean. The documented placement holds.",
+    clean: "the documented placement holds",
+    rejected: "`Applicable to: Function` is wrong even for a module function",
+    body:
+      "Public Module X01_ConstantFoldableNumericsOnly_Module\n" +
+      "    [ConstantFoldableNumericsOnly]\n" +
+      "    Public Function Probe(ByVal Value As Long) As Long\n" +
+      "        Return Value\n" +
+      "    End Function\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X02_ConstantFoldableNumericsOnly_Class",
+    asks: "Is it accepted on a method in a Class? Its sibling [ConstantFoldable] is not.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED -- `Applicable to: " +
+      "Function` was unqualified and wrong; the entry now carries the `in " +
+      "a Module` qualification its sibling always had.",
+    clean: "the two siblings differ, and the unqualified `Applicable to: Function` is right",
+    rejected: "the line needs the same `in a Module` qualification its sibling carries",
+    body:
+      "Public Class X02_ConstantFoldableNumericsOnly_Class\n" +
+      "    [ConstantFoldableNumericsOnly]\n" +
+      "    Public Function Probe(ByVal Value As Long) As Long\n" +
+      "        Return Value\n" +
+      "    End Function\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X03_ConstantFoldable_Class_control",
+    asks: "Control: [ConstantFoldable] on a Class method, already known to be rejected.",
+    got: "BETA 983: TB5182 on the attribute, as expected -- the same code " +
+      "X02 drew, which is what makes X02's result readable.",
+    clean: "the earlier finding has regressed or was wrong -- re-check it before trusting X02",
+    rejected: "expected; this is what the X02 diagnostic should be compared against",
+    body:
+      "' Control probe. This placement is already known to be rejected, and it is\n" +
+      "' here so X02's result can be read against a diagnostic of known meaning\n" +
+      "' produced by the same build.\n\n" +
+      "Public Class X03_ConstantFoldable_Class_control\n" +
+      "    [ConstantFoldable]\n" +
+      "    Public Function Probe(ByVal Value As Long) As Long\n" +
+      "        Return Value\n" +
+      "    End Function\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X04_CompilerOptions_Module",
+    asks: "Is [CompilerOptions(\"\")] accepted on a procedure, and is an empty string a legal option set?",
+    got: "BETA 983: clean. The documented placement holds and an empty " +
+      "option string is accepted.",
+    clean: "the documented placement holds and the argument may be empty",
+    rejected: "read the diagnostic: a placement complaint answers the `Applicable to:` " +
+      "line, an argument complaint may name the option vocabulary, which is " +
+      "documented nowhere",
+    body:
+      "Public Module X04_CompilerOptions_Module\n" +
+      '    [CompilerOptions("")]\n' +
+      "    Public Sub Probe()\n" +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X05_ComExport_Module_Sub",
+    asks: "Does [ComExport] exist as an attribute? It sits beside DllExport in the " +
+      "compiler's token table and appears nowhere in docs/ or in any shipped package.",
+    got: "BETA 983: TB5155 on the attribute. REJECTED on a procedure.",
+    clean: "it exists and is accepted on a procedure in a Module",
+    rejected: "either it is not an attribute, or not one for a procedure",
+    body:
+      "Public Module X05_ComExport_Module_Sub\n" +
+      "    [ComExport]\n" +
+      "    Public Sub Probe()\n" +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X06_ComExport_Const",
+    asks: "[ComExport] on a Const -- the target [DllExport] turned out to mean.",
+    got: "BETA 983: clean. [ComExport] mirrors [DllExport] exactly -- " +
+      "constants, not procedures. Now documented.",
+    clean: "it mirrors DllExport, which documents constants",
+    rejected: "it does not mirror DllExport on this target",
+    body:
+      "Public Module X06_ComExport_Const\n" +
+      "    [ComExport]\n" +
+      "    Public Const ProbeConst As Long = 1\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X07_ImplementsViaPrivateFriendlies",
+    asks: "Does [ImplementsViaPrivateFriendlies] exist? It sits beside " +
+      "WithDispatchForwarding in the token table, which is used 44 times on an " +
+      "Implements statement.",
+    got: "BETA 983: TB5155 on the attribute. REJECTED -- it does NOT take " +
+      "its neighbour's position, so the placement is still unknown.",
+    clean: "it exists and takes the same position as its neighbour",
+    rejected: "it is not an attribute for an Implements statement",
+    body:
+      "Public Interface IX07Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "Public Class X07_ImplementsViaPrivateFriendlies\n" +
+      "    [ImplementsViaPrivateFriendlies] Implements IX07Probe\n\n" +
+      "    Private Sub IX07Probe_Ping() Implements IX07Probe.Ping\n" +
+      "    End Sub\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X08_ExecuteHostCommand_Module",
+    asks: "Does [ExecuteHostCommand] exist? The token table has it next to IdeButton, " +
+      "and the binary also carries a `custom/executeHostCommand` JSON-RPC method, " +
+      "so it is probably an IDE-addin hook rather than a compiler directive.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED on a procedure in a " +
+      "Module; placement still unknown.",
+    clean: "it is accepted on a procedure in a Module, like IdeButton",
+    rejected: "it needs an argument, a different target, or is not an attribute",
+    body:
+      "Public Module X08_ExecuteHostCommand_Module\n" +
+      "    [ExecuteHostCommand]\n" +
+      "    Public Sub Probe()\n" +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X09_Library_DispInterface",
+    asks: "What is the `Library` block, and is [DispInterface] accepted on an " +
+      "Interface inside one? `Attributes.md` claims exactly this placement. No " +
+      "hand-written source in any package uses it -- `Library`/`End Library` and " +
+      "[LibraryId(\"\")] appear in the compiler alongside `' Original type " +
+      "library:`, which suggests the construct is emitted when a COM type " +
+      "library is imported rather than written by hand.",
+    got: "BETA 983: TB5182 on lines 10, 11, 12 and 16 -- `[LibraryId(...)]`, " +
+      "`Library`, `[DispInterface]` and `End Library`. Lines 13-15, the " +
+      "nested Interface, parsed cleanly, so the failure is the Library " +
+      "scaffolding and not this reconstruction of the Interface. That " +
+      "matches what the entry already says: the construct is generated " +
+      "for a COM reference and cannot be written by hand.",
+    clean: "the documented placement holds and the block can be hand-written",
+    rejected: "read the diagnostic: a syntax complaint means the block shape below is " +
+      "wrong and the attribute is untested; a placement complaint answers the line",
+    body:
+      "' The Library block shape here is reconstructed from the compiler's own\n" +
+      "' strings, not copied from a working source, because no shipped package\n" +
+      "' contains one. If this does not parse, the attribute is still unprobed.\n\n" +
+      '[LibraryId("00000000-0000-4000-8000-000000000901")]\n' +
+      "Library X09ProbeLib\n" +
+      "    [DispInterface]\n" +
+      "    Interface IX09ProbeDisp\n" +
+      "        Sub Ping()\n" +
+      "    End Interface\n" +
+      "End Library\n",
+  },
+  {
+    tag: "X10_Library_DualInterface",
+    asks: "Same question for [DualInterface].",
+    got: "BETA 983: TB5182 on lines 6, 7, 8 and 12 -- the same shape as X09.",
+    clean: "the documented placement holds",
+    rejected: "as X09 -- distinguish a syntax complaint from a placement one",
+    body:
+      '[LibraryId("00000000-0000-4000-8000-000000000910")]\n' +
+      "Library X10ProbeLib\n" +
+      "    [DualInterface]\n" +
+      "    Interface IX10ProbeDual\n" +
+      "        Sub Ping()\n" +
+      "    End Interface\n" +
+      "End Library\n",
+  },
+  {
+    tag: "X11_DispInterface_plain_Interface",
+    asks: "Is [DispInterface] accepted on an ordinary Interface, outside a Library? " +
+      "If it is, the `in a Library` qualification on its line is wrong.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED, so the `in a Library` " +
+      "qualification is real rather than incidental.",
+    clean: "the qualification is wrong, or at least not required",
+    rejected: "the qualification is real, and X09 is the only way to reach the attribute",
+    body:
+      "[DispInterface]\n" +
+      "Public Interface IX11ProbeDisp\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n",
+  },
+];
 
 const pad = (n, width) => String(n).padStart(width, "0");
 
@@ -218,6 +500,14 @@ function render(target, tag, attr, needsHintEnum, idx) {
       return `Public Module ${tag}\n    ${attr}\n    Public Type ProbeUdt\n` +
         "        Field1 As Long\n    End Type\nEnd Module\n";
     case "ENUM":
+      // [PopulateFrom] fills the enum from a .json resource, so its probe must
+      // leave the body empty -- Sample 22 declares `Enum EVENTS / End Enum`.
+      // Seeding a member would put a hand-written value beside compiler-emitted
+      // ones and test two things at once.
+      if (attr.startsWith("[PopulateFrom")) {
+        return `Public Module ${tag}\n    ${attr}\n    Public Enum ProbeEnum${pad(idx, 3)}\n` +
+          "    End Enum\nEnd Module\n";
+      }
       return `Public Module ${tag}\n    ${attr}\n    Public Enum ProbeEnum${pad(idx, 3)}\n` +
         `        ProbeValue${pad(idx, 3)} = 1\n    End Enum\nEnd Module\n`;
     case "CONST":
@@ -335,7 +625,9 @@ async function main(argv) {
     }
     const why = note ? `' ${note}\n` : "";
     const header = `' ${tag} -- [${e.name}] ${HUMAN[target]}\n` +
-      `' Attributes.md:${e.line} -- "Applicable to: ${e.app}"\n${why}` +
+      `' Attributes.md:${e.line} -- ` +
+      (e.app ? `"Applicable to: ${e.app}"` : "no `Applicable to:` line") +
+      `\n${why}` +
       "' Expected: compiles clean.\n\n";
     const targetDir = seenSingleton ? overflowSrc : srcDir;
     await writeCrlf(path.join(targetDir, tag + ".twin"), header + body);
@@ -355,7 +647,16 @@ async function main(argv) {
     }
     for (const target of parseTargets(e.app)) {
       if (target === "LIBRARY_INTERFACE") {
-        skipped.push([e, "the Library declaration has no reference page in docs/"]);
+        // Not a gap. The entries say the attribute is emitted into the Library
+        // modules twinBASIC generates for a COM reference and "cannot be
+        // manually created", and the compiler agrees: the X09/X10 probes had
+        // `Library`, `End Library` and `[LibraryId(...)]` all rejected with
+        // TB5182 while the Interface nested inside parsed cleanly, and X11 had
+        // [DispInterface] rejected on an ordinary Interface. The placement is
+        // real and unreachable from project source, so there is nothing here a
+        // probe can assert.
+        skipped.push([e, "the placement exists only in compiler-generated Library " +
+          "modules, which project source cannot declare -- confirmed by the X09/X11 probes"]);
         continue;
       }
       let second = false;
@@ -376,7 +677,17 @@ async function main(argv) {
   }
 
   await writeCrlf(path.join(srcDir, "_ProbeMain.twin"), MAIN_TWIN);
+  await writeCrlf(path.join(srcDir, "_ProbeFactory.twin"), PROBE_FACTORY_TWIN);
   await writeRaw(path.join(out, "Settings"), SETTINGS);
+
+  // Resource folders the argument forms point at. Named to match the paths in
+  // FIXED_ARGS; the leading `/` in those paths is project-root-relative, and
+  // the lookup is case-insensitive (the packages write `/miscellaneous/` for a
+  // folder the IDE shows as `Miscellaneous`).
+  await fs.mkdir(path.join(out, "Miscellaneous"), { recursive: true });
+  await fs.writeFile(path.join(out, "Miscellaneous", "probe.png"), PROBE_PNG);
+  await fs.mkdir(path.join(out, "Resources", "PROBE"), { recursive: true });
+  await writeRaw(path.join(out, "Resources", "PROBE", "Strings.json"), PROBE_STRINGS_JSON);
   if (overflow.length) {
     await writeCrlf(path.join(overflowSrc, "_ProbeMain.twin"), MAIN_TWIN);
     await writeRaw(
@@ -385,6 +696,27 @@ async function main(argv) {
         .replaceAll("000000000001", "000000000002"),
     );
   }
+
+  // The exploratory project. Separate because its probes are questions rather
+  // than claims, so a red build here is a result and a red build in
+  // AttributeProbes is a documentation defect. Merging them would cost that
+  // distinction, which is the only thing making either build readable.
+  const exploreSrc = path.join(out + "-explore", "Sources");
+  await fs.mkdir(exploreSrc, { recursive: true });
+  for (const x of EXPLORATORY) {
+    const header =
+      `' ${x.tag}\n` +
+      `' ASKS     : ${x.asks}\n` +
+      `' CLEAN    : ${x.clean}\n` +
+      `' REJECTED : ${x.rejected}\n\n`;
+    await writeCrlf(path.join(exploreSrc, x.tag + ".twin"), header + x.body);
+  }
+  await writeCrlf(path.join(exploreSrc, "_ProbeMain.twin"), MAIN_TWIN);
+  await writeRaw(
+    path.join(out + "-explore", "Settings"),
+    SETTINGS.replaceAll("AttributeProbes", "AttributeExplore")
+      .replaceAll("000000000001", "000000000003"),
+  );
 
   const distinct = new Set(probes.map((p) => p[1].name));
   const k = [];
@@ -417,6 +749,16 @@ async function main(argv) {
       k.push(`| \`${tag}\` | \`[${e.name}]\` | ${HUMAN[target]} | ${SINGLETON[e.name]} |\n`);
     }
   }
+  k.push("\n## Third project -- `AttributeExplore`\n\n");
+  k.push("**The opposite contract: a diagnostic here is the answer, not a defect.** " +
+    "These ask questions `Attributes.md` cannot answer and no shipped package " +
+    "demonstrates, so no placement is expected. Build it and record what each " +
+    "one does; each source file carries its own `ASKS` / `CLEAN` / `REJECTED` " +
+    "header saying how to read its result.\n\n");
+  k.push("| Probe | Asks | Last recorded result |\n|---|---|---|\n");
+  for (const x of EXPLORATORY) {
+    k.push(`| \`${x.tag}\` | ${x.asks} | ${x.got ?? "*not yet run*"} |\n`);
+  }
   if (skipped.length) {
     k.push("\n## Not probed\n\n");
     for (const [e, why] of skipped) k.push(`- **\`[${e.name}]\`** (line ${e.line}) -- ${why}\n`);
@@ -431,6 +773,7 @@ async function main(argv) {
 
   console.log(`probes written : ${probes.length}`);
   console.log(`attributes     : ${distinct.size}`);
+  console.log(`exploratory    : ${EXPLORATORY.length}`);
   console.log(`not probed     : ${skipped.length}`);
   console.log(`no Applicable  : ${noApp.length}`);
   console.log(`key            : ${keyPath}`);
