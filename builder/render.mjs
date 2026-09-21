@@ -46,7 +46,6 @@ function renderPage(page, md) {
   // pre-render rewrites below all rely on LF-only input -- do the
   // normalisation up front so they see consistent line shapes.
   let source = page.rawContent.replace(/\r\n?/g, "\n");
-  source = stripLiquidRawTags(source);
   source = rewriteTripleAsteriskEmphasis(source);
   source = encodeSpacesInMediaUrls(source);
   source = rewriteListItemSetextHeadings(source);
@@ -66,15 +65,6 @@ function padEmptyCells(html) {
   // visually look the same, but Phase 4's compress would later
   // collapse it differently than kramdown's empty-cell content.
   return html.replace(/<(t[dh])([^>]*)><\/\1>/g, "<$1$2> </$1>");
-}
-
-// Jekyll's Liquid renderer strips `{% raw %}` / `{% endraw %}` tags
-// before kramdown sees the source; markdown-it does not understand
-// Liquid, so the tags survive into the rendered HTML. Strip them so
-// the same content reaches the markdown parser as kramdown sees.
-const LIQUID_RAW_RE = /\{%\s*(?:end)?raw\s*%\}/g;
-function stripLiquidRawTags(src) {
-  return src.replace(LIQUID_RAW_RE, "");
 }
 
 // kramdown accepts unescaped spaces inside `![alt](url)` and `[text](url)`
