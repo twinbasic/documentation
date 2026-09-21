@@ -9,6 +9,9 @@ permalink: /tB/IDE/Project/Menu/Format
 # Format Menu
 
 ![The Format menu open with every one of its commands greyed out: Align and Make Same Size, Horizontal Spacing and Vertical Spacing, the two Center In Container commands, Bring To Front and Send To Back, and Lock Controls. The first four carry submenu arrows.](Images/Menu_Format.png)
+
+Every command on this menu acts on the controls selected in the form designer, so the whole menu is unavailable until a designer is open with a selection. The screenshot above shows that state; the one below shows the same menu with the commands available.
+
 ![The same Format menu with all of its commands available rather than greyed out.](Images/Menu_Format_1.png)
 
 - Align

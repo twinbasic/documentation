@@ -10,3 +10,5 @@ permalink: /tB/IDE/Project/Properties
 ![The Properties pane, empty apart from its title bar, with no property rows listed.](Images/Properties.png)
 
 The Properties pane shows the properties of the control or object currently selected in the form designer. Property names appear in the left column with their current values on the right; clicking a value edits it in place.
+
+The pane lists nothing when no project is open or when nothing is selected, which is the state shown above.

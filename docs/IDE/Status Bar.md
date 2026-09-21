@@ -9,7 +9,7 @@ permalink: /tB/IDE/Project/StatusBar
 
 ![The full width of the status bar: a red tB Services: UNAVAILABLE badge and an olive COMMUNITY EDITION badge at the left, each with a warning triangle, then the Ko-fi, Discord, Twitter and GitHub icons, and dimmed text reading tbProject_Close at the far right.](Images/StatusBar.png)
 
-The Status Bar runs along the bottom of the IDE window and shows at-a-glance information about the health of backend services, the active licence tier, and quick-access links to community resources.
+The Status Bar runs along the bottom of the IDE window. It has four regions, left to right: the health of the backend services, the active licence tier, links to community resources, and the name of the command currently under the mouse cursor.
 
 ## Services
 
@@ -53,3 +53,9 @@ DEBUGGER: Disconnected / OPERATIONAL
 - https://github.com/twinbasic/twinbasic
 
 ## Status
+
+The rightmost region names the command a click would trigger --- the command under the mouse cursor. It gives the IDE's internal command identifier rather than the menu caption, so pointing at **Close Project** on the File menu shows **tbProject_Close**, as in the screenshot at the top of this page.
+
+The name stays on screen after that command has run. It is replaced only when the pointer moves over another control that has a command of its own, and the region is blanked when the pointer moves into an area with no such control.
+
+These are the same identifiers the keyboard shortcut map is keyed by --- see [Window](Menu/Window) for the full list and the keys bound to each one.

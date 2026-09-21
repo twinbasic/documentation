@@ -30,30 +30,33 @@ Browse \| Open \| Cancel
 
 ![The same dialog on its Samples tab, a scrolling column of sample projects headed by Sample 0. Reports (Experimental), which is selected, then Sample 1. HelloWorld, Sample 1a. WebView2 Examples, Sample 2. GetIPAddresses and Sample 3. MyCodeLibrary, with the list running on past the bottom of the panel.](Images/New_Project_Samples.png)
 
-0. Reports (Experimental)
-1. WebView2 Examples
-2. GetIPAddress
-3. MyCodeLibrary
-4. MyVBEAddin (NEW with ToolWindow)
-5. MyCOMAddin
-6. CustomControls
-7. Package
-8. FilePropertyViewer (CustomControls)
-9. ActiveX Control WebView2 + Monaco
-10. twinBASIC IDE Addin
-11. twinBASIC IDE Addin (Chart)
-12. twinBASIC IDE Addin (Monaco)
-13. twinBASIC IDE Addin (ListView)
-14. twinBASIC IDE Addin (VirutalListView)
-15. twinBASIC IDE Addin (Global Search)
-16. twinBASIC IDE Addin (TODO Widgets demo)
-17. Static Library Example (SQLITE3)
-18. Static Library Example (libdeflate)
-19. MDI Forms
-20. TreeView + ListView + ImageList
-21. Windows Service Simple Example
-22. Windows Service Complex Example (inc Event Logging and IPC)
-23. OOP Inheritance Example (Animals)
+Each row is labelled **Sample** followed by its number. The numbering is the dialog's own: **1a** sits between **1** and **2**.
+
+- **0.** Reports (Experimental)
+- **1.** HelloWorld
+- **1a.** WebView2 Examples
+- **2.** GetIPAddresses
+- **3.** MyCodeLibrary
+- **4.** MyVBEAddin (NEW with ToolWindow)
+- **5.** MyCOMAddin
+- **6.** CustomControls
+- **7.** Package
+- **8.** FilePropertyViewer (CustomControls)
+- **9.** ActiveX Control WebView2 + Monaco
+- **10.** twinBASIC IDE Addin
+- **11.** twinBASIC IDE Addin (Chart)
+- **12.** twinBASIC IDE Addin (Monaco)
+- **13.** twinBASIC IDE Addin (ListView)
+- **14.** twinBASIC IDE Addin (VirutalListView)
+- **15.** twinBASIC IDE Addin (Global Search)
+- **16.** twinBASIC IDE Addin (TODO Widgets demo)
+- **17.** Static Library Example (SQLITE3)
+- **18.** Static Library Example (libdeflate)
+- **19.** MDI Forms
+- **20.** TreeView + ListView + ImageList
+- **21.** Windows Service Simple Example
+- **22.** Windows Service Complex Example (inc Event Logging and IPC)
+- **23.** OOP Inheritance Example (Animals)
 
 # Recent
 
