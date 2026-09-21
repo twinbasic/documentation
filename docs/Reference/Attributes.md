@@ -39,8 +39,9 @@ Marks a prototype that a class implementing the interface is not obliged to supp
 
 The twinBASIC packages use it to add members to an interface without breaking code written against an earlier revision of it. `ItbHostEventsV2` extends `ItbHostEventsV1` and adds one such prototype; `ItbHostEventsV3` extends that and adds another. An addin that implements only the **V1** members still satisfies **V3**.
 
-> [!NOTE]
-> The placement is confirmed: the attribute occurs 71 times in the shipped tbIDE and VB packages, always on a prototype inside an **Interface**. Its effect is read from that usage rather than from a specification.
+<!-- Applicability from the package census: ~100 uses in tbIDE and VB, always
+     on a prototype inside an Interface. The effect described above is read
+     from that usage, not from a specification. -->
 
 ## AppObject  (optional Bool)
 {: #appobject }
@@ -170,8 +171,10 @@ Applicable to: constants in a [**Module**](Module)
 
 The COM counterpart of [DllExport](#dllexport), and it takes the same target: a **Public Const**, not a procedure and not a variable.
 
-> [!NOTE]
-> The placement is confirmed against the compiler: `[ComExport]` on a procedure is rejected with TB5155, while on a **Public Const** both the bare form and `[ComExport(True)]` compile. No twinBASIC package or sample uses the attribute, so what it exports is not established here.
+<!-- Applicability from probes X05, X06 and X16 against BETA 983: rejected on
+     a procedure with TB5155; clean on a Public Const in both the bare form
+     and [ComExport(True)]. No package or sample uses it, so what it exports
+     is not established. -->
 
 ## COMExtensible  (optional Bool)
 {: #comextensible }
@@ -250,24 +253,28 @@ Applicable to: variables in a [**Class**](Class)
 
 Chooses which editor the IDE's property window offers for one property, instead of the editor it would otherwise pick from the property's declared type. The argument names an editor built into the IDE.
 
-The names the twinBASIC packages use, and the properties each is applied to:
+The editor names the twinBASIC packages use, most-used first. The list is not exhaustive -- these are the ones the packages happen to ask for, and the IDE may offer others.
 
-| Name | Applied to | Uses |
-|---|---|---:|
-| `designer_SpectrumWindows` | an **OLE_COLOR** property: **BackColor**, **ForeColor**, **MaskColor**, **BorderColor**, **FillColor**, **PaperColor** | 57 |
-| `designer_SpectrumWindowsOrClear` | **TransparencyKey**, an **OLE_COLOR** in which -1 means no colour | 21 |
-| `designer_IconBytes` | an icon held as **Byte()**: **MouseIconINIT**, **DragIconINIT**, **IconINIT** | 20 |
-| `designer_RestrictedOLEDropMode` | **OLEDropMode** | 17 |
-| `designer_MultiLineText` | a **String** property holding text that may wrap: **ToolTipTextINIT**, **Caption_INIT** | 16 |
-| `designer_PictureBytes` | an image held as **Byte()**: **PictureINIT**, **PaletteINIT**, **ToolboxBitmapINIT**, **MaskPictureINIT** | 15 |
-| `designer_ImageList` | an image-list reference: **Icons_INIT**, **SmallIcons_INIT**, **ColumnHeaderIcons_INIT** | 4 |
-| `designer_Spectrum` | a **ColorRGBA** property | 1 |
-| `designer_Grapick` | a **FillColorPoints** gradient property | 1 |
-| `designer_PropertyPages` | a property-pages reference | 1 |
-| `BINARY` | **InternalImages_INIT** | 1 |
+| Name | Applied to |
+|---|---|
+| `designer_SpectrumWindows` | an **OLE_COLOR** property: **BackColor**, **ForeColor**, **MaskColor**, **BorderColor**, **FillColor**, **PaperColor** |
+| `designer_SpectrumWindowsOrClear` | **TransparencyKey**, an **OLE_COLOR** in which -1 means no colour |
+| `designer_IconBytes` | an icon held as **Byte()**: **MouseIconINIT**, **DragIconINIT**, **IconINIT** |
+| `designer_RestrictedOLEDropMode` | **OLEDropMode** |
+| `designer_MultiLineText` | a **String** property holding text that may wrap: **ToolTipTextINIT**, **Caption_INIT** |
+| `designer_PictureBytes` | an image held as **Byte()**: **PictureINIT**, **PaletteINIT**, **ToolboxBitmapINIT**, **MaskPictureINIT** |
+| `designer_ImageList` | an image-list reference: **Icons_INIT**, **SmallIcons_INIT**, **ColumnHeaderIcons_INIT** |
+| `designer_Spectrum` | a **ColorRGBA** property |
+| `designer_Grapick` | a **FillColorPoints** gradient property |
+| `designer_PropertyPages` | a property-pages reference |
+| `BINARY` | **InternalImages_INIT** |
 
-> [!NOTE]
-> This is a census of the 154 uses in the shipped VB, WebView2, WinNativeCommonCtls and CustomControls packages, not a published list. Other editor names may exist, and what each editor does is read from the properties it is applied to.
+<!-- Table is a census of ~100 uses in VB, WebView2, WinNativeCommonCtls and
+     CustomControls, ordered by frequency. What each editor does is inferred
+     from the properties it is applied to, not from a specification. Not
+     probed: the designer name has to suit the property type, so a rejection
+     could mean the applicability or the pairing and the probe could not say
+     which. -->
 
 ## Debuggable  (optional Bool)
 {: #debuggable }
@@ -306,8 +313,9 @@ CoClass CustomControlTimer
 End CoClass
 ```
 
-> [!NOTE]
-> The placement is confirmed: the attribute occurs 54 times across the shipped VB, VBA, VBRUN, tbIDE, AppGlobalClassObject and CustomControls packages, always on an **Interface** line inside a **CoClass**. Its effect is read from that usage.
+<!-- Applicability from the package census: ~100 uses across VB, VBA, VBRUN,
+     tbIDE, AppGlobalClassObject and CustomControls, always on an Interface
+     line inside a CoClass. -->
 
 ## DefaultDesignerEvent
 {: #defaultdesignerevent }
@@ -318,8 +326,10 @@ Applicable to: [**Event**](Event) declaration in a [**Class**](Class)
 
 Marks the one event a control nominates as its primary one. Each control that declares it declares exactly one: **Click** for **CheckBox** and **CommandButton**, **Change** for **ComboBox**, **Validate** for **Data**.
 
-> [!NOTE]
-> The placement is confirmed: the attribute occurs 37 times in the shipped VB and WinNativeCommonCtls packages, always on an **Event** in a control class, never twice in one class. Which designer action selects it is not established here.
+<!-- Applicability from the package census: ~100 uses in VB and
+     WinNativeCommonCtls, always on an Event in a control class and never
+     twice in one class. Which designer action selects it is not
+     established. -->
 
 ## DefaultMember (optional Bool)
 
@@ -481,8 +491,13 @@ End Property
 
 This replaces VB6's hidden `VB_UserMemId = -4` procedure attribute, which twinBASIC still accepts for compatibility.
 
-> [!NOTE]
-> The placement is confirmed: the attribute occurs 25 times in the shipped VB, VBRUN, WebView2, WinNativeCommonCtls and WinServicesLib packages, on a **Function** or a **Property Get**. The WinServicesLib use describes itself as providing "For-Each support for the services collection".
+<!-- Applicability from the package census: ~10 uses in VB, VBRUN, WebView2,
+     WinNativeCommonCtls and WinServicesLib, on a Function or a Property Get.
+     WinServicesLib/Services carries a [Description] calling it "For-Each
+     support for the services collection", which is where the wording above
+     comes from. Not probed: the member must return stdole.IUnknown or a
+     Variant, so the generic skeleton would test the return type rather than
+     the applicability. -->
 
 ## EnumId  (String)
 {: #enumid }
@@ -504,8 +519,8 @@ Assigns a fixed COM IID to the event interface twinBASIC generates for a class f
 
 A host may cache the IID, so a generated one that changes between builds or between bitnesses breaks clients that have already stored it. That is what the TB0013 recommendation on a [COMControl](#comcontrol) interface is asking for.
 
-> [!NOTE]
-> The placement is confirmed: 19 uses in the shipped CEF package, all on a **Class**. The entry previously stated no placement at all.
+<!-- Applicability from the package census: ~10 uses in CEF, all on a Class.
+     This entry stated no applicability at all until then. -->
 
 ## EventsUseDispInterface  (optional Bool)
 {: #eventsusedispinterface }
@@ -516,8 +531,9 @@ Applicable to: [**Class**](Class)
 
 Makes the event interface generated for the class a dispinterface, so events are raised through **IDispatch** by member id rather than through a vtable. VB6 and VBA event sinks expect a dispinterface, so a control meant to be consumed from either sets this.
 
-> [!NOTE]
-> The placement is confirmed: 88 uses in the shipped VB, WebView2, WinNativeCommonCtls and CEF packages, every one on a **Class** and every one in the bare form. The entry previously stated no placement at all.
+<!-- Applicability from the package census: ~100 uses in VB, WebView2,
+     WinNativeCommonCtls and CEF, every one on a Class and every one bare.
+     This entry stated no applicability at all until then. -->
 
 ## Flags  (optional Bool)
 {: #flags }
@@ -579,8 +595,11 @@ Suppresses the named warnings within the class, module or procedure the attribut
 Module MD5
 ```
 
-> [!NOTE]
-> The placement is confirmed two ways: 113 uses in the shipped VB, CEF and WinNativeCommonCtls packages plus Sample 22, on a **Class**, a **Module** and a **Sub**; and three probes, one per target, that compile clean. Those uses between them suppress `TB0001`, `TB0020`, `TB0024` and `TB0026`. The entry previously stated no placement, and called the arguments a list of strings.
+<!-- Applicability two ways: ~100 uses in VB, CEF, WinNativeCommonCtls and
+     Sample 22 on a Class, a Module and a Sub; plus one probe per target, all
+     clean. The codes seen in use are TB0001, TB0020, TB0024 and TB0026. This
+     entry stated no applicability at all until then, and called the arguments
+     a list of strings. -->
 
 ## IntegerOverflowChecks  (optional Bool)
 {: #integeroverflowchecks }
@@ -634,8 +653,10 @@ Keeps a member out of the surfaces that list a class's members, while leaving it
 
 This is distinct from [Hidden](#hidden), which applies to a whole type, and from [Restricted](#restricted).
 
-> [!NOTE]
-> The placement is confirmed: the attribute occurs 17 times in the shipped VB and WinNativeCommonCtls packages, on module-level variables and on a **Property Get**, in both the bare and the `(True)` form. Exactly which surfaces it affects is not established here.
+<!-- Applicability from the package census: ~10 uses in VB and
+     WinNativeCommonCtls, on class-level variables and on a Property Get, in
+     both the bare and the (True) form. Exactly which browsing surfaces it
+     affects is not established. -->
 
 ## OleAutomation  (optional Bool)
 {: #oleautomation }
@@ -772,8 +793,13 @@ Public Interface _App Extends stdole.IUnknown
 End Interface
 ```
 
-> [!NOTE]
-> The attribute is rejected on a method in a **Class**, with TB5155. All 82 uses in the shipped AppGlobalClassObject and VB packages are inside an **Interface** -- `_App`, `_Clipboard`, `_Screen`, `_Forms` and `VBGlobal` -- on a **Property Get**, a **Function** or a **Sub**. Its effect is read from that usage.
+<!-- This entry first went out saying "procedure in a Class", and the probe
+     project rejected that with TB5155. The census behind it had grouped uses
+     by DECLARATION KEYWORD ("a Property Get, a Function, a Sub"), which says
+     nothing about applicability; regrouped by ENCLOSING CONSTRUCT, all ~100
+     uses in AppGlobalClassObject and VB are inside an Interface -- _App,
+     _Clipboard, _Screen, _Forms, VBGlobal -- and none inside a Class. Worth
+     remembering before writing an Applicable to: line from a census. -->
 
 ## Restricted  (optional Bool)
 {: #restricted }
@@ -869,8 +895,10 @@ End CoClass
 
 The pairing is a convention rather than a requirement -- `[Source]` on its own compiles, and marks the interface as a source of events without making it the default one.
 
-> [!NOTE]
-> The placement is confirmed, but the effect rests on thin evidence: six uses, in the shipped VB, tbIDE and CustomControls packages, every one of them `[Default, Source]`.
+<!-- Applicability from the package census: a few uses, in VB, tbIDE and
+     CustomControls, every one of them [Default, Source]. The effect described
+     above therefore rests on thin evidence. That [Source] compiles without
+     [Default] is from probe X17. -->
 
 ## SpecialCompilerBinding  (Integer)
 {: #specialcompilerbinding }
@@ -884,7 +912,12 @@ Binds the member to one of the compiler's own internal implementations, selected
 > [!IMPORTANT]
 > This attribute exists for the packages that ship with twinBASIC. The numbers are not a vocabulary a project can choose from: each names one behaviour already built into the compiler, and nothing says what an unlisted number does.
 
-The entry previously gave the syntax as an optional Boolean. All six uses in the shipped VB package pass an integer instead: `(1)` and `(2)` on the `GlobalLoad` and `GlobalUnload` declares, `(3)` on a generic `Item` property, `(4)` on `IdleMessageLoopBreakpoint`, and `(254)` twice on **Form**'s `Show`, where a comment in the source says it "prevents ClassBeforeFirstMemberAccessFunc for this member".
+The numbers the VB package uses, should you meet one while reading its source: `(1)` and `(2)` on the `GlobalLoad` and `GlobalUnload` declares, `(3)` on a generic `Item` property, `(4)` on `IdleMessageLoopBreakpoint`, and `(254)` on **Form**'s `Show`, where a comment in the source says it "prevents ClassBeforeFirstMemberAccessFunc for this member".
+
+<!-- This entry gave the syntax as an optional Bool and stated no
+     applicability. Every use passes an integer. Not probed: the argument
+     indexes the compiler's own internal implementations, so no value a probe
+     could pass would test the applicability rather than the number. -->
 
 ## TestCase  (optional Bool)
 {: #testcase }
@@ -953,8 +986,11 @@ The VB package supplies that one as `Miscellaneous/ICONS24/Checkbox24.png` and a
 
 Compare [CustomControl](#customcontrol), which takes one image path and no size placeholder.
 
-> [!NOTE]
-> The entry previously gave the syntax as an optional Boolean and stated no placement. All 44 uses in the shipped VB, WinNativeCommonCtls and CEF packages are on a **Class** and all pass a String; none uses the bare form. The `??` substitution is read from those paths and the files beside them rather than from a specification.
+<!-- This entry gave the syntax as an optional Boolean and stated no
+     applicability. All ~100 uses in VB, WinNativeCommonCtls and CEF are on a
+     Class and all pass a String; not one uses the bare form. The ??
+     substitution is read from those paths and the icon files beside them, not
+     from a specification. -->
 
 ## WithDispatchForwarding
 {: #withdispatchforwarding }
@@ -972,5 +1008,7 @@ The **MyCOMAddin** sample states the consequence directly: the attribute "is nee
 Implements IRibbonExtensibility
 ```
 
-> [!NOTE]
-> The placement is confirmed: the attribute occurs 44 times in the shipped VB, WebView2, WinNativeCommonCtls and CEF packages plus the MyCOMAddin sample, always on an **Implements** statement.
+<!-- Applicability from the package census: ~100 uses in VB, WebView2,
+     WinNativeCommonCtls and CEF plus the MyCOMAddin sample, always on an
+     Implements statement. The quoted sentence above is that sample's own
+     comment. -->
