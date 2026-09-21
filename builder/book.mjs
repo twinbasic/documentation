@@ -190,6 +190,32 @@ function sortWithinGroup(members) {
   return [...indexes, ...withOrder, ...withoutOrder];
 }
 
+// Chapter transforms rewrite attributes across a whole rendered body.
+// An inline code span is emitted as bare escaped text -- escapeHtmlMinimal
+// escapes only & < > -- so quotes survive and `id="`, `href="#` and `src="/`
+// are all directly matchable inside a code sample. Without a guard those
+// rewrites corrupt the sample, and the pages documenting this builder are
+// the ones that carry such samples: `<style id="jtd-nav-activation">`
+// shipped in the book reading `<style id="ch-...-jtd-nav-activation">`.
+//
+// Same three-alternative shape as IMG_SRC_RE_BOOK below: <code> and <pre>
+// are consumed atomically, so the real pattern never sees their contents.
+// Highlighted *blocks* happen to be protected anyway because the
+// highlighter splits attributes across <span> boundaries, but inline spans
+// are not, and nothing should rest on that accident.
+const CODE_OR_PRE_BOOK = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>/;
+
+function escapeRegExpBook(t) {
+  return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function replaceOutsideCode(html, pattern, replacer) {
+  const flags = pattern.flags.includes("g") ? pattern.flags : pattern.flags + "g";
+  const re = new RegExp(`${CODE_OR_PRE_BOOK.source}|${pattern.source}`, flags);
+  return html.replace(re, (m, ...rest) =>
+    (m.startsWith("<code") || m.startsWith("<pre")) ? m : replacer(m, ...rest));
+}
+
 // PLAN-9 §5.9: per-chapter image-path collector. Same shape as
 // pdf.mjs's IMG_SRC_RE -- three top-level alternatives: <code>/<pre>
 // (consumed atomically so src= inside code samples doesn't count),
@@ -346,7 +372,9 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
   // gate on empty baseurl either; the include? check is only an
   // optimisation to skip the gsub! call when there's nothing to do.
   const strip = `src="${baseurl}/`;
-  if (result.includes(strip)) result = result.replaceAll(strip, `src="`);
+  if (result.includes(strip)) {
+    result = replaceOutsideCode(result, new RegExp(escapeRegExpBook(strip), "g"), () => `src="`);
+  }
 
   // Step 2: unwrap <details>/<summary>. Summaries with an id= attribute
   // are replaced by a lightweight span that preserves the id, so that
@@ -392,8 +420,8 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
   // meaningful in-book target).
   if (chapterAnchor) {
     const prefix = `${chapterAnchor}-`;
-    result = result.replace(/ id="/g, ` id="${prefix}`);
-    result = result.replace(/href="#([^"]+)"/g, (_, frag) => `href="#${prefix}${frag}"`);
+    result = replaceOutsideCode(result, / id="/g, () => ` id="${prefix}`);
+    result = replaceOutsideCode(result, /href="#([^"]+)"/g, (_, frag) => `href="#${prefix}${frag}"`);
   }
 
   return result;
@@ -863,7 +891,7 @@ export function rewriteBookHrefs(html, site, pages) {
 }
 
 function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl) {
-  return body.replace(/href="([^"]*)"/g, (whole, href) => {
+  return replaceOutsideCode(body, /href="([^"]*)"/g, (whole, href) => {
     if (EXTERNAL_PREFIXES.some(p => href.startsWith(p))) return whole;
     const abs = resolveHref(href, parentUrl);
     if (!abs || !abs.startsWith("/")) return whole;
