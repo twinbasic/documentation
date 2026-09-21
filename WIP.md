@@ -1135,7 +1135,7 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 - `build.bat` — runs `node builder\tbdocs.mjs --src docs --check-audit-index` (which implies `--check`) and produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output. `--check` adds ~1.7 s and runs the link + integrity check over the HTML while it is still in worker memory; `build.bat --no-check` gets a plain build.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
 - `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`. ~37 s.
-- `test.bat` — the tests the *toolchain* has to pass, none of which read a page: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~6 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
+- `test.bat` — the tests the *toolchain* has to pass, none of which interrogate a page: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`.
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
@@ -1151,7 +1151,7 @@ build.bat && check.bat
 
 On the dev box that is ~4 s of build against ~37 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker got folded into the build's task graph, what it cost and what it saved; the axe follow-ons are designed there but not implemented.
 
-**If the change touched `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, run `test.bat` as well** --- another ~6 s. It is separate because none of its gates read a page, so a change confined to `docs/` cannot alter any of their outcomes:
+**If the change touched `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, run `test.bat` as well** --- another ~8 s. It is separate because none of its gates read a page, so a change confined to `docs/` cannot alter any of their outcomes:
 
 ```sh
 build.bat && check.bat && test.bat
@@ -1274,6 +1274,92 @@ node scripts/check_publish_policy.mjs
 the point** --- the cost is paid once, by the person who knows they are adding it,
 instead of being paid silently by whoever drops a key file into `docs/` three
 years from now.
+
+### Never rewrite markdown source without knowing what is code
+
+`render.mjs` applies several kramdown-parity rewrites to **raw markdown**, before
+markdown-it has parsed anything. A rewrite at that layer cannot tell prose from
+code, and this site's subject matter *is* code. Four defects of exactly that
+shape shipped, none of them caught by anything:
+
+| rewrite | what it did |
+|---|---|
+| `stripLiquidRawTags` | removed `{% raw %}` inside fences, so no page could show the tag it existed to handle |
+| `rewriteAdmonitions` body strip | ate the indentation of code inside an admonition |
+| `encodeSpacesInMediaUrls` | turned `Items[1](a, b)` into `Items[1](a,%20b)` |
+| `rewriteListItemSetextHeadings` | **deleted** a YAML sample's closing `---` and promoted the line above it to a heading |
+
+`Reference/Default/VBA/Interaction/InputBox` shipped its `If`/`ElseIf`/`Else`
+bodies flush left --- wrong control flow, in a language reference.
+`Reference/Core/Option` lost the blank line between its Module and Class
+examples. Fixing the admonition strip corrected **11 pages**, not three: the
+greedy `\s*` had also been merging paragraphs inside admonition *prose*
+site-wide, which the code-focused audit never looked for.
+
+**The same class exists on rendered HTML.** `book.mjs`'s chapter transforms
+rewrite `id="`, `href="#` and `src="/` across a whole body. An inline code span
+is emitted through `escapeHtmlMinimal`, which escapes only `&`, `<` and `>`, so
+quotes survive as literal bytes and all three patterns match inside a sample.
+Every one of the six exposed code spans in the corpus was corrupted in the
+published PDF --- `<style id="jtd-nav-activation">` read
+`<style id="ch-Documentation-Development-Pipeline-Stages-jtd-nav-activation">`,
+and `href="#ch-X"` read `#ch-…-ch-X` inside the sentence explaining the book's
+own anchor scheme.
+
+Highlighted *blocks* escape this only by accident: the highlighter splits
+attributes across `<span>` boundaries, so `src="/vs/loader.js"` never appears as
+a contiguous byte sequence. Inline spans get no such treatment. **Do not rely on
+that accident.**
+
+Two mechanisms now exist, and a new rewrite must use one of them:
+
+- **Source rewrites** go inside `applyPreRenderRewrites` in
+  [builder/render.mjs](builder/render.mjs), between `maskCodeRegions` and its
+  `restore`. The mask hides fenced blocks (backtick or tilde, any length) and
+  inline code spans (any backtick-run length).
+- **Rendered-HTML rewrites** use `replaceOutsideCode` in
+  [builder/book.mjs](builder/book.mjs), or the same leading-alternation shape
+  found in `offline-rewrite.mjs:299`, `pdf.mjs:138` and `book.mjs`'s
+  `IMG_SRC_RE_BOOK`, which consume `<code>` and `<pre>` atomically.
+
+**One gap is deliberate and stated rather than hidden:** `maskCodeRegions` does
+not protect **indented** (4-space) code blocks, because telling one from a
+list-item continuation needs block context a pre-render pass does not have, and
+guessing would change how real list content renders. `check_code_regions.mjs`
+*does* compare them, so a rewrite that damages one is reported --- and must be
+fixed at the rewrite, not by widening the mask.
+
+`rewriteAdmonitions` deliberately runs **outside** the mask. A fence inside an
+admonition still carries its `> ` markers at that point, so the mask does not
+see it as a fence, and the admonition rewrite is what strips those markers.
+
+### The code-region gate
+
+[scripts/check_code_regions.mjs](scripts/check_code_regions.mjs) tokenises every
+markdown file, applies the real `applyPreRenderRewrites` chain, re-tokenises,
+and compares the `fence` / `code_block` / `code_inline` contents in order. Any
+difference fails. In `test.bat` and both CI workflows; ~2 s, no browser, no
+built tree.
+
+```sh
+node scripts/check_code_regions.mjs
+node scripts/check_code_regions.mjs --verbose
+node scripts/check_code_regions.mjs --self-test
+```
+
+Two details are load-bearing. **It imports the chain rather than reconstructing
+it**, so removing the mask from one rewrite changes what the gate runs and is
+caught --- a gate that exercised `maskCodeRegions` alone would have passed. And
+**its seven probes ride along in the normal run**, each a defect this repository
+actually shipped, because the corpus is clean: a sweep that finds nothing is
+otherwise indistinguishable from a gate that has stopped detecting. Verified by
+reverting a rewrite to run outside the mask, which the probes catch while the
+906-file sweep still reports zero.
+
+**Nothing else can see this class.** The link check, integrity check, publish
+allowlist, regex-safety gate and axe scan all passed green on a tree with six
+corrupted code samples in the published book, because the corruption is inside
+`<code>` and none of them looks there.
 
 ### The regex-safety gate
 
@@ -1474,6 +1560,7 @@ Favor concise one-line git commit messages.
 - **Don't hand-edit a diagram's `.svg`, and don't change its `font-family` anywhere but the `.dot`.** The `.svg` is a build artifact; the next build overwrites it. More to the point, Graphviz sizes every box to the text *it* measured, so a face the layout never saw leaves labels hanging outside their boxes --- which is exactly how 27 labels shipped that way across three diagrams. Edit the `.dot`, rebuild, and let `node scripts/check_dot_fit.mjs` confirm it; see [Diagrams](#diagrams).
 - **Don't add a `@font-face` to `docs/_sass/custom/_fonts.scss` without also adding the stack to `modules-dark.scss`,** and don't move the `@font-face` block out of the `emit-font-faces` mixin. The dark compilation re-emits its whole payload under two selectors at raised specificity: a face declared there would be invalid, and a stack left out there applies in light mode and silently does not in dark.
 - **Don't widen `SOURCE_EXTENSIONS` in [builder/publish-policy.mjs](builder/publish-policy.mjs) to make a build pass.** The build refusing a file is the gate working. Remove the file from `docs/`, or add a pattern to `exclude:` in `_config.yml`; widen the allowlist only when the type genuinely belongs on the published site, and never by folding `BUILD_EXTENSIONS` into it. See [The publish allowlist](#the-publish-allowlist).
+- **Don't add a rewrite over markdown source or rendered HTML without a code guard.** A pre-render source rewrite goes inside `applyPreRenderRewrites`, between `maskCodeRegions` and its `restore`; a rendered-HTML rewrite uses `replaceOutsideCode` or the `<code>`/`<pre>` leading-alternation shape. Four rewrites shipped without one and corrupted real code samples, including control-flow indentation in a language reference and six code spans in the published PDF. `node scripts/check_code_regions.mjs` is the gate. See [Never rewrite markdown source without knowing what is code](#never-rewrite-markdown-source-without-knowing-what-is-code).
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
 - Don't add boilerplate sections (Remarks, See Also) if the source has nothing meaningful for them.
 - **Never add `Co-Authored-By:` (or any "Co-authored by" / "Generated with Claude" / similar) trailers to commit messages.** Repository policy. Plain commit messages only.
