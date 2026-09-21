@@ -70,13 +70,31 @@ FIXED_ARGS = {
     "CompileIf": "(True)",
 }
 # Arguments that cannot be synthesised without something else being true.
+# FormDesignerId earned its place the hard way: probed on a Class it reached
+# TB5247 `unable to find matching form designer JSON`, which is the compiler
+# accepting the placement and then failing a lookup. That confirms the
+# documented placement and tells us nothing further, so it is not worth a probe.
 UNSYNTHESISABLE = {
     "CoClassCustomConstructor": "needs a fully qualified path to an existing factory method",
     "CustomControl": "needs an image file present in the project",
     "PopulateFrom": "needs a .json resource plus three field names",
     "IgnoreWarnings": "needs a valid TBnnnn warning code; the codes are not documented",
     "CompilerOptions": "the option string vocabulary is not documented",
+    "FormDesignerId": ("needs a form designer JSON to match; probing it reached TB5247, "
+                       "which already confirms the documented placement on a Class"),
 }
+
+# Attributes the compiler allows only once per project, so their second and later
+# placements cannot share a project with the first. TB5114 for [RunAfterBuild].
+SINGLETON = {"RunAfterBuild": "the compiler allows only one [RunAfterBuild] per project"}
+
+# Placements a page's own worked example uses but its `Applicable to:` line does
+# not name. Expected to compile for the same reason: the page says so.
+EXTRA_PROBES = [
+    ("DllExport", "CONST",
+     "Attributes.md's DllExport example applies it to a Public Const, which its "
+     "`Applicable to:` line does not mention"),
+]
 
 
 def attr_text(name, idx):
@@ -85,7 +103,7 @@ def attr_text(name, idx):
     if name in FIXED_ARGS:
         return "[%s%s]" % (name, FIXED_ARGS[name])
     if name == "TypeHint":
-        return "[TypeHint(ProbeHintEnum)]"
+        return "[TypeHint(ProbeHintEnum%03d)]" % idx
     return "[%s]" % name
 
 
@@ -131,14 +149,18 @@ def parse_targets(app):
 
 
 # --------------------------------------------------------------- renderers
-HINT_ENUM = ("\n    Public Enum ProbeHintEnum\n"
-             "        ProbeHintValue = 1\n"
-             "    End Enum\n")
+def render(target, tag, attr, needs_hint_enum, idx):
+    """Return the body of a .twin file placing `attr` at `target`.
 
-
-def render(target, tag, attr, needs_hint_enum):
-    """Return the body of a .twin file placing `attr` at `target`."""
-    hint = HINT_ENUM if needs_hint_enum else ""
+    Enum names are made unique per probe. A Public Enum's name and its members
+    are project-global, so two probes both declaring `ProbeEnum` collide with
+    TB5000 `duplicate definition in the current scope` -- which reads like a
+    finding and is not one. Module Subs named `Probe` do NOT collide, so the
+    uniqueness is needed for enums only.
+    """
+    hint = ("\n    Public Enum ProbeHintEnum%03d\n"
+            "        ProbeHintValue%03d = 1\n"
+            "    End Enum\n" % (idx, idx)) if needs_hint_enum else ""
     if target == "MODULE":
         return "%s\nPublic Module %s\nEnd Module\n" % (attr, tag)
     if target == "CLASS":
@@ -169,8 +191,9 @@ def render(target, tag, attr, needs_hint_enum):
         return ("Public Module %s\n    %s\n    Public Type ProbeUdt\n"
                 "        Field1 As Long\n    End Type\nEnd Module\n" % (tag, attr))
     if target == "ENUM":
-        return ("Public Module %s\n    %s\n    Public Enum ProbeEnum\n"
-                "        ProbeValue = 1\n    End Enum\nEnd Module\n" % (tag, attr))
+        return ("Public Module %s\n    %s\n    Public Enum ProbeEnum%03d\n"
+                "        ProbeValue%03d = 1\n    End Enum\nEnd Module\n"
+                % (tag, attr, idx, idx))
     if target == "CONST":
         return ("Public Module %s\n%s    %s\n    Public Const ProbeConst As Long = 1\n"
                 "End Module\n" % (tag, hint, attr))
@@ -262,8 +285,35 @@ def main():
     os.makedirs(src_dir, exist_ok=True)
 
     entries = parse_attributes(DOCS)
-    probes, skipped, no_app = [], [], []
+    by_name = {e["name"]: e for e in entries}
+    probes, skipped, no_app, overflow = [], [], [], []
     idx = 0
+
+    def emit(e, target, note, seen_singleton):
+        """Write one probe. Returns the tag, or None if it could not be built."""
+        nonlocal idx
+        idx += 1
+        tag = "P%03d_%s_%s" % (idx, e["name"], target)
+        body = render(target, tag, attr_text(e["name"], idx),
+                      e["name"] == "TypeHint", idx)
+        if body is None:
+            skipped.append((e, "no skeleton for target %s" % target))
+            idx -= 1
+            return None
+        why = ("' %s\n" % note) if note else ""
+        header = ("' %s -- [%s] %s\n"
+                  "' Attributes.md:%d -- \"Applicable to: %s\"\n%s"
+                  "' Expected: compiles clean.\n\n"
+                  % (tag, e["name"], HUMAN[target], e["line"], e["app"], why))
+        target_dir = overflow_src if seen_singleton else src_dir
+        io.open(os.path.join(target_dir, tag + ".twin"), "w",
+                encoding="utf-8", newline="\r\n").write(header + body)
+        (overflow if seen_singleton else probes).append((tag, e, target))
+        return tag
+
+    overflow_src = os.path.join(out + "-2", "Sources")
+
+    singleton_used = set()
     for e in entries:
         if not e["app"]:
             no_app.append(e)
@@ -275,28 +325,32 @@ def main():
             if target == "LIBRARY_INTERFACE":
                 skipped.append((e, "the Library declaration has no reference page in docs/"))
                 continue
-            idx += 1
-            tag = "P%03d_%s_%s" % (idx, e["name"], target)
-            body = render(target, tag, attr_text(e["name"], idx),
-                          e["name"] == "TypeHint")
-            if body is None:
-                skipped.append((e, "no skeleton for target %s" % target))
-                idx -= 1
-                continue
-            header = ("' %s -- [%s] %s\n"
-                      "' Attributes.md:%d -- \"Applicable to: %s\"\n"
-                      "' Expected: compiles clean.\n\n"
-                      % (tag, e["name"], HUMAN[target], e["line"], e["app"]))
-            io.open(os.path.join(src_dir, tag + ".twin"), "w",
-                    encoding="utf-8", newline="\r\n").write(header + body)
-            probes.append((tag, e, target))
+            second = False
+            if e["name"] in SINGLETON:
+                if e["name"] in singleton_used:
+                    second = True
+                    os.makedirs(overflow_src, exist_ok=True)
+                singleton_used.add(e["name"])
+            emit(e, target, SINGLETON.get(e["name"]) if second else None, second)
 
+    for name, target, note in EXTRA_PROBES:
+        e = by_name.get(name)
+        if e:
+            emit(e, target, note, False)
+
+    main_twin = ("' Startup object for the probe project. Does nothing.\n\n"
+                 "Module ProbeMain\n    Public Sub Main()\n    End Sub\nEnd Module\n")
     io.open(os.path.join(src_dir, "_ProbeMain.twin"), "w",
-            encoding="utf-8", newline="\r\n").write(
-        "' Startup object for the probe project. Does nothing.\n\n"
-        "Module ProbeMain\n    Public Sub Main()\n    End Sub\nEnd Module\n")
+            encoding="utf-8", newline="\r\n").write(main_twin)
     io.open(os.path.join(out, "Settings"), "w",
             encoding="utf-8", newline="").write(SETTINGS)
+    if overflow:
+        io.open(os.path.join(overflow_src, "_ProbeMain.twin"), "w",
+                encoding="utf-8", newline="\r\n").write(main_twin)
+        io.open(os.path.join(out + "-2", "Settings"), "w",
+                encoding="utf-8", newline="").write(
+            SETTINGS.replace("AttributeProbes", "AttributeProbes2")
+                    .replace("000000000001", "000000000002"))
 
     k = io.open(key_path, "w", encoding="utf-8", newline="")
     k.write("# Attribute placement probes -- key\n\n")
@@ -314,6 +368,14 @@ def main():
     for tag, e, target in probes:
         k.write("| `%s` | `[%s]` | %s | line %d |\n"
                 % (tag, e["name"], HUMAN[target], e["line"]))
+    if overflow:
+        k.write("\n## Second project\n\n")
+        k.write("These placements cannot share a project with the ones above, so they "
+                "are packed separately as `AttributeProbes2`. Build it the same way.\n\n")
+        k.write("| Probe | Attribute | Placement | Why separate |\n|---|---|---|---|\n")
+        for tag, e, target in overflow:
+            k.write("| `%s` | `[%s]` | %s | %s |\n"
+                    % (tag, e["name"], HUMAN[target], SINGLETON[e["name"]]))
     if skipped:
         k.write("\n## Not probed\n\n")
         for e, why in skipped:

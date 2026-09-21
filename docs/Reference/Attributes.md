@@ -151,7 +151,7 @@ Indicates that this coclass can be created with the [**New**](New) keyword.
 
 Syntax: **[COMExtensible** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Interface**](Interface), [procedure in an Interface](../Gloss#procedure)
+Applicable to: [**Interface**](Interface)
 
 Specifies whether new members added at runtime can be called by name through an interface implementing **IDispatch**. This attribute is set to **False** by default.
 
@@ -616,7 +616,9 @@ Syntax: **[RunAfterBuild** [ **( True** \| **False )** ] **]**
 
 Applicable to: [**Function**](Function), [**Sub**](Sub)
 
-Specifies a function that runs after your exe is built. Tthere's `App.LastBuildPath` to know where it is if you're e.g. signing the executable.
+Specifies a function that runs after your exe is built. There's `App.LastBuildPath` to know where it is if you're e.g. signing the executable.
+
+Only one **[RunAfterBuild]** is allowed per project. A second one is a compile error.
 
 ## Serialize  (optional Bool)
 {: #serialize }
