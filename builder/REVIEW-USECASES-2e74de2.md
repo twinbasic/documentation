@@ -674,11 +674,44 @@ probe whose source text reads like the answer is the one to re-check hardest** -
 discipline as this review's own [method note](#what-round-2-confirms-about-the-method), applied
 to a false positive rather than an overstatement.
 
-- **One name the token table does not have:** `[LibraryId("…")]`, which appears in the
+- ~~**One name the token table does not have:** `[LibraryId("…")]`, which appears in the
   compiler binary beside `Library `, `End Library` and `' Original type library: `. It is
   undocumented, and unreachable for the same reason `[DispInterface]` is --- rejected with
-  TB5182 in project source. That the token table lacks it is the second piece of evidence
-  that the table is not an exhaustive list of attributes.
+  TB5182 in project source.~~ **Documented, and it was two names, not one.** That the token
+  table lacks it is still the second piece of evidence that the table is not an exhaustive
+  list of attributes.
+
+  This was recorded as evidence rather than queued, which undersold it: the page already
+  documents `[DispInterface]` and `[DualInterface]`, both equally unreachable, so by its own
+  precedent a generated-only attribute still earns an entry. Reading the strings either side
+  of it in the compiler binary gives the whole emission sequence --- `[LibraryId("`,
+  `[Version(`, `[Description(`, `Library `, the two `' NOTE:` comments and `End Library` ---
+  and **`[Version]` was undocumented too, and is named nowhere in this review.**
+
+  Both entries are written from a real generated module rather than from the binary. A
+  one-module project referencing `stdole2.tlb` puts one under **References** in the Project
+  Explorer, and the IDE serves it over its own `twinbasic:` filesystem, so `fs.readFile` on
+  that node returns the source --- 14,409 characters of it, read over CDP:
+
+  ```tb
+  [LibraryId("00020430-0000-0000-C000-000000000046")]
+  [Version(2.0)]
+  [Description("OLE Automation")]
+  Library stdole
+  ```
+
+  So `[LibraryId]` takes the type library's GUID **without braces** and `[Version]` takes a
+  **major.minor** pair --- not the optional Bool that five other entries were wrongly given.
+  The same read confirms the two existing entries from the other direction: the file's one
+  `DispInterface` is written `[Hidden, DispInterface, COMExtensible]`, combined rather than
+  alone, which is why counting `[DispInterface]` as a literal finds none.
+
+  *Two things cost time and are worth recording.* An invalid `project.id` --- a GUID with
+  non-hex characters in it --- leaves the IDE on **tB Services: LIMITED** and a *Please
+  wait…* dialog at 2% forever, with an empty Project Explorer. It is not reported as an
+  error anywhere, and `tbbuild` still exits 0 on it, because the compile it reads never
+  starts. And **`ImportedTypeLibraries` is the wrong folder to look in**: it exists in the
+  tree, and it is empty. The generated module is under `References`.
 
 - **What the name check did settle:** all 57 attribute names in `Attributes.md` occur in the
   compiler binary, so none is invented. `DispInterface` and `DualInterface` are absent from the
