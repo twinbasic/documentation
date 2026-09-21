@@ -42,6 +42,15 @@ node scripts/check_regex_safety.mjs
 @rem gate. No tree, no browser, ~2 s.
 node scripts/check_code_regions.mjs
 @if errorlevel 1 goto :fail
+@rem The page-count drift guard reports nothing on a healthy tree, so
+@rem every ordinary build sounds exactly like one whose guard has stopped
+@rem working. These probes make the other assertion, against a scratch
+@rem baseline file rather than the committed one. The first replays the
+@rem defect that motivated it -- 37 pages of AppGlobalClassObject lost to
+@rem an exclude rule, under a guard that only knew a floor of 836. No
+@rem tree, no browser, ~60 ms.
+node scripts/check_page_baseline.mjs
+@if errorlevel 1 goto :fail
 @rem check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
 @rem -26 % on a realistic page set). The patch asserts its substitution
 @rem targets, so an axe-core bump fails loudly; this catches the other

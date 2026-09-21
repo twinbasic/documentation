@@ -15,7 +15,7 @@ One-line-per-tool reference for every executable in the documentation repository
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All five sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Nothing else in the repository is Windows-specific: `tbdocs` and all seven gates are Node scripts, and CI runs every one of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All five sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Nothing else in the repository is Windows-specific: `tbdocs` and all nine gates are Node scripts, and CI runs every one of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -65,19 +65,23 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Three steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Five steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex literal that can backtrack exponentially.
-3. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+3. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
+4. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+5. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
     node scripts/check_publish_policy.mjs \
       && node scripts/check_regex_safety.mjs \
+      && node scripts/check_code_regions.mjs \
+      && node scripts/check_page_baseline.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**None of the three reads a page of documentation**, so an edit confined to `docs/` cannot change any of their outcomes --- which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`. Both CI workflows run all three unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+**None of the five reads a page of documentation**, so an edit confined to `docs/` cannot change any of their outcomes --- which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`. Both CI workflows run all five unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The split is by what a gate **interrogates**, not by what it happens to open. `check_axe_patch_equiv.mjs` loads a built page, so it does want `build.bat` to have run and it does want Chromium --- but only because its probe needs some document to run inside; what it tests is the axe patch. The test for where a new gate belongs is whether it would still mean something against an empty `docs/`.
 
@@ -124,6 +128,7 @@ Full invocation:
                             [--profile-offline]
                             [--check] [--no-check] [--check-audit-index]
                             [--check-findings <path>]
+                            [--update-page-baseline]
                             [--serve] [--port <N>]
 
 `build.bat` passes `--src docs --check-audit-index`, and forwards anything else given to it.
@@ -144,6 +149,7 @@ Full invocation:
 | `--no-check` | Turn the check off again. Flags are read in order, so this wins over a `--check` baked into `build.bat`. |
 | `--check-audit-index` | Implies `--check`, and additionally diffs the tree index the build derives from its own records against what landed on disk. A spurious entry makes the link oracle answer "exists" for a path that 404s in production, and nothing else would notice. This is what `build.bat` passes. |
 | `--check-findings <path>` | Implies `--check`, and writes the findings as JSON for a tool to read. Used by [`scripts/check_links_diff.mjs`](#check-links-diff). |
+| `--update-page-baseline` | Record this build's page and static-file counts in `builder/page-baseline.json` as the drift guard's new baseline, in whichever direction they moved. An ordinary build raises the baseline by itself; only a **fall** needs this flag, because a fall is what the guard exists to catch. See [the page-count drift guard](Building#the-page-count-drift-guard). |
 | `--serve` | Start the long-lived dev server (watch + rebuild + SSE live-reload). Offline and PDF passes are skipped each rebuild. |
 | `--port <N>` | HTTP port for `--serve` mode. Default: 4000. |
 
@@ -307,6 +313,32 @@ It gates on **exponential only**. recheck also reports polynomial blowup, and ab
 The self-test probes run inside the normal pass rather than behind `--self-test`: eight regexes with known answers in both directions, including the three this repository actually shipped. A green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. `--census` lists every literal by classification, plus a count of runtime `new RegExp(...)` constructions, which the scan cannot see.
 
 Exits 1 on an exponential finding, on a file that would not parse, or on a probe that came back wrong.
+
+### scripts/check_code_regions.mjs
+{: #check-code-regions }
+
+    node scripts/check_code_regions.mjs [--verbose] [--self-test]
+
+Verifies that no pre-render rewrite in `builder/render.mjs` alters the contents of a code fence, an indented code block or an inline code span. Tokenises every markdown file under `docs/`, applies the real rewrite chain, re-tokenises, and compares the code regions in order. No browser, no built tree, a couple of seconds.
+
+Those rewrites run over **raw markdown**, before markdown-it has parsed anything, so none of them can tell prose from code --- and this site's subject matter is code. Four defects of exactly that shape shipped: a language reference printed its `If` / `ElseIf` / `Else` bodies flush left, a page lost the blank line between two examples, a link's argument list was percent-encoded inside a fence, and a YAML sample's closing `---` was deleted outright. **No other gate can see any of it**, because the damage sits inside `<code>` and the link, integrity, publish and accessibility checks all pass over it.
+
+Seven probes ride along in the normal run, each a defect this repository actually shipped. The corpus is clean, so a sweep that finds nothing is otherwise indistinguishable from a gate that has stopped detecting. It imports the rewrite chain rather than reconstructing it, which is what makes removing the code mask from one rewrite change what the gate runs.
+
+Exits 1 when a code region differs.
+
+### scripts/check_page_baseline.mjs
+{: #check-page-baseline }
+
+    node scripts/check_page_baseline.mjs
+
+Verifies the [page-count drift guard](Building#the-page-count-drift-guard) still refuses what it exists to refuse. Eleven probes against a scratch baseline file in the system temp directory, so nothing here touches `builder/page-baseline.json`. No browser, no built tree, well under a second.
+
+The guard says nothing on a healthy tree, so every ordinary build sounds exactly like one whose guard has stopped working --- which is the whole reason this exists. The first probe replays the defect that motivated the guard: 37 pages of the AppGlobalClassObject package lost to a blanket `exclude:` rule, under a guard that knew only a floor of 836 against a real 908. Reverting the guard to that floor fails three of the eleven.
+
+Two probes look redundant and are the two that caught real bugs while the guard was being written. A **foreign source root must be ignored**: [`check_links_diff.mjs`](#check-links-diff) builds a three-page fixture tree, and a baseline keyed to nothing met it with *905 pages missing*. And **CI must refuse a missing baseline** rather than create one, because a run that wrote the file would record whatever drop it had been asked to catch.
+
+Exits 1 on any failed probe.
 
 ### scripts/check_axe_patch_equiv.mjs
 {: #check-axe-patch-equiv }

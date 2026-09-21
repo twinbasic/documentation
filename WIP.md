@@ -1325,7 +1325,7 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 - `build.bat` — runs `node builder\tbdocs.mjs --src docs --check-audit-index` (which implies `--check`) and produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output. `--check` adds ~1.7 s and runs the link + integrity check over the HTML while it is still in worker memory; `build.bat --no-check` gets a plain build.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
 - `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`. ~37 s.
-- `test.bat` — the tests the *toolchain* has to pass, none of which interrogate a page: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
+- `test.bat` — the tests the *toolchain* has to pass, none of which interrogate a page: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](#the-book-refuses-a-stale-source-tree)).
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
@@ -1630,6 +1630,63 @@ reverting a rewrite to run outside the mask, which the probes catch while the
 allowlist, regex-safety gate and axe scan all passed green on a tree with six
 corrupted code samples in the published book, because the corruption is inside
 `<code>` and none of them looks there.
+
+### The page-count drift guard
+
+`tbdocs.mjs` ended with `if (pages.length < 836)`, described in
+[Builder.md](docs/Documentation/Builder.md) as catching "a discover-rule
+regression that silently drops content". **A floor is not a drift check**, and
+this one had stopped being even a loose one: the constant was written when the
+site had 836 pages, the site has **908**, and the loss it exists to catch was
+**37**. Repeat the `_App` disaster today --- the blanket `**/_*/**` exclude that
+swallowed AppGlobalClassObject's 37 pages --- and the count lands at 871, well
+clear of 836, and the build says nothing at all.
+
+The baseline is now `builder/page-baseline.json`, a committed artifact of the
+same kind as `inter-metrics.json`: **a rise rewrites it and says so, a fall
+fails the build.** Raising the constant to a tight floor was the obvious
+alternative and is wrong --- it would fire on every legitimate page removal, and
+a gate that fires on ordinary work gets switched off. A rise costs nothing, so
+the number stays current by itself; only a fall wants a decision, and
+`--update-page-baseline` is how it is recorded, in the same commit as the
+deletion.
+
+**Three things about it were learned by getting them wrong**, and each is now a
+comment in [builder/page-baseline.mjs](builder/page-baseline.mjs):
+
+- **The baseline has to be keyed to a source tree.** `tbdocs` is not only run
+  over `docs/`: `check_links_diff.mjs` spawns it over
+  `test/fixtures/check-src`, three pages, to compare the two link checkers.
+  Against an unkeyed baseline that build reports **905 pages missing** --- a
+  loud, confident, entirely wrong finding, on the one harness whose whole job is
+  noticing when two implementations disagree. `GUARDED_SRC` names the tree the
+  numbers are of and every other root is skipped in silence.
+- **The build now writes a tracked file, and `check_tree_fresh.mjs` watches
+  `builder/`.** The write happens after the tree, so without an exclusion the
+  very next `check.bat` would call the tree it had just built stale --- on
+  exactly the builds that added a page. `IGNORED_FILES` closes it, and the
+  reasoning is not a special case: the script's own comment says its sources are
+  "the inputs that decide the built bytes", and a baseline decides none of them.
+  `dot` and `vendorAssets` write into `docs/` and escape this only because they
+  run early.
+- **Neither CI nor `--serve` may write.** A CI run that rewrote the file would
+  record the drop it was asked to catch, so there a missing baseline is an error
+  rather than a first run. `--serve` rebuilds on every save under `docs/`, so a
+  page half-deleted in an editor would lower the baseline and a half-added one
+  would raise it.
+
+One latent bug went with it. The old guard did `process.exitCode = 1`, plain
+assignment, after the link check had already set bits 1 and 2 --- so a build with
+both an integrity failure and a page drop reported only the drop. It ORs now,
+like everything else on that path.
+
+`scripts/check_page_baseline.mjs` is the gate on the gate, in `test.bat` and
+both CI workflows: eleven probes against a scratch baseline, no browser, no
+built tree. **It is not optional bookkeeping** --- the guard is silent on a
+healthy tree, so a green build is exactly what a guard that has stopped working
+produces. Reverting the comparison to the old floor fails three of the eleven,
+including the `_App` replay; the two probes that look redundant (foreign source
+root, missing baseline under CI) are the two that caught the real bugs above.
 
 ### The regex-safety gate
 

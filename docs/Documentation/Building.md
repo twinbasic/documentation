@@ -36,12 +36,12 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 - **Node.js 22+** for `tbdocs` itself.
 - **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root contains the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
-- **Chromium** is required for four things: rendering the PDF book (`book.bat`), two of `check.bat`'s four steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont, and the accessibility scan (`scripts/check_a11y.mjs`) --- and one of `test.bat`'s three, the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat`, `test.bat` and `book.bat` do.
+- **Chromium** is required for four things: rendering the PDF book (`book.bat`), two of `check.bat`'s four steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont, and the accessibility scan (`scripts/check_a11y.mjs`) --- and one of `test.bat`'s five, the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat`, `test.bat` and `book.bat` do.
 
 ### On macOS and Linux
 {: #posix-equivalents }
 
-Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all seven gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
+Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all nine gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
 
 Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from any directory. The commands below have no equivalent of that, so **run them from the repository root**. It is not a formality: `tbdocs`'s `--src docs`, `check_publish_policy.mjs`'s default source root, and every path handed to `render-book.mjs` are all resolved against the working directory.
 
@@ -50,7 +50,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
 | `build.bat [flags]` | `node builder/tbdocs.mjs --src docs --check-audit-index [flags]` |
 | `serve.bat [flags]` | `node builder/tbdocs.mjs --src docs --serve [flags]` |
 | `check.bat` | four scripts in a fixed order, below |
-| `test.bat` | three scripts in a fixed order, below |
+| `test.bat` | five scripts in a fixed order, below |
 | `book.bat` | a `mkdir`, then one `render-book.mjs` invocation, below |
 
 `--check-audit-index` is the part most easily dropped in transcription, and dropping it is silent --- see [Building](#building) below for what it costs. Anyone who types `build.bat` gets the link check without thinking about it; anyone who types the underlying command has to include it themselves.
@@ -62,10 +62,12 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/pick_a11y_sample.mjs --check \
       && node scripts/check_a11y.mjs
 
-`test.bat` is three more, in the same cheapest-first order:
+`test.bat` is five more, in the same cheapest-first order:
 
     node scripts/check_publish_policy.mjs \
       && node scripts/check_regex_safety.mjs \
+      && node scripts/check_code_regions.mjs \
+      && node scripts/check_page_baseline.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
 `book.bat` has one step that is invisible from the command it ends with. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so `docs/_pdf/` has to exist first --- otherwise the render fails with `ENOENT` at the very last moment, after the whole page-breaking pass has already run. The deploy workflow does the same `mkdir` before its render, for the same reason:
@@ -164,6 +166,57 @@ nothing would report. The self-test asserts the other half against named probes
 --- a `.bak`, a `.pem`, a `.docx`, a frontmatter-less `.md` --- plus the reverse,
 that a `.png`, a `.woff2` and `CNAME` still publish, since a policy refusing
 everything would also report a clean sweep.
+
+## The page-count drift guard
+{: #the-page-count-drift-guard }
+
+The build counts the pages it discovered and the static files it copied, and
+compares both against `builder/page-baseline.json` --- the same two numbers from
+the last build anyone committed. Fewer than last time is an error:
+
+    ERROR: fewer than the last committed build -- pages 871, was 908 (-37)
+           Something stopped being discovered, or content was removed on purpose.
+           If the removal is intended, record it in the same commit:
+             node builder/tbdocs.mjs --src docs --update-page-baseline
+
+A **rise** needs nothing. An ordinary local build rewrites the file itself and
+says so, and the changed file is committed with whatever added the pages. Only a
+**fall** needs the flag, because a fall is the thing being watched for.
+
+### Why a committed number and not a constant
+
+The guard used to read `if (pages.length < 836)`, written when the site had 836
+pages and never revisited. The site has 908 today, so the test left a 72-page
+margin --- and the loss it was meant to catch was 37 pages.
+
+That loss was real. `_config.yml`'s `exclude:` once held a blanket `**/_*/**`
+rule, which matched the `_App/` folder of the AppGlobalClassObject package, and
+37 pages stopped being published. Nothing reported it. Repeat it today and the
+count reaches 871, well above 836, and the guard stays quiet throughout. A floor
+is not a drift check.
+
+Raising the constant to a tight floor is not the answer either: it would then
+fail on every legitimate page removal, and a gate that fails on ordinary work
+gets switched off. The number has to move with the tree, which makes it a
+committed artifact rather than a literal --- the same shape as
+`builder/inter-metrics.json`, which [Graphviz/DOT diagrams](#graphvizdot-diagrams)
+below reads for its font metrics.
+
+### Where it compares but does not write
+
+- **CI.** A run there that rewrote the baseline would accept the drop it was
+  asked to catch. A missing `page-baseline.json` is an error in CI rather than a
+  first run, because the guard's own artifact going missing is a regression of
+  the guard.
+- **`serve.bat`.** Its watcher rebuilds on every save under `docs/`, so a page
+  half-deleted in an editor would lower the baseline and a half-added one would
+  raise it. The comparison still runs, so the console still says what happened.
+
+Because the file is a build output rather than a build input,
+[`scripts/check_tree_fresh.mjs`](Tools#check-tree-fresh) skips it when it looks
+for sources newer than the built tree. Without that, the build writing a raised
+baseline at the end of its own run would make the tree it had just produced
+report as stale.
 
 ## Checking accessibility
 
@@ -282,7 +335,7 @@ Two workflows cover the repository:
 - `.github/workflows/checks.yml` runs on every pull request into `staging` or `main`. It builds, checks, and stops --- it has no deploy rights at all. It also has no `paths:` filter, deliberately: an earlier `docs/**` filter skipped any pull request touching only `builder/` or `scripts/`, which is exactly the code most able to break the build, the link checker or asset vendoring.
 - `.github/workflows/tbdocs-gh-pages.yml` runs on every push to `staging` and on manual dispatch. It runs the same gates, then renders the PDF book and publishes `docs/_site/` to Pages. A manual dispatch additionally cuts a GitHub release with the offline site copy and the book attached.
 
-Both run six of the seven local gates --- all three of `test.bat`'s and three of `check.bat`'s four --- in the same relative order; the seventh is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
+Both run eight of the nine local gates --- all five of `test.bat`'s and three of `check.bat`'s four --- in the same relative order; the ninth is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
 
 ### A missing image is an error there and a download here
 

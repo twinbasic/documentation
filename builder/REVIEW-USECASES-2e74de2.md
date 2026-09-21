@@ -207,7 +207,8 @@ than "firing only barely". Raising the constant to a tight floor is not the answ
 it would then fire on every legitimate page removal, which is why it was left loose. The
 guard that would have caught `_App` is a comparison against the previous build's count held
 in a committed file, the same shape as `builder/inter-metrics.json`. That is a code change
-and has not been made.
+and has not been made. **Made since** --- see the queue entry under [Open at
+handoff](#open-at-handoff).
 
 **21. `README.md` calls `check.bat` "the gates that need a browser (diagram fit,
 accessibility)".** It is six gates, two of which need neither a browser nor a built tree ---
@@ -257,16 +258,28 @@ have thought to name in advance, and any of which would have silently become rea
 
 Everything above was fixed unless listed here. This section is the queue, not a finding list.
 
-> **One item is open, and it is a code change: the page-count drift guard**, Tier 3 item 20.
-> `builder/tbdocs.mjs:1470` still reads `if (pages.length < 836)` against a measured **908**
-> pages, so the margin is 72 and an identical repeat of the 37-page `_App` loss would not fire
-> it. The guard that would --- a comparison against the previous build's count held in a
-> committed file, the shape of `builder/inter-metrics.json` --- has not been written.
+> ~~**One item is open, and it is a code change: the page-count drift guard**, Tier 3 item
+> 20.~~ **Done.** `builder/page-baseline.json` is the committed baseline the finding asked
+> for: a rise rewrites it, a fall fails the build, and `--update-page-baseline` is how a real
+> removal is recorded. `scripts/check_page_baseline.mjs` is the gate on the gate, in
+> `test.bat` and both CI workflows --- the guard is silent on a healthy tree, so a green build
+> is exactly what a guard that has stopped working produces.
 >
-> It is recorded in Tier 3 and was never carried down into this section, which is how *"the
-> queue is empty"* stood here while one item was outstanding. **A finding that states its own
-> fix has not been made belongs in the queue**, whatever tier found it; that is the only place
-> anyone looks.
+> Writing it turned up two bugs the finding did not anticipate, both from the baseline being
+> a *file* rather than a constant. **It has to be keyed to a source tree**: `check_links_diff.mjs`
+> builds a three-page fixture with `tbdocs`, and an unkeyed baseline met it with *905 pages
+> missing*. And **the build now writes into `builder/`, which `check_tree_fresh.mjs` watches**,
+> after the tree is written --- so the next `check.bat` called a freshly built tree stale, on
+> exactly the builds that had added a page. A third was already there: the old guard assigned
+> `process.exitCode = 1` after the link check had set bits 1 and 2, so a build with an
+> integrity failure *and* a page drop reported only the drop. Recorded in
+> [WIP.md](../WIP.md#the-page-count-drift-guard).
+>
+> *Two `Tools.md` gaps fell out of the same commit*, and they are the shape of Tier 2 item 12
+> rather than of this one: `test.bat` was documented as three gates when it had four, and
+> [`check_code_regions.mjs`](../scripts/check_code_regions.mjs) --- added in this review's own
+> follow-on audit --- had no entry on the page at all. Adding a gate is exactly the code change
+> that page has no obligation to notice.
 >
 > **Everything else is closed.** Struck-through entries carry the commit that closed
 > them. The last two --- the applicability of `ImplementsViaPrivateFriendlies` and of

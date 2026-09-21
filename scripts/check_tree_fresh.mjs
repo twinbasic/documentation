@@ -40,6 +40,14 @@ const IGNORED_DIRS = new Set([
   ".git", "node_modules",
 ]);
 
+// Files the build WRITES into a source directory. They are outputs, so their
+// mtime says nothing about whether the tree is current -- and because the build
+// writes them after the tree, including one would mark every fresh tree stale.
+// page-baseline.json is written by the drift guard whenever the page count
+// rises (builder/page-baseline.mjs), so `build.bat && check.bat` would have
+// failed on the next run after any page addition.
+const IGNORED_FILES = new Set(["page-baseline.json"]);
+
 // The inputs that decide the built bytes. The source tree is the obvious
 // one; the builder and the theme sources matter just as much, and are
 // what a maintainer is most likely to be editing when they run these two
@@ -90,7 +98,7 @@ function newestUnder(dir) {
       if (IGNORED_DIRS.has(e.name)) continue;
       const p = join(d, e.name);
       if (e.isDirectory()) { walk(p); continue; }
-      if (!e.isFile()) continue;
+      if (!e.isFile() || IGNORED_FILES.has(e.name)) continue;
       let st;
       try { st = statSync(p); } catch { continue; }
       if (!best || st.mtimeMs > best.mtimeMs) best = { path: p, mtimeMs: st.mtimeMs };

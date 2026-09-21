@@ -171,6 +171,15 @@ jobs:
       # built tree.
       - name: Verify code regions survive the pre-render rewrites (check_code_regions.mjs)
         run: node scripts/check_code_regions.mjs
+      # The page-count drift guard reports nothing on a healthy tree, so a
+      # green build says exactly what a guard that had stopped working says.
+      # These probes make the other assertion, against a scratch baseline
+      # rather than the committed one. The first replays the defect that
+      # motivated it: 37 pages of AppGlobalClassObject lost to a blanket
+      # exclude rule, under a guard that knew only a floor of 836 against a
+      # real 908. No browser, no built tree.
+      - name: Verify the page-count drift guard (check_page_baseline.mjs)
+        run: node scripts/check_page_baseline.mjs
       # Graphviz sizes each node box from a width table; the browser paints
       # the label with a real font. Nothing in the build compares the two, so
       # a mismatch ships as text hanging outside its box on a green build --

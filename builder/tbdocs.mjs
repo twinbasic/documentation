@@ -62,6 +62,7 @@ import { writePdf } from "./pdf.mjs";
 // htmlparser2 -- is imported dynamically by the tasks that need it, so a
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
+import { checkPageBaseline } from "./page-baseline.mjs";
 import { publishPolicyFor, unpublishableSourceFiles,
          unpublishableTreePaths, formatPublishRefusal } from "./publish-policy.mjs";
 import { packShared } from "./sab-broadcast.mjs";
@@ -74,6 +75,11 @@ import {
 } from "./sab-scheduler.mjs";
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
+
+// builder/ sits one level under the repository root. Used to state a build's
+// source root the same way however it was invoked, for the page-count drift
+// guard -- see page-baseline.mjs.
+const REPO_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 function parseArgs(argv) {
   const args = {
@@ -88,6 +94,7 @@ function parseArgs(argv) {
     profileOffline: false,
     check: false,
     auditIndex: false,
+    updatePageBaseline: false,
     checkFindings: null,
     serve: false,
     port: 4000,
@@ -145,6 +152,11 @@ function parseArgs(argv) {
     } else if (a === "--check-findings") {
       args.check = true;
       args.checkFindings = argv[++i];
+    } else if (a === "--update-page-baseline") {
+      // Record the current inventory as the drift guard's new baseline,
+      // whichever direction it moved. The build only ever raises it on its
+      // own; lowering it is a deliberate act, so it takes a deliberate flag.
+      args.updatePageBaseline = true;
     } else if (a === "--serve") {
       args.serve = true;
     } else if (a === "--port") {
@@ -1466,11 +1478,24 @@ export async function runBuild(opts) {
   console.log(scheduler.summary());
   console.log(pc.dim(`gantt-inject=${injectMs}ms`));
 
-  // Drift guard from PLAN-1.md §1.
-  if (pages.length < 836) {
-    console.error(`WARN: page count ${pages.length} below baseline 836`);
-    process.exitCode = 1;
-  }
+  // Drift guard from PLAN-1.md §1, against a committed baseline rather than
+  // the literal 836 it was written with -- see page-baseline.mjs for why a
+  // floor could not do the job. OR'd into the exit code rather than assigned:
+  // the check above claims bits 1 and 2, and the old `= 1` here clobbered
+  // them, so a build with both an integrity failure and a page drop reported
+  // only the drop.
+  const drift = await checkPageBaseline({
+    // Repo-relative and forward-slashed, so it matches GUARDED_SRC however the
+    // build was invoked. tbdocs also runs over test/fixtures/check-src, which
+    // has no baseline and must not be measured against the site's.
+    src: path.relative(REPO_ROOT, path.resolve(opts.src ?? "docs")).replaceAll(path.sep, "/"),
+    pages: pages.length,
+    staticFiles: staticFiles.length,
+    write: !process.env.CI && !opts.serve && !opts.dryRun,
+    force: !!opts.updatePageBaseline,
+  });
+  if (drift.text) process.stdout.write(drift.text);
+  if (drift.failed) process.exitCode = (process.exitCode ?? 0) | 1;
 
   return { pages, staticFiles, site, destRoot };
 }
