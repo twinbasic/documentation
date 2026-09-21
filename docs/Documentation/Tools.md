@@ -390,7 +390,7 @@ Key options used by `book.bat`:
 |---|---|
 | `-o <output.pdf>` | Output PDF path. |
 | `--outline-tags h1,h2,h3,h4` | Heading levels to include in the PDF outline / bookmarks. |
-| `--additional-script <path>` | Path to a script injected before paged.js runs. `book.bat` passes `perf\detach-pages.js`, which hides each finalised page from Chromium's layout tree and restores them all before `page.pdf()` runs, dropping render time from ~104s to ~51s on the 1,638-page book by sidestepping paged.js's quadratic overflow walker. |
+| `--additional-script <path>` | Path to a script injected before paged.js runs. `book.bat` passes `perf\detach-pages.js`, which hides each finalised page from Chromium's layout tree and restores them all before `page.pdf()` runs, dropping render time from ~104s to ~51s on a 1,638-page book by sidestepping paged.js's quadratic overflow walker. |
 
 ## Configuration files
 

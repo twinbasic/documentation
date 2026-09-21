@@ -37,7 +37,7 @@ digraph pdf_render {
         { rank=same; ASM; CSS; IMG }
     }
 
-    PDFSRC [label=<_site-pdf/book.html<BR/>(~5 MB)<BR/>print.css, tb-highlight.css,<BR/>images>]
+    PDFSRC [label=<_site-pdf/book.html<BR/>(~7 MB)<BR/>print.css, tb-highlight.css,<BR/>images>]
 
     subgraph cluster_render {
         margin=12
