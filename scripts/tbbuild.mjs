@@ -3,7 +3,8 @@
 //
 //     node scripts/tbbuild.mjs <project.twinproj> [options]
 //
-//       --ide <path>      twinBASIC.exe (default: $TB_IDE)
+//       --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
+//                         %USERPROFILE%/Desktop/twinBASIC_IDE_BETA_*)
 //       --port <n>        DevTools port to start the IDE on (default 9333)
 //       --timeout <secs>  give up waiting for the compile (default 180)
 //       --json            emit one JSON object instead of text
@@ -36,7 +37,7 @@
 // them. See WIP.md, "Compiling a twinBASIC project without the IDE in front
 // of you".
 import { spawn, execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./lib/tb-cdp.mjs";
@@ -46,7 +47,28 @@ const flag = (n) => args.includes("--" + n);
 const opt = (n, d) => { const i = args.indexOf("--" + n); return i < 0 ? d : args[i + 1]; };
 const proj = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 
-const IDE = opt("ide", process.env.TB_IDE);
+// An install path is a home directory, so it is never hardcoded here: pass
+// --ide, set TB_IDE, or let this find the newest BETA on the Desktop, which is
+// where the IDE's own zip tells people to unpack it.
+function findIDE() {
+  const home = process.env.USERPROFILE;
+  if (!home) return undefined;
+  const desktop = path.join(home, "Desktop");
+  let best;
+  try {
+    for (const name of readdirSync(desktop)) {
+      const m = /^twinBASIC_IDE_BETA_(\d+)$/.exec(name);
+      if (!m) continue;
+      const exe = path.join(desktop, name, "twinBASIC.exe");
+      if (!existsSync(exe)) continue;
+      const build = Number(m[1]);
+      if (!best || build > best.build) best = { build, exe };
+    }
+  } catch { /* no Desktop, or unreadable */ }
+  return best?.exe;
+}
+
+const IDE = opt("ide", process.env.TB_IDE ?? findIDE());
 const port = Number(opt("port", 9333));
 const timeout = Number(opt("timeout", 180)) * 1000;
 const asJson = flag("json");
@@ -59,7 +81,8 @@ if (!proj || flag("help")) {
   process.exit(2);
 }
 if (!IDE) {
-  console.error("no IDE path: pass --ide <twinBASIC.exe> or set TB_IDE");
+  console.error("no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
+    "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");
   process.exit(2);
 }
 

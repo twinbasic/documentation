@@ -138,9 +138,13 @@ and reading the DIAGNOSTICS pane by eye.
 project, nothing appears on screen, exit code 1 if the project has errors:
 
 ```sh
-TB_IDE="C:/path/to/twinBASIC_IDE_BETA_983/twinBASIC.exe" \
-  node scripts/tbbuild.mjs C:/probe/AttributeExplore.twinproj
+node scripts/tbbuild.mjs C:/probe/AttributeExplore.twinproj
 ```
+
+It finds the IDE itself --- the newest `twinBASIC_IDE_BETA_<n>` on
+`%USERPROFILE%/Desktop`, which is where the IDE's zip says to unpack it. `--ide` or `TB_IDE`
+override that, and one of the two is needed for an install kept anywhere else. **No install
+path is hardcoded**, here or anywhere in the tooling: an install path contains a username.
 
 `--json` gives the same thing as one object, `--show` puts the IDE on your own desktop where
 you can watch it, `--keep` leaves it running. Exit codes are 0 clean, 1 the project has
