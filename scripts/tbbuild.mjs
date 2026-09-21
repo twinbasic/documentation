@@ -9,8 +9,10 @@
 //       --timeout <secs>  give up waiting for the compile (default 180)
 //       --json            emit one JSON object instead of text
 //       --keep            leave the IDE running afterwards
-//       --show            put the IDE on your desktop, where you can watch it
-//                         (default: a private desktop, so it cannot take focus)
+//       --show / --hide   put the IDE on your desktop where you can watch it,
+//                         or on a private one where it cannot take focus.
+//                         Default: hidden, unless TBBUILD_SHOW is set --
+//                         export that for a session you are watching.
 //
 // Exit codes: 0 clean, 1 the project has errors, 2 the harness failed,
 // 3 the compile never settled, 4 the project crashes the compiler.
@@ -73,11 +75,18 @@ const port = Number(opt("port", 9333));
 const timeout = Number(opt("timeout", 180)) * 1000;
 const asJson = flag("json");
 const keep = flag("keep");
-const show = flag("show");
+// Hidden by default so an unattended run cannot take the keyboard, but the
+// private desktop also hides a wedged IDE from the person debugging it -- so
+// the choice is a switch, and TBBUILD_SHOW makes it a session-wide one rather
+// than something to remember on every invocation.
+const show = flag("show") ||
+  (!flag("hide") && !!process.env.TBBUILD_SHOW &&
+    !["0", "false", "no", ""].includes(process.env.TBBUILD_SHOW.toLowerCase()));
 
 if (!proj || flag("help")) {
   console.error("usage: node scripts/tbbuild.mjs <project.twinproj> " +
-    "[--ide <twinBASIC.exe>] [--port N] [--timeout S] [--json] [--keep] [--show]");
+    "[--ide <twinBASIC.exe>] [--port N] [--timeout S] [--json] [--keep] " +
+    "[--show|--hide]");
   process.exit(2);
 }
 if (!IDE) {

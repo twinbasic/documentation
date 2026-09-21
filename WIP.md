@@ -134,8 +134,8 @@ shipped source happens to demonstrate. For those, something has to put the const
 front of the compiler --- and until BETA 983 that meant a person opening the IDE, building,
 and reading the DIAGNOSTICS pane by eye.
 
-[scripts/tbbuild.mjs](scripts/tbbuild.mjs) does it unattended. Roughly 40 seconds per
-project, nothing appears on screen, exit code 1 if the project has errors:
+[scripts/tbbuild.mjs](scripts/tbbuild.mjs) does it unattended. Nothing appears on screen,
+exit code 1 if the project has errors:
 
 ```sh
 node scripts/tbbuild.mjs C:/probe/AttributeExplore.twinproj
@@ -146,10 +146,17 @@ It finds the IDE itself --- the newest `twinBASIC_IDE_BETA_<n>` on
 override that, and one of the two is needed for an install kept anywhere else. **No install
 path is hardcoded**, here or anywhere in the tooling: an install path contains a username.
 
-`--json` gives the same thing as one object, `--show` puts the IDE on your own desktop where
-you can watch it, `--keep` leaves it running. Exit codes are 0 clean, 1 the project has
-errors, 2 the harness failed, 3 the compile never settled, 4 the project crashes the
-compiler.
+`--json` gives the same thing as one object and `--keep` leaves the IDE running. Exit codes
+are 0 clean, 1 the project has errors, 2 the harness failed, 3 the compile never settled, 4
+the project crashes the compiler.
+
+**`--show` / `--hide`, and `TBBUILD_SHOW` for a whole session.** Hidden is the default, and
+it has a real cost that only shows up when something goes wrong: a wedged IDE on a private
+desktop is invisible to the person debugging it. That happened during the reuse experiment
+below --- an IDE whose renderer was blocked, with no window either of us could look at, and
+the only way to see anything was to re-run it visible. So `export TBBUILD_SHOW=1` while you
+are working interactively and leave it unset for unattended runs; `--show` and `--hide`
+override it per invocation.
 
 **How it works, in one line:** the IDE's user interface is a WebView2 page, WebView2 honours
 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, so the IDE starts with a Chrome DevTools port and is
@@ -211,6 +218,64 @@ the file now:
 argument-shape probes in one project took the compiler down repeatedly. Keep a question that
 might crash the compiler in a project of its own, so the answer is attributable and one bad
 probe cannot cost the other thirty their run.
+
+#### Why it drives the WebView rather than the compiler directly
+
+The obvious improvement is to cut the browser out --- the compiler has websockets, so why go
+through a UI at all? **It cannot be done, and the reason is structural.** Recording it so
+nobody spends another afternoon on it.
+
+The IDE is three processes, and their command lines say how they relate:
+
+| process | command line | role |
+|---|---|---|
+| `twinBASIC.exe` | `<project.twinproj>` | shell; hosts the WebView2, and the only one given the project |
+| `twinBASIC_win32.exe` | `--ide=<shell pid>` | serves `ide/` over HTTP on an ephemeral port |
+| `twinBASIC_win32_noDEP.exe` | `--compiler=<opaque token>` | the compiler; opens six websocket ports |
+
+The page reaches the compiler at
+`ws://localhost:<port>/<passKey>/{root,language,fs,debugger}`, and `language` really is LSP
+--- it pushes `textDocument/publishDiagnostics` with per-file `diagnostics` and error,
+warning, hint and info counts, alongside a `compilationStarted` event.
+
+**But the port and the pass key are both minted inside the WebView.**
+`hostAppObject.CreateCompilerInstance(...)` returns the port, `GetCompilerPassKey(...)`
+returns a GUID, and both are WebView2 host objects --- reachable only from a page the shell
+has loaded. Starting the compiler directly is no way round it either: `--compiler=` is not a
+port but an opaque handle the shell hands it (`8591158` in one run, against compiler ports
+`61917-61922`). So a proxy between the WebView and the HTTP server is possible --- the page
+and its scripts come over plain HTTP, and a patched `main2.js` could be served --- but it
+would not remove the WebView, it would only change what runs inside it. The thing you would
+want to delete is the thing that mints the connection.
+
+What the websockets *would* be good for, once an IDE is up, is replacing the poll-for-DOM-
+stability heuristic with `compilationStarted` plus a quiet period of `publishDiagnostics`,
+and taking structured diagnostics instead of scraped text. That is a robustness change, not
+a speed one, and the current reader is the IDE's own report walk, so it is not urgent.
+
+#### One project per IDE, and that is the scaling unit
+
+**Reusing a live IDE for a second project does not work.** `root.loadProject` against a
+running IDE wedges it: `Runtime.evaluate` stops returning while browser-level CDP still
+answers, and no javascript dialog is pending --- so the renderer is blocked inside a
+synchronous host call, not on something dismissable. Reproduced twice. The IDE holds one
+project at a time and closing the previous one is part of that path.
+
+So the cold start is not overhead to be optimised away; it is the unit of work. `tbbuild`
+starting a fresh IDE per project is the design, not a convenience.
+
+**It costs less than it sounds like.** Measured on this box: **8 to 11 seconds per project,
+and flat in project size** --- a one-file project and the 32-probe exploratory project both
+land at about ten seconds, because what is being paid for is IDE startup and not
+compilation. An earlier draft of this section said "roughly 40 seconds", which was a guess
+nobody had timed; it is out by a factor of four, and it is exactly the kind of unmeasured
+baseline [the round-2 review](builder/REVIEW-USECASES-2e74de2.md) complains about
+elsewhere. Time it before quoting it.
+
+**Concurrency works and is the route to a fast probe suite.** Distinct `--port` values give
+distinct DevTools ports, WebView2 user-data folders and private desktops, so instances do
+not collide. Three projects: **26 s sequentially, 10 s in parallel**, with each run
+reporting its own diagnostics and no bleed between them.
 
 ## Page template
 

@@ -333,7 +333,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 > so the IDE can be started with a DevTools port and driven over CDP ---
 > [scripts/tbbuild.mjs](../scripts/tbbuild.mjs). It loads a project, waits for the background
 > compile to settle, and prints the DIAGNOSTICS pane. The 32-probe exploratory project below
-> is one 40-second command now, and every result it records was re-run through it from the
+> is one ten-second command now, and every result it records was re-run through it from the
 > committed generator rather than transcribed. See [Compiling a twinBASIC project without
 > the IDE in front of you](../WIP.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
 
