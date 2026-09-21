@@ -427,27 +427,30 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   request. A *leading* space is harmless, which is a good check on the reading: the empty
   first token sets `a = ""`, and `if (a)` is false for an empty string.
 
-  **Repro, needing no project file and no PowerShell.** The parse runs before
-  `root.loadProject`, so the path never has to resolve. Two `.cmd` files, identical but for
-  one byte:
+  **Repro: one line pasted into `cmd`. No project file, no batch file, no PowerShell.** The
+  parse runs before `root.loadProject`, so the path never has to resolve:
 
   ```bat
-  @echo off
   "C:\...\twinBASIC.exe" "C:\DoesNotExist.twinproj"
   ```
 
   With **one trailing space** after the closing quote: *"Bad command line syntax."* Without
-  it: *"Failed to load the project (error code ERROR_FILE_NOT_FOUND)"*. Two different
-  dialogs from the same nonexistent path is the cleanest statement of the bug --- the space
-  changes how the command line is **parsed**, not how the file is looked up, and the second
-  dialog proves the IDE otherwise got as far as trying to open it. Verified by reading each
-  launched process's own `Win32_Process.CommandLine`, confirming the only difference was a
-  final byte of code 32.
+  it: *"Failed to load the project (error code ERROR_FILE_NOT_FOUND)"*. Two different dialogs
+  from the same nonexistent path is the cleanest statement of the bug --- the space changes
+  how the command line is **parsed**, not how the file is looked up, and the second dialog
+  proves the IDE otherwise got as far as trying to open it. Confirmed by reading each
+  launched process's own `Win32_Process.CommandLine`: the only difference is a final byte of
+  code 32.
 
-  A real project behaves the same way; if one is wanted, 48 `.twinproj` ship with the IDE
-  and `projects\_Standard EXE\projectName.twinproj` is the stock template. Note that the
-  no-space run adds the path to the recents list, which is why that dialog offers to remove
-  it again --- take the offer.
+  It was first reproduced from two `.cmd` files rather than by hand, only because an
+  automated harness has no way to type into a console and the trailing byte had to be
+  guaranteed to survive. Typed or pasted at an interactive prompt it behaves identically ---
+  `cmd` passes the trailing space through either way.
+
+  A real project behaves the same; if one is wanted, 48 `.twinproj` ship with the IDE and
+  `projects\_Standard EXE\projectName.twinproj` is the stock template. Note that the no-space
+  run adds the path to the recents list, which is why that dialog offers to remove it again
+  --- take the offer.
 
   PowerShell hits it without anyone asking for it: `Start-Process` appends that space, so
   `Start-Process twinBASIC.exe -ArgumentList $path` never opens the project while
