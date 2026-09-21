@@ -327,6 +327,27 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   Two facts the page did not state, both now on it: only one `[RunAfterBuild]` is allowed per
   project (TB5114), and a module-level variable cannot carry `[DllExport]`.
 
+  **Five entries stated no placement at all**, which the key had been reporting all along as
+  "nothing to verify and nothing for a reader to rely on". All five now have one, written
+  from the package census and confirmed by probe, and two of the five had a *wrong* `Syntax:`
+  line as well --- both documented an optional Boolean and neither takes one:
+
+  | entry | placement, from the packages | syntax correction |
+  |---|---|---|
+  | `EventInterfaceId` | **Class** (19 uses) | -- |
+  | `EventsUseDispInterface` | **Class** (88 uses) | -- |
+  | `IgnoreWarnings` | **Class**, **Module**, procedure (113 uses) | the codes are bare `TBnnnn` tokens; the entry called them a list of strings |
+  | `SpecialCompilerBinding` | procedure, **Declare** (6 uses) | takes an **Integer**, not an optional Bool: the six uses pass 1, 2, 3, 4 and 254 |
+  | `WindowsControl` | **Class** (44 uses) | takes a **String** toolbox image path, or `"no_designer"`; not an optional Bool, and no use is bare |
+
+  `WindowsControl` also turned up an undocumented convention: `??` in the path stands for the
+  icon size, so `"/miscellaneous/ICONS??/CheckBox??.png"` resolves against `ICONS24`,
+  `ICONS30`, `ICONS32`, `ICONS36` and `ICONS40`, case-insensitively --- the package ships
+  `Checkbox24.png` beside `CheckBox30.png` and both are found.
+
+  **Every entry on the page now states a placement**, and 86 probes over 62 attributes build
+  clean. Six are excluded and each says why in the key.
+
   **All 52 lines are now accounted for.** Of the seven left unprobed above, five were
   unprobed only for want of a usable argument value, and the shipped packages carry one
   apiece --- `[CoClassCustomConstructor("CreatePropertyBagObject")]` in VBRUN,

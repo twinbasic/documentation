@@ -124,6 +124,10 @@ const FIXED_ARGS = {
   CustomControl: '("/miscellaneous/probe.png")',
   PopulateFrom: '("json", "/Resources/PROBE/Strings.json", "events", "name", "id")',
   IgnoreWarnings: "(TB0001)",
+  // Documented as an optional Bool until the package census showed all 44 uses
+  // passing a toolbox image path. "no_designer" is the other accepted value and
+  // is what the probe uses, because it needs no file to resolve against.
+  WindowsControl: '("no_designer")',
   // Listed as unsynthesisable on the grounds that "the option string vocabulary
   // is not documented". It is: the entry documents +llvm, +optimize,
   // +optimizesize and +optimizespeed. `+optimize` is used here rather than
@@ -158,6 +162,10 @@ const NOT_FAITHFULLY_PROBEABLE = {
   Enumerator: "the member has to return stdole.IUnknown or a Variant; the generic " +
     "procedure skeleton returns neither, so the probe would test the return type " +
     "rather than the placement. Evidenced by 25 uses across five packages",
+  SpecialCompilerBinding: "the argument is an index into the compiler's own internal " +
+    "implementations -- the six uses in the VB package pass 1, 2, 3, 4 and 254 -- so " +
+    "there is no value a probe could pass that would test the placement rather than " +
+    "the number. Evidenced by those six uses, on a Sub, a Declare and a Property Get",
 };
 // Arguments that cannot be synthesised without something else being true.
 // FormDesignerId earned its place the hard way: probed on a Class it reached
@@ -184,17 +192,12 @@ const SINGLETON = {
 // is rejected (TB5155), the Const compiles. The line now says "constants", so
 // the ordinary target parser covers it and no extra probe is needed.
 //
-// [IgnoreWarnings] is here because its entry states no `Applicable to:` line at
-// all, so the target parser yields nothing and it would go unprobed for want of
-// a claim to test. The three placements are the ones the shipped packages use
-// -- 113 occurrences across VB, cefPackage and Sample 22 -- so a diagnostic
-// here would mean the probe is malformed. What the probe settles is the missing
-// line: whatever compiles is what `Applicable to:` should say.
-const EXTRA_PROBES = [
-  ["IgnoreWarnings", "MODULE", "no `Applicable to:` line; Module is what VB/QRCodeHelper uses"],
-  ["IgnoreWarnings", "CLASS", "no `Applicable to:` line; Class is what VB/Fusion uses"],
-  ["IgnoreWarnings", "PROC_MODULE", "no `Applicable to:` line; a Sub is the commonest use"],
-];
+// [IgnoreWarnings] was here for one round, because its entry stated no
+// `Applicable to:` line and the target parser therefore yielded nothing to
+// test. Those three probes compiled, and the line the entry was missing has
+// been written from them plus the 113 package uses -- so the ordinary target
+// parser now covers it and the extra probes would only duplicate themselves.
+const EXTRA_PROBES = [];
 
 // Resources the argument forms above refer to. `import` packs the whole tree,
 // so these ride along into the .twinproj exactly as a hand-made project's would.

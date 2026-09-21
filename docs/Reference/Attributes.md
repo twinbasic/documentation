@@ -498,10 +498,26 @@ Specifies a GUID to be associated with an enum in type libraries.
 
 Syntax: **[EventInterfaceId("** 00000000-0000-0000-0000-000000000000 **")]**
 
+Applicable to: [**Class**](Class)
+
+Assigns a fixed COM IID to the event interface twinBASIC generates for a class from its **Event** declarations. It is the events-side counterpart of [InterfaceId](#interfaceid), which fixes the IID of the class's own interface.
+
+A host may cache the IID, so a generated one that changes between builds or between bitnesses breaks clients that have already stored it. That is what the TB0013 recommendation on a [COMControl](#comcontrol) interface is asking for.
+
+> [!NOTE]
+> The placement is confirmed: 19 uses in the shipped CEF package, all on a **Class**. The entry previously stated no placement at all.
+
 ## EventsUseDispInterface  (optional Bool)
 {: #eventsusedispinterface }
 
 Syntax: **[EventsUseDispInterface** [ **( True** \| **False )** ] **]**
+
+Applicable to: [**Class**](Class)
+
+Makes the event interface generated for the class a dispinterface, so events are raised through **IDispatch** by member id rather than through a vtable. VB6 and VBA event sinks expect a dispinterface, so a control meant to be consumed from either sets this.
+
+> [!NOTE]
+> The placement is confirmed: 88 uses in the shipped VB, WebView2, WinNativeCommonCtls and CEF packages, every one on a **Class** and every one in the bare form. The entry previously stated no placement at all.
 
 ## Flags  (optional Bool)
 {: #flags }
@@ -549,12 +565,22 @@ Syntax: **[IdeButton("** caption **")]**
 
 Applicable to: [procedure](../Gloss#procedure) definition in a module.
 
-## IgnoreWarnings  (String List)
+## IgnoreWarnings  (Warning code list)
 {: #ignorewarnings }
 
 Syntax: **[IgnoreWarnings** **(** **TBnnnn** [ **,** **TBmmmm** ]... **)** **]**
 
-Disables certain warnings. The list of strings should enumerate the warnings that are to be suppressed.
+Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#procedure)
+
+Suppresses the named warnings within the class, module or procedure the attribute is applied to. The codes are written bare, exactly as the compiler prints them, and are **not** quoted:
+
+```tb
+[IgnoreWarnings(TB0001)]
+Module MD5
+```
+
+> [!NOTE]
+> The placement is confirmed two ways: 113 uses in the shipped VB, CEF and WinNativeCommonCtls packages plus Sample 22, on a **Class**, a **Module** and a **Sub**; and three probes, one per target, that compile clean. Those uses between them suppress `TB0001`, `TB0020`, `TB0024` and `TB0026`. The entry previously stated no placement, and called the arguments a list of strings.
 
 ## IntegerOverflowChecks  (optional Bool)
 {: #integeroverflowchecks }
@@ -846,10 +872,19 @@ The pairing is a convention rather than a requirement -- `[Source]` on its own c
 > [!NOTE]
 > The placement is confirmed, but the effect rests on thin evidence: six uses, in the shipped VB, tbIDE and CustomControls packages, every one of them `[Default, Source]`.
 
-## SpecialCompilerBinding  (optional Bool)
+## SpecialCompilerBinding  (Integer)
 {: #specialcompilerbinding }
 
-Syntax: **[SpecialCompilerBinding** [ **( True** \| **False )** ] **]**
+Syntax: **[SpecialCompilerBinding(** *n* **)]**
+
+Applicable to: [procedure](../Gloss#procedure), [**Declare** (API declaration)](Declare)
+
+Binds the member to one of the compiler's own internal implementations, selected by number.
+
+> [!IMPORTANT]
+> This attribute exists for the packages that ship with twinBASIC. The numbers are not a vocabulary a project can choose from: each names one behaviour already built into the compiler, and nothing says what an unlisted number does.
+
+The entry previously gave the syntax as an optional Boolean. All six uses in the shipped VB package pass an integer instead: `(1)` and `(2)` on the `GlobalLoad` and `GlobalUnload` declares, `(3)` on a generic `Item` property, `(4)` on `IdleMessageLoopBreakpoint`, and `(254)` twice on **Form**'s `Show`, where a comment in the source says it "prevents ClassBeforeFirstMemberAccessFunc for this member".
 
 ## TestCase  (optional Bool)
 {: #testcase }
@@ -899,10 +934,27 @@ Syntax: **[UserDefinedTypeIsAnAlias** [ **( True** \| **False )** ] **]**
 
 Applicable to:  [**Type** (UDT)](Type)
 
-## WindowsControl  (optional Bool)
+## WindowsControl  (String)
 {: #windowscontrol }
 
-Syntax: **[WindowsControl** [ **( True** \| **False )** ] **]**
+Syntax: **[WindowsControl("** toolbox image path **")]** or **[WindowsControl("no_designer")]**
+
+Applicable to: [**Class**](Class)
+
+Marks a class as a Windows control, one the form designer can place on a form, and says which image represents it in the toolbox. Pass **"no_designer"** in place of a path for a control that should compile as a control without appearing in the toolbox.
+
+A path is relative to the project root. Where the toolbox wants the image at several sizes, `??` in the path stands for the size and the IDE resolves it against the sizes that are present:
+
+```tb
+[WindowsControl("/miscellaneous/ICONS??/CheckBox??.png")]
+```
+
+The VB package supplies that one as `Miscellaneous/ICONS24/Checkbox24.png` and again under `ICONS30`, `ICONS32`, `ICONS36` and `ICONS40`. The lookup ignores case, which is why `Checkbox24` and `CheckBox30` both resolve.
+
+Compare [CustomControl](#customcontrol), which takes one image path and no size placeholder.
+
+> [!NOTE]
+> The entry previously gave the syntax as an optional Boolean and stated no placement. All 44 uses in the shipped VB, WinNativeCommonCtls and CEF packages are on a **Class** and all pass a String; none uses the bare form. The `??` substitution is read from those paths and the files beside them rather than from a specification.
 
 ## WithDispatchForwarding
 {: #withdispatchforwarding }
