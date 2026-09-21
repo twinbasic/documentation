@@ -423,6 +423,8 @@ Applicable to: [**Interface**](Interface) in a **Library**
 
 Indicates that the interface exposes methods via **IDispatch** late-binding. This is the default. Note that [**DualInterface**](#dualinterface) can also be specified, giving much improved performance over that of **IDispatch**-based interfaces.
 
+It is usually written combined with the other attributes on the interface rather than alone --- `[Hidden, DispInterface, COMExtensible]`. See [**LibraryId**](#libraryid) for what a generated **Library** module looks like.
+
 ## DllExport  (optional Bool)
 {: #dllexport }
 
@@ -458,6 +460,8 @@ Applicable to: [**Interface**](Interface) in a **Library**
 > This attribute is generated in the **Library** modules that twinBASIC generates for COM references in a project. It cannot be manually created.
 
 Indicates that the interface exposes methods through the OLE VTable binding. The latter has much improved performance over that of **IDispatch**-based interfaces.
+
+See [**LibraryId**](#libraryid) for what a generated **Library** module looks like.
 
 ## EnforceErrors  (optional Bool)
 {: #enforceerrors }
@@ -675,6 +679,42 @@ End Interface
 The methods are [procedures](../Gloss#procedure).
 
 For an overview of interfaces in tB, see [Defining interfaces](../../Features/Language/Interfaces-CoClasses.html#defining-interfaces).
+
+## LibraryId  (String)
+{: #libraryid }
+
+Syntax: **[LibraryId( "**00000000-0000-0000-0000-000000000000**" )]**
+
+Applicable to: **Library**
+
+> [!NOTE]
+> This attribute is generated in the **Library** modules that twinBASIC generates for COM references in a project. It cannot be manually created.
+
+The GUID of the type library the **Library** module was imported from, written without surrounding braces. It is the same GUID the reference itself is recorded under in the project settings.
+
+A **Library** module is the BASIC form of a referenced type library. Adding a COM reference to a project makes one appear, read-only, under **References** in the Project Explorer, and it is where [**DispInterface**](#dispinterface), [**DualInterface**](#dualinterface) and [**Version**](#version) are met. Its head names the library and says where it came from:
+
+```tb
+[LibraryId("00020430-0000-0000-C000-000000000046")]
+[Version(2.0)]
+[Description("OLE Automation")]
+Library stdole
+
+    ' Original type library: C:WindowsSysWOW64stdole2.tlb
+    ' NOTE: Offsets and lengths calculated for current Win32 target.
+
+    [InterfaceId("4EF6100A-AF88-11D0-9846-00C04FC29993")]
+    [Hidden, DispInterface, COMExtensible]
+    [Description("Event interface for the Font object")]
+    Interface FontEvents Extends stdole.IDispatch
+        [DispId(9)]
+        Sub FontChanged(ByVal PropertyName As String)
+    End Interface
+
+End Library
+```
+
+The **Library** keyword is not available in project source: `Library`, `End Library` and this attribute are each rejected there with **TB5182**.
 
 ## MustBeQualified  (optional Bool)
 {: #mustbequalified }
@@ -1007,6 +1047,20 @@ If the declared function indicates an error condition, the compiler won't automa
 Syntax: **[UserDefinedTypeIsAnAlias** [ **( True** \| **False )** ] **]**
 
 Applicable to:  [**Type** (UDT)](Type)
+
+## Version  (version number)
+{: #version }
+
+Syntax: **[Version(** *major* **.** *minor* **)]**
+
+Applicable to: **Library**
+
+> [!NOTE]
+> This attribute is generated in the **Library** modules that twinBASIC generates for COM references in a project. It cannot be manually created.
+
+The version of the imported type library, as a **major.minor** pair --- `[Version(2.0)]` for version 2.0 of OLE Automation. It matches the version recorded against the reference in the project settings, and is the version shown beside the library in the **References** dialog.
+
+Not to be confused with the project's own version, which is set from the project settings rather than by an attribute. See [**LibraryId**](#libraryid) for the shape of a generated **Library** module.
 
 ## WindowsControl  (String)
 {: #windowscontrol }

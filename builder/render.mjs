@@ -1628,7 +1628,49 @@ const ADMONITION_TYPES = {
 // indentation; the gem's regex captures that into \1 and uses it as a
 // per-line anchor on the body lines.
 const ADMONITION_RE = /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][^\n]*\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
-const CODE_FENCE_RE = /(?:^|\n)(?<!>)[ \t]*```[\s\S]*?```/g;
+// Stashing the fences used to be one regex --
+// `/(?:^|\n)[ \t]*```[\s\S]*?```/g` -- which paired an opening fence with the
+// next ``` ANYWHERE, including one in the middle of a line.
+// Reference/Attributes.md contains exactly that: a [Description(...)] sample
+// whose argument is a Markdown string built from twinBASIC string literals,
+// two of which are "```basic" and "```". The fence opened at that sample's
+// ```tb line closed on the literal instead of on its own closing line, and
+// every pairing after it was off by one -- so for the rest of the file the
+// stasher had prose and code exactly the wrong way round. None of the page's
+// six admonitions was rewritten, and all six shipped as literal "[!NOTE]"
+// text. One page in 869, and nothing reported it: check_code_regions.mjs
+// compares the code regions, and the damage here is to the prose between them.
+//
+// CommonMark closes a fence on a line that is only the fence character,
+// repeated at least as often as in the opener. That is a rule about lines, so
+// this is a line scan rather than a cleverer regex. Tildes are deliberately
+// not recognised, which is what this did before; maskCodeRegions is the pass
+// that knows about those.
+const FENCE_OPEN_RE = /^([ \t]*)(`{3,})[^`]*$/;
+
+function stashCodeFences(src, stashed) {
+  const lines = src.split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = FENCE_OPEN_RE.exec(lines[i]);
+    if (!m) { out.push(lines[i]); continue; }
+    const [, indent, ticks] = m;
+    const closeRe = new RegExp("^[ \\t]*`{" + ticks.length + ",}[ \\t]*$");
+    let j = i + 1;
+    while (j < lines.length && !closeRe.test(lines[j])) j++;
+    // An unclosed fence runs to the end of the document, as CommonMark says.
+    const end = Math.min(j, lines.length - 1);
+    // Stashed WITHOUT the opener's own indent: the placeholder is emitted with
+    // that indent in front of it and the restore puts the stashed text back in
+    // the placeholder's place, so carrying the indent in both would double it.
+    // That is visible wherever a literal fence sits inside an indented code
+    // block, such as the page-template skeleton in Documentation/Authoring.md.
+    stashed.push(lines.slice(i, end + 1).join("\n").slice(indent.length));
+    out.push(`${indent}\`\`\`{{CODE_BLOCK_${stashed.length - 1}}}\`\`\``);
+    i = end;
+  }
+  return out.join("\n");
+}
 
 export function rewriteAdmonitions(src) {
   // CommonMark's normalisation pass converts CRLF/CR to LF before block
@@ -1636,23 +1678,7 @@ export function rewriteAdmonitions(src) {
   src = src.replace(/\r\n?/g, "\n");
 
   const stashed = [];
-  let work = src.replace(CODE_FENCE_RE, (match) => {
-    // Preserve any leading whitespace so the placeholder lands in the
-    // same column the fence did -- prevents the placeholder from being
-    // appended to a preceding line and pulled into an admonition body
-    // capture. Mirrors the patched gem's process_doc behaviour.
-    const lead = match.match(/^[ \t\n]+/)?.[0] ?? "";
-    // Stash the fence WITHOUT its leading whitespace. The placeholder is
-    // emitted with `lead` in front of it, and the restore below puts the
-    // stashed text back in the placeholder's place -- so stashing the full
-    // match duplicated the leading newline and indent. That is visible
-    // wherever a literal fence sits inside an indented code block, such as
-    // the page-template skeleton in Documentation/Authoring.md, which
-    // rendered with a spurious blank line before its ```tb.
-    const body = match.slice(lead.length);
-    stashed.push(body);
-    return `${lead}\`\`\`{{CODE_BLOCK_${stashed.length - 1}}}\`\`\``;
-  });
+  let work = stashCodeFences(src, stashed);
 
   work = work.replace(ADMONITION_RE, (m, leading, indent, typeRaw, bodyRaw) => {
     const type = typeRaw.toLowerCase();

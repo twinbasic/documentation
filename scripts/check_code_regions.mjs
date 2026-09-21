@@ -135,6 +135,36 @@ const PROBES = [
     "prose ``a *** b`` prose\n"],
 ];
 
+// The mirror of the probes above, and the region comparison structurally
+// cannot make it: a rewrite that misreads what is code can also fail to fire
+// on real prose, and the regions still come back identical because the text
+// was merely stashed and restored. Reference/Attributes.md shipped all six of
+// its admonitions as the literal text "[!NOTE]" for exactly that reason -- a
+// [Description(...)] sample whose argument is a Markdown string containing
+// "```basic" and "```" as twinBASIC string literals, which the fence stasher
+// closed the surrounding ```tb fence on. Every pairing after it was off by
+// one, so for the rest of the page prose and code were the wrong way round.
+//
+// Each probe is a source that MUST produce an admonition.
+//
+// The first one needs a fence on BOTH sides of the admonition, and that is not
+// decoration. A mis-paired opener swallows text only as far as the next ```,
+// so with nothing after it the run simply ends and the admonition survives --
+// the first draft of this probe had no trailing fence and passed happily
+// against the very stasher it was written to catch. The page it is modelled on
+// has 22 fences; the damage is always to the prose BETWEEN two of them.
+const ADMONITION_PROBES = [
+  ["admonition between a fence whose body contains a fence marker, and the next fence",
+    'prose\n\n```tb\nx = "```basic" & vbCrLf & _\n    "```"\n```\n\n' +
+    "> [!NOTE]\n> body\n\n```tb\nDim y As Long\n```\n"],
+  ["admonition between two ordinary fences",
+    "```tb\nDim x As Long\n```\n\n> [!NOTE]\n> body\n\n```tb\nDim y As Long\n```\n"],
+  ["admonition after a fence closed by a longer run",
+    "prose\n\n````tb\n```\n````\n\n> [!WARNING]\n> body\n\n```tb\nDim y\n```\n"],
+  ["admonition before any fence",
+    "> [!IMPORTANT]\n> body\n\n```tb\nDim x\n```\n"],
+];
+
 async function main(argv) {
   const verbose = argv.includes("--verbose");
 
@@ -161,7 +191,18 @@ async function main(argv) {
       }
     }
   }
-  if (!failed) console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
+  for (const [name, src] of ADMONITION_PROBES) {
+    if (applyRewrites(src).includes("markdown-alert")) continue;
+    failed++;
+    console.log(`FAIL  probe: ${name}`);
+    console.log(`        the admonition was not rewritten -- the fence stasher`);
+    console.log(`        mistook the prose around it for code`);
+  }
+
+  if (!failed) {
+    console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
+    console.log(`ok    ${ADMONITION_PROBES.length} probes: a rewrite still fires on prose beside code`);
+  }
 
   const files = await markdownFiles(ROOT);
   let touched = 0;

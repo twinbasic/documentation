@@ -160,6 +160,7 @@ The **App** global object is available in every project without a reference, and
 - [EnforceErrors](../../tB/Core/Attributes#enforceerrors), [EnforceWarnings](../../tB/Core/Attributes#enforcewarnings), [Enumerator](../../tB/Core/Attributes#enumerator), [EnumId](../../tB/Core/Attributes#enumid), [EventInterfaceId](../../tB/Core/Attributes#eventinterfaceid), [EventsUseDispInterface](../../tB/Core/Attributes#eventsusedispinterface)
 - [Flags](../../tB/Core/Attributes#flags), [FloatingPointErrorChecks](../../tB/Core/Attributes#floatingpointerrorchecks), [FormDesignerId](../../tB/Core/Attributes#formdesignerid), [Hidden](../../tB/Core/Attributes#hidden)
 - [IdeButton](../../tB/Core/Attributes#idebutton), [IgnoreWarnings](../../tB/Core/Attributes#ignorewarnings), [ImplementsViaPrivateFriendlies](../../tB/Core/Attributes#implementsviaprivatefriendlies), [IntegerOverflowChecks](../../tB/Core/Attributes#integeroverflowchecks), [InterfaceId](../../tB/Core/Attributes#interfaceid)
+- [LibraryId](../../tB/Core/Attributes#libraryid)
 - [MustBeQualified](../../tB/Core/Attributes#mustbequalified)
 - [NonBrowsable](../../tB/Core/Attributes#nonbrowsable)
 - [OleAutomation](../../tB/Core/Attributes#oleautomation)
@@ -168,4 +169,5 @@ The **App** global object is available in every project without a reference, and
 - [Serialize](../../tB/Core/Attributes#serialize), [SetDllDirectory](../../tB/Core/Attributes#setdlldirectory), [SimplerByVals](../../tB/Core/Attributes#simplerbyvals), [Source](../../tB/Core/Attributes#source), [SpecialCompilerBinding](../../tB/Core/Attributes#specialcompilerbinding)
 - [TestCase](../../tB/Core/Attributes#testcase), [TestFixture](../../tB/Core/Attributes#testfixture), [TypeHint](../../tB/Core/Attributes#typehint)
 - [Unimplemented](../../tB/Core/Attributes#unimplemented), [UseGetLastError](../../tB/Core/Attributes#usegetlasterror), [UserDefinedTypeIsAnAlias](../../tB/Core/Attributes#userdefinedtypeisanalias)
+- [Version](../../tB/Core/Attributes#version)
 - [WindowsControl](../../tB/Core/Attributes#windowscontrol), [WithDispatchForwarding](../../tB/Core/Attributes#withdispatchforwarding)

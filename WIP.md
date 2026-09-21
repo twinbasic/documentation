@@ -1688,6 +1688,41 @@ produces. Reverting the comparison to the old floor fails three of the eleven,
 including the `_App` replay; the two probes that look redundant (foreign source
 root, missing baseline under CI) are the two that caught the real bugs above.
 
+#### The mirror fault: a rewrite that does not fire
+
+The gate above compares code regions, and there is a second way the same
+confusion shows up that it **structurally cannot see**. A rewrite that mistakes
+prose for code does not corrupt anything --- the text is stashed and restored
+unchanged, so every region matches --- it simply never runs.
+
+`rewriteAdmonitions` stashed fences with one regex that paired an opening fence
+with the next fence marker **anywhere**, including one in the middle of a line.
+[Reference/Attributes.md](docs/Reference/Attributes.md) has exactly that: the
+`[Description(...)]` entry's sample builds a Markdown string out of twinBASIC
+string literals, two of which are ``` markers. The `tb` fence around it closed on
+the literal, and every pairing for the rest of the file was off by one --- so
+from there on the stasher had prose and code the wrong way round.
+
+**All six of that page's admonitions shipped as the literal text `[!NOTE]`**,
+inside a plain blockquote, on one page of 869. Every gate was green: the region
+comparison matched, the link check passed, and axe has no opinion about a
+blockquote. It was found only because a new entry added to that page rendered
+the same way and looked wrong.
+
+The stasher is a line scan now --- CommonMark closes a fence on a line that is
+only the fence character, repeated at least as often as in the opener, which is
+a rule about lines rather than something to express as one regex over a whole
+document. Measured across the site, the fix changes four files: `Attributes.html`,
+`search-data.json` (which indexes it), and the two that record build timings.
+
+Four probes in `check_code_regions.mjs` assert the other direction now. **The
+first draft of them did not work**, and the reason is worth keeping: a
+mis-paired opener swallows text only as far as the next fence marker, so a probe
+with no fence *after* the admonition passes against the very stasher it was
+written to catch. The damage is always to the prose **between** two fences.
+Reverting the stasher fails two of the four; against the first draft it failed
+none.
+
 ### The regex-safety gate
 
 [scripts/check_regex_safety.mjs](scripts/check_regex_safety.mjs) parses every
