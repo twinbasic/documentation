@@ -1534,20 +1534,37 @@ export function rewriteAdmonitions(src) {
     // same column the fence did -- prevents the placeholder from being
     // appended to a preceding line and pulled into an admonition body
     // capture. Mirrors the patched gem's process_doc behaviour.
-    stashed.push(match);
     const lead = match.match(/^[ \t\n]+/)?.[0] ?? "";
+    // Stash the fence WITHOUT its leading whitespace. The placeholder is
+    // emitted with `lead` in front of it, and the restore below puts the
+    // stashed text back in the placeholder's place -- so stashing the full
+    // match duplicated the leading newline and indent. That is visible
+    // wherever a literal fence sits inside an indented code block, such as
+    // the page-template skeleton in Documentation/Authoring.md, which
+    // rendered with a spurious blank line before its ```tb.
     const body = match.slice(lead.length);
+    stashed.push(body);
     return `${lead}\`\`\`{{CODE_BLOCK_${stashed.length - 1}}}\`\`\``;
   });
 
   work = work.replace(ADMONITION_RE, (m, leading, indent, typeRaw, bodyRaw) => {
     const type = typeRaw.toLowerCase();
     const meta = ADMONITION_TYPES[type];
-    // The body lines all share the same leading indent; strip it plus
-    // the `>` marker. Matches the gem's `gsub(/^#{indent}\s*>\s*/, "")`.
+    // The body lines all share the same leading indent; strip it plus the
+    // `>` marker and AT MOST ONE following space, which is what blockquote
+    // unwrapping means.
+    //
+    // The gem's `gsub(/^#{indent}\s*>\s*/, "")` was mirrored literally here
+    // and the trailing `\s*` is greedy over `\s`, which includes newlines --
+    // so it also ate the body's own indentation and swallowed blank lines.
+    // CODE_FENCE_RE cannot protect a fence inside an admonition (the fence
+    // opener is preceded by `> `, which `[ \t]*` does not match), so this
+    // ran over real code samples: Reference/Default/VBA/Interaction/InputBox
+    // shipped its If/ElseIf/Else bodies flush left, and Reference/Core/Option
+    // lost the blank line between its Module and Class examples.
     const stripRe = indent
-      ? new RegExp(`^${escapeRegExp(indent)}\\s*>\\s*`, "gm")
-      : /^\s*>\s*/gm;
+      ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm")
+      : /^[ \t]*>[ \t]?/gm;
     const body = (bodyRaw ?? "").replace(stripRe, "").trimEnd();
 
     // The gem emits the replacement <div> at column 0 regardless of how
