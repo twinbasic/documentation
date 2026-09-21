@@ -46,7 +46,7 @@ node book\render-book.mjs docs\_site-pdf\book.html -o "docs\_pdf\twinBASIC Book.
 
 Every path there is relative to the repository root, which is where `book.bat` lives and what its `@pushd "%~dp0"` selects.
 
-Always run `build.bat` first to populate `_site-pdf/`.
+Always run `build.bat` first to populate `_site-pdf/`. `book.bat` refuses a source tree that is absent or older than the sources that produced it, before it starts Chromium --- see [When the render fails](#render-troubleshooting).
 
 ## When the render fails
 {: #render-troubleshooting }
@@ -63,7 +63,7 @@ Each phase prints one summary line as it completes, all aligned to the same colu
     saved:    <output path>  (<n> MB)
     total:    <elapsed>
 
-The last line printed is the last phase that finished, so the failure is in the one after it. No `render:` line means [Phase 1](#phase-1-render); `render:` but no `generate:` means [Phase 2](#phase-2-generate); `generate:` but no `process:` means [Phase 3](#phase-3-process). `process:` with no `saved:` means the PDF was built and the write to disk failed, after every expensive phase has already run. `render-book.mjs` writes the file directly and never creates the directory above it, so an absent `docs/_pdf/` raises `ENOENT` here --- which is what `book.bat`'s `mkdir` exists to prevent, and what a hand-written invocation has to do for itself. On Windows the other common cause is the output file being open in a PDF viewer.
+The last line printed is the last phase that finished, so the failure is in the one after it. No `render:` line means [Phase 1](#phase-1-render) --- or that the run never got as far as Phase 1, which is the case for a refused source tree and for a [missing Chromium](#chromium-is-not-installed); `render:` but no `generate:` means [Phase 2](#phase-2-generate); `generate:` but no `process:` means [Phase 3](#phase-3-process). `process:` with no `saved:` means the PDF was built and the write to disk failed, after every expensive phase has already run. `render-book.mjs` writes the file directly and never creates the directory above it, so an absent `docs/_pdf/` raises `ENOENT` here --- which is what `book.bat`'s `mkdir` exists to prevent, and what a hand-written invocation has to do for itself. On Windows the other common cause is the output file being open in a PDF viewer.
 
 ### Stalled, or still working
 
@@ -89,9 +89,12 @@ A paged.js stylesheet fetch that fails arrives as `error on LINK: <url>`. paged.
 
 `_site-pdf/` is `build.bat`'s output, so a render that stops before Chromium starts is reporting on the previous command.
 
-`book.bat` refuses to run at all when the assembled HTML is absent:
+`book.bat`'s first action is [`check_tree_fresh.mjs`](Tools#check-tree-fresh) over `docs/_site-pdf`. It refuses two states, and neither one reaches the renderer.
 
-    docs\_site-pdf\book.html not found. Run build.bat first.
+**The tree is absent.** Exit code 2:
+
+    check_tree_fresh: docs/_site-pdf/book.html does not exist.
+      Run build.bat first -- there is no built tree to check.
 
 Besides never having run the build, four things produce that: `build.bat --no-pdf`, `also_build_pdf: false` in `_config.yml`, a session where only `serve.bat` ran (it writes `docs/_serve/` and skips the PDF pass), and a Phase 8 that aborted. Phase 8 aborts on three things:
 
@@ -99,7 +102,28 @@ Besides never having run the build, four things produce that: `build.bat --no-pd
 - **`pdf: required font <path> is not in the source tree`** --- names `scripts/build_fonts.py`. `print.css` declares six faces and all six are copied into the sparse tree, so a subset regenerated but not committed fails here.
 - **`pdf: missing image <path> (referenced from book.html, not present under source tree)`** --- one line per path, then a summary naming the count. This is the one that fires in practice. `--tolerate-missing-images` downgrades it to a warning.
 
-Nothing checks that `_site-pdf/` is *current*. `book.bat` tests only that `book.html` exists, and [`check_tree_fresh.mjs`](Tools#check-tree-fresh) --- the gate that refuses a stale tree --- reads `_site-offline/`. Render after a content edit without rebuilding and you get the previous build's book, with nothing said about it.
+**The tree is older than the sources that produced it.** Exit code 1, naming the file that is newer:
+
+    check_tree_fresh: docs/_site-pdf is 424s older than docs/Documentation/Extending.md.
+      Run build.bat first. Scanning a stale tree reports a pass for the
+      previous build, which is the one thing these gates must never do.
+
+That second message is the gate's general wording, shared with `check.bat`. What it prevents here is worse than a stale scan: rendering the previous book takes the full two minutes and reports success, and the PDF it writes is internally consistent --- it is simply the wrong book, so nothing downstream notices. The mechanism, including the option the PDF source tree needs, belongs to [`book.bat`](Tools#bookbat).
+
+The gate compares against everything under `docs/` and `builder/`, including files the build never reads, so editing a `builder/PLAN-*.md` marks the tree stale too. Rebuild rather than looking for a content change you did not make.
+
+### Chromium is not installed
+
+`book.bat` needs the Chromium that `npx puppeteer browsers install chrome` downloads, the same one `check.bat` and `test.bat` use. Without it the run stops before any phase starts, and the failure looks unlike anything else on this page --- a bare Node stack trace, with no `[render-book]` prefix in front of it:
+
+    Error: Could not find Chrome (ver. <version>). This can occur if either
+     1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or
+     2. your cache path is incorrectly configured (which is: <cache path>).
+    For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.
+
+`<version>` is the Chrome build the installed `puppeteer` pins and `<cache path>` is the machine's own; the rest is fixed text from puppeteer. Nothing prefixes it, because `puppeteer.launch()` runs above the driver's `try` block --- the throw is an unhandled rejection, not something the driver catches and reports. The exit code is 1.
+
+**`book.bat`'s `npm install` does not fix this.** It runs only when `node_modules\puppeteer\package.json` is absent, and that file says nothing about the browser. `puppeteer`'s postinstall script is what downloads Chromium, so an install run with `--ignore-scripts` or with `PUPPETEER_SKIP_DOWNLOAD` set, or a puppeteer cache cleared afterwards, leaves the package in place and the browser missing --- the test passes and the launch still fails. Install the browser yourself; see [Building and Deployment](Building#requirements).
 
 ### Images
 
@@ -132,6 +156,16 @@ The same fork checks fonts on the same principle:
 | `2` | Bad arguments: an unrecognised flag, or a missing `<input.html>` or `-o`. |
 
 **`book.bat` propagates all three.** It copies `%ERRORLEVEL%` into a variable immediately after the renderer runs and exits with that variable once `popd` has restored the caller's directory --- the same pattern `build.bat` and `check.bat` already used. A batch file's exit code is otherwise its last command's, and an unguarded `popd` resets `ERRORLEVEL` to `0`; `book.bat` used to end on a bare `popd`, so a failed render always reported success to whatever launched it. A script can check `book.bat`'s own exit code directly now. Calling `node book\render-book.mjs` directly and reading its exit code, or watching for the `saved:` line, remain equally valid.
+
+**`book.bat`'s own pre-flight refusals never reach the renderer, and they reuse the same two numbers.** [`check_tree_fresh.mjs`](Tools#check-tree-fresh) exits 2 for an absent `_site-pdf/` and 1 for a stale one, and a failed `npm install` exits 1. So what a script sees from `book.bat` is:
+
+| Code | Sources |
+|---|---|
+| `0` | The PDF was written. |
+| `1` | A stale `_site-pdf/`, a failed `npm install`, or a failed render. |
+| `2` | `_site-pdf/` is absent. |
+
+Code 2 is unambiguous: the renderer's own 2 means bad arguments, and `book.bat` passes it a fixed argument list. Code 1 is not, and stderr separates the cases --- a pre-flight refusal prints one message beginning `check_tree_fresh:` and nothing runs after it, so any further output means the gate passed.
 
 One case runs the other way and is worth stating on its own: **`build.bat && book.bat` skips the render whenever the link and integrity check reports anything.** That check sets a non-zero exit code while still writing a complete tree, so `&&` suppresses the book over a broken link that has no bearing on it. Run the two as separate statements.
 

@@ -134,6 +134,12 @@ jobs:
       # browser, no built tree, ~40 ms.
       - name: Verify the publish allowlist (check_publish_policy.mjs)
         run: node scripts/check_publish_policy.mjs
+      # The two gate lists on Tools.md against the wrappers that run
+      # them. Documented gate counts have rotted twice, and the second
+      # time was round 2's own fix decaying because a second copy of the
+      # sentence was never reconciled. Pure text, ~50 ms.
+      - name: Verify the documented gate lists (check_gate_lists.mjs)
+        run: node scripts/check_gate_lists.mjs
       # A regex that backtracks exponentially does not fail a build, it
       # stops one: the corpus passes until a page happens to contain the
       # trigger, and then a render worker sits inside String.replace

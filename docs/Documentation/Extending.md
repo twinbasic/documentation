@@ -22,7 +22,7 @@ How to extend `tbdocs` --- a new pipeline task, a markdown-it plugin, a render-w
 
 **Render-worker sub-stage** --- a transformation slotted into the per-chunk render handler in [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs), between two of the existing sub-stages (`renderPhase` → `computeChunkSeo` → `templatePhase` → offline → `deriveSearchEntries`). This is the right shape when the new work is per-page CPU compute that should run in parallel with the rest of the page render.
 
-**Verification gate** --- a script under `scripts/`, run by `check.bat` after the build, that decides whether what the build produced is acceptable. Nothing in `TASKS` or the plugin chain changes for one. It is the only extension point here that is not part of rendering the site, and the conventions it has to follow are not the ones above; see [Adding a verification gate](#adding-a-verification-gate).
+**Verification gate** --- a script under `scripts/`, run after the build by `check.bat` or `test.bat`, that decides whether what the build produced is acceptable. Nothing in `TASKS` or the plugin chain changes for one. It is the only extension point here that is not part of rendering the site, and the conventions it has to follow are not the ones above; see [Adding a verification gate](#adding-a-verification-gate), which also covers which of the two wrappers a new gate belongs in.
 
 **Styling is not one of them.** A new component's CSS is not an extension point here at all: the site's own style rules live under `docs/_sass/`, are compiled into a single stylesheet by `scss.mjs`, and need no change to the task graph or the plugin chain. See [Project styling](Builder#project-styling) for where each rule belongs, the two-compilation model, and the dark-mode specificity trap: a rule that loses it applies in light mode and silently does not in dark.
 
@@ -307,7 +307,7 @@ That is the full pattern: per-chunk compute on the render workers, merge into th
 
 ### 7. Verify
 
-`build.bat` shows the new task in the timing summary line and in the Gantt chart on the [Build Info](BuildInfo) page. `check.bat` confirms nothing else broke. Watch the chart to make sure the new task fits inside its expected section: a "Write" task that runs during the spine usually means a missing predecessor.
+`build.bat` shows the new task in the timing summary line and in the Gantt chart on the [Build Info](BuildInfo) page. `check.bat` confirms nothing else broke on the site, and `test.bat` covers the toolchain --- a new task is a change under `builder/`, so both apply. Watch the chart to make sure the new task fits inside its expected section: a "Write" task that runs during the spine usually means a missing predecessor.
 
 ---
 
@@ -420,6 +420,8 @@ export function createMarkdownIt(ctx) {
 
 Run `build.bat` and open an affected page; for live feedback, use `serve.bat`. A plugin that traverses the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
 
+Then run `test.bat`, which is where a `render.mjs` edit is judged. Two of its gates key on exactly this file: `check_regex_safety.mjs` refuses a regex literal that can backtrack exponentially, and `render.mjs` is where the two that shipped that way lived; `check_code_regions.mjs` refuses a pre-render rewrite that alters the contents of a code fence or code span.
+
 **If the plugin emits markup the site has not carried before --- a new wrapper element, a widget, a figure, a control --- register a construct family for it in [`scripts/pick_a11y_sample.mjs`](Tools#pick-a11y-sample) in the same change.** The accessibility scan audits thirteen sample pages out of ~1,160, and a construct no sample page carries is a construct no axe rule keyed on it ever runs against. Leaving it out is not neutral: the gate goes on reporting a clean pass while covering less than it did before, which is the failure mode the derived sample exists to prevent. `node scripts/pick_a11y_sample.mjs --census` shows what the existing families are and which pages carry them; `--check` names the gaps and the cheapest page that closes each. The same obligation applies to a new task or sub-stage that changes the emitted HTML, and to a template change.
 
 ---
@@ -490,13 +492,26 @@ Then extend `dispatch.submit`'s `render:i` callback to merge the new field, exac
 
 ## Adding a verification gate
 
-A gate runs after the build and decides whether what the build produced is acceptable. `check.bat` runs six of them today. [Testing](#testing) lists them; [Tools and Scripts](Tools#checkbat) documents each one, and a new gate gets its entry there.
+A gate runs after the build and decides whether what the build produced is acceptable. Two batch wrappers run them: [`check.bat`](Tools#checkbat) and [`test.bat`](Tools#testbat). Those two entries on [Tools and Scripts](Tools) are the authoritative list of which gate each wrapper runs, in the order they run --- read it there rather than from a copy, and give a new gate its own entry on that page in the same change.
 
 **First decide whether it is a gate at all.** The link and integrity check used to be one and now runs inside the build, because both trees' final HTML is already decoded in worker memory when `flush:i` runs --- checking it on disk meant writing ~270 MB out to read it straight back. The test is whether the check needs something the build does not already hold: a browser, a real font, a second implementation to compare against, a tree from an earlier run. If it needs none of those, it is a pipeline task, and the walkthroughs above apply instead.
 
+### Which wrapper it goes in
+
+**A gate belongs in `test.bat` rather than `check.bat` if it would still mean something with no documentation in the tree.**
+
+That is a rule about what the gate *interrogates*, not about what it happens to open. [`check_axe_patch_equiv.mjs`](Tools#check-axe-patch-equiv) loads a built page and needs Chromium, which makes it look like a `check.bat` gate. It is not. The page is there only because the probe needs some document to run inside, and it never reads that page's DOM; what the gate tests is the vendored axe source patch. Against an empty `docs/` it would still be worth running, so it goes in `test.bat`.
+
+Two worked applications of the rule:
+
+- **A regression test for a build-time rewrite that has stopped firing** interrogates the rewrite, not the corpus, so it goes in `test.bat`. [`check_code_regions.mjs`](Tools#check-code-regions) is the gate of that shape already in the tree, and its admonition probes are the pattern to copy: each one is a defect the repository shipped, asserted in the normal run rather than behind a flag.
+- **A gate that compares this build's output against an earlier build's** interrogates the built tree, and says nothing at all about an empty `docs/`, so it goes in `check.bat`.
+
+The split exists so that an edit confined to `docs/` has to pay for `check.bat` only. No `test.bat` gate reads a page, so no content change can alter one of their outcomes. Both CI workflows run every gate from both wrappers unconditionally, each as its own step, so the wrapper choice changes what a local edit costs and nothing about what reaches `staging`.
+
 ### Conventions
 
-**Exit codes.** Three values, used the same way by all six:
+**Exit codes.** Three values, and a new gate in either wrapper uses them this way:
 
 | Code | Means |
 |---|---|
@@ -506,15 +521,15 @@ A gate runs after the build and decides whether what the build produced is accep
 
 Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. End the script with `main().catch((err) => { console.error(err); process.exit(2); })`, the way `check_a11y.mjs` does, so a crash cannot fall through to node's default exit 1 and be mistaken for a finding.
 
-**Say what a pass covered.** Five of the six print it: `check_dot_fit.mjs` gives the diagram count, `pick_a11y_sample.mjs --check` the number of construct families in use, `check_publish_policy.mjs` the probe counts on both sides, `check_a11y.mjs` the page × theme × viewport product it audited. A gate silent on success says nothing about whether it examined anything, which is the state a gate that has quietly stopped working also reports.
+**Say what a pass covered.** Nearly every gate in both wrappers does: `check_dot_fit.mjs` gives the diagram count, `pick_a11y_sample.mjs --check` the sample size and the number of construct families in use, `check_publish_policy.mjs` the probe counts on both sides, `check_code_regions.mjs` the number of files swept and the number whose code regions moved, `check_a11y.mjs` the page × theme × viewport product it audited. A gate silent on success says nothing about whether it examined anything, which is the state a gate that has quietly stopped working also reports.
 
 **Name the artifact and the remedy.** A gate's output is read by someone who was in the middle of something else. `check_dot_fit.mjs` names the failing diagram, then `builder/dot-metrics.mjs` and an `@hpcc-js/wasm-graphviz` bump as the usual cause, then `build.bat` as the fix. `check_tree_fresh.mjs` names the source file that is newer than the tree and says to run `build.bat`. `pick_a11y_sample.mjs --check` names the uncovered construct *and* the cheapest page that would cover it.
 
-**Resolve paths from `import.meta.url`.** `resolve(fileURLToPath(new URL("..", import.meta.url)))` is what five of the six do, directly or through `axe-scan.mjs`'s `REPO_ROOT`, and it makes the gate work from any directory. `check_publish_policy.mjs` is the exception, with a working-directory-relative `docs` default, which is why the batch wrappers `pushd` to the repository root before running anything.
+**Resolve paths from `import.meta.url`.** `resolve(fileURLToPath(new URL("..", import.meta.url)))` is what nearly all of them do, directly or through `axe-scan.mjs`'s `REPO_ROOT`, and it makes the gate work from any directory. `check_publish_policy.mjs` is the exception, with a working-directory-relative `docs` default, which is why the batch wrappers `pushd` to the repository root before running anything.
 
-**Be explicit about what may already have run.** `check.bat` is ordered cheapest-first and stops at the first failure, so a gate's position decides what it can assume. Everything after step 2 may assume `_site-offline/` is current, because `check_tree_fresh.mjs` refuses a stale tree. Nothing may assume the build's own link check passed: a link failure sets the build's exit code without aborting the build, so a tree that failed it is still on disk and still fresh.
+**Be explicit about what may already have run.** Both wrappers stop at the first failure, so a gate's position decides what it can assume --- and the two do not offer the same guarantees. `check_tree_fresh.mjs` runs first in `check.bat`, so every later gate there may assume `_site-offline/` is current. `test.bat` has no freshness gate at all, and its one gate that opens a built page does not need one: `check_axe_patch_equiv.mjs` loads a single page and never reads that page's DOM, so a stale tree cannot change its result. Nothing in either wrapper may assume the build's own link check passed: a link failure sets the build's exit code without aborting the build, so a tree that failed it is still on disk and still fresh.
 
-**Register it in three places** --- `check.bat`, `.github/workflows/checks.yml` and `.github/workflows/tbdocs-gh-pages.yml` --- each with a comment saying what the gate protects against, which is the convention already in all three. Leaving it out of the workflows is a decision, not an omission, and gets the same comment: `check_tree_fresh.mjs` is in neither, because CI builds in the same job and cannot have a stale tree.
+**Register it in three places** --- the wrapper it belongs in, `.github/workflows/checks.yml`, and `.github/workflows/tbdocs-gh-pages.yml` --- each with a comment saying what the gate protects against, which is the convention already in all four files. Both workflows run every gate as its own step, from both wrappers, so the wrapper choice does not change what CI does. Leaving a gate out of the workflows is a decision, not an omission, and gets the same comment: `check_tree_fresh.mjs` is in neither, because CI builds in the same job and cannot have a stale tree.
 
 ### It must be able to fail
 
@@ -535,7 +550,7 @@ When the gate cannot assert its own correctness from the inside, the proof goes 
 
 ## What a change obliges in the documentation
 
-Everything in [Verify](#7-verify) and [Testing](#testing) is a code gate. Not one of them reads a documentation page. So a contributor who follows this page exactly can ship a correct task, a green `build.bat`, a green `check.bat`, and a pipeline reference that describes a build which no longer exists --- and nothing anywhere will report it. Most of the defects two successive documentation audits turned up were made that way, which is why the obligation is written down here rather than left to be reconstructed.
+Everything in [Verify](#7-verify) and [Testing](#testing) is a code gate. Not one of them compares a documentation page against the task graph it describes. So a contributor who follows this page exactly can ship a correct task, a green `build.bat`, a green `check.bat`, a green `test.bat`, and a pipeline reference that describes a build which no longer exists --- and nothing anywhere will report it. Most of the defects two successive documentation audits turned up were made that way, which is why the obligation is written down here rather than left to be reconstructed.
 
 Four files under `docs/` model the task graph: `Pipeline-Stages.md`, `Builder.md`, this page, and `scheduler-dag.dot`. None of them is generated from `TASKS`. Every surface below is maintained by hand.
 
@@ -594,19 +609,24 @@ One task is not a template, because an existing task can itself be missing from 
 
 ## Testing
 
-Four commands cover the loop:
+Five commands cover the loop:
 
 1. **`build.bat`** --- full pipeline, including the link and integrity check over both trees while their HTML is still in worker memory. A clean exit and a sensible Gantt placement is the bar.
 2. **`serve.bat`** --- live-reload dev server for visual checks. Remember the persistent pool: Ctrl+C and restart after handler-code or task-graph changes. Check both themes if the change touches anything visible.
-3. **`check.bat`** --- the gates that need a browser or a second pass over the built tree: the publish allowlist, tree freshness, diagram fit, the axe patch equivalence check, the accessibility sample-coverage check, and the accessibility scan itself.
-4. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
+3. **`check.bat`** --- the gates that read the built site. [Tools and Scripts](Tools#checkbat) lists them in the order they run.
+4. **`test.bat`** --- the gates that test the toolchain itself, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/` needs this one, which is every change this page describes. A content edit does not: no `test.bat` gate reads a page, so nothing confined to `docs/` can alter one of their outcomes.
+5. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
 
-A clean run of all four is the bar for "ready to commit".
+A clean run of all five is the bar for "ready to commit".
 
-Two of `check.bat`'s gates are the ones a builder change is most likely to trip, and both fail for a reason worth reading rather than working around. `pick_a11y_sample.mjs --check` fails when the change introduced a construct the sample does not cover --- the fix is a new construct family, not a wider sample. `check_publish_policy.mjs` fails when a new emitted file type is not on the allowlist in `builder/publish-policy.mjs`; add it to `BUILD_EXTENSIONS`, which is deliberately a separate set from `SOURCE_EXTENSIONS` so blessing a generated type does not also bless a stray one a contributor drops into `docs/`.
+Three gates are the ones a builder change is most likely to trip, and each fails for a reason worth reading rather than working around.
+
+- `pick_a11y_sample.mjs --check`, in `check.bat`, fails when the change introduced a construct the sample does not cover. The fix is a new construct family, not a wider sample.
+- `check_publish_policy.mjs`, in `test.bat`, fails when a new emitted file type is not on the allowlist in `builder/publish-policy.mjs`. Add it to `BUILD_EXTENSIONS`, which is deliberately a separate set from `SOURCE_EXTENSIONS` so blessing a generated type does not also bless a stray one a contributor drops into `docs/`.
+- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence or code span. The fix is to move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCodeRegions` and its `restore`, rather than to widen the mask.
 
 > [!NOTE]
-> `check.bat` requires `build.bat` to have run first; `check_tree_fresh.mjs` refuses a tree older than the sources that produced it rather than letting the later gates report on stale output.
+> Both `check.bat` and `test.bat` want `build.bat` to have run first, for different reasons. `check.bat` reads the built tree throughout, and `check_tree_fresh.mjs` refuses one older than the sources that produced it rather than letting the later gates report on stale output. `test.bat` needs a built tree only for its last gate, `check_axe_patch_equiv.mjs`, and does not care how old that tree is.
 
 ---
 
@@ -615,5 +635,5 @@ Two of `check.bat`'s gates are the ones a builder change is most likely to trip,
 - [Pipeline Stages](Pipeline-Stages) -- full data model, per-task interface reference, per-module export tables, and the [markdown-it plugin chain](Pipeline-Stages#the-plugin-chain) in registration order.
 - [Project styling](Builder#project-styling) -- where a CSS rule goes, the light/dark two-compilation model, and the specificity trap that makes a dark-mode override silently do nothing.
 - [tbdocs Builder](Builder) -- architectural tour and design rationale.
-- [Tools and Scripts](Tools) -- every gate `check.bat` runs, and what each one is protecting.
+- [Tools and Scripts](Tools) -- every gate `check.bat` and `test.bat` run, and what each one is protecting.
 - [Building and Deployment](Building) -- the day-to-day build workflow for content contributors.

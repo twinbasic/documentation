@@ -63,7 +63,17 @@ export const BASELINE_PATH = new URL("./page-baseline.json", import.meta.url);
 export const GUARDED_SRC = "docs";
 
 // Shown in the failure message. Relative, because that is how someone runs it.
-const ACCEPT_CMD = "node builder/tbdocs.mjs --src docs --update-page-baseline";
+//
+// **`--check-audit-index` is part of the command, and leaving it out was a
+// real defect.** It implies `--check`, and `build.bat` supplies it on every
+// ordinary build -- so a message printing the bare `--src docs` form hands the
+// reader a build with no link or integrity check, on a page removal, which is
+// the change most likely to have broken links. Round 3 of the use-case
+// evaluation found an evaluator about to follow it. Both forms are given
+// because the wrapper is Windows-only and the docs are not.
+const ACCEPT_CMD_WIN = "build.bat --update-page-baseline";
+const ACCEPT_CMD_POSIX =
+  "node builder/tbdocs.mjs --src docs --check-audit-index --update-page-baseline";
 
 const METRICS = [
   ["pages", "pages"],
@@ -126,7 +136,9 @@ export async function checkPageBaseline({
         failed: true,
         text: "ERROR: builder/page-baseline.json is missing, so the page-count "
             + "drift guard has nothing to compare against.\n"
-            + `       Restore it from git, or regenerate it with:\n         ${ACCEPT_CMD}\n`,
+            + "       Restore it from git, or regenerate it with:\n"
+            + `         ${ACCEPT_CMD_WIN}\n`
+            + `         ${ACCEPT_CMD_POSIX}\n`,
       };
     }
     await writeBaseline(file, counts);
@@ -145,7 +157,9 @@ export async function checkPageBaseline({
       failed: true,
       text: `ERROR: fewer than the last committed build -- ${dropped.join("; ")}\n`
           + "       Something stopped being discovered, or content was removed on purpose.\n"
-          + `       If the removal is intended, record it in the same commit:\n         ${ACCEPT_CMD}\n`,
+          + "       If the removal is intended, record it in the same commit:\n"
+          + `         ${ACCEPT_CMD_WIN}\n`
+          + `         ${ACCEPT_CMD_POSIX}\n`,
     };
   }
 

@@ -81,14 +81,22 @@ const DOC_PREFIX = "Documentation/";
 // pages keeps the number right for a package whose landing page is missing.
 const PACKAGE_ROOTS = ["Reference/Default/", "Reference/Built-In/"];
 
-function countPackages(pages) {
+// Counted per root as well as in total, because the site's prose needs all
+// three numbers and only ever had a name for one of them. Round 3 of the
+// use-case evaluation found `Reference/index.md` calling all thirteen
+// "built-in" while `Reference/Packages.md` reserved the word for the ten --
+// both arithmetically right, and a reader cannot tell that from either page.
+// A sentence that says `{{tbdocs:builtInPackages}}` cannot drift into the
+// other set's number.
+function countPackages(pages, root = null) {
+  const roots = root ? [root] : PACKAGE_ROOTS;
   const seen = new Set();
   for (const p of pages) {
-    for (const root of PACKAGE_ROOTS) {
-      if (!p.srcRel.startsWith(root)) continue;
-      const rest = p.srcRel.slice(root.length);
+    for (const r of roots) {
+      if (!p.srcRel.startsWith(r)) continue;
+      const rest = p.srcRel.slice(r.length);
       const slash = rest.indexOf("/");
-      if (slash > 0) seen.add(root + rest.slice(0, slash));
+      if (slash > 0) seen.add(r + rest.slice(0, slash));
     }
   }
   return seen.size;
@@ -136,6 +144,10 @@ export function deriveCounts(state, extra = {}) {
       (p) => typeof p.permalink === "string" && p.permalink.endsWith("/"),
     ).length,
     packages: countPackages(pages),
+    // The two halves of that split, named separately because the prose uses
+    // each on its own and the words for them collide.
+    defaultPackages: countPackages(pages, "Reference/Default/"),
+    builtInPackages: countPackages(pages, "Reference/Built-In/"),
     attributeAnchors: countAttributeAnchors(pages),
     // Whole-page stubs emitted for every `redirect_from:` entry. Passed in
     // because it comes from deriveRedirects rather than from discover.

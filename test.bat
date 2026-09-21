@@ -1,11 +1,19 @@
-@rem Tests the toolchain has to pass. Nothing here reads a page of
-@rem documentation, so an edit confined to docs/ cannot change any
-@rem outcome and does not need this file -- that is the whole point of
-@rem it being separate from check.bat.
+@rem Tests the toolchain has to pass, and the reason they are separate
+@rem from check.bat: a content edit cannot change what most of them say,
+@rem so writing a reference page should not pay for them.
 @rem
-@rem Run this when the change touches builder/, scripts/, book/, eval/ or
-@rem wisdom/. Both CI workflows run it unconditionally, so a tooling
-@rem regression cannot reach staging by someone skipping it locally.
+@rem "Most", not "none" -- this comment used to say none, and so did
+@rem three pages of the documentation, and it was false. Round 3 of the
+@rem use-case evaluation found an author routed straight past the one
+@rem gate that would have caught their defect by exactly that sentence.
+@rem check_code_regions.mjs sweeps every markdown file under docs/, and
+@rem check_gate_lists.mjs reads Tools.md. Run this file too after adding
+@rem an unusual code construct: a fence holding a fence marker, a 4-space
+@rem indented block, an admonition wrapping a fence.
+@rem
+@rem Otherwise run it when the change touches builder/, scripts/, book/,
+@rem eval/ or wisdom/. Both CI workflows run it unconditionally, so a
+@rem tooling regression cannot reach staging by someone skipping it.
 @rem
 @rem The split is by what a gate INTERROGATES, not by what it happens to
 @rem open: check_axe_patch_equiv.mjs loads a built page, but only because
@@ -20,6 +28,15 @@
 @rem refusals against named probes: a stray .bak, a .pem, a scratch .md
 @rem with no frontmatter. No tree, no browser, ~40 ms, so it goes first.
 node scripts/check_publish_policy.mjs
+@if errorlevel 1 goto :fail
+@rem Tools.md's two numbered gate lists against the two wrappers that
+@rem actually run them. This rotted twice: round 2 found test.bat
+@rem documented as three gates when it had four and fixed it in Tools.md,
+@rem Building.md's parallel copy went untouched, a fifth gate landed, and
+@rem round 3 found Building.md naming three of five and Extending.md
+@rem claiming check.bat runs six. None of it broke a link or failed a
+@rem gate. Pure text, no tree, no browser, ~50 ms.
+node scripts/check_gate_lists.mjs
 @if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus

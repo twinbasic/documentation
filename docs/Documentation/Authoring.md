@@ -318,8 +318,16 @@ from the same data the pages themselves come from:
 | `folderStyleIndexes` | `Reference/` pages written as `<Name>/index.md` |
 | `folderStyleSlashPermalinks` | of those, the ones whose permalink ends in a slash |
 | `packages` | packages under `Reference/Default/` and `Reference/Built-In/` |
+| `defaultPackages` | of those, the ones under `Reference/Default/` |
+| `builtInPackages` | of those, the ones under `Reference/Built-In/` |
 | `attributeAnchors` | pinned heading ids in `Reference/Attributes.md` |
 | `redirectStubs` | whole-page stubs emitted for `redirect_from:` entries |
+
+The three package names are separate because the words for them collide:
+`Reference/index.md` calls every package built-in, while
+[Packages](../../tB/Packages/) reserves that word for the ones a project
+references on demand. Pick the name for the set your sentence means and it cannot
+drift into the other set's number.
 
 **A name is a derivation, never a constant.** A registry holding `pages: 908`
 would not have removed the stale figure, only moved it from a page a
@@ -340,8 +348,11 @@ Two consequences worth knowing before using one:
   anyway. The one placement that does not work is inside a raw HTML block; the
   build fails on that too rather than publishing it.
 
-Numbers already written as words stay as words --- "thirteen packages" reads
-better than a digit in that sentence, and a substitution always yields digits.
+Numbers already written as words stay as words, because a substitution always
+yields digits. [Callouts](#callouts) below opens *Three severities, used
+distinctly*, and should keep the word: it counts the three bullets directly
+beneath it, which is a fact about that sentence rather than about the site and
+could not be derived from build state at all.
 
 ## Formatting conventions
 
@@ -349,6 +360,57 @@ better than a digit in that sentence, and a substitution always yields digits.
 - twinBASIC code goes in a ` ```tb ` fenced block --- Shiki highlights it with the vendored twinBASIC grammar, and `twinbasic`, `vb` and `vba` select the same grammar. The other highlighted fence languages are `js`, `yaml`, `json`, `c`, `html`, `xml`, `sql` and `batch`. Anything else renders as unhighlighted plain text: the build does not fail, but it prints `highlight: unknown fence language "<name>"` naming the language and the list to add it to, so check the build output rather than the page.
 - Parameter lists use the definition-list pattern (a term line, then a `: definition` line beneath it), not a markdown table.
 - For dashes, write `--` in the source (it renders as an en-dash) or `---` (an em-dash). Never paste a literal `–` or `—`. Nothing in the build rejects one: the typographer converts the ASCII forms and passes a literal character straight through, so a stray dash ships silently and only the source becomes inconsistent. `scripts/convert_em_dash_separators.mjs` is the normaliser, and it is run by hand.
+
+### A code sample that holds a fence marker
+{: #fence-in-fence }
+
+A sample that builds a Markdown string has ` ``` ` inside it, and the fence
+around the sample has to survive that. Which form to use depends on where the
+marker sits.
+
+**A marker in the middle of a line needs nothing special.** A fence closes only
+on a line that is nothing but backticks, so an ordinary three-backtick fence
+holds a sample whose markers are inside string literals. The
+[`Description`](../../tB/Core/Attributes#description) entry on the attribute
+reference is the shipped precedent: its example assembles a Markdown description
+from twinBASIC literals, two of which are fence markers, inside a plain ` ```tb `
+fence.
+
+    ```tb
+    [Description("### Example" & vbCrLf & _
+                 "```basic" & vbCrLf & _
+                 "Dim x As Long" & vbCrLf & _
+                 "```")]
+    ```
+
+**A marker that stands alone on its own line needs a longer opening fence.** Open
+with four backticks and close with four:
+
+    ````tb
+    Dim md As String
+    md = "```"
+    ```
+    ````
+
+Nothing else changes. A fence closes only on a run at least as long as the one
+that opened it, `maskCodeRegions` applies that same rule when it hides code from
+the pre-render rewrites, and the language tag reaching the highlighter is the
+same string either way --- a four-backtick `tb` fence is highlighted exactly as a
+three-backtick one is. No page in `docs/` uses one yet, so there is no example to
+copy; it is still the right form.
+
+**Use backticks, never a tilde fence.** Tildes are valid Markdown and the
+renderer accepts them, but `rewriteAdmonitions` recognises backtick fences only.
+A tilde fence holding a ` ``` ` line is therefore not hidden from it, the marker
+inside is read as an opening fence, and every `> [!NOTE]` after it in the file
+renders as literal text in a plain blockquote.
+
+That failure is not hypothetical. The attribute reference once shipped all six of
+its admonitions as the literal text `[!NOTE]`, because the same pairing closed
+that page's opening fence on a marker in the middle of a line and every pairing
+after it was off by one. The mid-line case is fixed --- the rewrite scans lines
+now --- and [`check_code_regions.mjs`](Tools#check-code-regions), which
+`test.bat` runs, is the only gate that sees this class of fault at all.
 
 ### Typography
 
@@ -427,21 +489,29 @@ unescaped pipe inside a code span breaks the row exactly as a bare one does. It
 comes up in this documentation more than in most, because `|` is twinBASIC's
 separator for alternatives in a syntax line and the builder's own reference writes
 type unions with it --- `[ ( True \| False ) ]`, `string\|undefined`. It is escaped
-in 37 files and explained in none of them.
+in 38 files and explained in none of them.
 
 Per-column alignment goes in the delimiter row, with a colon on the side the
 content should sit: `:---` left, `---:` right, `:---:` centred, and a bare `---`
 for the default. Use it for numeric columns, where ragged right edges make values
-hard to compare. Most tables do not need it --- 1,175 columns across the site take
+hard to compare. Most tables do not need it --- 1,191 columns across the site take
 the default against 73 explicit left, 24 centred and 4 right.
 
-**Keep the column count down.** Of the 452 tables on the site, 430 have two or
+**Keep the column count down.** Of the 459 tables on the site, 437 have two or
 three columns, 16 have four, and five have five. Exactly one has more:
 `Reference/Default/VBA/Interaction/Partition.md` at seven, and it is the model to
 copy if you need one that wide. It right-aligns the three numeric argument columns
 and left-aligns the four result columns, and it spends a sentence of prose before
 the table explaining what the two least obvious column headings mean, which is
 what makes seven columns readable at all.
+
+**Every total in this section is a hand count of `docs/`, taken on 2026-09-21.**
+No [count name](#counts) covers tables, and a number the build cannot derive does
+not get one --- so nothing keeps these current, and each of them is already a
+little wrong by the time you read it. The proportions are the durable part, and
+the rarities are more durable still: two or three columns stays the norm, four
+stays rare, five rarer, and seven stays one page, however many tables get
+written. Quote the shape, and re-count before quoting a total.
 
 Check a wide table in the PDF as well as on the site, because the two behave
 differently and only one of them degrades gracefully. `book.mjs` strips the
@@ -614,10 +684,53 @@ The indexes to join depend on what the page documents:
 - **A twinBASIC addition** --- a symbol or construct standard VBA does not have --- is additionally listed in [twinBASIC Additions](../../Reference/twinBASIC-Additions), under the category it belongs to. A page for a symbol VBA already has does not belong there.
 - **A runtime procedure, function, or property** is listed in [Procedures and Functions](../../Reference/Procedures-and-Functions) under its initial letter, and introduced in the prose of its own module's `index.md`. Those module pages present their members in themed groups rather than as a flat list, so add the link to the paragraph it fits rather than to the end. [Permanent Links](Permanent-Links) lists the modules, not their members, so it needs no edit.
 - **A class, control, or enumeration inside a package** is introduced on that package's `index.md`. A control in the VB package is additionally listed in [Controls](../../tB/Controls), under the group matching its purpose.
-- **An enumeration** is listed in [Enumerations](../../Reference/Enumerations) **twice** --- once in the by-package section and once in the alphabetical index below it --- and moves the enumeration total stated on the [Reference Section](../../Reference) landing page.
-- **A whole new package** needs a bullet on [Default Packages](../../tB/Packages/Default/) or [Built-In Packages](../../tB/Packages/Built-In/), and moves the package counts written into the prose of [Packages](../../tB/Packages/) and the [Reference Section](../../Reference) landing page. It also needs its own `###` section in [Permanent Links](Permanent-Links), under `/tB/Packages/`, stating the URL shape its members follow. That page is the URL contract, and a package missing from it has none.
+- **An enumeration** is listed in [Enumerations](../../Reference/Enumerations) **twice** --- once in the by-package section and once in the alphabetical index below it --- and moves the enumeration total stated on the [Reference Section](../../Reference) landing page. That total is a hand-written digit and has to stay one: no [count name](#counts) covers enumerations, so nothing notices if you leave it behind.
+- **A whole new package** needs a bullet on [Default Packages](../../tB/Packages/Default/) or [Built-In Packages](../../tB/Packages/Built-In/), and moves the package counts written into the prose of [Packages](../../tB/Packages/) and the [Reference Section](../../Reference) landing page. Those counts do have names, so write them as `{{tbdocs:defaultPackages}}`, `{{tbdocs:builtInPackages}}` or `{{tbdocs:packages}}` while you are there and the package after yours costs nobody an edit. It also needs its own `###` section in [Permanent Links](Permanent-Links), under `/tB/Packages/`, stating the URL shape its members follow. That page is the URL contract, and a package missing from it has none.
 
 Every one of these entries is a link plus a one-line description in the style of its neighbours, so the reliable way to write one is to copy the entry above the position you are inserting at and replace its contents.
+
+## Removing a page
+
+Deleting the file is the easy half, and removal is the more dangerous direction:
+a page missing from an index is merely hard to find, while an entry left behind
+after the page is gone sends the reader to a 404.
+
+That much the build catches. [`build.bat`](Building#checking-link-integrity)
+resolves every intra-site link against the pages that reached the tree, so a
+stale entry is reported rather than shipped. Go through the same places
+[Listing a new page](#listing-a-new-page) names, then let the build confirm:
+
+- **A core statement or keyword** comes out of [Statements](../../Reference/Statements), [Categories](../../Reference/Categories) and the `/tB/Core/` list in [Permanent Links](Permanent-Links).
+- **An operator** comes out of [Operators](../../Reference/Operators) instead of Statements; the other two still apply.
+- **A twinBASIC addition** comes out of [twinBASIC Additions](../../Reference/twinBASIC-Additions) as well.
+- **A runtime procedure, function, or property** comes out of [Procedures and Functions](../../Reference/Procedures-and-Functions) and out of its module's `index.md`, where it is a phrase inside a themed paragraph rather than a bullet. Read that sentence afterwards --- taking one link out of a list of three leaves a sentence that no longer reads.
+- **A class, control, or enumeration inside a package** comes out of that package's `index.md`, and a VB control out of [Controls](../../tB/Controls).
+- **An enumeration** comes out of [Enumerations](../../Reference/Enumerations) in both places, and the hand-written total on the [Reference Section](../../Reference) landing page goes down with it.
+- **A whole package** comes out of [Default Packages](../../tB/Packages/Default/) or [Built-In Packages](../../tB/Packages/Built-In/) and out of its `###` section in [Permanent Links](Permanent-Links). Package counts already written as [count names](#counts) follow on their own; any still written as digits do not.
+
+Three things then have no counterpart in adding a page.
+
+**The URL stops resolving, and the link check sees only links made from inside
+the tree.** If another page takes the removed page's subject over, give it a
+`redirect_from:` entry naming the old URL --- the collision rule allows that
+precisely because the old page no longer publishes there. If nothing replaces it
+the URL is gone, and for a `/tB/` URL that changes the contract the IDE help
+system resolves against, so take the entry out of
+[Permanent Links](Permanent-Links) and say so in the commit.
+
+**The page count falls, and the drift guard fails on a fall.** A rise rewrites
+the baseline by itself; a fall needs one build with `--update-page-baseline`, and
+`builder/page-baseline.json` is committed with the deletions. [The page-count
+drift guard](Building#the-page-count-drift-guard) has the command and the plain
+`build.bat` that must follow it.
+
+**A page other pages name as their `parent:` cannot simply be deleted.** The nav
+integrity check aborts the build with `Nav-parent orphan detected`, naming every
+child left without a parent. The match is on the parent's **title**, not its
+file, so deleting a page whose title another page still carries is fine. A
+genuine orphan needs a parent that exists --- re-point the children, retitle
+their new home, or delete them too. Only nav-visible pages are checked, so a
+child that sets `nav_exclude` is not caught.
 
 ## See also
 

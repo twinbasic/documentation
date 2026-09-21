@@ -36,12 +36,12 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 - **Node.js 22+** for `tbdocs` itself.
 - **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root contains the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
-- **Chromium** is required for four things: rendering the PDF book (`book.bat`), two of `check.bat`'s four steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont, and the accessibility scan (`scripts/check_a11y.mjs`) --- and one of `test.bat`'s five, the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`). It is downloaded once by `npx puppeteer browsers install chrome --install-deps`. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat`, `test.bat` and `book.bat` do.
+- **Chromium** is required for four things: rendering the PDF book (`book.bat`), two of `check.bat`'s four steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont, and the accessibility scan (`scripts/check_a11y.mjs`) --- and one of `test.bat`'s six, the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`). `npm install` normally brings it down as part of `puppeteer`'s own postinstall; `npx puppeteer browsers install chrome` fetches it on its own if that step was skipped. Add `--install-deps` only on Linux --- it installs system packages, needs root, and is not supported anywhere else. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat`, `test.bat` and `book.bat` do.
 
 ### On macOS and Linux
 {: #posix-equivalents }
 
-Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all nine gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
+Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all ten gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
 
 Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from any directory. The commands below have no equivalent of that, so **run them from the repository root**. It is not a formality: `tbdocs`'s `--src docs`, `check_publish_policy.mjs`'s default source root, and every path handed to `render-book.mjs` are all resolved against the working directory.
 
@@ -50,7 +50,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
 | `build.bat [flags]` | `node builder/tbdocs.mjs --src docs --check-audit-index [flags]` |
 | `serve.bat [flags]` | `node builder/tbdocs.mjs --src docs --serve [flags]` |
 | `check.bat` | four scripts in a fixed order, below |
-| `test.bat` | five scripts in a fixed order, below |
+| `test.bat` | six scripts in a fixed order, below |
 | `book.bat` | a `mkdir`, then one `render-book.mjs` invocation, below |
 
 `--check-audit-index` is the part most easily dropped in transcription, and dropping it is silent --- see [Building](#building) below for what it costs. Anyone who types `build.bat` gets the link check without thinking about it; anyone who types the underlying command has to include it themselves.
@@ -62,9 +62,10 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/pick_a11y_sample.mjs --check \
       && node scripts/check_a11y.mjs
 
-`test.bat` is five more, in the same cheapest-first order:
+`test.bat` is six more, in the same cheapest-first order:
 
     node scripts/check_publish_policy.mjs \
+      && node scripts/check_gate_lists.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -78,7 +79,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       --outline-tags h1,h2,h3,h4 \
       --additional-script perf/detach-pages.js
 
-Two of `book.bat`'s own steps have no equivalent above. It checks that `docs\_site-pdf\book.html` exists and names `build.bat` as the fix, where `render-book.mjs` refuses a missing input with `input not found:` and the resolved path and nothing else. And it runs `npm install` itself when `node_modules\puppeteer` is absent --- run `npm ci` first if the renderer cannot find puppeteer.
+Two of `book.bat`'s own steps have no equivalent above. It opens by running `scripts/check_tree_fresh.mjs` over `docs\_site-pdf\`, which refuses a tree that is stale as well as one that is absent --- see [`book.bat`](Tools#bookbat) for the detail. And it runs `npm install` itself when `node_modules\puppeteer` is absent --- run `npm ci` first if the renderer cannot find puppeteer.
 
 One difference is not about paths at all, and it is the one that matters most: **a local accessibility pass is weaker than CI's, on every platform.** axe's `target-size` rule measures rendered boxes, and an inline element's measured height is the content area of whatever `system-ui` resolves to on the machine running the scan. Both workflows install `fonts-liberation` so the runner measures with the smallest face in that band, and the site's padding is calibrated against the smallest --- so a machine with larger metrics passes controls that the runner then fails. See [`fonts-liberation`, installed on purpose](#fonts-liberation-installed-on-purpose) for the measurements.
 
@@ -177,11 +178,18 @@ the last build anyone committed. Fewer than last time is an error:
     ERROR: fewer than the last committed build -- pages 871, was 908 (-37)
            Something stopped being discovered, or content was removed on purpose.
            If the removal is intended, record it in the same commit:
-             node builder/tbdocs.mjs --src docs --update-page-baseline
+             build.bat --update-page-baseline
+             node builder/tbdocs.mjs --src docs --check-audit-index --update-page-baseline
 
 A **rise** needs nothing. An ordinary local build rewrites the file itself and
 says so, and the changed file is committed with whatever added the pages. Only a
 **fall** needs the flag, because a fall is the thing being watched for.
+
+Both printed forms are a full build, and both carry the [link and integrity
+check](#checking-link-integrity), so nothing needs rebuilding afterwards. That
+is not incidental: a page removal is the change most likely to have left a link
+pointing at something that is no longer there, which makes it the worst moment
+to build without the check.
 
 ### Why a committed number and not a constant
 
@@ -205,13 +213,16 @@ below reads for its font metrics.
 
 ### Where it compares but does not write
 
-- **CI.** A run there that rewrote the baseline would accept the drop it was
-  asked to catch. A missing `page-baseline.json` is an error in CI rather than a
-  first run, because the guard's own artifact going missing is a regression of
-  the guard.
+- **CI**, which the build recognises by the `CI` environment variable that
+  GitHub Actions sets on every job. A run there that rewrote the baseline would
+  accept the drop it was asked to catch. A missing `page-baseline.json` is an
+  error in CI rather than a first run, because the guard's own artifact going
+  missing is a regression of the guard.
 - **`serve.bat`.** Its watcher rebuilds on every save under `docs/`, so a page
   half-deleted in an editor would lower the baseline and a half-added one would
   raise it. The comparison still runs, so the console still says what happened.
+- **`--dry-run`.** A build that writes no tree has no business writing the
+  baseline either.
 
 Because the file is a build output rather than a build input,
 [`scripts/check_tree_fresh.mjs`](Tools#check-tree-fresh) skips it when it looks
@@ -227,36 +238,67 @@ report as stale.
 
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 
-A clean `build.bat && check.bat` --- link integrity and accessibility both --- is the bar for "ready to commit". **If the change touched anything outside `docs/`, add `test.bat`** --- see [Tests of the toolchain](#tests-of-the-toolchain) below.
+A clean `build.bat && check.bat` --- link integrity and accessibility both --- is the bar for "ready to commit". **Add `test.bat` when the change touched anything outside `docs/`, and when it added an unusual code construct inside it** --- see [Tests of the toolchain](#tests-of-the-toolchain) below for which constructs those are and why one gate does read your pages.
 
 ## Tests of the toolchain
 {: #tests-of-the-toolchain }
 
     test.bat
 
-Three gates that test the build system rather than the site:
-[`check_publish_policy.mjs`](Tools#check-publish-policy),
-[`check_regex_safety.mjs`](Tools#check-regex-safety) and
-[`check_axe_patch_equiv.mjs`](Tools#check-axe-patch-equiv). About six seconds.
+Five gates that test the build system rather than the site, in about eight
+seconds. [`test.bat`](Tools#testbat) names them and the order they run in.
 
-**None of them reads a page of documentation**, so an edit confined to `docs/`
-cannot change any of their outcomes. That is the whole reason they are not in
-`check.bat`: writing a reference page should not pay for tests of the toolchain,
-and a gate that costs nothing to a change it cannot possibly be affected by is a
-gate people start skipping. Run `test.bat` when the change touches `builder/`,
-`scripts/`, `book/`, `eval/` or `wisdom/`.
+**Four of the five cannot be affected by an edit confined to `docs/`.** They
+read no page at all, which is why they are not in `check.bat`: writing a
+reference page should not pay for tests of the toolchain, and a gate that costs
+nothing to a change it cannot be affected by is a gate people start skipping.
+Run `test.bat` when the change touches `builder/`, `scripts/`, `book/`, `eval/`
+or `wisdom/`.
 
-Skipping it locally cannot let anything through: **both CI workflows run all
-three unconditionally**, and always did --- CI invokes the scripts directly and
-has never used the batch wrappers.
+[`check_code_regions.mjs`](Tools#check-code-regions) is the fifth, and it is the
+exception. It tokenises every markdown file under `docs/`, applies the build's
+real pre-render rewrite chain, tokenises again, and compares the code regions on
+either side --- so a page that introduces a code construct the corpus has not
+carried before can change what it reports. **Run `test.bat` as well for a
+docs-only edit that adds one**: an indented four-space code block, an admonition
+wrapping a fenced block, or a fence whose body contains a fence marker.
+
+Nothing else can see that class of fault. The rewrites run over raw markdown
+before anything has parsed it, so none of them knows what is code --- and this
+site's subject matter is code. Four shipped without a guard, and two are worth
+naming: one ate the indentation of an `If` / `ElseIf` / `Else` block in a
+language reference, another deleted a YAML sample's closing `---`. The link
+check, the integrity check, the publish allowlist, the regex-safety gate and the
+accessibility scan reported a clean tree throughout, because the damage is
+inside `<code>` and none of them looks there. The indented block is the one to
+watch hardest: the rewrite mask deliberately does not protect one, since telling
+it from a list-item continuation needs block context a pre-render pass does not
+have, so this comparison is all that stands behind it.
+
+The fence marker fails the other way round, and the comparison cannot see it. A
+rewrite that mistakes prose for code corrupts nothing --- the text is stashed
+and restored unchanged --- it simply never fires. That is how
+[Attributes](../../tB/Core/Attributes) came to publish all six of its
+admonitions as the literal text `[!NOTE]`: a twinBASIC string literal holding a
+fence marker closed the fence around it, and every pairing for the rest of the
+page was off by one. The gate keeps fixed probes for that rather than sweeping
+the corpus, so a green line says the fence stasher still works --- it does not
+say your own page came out right. Read that one in
+[`serve.bat`](#building-and-local-serving) as well.
+
+Skipping `test.bat` locally cannot let anything through: **both CI workflows run
+all six unconditionally**, and always did --- CI invokes the scripts directly
+and has never used the batch wrappers.
 
 The split is by what a gate *interrogates*, not by what it happens to open.
 `check_axe_patch_equiv.mjs` loads a built page and needs Chromium, but only
 because its probe has to run inside some document; what it tests is the axe
-source patch. The question to ask of a new gate is whether it would still mean
-something against an empty `docs/`.
+source patch. `check_code_regions.mjs` opens every page there is, and what it
+tests is the rewrite chain. The question to ask of a new gate is whether it
+would still mean something against an empty `docs/` --- and that one would, on
+the probes it carries with it.
 
-One of the three is worth knowing about before you write a regex.
+Another of the five is worth knowing about before you write a regex.
 [`check_regex_safety.mjs`](Tools#check-regex-safety) refuses a pattern that can
 backtrack exponentially, because that class of fault does not fail a build --- it
 stops one. The corpus passes for as long as no page contains the trigger, and
@@ -336,7 +378,7 @@ Two workflows cover the repository:
 - `.github/workflows/checks.yml` runs on every pull request into `staging` or `main`. It builds, checks, and stops --- it has no deploy rights at all. It also has no `paths:` filter, deliberately: an earlier `docs/**` filter skipped any pull request touching only `builder/` or `scripts/`, which is exactly the code most able to break the build, the link checker or asset vendoring.
 - `.github/workflows/tbdocs-gh-pages.yml` runs on every push to `staging` and on manual dispatch. It runs the same gates, then renders the PDF book and publishes `docs/_site/` to Pages. A manual dispatch additionally cuts a GitHub release with the offline site copy and the book attached.
 
-Both run eight of the nine local gates --- all five of `test.bat`'s and three of `check.bat`'s four --- in the same relative order; the ninth is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
+Both run nine of the ten local gates --- all six of `test.bat`'s and three of `check.bat`'s four --- in the same relative order; the tenth is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
 
 ### A missing image is an error there and a download here
 

@@ -8,14 +8,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the five Windows batch wrappers at the repository root, the cross-platform Node and Python scripts under `scripts/`, the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+One-line-per-tool reference for every executable in the documentation repository: the five Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
 
 * TOC goes here
 {:toc}
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All five sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Nothing else in the repository is Windows-specific: `tbdocs` and all nine gates are Node scripts, and CI runs every one of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All five sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. The only other Windows-specific tool is [`scripts/tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE and is no part of the site build. Nothing else in the repository is: `tbdocs` and all nine gates are Node scripts, and CI runs every one of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -65,45 +65,77 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Five steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Six steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
-2. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex literal that can backtrack exponentially.
-3. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
-4. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-5. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
+3. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex literal that can backtrack exponentially.
+4. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
+5. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+6. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
     node scripts/check_publish_policy.mjs \
+      && node scripts/check_gate_lists.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**None of the five reads a page of documentation**, so an edit confined to `docs/` cannot change any of their outcomes --- which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`. Both CI workflows run all five unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+**Four of the six cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`. Both CI workflows run all six unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+
+The two exceptions are [`check_code_regions.mjs`](#check-code-regions) and [`check_gate_lists.mjs`](#check-gate-lists), which reads this page. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
 The split is by what a gate **interrogates**, not by what it happens to open. `check_axe_patch_equiv.mjs` loads a built page, so it does want `build.bat` to have run and it does want Chromium --- but only because its probe needs some document to run inside; what it tests is the axe patch. The test for where a new gate belongs is whether it would still mean something against an empty `docs/`.
 
 ### book.bat
+{: #bookbat }
 
     book.bat
 
-POSIX:
+POSIX --- three commands, not one:
 
+    node scripts/check_tree_fresh.mjs --tree docs/_site-pdf --marker book.html
     mkdir -p docs/_pdf
     node book/render-book.mjs docs/_site-pdf/book.html \
       -o "docs/_pdf/twinBASIC Book.pdf" \
       --outline-tags h1,h2,h3,h4 \
       --additional-script perf/detach-pages.js
 
-Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC Book.pdf`. Calls `node book\render-book.mjs` (see [below](#bookrender-bookmjs)). Requires `build.bat` to have populated `_site-pdf/` and a Chromium install from `npx puppeteer browsers install chrome`. The first invocation auto-runs `npm install` if `puppeteer` is missing. The output filename is set by the `-o` argument here; to rename the PDF, update it in `book.bat` and in `.github/workflows/tbdocs-gh-pages.yml`.
+Renders the PDF book from `docs\_site-pdf\book.html` into `docs\_pdf\twinBASIC Book.pdf`, by calling `node book\render-book.mjs` (see [below](#bookrender-bookmjs)). The output filename is set by the `-o` argument here; to rename the PDF, update it in `book.bat` and in `.github/workflows/tbdocs-gh-pages.yml`.
+
+`build.bat` must have populated `_site-pdf/` first. `book.bat` checks that rather than assuming it --- see [the pre-flight](#book-preflight) below.
+
+**The `npm install` guard tests for the package, not for the browser.** `puppeteer`'s own `postinstall` downloads Chromium, so an ordinary `npm install` normally leaves both in place. What `book.bat` checks is whether `node_modules\puppeteer\package.json` exists, and that says nothing about the browser --- so an install run with `--ignore-scripts` or `PUPPETEER_SKIP_DOWNLOAD`, or a puppeteer cache cleared afterwards, passes the only test `book.bat` makes and still has nothing to render with. `npx puppeteer browsers install chrome` fixes that case; both CI workflows run it as a step of its own rather than relying on the postinstall. [PDF Generation](PDF-Generation#chromium-is-not-installed) gives the error it produces.
 
 The `mkdir` is not housekeeping. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so a missing `docs/_pdf/` fails with `ENOENT` at the very end of the render, after the whole page-breaking pass has already run. `book.bat` and the deploy workflow both create it first, for that reason.
 
-Two of `book.bat`'s own steps have no equivalent in those commands. It checks that `docs\_site-pdf\book.html` exists and names `build.bat` as the fix, where `render-book.mjs` refuses a missing input with `input not found:` and the resolved path and nothing else; and it runs `npm install` itself when `node_modules\puppeteer` is absent, which the bare invocation will not --- run `npm ci` first if the renderer cannot find puppeteer.
-
 **Do not chain the two as `build.bat && book.bat`.** `build.bat` sets a non-zero exit code when the link or integrity check finds something, and still writes all three trees --- the finding is a report, not an abort. `&&` reads only the exit code, so a broken link anywhere on the site cancels the render, for a reason that has nothing to do with the book. The terminal ends on the link findings and no PDF, which reads as a render that failed rather than as one that never started. Run them as two separate commands; see [Building and Deployment](Building#the-double-ampersand-trap).
+
+#### The pre-flight freshness check
+{: #book-preflight }
+
+`book.bat`'s **first** action, before the `npm install` test and before the renderer starts, is:
+
+    node scripts/check_tree_fresh.mjs --tree docs/_site-pdf --marker book.html
+
+[`check_tree_fresh.mjs`](#check-tree-fresh) refuses a `_site-pdf/` tree older than `docs/` or `builder/`. This used to be an existence test, and an existence test was not enough: edit a page, run `book.bat` without `build.bat`, and it spent two minutes rendering the **previous** book and reported success. Nothing downstream notices, because the PDF it produces is internally consistent, correctly paginated and correctly bookmarked. It is simply the wrong book.
+
+Leaving the question to the renderer does not cover it either. `render-book.mjs` refuses a missing input with `input not found:` and the resolved path, which says nothing at all about a tree that is present and stale --- the case that costs two minutes and yields a wrong artifact.
+
+`--marker book.html` is required here, and `book.bat` is the only caller that passes it. The script identifies a tree by its `index.html`, which every output tree has except `_site-pdf/` --- that one holds a single `book.html`. Without the flag, `--tree docs/_site-pdf` looked for an `index.html` that never exists and exited 2, so `--tree` was there all along and could not actually be pointed at this tree.
+
+**The pre-flight has its own exit codes, and they collide with the renderer's.** `check_tree_fresh.mjs` exits **2** when the tree is absent and **1** when it is stale, and `book.bat` hands whichever it got straight back to its caller. [`render-book.mjs`](#bookrender-bookmjs) afterwards uses **1** for a missing input or a failed render and **2** for a bad argument, so the number alone does not say which half of `book.bat` failed. The message does --- every pre-flight failure is prefixed `check_tree_fresh:`, and these are the two it prints:
+
+    check_tree_fresh: docs/_site-pdf/book.html does not exist.
+      Run build.bat first -- there is no built tree to check.
+
+    check_tree_fresh: docs/_site-pdf is 118s older than docs/Reference/Core/Dim.md.
+      Run build.bat first. Scanning a stale tree reports a pass for the
+      previous build, which is the one thing these gates must never do.
+
+The check has one known false positive, which comes from the script rather than from this use of it. Its source list is `docs/` and `builder/`, and it does not distinguish code from notes, so editing a `builder/PLAN-*.md` marks every tree stale although nothing in the build reads those files. It errs toward refusing, which is the safe direction, but it does mean a note edit now blocks a render until you rebuild.
 
 ## CLI tools
 
@@ -329,6 +361,21 @@ Four of the eleven test the mirror fault, which the region comparison structural
 
 Exits 1 when a code region differs, or when a probe's admonition is not rewritten.
 
+### scripts/check_gate_lists.mjs
+{: #check-gate-lists }
+
+    node scripts/check_gate_lists.mjs
+    node scripts/check_gate_lists.mjs --verbose
+    node scripts/check_gate_lists.mjs --self-test
+
+Verifies that the two numbered gate lists on this page --- [`check.bat`](#checkbat) and [`test.bat`](#testbat) --- still name the same scripts, in the same order, as the wrappers that run them, and that each section's stated step count matches its own list. Pure text: no browser, no built tree, well under a second.
+
+It exists because this rotted twice, and the second time was a fix decaying rather than a fresh mistake. Round 2 of the use-case evaluation found `test.bat` documented as three gates when it had four, and that was fixed here. [Building and Deployment](Building)'s parallel copy of the same sentence was not touched, a fifth gate landed, and round 3 found it naming three of five --- while [Extending the Builder](Extending) claimed `check.bat` runs six, listed two `test.bat` gates among them, and never mentioned `test.bat` at all. Six wrong numbers across three pages, none of which broke a link, failed a gate, or read any differently from a right one.
+
+Two things follow from how it works. **The wrapper is the source of truth**, not the prose: a gate comparing the pages against each other would be satisfied by two pages that agree and are both wrong. And **this page owns the lists** --- Building and Extending cite these entries rather than restating them, which is what keeps the check to one place. A third page that starts restating them is outside what this can see, which is the argument for not letting one.
+
+Its probes ride along in the ordinary run rather than hiding behind `--self-test`, because a green line from a gate that has stopped detecting looks exactly like a green line from a working one. Exits 1 on a disagreement or a failed probe, 2 if it cannot run.
+
 ### scripts/check_page_baseline.mjs
 {: #check-page-baseline }
 
@@ -410,6 +457,67 @@ Measures Inter's advance widths in a browser and writes `builder/inter-metrics.j
     node scripts/convert_em_dash_separators.mjs --check    # report, change nothing
 
 Normalises literal en-dash / em-dash characters in markdown source under `docs/` to the ASCII source forms markdown-it's typographer converts at build time (`--` for en-dash, `---` for em-dash). The site forbids literal `–` / `—` in source --- this is the canonical fixer if any slip back in. Skips fenced code blocks and inline code spans, and preserves each file's existing line endings. `--check` reports what it would change and exits non-zero without writing, so it can serve as a gate.
+
+### scripts/tbbuild.mjs
+{: #tbbuild }
+
+    node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N]
+                             [--timeout S] [--json] [--keep] [--show|--hide]
+
+Compiles a `.twinproj` and prints its diagnostics, with no IDE window to click through. This is how a claim the documentation makes about the language gets checked against the compiler rather than against memory: write a one-module project that uses the construct in the position you are asking about, run this, and read what comes back. Windows only, and no part of the site build.
+
+twinBASIC has no command-line build. The compiler executable's whole surface is six verbs --- `export`, `import`, `settings`, `licence`, `changelog`, `readme` --- and none of them builds. The IDE executable does take `--buildAndExit32` and `--buildAndExit64`, and both are worse than useless unattended: they write nothing to stdout or stderr, exit 0 on a project the IDE flags, and do not exit at all when the build genuinely fails. So this drives the IDE. Its user interface is a WebView2 page and WebView2 honours `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, so the IDE starts with a Chrome DevTools port and is driven over CDP. The diagnostics come from the IDE's own *copy compilation error report* walk with the clipboard write removed, so the text is exactly what that command gives a person.
+
+| Flag | Effect |
+|---|---|
+| `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`, which is where the IDE's own zip says to unpack it. **No install path is hardcoded anywhere in this tooling** --- an install path contains a username --- so an install kept elsewhere needs one of those two. |
+| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder and the private desktop, which is what makes concurrent instances possible. |
+| `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
+| `--json` | Emit one JSON object --- counts, diagnostic rows, and any dialog text --- instead of lines of text. |
+| `--keep` | Leave the IDE running afterwards. |
+| `--show` / `--hide` | Put the IDE on your own desktop where you can watch it, or on a private one where it cannot take focus. Hidden is the default unless `TBBUILD_SHOW` is set to something other than `0`, `false` or `no`; the two flags override that for one invocation. |
+
+Exit codes: **0** clean, **1** the project has errors, **2** the harness failed, **3** the compile never settled, **4** the project crashes the compiler.
+
+**It runs the IDE on a private Windows desktop, and that is not decoration.** The IDE calls `HostForceFocus()` from its own `window.onload`, so it takes the keyboard whatever window style it starts with --- `start /min` was tried and the window still came to the front. A process on another desktop has no foreground to take, and the compile does not care whether anything is on screen. Hidden by default has one real cost. A wedged IDE on a private desktop is invisible to the person debugging it, and the only way to see anything is to run it again visible. Export `TBBUILD_SHOW=1` for a session you are working through interactively, and leave it unset for unattended runs.
+
+**One IDE handles one project.** Loading a second project into a running IDE wedges it, so a fresh IDE per project is the design rather than a convenience. It costs roughly 8 to 11 seconds each on a development box and is flat in project size, because what is being paid for is IDE startup and not compilation. Concurrency is the way to make a batch of probes fast: distinct `--port` values give distinct DevTools ports, user-data folders and desktops, so instances do not collide. Keep a question that might crash the compiler in a project of its own, so the answer is attributable and one bad probe cannot cost the rest of the batch its run.
+
+Two files under `scripts/lib/` belong to it and are never run directly. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. `tb-launch.ps1` holds the two Win32 calls Node cannot make without a native FFI addon, `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop`. It is the only PowerShell under `scripts/`, and it is not executed as a file: `tbbuild.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
+
+### scripts/gen_attribute_probes.mjs
+{: #gen-attribute-probes }
+
+    node scripts/gen_attribute_probes.mjs <out_dir> [key.md]
+
+Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference/Attributes.md`, for [`tbbuild.mjs`](#tbbuild) to compile. Those lines had gone unchecked against the compiler since they were written, and the one that was eventually checked turned out to be wrong. This writes one source file per claimed target, so a single build answers every claim at once. A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
+
+Up to three trees come out, on two contracts that must not be mixed:
+
+| Tree | Contract |
+|---|---|
+| `<out_dir>` | `AttributeProbes` --- every probe is expected to compile, so a diagnostic naming a probe module is a documentation defect. |
+| `<out_dir>-2` | `AttributeProbes2` --- the same contract, for targets that cannot share a project (one `[RunAfterBuild]` per project). |
+| `<out_dir>-explore` | `AttributeExplore` --- **a diagnostic is the answer.** Questions the page cannot settle; each source file carries its own header saying how to read its result. |
+
+Keeping the two contracts in separate projects is what makes either build readable: red in `AttributeProbes` is a defect, red in `AttributeExplore` is a result.
+
+It also writes a key naming the `Attributes.md` line each probe came from, beside the tree rather than inside it --- anything inside gets packed into the `.twinproj` and turns up as a stray project file. Pack a tree into a project with the compiler's own `import` verb before building it:
+
+    twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
+
+That verb runs opposite to the standalone scripts' `import`; see [Import/Export Tool](../../Features/Packages/Import-Export-Tool). Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
+
+### scripts/impexp.mjs and scripts/impexp.py
+{: #impexp }
+
+    node scripts/impexp.mjs import <file.twinproj|.twinpack> [output_dir]
+    node scripts/impexp.mjs export <input_dir> <output.twinproj|.twinpack>
+    node scripts/impexp.mjs --self-test
+
+Standalone `.twinproj` / `.twinpack` unpacker and packer. `scripts/impexp.py` is the same tool with the same three commands, run as `python scripts/impexp.py ...`. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+.
+
+**Neither is build tooling.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/`, and [Import/Export Tool](../../Features/Packages/Import-Export-Tool) offers them to readers as the two editions of one tool. That is why `impexp.py` is one of only two `.py` files in a repository whose tooling is otherwise all Node --- porting it would delete a deliberate offering rather than tidy anything up. The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](#check-publish-policy).
 
 ### book/render-book.mjs
 {: #bookrender-bookmjs }

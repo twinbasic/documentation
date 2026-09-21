@@ -8,7 +8,7 @@ permalink: /Reference/Enumerations
 
 # Enumerations
 
-An *enumeration* defines a named set of integer constants. Passing an enum member instead of a bare integer makes call sites self-documenting and allows the IDE to offer completion for the valid values. Each built-in package groups its enumerations under a dedicated sub-folder; this page indexes all of them.
+An *enumeration* defines a named set of integer constants. Passing an enum member instead of a bare integer makes call sites self-documenting and allows the IDE to offer completion for the valid values. A package that declares enumerations groups them under a sub-folder of its own --- `Constants/` in the VBA and VBRUN packages, `Enumerations/` in the rest. Not every package has one, and an enumeration nested inside a class is documented on that class's page instead. This page indexes all of them either way.
 
 The sections below list enumerations [by package](#by-package), followed by an [alphabetical index](#alphabetical-index).
 

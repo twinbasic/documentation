@@ -127,12 +127,40 @@ twinBASIC_win32.exe export "%PROJ%" "%TREE%" --overwrite > tb.log
 find "... DONE" tb.log > nul || exit /b 1
 ```
 
-> [!NOTE]
+### Compiling from the command line
+
+The six verbs above are the whole command-line surface of the executables under `bin\`,
+and none of them builds a project. Passing any argument that begins with `--` on its own
+puts the process into one of its internal server roles, where it waits instead of exiting,
+so there is no build flag hiding there either.
+
+The IDE executable is a separate program, and it does take a build flag. Given
+`--buildAndExit32` or `--buildAndExit64` alongside a project path, `twinBASIC.exe` builds
+that project and then closes:
+
+```batch
+twinBASIC.exe "C:\MyProject.twinproj" --buildAndExit32
+```
+
+`parseCommandLine()` in `ide\main2.js` reads both flags, and the Personal Edition is
+refused with a dialog saying it does not support command line builds. The flags are
+deliberate, not a leftover.
+
+> [!IMPORTANT]
 >
-> There is no command that compiles a project. The six verbs above are the whole
-> command-line surface; building is done from the IDE. Passing any argument that begins
-> with `--` on its own puts the process into one of its internal server roles, where it
-> waits instead of exiting.
+> The build flags cannot act as an unattended pass/fail gate. Observed against BETA 983:
+> the process writes nothing to standard output or standard error at any point, it exits
+> `0` even when the IDE reports errors for the project, and when the build genuinely fails
+> it does not exit at all --- it holds a progress dialog at 100% until the process tree is
+> killed. The only thing that closes the IDE on that path is a build-completed notification
+> from the compiler, and a failed build does not produce one.
+
+For an unattended compile that reports what went wrong, the repository behind this
+documentation site carries `scripts/tbbuild.mjs`. It starts the IDE with a debugging port,
+loads the project, waits for the compile to settle, prints the diagnostics, and exits
+non-zero when the project has errors. It belongs to the documentation toolchain rather than
+to a twinBASIC installation, so it is available to anyone who clones that repository; see
+[Tools and Scripts](../../Documentation/Development/Tools#tbbuild).
 
 ## The standalone scripts
 
