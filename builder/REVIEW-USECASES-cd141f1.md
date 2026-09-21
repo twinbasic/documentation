@@ -313,9 +313,52 @@ existed. Protocol in [eval/protocol.md](../eval/protocol.md), catalogue in
 Search ranks quoted in the Verdict were re-measured by the orchestrator against
 `eval/site_search.mjs` directly, not taken from evaluator reports.
 
+## Outcome
+
+**All thirteen findings are closed**, in `dc8dd25` and `049b949`. Seven agents, one file
+each, with the canonical owner decided before dispatch rather than after --- `Tools.md` owns
+the `book.bat` pre-flight and both gate lists; `Building.md`, `Extending.md` and
+`PDF-Generation.md` cite it. That decision is the whole fix for findings 1 to 3, which were
+one sentence copied across three pages in each case.
+
+Two things came out of it that the review did not anticipate.
+
+**A gate now enforces the gate lists.** [`scripts/check_gate_lists.mjs`](../scripts/check_gate_lists.mjs)
+parses `check.bat` and `test.bat` and checks `Tools.md`'s two numbered lists and both stated
+step counts against them, plus every `&&`-chained command block under `docs/Documentation/`
+--- which is how `Building.md`'s POSIX equivalents stay honest. It is `test.bat`'s second
+step and runs in both CI workflows. It caught its own registration immediately (six gates
+documented as five), and reinstating round 2's real defect fails it by name. Requiring
+`&&` is load-bearing: without it, a block listing one script's usage forms reads as a
+wrapper sequence, which produced eight false findings on the first run.
+
+**The tilde-fence hazard was found by an agent writing the fix for finding 5, not by the
+round.** `stashCodeFences` recognised backtick fences only, on the stated reasoning that
+`maskCodeRegions` handles tildes --- but `rewriteAdmonitions` runs outside the mask by
+design, so nothing protected a tilde fence. A `~~~` block holding an odd number of
+standalone ``` lines reproduced the `Attributes.md` failure exactly. `docs/` has no tilde
+fence, so the corpus sweep could never have found it. Fixed in `049b949` with a fifth
+admonition probe; reverting the regex fails that probe by name.
+
+Findings 6 and 10 turned out to be one problem. `packages` alone could not express either
+sentence the site writes, so `builder/counts.mjs` gained `defaultPackages` and
+`builtInPackages`, and `Reference/index.md` and `Reference/Packages.md` now carry the first
+call sites any package count has had. **A count name is also a way of naming the set**,
+which is a second thing it buys beyond not going stale.
+
+Three corrections were made to the fix briefs by the agents executing them, each verified:
+`npm install` *does* fetch Chromium through puppeteer's postinstall (the real weakness is
+that `book.bat` tests for the package); `--install-deps` is Linux-only and needs root, so
+recommending it on a Windows-centric page was wrong; and the enumeration total was 140, not
+the 141 the page claimed --- the brief had said to leave that number alone. A fourth
+correction is mine: `check_code_regions.mjs`'s corpus sweep structurally cannot see the
+fence-marker case, which is the mirror fault its fixed probes cover, and I had written the
+brief as though the sweep caught it.
+
 ## What to do next
 
-The queue is this section, in the order worth doing.
+The queue is this section, in the order worth doing. **Items 1 to 4 are done; 5 and 6
+remain.**
 
 **1. Fix the three Tier 1 items, and make a canonical decision while doing it.** All three are
 one-copy-per-page drift, and findings 1 and 2 are each a sentence duplicated across two or
