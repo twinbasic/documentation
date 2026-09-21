@@ -1723,6 +1723,53 @@ written to catch. The damage is always to the prose **between** two fences.
 Reverting the stasher fails two of the four; against the first draft it failed
 none.
 
+### Build-time counts as named values
+
+`{{tbdocs:pages}}` in a page renders as the number of pages the build
+discovered. Designed in [builder/PLAN-counts.md](builder/PLAN-counts.md),
+implemented in [builder/counts.mjs](builder/counts.mjs), documented for
+contributors at [Authoring
+Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). Nine names
+are live; four call sites are converted, and the rest of the prose is not.
+
+**A name is a derivation over build state, never a constant.** A registry
+holding `pages: 908` would not have removed the stale figure, only moved it
+from a page a contributor reads into a module nobody opens. If a number cannot
+be derived it does not get a name.
+
+**The substitution is a core rule over the inline token stream**, and that
+layer is the whole design. Code is immune without a rule for it, because a
+fence and an indented block are *block* tokens with no children and an inline
+code span is a token type of its own --- so an inline walk cannot reach any of
+them. On a corpus whose subject matter is programming languages that matters
+more than it sounds: it is the same hazard as [Never rewrite markdown source
+without knowing what is code](#never-rewrite-markdown-source-without-knowing-what-is-code),
+avoided by construction rather than by a mask.
+
+Three things fell out of building it that the design had not predicted:
+
+- **The walk has to recurse, for image alt.** An `image` token carries its alt
+  as its own children, so a flat walk stops at the image. This is the same
+  asymmetry recorded under [Source dashes](#source-dashes): markdown-it's
+  `replacements` rule does not descend either, which is why `--` survives
+  literally in alt text site-wide.
+- **A raw HTML block is unreachable, and source validation cannot see it.**
+  `html_block` is one opaque token with no children, and a placeholder inside
+  one has a perfectly good *name* --- so the validator passes it and the page
+  publishes `{{tbdocs:pages}}` to readers, which is the exact failure the
+  feature exists to prevent, arriving by a new route. It takes a second check
+  on the other side of the render: `findSurvivingPlaceholder` scans the
+  rendered HTML for a placeholder outside `<code>` and `<pre>`. One string
+  scan per page, and it catches every cause rather than the anticipated ones.
+- **`markdownInit` gained a dependency on `deriveRedirects`**, for
+  `redirectStubs` alone. No cycle, but it is a task-graph edge added for a
+  count.
+
+**Validation is on main, before any worker renders**, because an unknown name
+cannot be an error inside the rule: markdown-it emits an unrecognised inline
+verbatim, so the rule would publish the typo rather than fail. The message
+names the file, the line and the nearest match.
+
 ### The regex-safety gate
 
 [scripts/check_regex_safety.mjs](scripts/check_regex_safety.mjs) parses every

@@ -186,8 +186,9 @@ says so, and the changed file is committed with whatever added the pages. Only a
 ### Why a committed number and not a constant
 
 The guard used to read `if (pages.length < 836)`, written when the site had 836
-pages and never revisited. The site has 908 today, so the test left a 72-page
-margin --- and the loss it was meant to catch was 37 pages.
+pages and never revisited. The site has {{tbdocs:pages}} today, so the test left
+a margin of more than seventy pages --- and the loss it was meant to catch was
+37 pages.
 
 That loss was real. `_config.yml`'s `exclude:` once held a blanket `**/_*/**`
 rule, which matched the `_App/` folder of the AppGlobalClassObject package, and

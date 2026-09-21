@@ -16,6 +16,12 @@ import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
 
 import { initHighlighter } from "./highlight.mjs";
+// Circular with counts.mjs, which imports maskCodeRegions from here so that
+// "what is code" has one definition across the pre-render rewrites and the
+// count validator. Safe because both sides export function DECLARATIONS, which
+// are hoisted and bound before either module body runs, and neither calls into
+// the other at module-evaluation time. Verified in both import orders.
+import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
 
 export async function renderPhase(pages, site, staticFiles = []) {
   // Allow the orchestrator to pre-build the markdown-it instance (so
@@ -33,6 +39,20 @@ export async function renderPhase(pages, site, staticFiles = []) {
 
   await Promise.all(pages.map(async (page) => {
     page.renderedContent = renderPage(page, md);
+    // A count placeholder that reached the output is the failure the feature
+    // exists to prevent, arriving by a new route. Source validation cannot see
+    // this case -- a placeholder inside a raw HTML block has a perfectly good
+    // name, so it passes there, and markdown-it keeps an html_block as one
+    // opaque token the substitution rule never enters. One string scan per
+    // page, and it catches every cause rather than the ones anticipated.
+    const survivor = findSurvivingPlaceholder(page.renderedContent);
+    if (survivor) {
+      throw new Error(
+        `${page.srcRel}: ${survivor} survived rendering.\n` +
+        "  The name is known, so this is a placement markdown-it cannot reach --\n" +
+        "  a raw HTML block is the usual one. Put it in prose, or write the\n" +
+        "  number by hand and say in the page why it is not derived.");
+    }
   }));
 }
 
@@ -483,6 +503,10 @@ export function createMarkdownIt(ctx) {
   md.use(svgInlinePlugin, ctx);
   md.use(videoLinkPlugin, ctx);
   md.use(remoteImagePlugin, ctx);
+  // Substitutes {{tbdocs:<name>}} in prose. Registered last so it runs after
+  // `replacements` has done the dash and quote transforms -- see counts.mjs
+  // for why the layer matters and what it deliberately cannot reach.
+  md.use(countPlugin, ctx);
 
   return md;
 }

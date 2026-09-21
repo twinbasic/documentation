@@ -8,8 +8,19 @@ The point is not to fix wrong numbers. It is to remove a class of decay: a
 figure that is correct when written, derived by hand, and attached to nothing
 that would notice when it stops being correct.
 
-> **Status: designed, not implemented.** Nothing below exists in the tree yet.
-> The syntax is settled (`{{tbdocs:<name>}}`); the initial name set is not.
+> **Status: Phases 1, 2 and 4 are implemented; Phase 3 is partial.**
+> [builder/counts.mjs](counts.mjs) holds the registry and the plugin,
+> [docs/Documentation/Authoring.md](../docs/Documentation/Authoring.md#counts)
+> documents it, and nine names are live. Four call sites are converted --- the
+> two in `Authoring.md` this document opens with, the redirect-stub count in
+> `Pipeline-Stages.md`, and the page count in `Building.md` and `Builder.md`.
+> The rest of Phase 3 is not done.
+>
+> Three things the design did not anticipate, all recorded below where they
+> belong: the substitution has to **recurse** to reach image alt text; a
+> placeholder inside a **raw HTML block** is unreachable and needed a second,
+> post-render check; and `markdownInit` had to take a dependency on
+> `deriveRedirects` for `redirectStubs` alone.
 
 ---
 
@@ -288,6 +299,43 @@ against rather than a floor.
 
 **Worth doing, and not part of this plan.** Recorded here so nobody expects
 `{{tbdocs:bookPages}}` to fall out of Phase 1.
+
+## What building it changed
+
+Three things the design got wrong, each cheap to fix and none guessable from
+the desk.
+
+**The walk has to recurse, for image alt text.** An `image` token carries its
+alt as its own `children`, so a flat walk over an inline token's children
+reaches the `image` and stops. This is the same asymmetry
+[WIP.md](../WIP.md#source-dashes) already records for the typographer ---
+markdown-it's `replacements` rule does not descend either, which is exactly why
+`--` survives literally in alt text across this site. A count in alt should be
+a number, so the walk recurses and sets `token.content` as well.
+
+**A raw HTML block is unreachable, and source validation cannot see it.**
+markdown-it keeps an `html_block` as one opaque token with no children, so the
+substitution never enters it --- and a placeholder in there has a perfectly good
+*name*, so the main-thread validator passes it and the page publishes
+`{{tbdocs:pages}}` verbatim. That is precisely the "never literal" failure this
+plan set out to avoid, arriving by a route the plan did not list. It takes a
+second check, on the other side of the render: `findSurvivingPlaceholder` scans
+the rendered HTML for a placeholder outside `<code>` and `<pre>`, using the
+leading-alternation shape `book.mjs` already uses. One string scan per page,
+and it catches every cause rather than the ones anticipated.
+
+**`markdownInit` needed a new dependency.** `redirectStubs` comes from
+`deriveRedirects`, not from `discover`, so `markdownInit`'s `expected` gained a
+third entry for that one name. No cycle --- both tasks depend only on
+`discover` --- but it is a task-graph edge added for a count, which is worth
+stating.
+
+One thing the design got right and is worth confirming, because it is the whole
+reason for the layer: **code needed no rule at all.** Measured against the real
+`createMarkdownIt`, a placeholder is substituted in prose, bold, headings,
+table cells, link text, image alt and inline HTML, and left alone in an inline
+code span, a fence and an indented block --- because those are different token
+types, not because anything checks.
 
 ## Phases
 

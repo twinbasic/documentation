@@ -184,9 +184,9 @@ the class itself, and one sibling `.md` beside it per sub-page. CEF's browser
 control is the smallest complete example --- `Reference/Built-In/CEF/CefBrowser/`
 holds `index.md` and `EnvironmentOptions.md`, and publishes at
 `/tB/Packages/CEF/CefBrowser/` and `/tB/Packages/CEF/CefBrowser/EnvironmentOptions`.
-93 pages under `Reference/` are `index.md` files of this shape, 91 of them
-declaring a permalink that ends in a slash, and the layout is written down
-nowhere but in them.
+{{tbdocs:folderStyleIndexes}} pages under `Reference/` are `index.md` files of
+this shape, {{tbdocs:folderStyleSlashPermalinks}} of them declaring a permalink
+that ends in a slash, and the layout is written down nowhere but in them.
 
 **The filename carries no meaning; the permalink does all the work.** `index.md`
 is not special to the build --- nothing in `discover` looks at basenames except to
@@ -295,6 +295,53 @@ To find what a rename would break, start with `grep -rn "#old-anchor" docs`, the
 That check sees only links made from inside this repository, and the `/tB/` anchors have a consumer outside it. [Permanent Links](Permanent-Links) enumerates the `#<attribute>` anchors on `/tB/Core/Attributes` --- the URLs the IDE help system resolves against. They are covered by the build's check only because that page links to each one, so an attribute added to `Attributes.md` and not added to that list is unchecked from the moment it is written. Two were in exactly that position until recently, and adding them to the list is what put them under the check.
 
 Every heading on that page also carries a pinned `{: #... }` id, and that is not decoration. Three of them once had none and resolved on the default slug alone --- which ties the published URL to the heading text, so appending a parenthesised type to one, to match its neighbours, would have broken it silently. Pin the id when you add the heading.
+
+## Counts the build fills in
+{: #counts }
+
+A figure written by hand is correct the day it is written and attached to
+nothing that would notice when it stops being correct. A wrong count breaks no
+link, fails no gate, and reads exactly like a right one. So the numbers the
+build already knows are written as names:
+
+    {{tbdocs:pages}} pages under `Reference/` are `index.md` files of this shape
+
+renders as the current figure. The available names, each derived on every build
+from the same data the pages themselves come from:
+
+| name | is |
+|---|---|
+| `pages` | every page `discover` found |
+| `staticFiles` | everything else under `docs/`, copied verbatim |
+| `referencePages` | pages under `Reference/` |
+| `documentationPages` | pages under `Documentation/` |
+| `folderStyleIndexes` | `Reference/` pages written as `<Name>/index.md` |
+| `folderStyleSlashPermalinks` | of those, the ones whose permalink ends in a slash |
+| `packages` | packages under `Reference/Default/` and `Reference/Built-In/` |
+| `attributeAnchors` | pinned heading ids in `Reference/Attributes.md` |
+| `redirectStubs` | whole-page stubs emitted for `redirect_from:` entries |
+
+**A name is a derivation, never a constant.** A registry holding `pages: 908`
+would not have removed the stale figure, only moved it from a page a
+contributor reads into a module nobody opens. If a number cannot be derived it
+does not get a name --- an assertion that needs a person to check it belongs in
+prose, where a reader can see that it is a claim.
+
+Two consequences worth knowing before using one:
+
+- **A misspelled name fails the build**, before any page renders, naming the
+  file, the line and the nearest match. It cannot be allowed to pass: an
+  unrecognised placeholder would otherwise be published to readers verbatim,
+  which is the failure the whole mechanism exists to prevent.
+- **Code is immune, and needs no escaping.** A placeholder inside backticks or
+  a fence is left alone, because the substitution runs over markdown's inline
+  text and code is a different kind of token entirely. A page that needs to
+  *show* the syntax puts it in backticks, which is what such a page does
+  anyway. The one placement that does not work is inside a raw HTML block; the
+  build fails on that too rather than publishing it.
+
+Numbers already written as words stay as words --- "thirteen packages" reads
+better than a digit in that sentence, and a substitution always yields digits.
 
 ## Formatting conventions
 

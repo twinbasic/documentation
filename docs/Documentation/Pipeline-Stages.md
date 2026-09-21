@@ -459,7 +459,7 @@ Joins the per-chunk findings into one result per tree. Returns `null` immediatel
 
 Four things happen here that could not happen on a worker:
 
-- **Redirect stubs are checked.** They never went through `flush` --- `writeRedirects` and `writeOfflineRedirects` emit them --- so they are checked here as one extra chunk per tree. ~290 tiny files.
+- **Redirect stubs are checked.** They never went through `flush` --- `writeRedirects` and `writeOfflineRedirects` emit them --- so they are checked here as one extra chunk per tree. {{tbdocs:redirectStubs}} tiny files.
 - **The generators' own opt-out predicates are applied.** The cross-file checks enforce "every page the generator was asked to emit", so they need `sitemapIncludes` and `searchIncludes`. Without them the first page carrying `sitemap: false` or `search_exclude: true` would fail the build with no hint why.
 - **Chunk completeness is asserted.** A count mismatch against `state.checkChunkCount` becomes an error on every tree; a chunk with no entry for a tree is named rather than reported generically, because every lane builds the same tree-key set and a missing one means a lane produced something else entirely.
 - **`book-combined` pages are excluded** from the page list --- `writePdf` owns those, and `checkBook` covers them.

@@ -37,6 +37,7 @@ import { Scheduler }  from "./scheduler.mjs";
 import { renderGantt } from "./gantt.mjs";
 
 import { discover } from "./discover.mjs";
+import { deriveCounts, validateCountNames } from "./counts.mjs";
 import { computeNav } from "./nav.mjs";
 import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
@@ -569,16 +570,33 @@ const TASKS = {
   // staticFiles). Per-page SEO fields are computed on render workers in
   // computeChunkSeo between renderPhase and templatePhase.
   markdownInit: {
-    expected: ["discover", "vendorAssets"],
+    // deriveRedirects is here for the counts registry alone: {{tbdocs:redirectStubs}}
+    // is derived from the stub set, and nothing else on this task needs it.
+    expected: ["discover", "vendorAssets", "deriveRedirects"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute({ deriveRedirects: { stubs } }, ctx, state) {
       const linkTables    = buildLinkTables(state.pages);
       const baseurl       = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
+
+      // Derived here, on main, because a count has to exist before any page
+      // renders -- and validated here for the same reason. An unknown name
+      // cannot be an error inside the substitution rule: markdown-it emits an
+      // unrecognised inline verbatim, so the rule would publish the typo to
+      // readers rather than fail. See counts.mjs.
+      state.site.counts = deriveCounts(state, { redirectStubs: stubs.length });
+      const badNames = validateCountNames(state.pages, state.site.counts);
+      if (badNames.length) {
+        throw new Error(
+          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` +
+          badNames.join("\n\n"));
+      }
+
       state.site.markdown             = createMarkdownIt({
         highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
         vendoredVideos: state.site.vendoredVideos,
         vendoredImages: state.site.vendoredImages,
+        counts: state.site.counts,
       });
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
@@ -742,6 +760,7 @@ const TASKS = {
         // Plain objects, not Maps -- packShared serialises to JSON.
         vendoredVideosObj: Object.fromEntries(state.site.vendoredVideos ?? []),
         vendoredImagesObj: Object.fromEntries(state.site.vendoredImages ?? []),
+        counts: state.site.counts,
       };
       const sharedSAB = packShared(shared);
       return { chunks, sharedSAB };
