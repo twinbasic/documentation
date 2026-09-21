@@ -258,6 +258,15 @@ have thought to name in advance, and any of which would have silently become rea
 
 **The queue below is empty.** This section is what replaces it, in the order worth doing.
 
+> **1 is done.** Round 3 ran on 2026-09-21 at `cd141f1` --- eight cases, the six below
+> plus UC-22 and UC-24 re-run unchanged ---
+> [REVIEW-USECASES-cd141f1.md](REVIEW-USECASES-cd141f1.md). **It measured this round's
+> fixes and they landed:** UC-22 and UC-24 both went from MISS-on-search and
+> STALL-on-navigation to rank 1 and 2--3 hops. The six new cases scored the lowest
+> discoverability of any round, and item 2 below is *not* what they found --- the
+> recovery prose that landed is accurate about a `book.bat` that no longer exists.
+> Items 2 and 3 are carried forward there.
+
 **1. Run round 3.** Six new cases are written into
 [eval/usecases.md](../eval/usecases.md#round-3--the-fixes-and-gates-that-report-success),
 along with the two of round 2's to re-run unchanged. This round's ~35 commits of fixes have

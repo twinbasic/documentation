@@ -85,7 +85,8 @@ consumer. Both are where the repository's most expensive historical failures sit
 
 ## Round 3 --- the fixes, and gates that report success
 
-**Not yet run.** Round 2's own ~35 commits of fixes have had no equivalent of the measurement
+**Run 2026-09-21 at `cd141f1`** --- [builder/REVIEW-USECASES-cd141f1.md](../builder/REVIEW-USECASES-cd141f1.md).
+Round 2's own ~35 commits of fixes had had no equivalent of the measurement
 round 2 gave round 1, which is the only direct evidence a documentation change works: five
 independent evaluators cited `Authoring.md:185-192` unprompted, a section that had not
 existed that morning, and one reported it caught a regression for them.
