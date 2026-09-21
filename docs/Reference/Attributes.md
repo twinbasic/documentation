@@ -324,9 +324,9 @@ Indicates that the interface exposes methods via **IDispatch** late-binding. Thi
 
 Syntax: **[DllExport** [ **( True** \| **False )** ] **]**
 
-Applicable to: [procedures](../Gloss#procedure) and variables in a module.
+Applicable to: [procedures](../Gloss#procedure) and constants in a module.
 
-It's possible to export a function or variable from standard modules. Example:
+It's possible to export a function or constant from standard modules. The compiler rejects the attribute on a module-level variable. Example:
 
 ```tb
 [DllExport]

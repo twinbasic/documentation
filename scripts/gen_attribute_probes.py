@@ -90,11 +90,12 @@ SINGLETON = {"RunAfterBuild": "the compiler allows only one [RunAfterBuild] per 
 
 # Placements a page's own worked example uses but its `Applicable to:` line does
 # not name. Expected to compile for the same reason: the page says so.
-EXTRA_PROBES = [
-    ("DllExport", "CONST",
-     "Attributes.md's DllExport example applies it to a Public Const, which its "
-     "`Applicable to:` line does not mention"),
-]
+#
+# The DllExport entry was the case this existed for: the line said "variables",
+# the example used a Public Const, and probing both settled it -- the variable is
+# rejected (TB5155), the Const compiles. The line now says "constants", so the
+# ordinary target parser covers it and no extra probe is needed.
+EXTRA_PROBES = []
 
 
 def attr_text(name, idx):
@@ -122,7 +123,9 @@ RULES = [
     (r"declare|api\s+declaration", ["DECLARE"]),
     (r"^type\b", ["TYPE"]),
     (r"^enum\b", ["ENUM"]),
-    (r"^const\b", ["CONST"]),
+    # "Const", but also "constants in a module." -- \b after "const" fails on
+    # the plural, which silently dropped a target until it was noticed.
+    (r"^const(ant)?s?\b", ["CONST"]),
     (r"^sub\b", ["SUB_MODULE"]),
     (r"^function\b", ["FUNC_MODULE"]),
     (r"^coclass\b", ["COCLASS"]),
@@ -368,6 +371,11 @@ def main():
     for tag, e, target in probes:
         k.write("| `%s` | `[%s]` | %s | line %d |\n"
                 % (tag, e["name"], HUMAN[target], e["line"]))
+    k.write("\n## Expected diagnostics that are not findings\n\n")
+    k.write("- `[COMControl]` on an Interface draws two TB0013 recommendations, to "
+            "specify `[InterfaceId()]` and `[EventInterfaceId()]`. They are advice about "
+            "stable COM ids, not a placement failure, and the probe deliberately omits "
+            "both rather than risk testing two attributes at once.\n")
     if overflow:
         k.write("\n## Second project\n\n")
         k.write("These placements cannot share a project with the ones above, so they "

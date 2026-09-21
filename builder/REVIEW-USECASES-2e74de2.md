@@ -269,14 +269,29 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 
 - **`ConstantFoldableNumericsOnly`** carries the same unqualified *Applicable to: **Function***
   that `ConstantFoldable` did. The sibling turned out to be module-scoped only. Same check.
-- **The other 52 `Applicable to:` lines in `Reference/Attributes.md`** have never been verified
-  against the compiler. Three were relied on in one day's work; one was wrong.
-  `scripts/gen_attribute_probes.py` now turns this into one IDE build: it writes a source file
-  per claimed placement --- 69 probes over 46 attributes --- which packs into a `.twinproj` with
-  the `import` verb. Every probe is expected to compile, so a diagnostic naming a probe module
-  is a wrong line. Six attributes are not probed because their argument cannot be synthesised
-  without a real factory method, image file, `.json` resource, warning code or option string;
-  the generated key names them.
+- ~~**The other 52 `Applicable to:` lines in `Reference/Attributes.md`**~~ **Done.**
+  `scripts/gen_attribute_probes.py` writes one source file per claimed placement and packs it
+  into a `.twinproj` with the `import` verb; every probe is expected to compile, so a
+  diagnostic naming a probe module is a wrong line. Built against BETA 983 over two rounds:
+  **69 probes, 45 of the 52 lines confirmed correct, two wrong.**
+
+  - **`[COMExtensible]` is not accepted on a procedure in an Interface** --- TB5182
+    `No handler for this symbol`. The `[DispId]` and `[PreserveSig]` probes use the identical
+    skeleton and compile, so the skeleton is sound and the attribute is not. Clause removed.
+  - **`[DllExport]` says "variables" and means constants** --- TB5155 on a module-level
+    variable, clean on a `Public Const`. The page's own worked example had been using a
+    `Public Const` all along, so the example was right and the line disagreed with it.
+
+  Seven attributes are still unprobed: six whose argument cannot be synthesised without a real
+  factory method, image file, `.json` resource, warning code or option string, and
+  `[FormDesignerId]`, which reached TB5247 `unable to find matching form designer JSON` ---
+  the compiler accepting the placement and then failing a lookup, which confirms its line.
+  `[DispInterface]` and `[DualInterface]` remain the least trustworthy entries on the page:
+  both claim an `Interface` in a `Library`, a construct with no reference page in `docs/`, and
+  both are absent from the compiler's lexer token table.
+
+  Two facts the page did not state, both now on it: only one `[RunAfterBuild]` is allowed per
+  project (TB5114), and a module-level variable cannot carry `[DllExport]`.
 - **Two IDE defects visible in committed screenshots**, confirmed at 3x: the Align submenu
   renders `Bottom}` with a stray brace, and Align and Make Same Size both render `ARROWLUP`.
   Documentation bugs these are not.
