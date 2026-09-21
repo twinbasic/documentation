@@ -117,7 +117,7 @@ function die(code, msg) {
 // act and no startup state has to be raced.
 //
 // Two things about that are easy to get wrong. `parseCommandLine()` in
-// ide/main.js splits the command line on " " and pushes every token, so a
+// ide/main2.js splits the command line on " " and pushes every token, so a
 // TRAILING SPACE becomes an empty second argument and the IDE refuses the
 // launch with "Bad command line syntax." PowerShell's Start-Process appends
 // exactly that space; spawn with an argv array does not. And loading the

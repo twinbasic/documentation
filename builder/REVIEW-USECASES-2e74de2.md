@@ -317,7 +317,7 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 >
 > *The IDE executable does take a build flag*, even though the compiler executable does not.
 > `twinBASIC.exe --buildAndExit32 <project.twinproj>` (and `--buildAndExit64`) builds and
-> exits; `parseCommandLine()` in `ide/main.js` reads them, and the Personal Edition is
+> exits; `parseCommandLine()` in `ide/main2.js` reads them, and the Personal Edition is
 > refused with a named dialog, so it is a deliberate feature rather than a leftover. It is
 > still useless for this job, for a reason worth recording: **it writes nothing to stdout or
 > stderr, ever**, and exits 0 whether or not the build was clean. Measured three ways ---
@@ -414,17 +414,44 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   builds. Recorded here for the same reason as the two above: worth reporting upstream, not
   something the documentation can fix.
 
-  **A trailing space on the command line stops a project opening.** `parseCommandLine()` in
-  `ide/main.js` splits the raw command line on `" "` and pushes every resulting token,
-  including the empty one a trailing space produces. The empty token is not a `--` switch, so
-  it counts as a second file argument and the IDE refuses the launch with an `alert()` reading
-  *"Bad command line syntax."* --- leaving a modal the IDE will not close on a normal shutdown
-  request. PowerShell's `Start-Process` appends exactly that trailing space, so
+  **A trailing space on the command line stops a project opening.** The affected executable
+  is `twinBASIC.exe`, the launcher at the install root, and the fault is in shipped
+  JavaScript rather than in any binary: `parseCommandLine()` at byte 5154 of `ide/main2.js`,
+  a 944-byte function in a 7.5 KB file minified onto one line, loaded by `main.htm` through
+  an ordinary relative `<script src>`.
+
+  It splits the raw command line on `" "` and pushes every resulting token, including the
+  empty one a trailing space produces. The empty token is not a `--` switch, so it counts as
+  a second file argument, and the IDE refuses the launch with an `alert()` reading *"Bad
+  command line syntax."* --- leaving a modal the IDE will not close on a normal shutdown
+  request. A *leading* space is harmless, which is a good check on the reading: the empty
+  first token sets `a = ""`, and `if (a)` is false for an empty string.
+
+  Two-line repro in plain `cmd`, identical but for one character:
+
+  ```bat
+  @echo off
+  "C:\...\twinBASIC.exe" "C:\...\Some.twinproj"
+  ```
+
+  opens the project; the same file with **one trailing space** after the closing quote draws
+  the dialog. Verified as an A/B, reading each launched process's own
+  `Win32_Process.CommandLine` to confirm the only difference was the final byte (code 32).
+
+  PowerShell hits it without anyone asking for it: `Start-Process` appends that space, so
   `Start-Process twinBASIC.exe -ArgumentList $path` never opens the project while
-  `spawn(exe, [path])` from Node does. Measured both ways: the IDE's own `GetCmdLine` returns
-  `"--buildAndExit32 C:\…\P_Y01.twinproj"` from the Node launch and a space-suffixed variant
-  from the PowerShell one. This cost most of an hour before the cause was found, because the
-  failing and working launches look identical when written out.
+  `spawn(exe, [path])` from Node does. That cost most of an hour, because the failing and
+  working launches look identical written out.
+
+  The fix is one clause --- skip empty tokens, `else { const v = e.trim(); if (v) r.push(v) }`
+  --- in a file that ships as source.
+
+  *Corrected after the fact.* This entry first named `ide/main.js`, which is where
+  `getIDECommandLineArgs` lives, not `parseCommandLine`; and it claimed the trailing space
+  had been measured through the IDE's own `GetCmdLine`, which it had not. What had been
+  measured was `GetCmdLine` on the *working* launch and a trailing space on a *different*
+  executable, joined into a mechanism. The mechanism turned out to be right, and stating it
+  as measured before it was, was not.
 
   **`--buildAndExit32` does not exit when the build fails.** On a clean project it builds and
   exits 0. On a project with a codegen error on a reachable path it reports `[BUILD] failed`

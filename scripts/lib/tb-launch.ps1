@@ -68,7 +68,7 @@ $si.cb = [Runtime.InteropServices.Marshal]::SizeOf($si)
 $si.lpDesktop = $desktop
 
 # The command line is assembled here rather than by Start-Process, which
-# appends a trailing space -- parseCommandLine() in the IDE reads that as an
+# appends a trailing space -- parseCommandLine() in ide/main2.js reads that as an
 # empty second file argument and refuses the launch with "Bad command line
 # syntax."
 $cmd = '"' + $exe + '" "' + $arg + '"'
