@@ -1333,6 +1333,45 @@ fixed at the rewrite, not by widening the mask.
 admonition still carries its `> ` markers at that point, so the mask does not
 see it as a fence, and the admonition rewrite is what strips those markers.
 
+### Whitespace inside inline code is content
+
+`compress.mjs` split the page on `<pre>` only, and collapsed every whitespace
+run outside it --- including inside inline `<code>`. The comment said this
+matched "the upstream behaviour", meaning Jekyll's. **That parity is not a
+reason for anything any more, and it was destroying documented values.**
+
+[Partition](docs/Reference/Default/VBA/Interaction/Partition.md) returns
+fixed-width, space-padded range strings. Its page says so in prose --- "pads
+each end of the range with leading spaces" --- and the table demonstrating it
+rendered `" 0: 4"` where the function returns `"  0:  4"`. Thirteen spans on
+that one page stated wrong return values, and the page contradicted itself.
+
+Fixing it turned up three more of the same defect: `Features/Language/Pointers`
+and `Features/Standard-Library/New-Functions` document what `Debug.Print` emits
+with comma separators, where the print-zone padding *is* the behaviour being
+shown, and both rendered it as single spaces.
+
+**Two changes, and neither works alone:**
+
+- `compress.mjs` now treats inline `<code>` as a preserved region as well as
+  `<pre>`, so the bytes survive compression.
+- `custom/custom.scss` and `print.css` give inline code `white-space: pre-wrap`,
+  because a browser collapses runs inside inline code by default. `pre-wrap`
+  rather than `pre` so a long snippet still wraps instead of forcing a
+  horizontal scroll --- measured at the mobile viewport: no page overflow, and
+  the table's own wrapper scrolls as it already did.
+
+**One trap in making `<code>` a split boundary**, worth knowing if this is ever
+touched again. The collapse function trimmed each segment's ends, which was
+harmless when the only boundaries were block-level `<pre>`. Adding inline
+`<code>` created boundaries *inside* sentences, and trimming there welds the
+code to the word beside it --- `a <code>x</code> b` came out as `ax b`. Trimming
+is now conditional on which element bounds the segment, so `<pre>` boundaries
+stay byte-identical to what they produced before.
+
+Blast radius across the whole site was 6 pages plus the two stylesheets; every
+change was a padded value being restored.
+
 ### The code-region gate
 
 [scripts/check_code_regions.mjs](scripts/check_code_regions.mjs) tokenises every
