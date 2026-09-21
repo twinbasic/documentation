@@ -219,7 +219,95 @@ never told what the case tested or that a hazard existed.
 Search ranks in the Verdict were re-measured by the orchestrator against `eval/site_search.mjs`
 directly. Every finding above was verified against the source before recording.
 
+## Outcome
+
+**All fourteen findings are closed.** `build.bat`, `check.bat` and `test.bat` are green, and
+finding 1's class is now machine enforced rather than agreed to.
+
+**Findings 1 to 4 were fixed by deleting numbers, not by correcting them**, which is what
+the queue asked for. `Building.md` no longer states a count anywhere: the table rows say
+"the scripts below, in a fixed order", the two POSIX blocks carry the lists themselves, and
+the *Tests of the toolchain* section opens on "The gates that test the build system" with
+`Tools.md` linked for the enumeration. `README.md` gained the `test.bat` line it never had
+and lost the count that was wrong. `Extending.md` names four registration sites, the fourth
+being the `Tools.md` entry `check_gate_lists.mjs` enforces.
+
+**`check_gate_lists.mjs` now reads `README.md` and every page under `docs/Documentation/`,
+per section.** Four shapes: a possessive (``check.bat`'s four steps``), an explicit verb
+(``check.bat` runs six further gates``), a line-initial wrapper (a table cell, or
+`check.bat     # six more gates`), and a section total — a wrapper's own section opening
+"Five gates that ...". The fourth is the one a per-line scan cannot see, and two details
+decide whether it works at all:
+
+- **A section's subject is its heading, else the command line directly beneath it**, because
+  `Building.md:248` states the count in a section that names no wrapper on any prose line.
+- **The kramdown attribute block has to be skipped to reach that command line.**
+  `{: #tests-of-the-toolchain }` sits between the two, and with it unhandled the rule found
+  three of the six sites and reported nothing about the section it was written for. That is
+  a one-line detail that silently costs the gate its whole reason for existing, and it is a
+  comment in the file now.
+
+Two judgement calls are recorded in the header rather than left implicit. Only the *first*
+bare `N gates` in a wrapper's section counts as its total, since later ones are legitimate
+subset claims — and the cost runs the other way, so a section *opening* on a subset claim is
+reported and the remedy is to delete the number. And the verb list is explicit rather than a
+proximity window, because `Tools.md` narrates this gate's own history including the numbers
+that were wrong, and a proximity rule read *"found `test.bat` documented as three gates when
+it had four"* as a false claim.
+
+**Verified the only way that means anything**: reverting `README.md`, `Building.md` and
+`Documentation/index.md` to `4f97bac` and running the gate. It reports six sites — round 4's
+three on `Building.md` (`:248`, `:251`, `:301`), README's, and two the round did not find.
+Twelve of its eighteen probes now cover the sweep, seven positive and five negative, each
+taken from the real corpus.
+
+**The stall watchdog's example output is real, not composed.** `render` was wedged on a
+named page through an environment variable, the build was run against the real `docs/` with
+`--stall-timeout 15`, and the report in *When a build stops instead of failing* is what came
+back. That is how the draft got corrected: it had put `flush:19` under *Runnable, but nothing
+picked it up*, where the reasoning said it belonged, and the real run lists it under *Blocked
+on a predecessor*. A worked example of a diagnostic nobody has watched fire is a guess.
+
+### Four things the round did not find
+
+**`Extending.md` still said "No `test.bat` gate reads a page", twice.** Round 3 fixed that
+claim in `Building.md` and in `test.bat`'s own comment and left both copies on the page
+written to guide adding a gate — the same sentence, the same round, one file behind. Round 4
+did not look for it because round 3 had closed it.
+
+**`docs/Documentation/index.md:16` carried README's wrong sentence verbatim** — *"`check.bat`
+runs six further gates, from the publish allowlist to the accessibility scan"* — so the
+section index and the repository README sent a reader to the wrong wrapper in the same words.
+Finding 3 named one of them. The widened gate reports it.
+
+**`Tools.md:18` said "all nine gates"**, on the page that owns both lists, which name ten.
+
+**`WIP.md`'s own `test.bat` entry listed five gates**, omitting `check_gate_lists.mjs` —
+the gate that exists to stop exactly this, absent from the maintainer file's copy of the
+list, added in `dc8dd25` and never reconciled there.
+
+All four are the same defect as findings 1 to 4, which is the argument for the sweep rather
+than for another careful pass.
+
+### Findings 11 and 12 were closed in prose after all
+
+The queue suggested both might not be worth teaching. Both turned out to have a specific,
+short, transferable answer that this repository had already paid for:
+
+- **What makes a regex exponential**, stated once: two parts of the pattern can match the
+  same character, so one input divides between them in exponentially many ways. Both regexes
+  this repository shipped were that, the first fix for one was the same ambiguity a level
+  down, and the rewrite that works is to stop describing the structure between the
+  delimiters. `Tools.md` also now says the report hands you a witness and that the witness is
+  the test.
+- **The shape of a construct family**, with the three fields, the `min` judgement, the
+  worked `min: 8` case, and the two things that follow from the *second* file the remedy
+  touches: run `sweep_a11y.mjs` once, and do not expect the fingerprint gate to vouch for a
+  sample change.
+
 ## What to do next
+
+**Items 1 to 4 are done; 5 remains.**
 
 **1. Fix Tier 1, and treat it as one defect.** Findings 1 to 4 are a single class: a count or
 a list restated outside the page that owns it. The editorial fix is to stop restating —

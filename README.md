@@ -32,11 +32,12 @@ The site is rendered by `tbdocs`, a Node.js static site generator kept in [`buil
 npm ci        # once, from the repository root
 build.bat     # renders _site/, _site-offline/ and _site-pdf/, and link-checks them
 serve.bat     # localhost:4000 with watch + live reload
-check.bat     # six more gates, from the publish allowlist to the accessibility scan
+check.bat     # the gates that read the built site, ending in the accessibility scan
+test.bat      # the gates that test the toolchain itself
 book.bat      # renders the PDF book; run build.bat first
 ```
 
-A clean `build.bat && check.bat` is the bar for "ready to commit". On Linux or macOS, run the `node` command inside each batch file directly --- they are thin wrappers.
+A clean `build.bat && check.bat` is the bar for "ready to commit"; add `test.bat` when the change touched anything outside `docs/`. Each wrapper names the gates it runs, in order, on [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools). On Linux or macOS, run the `node` command inside each batch file directly --- they are thin wrappers.
 
 Where to read more:
 
@@ -44,7 +45,7 @@ Where to read more:
 - **The build and deployment workflow** --- [Building and Deployment](https://docs.twinbasic.com/Documentation/Development/Building).
 - **Every command and flag** --- [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools).
 - **Changing the generator itself** --- [tbdocs Internals](https://docs.twinbasic.com/Documentation/Development/Builder), with [`builder/README.md`](builder/README.md) next to the code.
-- **Adding a build task or a markdown-it plugin** --- [Extending the Builder](https://docs.twinbasic.com/Documentation/Development/Extending) covers all three extension points --- a task in the build graph, a markdown-it plugin, a render-worker sub-stage --- each with a worked example.
+- **Adding a build task or a markdown-it plugin** --- [Extending the Builder](https://docs.twinbasic.com/Documentation/Development/Extending) covers all four extension points --- a task in the build graph, a markdown-it plugin, a render-worker sub-stage, and a verification gate in `check.bat` or `test.bat`.
 
 
 

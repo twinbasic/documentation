@@ -13,11 +13,11 @@ This section covers everything related to the twinBASIC documentation: the URL c
 
 ## Toolchain overview
 
-Three commands handle the entire build-and-verify workflow. `build.bat` produces three output trees from the markdown source and link-checks them in the same pass; `check.bat` runs six further gates, from the publish allowlist to the accessibility scan; `book.bat` renders the PDF from the third tree.
+Three commands handle the entire build-and-verify workflow for a content change. `build.bat` produces three output trees from the markdown source and link-checks them in the same pass; `check.bat` runs the further gates that read those trees, from the freshness check to the accessibility scan; `book.bat` renders the PDF from the third tree. A fourth wrapper, `test.bat`, tests the toolchain itself rather than the site, and is needed when a change reaches outside `docs/`. [Tools and Scripts](Development/Tools) names the gates each one runs, in order.
 
 ![A flow chart running top to bottom from the docs/ source tree. One branch goes through serve.bat to the _serve/ tree and a local browser; the other goes through build.bat to three output trees: _site/ for the online HTML, _site-offline/ for the file:// mirror, and _site-pdf/ for the book source. check.bat reads the built trees, and book.bat turns the book source into the finished PDF.](/assets/images/dot/toolchain-overview.svg)
 
-`build.bat` must run before either of the other two --- `check.bat` audits `_site-offline/` and refuses a tree older than the sources that produced it, while `book.bat` reads from `_site-pdf/`. A clean `build.bat && check.bat` is the bar for "ready to commit".
+`build.bat` must run before `check.bat` or `book.bat` --- `check.bat` audits `_site-offline/` and refuses a tree older than the sources that produced it, while `book.bat` reads from `_site-pdf/`. A clean `build.bat && check.bat` is the bar for "ready to commit".
 
 ## Build pipeline
 
@@ -32,7 +32,7 @@ A single `build.bat` run executes `tbdocs` against a shared task DAG, dispatched
 - [tbdocs Builder](Development/Builder) --- detailed technical documentation for the `tbdocs` static site generator that lives under [`builder/`](https://github.com/twinbasic/documentation/tree/main/builder). Read this when modifying the build pipeline itself. Sub-pages:
     - [Pipeline Stages](Development/Pipeline-Stages) --- complete interface reference: per-task signatures and per-module export tables, plus the scheduler-level concepts (flag bits, task lifecycle, SAB layout).
     - [Book Configuration](Development/Book-Configuration) --- `_book.yml` key reference for the PDF chapter manifest.
-    - [Extending the Builder](Development/Extending) --- tutorial for adding a new pipeline task, markdown-it plugin, or render-worker sub-stage.
+    - [Extending the Builder](Development/Extending) --- tutorial for adding a new pipeline task, markdown-it plugin, render-worker sub-stage, or verification gate.
 - [Wisdom](Development/Wisdom) --- the Discord knowledge harvester: a three-phase tool (export, process, extract) that mines the twinBASIC Discord for actionable technical knowledge and drafts documentation additions for human review.
 - [PDF Generation](Development/PDF-Generation) --- internals of the PDF renderer: `render-book.mjs`, paged.browser.js, and the pdf-lib shims.
 - [Library Patches](Development/Fixes) --- every modification to `paged.browser.js` and the `fast-*.mjs` pdf-lib shims: upstream problem, applied fix, and mechanism.

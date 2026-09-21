@@ -7,9 +7,11 @@
 @rem use-case evaluation found an author routed straight past the one
 @rem gate that would have caught their defect by exactly that sentence.
 @rem check_code_regions.mjs sweeps every markdown file under docs/, and
-@rem check_gate_lists.mjs reads Tools.md. Run this file too after adding
-@rem an unusual code construct: a fence holding a fence marker, a 4-space
-@rem indented block, an admonition wrapping a fence.
+@rem check_gate_lists.mjs reads README.md and every page under
+@rem docs/Documentation/. Run this file too after adding an unusual code
+@rem construct -- a fence holding a fence marker, a 4-space indented
+@rem block, an admonition wrapping a fence -- and after editing a
+@rem developer page that says how many gates a wrapper runs.
 @rem
 @rem Otherwise run it when the change touches builder/, scripts/, book/,
 @rem eval/ or wisdom/. Both CI workflows run it unconditionally, so a
@@ -30,12 +32,15 @@
 node scripts/check_publish_policy.mjs
 @if errorlevel 1 goto :fail
 @rem Tools.md's two numbered gate lists against the two wrappers that
-@rem actually run them. This rotted twice: round 2 found test.bat
+@rem actually run them, and then every gate count stated in prose on any
+@rem developer page. This rotted three times: round 2 found test.bat
 @rem documented as three gates when it had four and fixed it in Tools.md,
 @rem Building.md's parallel copy went untouched, a fifth gate landed, and
 @rem round 3 found Building.md naming three of five and Extending.md
-@rem claiming check.bat runs six. None of it broke a link or failed a
-@rem gate. Pure text, no tree, no browser, ~50 ms.
+@rem claiming check.bat runs six. Round 4 found the fix for THAT had put
+@rem three more wrong numbers into Building.md and one into README.md,
+@rem under a gate that read neither file. None of it broke a link or
+@rem failed a gate. Pure text, no tree, no browser, ~50 ms.
 node scripts/check_gate_lists.mjs
 @if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the

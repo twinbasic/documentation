@@ -13,6 +13,19 @@ The stable, or machine-accessible, part of the documentation tree is rooted on t
 * TOC goes here
 {:toc}
 
+## What the guarantee covers, and what retires a URL
+{: #retiring-a-url }
+
+The guarantee is that a published `/tB/` URL is never **re-pointed**: it is not renamed, not restructured, and never made to resolve to a different symbol. A page that moves on disk keeps its `permalink`, which is why [the Default / Built-In split](../../tB/Packages/) changed no URL at all, and a page that takes over another's subject declares the old URL in `redirect_from:` rather than leaving it dead.
+
+**One case falls outside it: a symbol that no longer exists in twinBASIC.** Its page is [removed](Authoring#removing-a-page) and its URL goes with it, and that is a deliberate decision rather than a routine edit --- nothing in the build will stop you, because the link check only resolves links made from inside the tree and no link inside the tree survives the removal. Three things are expected of one:
+
+- **A redirect wherever anything can carry the URL.** If another page covers the subject now, it takes a `redirect_from:` entry for the old URL. Only a URL nothing can stand in for is allowed to 404.
+- **The entry comes out of this page in the same commit.** This page is the contract; a URL listed here that no longer resolves is worse than one that was never listed, because it is the thing an implementer reads to decide what is safe to link to.
+- **The commit message says which URL was retired.** Consumers of the contract are outside this repository --- the IDE help system above all --- and a commit message naming the URL is the only record they can be pointed at.
+
+Renaming a heading is the quieter version of the same thing: `redirect_from:` emits whole-page stubs and has no fragment remapping, so an anchor that some page links into breaks silently when its heading is reworded. Anchors named in the sections below are part of the contract for the same reason the URLs are.
+
 ## /tB/Core/\<Statement\>
 
 - [AppActivate](../../tB/Core/AppActivate)

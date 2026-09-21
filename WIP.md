@@ -1279,6 +1279,18 @@ anything else.
 
 ### A hung build times out and says where it hung
 
+> **This is documented for readers now**, at [When a build stops instead of
+> failing](docs/Documentation/Building.md) plus a `--stall-timeout` row in
+> `Tools.md`'s flag table and an entry in `Builder.md`'s failure-mode list. It
+> was not, for long enough for round 4 to hand an evaluator a hung build and
+> watch two pages tell them nothing would rescue it: `Tools.md` said *"the
+> build prints its last line, and nothing times out"* and `Building.md` said
+> the same in milder words, both true of the day `VOID_TAGS_RE` shipped and
+> neither true since. The string `--stall-timeout` appeared zero times under
+> `docs/`. The evaluator followed the pages and told the user to press Ctrl+C.
+> **A feature nobody can find is worth what an absent one is worth**, and two
+> pages actively denying it is worth less than that.
+
 **A task that a worker claims and never finishes wedges the whole graph in
 silence.** Its successors' dep counts never drop, `_remaining` never reaches
 zero, the scheduler's promise never settles, and the process sits there with its
@@ -1325,7 +1337,7 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 - `build.bat` — runs `node builder\tbdocs.mjs --src docs --check-audit-index` (which implies `--check`) and produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output. `--check` adds ~1.7 s and runs the link + integrity check over the HTML while it is still in worker memory; `build.bat --no-check` gets a plain build.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
 - `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`. ~37 s.
-- `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
+- `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the gate-list check (`scripts/check_gate_lists.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](#the-book-refuses-a-stale-source-tree)).
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
@@ -1341,7 +1353,7 @@ build.bat && check.bat
 
 On the dev box that is ~4 s of build against ~37 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker got folded into the build's task graph, what it cost and what it saved; the axe follow-ons are designed there but not implemented.
 
-**If the change touched `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, run `test.bat` as well** --- another ~8 s. Four of its six gates cannot be affected by a content edit at all. **`check_code_regions.mjs` is the exception**, and which half of it a content edit reaches is worth keeping straight. Its corpus sweep has `ROOT = <repo>/docs` and tokenises all 906 markdown files, so a page that provokes a rewrite into *altering* a code region fails it --- that half is content-dependent. Its fixed probes are not: they run against their own sources whatever the tree holds, and they cover the **mirror** fault, where a rewrite silently stops firing. The sweep structurally cannot see that one, because text the rewrite skipped is stashed and restored unchanged and every region still matches. So run `test.bat` after adding an unusual code construct --- a fence whose contents include a fence marker, a 4-space indented block, an admonition wrapping a fence --- and read the built page as well, because for the mirror fault the gate is asserting that the stasher still works rather than checking your page. Round 3 of the use-case evaluation found an author routed straight past all of this by the old wording, which claimed no `test.bat` gate reads a page:
+**If the change touched `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, run `test.bat` as well** --- another ~8 s. Four of its six gates cannot be affected by a content edit at all. **Two can.** `check_gate_lists.mjs` is the easy one to predict: it reads `README.md` and every page under `docs/Documentation/`, so an edit to any developer page that states a gate count can fail it. **`check_code_regions.mjs` is the one worth understanding**, and which half of it a content edit reaches is worth keeping straight. Its corpus sweep has `ROOT = <repo>/docs` and tokenises all 906 markdown files, so a page that provokes a rewrite into *altering* a code region fails it --- that half is content-dependent. Its fixed probes are not: they run against their own sources whatever the tree holds, and they cover the **mirror** fault, where a rewrite silently stops firing. The sweep structurally cannot see that one, because text the rewrite skipped is stashed and restored unchanged and every region still matches. So run `test.bat` after adding an unusual code construct --- a fence whose contents include a fence marker, a 4-space indented block, an admonition wrapping a fence --- and read the built page as well, because for the mirror fault the gate is asserting that the stasher still works rather than checking your page. Round 3 of the use-case evaluation found an author routed straight past all of this by the old wording, which claimed no `test.bat` gate reads a page:
 
 ```sh
 build.bat && check.bat && test.bat
@@ -1789,6 +1801,75 @@ Three things fell out of building it that the design had not predicted:
 cannot be an error inside the rule: markdown-it emits an unrecognised inline
 verbatim, so the rule would publish the typo rather than fail. The message
 names the file, the line and the nearest match.
+
+### The gate-list gate, and a gate that guarded one file
+
+[scripts/check_gate_lists.mjs](scripts/check_gate_lists.mjs) compares
+`check.bat` and `test.bat` against the two numbered lists on
+[Tools and Scripts](docs/Documentation/Tools.md) --- membership, order, and the
+step count each section states --- and then sweeps `README.md` and every page
+under `docs/Documentation/` for a gate count asserted anywhere in prose. In
+`test.bat` and both CI workflows; ~50 ms, no browser, no built tree.
+
+**The sweep is the second version, and the first one is the lesson.** The
+original read `Tools.md` alone, on the stated convention that one page owns the
+lists and the others cite it, and its header ended: *"if a third page starts
+restating them, this gate will not notice --- which is the argument for not
+letting one."* `Building.md` was already that third page and `README.md` a
+fourth, both wrong, **in the commit that shipped the gate green**. Round 4 of
+the use-case evaluation had three separate evaluators trip over one of them,
+and two quoted that sentence back. A gate scoped to one page is a guard against
+one file, not against a class.
+
+Four shapes are recognised, and each is a site that was published at `4f97bac`:
+
+| shape | example |
+|---|---|
+| possessive | ``two of `check.bat`'s four steps`` |
+| verb | ``` `test.bat` is six more ```, ``` `check.bat` runs six further gates ``` |
+| line-initial | `check.bat     # six more gates`, a table cell restating a wrapper |
+| section total | a wrapper's own section opening *"Five gates that ..."* |
+
+**The fourth is why the sweep is per section, and it is the one a first attempt
+misses.** `Building.md:248` states the count in a section whose only mention of
+the wrapper is the indented command under its heading, so nothing on that line
+names a wrapper and a line-by-line scan reports nothing. A section's subject is
+the wrapper in its heading, else the wrapper on the first command line beneath
+it --- and **the kramdown attribute block has to be skipped to get there**
+(`{: #tests-of-the-toolchain }` sits between the two), which is a one-line
+detail that silently cost the rule the only section it was written for.
+
+Two judgement calls worth keeping:
+
+- **Only the *first* bare `N gates` in a wrapper's section counts as its
+  total.** Later ones are legitimate subset claims. The cost runs the other
+  way: a section that *opens* with a subset claim is reported, and the fix is
+  to delete the number rather than correct it --- which is what the failure
+  message says, because that is the editorial remedy the round asked for.
+- **Verbs, not proximity.** `Tools.md` narrates this gate's own history,
+  including the numbers that were wrong at the time. A proximity rule read
+  *"found `test.bat` documented as three gates when it had four"* as a false
+  claim, so the verb list is explicit.
+
+Twelve of its eighteen probes cover the sweep, seven positive and five
+negative, each taken from the real corpus. Verified the only way that means
+anything: reverting `README.md`, `Building.md` and `Documentation/index.md` to
+`4f97bac` and running it, which reports six sites --- round 4's three on
+`Building.md`, README's, plus two nobody had found.
+
+**Its own patterns had to be checked by hand, and one needed fixing.** They are
+built with `new RegExp(...)` from shared string constants, so they are not regex
+*literals* and [check_regex_safety.mjs](#the-regex-safety-gate) cannot see them
+--- the blind spot that file's `--census` exists to keep visible. Run through
+recheck directly, the line-initial rule came back **polynomial degree 3**: a
+lazy gap (`[^\n]{0,80}?`) and the count after it could divide the same text. It
+is now two steps, an anchored match for the wrapper at the head of the line and
+a search of a bounded slice of what follows, with no division to try; a second
+pattern was degree 2 for two groups that could each eat the same leading space,
+and is one character class now. All six are `safe`. **A gate that can go
+quadratic on a long table row is the shape the repository refuses everywhere
+else**, and writing patterns as constructed strings is enough to walk past the
+gate that would have said so.
 
 ### The regex-safety gate
 

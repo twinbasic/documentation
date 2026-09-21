@@ -36,7 +36,8 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 
 - **Node.js 22+** for `tbdocs` itself.
 - **`npm ci`** at the repository root installs everything: the static site generator's deps and the PDF renderer's deps. A single `package.json` at the repo root contains the whole dependency set. The `build.bat` / `serve.bat` wrappers assume the install has run.
-- **Chromium** is required for four things: rendering the PDF book (`book.bat`), two of `check.bat`'s four steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont, and the accessibility scan (`scripts/check_a11y.mjs`) --- and one of `test.bat`'s six, the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`). `npm install` normally brings it down as part of `puppeteer`'s own postinstall; `npx puppeteer browsers install chrome` fetches it on its own if that step was skipped. Add `--install-deps` only on Linux --- it installs system packages, needs root, and is not supported anywhere else. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat`, `test.bat` and `book.bat` do.
+- **Chromium** is required for four things: rendering the PDF book (`book.bat`), two of `check.bat`'s steps --- the diagram-fit check (`scripts/check_dot_fit.mjs`), which re-renders each diagram with the real webfont, and the accessibility scan (`scripts/check_a11y.mjs`) --- and one of `test.bat`'s, the axe source-patch equivalence check (`scripts/check_axe_patch_equiv.mjs`). `npm install` normally brings it down as part of `puppeteer`'s own postinstall; `npx puppeteer browsers install chrome` fetches it on its own if that step was skipped. Add `--install-deps` only on Linux --- it installs system packages, needs root, and is not supported anywhere else. The day-to-day `build.bat` / `serve.bat` flow does not need it --- only `check.bat`, `test.bat` and `book.bat` do.
+- **Windows and a twinBASIC IDE install**, for [`scripts/tbbuild.mjs`](Tools#tbbuild) alone. It compiles a `.twinproj` unattended by driving a real IDE, which is how a claim this documentation makes about the *language* gets checked against the compiler. Nothing that builds, serves, checks or publishes the site needs either, so skip this one unless you are writing or verifying a probe project.
 
 ### On macOS and Linux
 {: #posix-equivalents }
@@ -49,20 +50,20 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
 |---|---|
 | `build.bat [flags]` | `node builder/tbdocs.mjs --src docs --check-audit-index [flags]` |
 | `serve.bat [flags]` | `node builder/tbdocs.mjs --src docs --serve [flags]` |
-| `check.bat` | four scripts in a fixed order, below |
-| `test.bat` | six scripts in a fixed order, below |
+| `check.bat` | the scripts below, in a fixed order |
+| `test.bat` | the scripts below, in a fixed order |
 | `book.bat` | a `mkdir`, then one `render-book.mjs` invocation, below |
 
 `--check-audit-index` is the part most easily dropped in transcription, and dropping it is silent --- see [Building](#building) below for what it costs. Anyone who types `build.bat` gets the link check without thinking about it; anyone who types the underlying command has to include it themselves.
 
-`check.bat` is four separate scripts rather than one, each stopping the run if it fails. The order is cheapest-first, so a failure stops the run before the expensive gates have cost anything --- the accessibility scan at the end is by a wide margin the slowest of the four:
+`check.bat` is a sequence of separate scripts rather than one command, each stopping the run if it fails. The order is cheapest-first, so a failure stops the run before the expensive gates have cost anything --- the accessibility scan at the end is by a wide margin the slowest:
 
     node scripts/check_tree_fresh.mjs \
       && node scripts/check_dot_fit.mjs \
       && node scripts/pick_a11y_sample.mjs --check \
       && node scripts/check_a11y.mjs
 
-`test.bat` is six more, in the same cheapest-first order:
+`test.bat` is the same shape, in the same cheapest-first order:
 
     node scripts/check_publish_policy.mjs \
       && node scripts/check_gate_lists.mjs \
@@ -98,6 +99,68 @@ or directly, from the repository root:
 A single `tbdocs` run produces all three trees. The `also_build_offline` and `also_build_pdf` keys in `_config.yml` toggle the sibling outputs; the `--no-offline` and `--no-pdf` flags do the same from the command line if you only want `_site/`.
 
 The full set of `tbdocs` CLI flags --- every flag, what each one does, when to use it --- lives on the [Tools and Scripts](Tools#tbdocs) page.
+
+### When a build stops instead of failing
+{: #when-a-build-stops }
+
+A build that *fails* says so and sets an exit code. A build that **stops** prints
+its last progress line and sits there, because a worker is still inside a handler
+that will never return: an unbounded loop, a promise that never settles, or a
+[regex backtracking exponentially](#tests-of-the-toolchain). Nothing in the task
+graph can notice by itself --- the wedged task's successors are waiting on a
+message that is not coming --- so the build has a watchdog. When no task has
+completed for two minutes it abandons the run, prints what was outstanding, and
+exits 1:
+
+    BUILD STALLED -- no task completed for 121s.
+    13 of 335 tasks outstanding.
+
+    Claimed by a worker that never returned -- start here:
+      render:19
+        Features/Project-Configuration/Compiler-Options.md
+        Features/Compiler-IDE/Compiler-Warnings.md
+        Reference/Default/VBA/Compilation/CompilerVersion.md
+        Reference/Core/Concat.md
+        Reference/Core/Const.md
+        Reference/Built-In/CustomControls/Constants.md
+
+    Blocked on a predecessor (consequence, not cause):
+      renderJoin  <- render:19
+      flushJoin  <- flush:19
+      searchData  <- renderJoin
+      flush:19  <- render:19
+      ... and 8 more
+
+**Read the first list and ignore the rest.** A task is *claimed* while a worker
+is inside its handler, so that list is the cause and everything under *Blocked on
+a predecessor* is the consequence. A third list, *Runnable, but nothing picked it
+up*, appears when a task is ready and no lane took it; a chunk's `flush:` step is
+pinned to the lane its `render:` ran on, so when that lane is the wedged one the
+report says which task it is pinned behind rather than leaving it looking like a
+second, unrelated fault.
+
+For a `render:` or `flush:` chunk the report prints the source pages the chunk
+covers. That is the part to act on: `render:19` is not something anyone can
+investigate, and six page paths are --- the fault is nearly always one page's
+content meeting a pattern in the build. Bisect them by moving pages out of
+`docs/` and rebuilding.
+
+If **nothing** is claimed, no worker is busy and the graph itself is wedged: look
+for a task whose `expected` list names a predecessor that never submits. That is
+a builder change rather than a content one, and [Extending the
+Builder](Extending#adding-a-pipeline-task) covers the declaration that went
+wrong.
+
+`--stall-timeout <seconds>` moves the limit; `--stall-timeout 0` disables the
+watchdog. Two minutes is deliberately generous --- the longest single task in a
+normal build is worker startup, at under two seconds --- so a loaded or shared
+machine can be an order of magnitude slower than a dev box without being called
+stalled. Raise it rather than disabling it: a disabled watchdog returns you to a
+build that hangs in silence, which is the state this replaced.
+
+Under `serve.bat` a stall also replaces the whole worker pool before the next
+rebuild. The pool outlives a rebuild there, so a wedged worker would otherwise
+fail every later build for a reason unconnected to whatever was edited next.
 
 ## Building and local serving
 
@@ -234,31 +297,36 @@ report as stale.
 
     check.bat
 
-[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. Three cheaper gates run first and stop the run if they fail: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses.
+[`scripts/check_a11y.mjs`](Tools#check-a11y) drives `axe-core` inside headless Chromium (via `puppeteer`) over thirteen sample pages against WCAG 2.0/2.1/2.2 at Level A + AA (plus the `heading-order` best-practice rule), and exits non-zero on any violation. It runs last, because the cheaper gates ahead of it stop the run if they fail: a freshness check that refuses a stale tree, the [DOT diagram fit check](#diagram-fonts-and-why-checkbat-measures-them), and the sample-coverage check that says whether the thirteen pages still cover every markup construct the site uses. [Tools and Scripts](Tools#checkbat) has the list in order.
 
 Each page is scanned in **both the light and dark themes** --- dark mode is a separate palette, so a light-mode pass says nothing about it --- and the scan runs against `_site-offline/` rather than `_site/`, because the online tree's root-absolute asset URLs do not resolve under `file://` and would leave every page unstyled. This stage needs the Chromium install from the [requirements](#requirements); the plain `build.bat` flow does not.
 
-A clean `build.bat && check.bat` --- link integrity and accessibility both --- is the bar for "ready to commit". **Add `test.bat` when the change touched anything outside `docs/`, and when it added an unusual code construct inside it** --- see [Tests of the toolchain](#tests-of-the-toolchain) below for which constructs those are and why one gate does read your pages.
+A clean `build.bat && check.bat` --- link integrity and accessibility both --- is the bar for "ready to commit". **Add `test.bat` when the change touched anything outside `docs/`, and when it added an unusual code construct inside it** --- see [Tests of the toolchain](#tests-of-the-toolchain) below for which constructs those are, and for the gates there that do read your pages.
 
 ## Tests of the toolchain
 {: #tests-of-the-toolchain }
 
     test.bat
 
-Five gates that test the build system rather than the site, in about eight
+The gates that test the build system rather than the site, in about eight
 seconds. [`test.bat`](Tools#testbat) names them and the order they run in.
 
-**Four of the five cannot be affected by an edit confined to `docs/`.** They
-read no page at all, which is why they are not in `check.bat`: writing a
-reference page should not pay for tests of the toolchain, and a gate that costs
-nothing to a change it cannot be affected by is a gate people start skipping.
-Run `test.bat` when the change touches `builder/`, `scripts/`, `book/`, `eval/`
-or `wisdom/`.
+**Most of them cannot be affected by an edit confined to `docs/`.** They read no
+page at all, which is why they are not in `check.bat`: writing a reference page
+should not pay for tests of the toolchain, and a gate that costs nothing to a
+change it cannot be affected by is a gate people start skipping. Run `test.bat`
+when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`.
 
-[`check_code_regions.mjs`](Tools#check-code-regions) is the fifth, and it is the
-exception. It tokenises every markdown file under `docs/`, applies the build's
-real pre-render rewrite chain, tokenises again, and compares the code regions on
-either side --- so a page that introduces a code construct the corpus has not
+**Two of them do read `docs/`**, and the smaller one is easy to predict:
+[`check_gate_lists.mjs`](Tools#check-gate-lists) reads this page, `README.md`
+and every other page under `docs/Documentation/`, and fails on any gate count
+stated in prose that the wrappers do not run. So an edit to a developer page can
+fail it, and is meant to --- that is a count nothing else derives.
+
+[`check_code_regions.mjs`](Tools#check-code-regions) is the other, and it is the
+one worth knowing about. It tokenises every markdown file under `docs/`, applies
+the build's real pre-render rewrite chain, tokenises again, and compares the code
+regions on either side --- so a page that introduces a code construct the corpus has not
 carried before can change what it reports. **Run `test.bat` as well for a
 docs-only edit that adds one**: an indented four-space code block, an admonition
 wrapping a fenced block, or a fence whose body contains a fence marker.
@@ -298,7 +366,7 @@ tests is the rewrite chain. The question to ask of a new gate is whether it
 would still mean something against an empty `docs/` --- and that one would, on
 the probes it carries with it.
 
-Another of the five is worth knowing about before you write a regex.
+One more is worth knowing about before you write a regex.
 [`check_regex_safety.mjs`](Tools#check-regex-safety) refuses a pattern that can
 backtrack exponentially, because that class of fault does not fail a build --- it
 stops one. The corpus passes for as long as no page contains the trigger, and
@@ -306,7 +374,9 @@ then a worker sits inside `String.replace` and never returns. It has happened
 here: the regex that normalises `<br>` and `<img>` tags was exponential, and the
 two alt strings that set it off (`Line/Column` and `/Packages/WinDevLib`) are
 ordinary English. Writing a slash into alt text is not the mistake; the regex
-was.
+was. The build no longer waits forever for one --- see [When a build stops
+instead of failing](#when-a-build-stops) --- but the watchdog names the wedged
+task, which is a diagnosis and not a repair.
 
 ### A link failure cancels whatever was chained after `&&`
 {: #the-double-ampersand-trap }
