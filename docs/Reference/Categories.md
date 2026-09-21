@@ -455,6 +455,20 @@ Procedures:
 * [NPer](../tB/Modules/Financial/NPer) - number of periods for an investment with constant deposits and interest
 * [FormatCurrency](../tB/Modules/Strings/FormatCurrency) - format an expression as a currency string
 
+## Debugging
+
+Methods of the intrinsic [Debug](../tB/Modules/Debug) object:
+
+* [Debug.Print](../tB/Modules/Debug#print) - write to the [Debug Console](../tB/IDE/Project/DebugConsole)
+* [Debug.TracePrint](../tB/Modules/Debug#traceprint) - write to the active trace output, which also works in a compiled executable
+* [Debug.Cls](../tB/Modules/Debug#cls) - clear the Debug Console
+* [Debug.Assert](../tB/Modules/Debug#assert) - halt when a condition is **False**
+
+See also
+
+* [Stop](../tB/Core/Stop) - suspend execution unconditionally
+* [Unit Testing](#unit-testing) - assertions that report results, for tests
+
 ## Unit Testing
 
 Modules of the [Assert](../tB/Packages/Assert/) package:

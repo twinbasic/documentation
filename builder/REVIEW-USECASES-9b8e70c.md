@@ -405,8 +405,33 @@ design problem, not the harness. **Not started, deliberately.**
 
 ### Two findings left open, both for the same reason
 
-**Finding 11 (`Debug.Print` has no page) and finding 12 (date literals are undocumented)
-need a primary source this repository does not contain.** `Debug` appears in worked
+**Finding 11 is now closed, and the way it closed is the point.** A maintainer supplied the
+member list --- `Cls`, `Print`, `Assert`, `TracePrint` --- and the rest was verified rather
+than assumed. A sweep of every `.md` in the repository found `Debug.Print` 1,863 times,
+`Debug.Assert` 179 and `Debug.TracePrint` 63, `Debug.Cls` never, and `Debug.WriteLine` 22
+times --- all of which turned out to be C# and VB.NET pasted into Discord, so it is
+correctly absent from the page. It also found `docs/IDE/Debug Console.md`, an existing page
+describing the pane and its *Clear Debug Console* button, which is what `Debug.Cls` does
+from code; the two now link each other.
+
+**Every syntax claim on the page was compiled before it was written**, using
+`scripts/tbbuild.mjs` against a probe built from a shipped sample: the bare `Debug.Print`,
+the comma and trailing-semicolon forms, `Debug.TracePrint` taking the same output list, and
+`Debug.Assert` on both a comparison and a Boolean. Then a negative control --- renaming one
+call to `Debug.NoSuchMember` --- to prove the probe file was actually being compiled rather
+than silently excluded, which is the failure this repository keeps finding in its own
+gates. It failed at the expected line. **The page's four examples were then compiled as
+written; this is the first reference page here whose samples have been executed.**
+
+One measurement changed the page's shape. With `##` headings reading `Print` and `Assert`,
+a search for `Debug.Print` returned the page at **rank 7** --- behind `Math/Round#example`
+and `Strings/StrReverse#example`, pages that merely *use* it. Headings carry a 200x title
+boost, and `Debug.Print` is what a reader types, so the headings now read `Debug.Print`
+with the short anchors pinned. All four members went to **rank 1**. That is round 6's own
+lesson applied at authoring time instead of a round later.
+
+**Finding 12 (date literals) is still open**, and needs a primary source this repository
+does not contain. `Debug` appears in worked
 examples on eight-plus Features pages and nowhere is its member list stated; whether
 `#1/1/2026#` is month-first is stated nowhere either. Writing either page means either
 exporting the package `.twin` sources or compiling a probe --- both documented, both real

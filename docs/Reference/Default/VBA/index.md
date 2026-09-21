@@ -16,6 +16,7 @@ The VBA built-in package collects the standard runtime library --- the modules g
 
 - [Collection](../Modules/Collection) -- ordered set of values or object references, accessed by 1-based index or by optional string key
 - [ErrObject](../Modules/ErrObject) -- the singleton **Err** object holding information about the most recent run-time error
+- [Debug](../Modules/Debug) -- the intrinsic debugging object: **Print**, **TracePrint**, **Cls** and **Assert**
 - [TbExpressionService](../Modules/ExpressionService) -- runtime expression engine -- parse and evaluate twinBASIC-syntax expressions supplied as strings
 
 ## Modules
