@@ -28,6 +28,20 @@ The available attributes are listed below in alphabetic order. Not every attribu
 {:toc}
 ---
 
+## AllowUnpopulatedVtableEntry
+{: #allowunpopulatedvtableentry }
+
+Syntax: **[AllowUnpopulatedVtableEntry]**
+
+Applicable to: [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface)
+
+Marks a prototype that a class implementing the interface is not obliged to supply.
+
+The twinBASIC packages use it to add members to an interface without breaking code written against an earlier revision of it. `ItbHostEventsV2` extends `ItbHostEventsV1` and adds one such prototype; `ItbHostEventsV3` extends that and adds another. An addin that implements only the **V1** members still satisfies **V3**.
+
+> [!NOTE]
+> The placement is confirmed: the attribute occurs 71 times in the shipped tbIDE and VB packages, always on a prototype inside an **Interface**. Its effect is read from that usage rather than from a specification.
+
 ## AppObject  (optional Bool)
 {: #appobject }
 
@@ -147,6 +161,18 @@ Applicable to:  [**Class**](Class), [**CoClass**](CoClass)
 
 Indicates that this coclass can be created with the [**New**](New) keyword.
 
+## ComExport
+{: #comexport }
+
+Syntax: **[ComExport]**
+
+Applicable to: constants in a [**Module**](Module)
+
+The COM counterpart of [DllExport](#dllexport), and it takes the same target: a **Public Const**, not a procedure and not a variable.
+
+> [!NOTE]
+> The placement is confirmed against the compiler: `[ComExport]` on a procedure is rejected with TB5155, and on a **Public Const** it compiles. No twinBASIC package or sample uses the attribute, so what it exports is not established here.
+
 ## COMExtensible  (optional Bool)
 {: #comextensible }
 
@@ -204,9 +230,9 @@ The restriction to modules is not an oversight. Folding a call to a method would
 
 Syntax: **[ConstantFoldableNumericsOnly** [ **( True** \| **False )** ] **]**
 
-Applicable to: [**Function**](Function)
+Applicable to: [**Function**](Function) in a [**Module**](Module). The compiler rejects it on a method in a [**Class**](Class).
 
-A limited case of [constant foldable attribute](#constantfoldable), which applies only if the function was called with a numeric parameter.
+A limited case of [constant foldable attribute](#constantfoldable), which applies only if the function was called with a numeric parameter. The restriction to modules is the same one [ConstantFoldable](#constantfoldable) carries, and for the same reason.
 
 ## CustomControl  (String)
 {: #customcontrol }
@@ -214,6 +240,34 @@ A limited case of [constant foldable attribute](#constantfoldable), which applie
 Syntax: **[CustomControl("** image file name **")]**
 
 Applicable to: [**Class**](Class)
+
+## CustomDesigner  (String)
+{: #customdesigner }
+
+Syntax: **[CustomDesigner("** designer name **")]**
+
+Applicable to: variables in a [**Class**](Class)
+
+Chooses which editor the IDE's property window offers for one property, instead of the editor it would otherwise pick from the property's declared type. The argument names an editor built into the IDE.
+
+The names the twinBASIC packages use, and the properties each is applied to:
+
+| Name | Applied to | Uses |
+|---|---|---:|
+| `designer_SpectrumWindows` | an **OLE_COLOR** property: **BackColor**, **ForeColor**, **MaskColor**, **BorderColor**, **FillColor**, **PaperColor** | 57 |
+| `designer_SpectrumWindowsOrClear` | **TransparencyKey**, an **OLE_COLOR** in which -1 means no colour | 21 |
+| `designer_IconBytes` | an icon held as **Byte()**: **MouseIconINIT**, **DragIconINIT**, **IconINIT** | 20 |
+| `designer_RestrictedOLEDropMode` | **OLEDropMode** | 17 |
+| `designer_MultiLineText` | a **String** property holding text that may wrap: **ToolTipTextINIT**, **Caption_INIT** | 16 |
+| `designer_PictureBytes` | an image held as **Byte()**: **PictureINIT**, **PaletteINIT**, **ToolboxBitmapINIT**, **MaskPictureINIT** | 15 |
+| `designer_ImageList` | an image-list reference: **Icons_INIT**, **SmallIcons_INIT**, **ColumnHeaderIcons_INIT** | 4 |
+| `designer_Spectrum` | a **ColorRGBA** property | 1 |
+| `designer_Grapick` | a **FillColorPoints** gradient property | 1 |
+| `designer_PropertyPages` | a property-pages reference | 1 |
+| `BINARY` | **InternalImages_INIT** | 1 |
+
+> [!NOTE]
+> This is a census of the 154 uses in the shipped VB, WebView2, WinNativeCommonCtls and CustomControls packages, not a published list. Other editor names may exist, and what each editor does is read from the properties it is applied to.
 
 ## Debuggable  (optional Bool)
 {: #debuggable }
@@ -232,6 +286,40 @@ Syntax: **[DebugOnly** [ **( True** \| **False )** ] **]**
 Applicable to: [procedure definitions](../Gloss#procedure)
 
 Excludes calls to this procedure from the Build. They are only available when running from the IDE, i.e. debugging.
+
+## Default
+{: #default }
+
+Syntax: **[Default]**
+
+Applicable to: [**Interface**](Interface) declaration within a [**CoClass**](CoClass)
+
+Marks which of a CoClass's interfaces is its default: the one a client binds to when it holds the CoClass without asking for a particular interface.
+
+A CoClass declares one default interface, and separately one default source interface, which also carries [Source](#source):
+
+```tb
+[CoClassId("E7F3D923-475B-4367-B5EF-568FCF3A74B5")]
+CoClass CustomControlTimer
+    [Default] Interface _CustomControlTimer
+    [Default, Source] Interface _CustomControlTimerEvents
+End CoClass
+```
+
+> [!NOTE]
+> The placement is confirmed: the attribute occurs 54 times across the shipped VB, VBA, VBRUN, tbIDE, AppGlobalClassObject and CustomControls packages, always on an **Interface** line inside a **CoClass**. Its effect is read from that usage.
+
+## DefaultDesignerEvent
+{: #defaultdesignerevent }
+
+Syntax: **[DefaultDesignerEvent]**
+
+Applicable to: [**Event**](Event) declaration in a [**Class**](Class)
+
+Marks the one event a control nominates as its primary one. Each control that declares it declares exactly one: **Click** for **CheckBox** and **CommandButton**, **Change** for **ComboBox**, **Validate** for **Data**.
+
+> [!NOTE]
+> The placement is confirmed: the attribute occurs 37 times in the shipped VB and WinNativeCommonCtls packages, always on an **Event** in a control class, never twice in one class. Which designer action selects it is not established here.
 
 ## DefaultMember (optional Bool)
 
@@ -371,6 +459,27 @@ Syntax: **[EnforceWarnings** [ **( True** \| **False )** ] **]**
 
 Applicable to: [procedures](../Gloss#procedure).
 
+## Enumerator
+{: #enumerator }
+
+Syntax: **[Enumerator]**
+
+Applicable to: [procedure](../Gloss#procedure) in a [**Class**](Class) or [**Interface**](Interface)
+
+Marks the member that supplies an enumerator, which is what makes the object usable with [For Each](For-Each-Next). The member is conventionally named `_NewEnum` and returns **stdole.IUnknown** or a **Variant** wrapping one.
+
+```tb
+[Enumerator]
+Public Property Get _NewEnum() As Variant
+    Return InternalCollection
+End Property
+```
+
+This replaces VB6's hidden `VB_UserMemId = -4` procedure attribute, which twinBASIC still accepts for compatibility.
+
+> [!NOTE]
+> The placement is confirmed: the attribute occurs 25 times in the shipped VB, VBRUN, WebView2, WinNativeCommonCtls and WinServicesLib packages, on a **Function** or a **Property Get**. The WinServicesLib use describes itself as providing "For-Each support for the services collection".
+
 ## EnumId  (String)
 {: #enumid }
 
@@ -483,6 +592,20 @@ For an overview of interfaces in tB, see [Defining interfaces](../../Features/La
 Syntax:  **[MustBeQualified** [ **(True** \| **False )** ] **]**
 
 Applicable to: [procedure](../Gloss#procedure)
+
+## NonBrowsable  (optional Bool)
+{: #nonbrowsable }
+
+Syntax: **[NonBrowsable** [ **( True** \| **False )** ] **]**
+
+Applicable to: variables and [procedures](../Gloss#procedure) in a [**Class**](Class)
+
+Keeps a member out of the surfaces that list a class's members, while leaving it callable. The twinBASIC packages apply it to members that exist for the framework's own use, such as `InternalSectionId` and `hWndHeader`.
+
+This is distinct from [Hidden](#hidden), which applies to a whole type, and from [Restricted](#restricted).
+
+> [!NOTE]
+> The placement is confirmed: the attribute occurs 17 times in the shipped VB and WinNativeCommonCtls packages, on module-level variables and on a **Property Get**, in both the bare and the `(True)` form. Exactly which surfaces it affects is not established here.
 
 ## OleAutomation  (optional Bool)
 {: #oleautomation }
@@ -599,6 +722,25 @@ can be rewritten as
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder`
 ```
 
+## RedirectToStaticImplementation  (String)
+{: #redirecttostaticimplementation }
+
+Syntax: **[RedirectToStaticImplementation("** fully qualified path to a procedure **")]**
+
+Applicable to: [procedure in a **Class**](../Gloss#procedure)
+
+Declares a member with no body of its own: the class publishes the signature, and the named module-level procedure supplies the implementation.
+
+The [App](../Packages/AppGlobalClassObject/) object is built this way, each of its properties naming a procedure in a private module:
+
+```tb
+[RedirectToStaticImplementation("InternalStuff.GetAppPath")]
+Property Get Path() As String
+```
+
+> [!NOTE]
+> The placement is confirmed: the attribute occurs 116 times in the shipped AppGlobalClassObject, VB and VBA packages, on a **Property Get**, a **Function** and a **Sub**. Its effect is read from that usage.
+
 ## Restricted  (optional Bool)
 {: #restricted }
 
@@ -623,6 +765,33 @@ Specifies a function that runs after your exe is built. There's `App.LastBuildPa
 
 Only one **[RunAfterBuild]** is allowed per project. A second one is a compile error.
 
+## RunBeforeStartupObject
+{: #runbeforestartupobject }
+
+Syntax: **[RunBeforeStartupObject]**
+
+Applicable to: [**Function**](Function) in a [**Module**](Module), returning a **Boolean**
+
+Runs the function before the project's startup object. Returning **True** suppresses the startup object entirely; returning **False** lets startup proceed as normal.
+
+The CEF package uses it to intercept the sub-process launches Chromium makes of the host executable, which must not run the application's own `Sub Main`:
+
+```tb
+Private Module PreSubMain
+    [RunBeforeStartupObject]
+    Function BeforeMain() As Boolean
+        If (InStr(Command, "--type=") = 0) Then
+            Return False        ' not a CEF sub process, so launch as usual
+        Else
+            cefPackage.InitializeCef()
+            Return True         ' Sub Main / the startup form will NOT be invoked
+        End If
+    End Function
+End Module
+```
+
+Compare [RunAfterBuild](#runafterbuild), which runs in the IDE at build time rather than in the built program.
+
 ## Serialize  (optional Bool)
 {: #serialize }
 
@@ -645,6 +814,27 @@ Allows an explicitly loaded DLL to load its own dependencies from it's load path
 Syntax: **[SimplerByVals** [ **( True** \| **False )** ] **]**
 
 Applicable to: [procedure](../Gloss#procedure)
+
+## Source
+{: #source }
+
+Syntax: **[Source]**
+
+Applicable to: [**Interface**](Interface) declaration within a [**CoClass**](CoClass)
+
+Marks a CoClass interface as the one the CoClass raises events on, rather than one callable on it. A client implements this interface to receive the events.
+
+Every use in the twinBASIC packages pairs it with [Default](#default) in one set of braces, which marks the interface as the CoClass's default source interface:
+
+```tb
+CoClass CustomControlTimer
+    [Default] Interface _CustomControlTimer
+    [Default, Source] Interface _CustomControlTimerEvents
+End CoClass
+```
+
+> [!NOTE]
+> The placement is confirmed, but on thin evidence: six uses, in the shipped VB, tbIDE and CustomControls packages, every one of them `[Default, Source]`. The attribute is never used alone, so whether it is meaningful without **Default** is not established here.
 
 ## SpecialCompilerBinding  (optional Bool)
 {: #specialcompilerbinding }
@@ -703,3 +893,22 @@ Applicable to:  [**Type** (UDT)](Type)
 {: #windowscontrol }
 
 Syntax: **[WindowsControl** [ **( True** \| **False )** ] **]**
+
+## WithDispatchForwarding
+{: #withdispatchforwarding }
+
+Syntax: **[WithDispatchForwarding]**
+
+Applicable to: an [**Implements**](Implements) statement in a [**Class**](Class)
+
+Routes late-bound calls arriving on the implemented interface to the class's own default interface. Without it, a host calling through **IDispatch** reaches the implemented interface and finds nothing there to dispatch to.
+
+The **MyCOMAddin** sample states the consequence directly: the attribute "is needed so that late-bound calls on the IRibbonExtensibility interface get routed to our MyCOMAddin default interface. Without it, events like OnHelloWorldClicked will not fire."
+
+```tb
+[WithDispatchForwarding]
+Implements IRibbonExtensibility
+```
+
+> [!NOTE]
+> The placement is confirmed: the attribute occurs 44 times in the shipped VB, WebView2, WinNativeCommonCtls and CEF packages plus the MyCOMAddin sample, always on an **Implements** statement.
