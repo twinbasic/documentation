@@ -427,16 +427,27 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   request. A *leading* space is harmless, which is a good check on the reading: the empty
   first token sets `a = ""`, and `if (a)` is false for an empty string.
 
-  Two-line repro in plain `cmd`, identical but for one character:
+  **Repro, needing no project file and no PowerShell.** The parse runs before
+  `root.loadProject`, so the path never has to resolve. Two `.cmd` files, identical but for
+  one byte:
 
   ```bat
   @echo off
-  "C:\...\twinBASIC.exe" "C:\...\Some.twinproj"
+  "C:\...\twinBASIC.exe" "C:\DoesNotExist.twinproj"
   ```
 
-  opens the project; the same file with **one trailing space** after the closing quote draws
-  the dialog. Verified as an A/B, reading each launched process's own
-  `Win32_Process.CommandLine` to confirm the only difference was the final byte (code 32).
+  With **one trailing space** after the closing quote: *"Bad command line syntax."* Without
+  it: *"Failed to load the project (error code ERROR_FILE_NOT_FOUND)"*. Two different
+  dialogs from the same nonexistent path is the cleanest statement of the bug --- the space
+  changes how the command line is **parsed**, not how the file is looked up, and the second
+  dialog proves the IDE otherwise got as far as trying to open it. Verified by reading each
+  launched process's own `Win32_Process.CommandLine`, confirming the only difference was a
+  final byte of code 32.
+
+  A real project behaves the same way; if one is wanted, 48 `.twinproj` ship with the IDE
+  and `projects\_Standard EXE\projectName.twinproj` is the stock template. Note that the
+  no-space run adds the path to the recents list, which is why that dialog offers to remove
+  it again --- take the offer.
 
   PowerShell hits it without anyone asking for it: `Start-Process` appends that space, so
   `Start-Process twinBASIC.exe -ArgumentList $path` never opens the project while
