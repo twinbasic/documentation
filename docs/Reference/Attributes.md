@@ -374,14 +374,18 @@ The packages that ship with twinBASIC follow a consistent shape, shown here on `
              "Returns the name of the current project as a String.  " & vbCrLf & _
              "### Example" & vbCrLf & _
              "```basic" & vbCrLf & _
+             "' Example: Retrieve the current project name" & vbCrLf & _
              "Dim projectName As String" & vbCrLf & _
              "projectName = CurrentProjectName()" & vbCrLf & _
              "MsgBox ""The name of this project is "" & projectName" & vbCrLf & _
              "```")]
-Public Function CurrentProjectName() As String
+' Note, this function uses special internal bindings and so may not behave like a regular function
+Public DeclareWide PtrSafe Function CurrentProjectName Lib "<compilation>" Alias "#-33" () As String
 ```
 
-Four details of that are easy to get wrong:
+Five details of that are easy to get wrong:
+
+- **The member is a `Declare`, not an ordinary Function.** Nothing about the attribute requires that -- it is simply how this particular member happens to be written -- but it is worth reading carefully, because a description shaped like a function's is sitting on an API declaration.
 
 - **The two spaces before several of the closing quotes are Markdown hard line breaks.** A bare newline is a soft break in Markdown and renders as a space, so removing them runs the lead sentence and the prose under each heading together into one paragraph. They appear on the prose lines only: the `###` headings and the lines inside the fenced block are already block-level and do not need them. They read as stray trailing whitespace and are easy to delete by accident.
 - **A literal `"` inside the string is doubled**, as in `""The name of this project is ""`. That is ordinary twinBASIC string syntax rather than anything Markdown-specific, but it is dense enough here to be misread as part of the description.

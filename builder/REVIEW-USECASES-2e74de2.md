@@ -260,9 +260,9 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 > **Queue state after the follow-on sessions.** Struck-through entries are closed and carry
 > the commit that closed them. What is left is three items, all of which want one answer from
 > the maintainer rather than another build: the placement of `ImplementsViaPrivateFriendlies`
-> and of `ExecuteHostCommand`, and the `Description` entry's reconstructed wrapper. The two
-> IDE rendering defects below are twinBASIC bugs rather than documentation ones and are
-> recorded, not queued.
+> and of `ExecuteHostCommand`. A second exploratory round sweeps the remaining plausible
+> targets for both and has not been run yet. The two IDE rendering defects below are
+> twinBASIC bugs rather than documentation ones and are recorded, not queued.
 >
 > Two entries were **overstated** and are marked where they sit --- `Authoring.md`'s listing
 > checklist was already half-fixed before it was checked, and `IDE/Links.png` is not a defect
@@ -494,8 +494,15 @@ lists all 28, in order. What it had wrong was the three spellings, not the cover
   `#dispinterface` and `#dualinterface` now carry pinned ids (same slugs, so no URL moved),
   and `#customcontrol` and `#specialcompilerbinding` were added to the contract, which is
   also what puts them under the build's link check. Now 58 pinned against 58 listed.
-- The `Description` entry's `Public Function CurrentProjectName() As String` wrapper is an
-  agent's reconstruction, not from the maintainer's quoted source. **Still open.**
+- ~~The `Description` entry's `Public Function CurrentProjectName() As String` wrapper is an
+  agent's reconstruction, not from the maintainer's quoted source.~~ **Done, and the
+  reconstruction was wrong in two ways.** Exporting the VBA package gives the real source,
+  `VBA/Sources/Compilation.twin`: the member is
+  `Public DeclareWide PtrSafe Function CurrentProjectName Lib "<compilation>" Alias "#-33" () As String`
+  --- an API **Declare**, not a plain Function --- and the quoted example body had lost a
+  line, `' Example: Retrieve the current project name`. Both restored verbatim, along with
+  the source's own comment about the special internal bindings, and the page now notes that
+  the member is a Declare so a reader does not take the wrapper as part of the pattern.
 
 ### A follow-on audit, recorded elsewhere
 
