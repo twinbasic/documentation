@@ -815,7 +815,19 @@ are not use-case findings, so they live with the code rather than here:
 - **`scripts/check_code_regions.mjs`** --- the gate that would have caught all of it, now in
   `test.bat` and both CI workflows.
 - **[builder/PLAN-counts.md](PLAN-counts.md)** --- a design for giving build-time counts names
-  in prose, motivated by the stale figures this round found.
+  in prose, motivated by the stale figures this round found. **Implemented since**:
+  `{{tbdocs:pages}}` in a page renders as the current figure, from
+  [builder/counts.mjs](counts.mjs), with nine names live and four call sites converted ---
+  including the two in `Authoring.md` the plan opens with. The stale figures this round
+  found are the argument for it, and Tier 3 item 19's complaint that there is no way to
+  answer *"did that number change"* by comparison is what it removes: a derived number
+  cannot disagree with the tree.
+
+  The conversion pass immediately found one more of the same class, and the finding is
+  about *this* review rather than about the docs: replacing the 836-page floor made
+  `Builder.md`'s description of it wrong, in a paragraph nothing would have flagged. That is
+  Tier 2 item 12 --- *nothing states the obligation to update documentation when code
+  changes* --- catching the session that was closing this queue.
 
 The relevance to *this* document is the shape of the miss: every gate was green throughout,
 because the damage sat inside `<code>` and nothing inspected that. Round 2's method could not
