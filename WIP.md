@@ -637,53 +637,13 @@ Two rules that are easy to get wrong:
 
 ### Regenerating the fonts
 
-[scripts/build_fonts.py](scripts/build_fonts.py) downloads the pinned upstream
-releases (SHA-256 verified), pins the optical-size axis, subsets, and writes
-`docs/assets/fonts/`. It is dev tooling --- `build.bat` needs neither Python nor
-a network connection, exactly like the committed DOT SVGs.
-
-```sh
-python -m pip install "fonttools[woff]"
-python scripts/build_fonts.py
-```
-
-**Regenerating Inter means regenerating the diagram metrics too.**
-`builder/inter-metrics.json` is Inter's advance widths, measured from these
-exact `.woff2` files and handed to Graphviz so it can size diagram boxes
-correctly --- so a new subset with different advances leaves it stale:
-
-```sh
-node scripts/build_dot_metrics.mjs      # or --check, which fails if stale
-```
-
-Forgetting is not silent. Stale widths move the boxes, and
-`scripts/check_dot_fit.mjs` --- in `check.bat` and in the PR checks workflow (`checks.yml`, though not the deploy workflow) --- fails as soon as a
-label outgrows one. See [Teaching Graphviz what Inter
-measures](#teaching-graphviz-what-inter-measures).
-
-`opsz` is pinned and `wght` is not. Keeping the optical-size axis costs ~70 KB
-per face in `gvar`/`CFF2` delta data --- more than trimming the character set
-would save --- and buys a subtle refinement at display sizes. Keeping `wght`
-variable is what lets the vendored `layout.scss` and `navigation.scss` go on asking
-for `font-weight: 350` (one occurrence each) and get a real 350 rather than a
-browser-dependent snap to 300 or 400. Note it is the *vendored* theme sources that
-ask, not `custom/custom.scss`, which declares no `font-weight` at all ---
-`_fonts.scss`'s own comment gets this wrong too.
-
-The subset is specified as whole Unicode blocks rather than the exact character
-census, deliberately: an uncovered codepoint falls back to a system font, which
-is the precise inconsistency this whole exercise removes, so the blocks carry
-headroom for pages not yet written. Emoji are excluded --- a colour emoji font is
-several megabytes and every platform ships one --- and the stacks end with
-`"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"` to make that fallback
-deterministic rather than leaving it to each UA's last-resort lookup.
-
-Two content changes fell out of the coverage audit and should not be reverted:
-U+2714 HEAVY CHECK MARK (14 uses) became U+2713 CHECK MARK, because no text face
-in the stack carries U+2714 and it therefore rendered from the platform emoji
-font --- coloured on Windows, monochrome elsewhere; and one U+22EE VERTICAL
-ELLIPSIS inside a box-drawing ASCII diagram became `:`, because Cascadia has no
-U+22EE and a fallback glyph of a different advance width shears the box borders.
+How the six `.woff2` files are produced --- the generator, the Unicode coverage, why
+`opsz` is pinned and `wght` is not, the two content changes that fell out of the coverage
+audit, and the state of the JavaScript port --- lives in [WIP.Fonts.md](WIP.Fonts.md).
+Two things from it that touch the rest of this file: **regenerating Inter means
+regenerating `builder/inter-metrics.json` too** (see [Teaching Graphviz what Inter
+measures](#teaching-graphviz-what-inter-measures)), and the generator is Python for a
+reason that is documented there and should be read before anyone tries to port it.
 
 ### Diagrams
 
@@ -1049,8 +1009,11 @@ Two `.py` files stay, and neither is an oversight:
   of the same standalone tool. Porting it would delete a deliberate offering.
 - **`scripts/build_fonts.py`** stays because the JavaScript build of HarfBuzz it would
   use produces wrong CFF2 metrics --- a one-line build-configuration defect in harfbuzzjs,
-  documented separately with the evidence.
+  documented with the evidence in [WIP.Fonts.md](WIP.Fonts.md).
 
+The full account of the JavaScript port of `build_fonts.py` --- what works, the harfbuzzjs
+build defect that blocks it, the evidence, the root cause in `hb-config.hh`, and what the
+port must check for when it happens --- is in [WIP.Fonts.md](WIP.Fonts.md).
 
 `wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs.
 
