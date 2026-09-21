@@ -144,6 +144,24 @@ integrity. A failing check sets the exit code but never aborts the
 graph. `check.bat` then runs the gates that need a browser. A clean
 `build.bat && check.bat` is the bar for "ready to commit".
 
+`test.bat` is the other wrapper, and it is the one that judges an edit
+made *here*: it runs the gates that test the toolchain rather than the
+site, so a change under `builder/` owes it whether or not any page
+moved. Two of its gates key on this directory by name.
+[scripts/check_regex_safety.mjs](../scripts/check_regex_safety.mjs)
+refuses a regex that can backtrack exponentially --- both that shipped
+lived in [render.mjs](render.mjs), and each hung a render worker in
+silence rather than failing, so the gate asks the question of the
+pattern instead of waiting for a page to ask it. It reads constructed
+patterns too, so assembling one from string constants is not an escape.
+[scripts/check_code_regions.mjs](../scripts/check_code_regions.mjs)
+refuses a pre-render rewrite that alters the contents of a code fence or
+code span, which four rewrites in [render.mjs](render.mjs) have done ---
+so a new one belongs inside `applyPreRenderRewrites`, between
+`maskCodeRegions` and its `restore`.
+[Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools)
+lists every gate in both wrappers, in running order.
+
 The pure core lives in [link-check.mjs](link-check.mjs); the build-side
 plumbing is [check.mjs](check.mjs) and [check-tree.mjs](check-tree.mjs).
 [scripts/check_links.mjs](../scripts/check_links.mjs) is the same check

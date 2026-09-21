@@ -402,4 +402,4 @@ Ten enumerations for the eight native common controls.
 - [Statements](Statements) -- alphabetical index of language statements
 - [Procedures and Functions](Procedures-and-Functions) -- alphabetical index of callable runtime members
 - [Operators](Operators) -- arithmetic, comparison, logical, and bitwise operators
-- [Packages](../tB/Packages/) -- all twelve built-in packages
+- [Packages](../tB/Packages/) -- all {{tbdocs:packages}} packages

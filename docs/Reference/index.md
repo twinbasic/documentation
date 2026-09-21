@@ -14,7 +14,7 @@ The reference is organized into three layers: the language constructs the compil
 - [**Statements**](Reference/Statements) -- alphabetical index of every language statement
 - [**Procedures and Functions**](Reference/Procedures-and-Functions) -- alphabetical index of every callable runtime member
 - [**Operators**](Reference/Operators) -- arithmetic, comparison, logical, bitwise, and twinBASIC's added operators
-- [**Enumerations**](Reference/Enumerations) -- index of all 140 enumeration types across all {{tbdocs:packages}} packages, grouped by package and A--Z
+- [**Enumerations**](Reference/Enumerations) -- index of all {{tbdocs:enumerations}} enumeration types across all {{tbdocs:packages}} packages, grouped by package and A--Z
 - [**Data Types**](Reference/Data-Types) -- storage size, range, and suffix for every intrinsic type (**Boolean** through **Variant**)
 - [**Compiler Constants**](Reference/Compiler-Constants) -- the `#If` symbols the compiler recognises
 - [**Attributes**](../tB/Core/Attributes) -- `[Description(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax

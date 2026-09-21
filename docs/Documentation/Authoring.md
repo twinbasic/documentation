@@ -321,6 +321,7 @@ from the same data the pages themselves come from:
 | `defaultPackages` | of those, the ones under `Reference/Default/` |
 | `builtInPackages` | of those, the ones under `Reference/Built-In/` |
 | `attributeAnchors` | pinned heading ids in `Reference/Attributes.md` |
+| `enumerations` | entries in the alphabetical index of `Reference/Enumerations.md` |
 | `redirectStubs` | whole-page stubs emitted for `redirect_from:` entries |
 
 The three package names are separate because the words for them collide. The
@@ -534,9 +535,19 @@ docs/Tutorials/CEF/Images/MonacoArchitecture.dot     <-- you write this
 docs/Tutorials/CEF/Images/MonacoArchitecture.svg     <-- the build writes this
 ```
 
-Name the font as the existing diagrams do --- copy the `node`, `edge` and `graph` blocks from one of them --- and let the build measure it. You do not need to do anything special for Inter: `builder/dot-metrics.mjs` installs its real widths into Graphviz before layout, and `check.bat` asserts afterwards that nothing overflowed.
+**Reference the `.svg`, never the `.dot`**, and use the markdown image form rather
+than a raw `<img>` tag --- the same rule, and the same reason, as [Images](#images)
+below:
 
-Two things to leave alone. Node text is deliberately dark against each node's light fill in both themes; only the cluster and edge labels follow the page's text colour, because those are the ones sitting on the page background. And a diagram needs alt text like any other image --- the whole diagram gets one accessible name, so describe what it shows, not what shapes it contains.
+```markdown
+![A twinBASIC form holding two CefBrowser controls. The left one hosts the Monaco
+editor and posts the edited HTML to a handler in twinBASIC code, which passes it to
+the right control to render as a preview.](Images/MonacoArchitecture.svg)
+```
+
+Name the font as the existing diagrams do --- copy the `node`, `edge` and `graph` blocks from one of them --- and let the build measure it. Copy from a diagram of the same kind: `docs/Tutorials/CEF/Images/MonacoArchitecture.dot` for one belonging to a page, `docs/assets/images/dot/toolchain-overview.dot` for a shared one. They differ in node `margin` --- `0.16,0.09` against `0.12,0.06` --- so a figure quoted for one family is not the other's. You do not need to do anything special for Inter: `builder/dot-metrics.mjs` installs its real widths into Graphviz before layout, and `check.bat` asserts afterwards that nothing overflowed.
+
+Two things to leave alone. Node text is deliberately dark against each node's light fill in both themes; only the cluster and edge labels follow the page's text colour, because those are the ones sitting on the page background. And a diagram needs alt text like any other image --- the whole diagram gets one accessible name, so describe what it shows, not what shapes it contains, and never `![Diagram]`. Everything under [Images](#images) about what makes alt text worth having, and about nothing in the build being able to tell you, applies here unchanged.
 
 ## Images
 
@@ -689,7 +700,7 @@ The indexes to join depend on what the page documents:
 - **A twinBASIC addition** --- a symbol or construct standard VBA does not have --- is additionally listed in [twinBASIC Additions](../../Reference/twinBASIC-Additions), under the category it belongs to. A page for a symbol VBA already has does not belong there.
 - **A runtime procedure, function, or property** is listed in [Procedures and Functions](../../Reference/Procedures-and-Functions) under its initial letter, and introduced in the prose of its own module's `index.md`. Those module pages present their members in themed groups rather than as a flat list, so add the link to the paragraph it fits rather than to the end. [Permanent Links](Permanent-Links) lists the modules, not their members, so it needs no edit.
 - **A class, control, or enumeration inside a package** is introduced on that package's `index.md`. A control in the VB package is additionally listed in [Controls](../../tB/Controls), under the group matching its purpose.
-- **An enumeration** is listed in [Enumerations](../../Reference/Enumerations) **twice** --- once in the by-package section and once in the alphabetical index below it --- and moves the enumeration total stated on the [Reference Section](../../Reference) landing page. That total is a hand-written digit and has to stay one: no [count name](#counts) covers enumerations, so nothing notices if you leave it behind.
+- **An enumeration** is listed in [Enumerations](../../Reference/Enumerations) **twice** --- once in the by-package section and once in the alphabetical index below it --- and moves the enumeration total stated on the [Reference Section](../../Reference) landing page. That total is written as `{{tbdocs:enumerations}}`, so it follows on its own --- but it is derived from the *alphabetical index* alone, so an entry added only to the by-package section above it is still a half-edit, and nothing reports one.
 - **A whole new package** needs a bullet on [Default Packages](../../tB/Packages/Default/) or [Built-In Packages](../../tB/Packages/Built-In/) **and on the [welcome page](../../)**, whose *Built-in packages* section names every package on the site's front page and is the entry the other lists do not imply. It also moves the package counts written into the prose of [Packages](../../tB/Packages/) and the [Reference Section](../../Reference) landing page. Those counts do have names, so write them as `{{tbdocs:defaultPackages}}`, `{{tbdocs:builtInPackages}}` or `{{tbdocs:packages}}` while you are there and the package after yours costs nobody an edit. It also needs its own `###` section in [Permanent Links](Permanent-Links), under `/tB/Packages/`, stating the URL shape its members follow. That page is the URL contract, and a package missing from it has none.
 
 Every one of these entries is a link plus a one-line description in the style of its neighbours, so the reliable way to write one is to copy the entry above the position you are inserting at and replace its contents.
@@ -710,7 +721,7 @@ stale entry is reported rather than shipped. Go through the same places
 - **A twinBASIC addition** comes out of [twinBASIC Additions](../../Reference/twinBASIC-Additions) as well.
 - **A runtime procedure, function, or property** comes out of [Procedures and Functions](../../Reference/Procedures-and-Functions) and out of its module's `index.md`, where it is a phrase inside a themed paragraph rather than a bullet. Read that sentence afterwards --- taking one link out of a list of three leaves a sentence that no longer reads.
 - **A class, control, or enumeration inside a package** comes out of that package's `index.md`, and a VB control out of [Controls](../../tB/Controls).
-- **An enumeration** comes out of [Enumerations](../../Reference/Enumerations) in both places, and the hand-written total on the [Reference Section](../../Reference) landing page goes down with it.
+- **An enumeration** comes out of [Enumerations](../../Reference/Enumerations) in both places. The total on the [Reference Section](../../Reference) landing page is a [count name](#counts) and follows on its own.
 - **A whole package** comes out of [Default Packages](../../tB/Packages/Default/) or [Built-In Packages](../../tB/Packages/Built-In/), out of the *Built-in packages* section of the [welcome page](../../), and out of its `###` section in [Permanent Links](Permanent-Links). Package counts already written as [count names](#counts) follow on their own; any still written as digits do not.
 
 Three things then have no counterpart in adding a page.

@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Extending
 # Extending the Builder
 {: .no_toc }
 
-How to extend `tbdocs` --- a new pipeline task, a markdown-it plugin, a render-worker sub-stage, or a verification gate --- and how to change one that already exists. Read [tbdocs Builder](Builder) first for the architectural tour and [Pipeline Stages](Pipeline-Stages) for the data contracts each task operates on.
+How to extend `tbdocs` --- a new pipeline task, a markdown-it plugin, a render-worker sub-stage, a verification gate or a build-time count --- and how to change one that already exists. Read [tbdocs Builder](Builder) first for the architectural tour and [Pipeline Stages](Pipeline-Stages) for the data contracts each task operates on.
 
 * TOC goes here
 {:toc}
@@ -24,10 +24,34 @@ How to extend `tbdocs` --- a new pipeline task, a markdown-it plugin, a render-w
 
 **Verification gate** --- a script under `scripts/`, run after the build by `check.bat` or `test.bat`, that decides whether what the build produced is acceptable. Nothing in `TASKS` or the plugin chain changes for one. It is the only extension point here that is not part of rendering the site, and the conventions it has to follow are not the ones above; see [Adding a verification gate](#adding-a-verification-gate), which also covers which of the two wrappers a new gate belongs in.
 
+**Build-time count** --- a named number the build derives and substitutes into prose, written `{{tbdocs:<name>}}` on a page. A new one is an entry in `deriveCounts` in [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs) plus a row in the table on [Authoring Pages](Authoring#counts). It is the smallest extension point here and the only one that changes no task and no plugin; see [Adding a build-time count](#adding-a-build-time-count).
+
 **Styling is not one of them.** A new component's CSS is not an extension point here at all: the site's own style rules live under `docs/_sass/`, are compiled into a single stylesheet by `scss.mjs`, and need no change to the task graph or the plugin chain. See [Project styling](Builder#project-styling) for where each rule belongs, the two-compilation model, and the dark-mode specificity trap: a rule that loses it applies in light mode and silently does not in dark.
+
+---
+
+## Why `serve.bat` does not show a builder change
+{: #serve-does-not-reload }
 
 > [!NOTE]
 > Changes to task definitions, worker handlers, or markdown-it plugins are not hot-reloaded by serve mode. The worker pool is persistent: after editing any of these, stop `serve.bat` (Ctrl+C) and re-run to load the new code. SCSS and page content *are* watched and rebuilt.
+
+Two separate things produce the same symptom, and neither reports anything.
+
+**The watcher never sees the edit.** `serve.bat` runs `tbdocs --src docs --serve`, and
+the watcher is on the source tree it was given --- `docs/`. `builder/` lives at the
+repository root, deliberately outside the content tree, so editing a builder module
+fires no rebuild at all.
+
+**A forced rebuild still runs the old code.** Touch a page to provoke one and the
+rebuild happens, but the workers were started once and have the previous module
+already imported. A new task simply does not appear, which is obvious; a *changed*
+one goes on running its old body, which looks exactly like the change having no
+effect.
+
+So: **Ctrl+C and re-run after every builder edit.** There is no flag for it and no
+partial reload. What *is* watched is everything under `docs/` --- page content and
+`docs/_sass/` alike --- so styling work needs no restart.
 
 ---
 
@@ -418,11 +442,11 @@ export function createMarkdownIt(ctx) {
 
 ### 3. Verify
 
-Run `build.bat` and open an affected page; for live feedback, use `serve.bat`. A plugin that traverses the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
+Run `build.bat` and open an affected page. **`serve.bat` will not show a plugin change** --- its worker pool is persistent, so a running preview goes on using the old plugin; the NOTE at the top of this page has the detail. Ctrl+C and re-run it first, and then it gives live feedback on the pages themselves as normal. A plugin that traverses the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
 
 Then run `test.bat`, which is where a `render.mjs` edit is judged. Two of its gates key on exactly this file: `check_regex_safety.mjs` refuses a regex that can backtrack exponentially, and `render.mjs` is where the two that shipped that way lived; `check_code_regions.mjs` refuses a pre-render rewrite that alters the contents of a code fence or code span.
 
-**Assembling a pattern from string constants does not put it out of reach of that first gate, and it used to.** `new RegExp(`${A}${B}`)` is read if the source decides what `A` and `B` are; if it does not --- a function parameter, a `let` built in a loop --- `node scripts/check_regex_safety.mjs --census` says so by name, and the pattern is then yours to reason about. See [`check_regex_safety.mjs`](Tools#check-regex-safety) for which shapes resolve.
+**Assembling a pattern from string constants does not put it out of reach of that first gate, and it used to.** `new RegExp(`${A}${B}`)` is read if the source decides what `A` and `B` are; if it does not --- a function parameter, a `let` built in a loop --- `node scripts/check_regex_safety.mjs --census` says so by name, and the pattern is then yours to reason about. The resolvable shapes are the ones a reader can work out from that description --- a literal, a template, `+` concatenation, `String.raw`, a `const` declared once, `.source` of a `const` regex, a `join` over a `const` array, and a ternary checked both ways --- and the census is what tells you which bucket yours landed in; see [`check_regex_safety.mjs`](Tools#check-regex-safety).
 
 **If the plugin emits markup the site has not carried before --- a new wrapper element, a widget, a figure, a control --- register a construct family for it in [`scripts/pick_a11y_sample.mjs`](Tools#pick-a11y-sample) in the same change.** The accessibility scan audits thirteen sample pages out of ~1,160, and a construct no sample page carries is a construct no axe rule keyed on it ever runs against. Leaving it out is not neutral: the gate goes on reporting a clean pass while covering less than it did before, which is the failure mode the derived sample exists to prevent. `node scripts/pick_a11y_sample.mjs --census` shows what the existing families are and which pages carry them; `--check` names the gaps and the cheapest page that closes each. The same obligation applies to a new task or sub-stage that changes the emitted HTML, and to a template change.
 
@@ -549,6 +573,45 @@ So a new gate needs a second assertion of the opposite sign, and there are four 
 - **An A/A control.** Running `check_a11y_fingerprint.mjs` with the same scheme on both sides says whether the harness is stable, before any A/B result from it is believed.
 
 When the gate cannot assert its own correctness from the inside, the proof goes in a sibling script and is named in the gate's header comment, so whoever changes the gate next finds it in the file they are already reading.
+
+---
+
+## Adding a build-time count
+
+A count name is a number the build works out and substitutes into prose, so a sentence
+stating it cannot go stale. Readers write `{{tbdocs:<name>}}`; this is the other end.
+
+**One rule decides whether a name should exist at all: it is a derivation over build
+state, never a stored constant.** A registry holding `pages: 908` would not have removed
+the stale figure it replaced, only moved it from a page a contributor reads into a module
+nobody opens. If a number cannot be derived, it does not get a name and stays a digit.
+
+Two shapes qualify. Most names count things `discover` already found --- pages under a
+prefix, static files, packages. `attributeAnchors` and `enumerations` are the other shape:
+they scan one page's `rawContent` for the pattern that makes an entry, which is legitimate
+because the page *is* the list, and carries the matching exposure --- change that page's
+list formatting and the number moves with it.
+
+1. **Add the entry.** A function beside the others in
+   [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs),
+   returning a number from the `state` passed to `deriveCounts`, and a line in the object
+   it returns. `COUNT_NAMES` is derived from that object, so nothing else registers it.
+2. **Add the row** to the name table on [Authoring Pages](Authoring#counts). An
+   undocumented name is one nobody will use.
+3. **Use it**, or do not --- a name with no call sites is fine, and cheaper to add now than
+   to retrofit when a figure goes stale.
+
+**Verify by building.** Two checks guard the feature and they fail differently, so a green
+build exercises both: `validateCountNames` runs on main before any worker renders and
+rejects an unknown name, naming the file, the line and the nearest match; and
+`findSurvivingPlaceholder` scans the rendered HTML for a placeholder that got through
+outside `<code>` and `<pre>`, which catches the case source validation structurally
+cannot --- a raw HTML block is one opaque token, so a placeholder inside one has a
+perfectly good name and would otherwise publish verbatim.
+
+Then read the built page and check the number against the thing it counts. Nothing
+compares a derivation against reality: a name that returns the wrong number is as green
+as one that returns the right one.
 
 ---
 

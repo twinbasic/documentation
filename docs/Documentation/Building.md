@@ -100,6 +100,41 @@ A single `tbdocs` run produces all three trees. The `also_build_offline` and `al
 
 The full set of `tbdocs` CLI flags --- every flag, what each one does, when to use it --- lives on the [Tools and Scripts](Tools#tbdocs) page.
 
+### What a healthy run looks like
+{: #a-healthy-run }
+
+Everything else in this page is about failure, which leaves a first clone with no way to
+tell an ordinary run from a broken one. This is the shape of a clean one.
+
+`build.bat` ends with a summary, a per-tree link report and its timings:
+
+    Done in 4685ms: 908 pages, 247 static files
+      _site           871099 occurrences -- 0 broken, 0 integrity
+      _site-offline   869285 occurrences -- 0 broken, 0 forbidden, 0 integrity
+      _site-pdf        12703 occurrences -- 13 broken, 0 integrity  (informational)
+
+**The third line is not a failure, and it is the one that looks like one.** The book is a
+subset of the site, so every page it does not carry is a broken link from inside it; the
+pass is marked *informational* and does not touch the exit code. The two lines above it
+are the ones that must read `0 broken`. A few seconds is the normal duration --- the build
+is around 2--3 seconds of work plus the link check --- so a run still going after a minute
+is a [stall](#when-a-build-stops), not a slow machine.
+
+`check.bat` runs its four gates in order and ends on the scan's tally:
+
+    13 pages x 2 theme(s) x 2 viewport(s) + 8 state audit(s) checked: 0 violation(s), 42 incomplete check(s)
+
+**Incomplete is not a violation.** Those are checks axe declined to decide --- most often a
+colour-contrast node it could not resolve a background for --- and they are printed for a
+human to glance at, not gated. `0 violation(s)` is the pass condition. `test.bat` prints
+each gate's probes and a line per gate; every probe passes on a clean tree.
+
+Two more things are normal and read as alarming. A page-count **rise** rewrites
+`builder/page-baseline.json` and says so in the log --- that is the guard accepting new
+work, and the changed file belongs in your commit. And `git status` after a build can show
+a regenerated diagram `.svg` or `gantt.svg`; both are committed artifacts, so a diff there
+means the build genuinely produced something different.
+
 ### When a build stops instead of failing
 {: #when-a-build-stops }
 
@@ -178,6 +213,8 @@ Serve writes to `docs/_serve/`, completely disjoint from `build.bat`'s `_site/` 
 Opening a page straight out of `_site/` by double-clicking it is obvious, and wrong. The online tree references its stylesheets, fonts and scripts with root-absolute URLs (`/assets/css/...`); under `file://` those resolve against the filesystem root rather than the tree root, find nothing there, and the page renders as unstyled markup. Nothing announces the failure --- all the text is present --- so it reads as a styling bug in the page rather than as three stylesheets that never loaded, and any conclusion drawn from it about colour, spacing, layout or contrast is worthless.
 
 `_site-offline/` is the exception, and it renders correctly over `file://` by design. The offline mirror exists so the site works with no server at all: the rewrite turns every root-absolute asset URL into a page-relative one, so a page opened from that tree gets the real stylesheets and the real computed styles. That is why the [accessibility scan](#checking-accessibility) points headless Chromium at `_site-offline/` and not at `_site/` --- its colour-contrast results would otherwise all be black text on a white void.
+
+One thing it does not pick up: the watcher is on `docs/`, and the worker pool outlives a rebuild, so a change under `builder/` needs Ctrl+C and a re-run before the preview can show it --- see [why `serve.bat` does not show a builder change](Extending#serve-does-not-reload). Page content and `docs/_sass/` are watched as normal.
 
 The short form is **puppeteer for measuring, `serve.bat` for looking**. A headless browser driven over `file://` against the offline mirror measures correctly and is what the gates use; a person who wants to see a change should use the localhost server, which serves the tree a reader actually gets, with the search index and the theme toggle live.
 
@@ -389,8 +426,12 @@ That is usually what you want from `check.bat` --- a tree with broken links is n
 
 Diagrams live as `.dot` source files and are referenced from markdown as `.svg`. A `.dot` anywhere under `docs/` is picked up, so a diagram can sit beside the page that uses it:
 
-    ![Diagram](/assets/images/dot/<name>.svg)      <!-- shared -->
-    ![Diagram](Images/<name>.svg)                  <!-- beside its page -->
+    ![<what the diagram shows>](/assets/images/dot/<name>.svg)      <!-- shared -->
+    ![<what the diagram shows>](Images/<name>.svg)                  <!-- beside its page -->
+
+The brackets hold real alt text, not the word *Diagram* --- see
+[Diagrams](Authoring#diagrams) for a worked one. Nothing in the build checks it:
+axe's `image-alt` asks only whether an accessible name exists.
 
 `tbdocs` regenerates each `.svg` from its `.dot` sibling when the SVG is missing or older than its source --- editing a `.dot` by one character regenerates the SVG on the next build. Both files belong in git; the `.dot` is the canonical source, the `.svg` is the build artifact.
 
@@ -432,7 +473,7 @@ Four changes move a label back inside its box, roughly in order of preference. T
 
 1. **Break the label across lines.** `<BR/>` in an HTML-like label (`label=<one<BR/>two>`), or `\n` in a quoted one. Every diagram in this repository uses the HTML-like form. This is the most effective lever because each line becomes its own `<text>` run, measured separately, and the box is sized to the widest of them: one break took the box from 150pt to 98pt.
 2. **Shorten the text.** Usually the right answer when the label repeats something the surrounding prose already says --- a diagram label is a name, not a sentence.
-3. **Widen the box without touching the text.** Raising the x component of the node's `margin` from the `0.12` the diagrams set to `0.30` took the same box from 150pt to 176pt. `width=<inches>` is the other form and is a *minimum*: the box still grows past it when the label needs more room.
+3. **Widen the box without touching the text.** Raising the x component of the node's `margin` to `0.30` took the same box from 150pt to 176pt. Check what yours starts from rather than assuming: the three shared diagrams under `assets/images/dot/` set `0.12,0.06` and both tutorial diagrams set `0.16,0.09`. `width=<inches>` is the other form and is a *minimum*: the box still grows past it when the label needs more room.
 4. **Reduce `fontsize`.** This moves both sides of the comparison at once --- Graphviz measures smaller and the browser paints smaller --- so it always works, which is why it is last: a diagram at natural size paints 12pt labels, and 12pt is exactly the site's 16px body size, so shrinking the whole diagram's type makes it read as smaller than the prose around it. Use it per-line instead, as `scheduler-dag.dot` does with `<FONT POINT-SIZE="10">` for its `[M]` and `[W]` annotations.
 
 **Do not use `fixedsize=true`.** It reinterprets `width` and `height` as exact rather than minimum, so the label stops being what sizes the box. Measured, `width=1 fixedsize=true` produced a 72pt box for a label needing about 150pt --- which is not a fix for the overflow, it is the mechanism that manufactures one. No diagram here uses it.

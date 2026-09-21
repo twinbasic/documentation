@@ -697,11 +697,22 @@ markdown-it's typographer (enabled in `builder/render.mjs`) converts the ASCII s
 | `--`   | en-dash `–`  | bullet-list separator (rule 7), ranges |
 | `---`  | em-dash `—`  | parenthetical asides (rule 3), breaks in thought |
 
-**The one place this does not apply is alt text.** markdown-it's `replacements` rule walks
-inline tokens' children but does not descend into an image token's own children, so `--` and
-`---` inside `![...]` survive literally into the `alt` string and a screen reader announces
-two or three hyphens. Punctuate alt text with commas and colons instead. Verified by
-rendering through the repository's own markdown-it, not inferred.
+**Alt text converts too, and a note here once claimed the opposite.** markdown-it's own
+`replacements` rule genuinely does not descend into an image token's children --- but
+`kramdownDashesPlugin` ([builder/render.mjs](builder/render.mjs), registered after
+`replacements`) walks with `walkTokens`, which recurses, so it reaches image alt and
+converts the dash like any other text. Measured: **zero literal `--` survives in any `alt=`
+anywhere in the built site**, in all three trees.
+
+> **How the wrong version got written, because the mistake is reusable.** It carried the
+> sentence *"verified by rendering through the repository's own markdown-it, not inferred"*
+> --- and that verification used the npm dependency, not the instance `render.mjs`
+> configures. A bare `markdown-it@14.2.0` with `typographer: true` leaves `--` in alt text
+> untouched, so the test reproduced the claim perfectly and told you nothing about this
+> site. The plugin had been in the tree for four months at the time, and four of the five
+> alt strings in `docs/` that contain `---` were committed *one minute after* the note, by
+> the same pass. **Verifying against the library a repository depends on is not verifying
+> against the pipeline it runs** --- render through `builder/`, or read the built HTML.
 
 The source uses the ASCII forms; the rendered HTML uses the typographic characters. Literal `–` or `—` in `docs/` markdown source is forbidden — see the Don'ts at the end of this file. `scripts/convert_em_dash_separators.mjs` is the canonical normaliser if any literals slip back in.
 
@@ -1277,6 +1288,39 @@ effect. Two builds of one commit are now byte-identical except for
 `BuildInfo.html` and `gantt.svg`, which record build timings and cannot be
 anything else.
 
+### A script is findable only if its bare name is a token prefix somewhere
+
+lunr's tokeniser splits on **whitespace and hyphens only** (`/[\s\-]+/`), and the site's
+query adds a *trailing* wildcard. Put those together and a heading written
+`### scripts/check_page_baseline.mjs` indexes as one token beginning `scripts/`, which a
+reader's query `check_page_baseline` can never prefix-match. Measured before round 5's fix:
+
+| query | results |
+|---|---|
+| `scripts/check_page_baseline.mjs` | 4 |
+| `check_page_baseline` | **0** |
+| `check-page-baseline` | 420, as noise --- hyphens split, so it becomes three common words |
+
+`build_dot_metrics` was 0 as well. Round 5's UC-40 issued seven queries including the
+gate's own filename and verbatim prose from its section, and never once saw it --- **the
+string a refused developer actually has in hand is the one that found nothing.**
+
+**The fix was to drop the directory prefix from the headings**, so the token becomes
+`check_page_baseline.mjs` and the trailing wildcard reaches it. Nothing is lost from the
+page: each entry's anchor is pinned with `{: #... }` so no URL moved, and the synopsis
+block on the next line still shows the full `node scripts/<name>.mjs`. Every script name
+returns hits now, and the index grew by nothing.
+
+**Two other fixes were measured and rejected, and both are worth not re-proposing.**
+Raising `search.heading_level` to 3 --- so each `###` becomes its own entry, which is what
+would give a script section its own title boost and its own anchor in the results ---
+**doubles the index, 3,742 entries to 7,524, and does not fix it**: the titles still carry
+the `scripts/` prefix, so the bare query still misses. That is a 3.4 MB payload every page
+already downloads, doubled, for nothing. Widening the tokeniser's separator to include
+`/`, `_` and `.` would work and is the change round 5's review recommended before anyone
+measured it; the `check-page-baseline` row above is what it would do to *every* path token
+on a site whose subject matter is `Debug.Print` and `_App`.
+
 ### A hung build times out and says where it hung
 
 > **This is documented for readers now**, at [When a build stops instead of
@@ -1754,8 +1798,17 @@ none.
 discovered. Designed in [builder/PLAN-counts.md](builder/PLAN-counts.md),
 implemented in [builder/counts.mjs](builder/counts.mjs), documented for
 contributors at [Authoring
-Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). Eleven names
+Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). Twelve names
 are live, and most of the prose is still hand-written.
+
+`enumerations` was added by round 5's fix pass, and it settled a contradiction rather
+than a staleness: `Authoring.md` said the enumeration total on the Reference landing
+page "has to stay" a hand-written digit, while `PLAN-counts.md` had listed that exact
+figure among the ones Phase 3 existed to convert. Neither cited the other and both had
+shipped. It counts the bullets in `Reference/Enumerations.md`'s alphabetical index ---
+the `attributeAnchors` shape, a scan of one page's `rawContent`, legitimate because
+the page *is* the list --- and it reads the index alone, so an entry added only to the
+by-package section above it is still a half-edit that nothing reports.
 
 `defaultPackages` and `builtInPackages` were added in the round-3 fix pass, and
 the reason is worth keeping: `packages` alone could not express either sentence
@@ -1781,10 +1834,10 @@ avoided by construction rather than by a mask.
 Three things fell out of building it that the design had not predicted:
 
 - **The walk has to recurse, for image alt.** An `image` token carries its alt
-  as its own children, so a flat walk stops at the image. This is the same
-  asymmetry recorded under [Source dashes](#source-dashes): markdown-it's
-  `replacements` rule does not descend either, which is why `--` survives
-  literally in alt text site-wide.
+  as its own children, so a flat walk stops at the image. markdown-it's own
+  `replacements` rule does not descend, which is why `kramdownDashesPlugin`
+  recurses as well --- see [Source dashes](#source-dashes), where a note once
+  drew the wrong conclusion from that same asymmetry.
 - **A raw HTML block is unreachable, and source validation cannot see it.**
   `html_block` is one opaque token with no children, and a placeholder inside
   one has a perfectly good *name* --- so the validator passes it and the page

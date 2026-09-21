@@ -41,8 +41,11 @@
 // quotes, so a placeholder syntax containing either would not survive.
 // `{{tbdocs:<name>}}` contains neither. And **image alt lives in a nested
 // child**, which is why the walk recurses: markdown-it's own `replacements`
-// rule does not, which is exactly why `--` survives literally in alt text
-// across this site.
+// rule does not descend into an image token's children, so a flat walk would
+// leave a placeholder literal in the alt attribute. (`kramdownDashesPlugin`
+// in render.mjs recurses for the same reason, which is why dashes in alt text
+// DO convert -- a note in WIP.md once concluded the opposite from this same
+// asymmetry.)
 //
 // ------------------------------------------------------------- the failures
 //
@@ -112,6 +115,30 @@ function countAttributeAnchors(pages) {
   return (page.rawContent.match(/^\{: #[a-z0-9]+ \}/gm) ?? []).length;
 }
 
+// Enumerations documented across every package, counted off the alphabetical
+// index in Reference/Enumerations.md -- which that page calls the complete
+// list ("This page indexes all of them either way"), because a nested enum is
+// documented on its declaring class's page and so has no page of its own to
+// count. The by-package section above it holds the same 140 today; this reads
+// one of the two rather than both, because the user-facing total is the index.
+//
+// Same shape and same exposure as countAttributeAnchors: it scans one page's
+// raw markdown, so a change to that page's list formatting moves the number.
+// A missing page yields 0 rather than throwing, matching the precedent -- the
+// real guard is the link check, which cannot miss Reference/index.md losing
+// its link to a page that no longer exists.
+function countEnumerations(pages) {
+  const page = pages.find((p) => p.srcRel === "Reference/Enumerations.md");
+  if (!page) return 0;
+  const body = page.rawContent.split(/^## Alphabetical index\s*$/m)[1];
+  if (!body) return 0;
+  // Stop at the next heading of any level -- `### See Also` closes the list,
+  // and its four bullets are not enumerations. The A/B/C dividers between
+  // groups are bold text, not headings, so they do not terminate the scan.
+  const list = body.split(/^#{1,6} /m)[0];
+  return (list.match(/^- \[/gm) ?? []).length;
+}
+
 /**
  * Derive every named count from build state.
  *
@@ -149,6 +176,7 @@ export function deriveCounts(state, extra = {}) {
     defaultPackages: countPackages(pages, "Reference/Default/"),
     builtInPackages: countPackages(pages, "Reference/Built-In/"),
     attributeAnchors: countAttributeAnchors(pages),
+    enumerations: countEnumerations(pages),
     // Whole-page stubs emitted for every `redirect_from:` entry. Passed in
     // because it comes from deriveRedirects rather than from discover.
     redirectStubs: extra.redirectStubs ?? 0,

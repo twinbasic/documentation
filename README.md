@@ -26,7 +26,7 @@ All help is *very much* appreciated :)
 
 ## Building the site
 
-The site is rendered by `tbdocs`, a Node.js static site generator kept in [`builder/`](builder/). You need **Node.js 22+**; a PDF or accessibility run additionally needs Chromium, installed once with `npx puppeteer browsers install chrome --install-deps`.
+The site is rendered by `tbdocs`, a Node.js static site generator kept in [`builder/`](builder/). You need **Node.js 22+**; a PDF or accessibility run additionally needs Chromium, installed once with `npx puppeteer browsers install chrome` (add `--install-deps` on Linux only).
 
 ```
 npm ci        # once, from the repository root

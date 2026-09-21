@@ -311,3 +311,73 @@ has never yet measured. Beyond them: the surface still unread is the deploy path
 other end (a maintainer cutting a release), and a case given to somebody who arrives at the
 *published site* rather than the repository --- every round so far has started at `README.md`,
 which is not where a reader of `docs.twinbasic.com` starts.
+
+## Outcome
+
+**All fifteen findings are closed.** `build.bat`, `check.bat` and `test.bat` are green.
+
+### The round's own recommendation was wrong, and measuring it is what said so
+
+*What to do next* called the lunr tokeniser "the real lever" for finding 1. It is not, and
+neither is the change that looked like the principled fix.
+
+| tried | index | `check_page_baseline` |
+|---|---:|---:|
+| before | 3,742 | 0 results |
+| `search.heading_level: 3` | **7,524** | still **0** |
+| drop the `scripts/` prefix from the headings | 3,746 | 2 results |
+
+Raising the heading level is the change that *sounds* right --- it gives each script
+section its own entry, its own anchor in the results and its own 200x title boost --- and
+it doubles a 3.4 MB payload every page already downloads while fixing nothing, because the
+titles still begin `scripts/`. Widening the separator to `/`, `_` and `.` would have
+worked and would have split every path token on a site whose subject matter includes
+`Debug.Print` and `_App`; the review's own `check-page-baseline` row --- 420 results, all
+noise --- is what that looks like.
+
+What actually worked costs nothing: **drop the directory prefix from each of the 21 tool
+headings**, so the indexed token is `check_page_baseline.mjs` and the trailing wildcard
+the site already adds can reach it. No URL moved (every anchor is pinned with `{: #... }`)
+and no information left the page (the synopsis block on the next line still carries the
+full path). Every script name a failing gate prints now returns hits.
+
+All three discoverability-1 cases now hit rank 1 on a naturally phrased query:
+
+| query | before | after |
+|---|---|---|
+| `check_regex_safety` | absent from 7 queries | `Tools` at 1 |
+| `serve.bat changes not showing` | the answering NOTE never returned | `Extending#serve-does-not-reload` at 1 |
+| `read docs offline` | MISS on 4 of 4 | `/#reading-offline-and-the-pdf-book` at 1 |
+
+The other two thirds of finding 1 were structural, not search tuning. `Extending.md`'s
+un-anchored NOTE is now **Why `serve.bat` does not show a builder change**, a section with
+a symptom-shaped title, both causes spelled out, and pointers to it from the two pages that
+document `serve.bat`. The offline mirror and the PDF book have a **Reading offline** section
+on the welcome page --- the first reader-facing mention either has ever had.
+
+### Findings the fix pass changed its mind about
+
+**Finding 7 went the way the plan wanted, by decision rather than by guess.**
+`enumerations` is a count name now, `Reference/index.md` renders 140 from the alphabetical
+index, and `Authoring.md`'s two contradicting bullets are rewritten. The derivation reads
+the index alone, so `Authoring.md` now says what that does not catch: an entry added only
+to the by-package section is still a half-edit.
+
+**Finding 11 was closed with a section, not a sentence.** `Extending.md` lists a fifth
+extension point and has an *Adding a build-time count* walkthrough, which is what
+`PLAN-counts.md`'s Phase 4 promised and never delivered. Writing it turned up that the
+page's own opening sentence enumerated four --- the same restating-a-count defect round 4
+spent a whole tier on, one level up.
+
+**One finding was found by doing the work rather than by an evaluator.** Counting the
+bullets to verify finding 7 turned up `Enumerations.md`'s *See Also* offering "all twelve
+built-in packages", which is neither the thirteen packages nor the ten the site calls
+built-in. It is `{{tbdocs:packages}}` now.
+
+### What was not closed
+
+**Finding 14's third part stands.** The sample size "thirteen" is still asserted in five
+prose sites plus a derived "60 audits", and nothing gates them. It is not a count name
+because `SAMPLE_PAGES.length` is not build state the docs pipeline can see, and extending
+`check_gate_lists.mjs` to sample counts is a gate change this pass did not want to make
+blind. It is correct today; it is the next one to go stale.
