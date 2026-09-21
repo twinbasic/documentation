@@ -35,9 +35,6 @@ Debug.Print "no newline yet";
 Debug.Print " --- continued"
 ```
 
-> [!NOTE]
-> The comma form pads with spaces to the next print zone, and that padding is part of the output. Documentation that quotes what a comma-separated **Print** produces has to preserve those spaces exactly.
-
 ## Debug.TracePrint
 {: #traceprint }
 
