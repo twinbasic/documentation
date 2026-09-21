@@ -601,6 +601,47 @@ Module MD5
      entry stated no applicability at all until then, and called the arguments
      a list of strings. -->
 
+## ImplementsViaPrivateFriendlies
+{: #implementsviaprivatefriendlies }
+
+Syntax: **[ImplementsViaPrivateFriendlies]**
+
+Applicable to: an [**Implements**](Implements) **... Via** statement in a [**Class**](Class)
+
+Keeps the delegate's **Friend** members private to the delegating class. A plain `Implements ... Via` forwards the delegate's **Public** *and* **Friend** members, so a **Friend** member of the delegate becomes callable on the delegating class from anywhere else in the project. With this attribute it stays reachable from inside the class and nowhere else; **Public** members forward as they always did.
+
+The attribute belongs on the `Via` form of the statement only. A plain **Implements** does not take it, and [**WithDispatchForwarding**](#withdispatchforwarding) --- which does --- is not accepted on the `Via` form.
+
+```tb
+Public Class CVehicle
+    Public Sub Honk()
+    End Sub
+    Friend Sub Diagnostics()
+    End Sub
+End Class
+
+Public Class CCar
+    [ImplementsViaPrivateFriendlies] Implements CVehicle Via mBase = New CVehicle
+End Class
+```
+
+Elsewhere in the project, `Honk` is callable on a **CCar** and `Diagnostics` is not. Inside **CCar**, both are.
+
+For an overview of the `Implements ... Via` mechanism itself, see [Implements Via for basic inheritance](../../Features/Language/Inheritance#implements-via-for-basic-inheritance).
+
+<!-- Applicability by probe, BETA 983; no package or sample uses this
+     attribute. Accepted on `Implements <Class> Via <field> = <expr>` and on
+     `Implements <Interface> Via <Class>`; rejected on a plain Implements
+     statement (TB5155), on the Class (TB5182), on the Interface (TB5182), on
+     an Inherits statement (TB5155) and on an Interface line in a CoClass
+     (TB5182). The control is [WithDispatchForwarding] on the same Via
+     statement, which draws TB5155 -- so the Via form is not simply accepting
+     any attribute. Effect measured as an A/B on one source with and without
+     the attribute: a Friend member of the delegate called from a Module
+     draws TB5027 with it and compiles without it, while the same member
+     called from inside the class compiles either way, qualified with Me or
+     bare, and a Public member is unaffected. -->
+
 ## IntegerOverflowChecks  (optional Bool)
 {: #integeroverflowchecks }
 

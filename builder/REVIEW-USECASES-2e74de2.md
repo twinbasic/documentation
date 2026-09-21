@@ -257,12 +257,23 @@ have thought to name in advance, and any of which would have silently become rea
 
 Everything above was fixed unless listed here. This section is the queue, not a finding list.
 
-> **Queue state after the follow-on sessions.** Struck-through entries are closed and carry
-> the commit that closed them. What is left is three items, all of which want one answer from
-> the maintainer rather than another build: the applicability of `ImplementsViaPrivateFriendlies`
-> and of `ExecuteHostCommand`. A second exploratory round sweeps the remaining plausible
-> targets for both and has not been run yet. The two IDE rendering defects below are
-> twinBASIC bugs rather than documentation ones and are recorded, not queued.
+> **The queue is empty.** Struck-through entries are closed and carry the commit that closed
+> them. The last two --- the applicability of `ImplementsViaPrivateFriendlies` and of
+> `ExecuteHostCommand` --- are settled, and neither needed the maintainer question this
+> section had been holding out for. Both had been asked the wrong question:
+>
+> - **`ExecuteHostCommand` is not an attribute**, which is why six probes across two rounds
+>   rejected it in every attribute position tried. It is a member of `Debug`. Wayne confirmed
+>   the rest: a leftover from the VS Code IDE that was never wired to this one, to be removed
+>   in the next release --- so no entry is owed for it anywhere.
+> - **`ImplementsViaPrivateFriendlies` belongs on an `Implements ... Via` statement**, the
+>   composition-delegation form, which every earlier probe had skipped in favour of the plain
+>   `Implements`. Documented, with its effect measured rather than inferred.
+>
+> Both are recorded in full under [Needs someone with the twinBASIC
+> IDE](#needs-someone-with-the-twinbasic-ide). The IDE rendering defects below are twinBASIC
+> bugs rather than documentation ones and are recorded, not queued; this round added two
+> more, both in the IDE's command-line handling.
 >
 > Two entries were **overstated** and are marked where they sit --- `Authoring.md`'s listing
 > checklist was already half-fixed before it was checked, and `IDE/Links.png` is not a defect
@@ -301,6 +312,30 @@ Everything above was fixed unless listed here. This section is the queue, not a 
 > putting the attribute in front of the compiler by hand. The six verbs are now documented
 > at [Import/Export Tool](../docs/Features/Packages/Import-export%20tool.md); they were not
 > before, and the usage message the tool prints names only two of them.
+>
+> **Two corrections to the paragraph above, both from the session that emptied this queue.**
+>
+> *The IDE executable does take a build flag*, even though the compiler executable does not.
+> `twinBASIC.exe --buildAndExit32 <project.twinproj>` (and `--buildAndExit64`) builds and
+> exits; `parseCommandLine()` in `ide/main.js` reads them, and the Personal Edition is
+> refused with a named dialog, so it is a deliberate feature rather than a leftover. It is
+> still useless for this job, for a reason worth recording: **it writes nothing to stdout or
+> stderr, ever**, and exits 0 whether or not the build was clean. Measured three ways ---
+> a clean project built and exited 0; a project carrying a `TB5155` in code nothing
+> references built an executable *anyway* and exited 0; and a project with a `TB5079` on a
+> reachable path produced no executable, reported `[BUILD] failed` in the IDE's own DEBUG
+> CONSOLE, and then **never exited at all**, sitting on a "Please wait…" dialog at 100%. So
+> it cannot serve even as a pass/fail gate: silent, falsely green, and hanging on exactly
+> the case worth catching.
+>
+> *And putting the attribute in front of the compiler no longer has to be done by hand.*
+> The IDE's UI is a WebView2 page, WebView2 honours `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`,
+> so the IDE can be started with a DevTools port and driven over CDP ---
+> [scripts/tbbuild.mjs](../scripts/tbbuild.mjs). It loads a project, waits for the background
+> compile to settle, and prints the DIAGNOSTICS pane. The 32-probe exploratory project below
+> is one 40-second command now, and every result it records was re-run through it from the
+> committed generator rather than transcribed. See [Compiling a twinBASIC project without
+> the IDE in front of you](../WIP.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
 
 - ~~**`ConstantFoldableNumericsOnly`** carries the same unqualified *Applicable to:
   **Function*** that `ConstantFoldable` did. The sibling turned out to be module-scoped only.
@@ -375,6 +410,28 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   renders `Bottom}` with a stray brace, and Align and Make Same Size both render `ARROWLUP`.
   Documentation bugs these are not.
 
+- **Two more IDE defects, both in command-line handling**, found while automating the probe
+  builds. Recorded here for the same reason as the two above: worth reporting upstream, not
+  something the documentation can fix.
+
+  **A trailing space on the command line stops a project opening.** `parseCommandLine()` in
+  `ide/main.js` splits the raw command line on `" "` and pushes every resulting token,
+  including the empty one a trailing space produces. The empty token is not a `--` switch, so
+  it counts as a second file argument and the IDE refuses the launch with an `alert()` reading
+  *"Bad command line syntax."* --- leaving a modal the IDE will not close on a normal shutdown
+  request. PowerShell's `Start-Process` appends exactly that trailing space, so
+  `Start-Process twinBASIC.exe -ArgumentList $path` never opens the project while
+  `spawn(exe, [path])` from Node does. Measured both ways: the IDE's own `GetCmdLine` returns
+  `"--buildAndExit32 C:\…\P_Y01.twinproj"` from the Node launch and a space-suffixed variant
+  from the PowerShell one. This cost most of an hour before the cause was found, because the
+  failing and working launches look identical when written out.
+
+  **`--buildAndExit32` does not exit when the build fails.** On a clean project it builds and
+  exits 0. On a project with a codegen error on a reachable path it reports `[BUILD] failed`
+  in the DEBUG CONSOLE and then sits indefinitely on a "Please wait…" progress dialog at 100%.
+  A build-and-exit switch that hangs on failure cannot be scripted at all, which is the whole
+  point of having one.
+
 - ~~**`Reference/Attributes.md` is missing attributes the documentation itself uses.** The
   compiler's token table names `Enumerator`, `NonBrowsable` and `AllowUnpopulatedVtableEntry`;
   all three are used as attributes in published reference pages --- `WinServicesLib/Services.md:208`,
@@ -432,9 +489,11 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   probe: it is rejected on a procedure (TB5155) and compiles on a `Public Const`, which is
   exactly the target `[DllExport]` turned out to mean.
 
-  **Still open, and now exhausted from this side: `ImplementsViaPrivateFriendlies` and
-  `ExecuteHostCommand`.** Both are in the compiler's token table and neither appears in any
-  package or sample. Three targets were probed for each, all rejected:
+  ~~**Still open, and now exhausted from this side: `ImplementsViaPrivateFriendlies` and
+  `ExecuteHostCommand`.**~~ **Both settled, and neither needed the maintainer question this
+  entry was waiting on --- see [The last two names](#the-last-two-names) below.** Both are in
+  the compiler's token table and neither appears in any package or sample. Three targets were
+  probed for each, all rejected:
 
   | attribute | tried | result |
   |---|---|---|
@@ -455,6 +514,74 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   `[ConstantFoldable]`, unquestionably real, draws TB5182 `No handler for this symbol` on a
   class method; `[ComExport]` draws TB5155 on a Sub and then compiles on a Const. Existence
   is settled by the token table, not by which code comes back.
+
+#### The last two names
+
+**Six rejections across two rounds, and the reason was the same both times: the question was
+wrong.** Sixteen further probes settled both names, and the second half of that reading rule
+above --- *"existence is settled by the token table"* --- is **withdrawn**, because it is what
+kept the first one unsolved.
+
+**`ExecuteHostCommand` is not an attribute.** The token table interns keywords, attributes
+and object members together --- `Debug`, `Print` and `Assert` sit in it beside `Description`
+and `DllExport` --- so a name being in it says the compiler knows the name, not what kind of
+name it is. This one is a member of `Debug`:
+
+| probe | result |
+|---|---|
+| `Debug.Cls` (control, does `Debug` have members beyond Print/Assert?) | clean |
+| `Debug.ExecuteHostCommand "tbFile_SaveProject"` | **clean** |
+| `Debug.ExecuteHostCommand` with no argument | `TB5023 Expected argument: command` |
+| `ExecuteHostCommand "…"` unqualified | `TB5079 Unrecognized symbol` |
+
+The TB5023 text is the identification: `Expected argument: command` sits in the compiler
+binary's string pool immediately after the ANSI identifier `DebugExecuteHostCommand`, next to
+`DebugClsCommand`. Reading those two names as an IDE-internal protocol rather than as language
+surface is what the earlier rounds got wrong.
+
+**The maintainer settled the rest**, asked on 2026-09-17: it "is from the VS Code days, where
+we allowed the developer to pass through commands directly to the VS Code host. This has never
+been hooked up to the new IDE, and so I will remove this legacy API in the upcoming release."
+So **nothing is owed here** --- not an attribute entry, and not a `Debug` reference page for a
+member that does nothing and is about to go. Recorded so the next census does not re-open it.
+
+**`ImplementsViaPrivateFriendlies` belongs on an `Implements ... Via` statement.** Every
+earlier probe put it on a plain `Implements`, on the Class, or on the Interface. The
+composition-delegation form --- `Implements <Class> Via <field> = <expr>`, documented on
+[Inheritance](../docs/Features/Language/Inheritance.md) and used throughout WinEventLogLib ---
+was never tried, and it is the target:
+
+| probe | result |
+|---|---|
+| `[IVPF] Implements IFoo Via mBase = New CBase` | **clean** |
+| `[IVPF] Implements IFoo Via CBase` | **clean** |
+| `[WithDispatchForwarding]` on the same `Via` statement (control) | `TB5155` |
+| `[IVPF]` on a plain `Implements`, with an unprefixed private member | `TB5155` |
+| `[IVPF(True)]` on a plain `Implements` | `TB5155` |
+| `[IVPF]` on an `Inherits` statement | `TB5155` |
+| `[IVPF]` on an `Interface` line in a `CoClass` | `TB5182` |
+
+**The control is what makes this evidence rather than a coincidence.**
+`[WithDispatchForwarding]` is legal on a plain `Implements` and rejected on the `Via` form;
+`[ImplementsViaPrivateFriendlies]` is the exact opposite. A clean build on its own would only
+have shown that the statement tolerates attributes.
+
+**The effect was measured, not inferred**, by an A/B over one source shape with the attribute
+as the only variable. A `Friend` member of the delegate, called on the delegating class from a
+module: clean without the attribute, `TB5027 Unrecognized member` with it. The same member
+called from inside the class: clean either way, through `Me` and unqualified. A `Public`
+member: unaffected. So the attribute keeps the delegate's `Friend` members private to the
+delegating class instead of re-exposing them project-wide --- the name is literal. Written up
+at [`#implementsviaprivatefriendlies`](../docs/Reference/Attributes.md).
+
+**One trap on the way, recorded because it read as a discovery for several minutes.**
+`Implements IFoo Via PrivateFriendlies` compiles, and means nothing at all: `Via` is the
+documented delegation keyword and its operand is a field name, so that line declares a private
+field that happens to be called `PrivateFriendlies`. It was written as a guess that the
+feature might be spelled as a clause, and a clean build on it looked like confirmation. **A
+probe whose source text reads like the answer is the one to re-check hardest** --- the same
+discipline as this review's own [method note](#what-round-2-confirms-about-the-method), applied
+to a false positive rather than an overstatement.
 
 - **One name the token table does not have:** `[LibraryId("…")]`, which appears in the
   compiler binary beside `Library `, `End Library` and `' Original type library: `. It is

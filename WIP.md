@@ -127,6 +127,87 @@ the only prose anywhere explaining `[WithDispatchForwarding]` is a comment in Sa
 > `(`. Argument text needs stripping too, or `[Description("Sets or returns, given …")]`
 > contributes an attribute named `given`.
 
+### Compiling a twinBASIC project without the IDE in front of you
+
+Exported sources say what the compiler *accepts today*; they cannot answer a question no
+shipped source happens to demonstrate. For those, something has to put the construct in
+front of the compiler --- and until BETA 983 that meant a person opening the IDE, building,
+and reading the DIAGNOSTICS pane by eye.
+
+[scripts/tbbuild.mjs](scripts/tbbuild.mjs) does it unattended. Roughly 40 seconds per
+project, nothing appears on screen, exit code 1 if the project has errors:
+
+```sh
+TB_IDE="C:/path/to/twinBASIC_IDE_BETA_983/twinBASIC.exe" \
+  node scripts/tbbuild.mjs C:/probe/AttributeExplore.twinproj
+```
+
+`--json` gives the same thing as one object, `--show` puts the IDE on your own desktop where
+you can watch it, `--keep` leaves it running. Exit codes are 0 clean, 1 the project has
+errors, 2 the harness failed, 3 the compile never settled, 4 the project crashes the
+compiler.
+
+**How it works, in one line:** the IDE's user interface is a WebView2 page, WebView2 honours
+`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, so the IDE starts with a Chrome DevTools port and is
+driven over CDP. The diagnostics come from the IDE's own *copy compilation error report*
+walk, minus the clipboard write, so the text is exactly what that command would hand a human.
+The CDP client is [scripts/lib/tb-cdp.mjs](scripts/lib/tb-cdp.mjs) --- raw rather than
+puppeteer, because a pending `alert()` blocks the renderer and puppeteer's `connect()`
+handshake talks to the renderer, so it hangs on precisely the state you need to recover from.
+
+**Do not reach for `--buildAndExit32` instead.** It exists, it is real (`parseCommandLine()`
+reads it, and Personal Edition is refused by name), and it is useless unattended: **nothing
+is written to stdout or stderr, ever**, it exits 0 on a project the IDE flags, and when the
+build genuinely fails it does not exit at all --- it sits on a "Please wait…" dialog at 100%
+forever. Silent, falsely green, and hanging on the one case worth catching. Measured all
+three ways.
+
+**It runs the IDE on a private Windows desktop, and that is not decoration.** A build tool
+that seizes the keyboard mid-sentence is a build tool nobody runs while working. No window
+style prevents it: the IDE calls `HostForceFocus()` from its own `window.onload`, so
+`start /min` was tried and the window still came to the front. A process on another desktop
+has no foreground to take, and the compile does not care whether anything is on screen ---
+verified by reading the same diagnostics off an IDE nobody could see.
+
+That is the one piece of the harness that cannot be JavaScript, because it is
+`CreateDesktop` plus `CreateProcess` with `STARTUPINFO.lpDesktop` and Node has no FFI
+without a native addon. [scripts/lib/tb-launch.ps1](scripts/lib/tb-launch.ps1) holds those
+two calls. It is **not run as a file**: `tbbuild.mjs` reads the text and passes it through
+`-EncodedCommand`, so the default execution policy --- which refuses `.ps1` files on this
+machine, and which is the same policy [BOOKPLAN.md](BOOKPLAN.md) records blocking `npx.ps1`
+--- never comes into it, and no `-ExecutionPolicy Bypass` has to be recommended to anyone.
+Its inputs arrive as environment variables, so there is no argument quoting to get wrong.
+
+Six things about the harness were learned by getting them wrong, and each is a comment in
+the file now:
+
+- **Pass the project on the IDE's command line, and spawn with an argv array.**
+  `parseCommandLine()` splits the raw command line on `" "` and pushes every token, so a
+  *trailing space* becomes an empty second file argument and the IDE refuses the launch with
+  `Bad command line syntax.` PowerShell's `Start-Process` appends exactly that space;
+  `spawn(exe, [path])` does not. Loading through `root.loadProject` afterwards also works, but
+  lets the IDE's no-project startup run first and flashes the splash and the New/Open Project
+  dialog on screen.
+- **Read the counters and the diagnostic rows in one `Runtime.evaluate`.** Read as two calls
+  they race: one run reported two diagnostics beside a zero error count, because the compile
+  finished between them. The harness now refuses a sample where the two disagree rather than
+  reporting either number.
+- **Watch for the compiler going down.** twinBASIC runs the compiler in the same process as
+  user code, so a probe can crash it, and the IDE then restarts it three times before giving
+  up. Untreated that is a silent two-minute wait; treated it is exit code 4.
+- **Kill the process tree, forcibly.** An IDE showing a modal ignores a normal close, and the
+  launcher is not the process holding the compiler, so `taskkill /T /F`.
+- **Give each probe project its own `project.id`.** Two sharing one confuses the IDE's
+  recents list.
+- **Adopt the IDE's pid; do not assume it is the child.** Launched through the desktop
+  helper the IDE is not a descendant of anything the harness spawned, so the helper reports
+  the pid on stdout and the harness kills that.
+
+**A crashing probe is a real risk, not a theoretical one.** Four `Debug.ExecuteHostCommand`
+argument-shape probes in one project took the compiler down repeatedly. Keep a question that
+might crash the compiler in a project of its own, so the answer is attributable and one bad
+probe cannot cost the other thirty their run.
+
 ## Page template
 
 Match the existing style. Worked examples to imitate:
@@ -1042,6 +1123,14 @@ Two `.py` files stay, and neither is an oversight:
 - **`scripts/build_fonts.py`** stays because the JavaScript build of HarfBuzz it would
   use produces wrong CFF2 metrics --- a one-line build-configuration defect in harfbuzzjs,
   documented with the evidence in [WIP.Fonts.md](WIP.Fonts.md).
+
+One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is two Win32
+calls --- `CreateDesktop`, and `CreateProcess` with `STARTUPINFO.lpDesktop` --- which Node
+cannot make without a native FFI addon, and adding one for a single call would mean
+`npm install` no longer suffices to run the tooling. It is also not a script anyone runs:
+`tbbuild.mjs` reads the text and passes it through `-EncodedCommand`, so it never meets the
+execution policy. See [Compiling a twinBASIC project without the IDE in front of
+you](#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
 
 The full account of the JavaScript port of `build_fonts.py` --- what works, the harfbuzzjs
 build defect that blocks it, the evidence, the root cause in `hb-config.hh`, and what the

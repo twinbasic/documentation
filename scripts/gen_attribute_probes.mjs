@@ -253,8 +253,16 @@ const PROBE_FACTORY_TWIN =
 // unquestionably a real attribute and drew TB5182 `No handler for this symbol`
 // on a class method, the same code an invented name would draw; [ComExport]
 // drew TB5155 `This attribute is not supported in this context` on a Sub and
-// then compiled clean on a Const. Existence is settled by the compiler's token
-// table, not by which of the two codes comes back.
+// then compiled clean on a Const. Which of the two codes comes back says
+// nothing about existence.
+//
+// And **the token table does not settle existence either**, which an earlier
+// draft of this comment claimed. The table interns keywords, attributes and
+// object members together -- `Debug`, `Print` and `Assert` sit in it beside
+// `Description` and `DllExport`. `ExecuteHostCommand` is in it and is a member
+// of `Debug`, not an attribute, which is why it was rejected in every
+// attribute position tried across two rounds. A name in the table is a name
+// the compiler knows; what kind of name it is has to be probed.
 const EXPLORATORY = [
   {
     tag: "X01_ConstantFoldableNumericsOnly_Module",
@@ -354,7 +362,8 @@ const EXPLORATORY = [
       "WithDispatchForwarding in the token table, which is used 44 times on an " +
       "Implements statement.",
     got: "BETA 983: TB5155 on the attribute. REJECTED -- it does NOT take " +
-      "its neighbour's position, so its applicability is still unknown.",
+      "its neighbour's position. Settled later by X25: it belongs on the " +
+      "`Implements ... Via` form of the statement, not the plain one.",
     clean: "it exists and takes the same position as its neighbour",
     rejected: "it is not an attribute for an Implements statement",
     body:
@@ -373,7 +382,8 @@ const EXPLORATORY = [
       "and the binary also carries a `custom/executeHostCommand` JSON-RPC method, " +
       "so it is probably an IDE-addin hook rather than a compiler directive.",
     got: "BETA 983: TB5182 on the attribute. REJECTED on a procedure in a " +
-      "Module; applicability still unknown.",
+      "Module. Settled later by X19: it is not an attribute at all, but a " +
+      "member of Debug.",
     clean: "it is accepted on a procedure in a Module, like IdeButton",
     rejected: "it needs an argument, a different target, or is not an attribute",
     body:
@@ -453,7 +463,8 @@ const EXPLORATORY = [
     asks: "[ImplementsViaPrivateFriendlies] on the Class rather than on its Implements " +
       "statement. The name reads as a policy for how a class implements its interfaces, " +
       "which would be a whole-class setting.",
-    got: "BETA 983: TB5182 on the attribute. REJECTED on the Class too.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED on the Class too. " +
+      "Settled later by X25, on the Implements ... Via statement.",
     clean: "it is a class-level attribute, and X07 tried the wrong target",
     rejected: "not the class either; try the interface side",
     body:
@@ -471,9 +482,9 @@ const EXPLORATORY = [
     tag: "X13_ImplementsViaPrivateFriendlies_Interface",
     asks: "Same attribute on the Interface being implemented, which would make it the " +
       "interface author's choice rather than the implementor's.",
-    got: "BETA 983: TB5182 on the attribute. REJECTED on the Interface too, " +
-      "so all three plausible targets are exhausted and its applicability is " +
-      "a question for the maintainer.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED on the Interface too. " +
+      "Three targets exhausted -- and all three were the wrong question: " +
+      "X25 found it on the Implements ... Via statement.",
     clean: "it belongs on the Interface",
     rejected: "neither side of an Implements relationship takes it",
     body:
@@ -487,7 +498,8 @@ const EXPLORATORY = [
     asks: "[ExecuteHostCommand] on a method in a Class. The binary pairs the name with a " +
       "`custom/executeHostCommand` JSON-RPC method, so it is likely an addin hook, and an " +
       "addin's entry points are class methods rather than module procedures.",
-    got: "BETA 983: TB5182 on the attribute. REJECTED on a class method.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED on a class method. " +
+      "Not an attribute anywhere; see X19.",
     clean: "it is a class-method attribute",
     rejected: "not a bare attribute on a class method; it may need an argument",
     body:
@@ -503,8 +515,8 @@ const EXPLORATORY = [
       "the same target as [IdeButton], whose entry it sits beside in the token table and " +
       "which takes a caption.",
     got: "BETA 983: TB5182 on the attribute, at the same column as the bare " +
-      "form in X08, so the argument is not what X08 was missing. Three " +
-      "targets tried, all rejected; a question for the maintainer.",
+      "form in X08, so the argument is not what X08 was missing. Not an " +
+      "attribute in any position: X19 shows it is a member of Debug.",
     clean: "it takes a String argument, and the bare form in X08 failed for want of one",
     rejected: "read the diagnostic: complaining about the argument rather than the " +
       "applicability would say the target is right and the argument type is not",
@@ -551,6 +563,328 @@ const EXPLORATORY = [
       "Public Module X16_ComExport_True\n" +
       "    [ComExport(True)]\n" +
       "    Public Const ProbeConst As Long = 1\n" +
+      "End Module\n",
+  },
+
+  // ---- third round ---------------------------------------------------------
+  // The two names the first two rounds left unplaced, settled. Both turned on
+  // asking a different question rather than trying another target:
+  //
+  //   [ExecuteHostCommand] is not an attribute at all. The token table mixes
+  //   keywords, attributes and object members, and this one is a member of
+  //   `Debug` -- X18 to X21 below. The maintainer confirmed it afterwards: a
+  //   leftover from the VS Code IDE, never wired to this one, to be removed.
+  //
+  //   [ImplementsViaPrivateFriendlies] belongs on `Implements ... Via`, the
+  //   composition-delegation form, not on the plain `Implements` that X07 and
+  //   the round-2 probes tried -- X25 to X28, with the effect pinned down by
+  //   the A/B in X29 to X33.
+  //
+  // One trap on the way, worth stating because it looked like a discovery for
+  // several minutes: `Implements IFoo Via PrivateFriendlies` compiles, and
+  // means nothing. `Via` is the documented delegation keyword and its operand
+  // is a field name, so that line declares a private field that happens to be
+  // called PrivateFriendlies. A probe whose text reads like the answer is the
+  // one to re-check hardest.
+  {
+    tag: "X18_Debug_Cls",
+    asks: "Does the Debug object have members beyond Print and Assert? The compiler " +
+      "binary carries ANSI identifiers DebugClsCommand and DebugExecuteHostCommand " +
+      "side by side.",
+    got: "BETA 983: clean. Debug.Cls compiles, so the pairing is real -- which " +
+      "is what makes X19 readable.",
+    clean: "Debug has a wider member set, and X19's premise is worth testing",
+    rejected: "the DebugXxxCommand identifiers are not Debug members, and X19 is a guess",
+    body:
+      "Public Module X18_Debug_Cls\n" +
+      "    Public Sub Probe()\n" +
+      "        Debug.Cls\n" +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X19_Debug_ExecuteHostCommand",
+    asks: "Is ExecuteHostCommand a member of Debug rather than an attribute? X08, X14 " +
+      "and X15 rejected it in every attribute position tried.",
+    got: "BETA 983: clean. It is a Debug member, so the token table entry was " +
+      "never an attribute and Attributes.md was right not to have one.",
+    clean: "it is a Debug member; no attribute entry is owed for the name",
+    rejected: "it is neither an attribute nor a Debug member",
+    body:
+      "Public Module X19_Debug_ExecuteHostCommand\n" +
+      "    Public Sub Probe()\n" +
+      '        Debug.ExecuteHostCommand "tbFile_SaveProject"\n' +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X20_Debug_ExecuteHostCommand_noarg",
+    asks: "What is the parameter called? The compiler's string pool has " +
+      '"Expected argument: command" immediately after DebugExecuteHostCommand.',
+    got: "BETA 983: TB5023 `Expected argument: command` -- the string from the " +
+      "binary, produced by the compiler, naming the parameter. This is the " +
+      "probe that identifies the binding outright.",
+    clean: "the argument is optional",
+    rejected: "read the message: naming the parameter identifies the binding",
+    body:
+      "Public Module X20_Debug_ExecuteHostCommand_noarg\n" +
+      "    Public Sub Probe()\n" +
+      "        Debug.ExecuteHostCommand\n" +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X21_ExecuteHostCommand_bare_statement",
+    asks: "Is it also a statement in its own right, without the Debug prefix?",
+    got: "BETA 983: TB5079 `Unrecognized symbol 'ExecuteHostCommand'`. It must " +
+      "be qualified.",
+    clean: "it is a statement as well as a Debug member",
+    rejected: "it is reachable only through Debug",
+    body:
+      "Public Module X21_ExecuteHostCommand_bare_statement\n" +
+      "    Public Sub Probe()\n" +
+      '        ExecuteHostCommand "tbFile_SaveProject"\n' +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X22_IVPF_plain_Implements_friendly_body",
+    asks: "Was X07 rejected for the attribute or for the class body? This gives the " +
+      "plain Implements the unprefixed private member the attribute's name suggests, " +
+      "instead of the usual IFoo_Ping stub.",
+    got: "BETA 983: TB5155 on the attribute, plus TB5000 `Missing implementation " +
+      "of member Sub Ping()`. Two answers: the attribute is rejected on a plain " +
+      "Implements whatever the body looks like, and an unprefixed private member " +
+      "does not satisfy an interface on its own.",
+    clean: "the body was what X07 was short of",
+    rejected: "the attribute is what a plain Implements refuses",
+    body:
+      "Public Interface IX22Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "Public Class X22_IVPF_plain_Implements_friendly_body\n" +
+      "    [ImplementsViaPrivateFriendlies] Implements IX22Probe\n\n" +
+      "    Private Sub Ping()\n" +
+      "    End Sub\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X23_IVPF_with_boolean",
+    asks: "Does it take the optional Boolean many twinBASIC attributes take? Only the " +
+      "bare form had been tried.",
+    got: "BETA 983: TB5155 on the attribute, at the same place as the bare form " +
+      "in X07 -- so a missing argument was not what X07 was short of either.",
+    clean: "it takes a Boolean, and the bare form failed for want of one",
+    rejected: "the argument is not what the plain Implements was refusing",
+    body:
+      "Public Interface IX23Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "Public Class X23_IVPF_with_boolean\n" +
+      "    [ImplementsViaPrivateFriendlies(True)] Implements IX23Probe\n\n" +
+      "    Private Sub IX23Probe_Ping() Implements IX23Probe.Ping\n" +
+      "    End Sub\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X24_IVPF_CoClass_interface",
+    asks: "On an Interface line inside a CoClass -- the target [Default] and [Source] " +
+      "take, and one the earlier rounds did not try.",
+    got: "BETA 983: TB5182 on the attribute. Not this target either.",
+    clean: "it is a CoClass interface-line attribute",
+    rejected: "not a CoClass interface line",
+    body:
+      "Public Interface IX24Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "Public CoClass X24_IVPF_CoClass_interface\n" +
+      "    [ImplementsViaPrivateFriendlies] Interface IX24Probe\n" +
+      "End CoClass\n",
+  },
+  {
+    tag: "X25_IVPF_on_Via_delegation",
+    asks: "On an `Implements ... Via <field> = <expr>` statement -- the " +
+      "composition-delegation form, which every earlier probe had skipped in favour " +
+      "of the plain Implements.",
+    got: "BETA 983: CLEAN. This is the answer. The attribute belongs on the " +
+      "Via form of the statement, which is what its name says and what five " +
+      "rejections had not suggested. Documented.",
+    clean: "this is its target, and every earlier probe was on the wrong statement",
+    rejected: "not the Via form either, and the name is misleading",
+    body:
+      "Public Interface IX25Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "Public Class CX25Base\n" +
+      "    Implements IX25Probe\n\n" +
+      "    Private Sub IX25Probe_Ping() Implements IX25Probe.Ping\n" +
+      "    End Sub\n" +
+      "End Class\n\n" +
+      "Public Class X25_IVPF_on_Via_delegation\n" +
+      "    [ImplementsViaPrivateFriendlies] Implements IX25Probe Via mBase = New CX25Base\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X26_IVPF_on_Via_class",
+    asks: "The same attribute on the class-to-class form the Inheritance page shows, " +
+      "`Implements <Interface> Via <ClassName>`.",
+    got: "BETA 983: clean. Both spellings of the Via statement take it.",
+    clean: "both spellings of the Via statement take it",
+    rejected: "only the field-and-constructor spelling takes it",
+    body:
+      "Public Interface IX26Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "Public Class CX26Base\n" +
+      "    Implements IX26Probe\n\n" +
+      "    Private Sub IX26Probe_Ping() Implements IX26Probe.Ping\n" +
+      "    End Sub\n" +
+      "End Class\n\n" +
+      "Public Class X26_IVPF_on_Via_class\n" +
+      "    [ImplementsViaPrivateFriendlies] Implements IX26Probe Via CX26Base\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X27_IVPF_on_Inherits",
+    asks: "On an Inherits statement -- twinBASIC's other inheritance mechanism.",
+    got: "BETA 983: TB5155 on the attribute. Delegation only, not Inherits.",
+    clean: "it applies to both inheritance mechanisms",
+    rejected: "it is specific to Implements ... Via",
+    body:
+      "Public Class CX27Base\n" +
+      "    Public Sub Ping()\n" +
+      "    End Sub\n" +
+      "End Class\n\n" +
+      "Public Class X27_IVPF_on_Inherits\n" +
+      "    [ImplementsViaPrivateFriendlies] Inherits CX27Base\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X28_WDF_on_Via_control",
+    asks: "Control for X25. [WithDispatchForwarding] is a known-good " +
+      "Implements-statement attribute. Does the Via form simply accept any attribute?",
+    got: "BETA 983: TB5155 on the attribute. REJECTED -- so the Via form does " +
+      "NOT accept attributes indiscriminately, and X25's clean build is about " +
+      "that attribute rather than about that statement. This control is what " +
+      "makes X25 evidence instead of a coincidence.",
+    clean: "the Via form accepts attributes generally, and X25 proves little",
+    rejected: "expected; the Via form is selective, which is what makes X25 mean something",
+    body:
+      "' Control probe. The opposite pairing of X25: this attribute is accepted\n" +
+      "' on a plain Implements and rejected here, while\n" +
+      "' [ImplementsViaPrivateFriendlies] is rejected there and accepted here.\n\n" +
+      "Public Interface IX28Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "Public Class CX28Base\n" +
+      "    Implements IX28Probe\n\n" +
+      "    Private Sub IX28Probe_Ping() Implements IX28Probe.Ping\n" +
+      "    End Sub\n" +
+      "End Class\n\n" +
+      "Public Class X28_WDF_on_Via_control\n" +
+      "    [WithDispatchForwarding] Implements IX28Probe Via mBase = New CX28Base\n" +
+      "End Class\n",
+  },
+
+  // X29 to X33 are the A/B that gives the attribute an effect rather than only
+  // a legal position. One source shape, four call sites, the attribute the
+  // only thing that varies.
+  {
+    tag: "X29_Via_Friend_outside_plain",
+    asks: "Baseline. Without the attribute, is a Friend member of the delegate callable " +
+      "on the delegating class from elsewhere in the project?",
+    got: "BETA 983: clean. A plain Via forwards Friend members as Friend, so " +
+      "they are reachable project-wide.",
+    clean: "a plain Via re-exposes the delegate's Friend members",
+    rejected: "it does not, and X30 has nothing to remove",
+    body:
+      "Public Class CX29Base\n" +
+      "    Public Sub PublicPing()\n" +
+      "    End Sub\n" +
+      "    Friend Sub FriendPing()\n" +
+      "    End Sub\n" +
+      "End Class\n\n" +
+      "Public Class CX29Derived\n" +
+      "    Implements CX29Base Via mBase = New CX29Base\n" +
+      "End Class\n\n" +
+      "Public Module X29_Via_Friend_outside_plain\n" +
+      "    Public Sub Probe()\n" +
+      "        Dim d As CX29Derived = New CX29Derived\n" +
+      "        d.FriendPing\n" +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X30_Via_Friend_outside_attr",
+    asks: "The same call with the attribute added, and nothing else changed.",
+    got: "BETA 983: TB5027 `Unrecognized member 'FriendPing' on type " +
+      "'_CX30Derived'`. Against X29's clean build this is the effect: the " +
+      "attribute stops the delegate's Friend members being re-exposed.",
+    clean: "the attribute does not affect Friend visibility",
+    rejected: "this is the effect -- read it against X29",
+    body:
+      "Public Class CX30Base\n" +
+      "    Public Sub PublicPing()\n" +
+      "    End Sub\n" +
+      "    Friend Sub FriendPing()\n" +
+      "    End Sub\n" +
+      "End Class\n\n" +
+      "Public Class CX30Derived\n" +
+      "    [ImplementsViaPrivateFriendlies] Implements CX30Base Via mBase = New CX30Base\n" +
+      "End Class\n\n" +
+      "Public Module X30_Via_Friend_outside_attr\n" +
+      "    Public Sub Probe()\n" +
+      "        Dim d As CX30Derived = New CX30Derived\n" +
+      "        d.FriendPing\n" +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X31_Via_Friend_inside_attr",
+    asks: "Is that member gone, or merely private? Calling it from inside the class " +
+      "separates the two.",
+    got: "BETA 983: clean, both through Me and unqualified. The member is still " +
+      "there and still forwarded -- it is private to the class. `Private " +
+      "friendlies` is literal.",
+    clean: "private rather than absent, which is what the attribute's name claims",
+    rejected: "the member is gone entirely, and the name overstates it",
+    body:
+      "Public Class CX31Base\n" +
+      "    Friend Sub FriendPing()\n" +
+      "    End Sub\n" +
+      "End Class\n\n" +
+      "Public Class X31_Via_Friend_inside_attr\n" +
+      "    [ImplementsViaPrivateFriendlies] Implements CX31Base Via mBase = New CX31Base\n\n" +
+      "    Public Sub CallThroughMe()\n" +
+      "        Me.FriendPing\n" +
+      "    End Sub\n\n" +
+      "    Public Sub CallBare()\n" +
+      "        FriendPing\n" +
+      "    End Sub\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X32_Via_Public_outside_attr",
+    asks: "Does the attribute touch Public members too, or only Friend ones?",
+    got: "BETA 983: clean. Public members forward exactly as they do without " +
+      "the attribute, so the effect is confined to Friend members.",
+    clean: "the effect is confined to Friend members",
+    rejected: "the attribute makes every forwarded member private",
+    body:
+      "Public Class CX32Base\n" +
+      "    Public Sub PublicPing()\n" +
+      "    End Sub\n" +
+      "    Friend Sub FriendPing()\n" +
+      "    End Sub\n" +
+      "End Class\n\n" +
+      "Public Class CX32Derived\n" +
+      "    [ImplementsViaPrivateFriendlies] Implements CX32Base Via mBase = New CX32Base\n" +
+      "End Class\n\n" +
+      "Public Module X32_Via_Public_outside_attr\n" +
+      "    Public Sub Probe()\n" +
+      "        Dim d As CX32Derived = New CX32Derived\n" +
+      "        d.PublicPing\n" +
+      "    End Sub\n" +
       "End Module\n",
   },
 ];
