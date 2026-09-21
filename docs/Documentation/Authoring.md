@@ -399,11 +399,12 @@ same string either way --- a four-backtick `tb` fence is highlighted exactly as 
 three-backtick one is. No page in `docs/` uses one yet, so there is no example to
 copy; it is still the right form.
 
-**Use backticks, never a tilde fence.** Tildes are valid Markdown and the
-renderer accepts them, but `rewriteAdmonitions` recognises backtick fences only.
-A tilde fence holding a ` ``` ` line is therefore not hidden from it, the marker
-inside is read as an opening fence, and every `> [!NOTE]` after it in the file
-renders as literal text in a plain blockquote.
+**Prefer backticks to a tilde fence.** Both work: `rewriteAdmonitions` used to
+recognise backtick fences only, so a tilde fence holding a ` ``` ` line was not
+hidden from it and every `> [!NOTE]` after it rendered as literal text in a plain
+blockquote. That is fixed, and `check_code_regions.mjs` carries a probe for it.
+Backticks remain the house form because every fence in `docs/` is one, and a
+longer backtick run is the one construct here with a shipped precedent.
 
 That failure is not hypothetical. The attribute reference once shipped all six of
 its admonitions as the literal text `[!NOTE]`, because the same pairing closed

@@ -163,6 +163,14 @@ const ADMONITION_PROBES = [
     "prose\n\n````tb\n```\n````\n\n> [!WARNING]\n> body\n\n```tb\nDim y\n```\n"],
   ["admonition before any fence",
     "> [!IMPORTANT]\n> body\n\n```tb\nDim x\n```\n"],
+  // A tilde fence holding an ODD number of standalone ``` lines. stashCodeFences
+  // recognised backtick fences only, so the tilde opener was invisible, the ```
+  // inside it was read as an opener, and the pairing ran past the sample and
+  // swallowed the admonition -- the Attributes.md failure, reached by a
+  // construct CommonMark allows. docs/ has no tilde fence today, so the corpus
+  // sweep would never have found it.
+  ["admonition after a tilde fence holding a lone fence marker",
+    "prose\n\n~~~markdown\nsample\n```\n~~~\n\n> [!NOTE]\n> body\n\n```tb\nDim y\n```\n"],
 ];
 
 async function main(argv) {

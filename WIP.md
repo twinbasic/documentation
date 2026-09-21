@@ -1715,6 +1715,19 @@ a rule about lines rather than something to express as one regex over a whole
 document. Measured across the site, the fix changes four files: `Attributes.html`,
 `search-data.json` (which indexes it), and the two that record build timings.
 
+**The same stasher had a second way to fail, found by an agent documenting the first.**
+It recognised *backtick* fences only, on the stated reasoning that `maskCodeRegions`
+knows about tildes --- but `rewriteAdmonitions` runs **outside** the mask by design, so
+nothing protected a tilde fence at all. A `~~~` block holding an odd number of standalone
+``` lines reproduced the Attributes.md failure exactly: the marker inside was read as an
+opener, the pairing ran past the sample, and the following `> [!NOTE]` shipped as literal
+text. Measured both ways before fixing it; the 4-backtick form was correct throughout.
+
+`docs/` contains no tilde fence, which is why the corpus sweep could never have found it
+--- the same blind spot that makes the ADMONITION_PROBES necessary. `FENCE_OPEN_RE` now
+accepts either character and closes on the one that opened, and a fifth probe covers it.
+Reverting the regex fails that probe by name.
+
 Four probes in `check_code_regions.mjs` assert the other direction now. **The
 first draft of them did not work**, and the reason is worth keeping: a
 mis-paired opener swallows text only as far as the next fence marker, so a probe

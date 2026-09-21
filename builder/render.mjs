@@ -1667,10 +1667,25 @@ const ADMONITION_RE = /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTI
 //
 // CommonMark closes a fence on a line that is only the fence character,
 // repeated at least as often as in the opener. That is a rule about lines, so
-// this is a line scan rather than a cleverer regex. Tildes are deliberately
-// not recognised, which is what this did before; maskCodeRegions is the pass
-// that knows about those.
-const FENCE_OPEN_RE = /^([ \t]*)(`{3,})[^`]*$/;
+// this is a line scan rather than a cleverer regex.
+//
+// **Tildes are recognised here, and leaving them out was a live defect.** The
+// comment that stood here said they were deliberately skipped because
+// maskCodeRegions knows about them -- but rewriteAdmonitions runs OUTSIDE the
+// mask, by design, because a fence inside an admonition still carries its
+// `> ` markers at that point and this rewrite is what strips them. So nothing
+// protected a tilde fence, and a standalone ``` line inside one was read as an
+// opener: with an odd number of them the pairing ran past the end of the
+// sample and swallowed the prose after it. That is the Attributes.md failure
+// exactly, reachable by a construct CommonMark allows. Measured before the
+// fix: a ~~~ block holding one standalone ``` shipped the following
+// `> [!NOTE]` as literal text, while the 4-backtick form rendered correctly.
+//
+// A fence is closed only by its OWN character, so the close pattern is built
+// from what opened it. An info string may not contain a backtick on a backtick
+// fence, and may contain anything on a tilde fence -- CommonMark's rule, and
+// the reason the two cases are checked separately.
+const FENCE_OPEN_RE = /^([ \t]*)(`{3,}|~{3,})(.*)$/;
 
 function stashCodeFences(src, stashed) {
   const lines = src.split("\n");
@@ -1678,8 +1693,10 @@ function stashCodeFences(src, stashed) {
   for (let i = 0; i < lines.length; i++) {
     const m = FENCE_OPEN_RE.exec(lines[i]);
     if (!m) { out.push(lines[i]); continue; }
-    const [, indent, ticks] = m;
-    const closeRe = new RegExp("^[ \\t]*`{" + ticks.length + ",}[ \\t]*$");
+    const [, indent, ticks, info] = m;
+    if (ticks[0] === "`" && info.includes("`")) { out.push(lines[i]); continue; }
+    const fenceChar = ticks[0] === "`" ? "`" : "~";
+    const closeRe = new RegExp("^[ \\t]*" + fenceChar + "{" + ticks.length + ",}[ \\t]*$");
     let j = i + 1;
     while (j < lines.length && !closeRe.test(lines[j])) j++;
     // An unclosed fence runs to the end of the document, as CommonMark says.
