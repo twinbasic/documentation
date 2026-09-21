@@ -55,36 +55,37 @@ The example also uses a form (`Form1`) with a button (`Command1`), a label (`Lab
 The code specifies the initial and terminal states of the form. It also contains the code executed when events are raised.
 
 ```tb
-' In Form1's code-behind:
-Option Explicit
-
-Private WithEvents mText As TimerState
-
-Private Sub Command1_Click()
-  Text1.Text = "From Now"
-  Text1.Refresh
-  Text2.Text = "0"
-  Text2.Refresh
-  Call mText.TimerTask(9.84)
-End Sub
-
-Private Sub Form_Load()
-  Command1.Caption = "Click to Start Timer"
-  Text1.Text = ""
-  Text2.Text = ""
-  Label1.Caption = "The fastest 100 meter run took this long:"
-  Set mText = New TimerState
-End Sub
-
-Private Sub mText_ChangeText()
-  Text1.Text = "Until Now"
-  Text2.Text = "9.84"
-End Sub
-
-Private Sub mText_UpdateTime(ByVal dblJump As Double)
-  Text2.Text = Str(Format(dblJump, "0"))
-  DoEvents
-End Sub
+Class Form1
+  Option Explicit 
+ 
+  Private WithEvents mText As TimerState 
+ 
+  Private Sub Command1_Click() 
+    Text1.Text = "From Now" 
+    Text1.Refresh 
+    Text2.Text = "0" 
+    Text2.Refresh 
+    Call mText.TimerTask(9.84) 
+  End Sub 
+ 
+  Private Sub Form_Load() 
+    Command1.Caption = "Click to Start Timer" 
+    Text1.Text = "" 
+    Text2.Text = "" 
+    Label1.Caption = "The fastest 100 meter run took this long:" 
+    Set mText = New TimerState 
+  End Sub 
+ 
+  Private Sub mText_ChangeText() 
+    Text1.Text = "Until Now" 
+    Text2.Text = "9.84" 
+  End Sub 
+ 
+  Private Sub mText_UpdateTime(ByVal dblJump As Double) 
+    Text2.Text = Str(Format(dblJump, "0")) 
+    DoEvents 
+  End Sub
+End Class
 ```
 
 The remaining code is in a class module named TimerState. The **Event** statements declare the procedures initiated when events are raised.

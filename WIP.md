@@ -127,6 +127,28 @@ the only prose anywhere explaining `[WithDispatchForwarding]` is a comment in Sa
 > `(`. Argument text needs stripping too, or `[Description("Sets or returns, given …")]`
 > contributes an attribute named `given`.
 
+
+**A worked instance, because it caught a documentation regression.** Round 6's fix pass
+unified two reference pages on bare form handlers, on the strength of two other pages that
+write them that way. One `export` settles it --- every form code-behind in the shipped
+samples is:
+
+```
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA02")]
+[PredeclaredId]
+Class ChildBlue
+    Private Sub Cascade_Click()
+    ...
+End Class
+```
+
+So a form's `.twin` file **is** a `Class` with designer attributes, the pages that wrapped
+their samples were right, and the bare-handler pages are showing excerpts. `Form_Load` is
+what the samples use; `UserForm_Initialize` appears in none of them. Two commands, two
+minutes, against a question that four documentation pages could not settle between them
+--- and the export is the only thing that can, because the pages are the thing in doubt.
+
 ### Compiling a twinBASIC project without the IDE in front of you
 
 Exported sources say what the compiler *accepts today*; they cannot answer a question no

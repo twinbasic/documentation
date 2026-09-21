@@ -10,6 +10,19 @@ has_toc: false
 
 A **Form** is a top-level Win32 window that hosts the controls, menus, and drawing surface of a single twinBASIC user interface. Each form designed in the IDE becomes its own class derived from **Form** --- its controls become members of that class, its event handlers become methods on it, and the file's name becomes the class name. Code outside the form normally instantiates it implicitly through the global default-instance reference (`MyForm.Show`) or explicitly with `New MyForm`. The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
 
+On disk, a form is a `.twin` file holding a `Class` of the same name, carrying the
+designer attributes the IDE maintains:
+
+```tb
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
+[PredeclaredId]
+Class Form1
+    ' handlers and fields go here
+End Class
+```
+
+The snippets below are excerpts from inside that class rather than whole files:
+
 ```tb
 ' In Form1's code-behind:
 Private Sub Form_Load()

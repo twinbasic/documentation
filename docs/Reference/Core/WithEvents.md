@@ -35,24 +35,25 @@ Assigning a new object to the field rebinds the handlers to it; assigning **Noth
 This form receives two events from a worker class. The field is declared at module level, constructed in **Form_Load**, and its handlers are named after it.
 
 ```tb
-' In Form1's code-behind:
-Private WithEvents mRunner As JobRunner
+Class Form1
+    Private WithEvents mRunner As JobRunner
 
-Private Sub Form_Load()
-    Set mRunner = New JobRunner
-End Sub
+    Private Sub Form_Load()
+        Set mRunner = New JobRunner
+    End Sub
 
-Private Sub cmdStart_Click()
-    mRunner.Run 50
-End Sub
+    Private Sub cmdStart_Click()
+        mRunner.Run 50
+    End Sub
 
-Private Sub mRunner_Progress(ByVal Percent As Long)
-    lblStatus.Caption = Percent & "%"
-End Sub
+    Private Sub mRunner_Progress(ByVal Percent As Long)
+        lblStatus.Caption = Percent & "%"
+    End Sub
 
-Private Sub mRunner_Finished(ByVal ItemsProcessed As Long)
-    lblStatus.Caption = "Done: " & ItemsProcessed
-End Sub
+    Private Sub mRunner_Finished(ByVal ItemsProcessed As Long)
+        lblStatus.Caption = "Done: " & ItemsProcessed
+    End Sub
+End Class
 ```
 
 The class supplying those events declares them with **Event** and fires them with **RaiseEvent**:

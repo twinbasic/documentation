@@ -308,12 +308,41 @@ returned tbIDE and CustomControls internals at ranks 1 and 2, and now returns
 `/tB/Core/WithEvents` at rank 1. It is in `Statements.md` and in `Categories.md`'s *Events*
 section, which also gained `Handles`.
 
-The four pages that disagreed now agree. Both reference samples that wrapped form
-code-behind in `Class Form1 … End Class` are unwrapped --- a designed form already *is* a
-class derived from `Form`, so the wrapper nested a class inside a class ---
 `RaiseEvent.md`'s `UserForm_Initialize` is `Form_Load`, `Class.md`'s member list includes
 `Event`, and the stale "events triggered by an **ActiveX object**" wording on `Dim`,
 `Private` and `Public` now describes a twinBASIC class and links the new page.
+
+### Finding 5 was wrong, and so was my fix for it
+
+UC-53 reported that `Event.md` and `RaiseEvent.md` wrap form code-behind in
+`Class Form1 … End Class` while `VB/Form/index.md` and `Tutorials/Forms.md` write handlers
+bare, and concluded a newcomer pasting the reference samples "gets a nested class". I
+verified that the two pages disagree --- they do --- and then unified them on the bare
+form. **That was backwards, and a reviewer caught it.**
+
+Settled against the primary source rather than against the pages. The compiler's `export`
+verb unpacks a shipped `.twinproj`, and every form code-behind in the samples looks like
+this:
+
+```
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA02")]
+[PredeclaredId]
+Class ChildBlue
+    Private Sub Cascade_Click()
+...
+End Class
+```
+
+**Four of four real form files are a `Class`, all four carry `[FormDesignerId]`.** The
+wrapper the two reference pages used is what a form file actually is; the bare handlers on
+`VB/Form/index.md` are an *excerpt* convention. My change had made two correct pages wrong.
+
+Reverted. What survives is the half the same sources confirm: **`UserForm_Initialize`
+appears in zero real twinBASIC sources and `Form_Load` is what they use**, so that rename
+stands. And the genuine inconsistency is now resolved the right way round ---
+`VB/Form/index.md` states what the file contains, shows the designer attributes, and says
+its snippets are excerpts from inside the class.
 
 ### The cheap ones
 
@@ -347,6 +376,15 @@ than papered over: both are non-zero, so no wrapper behaves differently today.
 That is the second time in two rounds that a fix pass has been caught by reading the source
 instead of the brief --- round 5's tokeniser recommendation, and this. The protocol's *tell
 agents to verify rather than comply* applies to the orchestrator writing edits by hand.
+
+**And the third time it was not caught in time**: the `Class Form1` unwrapping above
+shipped and had to be reverted after review. The pattern in all three is identical --- a
+finding that two documents disagree is *evidence*, and picking the winner by reading the
+documents is guessing. Each was settled in minutes once somebody looked at the artefact:
+the script's `return`, the census, the exported `.twin`. **For a disagreement about what
+the product does, no amount of reading the documentation is a substitute for one look at
+the product** --- and this repository ships the tools for that look (`export` for sources,
+`tbbuild.mjs` for the compiler) which no fix pass had used until now.
 
 ### The census (queue item 2)
 
