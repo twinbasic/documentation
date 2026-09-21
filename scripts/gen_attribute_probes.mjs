@@ -131,6 +131,27 @@ const FIXED_ARGS = {
   // strings or dynamic arrays -- a probe should fail on its placement or not at
   // all. An empty string is also accepted, confirmed by the X04 probe.
   CompilerOptions: '("+optimize")',
+  // Names a module procedure the compiler must resolve, and whose signature has
+  // to match the member carrying the attribute. The PROC_CLASS skeleton is
+  // `Public Sub Probe()`, so `_ProbeFactory.twin` declares a matching Sub.
+  RedirectToStaticImplementation: '("ProbeFactoryModule.ProbeRedirect")',
+};
+
+// Placements the packages evidence but a generic skeleton cannot probe
+// faithfully. Excluded deliberately, and named in the key, because a probe that
+// tests the wrong thing is worse than no probe: it fails for a reason that is
+// not the documentation's and sends the reader after a defect that is not there.
+const NOT_FAITHFULLY_PROBEABLE = {
+  CustomDesigner: "the designer name has to suit the property's type -- " +
+    "`designer_SpectrumWindows` is for an OLE_COLOR, `designer_MultiLineText` for a " +
+    "String -- so a rejection could mean the placement or the pairing, and the probe " +
+    "could not tell you which. Placement evidenced by 154 uses across four packages",
+  Enumerator: "the member has to return stdole.IUnknown or a Variant; the generic " +
+    "procedure skeleton returns neither, so the probe would test the return type " +
+    "rather than the placement. Evidenced by 25 uses across five packages",
+  Source: "every use in every package is `[Default, Source]`, so a faithful probe " +
+    "carries two attributes and a failure would not say which one caused it. The " +
+    "bare form is asked separately in the exploratory project",
 };
 // Arguments that cannot be synthesised without something else being true.
 // FormDesignerId earned its place the hard way: probed on a Class it reached
@@ -187,11 +208,16 @@ const PROBE_STRINGS_JSON = JSON.stringify(
 // [CoClassCustomConstructor] names a factory the compiler must be able to
 // resolve. VBRUN's real one is `() As stdole.IUnknown`; this mirrors it.
 const PROBE_FACTORY_TWIN =
-  "' Factory that [CoClassCustomConstructor] probes name. Mirrors VBRUN's\n" +
-  "' CreatePropertyBagObject, which is `() As stdole.IUnknown`.\n\n" +
+  "' Targets that probes name by string. ProbeFactory is for\n" +
+  "' [CoClassCustomConstructor] and mirrors VBRUN's CreatePropertyBagObject,\n" +
+  "' which is `() As stdole.IUnknown`. ProbeRedirect is for\n" +
+  "' [RedirectToStaticImplementation], and its signature must match the\n" +
+  "' PROC_CLASS skeleton's `Public Sub Probe()`.\n\n" +
   "Public Module ProbeFactoryModule\n" +
   "    Public Function ProbeFactory() As stdole.IUnknown\n" +
-  "    End Function\n" +
+  "    End Function\n\n" +
+  "    Public Sub ProbeRedirect()\n" +
+  "    End Sub\n" +
   "End Module\n";
 
 // ------------------------------------------------------------ exploratory
@@ -401,6 +427,102 @@ const EXPLORATORY = [
       "    Sub Ping()\n" +
       "End Interface\n",
   },
+
+  // ---- second round -------------------------------------------------------
+  // [ImplementsViaPrivateFriendlies] and [ExecuteHostCommand] are the two names
+  // the first round left unplaced. Both are in the compiler's token table and
+  // neither occurs in any package or sample, so there is no usage to copy; these
+  // sweep the remaining plausible targets rather than guess at one.
+  {
+    tag: "X12_ImplementsViaPrivateFriendlies_Class",
+    asks: "[ImplementsViaPrivateFriendlies] on the Class rather than on its Implements " +
+      "statement. The name reads as a policy for how a class implements its interfaces, " +
+      "which would be a whole-class setting.",
+    clean: "it is a class-level attribute, and X07 tried the wrong target",
+    rejected: "not the class either; try the interface side",
+    body:
+      "Public Interface IX12Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "[ImplementsViaPrivateFriendlies]\n" +
+      "Public Class X12_ImplementsViaPrivateFriendlies_Class\n" +
+      "    Implements IX12Probe\n\n" +
+      "    Private Sub IX12Probe_Ping() Implements IX12Probe.Ping\n" +
+      "    End Sub\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X13_ImplementsViaPrivateFriendlies_Interface",
+    asks: "Same attribute on the Interface being implemented, which would make it the " +
+      "interface author's choice rather than the implementor's.",
+    clean: "it belongs on the Interface",
+    rejected: "neither side of an Implements relationship takes it",
+    body:
+      "[ImplementsViaPrivateFriendlies]\n" +
+      "Public Interface IX13Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n",
+  },
+  {
+    tag: "X14_ExecuteHostCommand_Class_Sub",
+    asks: "[ExecuteHostCommand] on a method in a Class. The binary pairs the name with a " +
+      "`custom/executeHostCommand` JSON-RPC method, so it is likely an addin hook, and an " +
+      "addin's entry points are class methods rather than module procedures.",
+    clean: "it is a class-method attribute",
+    rejected: "not a bare attribute on a class method; it may need an argument",
+    body:
+      "Public Class X14_ExecuteHostCommand_Class_Sub\n" +
+      "    [ExecuteHostCommand]\n" +
+      "    Public Sub Probe()\n" +
+      "    End Sub\n" +
+      "End Class\n",
+  },
+  {
+    tag: "X15_ExecuteHostCommand_with_argument",
+    asks: "[ExecuteHostCommand(\"probe\")] -- the same attribute with a String argument, on " +
+      "the same target as [IdeButton], whose entry it sits beside in the token table and " +
+      "which takes a caption.",
+    clean: "it takes a String argument, and the bare form in X08 failed for want of one",
+    rejected: "read the diagnostic: complaining about the argument rather than the " +
+      "placement would say the target is right and the argument type is not",
+    body:
+      "Public Module X15_ExecuteHostCommand_with_argument\n" +
+      '    [ExecuteHostCommand("probe")]\n' +
+      "    Public Sub Probe()\n" +
+      "    End Sub\n" +
+      "End Module\n",
+  },
+  {
+    tag: "X17_Source_without_Default",
+    asks: "Is [Source] accepted on a CoClass interface on its own? Every one of the six " +
+      "uses in the packages is `[Default, Source]`, so the entry written for it cannot " +
+      "say whether the pairing is required or merely universal.",
+    clean: "the two are independent, and [Source] marks an events interface by itself",
+    rejected: "[Source] requires [Default], and the entry should say so",
+    body:
+      "Public Interface IX17Probe\n" +
+      "    Sub Ping()\n" +
+      "End Interface\n\n" +
+      "Public Interface IX17ProbeEvents\n" +
+      "    Sub Pinged()\n" +
+      "End Interface\n\n" +
+      "Public CoClass X17_Source_without_Default\n" +
+      "    [Default] Interface IX17Probe\n" +
+      "    [Source] Interface IX17ProbeEvents\n" +
+      "End CoClass\n",
+  },
+  {
+    tag: "X16_ComExport_True",
+    asks: "Does [ComExport] take the optional Boolean its sibling [DllExport] does? The " +
+      "entry written for it claims no argument, because only the bare form was probed.",
+    clean: "the entry should read `[ComExport [ ( True | False ) ]]`, like DllExport's",
+    rejected: "the bare form is the whole syntax, and the entry as written is right",
+    body:
+      "Public Module X16_ComExport_True\n" +
+      "    [ComExport(True)]\n" +
+      "    Public Const ProbeConst As Long = 1\n" +
+      "End Module\n",
+  },
 ];
 
 const pad = (n, width) => String(n).padStart(width, "0");
@@ -414,8 +536,34 @@ function attrText(name, idx) {
 
 // ----------------------------------------------------------------- targets
 // Ordered: the specific phrasings must win over the bare ones.
+// Phrasings that must be matched against the WHOLE `Applicable to:` line, before
+// it is split on commas and "and". Splitting first turns "variables and
+// procedures in a Class" into "variables" -- which falls through to the bare
+// `/variable/i` rule and probes a MODULE variable, the opposite of what the line
+// says.
+//
+// Only patterns that themselves span a comma or an "and" belong here, and that
+// restriction is load-bearing: a rule general enough to match an ordinary line
+// would win before the split and throw the line's other targets away. Trying
+// every RULE against the whole string first was the first attempt, and it
+// silently reduced "Class, Module, procedure" to Class alone.
+const WHOLE_PHRASE_RULES = [
+  [/variables?\s+and\s+procedures?\s+in\s+a\s+class/i, ["VAR_CLASS", "PROC_CLASS"]],
+  [/function\s+in\s+a\s+module,\s*returning\s+a\s+boolean/i, ["FUNC_MODULE_BOOL"]],
+];
+
 const RULES = [
   [/interface\s+in\s+a\s+library/i, ["LIBRARY_INTERFACE"]],
+  // Added with the attributes the package census turned up. Each sits before
+  // the generic rule it would otherwise fall through to: a "prototype in an
+  // Interface" reaches `/procedure/i` and probes a module Sub, and an
+  // "Interface declaration within a CoClass" reaches `/^interface\b/i` and
+  // probes a free-standing Interface, which is exactly the placement the line
+  // is distinguishing itself from.
+  [/prototype\s+in\s+an\s+interface/i, ["PROC_INTERFACE"]],
+  [/interface\s+declaration\s+within\s+a\s+coclass/i, ["COCLASS_INTERFACE"]],
+  [/implements\s+statement/i, ["IMPLEMENTS"]],
+  [/event\s+declaration\s+in\s+a\s+class/i, ["EVENT_CLASS"]],
   [/(procedure|method)\s+in\s+an\s+interface/i, ["PROC_INTERFACE"]],
   [/procedure\s+in\s+a\s+class\s+or\s+module/i, ["PROC_CLASS", "PROC_MODULE"]],
   [/procedure\s+in\s+a\s+class/i, ["PROC_CLASS"]],
@@ -444,6 +592,10 @@ const stripDots = (s) => s.replace(/^\.+/, "").replace(/\.+$/, "");
 
 function parseTargets(app) {
   const out = [];
+  const whole = stripDots(app.trim()).trim();
+  for (const [pattern, targets] of WHOLE_PHRASE_RULES) {
+    if (pattern.test(whole)) return [...targets];
+  }
   for (const phrase of app.split(/,|\band\b/)) {
     const p = stripDots(phrase.trim()).trim();
     if (!p) continue;
@@ -488,6 +640,26 @@ function render(target, tag, attr, needsHintEnum, idx) {
     case "FUNC_MODULE":
       return `Public Module ${tag}\n${hint}    ${attr}\n    Public Function Probe() As Long\n` +
         "    End Function\nEnd Module\n";
+    // A Function whose return type the line specifies. [RunBeforeStartupObject]
+    // is documented as returning a Boolean, and the generic FUNC_MODULE
+    // skeleton returns Long, so probing it with that would test a signature
+    // the documentation does not claim.
+    case "FUNC_MODULE_BOOL":
+      return `Public Module ${tag}\n${hint}    ${attr}\n` +
+        "    Public Function Probe() As Boolean\n    End Function\nEnd Module\n";
+    // An Interface line inside a CoClass, which is a different placement from a
+    // free-standing Interface -- [Default] and [Source] take this one and not
+    // that one.
+    case "COCLASS_INTERFACE":
+      return `Public Interface ${tag}_Iface\n    Sub Ping()\nEnd Interface\n\n` +
+        `Public CoClass ${tag}\n    ${attr} Interface ${tag}_Iface\nEnd CoClass\n`;
+    case "IMPLEMENTS":
+      return `Public Interface ${tag}_Iface\n    Sub Ping()\nEnd Interface\n\n` +
+        `Public Class ${tag}\n    ${attr} Implements ${tag}_Iface\n\n` +
+        `    Private Sub ${tag}_Iface_Ping() Implements ${tag}_Iface.Ping\n` +
+        "    End Sub\nEnd Class\n";
+    case "EVENT_CLASS":
+      return `Public Class ${tag}\n${hint}    ${attr}\n    Public Event Probed()\nEnd Class\n`;
     case "PROC_CLASS":
       return `Public Class ${tag}\n${hint}    ${attr}\n    Public Sub Probe()\n    End Sub\n` +
         "End Class\n";
@@ -535,6 +707,10 @@ const HUMAN = {
   CONST: "on a Const", VAR_CLASS: "on a variable in a Class",
   VAR_MODULE: "on a variable in a Module", PARAM: "on a procedure parameter",
   LIBRARY_INTERFACE: "on an Interface in a Library",
+  FUNC_MODULE_BOOL: "on a Boolean Function in a Module",
+  COCLASS_INTERFACE: "on an Interface line inside a CoClass",
+  IMPLEMENTS: "on an Implements statement in a Class",
+  EVENT_CLASS: "on an Event in a Class",
 };
 
 // Built as an object and serialised, rather than held as a literal blob, so the
@@ -643,6 +819,10 @@ async function main(argv) {
     }
     if (Object.hasOwn(UNSYNTHESISABLE, e.name)) {
       skipped.push([e, UNSYNTHESISABLE[e.name]]);
+      continue;
+    }
+    if (Object.hasOwn(NOT_FAITHFULLY_PROBEABLE, e.name)) {
+      skipped.push([e, NOT_FAITHFULLY_PROBEABLE[e.name]]);
       continue;
     }
     for (const target of parseTargets(e.app)) {
