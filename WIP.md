@@ -521,7 +521,7 @@ inline tokens' children but does not descend into an image token's own children,
 two or three hyphens. Punctuate alt text with commas and colons instead. Verified by
 rendering through the repository's own markdown-it, not inferred.
 
-The source uses the ASCII forms; the rendered HTML uses the typographic characters. Literal `–` or `—` in `docs/` markdown source is forbidden — see the Don'ts at the end of this file. `scripts/convert_em_dash_separators.py` is the canonical normaliser if any literals slip back in.
+The source uses the ASCII forms; the rendered HTML uses the typographic characters. Literal `–` or `—` in `docs/` markdown source is forbidden — see the Don'ts at the end of this file. `scripts/convert_em_dash_separators.mjs` is the canonical normaliser if any literals slip back in.
 
 WIP.md itself (and other files outside `docs/`) is not rendered through tbdocs and is exempt — literal em-dashes here render directly in the GitHub viewer, which is fine.
 
@@ -1029,7 +1029,28 @@ removes it from that tree only.
 
 **Anything that participates in rendering the online site, the offline site, or the PDF book is handled by [tbdocs](builder/), the in-tree Node.js static site generator.** Module-level documentation lives next to the code under `builder/`; the user-facing summary is on the [tbdocs Internals](docs/Documentation/Builder.md) page.
 
-Python scripts are reserved for non-render concerns: one-off content conversion (e.g. `scripts/convert_em_dash_separators.py`), repo audits, dev tooling, link checks beyond `check.bat`. They are never a prerequisite for the render pipeline.
+### Tooling is JavaScript, and the two remaining `.py` files each have a reason
+
+Everything under `scripts/`, `builder/`, `book/`, `eval/` and `wisdom/` is Node.js.
+`convert_em_dash_separators` and `gen_attribute_probes` were Python and were ported ---
+both were pure text processing over `docs/`, and each port was verified by running the two
+implementations side by side and diffing: byte-identical output on the real corpus, and on
+all 72 files the probe generator emits. **Neither needed a dependency**, and the dash
+normaliser gained two things in the move: a `--check` mode, and byte-exact line endings.
+The Python version round-tripped through `Path.read_text` / `write_text`, whose
+universal-newline translation rewrote any LF file it touched to CRLF on Windows --- a
+whole-file diff for a one-character fix. 24 of the tree's 906 markdown files are LF.
+
+Two `.py` files stay, and neither is an oversight:
+
+- **`scripts/impexp.py`** is not tooling. It is a published download, declared in
+  `_config.yml`'s `bundle_extra` beside `impexp.mjs` and offered to readers on
+  [Import/Export Tool](docs/Features/Packages/Import-export%20tool.md) as the Python edition
+  of the same standalone tool. Porting it would delete a deliberate offering.
+- **`scripts/build_fonts.py`** stays because the JavaScript build of HarfBuzz it would
+  use produces wrong CFF2 metrics --- a one-line build-configuration defect in harfbuzzjs,
+  documented separately with the evidence.
+
 
 `wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs.
 
@@ -1484,7 +1505,7 @@ Favor concise one-line git commit messages.
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
 - **Don't judge rendered styling by opening a built page as a `file://` URL in the in-app browser pane.** It does not apply the page's stylesheets, so everything renders unstyled and any conclusion about colour, spacing, layout or contrast drawn from it is worthless. Use `serve.bat`, which serves over HTTP at localhost and renders for real. The confusing part is that `file://` is fine *through puppeteer* -- `scripts/check_a11y.mjs`, `scripts/sweep_a11y.mjs` and the `perf/` rigs all load `_site-offline/` over `file://` and get correct computed styles, which is the entire reason the offline tree exists (see [Site integrity check](#site-integrity-check)). So: puppeteer for measuring, `serve.bat` for looking. Never the preview pane on a `file://` path.
-- Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.py` normalises any strays.
+- Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.mjs` normalises any strays.
 - Don't push or force-push without explicit user request.
 - Don't leave a remote image URL in a finished page. A pasted `https://github.com/user-attachments/assets/...` link is fine to write --- [builder/vendor-assets.mjs](builder/vendor-assets.mjs) downloads it to `docs/assets/attachments/gh-<uuid>.<ext>` on the next local build and rewrites the render to point there; commit the downloaded file with the edit. Any other remote host has no such handling: download it yourself and commit it under the section's `Images/` folder. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` dropped async image loading, so an image still in flight when the page-breaking pass runs raises instead of degrading. The build enforces this unconditionally (see [Site integrity check](#site-integrity-check)); `--check-remote-assets` is the standalone checker's flag, not a `tbdocs` one. The check is scoped to `<img>`; `<iframe>` is untouched, but the site no longer has any embeds. A video is authored as a marked link -- `[Title](https://www.youtube.com/watch?v=<id>){: .video }` -- which `videoLinkPlugin` ([builder/render.mjs](builder/render.mjs)) renders as a locally vendored poster frame linking out to the video page, styled by `.video-link` in `docs/_sass/custom/custom.scss`. That makes the site free of third-party requests entirely; don't reintroduce an embed or a hotlinked `img.youtube.com` thumbnail.
 - **Don't hand-edit a diagram's `.svg`, and don't change its `font-family` anywhere but the `.dot`.** The `.svg` is a build artifact; the next build overwrites it. More to the point, Graphviz sizes every box to the text *it* measured, so a face the layout never saw leaves labels hanging outside their boxes --- which is exactly how 27 labels shipped that way across three diagrams. Edit the `.dot`, rebuild, and let `node scripts/check_dot_fit.mjs` confirm it; see [Diagrams](#diagrams).

@@ -369,11 +369,13 @@ Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream 
 
 Measures Inter's advance widths in a browser and writes `builder/inter-metrics.json`, the table `builder/dot-metrics.mjs` installs into Graphviz before any layout runs. The widths are measured from the committed `.woff2` files rather than read out of the font binary, because the browser's shaped advance is the number the layout has to match. Development tooling; the JSON is committed and the build never runs the generator. Run it after [`build_fonts.py`](#build-fonts) touches Inter --- forgetting is not silent, but it surfaces as [`check_dot_fit.mjs`](#check-dot-fit) failing rather than as anything naming the metrics.
 
-### scripts/convert_em_dash_separators.py
+### scripts/convert_em_dash_separators.mjs
+{: #convert-em-dash-separators }
 
-    python scripts/convert_em_dash_separators.py
+    node scripts/convert_em_dash_separators.mjs            # rewrite in place
+    node scripts/convert_em_dash_separators.mjs --check    # report, change nothing
 
-Normalises literal en-dash / em-dash characters in markdown source under `docs/` to their kramdown smart-quotes ASCII source form (`--` for en-dash, `---` for em-dash). The site forbids literal `–` / `—` in source --- this is the canonical fixer if any slip back in. Skips fenced code blocks and inline code spans.
+Normalises literal en-dash / em-dash characters in markdown source under `docs/` to the ASCII source forms markdown-it's typographer converts at build time (`--` for en-dash, `---` for em-dash). The site forbids literal `–` / `—` in source --- this is the canonical fixer if any slip back in. Skips fenced code blocks and inline code spans, and preserves each file's existing line endings. `--check` reports what it would change and exits non-zero without writing, so it can serve as a gate.
 
 ### book/render-book.mjs
 {: #bookrender-bookmjs }
