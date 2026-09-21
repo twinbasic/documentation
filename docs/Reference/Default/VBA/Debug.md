@@ -86,7 +86,7 @@ Use it to state something the surrounding code relies on, so a violated assumpti
 
 ```tb
 Public Function Average(values() As Double) As Double
-    Debug.Assert UBound(values) >= LBound(values)   ' not an empty array
+    Debug.Assert IsArrayInitialized(values)
     Dim i As Long, total As Double
     For i = LBound(values) To UBound(values)
         total = total + values(i)
@@ -94,6 +94,8 @@ Public Function Average(values() As Double) As Double
     Average = total / (UBound(values) - LBound(values) + 1)
 End Function
 ```
+
+[**IsArrayInitialized**](Information/IsArrayInitialized) is the right thing to assert here and `UBound(values) >= LBound(values)` is not: on an array the caller never sized, **LBound** and **UBound** raise error 9 themselves, so the assertion would be the line that fails rather than the line that catches it.
 
 > [!NOTE]
 > An assertion states what should never happen; it is not error handling and not input validation. For a condition a user can cause --- a missing file, a bad entry in a text box --- raise an error and handle it, because **Assert** is a development-time check rather than a way to report a problem to somebody running the program. For unit tests, the [Assert package](../Packages/Assert/) provides comparison assertions with reported results.

@@ -144,7 +144,7 @@ const sourceText = (() => {
     .map((f) => readFileSync(path.join(dir, f), "utf8")).join(String.fromCharCode(10));
 })();
 const hasHook = /\[RunAfterBuild\]/i.test(sourceText);
-const hasCls = /Debug\s*\.\s*Cls/i.test(sourceText);
+const hasCls = /Debug\s*\.\s*Cls/i.test(sourceText);
 // The console also carries the IDE's own build log, and the linker writes to it
 // AFTER the build -- so a probe that does not clear the console first comes back
 // with its output mixed into [LINKER] chatter. Debug.Cls as the probe's first

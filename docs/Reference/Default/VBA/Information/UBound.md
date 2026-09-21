@@ -21,6 +21,14 @@ Syntax: **UBound(** *arrayname* [ **,** *dimension* ] **)**
 
 **UBound** is used together with [**LBound**](LBound) to determine the size of an array.
 
+> [!IMPORTANT]
+> On a dynamic array that has never been sized --- one declared `Dim a() As Long` and
+> not yet **ReDim**'d, or one **Erase** has released --- this raises run-time error 9,
+> *Subscript out of range*, rather than returning anything. Test with
+> [**IsArrayInitialized**](IsArrayInitialized) first. A **ParamArray** is always
+> initialized, so it needs no guard: with no arguments passed it reports bounds of 0
+> and -1.
+
 For an array `Dim A(1 To 100, 0 To 3, -3 To 4)`, **UBound** returns:
 
 | Statement | Return value |
