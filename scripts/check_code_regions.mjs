@@ -33,13 +33,28 @@
 // and `code_inline` token contents, in order. Any difference is a finding. No
 // browser, no built tree.
 //
-// KNOWN GAP, stated rather than hidden: an indented (4-space) code block is
+// KNOWN GAP 1, stated rather than hidden: an indented (4-space) code block is
 // compared as a `code_block` token, so corruption of one IS caught here -- but
 // maskCodeRegions in render.mjs deliberately does not protect indented blocks,
 // because distinguishing one from a list-item continuation needs block context
 // a pre-render pass does not have. So a future rewrite that damages an indented
 // block will be reported by this gate and will need fixing at the rewrite, not
 // by widening the mask.
+//
+// KNOWN GAP 2: code inside a RAW HTML BLOCK is invisible here. markdown-it
+// emits such a block as a single `html_block` token, which is none of the three
+// types compared below, so a `<code>` written inside raw HTML is not a code
+// region as far as this gate is concerned. That matters because
+// `blockHtmlRecursionPlugin` does rewrite html_block content: for
+// `markdown=span` it runs a smart-quote pass over the element's body with no
+// code awareness, so `<summary markdown=span>a `x "q"` b</summary>` comes out
+// with the quotes inside the backticks curled.
+//
+// Measured rather than assumed: the corpus has 32 `markdown=span` usages, all
+// on <summary> elements in FAQs.md and IDE/Menu/Window.md, and not one body
+// contains a backtick -- and markdown-it does not build a code span inside that
+// context anyway, so there is no code region there to damage today. If a page
+// ever does put code inside raw HTML, this gate will not speak up.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
