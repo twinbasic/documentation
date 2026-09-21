@@ -78,6 +78,7 @@ Applicable to:  [**Class**](Class)
 Assigns a COM CLSID to a class. For details, [see this COM documentation page](https://learn.microsoft.com/en-us/windows/win32/com/com-class-objects-and-clsids).
 
 ## ClassInterface
+{: #classinterface }
 
 twinBASIC doesn't supports this attribute directly. It supports its values under different names. See:
 
@@ -309,6 +310,7 @@ Applicable to: [procedure in an Interface](../Gloss#procedure)
 Defines a dispatch ID associated with the procedure when exposed via **IDispatch**.
 
 ## DispInterface
+{: #dispinterface }
 
 Syntax: **[DispInterface]**
 
@@ -343,6 +345,7 @@ Applicable to: [**Declare** (API declaration)](Declare)
 Gives minor codegen size reduction on 32-bit API calls on the Intel platform. Has no effect on other platforms.
 
 ## DualInterface
+{: #dualinterface }
 
 Syntax: **[DualInterface]**
 
