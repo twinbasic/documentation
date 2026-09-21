@@ -132,8 +132,17 @@ const FIXED_ARGS = {
   // all. An empty string is also accepted, confirmed by the X04 probe.
   CompilerOptions: '("+optimize")',
   // Names a module procedure the compiler must resolve, and whose signature has
-  // to match the member carrying the attribute. The PROC_CLASS skeleton is
-  // `Public Sub Probe()`, so `_ProbeFactory.twin` declares a matching Sub.
+  // to match the member carrying the attribute; `_ProbeFactory.twin` declares a
+  // matching `Sub ProbeRedirect()`.
+  //
+  // This probe is the reason the exercise was worth doing on entries written
+  // from a usage census: the census grouped uses by *declaration keyword* and
+  // reported "on a Property Get, a Function and a Sub", so the entry went out
+  // saying `procedure in a Class`. The probe put it on a class method and got
+  // TB5155. Grouping the same 82 uses by *enclosing construct* instead shows
+  // every one of them is inside an Interface -- `_App`, `_Clipboard`, `_Screen`,
+  // `_Forms`, `VBGlobal`. A census answers the question it was asked, and
+  // "which keyword" is not "which scope".
   RedirectToStaticImplementation: '("ProbeFactoryModule.ProbeRedirect")',
 };
 
@@ -149,9 +158,6 @@ const NOT_FAITHFULLY_PROBEABLE = {
   Enumerator: "the member has to return stdole.IUnknown or a Variant; the generic " +
     "procedure skeleton returns neither, so the probe would test the return type " +
     "rather than the placement. Evidenced by 25 uses across five packages",
-  Source: "every use in every package is `[Default, Source]`, so a faithful probe " +
-    "carries two attributes and a failure would not say which one caused it. The " +
-    "bare form is asked separately in the exploratory project",
 };
 // Arguments that cannot be synthesised without something else being true.
 // FormDesignerId earned its place the hard way: probed on a Class it reached
@@ -438,6 +444,7 @@ const EXPLORATORY = [
     asks: "[ImplementsViaPrivateFriendlies] on the Class rather than on its Implements " +
       "statement. The name reads as a policy for how a class implements its interfaces, " +
       "which would be a whole-class setting.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED on the Class too.",
     clean: "it is a class-level attribute, and X07 tried the wrong target",
     rejected: "not the class either; try the interface side",
     body:
@@ -455,6 +462,9 @@ const EXPLORATORY = [
     tag: "X13_ImplementsViaPrivateFriendlies_Interface",
     asks: "Same attribute on the Interface being implemented, which would make it the " +
       "interface author's choice rather than the implementor's.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED on the Interface too, " +
+      "so all three plausible targets are exhausted and the placement is " +
+      "a question for the maintainer.",
     clean: "it belongs on the Interface",
     rejected: "neither side of an Implements relationship takes it",
     body:
@@ -468,6 +478,7 @@ const EXPLORATORY = [
     asks: "[ExecuteHostCommand] on a method in a Class. The binary pairs the name with a " +
       "`custom/executeHostCommand` JSON-RPC method, so it is likely an addin hook, and an " +
       "addin's entry points are class methods rather than module procedures.",
+    got: "BETA 983: TB5182 on the attribute. REJECTED on a class method.",
     clean: "it is a class-method attribute",
     rejected: "not a bare attribute on a class method; it may need an argument",
     body:
@@ -482,6 +493,9 @@ const EXPLORATORY = [
     asks: "[ExecuteHostCommand(\"probe\")] -- the same attribute with a String argument, on " +
       "the same target as [IdeButton], whose entry it sits beside in the token table and " +
       "which takes a caption.",
+    got: "BETA 983: TB5182 on the attribute, at the same column as the bare " +
+      "form in X08, so the argument is not what X08 was missing. Three " +
+      "targets tried, all rejected; a question for the maintainer.",
     clean: "it takes a String argument, and the bare form in X08 failed for want of one",
     rejected: "read the diagnostic: complaining about the argument rather than the " +
       "placement would say the target is right and the argument type is not",
@@ -497,6 +511,10 @@ const EXPLORATORY = [
     asks: "Is [Source] accepted on a CoClass interface on its own? Every one of the six " +
       "uses in the packages is `[Default, Source]`, so the entry written for it cannot " +
       "say whether the pairing is required or merely universal.",
+    got: "BETA 983: clean. [Source] works without [Default], so the " +
+      "universal pairing in the packages is a convention rather than a " +
+      "requirement. The entry now says so instead of recording it as " +
+      "unknown.",
     clean: "the two are independent, and [Source] marks an events interface by itself",
     rejected: "[Source] requires [Default], and the entry should say so",
     body:
@@ -515,6 +533,9 @@ const EXPLORATORY = [
     tag: "X16_ComExport_True",
     asks: "Does [ComExport] take the optional Boolean its sibling [DllExport] does? The " +
       "entry written for it claims no argument, because only the bare form was probed.",
+    got: "BETA 983: clean. [ComExport] DOES take the optional Boolean, and " +
+      "the entry written from X06 alone was wrong to give it no argument. " +
+      "Corrected.",
     clean: "the entry should read `[ComExport [ ( True | False ) ]]`, like DllExport's",
     rejected: "the bare form is the whole syntax, and the entry as written is right",
     body:

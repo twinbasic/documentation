@@ -161,17 +161,17 @@ Applicable to:  [**Class**](Class), [**CoClass**](CoClass)
 
 Indicates that this coclass can be created with the [**New**](New) keyword.
 
-## ComExport
+## ComExport  (optional Bool)
 {: #comexport }
 
-Syntax: **[ComExport]**
+Syntax: **[ComExport** [ **( True** \| **False )** ] **]**
 
 Applicable to: constants in a [**Module**](Module)
 
 The COM counterpart of [DllExport](#dllexport), and it takes the same target: a **Public Const**, not a procedure and not a variable.
 
 > [!NOTE]
-> The placement is confirmed against the compiler: `[ComExport]` on a procedure is rejected with TB5155, and on a **Public Const** it compiles. No twinBASIC package or sample uses the attribute, so what it exports is not established here.
+> The placement is confirmed against the compiler: `[ComExport]` on a procedure is rejected with TB5155, while on a **Public Const** both the bare form and `[ComExport(True)]` compile. No twinBASIC package or sample uses the attribute, so what it exports is not established here.
 
 ## COMExtensible  (optional Bool)
 {: #comextensible }
@@ -731,19 +731,23 @@ Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFol
 
 Syntax: **[RedirectToStaticImplementation("** fully qualified path to a procedure **")]**
 
-Applicable to: [procedure in a **Class**](../Gloss#procedure)
+Applicable to: [procedure](../Gloss#procedure) prototype in an [**Interface**](Interface)
 
-Declares a member with no body of its own: the class publishes the signature, and the named module-level procedure supplies the implementation.
+Supplies an implementation for an interface prototype without a class behind it: the interface declares the signature, and the named module-level procedure is what a call reaches.
 
 The [App](../Packages/AppGlobalClassObject/) object is built this way, each of its properties naming a procedure in a private module:
 
 ```tb
-[RedirectToStaticImplementation("InternalStuff.GetAppPath")]
-Property Get Path() As String
+Public Interface _App Extends stdole.IUnknown
+    [RedirectToStaticImplementation("InternalStuff.GetAppPath")]
+    Property Get Path() As String
+    [RedirectToStaticImplementation("InternalStuff.GetAppEXEName")]
+    Property Get EXEName() As String
+End Interface
 ```
 
 > [!NOTE]
-> The placement is confirmed: the attribute occurs 116 times in the shipped AppGlobalClassObject, VB and VBA packages, on a **Property Get**, a **Function** and a **Sub**. Its effect is read from that usage.
+> The attribute is rejected on a method in a **Class**, with TB5155. All 82 uses in the shipped AppGlobalClassObject and VB packages are inside an **Interface** -- `_App`, `_Clipboard`, `_Screen`, `_Forms` and `VBGlobal` -- on a **Property Get**, a **Function** or a **Sub**. Its effect is read from that usage.
 
 ## Restricted  (optional Bool)
 {: #restricted }
@@ -828,7 +832,7 @@ Applicable to: [**Interface**](Interface) declaration within a [**CoClass**](CoC
 
 Marks a CoClass interface as the one the CoClass raises events on, rather than one callable on it. A client implements this interface to receive the events.
 
-Every use in the twinBASIC packages pairs it with [Default](#default) in one set of braces, which marks the interface as the CoClass's default source interface:
+Every use in the twinBASIC packages pairs it with [Default](#default) in one set of braces, which marks the interface as the CoClass's *default* source interface:
 
 ```tb
 CoClass CustomControlTimer
@@ -837,8 +841,10 @@ CoClass CustomControlTimer
 End CoClass
 ```
 
+The pairing is a convention rather than a requirement -- `[Source]` on its own compiles, and marks the interface as a source of events without making it the default one.
+
 > [!NOTE]
-> The placement is confirmed, but on thin evidence: six uses, in the shipped VB, tbIDE and CustomControls packages, every one of them `[Default, Source]`. The attribute is never used alone, so whether it is meaningful without **Default** is not established here.
+> The placement is confirmed, but the effect rests on thin evidence: six uses, in the shipped VB, tbIDE and CustomControls packages, every one of them `[Default, Source]`.
 
 ## SpecialCompilerBinding  (optional Bool)
 {: #specialcompilerbinding }

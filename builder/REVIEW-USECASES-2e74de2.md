@@ -388,6 +388,21 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   `[Default] Interface <name>` and `[Default, Source] Interface <event interface name>` all
   along, so the reference was **teaching two attributes it did not document**.
 
+  **One of the ten went out with the wrong `Applicable to:` line, and probing the new
+  entries is what caught it.** `[RedirectToStaticImplementation]` was written as *procedure
+  in a **Class***; the compiler rejects that with TB5155. The census had grouped its uses by
+  **declaration keyword** and reported "on a `Property Get`, a `Function` and a `Sub`", which
+  is true and says nothing about scope --- regrouped by **enclosing construct**, all 82 uses
+  are inside an **Interface** (`_App`, `_Clipboard`, `_Screen`, `_Forms`, `VBGlobal`) and
+  none inside a Class. The line now says so.
+
+  That is the argument for feeding new entries back through the probe generator rather than
+  trusting the census that produced them: **a census answers the question it was asked**, and
+  "which keyword does this sit on" is not "which scope is it legal in". Two later probes
+  corrected the same round's entries again --- `[ComExport]` does take the optional Boolean
+  the entry denied it, and `[Source]` does compile without `[Default]`, which the entry had
+  recorded as unknown.
+
 - **Eight more names the compiler knows appear nowhere in `docs/` at all:**
   ~~`WithDispatchForwarding`~~, `ImplementsViaPrivateFriendlies`, `ExecuteHostCommand`,
   ~~`CustomDesigner`~~, ~~`DefaultDesignerEvent`~~, ~~`ComExport`~~,
@@ -396,12 +411,23 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   probe: it is rejected on a procedure (TB5155) and compiles on a `Public Const`, which is
   exactly the target `[DllExport]` turned out to mean.
 
-  **Still open: `ImplementsViaPrivateFriendlies` and `ExecuteHostCommand`.** Both are in the
-  compiler's token table and neither appears in any package or sample. Probed at the
-  placement their neighbours take --- the first on an `Implements` statement, beside
-  `WithDispatchForwarding`; the second on a procedure in a **Module**, beside `IdeButton` ---
-  and both were rejected. Their placement is still unknown, and guessing further is not worth
-  another build; one question to the maintainer would settle both.
+  **Still open, and now exhausted from this side: `ImplementsViaPrivateFriendlies` and
+  `ExecuteHostCommand`.** Both are in the compiler's token table and neither appears in any
+  package or sample. Three placements were probed for each, all rejected:
+
+  | attribute | tried | result |
+  |---|---|---|
+  | `ImplementsViaPrivateFriendlies` | an `Implements` statement, beside its token-table neighbour `WithDispatchForwarding` | TB5155 |
+  | | the **Class** doing the implementing | TB5182 |
+  | | the **Interface** being implemented | TB5182 |
+  | `ExecuteHostCommand` | a procedure in a **Module**, beside its neighbour `IdeButton` | TB5182 |
+  | | a method in a **Class** | TB5182 |
+  | | a procedure in a **Module**, with a String argument | TB5182 |
+
+  The argument probe is what closes the second one off: `[ExecuteHostCommand("probe")]`
+  failed at the same column as the bare form, so a missing argument was not what the first
+  probe was short of. Further guessing is not worth a build --- **one question to the
+  maintainer would settle both**, and these are the only two items left in this queue.
 
   One reading rule this produced, which the earlier round's notes imply the opposite of:
   **the diagnostic code does not distinguish "no such attribute" from "wrong place for it".**
