@@ -467,11 +467,34 @@ Everything above was fixed unless listed here. This section is the queue, not a 
   executable, joined into a mechanism. The mechanism turned out to be right, and stating it
   as measured before it was, was not.
 
-  **`--buildAndExit32` does not exit when the build fails.** On a clean project it builds and
-  exits 0. On a project with a codegen error on a reachable path it reports `[BUILD] failed`
-  in the DEBUG CONSOLE and then sits indefinitely on a "Please wait…" progress dialog at 100%.
-  A build-and-exit switch that hangs on failure cannot be scripted at all, which is the whole
-  point of having one.
+  **`--buildAndExit32` does not exit when the build fails.** A build-and-exit switch that
+  hangs on failure cannot be scripted at all, which is the whole point of having one.
+
+  The repro is a Standard EXE whose `Main` calls a procedure that does not exist, so nothing
+  can eliminate it as dead code:
+
+  ```tb
+  Module Main
+      Public Sub Main()
+          NoSuchProcedureAnywhere 123
+      End Sub
+  End Module
+  ```
+
+  ```bat
+  twinBASIC.exe --buildAndExit32 BuildAndExitHang.twinproj
+  ```
+
+  Observed, with the build directory confirmed absent beforehand: the IDE opens, DIAGNOSTICS
+  shows one `TB5079 Unrecognized symbol 'NoSuchProcedureAnywhere'`, the DEBUG CONSOLE shows
+  `[LINKER] FAILED due to compilation errors` and `[BUILD] failed` --- and then it **sits on a
+  "Please wait…" progress dialog at 100% and never exits**. `Build\` is created and left
+  empty, so the linker got as far as making the folder. Nothing reaches stdout or stderr.
+  Still running minutes later, and it needs `taskkill /T /F` because a modal IDE ignores a
+  normal close.
+
+  The same switch on a clean project builds, exits by itself, and returns 0 --- which is what
+  makes this a failure path rather than the switch simply not working.
 
 - ~~**`Reference/Attributes.md` is missing attributes the documentation itself uses.** The
   compiler's token table names `Enumerator`, `NonBrowsable` and `AllowUnpopulatedVtableEntry`;
