@@ -205,3 +205,55 @@ mentions the trap, it measures reading comprehension instead of documentation.
 moved, and the evaluator audited the completed move against the documented checklist
 instead, which produced three findings the intended scenario would not have. That is a
 successful run, not a wasted one.
+
+## Round 5 --- the fixes again, and three surfaces no round has read
+
+**Run 2026-09-21 at `4b50c0c`** --- [builder/REVIEW-USECASES-4b50c0c.md](../builder/REVIEW-USECASES-4b50c0c.md).
+Round 4 found that six of its fourteen findings were
+introduced by round 3's own fix pass, seven hours old, and that re-running a case is the
+only instrument that catches either a fix working or a fix pass damaging what it touched.
+It has now gone three-for-three twice.
+
+**Re-run round 4's worst three unchanged.** UC-40 scored 2/2/2, UC-41 2/1/3 with the hazard
+walked into, UC-43 2/3/2. Each now has what it lacked: `Building.md` has a *When a build
+stops instead of failing* section and `Tools.md` a `--stall-timeout` row, `Tools.md` states
+what makes a regex exponential and that the report hands you a witness, and `Extending.md`
+carries the shape of a construct family with its three fields.
+
+**Sample three surfaces no round has touched**, all named by round 4's own queue: the
+persistent worker pool under `serve.bat`, the offline mirror as something you hand to a
+person rather than something a scan reads, and a cold start from a fresh clone. Two more
+are mined from the places this file says to mine: adding a diagram, and the *producer* side
+of `{{tbdocs:...}}` --- four extension points are documented and adding a count name is not
+one of them.
+
+### Persona A: content contributor
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-46 | Add an architecture diagram to a page: what to create, where it goes, what to commit, how to know it is right. | ~~**H** the dash convention does not apply inside alt text~~ --- **premise false**, see below |
+
+### Persona B: toolchain user
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-41 | *(re-run)* The build printed its last line and stopped. Nothing since, no error. | **H** `--stall-timeout` appeared zero times in `docs/` and two pages asserted nothing times out |
+| UC-44 | `serve.bat` is running for live preview and a builder change never appears in the browser. Diagnose it and give a workflow that works. | **H** the pool outlives a rebuild *and* the watcher only watches `docs/`; the page that says so is one a toolchain user has no reason to open |
+| UC-45 | Hand somebody a copy of the documentation they can read on a laptop with no network. | **H** `_site/` is the tree that looks right and is the one that does not work under `file://` |
+| UC-48 | Fresh clone on a new machine: confirm it is healthy and say what a healthy run looks like. | **H** three wrappers with an order between them, and `check.bat` refuses a tree it considers stale |
+
+### Persona C: builder developer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-40 | *(re-run)* A gate refused a regex I added to the builder. Understand it and fix it. | **H** the obvious narrowing of the character class is still exponential |
+| UC-43 | *(re-run)* `pick_a11y_sample --check` failed after my change. Fix it. | **H** widening the sample is the obvious move and the wrong one |
+| UC-47 | A landing page states a total as a hand-written digit that goes stale. Make the build supply it. | **H** a registry entry holding the number is the obvious shape and moves the stale figure rather than removing it |
+
+**UC-46's hazard did not exist**, and the case was productive anyway --- third time this has
+happened, after UC-18 and round 4's UC-42. It was written from `WIP.md`'s claim that image
+alt text escapes the typographer, which is false for this repository: `kramdownDashesPlugin`
+walks recursively and reaches alt. The case still returned the round's best discoverability
+score and two verified findings the intended scenario would not have reached. **The check
+that would have caught the bad premise is the one the review now recommends generally** ---
+render through the pipeline the repository runs, not through the library it depends on.

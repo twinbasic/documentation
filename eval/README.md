@@ -86,8 +86,16 @@ The structural findings held up. The per-finding severity claims did not, reliab
 | 2 | 16 --- recovery, and the `/tB/` URL contract | [builder/REVIEW-USECASES-2e74de2.md](../builder/REVIEW-USECASES-2e74de2.md); 16 findings, ~35 commits of fixes |
 | 3 | 8 --- the fixes, and gates that report success | [builder/REVIEW-USECASES-cd141f1.md](../builder/REVIEW-USECASES-cd141f1.md); 13 findings |
 | 4 | 8 --- the failure path, and a fix pass auditing itself | [builder/REVIEW-USECASES-4f97bac.md](../builder/REVIEW-USECASES-4f97bac.md); 14 findings, six of them introduced by round 3's own fix pass |
+| 5 | 8 --- the fixes again, and three unread surfaces | [builder/REVIEW-USECASES-4b50c0c.md](../builder/REVIEW-USECASES-4b50c0c.md); 15 findings, no hazard walked into, and discoverability flat across three re-runs |
 
 Round 1's headline was a gradient: documentation quality fell monotonically with depth into
 the toolchain (contributor 3.8 discoverability, toolchain user 2.8, builder developer 1.8),
 and was worst exactly where the project has written most --- because `builder/`'s 1.4 MB of
 plan documents are not published pages and no reader-facing channel reaches them.
+
+Round 5's headline is what four rounds of fixes have and have not bought. Re-running three
+cases across round 4's fix pass moved completeness +1.33 and actionability +1.34 and moved
+discoverability **±0.00** --- the pages the fixes wrote are right, and nothing made them
+easier to reach. **Only a re-run can show an axis failing to move**, which is a third thing
+the instrument measures, after "the fix worked" (round 4) and "the fix pass broke something
+else" (round 4).
