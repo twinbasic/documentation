@@ -20,7 +20,7 @@ This tutorial demonstrates the pattern used by *Sample 0 --- WebView2 Examples* 
 
 Hook into the [**Ready**](../../tB/Packages/WebView2/WebView2/#ready) event so the control is fully initialised before the mapping is installed:
 
-```tb
+```tb check_build
 Private Sub WebView_Ready() Handles WebView.Ready
     Dim folderPath As String = _
         Environ$("USERPROFILE") & "\Documents\MyApp"
@@ -105,7 +105,7 @@ End Module
 
 The complete deploy-on-`Ready` pattern looks like this:
 
-```tb
+```tb check_build
 Private Sub WebView_Ready() Handles WebView.Ready
     ' Resources/WEB_APP/* is copied here on every launch.
     Dim folderPath As String = _

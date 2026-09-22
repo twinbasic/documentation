@@ -26,7 +26,7 @@ Messages are values that travel in either direction. Use them for notifications 
 
 [**PostWebMessage**](../../tB/Packages/CEF/CefBrowser/#postwebmessage) sends a value to the page; the page receives it through a `message` event on `window.chrome.webview`:
 
-```tb
+```tb check_build
 WebView.PostWebMessage "Hello from twinBASIC!"
 ```
 
@@ -90,7 +90,7 @@ function multiplyTheseNumbers(a, b) {
 
 BASIC can call it and read the result on the same line:
 
-```tb
+```tb check_build
 Dim product As Long = WebView.JsRun("multiplyTheseNumbers", 5, 6)
 Debug.Print product   ' 30
 ```
@@ -102,7 +102,7 @@ The call blocks the BASIC thread until the renderer process replies.
 
 ### JsRunAsync (asynchronous)
 
-```tb
+```tb check_build
 Private Sub btnRun_Click() Handles btnRun.Click
     WebView.JsRunAsync "multiplyTheseNumbers", 5, 6
 End Sub
@@ -124,7 +124,7 @@ Calls made before the renderer IPC has connected are queued and dispatched once 
 
 ### ExecuteScript (fire-and-forget)
 
-```tb
+```tb check_build
 WebView.ExecuteScript "startTimer()"
 ```
 

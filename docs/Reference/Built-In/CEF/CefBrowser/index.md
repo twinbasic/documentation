@@ -545,7 +545,7 @@ Syntax: *object*\_**SourceChanged**( *IsNewDocument* **As Boolean** )
 *IsNewDocument*
 : **True** when the change reflects a fresh document load (rather than a same-document fragment / `history.pushState` update).
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_SourceChanged(ByVal IsNewDocument As Boolean)
     AddressBar.Text = CefBrowser1.DocumentURL
 End Sub

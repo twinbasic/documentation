@@ -603,7 +603,7 @@ Syntax: *object*.**Navigate** *uri*
 *uri*
 : *required* A **String** URI such as `"https://www.twinbasic.com"` or `"file:///C:/page.html"`.
 
-```tb
+```tb check_build
 Private Sub AddressBar_KeyDown(KeyCode As Integer, Shift As Integer)
     If KeyCode = vbKeyReturn Then WebView21.Navigate AddressBar.Text
 End Sub

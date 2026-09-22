@@ -34,7 +34,7 @@ Assigning a new object to the field rebinds the handlers to it; assigning **Noth
 
 This form receives two events from a worker class. The field is declared at module level, constructed in **Form_Load**, and its handlers are named after it.
 
-```tb
+```tb check_build projname=withevents-jobrunner
 Class Form1
     Private WithEvents mRunner As JobRunner
 
@@ -58,7 +58,7 @@ End Class
 
 The class supplying those events declares them with **Event** and fires them with **RaiseEvent**:
 
-```tb check_build
+```tb check_build projname=withevents-jobrunner
 Class JobRunner
     Public Event Progress(ByVal Percent As Long)
     Public Event Finished(ByVal ItemsProcessed As Long)

@@ -20,7 +20,7 @@ Drop a [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) control onto a Form a
 
 The bare-bones navigation methods --- [**Navigate**](../../tB/Packages/CEF/CefBrowser/#navigate), [**GoBack**](../../tB/Packages/CEF/CefBrowser/#goback), [**GoForward**](../../tB/Packages/CEF/CefBrowser/#goforward), [**Reload**](../../tB/Packages/CEF/CefBrowser/#reload) --- are one-liners:
 
-```tb
+```tb check_build
 Private Sub btnBack_Click() Handles btnBack.Click
     WebView.GoBack()
 End Sub
@@ -36,7 +36,7 @@ End Sub
 
 To make the back / forward buttons follow the actual history state, sync them against [**CanGoBack**](../../tB/Packages/CEF/CefBrowser/#cangoback) and [**CanGoForward**](../../tB/Packages/CEF/CefBrowser/#cangoforward) after every navigation:
 
-```tb
+```tb check_build
 Private Sub WebView_NavigationComplete( _
         ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long) _
         Handles WebView.NavigationComplete
@@ -52,7 +52,7 @@ End Sub
 
 Pressing **Enter** in the address bar triggers a navigation. The reverse direction --- keeping the visible URL in sync with the page --- is the [**SourceChanged**](../../tB/Packages/CEF/CefBrowser/#sourcechanged) event, which fires whenever [**DocumentURL**](../../tB/Packages/CEF/CefBrowser/#documenturl) changes (including same-document `history.pushState` updates):
 
-```tb
+```tb check_build
 Private Sub AddressBar_KeyDown(KeyCode As Integer, Shift As Integer) _
         Handles AddressBar.KeyDown
     If KeyCode = vbKeyReturn Then WebView.Navigate AddressBar.Text
@@ -70,7 +70,7 @@ End Sub
 
 [**ZoomFactor**](../../tB/Packages/CEF/CefBrowser/#zoomfactor) is a **Double** --- `1.0` is 100%, `1.5` is 150%. The value reads as `0` until the browser has reached [**Ready**](../../tB/Packages/CEF/CefBrowser/#ready), so arithmetic that multiplies the current value silently starts from zero unless you clamp first:
 
-```tb
+```tb check_build
 Private Sub btnZoomIn_Click() Handles btnZoomIn.Click
     If WebView.ZoomFactor = 0 Then WebView.ZoomFactor = 1
     On Error Resume Next
@@ -90,7 +90,7 @@ The `On Error Resume Next` catches the "control not ready" error that fires when
 
 [**PrintToPdf**](../../tB/Packages/CEF/CefBrowser/#printtopdf) saves the current document to disk asynchronously --- the result arrives as [**PrintToPdfCompleted**](../../tB/Packages/CEF/CefBrowser/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/CEF/CefBrowser/#printtopdffailed):
 
-```tb
+```tb check_build
 Private Sub btnPDF_Click() Handles btnPDF.Click
     Dim outputPath As String = _
         Environ$("USERPROFILE") & "\Documents\page.pdf"
@@ -108,7 +108,7 @@ The optional parameters that follow *outputPath* --- [**cefPrintOrientation**](.
 
 The Chromium DevTools window opens in its own top-level window:
 
-```tb
+```tb check_build
 Private Sub btnDevTools_Click() Handles btnDevTools.Click
     WebView.OpenDevToolsWindow()
 End Sub

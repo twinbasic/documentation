@@ -116,15 +116,60 @@ if (flag("help")) {
 // project= on all 263 Reference/Built-In fences would be markup that only ever
 // repeats the directory name above it.
 function defaultProject(rel) {
+  // The two browser packages come first, because each brings a stage set whose
+  // `WebView` is its own control type. Both tutorials tell the reader to drop a
+  // control on a form and name it `WebView` -- one a CefBrowser, one a WebView2
+  // -- so the pages cannot share a project, and the split is by path because
+  // the control a page means is what the page is about.
+  if (/^(Tutorials|Reference\/Built-In)\/CEF\//.test(rel)) return "cef";
+  if (/^(Tutorials|Reference\/Built-In)\/WebView2\//.test(rel)) return "webview2";
   if (/^Reference\/Built-In\//.test(rel)) return "packages";
   // A tutorial about a package needs that package. Most are a folder named
   // after one; Testing-with-Assert is a single file, so it is named here.
-  if (/^Tutorials\/(CEF|WebView2|CustomControls)\//.test(rel)) return "packages";
+  if (/^Tutorials\/CustomControls\//.test(rel)) return "packages";
   if (/^Tutorials\/Testing-with-Assert\.md$/.test(rel)) return "packages";
   // `console` stays the default, and it is the stricter environment on purpose:
   // a Core or VBA sample should compile in a project that references only what
   // every project references, which is what a reader will have.
   return "console";
+}
+
+/**
+ * Which template a template is a delta of.
+ *
+ * A template used to be a whole exported tree, and five of them meant five
+ * copies of a stage set that is mostly the same list -- which is the
+ * duplication WIP.ExamplesBuild.md predicted would bite once a third appeared.
+ * A template named here holds only the files that DIFFER from its base:
+ * `vb-private` is a Settings with one reference rewritten, `cef` and
+ * `webview2` are one stage file each.
+ *
+ * The relation lives in the tool rather than in the tree on purpose. The
+ * alternative was a marker file in the template directory, and a template
+ * directory is an exported twinBASIC project that the compiler's `import` verb
+ * has to accept -- so a stray file there is a thing to test rather than a thing
+ * to declare.
+ */
+const TEMPLATE_BASE = {
+  "vb-private": "console",
+  cef: "packages",
+  webview2: "packages",
+};
+
+/** A template and everything it inherits from, base first. */
+function templateChain(name) {
+  const chain = [];
+  for (let n = name, guard = 0; n; n = TEMPLATE_BASE[n]) {
+    if (guard++ > 8) throw new Error(`template inheritance cycle at ${name}`);
+    chain.unshift(n);
+  }
+  return chain;
+}
+
+/** Does this template resolve to a project with a Settings anywhere in its chain? */
+function templateResolves(name) {
+  if (!existsSync(path.join(TEMPLATES, name))) return false;
+  return templateChain(name).some((n) => existsSync(path.join(TEMPLATES, n, "Settings")));
 }
 
 // What `inherits=` does to a slot that was inferred for a Module container. A
@@ -188,7 +233,7 @@ function select(fences) {
       }
       continue;
     }
-    if (!existsSync(path.join(TEMPLATES, fence.project, "Settings"))) {
+    if (!templateResolves(fence.project)) {
       addFinding(fence, `no such template project: ${fence.project}`,
         `templates live in test/example-projects/: ${readdirSync(TEMPLATES).join(", ")}`);
       continue;
@@ -319,7 +364,11 @@ function stageBatch(batch, work) {
   const index = stageCounter++;
   const dir = path.join(work, `b${index}`);
   rmSync(dir, { recursive: true, force: true });
-  cpSync(path.join(TEMPLATES, batch.project), dir, { recursive: true });
+  // Base first, then each delta over it: a file the delta carries replaces the
+  // base's copy of the same name, and everything else is inherited.
+  for (const name of templateChain(batch.project)) {
+    cpSync(path.join(TEMPLATES, name), dir, { recursive: true });
+  }
 
   const settingsPath = path.join(dir, "Settings");
   const settings = JSON.parse(readFileSync(settingsPath, "utf8"));

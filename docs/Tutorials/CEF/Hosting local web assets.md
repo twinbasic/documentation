@@ -20,7 +20,7 @@ This tutorial demonstrates the pattern used by *Sample 1b --- Chromium Embedded 
 
 Hook into the [**Ready**](../../tB/Packages/CEF/CefBrowser/#ready) event so the control is fully initialised before the mapping is installed:
 
-```tb
+```tb check_build
 Private Sub WebView_Ready() Handles WebView.Ready
     Dim folderPath As String = _
         Environ$("USERPROFILE") & "\Documents\MyApp"
@@ -107,7 +107,7 @@ End Module
 
 The complete deploy-on-`Ready` pattern looks like this:
 
-```tb
+```tb check_build
 Private Sub WebView_Ready() Handles WebView.Ready
     ' Resources/WEB_APP/* is copied here on every launch.
     Dim folderPath As String = _
@@ -127,7 +127,7 @@ Once deployed, the application can launch DevTools ([**OpenDevToolsWindow**](../
 
 [**ClearVirtualHostNameToFolderMapping**](../../tB/Packages/CEF/CefBrowser/#clearvirtualhostnametofoldermapping) removes a mapping previously installed by [**SetVirtualHostNameToFolderMapping**](../../tB/Packages/CEF/CefBrowser/#setvirtualhostnametofoldermapping):
 
-```tb
+```tb check_build
 WebView.ClearVirtualHostNameToFolderMapping "myapp.example"
 ```
 

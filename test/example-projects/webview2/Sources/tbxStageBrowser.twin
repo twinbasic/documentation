@@ -1,0 +1,24 @@
+' The browser shell's stage set -- the WebView2 half.
+'
+' A DELTA over `packages`, and the twin of test/example-projects/cef's file of
+' the same name; that one carries the reasoning for why the two exist. The
+' difference is the control type behind `WebView`, plus btnTaskMgr, which the
+' WebView2 tutorial has and the CEF one does not.
+
+Module tbxStageBrowser
+
+    Public WebView As WebView2
+    Public WebViewPreview As WebView2
+
+    Public AddressBar As TextBox
+
+    Public btnBack As CommandButton
+    Public btnForward As CommandButton
+    Public btnRefresh As CommandButton
+    Public btnZoomIn As CommandButton
+    Public btnZoomOut As CommandButton
+    Public btnPDF As CommandButton
+    Public btnDevTools As CommandButton
+    Public btnTaskMgr As CommandButton
+
+End Module
