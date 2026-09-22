@@ -221,6 +221,19 @@ the file now:
   `spawn(exe, [path])` does not. Loading through `root.loadProject` afterwards also works, but
   lets the IDE's no-project startup run first and flashes the splash and the New/Open Project
   dialog on screen.
+- **Read every severity out of the problems panel, not the IDE's error-report helper.**
+  The walk called `generateCopyPasteTextForProblem(node, true)`, and that second argument
+  is an *errors-only* filter --- the function's body is `if (t && severity !== 1) return;`.
+  The panel also hides hints and info by default (`hideGroup3` / `hideGroup4`). So `rows`
+  could only ever hold errors while the status-bar counters held all four, and the
+  invariant below was **unsatisfiable on any project with a warning**: 0 errors and 2
+  warnings read as `0 rows against 0/2/0/0` and exited 3, which is indistinguishable from
+  a compile that never settled. Warnings were also never reported at all. The walk now
+  clears the four group flags, reads severity, line and character straight off each node's
+  custom data, and restores the flags --- all inside one synchronous evaluate, so the IDE
+  never renders the intermediate state. This is the same lesson as `tbrun`'s DEBUG CONSOLE
+  fix one section down: **read the panel's backing data, not the view the IDE renders for a
+  human.**
 - **Read the counters and the diagnostic rows in one `Runtime.evaluate`.** Read as two calls
   they race: one run reported two diagnostics beside a zero error count, because the compile
   finished between them. The harness now refuses a sample where the two disagree rather than

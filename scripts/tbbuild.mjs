@@ -234,14 +234,58 @@ const probe = () => c.evaluate(`JSON.stringify({
   i: document.getElementById("infoCount")?.textContent ?? "",
   p: typeof projectFilePath !== "undefined" ? projectFilePath : null,
   rows: (() => {
-    let out = [], t = 1;
+    const out = [];
     if (typeof problemsPanel === "undefined" || !problemsPanel) return out;
-    while (true) {
-      t = problemsPanel.tree.view.data.getNextVisibleNode2(t, false, true);
-      if (!t) break;
-      const o = problemsPanel.tree.view.data.generateNodeInfo(t);
-      const n = generateCopyPasteTextForProblem(o, true);
-      if (n) out.push(n);
+    const d = problemsPanel.tree.view.data;
+    if (typeof PROBLEMSPANEL_CUSTOMPROPERTY_TYPE === "undefined") {
+      // Older/newer IDE without the constants: fall back to the IDE's own
+      // helper, with its "errors only" flag OFF so warnings still appear.
+      let t = 1;
+      while (true) {
+        t = d.getNextVisibleNode2(t, false, true);
+        if (!t) break;
+        const n = generateCopyPasteTextForProblem(d.generateNodeInfo(t), false);
+        if (n) out.push(n);
+      }
+      return out;
+    }
+    // The panel hides hints and info by default (hideGroup3/hideGroup4 are
+    // true), so they are not in the walk at all. Clear all four, walk, and put
+    // them back -- this whole function is one synchronous evaluate, so the IDE
+    // never renders the intermediate state.
+    const saved = [d.hideGroup1, d.hideGroup2, d.hideGroup3, d.hideGroup4];
+    d.hideGroup1 = d.hideGroup2 = d.hideGroup3 = d.hideGroup4 = false;
+    try {
+      // LSP DiagnosticSeverity: 1 Error, 2 Warning, 3 Information, 4 Hint --
+      // which is what the compiler's language socket speaks. 3 and 4 are the
+      // opposite way round from the status bar's hint-then-info column order,
+      // and guessing from that order got them backwards. No backticks in any
+      // comment here: this block is inside a template literal, and one
+      // truncates the whole evaluate string. Measured by forcing
+      // TB0013 into project.warnings.hints (status bar "2 hint(s)", severity 4)
+      // and then into .info (status bar "2 info", severity 3).
+      const LABEL = { 1: "{ERROR}", 2: "{WARNING}", 3: "{INFO}", 4: "{HINT}" };
+      let t = 1;
+      while (true) {
+        t = d.getNextVisibleNode2(t, false, true);
+        if (!t) break;
+        const o = d.generateNodeInfo(t);
+        if (!o) continue;
+        // Type 0 is the per-file header row, which carries no diagnostic.
+        if (o.getCustomData(PROBLEMSPANEL_CUSTOMPROPERTY_TYPE)
+            !== PROBLEMSPANEL_CUSTOMPROPERTY_TYPE1_DIAGNOSTIC) continue;
+        const url = o.getParentNodeInfo
+          ? (o.getParentNodeInfo() || {}).getCustomData(
+              PROBLEMSPANEL_CUSTOMPROPERTY_TYPE0_FILEHEADER_URL) : "";
+        const sev = o.getCustomData(PROBLEMSPANEL_CUSTOMPROPERTY_TYPE1_DIAGNOSTIC_SEVERITY);
+        const ln = o.getCustomData(PROBLEMSPANEL_CUSTOMPROPERTY_TYPE1_DIAGNOSTIC_LINENUM);
+        const ch = o.getCustomData(PROBLEMSPANEL_CUSTOMPROPERTY_TYPE1_DIAGNOSTIC_CHARNUM);
+        out.push((LABEL[sev] || ("{SEVERITY" + sev + "}")) + " " + (url || "") +
+          " [" + (ln + 1) + "," + (ch + 1) + "]: " + o.getCaption());
+      }
+    } finally {
+      d.hideGroup1 = saved[0]; d.hideGroup2 = saved[1];
+      d.hideGroup3 = saved[2]; d.hideGroup4 = saved[3];
     }
     return out;
   })() })`);
@@ -276,6 +320,15 @@ const counts = ["e", "w", "h", "i"].map((k) => Number(final[k] ?? 0));
 
 // A row count that disagrees with the status bar means the compile was still
 // moving when the sample was taken. Refuse rather than report either number.
+//
+// This invariant was unsatisfiable for two years on any project with a warning.
+// The walk passed the IDE's copy helper its "errors only" flag -- the helper is
+// `if (t && severity !== 1) return;` -- and the panel hides hints and info by
+// default, so `rows` could only ever hold errors while `counts` held all four.
+// A project with 0 errors and 2 warnings read as "0 rows against 0/2/0/0" and
+// exited 3, which looks exactly like a compile that never settled. The walk
+// above now reads severity from the panel's own node data instead, so the two
+// sides count the same things and a real race is again the only way to trip it.
 if (counts.reduce((a, b) => a + b, 0) !== rows.length) {
   die(3, `unsettled: ${rows.length} rows against ${counts.join("/")} in the status bar`);
 }
