@@ -304,27 +304,38 @@ Three of those are actionable as a group rather than one page at a time:
 - **`TB5182` is not one fault.** It is where the 70 different ways a sample can be an
   excerpt end up, and it needs reading page by page.
 
-### The Assert package documentation does not compile, and that is not the tool's fault
+### The Assert package documentation does not compile
 
 Every Assert page writes `Exact.AreEqual`, `Strict.AreEqual`, `Permissive.AreEqual`
-unqualified --- 50 sites in the reference plus the tutorial --- and that raises
-`TB5079 Unrecognized symbol 'Strict'`. `Assert.Strict.AreEqual` compiles.
+unqualified, and that raises `TB5079 Unrecognized symbol 'Exact'`. **A package's members
+are reached through its namespace symbol, exactly as `VB`'s are**, so the form that
+compiles is `Assert.Exact.AreEqual`. The two prefixes are separate requirements: the
+`Assert.` is the package namespace, and the `Exact.` below it is there because each module
+in the package carries `[MustBeQualified(True)]`.
 
-**Left alone deliberately, for now.** What is measured:
+**66 sites across five pages** --- 61 line-leading uses in code samples, 5 inline code
+spans in prose, against exactly one already-qualified mention:
 
-- the probe project *did* reference the package, by id, version and `symbolId`, composed
-  from the package's own `Settings`;
-- with that reference, `Assert.Strict.AreEqual 1, 1` compiles and `Strict.AreEqual 1, 1`
-  does not, in the same project, in the same build;
-- setting the reference's `symbolId` to the empty string does not make the bare form
-  resolve;
-- each module in the package carries `[MustBeQualified(True)]`, which is what makes the
-  `Strict.` prefix necessary --- the question is only whether the `Assert.` above it is too.
+    docs/Reference/Built-In/TwinBasicAssertions/{Exact,Strict,Permissive,index}.md
+    docs/Tutorials/Testing-with-Assert.md
 
-**What has not been tested** is what the IDE's own package manager writes into
-`project.references` when a person adds the package through it. If that differs from the
-hand-composed entry in a way that changes symbol resolution, the pages are right and this
-finding is a harness artifact. That is the one thing to check before touching 50 sites.
+**Left alone deliberately, for now.** The finding is settled, not pending:
+
+- a probe whose reference entry was composed by hand from the package's own `Settings`
+  compiled `Assert.Strict.AreEqual 1, 1` and refused `Strict.AreEqual 1, 1`, in the same
+  project and the same build;
+- setting that entry's `symbolId` to the empty string did not make the bare form resolve;
+- and the same probe against **the reference entry the IDE's own package manager writes**
+  --- taken verbatim out of a project where a person had added the package through it ---
+  behaves identically. That entry differs from the hand-composed one only by
+  `autoCtlExt: true` and the display name; the id, the version (0.0.24, so the package
+  manager used the shipped copy rather than a newer registry one) and
+  `symbolId: "Assert"` are the same.
+
+So there is no version of the reference under which the pages are right. The remaining
+question is editorial --- whether every sample gains an `Assert.` prefix, or whether the
+pages say once that the package is referenced and show the qualified form --- and that is
+a content pass, not a harness one.
 
 ## Open questions
 
