@@ -38,7 +38,7 @@ Anything beyond the standard library --- application objects, configuration valu
 
 The simplest form is [**AddCustomBinderObject**](AddCustomBinderObject), which takes a name and an object and exposes the object's public members under that name. Pass the **IsAppObject** flag to make the object behave like an Office host's **Application**: its members become reachable both qualified (`Report.Title`) and unqualified (`Title`).
 
-```tb
+```tb check_build
 Sub UseCustomObject()
     Dim Service As TbExpressionService = New TbExpressionService
     Service.AddStdLibraryBinder()

@@ -32,7 +32,7 @@ Multiple objects can be bound to the same service, each under its own *name*. Th
 
 This example exposes the host's report object so that an expression can refer to its properties either by qualified name or by bare name.
 
-```tb
+```tb check_build
 Dim Service As TbExpressionService = New TbExpressionService
 Service.AddStdLibraryBinder()
 Service.AddCustomBinderObject "Report", Me, IsAppObject

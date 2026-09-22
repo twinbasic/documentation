@@ -112,7 +112,7 @@ The **IGetMessageHook** interface hooks into the Windows message stream for a ch
 
 The interface inherits directly from **stdole.IUnknown** (it is not dispatch-based), and the callbacks supplied to **RegisterMessage** are typed as [**GetMessageHookHelper.GetMessageHandler**](#getmessagehandler).
 
-```tb
+```tb check_build inherits=Form
 Const WM_LBUTTONDOWN = &H201
 
 Sub Demo()

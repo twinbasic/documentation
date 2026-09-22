@@ -23,7 +23,7 @@ End Class
 
 The snippets below are excerpts from inside that class rather than whole files:
 
-```tb
+```tb check_build inherits=Form
 ' In Form1's code-behind:
 Private Sub Form_Load()
     Caption = "Welcome"
@@ -88,7 +88,7 @@ The drawing primitives are [**Cls**](#cls), [**Circle**](#circle), [**Line**](#l
 
 [**AutoRedraw**](#autoredraw) controls whether drawn output persists across paints: when **False** (default), the [**Paint**](#paint) event must redraw on every invalidation; when **True**, the form keeps an off-screen buffer that survives invalidations and the **Paint** event is suppressed. Setting [**Picture**](#picture) puts a bitmap behind the drawing layer; [**Image**](#image) returns the rendered combined surface as a **StdPicture**.
 
-```tb
+```tb check_build inherits=Form
 Private Sub Form_Paint()
     Me.ScaleMode = vbPixels
     Me.ForeColor = vbBlue
@@ -176,7 +176,7 @@ Whether the form's title bar shows the system menu (and, with it, the close butt
 
 The collection of every control hosted by this form, indexable by control name or zero-based position. **Default property.** Read-only --- controls are added to the collection by the runtime, not by user code.
 
-```tb
+```tb check_build inherits=Form
 Dim ctrl As Control
 For Each ctrl In Me.Controls
     ctrl.Enabled = False

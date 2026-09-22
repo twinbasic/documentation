@@ -19,7 +19,7 @@ For controls that participate in a control-container hierarchy, the inherited ow
 
 This example reads the topmost container of a control and reports its type.
 
-```tb
+```tb check_build
 ' Inside a VB control class
 Dim host As Object
 host = GetInheritedOwner(Me)

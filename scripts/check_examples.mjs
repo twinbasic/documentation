@@ -69,7 +69,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  MARKER, RUN_MARKER, SLOTS, classify, collectFences, moduleName, parseInfo, wrapFence,
+  BODY_SLOTS, MARKER, RUN_MARKER, SLOTS, classify, collectFences, moduleName, parseInfo,
+  wrapFence,
 } from "./lib/tb-fences.mjs";
 import { buildNumber, compilerExe, findIde } from "./lib/tb-install.mjs";
 
@@ -126,6 +127,11 @@ function defaultProject(rel) {
   return "console";
 }
 
+// What `inherits=` does to a slot that was inferred for a Module container. A
+// sample naming a base is class code-behind whatever the classifier thought,
+// and `Me` may well not appear in the excerpt that proves it.
+const PROMOTE_TO_CLASS = { module: "class", sub: "method" };
+
 // A report line. Under --json it goes to stderr, so the payload is the only
 // thing on stdout and a caller can pipe it straight into a parser -- which the
 // first --json run could not, because the probe line and the batch progress
@@ -149,7 +155,8 @@ function select(fences) {
     // marked `check_bild` would never be compiled and nothing would say so.
     if (fence.bad.length) {
       addFinding(fence, `unrecognised fence markup: ${fence.bad.join(" ")}`,
-        `known flags: ${MARKER}, ${RUN_MARKER}; keys: slot=${SLOTS.join("|")}, project=, id=, expect-error=`);
+        `known flags: ${MARKER}, ${RUN_MARKER}; keys: slot=${SLOTS.join("|")}, ` +
+        `inherits=, project=, projname=, id=, expect-error=`);
       continue;
     }
 
@@ -158,7 +165,12 @@ function select(fences) {
 
     const inferred = classify(fence.content);
     const stated = fence.keys.get("slot");
-    const slot = stated ?? inferred.slot;
+    let slot = stated ?? inferred.slot;
+    // `inherits=` names what the sample is code-behind OF, so it settles the
+    // container on its own: saying both it and slot=class would be the same
+    // fact written twice, and the pair could then disagree.
+    fence.base = fence.keys.get("inherits") ?? null;
+    if (fence.base && slot) slot = PROMOTE_TO_CLASS[slot] ?? slot;
     fence.inferred = inferred;
     fence.slot = slot;
     fence.slotStated = Boolean(stated);
@@ -263,10 +275,11 @@ function makeBatches(fences) {
 
     const open = [];
     for (const [key, members] of units) {
-      // Only file- and module-slot samples export anything; a sub-slot sample's
-      // declarations are inside a Private Sub and cannot collide with anything.
+      // Only the slots that put declarations at container scope export
+      // anything. A `sub` or `method` sample's declarations are inside a
+      // Private Sub and cannot collide with anything.
       const names = members.flatMap((f) =>
-        (f.slot === "sub" ? [] : (f.inferred?.names ?? [])).map((n) => n.toLowerCase()));
+        (BODY_SLOTS.has(f.slot) ? [] : (f.inferred?.names ?? [])).map((n) => n.toLowerCase()));
 
       // A GROUP GETS ITS OWN PROJECT, and nothing else joins it. Togetherness
       // alone would leave a group's result depending on whichever unrelated
@@ -325,7 +338,7 @@ function stageBatch(batch, work) {
   const map = new Map();
   for (const fence of batch.fences) {
     const mod = moduleName(fence.id);
-    const { text, offset } = wrapFence(fence, fence.slot, mod);
+    const { text, offset } = wrapFence(fence, fence.slot, mod, fence.base);
     // CRLF, as the IDE writes .twin files.
     writeFileSync(path.join(dir, "Sources", `${mod}.twin`),
       text.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n"), "utf8");
@@ -557,6 +570,17 @@ const CLASSIFIER_PROBES = [
   ["an End with no opener", "    Debug.Print 1\nEnd Sub\n", null],
   ["a continuation line", "Dim a As Long, _\n    b As Long\n", "sub"],
   ["an apostrophe inside a string", "Debug.Print \"it's here ' not a comment\"\n", "sub"],
+  // The Class row. `Me` is the whole signal, so the three ways it can be a
+  // false positive are probes: this corpus prints the word, and a member may
+  // be called Me. Getting one of these wrong wraps an ordinary Module sample
+  // in a Class, which fails with a diagnostic about the wrapper -- a report
+  // pointing at code that is correct.
+  ["a procedure using Me", "Private Sub Form_Load()\n    Me.Caption = \"x\"\nEnd Sub\n", "class"],
+  ["loose statements using Me", "Me.Print \"hello\"\n", "method"],
+  ["Me inside a string literal", "Debug.Print \"Use Me instead\"\n", "sub"],
+  ["Me as somebody's member", "Debug.Print foo.Me\n", "sub"],
+  ["Me inside a comment", "Dim x As Long    ' Me is fine here\n", "sub"],
+  ["Meridian is not Me", "Dim Meridian As Long\nMeridian = 1\n", "sub"],
 ];
 
 const INFO_PROBES = [
@@ -569,6 +593,7 @@ const INFO_PROBES = [
   ["a typo is refused", "tb check_bild", (p) => p.bad.length === 1 && !p.flags.has(MARKER)],
   ["an unknown key is refused", `tb ${MARKER} mode=x`, (p) => p.bad.length === 1],
   ["a bad slot is refused", `tb ${MARKER} slot=banana`, (p) => p.bad.length === 1],
+  ["a base class", `tb ${MARKER} inherits=Form`, (p) => p.keys.get("inherits") === "Form"],
   ["another language is untouched", "js", (p) => p.lang === "js"],
 ];
 
@@ -591,10 +616,29 @@ async function runProbes() {
   // whatever is generated around it.
   const fence = { rel: "X.md", line: 10, id: "X.md#1", content: "Dim a\nDim b\nDim c\n" };
   for (const slot of SLOTS) {
-    const { text, offset } = wrapFence(fence, slot, "tbx_probe");
-    const genLine = text.split("\n").findIndex((l) => l.trim() === "Dim b") + 1;
-    const pageLine = fence.line + genLine - offset;
-    if (pageLine !== 12) failures.push(`line map: ${slot} -> ${pageLine}, want 12`);
+    // With and without a base: `Inherits` is a generated line like any other,
+    // so it shifts the arithmetic, and a base is exactly the case an author
+    // reaches for when a sample is already hard to place.
+    for (const base of [null, "Form"]) {
+      const { text, offset } = wrapFence(fence, slot, "tbx_probe", base);
+      const genLine = text.split("\n").findIndex((l) => l.trim() === "Dim b") + 1;
+      const pageLine = fence.line + genLine - offset;
+      if (pageLine !== 12) {
+        failures.push(`line map: ${slot}${base ? " inherits " + base : ""} -> ${pageLine}, want 12`);
+      }
+    }
+  }
+
+  // The container a slot generates, and that a base reaches the source only
+  // where a Class is generated -- `Module X / Inherits Form` is not a thing.
+  for (const [slot, want] of [["module", "Module"], ["sub", "Module"],
+    ["class", "Class"], ["method", "Class"]]) {
+    const { text } = wrapFence(fence, slot, "tbx_probe", "Form");
+    if (!text.includes(`${want} tbx_probe`)) failures.push(`wrapper: ${slot} is not a ${want}`);
+    const inherits = text.includes("Inherits Form");
+    if (inherits !== (want === "Class")) {
+      failures.push(`wrapper: ${slot} ${inherits ? "emitted" : "dropped"} Inherits`);
+    }
   }
 
   // The batcher, because a grouping that silently stops holding produces a
@@ -639,7 +683,8 @@ async function runProbes() {
     for (const f of failures) say(`FAIL  probe: ${f}`);
     return false;
   }
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 10} probes: ` +
+  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 3 batching + 4 markup.
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 21} probes: ` +
     `classifier, markup, line mapping and batching`);
   return true;
 }

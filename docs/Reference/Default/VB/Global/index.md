@@ -212,7 +212,7 @@ Syntax: **Unload** *object*
 *object*
 : *required* The default instance of a form class, an explicit form reference, or a control-array element.
 
-```tb
+```tb check_build
 Unload Me                         ' close the current form
 Unload Forms(0)                   ' close whichever form is at the head of the list
 ```

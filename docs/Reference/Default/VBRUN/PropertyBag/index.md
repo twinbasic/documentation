@@ -14,7 +14,7 @@ A **PropertyBag** is a small key/value store designed for persisting an object's
 
 A new **PropertyBag** is created with **New** and starts out empty:
 
-```tb
+```tb check_build inherits=Form
 Dim Bag As New PropertyBag
 Bag.WriteProperty "Caption", Me.Caption, "Untitled"
 Bag.WriteProperty "Width", Me.Width, 800

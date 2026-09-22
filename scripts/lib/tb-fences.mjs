@@ -10,6 +10,7 @@
 //
 //     ```tb check_build
 //     ```tb check_build slot=module
+//     ```tb check_build inherits=Form
 //     ```tb check_build projname=padleft-tests
 //     ```tb check_run project=packages
 //
@@ -27,19 +28,32 @@
 // No backticks may appear in it: CommonMark forbids them in a backtick fence's
 // info string, and maskCodeRegions skips such a fence outright.
 //
-// ------------------------------------------------------------- the three slots
+// ------------------------------------------------------------- the five slots
 //
 // A fence is a fragment of a program, and which fragment decides what has to be
-// generated around it before a compiler will look at it:
+// generated around it before a compiler will look at it. Two dimensions: what
+// container the code sits in, and whether it is declarations or statements.
 //
-//   file     a whole Class / Module / Interface / CoClass -- its own .twin
-//   module   procedures and module-level declarations -- wrapped in a Module
-//   sub      loose statements -- wrapped in a Module and a Private Sub
+//              declarations / procedures     loose statements
+//   Module     module                        sub
+//   Class      class                         method
+//
+//   file       a whole Class / Module / Interface / CoClass -- its own .twin
 //
 // The slot is inferred, and stated in the markup only when inference is wrong.
 // A misinference is self-reporting, because it produces a compile error rather
 // than a silent pass -- but the reporter has to name the inferred slot in the
 // error, or the author is left debugging code that is correct.
+//
+// The Class row is inferred from `Me`, which is a language rule rather than a
+// guess: the compiler's own TB5025 reads "[Me] cannot be used in standard
+// modules. [Me] is only applicable to class modules." So a fence using `Me` is
+// class code-behind by construction, and one that does not is left alone.
+//
+// That inference cannot regress a passing sample. A module- or sub-slot fence
+// that uses `Me` gets TB5025 today, so it is already failing; moving it to the
+// Class row can only change which diagnostic it gets, or fix it. A file-slot
+// fence brings its own container and is never reclassified.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -64,10 +78,21 @@ const FLAGS = new Set([MARKER, RUN_MARKER]);
  * presents one program in pieces -- a tutorial that defines a function in one
  * fence and tests it in the next three.
  */
-const KEYS = new Set(["slot", "project", "projname", "id", "expect-error"]);
+const KEYS = new Set(["slot", "project", "projname", "id", "expect-error", "inherits"]);
 
 /** The slots, in the order the classifier prefers them. */
-export const SLOTS = ["file", "module", "sub"];
+export const SLOTS = ["file", "module", "sub", "class", "method"];
+
+/** The slots whose generated container is a Class rather than a Module. */
+export const CLASS_SLOTS = new Set(["class", "method"]);
+
+/**
+ * The slots whose body is generated inside a procedure.
+ *
+ * What these have in common is that nothing they declare reaches container
+ * scope, so two such samples can never collide however they are batched.
+ */
+export const BODY_SLOTS = new Set(["sub", "method"]);
 
 // A bare CommonMark parser, as in check_code_regions.mjs: this asks what the
 // SOURCE says, so it must not inherit the site's plugin stack.
@@ -260,6 +285,30 @@ function logicalLines(src) {
 const kindOf = (text) => (KIND_RE.exec(text)?.[1] ?? "?").toLowerCase();
 
 /**
+ * Does this fence use `Me`, and so have to be generated into a Class?
+ *
+ * Strings are blanked as well as comments, which logicalLines does not do: this
+ * corpus prints the word. `Debug.Print "Use Me instead"` is prose inside a
+ * literal, and treating it as code would wrap an ordinary module sample in a
+ * Class for nothing.
+ *
+ * A `Me` preceded by a dot is somebody's member, not the keyword.
+ */
+export function usesMe(src) {
+  for (const raw of src.replace(/\r\n?/g, "\n").split("\n")) {
+    let s = "", inStr = false;
+    for (const ch of raw) {
+      if (ch === '"') { inStr = !inStr; s += " "; continue; }
+      if (inStr) { s += " "; continue; }
+      if (ch === "'") break;
+      s += ch;
+    }
+    if (/(?:^|[^.\w])Me\b/i.test(s)) return true;
+  }
+  return false;
+}
+
+/**
  * Which slot a fence's content belongs in, or why it belongs in none.
  *
  * @returns {{slot: string|null, reason?: string, names: string[]}}
@@ -355,8 +404,10 @@ export function classify(content) {
   if (inner.length) return { slot: null, reason: `unclosed ${inner.join(", ")}`, names };
   if (sawContainer && !sawProc && !sawModuleOnly && !sawLoose) return { slot: "file", names };
   if (sawContainer) return { slot: "file", reason: "mixed with loose code", names };
-  if (sawProc || sawModuleOnly) return { slot: "module", names };
-  return { slot: "sub", names };
+  // `Me` picks the Class row of the table at the top of this file.
+  const inClass = usesMe(content);
+  if (sawProc || sawModuleOnly) return { slot: inClass ? "class" : "module", names };
+  return { slot: inClass ? "method" : "sub", names };
 }
 
 function pushName(names, text) {
@@ -380,17 +431,25 @@ export function moduleName(id) {
  * Everything generated is Private, because two samples in one project must not
  * see each other's names: eleven pages declare a `MyString`.
  */
-export function wrapFence(fence, slot, name) {
+export function wrapFence(fence, slot, name, base = null) {
   const header = `' ${fence.rel}:${fence.line}  (${fence.id})`;
   const body = fence.content.replace(/\n+$/, "");
   if (slot === "file") {
     return { text: `${header}\n${body}\n`, offset: 1 };
   }
-  if (slot === "module") {
-    return { text: `${header}\nModule ${name}\n${body}\nEnd Module\n`, offset: 2 };
+  // A `base` is what a Me.<member> resolves against. Without one the wrapper is
+  // a bare Class, `Me` is legal and `Me.Caption` is not -- which turns TB5025
+  // into TB5027 and is no better. Measured; see WIP.ExamplesBuild.md.
+  const container = CLASS_SLOTS.has(slot) ? "Class" : "Module";
+  const open = base && CLASS_SLOTS.has(slot)
+    ? `${container} ${name}\n    Inherits ${base}`
+    : `${container} ${name}`;
+  const extra = base && CLASS_SLOTS.has(slot) ? 1 : 0;
+  if (slot === "module" || slot === "class") {
+    return { text: `${header}\n${open}\n${body}\nEnd ${container}\n`, offset: 2 + extra };
   }
   return {
-    text: `${header}\nModule ${name}\n    Private Sub tbxBody()\n${body}\n    End Sub\nEnd Module\n`,
-    offset: 3,
+    text: `${header}\n${open}\n    Private Sub tbxBody()\n${body}\n    End Sub\nEnd ${container}\n`,
+    offset: 3 + extra,
   };
 }
