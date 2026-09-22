@@ -697,7 +697,7 @@ Syntax: *object*.**PopUpMenu** *Menu* [, *Flags* [, *X* [, *Y* [, *DefaultMenu* 
 ### Print
 {: .no_toc }
 
-Writes text to the control's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the VB6 **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and --- when [**AutoRedraw**](#autoredraw) is **True** --- is recorded into the persistent off-screen bitmap so it survives invalidations.
+Writes text to the control's drawing surface using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. This is the language-level [**Print**](../../../Core/Print) statement rather than a method call: its [output list](../../../Core/Print#the-output-list) separates expressions with `;` (no spacing) or `,` (move to the next print zone), and accepts **Tab(***n***)** and **Spc(***n***)**. A column on a drawing surface is the font's average character width, so print zones line up even in a proportional font. Output honours [**Font**](#font), [**ForeColor**](#forecolor), and [**FontTransparent**](#fonttransparent), and --- when [**AutoRedraw**](#autoredraw) is **True** --- is recorded into the persistent off-screen bitmap so it survives invalidations.
 
 Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 

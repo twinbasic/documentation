@@ -633,7 +633,7 @@ Writes text to the current drawing surface using [**Font**](#font), starting at 
 
 Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 
-A trailing `;` or `,` suppresses the newline so the next **Print** call continues on the same line. **Print** is the language-level statement, not a function call --- multiple expressions can be separated by `;` (no spacing) or `,` (tab to the next print zone), and **Spc(n)** / **Tab(n)** insert spaces or move to a column.
+A trailing `;` or `,` suppresses the newline so the next **Print** call continues on the same line. This is the language-level [**Print**](../../../Core/Print) statement rather than a method call: its [output list](../../../Core/Print#the-output-list) separates expressions with `;` (no spacing) or `,` (move to the next print zone), and accepts **Tab(***n***)** and **Spc(***n***)**. A column on a drawing surface is the font's average character width, so print zones line up even in a proportional font.
 
 > [!NOTE]
 > To send a report to the printer, use [**PrintReport**](#printreport) --- not **Print**.

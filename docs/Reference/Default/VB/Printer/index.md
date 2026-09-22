@@ -437,7 +437,7 @@ If no job is in progress, **PaintPicture** implicitly starts one.
 ### Print
 {: .no_toc }
 
-Writes text to the current page using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. Dispatched through the **Print** statement so multiple expressions can be separated by `;` (no spacing) or `,` (tab to next print zone). **Spc(n)** inserts *n* spaces and **Tab(n)** moves to print column *n*.
+Writes text to the current page using [**Font**](#font), starting at [**CurrentX**](#currentx) / [**CurrentY**](#currenty) and advancing them as it goes. This is the language-level [**Print**](../../../Core/Print) statement rather than a method call: its [output list](../../../Core/Print#the-output-list) separates expressions with `;` (no spacing) or `,` (move to the next print zone), and accepts **Tab(***n***)** and **Spc(***n***)**. A column on a drawing surface is the font's average character width, so print zones line up even in a proportional font.
 
 Syntax: *object*.**Print** \[ *expressionlist* \] \[ **;** \| **,** \]
 

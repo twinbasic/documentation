@@ -100,7 +100,7 @@ These statements are built into the language itself. They are understood by the 
 
 * [ParamArray](../tB/Core/ParamArray) -- declares the final parameter of a procedure as an arbitrary-arity list of arguments
 
-* [Print #](../tB/Core/Print) -- writes display-formatted data to a sequential file
+* [Print](../tB/Core/Print) -- writes display-formatted data to a file, the Debug Console, or a drawing surface
 
 * [Private](../tB/Core/Private) -- declares module-level variables accessible only within the declaring module
 
