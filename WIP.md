@@ -1381,6 +1381,19 @@ Batching matters too. One project per IDE is the scaling unit, so 393 whole unit
 each is over an hour serially; several fences per probe project, run concurrently, is what
 makes it minutes. That is the same arithmetic the probe-suite note above works through.
 
+**The gate is designed in [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md)** --- the opt-in fence
+markup, the template projects, the batching and bisect-on-crash rules, and the measured
+evidence that the markup is free at render time. It is a separate on-demand tool by design
+and is never wired into `build.bat`, `check.bat`, `test.bat` or CI.
+
+> **Do not take the table above as settled.** Re-running the census against the slot
+> taxonomy that design needs gives 103 / 349 / 22 / 621 over 1,097 fences: the `procedure`
+> row agrees closely, but the largest bucket by far is **loose statements wanting a `Sub`
+> body**, not declarations wanting a module. A generator built to the older split picks the
+> wrong wrapper for most of the corpus. Both classifiers are heuristic and neither
+> distinguishes a wrappable statement sequence from a true fragment; the discrepancy and its
+> consequences are worked through in the design file.
+
 ### A script is findable only if its bare name is a token prefix somewhere
 
 lunr's tokeniser splits on **whitespace and hyphens only** (`/[\s\-]+/`), and the site's
