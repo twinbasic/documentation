@@ -1479,8 +1479,9 @@ something `check_code_regions.mjs` protects the *contents* of and never evaluate
 the compiler now. A sample opts in by carrying `check_build` in its fence info string; the
 tool works out what to generate around it, packs many samples into one project, builds them
 through `tbbuild` on concurrent lanes, and reports each diagnostic against the line in the
-page it came from. **381 samples are marked --- all of `Reference/Core/` and
-`Reference/Default/VBA/` that compile --- and the run takes about 17 seconds.**
+page it came from. **401 samples are marked --- all of `Reference/Core/`,
+`Reference/Default/VBA/` and the Assert pages that compile --- and the run takes about 21
+seconds.**
 
 It is **never** wired into `build.bat`, `check.bat`, `test.bat` or CI: it needs a twinBASIC
 install, which `npm install` is not, and Windows with a private desktop and a
@@ -1615,7 +1616,7 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 - `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the gate-list check (`scripts/check_gate_lists.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](#the-book-refuses-a-stale-source-tree)).
 
-- `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~17 s over the 381 samples marked today. `--census` and `--propose` need no compiler at all. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
+- `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~21 s over the 401 samples marked today. `--census` and `--propose` need no compiler at all. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
 

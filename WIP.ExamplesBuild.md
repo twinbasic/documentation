@@ -11,10 +11,11 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**381 samples are marked today** --- everything in `Reference/Core/` and
-`Reference/Default/VBA/` that compiles --- and the gate over them takes ~17 s. 586 of the
-1,095 classifiable fences in the corpus would pass; the rest are the follow-up work, and
-[what the first full run found](#what-the-first-full-run-found) says what is in the way.
+**401 samples are marked today** --- everything in `Reference/Core/`,
+`Reference/Default/VBA/` and the Assert pages that compiles --- and the gate over them
+takes ~21 s. 586 of the 1,095 classifiable fences in the corpus would pass; the rest are
+the follow-up work, and [what the first full run found](#what-the-first-full-run-found)
+says what is in the way.
 
 ## The problem
 
@@ -122,8 +123,13 @@ Shape --- bare flags and `key=value` pairs after the language token:
 | `check_run` | compile it *and* run it, capturing Debug output. **Not implemented**; such a fence is compiled only, and the run says so | --- |
 | `slot=` | `file`, `module` or `sub` --- what to generate around it | inferred |
 | `project=` | which template project to build into | inferred from the page's path |
+| `projname=` | build these samples as one project | each sample is its own unit |
 | `id=` | stable name for reporting | `<page>#<ordinal>` |
 | `expect-error=` | the sample is *meant* not to compile; assert this error | --- |
+
+**`project=` and `projname=` are one character apart and mean different things** --- the
+template to build into, and the group to build with. Worth renaming if it ever trips
+anybody.
 
 **The names say what is asked for, not what has happened to the sample.**
 
@@ -189,6 +195,40 @@ takes 30 s.
 put 120, 55, 4 and 3 samples on four lanes --- and a run takes as long as its biggest batch.
 The batcher sizes to `ceil(total / jobs)` instead. On the VBA reference that was 28 s → 10.7
 s for the same result.
+
+### A sample could pass on its neighbour's declarations
+
+Several samples share a generated project, and a `module`-slot sample's declarations are
+**visible to every other sample in it**. So a sample can compile because an unrelated one
+defined what it referenced --- and which samples share a project depends on the selection,
+so the same page passes one run and fails the next.
+
+**Measured, on the first page it was pointed at.** `Tutorials/Testing-with-Assert.md`
+defines `PadLeft` in one fence and tests it in three others. Surveying the page with
+`--propose` compiled all 30 of its fences together, so the tests resolved `PadLeft` and
+passed; the gate run afterwards selected only the marked ones, the definition landed in a
+different project, and the same three samples failed on `Unrecognized symbol 'PadLeft'`.
+A tool whose survey and gate disagree about one page is worth less than either.
+
+`projname=` is the answer, and it is markup rather than a heuristic because the grouping is
+a fact about the page that no scan recovers:
+
+- samples sharing a `projname` are compiled **as one project**;
+- **and nothing else is compiled with them**, so the result depends on what the author
+  grouped and the template, not on what the run happened to pack beside it;
+- a group that is only **half marked** is a finding naming the missing members, because the
+  alternative is an error about a missing symbol in the sample that is fine.
+
+A page-atomic rule was the obvious alternative --- keep every page's fences together --- and
+it is worse twice over: it would silently merge samples on pages that deliberately show two
+versions of one class, and it would still leave a page passing on another page's
+declarations. Three probes cover the batcher now, since a grouping that stops holding
+produces a green run whose samples were compiled apart.
+
+**The residual is stated rather than closed:** two *ungrouped* samples still share a
+project and can still see each other. Nothing in twinBASIC hides a module's public members
+from the rest of a project, so the only complete fix is a project per sample, at 8--11 s
+each. What removes the risk where it matters is that a real dependency is now written down.
 
 Collision rules, all forced by putting unrelated samples in one compilation unit:
 
@@ -304,7 +344,7 @@ Three of those are actionable as a group rather than one page at a time:
 - **`TB5182` is not one fault.** It is where the 70 different ways a sample can be an
   excerpt end up, and it needs reading page by page.
 
-### The Assert package documentation does not compile
+### The Assert package documentation did not compile --- fixed
 
 Every Assert page writes `Exact.AreEqual`, `Strict.AreEqual`, `Permissive.AreEqual`
 unqualified, and that raises `TB5079 Unrecognized symbol 'Exact'`. **A package's members
@@ -319,7 +359,27 @@ spans in prose, against exactly one already-qualified mention:
     docs/Reference/Built-In/TwinBasicAssertions/{Exact,Strict,Permissive,index}.md
     docs/Tutorials/Testing-with-Assert.md
 
-**Left alone deliberately, for now.** The finding is settled, not pending:
+**Fixed**: 116 calls across the five pages now carry the namespace, 20 of the 30 samples are
+marked `check_build`, and the ten that are not reference a `target`, a `factory`, a `Widget`
+or an undeclared `x` --- context the page does not define, which is the ordinary reason a
+sample is not a program.
+
+**The root of it was one sentence**, on the package index: *"If a project references more
+than one package that exposes a module called Strict, qualify further with the package name
+as well."* That presents `Assert.` as disambiguation needed on a clash, and every page was
+written to it. Prefixing 116 calls without rewriting that sentence would have left a reader
+reading the prefixes as optional noise. It now states that both qualifiers are always
+required, and the sample beneath it shows all four forms with the three that fail --- each
+verified rather than asserted:
+
+| form | result |
+|---|---|
+| `Assert.Strict.IsTrue x > 0` | compiles |
+| `Strict.IsTrue x > 0` | `TB5079 Unrecognized symbol 'Strict'` |
+| `Assert.IsTrue x > 0` | `TB5027 Unrecognized member 'IsTrue' on type 'Assert'` |
+| `IsTrue x > 0` | `TB5079 Unrecognized symbol 'IsTrue'` |
+
+How it was established, before the fix:
 
 - a probe whose reference entry was composed by hand from the package's own `Settings`
   compiled `Assert.Strict.AreEqual 1, 1` and refused `Strict.AreEqual 1, 1`, in the same
@@ -332,10 +392,14 @@ spans in prose, against exactly one already-qualified mention:
   manager used the shipped copy rather than a newer registry one) and
   `symbolId: "Assert"` are the same.
 
-So there is no version of the reference under which the pages are right. The remaining
-question is editorial --- whether every sample gains an `Assert.` prefix, or whether the
-pages say once that the package is referenced and show the qualified form --- and that is
-a content pass, not a harness one.
+So there was no version of the reference under which the pages were right.
+
+**The harness could not have told you which way to fix it**, and that is the general shape:
+it says a sample does not compile, and what the page should say instead is still a
+judgement about the reader. Here the alternative was to prefix only the runnable fences and
+leave the 45 `Syntax:` lines short under a stated convention --- rejected because a
+`Syntax:` line is the first thing a reader copies, and a mixed convention cannot be checked
+by grep.
 
 ## Open questions
 
@@ -349,3 +413,6 @@ a content pass, not a harness one.
   printed value the page probably states, and that is the check worth having.
 - The stage set is a per-template file today. When a third template appears, the shared half
   wants to be shared rather than copied.
+- A `projname` is global, so two pages choosing `demo` would merge without saying so. Scoping
+  it to the page would prevent that and would also prevent a group spanning pages, which a
+  multi-page tutorial wants. Left global and documented; revisit if a collision happens.
