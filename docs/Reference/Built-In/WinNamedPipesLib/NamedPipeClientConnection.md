@@ -15,6 +15,23 @@ The class is tagged `[COMCreatable(False)]` and its constructor takes a package-
 > [!IMPORTANT]
 > The package `_README.txt` states: *"you MUST call **AsyncClose** on the client side, otherwise the connection is left alive when the object goes out of scope"*. Either call [**AsyncClose**](#asyncclose) explicitly before dropping the last reference, **or** let the object terminate cleanly through its `Class_Terminate` (which calls [**AsyncClose**](#asyncclose) automatically). Holding the reference forever --- in a module-level **Collection**, for example --- without calling [**AsyncClose**](#asyncclose) keeps the pipe handle open and the IOCP thread alive.
 
+```tb hidden
+' Context for the samples on this page: the per-connection session object the
+' CustomData slot carries. It is the READER's class, not the package's -- the
+' point of CustomData is that the package never sees the type -- so the members
+' here are just the ones these samples call.
+[COMCreatable(False)]
+Class ClientSession
+    Public RemoteId As LongPtr
+    Public Sub HandleMessage(ByRef Data() As Byte)
+    End Sub
+    Public Sub HandleReply(ByRef Data() As Byte)
+    End Sub
+    Public Sub Cleanup()
+    End Sub
+End Class
+```
+
 ```tb check_build
 Private manager As NamedPipeClientManager
 Private WithEvents connection As NamedPipeClientConnection

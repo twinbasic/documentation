@@ -10,6 +10,45 @@ has_toc: false
 
 The predeclared singleton coordinator for the **WinServicesLib** package. Every interaction with the package starts with **Services**: the class is tagged `[PredeclaredId]`, so a project-wide instance named `Services` exists at start-up and the consumer calls `Services.X` directly without `New`. The instance also doubles as an enumerable collection of the [**ServiceManager**](ServiceManager) instances that have been configured (`For Each manager In Services`).
 
+```tb hidden
+' Context for the samples on this page: the two service classes they configure.
+' Each is an ordinary ITbService implementation -- see the ITbService page for
+' one written out in full.
+[COMCreatable(False)]
+Class MyServiceA
+    Implements ITbService
+    Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.EntryPoint
+    End Sub
+    Sub ChangeState(ByVal ServiceManager As ServiceManager, _
+                    ByVal dwControl As ServiceControlCodeConstants, _
+                    ByVal dwEventType As Long, _
+                    ByVal lpEventData As LongPtr) _
+            Implements ITbService.ChangeState
+    End Sub
+    Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.StartupFailed
+    End Sub
+End Class
+
+[COMCreatable(False)]
+Class MyServiceB
+    Implements ITbService
+    Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.EntryPoint
+    End Sub
+    Sub ChangeState(ByVal ServiceManager As ServiceManager, _
+                    ByVal dwControl As ServiceControlCodeConstants, _
+                    ByVal dwEventType As Long, _
+                    ByVal lpEventData As LongPtr) _
+            Implements ITbService.ChangeState
+    End Sub
+    Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.StartupFailed
+    End Sub
+End Class
+```
+
 ```tb check_build
 ' Configure two services at start-up:
 With Services.ConfigureNew

@@ -69,8 +69,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  BODY_SLOTS, MARKER, RUN_MARKER, SLOTS, classify, collectFences, moduleName, parseInfo,
-  wrapFence,
+  BODY_SLOTS, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify, collectFences,
+  moduleName, parseInfo, wrapFence,
 } from "./lib/tb-fences.mjs";
 import { buildNumber, compilerExe, findIde } from "./lib/tb-install.mjs";
 
@@ -284,8 +284,27 @@ function checkGroups(all, selected) {
 // colliding sample in the next batch that has room for it.
 
 function makeBatches(fences) {
-  const byProject = new Map();
+  // A `hidden` fence is not a unit of its own: it is the PAGE's context, and
+  // it joins every project that holds a sample from that page. So a page can
+  // carry the declarations its samples assume -- the class its prose describes
+  // but never lists, an API Declare -- instead of those living in a template
+  // stage set shared with six hundred unrelated pages.
+  //
+  // Keyed by page AND template, because the same page can send samples to two
+  // templates and a hidden block compiled into the wrong one would fail for a
+  // reason that has nothing to do with the page.
+  const hiddenByPage = new Map();
+  const visible = [];
   for (const f of fences) {
+    if (!f.flags.has(HIDDEN_MARKER)) { visible.push(f); continue; }
+    const key = `${f.project}\u0000${f.rel}`;
+    if (!hiddenByPage.has(key)) hiddenByPage.set(key, []);
+    hiddenByPage.get(key).push(f);
+  }
+  const hiddenFor = (project, rel) => hiddenByPage.get(`${project}\u0000${rel}`) ?? [];
+
+  const byProject = new Map();
+  for (const f of visible) {
     if (!byProject.has(f.project)) byProject.set(f.project, []);
     byProject.get(f.project).push(f);
   }
@@ -323,8 +342,18 @@ function makeBatches(fences) {
       // Only the slots that put declarations at container scope export
       // anything. A `sub` or `method` sample's declarations are inside a
       // Private Sub and cannot collide with anything.
-      const names = members.flatMap((f) =>
-        (BODY_SLOTS.has(f.slot) ? [] : (f.inferred?.names ?? [])).map((n) => n.toLowerCase()));
+      const nameOf = (f) =>
+        (BODY_SLOTS.has(f.slot) ? [] : (f.inferred?.names ?? [])).map((n) => n.toLowerCase());
+      const pages = new Set(members.map((f) => f.rel));
+      const names = members.flatMap(nameOf);
+      // What the unit's pages' hidden context would ADD to a batch. It is kept
+      // apart from the unit's own names because it is charged per PAGE, not per
+      // unit: a page's hidden block is copied into a batch once, so two samples
+      // from one page do not collide over it. Folding the two together made
+      // every page with hidden context split into one batch per sample -- each
+      // costing a whole IDE start -- because the second sample "clashed" with
+      // the context the first had just brought.
+      const hiddenNamesFor = (rel) => hiddenFor(project, rel).flatMap(nameOf);
 
       // A GROUP GETS ITS OWN PROJECT, and nothing else joins it. Togetherness
       // alone would leave a group's result depending on whichever unrelated
@@ -333,7 +362,11 @@ function makeBatches(fences) {
       // plus the template. It costs one project per group, and groups are
       // written by hand, so there are never many.
       if (key.startsWith("@")) {
-        batches.push({ project, fences: [...members], names: new Set(names), group: key.slice(1) });
+        const own = new Set(names);
+        for (const rel of pages) for (const n of hiddenNamesFor(rel)) own.add(n);
+        batches.push({
+          project, fences: [...members], names: own, pages, group: key.slice(1),
+        });
         continue;
       }
 
@@ -341,16 +374,29 @@ function makeBatches(fences) {
       for (const batch of open) {
         if (batch.fences.length >= target) continue;
         if (names.some((n) => batch.names.has(n))) continue;
+        // Only the pages this batch does not already carry bring new context.
+        const newPages = [...pages].filter((rel) => !batch.pages.has(rel));
+        const incoming = newPages.flatMap(hiddenNamesFor);
+        if (incoming.some((n) => batch.names.has(n))) continue;
         batch.fences.push(...members);
         for (const n of names) batch.names.add(n);
+        for (const n of incoming) batch.names.add(n);
+        for (const rel of newPages) batch.pages.add(rel);
         placed = true;
         break;
       }
       if (placed) continue;
-      const batch = { project, fences: [...members], names: new Set(names) };
+      const own = new Set(names);
+      for (const rel of pages) for (const n of hiddenNamesFor(rel)) own.add(n);
+      const batch = { project, fences: [...members], names: own, pages };
       open.push(batch);
       batches.push(batch);
     }
+  }
+  // Every batch now takes the hidden context of every page it draws from. Done
+  // last so the placement above decides layout and this only adds to it.
+  for (const batch of batches) {
+    for (const rel of batch.pages ?? []) batch.fences.push(...hiddenFor(batch.project, rel));
   }
   return batches;
 }
@@ -649,6 +695,8 @@ const INFO_PROBES = [
   ["an unknown key is refused", `tb ${MARKER} mode=x`, (p) => p.bad.length === 1],
   ["a bad slot is refused", `tb ${MARKER} slot=banana`, (p) => p.bad.length === 1],
   ["a base class", `tb ${MARKER} inherits=Form`, (p) => p.keys.get("inherits") === "Form"],
+  [`${HIDDEN_MARKER} implies ${MARKER}`, `tb ${HIDDEN_MARKER}`,
+    (p) => p.flags.has(MARKER) && p.flags.has(HIDDEN_MARKER)],
   ["another language is untouched", "js", (p) => p.lang === "js"],
 ];
 
@@ -700,9 +748,12 @@ async function runProbes() {
   // green run whose samples were compiled apart -- the same disagreement
   // between two runs that the `projname` key exists to end. A group stays
   // whole AND stays alone; an ungrouped sample never lands in it.
-  const fake = (id, group, names = []) => ({
-    id, rel: "X.md", line: 1, slot: names.length ? "module" : "sub", project: "console",
-    keys: new Map(group ? [["projname", group]] : []), inferred: { names },
+  const fake = (id, group, names = [], opts = {}) => ({
+    id, rel: opts.rel ?? "X.md", line: 1,
+    slot: names.length ? "module" : "sub", project: "console",
+    keys: new Map(group ? [["projname", group]] : []),
+    flags: new Set(opts.hidden ? [HIDDEN_MARKER, MARKER] : [MARKER]),
+    inferred: { names },
   });
   const batched = makeBatches([
     fake("a", "g"), fake("b", null), fake("c", "g"), fake("d", "g"),
@@ -718,6 +769,48 @@ async function runProbes() {
   const clash = makeBatches([fake("p", null, ["MyClass"]), fake("q", null, ["MyClass"])]);
   if (clash.length !== 2) failures.push("batching: two samples declaring one name shared a project");
 
+  // A hidden fence is the PAGE's context: it joins every batch holding a
+  // sample from that page, and is never a unit of its own. Both halves are
+  // probed, because the failure modes differ -- a hidden block that does not
+  // travel leaves its page's samples failing on the very declarations it
+  // exists to supply, while one that becomes its own unit is compiled alone,
+  // passes, and helps nobody.
+  const withHidden = makeBatches([
+    fake("h1", null, ["Ctx"], { hidden: true, rel: "P.md" }),
+    fake("v1", null, [], { rel: "P.md" }),
+    fake("v2", null, [], { rel: "Q.md" }),
+  ]);
+  const hostsHidden = withHidden.filter((b) => b.fences.some((f) => f.id === "h1"));
+  if (hostsHidden.length !== 1 || !hostsHidden[0].fences.some((f) => f.id === "v1")) {
+    failures.push("batching: a hidden fence did not travel with its page's sample");
+  }
+  if (withHidden.some((b) => b.fences.length === 1 && b.fences[0].id === "h1")) {
+    failures.push("batching: a hidden fence became a unit of its own");
+  }
+  // Two samples from ONE page must still share a batch. They both carry that
+  // page's hidden context, and charging it twice made every such page split
+  // into one project per sample.
+  const samePage = makeBatches([
+    fake("s1", null, [], { rel: "S.md" }),
+    fake("s2", null, [], { rel: "S.md" }),
+    fake("hs", null, ["Ctx"], { hidden: true, rel: "S.md" }),
+  ]);
+  if (samePage.length !== 1) {
+    failures.push("batching: one page's hidden context split its own samples apart");
+  }
+  // Its names have to be counted, or two pages whose hidden blocks declare the
+  // same type land in one project and collide.
+  const hiddenClash = makeBatches([
+    fake("h2", null, ["Ctx"], { hidden: true, rel: "A.md" }),
+    fake("a1", null, [], { rel: "A.md" }),
+    fake("h3", null, ["Ctx"], { hidden: true, rel: "B.md" }),
+    fake("b1", null, [], { rel: "B.md" }),
+  ]);
+  if (hiddenClash.some((b) => b.fences.some((f) => f.id === "a1") &&
+                              b.fences.some((f) => f.id === "b1"))) {
+    failures.push("batching: two pages whose hidden context collides shared a project");
+  }
+
   // The markup must be invisible to the site. Verified against the REAL
   // pipeline -- createMarkdownIt plus the highlighter -- because a bare
   // markdown-it is a different renderer, which is the mistake WIP.md's
@@ -729,6 +822,15 @@ async function runProbes() {
   const plain = "```tb\nDim x As Long\n```\n";
   const marked = "```tb " + MARKER + " slot=sub id=probe\nDim x As Long\n```\n";
   if (md.render(plain) !== md.render(marked)) failures.push("markup: the marker reaches the HTML");
+  // A hidden fence must reach NO reader. Checked against the real renderer,
+  // because everything downstream -- the search index, the offline mirror, the
+  // PDF book -- reads the string this produces, so nothing else has to know.
+  const hidden = "```tb " + HIDDEN_MARKER + "\nDim secret As Long\n```\n";
+  if (md.render(hidden).trim() !== "") failures.push("markup: a hidden fence reaches the HTML");
+  // ...and the word has to stand alone: an id that merely contains it, or a
+  // fence in another language, must still publish.
+  const notHidden = "```tb " + MARKER + " id=hidden-thing\nDim x As Long\n```\n";
+  if (md.render(notHidden).trim() === "") failures.push("markup: `hidden` matched inside a value");
   const masked = maskCodeRegions(marked);
   if (masked.masked.includes("Dim x As Long")) failures.push("markup: maskCodeRegions stops hiding the body");
   if (masked.restore(masked.masked) !== marked) failures.push("markup: the mask does not round-trip");
@@ -738,8 +840,8 @@ async function runProbes() {
     for (const f of failures) say(`FAIL  probe: ${f}`);
     return false;
   }
-  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 3 batching + 4 markup.
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 21} probes: ` +
+  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching + 6 markup.
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 27} probes: ` +
     `classifier, markup, line mapping and batching`);
   return true;
 }

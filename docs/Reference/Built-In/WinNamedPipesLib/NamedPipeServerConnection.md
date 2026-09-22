@@ -12,6 +12,23 @@ One server-side per-client connection. A [**NamedPipeServer**](NamedPipeServer) 
 
 The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface --- reach instances only through [**NamedPipeServer**](NamedPipeServer) events. Connection-lifecycle and message events come through the parent [**NamedPipeServer**](NamedPipeServer); this class holds the per-connection data and methods only.
 
+```tb hidden
+' Context for the samples on this page: the per-connection session object the
+' CustomData slot carries. It is the READER's class, not the package's -- the
+' point of CustomData is that the package never sees the type -- so the members
+' here are just the ones these samples call.
+[COMCreatable(False)]
+Class ClientSession
+    Public RemoteId As LongPtr
+    Public Sub HandleMessage(ByRef Data() As Byte)
+    End Sub
+    Public Sub HandleReply(ByRef Data() As Byte)
+    End Sub
+    Public Sub Cleanup()
+    End Sub
+End Class
+```
+
 ```tb check_build
 Private Sub server_ClientConnected(Connection As NamedPipeServerConnection)
     ' attach per-client state through the CustomData slot

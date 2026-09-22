@@ -74,8 +74,24 @@ export const MARKER = "check_build";
 /** Compile it AND run it, capturing what it prints. `check_run` implies a build. */
 export const RUN_MARKER = "check_run";
 
+/**
+ * Context for the page's samples that the reader never sees.
+ *
+ * builder/render.mjs emits nothing for a fence carrying this, so it reaches
+ * neither the HTML nor anything downstream of it -- the search index, the
+ * offline mirror and the PDF book all read the rendered string. The gate
+ * compiles it into every project holding a sample from the same page.
+ *
+ * It exists so that the declarations a sample assumes -- a class the page
+ * describes in prose but never lists, a control instance, an API Declare --
+ * can live in the page beside the samples that need them, instead of in a
+ * template stage set that is shared by six hundred other pages and specific to
+ * one. A hidden fence is the page's own stage set.
+ */
+export const HIDDEN_MARKER = "hidden";
+
 /** Flags with no value. */
-const FLAGS = new Set([MARKER, RUN_MARKER]);
+const FLAGS = new Set([MARKER, RUN_MARKER, HIDDEN_MARKER]);
 
 /**
  * Keys that take a value.
@@ -131,7 +147,9 @@ export function parseInfo(info) {
     if (key === "slot" && !SLOTS.includes(value)) { bad.push(part); continue; }
     keys.set(key, value);
   }
-  if (flags.has(RUN_MARKER)) flags.add(MARKER);
+  // Both imply a build: a hidden fence that is not compiled is text nobody can
+  // read and nothing checks.
+  if (flags.has(RUN_MARKER) || flags.has(HIDDEN_MARKER)) flags.add(MARKER);
   return { lang, flags, keys, bad };
 }
 

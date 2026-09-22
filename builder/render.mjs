@@ -378,6 +378,14 @@ export function createMarkdownIt(ctx) {
     highlight: ctx.highlighter ? (code, lang) => ctx.highlighter.render(code, lang) : undefined,
   });
 
+  // `hidden` as a whitespace-separated token anywhere after the language.
+  // Matched against the raw info string rather than parsed with
+  // scripts/lib/tb-fences.mjs's parseInfo: builder/ must not depend on
+  // scripts/, and this is the one token of that markup the renderer cares
+  // about. The word has to stand alone, or a language called `hidden-x` or a
+  // key like `id=hidden` would suppress a fence the author meant to publish.
+  const HIDDEN_FENCE_RE = /^\S+(?:\s+\S+)*?\s+hidden(?:\s|$)/;
+
   // Override the fence renderer so our highlight callback's wrapper HTML
   // (which starts with <div, not <pre>) is used verbatim. Without this,
   // markdown-it's default fence rule wraps it in another <pre><code>.
@@ -391,6 +399,13 @@ export function createMarkdownIt(ctx) {
   md.renderer.rules.fence = (tokens, idx, options) => {
     const tok = tokens[idx];
     const lang = tok.info ? tok.info.trim().split(/\s+/)[0] : "";
+    // A fence marked `hidden` is context for the compile gate, not content:
+    // scripts/check_examples.mjs builds it with the page's other samples so
+    // that the declarations a sample assumes can live beside it rather than in
+    // a shared template, and the reader never sees it. Emitting nothing here
+    // keeps it out of the HTML, and therefore out of the search index, the
+    // offline mirror and the PDF book, all of which read the rendered string.
+    if (HIDDEN_FENCE_RE.test(tok.info ?? "")) return "";
     const html = options.highlight(tok.content, lang);
     if (tok.level > 0 || tok.meta?.nestedInBlock) {
       return html.replace(/<\/div><\/div>$/, "</div>\n</div>") + "\n";
