@@ -1,60 +1,68 @@
 ---
-title: Print #
+title: Print
 parent: Statements
 permalink: /tB/Core/Print
 vba_attribution: true
 ---
-# Print # statement
+# Print
 {: .no_toc }
 
-Writes display-formatted data to a sequential file.
+Writes display-formatted data to a file, to the Debug Console, or to a drawing surface.
 
-> [!NOTE]
-> This page documents the **Print #** *statement* (file I/O). The unrelated `Debug.Print` statement writes to the **Immediate** window during debugging.
+**Print** is one language-level statement, not a method. The same *outputlist* grammar applies wherever it is used; only the target changes.
 
 Syntax:
-> **Print** **#** *filenumber* **,** [ *outputlist* ]
+
+- > **Print** **#** *filenumber* **,** [ *outputlist* ]
+- > **Debug.Print** [ *outputlist* ]
+- > *object*.**Print** [ *outputlist* ]
+
+## The output list
+
+*outputlist* is a list of expressions, optionally separated and positioned by the items below. It has the following syntax:
+
+> [ { **Spc(***n***)** \| **Tab** [ **(***n***)** ] } ] [ *expression* ] [ *charpos* ]
+
+**Spc(***n***)**
+: Inserts *n* space characters at the current position.
+
+**Tab(***n***)**
+: Moves the insertion point to column *n*. **Tab** with no argument moves it to the beginning of the next [print zone](../Gloss#print-zone).
+
+*expression*
+: A numeric or string expression to write.
+
+*charpos*
+: The insertion point for the next character. A semicolon places it immediately after the last character written; a comma moves it to the next print zone. If *charpos* is omitted, the next expression begins on a new line.
+
+Multiple expressions may be separated by either a space or a semicolon; a space has the same effect as a semicolon. A comma at the end of the list suppresses the line break, so the next **Print** continues the same line. With no *outputlist* at all, **Print** writes a blank line.
+
+### Print zones
+
+A comma advances to the next [print zone](../Gloss#print-zone) --- a column every 14 character widths. Because a number is written with a leading space where its sign would go and a trailing space after the value, a positive number in the first zone begins at column 1 rather than column 0:
+
+```tb
+Debug.Print 1, 2, 3
+' writes:  1             2             3
+```
+
+An expression that reaches the end of its zone pushes the next one into the zone after. The test is made on the position the statement has reached, not on the length of the expression, so an expression that stops just short of a zone boundary still skips to the following zone --- there has to be room for at least one more character.
+
+## Writing to a file
+
+**Print #** writes an image of the data to a sequential file opened with [**Open**](Open).
 
 *filenumber*
 : Any valid file number.
 
-*outputlist*
-: *optional* Expression or list of expressions to print. The *outputlist* settings are:
+When *outputlist* is omitted and only a list separator follows *filenumber*, a blank line is written.
 
-  > [ { **Spc(***n***)** \| **Tab** [ **(***n***)** ] } ] [ *expression* ] [ *charpos* ]
+Data written with **Print #** is usually read back with [**Line Input #**](Line-Input) or [**Input #**](Input). Because **Print #** writes an image of the data rather than a delimited record, it has to be written so that it reads back correctly: when **Tab** is used with no argument to move to the next print zone, **Print #** writes the intervening spaces to the file as well.
 
-  **Spc(***n***)**
-  : Used to insert space characters in the output, where *n* is the number of space characters to insert.
-
-  **Tab(***n***)**
-  : Used to position the insertion point to an absolute column number, where *n* is the column number. Use **Tab** with no argument to position the insertion point at the beginning of the next print zone.
-
-  *expression*
-  : Numeric expressions or string expressions to print.
-
-  *charpos*
-  : Specifies the insertion point for the next character. Use a semicolon to position the insertion point immediately after the last character displayed. Use **Tab(***n***)** to position the insertion point to an absolute column number. Use **Tab** with no argument to position the insertion point at the beginning of the next print zone. If *charpos* is omitted, the next character is printed on the next line.
-
-Data written with **Print #** is usually read from a file with [**Line Input #**](Line-Input) or [**Input #**](Input).
-
-When *outputlist* is omitted and only a list separator follows *filenumber*, a blank line is printed to the file.
-
-Multiple expressions can be separated with either a space or a semicolon. A space has the same effect as a semicolon.
-
-For **Boolean** data, either `True` or `False` is printed. The **True** and **False** keywords are not translated, regardless of the locale.
-
-**Date** data is written to the file by using the standard short date format recognized by the system. When either the date or the time component is missing or zero, only the part provided gets written to the file.
-
-Nothing is written to the file if *outputlist* data is **Empty**. However, if *outputlist* data is **Null**, `Null` is written to the file.
-
-For **Error** data, the output appears as `Error `*errorcode*. The **Error** keyword is not translated regardless of the locale.
-
-All data written to the file by using **Print #** is internationally-aware; that is, the data is properly formatted by using the appropriate decimal separator.
-
-Because **Print #** writes an image of the data to the file, the data must be delimited so that it prints correctly. When **Tab** is used with no arguments to move the print position to the next print zone, **Print #** also writes the spaces between print fields to the file.
+For **Boolean** data, either `True` or `False` is written. The keywords are not translated, whatever the locale. **Date** data is written using the system's standard short date format; when either the date or the time component is missing or zero, only the part supplied is written. Nothing is written for **Empty**, but `Null` is written for **Null**. For **Error** data the output is `Error `*errorcode*, and the **Error** keyword is not translated either. All other data is formatted with the locale's decimal separator.
 
 > [!NOTE]
-> When the data is later read from a file by using the **Input #** statement, use the [**Write #**](Write) statement instead of the **Print #** statement to write the data to the file. Using **Write #** ensures the integrity of each separate data field by properly delimiting it, so that it can be read back in by using **Input #**. Using **Write #** also ensures that it can be correctly read in any locale.
+> When the data is to be read back with [**Input #**](Input), use [**Write #**](Write) rather than **Print #**. **Write #** delimits each field properly, which is what makes it readable by **Input #** and readable in any locale.
 
 ### Example
 
@@ -83,10 +91,27 @@ Print #1, MyError; " is an error value"
 Close #1 ' Close file.
 ```
 
-### See Also
+## Writing to the Debug Console
 
-- [**Open** statement](Open)
-- [**Close** statement](Close)
-- [**Write #** statement](Write)
-- [**Input #** statement](Input)
-- [**Line Input #** statement](Line-Input)
+[**Debug.Print**](../Modules/Debug#print) writes to the IDE's [Debug Console](../IDE/Project/DebugConsole). The console is monospaced, so a print zone there is 14 characters wide and zones begin at columns 0, 14, 28 and so on. [**Debug.TracePrint**](../Modules/Debug#traceprint) takes the same *outputlist* but writes to the trace log instead.
+
+## Writing to a drawing surface
+
+[**Form**](../Packages/VB/Form/), [**PictureBox**](../Packages/VB/PictureBox/), [**Printer**](../Packages/VB/Printer/), [**PropertyPage**](../Packages/VB/PropertyPage/), [**Report**](../Packages/VB/Report/) and [**UserControl**](../Packages/VB/UserControl/) all accept **Print**. Text is drawn with the object's **Font** starting at its **CurrentX** / **CurrentY**, which advance as it goes.
+
+On a drawing surface a column is the font's average character width rather than a fixed number of characters, so **print zones line up even in a proportional font**. The statement positions each field by column; it does not pad the text with spaces.
+
+## How Print reaches its target
+
+**Print** is not a member that each class happens to provide. The compiler drives it against any object whose class implements [**IVBPrint**](../Packages/VB/IVBPrint), a three-member interface in the [VB package](../Packages/VB/). The statement evaluates the expressions and works out the column arithmetic itself, then calls the target to write text and to move the print position.
+
+Reading a class's **Column** property and writing it back is what makes a comma work, which is why a proportional font does not break alignment: the statement deals in columns, and the target decides what a column is worth.
+
+## See Also
+
+- [**Open** statement](Open), [**Close** statement](Close)
+- [**Write #** statement](Write) -- delimited output that [**Input #**](Input) can read back
+- [**Input #** statement](Input), [**Line Input #** statement](Line-Input)
+- [**Debug.Print**](../Modules/Debug#print) -- the Debug Console target
+- [**IVBPrint**](../Packages/VB/IVBPrint) interface -- how a class becomes a **Print** target
+- [print zone](../Gloss#print-zone) in the glossary

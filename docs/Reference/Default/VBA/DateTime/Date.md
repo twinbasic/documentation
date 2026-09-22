@@ -44,7 +44,7 @@ Sets the current system date from a value with a Variant or Date type.
 Syntax: **Date** **=** *date*
 
 *date*
-: *required* For systems running Microsoft Windows 95, the *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
+: *required* For systems running Microsoft Windows 95, the *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079.
 
 > [!IMPORTANT]
 >
@@ -89,7 +89,7 @@ Sets the current system date from a string.
 Syntax: **Date$** **=** *date*
 
 *date*
-: *required* For systems running Microsoft Windows 95, the *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079. For the Macintosh, *date* must be a date from January 1, 1904, through February 5, 2040.
+: *required* For systems running Microsoft Windows 95, the *date* specification must be a date from January 1, 1980, through December 31, 2099. For systems running Microsoft Windows NT, *date* must be a date from January 1, 1980, through December 31, 2079.
 
 > [!IMPORTANT]
 >

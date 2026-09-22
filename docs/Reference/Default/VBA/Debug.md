@@ -25,7 +25,9 @@ Writes text to the [Debug Console](../IDE/Project/DebugConsole).
 Syntax: **Debug.Print** [ *outputlist* ]
 
 *outputlist*
-: *optional* Expressions to write. Separate them with a comma to start each at the next **print zone** --- a fixed column every 14 characters, so zones begin at columns 0, 14, 28 and so on --- or with a semicolon to place them immediately after one another. An expression longer than its zone pushes the next one into the zone after. A trailing semicolon holds the cursor on the same line, so the next **Print** continues it; without one, the line ends. With no *outputlist* at all, **Print** writes a blank line.
+: *optional* Expressions to write. Separate them with a comma to start each at the next **print zone**, or with a semicolon to place them immediately after one another. **Tab(***n***)** moves to column *n* and **Tab** with no argument to the next zone; **Spc(***n***)** inserts *n* spaces. A trailing semicolon holds the cursor on the same line, so the next **Print** continues it; without one, the line ends. With no *outputlist* at all, **Print** writes a blank line. The full grammar is on the [**Print** statement](../Core/Print#the-output-list) page, which **Debug.Print** shares with **Print #** and with the drawing-surface classes.
+
+The console is monospaced, so a zone here is 14 characters wide and zones begin at columns 0, 14, 28 and so on. An expression that reaches the end of its zone pushes the next one into the zone after.
 
 ```tb
 Debug.Print                       ' a blank line

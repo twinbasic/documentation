@@ -35,10 +35,10 @@ Use the **Private** statement to declare the data type of a variable. For exampl
 Private NumberOfEmployees As Integer
 ```
 
-A **Private** statement can also declare the object type of a variable. The following statement declares a variable for a new instance of a worksheet:
+A **Private** statement can also declare the object type of a variable. The following statement declares a variable for a new instance of the [**Collection**](../Modules/Collection/) class:
 
 ```tb
-Private X As New Worksheet
+Private X As New Collection
 ```
 
 If the **New** keyword isn't used when declaring an object variable, the variable that refers to the object must be assigned an existing object by using the **Set** statement before it can be used. Until it is assigned an object, the declared object variable has the special value **Nothing**, which indicates that it doesn't refer to any particular instance of an object.

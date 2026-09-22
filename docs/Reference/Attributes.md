@@ -574,9 +574,28 @@ Applicable to: [**Class**](Class)
 
 Syntax: **[Hidden** [ **(** **True** \| **False** **)** ] **]**
 
-Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Interface**](Interface)
+Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Interface**](Interface), [**Module**](Module), a [procedure](../Gloss#procedure) in a Class or Module, a procedure in an Interface, a variable in a Class, and an [**Enum**](Enum) member
 
-Hides the interface or class from certain Intellisense and other lists.
+Hides the declaration from certain IntelliSense and other lists. It applies to a whole type --- a **Class**, **CoClass**, **Interface** or **Module** --- and equally to a single member of one, so a member can be kept out of those lists without hiding the type that declares it. Within a **Class** that covers procedures, variables, constants and events; within an **Interface**, the member prototypes; within a **Module**, procedures, variables, constants and [**Declare**](Declare) statements.
+
+> [!NOTE]
+> A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter, though an individual **Enum** *member* does accept it.
+
+<!-- Applicability from builder/census_attributes.mjs over BETA 983 (269 sites)
+     plus one probe per target via gen_attribute_probes.mjs + tbbuild.mjs.
+     Census: Module DeclareWide 158, Module Const 50, Class Property 18 / Sub 9
+     / variable 7 / Event 1, Interface Property 10 / Function 6 / Sub 3, whole
+     CoClass 3, whole Module 2, whole Interface 2.
+     Probed clean: all four whole types, the Class and Interface members above,
+     a Private Const in a Class, a Module Sub/variable/Const, a Declare, and an
+     Enum member (the [Hidden, Restricted] shape Core/Open documents).
+     Probed TB5155: the Interface line inside a CoClass, a whole Enum, a whole
+     Type. TB5182: a Type member, a procedure parameter.
+     Note the census finds NO use on a whole Class, though the probe compiles
+     and this entry has always claimed it -- which is the census/probe split
+     working: absence of a use is not absence of applicability.
+     This entry named only Class, CoClass and Interface until then. -->
+
 
 ## IdeButton  (String)
 {: #idebutton }
@@ -732,7 +751,7 @@ Applicable to: variables and [procedures](../Gloss#procedure) in a [**Class**](C
 
 Keeps a member out of the surfaces that list a class's members, while leaving it callable. The twinBASIC packages apply it to members that exist for the framework's own use, such as `InternalSectionId` and `hWndHeader`.
 
-This is distinct from [Hidden](#hidden), which applies to a whole type, and from [Restricted](#restricted).
+This is distinct from [Hidden](#hidden), which reaches the same member as well as the whole type, and from [Restricted](#restricted).
 
 <!-- Applicability from the package census: ~10 uses in VB and
      WinNativeCommonCtls, on class-level variables and on a Property Get, in

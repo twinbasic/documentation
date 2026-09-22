@@ -40,7 +40,7 @@ Call PrintToDebugWindow("Hello World")
 ' The above statement causes control to be passed to the following 
 ' Sub procedure. 
 Sub PrintToDebugWindow(AnyString) 
-    Debug.Print AnyString    ' Print to the Immediate window. 
+    Debug.Print AnyString    ' Print to the Debug Console. 
 End Sub 
  
 ' Call an intrinsic function. The return value of the function is 

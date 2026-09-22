@@ -17,6 +17,7 @@ These classes are in the VB built-in package, which provides the standard set of
 - [App](App) -- singleton wrapping the running application's identity, version metadata, and process-level state
 - [Clipboard](Clipboard) -- singleton wrapper around the system clipboard for inter-application copy and paste
 - [Global](Global) -- the application's app object -- singleton whose members (**App**, **Screen**, **Clipboard**, **Forms**, …) are reachable without qualification
+- [IVBPrint](IVBPrint) -- the interface the [**Print**](../../Core/Print) statement dispatches through; implement it to make a class a **Print** target
 - [Printer](Printer) -- drawing-surface wrapper around one Windows printer device, recording graphics calls into a spooled print job
 - [Printers](Printers) -- read-only collection of every printer installed on the system
 - [Screen](Screen) -- singleton wrapping the primary display's metrics, font list, active form and control, and application-wide mouse pointer

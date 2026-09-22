@@ -938,6 +938,10 @@ const RULES = [
   [/variable/i, ["VAR_MODULE"]],
   [/declare|api\s+declaration/i, ["DECLARE"]],
   [/^type\b/i, ["TYPE"]],
+  // An Enum MEMBER is a different target from the Enum, and must win over the
+  // bare rule below. It is not ^-anchored because the phrase carries an article
+  // where it appears -- "and an Enum member" -- which a ^ rule cannot reach.
+  [/enum\s+member/i, ["ENUM_MEMBER"]],
   [/^enum\b/i, ["ENUM"]],
   // "Const", but also "constants in a module." -- \b after "const" fails on
   // the plural, which silently dropped a target until it was noticed.
@@ -1046,6 +1050,13 @@ function render(target, tag, attr, needsHintEnum, idx) {
       }
       return `Public Module ${tag}\n    ${attr}\n    Public Enum ProbeEnum${pad(idx, 3)}\n` +
         `        ProbeValue${pad(idx, 3)} = 1\n    End Enum\nEnd Module\n`;
+    // An Enum MEMBER, not the Enum itself. The two cannot share a probe:
+    // [Hidden] is accepted on a member and refused on the Enum with TB5155,
+    // so one skeleton would answer for both and get one of them wrong.
+    // Core/Open documents the [Hidden, Restricted] pair on exactly this target.
+    case "ENUM_MEMBER":
+      return `Public Module ${tag}\n    Public Enum ProbeEnum${pad(idx, 3)}\n` +
+        `        ${attr}\n        ProbeValue${pad(idx, 3)} = 1\n    End Enum\nEnd Module\n`;
     case "CONST":
       return `Public Module ${tag}\n${hint}    ${attr}\n    Public Const ProbeConst As Long = 1\n` +
         "End Module\n";
@@ -1068,7 +1079,8 @@ const HUMAN = {
   PROC_CLASS: "on a Sub in a Class",
   PROC_INTERFACE: "on a prototype in an Interface",
   DECLARE: "on a Declare", TYPE: "on a Type (UDT)", ENUM: "on an Enum",
-  CONST: "on a Const", VAR_CLASS: "on a variable in a Class",
+  CONST: "on a Const", ENUM_MEMBER: "on an Enum member",
+  VAR_CLASS: "on a variable in a Class",
   VAR_MODULE: "on a variable in a Module", PARAM: "on a procedure parameter",
   LIBRARY_INTERFACE: "on an Interface in a Library",
   FUNC_MODULE_BOOL: "on a Boolean Function in a Module",

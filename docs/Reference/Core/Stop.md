@@ -25,7 +25,7 @@ This example uses the **Stop** statement to suspend execution for each iteration
 ```tb
 Dim i As Long
 For i = 1 To 10 ' Start For...Next loop.
-    Debug.Print i ' Print i to the Immediate window.
+    Debug.Print i ' Print i to the Debug Console.
     Stop ' Stop during each iteration.
 Next i
 ```

@@ -34,12 +34,12 @@ When **New** is used with **Set**, an instance is created immediately, and the r
 
 ### Example
 
-Implicit creation via **New** in a declaration. The instance of `Worksheet` is created on first use, not at the **Dim** line.
+Implicit creation via **New** in a declaration. The instance of [**Collection**](../Modules/Collection/) is created on first use, not at the **Dim** line.
 
 ```tb
-Dim X As New Worksheet
+Dim X As New Collection
 ' No instance exists yet.
-X.Activate ' First reference - instance is created here.
+X.Add "first" ' First reference - instance is created here.
 ```
 
 Explicit creation via **Set ... = New**. The instance is created at the **Set** line. This is the more common form, since the moment of construction is visible at the call site.

@@ -44,10 +44,10 @@ Use the **Dim** statement at the module or procedure level to declare the data t
 Dim NumberOfEmployees As Integer 
 ```
 
-Also use a **Dim** statement to declare the object type of a variable. The following declares a variable for a new instance of a worksheet.
+Also use a **Dim** statement to declare the object type of a variable. The following declares a variable for a new instance of the [**Collection**](../Modules/Collection/) class.
 
 ```tb
-Dim X As New Worksheet 
+Dim X As New Collection
 ```
 
 If the **New** keyword is not used when declaring an object variable, the variable that refers to the object must be assigned an existing object by using the **Set** statement before it can be used. Until it is assigned an object, the declared object variable has the special value **Nothing**, which indicates that it doesn't refer to any particular instance of an object.

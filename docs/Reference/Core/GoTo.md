@@ -38,7 +38,7 @@ Line2:
     ' The following statement never gets executed.
     MyString = "Number equals 2"
 LastLine:
-    Debug.Print MyString ' Print "Number equals 1" in the Immediate window.
+    Debug.Print MyString ' Print "Number equals 1" in the Debug Console.
 End Sub
 ```
 

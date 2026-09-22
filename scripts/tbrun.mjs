@@ -8,7 +8,10 @@
 //                         (default 2500)
 //       --json            emit one JSON object instead of text
 //       --raw             do not strip the console's timestamp column
-//       --keep            leave the IDE running afterwards
+//       --keep            leave the IDE running afterwards (implies --no-reap)
+//       --no-reap         do not harvest automation servers the probe left behind
+//       --reap-images     comma-separated image names to harvest
+//                         (default: the Office suite -- see REAP_IMAGES)
 //       --show / --hide   passthrough to tbbuild
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
@@ -27,7 +30,7 @@
 // the IDE once the exe is built, so anything it writes with Debug.Print lands
 // in the IDE's DEBUG CONSOLE, where this script reads it back over CDP.
 //
-// ------------------------------------------------- five things it gets right
+// ----------------------------------------------- seven things it gets right
 //
 // Each of these cost an hour when the probe was first done by hand.
 //
@@ -42,9 +45,15 @@
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
 //     a plain DIV wired through the IDE's own pointer handling; it needs real
 //     CDP Input.dispatchMouseEvent presses at its centre.
-//  3. THE CONSOLE INTERLEAVES A TIMESTAMP LINE per output line, because the
-//     pane's "Show Timestamps" option is on by default. Those lines are the
-//     pane's, not the program's, and are stripped unless --raw.
+//  3. READ THE CONSOLE'S BACKING ARRAY, NOT THE PANE. The DEBUG CONSOLE is a
+//     virtualised list view: only the rows that fit are in the DOM, so an
+//     `.innerText` scrape of it returns the tail of a long probe and looks
+//     exactly like a complete capture. Measured against the old reader: a
+//     probe printing 120 lines came back with 11. `debugConsoleContent
+//     .dataNodes` is the whole log, and the walk here is the IDE's own
+//     "Copy All" minus the clipboard write. The timestamp column comes off in
+//     the same step, since it is a nested <span> in each entry -- so --raw is
+//     now a different slice of the same string rather than a line filter.
 //  4. START THE PROBE WITH Debug.Cls. The DEBUG CONSOLE is also where the IDE
 //     writes its own build log, and the linker writes there after the build --
 //     so without a clear, a probe's output comes back interleaved with
@@ -52,6 +61,21 @@
 //  5. QUIET-PERIOD, NOT A MARKER. Waiting for a sentinel string means every
 //     probe has to print one and the script has to know it. Waiting for the
 //     console to stop changing works for any probe.
+//  6. EVERY RUN OWNS ITS OWN WORKSPACE AND KILLS ONLY ITS OWN IDE. Both were
+//     shared, and both broke concurrency in ways that looked like something
+//     else. The staging directory was a fixed %TEMP%/tbrun/src, so a second
+//     run rmSync'd the first one's tree out from under it -- observed as an
+//     EPERM from a script that had touched no such path. Worse, shutdown was
+//     `taskkill /F /T /IM twinBASIC.exe`, which is machine-wide: it ended
+//     every concurrent run's IDE, and the IDE you had open yourself. The work
+//     directory and the project.id are now keyed to --port, and the IDE is
+//     killed by the pid tbbuild reports.
+//  7. A COM SERVER THE PROBE STARTED IS NOT A CHILD OF ANYTHING WE OWN.
+//     CreateObject("Excel.Application") is activated by DCOM, so the EXCEL.EXE
+//     that appears has svchost.exe for a parent -- measured. No tree kill can
+//     reach it, and a probe that throws before app.Quit leaves it running
+//     forever. Harvesting it therefore has to be a before/after diff, which is
+//     a blunt enough instrument to need the guard rails in reapOrphans().
 
 import { spawn, execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, readdirSync,
@@ -70,12 +94,16 @@ const opt = (n, d) => {
 
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
+// Every flag that TAKES A VALUE has to be named here, or its value is mistaken
+// for the source directory.
+const VALUE_FLAGS = ["port", "timeout", "quiet", "ide", "reap-images"];
 const positional = argv.filter((a, i) =>
-  !a.startsWith("--") && !(i > 0 && ["port", "timeout", "quiet", "ide"].includes(argv[i - 1]?.replace(/^--/, ""))));
+  !a.startsWith("--") && !(i > 0 && VALUE_FLAGS.includes(argv[i - 1]?.replace(/^--/, ""))));
 
 if (!positional.length || flag("help")) {
   die(2, "usage: node scripts/tbrun.mjs <source-dir> [--port N] [--timeout S] " +
-         "[--quiet MS] [--json] [--raw] [--keep] [--show|--hide]");
+         "[--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] " +
+         "[--show|--hide]");
 }
 
 const srcDir = path.resolve(positional[0]);
@@ -92,6 +120,15 @@ if (!existsSync(settingsPath)) die(2, `no Settings file in ${srcDir}`);
 const port = Number(opt("port", 9346));
 const timeoutMs = Number(opt("timeout", 120)) * 1000;
 const quietMs = Number(opt("quiet", 2500));
+
+// Images a probe can leave behind through COM activation. Office is the set that
+// prompted this; --reap-images replaces the list for anything else. Only out-of-
+// process (LocalServer32) servers can outlive the probe at all -- an in-process
+// one dies with it -- so this list is short by nature rather than by omission.
+const REAP_IMAGES = [
+  "excel", "winword", "powerpnt", "msaccess", "outlook",
+  "onenote", "mspub", "visio", "winproj",
+];
 
 // ---------------------------------------------------------------- the IDE
 
@@ -116,7 +153,13 @@ if (!existsSync(compilerExe)) die(2, `no compiler beside the IDE at ${compilerEx
 
 // ------------------------------------------------- pin the build output (1)
 
-const work = path.join(tmpdir(), "tbrun");
+// (6) The workspace is keyed to --port, which is already the thing that has to
+// differ between concurrent runs -- the IDE's DevTools port, its WebView2 user
+// data folder and its private desktop are all keyed to it in tbbuild. Sharing
+// one %TEMP%/tbrun/src meant the second run deleted the first one's tree.
+const runKey = String(port);
+const work = path.join(tmpdir(), "tbrun", runKey);
+rmSync(work, { recursive: true, force: true });
 mkdirSync(work, { recursive: true });
 
 // Staged into a temp copy rather than edited in place. Pinning buildPath is what
@@ -124,7 +167,6 @@ mkdirSync(work, { recursive: true });
 // caller's project, and a probe harness that rewrites the tree you pointed it at
 // is one you stop trusting with a real project.
 const stage = path.join(work, "src");
-rmSync(stage, { recursive: true, force: true });
 cpSync(srcDir, stage, { recursive: true });
 const stagedSettings = path.join(stage, "Settings");
 const exePath = path.join(work, "tbrun-probe.exe");
@@ -133,8 +175,11 @@ const projPath = path.join(work, "tbrun-probe.twinproj");
 const settings = JSON.parse(readFileSync(stagedSettings, "utf8"));
 const wasTemplate = /\$\{/.test(settings["project.buildPath"] ?? "");
 settings["project.buildPath"] = exePath;
-// Two probes sharing a project.id confuse the IDE's recents list.
-settings["project.id"] = "{7B247000-0000-4000-9000-7B2470000001}";
+// Two probes sharing a project.id confuse the IDE's recents list -- so this is
+// keyed to the port too, not a constant. The last group is 12 hex digits, of
+// which the port fills the low six.
+settings["project.id"] =
+  `{7B247000-0000-4000-9000-7B2470${port.toString(16).padStart(6, "0")}}`;
 writeFileSync(stagedSettings, JSON.stringify(settings, null, "\t"), "utf8");
 
 const sourceText = (() => {
@@ -168,6 +213,12 @@ if (!/\.\.\. DONE\s*$/.test(packed.trim())) {
 
 // ------------------------------------------------------ compile, via tbbuild
 
+// (7) Taken before the IDE starts, so anything in it is somebody else's and is
+// never a candidate for harvesting. Cheap enough to be unconditional (~0.4 s
+// against a ~10 s run) and skipping it under --no-reap would only make the two
+// paths differ in a way nobody would remember.
+const processesBefore = snapshotProcesses();
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const passthrough = ["--keep", "--port", String(port)];
 if (flag("show")) passthrough.push("--show");
@@ -180,19 +231,70 @@ build.stdout.on("data", (d) => { buildOut += d; });
 build.stderr.on("data", (d) => { buildOut += d; });
 const buildCode = await new Promise((res) => build.on("exit", res));
 
+// tbbuild ran with --keep, so the IDE it started is ours to end. It prints the
+// pid for exactly this reason: killing by image name would end every concurrent
+// run's IDE and the one the user has open.
+const idePid = Number(/^ide-pid:\s*(\d+)\s*$/m.exec(buildOut)?.[1]) || null;
+if (!idePid) {
+  console.error("warning: tbbuild did not report an ide-pid -- falling back to " +
+                "killing by image name, which will also end any other IDE running now.");
+}
+
 if (buildCode !== 0) {
   process.stdout.write(buildOut);
-  killIde();
+  shutdown();
   process.exit(buildCode === 1 ? 1 : 2);
 }
 
 // --------------------------------------------- build the exe, read the console
 
-const CONSOLE_JS = `(() => {
-  const tw = [...document.querySelectorAll(".toolWindowContainer")]
-    .find(e => /DEBUG CONSOLE/i.test(e.textContent || ""));
-  return tw ? (tw.innerText || "") : null;
+// (3) Read the console's BACKING ARRAY, never the pane. `debugConsoleContent`
+// is a createListView(), which renders only the rows that fit -- so the old
+// `.innerText` scrape returned the last ~11 lines of any longer probe and gave
+// no sign that it had. `dataNodes` is the complete log: addItem() appends at
+// `itemCount` and nothing in main.js ever removes an entry, so the array holds
+// every line written since the last clear().
+//
+// The walk below is the IDE's own `tbDebugConsole_ClipboardCopyAll`, minus the
+// clipboard write -- the same borrow tbbuild makes for the diagnostics report.
+// Each entry is `<span class=COLOR><span class=ts>TIME</span>TEXT</span>`, so
+// slicing past the first `</span>` drops the timestamp, which is what the
+// IDE's own two Copy All variants differ by. Note that the timestamp is always
+// present in the data: the pane's "Show Timestamps" option only sets a
+// `--timestampsDisplay` CSS variable, so it cannot change what we read here.
+//
+// Two deliberate departures from the IDE's version:
+//
+//   * DECODE WITH textContent ON OUR OWN DETACHED NODE, not the IDE's
+//     HTMLToTEXT. That helper reads `.innerText` off a shared `hiddenDiv`, and
+//     it preserves runs of spaces only because `initMisc()` creates that div
+//     with no parent -- an element that is not rendered has innerText ===
+//     textContent. Attach it in some future build and every padded value a
+//     probe prints starts collapsing silently. Probes measure things like
+//     Debug.Print zone widths and Partition's space-padded labels, so that is
+//     the one thing this reader must not get wrong.
+//   * TOLERATE A MISSING TIMESTAMP SPAN. indexOf returns -1 when there is
+//     none, and the IDE's `substr(i + 7)` would then quietly eat six
+//     characters of real output. No current addItem() path omits it; the guard
+//     costs a comparison and removes a silent-corruption mode.
+const consoleJs = (withTimestamps) => `(() => {
+  if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
+      !debugConsoleContent.dataNodes) return null;
+  const decode = (html) => {
+    const d = document.createElement("div");   // never attached; see above
+    d.innerHTML = html;
+    return d.textContent;
+  };
+  return debugConsoleContent.dataNodes.map(n => {
+    const i = n.indexOf("</span>");
+    if (i < 0) return decode(n);
+    return decode(${withTimestamps}
+      ? n.substr(0, i + 7) + " " + n.substr(i + 7)
+      : n.substr(i + 7));
+  }).join("\\n");
 })()`;
+
+const CONSOLE_JS = consoleJs(flag("raw"));
 
 let captured = null, failure = null;
 try {
@@ -218,7 +320,11 @@ try {
   while (Date.now() - started < timeoutMs) {
     await new Promise((r) => setTimeout(r, 400));
     const now = await cdp.evaluate(CONSOLE_JS);
-    if (now === null) throw new Error("the DEBUG CONSOLE pane is not open in this IDE");
+    if (now === null) {
+      throw new Error("no debugConsoleContent.dataNodes in this IDE -- the DEBUG CONSOLE " +
+                      "was never created, or this build moved it. Refusing rather than " +
+                      "falling back to scraping the pane, which silently truncates.");
+    }
     if (now !== last) { last = now; lastChange = Date.now(); if (strip(now).length) seen = true; }
     else if (seen && Date.now() - lastChange > quietMs) break;
   }
@@ -228,7 +334,7 @@ try {
   failure = e.message;
 }
 
-if (!flag("keep")) killIde();
+const reaped = shutdown();
 
 if (failure) die(2, `tbrun: ${failure}`);
 if (!captured.length) {
@@ -239,33 +345,105 @@ if (!captured.length) {
 }
 
 if (flag("json")) {
-  console.log(JSON.stringify({ exe: exePath, lines: captured }, null, 2));
+  console.log(JSON.stringify({ exe: exePath, lines: captured, idePid, reaped }, null, 2));
 } else {
   for (const l of captured) console.log(l);
 }
 
 // ------------------------------------------------------------------ helpers
 
-// (3) drop the pane's own chrome: the header, the input prompt, and the
-// timestamp line the console emits beside every output line.
+// Trim blank lines off both ends. That is all this has to do now: reading
+// dataNodes rather than the pane means the header, the ">" input prompt and
+// the timestamp column never arrive in the first place, so the three filters
+// that used to live here are gone along with the guesswork in them.
 function strip(text) {
   if (!text) return [];
-  const lines = text.split("\n");
-  const out = [];
-  for (const raw of lines) {
-    const l = raw.replace(/\r$/, "");
-    if (/^DEBUG CONSOLE$/.test(l.trim())) continue;
-    if (l.trim() === ">") continue;
-    if (!flag("raw") && /^\s*\d{2}:\d{2}:\d{2}\.\d+\s*$/.test(l)) continue;
-    out.push(l);
-  }
+  const out = text.split("\n").map((l) => l.replace(/\r$/, ""));
   while (out.length && !out[0].trim()) out.shift();
   while (out.length && !out[out.length - 1].trim()) out.pop();
   return out;
 }
 
-function killIde() {
-  for (const image of ["twinBASIC.exe", "twinBASIC_win32.exe", "twinBASIC_win32_noDEP.exe"]) {
-    try { execFileSync("taskkill", ["/F", "/T", "/IM", image], { stdio: "ignore" }); } catch {}
+// (6) Kill OUR IDE by pid, never by image name. /T takes the probe exe and
+// anything it spawned with CreateProcess; what it cannot take is a COM server,
+// which is what reapOrphans is for.
+function killTree(pid) {
+  try { execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" }); }
+  catch { /* already gone */ }
+}
+
+function shutdown() {
+  if (flag("keep")) return null;          // the IDE is the caller's problem now
+  if (idePid) killTree(idePid);
+  else {
+    // Only reachable when tbbuild did not report a pid, which is warned about
+    // above. Machine-wide, and the lesser evil against leaking an IDE.
+    for (const image of ["twinBASIC.exe", "twinBASIC_win32.exe", "twinBASIC_win32_noDEP.exe"]) {
+      try { execFileSync("taskkill", ["/F", "/T", "/IM", image], { stdio: "ignore" }); } catch {}
+    }
   }
+  return flag("no-reap") ? null : reapOrphans();
+}
+
+// Identity is pid + start time, because a pid alone is reused and a run that
+// reaped a recycled pid would be killing a stranger.
+function snapshotProcesses() {
+  const ps = "Get-Process | Select-Object Id, ProcessName, " +
+    "@{n='Start';e={try{$_.StartTime.ToFileTimeUtc()}catch{0}}}, " +
+    "@{n='Win';e={$_.MainWindowTitle}} | ConvertTo-Json -Compress";
+  try {
+    const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps],
+                             { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+                               maxBuffer: 32 * 1024 * 1024 });
+    const parsed = JSON.parse(out);
+    return new Map((Array.isArray(parsed) ? parsed : [parsed])
+      .map((p) => [`${p.Id}:${p.Start}`, p]));
+  } catch {
+    return null;                          // reaping degrades to off, never to guessing
+  }
+}
+
+// A COM server started by the probe has svchost.exe for a parent (measured), so
+// there is no ancestry to walk and this has to be a before/after diff. Three
+// guard rails, because a diff over a live machine is a blunt instrument:
+//
+//   - it must be NEW -- present now, absent from the pre-launch snapshot;
+//   - its image must be on REAP_IMAGES, so an unrelated process that happened
+//     to start during the run is never a candidate;
+//   - it must have NO main window, which is what separates a server the probe
+//     activated from the copy of Excel the user opened to look at a spreadsheet.
+//
+// Anything new and on the list but WINDOWED is reported and left alone. That is
+// the case where the evidence is ambiguous, and killing it could discard
+// somebody's unsaved work.
+//
+// Known limit: two concurrent runs both driving Excel cannot tell their servers
+// apart, so whichever finishes first harvests both. Pass --no-reap for that and
+// sweep once at the end of the batch.
+function reapOrphans() {
+  if (!processesBefore) return null;
+  const after = snapshotProcesses();
+  if (!after) return null;
+
+  const images = new Set((opt("reap-images", "") || "")
+    .split(",").map((s) => s.trim().toLowerCase().replace(/\.exe$/, "")).filter(Boolean));
+  const wanted = images.size ? images : new Set(REAP_IMAGES);
+
+  const killed = [], skipped = [];
+  for (const [key, p] of after) {
+    if (processesBefore.has(key)) continue;
+    if (!wanted.has(String(p.ProcessName).toLowerCase())) continue;
+    if (p.Win && String(p.Win).trim()) { skipped.push(p); continue; }
+    killTree(p.Id);
+    killed.push({ pid: p.Id, image: p.ProcessName });
+  }
+
+  for (const p of skipped) {
+    console.error(`note: ${p.ProcessName} (pid ${p.Id}) started during this run but has a ` +
+                  `window open, so it was left alone -- close it yourself if it is a leak.`);
+  }
+  if (killed.length) {
+    console.error("reaped: " + killed.map((k) => `${k.image} (pid ${k.pid})`).join(", "));
+  }
+  return killed;
 }

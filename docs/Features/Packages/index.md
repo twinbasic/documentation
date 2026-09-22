@@ -29,5 +29,6 @@ Please be aware that TWINPACK files currently contain the full source code of yo
 - [Updating a Package](Updating) -- removing an outdated package and installing a newer version from TWINSERV.
 - [TWINPACK File Format](File-Format) -- binary format specification for `.twinproj` and `.twinpack` files.
 - [Import/Export Tool](Import-Export-Tool) -- unpacking and repacking `.twinproj` and `.twinpack` files from the command line, with the compiler executable or with a standalone script.
+- [Library Symbols](Library-Symbols) -- the name a referenced library's components are qualified with, how to change it, and how to expose a package's private components.
 
 [^1]: A service of TWINBASIC LTD offered to the user community.

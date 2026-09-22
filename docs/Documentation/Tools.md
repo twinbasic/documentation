@@ -8,14 +8,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the five Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+One-line-per-tool reference for every executable in the documentation repository: the five Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, [`census_attributes.mjs`](#census-attributes) under `builder/`, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
 
 * TOC goes here
 {:toc}
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All five sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. The only other Windows-specific tool is [`scripts/tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE and is no part of the site build. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All five sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Three other tools are Windows-specific, and none is part of the site build: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes), which runs the twinBASIC compiler's `export` verb --- though that one is cross-platform when given an already-exported tree with `--src`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -514,7 +514,8 @@ Two files under `scripts/lib/` belong to it and are never run directly. `tb-cdp.
 {: #tbrun }
 
     node scripts/tbrun.mjs <source-dir> [--port N] [--timeout S] [--quiet MS]
-                           [--json] [--raw] [--keep] [--show|--hide]
+                           [--json] [--raw] [--keep] [--no-reap]
+                           [--reap-images a,b] [--show|--hide]
 
 Builds a probe project and captures what it writes to the IDE's
 [Debug Console](../../tB/IDE/Project/DebugConsole). Where [`tbbuild.mjs`](#tbbuild) answers
@@ -545,18 +546,38 @@ build log, and the linker writes there *after* the build, so a probe that does n
 first comes back interleaved with `[LINKER]` lines. The script warns when a probe omits it,
 and warns again when there is no `[RunAfterBuild]` at all.
 
+**The capture is complete however much a probe prints**, so there is no reason to keep one
+short. `tbrun` reads the console's backing array rather than the pane, which is a virtualised
+list view holding only the rows that fit --- reading that instead returns the last ten or so
+lines of a long probe and looks no different from a full capture. `Debug.Cls` is what empties
+the array, which is the other reason to begin with it.
+
 | Flag | Effect |
 |---|---|
-| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently. |
+| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. |
 | `--timeout <secs>` | Give up waiting for console output. Default 120. |
-| `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. |
+| `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
-| `--json` | One object with the built exe's path and the captured lines. |
-| `--keep` | Leave the IDE running. |
+| `--json` | One object with the built exe's path, the captured lines, the IDE pid and anything reaped. |
+| `--keep` | Leave the IDE running. Implies `--no-reap`. |
+| `--no-reap` | Do not harvest automation servers the probe left behind. |
+| `--reap-images <a,b>` | Replace the harvested image list. Default is the Office suite. |
 | `--show` / `--hide` | Passed through to `tbbuild.mjs`. |
 
 Exit codes: **0** captured output, **1** the project has compile errors (the diagnostics are
 printed), **2** the harness failed, **3** nothing reached the console before the timeout.
+
+**A probe that activates a COM server can leak one per run.** `CreateObject("Excel.Application")`
+is activated by DCOM, so the `EXCEL.EXE` that appears is a child of `svchost.exe` rather than
+of anything the harness started --- no tree kill reaches it. Each activation is its own
+process, so they accumulate, and calling `Quit` is not enough: the process exits only once
+every COM reference has been released. `tbrun` therefore takes a process snapshot before it
+starts the IDE and harvests what appeared afterwards, subject to three conditions --- the
+process must be new, its image must be on the reap list, and it must have no window open.
+Anything new and on the list but *windowed* is reported and left alone, because that is
+indistinguishable from a copy the user opened. Two concurrent runs both driving Excel cannot
+tell their servers apart, so whichever finishes first harvests both: pass `--no-reap` there
+and sweep once at the end.
 
 > [!IMPORTANT]
 > The one trap worth knowing even if you never read the script: a project whose
@@ -588,6 +609,35 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
     twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
 
 **That command's exit code is `0` whether it worked or not**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#the-exit-code-is-always-zero) has the caveat in full and a batch-file form of the test. That page also covers why this verb runs opposite to the standalone scripts' `import`. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
+
+### census_attributes.mjs
+{: #census-attributes }
+
+    node builder/census_attributes.mjs [--ide <install>] [--src <dir>] [--cache <dir>]
+                                       [--refresh] [--samples] [--attr <name>]
+                                       [--json] [--out <file>] [--dump-sites <file>] [--quiet]
+
+Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It exports each package of an IDE install with the compiler's own `export` verb, scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` the same way [`tbbuild.mjs`](#tbbuild) does, caches the export under the build number, and reuses it on later runs. It is not part of the site build and nothing calls it during one.
+
+Against BETA 983 that is 619 files, 9,673 attribute sites and 55 distinct attributes.
+
+**A census is evidence, not applicability.** It says where an attribute *is* used, never where it *may* be used, and the two differ in both directions. The packages contain no use of `[Hidden]` on a whole **Class**, yet the compiler accepts one; they contain many on **Class** and **Interface** members, and the compiler refuses the same attribute on the **Interface** lines inside a **CoClass**. Neither fact is reachable from the other tool, so pair this with [`gen_attribute_probes.mjs`](#gen-attribute-probes) and [`tbbuild.mjs`](#tbbuild), which ask the compiler directly.
+
+Grouping is by enclosing construct *and* declaration keyword, because the keyword alone misleads. An earlier hand-written census of `[RedirectToStaticImplementation]` grouped its 82 uses by keyword, reported "a Property Get, a Function and a Sub", and produced the claim *procedure in a Class* --- which the compiler rejected with TB5155, because every one of those uses is inside an **Interface**.
+
+| Flag | Effect |
+|---|---|
+| `--ide <install>` | The install root to census. Defaults to `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_*` on the Desktop. |
+| `--src <dir>` | Census an already-exported tree and skip the export entirely. |
+| `--cache <dir>` | Where exports are kept. Defaults to a per-build folder under the system temp directory. |
+| `--refresh` | Re-export even when the cache already holds this build. |
+| `--samples` | Also census `projects/` and `addins/`, not only `packages/`. |
+| `--attr <name>` | Report one attribute in detail instead of the whole table. |
+| `--dump-sites <file>` | Write every raw site as JSON --- which file and line produced each row. |
+| `--json` | Emit JSON instead of Markdown. |
+| `--out <file>` | Write to a file instead of standard output. |
+
+The report ends with what the scanner could not resolve, and **that section is expected to be empty**. A census that quietly buckets its own confusion publishes a wrong number with nothing to notice it by, so an unresolved site is reported as a scanner bug rather than absorbed. Reaching zero took handling several things this corpus does that a simpler sweep gets wrong: attributes spanning lines (`[Description("..." & vbCrLf & _` accounts for 3.8% of all attribute lines), comma-separated lists, arguments containing commas, escaped identifiers that look exactly like attributes (`[_HiddenModule].Foo`, and Enum members genuinely named `[A4 Portrait]`), comments in four different positions, and block-tracking traps such as a UDT field called `Type As Long` or a module named `[_HiddenModule]`. Exits 0 once a report is produced, or 2 if no install or source tree can be found.
 
 ### scripts/impexp.mjs and scripts/impexp.py
 {: #impexp }

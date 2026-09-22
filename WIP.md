@@ -149,6 +149,75 @@ what the samples use; `UserForm_Initialize` appears in none of them. Two command
 minutes, against a question that four documentation pages could not settle between them
 --- and the export is the only thing that can, because the pages are the thing in doubt.
 
+### Censusing every attribute at once
+
+[builder/census_attributes.mjs](builder/census_attributes.mjs) --- which sits under
+`builder/` by deliberate placement rather than because it renders anything; it is listed in
+`check_tree_fresh.mjs`'s `IGNORED_FILES` for exactly that reason, so editing it does not
+mark every output tree stale --- does the export above for
+every package of the current install and reports, per attribute, **which enclosing
+construct and which kind of declaration it decorates**. No arguments needed; it finds the
+newest `twinBASIC_IDE_BETA_*` the same way `tbbuild` does, caches the export by build
+number, and re-uses it.
+
+```sh
+node builder/census_attributes.mjs --out census.md
+node builder/census_attributes.mjs --attr Hidden          # one attribute
+node builder/census_attributes.mjs --attr Hidden --dump-sites sites.json
+```
+
+Against BETA 983: **619 files, 9,673 attribute sites, 55 distinct attributes**, and every
+one of the 55 is already in `Attributes.md` --- the "used but undocumented" section comes
+back empty. Sixteen documented attributes are used by no package, which is not a defect
+but does mean the census offers no evidence for those `Applicable to:` lines and a probe
+is the only check available.
+
+**A census is evidence, not applicability, and the two disagree in both directions.** The
+corpus contains no use of `[Hidden]` on a whole `Class`, yet the compiler accepts one; it
+contains plenty on Class and Interface *members*, and the compiler refuses the same
+attribute on the `Interface` lines inside a `CoClass` (TB5155). Neither fact is reachable
+from the other tool. `gen_attribute_probes.mjs` records the converse trap under
+`[RedirectToStaticImplementation]`, where a census grouped by *declaration keyword* said
+"a Property Get, a Function and a Sub", the entry went out saying "procedure in a Class",
+and the probe returned TB5155 because all 82 uses are inside an Interface. Grouping by
+enclosing construct is the whole point.
+
+**Seven ways a sweep of this corpus gets a wrong answer**, each measured rather than
+imagined, and each now a comment in the file:
+
+- A **line matcher misses 292 of 7,604 attribute lines (3.8%)**, because
+  `[Description("..." & vbCrLf & _` closes several lines later. Silently, so the count
+  still looks plausible.
+- An attribute list is **comma-separated** --- `[DispId(126), Hidden]` --- and DAO.twin
+  writes most of its `Hidden` uses that way.
+- **Argument text has to go before the comma split**, or `[Description("Returns an array
+  of child controls, given the container")]` contributes an attribute named `given`.
+- An **escaped identifier is spelled like an attribute**: `[_HiddenModule].Foo`,
+  `[_MAX] = 0`. The tail after the `]` is what separates them. An Enum member may *be*
+  one --- `Report.twin` declares `[ ]`, `[A4 Portrait]`, `[Letter Landscape]` as member
+  names.
+- **A comment can sit anywhere**: inline `/* voffset &H00A8*/ Property Get X()` before a
+  declaration (DAO.twin), a trailing `' NOTE: ...` after a `]`, a whole `'` line *between*
+  two attribute groups (VBA/Strings.twin), or a `#If` between an attribute and what it
+  decorates (DTPicker.twin). Each one cost sites until it was handled; the comment-between-
+  groups case alone accounted for 142.
+- **The block stack is where silent misattribution lives.** Four UDTs declare a field
+  called `Type As Long`, which reads as an opener that never closes and swallows the rest
+  of the file --- one put 368 `Declare`s inside a phantom `Type`. `Module [_HiddenModule]`
+  names its block with an escaped identifier, so a bare-identifier pattern missed the open
+  and its `End Module` 1,277 lines later popped somebody else's block. `NotDispatchable`
+  is a modifier, and a modifier the list does not know has the same effect. An
+  `Interface X` line inside a `CoClass` is a **member reference with no body**, and pushed
+  as a block it ate the `End CoClass` after it --- 31 files.
+- **Do not assume a row is impossible.** `Type / DeclareWide` looked like proof of a stack
+  fault and is a real construct: `CustomControls.twin`'s `Type SerializeInfo` has a dozen
+  `DeclareWide` members.
+
+Anything it cannot resolve is **reported, never bucketed** --- a census that hides its own
+confusion publishes a wrong number with nothing to notice it by. The bar is that the
+report's unresolved count is **0**, which it currently is; a non-zero one is a scanner bug,
+not a corpus oddity.
+
 ### Compiling a twinBASIC project without the IDE in front of you
 
 Exported sources say what the compiler *accepts today*; they cannot answer a question no
@@ -221,6 +290,19 @@ the file now:
   `spawn(exe, [path])` does not. Loading through `root.loadProject` afterwards also works, but
   lets the IDE's no-project startup run first and flashes the splash and the New/Open Project
   dialog on screen.
+- **Read every severity out of the problems panel, not the IDE's error-report helper.**
+  The walk called `generateCopyPasteTextForProblem(node, true)`, and that second argument
+  is an *errors-only* filter --- the function's body is `if (t && severity !== 1) return;`.
+  The panel also hides hints and info by default (`hideGroup3` / `hideGroup4`). So `rows`
+  could only ever hold errors while the status-bar counters held all four, and the
+  invariant below was **unsatisfiable on any project with a warning**: 0 errors and 2
+  warnings read as `0 rows against 0/2/0/0` and exited 3, which is indistinguishable from
+  a compile that never settled. Warnings were also never reported at all. The walk now
+  clears the four group flags, reads severity, line and character straight off each node's
+  custom data, and restores the flags --- all inside one synchronous evaluate, so the IDE
+  never renders the intermediate state. This is the same lesson as `tbrun`'s DEBUG CONSOLE
+  fix one section down: **read the panel's backing data, not the view the IDE renders for a
+  human.**
 - **Read the counters and the diagnostic rows in one `Runtime.evaluate`.** Read as two calls
   they race: one run reported two diagnostics beside a zero error count, because the compile
   finished between them. The harness now refuses a sample where the two disagree rather than
@@ -329,8 +411,17 @@ Three smaller things it knows, each of which cost a run:
 
 - **`element.click()` on `#buildIcon` does nothing.** It is a plain DIV behind the IDE's own
   pointer handling and needs real `Input.dispatchMouseEvent` presses at its centre.
-- **The console interleaves a timestamp line per output line**, because the pane's *Show
-  Timestamps* option is on by default. Those are stripped unless `--raw`.
+- **Read the console's backing array, not the pane.** The DEBUG CONSOLE is a
+  `createListView()`, which keeps only the rows that fit in the DOM, so scraping its
+  `innerText` returns the *tail* of a long probe and looks exactly like a complete capture
+  --- measured that way, a probe printing 120 lines came back with 11.
+  `debugConsoleContent.dataNodes` is the whole log (`addItem()` appends and nothing ever
+  removes, so only `Debug.Cls` empties it), and the walk `tbrun` does over it is the IDE's
+  own *Copy All* minus the clipboard write. The timestamp comes off in the same step,
+  because it is a nested `<span>` in each entry rather than a line of its own, so `--raw`
+  is a different slice of that string. Do not "fix" the old truncation by turning *Show
+  Timestamps* off: that option only sets a CSS variable, and the row budget does not move
+  --- see [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) for the measurement.
 - **A probe must start with `Debug.Cls`.** The IDE logs its own build to the same console
   and the linker writes there *after* the build, so without a clear you capture your output
   interleaved with `[LINKER]` lines. The script warns rather than guessing which lines are
@@ -339,6 +430,21 @@ Three smaller things it knows, each of which cost a run:
 It settles on a quiet period rather than a sentinel, so no probe has to print a marker the
 script knows about. Distinct `--port` values let probes run concurrently, exactly as
 `tbbuild`'s do.
+
+**That last sentence was false when it was written, and is true now.** The staging directory
+was a fixed `%TEMP%\tbrun\src`, so a second run deleted the first one's tree, and shutdown
+was `taskkill /F /T /IM twinBASIC.exe` --- machine-wide, taking out every concurrent run's
+IDE and the one you had open yourself. The workspace and `project.id` are keyed to `--port`
+now, and `tbbuild` reports the IDE's pid (`ide-pid:` in text, `idePid` in `--json`) so the
+kill is by pid tree.
+
+`tbrun` also **harvests COM servers a probe leaves behind**, because nothing else can: an
+`EXCEL.EXE` from `CreateObject` has `svchost.exe` for a parent, so no tree kill reaches it,
+every activation is its own process, and `Quit` does not end one while any reference is
+outstanding. The sweep is a before/after snapshot diff restricted to processes that are new,
+on an image allowlist, *and* windowless --- a new one that has a window is reported and left
+alone, since that cannot be told from a copy the user opened. `--no-reap` turns it off, and
+concurrent runs driving the same server should use it and sweep once at the end.
 
 ## Page template
 
@@ -1381,6 +1487,19 @@ Batching matters too. One project per IDE is the scaling unit, so 393 whole unit
 each is over an hour serially; several fences per probe project, run concurrently, is what
 makes it minutes. That is the same arithmetic the probe-suite note above works through.
 
+**The gate is designed in [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md)** --- the opt-in fence
+markup, the template projects, the batching and bisect-on-crash rules, and the measured
+evidence that the markup is free at render time. It is a separate on-demand tool by design
+and is never wired into `build.bat`, `check.bat`, `test.bat` or CI.
+
+> **Do not take the table above as settled.** Re-running the census against the slot
+> taxonomy that design needs gives 103 / 349 / 22 / 621 over 1,097 fences: the `procedure`
+> row agrees closely, but the largest bucket by far is **loose statements wanting a `Sub`
+> body**, not declarations wanting a module. A generator built to the older split picks the
+> wrong wrapper for most of the corpus. Both classifiers are heuristic and neither
+> distinguishes a wrappable statement sequence from a true fragment; the discrepancy and its
+> consequences are worked through in the design file.
+
 ### A script is findable only if its bare name is a token prefix somewhere
 
 lunr's tokeniser splits on **whitespace and hyphens only** (`/[\s\-]+/`), and the site's
@@ -1689,6 +1808,26 @@ Fixing it turned up three more of the same defect: `Features/Language/Pointers`
 and `Features/Standard-Library/New-Functions` document what `Debug.Print` emits
 with comma separators, where the print-zone padding *is* the behaviour being
 shown, and both rendered it as single spaces.
+
+> **Those two pages were still wrong after that fix, and the reason is worth
+> keeping.** A pipeline can only preserve padding that reaches it, and the
+> padding was never in their *source*. Measured through `tbrun` against the
+> pages' own samples: `New-Functions` claimed `1             2             3`
+> where the run prints `' 1             2             3 '`, and `Pointers`
+> claimed `1  2`, `3  4` and `4` where the runs print `' 1             2 '`,
+> `' 3             4 '` and `' 4 '`. Every one is missing the leading space a
+> positive number carries where its sign would be, and the trailing space; the
+> `Pointers` pair were also showing two spaces for a thirteen-space gap. A fifth claim on
+> `New-Functions`, ``7    1`` where the run prints `' 7             1 '`, went the same way.
+>
+> **An inline code span cannot carry a leading or trailing space naively**, which
+> is the trap that keeps this defect coming back. CommonMark strips one space
+> from each end of a code span whose content is not all spaces, so writing
+> `` ` 1 … 3 ` `` renders as `1 … 3` --- the exact value the page is trying to
+> state, silently de-padded by the parser rather than by anything in `builder/`.
+> Double the outer spaces to defeat it, and verify in the built HTML rather than
+> by eye. Four sites were fixed this way and the rendered `<code>` now matches
+> the measured output byte for byte.
 
 **Two changes, and neither works alone:**
 

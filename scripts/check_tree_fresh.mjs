@@ -46,7 +46,13 @@ const IGNORED_DIRS = new Set([
 // page-baseline.json is written by the drift guard whenever the page count
 // rises (builder/page-baseline.mjs), so `build.bat && check.bat` would have
 // failed on the next run after any page addition.
-const IGNORED_FILES = new Set(["page-baseline.json"]);
+// census_attributes.mjs lives under builder/ but decides none of the built
+// bytes -- it censuses twinBASIC package sources and never runs during a build.
+// Without this, editing it marks every output tree stale, which blocks check.bat
+// and makes book.bat refuse to render, for a tool the build never calls. Same
+// reasoning as page-baseline.json: the sources this script watches are "the
+// inputs that decide the built bytes", and neither file is one.
+const IGNORED_FILES = new Set(["page-baseline.json", "census_attributes.mjs"]);
 
 // The inputs that decide the built bytes. The source tree is the obvious
 // one; the builder and the theme sources matter just as much, and are
