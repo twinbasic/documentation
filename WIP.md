@@ -149,6 +149,75 @@ what the samples use; `UserForm_Initialize` appears in none of them. Two command
 minutes, against a question that four documentation pages could not settle between them
 --- and the export is the only thing that can, because the pages are the thing in doubt.
 
+### Censusing every attribute at once
+
+[builder/census_attributes.mjs](builder/census_attributes.mjs) --- which sits under
+`builder/` by deliberate placement rather than because it renders anything; it is listed in
+`check_tree_fresh.mjs`'s `IGNORED_FILES` for exactly that reason, so editing it does not
+mark every output tree stale --- does the export above for
+every package of the current install and reports, per attribute, **which enclosing
+construct and which kind of declaration it decorates**. No arguments needed; it finds the
+newest `twinBASIC_IDE_BETA_*` the same way `tbbuild` does, caches the export by build
+number, and re-uses it.
+
+```sh
+node builder/census_attributes.mjs --out census.md
+node builder/census_attributes.mjs --attr Hidden          # one attribute
+node builder/census_attributes.mjs --attr Hidden --dump-sites sites.json
+```
+
+Against BETA 983: **619 files, 9,673 attribute sites, 55 distinct attributes**, and every
+one of the 55 is already in `Attributes.md` --- the "used but undocumented" section comes
+back empty. Sixteen documented attributes are used by no package, which is not a defect
+but does mean the census offers no evidence for those `Applicable to:` lines and a probe
+is the only check available.
+
+**A census is evidence, not applicability, and the two disagree in both directions.** The
+corpus contains no use of `[Hidden]` on a whole `Class`, yet the compiler accepts one; it
+contains plenty on Class and Interface *members*, and the compiler refuses the same
+attribute on the `Interface` lines inside a `CoClass` (TB5155). Neither fact is reachable
+from the other tool. `gen_attribute_probes.mjs` records the converse trap under
+`[RedirectToStaticImplementation]`, where a census grouped by *declaration keyword* said
+"a Property Get, a Function and a Sub", the entry went out saying "procedure in a Class",
+and the probe returned TB5155 because all 82 uses are inside an Interface. Grouping by
+enclosing construct is the whole point.
+
+**Seven ways a sweep of this corpus gets a wrong answer**, each measured rather than
+imagined, and each now a comment in the file:
+
+- A **line matcher misses 292 of 7,604 attribute lines (3.8%)**, because
+  `[Description("..." & vbCrLf & _` closes several lines later. Silently, so the count
+  still looks plausible.
+- An attribute list is **comma-separated** --- `[DispId(126), Hidden]` --- and DAO.twin
+  writes most of its `Hidden` uses that way.
+- **Argument text has to go before the comma split**, or `[Description("Returns an array
+  of child controls, given the container")]` contributes an attribute named `given`.
+- An **escaped identifier is spelled like an attribute**: `[_HiddenModule].Foo`,
+  `[_MAX] = 0`. The tail after the `]` is what separates them. An Enum member may *be*
+  one --- `Report.twin` declares `[ ]`, `[A4 Portrait]`, `[Letter Landscape]` as member
+  names.
+- **A comment can sit anywhere**: inline `/* voffset &H00A8*/ Property Get X()` before a
+  declaration (DAO.twin), a trailing `' NOTE: ...` after a `]`, a whole `'` line *between*
+  two attribute groups (VBA/Strings.twin), or a `#If` between an attribute and what it
+  decorates (DTPicker.twin). Each one cost sites until it was handled; the comment-between-
+  groups case alone accounted for 142.
+- **The block stack is where silent misattribution lives.** Four UDTs declare a field
+  called `Type As Long`, which reads as an opener that never closes and swallows the rest
+  of the file --- one put 368 `Declare`s inside a phantom `Type`. `Module [_HiddenModule]`
+  names its block with an escaped identifier, so a bare-identifier pattern missed the open
+  and its `End Module` 1,277 lines later popped somebody else's block. `NotDispatchable`
+  is a modifier, and a modifier the list does not know has the same effect. An
+  `Interface X` line inside a `CoClass` is a **member reference with no body**, and pushed
+  as a block it ate the `End CoClass` after it --- 31 files.
+- **Do not assume a row is impossible.** `Type / DeclareWide` looked like proof of a stack
+  fault and is a real construct: `CustomControls.twin`'s `Type SerializeInfo` has a dozen
+  `DeclareWide` members.
+
+Anything it cannot resolve is **reported, never bucketed** --- a census that hides its own
+confusion publishes a wrong number with nothing to notice it by. The bar is that the
+report's unresolved count is **0**, which it currently is; a non-zero one is a scanner bug,
+not a corpus oddity.
+
 ### Compiling a twinBASIC project without the IDE in front of you
 
 Exported sources say what the compiler *accepts today*; they cannot answer a question no
