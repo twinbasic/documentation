@@ -40,8 +40,8 @@
 //
 // Written for the Reference/Attributes.md applicability probes -- see
 // scripts/gen_attribute_probes.mjs -- but it does not know anything about
-// them. See WIP.md, "Compiling a twinBASIC project without the IDE in front
-// of you".
+// them. See WIP.Harness.md, "Compiling a twinBASIC project without the IDE in
+// front of you".
 import { spawn, execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";

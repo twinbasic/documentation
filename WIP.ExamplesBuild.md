@@ -357,7 +357,7 @@ Three of those are actionable as a group rather than one page at a time:
 > **"Largest single win available" was a guess dressed as a finding**, arrived at by
 > counting diagnostics rather than by trying the fix. The actual largest win was the stage
 > set, at 97 --- the second bullet, which was right. See [the second
-> pass](#the-second-pass-604-to-801).
+> pass](#the-second-pass-604-to-818).
 
 ## The second pass: 604 to 818
 
@@ -624,3 +624,41 @@ by grep.
     **ControlContext**").
   - **One-off helper procedures a sample calls** --- `ProcessMessage`, `Sleep`,
     `InitializeDefaultValues`. These *are* `hidden`-fence work, and cheap.
+
+## What is in the `tb` fences, and why opt-in
+
+Moved here from [WIP.md](WIP.md), which keeps the invocation and the two
+harness lessons under [Compiling the reference's own code
+samples](WIP.md#compiling-the-references-own-code-samples). This is the census
+that decided the design, printed by `--census`.
+
+The census of what is in the fences, which `--census` prints and which decided the design
+--- 1,122 `tb` blocks across 603 pages:
+
+| shape | count | share | wrapper |
+|---|---:|---:|---|
+| whole `Class` / `Module` / `Interface` | 62 | 5.5% | none --- its own `.twin` |
+| procedures and module-level declarations | 366 | 32.6% | a generated `Module` |
+| loose statements | 609 | 54.3% | a generated `Module` and `Private Sub` |
+| class code-behind --- declarations | 52 | 4.6% | a generated `Class` |
+| class code-behind --- loose statements | 12 | 1.1% | a generated `Class` and `Private Sub` |
+| fragment --- no wrapper rescues it | 21 | 1.9% | --- |
+
+The two Class rows are inferred from `Me` and from a top-level `WithEvents`, neither of
+which a standard module may contain; a sample reaching a member of the thing it is
+code-behind *of* also needs `inherits=` to say which class that is. A `hidden` fence
+carries a page's own context and is rendered to nothing.
+
+**Two earlier censuses in this file disagreed with that and with each other** (36 / 357 /
+457 / 250, then 103 / 349 / 22 / 621), and the fragment row is where they differed most.
+Nearly all of the difference was classifier gaps rather than corpus facts: an `Interface`
+body holds prototypes with no `End Sub`, a twinBASIC `Type` may hold procedures *and* a
+field called `Type As Long`, and `Overridable` is a modifier. Those are probes now, and the
+table above comes from a script rather than from prose.
+
+**Opt-in is right, but not for the reason first given.** It is not that the corpus resists
+classification --- 98% of it classifies. It is that **54% compiles and 46% does not**, and
+the 46% is overwhelmingly samples that are correct as documentation and incomplete as
+programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the page does not
+define. Marking those would be wrong, and opting them out one by one would be a list of
+five hundred exceptions nobody maintains.

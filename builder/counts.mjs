@@ -31,9 +31,9 @@
 //                                       token, so substituted
 //   image alt             image         only via the recursive descent below
 //
-// So no rewrite has to be taught what code is, which is the hazard WIP.md's
-// "Never rewrite markdown source without knowing what is code" records four
-// shipped instances of.
+// So no rewrite has to be taught what code is, which is the hazard
+// WIP.Build.md's "Never rewrite markdown source without knowing what is code"
+// records four shipped instances of.
 //
 // Two things about `text` tokens are easy to get wrong. They are inline text
 // *runs* after inline parsing, not raw markdown -- by the time this rule runs

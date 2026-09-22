@@ -70,5 +70,5 @@ reads them, and Personal Edition is refused by name, so they are real. Measured 
 
 Silent, falsely green, and hanging on the one case worth catching. This is why
 `scripts/tbbuild.mjs` drives the IDE's WebView over CDP instead --- see
-[WIP.md](WIP.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you), which
+[WIP.Harness.md](WIP.Harness.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you), which
 records the same measurements.
