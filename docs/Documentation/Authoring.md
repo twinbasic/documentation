@@ -474,11 +474,18 @@ generated `Sub`. Three keys override it when it guesses wrong, and one flag asks
 | `check_run` | Compile it and run it, capturing what it prints. *Not implemented yet --- such a fence is compiled only, and the run says so.* |
 | `slot=file` / `slot=module` / `slot=sub` | What to generate around it, when the inference is wrong. The report always names the slot it used, so a wrong guess reads as a wrong guess. |
 | `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. |
+| `projname=<name>` | Build these samples **as one project**, for a page that presents one program in pieces --- a function in one fence and the tests for it in the next three. Every sample sharing the name is compiled together and nothing else is compiled with them. |
 | `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
 
 A sample that assumes a control on a form is fine: the templates declare `Text1`,
 `ListView1`, `CefBrowser1` and the others, exactly as a reader's own project would, so what
 gets checked is the part the sample is actually claiming.
+
+**A sample that needs another sample needs `projname`.** Samples are packed several to a
+generated project, so one can sometimes see another's declarations by luck --- and luck
+changes with what else is being checked, which makes a page pass one run and fail the next.
+Naming the group says the dependency out loud, and the tool then refuses a group that is
+only half marked rather than reporting a missing symbol in the sample that is fine.
 
 **A mistyped marker is caught.** `check_bild` renders identically to no marker at all, so a
 sample carrying one would simply never be compiled; the tool reports an unrecognised token

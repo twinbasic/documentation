@@ -10,6 +10,7 @@
 //
 //     ```tb check_build
 //     ```tb check_build slot=module
+//     ```tb check_build projname=padleft-tests
 //     ```tb check_run project=packages
 //
 // The names say what is asked for, not what has happened to the sample.
@@ -55,8 +56,15 @@ export const RUN_MARKER = "check_run";
 /** Flags with no value. */
 const FLAGS = new Set([MARKER, RUN_MARKER]);
 
-/** Keys that take a value. */
-const KEYS = new Set(["slot", "project", "id", "expect-error"]);
+/**
+ * Keys that take a value.
+ *
+ * `project` names the TEMPLATE to build into; `projname` names a GROUP of
+ * samples that must be built as one project, which is what a page does when it
+ * presents one program in pieces -- a tutorial that defines a function in one
+ * fence and tests it in the next three.
+ */
+const KEYS = new Set(["slot", "project", "projname", "id", "expect-error"]);
 
 /** The slots, in the order the classifier prefers them. */
 export const SLOTS = ["file", "module", "sub"];

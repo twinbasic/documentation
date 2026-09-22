@@ -631,6 +631,13 @@ loose statements go inside a `Private Sub` in it. That is inferred from the samp
 stated in the markup only when the inference is wrong, and the report names which slot was
 used either way, so a misinference reads as a misinference rather than as a broken sample.
 
+**Samples that belong to one program are grouped with `projname`**, and a group is compiled
+as its own project with nothing else in it. Without that, a page presenting one program in
+pieces passes only when its pieces happen to share a generated project --- which depends on
+what else is being checked, so the same page can pass a full run and fail a `--only` one.
+A group that is only half marked is reported as such, rather than as a missing symbol in
+whichever sample used it.
+
 | Flag | Effect |
 |---|---|
 | `--only <regex>` | Restrict to pages whose path matches. The path is page-relative, as in `^Reference/Core`. |

@@ -116,7 +116,13 @@ if (flag("help")) {
 // repeats the directory name above it.
 function defaultProject(rel) {
   if (/^Reference\/Built-In\//.test(rel)) return "packages";
+  // A tutorial about a package needs that package. Most are a folder named
+  // after one; Testing-with-Assert is a single file, so it is named here.
   if (/^Tutorials\/(CEF|WebView2|CustomControls)\//.test(rel)) return "packages";
+  if (/^Tutorials\/Testing-with-Assert\.md$/.test(rel)) return "packages";
+  // `console` stays the default, and it is the stricter environment on purpose:
+  // a Core or VBA sample should compile in a project that references only what
+  // every project references, which is what a reader will have.
   return "console";
 }
 
@@ -180,6 +186,39 @@ function select(fences) {
   return chosen;
 }
 
+/**
+ * A `projname` group has to be whole, and has to agree about its template.
+ *
+ * Marking three of a group's four samples is the failure this exists to name.
+ * The three are compiled without the one that defines what they use, and the
+ * errors that come back describe a missing symbol rather than a missing
+ * marker -- which sends the reader to the sample that is fine.
+ */
+function checkGroups(all, selected) {
+  const members = new Map();
+  for (const f of all) {
+    const name = f.keys.get("projname");
+    if (!name || (only && !only.test(f.rel))) continue;
+    if (!members.has(name)) members.set(name, []);
+    members.get(name).push(f);
+  }
+  const chosen = new Set(selected.map((f) => f.id));
+  for (const [name, list] of members) {
+    const inRun = list.filter((f) => chosen.has(f.id));
+    if (!inRun.length) continue;
+    if (inRun.length !== list.length) {
+      const missing = list.filter((f) => !chosen.has(f.id));
+      addFinding(inRun[0], `projname=${name} is incomplete: ${inRun.length} of ${list.length} samples are in this run`,
+        "unmarked or excluded: " + missing.map((f) => `docs/${f.rel}:${f.line}`).join(", "));
+    }
+    const templates = new Set(inRun.map((f) => f.project));
+    if (templates.size > 1) {
+      addFinding(inRun[0], `projname=${name} asks for more than one template: ${[...templates].join(", ")}`,
+        "one group is one project, so it is one template");
+    }
+  }
+}
+
 // ------------------------------------------------------------------- batching
 //
 // A batch is a project. Two samples may not land in one when they would declare
@@ -193,6 +232,16 @@ function makeBatches(fences) {
     if (!byProject.has(f.project)) byProject.set(f.project, []);
     byProject.get(f.project).push(f);
   }
+  // Samples sharing a `projname` are placed as ONE unit, because they are one
+  // program: the Assert tutorial defines PadLeft in one fence and tests it in
+  // the next three, and any of those alone is not a sample anybody wrote.
+  //
+  // Nothing groups by accident. An ungrouped sample is its own unit, so a
+  // sample can never quietly come to depend on a neighbour that a later edit
+  // moves to another project -- which is exactly how the survey and the gate
+  // came to disagree about the same tutorial, one run finding PadLeft in the
+  // batch and the other not.
+  const unit = (f) => (f.keys.get("projname") ? `@${f.keys.get("projname")}` : `#${f.id}`);
   // Fill the lanes rather than the batches. Filling each batch to --batch
   // before opening another one put 120, 55, 4 and 3 samples on four lanes, and
   // a lane's cost is ~8 s of IDE startup plus a compile that is nearly free --
@@ -203,22 +252,44 @@ function makeBatches(fences) {
   const target = Math.min(batchSize, Math.max(16, Math.ceil(fences.length / jobs)));
   const batches = [];
   for (const [project, list] of byProject) {
-    const open = [];
+    // Units, in first-appearance order, so the layout is a function of the
+    // selection and nothing else.
+    const units = new Map();
     for (const fence of list) {
+      const key = unit(fence);
+      if (!units.has(key)) units.set(key, []);
+      units.get(key).push(fence);
+    }
+
+    const open = [];
+    for (const [key, members] of units) {
       // Only file- and module-slot samples export anything; a sub-slot sample's
       // declarations are inside a Private Sub and cannot collide with anything.
-      const names = fence.slot === "sub" ? [] : (fence.inferred?.names ?? []);
+      const names = members.flatMap((f) =>
+        (f.slot === "sub" ? [] : (f.inferred?.names ?? [])).map((n) => n.toLowerCase()));
+
+      // A GROUP GETS ITS OWN PROJECT, and nothing else joins it. Togetherness
+      // alone would leave a group's result depending on whichever unrelated
+      // samples happened to share the batch -- so the guarantee is the one the
+      // author can actually reason about: what compiles is what they grouped,
+      // plus the template. It costs one project per group, and groups are
+      // written by hand, so there are never many.
+      if (key.startsWith("@")) {
+        batches.push({ project, fences: [...members], names: new Set(names), group: key.slice(1) });
+        continue;
+      }
+
       let placed = false;
       for (const batch of open) {
         if (batch.fences.length >= target) continue;
-        if (names.some((n) => batch.names.has(n.toLowerCase()))) continue;
-        batch.fences.push(fence);
-        for (const n of names) batch.names.add(n.toLowerCase());
+        if (names.some((n) => batch.names.has(n))) continue;
+        batch.fences.push(...members);
+        for (const n of names) batch.names.add(n);
         placed = true;
         break;
       }
       if (placed) continue;
-      const batch = { project, fences: [fence], names: new Set(names.map((n) => n.toLowerCase())) };
+      const batch = { project, fences: [...members], names: new Set(names) };
       open.push(batch);
       batches.push(batch);
     }
@@ -494,6 +565,7 @@ const INFO_PROBES = [
   [`${RUN_MARKER} implies ${MARKER}`, `tb ${RUN_MARKER}`,
     (p) => p.flags.has(MARKER) && p.flags.has(RUN_MARKER)],
   ["a key", `tb ${MARKER} slot=module`, (p) => p.keys.get("slot") === "module"],
+  ["a group name", `tb ${MARKER} projname=padleft`, (p) => p.keys.get("projname") === "padleft"],
   ["a typo is refused", "tb check_bild", (p) => p.bad.length === 1 && !p.flags.has(MARKER)],
   ["an unknown key is refused", `tb ${MARKER} mode=x`, (p) => p.bad.length === 1],
   ["a bad slot is refused", `tb ${MARKER} slot=banana`, (p) => p.bad.length === 1],
@@ -525,6 +597,28 @@ async function runProbes() {
     if (pageLine !== 12) failures.push(`line map: ${slot} -> ${pageLine}, want 12`);
   }
 
+  // The batcher, because a grouping that silently stops holding produces a
+  // green run whose samples were compiled apart -- the same disagreement
+  // between two runs that the `projname` key exists to end. A group stays
+  // whole AND stays alone; an ungrouped sample never lands in it.
+  const fake = (id, group, names = []) => ({
+    id, rel: "X.md", line: 1, slot: names.length ? "module" : "sub", project: "console",
+    keys: new Map(group ? [["projname", group]] : []), inferred: { names },
+  });
+  const batched = makeBatches([
+    fake("a", "g"), fake("b", null), fake("c", "g"), fake("d", "g"),
+  ].map((f) => ({ ...f, project: "console" })));
+  const groupBatch = batched.find((b) => b.fences.some((f) => f.id === "a"));
+  if (!["a", "c", "d"].every((id) => groupBatch?.fences.some((f) => f.id === id))) {
+    failures.push("batching: a projname group was split across projects");
+  }
+  if (groupBatch?.fences.some((f) => f.id === "b")) {
+    failures.push("batching: an ungrouped sample joined a group's project ahead of the group");
+  }
+  // And a collision still separates two units that would clash.
+  const clash = makeBatches([fake("p", null, ["MyClass"]), fake("q", null, ["MyClass"])]);
+  if (clash.length !== 2) failures.push("batching: two samples declaring one name shared a project");
+
   // The markup must be invisible to the site. Verified against the REAL
   // pipeline -- createMarkdownIt plus the highlighter -- because a bare
   // markdown-it is a different renderer, which is the mistake WIP.md's
@@ -545,8 +639,8 @@ async function runProbes() {
     for (const f of failures) say(`FAIL  probe: ${f}`);
     return false;
   }
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 7} probes: ` +
-    `classifier, markup and line mapping`);
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 10} probes: ` +
+    `classifier, markup, line mapping and batching`);
   return true;
 }
 
@@ -557,6 +651,7 @@ async function main() {
 
   const fences = await collectFences(DOCS);
   const selected = select(fences);
+  checkGroups(fences, selected);
 
   if (MODE_CENSUS) {
     census(selected);
