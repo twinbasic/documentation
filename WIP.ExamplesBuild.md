@@ -239,6 +239,18 @@ from earlier work.
   windowless; anything new and on the list but windowed is reported and spared, because that
   is indistinguishable from a copy the user opened. Verified both directions with a timed
   injection: a process started mid-run was reaped, one present beforehand was not.
+- **DCOM does not reclaim it on a timer, and that is the first thing anyone will ask.**
+  COM's ping protocol — 2-minute pings, three missed pings and the reference is collected —
+  is for *remote* object references. A same-machine client has no ping GC: release depends
+  on the LRPC channel teardown being noticed and on the server choosing to exit at refcount
+  zero, and Excel does not. Measured directly: a `CreateObject` holder was force-killed with
+  no other client anywhere, and its `EXCEL.EXE` was **still running 563 s later** — past the
+  2-minute interval and past the 6-minute collection deadline, invisible and idle the whole
+  time. A job object is no answer either: `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` reaches
+  descendants, and the server is not one. So there is no native mechanism that does this,
+  which is why the snapshot diff exists rather than being a shortcut around one.
+  Probes should still `Quit` and release their references — the reaper is the backstop for
+  the ones that throw or get killed, not a licence to skip cleanup.
 
 ## Open questions
 
