@@ -1,0 +1,39 @@
+' The stage set for the package documentation -- see the console template's copy
+' of this file for why it exists and why the list is written out rather than
+' inferred.
+'
+' The VB half is the same; the rest are the control instances the
+' Reference/Built-In and Tutorials pages assume on their forms.
+
+Module tbxStage
+
+    Public Form1 As Form
+    Public UserForm1 As Form
+    Public UserForm2 As Form
+
+    Public Text1 As TextBox
+    Public Text2 As TextBox
+    Public TextBox1 As TextBox
+
+    Public Label1 As Label
+    Public Timer1 As Timer
+    Public Command1 As CommandButton
+    Public Frame1 As Frame
+    Public Picture1 As PictureBox
+    Public PictureBox1 As PictureBox
+
+    ' Browser controls -- CEF and WebView2.
+    Public CefBrowser1 As CefBrowser
+    Public WebView21 As WebView2
+
+    ' Windows Native Common Controls.
+    Public DTPicker1 As DTPicker
+    Public ImageList1 As ImageList
+    Public ListView1 As ListView
+    Public MonthView1 As MonthView
+    Public ProgressBar1 As ProgressBar
+    Public Slider1 As Slider
+    Public TreeView1 As TreeView
+    Public UpDown1 As UpDown
+
+End Module

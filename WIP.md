@@ -307,9 +307,18 @@ the file now:
   they race: one run reported two diagnostics beside a zero error count, because the compile
   finished between them. The harness now refuses a sample where the two disagree rather than
   reporting either number.
-- **Watch for the compiler going down.** twinBASIC runs the compiler in the same process as
-  user code, so a probe can crash it, and the IDE then restarts it three times before giving
-  up. Untreated that is a silent two-minute wait; treated it is exit code 4.
+- **Watch for the compiler going down, in the DEBUG CONSOLE and not in the status bar.**
+  twinBASIC runs the compiler in the same process as user code, so a probe can crash it, and
+  the IDE then restarts it three times before giving up. Untreated that is a silent
+  two-minute wait; treated it is exit code 4. **Watching the status bar is not treating it.**
+  The status does flap to UNAVAILABLE on the way, but the whole crash-restart cycle takes
+  about 1.3 s against a 1 Hz sample, and after the third restart the IDE leaves the status at
+  OPERATIONAL with the counters at zero --- byte-identical to a clean build. A 275-file
+  project reported `0 errors, 0 warnings` and exit 0, twice, reproducibly, while its quarters
+  reported 129, 0, 294 and 448 errors. The console is the record that sampling cannot miss,
+  because nothing removes an entry from it: `NATIVE EXCEPTION`, then `restarting from
+  MEMORY`, then a thread dump naming the file being parsed, which is what the exit-4 message
+  reports.
 - **Kill the process tree, forcibly.** An IDE showing a modal ignores a normal close, and the
   launcher is not the process holding the compiler, so `taskkill /T /F`.
 - **Give each probe project its own `project.id`.** Two sharing one confuses the IDE's
@@ -1457,7 +1466,7 @@ effect. Two builds of one commit are now byte-identical except for
 `BuildInfo.html` and `gantt.svg`, which record build timings and cannot be
 anything else.
 
-### Nothing compiles the reference's code samples, and a census says what it would take
+### Compiling the reference's own code samples
 
 Round 6 pointed the harness at the twinBASIC reference for the first time and found two
 samples that do not run: `WinNativeCommonCtls/ListView`'s flagship example passed an icon
@@ -1466,39 +1475,49 @@ unbound `ListView.Icons` and raises 35613, and `Core/Event`'s first sample was a
 no name. Both had shipped. Every gate was green over them, because a `tb` fence is
 something `check_code_regions.mjs` protects the *contents* of and never evaluates.
 
-[scripts/tbbuild.mjs](scripts/tbbuild.mjs) compiles a project unattended in 8--11 seconds
-and is pointed at none of them. Before anyone writes that gate, the census of what is
-actually in the fences --- 1,100 `tb` blocks across 600 files:
+`examples.bat` over [scripts/check_examples.mjs](scripts/check_examples.mjs) is what asks
+the compiler now. A sample opts in by carrying `check_build` in its fence info string; the
+tool works out what to generate around it, packs many samples into one project, builds them
+through `tbbuild` on concurrent lanes, and reports each diagnostic against the line in the
+page it came from. **381 samples are marked --- all of `Reference/Core/` and
+`Reference/Default/VBA/` that compile --- and the run takes about 17 seconds.**
 
-| shape | count | compilable |
-|---|---:|---|
-| whole `Class` / `Module` | 36 | as-is |
-| whole procedure | 357 | wrapped in a module |
-| declarations only | 457 | wrapped in a module |
-| neither --- a fragment | 250 | not without judgement |
+It is **never** wired into `build.bat`, `check.bat`, `test.bat` or CI: it needs a twinBASIC
+install, which `npm install` is not, and Windows with a private desktop and a
+CDP-reachable WebView2, which CI has not. `sweep_a11y.mjs` has the same arrangement.
 
-**So 3% compile as they stand and 23% cannot be made to**, which is the number that decides
-the design. A gate that demands every fence compile would need 250 opt-outs on day one, and
-a gate with 250 opt-outs is a list nobody maintains. The tractable shape is the other
-direction: mark the fences that *claim* to be complete, compile those, and leave the
-fragments alone --- which makes the marker the thing to get right, not the harness.
+The census of what is in the fences, which `--census` prints and which decided the design
+--- 1,116 `tb` blocks across 603 pages:
 
-Batching matters too. One project per IDE is the scaling unit, so 393 whole units at ~10 s
-each is over an hour serially; several fences per probe project, run concurrently, is what
-makes it minutes. That is the same arithmetic the probe-suite note above works through.
+| shape | count | share | wrapper |
+|---|---:|---:|---|
+| whole `Class` / `Module` / `Interface` | 58 | 5.2% | none --- its own `.twin` |
+| procedures and module-level declarations | 403 | 36.1% | a generated `Module` |
+| loose statements | 634 | 56.8% | a generated `Module` and `Private Sub` |
+| fragment --- no wrapper rescues it | 21 | 1.9% | --- |
 
-**The gate is designed in [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md)** --- the opt-in fence
-markup, the template projects, the batching and bisect-on-crash rules, and the measured
-evidence that the markup is free at render time. It is a separate on-demand tool by design
-and is never wired into `build.bat`, `check.bat`, `test.bat` or CI.
+**Two earlier censuses in this file disagreed with that and with each other** (36 / 357 /
+457 / 250, then 103 / 349 / 22 / 621), and the fragment row is where they differed most.
+Nearly all of the difference was classifier gaps rather than corpus facts: an `Interface`
+body holds prototypes with no `End Sub`, a twinBASIC `Type` may hold procedures *and* a
+field called `Type As Long`, and `Overridable` is a modifier. Those are probes now, and the
+table above comes from a script rather than from prose.
 
-> **Do not take the table above as settled.** Re-running the census against the slot
-> taxonomy that design needs gives 103 / 349 / 22 / 621 over 1,097 fences: the `procedure`
-> row agrees closely, but the largest bucket by far is **loose statements wanting a `Sub`
-> body**, not declarations wanting a module. A generator built to the older split picks the
-> wrong wrapper for most of the corpus. Both classifiers are heuristic and neither
-> distinguishes a wrappable statement sequence from a true fragment; the discrepancy and its
-> consequences are worked through in the design file.
+**Opt-in is right, but not for the reason first given.** It is not that the corpus resists
+classification --- 98% of it classifies. It is that **54% compiles and 46% does not**, and
+the 46% is overwhelmingly samples that are correct as documentation and incomplete as
+programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the page does not
+define. Marking those would be wrong, and opting them out one by one would be a list of
+five hundred exceptions nobody maintains.
+
+**[WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) is the file for this** --- the markup, the
+slots, the template projects and their stage sets, the batching and bisect-on-crash rules,
+what actually collides inside one project, and what the first full run found. Two results
+from it belong here because they are about the harness rather than about the samples:
+`[RunAfterBuild]` is **one per project** (TB5114), which is what `check_run` has to be
+designed around; and **`tbbuild` used to report a clean build on a project that crashed the
+compiler**, which is fixed and is the reason to distrust any "it stopped changing, so it
+must be done" heuristic against this compiler.
 
 ### A script is findable only if its bare name is a token prefix somewhere
 
@@ -1595,6 +1614,8 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 - `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`. ~37 s.
 - `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the gate-list check (`scripts/check_gate_lists.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](#the-book-refuses-a-stale-source-tree)).
+
+- `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~17 s over the 381 samples marked today. `--census` and `--propose` need no compiler at all. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
 
@@ -2401,12 +2422,31 @@ The build itself includes an additional guard: tbdocs's nav integrity check ([bu
 
 Favor concise one-line git commit messages.
 
+**A bug in twinBASIC itself goes in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)**, which is a
+queue rather than a record: an entry is deleted once it has been filed upstream. Each one
+carries the build it was seen on and a *narrowed* reproduction --- the compiler crash
+recorded there is two lines, and neither line reproduces it alone. Documentation defects
+do not go there; they are fixed in `docs/`, or recorded in the relevant `WIP.*.md` until
+they are.
+
 ## Don'ts
 
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
 - **Don't judge rendered styling by opening a built page as a `file://` URL in the in-app browser pane.** It does not apply the page's stylesheets, so everything renders unstyled and any conclusion about colour, spacing, layout or contrast drawn from it is worthless. Use `serve.bat`, which serves over HTTP at localhost and renders for real. The confusing part is that `file://` is fine *through puppeteer* -- `scripts/check_a11y.mjs`, `scripts/sweep_a11y.mjs` and the `perf/` rigs all load `_site-offline/` over `file://` and get correct computed styles, which is the entire reason the offline tree exists (see [Site integrity check](#site-integrity-check)). So: puppeteer for measuring, `serve.bat` for looking. Never the preview pane on a `file://` path.
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.mjs` normalises any strays.
+- **Never write or edit a file with a shell heredoc.** No `cat > file <<'EOF'`, no
+  `printf` into a file, no `sed -i` for a content edit. Use the file-writing and
+  file-editing tools. A heredoc mangles exactly the characters this repository is made
+  of --- `—`, `–`, `§`, `→`, `×` in the prose, and every backslash in a regex --- breaks
+  on the shell's own metacharacters, and fails late and partially, which is worse than
+  not writing the file at all. The shell is for running things, not for authoring them.
+
+  **It fails silently, which is the part worth fearing.** A scratch fence classifier
+  written through `<<'EOF'` had every `"\\s+"` in it delivered as `"\s+"`, so
+  `(?:Public|Private|…)\s+` became `…s+` and matched nothing. It ran, it printed a
+  plausible table, and it reported **444 unclassifiable fences against a true 32** ---
+  a number that reads as a finding about the corpus and was a finding about the quoting.
 - Don't push or force-push without explicit user request.
 - Don't leave a remote image URL in a finished page. A pasted `https://github.com/user-attachments/assets/...` link is fine to write --- [builder/vendor-assets.mjs](builder/vendor-assets.mjs) downloads it to `docs/assets/attachments/gh-<uuid>.<ext>` on the next local build and rewrites the render to point there; commit the downloaded file with the edit. Any other remote host has no such handling: download it yourself and commit it under the section's `Images/` folder. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` dropped async image loading, so an image still in flight when the page-breaking pass runs raises instead of degrading. The build enforces this unconditionally (see [Site integrity check](#site-integrity-check)); `--check-remote-assets` is the standalone checker's flag, not a `tbdocs` one. The check is scoped to `<img>`; `<iframe>` is untouched, but the site no longer has any embeds. A video is authored as a marked link -- `[Title](https://www.youtube.com/watch?v=<id>){: .video }` -- which `videoLinkPlugin` ([builder/render.mjs](builder/render.mjs)) renders as a locally vendored poster frame linking out to the video page, styled by `.video-link` in `docs/_sass/custom/custom.scss`. That makes the site free of third-party requests entirely; don't reintroduce an embed or a hotlinked `img.youtube.com` thumbnail.
 - **Don't hand-edit a diagram's `.svg`, and don't change its `font-family` anywhere but the `.dot`.** The `.svg` is a build artifact; the next build overwrites it. More to the point, Graphviz sizes every box to the text *it* measured, so a face the layout never saw leaves labels hanging outside their boxes --- which is exactly how 27 labels shipped that way across three diagrams. Edit the `.dot`, rebuild, and let `node scripts/check_dot_fit.mjs` confirm it; see [Diagrams](#diagrams).

@@ -431,6 +431,62 @@ Diagram exports carry the font with them. The Download / Copy SVG and PNG button
 
 **Do not hand-edit a diagram's `.svg`.** It is a build artifact: the `.dot` beside it is the source, and the next build overwrites your edit. Changing the face is the edit that looks most harmless and is not --- Graphviz sizes each box to the text it measured, so a diagram whose labels are painted in a font the layout never saw has text hanging outside its boxes. `check.bat` fails on that; see [Diagrams](#diagrams) below.
 
+## Checking that a sample compiles
+
+Nothing in the ordinary build looks inside a code fence. The link check, the accessibility
+scan and the code-region gate all pass over a twinBASIC sample that the compiler would
+refuse --- two such samples shipped, one of them a flagship example on a package page, and
+every gate was green over both.
+
+A sample can ask to be compiled. Add `check_build` to its fence:
+
+````markdown
+```tb check_build
+Dim greeting As String
+greeting = "Hello"
+Debug.Print greeting
+```
+````
+
+Then run it, which needs a twinBASIC install and Windows:
+
+    examples.bat --only "^Reference/Core"
+
+**The marker never reaches the page.** The renderer takes the first word of a fence's info
+string as the language and discards the rest, so a marked fence produces byte-identical
+HTML to an unmarked one. Nothing in the built site, the search index or the PDF can tell
+the difference.
+
+**Mark a sample that is complete, and leave the rest alone.** Most fences on this site are
+not programs --- a statement run with an elision in it, a signature with no body, a syntax
+skeleton with `<placeholders>`. Those are good documentation and there is nothing for a
+compiler to say about them. Roughly a third of the corpus is in that state, which is why
+this is opt-in: a gate that demanded every fence compile would need hundreds of exceptions
+on the first day.
+
+The tool works out what to build around a sample --- a whole `Class` goes in a file of its
+own, procedures and declarations go in a generated module, loose statements go in a
+generated `Sub`. Three keys override it when it guesses wrong, and one flag asks for more:
+
+| In the fence | Means |
+|---|---|
+| `check_build` | Compile this sample. |
+| `check_run` | Compile it and run it, capturing what it prints. *Not implemented yet --- such a fence is compiled only, and the run says so.* |
+| `slot=file` / `slot=module` / `slot=sub` | What to generate around it, when the inference is wrong. The report always names the slot it used, so a wrong guess reads as a wrong guess. |
+| `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. |
+| `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
+
+A sample that assumes a control on a form is fine: the templates declare `Text1`,
+`ListView1`, `CefBrowser1` and the others, exactly as a reader's own project would, so what
+gets checked is the part the sample is actually claiming.
+
+**A mistyped marker is caught.** `check_bild` renders identically to no marker at all, so a
+sample carrying one would simply never be compiled; the tool reports an unrecognised token
+rather than skipping it in silence.
+
+[Tools and Scripts](Tools#check-examples) covers running it --- the census and survey
+modes, the flags, and what the report means.
+
 ## Bullet lists, dashes, and parentheses
 
 Most bullets on this site are a term, a dash, and a description, and which dash

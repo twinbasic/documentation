@@ -15,7 +15,7 @@ One-line-per-tool reference for every executable in the documentation repository
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All five sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. Three other tools are Windows-specific, and none is part of the site build: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes), which runs the twinBASIC compiler's `export` verb --- though that one is cross-platform when given an already-exported tree with `--src`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All six sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat` is the exception to "each entry below gives the POSIX equivalent": it needs a twinBASIC install and drives the IDE, so it is Windows-only, and it is not part of the site build. Three other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes), which runs the twinBASIC compiler's `export` verb --- though that one is cross-platform when given an already-exported tree with `--src`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -136,6 +136,21 @@ Leaving the question to the renderer does not cover it either. `render-book.mjs`
       previous build, which is the one thing these gates must never do.
 
 The check has one known false positive, which comes from the script rather than from this use of it. Its source list is `docs/` and `builder/`, and it does not distinguish code from notes, so editing a `builder/PLAN-*.md` marks every tree stale although nothing in the build reads those files. It errs toward refusing, which is the safe direction, but it does mean a note edit now blocks a render until you rebuild.
+
+### examples.bat
+{: #examplesbat }
+
+    examples.bat [flags]
+
+One invocation of [`check_examples.mjs`](#check-examples), with every flag passed straight through:
+
+    node scripts/check_examples.mjs [flags]
+
+Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fence marked `check_build` --- and reports the ones the compiler refuses, against the line in the page they came from. [Authoring Pages](Authoring#checking-that-a-sample-compiles) is the page for marking a sample; this entry is about running the tool.
+
+**It is not one of the gates, and it must not become one.** It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows, for three reasons that are not going to change: it needs a twinBASIC install, where `npm install` has to remain sufficient to build the docs; it needs Windows, a private desktop and a CDP-reachable WebView2, none of which exists on the CI box; and an IDE cold start is 8 to 11 seconds against a whole site build's four. It is run by a person, deliberately, which is the same arrangement [`sweep_a11y.mjs`](#sweep-a11y) already has.
+
+Exit codes: **0** clean, **1** a sample does not compile, **2** the harness failed.
 
 ## CLI tools
 
@@ -586,6 +601,79 @@ and sweep once at the end.
 > is invisible, takes no input, and the build silently never happens --- the WebView2
 > renderer stays responsive throughout, so even a health check says the IDE is fine. `tbrun`
 > pins the path to a concrete file in its staged copy, which makes the trap unreachable.
+
+### check_examples.mjs
+{: #check-examples }
+
+    node scripts/check_examples.mjs [--only <regex>] [--census] [--propose [--apply]]
+                                    [--jobs N] [--port N] [--batch N] [--ide <path>]
+                                    [--keep] [--verbose] [--json]
+
+Compiles the documentation's own code samples. A ` ```tb ` fence is something
+[`check_code_regions.mjs`](#check-code-regions) protects the *contents* of and nothing ever
+evaluates, so a sample that does not compile can ship and every gate stays green --- two
+did. This is the tool that asks the compiler; [`examples.bat`](#examplesbat) is how it is
+usually run, and [Authoring Pages](Authoring#checking-that-a-sample-compiles) is where a
+sample opts in.
+
+Each marked sample is generated into its own `Module tbx_<hash>`, packed with a template
+project, and handed to [`tbbuild.mjs`](#tbbuild). A diagnostic comes back against a
+generated file and a generated line; the report converts both, so what you read is the page
+and the line in it:
+
+    FAIL  docs/Reference/Core/Unload.md:24  (Reference/Core/Unload.md#1)
+            does not compile (module, inferred, console)
+            docs/Reference/Core/Unload.md:32: TB5134 duplicate definition [UserForm_Click]
+
+**The shape of the sample decides what is generated around it.** A whole `Class` becomes a
+file of its own; procedures and module-level declarations go inside the generated module;
+loose statements go inside a `Private Sub` in it. That is inferred from the sample and
+stated in the markup only when the inference is wrong, and the report names which slot was
+used either way, so a misinference reads as a misinference rather than as a broken sample.
+
+| Flag | Effect |
+|---|---|
+| `--only <regex>` | Restrict to pages whose path matches. The path is page-relative, as in `^Reference/Core`. |
+| `--census` | Classify every `tb` fence and print the table --- how many are whole files, procedures, statement runs, and how many are fragments no wrapper can rescue. No compiler, no IDE, well under a second. |
+| `--propose` | Compile the unmarked samples too, and list the ones that would pass. A survey, so it exits 0 whatever it finds. |
+| `--apply` | With `--propose`, add the marker to the fences that passed. It only ever adds the bare flag, only to a fence that compiled in that very run, and never to one that already carries markup --- so a re-run is a no-op. Read the diff. |
+| `--jobs <n>` | Concurrent IDE lanes. Default 4. Each lane has its own port, its own workspace and its own private desktop. |
+| `--port <n>` | Base DevTools port. Default 9480; lane *n* uses base + *n*. |
+| `--batch <n>` | Upper bound on samples per generated project. Default 120. The batcher packs fewer than this when there are lanes to fill. |
+| `--ide <path>` | `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop. |
+| `--keep` | Leave the generated projects on disk and print where. |
+| `--verbose` | Report warnings as well as errors. Only errors ever fail the run. |
+| `--json` | One object on stdout; every report line moves to stderr. |
+
+Exit codes: **0** clean, **1** a sample does not compile, **2** the harness failed.
+
+**Templates live in `test/example-projects/`**, one directory per template, each an exported
+project tree --- a `Settings` file and a `Sources/` folder. `console` is the default;
+`packages` references every package the IDE ships and is what a page under
+`Reference/Built-In/` or a package tutorial gets without asking. A fence can name one with
+`project=`.
+
+Each template also carries a **stage set**: a module declaring the control instances the
+samples assume, `Text1`, `ListView1`, `CefBrowser1` and the rest. A sample that says
+`Text1.Text = "hi"` is form code-behind --- complete as documentation, because the reader
+has a form with a `TextBox` on it, and impossible to compile alone, because the designer
+rather than the code is what declares `Text1`. Declaring those instances lets the compiler
+check what the sample actually asserts: that the member exists, that it takes those
+arguments, that the types line up. The list is written out rather than inferred from
+identifiers ending in a digit, which would also have declared `Var1`, `Arg1`, `Line2` and
+`VBA7`.
+
+**A sample can take the compiler down**, and one in this corpus does. twinBASIC runs the
+compiler in the same process as user code, so in a batch of a hundred that costs the other
+ninety-nine their result. `tbbuild` reports a crash as exit 4; this splits the batch and
+recurses until the offending sample is alone, which is O(log n) extra builds paid only on
+failure. The finding names the sample and points at `BUGS-TO-REPORT.md`.
+
+Two files under `scripts/lib/` belong to it. `tb-fences.mjs` is the half that needs no
+compiler --- fence extraction, the markup, and the classifier --- and is where a new key or
+a new slot goes. `tb-install.mjs` finds the IDE and the compiler beside it, and is shared
+with the two IDE-driving tools so the three cannot come to disagree about where an install
+is.
 
 ### gen_attribute_probes.mjs
 {: #gen-attribute-probes }

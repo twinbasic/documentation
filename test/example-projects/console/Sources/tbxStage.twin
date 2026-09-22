@@ -1,0 +1,36 @@
+' The stage set: the control instances the documentation's samples assume.
+'
+' A sample that says `Text1.Text = "hi"` is form code-behind. It is complete as
+' documentation -- the reader has a form with a TextBox on it -- and it cannot
+' compile on its own, because the designer, not the code, is what declares
+' Text1. Declaring those instances here lets the compiler check what the sample
+' is actually asserting: that the member exists, that it takes those arguments,
+' that the types line up.
+'
+' Every name here was measured, not guessed: it is an identifier that appears in
+' a `tb` fence under docs/ in the position of a control instance. The list is
+' the tool's one deliberate fiction, so it stays explicit and greppable -- an
+' inference rule over "a name ending in a digit" would also have declared Var1,
+' Arg1, Line2, SQLITE3, VBA7 and MySub1, none of which is a control.
+'
+' Public, not Private: the samples are generated into their own modules and have
+' to see these from there.
+
+Module tbxStage
+
+    Public Form1 As Form
+    Public UserForm1 As Form
+    Public UserForm2 As Form
+
+    Public Text1 As TextBox
+    Public Text2 As TextBox
+    Public TextBox1 As TextBox
+
+    Public Label1 As Label
+    Public Timer1 As Timer
+    Public Command1 As CommandButton
+    Public Frame1 As Frame
+    Public Picture1 As PictureBox
+    Public PictureBox1 As PictureBox
+
+End Module

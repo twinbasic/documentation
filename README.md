@@ -29,9 +29,10 @@ serve.bat     # localhost:4000 with watch + live reload
 check.bat     # the gates that read the built site, ending in the accessibility scan
 test.bat      # the gates that test the toolchain itself
 book.bat      # renders the PDF book; run build.bat first
+examples.bat  # compiles the twinBASIC code samples in the pages (Windows + a twinBASIC install)
 ```
 
-A clean `build.bat && check.bat` is the bar for "ready to commit"; add `test.bat` when the change touched anything outside `docs/`. Each wrapper names the gates it runs, in order, on [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools). On Linux or macOS, run the `node` command inside each batch file directly --- they are thin wrappers.
+A clean `build.bat && check.bat` is the bar for "ready to commit"; add `test.bat` when the change touched anything outside `docs/`. Each wrapper names the gates it runs, in order, on [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools). On Linux or macOS, run the `node` command inside each batch file directly --- they are thin wrappers. `examples.bat` is the exception to both: it drives the twinBASIC IDE, so it is Windows-only and is deliberately outside every gate and outside CI.
 
 Where to read more:
 

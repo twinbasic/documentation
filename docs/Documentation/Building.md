@@ -53,6 +53,9 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
 | `check.bat` | the scripts below, in a fixed order |
 | `test.bat` | the scripts below, in a fixed order |
 | `book.bat` | a `mkdir`, then one `render-book.mjs` invocation, below |
+| `examples.bat [flags]` | `node scripts/check_examples.mjs [flags]` --- not part of the build; see below |
+
+`examples.bat` is the one wrapper that is not about the site. It compiles the documentation's own twinBASIC code samples, which needs a twinBASIC install and Windows, so it is deliberately outside every gate and outside CI; [Tools and Scripts](Tools#examplesbat) has it, and [Authoring Pages](Authoring#checking-that-a-sample-compiles) says how a sample asks to be compiled.
 
 `--check-audit-index` is the part most easily dropped in transcription, and dropping it is silent --- see [Building](#building) below for what it costs. Anyone who types `build.bat` gets the link check without thinking about it; anyone who types the underlying command has to include it themselves.
 
