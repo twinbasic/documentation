@@ -10,7 +10,7 @@ has_toc: false
 
 A simple periodic-callback helper. **AddinTimer** is the **only user-instantiable class** in the package --- every other CoClass is supplied to the addin by the IDE; this one the addin creates with `New`. Internally it wraps the Win32 `SetTimer` / `KillTimer` pair against `hwnd = 0` and fires its [**Timer**](#timer) event from the IDE's UI thread.
 
-```tb
+```tb check_build
 Private WithEvents Timer As AddinTimer
 
 Private Sub Button1_OnClick()

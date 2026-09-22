@@ -15,7 +15,7 @@ The class is tagged `[COMCreatable(False)]` and its constructor takes a package-
 > [!IMPORTANT]
 > The package `_README.txt` states: *"you MUST call **AsyncClose** on the client side, otherwise the connection is left alive when the object goes out of scope"*. Either call [**AsyncClose**](#asyncclose) explicitly before dropping the last reference, **or** let the object terminate cleanly through its `Class_Terminate` (which calls [**AsyncClose**](#asyncclose) automatically). Holding the reference forever --- in a module-level **Collection**, for example --- without calling [**AsyncClose**](#asyncclose) keeps the pipe handle open and the IOCP thread alive.
 
-```tb
+```tb check_build
 Private manager As NamedPipeClientManager
 Private WithEvents connection As NamedPipeClientConnection
 
@@ -62,7 +62,7 @@ Typical uses include a session object, a pending-replies dictionary, a display n
 
 This example attaches a user-defined session object to a connection when it connects, then retrieves it inside the message-received handler.
 
-```tb
+```tb check_build
 Private manager As NamedPipeClientManager
 Private WithEvents connection As NamedPipeClientConnection
 
@@ -195,7 +195,7 @@ Returns immediately; the actual transmission runs through the IOCP loop. The com
 
 This example connects to a named pipe server, sends a request encoded as a [**PropertyBag**](../VBRUN/PropertyBag/), and prints the reply.
 
-```tb
+```tb check_build
 Private manager As NamedPipeClientManager
 Private WithEvents connection As NamedPipeClientConnection
 

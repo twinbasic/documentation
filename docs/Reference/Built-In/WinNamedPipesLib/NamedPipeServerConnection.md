@@ -12,7 +12,7 @@ One server-side per-client connection. A [**NamedPipeServer**](NamedPipeServer) 
 
 The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface --- reach instances only through [**NamedPipeServer**](NamedPipeServer) events. Connection-lifecycle and message events come through the parent [**NamedPipeServer**](NamedPipeServer); this class holds the per-connection data and methods only.
 
-```tb
+```tb check_build
 Private Sub server_ClientConnected(Connection As NamedPipeServerConnection)
     ' attach per-client state through the CustomData slot
     Connection.CustomData = New ClientSession
@@ -51,7 +51,7 @@ The package never reads or writes this field. Its purpose is to avoid the need f
 
 This example attaches a session object to each new connection and uses it to route incoming messages and clean up on disconnect.
 
-```tb
+```tb check_build
 Private Sub server_ClientConnected(Connection As NamedPipeServerConnection)
     Dim session As New ClientSession
     session.RemoteId = Connection.Handle

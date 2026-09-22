@@ -630,6 +630,12 @@ const CLASSIFIER_PROBES = [
   ["Me as somebody's member", "Debug.Print foo.Me\n", "sub"],
   ["Me inside a comment", "Dim x As Long    ' Me is fine here\n", "sub"],
   ["Meridian is not Me", "Dim Meridian As Long\nMeridian = 1\n", "sub"],
+  // WithEvents is the other Class signal. A standard module may not declare
+  // one, so a fence that does is code-behind even with no `Me` in it -- which
+  // is the whole WinNamedPipesLib reference, where the field IS the subject.
+  ["a WithEvents field", "Private WithEvents srv As Foo\nPrivate Sub srv_Ping()\nEnd Sub\n", "class"],
+  // ...but only at container scope. Inside a Class the fence brings its own.
+  ["WithEvents inside a whole Class", "Class C\n    Private WithEvents srv As Foo\nEnd Class\n", "file"],
 ];
 
 const INFO_PROBES = [

@@ -10,7 +10,7 @@ has_toc: false
 
 A dockable / floating IDE pane whose contents are rendered as HTML. Created by [**ToolWindows.Add**](ToolWindows#add); the addin populates its DOM through the [**RootDomElement**](#rootdomelement) --- an [**HtmlElement**](HtmlElement) at the root of the pane --- and shows the pane by setting [**Visible**](#visible) = **True** (tool windows start out invisible).
 
-```tb
+```tb check_build
 Private WithEvents myWindow As ToolWindow
 
 Private Sub Button1_OnClick()

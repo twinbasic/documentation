@@ -12,7 +12,7 @@ The client-side coordinator. Owns a Windows I/O Completion Port and a pool of wo
 
 Configure the public fields (all four have reasonable defaults), call [**Connect**](#connect) for each pipe the application wants to dial, and respond to the [**NamedPipeClientConnection**](NamedPipeClientConnection) events. The first [**Connect**](#connect) lazily creates the completion port and starts the worker threads; subsequent calls reuse them.
 
-```tb
+```tb check_build
 Private manager As NamedPipeClientManager
 Private WithEvents connection As NamedPipeClientConnection
 

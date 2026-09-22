@@ -12,7 +12,7 @@ Hosts one named pipe and accepts an unbounded number of concurrent client connec
 
 Configure the public fields ([**PipeName**](#pipename) is required, the others have reasonable defaults), call [**Start**](#start), and respond to the lifecycle events as clients arrive and exchange messages. The package opens the underlying pipe as **PIPE_TYPE_MESSAGE** / **PIPE_READMODE_MESSAGE** --- messages preserve their boundaries between sender and receiver.
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Private Sub Form_Load()
@@ -166,7 +166,7 @@ One thread is sufficient for most scenarios because every blocking operation ins
 
 This example configures two worker threads for a server where [**FreeThreadingEvents**](#freethreadingevents) is **True**, allowing two [**ClientMessageReceived**](#clientmessagereceived) events from different clients to run concurrently.
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Private Sub Form_Load()
@@ -197,7 +197,7 @@ The value is read at [**Start**](#start) time and passed to every `CreateNamedPi
 
 This example creates a server that publishes under the name `"Greeter"`. The Win32 path a client connects to is `\\.\pipe\Greeter`.
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Private Sub Form_Load()
@@ -229,7 +229,7 @@ When [**ContinuouslyReadFromPipe**](#continuouslyreadfrompipe) is **False**, the
 
 This example records each newly-connected client in a module-level **Collection** keyed by its Win32 handle and reports the connection count. When [**ContinuouslyReadFromPipe**](#continuouslyreadfrompipe) is **False**, the first read is primed here.
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 Private clients As New Collection
 
@@ -302,7 +302,7 @@ The internal mechanism counts the number of outstanding worker-thread joins in a
 
 #### Example
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Private Sub Form_Load()
@@ -373,7 +373,7 @@ Idempotent: calling [**Start**](#start) while the server is already running is a
 
 This example configures a server for free-threaded event delivery with a larger message buffer, then starts it and waits for the ready signal before advertising the service.
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Private Sub Form_Load()
@@ -419,7 +419,7 @@ The public fields ([**PipeName**](#pipename), [**NumThreadsIOCP**](#numthreadsio
 
 #### Example
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Private Sub Form_Load()

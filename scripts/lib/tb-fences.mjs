@@ -45,15 +45,22 @@
 // than a silent pass -- but the reporter has to name the inferred slot in the
 // error, or the author is left debugging code that is correct.
 //
-// The Class row is inferred from `Me`, which is a language rule rather than a
-// guess: the compiler's own TB5025 reads "[Me] cannot be used in standard
-// modules. [Me] is only applicable to class modules." So a fence using `Me` is
-// class code-behind by construction, and one that does not is left alone.
+// The Class row is inferred from two signals, both language rules rather than
+// guesses:
+//
+//   * `Me`, because TB5025 reads "[Me] cannot be used in standard modules.
+//     [Me] is only applicable to class modules";
+//   * a top-level `WithEvents` field, which a standard module may not declare
+//     at all -- the compiler reports TB5182 on the declaration and then TB5079
+//     on every later use of the name.
+//
+// So a fence carrying either is class code-behind by construction, and one
+// carrying neither is left alone.
 //
 // That inference cannot regress a passing sample. A module- or sub-slot fence
-// that uses `Me` gets TB5025 today, so it is already failing; moving it to the
-// Class row can only change which diagnostic it gets, or fix it. A file-slot
-// fence brings its own container and is never reclassified.
+// with either signal is already failing; moving it to the Class row can only
+// change which diagnostic it gets, or fix it. A file-slot fence brings its own
+// container and is never reclassified.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -339,6 +346,7 @@ export function classify(content) {
   const inner = [];                 // open statement blocks at fence top level
   const names = [];
   let sawContainer = false, sawProc = false, sawModuleOnly = false, sawLoose = false;
+  let sawWithEvents = false;
 
   for (const { text } of lines) {
     if (DIRECTIVE_RE.test(text)) continue;          // #If / #End If / #Const
@@ -393,6 +401,13 @@ export function classify(content) {
       continue;
     }
     if (MODULE_ONLY.test(text) || WITHEVENTS.test(text) || OPTION_RE.test(text)) {
+      // A top-level WithEvents field is the second signal that a fence is
+      // class code-behind, and it is a language rule rather than a guess in
+      // the same way `Me` is: WithEvents is not legal in a standard module, so
+      // generating one into a Module makes the compiler report TB5182 on the
+      // declaration and then TB5079 on every later use of the name -- four
+      // diagnostics for one wrong container, none of them naming the cause.
+      if (top && WITHEVENTS.test(text)) sawWithEvents = true;
       if (top) sawModuleOnly = true;
       continue;
     }
@@ -415,8 +430,9 @@ export function classify(content) {
   if (inner.length) return { slot: null, reason: `unclosed ${inner.join(", ")}`, names };
   if (sawContainer && !sawProc && !sawModuleOnly && !sawLoose) return { slot: "file", names };
   if (sawContainer) return { slot: "file", reason: "mixed with loose code", names };
-  // `Me` picks the Class row of the table at the top of this file.
-  const inClass = usesMe(content);
+  // `Me` or a top-level WithEvents picks the Class row of the table at the
+  // top of this file.
+  const inClass = sawWithEvents || usesMe(content);
   if (sawProc || sawModuleOnly) return { slot: inClass ? "class" : "module", names };
   return { slot: inClass ? "method" : "sub", names };
 }
