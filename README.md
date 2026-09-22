@@ -1,10 +1,4 @@
 # twinBASIC User Documentation
-General user documentation for twinBASIC
-
-> [!warning]
->
-> Work in progress
-
 This repository is the home for general user documentation for everything to do with twinBASIC.  
 
 **If you would like to quickly contribute**, feel free to:
