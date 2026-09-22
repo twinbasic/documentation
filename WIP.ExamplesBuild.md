@@ -522,32 +522,12 @@ the better failure mode than a sample that quietly stops demonstrating anything.
   `#2` declares, and `IVBPrint.md#3` needing `#2`'s. Both are `projname` groups now.
   **Always run the gate after `--apply`.**
 
-### The Assert package documentation did not compile --- fixed
+### An Assert call needs both qualifiers
 
-Every Assert page writes `Exact.AreEqual`, `Strict.AreEqual`, `Permissive.AreEqual`
-unqualified, and that raises `TB5079 Unrecognized symbol 'Exact'`. **A package's members
-are reached through its namespace symbol, exactly as `VB`'s are**, so the form that
-compiles is `Assert.Exact.AreEqual`. The two prefixes are separate requirements: the
-`Assert.` is the package namespace, and the `Exact.` below it is there because each module
-in the package carries `[MustBeQualified(True)]`.
-
-**66 sites across five pages** --- 61 line-leading uses in code samples, 5 inline code
-spans in prose, against exactly one already-qualified mention:
-
-    docs/Reference/Built-In/TwinBasicAssertions/{Exact,Strict,Permissive,index}.md
-    docs/Tutorials/Testing-with-Assert.md
-
-**Fixed**: 116 calls across the five pages now carry the namespace, 20 of the 30 samples are
-marked `check_build`, and the ten that are not reference a `target`, a `factory`, a `Widget`
-or an undeclared `x` --- context the page does not define, which is the ordinary reason a
-sample is not a program.
-
-**The root of it was one sentence**, on the package index: *"If a project references more
-than one package that exposes a module called Strict, qualify further with the package name
-as well."* That presents `Assert.` as disambiguation needed on a clash, and every page was
-written to it. Prefixing 116 calls without rewriting that sentence would have left a reader
-reading the prefixes as optional noise. It now states that both qualifiers are always
-required, and the sample beneath it shows all four forms with the three that fail --- each
+**A package's members are reached through its namespace symbol, exactly as `VB`'s are**,
+so the form that compiles is `Assert.Exact.AreEqual`. The two prefixes are separate
+requirements: `Assert.` is the package namespace, and the `Exact.` below it is there
+because each module in the package carries `[MustBeQualified(True)]`. Every form is
 verified rather than asserted:
 
 | form | result |
@@ -557,20 +537,12 @@ verified rather than asserted:
 | `Assert.IsTrue x > 0` | `TB5027 Unrecognized member 'IsTrue' on type 'Assert'` |
 | `IsTrue x > 0` | `TB5079 Unrecognized symbol 'IsTrue'` |
 
-How it was established, before the fix:
-
-- a probe whose reference entry was composed by hand from the package's own `Settings`
-  compiled `Assert.Strict.AreEqual 1, 1` and refused `Strict.AreEqual 1, 1`, in the same
-  project and the same build;
-- setting that entry's `symbolId` to the empty string did not make the bare form resolve;
-- and the same probe against **the reference entry the IDE's own package manager writes**
-  --- taken verbatim out of a project where a person had added the package through it ---
-  behaves identically. That entry differs from the hand-composed one only by
-  `autoCtlExt: true` and the display name; the id, the version (0.0.24, so the package
-  manager used the shipped copy rather than a newer registry one) and
-  `symbolId: "Assert"` are the same.
-
-So there was no version of the reference under which the pages were right.
+Five pages wrote the bare form at 66 sites and none of them compiled; 116 calls carry the
+namespace now. **The root of it was one sentence** on the package index, which presented
+`Assert.` as disambiguation needed only on a clash, and every page was written to it ---
+so prefixing the calls without rewriting that sentence would have left a reader reading
+the prefixes as optional noise. When a sample is wrong across a whole package, check
+whether a sentence taught it.
 
 **The harness could not have told you which way to fix it**, and that is the general shape:
 it says a sample does not compile, and what the page should say instead is still a

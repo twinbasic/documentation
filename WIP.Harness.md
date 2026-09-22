@@ -296,10 +296,8 @@ starting a fresh IDE per project is the design, not a convenience.
 **It costs less than it sounds like.** Measured on this box: **8 to 11 seconds per project,
 and flat in project size** --- a one-file project and the 32-probe exploratory project both
 land at about ten seconds, because what is being paid for is IDE startup and not
-compilation. An earlier draft of this section said "roughly 40 seconds", which was a guess
-nobody had timed; it is out by a factor of four, and it is exactly the kind of unmeasured
-baseline [the round-2 review](builder/REVIEW-USECASES-2e74de2.md) complains about
-elsewhere. Time it before quoting it.
+compilation. That number was once guessed at "roughly 40 seconds" and is out by a factor
+of four: time it before quoting it.
 
 **Concurrency works and is the route to a fast probe suite.** Distinct `--port` values give
 distinct DevTools ports, WebView2 user-data folders and private desktops, so instances do
@@ -356,12 +354,11 @@ It settles on a quiet period rather than a sentinel, so no probe has to print a 
 script knows about. Distinct `--port` values let probes run concurrently, exactly as
 `tbbuild`'s do.
 
-**That last sentence was false when it was written, and is true now.** The staging directory
-was a fixed `%TEMP%\tbrun\src`, so a second run deleted the first one's tree, and shutdown
-was `taskkill /F /T /IM twinBASIC.exe` --- machine-wide, taking out every concurrent run's
-IDE and the one you had open yourself. The workspace and `project.id` are keyed to `--port`
-now, and `tbbuild` reports the IDE's pid (`ide-pid:` in text, `idePid` in `--json`) so the
-kill is by pid tree.
+**Two things make that safe, and both had to be built.** The workspace and `project.id`
+are keyed to `--port`, so a second run cannot delete the first one's tree; and `tbbuild`
+reports the IDE's pid (`ide-pid:` in text, `idePid` in `--json`) so shutdown is a kill by
+pid tree rather than a machine-wide `taskkill /F /T /IM twinBASIC.exe`, which would take
+out every concurrent run's IDE and the one you had open yourself.
 
 `tbrun` also **harvests COM servers a probe leaves behind**, because nothing else can: an
 `EXCEL.EXE` from `CreateObject` has `svchost.exe` for a parent, so no tree kill reaches it,

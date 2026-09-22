@@ -26,25 +26,15 @@ webfonts off --- stays there. The rule that actually cannot be unsettled by a
 font is one that meets the floor on *declared size*, which is what
 `.footer-actions > *` does; prefer that shape where the layout allows it.
 
-**Changing the face broke one `target-size` check, and that is worth reading as
-a warning rather than a one-off.** The full sweep found `target-size` failing
-on the footnote back-link of `Features/GUI-Components/Windowless`, footnote 3,
-at the mobile viewport, in both themes --- one node, one page out of 869.
-
-The back-link is a bare inline `<a>` holding a single U+21A9 with no padding,
-so its target is whatever box the font gives that glyph: 12.09 x 19 on Segoe
-UI, 12.09 x 15 on Liberation Sans, 15.97 x 17 on Inter. **None of those has
-ever met 24 x 24.** The rule was passing on axe's *spacing* exception --- a
-24px circle centred on the target happened to clear its neighbours --- and
-Inter's arrow is 3.9px wider than the system fonts', which moved the centre far
-enough on that one footnote to intersect a neighbour.
-
-So the font change did not introduce the defect; it collected on one that had
-been marginal all along, and it did so on exactly one page, which is what a
-spacing pass looks like just before it stops passing. The fix sizes the link
-outright (`display: inline-block; min-width/min-height: 24px`) rather than
-restoring the clearance, and it now measures 24 x 24 under Inter, Segoe UI,
-Arial and Liberation Sans alike.
+**Changing the face broke one `target-size` check, on one node of 869 pages ---
+read it as a warning, not a one-off.** A footnote back-link is a bare inline
+`<a>` holding a single U+21A9 with no padding, so its target is whatever box the
+font gives that glyph: 12.09 x 19 on Segoe UI, 12.09 x 15 on Liberation Sans,
+15.97 x 17 on Inter. **None of those has ever met 24 x 24.** It was passing on
+axe's *spacing* exception --- a 24px circle centred on the target happened to
+clear its neighbours --- and Inter's arrow is 3.9px wider, which moved the centre
+far enough to intersect one. The fix sizes the link outright (`display:
+inline-block; min-width/min-height: 24px`) rather than restoring the clearance.
 
 Two things to take from it. **Run the full sweep after any change that moves
 type metrics** --- the thirteen-page sample was clean through all of this, in
@@ -100,11 +90,9 @@ rules. The DOT sources --- `docs/assets/images/dot/` for shared diagrams,
 `Images/` beside a page for one that belongs to it --- and `builder/gantt.mjs`
 name the Inter stack directly.
 
-**Every diagram is Graphviz DOT now, and the font hazard moved rather than
-went away.** Mermaid used to render the two Monaco diagrams; it measured every
-label in the browser and sized each node box to fit, so a committed export was
-only correct for the font it was measured with. Graphviz has the same coupling
-from the other end, and worse: it measures with a font it has never seen.
+**Every diagram is Graphviz DOT, and it measures with a font it has never seen.**
+A committed export is only correct for the metrics the layout was computed with,
+so the face and the geometry are coupled whatever the renderer.
 
 The WASM build carries **no font machinery at all** --- zero occurrences of
 pango, fontconfig, freetype or harfbuzz --- only the built-in width tables for
@@ -350,26 +338,25 @@ are load-bearing:
 
 ### PNG export, and the constraint that decided the diagram format
 
-All four buttons work on all five diagrams. That is a property of the *format*,
-not of the export code, and it is worth knowing why before anyone reaches for a
-diagram tool that emits HTML-in-SVG.
+**Never adopt a diagram tool that emits HTML-in-SVG.** Chromium taints a canvas
+that has had an SVG containing `<foreignObject>` drawn into it, and a tainted
+canvas refuses `toBlob()` with a `SecurityError` --- so *Download PNG* and *Copy
+PNG* cannot work on such a diagram at all, and the throw lands inside an
+`img.onload` handler where nothing surfaces it, so the click just appears to do
+nothing. Graphviz emits plain `<text>`, which is why all four buttons work on all
+five diagrams. This is a property of the *format*, not of the export code, and it
+is what decided the format.
 
-Chromium taints a canvas that has had an SVG containing `<foreignObject>` drawn
-into it, and a tainted canvas refuses `toBlob()` with a `SecurityError`. Mermaid
-puts every node label in a `foreignObject`, so *Download PNG* and *Copy PNG*
-never worked on the two Monaco diagrams for as long as they were Mermaid. The
-throw happened inside an `img.onload` handler where nothing surfaced it, so the
-click simply appeared to do nothing.
+Mermaid was the tool this was measured on, and **the obvious workaround does not
+work**: `flowchart: { htmlLabels: false }` moves only the edge labels to `<text>`
+and keeps node labels in `foreignObject` regardless, tested against Mermaid 11.
+It is no longer wired up --- no dependency, no script emitted, only
+`code.language-mermaid` rules left in the vendored theme CSS --- so a `mermaid`
+fence renders as a code block today.
 
-`flowchart: { htmlLabels: false }` does **not** fix it --- tested against
-Mermaid 11, which moves only the edge labels to `<text>` and keeps node labels
-in `foreignObject` regardless. Graphviz emits plain `<text>`, which is why the
-DOT diagrams always exported fine and why the Monaco pair was redrawn as DOT
-rather than patched.
-
-Measured through the real export path, all five now rasterise: 65--403 KB per
-PNG, and 6.4--13.6% more ink than the same SVG with the `@font-face` stripped,
-which is what says the embedded Inter is being used rather than a fallback.
+Measured through the real export path, all five rasterise: 65--403 KB per PNG,
+and 6.4--13.6% more ink than the same SVG with the `@font-face` stripped, which
+is what says the embedded Inter is being used rather than a fallback.
 
 The failure path stays, because it is still reachable --- a hand-authored SVG
 could reintroduce `foreignObject`: it is caught, logged, and announced through

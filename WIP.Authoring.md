@@ -324,7 +324,7 @@ When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Ref
 lunr's tokeniser splits on **whitespace and hyphens only** (`/[\s\-]+/`), and the site's
 query adds a *trailing* wildcard. Put those together and a heading written
 `### scripts/check_page_baseline.mjs` indexes as one token beginning `scripts/`, which a
-reader's query `check_page_baseline` can never prefix-match. Measured before round 5's fix:
+reader's query `check_page_baseline` can never prefix-match. Measured:
 
 | query | results |
 |---|---|
@@ -332,9 +332,9 @@ reader's query `check_page_baseline` can never prefix-match. Measured before rou
 | `check_page_baseline` | **0** |
 | `check-page-baseline` | 420, as noise --- hyphens split, so it becomes three common words |
 
-`build_dot_metrics` was 0 as well. Round 5's UC-40 issued seven queries including the
-gate's own filename and verbatim prose from its section, and never once saw it --- **the
-string a refused developer actually has in hand is the one that found nothing.**
+`build_dot_metrics` was 0 as well. An evaluator issued seven queries including the gate's
+own filename and verbatim prose from its section, and never once saw it --- **the string a
+refused developer actually has in hand is the one that found nothing.**
 
 **The fix was to drop the directory prefix from the headings**, so the token becomes
 `check_page_baseline.mjs` and the trailing wildcard reaches it. Nothing is lost from the
@@ -348,6 +348,6 @@ would give a script section its own title boost and its own anchor in the result
 **doubles the index, 3,742 entries to 7,524, and does not fix it**: the titles still carry
 the `scripts/` prefix, so the bare query still misses. That is a 3.4 MB payload every page
 already downloads, doubled, for nothing. Widening the tokeniser's separator to include
-`/`, `_` and `.` would work and is the change round 5's review recommended before anyone
-measured it; the `check-page-baseline` row above is what it would do to *every* path token
-on a site whose subject matter is `Debug.Print` and `_App`.
+`/`, `_` and `.` is the other obvious proposal; the `check-page-baseline` row above is
+what it would do to *every* path token on a site whose subject matter is `Debug.Print`
+and `_App`.

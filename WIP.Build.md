@@ -15,33 +15,23 @@ healthy tree reports.
 
 **Before adding a fan-out to the task graph, read [why a dep count of zero does not mean the submits have run](builder/PLAN-sab-pull-scheduler.md#a-dep-count-of-zero-does-not-mean-the-submits-have-run).** A worker posts its result and *then* decrements its successors' dependency counts in shared memory, so a barrier's count can reach zero while results are still queued and the `submit()` calls that merge them into build state have not run --- the shared counter orders the work, not the state. A dynamic barrier must therefore list every chunk task in its `expected`, even when its own `execute()` ignores the inputs; that list is the only thing the scheduler checks before it lets the barrier proceed. `renderJoin` went without it and silently dropped ~6 pages from `search-data.json` on about one build in three, because the index is built by flattening a `new Array(N)` and `Array.prototype.flat()` skips holes without reporting anything. Two silent failures combining into one invisible one. Both halves are fixed, and every skip on the chunk-merge path that used to tolerate a missing piece now refuses to continue --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). Keep it that way: on this path, "the piece is missing" is a bug, not a case to handle.
 
-**`search-data.json` used to differ between two builds of the same commit** ---
-545 of 3,724 entries, every time --- and the cause was not in the scheduler at
-all, which is why it survived the fix above. `discover()` fills `pages` from
-inside a `Promise.all`, so a page is pushed when its `readFile` resolves, not in
-`allFiles` order. `pages.sort(byName)` is stable, and Jekyll's sort key is the
-*basename*, so every tied basename kept that I/O completion order --- and ~111
-folder-style classes are all named `index.md`, so the ties are not rare. The
-chunking, and therefore the flattened index, reordered run to run. `byName` now
-breaks ties on `srcRel`; since `allFiles` is sorted by full path, that
-reproduces exactly the input order the old comment already claimed was in
-effect. Two builds of one commit are now byte-identical except for
-`BuildInfo.html` and `gantt.svg`, which record build timings and cannot be
-anything else.
+**A sort key on this path must be total.** `discover()` fills `pages` from inside
+a `Promise.all`, so a page is pushed when its `readFile` resolves, not in
+`allFiles` order; `pages.sort(byName)` is stable and Jekyll's key is the
+*basename*, so every tie kept that I/O completion order --- and ~111 folder-style
+classes are all named `index.md`. That reordered the chunking and made
+`search-data.json` differ between two builds of one commit, 545 of 3,724 entries
+every time. `byName` breaks ties on `srcRel` now. Two builds of a commit are
+byte-identical except for `BuildInfo.html` and `gantt.svg`, which record build
+timings and cannot be.
 
 ### A hung build times out and says where it hung
 
-> **This is documented for readers now**, at [When a build stops instead of
-> failing](docs/Documentation/Building.md) plus a `--stall-timeout` row in
-> `Tools.md`'s flag table and an entry in `Builder.md`'s failure-mode list. It
-> was not, for long enough for round 4 to hand an evaluator a hung build and
-> watch two pages tell them nothing would rescue it: `Tools.md` said *"the
-> build prints its last line, and nothing times out"* and `Building.md` said
-> the same in milder words, both true of the day `VOID_TAGS_RE` shipped and
-> neither true since. The string `--stall-timeout` appeared zero times under
-> `docs/`. The evaluator followed the pages and told the user to press Ctrl+C.
-> **A feature nobody can find is worth what an absent one is worth**, and two
-> pages actively denying it is worth less than that.
+Readers get this at [When a build stops instead of
+failing](docs/Documentation/Building.md), with a `--stall-timeout` row in
+`Tools.md`'s flag table and an entry in `Builder.md`'s failure-mode list. Keep
+those in step with any change here: a feature nobody can find is worth what an
+absent one is worth.
 
 **A task that a worker claims and never finishes wedges the whole graph in
 silence.** Its successors' dep counts never drop, `_remaining` never reaches
@@ -89,14 +79,11 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 ### Tooling is JavaScript, and the two remaining `.py` files each have a reason
 
 Everything under `scripts/`, `builder/`, `book/`, `eval/` and `wisdom/` is Node.js.
-`convert_em_dash_separators` and `gen_attribute_probes` were Python and were ported ---
-both were pure text processing over `docs/`, and each port was verified by running the two
-implementations side by side and diffing: byte-identical output on the real corpus, and on
-all 72 files the probe generator emits. **Neither needed a dependency**, and the dash
-normaliser gained two things in the move: a `--check` mode, and byte-exact line endings.
-The Python version round-tripped through `Path.read_text` / `write_text`, whose
-universal-newline translation rewrote any LF file it touched to CRLF on Windows --- a
-whole-file diff for a one-character fix. 24 of the tree's 906 markdown files are LF.
+One trap the ports away from Python left behind: **a tool that rewrites a file must
+preserve its line endings byte-exactly.** Python's `Path.read_text` / `write_text`
+round-trip applies universal-newline translation, rewriting any LF file it touches to
+CRLF on Windows --- a whole-file diff for a one-character fix. 24 of the tree's 906
+markdown files are LF.
 
 Two `.py` files stay, and neither is an oversight:
 
@@ -137,7 +124,7 @@ that are individually true. Mine this file for cases: it is substantially a cata
 
 **The split is by what a gate interrogates, not by what it happens to open.** `check_axe_patch_equiv.mjs` loads a built page, but only because its probe needs some document to run inside --- what it tests is the axe source patch, and it would be worth running against an empty `docs/`. That is the test: a new gate belongs in `test.bat` if it would still mean something with no documentation in the tree.
 
-Two gates that pre-date the split moved into `test.bat` when it was created, and moving them was the point: leaving them behind would have made the boundary an exception list rather than a rule. `check_publish_policy.mjs` plants its own probes and reads nothing under `docs/`; `check_axe_patch_equiv.mjs` is the case above. Their comments and this file say `test.bat` now --- older notes under `builder/PLAN-*.md` still say `check.bat`, and are historical.
+Older notes under `builder/PLAN-*.md` still place `check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` in `check.bat`; both are in `test.bat`, and those notes are historical.
 
 **Both CI workflows run every one of these scripts as its own step, unconditionally**, and always did --- CI never invoked the `.bat` files. So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
 
@@ -171,19 +158,10 @@ The harness carries a synthetic `fixture` case for the same reason -- the real s
 **`discover()` files every non-page it finds under `docs/` as a static file, and
 `write.mjs` copies it verbatim, so the source tree's shape *is* the site's shape.**
 The only filter used to be `_config.yml`'s `exclude:`, and a denylist can only
-refuse what someone thought to name in advance. Measured against the real config
-before this landed, every one of these published at a public URL on a green build:
-
-| planted in `docs/` | published at |
-|---|---|
-| `Reference/NOTES.md` (a scratch file, no frontmatter) | `/Reference/NOTES.md`, as raw markdown |
-| `Reference/Core/Dim.md.bak` | `/Reference/Core/Dim.md.bak` |
-| `Features/sample.twin` | `/Features/sample.twin` |
-| `Features/secrets.json` | `/Features/secrets.json` |
-| `Tutorials/draft.docx` | `/Tutorials/draft.docx` |
-| `assets/deploy.pem` | `/assets/deploy.pem` |
-| `Thumbs.db` | `/Thumbs.db` |
-| `IDE/build.log` | `/IDE/build.log` |
+refuse what someone thought to name in advance. Measured against the real config:
+a scratch `.md` with no frontmatter, a `.bak`, a `.twin`, a `secrets.json`, a
+`.docx`, a `deploy.pem`, `Thumbs.db` and a `build.log`, all planted in `docs/`,
+every one published at a public URL on a green build.
 
 Two publish surfaces reach the world from those trees: the deploy workflow
 uploads `docs/_site/` wholesale to Pages, and the manual-dispatch path zips
@@ -217,15 +195,12 @@ Three details of the policy are load-bearing:
 - **`.md` is deliberately absent from both.** A markdown file that reaches the
   check is one `gray-matter` found no frontmatter block in --- the
   AppGlobalClassObject shape, where the raw markdown was served verbatim for
-  months. Be careful what the message claims, though: the two faults that come
-  to mind first are both handled elsewhere. A **UTF-8 BOM** is stripped before
-  parsing, so a BOM'd page renders normally and never reaches here (`stripBom()`
-  fixed that cause; this refuses the class it belonged to). **Malformed YAML**
-  inside the block throws `Failed to parse frontmatter in <file>` from
-  `discover.mjs` and never falls through. What is actually left is a file with
-  no block at all, or one where something precedes the opening `---` --- a blank
-  line is enough. The message names that, and an earlier draft naming the BOM
-  would have sent every reader looking for something that cannot happen.
+  months. The two causes that come to mind first are both handled upstream: a
+  **UTF-8 BOM** is stripped before parsing, and **malformed YAML** inside the
+  block throws `Failed to parse frontmatter in <file>` from `discover.mjs`. What
+  reaches here is a file with no block at all, or one where something precedes
+  the opening `---` --- a blank line is enough --- so keep the message naming
+  that and not the BOM.
 - **`bundle_extra` is exempt by *path*, not by extension.** `_config.yml`
   declares `Features/Packages/downloads/impexp.py` and `impexp.mjs` with both
   ends spelled out, which is what makes them shippable. The same extension
@@ -266,11 +241,10 @@ shape shipped, none of them caught by anything:
 | `rewriteListItemSetextHeadings` | **deleted** a YAML sample's closing `---` and promoted the line above it to a heading |
 
 `Reference/Default/VBA/Interaction/InputBox` shipped its `If`/`ElseIf`/`Else`
-bodies flush left --- wrong control flow, in a language reference.
-`Reference/Core/Option` lost the blank line between its Module and Class
-examples. Fixing the admonition strip corrected **11 pages**, not three: the
-greedy `\s*` had also been merging paragraphs inside admonition *prose*
-site-wide, which the code-focused audit never looked for.
+bodies flush left --- wrong control flow, in a language reference. Fixing the
+admonition strip corrected **11 pages, not three**: the greedy `\s*` had also
+been merging paragraphs inside admonition *prose*, which a code-focused audit
+never thinks to look for.
 
 **The same class exists on rendered HTML.** `book.mjs`'s chapter transforms
 rewrite `id="`, `href="#` and `src="/` across a whole body. An inline code span
@@ -278,9 +252,7 @@ is emitted through `escapeHtmlMinimal`, which escapes only `&`, `<` and `>`, so
 quotes survive as literal bytes and all three patterns match inside a sample.
 Every one of the six exposed code spans in the corpus was corrupted in the
 published PDF --- `<style id="jtd-nav-activation">` read
-`<style id="ch-Documentation-Development-Pipeline-Stages-jtd-nav-activation">`,
-and `href="#ch-X"` read `#ch-…-ch-X` inside the sentence explaining the book's
-own anchor scheme.
+`<style id="ch-Documentation-Development-Pipeline-Stages-jtd-nav-activation">`.
 
 Highlighted *blocks* escape this only by accident: the highlighter splits
 attributes across `<span>` boundaries, so `src="/vs/loader.js"` never appears as
@@ -327,16 +299,12 @@ and `Features/Standard-Library/New-Functions` document what `Debug.Print` emits
 with comma separators, where the print-zone padding *is* the behaviour being
 shown, and both rendered it as single spaces.
 
-> **Those two pages were still wrong after that fix, and the reason is worth
-> keeping.** A pipeline can only preserve padding that reaches it, and the
-> padding was never in their *source*. Measured through `tbrun` against the
-> pages' own samples: `New-Functions` claimed `1             2             3`
-> where the run prints `' 1             2             3 '`, and `Pointers`
-> claimed `1  2`, `3  4` and `4` where the runs print `' 1             2 '`,
-> `' 3             4 '` and `' 4 '`. Every one is missing the leading space a
-> positive number carries where its sign would be, and the trailing space; the
-> `Pointers` pair were also showing two spaces for a thirteen-space gap. A fifth claim on
-> `New-Functions`, ``7    1`` where the run prints `' 7             1 '`, went the same way.
+> **Those two pages were still wrong after that fix**, because a pipeline can
+> only preserve padding that reaches it and the padding was never in their
+> *source*. Measured through `tbrun` against the pages' own samples, five claims
+> were wrong: each missing the leading space a positive number carries where its
+> sign would be, and the trailing space, and two showing a thirteen-space print
+> zone as two spaces.
 >
 > **An inline code span cannot carry a leading or trailing space naively**, which
 > is the trap that keeps this defect coming back. CommonMark strips one space
@@ -370,33 +338,22 @@ change was a padded value being restored.
 
 ### The book refuses a stale source tree
 
-`book.bat` used to test only that `docs\_site-pdf\book.html` **exists**. Edit a
-page, run `book.bat` without `build.bat`, and it spent two minutes rendering the
-*previous* book and reported success. Nothing downstream could notice: the PDF
-it produces is internally consistent, correctly paginated and correctly
-bookmarked --- it is simply the wrong book. That nearly put a stale render into a
-page-count comparison during the session that added the check.
-
-It now runs the freshness gate first:
+Testing only that `docs\_site-pdf\book.html` **exists** is not enough: edit a
+page, run `book.bat` without `build.bat`, and it spends two minutes rendering the
+*previous* book and reports success. Nothing downstream can notice --- the PDF is
+internally consistent, correctly paginated and correctly bookmarked, simply the
+wrong book. So the freshness gate runs first:
 
 ```sh
 node scripts/check_tree_fresh.mjs --tree docs/_site-pdf --marker book.html
 ```
 
-**`--marker` is new, and the reason is worth knowing.** The script identified a
-tree by its `index.html`, which every output tree has *except* `_site-pdf/` ---
-that one holds a single `book.html`. So `--tree docs/_site-pdf` looked for an
-`index.html` that never exists and exited 2 with "there is no built tree to
-check". The flag to check the PDF source tree was there all along and could not
-actually be used on it.
+**`--marker` is what makes that work on this tree.** The script identifies a tree
+by its `index.html`, which every output tree has *except* `_site-pdf/` --- that one
+holds a single `book.html`. Exit codes are the script's: **2** when the tree is
+absent, **1** when it is older than `docs/` or `builder/`.
 
-Exit codes are the script's: **2** when the tree is absent (the case the old
-existence test covered) and **1** when it is older than `docs/` or `builder/`.
-All three paths were exercised --- absent, stale, and fresh through a full
-2,086-page render.
-
-> **One batch detail that is easy to get wrong**, and which the first attempt at
-> this got wrong: `%ERRORLEVEL%` inside a parenthesised `if errorlevel 1 (...)`
+> **One batch detail that is easy to get wrong:** `%ERRORLEVEL%` inside a parenthesised `if errorlevel 1 (...)`
 > block expands when the block is **parsed**, not when it runs, so the value
 > captured there is the one from before the check. The guard uses
 > `goto :fail` and captures outside the block, which is the same shape
@@ -481,10 +438,8 @@ comment in [builder/page-baseline.mjs](builder/page-baseline.mjs):
   page half-deleted in an editor would lower the baseline and a half-added one
   would raise it.
 
-One latent bug went with it. The old guard did `process.exitCode = 1`, plain
-assignment, after the link check had already set bits 1 and 2 --- so a build with
-both an integrity failure and a page drop reported only the drop. It ORs now,
-like everything else on that path.
+**OR the exit code on this path, never assign it.** Plain `process.exitCode = 1`
+after the link check has already set bits 1 and 2 reports only the later failure.
 
 `scripts/check_page_baseline.mjs` is the gate on the gate, in `test.bat` and
 both CI workflows: eleven probes against a scratch baseline, no browser, no
@@ -521,27 +476,18 @@ a rule about lines rather than something to express as one regex over a whole
 document. Measured across the site, the fix changes four files: `Attributes.html`,
 `search-data.json` (which indexes it), and the two that record build timings.
 
-**The same stasher had a second way to fail, found by an agent documenting the first.**
-It recognised *backtick* fences only, on the stated reasoning that `maskCodeRegions`
-knows about tildes --- but `rewriteAdmonitions` runs **outside** the mask by design, so
-nothing protected a tilde fence at all. A `~~~` block holding an odd number of
-standalone ``` lines reproduced the Attributes.md failure exactly: the marker inside
-was read as an opener, the pairing ran past the sample, and the following `> [!NOTE]`
-shipped as literal text. Measured both ways before fixing it; the 4-backtick form was
-correct throughout.
+The same stasher had a second way to fail: it recognised *backtick* fences only,
+reasoning that `maskCodeRegions` knows about tildes --- but `rewriteAdmonitions` runs
+**outside** the mask by design, so nothing protected a tilde fence. `FENCE_OPEN_RE`
+accepts either character now and closes on the one that opened. `docs/` contains no
+tilde fence, which is why the corpus sweep could never have found it --- the same
+blind spot that makes the ADMONITION_PROBES necessary.
 
-`docs/` contains no tilde fence, which is why the corpus sweep could never have found it
---- the same blind spot that makes the ADMONITION_PROBES necessary. `FENCE_OPEN_RE` now
-accepts either character and closes on the one that opened, and a fifth probe covers it.
-Reverting the regex fails that probe by name.
-
-Four probes in `check_code_regions.mjs` assert the other direction now. **The
-first draft of them did not work**, and the reason is worth keeping: a
-mis-paired opener swallows text only as far as the next fence marker, so a probe
-with no fence *after* the admonition passes against the very stasher it was
-written to catch. The damage is always to the prose **between** two fences.
-Reverting the stasher fails two of the four; against the first draft it failed
-none.
+Five probes in `check_code_regions.mjs` assert this direction, and **writing one
+correctly is not obvious**: a mis-paired opener swallows text only as far as the next
+fence marker, so a probe with no fence *after* the admonition passes against the very
+stasher it was written to catch. The damage is always to the prose **between** two
+fences.
 
 ### Build-time counts as named values
 
@@ -552,21 +498,17 @@ contributors at [Authoring
 Pages](docs/Documentation/Authoring.md#counts-the-build-fills-in). Twelve names
 are live, and most of the prose is still hand-written.
 
-`enumerations` was added by round 5's fix pass, and it settled a contradiction rather
-than a staleness: `Authoring.md` said the enumeration total on the Reference landing
-page "has to stay" a hand-written digit, while `PLAN-counts.md` had listed that exact
-figure among the ones Phase 3 existed to convert. Neither cited the other and both had
-shipped. It counts the bullets in `Reference/Enumerations.md`'s alphabetical index ---
-the `attributeAnchors` shape, a scan of one page's `rawContent`, legitimate because
-the page *is* the list --- and it reads the index alone, so an entry added only to the
+`enumerations` counts the bullets in `Reference/Enumerations.md`'s alphabetical index
+--- the `attributeAnchors` shape, a scan of one page's `rawContent`, legitimate because
+the page *is* the list. It reads the index alone, so an entry added only to the
 by-package section above it is still a half-edit that nothing reports.
 
-`defaultPackages` and `builtInPackages` were added in the round-3 fix pass, and
-the reason is worth keeping: `packages` alone could not express either sentence
-the site actually writes. `Reference/index.md` called all thirteen "built-in"
-while `Reference/Packages.md` reserved the word for the ten, both arithmetically
-right, and no reader could tell that from either page. **A count name is also a
-way of naming the set**, which is a second thing it buys beyond not going stale.
+`defaultPackages` and `builtInPackages` exist because `packages` alone could not
+express either sentence the site writes: `Reference/index.md` called all thirteen
+"built-in" while `Reference/Packages.md` reserved the word for the ten, both
+arithmetically right, and no reader could tell that from either page. **A count name
+is also a way of naming the set**, which is a second thing it buys beyond not going
+stale.
 
 **A name is a derivation over build state, never a constant.** A registry
 holding `pages: 908` would not have removed the stale figure, only moved it
@@ -587,8 +529,7 @@ Three things fell out of building it that the design had not predicted:
 - **The walk has to recurse, for image alt.** An `image` token carries its alt
   as its own children, so a flat walk stops at the image. markdown-it's own
   `replacements` rule does not descend, which is why `kramdownDashesPlugin`
-  recurses as well --- see [Source dashes](WIP.md#source-dashes), where a note once
-  drew the wrong conclusion from that same asymmetry.
+  recurses as well --- see [Source dashes](WIP.md#source-dashes).
 - **A raw HTML block is unreachable, and source validation cannot see it.**
   `html_block` is one opaque token with no children, and a placeholder inside
   one has a perfectly good *name* --- so the validator passes it and the page
@@ -615,17 +556,12 @@ step count each section states --- and then sweeps `README.md` and every page
 under `docs/Documentation/` for a gate count asserted anywhere in prose. In
 `test.bat` and both CI workflows; ~50 ms, no browser, no built tree.
 
-**The sweep is the second version, and the first one is the lesson.** The
-original read `Tools.md` alone, on the stated convention that one page owns the
-lists and the others cite it, and its header ended: *"if a third page starts
-restating them, this gate will not notice --- which is the argument for not
-letting one."* `Building.md` was already that third page and `README.md` a
-fourth, both wrong, **in the commit that shipped the gate green**. Round 4 of
-the use-case evaluation had three separate evaluators trip over one of them,
-and two quoted that sentence back. A gate scoped to one page is a guard against
-one file, not against a class.
+**A gate scoped to one page guards one file, not a class.** The first version read
+`Tools.md` alone, on the convention that one page owns the lists and the others cite
+it --- and `Building.md` and `README.md` were already restating them, wrong, in the
+commit that shipped the gate green. Hence the sweep.
 
-Four shapes are recognised, and each is a site that was published at `4f97bac`:
+Four shapes are recognised, each taken from a site that really published:
 
 | shape | example |
 |---|---|
@@ -656,28 +592,16 @@ Two judgement calls worth keeping:
   claim, so the verb list is explicit.
 
 Twelve of its eighteen probes cover the sweep, seven positive and five
-negative, each taken from the real corpus. Verified the only way that means
-anything: reverting `README.md`, `Building.md` and `Documentation/index.md` to
-`4f97bac` and running it, which reports six sites --- round 4's three on
-`Building.md`, README's, plus two nobody had found.
+negative, each taken from the real corpus. The verification that means anything
+is reverting the offending pages to the commit that shipped them and confirming
+the gate names every site.
 
-**Its own patterns had to be checked by hand, and one needed fixing --- and that
+**Its six patterns are built with `new RegExp(...)` from shared constants, and that
 is what made [check_regex_safety.mjs](#the-regex-safety-gate) read constructed
-regexes.** They are built with `new RegExp(...)` from shared string constants, so
-at the time they were not regex *literals* and the gate could not see them; the
-blind spot was a count in `--census` and nothing more. Run through recheck
-directly, the line-initial rule came back **polynomial**: a lazy gap
-(`[^\n]{0,80}?`) and the count after it could divide the same text. It is now two
-steps, an anchored match for the wrapper at the head of the line and a search of
-a bounded slice of what follows, with no division to try; a second pattern was
-polynomial for two groups that could each eat the same leading space, and is one
-character class now. All six are `safe`, and all six are checked by the gate on
-every run.
-
-**A gate that can go quadratic on a long table row is the shape the repository
-refuses everywhere else**, and writing patterns as constructed strings was enough
-to walk past the gate that would have said so. That is fixed at the gate rather
-than here.
+regexes** --- as literals-only it could not see them, and the line-initial rule was
+in fact polynomial (a lazy gap and the count after it could divide the same text).
+It is two steps now, anchored at the head of the line with no division to try. All
+six are `safe`, and all six are checked on every run.
 
 ### The regex-safety gate
 
@@ -737,14 +661,11 @@ fail on day one against fifty findings, and a gate that fails on day one gets
 switched off. Exponential is the class that turns a content edit into an
 unbounded hang.
 
-**The `degN` in a census is worth less than the verdict beside it**, and that is
-worth knowing before quoting one. Measured on a single pattern, three runs each:
-the native agent says polynomial degree 2 where the pure-JavaScript fallback says
-degree 3. They agree on exponential-or-not, which is what the gate rests on, and
-they agree on all eight classification probes --- but a degree is a ranking aid
-for reading a census, not a number to write into prose. An earlier draft of this
-file quoted a "degree 3" that was the fallback's answer, arrived at because the
-manual run had silently taken the slow path.
+**Never quote a `degN` from a census.** The two backends disagree on it --- the
+native agent says polynomial degree 2 where the pure-JavaScript fallback says
+degree 3 on the same pattern --- while agreeing on exponential-or-not, which is
+what the gate rests on, and on all eight classification probes. A degree is a
+ranking aid for reading a census, not a number to write into prose.
 
 Three implementation details are load-bearing:
 
@@ -774,17 +695,14 @@ Honest limitation, which should not be papered over: a regex recheck cannot
 decide comes back `unknown`, and an unknown is an *unchecked* regex rather than a
 passing one (currently 0; `--census` prints them).
 
-#### It reads constructed regexes too, and that was not a rounding error
+#### It reads constructed regexes too
 
-The scan used to cover regex **literals** only. `--census` reported how many
-`new RegExp(...)` constructions existed, which kept the blind spot a number
-rather than a surprise --- and a number is all it was. **Building a pattern out
-of shared fragments is the ordinary way to avoid writing a sub-pattern six
-times**, and doing it made the regex invisible to the gate that exists to read
-it. Round 4's own fix pass wrote six of them into `check_gate_lists.mjs`; one
-came back polynomial when finally put through recheck by hand, and nothing in
-the repository would have said so. A gate whose coverage you can leave by
-writing idiomatic JavaScript is not covering much.
+**Building a pattern out of shared fragments is the ordinary way to avoid writing
+a sub-pattern six times**, and a literals-only scan cannot see one --- so a gate
+whose coverage you leave by writing idiomatic JavaScript is not covering much.
+`check_gate_lists.mjs` has six such patterns and one of them was polynomial; while
+the scan counted constructions in `--census` instead of folding them, nothing in
+the repository would have said so.
 
 [scripts/lib/regex-fold.mjs](scripts/lib/regex-fold.mjs) folds a construction to
 the pattern it builds, where the source decides that: string and template

@@ -80,23 +80,16 @@ The rest of this file is the maintenance guide for updating existing pages or ad
 - `docs/Reference/Built-In/WinNativeCommonCtls/` — Windows Native Common Controls compatibility package: a VB6-compatible Microsoft Common Controls 6.0 (`MSCOMCTL.OCX`) replacement, written on top of the Win32 ComCtl32 controls. Eight controls (**DTPicker**, **ImageList**, **ListView**, **MonthView**, **ProgressBar**, **Slider**, **TreeView**, **UpDown**), plus eight sub-object classes (**ListImages** / **ListImage**, **ListItems** / **ListItem**, **ColumnHeaders** / **ColumnHeader**, **Nodes** / **Node**) reached through container properties on the three collection-bearing controls, plus ~16 user-facing enumerations. Each control is a `<Name>BaseCtl` (`[COMCreatable(False)]`) plus a thin `<Name>` leaf tagged `[WindowsControl(...)]` — the same split VB-package and CEF use.
 - `docs/Reference/Built-In/AppGlobalClassObject/` — the `App` global object available in every twinBASIC project: the `_App` interface plus its property pages under `_App/` (`Build`, `Comments`, `CompanyName`, `EXEName`, …). 38 files.
 
-  > **This package published nothing at all until it was fixed**, and the two
-  > causes are both worth knowing about.
-  >
-  > The 37 pages under `_App/` were swallowed by a blanket `**/_*/**` rule in
-  > `_config.yml`'s `exclude:`, which existed to drop `_Images`. The twinBASIC
-  > interface really is named `_App`, after the COM hidden-interface convention,
-  > so the folder name and the build convention collided. The rule is now scoped
-  > to `**/_Images/**` (plus `**/*.af`), and underscore-prefixed *pages* such as
-  > `CustomControls/Framework/_CustomControlContext.md` were never affected --
-  > the pattern matches a directory.
-  >
-  > Separately `index.md` carried a UTF-8 BOM, which sits in front of the `---`
-  > and stops `gray-matter` recognising any frontmatter. `discover` then filed it
-  > as a *static file*, so its raw markdown was copied into the output tree and
-  > served verbatim on the live site, frontmatter keys and all. `discover.mjs`
-  > now strips a leading BOM before parsing, so no source file can fail that way
-  > again; editors on Windows add one without being asked.
+  > **This package published nothing at all until two causes were fixed**, and both
+  > leave a live rule. A blanket `**/_*/**` rule in `_config.yml`'s `exclude:`, there
+  > to drop `_Images`, swallowed all 37 pages under `_App/` --- the twinBASIC interface
+  > really is named `_App`, after the COM hidden-interface convention. It is scoped to
+  > `**/_Images/**` (plus `**/*.af`) now, so **never widen an exclude to a bare
+  > underscore prefix.** Separately `index.md` carried a UTF-8 BOM, which sits in front
+  > of the `---` and stops `gray-matter` recognising any frontmatter at all, so
+  > `discover` filed it as a *static file* and served the raw markdown verbatim;
+  > `discover.mjs` strips a leading BOM before parsing now, and editors on Windows add
+  > one without being asked.
 - `docs/Reference/Built-In/tbIDE/` — IDE Extensibility package (this is the **addin SDK**). The package is type-only — it ships **public interfaces + CoClasses** that an addin DLL binds to; every implementation behind them lives in the twinBASIC IDE itself. The user-facing surface is one entry-point factory (`tbCreateCompilerAddin`) plus 23 CoClasses grouped by role: the addin contract (`AddIn`), the root API (`Host`), the loaded `Project`, the editors collection (`Editor` / `CodeEditor` / `Editors`), the virtual file system (`FileSystem` / `FileSystemItem` / `Folder` / `File`), the in-IDE UI surface (`Toolbar` / `Toolbars` / `Button` / `ToolWindow` / `ToolWindows`), the HTML DOM inside a tool window (`HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` / `HtmlEventProperty` / `HtmlEventProperties`), the `DebugConsole`, `KeyboardShortcuts`, `Themes`, and the single concrete user-instantiable helper class `AddinTimer`. Flat layout — one page per CoClass / Class plus the index landing.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
@@ -287,22 +280,16 @@ markdown-it's typographer (enabled in `builder/render.mjs`) converts the ASCII s
 | `--`   | en-dash `–`  | bullet-list separator (rule 7), ranges |
 | `---`  | em-dash `—`  | parenthetical asides (rule 3), breaks in thought |
 
-**Alt text converts too, and a note here once claimed the opposite.** markdown-it's own
-`replacements` rule genuinely does not descend into an image token's children --- but
-`kramdownDashesPlugin` ([builder/render.mjs](builder/render.mjs), registered after
-`replacements`) walks with `walkTokens`, which recurses, so it reaches image alt and
+**Alt text converts too.** markdown-it's own `replacements` rule does not descend into an
+image token's children, but `kramdownDashesPlugin` ([builder/render.mjs](builder/render.mjs),
+registered after it) walks with `walkTokens`, which recurses, so it reaches image alt and
 converts the dash like any other text. Measured: **zero literal `--` survives in any `alt=`
 anywhere in the built site**, in all three trees.
 
-> **How the wrong version got written, because the mistake is reusable.** It carried the
-> sentence *"verified by rendering through the repository's own markdown-it, not inferred"*
-> --- and that verification used the npm dependency, not the instance `render.mjs`
-> configures. A bare `markdown-it@14.2.0` with `typographer: true` leaves `--` in alt text
-> untouched, so the test reproduced the claim perfectly and told you nothing about this
-> site. The plugin had been in the tree for four months at the time, and four of the five
-> alt strings in `docs/` that contain `---` were committed *one minute after* the note, by
-> the same pass. **Verifying against the library a repository depends on is not verifying
-> against the pipeline it runs** --- render through `builder/`, or read the built HTML.
+> **Verify through `builder/`, never a bare markdown-it.** A plain `markdown-it` with
+> `typographer: true` leaves `--` in alt text untouched, so testing against the npm
+> dependency reproduces a wrong claim perfectly and tells you nothing about this site.
+> Render through the pipeline, or read the built HTML.
 
 The source uses the ASCII forms; the rendered HTML uses the typographic characters. Literal `–` or `—` in `docs/` markdown source is forbidden — see the Don'ts at the end of this file. `scripts/convert_em_dash_separators.mjs` is the canonical normaliser if any literals slip back in.
 
@@ -321,20 +308,16 @@ alongside their licence files.
 | **Source Serif 4** | PDF body text only | `wght 200-900` | 138 KB + 109 KB italic |
 
 Inter is the brand face: twinbasic.com has always named it first in its own
-stack, it just never shipped a `@font-face` to deliver it, so it rendered as
-Inter only for visitors who happened to have it installed. Cascadia Mono is the
-ligature-free cut of Microsoft's terminal font --- the Windows/Visual Studio
-lineage twinBASIC sits in, and in a *language* reference the literal characters
-are the subject matter, so a face that draws `->` as one mark is working against
-the text. Source Serif is the book's body face and nothing else's; a sans at
-10.5pt over nearly two thousand printed pages is tiring, and no web stylesheet
+stack, it just never shipped a `@font-face` to deliver it. Cascadia Mono is the
+**ligature-free** cut of Microsoft's terminal font --- in a *language* reference
+the literal characters are the subject matter, so a face that draws `->` as one
+mark is working against the text, and any replacement must be ligature-free too.
+Source Serif is the book's body face and nothing else's; no web stylesheet
 references it, so no reader ever downloads it.
 
-Reader cost on the web is 219 KB on a cold visit --- the two roman faces, both
-preloaded --- then 166 KB the first time a page sets italic text, and 77 KB more
-only if some of that italic text is code, which most pages never do. All of it
-is cached across the other 868 pages. For scale, the search index every page
-already pulls is 3.4 MB.
+Reader cost is 219 KB cold (both roman faces, preloaded), 166 KB more the first
+time a page sets italic text and 77 KB beyond that only if the italic is code
+--- against the 3.4 MB search index every page already pulls.
 
 ### Regenerating the fonts
 
@@ -401,12 +384,10 @@ A task-graph scheduler / parallelisation pass is designed in [builder/PLAN-sched
 
 ### Compiling the reference's own code samples
 
-Round 6 pointed the harness at the twinBASIC reference for the first time and found two
-samples that do not run: `WinNativeCommonCtls/ListView`'s flagship example passed an icon
-key in the `Icon` slot, which the same package's prose says is validated against the
-unbound `ListView.Icons` and raises 35613, and `Core/Event`'s first sample was a `Sub` with
-no name. Both had shipped. Every gate was green over them, because a `tb` fence is
-something `check_code_regions.mjs` protects the *contents* of and never evaluates.
+Two reference samples had shipped that do not compile --- one passing an icon key in a slot
+the same package's prose says is validated, one a `Sub` with no name. Every gate was green
+over them, because a `tb` fence is something `check_code_regions.mjs` protects the
+*contents* of and never evaluates.
 
 `examples.bat` over [scripts/check_examples.mjs](scripts/check_examples.mjs) is what asks
 the compiler now. A sample opts in by carrying `check_build` in its fence info string; the
@@ -463,7 +444,7 @@ build.bat && check.bat
 
 On the dev box that is ~4 s of build against ~37 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker got folded into the build's task graph, what it cost and what it saved; the axe follow-ons are designed there but not implemented.
 
-**If the change touched `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, run `test.bat` as well** --- another ~8 s. Four of its six gates cannot be affected by a content edit at all. **Two can.** `check_gate_lists.mjs` is the easy one to predict: it reads `README.md` and every page under `docs/Documentation/`, so an edit to any developer page that states a gate count can fail it. **`check_code_regions.mjs` is the one worth understanding**, and which half of it a content edit reaches is worth keeping straight. Its corpus sweep has `ROOT = <repo>/docs` and tokenises all 906 markdown files, so a page that provokes a rewrite into *altering* a code region fails it --- that half is content-dependent. Its fixed probes are not: they run against their own sources whatever the tree holds, and they cover the **mirror** fault, where a rewrite silently stops firing. The sweep structurally cannot see that one, because text the rewrite skipped is stashed and restored unchanged and every region still matches. So run `test.bat` after adding an unusual code construct --- a fence whose contents include a fence marker, a 4-space indented block, an admonition wrapping a fence --- and read the built page as well, because for the mirror fault the gate is asserting that the stasher still works rather than checking your page. Round 3 of the use-case evaluation found an author routed straight past all of this by the old wording, which claimed no `test.bat` gate reads a page:
+**If the change touched `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, run `test.bat` as well** --- another ~8 s. Four of its six gates cannot be affected by a content edit at all. **Two can.** `check_gate_lists.mjs` is the easy one to predict: it reads `README.md` and every page under `docs/Documentation/`, so an edit to any developer page that states a gate count can fail it. **`check_code_regions.mjs` is the one worth understanding**, and which half of it a content edit reaches is worth keeping straight. Its corpus sweep has `ROOT = <repo>/docs` and tokenises all 906 markdown files, so a page that provokes a rewrite into *altering* a code region fails it --- that half is content-dependent. Its fixed probes are not: they run against their own sources whatever the tree holds, and they cover the **mirror** fault, where a rewrite silently stops firing. The sweep structurally cannot see that one, because text the rewrite skipped is stashed and restored unchanged and every region still matches. So run `test.bat` after adding an unusual code construct --- a fence whose contents include a fence marker, a 4-space indented block, an admonition wrapping a fence --- and read the built page as well, because for the mirror fault the gate is asserting that the stasher still works rather than checking your page:
 
 ```sh
 build.bat && check.bat && test.bat
@@ -498,7 +479,7 @@ Both CI workflows run every one of these as its own step, unconditionally and
 without invoking the `.bat` files --- so skipping `test.bat` locally changes
 what a content edit costs you, never what reaches `staging`.
 
-The build itself includes an additional guard: tbdocs's nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during the COMPUTE phase and aborts the build if any nav-visible page has a `parent:` (or `parent:` + `grand_parent:`) that does not resolve to exactly one page in the nav tree. It catches two failure modes:
+The nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during COMPUTE and aborts the build on two failure modes, both otherwise silent:
 
 - **Ambiguity** — multiple pages share the title declared in `parent:` and `grand_parent:` is either absent or insufficient to disambiguate. The page would silently appear under every matching parent.
 - **Orphan** — no page has the title declared in `parent:`. The page would silently disappear from the navigation sidebar.
@@ -533,11 +514,10 @@ they are.
   on the shell's own metacharacters, and fails late and partially, which is worse than
   not writing the file at all. The shell is for running things, not for authoring them.
 
-  **It fails silently, which is the part worth fearing.** A scratch fence classifier
-  written through `<<'EOF'` had every `"\\s+"` in it delivered as `"\s+"`, so
-  `(?:Public|Private|…)\s+` became `…s+` and matched nothing. It ran, it printed a
-  plausible table, and it reported **444 unclassifiable fences against a true 32** ---
-  a number that reads as a finding about the corpus and was a finding about the quoting.
+  **It fails silently, which is the part worth fearing.** A scratch classifier written
+  through `<<'EOF'` had every `"\\s+"` delivered as `"\s+"`, matched nothing, and reported
+  **444 unclassifiable fences against a true 32** --- a number that reads as a finding
+  about the corpus and was a finding about the quoting.
 - Don't push or force-push without explicit user request.
 - Don't leave a remote image URL in a finished page. A pasted `https://github.com/user-attachments/assets/...` link is fine to write --- [builder/vendor-assets.mjs](builder/vendor-assets.mjs) downloads it to `docs/assets/attachments/gh-<uuid>.<ext>` on the next local build and rewrites the render to point there; commit the downloaded file with the edit. Any other remote host has no such handling: download it yourself and commit it under the section's `Images/` folder. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` dropped async image loading, so an image still in flight when the page-breaking pass runs raises instead of degrading. The build enforces this unconditionally (see [Site integrity check](#site-integrity-check)); `--check-remote-assets` is the standalone checker's flag, not a `tbdocs` one. The check is scoped to `<img>`; `<iframe>` is untouched, but the site no longer has any embeds. A video is authored as a marked link -- `[Title](https://www.youtube.com/watch?v=<id>){: .video }` -- which `videoLinkPlugin` ([builder/render.mjs](builder/render.mjs)) renders as a locally vendored poster frame linking out to the video page, styled by `.video-link` in `docs/_sass/custom/custom.scss`. That makes the site free of third-party requests entirely; don't reintroduce an embed or a hotlinked `img.youtube.com` thumbnail.
 - **Don't hand-edit a diagram's `.svg`, and don't change its `font-family` anywhere but the `.dot`.** The `.svg` is a build artifact; the next build overwrites it. More to the point, Graphviz sizes every box to the text *it* measured, so a face the layout never saw leaves labels hanging outside their boxes --- which is exactly how 27 labels shipped that way across three diagrams. Edit the `.dot`, rebuild, and let `node scripts/check_dot_fit.mjs` confirm it; see [Diagrams](WIP.Typography.md#diagrams).
