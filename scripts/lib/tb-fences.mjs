@@ -226,12 +226,23 @@ const KIND_RE = /\b(Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|S
 // A declared name, for the collision check the batcher makes -- and the set of
 // kinds it applies to is measured rather than assumed, because guessing it
 // wide is expensive. Two generated modules in one project may each declare
-// `Public Function Foo`, `Public Type Rec` and `Public Const Answer`, and two
-// different Enums may each have a member called `Red`; two Enums with the SAME
-// name are TB5000 `duplicate definition in the current scope`. So only
-// type-level names can collide, and a rule that also tracked procedures would
-// split batches -- each costing a whole IDE startup -- for nothing.
-const COLLIDES = /^(?:Class|Module|Interface|CoClass|Library|Namespace|Enum)$/i;
+// `Public Function Foo` and `Public Const Answer`, and two different Enums may
+// each have a member called `Red`; two Enums with the SAME name are TB5000
+// `duplicate definition in the current scope`. So only type-level names can
+// collide, and a rule that also tracked procedures would split batches -- each
+// costing a whole IDE startup -- for nothing.
+//
+// `Type` and `Structure` are in the set for a reason that took a real failure
+// to see, and it is NOT that two Types collide with each other -- they do not,
+// which is what an earlier measurement established and why they were left out.
+// It is that a module-scoped `Type Foo` and a project-scoped `CoClass Foo` are
+// both in scope inside that module, so a reference to `Foo` there is TB5137
+// `'Foo' is ambiguous`. Features/Language/Pointers.md#1 declares the Type and
+// Features/Language/Interfaces-CoClasses.md#5 the CoClass; they compiled apart
+// for as long as nothing put them in one project. A collision rule has to cover
+// the names a sample can be made ambiguous BY, not only the ones two samples
+// would duplicate.
+const COLLIDES = /^(?:Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure)$/i;
 const NAME_RE = /\b(?:Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure)\s+\[?([A-Za-z_][A-Za-z0-9_]*)\]?/i;
 
 // Statement blocks, which have to balance for a statement run to be wrappable.

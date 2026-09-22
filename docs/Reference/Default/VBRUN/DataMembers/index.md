@@ -12,7 +12,7 @@ has_toc: false
 
 The **DataMembers** object is a collection of names that a data source class advertises at design time, so that a consumer binding to the data source can choose which member to bind to. Each entry is a **String** --- the name of a data member the source can supply on request. The data source manages the list directly with [**Add**](#add), [**Remove**](#remove), and [**Clear**](#clear); the design-time environment reads it back through [**Count**](#count), [**Item**](#item), and **For Each** iteration to populate the data member picker.
 
-```tb
+```tb check_build
 ' Inside a class whose DataSourceBehavior is set to make it a data source.
 Private Sub Class_Initialize()
     UserControl.DataMembers.Add "Customers"

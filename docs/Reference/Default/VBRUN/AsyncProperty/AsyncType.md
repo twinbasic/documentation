@@ -23,7 +23,7 @@ The value mirrors the *AsyncType* argument passed to **UserControl.AsyncRead** w
 
 This example checks **AsyncType** in the completion event and assigns the result to the appropriate property.
 
-```tb
+```tb check_build
 Private Sub UserControl_AsyncReadComplete(AsyncProp As AsyncProperty)
     If AsyncProp.PropertyName = "Picture" Then
         If AsyncProp.AsyncType = vbAsyncTypePicture Then

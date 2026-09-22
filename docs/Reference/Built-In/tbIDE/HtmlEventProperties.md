@@ -30,7 +30,7 @@ End Sub
 
 When inline HTML inside a tool window calls the IDE-side `raiseEvent(eventName, event, stopPropagation, ...customData)` helper, the trailing *customData* values flow through to the addin's listener as `eventInfo.customData0`, `eventInfo.customData1`, …, numerically indexed from zero. This is the mechanism the listview / virtual listview use to attach per-row context (file path, line number, …) to their item events.
 
-```tb
+```tb check_build
 ' Inline HTML — sample 15:
 '   <div class="match" onclick="raiseEvent('onClickMatch', event, true, 'C:/file.twin', 42, 8)">…</div>
 
@@ -46,7 +46,7 @@ End Sub
 
 Some events --- notably the virtual listview's `onAsyncGetItemHTML` --- are *asynchronous*: the IDE asks the addin to produce content for a specific argument and expects the answer back through the event object itself. The argument arrives on the event as `eventInfo.asyncArgument`, and the listener responds by calling `eventInfo.setAsyncResult(answer)`:
 
-```tb
+```tb check_build
 Private Sub OnAsyncGetItemHTML(ByVal eventInfo As HtmlEventProperties)
     Dim itemIndex As Long = eventInfo.asyncArgument
     eventInfo.setAsyncResult("<div>Row " & itemIndex & "</div>")

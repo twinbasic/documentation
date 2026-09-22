@@ -13,7 +13,7 @@ twinBASIC provides several enhancements to API and method declarations to make w
 
 The `DeclareWide` keyword, in place of `Declare`, disables ANSI<->Unicode conversion for API calls. This applies both directly to arguments, and to String arguments inside a UDT. For example, the following are equivalent in functionality:
 
-```tb
+```tb check_build
 Public Declare PtrSafe Sub FooW Lib "some.dll" (ByVal bar As LongPtr)
 Public DeclareWide PtrSafe Sub Foo Lib "some.dll" Alias "FooW" (ByVal bar As String)
 ```
@@ -42,7 +42,7 @@ Public Function MyExportedFunction CDecl(foo As Long, Bar As Long) As Long
 
 Support for callbacks using `CDecl` is also available. You would pass a delegate that includes `CDecl` as the definition in the prototype. Here is an example code that performs a quicksort using the [`qsort` function](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-wsprintfw):
 
-```tb
+```tb check_build
 Private Delegate Function LongComparator CDecl ( _
     ByRef a As Long, _
     ByRef b As Long _
@@ -111,7 +111,7 @@ int WINAPIV wsprintfW(
 
 The twinBASIC declaration and function using it can be written as shown:
 
-```tb
+```tb check_build
 Private DeclareWide PtrSafe Function wsprintfW CDecl _
 Lib "user32" ( _
   ByVal buf As String, _

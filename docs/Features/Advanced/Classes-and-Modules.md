@@ -17,7 +17,7 @@ Classes now support a `New` sub with ability to add arguments, called as the cla
 
 For example a class can have:
 
-```tb
+```tb check_build
 [ComCreatable(False)]
 Class MyClass
 Private MyClassVar As Long
@@ -80,7 +80,7 @@ This is primarily used to create Standard DLLs (see [Project Types](../Project-C
 
 By default, the compiler creates a default implementation of `IDispatch` in all VBx/twinBASIC classes. This allows late-binding and other features. Sometimes however you want a more limited class that only implements `IUnknown`. This is possible in twinBASIC via the `NotDispatchable` keyword, used like this:
 
-```tb
+```tb check_build
 NotDispatchable Class MyClass
 '...
 End Class

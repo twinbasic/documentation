@@ -19,7 +19,7 @@ The returned object is a picture whose attached palette identifies the colours t
 
 This example responds to an ambient **Palette** change by triggering a repaint.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "Palette"

@@ -19,7 +19,7 @@ A control that does not have its own font explicitly set should display text usi
 
 This example responds to an ambient **Font** change and applies it to the control's caption font.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "Font"

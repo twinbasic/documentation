@@ -545,7 +545,7 @@ leaves your tree untouched.
 The probe is an ordinary module with a [`[RunAfterBuild]`](../../tB/Core/Attributes#runafterbuild)
 Sub, which the IDE runs once the exe is linked:
 
-```tb
+```tb check_build
 Module ZoneProbe
     [RunAfterBuild]
     Sub ShowZones()

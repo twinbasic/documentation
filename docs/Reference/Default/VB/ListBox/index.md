@@ -10,7 +10,7 @@ has_toc: false
 
 A **ListBox** is a Win32 native control that displays a vertically-scrolling list of items, optionally laid out in multiple columns, from which the user picks one item --- or any number of items, when [**MultiSelect**](#multiselect) is non-zero. Each item is a string, with an optional **LongPtr** value the application can store alongside it through [**ItemData**](#itemdata). The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Text**](#text) and the default event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     With List1
         .AddItem "Apple"
@@ -49,7 +49,7 @@ Changing **Style** at run time recreates the underlying window, preserving the i
 
 Items are held inside the OS list-box control; the [**List**](#list) and [**ItemData**](#itemdata) arrays are projections onto that storage. Items are added with [**AddItem**](#additem), removed with [**RemoveItem**](#removeitem), and the whole list is cleared with [**Clear**](#clear). After each [**AddItem**](#additem) call, [**NewIndex**](#newindex) reports the position the item was inserted at --- useful when [**Sorted**](#sorted) is **True** and the position is not predictable from the call.
 
-```tb
+```tb check_build
 List1.Sorted = True
 List1.AddItem "Cherry"
 List1.AddItem "Apple"           ' Inserted at index 0 — List1.NewIndex = 0
@@ -62,7 +62,7 @@ Indexing past the end of the list raises run-time error 5 (*Invalid procedure ca
 
 [**ListIndex**](#listindex) is the zero-based index of the focused item, or `-1` when nothing is focused. [**Text**](#text) returns the text at that index. In single-select mode (**vbMultiSelectNone**) the focused item is also the selected item, and assigning to [**ListIndex**](#listindex) selects it and raises [**Click**](#click) if the value actually changes. In **vbMultiSelectSimple** and **vbMultiSelectExtended** the focused item is independent of the selection set; use [**Selected**](#selected) to read or write the selection state of any individual item, and [**SelCount**](#selcount) to count them. [**SelectedIndices**](#selectedindices) returns the selected indices as a **Collection** for convenient iteration.
 
-```tb
+```tb check_build
 Dim idx As Variant
 For Each idx In List1.SelectedIndices()
     Debug.Print List1.List(idx)
@@ -231,7 +231,7 @@ Syntax: *object*.**ItemData**( *Index* ) [ = *value* ]
 
 In **vbListBoxColorSwatch** mode, **ItemData** is read by the painting code as the **OLE_COLOR** to draw in the swatch --- a typical use is to fill it with a list of palette colours from which the user selects one. In the other styles **ItemData** is purely application-defined.
 
-```tb
+```tb check_build
 List1.AddItem "Highlight"
 List1.ItemData(List1.NewIndex) = vbYellow
 ```
@@ -500,7 +500,7 @@ Returns the zero-based indices of every currently-selected item as a **Collectio
 
 Syntax: *object*.**SelectedIndices**
 
-```tb
+```tb check_build
 Dim idx As Variant
 For Each idx In List1.SelectedIndices()
     Debug.Print idx & ": " & List1.List(idx)

@@ -13,7 +13,7 @@ The **ListImages** collection is the entry point for managing the pictures insid
 
 The class is tagged `[COMCreatable(False)]` --- user code accesses **ListImages** through the parent [**ImageList**](.) control's [**ListImages**](.#listimages) property, never by direct instantiation.
 
-```tb
+```tb check_build
 With ImageList1.ListImages
     .Add , "doc",    LoadPicture(App.Path & "\doc.ico")
     .Add , "folder", LoadPicture(App.Path & "\folder.ico")

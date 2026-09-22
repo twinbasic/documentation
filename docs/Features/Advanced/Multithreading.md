@@ -13,7 +13,7 @@ While there's no native language syntax yet (planned), you can call `CreateThrea
 
 In a new Standard EXE project, add a CommandButton and TextBox to your form:
 
-```tb
+```tb check_build
 Private Declare PtrSafe Function GetCurrentThreadId Lib "kernel32" () As Long
 
 Private Declare PtrSafe Function CreateThread Lib "kernel32" ( _

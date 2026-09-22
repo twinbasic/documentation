@@ -15,7 +15,7 @@ An **OLE** *container* control hosts a linked or embedded OLE Automation object 
 
 There is no default property. The default-designer event is [**Click**](#click).
 
-```tb
+```tb check_build
 ' The OLE-specific calls below are not currently functional
 ' in twinBASIC; the example is given for reference only.
 Private Sub Form_Load()

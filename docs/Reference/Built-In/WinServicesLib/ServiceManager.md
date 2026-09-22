@@ -13,7 +13,7 @@ The per-service configuration object. One [**ServiceManager**](.) describes one 
 > [!NOTE]
 > Do not construct **ServiceManager** instances directly. Call [**Services.ConfigureNew**](Services#configurenew) instead --- it allocates a fresh manager and registers it in the package's internal collection so the dispatcher can find it.
 
-```tb
+```tb check_build projname=winservices-demo
 With Services.ConfigureNew
     .Name             = "MyService"
     .Description      = "An example twinBASIC service"
@@ -38,7 +38,7 @@ The launch-time arguments the SCM forwarded to the service. **String()**. Popula
 
 `LaunchArgs(0)` is the *first user-supplied* argument --- the SCM-supplied service name that comes through as `argv[0]` is dropped before the array is populated, so the indexing matches the caller's mental model.
 
-```tb
+```tb check_build
 Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
         Implements ITbService.EntryPoint
     If Join(ServiceManager.LaunchArgs) <> "MySecretPassword" Then
@@ -110,7 +110,7 @@ Syntax (Let): *manager*.**Description** = *value*
 
 The value is written to the SCM by [**Install**](#install) via `ChangeServiceConfig2W(SERVICE_CONFIG_DESCRIPTION)` and is applied on a fresh install or refreshed on every re-install. Assign this property before calling [**Install**](#install); changing it at run-time has no effect until the next install.
 
-```tb
+```tb check_build
 With Services.ConfigureNew
     .Name        = "MyBackgroundSvc"
     .Description = "Processes incoming requests and writes results to the event log."
@@ -185,7 +185,7 @@ The name is stored at `HKLM\SYSTEM\CurrentControlSet\Services\<Name>` when [**In
 
 **Name** must be assigned before calling [**Install**](#install) or [**Uninstall**](#uninstall). It is also the key the package's dispatcher uses to match an incoming SCM service-thread invocation to its [**ServiceManager**](.) configuration; every configured manager must have a unique **Name** within the EXE.
 
-```tb
+```tb check_build
 With Services.ConfigureNew
     .Name = "MyBackgroundSvc"
     ' ...other configuration
@@ -339,7 +339,7 @@ Opens the SCM, opens the service with `SERVICE_DELETE`, calls `DeleteService`. T
 
 A Win32 UDT that pairs a service name with its entry-point address. Used internally by [**Services.RunServiceDispatcher**](Services#runservicedispatcher) to build the table that `StartServiceCtrlDispatcherW` consumes.
 
-```tb
+```tb check_build
 Type SERVICE_TABLE_ENTRYW
     Name       As String
     EntryPoint As LongPtr

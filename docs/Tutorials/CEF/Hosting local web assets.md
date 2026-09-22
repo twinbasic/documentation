@@ -55,7 +55,7 @@ Most applications want to ship their HTML / JS / CSS *inside* the executable and
 
 At runtime, the helper below copies the contents of a `Resources` sub-folder out to a local path. Drop it into a `.twin` module in your project:
 
-```tb
+```tb check_build
 Module Files
 
     Private Sub CreateFile(ByVal Path As String, ByRef Data() As Byte)

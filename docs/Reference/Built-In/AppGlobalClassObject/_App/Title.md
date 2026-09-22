@@ -35,7 +35,7 @@ Assigning to **Title** updates the running process's description immediately. Th
 
 This example changes the application title to reflect the currently open document.
 
-```tb
+```tb check_build
 Dim fileName As String
 fileName = "Report.xlsx"
 App.Title = "MyApp -- " & fileName

@@ -45,7 +45,7 @@ These properties are cached references --- repeated reads return the same object
 
 The collection also supports `For Each` enumeration:
 
-```tb
+```tb check_build
 Dim f As Form
 For Each f In Forms
     Debug.Print f.Name, f.Caption
@@ -54,7 +54,7 @@ Next
 
 A common idiom is closing every open form at shutdown --- note that unloading shrinks the collection, so iterate backwards or by index from the top down:
 
-```tb
+```tb check_build
 Dim i As Long
 For i = Forms.Count - 1 To 0 Step -1
     Unload Forms(i)
@@ -148,7 +148,7 @@ Syntax: **LoadPicture**( [ *FileName* [, *Size* [, *ColorDepth* [, *X* [, *Y* ] 
 *X*, *Y*
 : *optional* Width and height overrides used when *Size* is **vbLPCustom**, in pixels.
 
-```tb
+```tb check_build
 Set imgLogo.Picture = LoadPicture(App.Path & "\logo.png")
 Set imgLogo.Picture = LoadPicture()        ' clears the picture
 ```

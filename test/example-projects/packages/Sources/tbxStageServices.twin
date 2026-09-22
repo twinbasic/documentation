@@ -1,0 +1,76 @@
+' The stage set's service classes -- see tbxStage.twin for why a stage set
+' exists at all. These are here rather than in that file because a Class cannot
+' be declared inside a Module.
+'
+' WinServicesLib's Services page configures two services at once, to show that
+' one EXE can host several, and names them MyServiceA and MyServiceB. No page
+' declares either: they are fiction the same way Text1 is, and a reader who
+' wants the full shape of a service class has ITbService, which carries a real
+' one. Declaring them here keeps a page about Services.ConfigureNew from
+' opening with two class definitions that are not what it is teaching.
+'
+' MyService itself is deliberately NOT here. Two pages declare their own --
+' ITbService and the package index -- and a stage copy would collide with both.
+'
+' ServiceCreator(Of T) does not constrain T -- `New ServiceCreator(Of BareClass)`
+' compiles, measured -- so these could have been empty classes. They implement
+' ITbService in full because the stage set is read by people looking for what a
+' sample assumed, and an empty class would answer that question wrongly.
+
+[COMCreatable(False)]
+Class MyServiceA
+
+    Implements ITbService
+
+    Public IsStopping As Boolean
+
+    Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.EntryPoint
+        ServiceManager.ReportStatus vbServiceStatusRunning
+    End Sub
+
+    Sub ChangeState(ByVal ServiceManager As ServiceManager, _
+                    ByVal dwControl As ServiceControlCodeConstants, _
+                    ByVal dwEventType As Long, _
+                    ByVal lpEventData As LongPtr) _
+            Implements ITbService.ChangeState
+        Select Case dwControl
+            Case vbServiceControlStop, vbServiceControlShutdown
+                IsStopping = True
+        End Select
+    End Sub
+
+    Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.StartupFailed
+    End Sub
+
+End Class
+
+[COMCreatable(False)]
+Class MyServiceB
+
+    Implements ITbService
+
+    Public IsStopping As Boolean
+
+    Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.EntryPoint
+        ServiceManager.ReportStatus vbServiceStatusRunning
+    End Sub
+
+    Sub ChangeState(ByVal ServiceManager As ServiceManager, _
+                    ByVal dwControl As ServiceControlCodeConstants, _
+                    ByVal dwEventType As Long, _
+                    ByVal lpEventData As LongPtr) _
+            Implements ITbService.ChangeState
+        Select Case dwControl
+            Case vbServiceControlStop, vbServiceControlShutdown
+                IsStopping = True
+        End Select
+    End Sub
+
+    Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.StartupFailed
+    End Sub
+
+End Class

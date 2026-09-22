@@ -131,7 +131,7 @@ That's it --- the preview pane re-renders on every edit.
 
 A reasonable fraction of users will run the application on a machine where the CEF runtime ZIP has not been installed. The [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event reports this case with the exact path the control searched:
 
-```tb
+```tb check_build
 Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) _
         Handles WebView.Error
     MsgBox "Failed to initialize the CEF control." & vbCrLf & vbCrLf & _

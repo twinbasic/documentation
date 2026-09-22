@@ -143,7 +143,7 @@ For compiled builds at runtime:
 
 If required, you can override this behaviour:
 
-```tb
+```tb check_build
 App.FusionHostEXEPath = "C:\Path\To\Host.exe"
 ```
 

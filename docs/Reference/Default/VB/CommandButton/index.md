@@ -30,7 +30,7 @@ End Sub
 
 A **CommandButton** raises [**Click**](#click) every time the user presses it --- by left-clicking, by pressing **Space** or **Enter** while it has focus, by typing the **Alt+** access key marked in the [**Caption**](#caption), by pressing **Esc** when [**Cancel**](#cancel) is **True**, or by pressing **Enter** anywhere on the form when [**Default**](#default) is **True**. Code can fire the same event by assigning **True** to [**Value**](#value):
 
-```tb
+```tb check_build
 cmdOK.Value = True              ' raises cmdOK_Click
 ```
 
@@ -263,7 +263,7 @@ Syntax: *object*.**Value** [ = *boolean* ]
 
 Assigning **True** raises [**Click**](#click) and resets **Value** to **False** immediately after the handler returns; assigning **False** does nothing. Reading **Value** therefore returns **False** in almost every situation.
 
-```tb
+```tb check_build
 cmdOK.Value = True              ' equivalent to a user click
 ```
 

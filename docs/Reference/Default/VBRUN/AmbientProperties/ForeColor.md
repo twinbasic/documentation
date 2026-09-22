@@ -19,7 +19,7 @@ A control that does not have its own foreground colour explicitly set should dra
 
 This example responds to an ambient **ForeColor** change and applies it to the control's text color.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "ForeColor"

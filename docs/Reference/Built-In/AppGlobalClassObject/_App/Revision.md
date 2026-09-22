@@ -21,7 +21,7 @@ Syntax: *object*.**Revision**
 
 This example prints the full version string to the debug console.
 
-```tb
+```tb check_build
 Debug.Print "Version: " & App.Major & "." & App.Minor & "." & App.Revision & "." & App.Build
 ```
 

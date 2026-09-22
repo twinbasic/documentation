@@ -38,7 +38,7 @@ A `WithEvents` reference receives [**OnClose**](#onclose) when the user dismisse
 
 [**RootDomElement**](#rootdomelement) is the **DefaultMember** of the **ToolWindow** interface --- so `myToolWindow.(...)` is equivalent to `myToolWindow.RootDomElement.Properties.(...)`. Because [**HtmlElementProperties**](HtmlElementProperties) is `[COMExtensible(True)]`, a string passed in parenthesis-syntax is resolved against the DOM at run time. The IDE treats CSS-style selectors specially, so:
 
-```tb
+```tb check_build
 ' Find the descendant element whose id is "dataEntry" and read its .Value:
 Dim entered As String = myToolWindow("#dataEntry").Value
 ```
@@ -99,7 +99,7 @@ Syntax: *toolWindow*.**ApplyCss** *styles*
 *styles*
 : *required* The CSS text. **String**.
 
-```tb
+```tb check_build
 ' Load CSS from an embedded resource:
 Dim css As String = StrConv(LoadResData("styles.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
 myToolWindow.ApplyCss css

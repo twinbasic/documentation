@@ -10,7 +10,7 @@ has_toc: false
 
 The **App** class wraps the running application's identity and version metadata, plus a small amount of process-level state (the module handle, the main thread ID, whether the process is running inside the twinBASIC IDE or with elevated privileges, …). It is a singleton --- there is exactly one **App** instance per process, owned by the runtime and exposed through the global **App** property of the [**Global**](../Global/) object. Code reaches it without qualification:
 
-```tb
+```tb check_build
 Debug.Print "Running from " & App.Path
 Debug.Print "Version " & App.Major & "." & App.Minor & "." & App.Revision & "." & App.Build
 

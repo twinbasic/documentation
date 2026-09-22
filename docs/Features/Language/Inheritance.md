@@ -59,7 +59,7 @@ This option supports full inheritance and OOP: `Protected` methods and variables
 
 Starting with a base class:
 
-```tb
+```tb check_build
 Private Class Animal
     Protected _name As String
     Protected _dob As Date  ' date of birth
@@ -103,7 +103,7 @@ End Class
 
 Others can inherit:
 
-```tb
+```tb check_build
 ' ===== Derived: Dog =====
 Private Class Dog
     Inherits Animal

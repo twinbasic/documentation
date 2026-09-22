@@ -9,7 +9,7 @@ permalink: /tB/Packages/WebView2/Types/COREWEBVIEW2_PHYSICAL_KEY_STATUS
 
 The bit-fields the Win32 `WM_KEYDOWN` / `WM_KEYUP` message family packs into its `lParam`, decoded into a record. The control reads the runtime's `COREWEBVIEW2_PHYSICAL_KEY_STATUS` structure on each accelerator keystroke and distributes it across individual arguments of the [**AcceleratorKeyPressed**](../WebView2/#acceleratorkeypressed) event --- application code does not normally create instances of this type directly.
 
-```tb
+```tb check_build
 Public Type COREWEBVIEW2_PHYSICAL_KEY_STATUS
     RepeatCount As Long
     ScanCode As Long

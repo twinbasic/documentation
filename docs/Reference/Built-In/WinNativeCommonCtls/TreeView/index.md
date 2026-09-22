@@ -10,7 +10,7 @@ has_toc: false
 
 A **TreeView** is a hierarchical display of [**Node**](Node) objects organized into a tree. Each node can be expanded or collapsed, optionally has a checkbox, and references an icon from an associated [**ImageList**](../ImageList/). The collection of nodes is accessed through [**Nodes**](#nodes); each [**Node**](Node) has its own siblings, parent, and child navigation properties.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Set TreeView1.ImageList = ImageList1
     TreeView1.Style = tvwTreelinesPlusMinusPictureText

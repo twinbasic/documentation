@@ -38,7 +38,7 @@ End Sub
 
 Clicking an unchecked or grey check box selects it; clicking a checked or grey check box clears it. The grey state is reachable only from code --- assign **vbGrayed** to **Value** to display it. Assigning a negative number raises run-time error 380 (*Invalid property value*).
 
-```tb
+```tb check_build
 Check1.Value = vbGrayed     ' show the indeterminate state
 ```
 
@@ -46,7 +46,7 @@ Check1.Value = vbGrayed     ' show the indeterminate state
 
 The text shown next to (or, with [**Alignment**](#alignment) `tbRightJustify`, before) the box comes from [**Caption**](#caption). An ampersand in the caption marks the next character as a keyboard mnemonic: pressing **Alt+** that character moves the focus to the check box and toggles its value. Use `&&` to display a literal ampersand.
 
-```tb
+```tb check_build
 Check1.Caption = "Use && in folder names"   ' renders as: Use & in folder names
 ```
 

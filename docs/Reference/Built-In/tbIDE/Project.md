@@ -17,7 +17,7 @@ The class groups four kinds of capability:
 - **Programmatic access** --- [**Evaluate**](#evaluate) runs an arbitrary expression against the running project context (the same engine as the DEBUG CONSOLE); [**RootFolder**](#rootfolder) is the entry into the virtual file system.
 - **Persistent storage** --- [**LoadMetaData**](#loadmetadata) / [**SaveMetaData**](#savemetadata) store per-addin key/value pairs inside the `.twinproj` file.
 
-```tb
+```tb check_build
 With Host.CurrentProject
     Host.DebugConsole.PrintText "Project: " & .Name & " (" & .Path & ")"
     Host.DebugConsole.PrintText "Version: " & .VersionMajor & "." & .VersionMinor & "." & _
@@ -117,7 +117,7 @@ Syntax: *project*.**Evaluate**( *EvalString* [, *Options* ] ) **As Variant**
 *Options*
 : *optional* A [**DebuggerEvaluateOptions**](Host#debuggerevaluateoptions) value. Default [**NONE**](Host#DebuggerEvaluateOptions_NONE).
 
-```tb
+```tb check_build
 On Error Resume Next
 Dim result As Variant = Host.CurrentProject.Evaluate("10.5 * 4")
 If Err.Number = 0 Then

@@ -12,7 +12,7 @@ The request side of a [**WebResourceRequested**](WebView2/#webresourcerequested)
 
 To be notified, register a URL filter first with [**AddWebResourceRequestedFilter**](WebView2/#addwebresourcerequestedfilter); only requests whose URI matches the filter raise the event.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     WebView21.AddWebResourceRequestedFilter "https://api.example.com/*", wv2All
 End Sub

@@ -18,7 +18,7 @@ A new **DataObject** is created with **New** and starts out empty.
 
 [**SetData**](SetData) places a value into the **DataObject** under a given clipboard format --- typically a value from the **ClipboardConstants** enumeration such as `vbCFText`, `vbCFUnicodeText`, or `vbCFBitmap`. A single object can hold the same logical payload under several formats at once, so consumers with different requirements can each find a representation they understand.
 
-```tb
+```tb check_build
 Dim Data As New DataObject
 Data.SetData "Hello, world!", vbCFText
 Data.SetData StrConv("Hello, world!", vbUnicode), vbCFUnicodeText
@@ -32,7 +32,7 @@ twinBASIC also accepts format names as plain strings: [**GetDataByName**](GetDat
 
 A consumer that did not place the data itself usually does not know which formats are present. [**GetFormat**](GetFormat) returns **True** if a given clipboard format is available, and [**GetFormatByName**](GetFormatByName) does the same for a named format. To discover the full set, [**AvailableFormats**](AvailableFormats) returns a [**DataObjectFormats**](DataObjectFormats) collection of [**DataObjectFormat**](DataObjectFormat) descriptors --- each with a `Name`, a `FormatType` from **ClipboardConstants**, and information about how the format is stored.
 
-```tb
+```tb check_build
 Dim F As DataObjectFormat
 For Each F In Data.AvailableFormats
     Debug.Print F.Name, F.FormatType
@@ -46,7 +46,7 @@ Next F
 
 When a **DataObject** contains a list of file paths --- for example, the payload of a Windows shell drag-and-drop --- [**Files**](Files) returns a [**DataObjectFiles**](DataObjectFiles) collection holding each path as a **String**.
 
-```tb
+```tb check_build
 Dim Path As Variant
 For Each Path In Data.Files
     Debug.Print Path

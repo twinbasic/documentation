@@ -12,7 +12,7 @@ A **Shape** is a windowless lightweight control that draws one of a fixed set of
 
 A **Shape** has no interactive elements --- no focus, no caption, and no mouse, keyboard, or drag events. The shape kind and its appearance are chosen entirely through properties; the only event raised by the control is [**Initialize**](#initialize). The default property is [**Shape**](#shape) and the default event is [**Initialize**](#initialize).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     shpPanel.Shape       = vbShapeRoundedRectangle
     shpPanel.BorderColor = vbBlack

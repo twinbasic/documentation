@@ -13,7 +13,7 @@ The **Nodes** collection is the entry point for managing the [**Node**](Node) tr
 
 The class is tagged `[COMCreatable(False)]` --- user code accesses **Nodes** through the parent [**TreeView**](.) control's [**Nodes**](.#nodes) property.
 
-```tb
+```tb check_build
 With TreeView1.Nodes
     Dim root As Node
     Set root = .Add(, , "root", "My Computer")

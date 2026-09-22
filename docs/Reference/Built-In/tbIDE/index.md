@@ -26,7 +26,7 @@ An addin project has three distinguishing settings:
 
 The DLL must export one function --- the entry point the IDE calls when it discovers and loads the addin:
 
-```tb
+```tb check_build
 Module MainModule
     [DllExport]
     Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
@@ -39,7 +39,7 @@ The returned object must implement [**AddIn**](AddIn). The IDE releases the obje
 
 A minimal addin class:
 
-```tb
+```tb check_build
 Private Class MyAddIn
     Implements AddIn
 

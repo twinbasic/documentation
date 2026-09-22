@@ -19,7 +19,7 @@ The value identifies the step the read is currently on --- `vbAsyncStatusCodeFin
 
 This example checks **StatusCode** during a download and reports an error when the read fails.
 
-```tb
+```tb check_build
 Private Sub UserControl_AsyncReadProgress(AsyncProp As AsyncProperty)
     If AsyncProp.StatusCode = vbAsyncStatusCodeError Then
         MsgBox "Download failed: " & AsyncProp.Status

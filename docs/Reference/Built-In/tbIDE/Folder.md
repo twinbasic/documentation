@@ -12,7 +12,7 @@ A folder inside the IDE's virtual file system. Extends [**FileSystemItem**](File
 
 A **Folder** also inherits the universal [**FileSystemItem**](FileSystemItem) members --- [**Name**](FileSystemItem#name), [**Path**](FileSystemItem#path), [**Type**](FileSystemItem#type), [**Parent**](FileSystemItem#parent). The most common entry point is [**Host.CurrentProject.RootFolder**](Project#rootfolder), and the most common operation is a **For Each** recursive traversal.
 
-```tb
+```tb check_build
 Private Sub WalkAllFiles(ByVal folder As Folder)
     Dim item As FileSystemItem
     For Each item In folder

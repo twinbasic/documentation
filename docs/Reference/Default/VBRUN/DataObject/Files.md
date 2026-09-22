@@ -19,7 +19,7 @@ The source side may also fill the **DataObject** with a list of files by adding 
 
 ### Example
 
-```tb
+```tb check_build
 Private Sub Form_OLEDragDrop(Data As DataObject, Effect As Long, Button As Integer, _
                              Shift As Integer, X As Single, Y As Single)
     If Data.GetFormat(vbCFFiles) Then

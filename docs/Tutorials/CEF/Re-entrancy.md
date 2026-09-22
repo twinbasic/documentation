@@ -42,7 +42,7 @@ The practical consequence: **NavigationStarting** handlers should keep their wor
 
 [**JsRun**](../../tB/Packages/CEF/CefBrowser/#jsrun) is the synchronous JavaScript bridge:
 
-```tb
+```tb check_build
 Dim product As Long = CefBrowser1.JsRun("multiplyTheseNumbers", 5, 6)
 ```
 

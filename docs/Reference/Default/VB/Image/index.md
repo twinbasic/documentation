@@ -12,7 +12,7 @@ An **Image** is a windowless lightweight control for displaying a picture --- a 
 
 The default property is [**Picture**](#picture) and the default event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Set imgLogo.Picture  = LoadPicture(App.Path & "\logo.png")
     imgLogo.Stretch      = True

@@ -15,7 +15,7 @@ The package ships as two paired components: a **CustomControls DESIGNER** librar
 
 Beyond providing ready-to-use controls, the package doubles as a worked example for authoring new custom controls. The `Waynes…` classes implement the same [**ICustomControl**](Framework/ICustomControl) interface that a hand-written control would, against the same [**CustomControlContext**](Framework/CustomControlContext) callback object and [**Canvas**](Framework/Canvas) drawing surface --- see the [Framework](Framework/) page for the host-side contract.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     btnGo.Caption = "Continue"
     btnGo.NormalState.BackgroundFill.ColorPoints.SetSolidColor vbBlue

@@ -16,7 +16,7 @@ The following new statements are available for controlling the procession of loo
 
 ## Example
 
-```tb
+```tb check_build
 Dim i As Long
 For i = 1 To 10
     If i Mod 2 = 0 Then Continue For  ' skip even numbers

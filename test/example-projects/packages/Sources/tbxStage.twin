@@ -36,4 +36,25 @@ Module tbxStage
     Public TreeView1 As TreeView
     Public UpDown1 As UpDown
 
+    ' The VB controls the package pages put on their forms alongside the
+    ' package's own, named as those pages name them.
+    Public List1 As ListBox
+    Public lblStatus As Label
+    Public lblClock As Label
+    Public lstNamedPipes As ListBox
+    Public MyForm As Form
+
+    ' CustomControls -- the Waynes... instances the reference pages assume.
+    Public btnGo As WaynesButton
+    Public Grid1 As WaynesGrid
+    Public txtName As WaynesTextBox
+    Public sldProgress As WaynesSlider
+    Public sldVolume As WaynesSlider
+
+    ' tbIDE. An addin reaches the IDE through a Host, and opens tool windows;
+    ' both are what the addin SDK's pages are written against.
+    Public Host As tbIDE.Host
+    Public myToolWindow As tbIDE.ToolWindow
+    Public myWindow As tbIDE.ToolWindow
+
 End Module

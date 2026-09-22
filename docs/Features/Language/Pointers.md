@@ -19,7 +19,7 @@ Allows passing null pointers to UDT members of APIs/interfaces. The equivalent b
 
 ### Example
 
-```tb
+```tb check_build
 Type Foo
    bar As Long
 End Type
@@ -52,7 +52,7 @@ The `CType(Of <type>)` operator specifies an explicit intent to cast one type to
 
 Consider the following UDTs:
 
-```tb
+```tb check_build
 Private Type foo
     a As Long
     b As Long
@@ -127,8 +127,18 @@ The classic `Len` and `LenB` functions can now be used to directly get the lengt
 
 `AddressOf` can be now be used on class/form/usercontrol members, including from outside the class by specifying the instance. Also, no need for `FARPROC`-type functions, you can use it like `Ptr = AddressOf Func`. So if you have class `CFoo` with member function `bar`, the following is valid:
 
-```tb
-Dim foo1 As New CFoo
-Dim lpfn As LongPtr = AddressOf foo1.bar
+```tb check_build
+Class CFoo
+    Public Function bar() As Long
+        Return 42
+    End Function
+End Class
+
+Module AddressOfDemo
+    Sub Demo()
+        Dim foo1 As New CFoo
+        Dim lpfn As LongPtr = AddressOf foo1.bar
+    End Sub
+End Module
 ```
 

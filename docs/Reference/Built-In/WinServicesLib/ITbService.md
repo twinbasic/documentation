@@ -16,7 +16,7 @@ The contract every service class in a **WinServicesLib** project implements. Thr
 
 The package's [**ServiceCreator**](ServiceCreator)`(Of T)` factory creates one instance per service start; the dispatcher trampoline holds the instance for the lifetime of the service and routes the three lifecycle subs to it.
 
-```tb
+```tb check_build projname=winservices-demo
 [COMCreatable(False)]
 Class MyService
     Implements ITbService

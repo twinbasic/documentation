@@ -20,7 +20,7 @@ The result is **True** if the **DataObject** can produce a value in *Format*, **
 
 ### Example
 
-```tb
+```tb check_build
 If Data.GetFormat(vbCFFiles) Then
     Dim Path As Variant
     For Each Path In Data.Files

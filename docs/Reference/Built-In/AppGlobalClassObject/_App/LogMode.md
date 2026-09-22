@@ -34,7 +34,7 @@ Syntax: *object*.**LogMode**
 
 This example checks the current log mode and prints it to the debug console.
 
-```tb
+```tb check_build
 Select Case App.LogMode
     Case vbLogOff
         Debug.Print "Logging is off."

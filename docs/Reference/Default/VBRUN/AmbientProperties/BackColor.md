@@ -19,7 +19,7 @@ A control that does not have its own background colour explicitly set should pai
 
 This example responds to an ambient **BackColor** change and applies it to the control's background.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "BackColor"

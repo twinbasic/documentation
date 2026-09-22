@@ -10,7 +10,7 @@ has_toc: false
 
 The IDE's DEBUG CONSOLE pane --- reached through [**Host.DebugConsole**](Host#debugconsole). The canonical place for an addin to write diagnostic and log output.
 
-```tb
+```tb check_build
 With Host.DebugConsole
     .PrintText "[MyAddIn] Project: " & Host.CurrentProject.Name
     .PrintText "[MyAddIn] Compiler: " & Host.CompilerVersion
@@ -45,7 +45,7 @@ Syntax: *debugConsole*.**PrintText** *Prompt* [, *ColorRGB* ]
 *ColorRGB*
 : *optional* The text colour as an RGB **Long** (use the `RGB(r, g, b)` function to construct one). Default 0 --- the IDE's default DEBUG CONSOLE foreground colour.
 
-```tb
+```tb check_build
 Host.DebugConsole.PrintText "Operation completed"                           ' default colour
 Host.DebugConsole.PrintText "Warning: something looks off", RGB(255, 128, 0) ' orange
 ```

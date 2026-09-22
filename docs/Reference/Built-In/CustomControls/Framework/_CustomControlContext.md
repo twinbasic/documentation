@@ -51,7 +51,7 @@ The framework schedules one paint pass regardless of how many times **Repaint** 
 
 When writing a new custom control, call **Repaint** whenever the control's internal state changes in a way that affects what the next **Paint** call should draw. Every concrete `Waynes...` control hooks the **OnChanged** events raised by its style sub-objects and calls **Repaint** from each handler, so a runtime property assignment triggers an automatic redraw without the caller needing to call **Repaint** directly.
 
-```tb
+```tb check_build
 ' In a custom control class:
 Private m_Context As CustomControls.CustomControlContext
 Private m_Caption As String

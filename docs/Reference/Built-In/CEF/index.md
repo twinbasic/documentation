@@ -85,7 +85,7 @@ At launch, [**CefBrowser**](CefBrowser/) searches for the runtime in this defaul
 
 A different folder --- for example a portable side-by-side deployment --- is selected by assigning [**EnvironmentOptions.BrowserExecutableFolder**](CefBrowser/EnvironmentOptions#browserexecutablefolder) before or during the [**Create**](CefBrowser/#create) event:
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_Create()
     CefBrowser1.EnvironmentOptions.BrowserExecutableFolder = _
         "D:\MyApp\CEF\145_0_7632_160_Win64"

@@ -34,7 +34,7 @@ Path to the folder containing `libcef.dll` and its accompanying runtime files. *
 
 Set this to point at a portable side-by-side deployment, e.g. a CEF folder shipped beside the application executable:
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_Create()
     CefBrowser1.EnvironmentOptions.BrowserExecutableFolder = _
         App.Path & "\cef145_win64"

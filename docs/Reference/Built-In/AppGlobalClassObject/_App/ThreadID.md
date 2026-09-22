@@ -20,7 +20,7 @@ The thread ID is useful when calling Win32 APIs that require a thread identifier
 
 This example prints the main thread ID to the debug console.
 
-```tb
+```tb check_build
 Debug.Print "Main thread ID: " & App.ThreadID
 ```
 

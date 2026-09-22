@@ -83,7 +83,7 @@ Sub BadSub2(data As Byte(10))  ' ... in neither syntax
 
 A dynamic array is uninitialized after declaration. It cannot be used in any way other than to be dimensioned. Dimensioning is performed by the **ReDim** statement:
 
-```tb
+```tb check_build
 Dim array()
 Debug.Assert IsArrayInitialized(array) = False
 Debug.Print LBound(array)  ' raises a runtime error since the array is uninitialized,
@@ -106,7 +106,7 @@ Syntax:
 > Only the upper bound of an array dimension can be changed with **ReDim Preserve**.
 > Non-preserving **ReDim** allows arbitrary changes.
 
-```tb
+```tb check_build
 Dim a() As Long
 
 ReDim a(1 To 2)             ' Initial dimensioning
@@ -128,7 +128,7 @@ Debug.Assert a(5) = 0
 
 Every dimension of an *initialized* array has an associated lower and upper bound. These bounds are accessed with the **LBound** and **UBound** functions.
 
-```tb
+```tb check_build
 Dim array(1 To 10, 3 To 20)
 Debug.Assert LBound(array) = 1		' 1st dimension by default
 Debug.Assert LBound(array, 1) = 1	' 1st dimension
@@ -168,7 +168,7 @@ Debug.Assert array(1, 2) = 42
 
 Array elements are initialized to zero/null, just as all the other types are in twinBASIC:
 
-```tb
+```tb check_build
 Dim intArray(1 To 10) As Integer
 Debug.Assert intArray(1) = 0 AndAlso intArray(10) = 0
 
@@ -180,7 +180,7 @@ Debug.Assert strArray(20) = vbNullString
 
 Any array can be returned as a dynamic array:
 
-```tb
+```tb check_build
 Function Fn1() As Long()
     Dim array1() As Long
     Dim array2(11) As Long
@@ -191,7 +191,7 @@ End Function
 
 To return a fixed size array, it has to be wrapped in a UDT:
 
-```tb
+```tb check_build
 Type Wrapper
     array(11) As Long
 End Type

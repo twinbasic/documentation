@@ -50,7 +50,7 @@ function sendHostAMessage() {
 }
 ```
 
-```tb
+```tb check_build
 Private Sub WebView_JsMessage(ByVal Message As Variant) _
         Handles WebView.JsMessage
     Debug.Print "Page sent: "; Message

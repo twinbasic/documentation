@@ -25,7 +25,7 @@ permalink: /Features/GUI-Components/Control-Properties
 
 ## Example
 
-```tb
+```tb check_build
 TextBox1.TextHint = "Enter your name"
 TextBox1.NumbersOnly = True
 

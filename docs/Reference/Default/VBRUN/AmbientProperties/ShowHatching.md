@@ -19,7 +19,7 @@ Selection hatching is the diagonal cross-hatch the IDE draws over an inactive em
 
 This example responds to a **ShowHatching** change and repaints the control to show or hide the selection overlay.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "ShowHatching"

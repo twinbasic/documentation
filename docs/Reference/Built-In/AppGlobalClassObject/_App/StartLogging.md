@@ -31,7 +31,7 @@ Syntax: *object*.**StartLogging** *LogTarget*, *LogModes*
 
 This example enables file-based logging and writes an informational entry.
 
-```tb
+```tb check_build
 App.StartLogging "C:\Logs\MyApp.log", vbLogToFile
 App.LogEvent "Application started.", vbLogEventTypeInformation
 ```

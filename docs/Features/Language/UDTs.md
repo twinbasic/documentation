@@ -22,7 +22,7 @@ myHwnd.BringWindowToTop()
 
 There is also a constructor (**Type_Initialize**), and destructor (**Type_Terminate**), assignment operator (**Type_Assignment**), type conversion operator (**Type_Conversion**), and debugger string operator (**Type_DebugView**). These make it possible to create lightweight objects, like a C++ class:
 
-```tb
+```tb check_build
 Type myType
     a As Long
 
@@ -57,7 +57,7 @@ If you've done extensive work with the Windows API, every so often you'll come a
 
 By default, UDTs have hidden spacing bytes that make their largest sized member appear at a multiple of it's size, and making the entire UDT be a multiple of that size. Consider the following UDT:
 
-```tb
+```tb check_build
 Private Type MyUDT
     x As Integer
     y As Long

@@ -11,7 +11,7 @@ has_toc: false
 
 The collection of controls hosted on a custom form. Accessed as the **Controls** property of a [**WaynesForm**](../WaynesForm/). Supports indexed access by integer or name, enumeration with **For Each**, and runtime add / remove of controls.
 
-```tb
+```tb check_build
 Dim ctl As Object
 For Each ctl In MyForm.Controls
     Debug.Print ctl.Name
@@ -71,7 +71,7 @@ Syntax: *object*.**Remove** *IndexOrName*
 
 A `For Each` loop over the collection produces every hosted control in turn:
 
-```tb
+```tb check_build
 Dim ctl As Object
 For Each ctl In MyForm.Controls
     ' ...

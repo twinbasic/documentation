@@ -17,7 +17,7 @@ After **Clear** returns, [**GetFormat**](GetFormat) reports **False** for every 
 
 ### Example
 
-```tb
+```tb check_build
 Dim Data As New DataObject
 Data.SetData "First payload", vbCFText
 ' ... use Data ...

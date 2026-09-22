@@ -10,7 +10,7 @@ has_toc: false
 
 The IDE's tool-window factory --- reached through [**Host.ToolWindows**](Host#toolwindows). Call [**Add**](#add) to create a new HTML-rendered pane; populate its DOM through the returned [**ToolWindow**](ToolWindow)'s [**RootDomElement**](ToolWindow#rootdomelement); show the pane by setting [**Visible**](ToolWindow#visible) = **True**.
 
-```tb
+```tb check_build
 Set myWindow = Host.ToolWindows.Add("MyAddIn.MyWindow", "MyAddIn.MyWindowPosition")
 ```
 
@@ -29,7 +29,7 @@ Syntax: *toolWindows*.**Add**( *Name* [, *UniqueIdForPositionPersistance* ] ) **
 *UniqueIdForPositionPersistance*
 : *optional* A stable identifier the IDE uses to remember the pane's size, position, and dock state across IDE restarts. **String**. Omit to make the pane non-persistent --- every open is sized from `suggestedWidth` / `suggestedHeight` (see [**ToolWindow**](ToolWindow#suggested-initial-size)) and positioned by the IDE's default placement logic.
 
-```tb
+```tb check_build
 ' Persisted (preferred for user-visible panes):
 Set myWindow = Host.ToolWindows.Add("MyAddIn.SearchPane", "MyAddIn.SearchPane.position")
 

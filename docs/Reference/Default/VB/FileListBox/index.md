@@ -60,7 +60,7 @@ A file passes if every attribute it carries is permitted. **Normal** is the odd 
 
 [**ListIndex**](#listindex) gives or sets the focused entry (`-1` for none), and [**FileName**](#filename) returns its text. [**Selected**](#selected) reads or writes the selection state of any individual item; [**SelCount**](#selcount) counts how many items are currently selected; [**SelectedIndices**](#selectedindices) returns them as a **Collection**:
 
-```tb
+```tb check_build
 Dim idx As Variant
 For Each idx In File1.SelectedIndices()
     Debug.Print File1.PathWithBackslash & File1.List(idx)
@@ -260,7 +260,7 @@ Syntax: *object*.**Pattern** [ = *string* ]
 
 A file is shown if it matches *any* of the masks (case-insensitively, using the **Like** operator). Setting an empty string is treated as `"*.*"`. Changing **Pattern** reloads the list and raises [**PatternChange**](#patternchange) when the new value differs from the current one.
 
-```tb
+```tb check_build
 File1.Pattern = "*.txt;*.log"   ' .txt or .log files
 ```
 
@@ -397,7 +397,7 @@ Returns the zero-based indices of every currently-selected item as a **Collectio
 
 Syntax: *object*.**SelectedIndices**
 
-```tb
+```tb check_build
 Dim idx As Variant
 For Each idx In File1.SelectedIndices()
     Debug.Print File1.PathWithBackslash & File1.List(idx)

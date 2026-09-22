@@ -54,7 +54,7 @@ Identifies the medium used to transfer the bytes --- a global memory handle, a f
 
 This example reads the name and type of the first available format on a **DataObject**.
 
-```tb
+```tb check_build
 If Data.AvailableFormats.Count > 0 Then
     Dim fmt As DataObjectFormat
     Set fmt = Data.AvailableFormats.Item(1)

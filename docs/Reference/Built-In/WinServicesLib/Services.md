@@ -10,7 +10,7 @@ has_toc: false
 
 The predeclared singleton coordinator for the **WinServicesLib** package. Every interaction with the package starts with **Services**: the class is tagged `[PredeclaredId]`, so a project-wide instance named `Services` exists at start-up and the consumer calls `Services.X` directly without `New`. The instance also doubles as an enumerable collection of the [**ServiceManager**](ServiceManager) instances that have been configured (`For Each manager In Services`).
 
-```tb
+```tb check_build
 ' Configure two services at start-up:
 With Services.ConfigureNew
     .Name             = "MyServiceA"
@@ -39,7 +39,7 @@ Allocates a fresh [**ServiceManager**](ServiceManager), adds it to the internal 
 
 Syntax: **Services.ConfigureNew** **As** [**ServiceManager**](ServiceManager)
 
-```tb
+```tb check_build projname=winservices-demo
 With Services.ConfigureNew
     .Name             = "MyService"
     .Description      = "An example twinBASIC service"
@@ -69,7 +69,7 @@ The method opens the SCM, requests the minimum required permission for the chose
 
 Raises run-time error 5 with a descriptive message if the SCM cannot be opened (typically a permissions issue), the service is not installed, or `ControlServiceExW` fails.
 
-```tb
+```tb check_build
 ' Stop a running service from the interactive branch of Sub Main:
 Services.ControlService "MyService", vbServiceControlStop
 
@@ -91,7 +91,7 @@ Syntax: **Services.GetConfiguredService**( *Name* ) **As** [**ServiceManager**](
 
 Raises run-time error 5 *"service not found"* if no configured service has that name. Typical use is in the interactive / install branch of `Sub Main`, where a UI button needs to act on a single configured service:
 
-```tb
+```tb check_build
 Private Sub btnInstallA_Click()
     If App.IsInIDE() Then Err.Raise 5, , "Run the compiled EXE as administrator."
     Services.GetConfiguredService("MyServiceA").Install
@@ -158,7 +158,7 @@ Syntax: **Services.QueryStateOfService**( *ServiceName* ) **As** [**ServiceState
 
 Raises run-time error 5 if the service is not installed or the SCM cannot be opened. The returned [**ServiceState**](ServiceState) is a single-shot snapshot; to monitor a service's state over time, call **QueryStateOfService** again at each sampling interval.
 
-```tb
+```tb check_build
 Private Sub timerRefresh_Timer()
     On Error Resume Next
     Dim state As ServiceState
@@ -207,7 +207,7 @@ Syntax: **For Each** *manager* **In Services**
 
 The property is tagged `[Enumerator]` and returns the internal **Collection** holding every [**ServiceManager**](ServiceManager) allocated by [**ConfigureNew**](#configurenew). Enumeration order is insertion order --- services appear in the order they were created.
 
-```tb
+```tb check_build
 Dim manager As ServiceManager
 For Each manager In Services
     Debug.Print manager.Name, manager.Description
@@ -216,7 +216,7 @@ Next
 
 A common use is the interactive branch of `Sub Main`, where the EXE lists or acts on all configured services without needing to know each name individually:
 
-```tb
+```tb check_build
 ' Print the install state of every configured service:
 Dim manager As ServiceManager
 For Each manager In Services

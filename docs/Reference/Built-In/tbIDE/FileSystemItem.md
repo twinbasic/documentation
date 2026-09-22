@@ -10,7 +10,7 @@ has_toc: false
 
 The base interface for everything inside the IDE's virtual file system. Both [**File**](File) and [**Folder**](Folder) extend **FileSystemItem** and inherit its four universal members ([**Name**](#name), [**Path**](#path), [**Type**](#type), [**Parent**](#parent)). An item returned from a [**Folder**](Folder) enumeration or from [**FileSystem.ResolvePath**](FileSystem#resolvepath) is normally castable to its specific kind --- the [**Type**](#type) property or `TypeOf` discriminates between them.
 
-```tb
+```tb check_build
 Dim item As FileSystemItem
 For Each item In Host.CurrentProject.RootFolder
     If TypeOf item Is Folder Then

@@ -17,7 +17,7 @@ Methods eligible to run with CodeLens (when enabled), have a bar above them that
 
 A no-argument `Public Sub` in a module is eligible for CodeLens:
 
-```tb
+```tb check_build
 Public Sub RunTest()
     Debug.Print "Hello from CodeLens"
 End Sub

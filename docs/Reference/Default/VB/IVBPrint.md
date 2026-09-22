@@ -50,7 +50,7 @@ The column arithmetic is done **in columns**, not in pixels or characters. The s
 
 A class implements the three members and gains **Print**:
 
-```tb
+```tb check_build project=vb-private projname=ivbprint-sink
 Class PrintSink
 
     Implements VB.IVBPrint
@@ -82,7 +82,7 @@ End Class
 
 Used like any other **Print** target:
 
-```tb
+```tb check_build project=vb-private projname=ivbprint-sink
 Dim Sink As New PrintSink
 Sink.Print "a", "b"
 Debug.Print Sink.Text()

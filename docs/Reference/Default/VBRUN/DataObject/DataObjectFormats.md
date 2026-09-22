@@ -39,7 +39,7 @@ The result is a [**DataObjectFormat**](DataObjectFormat).
 
 A **DataObjectFormats** object can be iterated with the [**For Each...Next**](../../../Core/For-Each-Next) statement, which yields each [**DataObjectFormat**](DataObjectFormat) in turn. The hidden `_NewEnum` member supplies the enumerator and is not called directly from user code.
 
-```tb
+```tb check_build
 Dim F As DataObjectFormat
 For Each F In Data.AvailableFormats
     Debug.Print F.Name, F.FormatType
@@ -50,7 +50,7 @@ Next F
 
 This example lists the name and format type of every format a **DataObject** holds.
 
-```tb
+```tb check_build
 Dim fmt As DataObjectFormat
 For Each fmt In Data.AvailableFormats
     Debug.Print fmt.Name & " (" & fmt.FormatType & ")"

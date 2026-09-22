@@ -12,7 +12,7 @@ A **WebView2** is a twinBASIC control that hosts the Microsoft Edge **WebView2**
 
 The control wraps the underlying `ICoreWebView2*` COM interfaces and exposes them as ordinary BASIC properties, methods, and events. Most of the work happens asynchronously inside the browser process --- the control raises [**Ready**](#ready) once the WebView2 environment and controller have been created, and most members raise *"WebView2 control is not ready"* (run-time error 5) if called before then.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     WebView21.Navigate "https://www.twinbasic.com"
 End Sub
@@ -384,7 +384,7 @@ The current zoom factor --- `1.0` is 100%, `1.5` is 150%, and so on. **Double**.
 > [!NOTE]
 > Because the design-time default is `0`, not `1.0`, arithmetic that multiplies the current value silently starts from zero unless the host clamps it to `1` first:
 >
-> ```tb
+> ```tb check_build
 > If WebView21.ZoomFactor = 0 Then WebView21.ZoomFactor = 1
 > WebView21.ZoomFactor *= 1.1   ' 110% on first click, 121% on second, …
 > ```
@@ -545,7 +545,7 @@ Syntax: *object*.**JsRun** ( *FuncName*, [ *args* ] ) **As Variant**
 *args*
 : *optional* Any number of **Variant** arguments. Each is JSON-encoded before being passed to the function. Strings, numerics, **Boolean**, **Null**, and **Empty** are supported.
 
-```tb
+```tb check_build
 ' Calls the page-side function `multiplyTheseNumbers(a, b)` and waits for the result.
 Dim product As Long = WebView21.JsRun("multiplyTheseNumbers", 5, 6)
 Debug.Print product   ' 30
@@ -564,7 +564,7 @@ Syntax: *object*.**JsRunAsync** ( *FuncName*, [ *args* ] ) **As LongLong**
 *args*
 : *optional* Any number of **Variant** arguments, JSON-encoded as in [**JsRun**](#jsrun).
 
-```tb
+```tb check_build
 Private Sub btnRun_Click()
     WebView21.JsRunAsync "multiplyTheseNumbers", 5, 6
 End Sub
@@ -649,7 +649,7 @@ Syntax: *object*.**NavigateToString** *htmlContent*
 *htmlContent*
 : *required* A **String** of HTML source.
 
-```tb
+```tb check_build
 WebView21.NavigateToString "<h1>Hello, world!</h1>"
 ```
 
@@ -745,7 +745,7 @@ Syntax: *object*.**PrintToPdf** *outputPath* [, *Orientation* [, *ScaleFactor* [
 *HeaderTitle*, *FooterUri*
 : *optional* **String**s overriding the default header title and footer URI.
 
-```tb
+```tb check_build
 Private Sub btnSave_Click()
     WebView21.PrintToPdf Environ$("USERPROFILE") & "\Documents\page.pdf"
 End Sub
@@ -822,7 +822,7 @@ Syntax: *object*.**SetVirtualHostNameToFolderMapping** *hostName*, *folderPath* 
 
 Requires [**SupportsFolderMappingFeatures**](#supportsfoldermappingfeatures).
 
-```tb
+```tb check_build
 Private Sub WebView21_Ready()
     Dim folderPath As String = Environ$("USERPROFILE") & "\Documents\MyApp"
     WebView21.SetVirtualHostNameToFolderMapping _
@@ -906,7 +906,7 @@ Syntax: *object*\_**Error**( *code* **As Long**, *msg* **As String** )
 > [!NOTE]
 > Code `&H80070002` (`ERROR_FILE_NOT_FOUND`) is the canonical signal that the WebView2 Evergreen runtime is missing from the machine --- the right cue to prompt the user to install it.
 
-```tb
+```tb check_build
 Private Sub WebView21_Error(ByVal code As Long, ByVal msg As String)
     Const ERROR_FILE_NOT_FOUND As Long = &H80070002
     If code = ERROR_FILE_NOT_FOUND Then
@@ -947,7 +947,7 @@ Raised before each navigation begins. Set *Cancel* to **True** to block the navi
 
 Syntax: *object*\_**NavigationStarting**( *Uri* **As String**, *IsUserInitiated* **As Boolean**, *IsRedirected* **As Boolean**, *RequestHeaders* **As** [**WebView2RequestHeaders**](../WebView2RequestHeaders), *Cancel* **As Boolean** )
 
-```tb
+```tb check_build
 ' Block any navigation to a URL outside our own virtual host.
 Private Sub WebView21_NavigationStarting( _
         ByVal Uri As String, ByVal IsUserInitiated As Boolean, _

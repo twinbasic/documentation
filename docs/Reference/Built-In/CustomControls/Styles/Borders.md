@@ -13,7 +13,7 @@ The collection of border strokes drawn around a region. Each stroke is an indepe
 
 Accessed as `<state>.Borders`, [**CellRenderingOptions.Borders**](../WaynesGrid/CellRenderingOptions#borders), and the slider's `<sliderState>.BackgroundBorders` / `BlockBorders`. The array of [**Border**](#border-class) sub-objects on a [**TextRendering**](TextRendering)'s **Outlines** member uses the same element type.
 
-```tb
+```tb check_build
 btnGo.NormalState.Borders.SetSimpleBorder StrokeSize:=1, ColorRGB:=vbBlack
 ```
 

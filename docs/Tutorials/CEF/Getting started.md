@@ -51,7 +51,7 @@ At startup, [**CefBrowser**](../../tB/Packages/CEF/CefBrowser/) searches this de
 
 To point at a different folder --- for example a portable side-by-side deployment shipped with your installer --- assign [**EnvironmentOptions.BrowserExecutableFolder**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions#browserexecutablefolder) during the [**Create**](../../tB/Packages/CEF/CefBrowser/#create) event:
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_Create()
     CefBrowser1.EnvironmentOptions.BrowserExecutableFolder = _
         App.Path & "\cef145_win64"
@@ -66,7 +66,7 @@ The runtime bitness must match the application bitness --- a 32-bit twinBASIC bu
 
 With the package reference and runtime in place, **CefBrowser** is available in the form-designer toolbox. Drop it onto a form like any other control:
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     CefBrowser1.Navigate "https://www.twinbasic.com"
 End Sub

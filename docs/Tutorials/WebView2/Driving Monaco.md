@@ -113,7 +113,7 @@ That's it --- the preview pane re-renders on every edit.
 
 A reasonable fraction of users will run the application on a machine where the WebView2 Evergreen runtime isn't installed. The [**Error**](../../tB/Packages/WebView2/WebView2/#error) event reports this case as Win32 error code `&H80070002` (`ERROR_FILE_NOT_FOUND`):
 
-```tb
+```tb check_build
 Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) _
         Handles WebView.Error
     Const ERROR_FILE_NOT_FOUND As Long = &H80070002

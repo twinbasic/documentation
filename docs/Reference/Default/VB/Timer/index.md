@@ -12,7 +12,7 @@ A **Timer** is a non-visual Win32 control that raises a [**Timer**](#timer) even
 
 The default property is [**Enabled**](#enabled) and the default event is [**Timer**](#timer).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Timer1.Interval = 1000      ' fire once per second
     Timer1.Enabled  = True

@@ -12,7 +12,7 @@ has_toc: false
 
 An **ErrorStackFrame** describes one procedure that was active on the call stack at the moment a run-time error was raised --- the project it belongs to, the module that contains it, and its own name. Frames are produced by iterating an [**ErrorCallstack**](../ErrorCallstack) snapshot, which in turn is reachable from the [**Callstack**](../ErrorContext#callstack) property of an [**ErrorContext**](../ErrorContext). Every property is read-only.
 
-```tb
+```tb check_build
 Sub LogStackTrace(ByVal Stack As ErrorCallstack)
     Dim i As Long
     For i = 1 To Stack.Count

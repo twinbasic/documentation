@@ -19,7 +19,7 @@ The value accumulates across successive **AsyncReadProgress** notifications and 
 
 This example logs the current download progress using **BytesRead** and **BytesMax**.
 
-```tb
+```tb check_build
 Private Sub UserControl_AsyncReadProgress(AsyncProp As AsyncProperty)
     If AsyncProp.PropertyName = "Picture" Then
         Debug.Print AsyncProp.BytesRead & " / " & AsyncProp.BytesMax

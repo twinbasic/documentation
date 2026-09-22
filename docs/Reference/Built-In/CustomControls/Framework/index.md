@@ -15,7 +15,7 @@ A custom control:
 2. Stores the [**CustomControlContext**](CustomControlContext) passed to it on **Initialize** and uses it to request repaints, create timers, or change the focused element.
 3. Inside **Paint**, builds one or more `ElementDescriptor` records and passes them to the [**Canvas**](Canvas) via **RuntimeUICCCanvasAddElement** --- the framework rasterises them, handles input routing, and dispatches events back through the descriptor's `AddressOf`-registered callbacks.
 
-```tb
+```tb check_build
 Class MyControl
     Implements CustomControls.ICustomControl
 

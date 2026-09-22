@@ -19,7 +19,7 @@ A mnemonic is the underlined letter in a caption such as `&File` --- it gives th
 
 This example responds to a **SupportsMnemonics** change and triggers a repaint to update the caption underlining.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "SupportsMnemonics"

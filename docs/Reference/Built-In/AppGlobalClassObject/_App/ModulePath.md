@@ -25,7 +25,7 @@ Syntax: *object*.**ModulePath**
 
 This example prints the current module path to the debug console.
 
-```tb
+```tb check_build
 Debug.Print "Module path: " & App.ModulePath
 ```
 

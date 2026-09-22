@@ -21,7 +21,7 @@ Syntax: *object*.**Comments**
 
 This example prints the project's comments string to the debug console.
 
-```tb
+```tb check_build
 Debug.Print "Comments: " & App.Comments
 ```
 

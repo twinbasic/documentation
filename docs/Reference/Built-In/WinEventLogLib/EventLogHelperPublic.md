@@ -37,14 +37,14 @@ If the registry key cannot be opened for write, **RegisterEventLogInternal** rai
 
 This example registers a custom event source under the Application log, supplying three categories.
 
-```tb
+```tb check_build
 ' Requires administrator rights.
 EventLogHelperPublic.RegisterEventLogInternal "Application\MyService", 3
 ```
 
 To register under a non-default parent log, pass the full path:
 
-```tb
+```tb check_build
 EventLogHelperPublic.RegisterEventLogInternal "System\MyService", 3
 ```
 

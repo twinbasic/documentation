@@ -106,7 +106,7 @@ Consumer code reads **IsConnected** to guard against writing to a connection tha
 
 This example checks **IsConnected** before sending a reply, guarding against the case where the client has dropped between the time the message arrived and the time the handler runs.
 
-```tb
+```tb check_build
 Private Sub server_ClientMessageReceived( _
         Connection As NamedPipeServerConnection, _
         ByRef Cookie As Variant, _
@@ -153,7 +153,7 @@ Internally, **AsyncClose** calls `CancelIoEx` on the pipe handle to abort any pe
 
 This example closes a specific client connection from the server side when a shutdown command is received.
 
-```tb
+```tb check_build
 Private Sub server_ClientMessageReceived( _
         Connection As NamedPipeServerConnection, _
         ByRef Cookie As Variant, _

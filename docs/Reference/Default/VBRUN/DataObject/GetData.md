@@ -20,7 +20,7 @@ The concrete subtype of the returned **Variant** depends on *Format*: text forma
 
 ### Example
 
-```tb
+```tb check_build
 If Data.GetFormat(vbCFText) Then
     Dim Text As String
     Text = Data.GetData(vbCFText)

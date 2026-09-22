@@ -76,7 +76,7 @@ End Class
 > [!NOTE]
 > twinBASIC adds [**Handles**](Handles), which decouples the handler's name from the event. The field must still be declared **WithEvents** --- **Handles** changes only how the procedure is bound to it:
 >
-> ```tb
+> ```tb check_build
 > Private Sub OnJobDone(ByVal ItemsProcessed As Long) Handles mRunner.Finished
 >     lblStatus.Caption = "Done: " & ItemsProcessed
 > End Sub

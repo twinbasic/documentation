@@ -69,7 +69,7 @@ When the SCM launches the EXE as a service host, twinBASIC's runtime runs **two 
 
 The two methods therefore run *concurrently*: while [**EntryPoint**](ITbService#entrypoint) is doing the service's work on the service thread, [**ChangeState**](ITbService#changestate) waits idle on the dispatcher thread, and the SCM wakes it on demand to deliver a control code. The two methods must coordinate through shared `Public` flags on the service class --- `IsStopping`, `IsPaused`, and similar --- because the package cannot stop the service thread except through the user's own code path.
 
-```tb
+```tb check_build
 Class MyService
     Implements ITbService
 

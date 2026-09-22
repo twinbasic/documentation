@@ -11,7 +11,7 @@ The `Open` statement supports Unicode through the use of a new `Encoding` keywor
 
 ## Usage Example
 
-```tb
+```tb check_build
 Open "C:\MyFile.txt" For Input Encoding utf_8 As #1
 ```
 

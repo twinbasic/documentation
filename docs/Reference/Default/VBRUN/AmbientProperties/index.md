@@ -16,7 +16,7 @@ The **AmbientProperties** object exposes information about the environment in wh
 
 A control often needs to behave differently while it is being placed on a designer surface than when it is actually running inside an application. [**UserMode**](UserMode) returns **False** in the IDE designer and **True** at run time, and [**UIDead**](UIDead) becomes **True** while execution is paused under the debugger so that a control knows not to repaint or respond to input. [**ShowGrabHandles**](ShowGrabHandles) and [**ShowHatching**](ShowHatching) tell a control whether the container would like it to draw the usual selection adornments while it is being edited.
 
-```tb
+```tb check_build
 Sub AdaptToHost(ByVal Host As AmbientProperties)
     If Host.UserMode Then
         ' Running in the host application — render normally.

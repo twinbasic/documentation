@@ -29,7 +29,7 @@ End Sub
 
 For indeterminate progress (e.g. waiting on a server response with no length information), use the marquee variant:
 
-```tb
+```tb check_build
 ProgressBar1.Scrolling = PrbScrollingMarquee
 ProgressBar1.MarqueeSpeed = 30       ' milliseconds per animation step
 ProgressBar1.MarqueeAnimation = True ' start animating

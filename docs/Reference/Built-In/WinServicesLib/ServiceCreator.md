@@ -17,7 +17,7 @@ Syntax: **New ServiceCreator(Of** *T* **)**
 
 The class is the value typically assigned to [**ServiceManager.InstanceCreator**](ServiceManager#instancecreator):
 
-```tb
+```tb check_build projname=winservices-demo
 With Services.ConfigureNew
     .Name             = "MyService"
     .InstanceCreator  = New ServiceCreator(Of MyService)    ' MyService Implements ITbService

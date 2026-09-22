@@ -19,7 +19,7 @@ A **ListView** is a flexible multi-column / icon list with four distinct visual 
 
 The two main collections are accessed through properties: [**ListItems**](#listitems) for the rows, and [**ColumnHeaders**](#columnheaders) for the **Report**-view column headers.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     ' Bind an image list and configure the view
     Set ListView1.SmallIcons = ImageList1

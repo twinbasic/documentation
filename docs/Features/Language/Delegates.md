@@ -13,7 +13,7 @@ There is native support for calling a function by pointer, by way of `Delegate` 
 
 The syntax looks like this:
 
-```tb
+```tb check_build
 Private Delegate Function Delegate1 (ByVal A As Long, ByVal B As Long) As Long
 
 Private Sub Command1_Click()
