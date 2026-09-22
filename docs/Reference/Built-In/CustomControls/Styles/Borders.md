@@ -17,21 +17,41 @@ Accessed as `<state>.Borders`, [**CellRenderingOptions.Borders**](../WaynesGrid/
 btnGo.NormalState.Borders.SetSimpleBorder StrokeSize:=1, ColorRGB:=vbBlack
 ```
 
+An element already in the array is reached through [**Elements**](#elements) and restyled in place:
+
+```tb check_build
+btnGo.NormalState.Borders.SetSimpleBorder StrokeSize:=4, ColorRGB:=vbBlack
+btnGo.NormalState.Borders.Elements(0).BlendWithBackgroundFill = True
+```
+
 Layered borders --- multiple [**Border**](#border-class) instances stroked in order --- are assigned to the [**Elements**](#elements) array directly. Each element can have its own [**StrokeSize**](#strokesize) and its own [**Fill**](Fill), so a thin black outline can sit on top of a wide coloured band, or three bands of different colours can stack into a "shadow":
 
-```tb
-Dim elems(0 To 2) As Border
-Set elems(0) = New Border
+```tb check_build project=cc-private
+Dim elems(0 To 2) As CustomControlsPackage.Border
+Set elems(0) = New CustomControlsPackage.Border
 elems(0).StrokeSize = 4
 elems(0).Fill.ColorPoints.SetSolidColor vbBlack
-Set elems(1) = New Border
+Set elems(1) = New CustomControlsPackage.Border
 elems(1).StrokeSize = 7
 elems(1).Fill.ColorPoints.SetSolidColor &H99CCFF       ' light blue band
-Set elems(2) = New Border
+Set elems(2) = New CustomControlsPackage.Border
 elems(2).StrokeSize = 4
 elems(2).Fill.ColorPoints.SetSolidColor &H4D7AB4       ' deeper blue
 btnGo.NormalState.Borders.Elements = elems
 ```
+
+> [!IMPORTANT]
+>
+> [**Border**](#border-class) is a **Private** component of the package, so naming it takes
+> two things: the **CustomControlsPackage** library symbol prefixed with an asterisk in
+> *Project Settings* --- the control package, not the **CustomControls** DESIGNER library
+> listed beside it --- and the package qualifier used above. See [Exposing a library's private
+> symbols](../../../../Features/Packages/Library-Symbols#exposing-a-librarys-private-symbols)
+> for the setting and where to find it. Without the asterisk neither `Border` nor
+> `CustomControlsPackage.Border` resolves; with it, only the qualified form does.
+>
+> Nothing else on this page needs it. [**SetSimpleBorder**](#setsimpleborder) and restyling
+> an element already in [**Elements**](#elements) work in an ordinary project.
 
 A single [**Border**](#border-class) can also display a gradient instead of a solid colour --- assign a multi-stop [**Fill**](Fill) to its [**Fill**](#fill) member. Set [**BlendWithBackgroundFill**](#blendwithbackgroundfill) to **True** on a translucent border to make it tint with the control's own **BackgroundFill** rather than with whatever lies under the control.
 
@@ -43,7 +63,7 @@ A single [**Border**](#border-class) can also display a gradient instead of a so
 ### Elements
 {: .no_toc }
 
-The array of [**Border**](#border-class) sub-objects, drawn in order from index 0 outward. Read-write but in practice populated through [**SetSimpleBorder**](#setsimpleborder) or [**SetSimpleBorderRGBA**](#setsimpleborderrgba).
+The array of [**Border**](#border-class) sub-objects, drawn in order from index 0 outward. Read-write; assigning it needs a `Border()` array, which the project can only declare when the package is imported with an asterisk --- see the note at the top of this page. Otherwise the array is populated through [**SetSimpleBorder**](#setsimpleborder) or [**SetSimpleBorderRGBA**](#setsimpleborderrgba), and the elements already in it are adjusted in place.
 
 ## Methods
 
@@ -104,7 +124,9 @@ The stroke thickness in pixels. [**PixelCount**](../Enumerations/PixelCount). De
 
 Constructs a [**Border**](#border-class) with a default solid-black [**Fill**](#fill).
 
-Syntax: **New Border**
+Syntax: **New CustomControlsPackage.Border**
+
+The package qualifier is required, and so is importing the reference with an asterisk --- see the note at the top of this page.
 
 ### OnChanged
 {: .no_toc }

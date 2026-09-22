@@ -24,20 +24,31 @@ End With
 
 [**Fill**](#fill) can hold a gradient just as well as a solid colour, so glyphs themselves can be painted with a top-to-bottom or corner-to-corner colour transition. [**Outlines**](#outlines) is an array of [**Border**](Borders#border-class) elements stroked around the glyphs --- a single thin black outline gives a "stickered" look; layering several outlines with different [**StrokeSize**](Borders#strokesize) values produces a glow or drop-shadow:
 
-```tb
-With lblBanner.TextRendering
+```tb check_build project=cc-private
+With btnGo.NormalState.TextRendering
     .Font.Size = 32
     .Font.Weight = tbBold
     .Alignment = tbAlignMiddleCenter
     .Fill.SetSimplePattern vbWhite, &HCCCCFF, _
             Pattern:=tbGradientNorthToSouth
-    Dim outline(0 To 0) As Border
-    Set outline(0) = New Border
+    Dim outline(0 To 0) As CustomControlsPackage.Border
+    Set outline(0) = New CustomControlsPackage.Border
     outline(0).StrokeSize = 2
     outline(0).Fill.ColorPoints.SetSolidColor vbBlack
     .Outlines = outline
 End With
 ```
+
+> [!IMPORTANT]
+>
+> [**Border**](Borders#border-class) is a **Private** component of the package, so naming it
+> takes the **CustomControlsPackage** library symbol prefixed with an asterisk in *Project
+> Settings* --- the control package, not the **CustomControls** DESIGNER library listed
+> beside it --- plus the package qualifier used above. See [Exposing a library's private
+> symbols](../../../../Features/Packages/Library-Symbols#exposing-a-librarys-private-symbols)
+> for the setting and where to find it. Unlike [**Borders**](Borders), which has
+> [**SetSimpleBorder**](Borders#setsimpleborder), there is no package-side method that puts
+> an outline in place instead, so this is the only way to add one from code.
 
 Setting [**OverflowMode**](#overflowmode) to **tbShrinkToFit** scales the glyphs down rather than truncating with an ellipsis when the text is too long for the available width --- useful on fixed-width labels whose caption is set at runtime from data of unpredictable length.
 
@@ -69,7 +80,7 @@ How text longer than the available width is truncated. A member of [**TextOverfl
 ### Outlines
 {: .no_toc }
 
-An array of [**Border**](Borders#border-class) elements describing one or more outlines that are stroked around the rendered glyphs. Read-write; an uninitialised array means no outline.
+An array of [**Border**](Borders#border-class) elements describing one or more outlines that are stroked around the rendered glyphs. Read-write; an uninitialised array means no outline. Assigning it needs a `Border()` array, which the project can only declare when the package is imported with an asterisk --- see the note above.
 
 ### Padding
 {: .no_toc }
