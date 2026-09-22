@@ -546,6 +546,12 @@ build log, and the linker writes there *after* the build, so a probe that does n
 first comes back interleaved with `[LINKER]` lines. The script warns when a probe omits it,
 and warns again when there is no `[RunAfterBuild]` at all.
 
+**The capture is complete however much a probe prints**, so there is no reason to keep one
+short. `tbrun` reads the console's backing array rather than the pane, which is a virtualised
+list view holding only the rows that fit --- reading that instead returns the last ten or so
+lines of a long probe and looks no different from a full capture. `Debug.Cls` is what empties
+the array, which is the other reason to begin with it.
+
 | Flag | Effect |
 |---|---|
 | `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. |

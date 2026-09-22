@@ -45,9 +45,15 @@
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
 //     a plain DIV wired through the IDE's own pointer handling; it needs real
 //     CDP Input.dispatchMouseEvent presses at its centre.
-//  3. THE CONSOLE INTERLEAVES A TIMESTAMP LINE per output line, because the
-//     pane's "Show Timestamps" option is on by default. Those lines are the
-//     pane's, not the program's, and are stripped unless --raw.
+//  3. READ THE CONSOLE'S BACKING ARRAY, NOT THE PANE. The DEBUG CONSOLE is a
+//     virtualised list view: only the rows that fit are in the DOM, so an
+//     `.innerText` scrape of it returns the tail of a long probe and looks
+//     exactly like a complete capture. Measured against the old reader: a
+//     probe printing 120 lines came back with 11. `debugConsoleContent
+//     .dataNodes` is the whole log, and the walk here is the IDE's own
+//     "Copy All" minus the clipboard write. The timestamp column comes off in
+//     the same step, since it is a nested <span> in each entry -- so --raw is
+//     now a different slice of the same string rather than a line filter.
 //  4. START THE PROBE WITH Debug.Cls. The DEBUG CONSOLE is also where the IDE
 //     writes its own build log, and the linker writes there after the build --
 //     so without a clear, a probe's output comes back interleaved with
@@ -242,11 +248,53 @@ if (buildCode !== 0) {
 
 // --------------------------------------------- build the exe, read the console
 
-const CONSOLE_JS = `(() => {
-  const tw = [...document.querySelectorAll(".toolWindowContainer")]
-    .find(e => /DEBUG CONSOLE/i.test(e.textContent || ""));
-  return tw ? (tw.innerText || "") : null;
+// (3) Read the console's BACKING ARRAY, never the pane. `debugConsoleContent`
+// is a createListView(), which renders only the rows that fit -- so the old
+// `.innerText` scrape returned the last ~11 lines of any longer probe and gave
+// no sign that it had. `dataNodes` is the complete log: addItem() appends at
+// `itemCount` and nothing in main.js ever removes an entry, so the array holds
+// every line written since the last clear().
+//
+// The walk below is the IDE's own `tbDebugConsole_ClipboardCopyAll`, minus the
+// clipboard write -- the same borrow tbbuild makes for the diagnostics report.
+// Each entry is `<span class=COLOR><span class=ts>TIME</span>TEXT</span>`, so
+// slicing past the first `</span>` drops the timestamp, which is what the
+// IDE's own two Copy All variants differ by. Note that the timestamp is always
+// present in the data: the pane's "Show Timestamps" option only sets a
+// `--timestampsDisplay` CSS variable, so it cannot change what we read here.
+//
+// Two deliberate departures from the IDE's version:
+//
+//   * DECODE WITH textContent ON OUR OWN DETACHED NODE, not the IDE's
+//     HTMLToTEXT. That helper reads `.innerText` off a shared `hiddenDiv`, and
+//     it preserves runs of spaces only because `initMisc()` creates that div
+//     with no parent -- an element that is not rendered has innerText ===
+//     textContent. Attach it in some future build and every padded value a
+//     probe prints starts collapsing silently. Probes measure things like
+//     Debug.Print zone widths and Partition's space-padded labels, so that is
+//     the one thing this reader must not get wrong.
+//   * TOLERATE A MISSING TIMESTAMP SPAN. indexOf returns -1 when there is
+//     none, and the IDE's `substr(i + 7)` would then quietly eat six
+//     characters of real output. No current addItem() path omits it; the guard
+//     costs a comparison and removes a silent-corruption mode.
+const consoleJs = (withTimestamps) => `(() => {
+  if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
+      !debugConsoleContent.dataNodes) return null;
+  const decode = (html) => {
+    const d = document.createElement("div");   // never attached; see above
+    d.innerHTML = html;
+    return d.textContent;
+  };
+  return debugConsoleContent.dataNodes.map(n => {
+    const i = n.indexOf("</span>");
+    if (i < 0) return decode(n);
+    return decode(${withTimestamps}
+      ? n.substr(0, i + 7) + " " + n.substr(i + 7)
+      : n.substr(i + 7));
+  }).join("\\n");
 })()`;
+
+const CONSOLE_JS = consoleJs(flag("raw"));
 
 let captured = null, failure = null;
 try {
@@ -272,7 +320,11 @@ try {
   while (Date.now() - started < timeoutMs) {
     await new Promise((r) => setTimeout(r, 400));
     const now = await cdp.evaluate(CONSOLE_JS);
-    if (now === null) throw new Error("the DEBUG CONSOLE pane is not open in this IDE");
+    if (now === null) {
+      throw new Error("no debugConsoleContent.dataNodes in this IDE -- the DEBUG CONSOLE " +
+                      "was never created, or this build moved it. Refusing rather than " +
+                      "falling back to scraping the pane, which silently truncates.");
+    }
     if (now !== last) { last = now; lastChange = Date.now(); if (strip(now).length) seen = true; }
     else if (seen && Date.now() - lastChange > quietMs) break;
   }
@@ -300,19 +352,13 @@ if (flag("json")) {
 
 // ------------------------------------------------------------------ helpers
 
-// (3) drop the pane's own chrome: the header, the input prompt, and the
-// timestamp line the console emits beside every output line.
+// Trim blank lines off both ends. That is all this has to do now: reading
+// dataNodes rather than the pane means the header, the ">" input prompt and
+// the timestamp column never arrive in the first place, so the three filters
+// that used to live here are gone along with the guesswork in them.
 function strip(text) {
   if (!text) return [];
-  const lines = text.split("\n");
-  const out = [];
-  for (const raw of lines) {
-    const l = raw.replace(/\r$/, "");
-    if (/^DEBUG CONSOLE$/.test(l.trim())) continue;
-    if (l.trim() === ">") continue;
-    if (!flag("raw") && /^\s*\d{2}:\d{2}:\d{2}\.\d+\s*$/.test(l)) continue;
-    out.push(l);
-  }
+  const out = text.split("\n").map((l) => l.replace(/\r$/, ""));
   while (out.length && !out[0].trim()) out.shift();
   while (out.length && !out[out.length - 1].trim()) out.pop();
   return out;

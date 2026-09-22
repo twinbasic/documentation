@@ -242,21 +242,38 @@ from earlier work.
   read was silent while the console the IDE ended up holding named the fault outright. When a
   probe comes back empty, re-read the live console (`--keep`, then CDP) before concluding it
   hung.
-- **`tbrun` captures the last 11 output lines and says nothing about the rest.** Not a
-  proportion — a hard cap. Measured: a probe printing 19 lines returned 11, a probe printing
-  120 lines returned 11, and both times it was the *tail*, with a clean-looking first line and
-  no truncation marker. The cause is the pane, not the script: `--raw` on the same 120-line
-  probe returns **22** lines, exactly double, because *Show Timestamps* interleaves one
-  timestamp row per output row and the DEBUG CONSOLE keeps only the visible rows in the DOM.
-  So the real budget is 22 rows at the private desktop's geometry, which the timestamp option
-  halves.
+- **`tbrun` used to capture only the last ~11 output lines, and said nothing about the rest.
+  Fixed — but read this before touching the reader.** It scraped `.innerText` off the DEBUG
+  CONSOLE pane, and the pane is a `createListView()`, which renders only the rows that fit.
+  Measured against the old reader: a probe printing 19 lines returned 11, and a probe printing
+  120 lines returned 11 — the *tail* each time, with a clean-looking first line and no
+  truncation marker.
 
   This is worse than the empty-capture case above, because a truncated capture looks like a
-  complete one: the first probe written for this session printed a seven-line `Format` block
+  complete one. The first probe written for this session printed a seven-line `Format` block
   followed by a `vbDatabaseCompare` block, and came back holding only the second, reading
-  exactly like a probe that had simply not run the first half. **Print what matters last, keep
-  a probe under ten lines, or split it** — and a batch runner reporting one line per fence
-  cannot use the console at all past the tenth fence.
+  exactly like a probe that had simply not run the first half.
+
+  **The obvious fix is the wrong one, and it was briefly written up here as fact.** `--raw` on
+  the 120-line probe returned exactly 22 lines, twice 11, which looks like *Show Timestamps*
+  costing half the budget — so turn it off and get 22. It does not: `showTimestamps` only sets
+  a `--timestampsDisplay` CSS variable, and the timestamp `<span>` is in the data either way.
+  Measured on a live IDE holding 121 entries, flipping the option in place: `visibleCount` 10
+  and 12 rendered rows in **both** states; `innerText` yields 24 lines with timestamps and 13
+  without, because an `inline-block` span breaks the line in `innerText` and nowhere else. The
+  row budget never moved. Turning timestamps off buys nothing.
+
+  **What the reader does now** is take `debugConsoleContent.dataNodes`, which is the complete
+  log — `addItem()` appends at `itemCount` and nothing in `main.js` ever removes an entry, so
+  only `clear()` (that is, `Debug.Cls`) empties it. The walk is the IDE's own
+  `tbDebugConsole_ClipboardCopyAll` minus the clipboard write, the same borrow `tbbuild` makes
+  for the diagnostics report, and it strips the timestamp by slicing past the first `</span>`
+  rather than by matching a line against a regex. The 120-line probe now returns 120. A
+  missing `dataNodes` is refused outright rather than falling back to the pane, because a
+  silent fallback would restore exactly the failure this replaces.
+
+  For the batch runner this removes a hard constraint: one result line per fence is now fine
+  at any batch size.
 - **Two IDEs must not hold one source tree.** `tbbuild` takes the project directory as given
   and does not stage a copy the way `tbrun` does, so two concurrent builds pointed at the same
   folder — distinct `--port`s, distinct desktops, everything else correct — both wedge and
