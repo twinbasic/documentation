@@ -152,6 +152,7 @@ function defaultProject(rel) {
  */
 const TEMPLATE_BASE = {
   "vb-private": "console",
+  "cc-private": "packages",
   cef: "packages",
   webview2: "packages",
 };
