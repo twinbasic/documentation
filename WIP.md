@@ -329,8 +329,17 @@ Three smaller things it knows, each of which cost a run:
 
 - **`element.click()` on `#buildIcon` does nothing.** It is a plain DIV behind the IDE's own
   pointer handling and needs real `Input.dispatchMouseEvent` presses at its centre.
-- **The console interleaves a timestamp line per output line**, because the pane's *Show
-  Timestamps* option is on by default. Those are stripped unless `--raw`.
+- **Read the console's backing array, not the pane.** The DEBUG CONSOLE is a
+  `createListView()`, which keeps only the rows that fit in the DOM, so scraping its
+  `innerText` returns the *tail* of a long probe and looks exactly like a complete capture
+  --- measured that way, a probe printing 120 lines came back with 11.
+  `debugConsoleContent.dataNodes` is the whole log (`addItem()` appends and nothing ever
+  removes, so only `Debug.Cls` empties it), and the walk `tbrun` does over it is the IDE's
+  own *Copy All* minus the clipboard write. The timestamp comes off in the same step,
+  because it is a nested `<span>` in each entry rather than a line of its own, so `--raw`
+  is a different slice of that string. Do not "fix" the old truncation by turning *Show
+  Timestamps* off: that option only sets a CSS variable, and the row budget does not move
+  --- see [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) for the measurement.
 - **A probe must start with `Debug.Cls`.** The IDE logs its own build to the same console
   and the linker writes there *after* the build, so without a clear you capture your output
   interleaved with `[LINKER]` lines. The script warns rather than guessing which lines are
@@ -1717,6 +1726,25 @@ Fixing it turned up three more of the same defect: `Features/Language/Pointers`
 and `Features/Standard-Library/New-Functions` document what `Debug.Print` emits
 with comma separators, where the print-zone padding *is* the behaviour being
 shown, and both rendered it as single spaces.
+
+> **Those two pages were still wrong after that fix, and the reason is worth
+> keeping.** A pipeline can only preserve padding that reaches it, and the
+> padding was never in their *source*. Measured through `tbrun` against the
+> pages' own samples: `New-Functions` claimed `1             2             3`
+> where the run prints `' 1             2             3 '`, and `Pointers`
+> claimed `1  2`, `3  4` and `4` where the runs print `' 1             2 '`,
+> `' 3             4 '` and `' 4 '`. Every one is missing the leading space a
+> positive number carries where its sign would be, and the trailing space; the
+> `Pointers` pair were also showing two spaces for a thirteen-space gap.
+>
+> **An inline code span cannot carry a leading or trailing space naively**, which
+> is the trap that keeps this defect coming back. CommonMark strips one space
+> from each end of a code span whose content is not all spaces, so writing
+> `` ` 1 … 3 ` `` renders as `1 … 3` --- the exact value the page is trying to
+> state, silently de-padded by the parser rather than by anything in `builder/`.
+> Double the outer spaces to defeat it, and verify in the built HTML rather than
+> by eye. Four sites were fixed this way and the rendered `<code>` now matches
+> the measured output byte for byte.
 
 **Two changes, and neither works alone:**
 

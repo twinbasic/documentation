@@ -43,7 +43,7 @@
 // them. See WIP.md, "Compiling a twinBASIC project without the IDE in front
 // of you".
 import { spawn, execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./lib/tb-cdp.mjs";
@@ -91,6 +91,21 @@ if (!proj || flag("help")) {
   console.error("usage: node scripts/tbbuild.mjs <project.twinproj> " +
     "[--ide <twinBASIC.exe>] [--port N] [--timeout S] [--json] [--keep] " +
     "[--show|--hide]");
+  process.exit(2);
+}
+// Refuse anything that is not a .twinproj, rather than discovering it two
+// minutes later. A source directory is the tempting mistake -- it is what
+// `tbrun` takes -- and handing one to the IDE does not fail: the IDE starts,
+// the renderer answers CDP normally, and nothing ever reports the project as
+// open, so this exits 3 ("the compile never settled") after the full timeout
+// and reads like a wedged IDE. Pack the tree first, or use tbrun, which packs
+// it for you.
+if (proj && !/\.twinproj$/i.test(proj)) {
+  console.error(`not a .twinproj: ${proj}\n` +
+    (existsSync(proj) && statSync(proj).isDirectory()
+      ? "  That is a source tree. tbbuild takes a packed project; scripts/tbrun.mjs\n" +
+        "  takes a source tree, and packs it for you."
+      : "  tbbuild takes a packed project file."));
   process.exit(2);
 }
 if (!IDE) {

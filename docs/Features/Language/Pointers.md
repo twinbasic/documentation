@@ -83,7 +83,7 @@ Sub test1(ByVal ptr As LongPtr)
 End Sub
 ```
 
-This will print `1  2`.
+This will print `  1             2  ` --- a comma moves to the next 14-column [print zone](../../tB/Modules/Debug#print), and a positive number carries a leading space where its sign would be.
 
 ```tb
 Sub call2()
@@ -101,7 +101,7 @@ Sub test2(b As bar)
 End Sub
 ```
 
-This will print `3  4`.
+This will print `  3             4  `.
 
 ```tb
 Sub call3()
@@ -117,7 +117,7 @@ Sub test3(b As bar)
 End Sub
 ```
 
-This will print `4`. Free standing use and nesting is also allowed; the above will print `4`. While the examples here are local code only, this is particularly useful for APIs, where you're forced to work with pointers extensively.
+This will print `  4  `. Free standing use and nesting is also allowed; the above will print `  4  `. While the examples here are local code only, this is particularly useful for APIs, where you're forced to work with pointers extensively.
 
 ## Len/LenB(Of \<type\>) Support
 
