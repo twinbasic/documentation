@@ -514,7 +514,8 @@ Two files under `scripts/lib/` belong to it and are never run directly. `tb-cdp.
 {: #tbrun }
 
     node scripts/tbrun.mjs <source-dir> [--port N] [--timeout S] [--quiet MS]
-                           [--json] [--raw] [--keep] [--show|--hide]
+                           [--json] [--raw] [--keep] [--no-reap]
+                           [--reap-images a,b] [--show|--hide]
 
 Builds a probe project and captures what it writes to the IDE's
 [Debug Console](../../tB/IDE/Project/DebugConsole). Where [`tbbuild.mjs`](#tbbuild) answers
@@ -547,16 +548,30 @@ and warns again when there is no `[RunAfterBuild]` at all.
 
 | Flag | Effect |
 |---|---|
-| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently. |
+| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. |
 | `--timeout <secs>` | Give up waiting for console output. Default 120. |
-| `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. |
+| `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
-| `--json` | One object with the built exe's path and the captured lines. |
-| `--keep` | Leave the IDE running. |
+| `--json` | One object with the built exe's path, the captured lines, the IDE pid and anything reaped. |
+| `--keep` | Leave the IDE running. Implies `--no-reap`. |
+| `--no-reap` | Do not harvest automation servers the probe left behind. |
+| `--reap-images <a,b>` | Replace the harvested image list. Default is the Office suite. |
 | `--show` / `--hide` | Passed through to `tbbuild.mjs`. |
 
 Exit codes: **0** captured output, **1** the project has compile errors (the diagnostics are
 printed), **2** the harness failed, **3** nothing reached the console before the timeout.
+
+**A probe that activates a COM server can leak one per run.** `CreateObject("Excel.Application")`
+is activated by DCOM, so the `EXCEL.EXE` that appears is a child of `svchost.exe` rather than
+of anything the harness started --- no tree kill reaches it. Each activation is its own
+process, so they accumulate, and calling `Quit` is not enough: the process exits only once
+every COM reference has been released. `tbrun` therefore takes a process snapshot before it
+starts the IDE and harvests what appeared afterwards, subject to three conditions --- the
+process must be new, its image must be on the reap list, and it must have no window open.
+Anything new and on the list but *windowed* is reported and left alone, because that is
+indistinguishable from a copy the user opened. Two concurrent runs both driving Excel cannot
+tell their servers apart, so whichever finishes first harvests both: pass `--no-reap` there
+and sweep once at the end.
 
 > [!IMPORTANT]
 > The one trap worth knowing even if you never read the script: a project whose

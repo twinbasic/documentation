@@ -340,6 +340,21 @@ It settles on a quiet period rather than a sentinel, so no probe has to print a 
 script knows about. Distinct `--port` values let probes run concurrently, exactly as
 `tbbuild`'s do.
 
+**That last sentence was false when it was written, and is true now.** The staging directory
+was a fixed `%TEMP%\tbrun\src`, so a second run deleted the first one's tree, and shutdown
+was `taskkill /F /T /IM twinBASIC.exe` --- machine-wide, taking out every concurrent run's
+IDE and the one you had open yourself. The workspace and `project.id` are keyed to `--port`
+now, and `tbbuild` reports the IDE's pid (`ide-pid:` in text, `idePid` in `--json`) so the
+kill is by pid tree.
+
+`tbrun` also **harvests COM servers a probe leaves behind**, because nothing else can: an
+`EXCEL.EXE` from `CreateObject` has `svchost.exe` for a parent, so no tree kill reaches it,
+every activation is its own process, and `Quit` does not end one while any reference is
+outstanding. The sweep is a before/after snapshot diff restricted to processes that are new,
+on an image allowlist, *and* windowless --- a new one that has a window is reported and left
+alone, since that cannot be told from a copy the user opened. `--no-reap` turns it off, and
+concurrent runs driving the same server should use it and sweep once at the end.
+
 ## Page template
 
 Match the existing style. Worked examples to imitate:

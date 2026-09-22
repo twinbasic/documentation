@@ -8,7 +8,11 @@
 //       --port <n>        DevTools port to start the IDE on (default 9333)
 //       --timeout <secs>  give up waiting for the compile (default 180)
 //       --json            emit one JSON object instead of text
-//       --keep            leave the IDE running afterwards
+//       --keep            leave the IDE running afterwards. The IDE's pid is
+//                         then printed as `ide-pid: N` (and is always in --json
+//                         as `idePid`), because whoever inherits a kept IDE has
+//                         to be able to end that one rather than every IDE on
+//                         the machine.
 //       --show / --hide   put the IDE on your desktop where you can watch it,
 //                         or on a private one where it cannot take focus.
 //                         Default: hidden, unless TBBUILD_SHOW is set --
@@ -253,10 +257,15 @@ if (counts.reduce((a, b) => a + b, 0) !== rows.length) {
   die(3, `unsettled: ${rows.length} rows against ${counts.join("/")} in the status bar`);
 }
 
+// The IDE's pid is reported so a caller can clean up precisely. It matters most
+// under --keep, where this process leaves the IDE running and something else has
+// to end it: killing by image name instead takes out every concurrent run's IDE,
+// and the user's own open IDE with it.
 if (asJson) {
   console.log(JSON.stringify({
     project: proj,
     errors: counts[0], warnings: counts[1], hints: counts[2], infos: counts[3],
+    idePid: child?.pid ?? null, kept: keep,
     diagnostics: rows, dialogs,
   }, null, 2));
 } else {
@@ -264,6 +273,8 @@ if (asJson) {
   console.log(`--- ${counts[0]} error(s), ${counts[1]} warning(s), ` +
     `${counts[2]} hint(s), ${counts[3]} info`);
   if (dialogs.length) console.log("dialogs:", JSON.stringify(dialogs));
+  // Only under --keep, where the pid is still alive and therefore actionable.
+  if (keep && child?.pid) console.log(`ide-pid: ${child.pid}`);
 }
 
 c.close();

@@ -205,12 +205,14 @@ from earlier work.
 - **`MsgBox` hangs a run-mode probe, invisibly.** The HelloWorld template's `Main` is a
   `MsgBox` and had to come out before probing. Run-mode fences must be screened for `MsgBox`
   / `InputBox` and refused, not discovered at the timeout.
-- **`tbrun` cannot currently run concurrently, though WIP.md says it can.** It stages into a
-  fixed `%TEMP%\tbrun\src` with a fixed `tbrun-probe.exe` and `.twinproj`
-  (`tbrun.mjs:119-131`), so a second invocation `rmSync`s the first one's tree — reproduced,
-  two concurrent probes, `EPERM` on the staging directory. `--port` scopes the IDE but not
-  the workspace. The batch runner needs per-run staging; fixing `tbrun` the same way is the
-  smaller change and should land first.
+- **`tbrun` could not run concurrently, though WIP.md said it could — now fixed.** It staged
+  into a fixed `%TEMP%\tbrun\src` with a fixed `tbrun-probe.exe`, so a second invocation
+  `rmSync`d the first one's tree (reproduced: `EPERM` on a path the failing script had never
+  touched). Worse, shutdown was `taskkill /F /T /IM twinBASIC.exe` — machine-wide, so it ended
+  every concurrent run's IDE *and* the one the user had open. The workspace and `project.id`
+  are now keyed to `--port`, and `tbbuild` reports the IDE pid (`ide-pid:` in text, `idePid`
+  in `--json`) so the kill is by pid tree. Verified: two runs at once, 25 s wall, each
+  capturing its own output.
 - **A probe's quiet period must outlast what it waits on.** The default 2500 ms expires while
   Excel is still starting, and the run reports success having captured nothing. Anything
   driving an out-of-process server needs a much longer `--quiet`.
@@ -219,8 +221,24 @@ from earlier work.
 - **Paths handed to the compiler must be pure Windows.** It prefixes `\\?\`, which does not
   accept forward slashes: a `C:\Users\x/Desktop/...` mix fails with `input twinproj file
   does not exist`.
-- **Office examples leave orphan processes.** A probe throwing before `app.Quit` leaves
-  `EXCEL.EXE` running. The runner should sweep.
+- **Office examples leak one process per run, and it is not self-limiting.** Three things
+  were measured, and each removes a reason to shrug at it. Each `CreateObject` starts a
+  *separate* `EXCEL.EXE` — 0, 1, 2 across two activations — so a batch of a hundred Office
+  fences leaves a hundred processes rather than reusing one. Calling `Quit` is **not**
+  sufficient: the process exits only once every COM reference is released, and two instances
+  survived an explicit `Quit()` in the same session that issued it. And they sit on the
+  **user's real desktop**, not `tbbuild`'s private one — `EnumWindows` from the default
+  desktop finds their `XLMAIN` windows — so they are hidden only because `Visible` is
+  `False`, and a fence that sets it `True` puts Excel on the user's screen mid-run.
+  `tbrun` now harvests them (see the reaper note below); the batch runner inherits that, but
+  must pass `--no-reap` while running concurrently and sweep once at the end.
+- **The reaper cannot be a tree kill, and has to be conservative.** A DCOM-activated server's
+  parent is `svchost.exe` — itself a child of `services.exe`, started at boot — so there is
+  no ancestry from the probe to the server at all, and a before/after snapshot diff is the
+  only instrument available. `tbrun` kills only what is new, on an image allowlist, *and*
+  windowless; anything new and on the list but windowed is reported and spared, because that
+  is indistinguishable from a copy the user opened. Verified both directions with a timed
+  injection: a process started mid-run was reaped, one present beforehand was not.
 
 ## Open questions
 
