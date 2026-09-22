@@ -142,7 +142,7 @@ build is 32-bit (`Len(CLngPtr(0))` = 4), and both binding styles reach Excel fro
 |---|---|
 | `CreateObject("Excel.Application")`, no reference | `TypeName` = `Application`, `Version` = `16.0`, clean `Quit` |
 | `New Excel.Application` with the reference above | same, plus `Excel.Worksheet` resolves and a real `Range("A1")` round-trip |
-| `Dim X As New Excel.Worksheet` | **compiles**; instantiation untested — see below |
+| `Dim X As New Excel.Worksheet` | compiles, then **raises `0x80004002` E_NOINTERFACE** on first use |
 
 So **`office-early` does not need pinning to x64**, which was the initial assumption and was
 wrong.
@@ -153,13 +153,27 @@ about twinBASIC's own 32/64 bridge — a 64-bit host process plus IPC — which 
 for **in-process**, 64-bit-only DLLs, the case VB6 genuinely cannot do. A template needing
 one of those has to be measured separately.
 
-The `Dim X As New Excel.Worksheet` row is a **partial result and should not be quoted as
-more**. `As New` defers instantiation to first use, and the probe never touched `X`, so it
-established only that the declaration compiles. `Worksheet` is a non-creatable interface, so
-a touch would likely raise. This matters editorially: the tempting minimal fix for the five
-`Core/` pages is to write `Excel.Worksheet` and add a reference, and that would preserve
-VBA-Docs' original nonsense in a form that now type-checks. `Excel.Application` is genuinely
-creatable and is the honest rewrite.
+**`New Excel.Worksheet` does not work, and the declaration compiling proves nothing.**
+`Worksheet` is a non-creatable *interface*, not a coclass. Measured in the IDE debugger with
+the Excel reference present: the `Dim a As New Excel.Worksheet` line raises nothing, and then
+both `a.Name` (which forces `As New`'s deferred instantiation) and an explicit
+`Set b = New Excel.Worksheet` raise **-2147467262 / 0x80004002, “No such interface
+supported”**.
+
+This matters editorially, because the tempting minimal fix for the five `Core/` pages is to
+qualify the existing line as `Excel.Worksheet` and add a reference — which would preserve
+VBA-Docs' original nonsense in a form that merely type-checks. The honest ports are
+`Excel.Application`, which *is* a creatable coclass, or reaching a worksheet through the
+object model the way real code does:
+
+```tb
+Dim app As New Excel.Application
+Dim wb As Excel.Workbook: Set wb = app.Workbooks.Add()
+Dim ws As Excel.Worksheet: Set ws = wb.Worksheets(1)
+```
+
+That path is measured working end to end — `TypeName(ws)` = `Worksheet`, with a real
+`Range("A1")` round-trip — from the default 32-bit build against 64-bit Office.
 
 ## Batching, which is the whole cost question
 
@@ -179,6 +193,13 @@ Collision rules, all forced by putting unrelated samples in one compilation unit
   each other.
 - **`Sub Main` comes from the template, never from a fence.** A `module`-slot fence bringing
   its own `Main` needs renaming on the way in.
+- **A generated module must not share a name with the project.** `project.name = "ProbeWS"`
+  beside `Module ProbeWS` makes `[RunAfterBuild]`'s `ProbeWS.ProbeWS.Probe` ambiguous, and
+  the IDE refuses it with *"'ProbeWS' is ambiguous. Could be: [Module] ProbeWS.ProbeWS /
+  [Library] ProbeWS"*. Cost three probes that looked like hangs before the cause was seen,
+  because the error arrives at *execution* time and not at build time — `tbbuild` reports
+  zero errors and the run simply produces nothing. The `tbx_<hash>` scheme avoids it by
+  construction, but the template's `project.name` is the other half and has to be checked.
 - **`[RunAfterBuild]` is exclusive.** Whether twinBASIC accepts more than one is untested;
   assume not, so `run` fences get their own project, or one generated dispatcher calls each
   in turn.
@@ -215,7 +236,12 @@ from earlier work.
   capturing its own output.
 - **A probe's quiet period must outlast what it waits on.** The default 2500 ms expires while
   Excel is still starting, and the run reports success having captured nothing. Anything
-  driving an out-of-process server needs a much longer `--quiet`.
+  driving an out-of-process server needs a much longer `--quiet`. **A post-build error can
+  land after the window closes too**: the ambiguity error above surfaced 17.5 s after
+  `[BUILD] Executing`, roughly 6 s past a `--quiet 12000` capture, so the console the harness
+  read was silent while the console the IDE ended up holding named the fault outright. When a
+  probe comes back empty, re-read the live console (`--keep`, then CDP) before concluding it
+  hung.
 - **`export` needs the output folder to exist** (one level only), and stdin redirected
   (`</dev/null`) when looping, or the executable eats the loop's input.
 - **Paths handed to the compiler must be pure Windows.** It prefixes `\\?\`, which does not
