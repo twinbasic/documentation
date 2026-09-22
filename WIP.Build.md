@@ -120,7 +120,7 @@ The full account of the JavaScript port of `build_fonts.py` --- what works, the 
 build defect that blocks it, the evidence, the root cause in `hb-config.hh`, and what the
 port must check for when it happens --- is in [WIP.Fonts.md](WIP.Fonts.md).
 
-`wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs.
+`wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs. Running it is [WIP.Wisdom.md](WIP.Wisdom.md).
 
 `eval/` — use-case evaluation of the developer documentation. `build_corpus.mjs` mirrors the
 repository with every non-prose file stubbed unreadable, so "documentation only" is a property
