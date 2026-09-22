@@ -46,7 +46,7 @@ The following example shows how to use the **Implements** statement to make a se
 
 The interface declarations are in a class called `PersonalData`:
 
-```tb
+```tb check_build
 Public Name As String
 Public Address As String
 ```

@@ -11,11 +11,11 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**801 samples are marked today** and the gate over them takes ~42 s. That is up from 401,
-and the arithmetic of how it got there is [the second pass](#the-second-pass-604-to-801),
+**818 samples are marked today** and the gate over them takes ~42 s. That is up from 401,
+and the arithmetic of how it got there is [the second pass](#the-second-pass-604-to-818),
 which is also where the one claim this file got badly wrong is corrected.
 
-Of the 1,095 classifiable fences, 801 compile. The rest are the follow-up work, and
+Of the 1,101 classifiable fences, 818 compile. The rest are the follow-up work, and
 [what the first full run found](#what-the-first-full-run-found) says what is in the way.
 
 ## The problem
@@ -359,7 +359,7 @@ Three of those are actionable as a group rather than one page at a time:
 > set, at 97 --- the second bullet, which was right. See [the second
 > pass](#the-second-pass-604-to-801).
 
-## The second pass: 604 to 801
+## The second pass: 604 to 818
 
 The numbers below are all measured against BETA 983, each as a before/after of the same
 survey (`--propose --json`, diffed by fence id) so that "newly passing" and "newly failing"
@@ -373,6 +373,8 @@ are counted rather than asserted. **No change in this pass regressed a sample.**
 | `cef` / `webview2` template split | 36 |
 | `WithEvents` added to the Class inference | ~30 |
 | declaring the locals VBA-derived samples left implicit | ~25 |
+| `hidden` context fences, on the pages that had one-page fictions | 6 |
+| reading an access modifier as a declaration, not a statement | 8 |
 
 ### The Class row, and why it needs a base
 
@@ -604,9 +606,21 @@ by grep.
   precisely "the control instances the samples assume", so they were left. The invented
   *classes* moved, because a class is not a control instance and a page is where it
   belongs. The line between the two is a judgement, not a rule.
-- **294 samples still do not compile.** The remaining first-error groups are `TB5182`
-  (a genuine fragment: an elision, a signature with no body, pseudo-code in a `tb` fence),
-  the CustomControls `Framework/` pages (which need `Implements ICustomControl` *and*
-  fields the control declares elsewhere), and a long tail of one-off helper procedures a
-  sample calls --- `ProcessMessage`, `Sleep`, `InitializeDefaultValues`. The first group
-  wants editorial judgement page by page; the second two are `hidden`-fence work.
+- **283 samples still do not compile.** Three groups:
+  - **`TB5182`** --- a genuine fragment: an elision, a signature with no body, or
+    pseudo-code sitting in a `tb` fence. `VB/MDIForm/index.md` had one of the last kind,
+    a menu-item-to-action table written with `=>`; it is four real handlers now, which
+    both compiles and is what a reader would actually write. The rest want the same
+    judgement, page by page.
+  - **The CustomControls `Framework/` pages**, about nine samples that are one method of a
+    control class. **An `implements=` key cannot rescue them, and that is measured:**
+    `Implements CustomControls.ICustomControl` with only `Initialize` supplied is
+    `TB5000 Missing implementation of member Sub Destroy()` and the same for `Paint()`. A
+    wrapper would have to synthesize stubs for every other member of an interface whose
+    shape the tool does not know. Nor can a `hidden` fence help --- the class has to be one
+    compilation unit, and a hidden fence is a separate one. The fix is editorial: show the
+    enclosing class, which these pages' own prose already half-describes ("custom controls
+    store the **CustomControlContext** in a private field, typically called
+    **ControlContext**").
+  - **One-off helper procedures a sample calls** --- `ProcessMessage`, `Sleep`,
+    `InitializeDefaultValues`. These *are* `hidden`-fence work, and cheap.

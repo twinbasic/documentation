@@ -434,7 +434,7 @@ Applicable to: [procedures](../Gloss#procedure) and constants in a module.
 
 It's possible to export a function or constant from standard modules. The compiler rejects the attribute on a module-level variable. Example:
 
-```tb
+```tb check_build
 [DllExport]
 Public Const MyExportedSymbol As Long = &H00000001
 ```

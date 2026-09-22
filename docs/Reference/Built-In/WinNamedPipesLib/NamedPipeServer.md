@@ -12,6 +12,17 @@ Hosts one named pipe and accepts an unbounded number of concurrent client connec
 
 Configure the public fields ([**PipeName**](#pipename) is required, the others have reasonable defaults), call [**Start**](#start), and respond to the lifecycle events as clients arrive and exchange messages. The package opens the underlying pipe as **PIPE_TYPE_MESSAGE** / **PIPE_READMODE_MESSAGE** --- messages preserve their boundaries between sender and receiver.
 
+```tb hidden
+' Context for the samples on this page: the helper one of them calls, and the
+' Win32 Sleep another uses to block a console host. Both belong to the reader's
+' program rather than to the package.
+Public Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+
+Public Sub ProcessMessage(ByVal Connection As NamedPipeServerConnection, _
+                          ByRef Data() As Byte)
+End Sub
+```
+
 ```tb check_build
 Private WithEvents server As NamedPipeServer
 
@@ -60,7 +71,7 @@ Set this before calling [**Start**](#start). The value is read during connection
 
 This example sets **ContinuouslyReadFromPipe** to **False** to process one message at a time, priming the first read from [**ClientConnected**](#clientconnected) and re-arming from [**ClientMessageReceived**](#clientmessagereceived).
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Private Sub Form_Load()
@@ -107,7 +118,7 @@ When **True**, each event fires directly on the IOCP worker thread that received
 
 This example sets **FreeThreadingEvents** to **True** to host the server in a console application without requiring a message loop.
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Sub Main()

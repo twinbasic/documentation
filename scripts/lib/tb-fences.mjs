@@ -238,6 +238,10 @@ const PROC_OPEN = rx("(?:Sub|Function|Property\\s+(?:Get|Let|Set)|Operator|Const
 const DECLARE = rx("(?:Declare|DeclareWide)\\b");
 const MODULE_ONLY = rx("(?:Event|Delegate|Implements|Inherits|Import|Extends)\\b");
 const WITHEVENTS = rx("WithEvents\\b");
+// An access modifier at the head of a line, which only a container may hold.
+// Checked after the openers above, so `Public Sub`, `Public Enum` and
+// `Public Declare` have already been claimed by the rules that know them.
+const ACCESS_DECL = /^(?:Public|Private|Friend|Global)\s+/i;
 const OPTION_RE = /^Option\s+/i;
 const ATTRIBUTE_RE = /^\[[A-Za-z_]/;
 const DIMLIKE = rx("(?:Dim|Const|ReDim)\\b");
@@ -426,6 +430,20 @@ export function classify(content) {
       // declaration and then TB5079 on every later use of the name -- four
       // diagnostics for one wrong container, none of them naming the cause.
       if (top && WITHEVENTS.test(text)) sawWithEvents = true;
+      if (top) sawModuleOnly = true;
+      continue;
+    }
+    // An access modifier is not a statement. `Public NumberOfEmployees As
+    // Integer` is a field declaration, and no procedure body may contain one
+    // -- so a fence opening with it belongs in a Module, not in a generated
+    // Sub, where the compiler reports `Unrecognized symbol 'Public'` against a
+    // line that is perfectly correct.
+    //
+    // Eight fences were classified as loose statements this way, including
+    // Reference/Core/Public.md and Reference/Core/Private.md -- the reference
+    // pages for the two keywords. `Static` is deliberately not in the list: it
+    // IS legal inside a procedure.
+    if (ACCESS_DECL.test(text)) {
       if (top) sawModuleOnly = true;
       continue;
     }

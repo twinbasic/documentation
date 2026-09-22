@@ -680,6 +680,14 @@ const CLASSIFIER_PROBES = [
   // one, so a fence that does is code-behind even with no `Me` in it -- which
   // is the whole WinNamedPipesLib reference, where the field IS the subject.
   ["a WithEvents field", "Private WithEvents srv As Foo\nPrivate Sub srv_Ping()\nEnd Sub\n", "class"],
+  // An access modifier is a container-scope declaration, never a statement.
+  // Reference/Core/Public.md's own samples were wrapped in a Sub, where
+  // `Public` is a syntax error -- on the page documenting the keyword.
+  ["a Public field", "Public NumberOfEmployees As Integer\n", "module"],
+  ["a Private field", "Private X As New Collection\n", "module"],
+  ["a Private Const", "Private Const Answer As Long = 42\n", "module"],
+  // ...but Static IS legal in a procedure, so it stays a statement.
+  ["a Static local", "Static Accumulate As Long\nAccumulate = 1\n", "sub"],
   // ...but only at container scope. Inside a Class the fence brings its own.
   ["WithEvents inside a whole Class", "Class C\n    Private WithEvents srv As Foo\nEnd Class\n", "file"],
 ];
