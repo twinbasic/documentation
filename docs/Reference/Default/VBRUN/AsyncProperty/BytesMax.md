@@ -19,7 +19,7 @@ Used together with [**BytesRead**](BytesRead) to update a progress indicator dur
 
 This example shows progress as a ratio when the total size is known.
 
-```tb
+```tb check_build project=packages
 Private Sub UserControl_AsyncReadProgress(AsyncProp As AsyncProperty)
     If AsyncProp.BytesMax > 0 Then
         Dim pct As Long

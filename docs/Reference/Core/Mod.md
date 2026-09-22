@@ -21,7 +21,8 @@ Syntax:
 
 The modulus, or remainder, operator divides *number1* by *number2* (rounding floating-point numbers to integers) and returns only the remainder as *result*. For example, in the following expression, A (*result*) equals 5:
 
-```tb
+```tb check_build
+Dim A As Long
 A = 19 Mod 6.7
 ```
 

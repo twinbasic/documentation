@@ -12,7 +12,7 @@ has_toc: false
 
 There is exactly one **Global** per process and it is not creatable from user code: no `New Global`, no public coclass to instantiate. The runtime publishes it via the IDE's special `[AppObject]` mechanism, and the compiler maps unqualified references to its members.
 
-```tb
+```tb check_build
 ' All four of these resolve to a method/property on Global:
 Dim p As StdPicture
 Set p = LoadPicture(App.Path & "\splash.png")
@@ -124,7 +124,8 @@ Syntax: **Load** *object*
 *object*
 : *required* The default instance of a form class (`Form1`), an explicit form reference, or a control-array element (`Command1(3)`).
 
-```tb
+```tb check_build
+Dim frm As Form
 Load Form2                        ' instantiates and runs Form_Load, but Form2 stays hidden
 Set frm = Forms("Form2")          ' the new instance now exists in Forms
 ```

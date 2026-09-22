@@ -63,7 +63,8 @@ Syntax: *object*.**Item(** *Index* **)**
 
 **Item** is the default member of **DataObjectFiles**, so the following lines are equivalent:
 
-```tb
+```tb check_build
+Dim path As String
 path = Data.Files.Item(1)
 path = Data.Files(1)
 ```

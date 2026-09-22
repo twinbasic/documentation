@@ -12,7 +12,7 @@ An **MDIForm** is a top-level Win32 window that hosts an *MDI client area* --- a
 
 The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
 
-```tb
+```tb check_build inherits=MDIForm
 ' In MDIForm1's code-behind:
 Private Sub MDIForm_Load()
     Caption = "Editor"
@@ -62,11 +62,23 @@ An MDI child is any [**Form**](../Form/) whose **MDIChild** property is **True**
 
 [**Arrange**](#arrange) lays the open children out in a single call: cascade, tile horizontally, tile vertically, or arrange the icons of minimised children along the bottom edge.
 
-```tb
-mnuWindowCascade.Click       => Me.Arrange vbCascade
-mnuWindowTileH.Click         => Me.Arrange vbTileHorizontal
-mnuWindowTileV.Click         => Me.Arrange vbTileVertical
-mnuWindowArrangeIcons.Click  => Me.Arrange vbArrangeIcons
+```tb check_build inherits=MDIForm
+' In MDIForm1's code-behind, one handler per Window-menu item:
+Private Sub mnuWindowCascade_Click()
+    Me.Arrange vbCascade
+End Sub
+
+Private Sub mnuWindowTileH_Click()
+    Me.Arrange vbTileHorizontal
+End Sub
+
+Private Sub mnuWindowTileV_Click()
+    Me.Arrange vbTileVertical
+End Sub
+
+Private Sub mnuWindowArrangeIcons_Click()
+    Me.Arrange vbArrangeIcons
+End Sub
 ```
 
 ## Window appearance

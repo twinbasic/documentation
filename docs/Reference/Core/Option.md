@@ -104,13 +104,13 @@ Without the **Option Explicit** statement, and when the [**Option Explicit On**]
 ### Example of use at module level
 {: .no_toc }
 
-```tb
+```tb check_build expect-error=TB5079
 Module MyModule
-    Option Explicit ' Force explicit variable declaration. 
-	Dim MyVar ' Declare variable. 
+    Option Explicit ' Force explicit variable declaration.
+    Dim MyVar ' Declare variable.
     Sub Example()
-		MyInt = 10 ' Undeclared variable generates error. 
-		MyVar = 10 ' Declared variable does not generate error. 
+        MyInt = 10 ' Undeclared variable generates error.
+        MyVar = 10 ' Declared variable does not generate error.
     End Sub
 End Module
 ```

@@ -16,11 +16,11 @@ The **AsyncProperty** object holds the results of an asynchronous read started w
 
 A user control may have several outstanding asynchronous reads at once, so the **AsyncProperty** passed to each event has to identify the one the event is for. [**PropertyName**](PropertyName) returns the name supplied to **AsyncRead** when the request was started --- typically the name of the property the control is going to assign the value to. [**Target**](Target) returns the URL or file path that was being downloaded. [**AsyncType**](AsyncType) returns an **AsyncTypeConstants** value identifying how the data is being delivered --- as a picture, a file, or a byte array.
 
-```tb
+```tb check_build
 Private Sub UserControl_AsyncReadComplete(ByVal Prop As AsyncProperty)
     Select Case Prop.PropertyName
         Case "Picture"
-            Set Picture = Prop.Value
+            Set UserControl.Picture = Prop.Value
         Case "DataFile"
             ' Prop.Value is the path to the downloaded temporary file.
     End Select

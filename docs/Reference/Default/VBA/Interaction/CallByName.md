@@ -31,7 +31,8 @@ The return value is a **Variant** containing whatever the call returned. For met
 
 These three calls use **CallByName** to operate on a control by name. The first sets its **MousePointer** property to the crosshair cursor, the second reads the same property back out, and the third invokes the **Move** method to reposition the control.
 
-```tb
+```tb check_build
+Dim Result As Variant
 CallByName Text1, "MousePointer", vbLet, vbCrosshair
 Result = CallByName(Text1, "MousePointer", vbGet)
 CallByName Text1, "Move", vbMethod, 100, 100

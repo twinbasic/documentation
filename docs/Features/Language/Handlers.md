@@ -13,9 +13,9 @@ You can now separate the name of method from the class member it applies to.
 
 For events on Forms, UserControls, and event-raising objects, you can define any method as the handler, rather than need to name it as `Object_Event()`, by following it with `Handles Object.Event`. For example, in a form, instead of `Private Sub Form_Load()` you could handle the `Load` event with `Private Sub OnLoad() Handles Form.Load`.
 
-```tb
+```tb check_build
 Private Sub OnLoad() Handles Form.Load
-    Caption = "Loaded"
+    Debug.Print "loaded"
 End Sub
 
 Private Sub OnClick() Handles Command1.Click

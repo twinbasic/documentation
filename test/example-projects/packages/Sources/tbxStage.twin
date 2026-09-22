@@ -57,4 +57,10 @@ Module tbxStage
     Public myToolWindow As tbIDE.ToolWindow
     Public myWindow As tbIDE.ToolWindow
 
+    ' An addin keeps the toolbar buttons it created, so that its handlers can
+    ' reach them later; the Toolbar and Toolbars pages name theirs this way.
+    Public Button1 As tbIDE.Button
+    Public Button2 As tbIDE.Button
+    Public MyButton As tbIDE.Button
+
 End Module

@@ -10,7 +10,7 @@ has_toc: false
 
 One IDE toolbar --- the strip of buttons that runs along the top of the IDE window. Addins add their own buttons and separators to it during start-up. Reached through `Host.Toolbars(0)` (currently the only toolbar).
 
-```tb
+```tb check_build
 Private Sub Host_OnProjectLoaded()
     With Host.Toolbars(0)
         .AddSplitter
@@ -43,7 +43,7 @@ Syntax: *toolbar*.**AddButton**( *Id*, *Caption* [, *IconData* ] ) **As** [**But
 *IconData*
 : *optional* The button's icon as a **Byte()** array --- typically the bytes of an embedded PNG / ICO resource loaded with `LoadResData`. **Variant**. Pass an empty / **Empty** value to omit the icon and show the caption inline.
 
-```tb
+```tb check_build
 Dim icon() As Byte
 icon = LoadResData("button1.png", "ICONS")
 Set Button1 = Host.Toolbars(0).AddButton("MyAddIn.Button1", "Refresh Project", icon)

@@ -49,7 +49,8 @@ Syntax: *object*.**Item(** *index* **)**
 
 **Item** is the default member of **ParentControls**, so the following lines are equivalent:
 
-```tb
+```tb check_build
+Dim ctl As Control
 Set ctl = UserControl.ParentControls.Item(1)
 Set ctl = UserControl.ParentControls(1)
 ```

@@ -23,20 +23,23 @@ If *object1* and *object2* both refer to the same object, *result* is **True**; 
 
 Two variables can be made to refer to the same object in several ways. In the following example, A has been set to refer to the same object as B:
 
-```tb
+```tb check_build
+Dim A As Object, B As Object
 Set A = B
 ```
 
 The following example makes A and B refer to the same object as C:
 
-```tb
+```tb check_build
+Dim A As Object, B As Object, C As Object
 Set A = C
 Set B = C
 ```
 
 A reference compared against **Nothing** with **Is** tells whether the reference is unassigned:
 
-```tb
+```tb check_build
+Dim MyObject As Object
 If MyObject Is Nothing Then
     Debug.Print "MyObject has not been assigned."
 End If

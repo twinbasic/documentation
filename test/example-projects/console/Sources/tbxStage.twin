@@ -19,6 +19,9 @@
 Module tbxStage
 
     Public Form1 As Form
+    Public Form2 As Form
+    Public Form3 As Form
+    Public MDIForm1 As MDIForm
     Public UserForm1 As Form
     Public UserForm2 As Form
 

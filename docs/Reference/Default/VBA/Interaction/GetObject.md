@@ -32,7 +32,8 @@ If *pathname* is a zero-length string (`""`), **GetObject** returns a *new* inst
 
 Some applications support activating a *part* of a file. Append `!` and an application-specific identifier to the file name --- for example, the third layer of a CAD drawing:
 
-```tb
+```tb check_build
+Dim LayerObject As Object
 Set LayerObject = GetObject("C:\CAD\SCHEMA.CAD!Layer3")
 ```
 

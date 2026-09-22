@@ -139,7 +139,7 @@ Fires once the IDE has finished loading the project and is ready to accept exten
 
 Syntax: *host*_**OnProjectLoaded**()
 
-```tb
+```tb check_build
 Private Sub Host_OnProjectLoaded()
     With Host.Toolbars(0)
         .AddSplitter

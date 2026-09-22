@@ -65,7 +65,8 @@ For files opened in **Binary** mode, all of the **Random** rules apply, except:
 
 - **Get** reads variable-length strings that aren't elements of user-defined types without expecting the 2-byte length descriptor. The number of bytes read equals the number of characters already in the string. For example, the following statements read 10 bytes from file number 1:
 
-  ```tb
+  ```tb check_build
+  Dim VarString As String
   VarString = String(10, " ")
   Get #1, , VarString
   ```

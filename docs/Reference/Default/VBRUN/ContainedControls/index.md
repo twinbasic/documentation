@@ -51,7 +51,8 @@ Syntax: *object*.**Item(** *index* **)**
 
 **Item** is the default member of **ContainedControls**, so the following lines are equivalent:
 
-```tb
+```tb check_build
+Dim ctl As Control
 Set ctl = UserControl.ContainedControls.Item(1)
 Set ctl = UserControl.ContainedControls(1)
 ```

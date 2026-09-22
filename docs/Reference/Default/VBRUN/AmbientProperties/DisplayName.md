@@ -19,11 +19,11 @@ The host typically returns the name by which the user identifies the control ---
 
 This example responds to a **DisplayName** change and updates the control's tooltip.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "DisplayName"
-            ToolTipText = Ambient.DisplayName
+            UserControl.ToolTipText = Ambient.DisplayName
     End Select
 End Sub
 ```

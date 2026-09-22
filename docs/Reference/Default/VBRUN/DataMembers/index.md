@@ -71,7 +71,8 @@ Syntax: *object*.**Item(** *index* **)**
 
 **Item** is the default member of **DataMembers**, so the following lines are equivalent:
 
-```tb
+```tb check_build
+Dim name As String, MyDataMembers As DataMembers
 name = MyDataMembers.Item(1)
 name = MyDataMembers(1)
 ```

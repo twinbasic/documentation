@@ -176,7 +176,10 @@ ColorName = PenColor    ' Calls Property Get.
 
 A **Property Set** procedure assigns an object reference, in much the same way as **Property Let** assigns a value:
 
-```tb
+```tb check_build
+' The backing field the property assigns to.
+Private CurrentPen As Object
+
 ' The Pen property may be set to different Pen implementations.
 Property Set Pen(P As Object)
     Set CurrentPen = P ' Assign Pen to object.
