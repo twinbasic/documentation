@@ -21,11 +21,11 @@ The four equality assertions in this module --- [**AreEqual**](#areequal), [**Ar
 - All other comparisons are evaluated as if the operands had been written either side of `=` in twinBASIC code --- numeric promotions apply (`5` equals `5.0`), `vbNullString` and `""` are both empty strings, and object comparison retrieves and compares default members where they exist.
 - `Null` is never equal to anything, not even to itself --- use [**IsNull**](#isnull) / [**IsNotNull**](#isnotnull) to test for it.
 
-```tb
+```tb check_build
 ' All pass under Permissive:
-Permissive.AreEqual "Hello", "hello" ' case-insensitive
-Permissive.AreEqual 5, 5.0           ' twinBASIC promotes 5 to 5.0
-Permissive.AreEqual vbNullString, "" ' both empty strings
+Assert.Permissive.AreEqual "Hello", "hello" ' case-insensitive
+Assert.Permissive.AreEqual 5, 5.0           ' twinBASIC promotes 5 to 5.0
+Assert.Permissive.AreEqual vbNullString, "" ' both empty strings
 ```
 
 ## Diagnostic outcome
@@ -34,7 +34,7 @@ Permissive.AreEqual vbNullString, "" ' both empty strings
 
 Records that the test reached this point without failure.
 
-Syntax: **Permissive.Succeed**
+Syntax: **Assert.Permissive.Succeed**
 
 A test procedure that returns without any assertion having failed is reported as passing implicitly, so calling **Succeed** explicitly is rarely necessary. It is occasionally useful in branches that would otherwise look ambiguous about their outcome --- for example, the body of a loop that should reach the end.
 
@@ -42,7 +42,7 @@ A test procedure that returns without any assertion having failed is reported as
 
 Unconditionally records a test failure.
 
-Syntax: **Permissive.Fail** [ *Message* ]
+Syntax: **Assert.Permissive.Fail** [ *Message* ]
 
 *Message*
 : *optional* A **String** describing the failure, recorded together with the source location of the call.
@@ -52,14 +52,14 @@ Syntax: **Permissive.Fail** [ *Message* ]
 ```tb
 On Error Resume Next
 target.SomethingThatShouldRaise
-If Err.Number = 0 Then Permissive.Fail "expected an error, got success"
+If Err.Number = 0 Then Assert.Permissive.Fail "expected an error, got success"
 ```
 
 ### Inconclusive
 
 Records the test as inconclusive --- neither a pass nor a failure.
 
-Syntax: **Permissive.Inconclusive** [ *Message* ]
+Syntax: **Assert.Permissive.Inconclusive** [ *Message* ]
 
 *Message*
 : *optional* A **String** describing why the result is inconclusive.
@@ -72,7 +72,7 @@ Syntax: **Permissive.Inconclusive** [ *Message* ]
 
 Asserts that *Actual* is equal to *Expected*.
 
-Syntax: **Permissive.AreEqual** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Permissive.AreEqual** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding the expected value.
@@ -86,20 +86,20 @@ Syntax: **Permissive.AreEqual** *Expected*, *Actual* [, *Message* ]
 The comparison follows this module's [comparison semantics](#comparison-semantics) --- strings are compared case-insensitively, object comparison reads default members where they exist, and everything else uses normal twinBASIC equality (so numeric promotions apply and `vbNullString` matches `""`). If either operand is **Null**, the assertion fails --- `Null` is never equal to anything; use [**IsNull**](#isnull) to test for **Null** explicitly.
 
 ```tb
-Permissive.AreEqual 42, result          ' passes if result equals 42 (numeric promotion applies)
-Permissive.AreEqual "Hello", greeting   ' passes if greeting equals "hello", "HELLO", etc.
+Assert.Permissive.AreEqual 42, result          ' passes if result equals 42 (numeric promotion applies)
+Assert.Permissive.AreEqual "Hello", greeting   ' passes if greeting equals "hello", "HELLO", etc.
 
 ' These all pass under Permissive (would fail under Exact or Strict):
-Permissive.AreEqual "Hello", "hello"    ' case-insensitive string comparison
-Permissive.AreEqual 5, 5.0             ' numeric promotion makes them equal
-Permissive.AreEqual "", vbNullString   ' both treated as the empty string
+Assert.Permissive.AreEqual "Hello", "hello"    ' case-insensitive string comparison
+Assert.Permissive.AreEqual 5, 5.0             ' numeric promotion makes them equal
+Assert.Permissive.AreEqual "", vbNullString   ' both treated as the empty string
 ```
 
 ### AreNotEqual
 
 Asserts that *Actual* is not equal to *Expected*.
 
-Syntax: **Permissive.AreNotEqual** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Permissive.AreNotEqual** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding a value that *Actual* must differ from.
@@ -112,18 +112,18 @@ Syntax: **Permissive.AreNotEqual** *Expected*, *Actual* [, *Message* ]
 
 Comparison uses this module's [comparison semantics](#comparison-semantics) --- strings are compared case-insensitively, object comparison reads default members where they exist, and numeric promotions apply. If either operand is **Null**, the assertion passes --- `Null` is never equal to anything.
 
-```tb
-Permissive.AreNotEqual "Hello", "world"  ' passes — different strings
-Permissive.AreNotEqual 5, 6              ' passes — different numeric values
-Permissive.AreNotEqual "Hello", "hello"  ' fails — Permissive is case-insensitive
-Permissive.AreNotEqual 5, 5.0            ' fails — numeric promotion makes them equal
+```tb check_build
+Assert.Permissive.AreNotEqual "Hello", "world"  ' passes — different strings
+Assert.Permissive.AreNotEqual 5, 6              ' passes — different numeric values
+Assert.Permissive.AreNotEqual "Hello", "hello"  ' fails — Permissive is case-insensitive
+Assert.Permissive.AreNotEqual 5, 5.0            ' fails — numeric promotion makes them equal
 ```
 
 ### AreSame
 
 Asserts that *Actual* and *Expected* refer to the *same* object --- equivalent to `Expected Is Actual`.
 
-Syntax: **Permissive.AreSame** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Permissive.AreSame** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding the expected object reference.
@@ -140,7 +140,7 @@ Reference identity is independent of the module's other comparison rules --- **A
 
 Asserts that *Actual* and *Expected* refer to *different* objects --- equivalent to `Expected IsNot Actual`.
 
-Syntax: **Permissive.AreNotSame** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Permissive.AreNotSame** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding a reference that *Actual* must differ from.
@@ -153,11 +153,11 @@ Syntax: **Permissive.AreNotSame** *Expected*, *Actual* [, *Message* ]
 
 Reference identity is independent of the module's other comparison rules --- **AreNotSame** always uses the **IsNot** operator, never default-member equality. To compare values rather than references, use [**AreNotEqual**](#arenotequal).
 
-```tb
+```tb check_build
 Dim a As New Collection
 Dim b As New Collection
-Permissive.AreNotSame a, b   ' passes — a and b are distinct object instances
-Permissive.AreNotSame a, a   ' fails — same reference
+Assert.Permissive.AreNotSame a, b   ' passes — a and b are distinct object instances
+Assert.Permissive.AreNotSame a, a   ' fails — same reference
 ```
 
 ## Boolean
@@ -166,7 +166,7 @@ Permissive.AreNotSame a, a   ' fails — same reference
 
 Asserts that *Condition* evaluates to **True**.
 
-Syntax: **Permissive.IsTrue** *Condition* [, *Message* ]
+Syntax: **Assert.Permissive.IsTrue** *Condition* [, *Message* ]
 
 *Condition*
 : *required* A **Variant** holding the condition to test. The value is interpreted as a **Boolean** --- zero is **False**, any non-zero value is **True**.
@@ -180,7 +180,7 @@ If *Condition* is **Null**, the assertion fails.
 
 Asserts that *Condition* evaluates to **False**.
 
-Syntax: **Permissive.IsFalse** *Condition* [, *Message* ]
+Syntax: **Assert.Permissive.IsFalse** *Condition* [, *Message* ]
 
 *Condition*
 : *required* A **Variant** holding the condition to test. Zero is **False**, any non-zero value is **True**.
@@ -196,7 +196,7 @@ If *Condition* is **Null**, the assertion fails --- `Null` is neither **True** n
 
 Asserts that *Value* is the **Nothing** object reference.
 
-Syntax: **Permissive.IsNothing** *Value* [, *Message* ]
+Syntax: **Assert.Permissive.IsNothing** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the object reference to test.
@@ -210,7 +210,7 @@ This is the object-reference test, equivalent to `Value Is Nothing`. To check fo
 
 Asserts that *Value* refers to an object --- i.e. is *not* the **Nothing** reference.
 
-Syntax: **Permissive.IsNotNothing** *Value* [, *Message* ]
+Syntax: **Assert.Permissive.IsNotNothing** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the object reference to test.
@@ -220,20 +220,20 @@ Syntax: **Permissive.IsNotNothing** *Value* [, *Message* ]
 
 This is the object-reference test, equivalent to `Not (Value Is Nothing)`. To check that a **Variant** does not hold the **Null** value instead, use [**IsNotNull**](#isnotnull).
 
-```tb
+```tb check_build
 Dim col As Collection
 Set col = New Collection
 
-Permissive.IsNotNothing col    ' passes — col refers to a Collection object
+Assert.Permissive.IsNotNothing col    ' passes — col refers to a Collection object
 Set col = Nothing
-Permissive.IsNotNothing col    ' fails — col is Nothing
+Assert.Permissive.IsNotNothing col    ' fails — col is Nothing
 ```
 
 ### IsNull
 
 Asserts that *Value* is the **Null** value of a **Variant**.
 
-Syntax: **Permissive.IsNull** *Value* [, *Message* ]
+Syntax: **Assert.Permissive.IsNull** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the value to test.
@@ -243,17 +243,17 @@ Syntax: **Permissive.IsNull** *Value* [, *Message* ]
 
 Equivalent to checking [**IsNull**](../../Modules/Information/IsNull)`(Value) = True`. Because `Null` is never equal to anything --- not even to itself --- the equality assertions ([**AreEqual**](#areequal), [**AreNotEqual**](#arenotequal)) cannot be used to test for **Null**; this assertion exists specifically for that purpose. To check for the **Nothing** object reference instead, use [**IsNothing**](#isnothing).
 
-```tb
+```tb check_build
 Dim rs As Object   ' assume this is a Recordset
 ' A field value may be Null when the database column contains no data:
-Permissive.IsNull rs.Fields("MiddleName").Value
+Assert.Permissive.IsNull rs.Fields("MiddleName").Value
 ```
 
 ### IsNotNull
 
 Asserts that *Value* is not the **Null** value of a **Variant**.
 
-Syntax: **Permissive.IsNotNull** *Value* [, *Message* ]
+Syntax: **Assert.Permissive.IsNotNull** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the value to test.
@@ -263,10 +263,10 @@ Syntax: **Permissive.IsNotNull** *Value* [, *Message* ]
 
 Equivalent to checking [**IsNull**](../../Modules/Information/IsNull)`(Value) = False`. Because `Null` is never equal to anything --- not even to itself --- the equality assertions ([**AreEqual**](#areequal), [**AreNotEqual**](#arenotequal)) cannot be used to confirm absence of **Null**; this assertion exists specifically for that purpose. To check that an object reference is not **Nothing** instead, use [**IsNotNothing**](#isnotnothing).
 
-```tb
+```tb check_build
 Dim rs As Object   ' assume this is a Recordset
 ' Assert that a required field is not Null before reading it:
-Permissive.IsNotNull rs.Fields("CustomerID").Value
+Assert.Permissive.IsNotNull rs.Fields("CustomerID").Value
 ```
 
 ## Sequence
@@ -275,7 +275,7 @@ Permissive.IsNotNull rs.Fields("CustomerID").Value
 
 Asserts that *Actual* and *Expected* contain the same number of elements, in the same order, with each pair of elements equal under this module's [comparison semantics](#comparison-semantics).
 
-Syntax: **Permissive.SequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
+Syntax: **Assert.Permissive.SequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
 
 *Expected*
 : *required* A **Variant** holding an array, **Collection**, or other enumerable value.
@@ -292,7 +292,7 @@ Both arguments must support iteration via **For Each**. The assertion fails on t
 
 Asserts that *Actual* and *Expected* differ --- they contain a different number of elements, or at least one pair of corresponding elements differs under this module's [comparison semantics](#comparison-semantics).
 
-Syntax: **Permissive.NotSequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
+Syntax: **Assert.Permissive.NotSequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
 
 *Expected*
 : *required* A **Variant** holding an array, **Collection**, or other enumerable value.

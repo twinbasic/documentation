@@ -24,12 +24,12 @@ The four equality assertions in this module --- [**AreEqual**](#areequal), [**Ar
 - Object references are compared by identity (the **Is** operator); default-member values are not retrieved.
 - `Null` is never equal to anything, not even to itself --- use [**IsNull**](#isnull) / [**IsNotNull**](#isnotnull) to test for it.
 
-```tb
+```tb check_build
 ' All of these fail under Exact:
-Exact.AreEqual 5, 5.0           ' Long vs Double — datatypes differ
-Exact.AreEqual vbNullString, "" ' the two empty-string forms are distinct
-Exact.AreEqual Empty, 0         ' Empty is distinct from 0
-Exact.AreEqual "Hello", "hello" ' case-sensitive
+Assert.Exact.AreEqual 5, 5.0           ' Long vs Double — datatypes differ
+Assert.Exact.AreEqual vbNullString, "" ' the two empty-string forms are distinct
+Assert.Exact.AreEqual Empty, 0         ' Empty is distinct from 0
+Assert.Exact.AreEqual "Hello", "hello" ' case-sensitive
 ```
 
 ## Diagnostic outcome
@@ -38,7 +38,7 @@ Exact.AreEqual "Hello", "hello" ' case-sensitive
 
 Records that the test reached this point without failure.
 
-Syntax: **Exact.Succeed**
+Syntax: **Assert.Exact.Succeed**
 
 A test procedure that returns without any assertion having failed is reported as passing implicitly, so calling **Succeed** explicitly is rarely necessary. It is occasionally useful in branches that would otherwise look ambiguous about their outcome --- for example, the body of a loop that should reach the end.
 
@@ -46,7 +46,7 @@ A test procedure that returns without any assertion having failed is reported as
 
 Unconditionally records a test failure.
 
-Syntax: **Exact.Fail** [ *Message* ]
+Syntax: **Assert.Exact.Fail** [ *Message* ]
 
 *Message*
 : *optional* A **String** describing the failure, recorded together with the source location of the call.
@@ -56,14 +56,14 @@ Syntax: **Exact.Fail** [ *Message* ]
 ```tb
 On Error Resume Next
 target.SomethingThatShouldRaise
-If Err.Number = 0 Then Exact.Fail "expected an error, got success"
+If Err.Number = 0 Then Assert.Exact.Fail "expected an error, got success"
 ```
 
 ### Inconclusive
 
 Records the test as inconclusive --- neither a pass nor a failure.
 
-Syntax: **Exact.Inconclusive** [ *Message* ]
+Syntax: **Assert.Exact.Inconclusive** [ *Message* ]
 
 *Message*
 : *optional* A **String** describing why the result is inconclusive.
@@ -76,7 +76,7 @@ Syntax: **Exact.Inconclusive** [ *Message* ]
 
 Asserts that *Actual* is equal to *Expected*.
 
-Syntax: **Exact.AreEqual** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Exact.AreEqual** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding the expected value.
@@ -90,20 +90,20 @@ Syntax: **Exact.AreEqual** *Expected*, *Actual* [, *Message* ]
 The comparison follows this module's [comparison semantics](#comparison-semantics) --- *Expected* and *Actual* must have the same datatype, strings are compared case-sensitively, and `Empty`, `vbNullString`, and `""` are all distinct from one another. If either operand is **Null**, the assertion fails --- `Null` is never equal to anything; use [**IsNull**](#isnull) to test for **Null** explicitly.
 
 ```tb
-Exact.AreEqual 42, result          ' passes only if result is Long 42
-Exact.AreEqual "Hello", greeting   ' passes only if greeting is exactly "Hello"
+Assert.Exact.AreEqual 42, result          ' passes only if result is Long 42
+Assert.Exact.AreEqual "Hello", greeting   ' passes only if greeting is exactly "Hello"
 
 ' These all fail under Exact:
-Exact.AreEqual 5, 5.0              ' Long vs Double — datatypes differ
-Exact.AreEqual "", vbNullString    ' the two empty-string forms are distinct
-Exact.AreEqual Empty, 0            ' Empty is distinct from 0
+Assert.Exact.AreEqual 5, 5.0              ' Long vs Double — datatypes differ
+Assert.Exact.AreEqual "", vbNullString    ' the two empty-string forms are distinct
+Assert.Exact.AreEqual Empty, 0            ' Empty is distinct from 0
 ```
 
 ### AreNotEqual
 
 Asserts that *Actual* is not equal to *Expected*.
 
-Syntax: **Exact.AreNotEqual** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Exact.AreNotEqual** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding a value that *Actual* must differ from.
@@ -116,18 +116,18 @@ Syntax: **Exact.AreNotEqual** *Expected*, *Actual* [, *Message* ]
 
 The comparison follows this module's [comparison semantics](#comparison-semantics) --- *Expected* and *Actual* must have the same datatype for the values to be considered equal, strings are compared case-sensitively, and `Empty`, `vbNullString`, and `""` are all treated as distinct values. If either operand is **Null**, the assertion passes --- `Null` is never equal to anything, including another `Null`.
 
-```tb
-Exact.AreNotEqual 5, 6             ' passes — different values
-Exact.AreNotEqual "A", "a"         ' passes — case-sensitive, so "A" <> "a"
-Exact.AreNotEqual 5, 5.0           ' passes — Long vs Double, datatypes differ
-Exact.AreNotEqual "", vbNullString ' passes — distinct empty-string forms
+```tb check_build
+Assert.Exact.AreNotEqual 5, 6             ' passes — different values
+Assert.Exact.AreNotEqual "A", "a"         ' passes — case-sensitive, so "A" <> "a"
+Assert.Exact.AreNotEqual 5, 5.0           ' passes — Long vs Double, datatypes differ
+Assert.Exact.AreNotEqual "", vbNullString ' passes — distinct empty-string forms
 ```
 
 ### AreSame
 
 Asserts that *Actual* and *Expected* refer to the *same* object --- equivalent to `Expected Is Actual`.
 
-Syntax: **Exact.AreSame** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Exact.AreSame** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding the expected object reference.
@@ -144,7 +144,7 @@ Reference identity is independent of the module's other comparison rules --- **A
 
 Asserts that *Actual* and *Expected* refer to *different* objects --- equivalent to `Expected IsNot Actual`.
 
-Syntax: **Exact.AreNotSame** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Exact.AreNotSame** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding a reference that *Actual* must differ from.
@@ -157,11 +157,11 @@ Syntax: **Exact.AreNotSame** *Expected*, *Actual* [, *Message* ]
 
 Reference identity is independent of the module's other comparison rules --- **AreNotSame** always uses the **IsNot** operator, never default-member equality. To compare values rather than references, use [**AreNotEqual**](#arenotequal).
 
-```tb
+```tb check_build
 Dim a As New Collection
 Dim b As New Collection
-Exact.AreNotSame a, b   ' passes — a and b are distinct object instances
-Exact.AreNotSame a, a   ' fails — same reference
+Assert.Exact.AreNotSame a, b   ' passes — a and b are distinct object instances
+Assert.Exact.AreNotSame a, a   ' fails — same reference
 ```
 
 ## Boolean
@@ -170,7 +170,7 @@ Exact.AreNotSame a, a   ' fails — same reference
 
 Asserts that *Condition* evaluates to **True**.
 
-Syntax: **Exact.IsTrue** *Condition* [, *Message* ]
+Syntax: **Assert.Exact.IsTrue** *Condition* [, *Message* ]
 
 *Condition*
 : *required* A **Variant** holding the condition to test. The value is interpreted as a **Boolean** --- zero is **False**, any non-zero value is **True**.
@@ -184,7 +184,7 @@ If *Condition* is **Null**, the assertion fails.
 
 Asserts that *Condition* evaluates to **False**.
 
-Syntax: **Exact.IsFalse** *Condition* [, *Message* ]
+Syntax: **Assert.Exact.IsFalse** *Condition* [, *Message* ]
 
 *Condition*
 : *required* A **Variant** holding the condition to test. Zero is **False**, any non-zero value is **True**.
@@ -200,7 +200,7 @@ If *Condition* is **Null**, the assertion fails --- `Null` is neither **True** n
 
 Asserts that *Value* is the **Nothing** object reference.
 
-Syntax: **Exact.IsNothing** *Value* [, *Message* ]
+Syntax: **Assert.Exact.IsNothing** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the object reference to test.
@@ -214,7 +214,7 @@ This is the object-reference test, equivalent to `Value Is Nothing`. To check fo
 
 Asserts that *Value* refers to an object --- i.e. is *not* the **Nothing** reference.
 
-Syntax: **Exact.IsNotNothing** *Value* [, *Message* ]
+Syntax: **Assert.Exact.IsNotNothing** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the object reference to test.
@@ -226,7 +226,7 @@ Syntax: **Exact.IsNotNothing** *Value* [, *Message* ]
 
 Asserts that *Value* is the **Null** value of a **Variant**.
 
-Syntax: **Exact.IsNull** *Value* [, *Message* ]
+Syntax: **Assert.Exact.IsNull** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the value to test.
@@ -236,17 +236,17 @@ Syntax: **Exact.IsNull** *Value* [, *Message* ]
 
 Equivalent to checking [**IsNull**](../../Modules/Information/IsNull)`(Value) = True`. Because `Null` is never equal to anything --- not even to itself --- the equality assertions ([**AreEqual**](#areequal), [**AreNotEqual**](#arenotequal)) cannot be used to test for **Null**; this assertion exists specifically for that purpose. To check for the **Nothing** object reference instead, use [**IsNothing**](#isnothing).
 
-```tb
+```tb check_build
 Dim rs As Object   ' assume this is a Recordset
 ' A field value may be Null when the database column contains no data:
-Exact.IsNull rs.Fields("MiddleName").Value
+Assert.Exact.IsNull rs.Fields("MiddleName").Value
 ```
 
 ### IsNotNull
 
 Asserts that *Value* is not the **Null** value of a **Variant**.
 
-Syntax: **Exact.IsNotNull** *Value* [, *Message* ]
+Syntax: **Assert.Exact.IsNotNull** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the value to test.
@@ -262,8 +262,8 @@ Sub TestQueryResult()
     result = db.ReadField("Name")
 
     ' Assert the field was present and not null before inspecting its value.
-    Exact.IsNotNull result, "expected a non-null Name field"
-    Exact.AreEqual "Alice", result
+    Assert.Exact.IsNotNull result, "expected a non-null Name field"
+    Assert.Exact.AreEqual "Alice", result
 End Sub
 ```
 
@@ -273,7 +273,7 @@ End Sub
 
 Asserts that *Actual* and *Expected* contain the same number of elements, in the same order, with each pair of elements equal under this module's [comparison semantics](#comparison-semantics).
 
-Syntax: **Exact.SequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
+Syntax: **Assert.Exact.SequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
 
 *Expected*
 : *required* A **Variant** holding an array, **Collection**, or other enumerable value.
@@ -290,7 +290,7 @@ Both arguments must support iteration via **For Each**. The assertion fails on t
 
 Asserts that *Actual* and *Expected* differ --- they contain a different number of elements, or at least one pair of corresponding elements differs under this module's [comparison semantics](#comparison-semantics).
 
-Syntax: **Exact.NotSequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
+Syntax: **Assert.Exact.NotSequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
 
 *Expected*
 : *required* A **Variant** holding an array, **Collection**, or other enumerable value.

@@ -22,13 +22,13 @@ The four equality assertions in this module --- [**AreEqual**](#areequal), [**Ar
 - All other comparisons are evaluated as if the operands had been written either side of `=` in twinBASIC code --- numeric promotions apply (`5` equals `5.0`), `vbNullString` and `""` are both empty strings, and so on.
 - `Null` is never equal to anything, not even to itself --- use [**IsNull**](#isnull) / [**IsNotNull**](#isnotnull) to test for it.
 
-```tb
+```tb check_build
 ' Pass under Strict (would fail under Exact):
-Strict.AreEqual 5, 5.0           ' twinBASIC promotes 5 to 5.0 before comparing
-Strict.AreEqual vbNullString, "" ' both empty strings under twinBASIC equality
+Assert.Strict.AreEqual 5, 5.0           ' twinBASIC promotes 5 to 5.0 before comparing
+Assert.Strict.AreEqual vbNullString, "" ' both empty strings under twinBASIC equality
 
 ' Still fails — Strict comparisons are case-sensitive:
-Strict.AreEqual "Hello", "hello"
+Assert.Strict.AreEqual "Hello", "hello"
 ```
 
 ## Diagnostic outcome
@@ -37,7 +37,7 @@ Strict.AreEqual "Hello", "hello"
 
 Records that the test reached this point without failure.
 
-Syntax: **Strict.Succeed**
+Syntax: **Assert.Strict.Succeed**
 
 A test procedure that returns without any assertion having failed is reported as passing implicitly, so calling **Succeed** explicitly is rarely necessary. It is occasionally useful in branches that would otherwise look ambiguous about their outcome --- for example, the body of a loop that should reach the end.
 
@@ -45,7 +45,7 @@ A test procedure that returns without any assertion having failed is reported as
 
 Unconditionally records a test failure.
 
-Syntax: **Strict.Fail** [ *Message* ]
+Syntax: **Assert.Strict.Fail** [ *Message* ]
 
 *Message*
 : *optional* A **String** describing the failure, recorded together with the source location of the call.
@@ -55,14 +55,14 @@ Syntax: **Strict.Fail** [ *Message* ]
 ```tb
 On Error Resume Next
 target.SomethingThatShouldRaise
-If Err.Number = 0 Then Strict.Fail "expected an error, got success"
+If Err.Number = 0 Then Assert.Strict.Fail "expected an error, got success"
 ```
 
 ### Inconclusive
 
 Records the test as inconclusive --- neither a pass nor a failure.
 
-Syntax: **Strict.Inconclusive** [ *Message* ]
+Syntax: **Assert.Strict.Inconclusive** [ *Message* ]
 
 *Message*
 : *optional* A **String** describing why the result is inconclusive.
@@ -75,7 +75,7 @@ Syntax: **Strict.Inconclusive** [ *Message* ]
 
 Asserts that *Actual* is equal to *Expected*.
 
-Syntax: **Strict.AreEqual** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Strict.AreEqual** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding the expected value.
@@ -92,7 +92,7 @@ The comparison follows this module's [comparison semantics](#comparison-semantic
 
 Asserts that *Actual* is not equal to *Expected*.
 
-Syntax: **Strict.AreNotEqual** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Strict.AreNotEqual** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding a value that *Actual* must differ from.
@@ -105,20 +105,20 @@ Syntax: **Strict.AreNotEqual** *Expected*, *Actual* [, *Message* ]
 
 The comparison follows this module's [comparison semantics](#comparison-semantics) --- strings are compared case-sensitively, object references are compared by identity, and everything else uses normal twinBASIC equality. If either operand is **Null**, the assertion passes --- `Null` is never equal to anything, including another `Null`.
 
-```tb
-Strict.AreNotEqual "Hello", "hello"  ' passes — strings are compared case-sensitively
-Strict.AreNotEqual 1, 2              ' passes — different numeric values
+```tb check_build
+Assert.Strict.AreNotEqual "Hello", "hello"  ' passes — strings are compared case-sensitively
+Assert.Strict.AreNotEqual 1, 2              ' passes — different numeric values
 
 ' Under Strict, numeric promotions apply, so these would fail (the values are equal):
-' Strict.AreNotEqual 5, 5.0           ' fails — 5 and 5.0 are equal under twinBASIC equality
-' Strict.AreNotEqual "", vbNullString  ' fails — both are the empty string
+' Assert.Strict.AreNotEqual 5, 5.0           ' fails — 5 and 5.0 are equal under twinBASIC equality
+' Assert.Strict.AreNotEqual "", vbNullString  ' fails — both are the empty string
 ```
 
 ### AreSame
 
 Asserts that *Actual* and *Expected* refer to the *same* object --- equivalent to `Expected Is Actual`.
 
-Syntax: **Strict.AreSame** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Strict.AreSame** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding the expected object reference.
@@ -135,7 +135,7 @@ Reference identity is independent of the module's other comparison rules --- **A
 
 Asserts that *Actual* and *Expected* refer to *different* objects --- equivalent to `Expected IsNot Actual`.
 
-Syntax: **Strict.AreNotSame** *Expected*, *Actual* [, *Message* ]
+Syntax: **Assert.Strict.AreNotSame** *Expected*, *Actual* [, *Message* ]
 
 *Expected*
 : *required* A **Variant** holding a reference that *Actual* must differ from.
@@ -148,11 +148,11 @@ Syntax: **Strict.AreNotSame** *Expected*, *Actual* [, *Message* ]
 
 Reference identity is independent of the module's other comparison rules --- **AreNotSame** always uses the **IsNot** operator, never default-member equality. To compare values rather than references, use [**AreNotEqual**](#arenotequal).
 
-```tb
+```tb check_build
 Dim a As New Collection
 Dim b As New Collection
-Strict.AreNotSame a, b   ' passes — a and b are distinct object instances
-Strict.AreNotSame a, a   ' fails — same reference
+Assert.Strict.AreNotSame a, b   ' passes — a and b are distinct object instances
+Assert.Strict.AreNotSame a, a   ' fails — same reference
 ```
 
 ## Boolean
@@ -161,7 +161,7 @@ Strict.AreNotSame a, a   ' fails — same reference
 
 Asserts that *Condition* evaluates to **True**.
 
-Syntax: **Strict.IsTrue** *Condition* [, *Message* ]
+Syntax: **Assert.Strict.IsTrue** *Condition* [, *Message* ]
 
 *Condition*
 : *required* A **Variant** holding the condition to test. The value is interpreted as a **Boolean** --- zero is **False**, any non-zero value is **True**.
@@ -175,7 +175,7 @@ If *Condition* is **Null**, the assertion fails.
 
 Asserts that *Condition* evaluates to **False**.
 
-Syntax: **Strict.IsFalse** *Condition* [, *Message* ]
+Syntax: **Assert.Strict.IsFalse** *Condition* [, *Message* ]
 
 *Condition*
 : *required* A **Variant** holding the condition to test. Zero is **False**, any non-zero value is **True**.
@@ -191,7 +191,7 @@ If *Condition* is **Null**, the assertion fails --- `Null` is neither **True** n
 
 Asserts that *Value* is the **Nothing** object reference.
 
-Syntax: **Strict.IsNothing** *Value* [, *Message* ]
+Syntax: **Assert.Strict.IsNothing** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the object reference to test.
@@ -205,7 +205,7 @@ This is the object-reference test, equivalent to `Value Is Nothing`. To check fo
 
 Asserts that *Value* refers to an object --- i.e. is *not* the **Nothing** reference.
 
-Syntax: **Strict.IsNotNothing** *Value* [, *Message* ]
+Syntax: **Assert.Strict.IsNotNothing** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the object reference to test.
@@ -218,7 +218,7 @@ This is the complement of [**IsNothing**](#isnothing), equivalent to `Value IsNo
 ```tb
 Dim result As Widget
 Set result = factory.CreateWidget("blue")
-Strict.IsNotNothing result   ' fails if CreateWidget returned Nothing
+Assert.Strict.IsNotNothing result   ' fails if CreateWidget returned Nothing
 ```
 
 To check for the **Null** value of a **Variant** rather than an unset object reference, use [**IsNotNull**](#isnotnull).
@@ -227,7 +227,7 @@ To check for the **Null** value of a **Variant** rather than an unset object ref
 
 Asserts that *Value* is the **Null** value of a **Variant**.
 
-Syntax: **Strict.IsNull** *Value* [, *Message* ]
+Syntax: **Assert.Strict.IsNull** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the value to test.
@@ -241,7 +241,7 @@ Equivalent to checking [**IsNull**](../../Modules/Information/IsNull)`(Value) = 
 
 Asserts that *Value* is not the **Null** value of a **Variant**.
 
-Syntax: **Strict.IsNotNull** *Value* [, *Message* ]
+Syntax: **Assert.Strict.IsNotNull** *Value* [, *Message* ]
 
 *Value*
 : *required* A **Variant** holding the value to test.
@@ -257,8 +257,8 @@ Sub TestQueryResult()
     result = db.ReadField("Name")
 
     ' Assert the field was present and not null before inspecting its value.
-    Strict.IsNotNull result, "expected a non-null Name field"
-    Strict.AreEqual "Alice", result
+    Assert.Strict.IsNotNull result, "expected a non-null Name field"
+    Assert.Strict.AreEqual "Alice", result
 End Sub
 ```
 
@@ -268,7 +268,7 @@ End Sub
 
 Asserts that *Actual* and *Expected* contain the same number of elements, in the same order, with each pair of elements equal under this module's [comparison semantics](#comparison-semantics).
 
-Syntax: **Strict.SequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
+Syntax: **Assert.Strict.SequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
 
 *Expected*
 : *required* A **Variant** holding an array, **Collection**, or other enumerable value.
@@ -285,7 +285,7 @@ Both arguments must support iteration via **For Each**. The assertion fails on t
 
 Asserts that *Actual* and *Expected* differ --- they contain a different number of elements, or at least one pair of corresponding elements differs under this module's [comparison semantics](#comparison-semantics).
 
-Syntax: **Strict.NotSequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
+Syntax: **Assert.Strict.NotSequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
 
 *Expected*
 : *required* A **Variant** holding an array, **Collection**, or other enumerable value.
@@ -298,7 +298,7 @@ Syntax: **Strict.NotSequenceEquals** *Expected*, *Actual* [, *FailMessage* ]
 
 Both arguments must support iteration via **For Each**. The assertion passes when the two sequences have a different element count, or when any corresponding element pair differs under this module's comparison rules --- strings are compared case-sensitively, numeric values are compared with normal twinBASIC equality (so `5` equals `5.0`), and object references are compared by identity. **NotSequenceEquals** is the inverse of [**SequenceEquals**](#sequenceequals): if **SequenceEquals** would pass, **NotSequenceEquals** fails, and vice versa.
 
-```tb
+```tb check_build
 Dim expected(0 To 1) As String
 expected(0) = "alpha"
 expected(1) = "beta"
@@ -307,7 +307,7 @@ Dim actual(0 To 1) As String
 actual(0) = "alpha"
 actual(1) = "Beta"   ' differs in case
 
-Strict.NotSequenceEquals expected, actual   ' passes — "beta" <> "Beta" under case-sensitive comparison
+Assert.Strict.NotSequenceEquals expected, actual   ' passes — "beta" <> "Beta" under case-sensitive comparison
 ```
 
 ## See Also

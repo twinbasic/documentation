@@ -21,23 +21,23 @@ The package's three modules --- [**Exact**](Exact), [**Strict**](Strict), and [*
 
 `Null` is never considered equal to anything --- not even to itself --- under any of the three flavours. To test for **Null** explicitly, use the [**IsNull**](Exact#isnull) / [**IsNotNull**](Exact#isnotnull) assertions rather than `AreEqual(..., Null)`.
 
-```tb
+```tb check_build
 Sub TestStringReverse()
-    Strict.AreEqual "olleh", StrReverse("hello")
-    Strict.AreEqual "", StrReverse("")
+    Assert.Strict.AreEqual "olleh", StrReverse("hello")
+    Assert.Strict.AreEqual "", StrReverse("")
 End Sub
 ```
 
 ## Calling convention
 
-Every member of every module is tagged `[MustBeQualified(True)]` --- calls *must* be written with the module name, even from inside a project that has imported the **Assert** package:
+**Every call carries two qualifiers, and both are required.** The package namespace `Assert` comes first, because a package's members are reached through its namespace symbol; `VBA`, `VBRUN` and `VB` resolve unqualified only because every project references them, and **Assert** is referenced on demand. The module name comes next, because every member of every module is tagged `[MustBeQualified(True)]`.
 
 ```tb
-Strict.IsTrue x > 0          ' OK
-IsTrue x > 0                 ' compile error — module qualifier required
+Assert.Strict.IsTrue x > 0   ' OK
+Strict.IsTrue x > 0          ' compile error -- the package namespace is missing
+Assert.IsTrue x > 0          ' compile error -- the module name is missing
+IsTrue x > 0                 ' compile error -- both are missing
 ```
-
-If a project references more than one package that exposes a module called **Strict**, qualify further with the package name as well: **Assert.Strict.IsTrue** *x*.
 
 ## Debug-only
 
