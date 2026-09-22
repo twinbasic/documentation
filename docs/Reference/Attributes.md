@@ -1029,7 +1029,7 @@ Applicable to: [procedure](../Gloss#procedure) definition in a module.
 ## TestFixture  (optional Bool)
 {: #testfixture }
 
-Syntax: **[TestFixture **[ **( True** \| **False )** ] **]**
+Syntax: **[TestFixture** [ **( True** \| **False )** ] **]**
 
 Applicable to: [**Module**](Module)
 
