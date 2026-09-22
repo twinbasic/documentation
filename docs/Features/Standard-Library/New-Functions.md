@@ -95,4 +95,4 @@ Dim c() As Long = Array(a, b)
 Debug.Print c(1), UBound(c)
 ```
 
-Which prints `7    1`.
+Which prints `  7             1  `.

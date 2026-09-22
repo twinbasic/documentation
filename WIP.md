@@ -1735,7 +1735,8 @@ shown, and both rendered it as single spaces.
 > claimed `1  2`, `3  4` and `4` where the runs print `' 1             2 '`,
 > `' 3             4 '` and `' 4 '`. Every one is missing the leading space a
 > positive number carries where its sign would be, and the trailing space; the
-> `Pointers` pair were also showing two spaces for a thirteen-space gap.
+> `Pointers` pair were also showing two spaces for a thirteen-space gap. A fifth claim on
+> `New-Functions`, ``7    1`` where the run prints `' 7             1 '`, went the same way.
 >
 > **An inline code span cannot carry a leading or trailing space naively**, which
 > is the trap that keeps this defect coming back. CommonMark strips one space
