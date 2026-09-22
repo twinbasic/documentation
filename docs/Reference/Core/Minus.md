@@ -46,7 +46,7 @@ If one or both expressions are **Null** expressions, *result* is **Null**. If an
 
 `x -= y` is the twinBASIC shorthand for `x = x - y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. **-=** is a statement, not an expression --- it does not produce a value.
 
-```tb
+```tb check_build
 Dim Total As Long = 100
 Total -= 5                      ' Total is now 95.
 Total -= 5                      ' Total is now 90.
@@ -56,7 +56,7 @@ Total -= 5                      ' Total is now 90.
 
 This example uses the **-** operator to calculate the difference between two numbers.
 
-```tb
+```tb check_build
 Dim MyResult
 MyResult = 4 - 2                ' Returns 2.
 MyResult = 459.35 - 334.90      ' Returns 124.45.

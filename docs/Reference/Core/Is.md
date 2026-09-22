@@ -56,7 +56,7 @@ For the negation of an identity test, twinBASIC also provides the [**IsNot**](Is
 
 This example uses the **Is** operator to compare two object references.
 
-```tb
+```tb check_build
 Dim MyObject, YourObject, ThisObject, OtherObject, ThatObject, MyCheck
 Set YourObject = MyObject    ' Assign object references.
 Set ThisObject = MyObject

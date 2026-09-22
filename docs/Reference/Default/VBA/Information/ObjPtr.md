@@ -21,7 +21,7 @@ The pointer is valid only as long as the underlying object stays alive; nothing 
 
 ### Example
 
-```tb
+```tb check_build
 Dim a As Collection
 Dim b As Collection
 Set a = New Collection

@@ -22,7 +22,7 @@ The bytes are interpreted in the host's native byte order --- little-endian on x
 
 This example writes a 32-bit value to a buffer and reads it back with **GetMem4**.
 
-```tb
+```tb check_build
 Dim buf As LongPtr = AllocMem(4)
 PutMem4 buf, &H12345678
 Dim v As Long

@@ -22,7 +22,7 @@ Log<sub>*n*</sub>(*x*) = **Log(** *x* **)** / **Log(** *n* **)**
 
 The following example illustrates a custom **Function** that calculates base-10 logarithms:
 
-```tb
+```tb check_build
 Static Function Log10(X)
     Log10 = Log(X) / Log(10#)
 End Function
@@ -32,7 +32,7 @@ End Function
 
 This example uses the **Log** function to return the natural logarithm of a number.
 
-```tb
+```tb check_build
 Dim MyAngle, MyLog
 ' Define angle in radians.
 MyAngle = 1.3

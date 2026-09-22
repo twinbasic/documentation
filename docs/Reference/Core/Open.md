@@ -55,7 +55,7 @@ This example illustrates various uses of the **Open** statement to enable input 
 
 The following code opens the file in sequential-input mode.
 
-```tb
+```tb check_build
 Open "TESTFILE" For Input As #1
 ' Close before reopening in another mode.
 Close #1
@@ -63,7 +63,7 @@ Close #1
 
 This example opens the file in **Binary** mode for writing operations only.
 
-```tb
+```tb check_build
 Open "TESTFILE" For Binary Access Write As #1
 ' Close before reopening in another mode.
 Close #1
@@ -85,7 +85,7 @@ Close #1
 
 This code example opens the file for sequential output; any process can read or write to the file.
 
-```tb
+```tb check_build
 Open "TESTFILE" For Output Shared As #1
 ' Close before reopening in another mode.
 Close #1
@@ -93,13 +93,13 @@ Close #1
 
 This code example opens the file in **Binary** mode for reading; other processes can't read the file.
 
-```tb
+```tb check_build
 Open "TESTFILE" For Binary Access Read Lock Read As #1
 ```
 
 This example reads a UTF-8 text file, naming the [**utf_8**](#utf_8) encoding identifier.
 
-```tb
+```tb check_build
 Open "C:\MyFile.txt" For Input Encoding utf_8 As #1
 ' Subsequent Line Input #, Input #, etc. interpret bytes as UTF-8.
 Close #1

@@ -25,7 +25,7 @@ An error occurs when **FileCopy** is used on a file that is currently open.
 
 This example uses the **FileCopy** statement to copy one file to another. For the purposes of this example, assume that the file contains some data.
 
-```tb
+```tb check_build
 Dim SourceFile, DestinationFile 
 SourceFile = "SRCFILE" ' Define source file name. 
 DestinationFile = "DESTFILE" ' Define target file name. 

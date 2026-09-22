@@ -17,7 +17,7 @@ The value is the GUID assigned to the enclosing class by its [`[ClassId(...)]`](
 
 ### Example
 
-```tb
+```tb check_build
 [ClassId("12345678-1234-1234-1234-123456789ABC")]
 Class CFoo
     Public Sub PrintId()

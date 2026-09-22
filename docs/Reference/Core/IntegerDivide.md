@@ -35,7 +35,7 @@ Dividing by zero raises a run-time error.
 
 `x \= y` is the twinBASIC shorthand for `x = x \ y`. The left-hand side is evaluated once and rounded to an integral type before the division. **\\=** is a statement, not an expression --- it does not produce a value.
 
-```tb
+```tb check_build
 Dim Value As Long = 100
 Value \= 4                      ' Value is now 25.
 Value \= 7                      ' Value is now 3 (truncating).
@@ -45,7 +45,7 @@ Value \= 7                      ' Value is now 3 (truncating).
 
 This example uses the **\\** operator to perform integer division.
 
-```tb
+```tb check_build
 Dim MyValue
 MyValue = 11 \ 4                ' Returns 2.
 MyValue = 9 \ 3                 ' Returns 3.

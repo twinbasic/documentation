@@ -60,7 +60,7 @@ Here, the error-handling code follows the **Exit Sub** statement and precedes th
 
 When creating an object that accesses other objects, try to handle errors passed back from them unhandled. When such errors cannot be handled, map the error code in **Err.Number** to a project-specific error, and then pass it back to the caller of the object. Specify the error by adding the project error code to the **vbObjectError** constant. For example, if the error code is 1052, assign it as follows:
 
-```tb
+```tb check_build
 Err.Number = vbObjectError + 1052
 ```
 

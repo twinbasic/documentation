@@ -33,7 +33,7 @@ In a procedure declaration, **Protected** replaces the **Public**/**Private**/**
 
 The following pattern uses **Protected** state plus an **Overridable** **Protected** method as an inheritance hook. The base `Animal` class exposes a public `Speak` that delegates to `GetSound`, which derived classes override:
 
-```tb
+```tb check_build
 Private Class Animal
     Protected _name As String
     Protected _dob As Date  ' date of birth

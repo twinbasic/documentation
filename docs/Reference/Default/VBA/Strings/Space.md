@@ -22,7 +22,7 @@ The **Space** function is useful for formatting output and clearing data in fixe
 
 This example uses the **Space** function to return a string consisting of a specified number of spaces.
 
-```tb
+```tb check_build
 Dim MyString
 ' Returns a string with 10 spaces.
 MyString = Space(10)

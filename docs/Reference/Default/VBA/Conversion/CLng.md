@@ -24,7 +24,7 @@ When the fractional part is exactly `0.5`, **CLng** always rounds it to the near
 
 This example uses the **CLng** function to convert values to a **Long**.
 
-```tb
+```tb check_build
 Dim MyVal1, MyVal2, MyLong1, MyLong2
 MyVal1 = 25427.45: MyVal2 = 25427.55     ' MyVal1, MyVal2 are Doubles.
 MyLong1 = CLng(MyVal1)                   ' MyLong1 contains 25427.

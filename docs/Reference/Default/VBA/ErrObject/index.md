@@ -14,7 +14,7 @@ The **Err** object holds information about the most recent run-time error. It is
 
 When a run-time error is raised inside a procedure that has an active error handler installed with [**On Error**](../../Core/On-Error), execution jumps to the handler with the **Err** object's properties populated. The handler reads [**Number**](Number) to identify the error, [**Description**](Description) for a human-readable message, and [**Source**](Source) to learn where it originated.
 
-```tb
+```tb check_build
 Sub Demo()
     On Error GoTo Handler
     Err.Raise 6                    ' Generate an Overflow error.

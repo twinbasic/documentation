@@ -31,7 +31,7 @@ To determine the number of characters in *string*, use the [**Len**](Len) functi
 
 This example uses the **Right** function to return a specified number of characters from the right side of a string.
 
-```tb
+```tb check_build
 Dim AnyString, MyStr
 AnyString = "Hello World"      ' Define string.
 MyStr = Right(AnyString, 1)    ' Returns "d".

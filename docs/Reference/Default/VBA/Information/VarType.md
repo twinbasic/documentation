@@ -50,7 +50,7 @@ If an object is passed and has a default property, **VarType(*object*)** returns
 
 This example uses **VarType** to determine the subtype of several variables.
 
-```tb
+```tb check_build
 Dim MyCheck As VbVarType
 Dim IntVar As Integer, StrVar As String, DateVar As Date
 Dim ArrayVar As Variant

@@ -21,7 +21,7 @@ Syntax: **GetObject(** [ *pathname* ] [ **,** *class* ] **)**
 
 To assign the returned reference to a variable, use **Set**:
 
-```tb
+```tb check_build
 Dim CADObject As Object
 Set CADObject = GetObject("C:\CAD\SCHEMA.CAD")
 ```
@@ -38,7 +38,7 @@ Set LayerObject = GetObject("C:\CAD\SCHEMA.CAD!Layer3")
 
 When *class* is not specified, the operating system determines the application to start and the object to activate based on the supplied file name. Some files, however, may support more than one class of object. To be specific, supply both arguments:
 
-```tb
+```tb check_build
 Dim MyObject As Object
 Set MyObject = GetObject("C:\Drawings\Sample.drw", "Figment.Drawing")
 ```
@@ -52,7 +52,7 @@ For an object registered as single-instance, **GetObject** with the zero-length-
 
 This example uses **GetObject** to attach to a Microsoft Excel **Worksheet** opened from a file. The first call (without *pathname*) tries to attach to a running Excel; the second call opens the file. If Excel was not already running when the script started, it is closed at the end via **Application.Quit**.
 
-```tb
+```tb check_build
 Dim MyXl As Object
 Dim ExcelWasNotRunning As Boolean
 

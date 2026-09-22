@@ -19,7 +19,7 @@ The **Timer** function returns fractional portions of a second.
 
 This example uses the **Timer** function to measure elapsed time.
 
-```tb
+```tb check_build
 Dim Start As Single, Finish As Single
 Start = Timer                   ' Record start time.
 ' ... perform some operation ...

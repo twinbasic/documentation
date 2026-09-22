@@ -30,7 +30,7 @@ The **ValDec** function follows the same parsing rules as [**Val**](Val): it sto
 
 This example uses the **ValDec** function to parse a string into a **Decimal**.
 
-```tb
+```tb check_build
 Dim MyDec As Decimal
 MyDec = ValDec("123.4567890123456789")    ' Full precision retained.
 ```

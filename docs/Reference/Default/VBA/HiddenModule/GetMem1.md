@@ -20,7 +20,7 @@ The address is read directly with no bounds or alignment check. Reading from an 
 
 ### Example
 
-```tb
+```tb check_build
 Dim s As String = "ABC"
 Dim b As Byte
 GetMem1 StrPtr(s), b

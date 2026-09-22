@@ -22,7 +22,7 @@ Syntax: **Round(** *expression* [ **,** *numdecimalplaces* ] **)**
 
 ### Example
 
-```tb
+```tb check_build
 Debug.Print Round(0.12335, 4)    ' 0.1234
 Debug.Print Round(0.12345, 4)    ' 0.1234
 Debug.Print Round(0.12355, 4)    ' 0.1236

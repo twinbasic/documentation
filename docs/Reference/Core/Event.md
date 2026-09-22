@@ -54,7 +54,7 @@ The example also uses a form (`Form1`) with a button (`Command1`), a label (`Lab
 
 The code specifies the initial and terminal states of the form. It also contains the code executed when events are raised.
 
-```tb
+```tb check_build
 Class Form1
   Option Explicit 
  
@@ -90,7 +90,7 @@ End Class
 
 The remaining code is in a class module named TimerState. The **Event** statements declare the procedures initiated when events are raised.
 
-```tb
+```tb check_build
 Class TimerState
     Option Explicit 
     Public Event UpdateTime(ByVal dblJump As Double)

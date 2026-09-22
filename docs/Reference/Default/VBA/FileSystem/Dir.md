@@ -50,7 +50,7 @@ A new *pathname* can be specified without first retrieving all of the file names
 
 This example uses the **Dir** function to check whether certain files and directories exist, and to enumerate files in a folder.
 
-```tb
+```tb check_build
 Dim MyFile, MyPath, MyName
 
 ' Returns "WIN.INI" (on Microsoft Windows) if it exists.

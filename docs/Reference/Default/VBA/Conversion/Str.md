@@ -32,7 +32,7 @@ Use the [**Format**](../Strings/Format) function to convert numeric values to be
 
 This example uses the **Str** function to return a string representation of a number. When a number is converted to a string, a leading space is always reserved for its sign.
 
-```tb
+```tb check_build
 Dim MyString
 MyString = Str(459)         ' Returns " 459".
 MyString = Str(-459.65)     ' Returns "-459.65".

@@ -23,7 +23,7 @@ Syntax: **Month** ( *date* )
 
 This example uses the **Month** function to obtain the month from a specified date.
 
-```tb
+```tb check_build
 Dim MyDate, MyMonth
 MyDate = #February 12, 1969#    ' Assign a date.
 MyMonth = Month(MyDate)    ' MyMonth contains 2.

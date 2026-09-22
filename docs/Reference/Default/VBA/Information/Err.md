@@ -26,7 +26,7 @@ To generate a run-time error from user code, use the [**Raise**](../ErrObject/Ra
 
 This example uses the [**Number**](../ErrObject/Number), [**Description**](../ErrObject/Description), [**HelpContext**](../ErrObject/HelpContext), [**HelpFile**](../ErrObject/HelpFile), and [**Source**](../ErrObject/Source) properties of the **Err** object to construct an error-message dialog.
 
-```tb
+```tb check_build
 Dim Msg As String
 On Error Resume Next       ' Defer error handling.
 Err.Clear

@@ -65,7 +65,7 @@ When executing a block **If** (second syntax), *condition* is tested. If *condit
 
 This example shows both the block and single-line forms of the **If...Then...Else** statement. It also illustrates the use of **If TypeOf...Then...Else**.
 
-```tb
+```tb check_build
 Dim Number, Digits, MyString
 Number = 53 ' Initialize variable.
 If Number < 10 Then
@@ -83,7 +83,7 @@ If Digits = 1 Then MyString = "One" Else MyString = "More than one"
 
 Use the **If TypeOf** construct to determine whether the Control passed into a procedure is a particular kind of control.
 
-```tb
+```tb check_build
 Sub ControlProcessor(MyControl As Control)
     If TypeOf MyControl Is CommandButton Then
         Debug.Print "You passed in a " & TypeName(MyControl)

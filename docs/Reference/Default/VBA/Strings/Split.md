@@ -35,7 +35,7 @@ The *compare* argument can have the following values:
 
 This example shows how to use the **Split** function.
 
-```tb
+```tb check_build
 Dim strFull As String
 Dim arrSplitStrings1() As String
 Dim arrSplitStrings2() As String

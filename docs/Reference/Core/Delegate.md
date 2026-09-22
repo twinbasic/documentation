@@ -40,7 +40,7 @@ A delegate value is normally produced by **AddressOf**, which yields a delegate-
 
 A basic delegate, declared, assigned, and called:
 
-```tb
+```tb check_build
 Private Delegate Function Operation (ByVal A As Long, ByVal B As Long) As Long
 
 Public Function Addition(ByVal A As Long, ByVal B As Long) As Long
@@ -77,7 +77,7 @@ tCC.lpfnHook = AddressOf ChooseColorHookProc
 
 A **CDecl** delegate, used as the comparator parameter of the C-runtime `qsort` API:
 
-```tb
+```tb check_build
 Private Delegate Function LongComparator CDecl ( _
     ByRef a As Long, _
     ByRef b As Long _

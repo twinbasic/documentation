@@ -20,7 +20,7 @@ The absolute value of a number is its unsigned magnitude. For example, `Abs(-1)`
 
 This example uses the **Abs** function to compute the absolute value of a number.
 
-```tb
+```tb check_build
 Dim MyNumber
 MyNumber = Abs(50.3)    ' Returns 50.3.
 MyNumber = Abs(-50.3)    ' Returns 50.3.

@@ -101,7 +101,7 @@ Syntax: [ **Optional** ] [ **ByVal** \| **ByRef** ] [ **ParamArray** ] *varname*
 
 When an argument list is included, the number and type of arguments are checked each time the procedure is called. The First sub in the following example takes one **Long** argument, whereas the Second sub takes no arguments:
 
-```tb
+```tb check_build
 Declare Sub First Lib "MyLib" (X As Long)
 Declare Sub Second Lib "MyLib" ()
 ```
@@ -115,7 +115,7 @@ Declare Sub Second Lib "MyLib" ()
 
 This example shows how the **Declare** statement is used at the module level of a standard module to declare a reference to an external procedure in a dynamic-link library (DLL). **Declare** statements can be placed in class modules when they are **Private**.
 
-```tb
+```tb check_build
 ' In 32-bit Microsoft Windows systems, specify the library USER32.DLL.
 Declare Sub MessageBeep Lib "User32" (ByVal N As Long)
  

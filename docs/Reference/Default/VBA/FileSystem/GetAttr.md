@@ -41,7 +41,7 @@ A nonzero value is returned if the Archive attribute is set.
 
 This example uses the **GetAttr** function to determine the attributes of a file and directory or folder.
 
-```tb
+```tb check_build
 Dim MyAttr
 ' Assume file TESTFILE has hidden attribute set.
 MyAttr = GetAttr("TESTFILE")    ' Returns 2.

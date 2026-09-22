@@ -37,7 +37,7 @@ To determine the number of characters in *string*, use the [**Len**](Len) functi
 
 This example uses the **Mid** function to return a specified number of characters from a string.
 
-```tb
+```tb check_build
 Dim MyString, FirstWord, LastWord, MidWords
 MyString = "Mid Function Demo"      ' Create text string.
 FirstWord = Mid(MyString, 1, 3)     ' Returns "Mid".

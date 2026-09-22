@@ -13,7 +13,7 @@ The **Interaction** module groups together standalone procedures for everything 
 
 [**MsgBox**](MsgBox) shows a modal dialog with a message, an icon, and a chosen set of buttons; it returns a [**VbMsgBoxResult**](../Constants/VbMsgBoxResult) value identifying the button that was clicked. [**InputBox**](InputBox) shows a similar dialog with a text-entry field and returns the string the user typed (or an empty string if the user cancels). [**Beep**](Beep) sounds the system alert tone --- useful as an audible cue when a long-running operation finishes.
 
-```tb
+```tb check_build
 Dim Answer As VbMsgBoxResult
 Answer = MsgBox("Save changes before closing?", vbYesNoCancel + vbQuestion, "Confirm")
 ```
@@ -49,7 +49,7 @@ Status = Switch(Age < 13, "Child", _
 
 The registry-setting helpers read and write per-user values under `HKEY_CURRENT_USER\Software\VB and VBA Program Settings`, mirroring the storage convention used by VB6. [**SaveSetting**](SaveSetting) writes a single key, [**GetSetting**](GetSetting) reads it back (with an optional default for missing keys), [**GetAllSettings**](GetAllSettings) returns every key-value pair in a section as a two-column **Variant** array, and [**DeleteSetting**](DeleteSetting) removes a key, an entire section, or every setting belonging to an application.
 
-```tb
+```tb check_build
 SaveSetting    "MyApp", "Window", "Maximised", "True"
 Debug.Print GetSetting("MyApp", "Window", "Maximised", "False")     ' "True"
 DeleteSetting  "MyApp", "Window", "Maximised"

@@ -25,7 +25,7 @@ Check the documentation for the DLL's functions to determine the return values t
 
 The following code calls a DLL function with an invalid argument so that the call fails. The code following the call checks the return value, and then displays the **LastDllError** property of the **Err** object to reveal the OS error code.
 
-```tb
+```tb check_build
 Private Declare PtrSafe Function SQLCancel Lib "ODBC32.dll" _
     (ByVal hstmt As LongPtr) As Integer
 

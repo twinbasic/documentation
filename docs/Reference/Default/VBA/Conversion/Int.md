@@ -27,7 +27,7 @@ The return value has the same type as *number*.
 
 This example illustrates how the **Int** function returns the integer portion of a number. For a negative number argument, the **Int** function returns the first negative integer less than or equal to the number.
 
-```tb
+```tb check_build
 Dim MyNumber
 MyNumber = Int(99.8)     ' Returns 99.
 MyNumber = Int(-99.8)    ' Returns -100.

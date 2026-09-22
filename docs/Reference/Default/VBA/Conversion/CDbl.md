@@ -24,7 +24,7 @@ The return type is **Double**. If *expression* is outside the range of a **Doubl
 
 This example uses the **CDbl** function to convert an expression to a **Double**.
 
-```tb
+```tb check_build
 Dim MyCurr, MyDouble
 MyCurr = CCur(234.456784)                    ' MyCurr is a Currency.
 MyDouble = CDbl(MyCurr * 8.2 * 0.01)         ' Convert result to a Double.

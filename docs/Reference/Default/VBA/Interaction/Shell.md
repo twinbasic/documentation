@@ -28,7 +28,7 @@ If **Shell** successfully launches the named program, it returns the new process
 
 This example uses **Shell** to run Notepad with a normal-sized focused window.
 
-```tb
+```tb check_build
 Dim TaskId As Double
 TaskId = Shell("C:\Windows\Notepad.exe", vbNormalFocus)
 ```

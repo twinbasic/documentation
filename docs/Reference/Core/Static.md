@@ -30,13 +30,13 @@ Use the **Static** statement in nonstatic procedures to explicitly declare varia
 
 Use a **Static** statement within a procedure to declare the data type of a variable that retains its value between procedure calls. For example, the following statement declares a fixed-size array of integers:
 
-```tb
+```tb check_build
 Static EmployeeNumber(200) As Integer
 ```
 
 The following statement declares a variable for a new instance of the [**Collection**](../Modules/Collection/) class:
 
-```tb
+```tb check_build
 Static X As New Collection
 ```
 

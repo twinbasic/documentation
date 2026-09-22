@@ -37,7 +37,7 @@ Line numbers and line labels can be mixed in the same list. Any number of line l
 
 This example uses the **On...GoSub** and **On...GoTo** statements to branch to subroutines and line labels, respectively.
 
-```tb
+```tb check_build
 Sub OnGosubGotoDemo()
     Dim Number, MyString
     Number = 2 ' Initialize variable.

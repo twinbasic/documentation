@@ -43,7 +43,7 @@ Modules cannot be instantiated and have no `New` constructor. Their **Public** m
 
 ### Example
 
-```tb
+```tb check_build
 Public Module StringHelpers
     Public Function Reverse(ByVal s As String) As String
         Dim i As Long, r As String
@@ -61,7 +61,7 @@ End Module
 
 Callers reach the members either through the module name or directly:
 
-```tb
+```tb check_build
 Debug.Print StringHelpers.Reverse("hello")  ' "olleh"
 Debug.Print StartsWith("hello world", "hi") ' False
 ```

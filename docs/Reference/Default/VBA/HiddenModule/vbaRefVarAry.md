@@ -21,7 +21,7 @@ If *Variant* does not contain an array, the result is undefined.
 
 This example retrieves the address of the **SAFEARRAY** descriptor inside a **Variant** array.
 
-```tb
+```tb check_build
 Dim v As Variant
 v = Array(10, 20, 30)          ' Variant holding an array
 Dim pSAPtr As LongPtr

@@ -23,7 +23,7 @@ If the value of *number* exceeds 709.782712893, an error occurs. The constant *e
 
 This example uses the **Exp** function to return *e* raised to a power.
 
-```tb
+```tb check_build
 Dim MyAngle, MyHSin
 ' Define angle in radians.
 MyAngle = 1.3

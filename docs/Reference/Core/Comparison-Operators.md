@@ -78,7 +78,7 @@ String comparisons are governed by the module's [**Option Compare**](Option) set
 
 ### Example
 
-```tb
+```tb check_build
 Dim MyResult, Var1, Var2
 MyResult = (45 < 35)            ' Returns False.
 MyResult = (45 = 45)            ' Returns True.

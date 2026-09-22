@@ -24,7 +24,7 @@ Write routines to handle typical errors. When programming with an object, the ob
 
 This example uses the **HelpFile** property of the **Err** object to start the Help system.
 
-```tb
+```tb check_build
 Dim msg As String
 Err.Clear
 On Error Resume Next            ' Suppress errors for demonstration purposes.

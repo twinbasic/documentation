@@ -26,7 +26,7 @@ Returns an **Integer** indicating the number of open forms in the application; r
 
 This example yields to the operating system once every 1000 iterations of a loop.
 
-```tb
+```tb check_build
 Dim I As Long, OpenForms As Long
 For I = 1 To 150000
     If I Mod 1000 = 0 Then

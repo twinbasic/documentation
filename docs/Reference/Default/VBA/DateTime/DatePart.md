@@ -72,7 +72,7 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 
 This example takes a date and, using the **DatePart** function, displays the quarter of the year in which it occurs.
 
-```tb
+```tb check_build
 Dim TheDate As Date
 TheDate = InputBox("Enter a date:")
 MsgBox "Quarter: " & DatePart("q", TheDate)

@@ -38,7 +38,7 @@ The **Not** operator inverts the bit values of its operand and sets the correspo
 
 This example uses the **Not** operator to perform logical negation on an expression.
 
-```tb
+```tb check_build
 Dim A, B, C, D, MyCheck
 A = 10: B = 8: C = 6: D = Null    ' Initialize variables.
 MyCheck = Not (A > B)    ' Returns False.

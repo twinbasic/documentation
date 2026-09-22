@@ -25,7 +25,7 @@ If **Randomize** is not used, the **Rnd** function (with no arguments) uses the 
 
 This example uses the **Randomize** statement to initialize the random-number generator. Because the *number* argument has been omitted, **Randomize** uses the return value from the [**Timer**](../DateTime/Timer) function as the new seed value.
 
-```tb
+```tb check_build
 Dim MyValue
 Randomize    ' Initialize random-number generator.
 

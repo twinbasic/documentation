@@ -15,7 +15,7 @@ An *annuity* is a series of fixed cash payments made at equally spaced intervals
 
 All seven take the same core arguments --- *rate*, *nper*, *pmt*, *pv*, *fv*, *type* --- in different orders, with the unknown one omitted. *rate* is the interest rate per period (an annual percentage divided by the number of periods per year); *nper* is the total number of payment periods; *pmt* is the payment per period; *pv* and *fv* are the present and future values; *type* is `0` if payments fall at the end of the period and `1` if at the beginning. **Rate** additionally accepts a *guess* argument --- it solves its equation iteratively, and a starting estimate can be supplied when the default of 10 % fails to converge in twenty cycles.
 
-```tb
+```tb check_build
 Const APR As Double = 0.06
 Dim Monthly As Double
 Monthly = -Pmt(APR / 12, 30 * 12, 200000)   ' fixed monthly payment on a 30-year, $200,000 mortgage at 6 % APR
@@ -25,7 +25,7 @@ Monthly = -Pmt(APR / 12, 30 * 12, 200000)   ' fixed monthly payment on a 30-year
 
 For investments whose cash flows vary period to period, three functions take an array of values rather than a single payment amount. [**NPV**](NPV) returns the net present value of the cash flows discounted at a chosen rate; [**IRR**](IRR) returns the internal rate of return --- the discount rate that would make **NPV** zero; and [**MIRR**](MIRR) returns the modified internal rate of return, where outflows and reinvested inflows are discounted at separate rates. The order of values within the array is significant --- element *i* is the cash flow for period *i* --- and the array must contain at least one negative entry (a payment) and one positive entry (a receipt). Like **Rate**, both **IRR** and **MIRR** are computed iteratively and accept an optional *guess*.
 
-```tb
+```tb check_build
 Dim CashFlows(0 To 4) As Double
 CashFlows(0) = -70000               ' initial outlay
 CashFlows(1) = 22000 : CashFlows(2) = 25000

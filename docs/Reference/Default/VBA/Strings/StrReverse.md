@@ -18,7 +18,7 @@ Syntax: **StrReverse(** *expression* **)**
 
 This example uses **StrReverse** to reverse the character order of a string.
 
-```tb
+```tb check_build
 Debug.Print StrReverse("hello")     ' "olleh"
 Debug.Print StrReverse("racecar")   ' "racecar"
 Debug.Print StrReverse("AB")        ' "BA"

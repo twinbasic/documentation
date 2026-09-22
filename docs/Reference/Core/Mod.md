@@ -33,7 +33,7 @@ However, if any operand is **Null**, *result* is **Null**. Any operand that is *
 
 This example uses the **Mod** operator to divide two numbers and return only the remainder. If either number is a floating-point number, it is first rounded to an integer.
 
-```tb
+```tb check_build
 Dim MyResult
 MyResult = 10 Mod 5     ' Returns 0.
 MyResult = 10 Mod 3     ' Returns 1.

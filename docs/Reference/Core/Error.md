@@ -34,7 +34,7 @@ If no error handler exists or if none is enabled, an error message is created an
 
 This example uses the **Error** statement to simulate error number 11.
 
-```tb
+```tb check_build
 On Error Resume Next ' Defer error handling. 
 Error 11 ' Simulate the "Division by zero" error. 
 ```

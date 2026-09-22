@@ -17,7 +17,7 @@ The value is the name of the project (executable or library) that owns the call 
 
 ### Example
 
-```tb
+```tb check_build
 Dim ProjectName As String
 ProjectName = CurrentProjectName()
 Debug.Print "Running in project: " & ProjectName

@@ -29,7 +29,7 @@ Syntax: **IsObject(** *identifier* **)**
 
 This example uses **IsObject** to determine whether an identifier represents an object variable. *MyObject* and *YourObject* are object variables of the same type, used here for illustration.
 
-```tb
+```tb check_build
 Dim MyInt As Integer                  ' Declare variables.
 Dim YourObject As Variant, MyCheck As Boolean
 Dim MyObject As Object

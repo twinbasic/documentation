@@ -29,7 +29,7 @@ Syntax: **Time** [ **()** ]
 
 This example uses the **Time** property to return the current system time.
 
-```tb
+```tb check_build
 Dim MyTime As Variant
 MyTime = Time   ' MyTime contains the current system time.
 ```
@@ -55,7 +55,7 @@ If *time* is a string, **Time** attempts to convert it to a time by using the ti
 
 This example uses the **Time** property to set the computer system time.
 
-```tb
+```tb check_build
 Dim MyTime
 MyTime = #4:35:17 PM#    ' Assign a time.
 Time = MyTime             ' Set system time to MyTime.
@@ -75,7 +75,7 @@ Syntax: **Time$** [ **()** ]
 
 This example uses the **Time$** property to return the current system time as a string.
 
-```tb
+```tb check_build
 Dim MyTime$
 MyTime = Time$  ' MyTime contains the current system time as a string.
 ```
@@ -99,7 +99,7 @@ Syntax: **Time$** **=** *time*
 
 This example uses the **Time$** property to set the computer system time.
 
-```tb
+```tb check_build
 Dim MyTime$
 MyTime = "4:35:17 PM"    ' Assign a time.
 Time$ = MyTime           ' Set system time.

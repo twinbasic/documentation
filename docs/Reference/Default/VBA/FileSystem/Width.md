@@ -24,7 +24,7 @@ Syntax: **Width #** *FileNumber* **,** *Width*
 
 This example sets the output line width to 5 --- five characters are written per line before the channel wraps.
 
-```tb
+```tb check_build
 Dim I As Long
 Open "TESTFILE" For Output As #1     ' Open file for output.
 Width #1, 5                          ' Set output line width to 5.

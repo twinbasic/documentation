@@ -41,7 +41,7 @@ If the dialog box displays a **Cancel** button, pressing the ESC key has the sam
 
 This example displays a critical-error message in a dialog with **Yes** and **No** buttons; the **No** button is the default. The value returned by **MsgBox** depends on the button the user clicks.
 
-```tb
+```tb check_build
 Dim Style As VbMsgBoxStyle
 Dim Response As VbMsgBoxResult
 

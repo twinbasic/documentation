@@ -13,7 +13,7 @@ The **Math** module groups together the standard numeric functions --- sign and 
 
 [**Abs**](Abs) returns the absolute value of its argument --- its distance from zero, with the sign discarded --- and preserves the argument's data type, so `Abs(-3#)` is a **Double** and `Abs(-3)` an **Integer**. [**Sgn**](Sgn) is the complement: it discards the magnitude and returns just the sign, as `-1`, `0`, or `+1`. Together they decompose a number into its sign and magnitude.
 
-```tb
+```tb check_build
 Debug.Print Abs(-7.5)            ' 7.5
 Debug.Print Sgn(-7.5)            ' -1
 ```
@@ -22,7 +22,7 @@ Debug.Print Sgn(-7.5)            ' -1
 
 [**Sin**](Sin), [**Cos**](Cos), and [**Tan**](Tan) take an angle in radians and return its sine, cosine, and tangent. [**Atn**](Atn) goes the other way --- given a tangent, it returns the angle whose tangent that is, in the range `-pi/2` to `pi/2`. All four work exclusively in radians; multiply degrees by `pi / 180` to convert to radians, or radians by `180 / pi` to convert back.
 
-```tb
+```tb check_build
 Const Pi As Double = 3.14159265358979
 Debug.Print Sin(Pi / 2)          ' 1
 Debug.Print Atn(1) * 4           ' 3.14159265358979 — pi
@@ -34,7 +34,7 @@ The other inverse trigonometric functions (arcsine, arccosine) and the hyperboli
 
 [**Exp**](Exp) raises *e* (≈ 2.71828) to a chosen power, and [**Log**](Log) is its inverse, returning the natural (base-*e*) logarithm. To compute a logarithm in another base, divide by **Log** of that base: `Log(x) / Log(10)` for base 10, `Log(x) / Log(2)` for base 2, and so on.
 
-```tb
+```tb check_build
 Debug.Print Exp(1)               ' 2.71828182845905 — e
 Debug.Print Log(100) / Log(10)   ' 2 — base-10 log of 100
 ```
@@ -53,7 +53,7 @@ Debug.Print Log(100) / Log(10)   ' 2 — base-10 log of 100
 
 The standard idiom for a uniformly distributed integer between *lower* and *upper* (inclusive) combines **Rnd** with [**Int**](../Conversion/Int):
 
-```tb
+```tb check_build
 Randomize
 Dim Roll As Long
 Roll = Int((6 - 1 + 1) * Rnd + 1)    ' a die roll, 1..6

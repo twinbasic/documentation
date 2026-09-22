@@ -21,7 +21,7 @@ Syntax: **Join(** *sourcearray* [ **,** *delimiter* ] **)**
 
 This example uses **Join** to concatenate an array of strings with a delimiter.
 
-```tb
+```tb check_build
 Debug.Print Join(Array("one", "two", "three"), ", ")    ' "one, two, three"
 Debug.Print Join(Array("a", "b", "c"), "-")             ' "a-b-c"
 Debug.Print Join(Array("x", "y"), "")                   ' "xy"

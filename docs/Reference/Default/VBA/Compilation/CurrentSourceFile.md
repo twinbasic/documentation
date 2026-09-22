@@ -17,7 +17,7 @@ The value is the file name (without directory components) of the source file tha
 
 ### Example
 
-```tb
+```tb check_build
 Public Sub TraceHere()
     Debug.Print "Trace from " & CurrentSourceFile() & " in " & CurrentProcedureName()
 End Sub

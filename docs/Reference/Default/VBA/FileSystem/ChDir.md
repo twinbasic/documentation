@@ -18,7 +18,7 @@ Syntax: **ChDir** *path*
 
 The **ChDir** statement changes the default directory but not the default drive. For example, if the default drive is C, the following statement changes the default directory on drive D, but C remains the default drive:
 
-```tb
+```tb check_build
 ChDir "D:\TMP" ' Make "D:\TMP" the current folder. 
 
 ChDrive "D"    ' Make "D" the current drive. 
@@ -43,7 +43,7 @@ On MacOS, the default drive name is "HD" and portions of the pathname are separa
 
 This example uses the **ChDir** statement to change the current directory or folder.
 
-```tb
+```tb check_build
 ' Change current directory or folder to "MYDIR".
 ChDir "MYDIR"
 

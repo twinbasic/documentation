@@ -19,7 +19,7 @@ If the allocation fails, **AllocMem** raises a run-time error.
 
 ### Example
 
-```tb
+```tb check_build
 Dim Buffer As LongPtr = AllocMem(1024)
 PutMem4 Buffer, &HDEADBEEF
 '... use Buffer ...

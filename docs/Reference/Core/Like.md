@@ -64,7 +64,7 @@ In some languages a single character represents two graphemes (e.g. `æ` for `a`
 
 ### Example
 
-```tb
+```tb check_build
 Dim MyCheck
 MyCheck = "aBBBa" Like "a*a"              ' Returns True.
 MyCheck = "F" Like "[A-Z]"                ' Returns True.

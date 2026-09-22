@@ -27,7 +27,7 @@ The return type is **Decimal**.
 
 This example uses the **CDec** function to convert a numeric value to a **Decimal**.
 
-```tb
+```tb check_build
 Dim MyDecimal As Decimal, MyCurr As Currency
 MyCurr = 10000000.0587               ' MyCurr is a Currency.
 MyDecimal = CDec(MyCurr)             ' MyDecimal is a Decimal.

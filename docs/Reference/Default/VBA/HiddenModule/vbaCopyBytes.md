@@ -23,7 +23,7 @@ The behaviour for overlapping ranges is unspecified --- use a temporary buffer i
 
 ### Example
 
-```tb
+```tb check_build
 Dim src As String = "Hello"
 Dim dst(0 To 9) As Byte
 vbaCopyBytes 10, VarPtr(dst(0)), StrPtr(src)

@@ -30,7 +30,7 @@ The argument list consists of pairs of conditions and values. Conditions are eva
 
 This example uses **Switch** to return the language associated with a city name.
 
-```tb
+```tb check_build
 Function MatchUp(CityName As String) As Variant
     MatchUp = Switch(CityName = "London", "English", _
                      CityName = "Rome",   "Italian", _

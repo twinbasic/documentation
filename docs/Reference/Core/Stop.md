@@ -22,7 +22,7 @@ The **Stop** statement suspends execution, but unlike [**End**](End), it doesn't
 
 This example uses the **Stop** statement to suspend execution for each iteration through the **For...Next** loop.
 
-```tb
+```tb check_build
 Dim i As Long
 For i = 1 To 10 ' Start For...Next loop.
     Debug.Print i ' Print i to the Debug Console.

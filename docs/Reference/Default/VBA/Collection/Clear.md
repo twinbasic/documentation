@@ -22,7 +22,7 @@ Syntax: *object*.**Clear**
 
 ### Example
 
-```tb
+```tb check_build
 Dim MyClasses As New Collection
 MyClasses.Add "first"
 MyClasses.Add "second"

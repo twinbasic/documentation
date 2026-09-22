@@ -26,7 +26,7 @@ The return type is **Currency**. If *expression* is outside that range, a run-ti
 
 This example uses the **CCur** function to convert an expression to a **Currency**.
 
-```tb
+```tb check_build
 Dim MyDouble, MyCurr
 MyDouble = 543.214588                    ' MyDouble is a Double.
 MyCurr = CCur(MyDouble * 2)              ' Convert result of MyDouble * 2

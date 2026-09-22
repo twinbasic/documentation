@@ -23,7 +23,7 @@ The pointer is valid only as long as the **String** variable stays alive and is 
 
 ### Example
 
-```tb
+```tb check_build
 Dim s As String
 s = "Hello"
 Debug.Print StrPtr(s)            ' e.g. 1234567890 — varies per run

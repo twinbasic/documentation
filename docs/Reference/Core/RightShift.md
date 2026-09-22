@@ -34,7 +34,7 @@ The data type of *result* matches the (integral) type of *number*. The right shi
 
 `x >>= n` is the twinBASIC shorthand for `x = x >> n`. **\>>=** is a statement, not an expression --- it does not produce a value.
 
-```tb
+```tb check_build
 Dim Flags As Long = &H100
 Flags >>= 4                     ' Flags is now &H10 (16).
 Flags >>= 4                     ' Flags is now 1.
@@ -42,7 +42,7 @@ Flags >>= 4                     ' Flags is now 1.
 
 ### Example
 
-```tb
+```tb check_build
 Dim Value As Long
 Value = 16 >> 0                 ' Returns 16.
 Value = 16 >> 4                 ' Returns 1.

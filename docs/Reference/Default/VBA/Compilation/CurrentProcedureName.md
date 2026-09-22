@@ -17,7 +17,7 @@ The value is the name of the **Sub**, **Function**, or **Property** that lexical
 
 ### Example
 
-```tb
+```tb check_build
 Public Sub DoWork()
     Debug.Print CurrentProcedureName()    ' Prints "DoWork"
 End Sub

@@ -21,7 +21,7 @@ Syntax: **CreateObject(** *class* [ **,** *servername* ] **)**
 
 To use the returned object, assign it to an object variable. Declaring the variable `As Object` causes late binding (binding occurs at run time); declaring it with a specific class type produces early binding (binding occurs at compile time), which is faster and gives access to IntelliSense for the object's members but limits the variable to that one type.
 
-```tb
+```tb check_build
 Dim ExcelApp As Object
 Set ExcelApp = CreateObject("Excel.Application")
 ExcelApp.Visible = True
@@ -36,7 +36,7 @@ If a remote *servername* is supplied but the remote machine doesn't exist or is 
 
 This example creates a Microsoft Excel **Application** object, makes it visible, and then closes it via **Quit**, releasing the reference at the end.
 
-```tb
+```tb check_build
 Dim XlApp As Object
 Set XlApp = CreateObject("Excel.Application")
 XlApp.Visible = True

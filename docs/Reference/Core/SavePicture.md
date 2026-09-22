@@ -24,7 +24,7 @@ If the *picture* originally came from a file (loaded with **LoadPicture**), the 
 
 ### Example
 
-```tb
+```tb check_build
 ' Save the graphic currently displayed in Picture1 to disk.
 SavePicture Picture1.Picture, "C:\Temp\Snapshot.bmp"
 

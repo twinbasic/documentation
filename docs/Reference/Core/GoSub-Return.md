@@ -31,7 +31,7 @@ Use **GoSub** and **Return** anywhere in a procedure, but **GoSub** and the corr
 
 This example uses **GoSub** to call a subroutine within a **Sub** procedure. The **Return** statement causes the execution to resume at the statement immediately following the **GoSub** statement. The [**Exit Sub**](Exit) statement is used to prevent control from accidentally flowing into the subroutine.
 
-```tb
+```tb check_build
 Sub GosubDemo()
     Dim Num
     ' Solicit a number from the user.

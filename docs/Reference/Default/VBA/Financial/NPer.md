@@ -34,7 +34,7 @@ For all arguments, cash paid out (such as deposits to savings) is represented by
 
 This example uses the **NPer** function to return the number of periods during which payments must be made to pay off a loan whose value is contained in `PVal`. Also provided are the interest percentage rate per period (`APR / 12`), the payment (`Payment`), the future value of the loan (`FVal`), and a number that indicates whether the payment is due at the beginning or end of the payment period (`PayType`).
 
-```tb
+```tb check_build
 Dim FVal, PVal, APR, Payment, PayType, TotPmts
 Const ENDPERIOD = 0, BEGINPERIOD = 1    ' When payments are made.
 FVal = 0    ' Usually 0 for a loan.

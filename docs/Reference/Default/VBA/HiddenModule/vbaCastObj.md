@@ -20,7 +20,7 @@ A direct wrapper over **IUnknown::QueryInterface**: the object is asked whether 
 
 ### Example
 
-```tb
+```tb check_build
 Const IID_IPicture As String = "{7BF80980-BF32-101A-8BBB-00AA00300CAB}"
 
 Dim Pic As Object = LoadPicture("logo.bmp")

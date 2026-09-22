@@ -30,7 +30,7 @@ When the fractional part is exactly `0.5`, **CLngLng** always rounds it to the n
 
 This example uses the **CLngLng** function to convert an expression to a **LongLong**.
 
-```tb
+```tb check_build
 Dim someValue As Variant
 someValue = 9223372036854775807
 Dim longLongValue As LongLong

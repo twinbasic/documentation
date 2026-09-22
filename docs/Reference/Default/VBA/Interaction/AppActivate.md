@@ -34,7 +34,7 @@ In determining which application to activate, *title* is compared to the title s
 This example illustrates various uses of the **AppActivate** statement to activate an application window. [**Shell**](Shell) needs a path it can pass straight to `CreateProcess`: it does not search the registry's *App Paths* key, so a bare `"WINWORD.EXE"` fails even though Office registers it there. The paths below assume a Click-to-Run installation of Office 16 --- an MSI installation has no `root` folder, and the version segment tracks the Office release.
 <!-- On the Macintosh, the default drive name is "HD" and portions of the pathname are separated by colons instead of backslashes. -->
 
-```tb
+```tb check_build
 Dim MyAppID As Double, ReturnValue As Double
 
 ' Activate by window title. No path is involved.

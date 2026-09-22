@@ -21,7 +21,7 @@ A calling procedure can then use [**LastHresult**](LastHresult) to read the posi
 
 This example demonstrates setting a non-failure HRESULT upon successfully completing a method within a COM object.
 
-```tb
+```tb check_build
 Function MyMethod() As Variant
     ' ... perform method actions here ...
 

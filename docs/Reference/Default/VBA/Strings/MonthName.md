@@ -21,7 +21,7 @@ Syntax: **MonthName(** *month* [ **,** *abbreviate* ] **)**
 
 This example uses **MonthName** to return the full and abbreviated name of a month.
 
-```tb
+```tb check_build
 Debug.Print MonthName(3)           ' "March"
 Debug.Print MonthName(3, True)     ' "Mar"
 Debug.Print MonthName(12)          ' "December"

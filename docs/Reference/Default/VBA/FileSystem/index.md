@@ -13,7 +13,7 @@ The **FileSystem** module groups together the procedures and statements for work
 
 [**ChDrive**](ChDrive) changes the current drive, [**ChDir**](ChDir) changes the current directory on a given drive, and [**CurDir**](CurDir) returns the path of the current drive --- or of any other drive, if one is named. [**MkDir**](MkDir) and [**RmDir**](RmDir) create and remove directories.
 
-```tb
+```tb check_build
 ChDrive "D"
 ChDir "D:\Projects"
 Debug.Print CurDir              ' "D:\Projects"
@@ -24,7 +24,7 @@ MkDir "D:\Projects\Output"
 
 [**Dir**](Dir) is the wildcard matcher: pass it a pathname containing `*` or `?` and it returns the first matching name, then call it again with no arguments to step through subsequent matches until it returns `""`. [**FileLen**](FileLen) returns the size of a file in bytes without opening it, and [**FileDateTime**](FileDateTime) returns its last-modified timestamp. [**GetAttr**](GetAttr) and [**SetAttr**](SetAttr) read and write the [**VbFileAttribute**](../Constants/VbFileAttribute) flag bits --- read-only, hidden, system, archive --- and **GetAttr** also reports whether a name refers to a directory by setting the **vbDirectory** bit.
 
-```tb
+```tb check_build
 Dim Name As String
 Name = Dir("C:\Logs\*.log")
 Do While Name <> ""
@@ -37,7 +37,7 @@ Loop
 
 [**FileCopy**](FileCopy) copies one file to another, and [**Kill**](Kill) deletes files matching a wildcard pattern. Both operate by pathname and raise a run-time error when asked to act on a file the current process has open.
 
-```tb
+```tb check_build
 FileCopy "C:\Data\report.xlsx", "C:\Backup\report.xlsx"
 Kill "C:\Backup\*.tmp"
 ```
@@ -46,7 +46,7 @@ Kill "C:\Backup\*.tmp"
 
 The lower-level read/write statements --- **Open**, **Close**, **Get**, **Put**, **Print**, **Write**, **Input**, and **Line Input** --- work in terms of a *file number* in the range 1--511. [**FreeFile**](FreeFile) returns the next number that isn't currently in use, sparing the caller from picking one by hand and racing other code to it. Once a file is open, [**FileAttr**](FileAttr) reports the access mode --- **Input**, **Output**, **Random**, **Append**, or **Binary** --- that the file number was opened with. [**Reset**](Reset) closes every file number currently open and flushes its buffers, and is most useful as a last-ditch cleanup before exit.
 
-```tb
+```tb check_build
 Dim N As Long
 N = FreeFile
 Open "C:\Data\report.txt" For Input As #N
@@ -58,7 +58,7 @@ Close #N
 
 For an open file number, [**EOF**](EOF) returns **True** once a sequential read has run past the last record, [**LOF**](LOF) returns the file's total length in bytes, and [**Loc**](Loc) returns the current read/write position. The unit of *position* depends on the open mode --- record number for **Random**, byte offset for **Binary**, and the byte position divided by 128 for sequential modes --- so the per-mode tables on each function's page are the authoritative reference. [**Seek**](Seek) doubles as a function and a statement: the function returns the position of the **next** read or write (whereas **Loc** reports the position of the *last*), and the statement repositions the file pointer ahead of the next operation.
 
-```tb
+```tb check_build
 Dim N As Long, Line As String
 N = FreeFile
 Open "C:\Data\big.log" For Input As #N

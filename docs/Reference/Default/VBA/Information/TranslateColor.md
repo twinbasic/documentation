@@ -22,7 +22,7 @@ The OLE colour format encodes either a literal RGB value or an index into the Wi
 
 This example translates an OLE system colour to its current RGB value.
 
-```tb
+```tb check_build
 Dim OleColor As Long
 Dim RgbColor As Long
 OleColor = &H80000012                 ' COLOR_BTNFACE — the button face colour.

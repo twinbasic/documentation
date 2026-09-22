@@ -40,7 +40,7 @@ In classic VBA, *procedurename* must name a procedure in a standard [**Module**]
 
 Calling through a typed delegate, inside Basic:
 
-```tb
+```tb check_build
 Private Delegate Function Operation (ByVal A As Long, ByVal B As Long) As Long
 
 Public Function Addition(ByVal A As Long, ByVal B As Long) As Long
@@ -55,7 +55,7 @@ End Sub
 
 Installing a callback in a Win32 API. `EnumWindows` invokes *EnumProc* once per top-level window:
 
-```tb
+```tb check_build
 Public Declare PtrSafe Function EnumWindows Lib "user32" ( _
     ByVal lpEnumFunc As LongPtr, ByVal lParam As LongPtr) As Long
 

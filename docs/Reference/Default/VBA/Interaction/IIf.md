@@ -29,7 +29,7 @@ Syntax: **IIf(** *expr* **,** *truepart* **,** *falsepart* **)**
 
 This example uses **IIf** to return the word "Large" if the amount is greater than 1000, and "Small" otherwise.
 
-```tb
+```tb check_build
 Function CheckIt(TestMe As Integer) As String
     CheckIt = IIf(TestMe > 1000, "Large", "Small")
 End Function

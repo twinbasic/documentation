@@ -16,7 +16,7 @@ This is a thin wrapper over the operating system's GUID generator (`CoCreateGuid
 
 ### Example
 
-```tb
+```tb check_build
 Debug.Print CreateGUID()
 ' {2A1B6F2C-4D9F-4D5E-9C8A-EE9C8B5F3DCE}
 ```

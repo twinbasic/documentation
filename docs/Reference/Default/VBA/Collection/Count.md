@@ -18,7 +18,7 @@ Syntax: *object*.**Count**
 
 This example uses the **Collection** object's **Count** property to specify how many iterations are required to remove all the elements of the collection called `MyClasses`. Collection numeric indexes start at 1 by default. Because collections are reindexed automatically when a removal is made, the following code removes the first member on each iteration.
 
-```tb
+```tb check_build
 Dim Num As Long, MyClasses As Collection
 Set MyClasses = New Collection
 ' ... assume MyClasses has been populated ...

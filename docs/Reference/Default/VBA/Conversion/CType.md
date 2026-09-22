@@ -27,7 +27,7 @@ The return type matches *type*.
 
 1. **As an explicit cast**, used wherever an implicit conversion would either be disallowed or produce a compiler warning. It conveys the same intent as [**CInt**](CInt), [**CLng**](CLng), and the rest of the C-prefix functions, but for any target type --- most usefully when the target is an **Enum** or an interface. For example, assigning a numeric literal or another **Enum** member to an **Enum**-typed variable triggers a compiler warning that **CType** silences:
 
-   ```tb
+   ```tb check_build
    Dim day As VbDayOfWeek
    day = CType(Of VbDayOfWeek)(1)
    ```

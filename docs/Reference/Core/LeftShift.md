@@ -34,7 +34,7 @@ The data type of *result* matches the (integral) type of *number*. A shift of mo
 
 `x <<= n` is the twinBASIC shorthand for `x = x << n`. **\<<=** is a statement, not an expression --- it does not produce a value.
 
-```tb
+```tb check_build
 Dim Mask As Long = 1
 Mask <<= 4                      ' Mask is now &H10 (16).
 Mask <<= 4                      ' Mask is now &H100 (256).
@@ -42,7 +42,7 @@ Mask <<= 4                      ' Mask is now &H100 (256).
 
 ### Example
 
-```tb
+```tb check_build
 Dim Value As Long
 Value = 1 << 0                  ' Returns 1.
 Value = 1 << 4                  ' Returns 16.

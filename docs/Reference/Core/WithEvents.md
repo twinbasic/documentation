@@ -58,7 +58,7 @@ End Class
 
 The class supplying those events declares them with **Event** and fires them with **RaiseEvent**:
 
-```tb
+```tb check_build
 Class JobRunner
     Public Event Progress(ByVal Percent As Long)
     Public Event Finished(ByVal ItemsProcessed As Long)

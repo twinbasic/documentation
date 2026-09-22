@@ -33,7 +33,7 @@ Octal numbers can be represented directly by preceding numbers in the proper ran
 
 This example uses the **Oct** function to return the octal value of a number.
 
-```tb
+```tb check_build
 Dim MyOct
 MyOct = Oct(4)      ' Returns "4".
 MyOct = Oct(8)      ' Returns "10".

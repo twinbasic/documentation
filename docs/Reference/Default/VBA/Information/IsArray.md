@@ -22,7 +22,7 @@ Syntax: **IsArray(** *varname* **)**
 
 This example uses **IsArray** to check whether a variable is an array.
 
-```tb
+```tb check_build
 Dim MyArray(1 To 5) As Integer
 Dim YourArray As Variant
 Dim MyCheck As Boolean

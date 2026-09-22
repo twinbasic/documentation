@@ -38,7 +38,7 @@ Any number of [**Continue Do**](Continue) statements may be placed anywhere in t
 
 This example shows how **Do...Loop** statements can be used. The inner **Do...Loop** statement loops 10 times, asks the user if it should keep going, sets the value of the flag to **False** when they select **No**, and exits prematurely by using the **Exit Do** statement. The outer loop exits immediately upon checking the value of the flag.
 
-```tb
+```tb check_build
 Public Sub LoopExample()
     Dim Check As Boolean, Counter As Long, Total As Long
     Check = True: Counter = 0: Total = 0 ' Initialize variables.

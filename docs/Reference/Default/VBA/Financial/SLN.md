@@ -26,7 +26,7 @@ The depreciation period must be expressed in the same unit as the *life* argumen
 
 This example uses the **SLN** function to return the straight-line depreciation of an asset for a single period given the asset's initial cost (`InitCost`), the salvage value at the end of the asset's useful life (`SalvageVal`), and the total life of the asset in years (`LifeTime`).
 
-```tb
+```tb check_build
 Dim Fmt, InitCost, SalvageVal, MonthLife, LifeTime, PDepr
 Const YEARMONTHS = 12    ' Number of months in a year.
 Fmt = "###,##0.00"    ' Define money format.

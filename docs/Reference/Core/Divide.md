@@ -37,7 +37,7 @@ Dividing by zero raises a run-time error. Use [**\\**](IntegerDivide) for trunca
 
 `x /= y` is the twinBASIC shorthand for `x = x / y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. **/=** is a statement, not an expression --- it does not produce a value.
 
-```tb
+```tb check_build
 Dim Value As Double = 100
 Value /= 4                      ' Value is now 25.
 Value /= 5                      ' Value is now 5.
@@ -47,7 +47,7 @@ Value /= 5                      ' Value is now 5.
 
 This example uses the **/** operator to perform floating-point division.
 
-```tb
+```tb check_build
 Dim MyValue
 MyValue = 10 / 4                ' Returns 2.5.
 MyValue = 10 / 3                ' Returns 3.333333...

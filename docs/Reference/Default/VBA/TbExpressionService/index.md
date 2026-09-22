@@ -22,7 +22,7 @@ It is exposed as one class and two interfaces:
 
 Create a **TbExpressionService**, register at least one binder, then call [**Compile**](Compile) to get back an [**ITbExpression**](#itbexpression-interface). The same compiled expression can be evaluated as many times as needed, so reuse it whenever the source text doesn't change.
 
-```tb
+```tb check_build
 Sub Demo()
     Dim Service As TbExpressionService = New TbExpressionService
     Service.AddStdLibraryBinder()                       ' enable Sin, Sqr, Len, ...

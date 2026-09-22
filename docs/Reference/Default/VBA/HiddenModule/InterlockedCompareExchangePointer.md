@@ -23,7 +23,7 @@ The compare-and-swap happens as one atomic operation. The return value is the va
 
 ### Example
 
-```tb
+```tb check_build
 ' Atomically claim ownership of a slot.
 Dim Slot As LongPtr = 0
 Dim NewObj As LongPtr = ObjPtr(New Collection)

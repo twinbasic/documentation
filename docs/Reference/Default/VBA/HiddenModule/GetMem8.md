@@ -24,7 +24,7 @@ The address is read directly with no bounds or alignment check.
 
 This example writes an 8-byte value to a buffer and reads it back with **GetMem8**.
 
-```tb
+```tb check_build
 Dim buf As LongPtr = AllocMem(8)
 Dim src As Currency = 1000000@
 PutMem8 buf, src

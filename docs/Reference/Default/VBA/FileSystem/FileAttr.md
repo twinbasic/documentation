@@ -35,7 +35,7 @@ The following return values indicate the file access mode:
 
 This example uses the **FileAttr** function to return the file mode of an open file.
 
-```tb
+```tb check_build
 Dim FileNum, Mode
 FileNum = 1    ' Assign file number.
 Open "TESTFILE" For Append As FileNum    ' Open file.

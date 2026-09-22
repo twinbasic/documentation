@@ -27,7 +27,7 @@ The **Null** value indicates that a **Variant** holds no valid data. **Null** is
 
 This example uses **IsNull** to determine whether a variable contains a **Null**.
 
-```tb
+```tb check_build
 Dim MyVar As Variant
 Dim MyCheck As Boolean
 MyCheck = IsNull(MyVar)               ' False — MyVar is Empty.

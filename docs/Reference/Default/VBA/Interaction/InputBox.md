@@ -39,7 +39,7 @@ If the user clicks **OK** or presses ENTER, **InputBox** returns whatever is in 
 > [!NOTE]
 > A zero-length return value alone cannot distinguish "user cancelled" from "user submitted an empty string". To tell them apart, capture the result in a **Variant** and test the underlying **BSTR** pointer with **StrPtr**: a cancelled dialog returns a null pointer, while an empty submitted string returns a pointer to an allocated zero-length **BSTR**.
 >
-> ```tb
+> ```tb check_build
 > Dim Reply As Variant
 > Reply = InputBox("Enter your name:")
 > If StrPtr(Reply) = 0 Then
@@ -59,7 +59,7 @@ When both *helpfile* and *context* are supplied, the user can press F1 to view t
 
 This example shows several ways of calling **InputBox**. If *xpos* and *ypos* are omitted the dialog is centered on its respective axis. The variable `MyValue` ends up containing whatever the user typed when **OK** or ENTER was pressed, or a zero-length string when **Cancel** was pressed.
 
-```tb
+```tb check_build
 Dim Message As String, Title As String, Default As String, MyValue As String
 Message = "Enter a value between 1 and 3"
 Title = "InputBox Demo"

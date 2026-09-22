@@ -31,7 +31,7 @@ Syntax: **Erase** *arraylist*
 ### Example
 This example uses the **Erase** statement to reinitialize the elements of fixed-size arrays and deallocate dynamic-array storage space.
 
-```tb
+```tb check_build
 ' Declare array variables. 
 Dim NumArray(10) As Integer        ' Integer array. 
 Dim StrVarArray(10) As String      ' Variable-string array. 

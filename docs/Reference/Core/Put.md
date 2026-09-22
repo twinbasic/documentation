@@ -44,7 +44,7 @@ For files opened in **Random** mode, the following rules apply:
 
 - If the variable being written is a dynamic array, **Put** writes a descriptor whose length equals `2 + 8 * NumberOfDimensions`. The record length specified by the **Len** clause in the **Open** statement must be greater than or equal to the sum of all the bytes required to write the array data and the array descriptor. For example, the following array declaration requires 118 bytes when the array is written to disk.
 
-  ```tb
+  ```tb check_build
   Dim MyArray(1 To 5, 1 To 10) As Integer
   ```
 

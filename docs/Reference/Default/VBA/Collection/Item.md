@@ -34,7 +34,7 @@ This example uses the **Item** method to retrieve a reference to an object in a 
 
 The first call explicitly specifies the **Item** method; the second does not. Both calls work because **Item** is the default member of a **Collection** object.
 
-```tb
+```tb check_build
 Dim SmithBillBD As Object
 Dim SmithAdamBD As Object
 Dim Birthdays As Collection

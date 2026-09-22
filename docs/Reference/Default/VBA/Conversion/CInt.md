@@ -26,7 +26,7 @@ When the fractional part is exactly `0.5`, **CInt** always rounds it to the near
 
 This example uses the **CInt** function to convert a value to an **Integer**.
 
-```tb
+```tb check_build
 Dim MyDouble, MyInt
 MyDouble = 2345.5678                 ' MyDouble is a Double.
 MyInt = CInt(MyDouble)               ' MyInt contains 2346.

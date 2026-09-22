@@ -27,7 +27,7 @@ The root of these registry settings is: `Computer\HKEY_CURRENT_USER\Software\VB 
 
 This example first uses [**SaveSetting**](SaveSetting) to make entries in the Windows registry for the application, then uses **GetAllSettings** to display every key/value in a section, and finally uses [**DeleteSetting**](DeleteSetting) to remove the application's entries. Note that the *appname* and *section* names themselves are not retrieved.
 
-```tb
+```tb check_build
 ' Place some settings in the registry.
 SaveSetting AppName := "MyApp", Section := "Startup", _
             Key := "Top", Setting := "75"

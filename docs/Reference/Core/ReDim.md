@@ -75,7 +75,7 @@ Next I
 
 The following statement resizes the array but does not erase elements.
 
-```tb
+```tb check_build
 ReDim Preserve MyArray(15) ' Resize to 15 elements.
 ```
 

@@ -47,7 +47,7 @@ Any argument may be a decimal value, but is rounded to the nearest even integer 
 
 This example passes a series of freight costs to **Partition** with *start* = 0, *stop* = 500, and *interval* = 50, and prints the range each one falls into. The first range is `"  0: 49"`, and so on up to 500. Note that 12.5 is rounded before the range is chosen, and that a value below *start* or above *stop* gets one of the open-ended forms.
 
-```tb
+```tb check_build
 Dim Freight As Variant
 For Each Freight In Array(-1, 12.5, 49, 50, 275, 499, 500, 501)
     Debug.Print Freight & " -> [" & Partition(Freight, 0, 500, 50) & "]"
