@@ -39,11 +39,6 @@ On MacOS, the default drive name is "HD" and portions of the pathname are separa
 
 -->
 
-### See Also
-
-- [ChDrive](ChDrive), [MkDir](MkDir), [RmDir](RmDir) statements
-- [CurDir](CurDir), [Dir](Dir) functions
-
 ### Example
 
 This example uses the **ChDir** statement to change the current directory or folder.
@@ -56,3 +51,8 @@ ChDir "MYDIR"
 ' the default directory on drive "D:". "C:" remains the current drive.
 ChDir "D:\WINDOWS\SYSTEM"
 ```
+
+### See Also
+
+- [ChDrive](ChDrive), [MkDir](MkDir), [RmDir](RmDir) statements
+- [CurDir](CurDir), [Dir](Dir) functions

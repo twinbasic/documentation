@@ -34,10 +34,10 @@ Use a **Static** statement within a procedure to declare the data type of a vari
 Static EmployeeNumber(200) As Integer
 ```
 
-The following statement declares a variable for a new instance of a worksheet:
+The following statement declares a variable for a new instance of the [**Collection**](../Modules/Collection/) class:
 
 ```tb
-Static X As New Worksheet
+Static X As New Collection
 ```
 
 If the **New** keyword isn't used when declaring an object variable, the variable that refers to the object must be assigned an existing object by using the **Set** statement before it can be used. Until it is assigned an object, the declared object variable has the special value **Nothing**, which indicates that it doesn't refer to any particular instance of an object. When the **New** keyword is used in the declaration, an instance of the object is created on the first reference to the object.

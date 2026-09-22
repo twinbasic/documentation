@@ -51,7 +51,7 @@ Syntax:
 : *optional* Used to declare procedures that are available only within the module where the declaration is made.
 
 **PtrSafe**
-: *required in 64-bits* The PtrSafe keyword asserts that a Declare statement is safe to run in 64-bit versions of Microsoft Office.
+: *required in 64-bits* Asserts that the declaration has been reviewed for pointer-width correctness and is safe to use in a 64-bit process. It has no effect on a 32-bit build, so it is good practice to use it everywhere.
 
 **Sub / Function**
 : Indicates whether the procedure returns a value (**Function**) or not (**Sub**).

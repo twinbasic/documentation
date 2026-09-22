@@ -242,6 +242,26 @@ from earlier work.
   read was silent while the console the IDE ended up holding named the fault outright. When a
   probe comes back empty, re-read the live console (`--keep`, then CDP) before concluding it
   hung.
+- **`tbrun` captures the last 11 output lines and says nothing about the rest.** Not a
+  proportion — a hard cap. Measured: a probe printing 19 lines returned 11, a probe printing
+  120 lines returned 11, and both times it was the *tail*, with a clean-looking first line and
+  no truncation marker. The cause is the pane, not the script: `--raw` on the same 120-line
+  probe returns **22** lines, exactly double, because *Show Timestamps* interleaves one
+  timestamp row per output row and the DEBUG CONSOLE keeps only the visible rows in the DOM.
+  So the real budget is 22 rows at the private desktop's geometry, which the timestamp option
+  halves.
+
+  This is worse than the empty-capture case above, because a truncated capture looks like a
+  complete one: the first probe written for this session printed a seven-line `Format` block
+  followed by a `vbDatabaseCompare` block, and came back holding only the second, reading
+  exactly like a probe that had simply not run the first half. **Print what matters last, keep
+  a probe under ten lines, or split it** — and a batch runner reporting one line per fence
+  cannot use the console at all past the tenth fence.
+- **Two IDEs must not hold one source tree.** `tbbuild` takes the project directory as given
+  and does not stage a copy the way `tbrun` does, so two concurrent builds pointed at the same
+  folder — distinct `--port`s, distinct desktops, everything else correct — both wedge and
+  neither ever returns. Cost two runs and looked like the renderer-blocked failure above.
+  Concurrency needs a tree per run, not just a port per run.
 - **`export` needs the output folder to exist** (one level only), and stdin redirected
   (`</dev/null`) when looping, or the executable eats the loop's input.
 - **Paths handed to the compiler must be pure Windows.** It prefixes `\\?\`, which does not
@@ -291,5 +311,9 @@ from earlier work.
   compilation failed?
 - How should a fence needing a specific package (CEF, WebView2, WinNativeCommonCtls) select
   it — a template per package, or a `needs=` key that composes references?
-- Does `Dim X As New Excel.Worksheet` raise on touch, as expected? Settles the editorial
-  question for the five `Core/` pages.
+- ~~Does `Dim X As New Excel.Worksheet` raise on touch, as expected? Settles the editorial
+  question for the five `Core/` pages.~~ **Answered, and the editorial question with it.** It
+  raises, as recorded above. The five pages now declare `As New Collection` — a creatable
+  class that needs no reference, keeps each page's actual subject (declaring an object
+  variable, and `As New` deferring instantiation to first use), and compiles in a bare
+  project. Office stays where it belongs, on `CreateObject` and `GetObject`.

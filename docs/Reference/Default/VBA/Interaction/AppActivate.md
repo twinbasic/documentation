@@ -31,23 +31,27 @@ In determining which application to activate, *title* is compared to the title s
 
 ### Example
 
-This example illustrates various uses of the **AppActivate** statement to activate an application window. The **Shell** statements assume the applications are in the paths specified.
+This example illustrates various uses of the **AppActivate** statement to activate an application window. [**Shell**](Shell) needs a path it can pass straight to `CreateProcess`: it does not search the registry's *App Paths* key, so a bare `"WINWORD.EXE"` fails even though Office registers it there. The paths below assume a Click-to-Run installation of Office 16 --- an MSI installation has no `root` folder, and the version segment tracks the Office release.
 <!-- On the Macintosh, the default drive name is "HD" and portions of the pathname are separated by colons instead of backslashes. -->
 
 ```tb
-Dim MyAppID, ReturnValue
-AppActivate "Microsoft Word"   ' Activate Microsoft 
-                               ' Word.
+Dim MyAppID As Double, ReturnValue As Double
+
+' Activate by window title. No path is involved.
+AppActivate "Microsoft Word"
+
+' ProgramW6432 is the 64-bit Program Files folder even in a 32-bit build,
+' which is where a 64-bit Office lives. Environ$("ProgramFiles") would
+' return the "(x86)" tree instead.
+Dim Office As String
+Office = Environ$("ProgramW6432") & "\Microsoft Office\root\Office16\"
 
 ' AppActivate can also use the return value of the Shell function.
-MyAppID = Shell("C:\WORD\WINWORD.EXE", 1)   ' Run Microsoft Word.
-AppActivate MyAppID   ' Activate Microsoft 
-                      ' Word.
+MyAppID = Shell(Office & "WINWORD.EXE", vbNormalFocus)
+AppActivate MyAppID
 
-' You can also use the return value of the Shell function.
-ReturnValue = Shell("c:\EXCEL\EXCEL.EXE",1)   ' Run Microsoft Excel.
-AppActivate ReturnValue   ' Activate Microsoft 
-                          ' Excel.
+ReturnValue = Shell(Office & "EXCEL.EXE", vbNormalFocus)
+AppActivate ReturnValue
 ```
 
 ### See Also

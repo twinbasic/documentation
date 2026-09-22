@@ -33,7 +33,7 @@ Dim InputData
 Open "MYFILE" For Input As #1    ' Open file for input.
 Do While Not EOF(1)    ' Check for end of file.
     Line Input #1, InputData    ' Read line of data.
-    Debug.Print InputData    ' Print to the Immediate window.
+    Debug.Print InputData    ' Print to the Debug Console.
 Loop
 Close #1    ' Close file.
 ```

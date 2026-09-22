@@ -32,14 +32,14 @@ For files opened for **Binary** access, an attempt to read through the file usin
 
 ### Example
 
-This example uses the **Input** function to read one character at a time from a file and print it to the immediate window. *TESTFILE* is assumed to be a text file with a few lines of sample data.
+This example uses the **Input** function to read one character at a time from a file and print it to the [Debug Console](../../IDE/Project/DebugConsole). *TESTFILE* is assumed to be a text file with a few lines of sample data.
 
 ```tb
 Dim MyChar As Variant
 Open "TESTFILE" For Input As #1     ' Open file.
 Do While Not EOF(1)                 ' Loop until end of file.
     MyChar = Input(1, #1)           ' Get one character.
-    Debug.Print MyChar              ' Print to the immediate window.
+    Debug.Print MyChar              ' Print to the Debug Console.
 Loop
 Close #1                            ' Close file.
 ```

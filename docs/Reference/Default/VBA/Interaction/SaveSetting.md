@@ -16,7 +16,7 @@ Syntax: **SaveSetting** *appname*, *section*, *key*, *setting*
 
 *appname*
 
-: String expression containing the name of the application or project to which the setting applies. On the Macintosh, this is the filename of the initialization file in the Preferences folder in the System folder.
+: String expression containing the name of the application or project to which the setting applies. <!-- On the Macintosh, this is the filename of the initialization file in the Preferences folder in the System folder. -->
 
 *section*
 

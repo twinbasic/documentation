@@ -45,11 +45,20 @@ Any argument may be a decimal value, but is rounded to the nearest even integer 
 
 ### Example
 
-This example uses **Partition** in an SQL `SELECT` to count the orders whose freight cost falls into each of several ranges. With *start* = 0, *stop* = 500, *interval* = 50, the first range is `"  0: 49"`, and so on up to 500.
+This example passes a series of freight costs to **Partition** with *start* = 0, *stop* = 500, and *interval* = 50, and prints the range each one falls into. The first range is `"  0: 49"`, and so on up to 500. Note that 12.5 is rounded before the range is chosen, and that a value below *start* or above *stop* gets one of the open-ended forms.
 
-```sql
-SELECT DISTINCTROW Partition([Freight], 0, 500, 50) AS Range,
-                   Count(Orders.Freight)            AS [Count]
-FROM Orders
-GROUP BY Partition([Freight], 0, 500, 50);
+```tb
+Dim Freight As Variant
+For Each Freight In Array(-1, 12.5, 49, 50, 275, 499, 500, 501)
+    Debug.Print Freight & " -> [" & Partition(Freight, 0, 500, 50) & "]"
+Next Freight
+
+' -1 -> [   : -1]
+' 12.5 -> [  0: 49]
+' 49 -> [  0: 49]
+' 50 -> [ 50: 99]
+' 275 -> [250:299]
+' 499 -> [450:499]
+' 500 -> [500:500]
+' 501 -> [501:   ]
 ```

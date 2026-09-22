@@ -19,4 +19,7 @@ Text comparison modes used by string functions such as [**InStr**](../Strings/In
 |----------|-------|-------------|
 | **vbBinaryCompare**{: #vbBinaryCompare } | 0 | Performs a binary comparison. |
 | **vbTextCompare**{: #vbTextCompare } | 1 | Performs a textual comparison. |
-| **vbDatabaseCompare**{: #vbDatabaseCompare } | 2 | For Microsoft Access (Windows only), performs a comparison based on information contained in the database. |
+| **vbDatabaseCompare**{: #vbDatabaseCompare } | 2 | Accepted for source compatibility. Compares as **vbTextCompare** --- see the note below. |
+
+> [!NOTE]
+> **vbDatabaseCompare** has no distinct behaviour in twinBASIC. Within Microsoft Access it selects the sort order recorded in the database; outside that host there is no database to consult, so twinBASIC accepts the constant and performs a case-insensitive comparison --- the same result as [**vbTextCompare**](#vbTextCompare).
